@@ -19,11 +19,7 @@
           0.5
         ]
       ],
-      "scale": [
-        1,
-        1,
-        1
-      ],
+      "scaleExpr": ["1", "yscale", "1"],
       "camera": {
         "position": [
           3,
@@ -135,6 +131,16 @@
         {
           "title": "The unit circle",
           "description": "A point rotating on the unit circle: $x = \\cos t$, $y = \\sin t$. One full revolution takes $t = 2\\pi$.",
+          "sliders": [
+            {
+              "id": "yscale",
+              "label": "Y scale",
+              "min": 0.1,
+              "max": 1,
+              "step": 0.05,
+              "default": 1
+            }
+          ],
           "add": [
             {
               "id": "unit-circle",
@@ -245,7 +251,7 @@
     {
       "title": "Square Wave Approximation",
       "description": "A square wave can be built from sine waves alone: $f(x) = \\frac{4}{\\pi}\\left(\\sin x + \\frac{\\sin 3x}{3} + \\frac{\\sin 5x}{5} + \\cdots\\right)$. More terms means a sharper approximation.",
-      "markdown": "# Fourier Series: Square Wave\n\nThe **square wave** with period $2\\pi$ and amplitude 1 can be represented as an infinite sum of sine waves:\n\n$$f(x) = \\frac{4}{\\pi}\\sum_{k=0}^{\\infty} \\frac{\\sin\\bigl((2k+1)x\\bigr)}{2k+1} = \\frac{4}{\\pi}\\left(\\sin x + \\frac{\\sin 3x}{3} + \\frac{\\sin 5x}{5} + \\cdots\\right)$$\n\n## Why Only Odd Harmonics?\n\nThe square wave is an **odd function** (symmetric about the origin) and has **half-wave symmetry** (the second half is minus the first half). These symmetries force:\n- Cosine coefficients: $a_n = 0$ (odd function)\n- Even sine coefficients: $b_{2k} = 0$ (half-wave symmetry)\n\n## Fourier Coefficients\n\nFor a general periodic function $f$ with period $2\\pi$:\n\n$$a_n = \\frac{1}{\\pi}\\int_{-\\pi}^{\\pi} f(x)\\cos(nx)\\,dx, \\quad b_n = \\frac{1}{\\pi}\\int_{-\\pi}^{\\pi} f(x)\\sin(nx)\\,dx$$\n\nFor the square wave: $b_n = \\frac{4}{n\\pi}$ (odd $n$), $0$ (even $n$).\n\n## Gibbs Phenomenon\n\nAt the jump discontinuities ($x = 0, \\pm\\pi$), the partial sums always overshoot by about **8.9%** no matter how many terms are used. This is the **Gibbs phenomenon**.\n\n> **Watch**: Adding each new odd harmonic adds a new \"wiggle\" while sharpening the approximation at smooth regions.",
+      "markdown": "# Fourier Series: Square Wave\n\nThe **square wave** with period $2\\pi$ and amplitude 1 can be represented as an infinite sum of sine waves:\n\n$$f(x) = \\frac{4}{\\pi}\\sum_{k=0}^{\\infty} \\frac{\\sin\\bigl((2k+1)x\\bigr)}{2k+1} = \\frac{4}{\\pi}\\left(\\sin x + \\frac{\\sin 3x}{3} + \\frac{\\sin 5x}{5} + \\cdots\\right)$$\n\n## Why Only Odd Harmonics?\n\nThe square wave is an **odd function** (symmetric about the origin) and has **half-wave symmetry** (the second half is minus the first half). These symmetries force:\n- Cosine coefficients: $a_n = 0$ (odd function)\n- Even sine coefficients: $b_{2k} = 0$ (half-wave symmetry)\n\n## Fourier Coefficients\n\nFor a general periodic function $f$ with period $2\\pi$:\n\n$$a_n = \\frac{1}{\\pi}\\int_{-\\pi}^{\\pi} f(x)\\cos(nx)\\,dx, \\quad b_n = \\frac{1}{\\pi}\\int_{-\\pi}^{\\pi} f(x)\\sin(nx)\\,dx$$\n\nFor the square wave: $b_n = \\frac{4}{n\\pi}$ (odd $n$), $0$ (even $n$).\n\n## Gibbs Phenomenon\n\nAt the jump discontinuities ($x = 0, \\pm\\pi$), the partial sums always overshoot by about **8.9%** no matter how many terms are used. This is the **Gibbs phenomenon**.\n\n> **Watch**: Adding each new odd harmonic adds a new \"wiggle\" while sharpening the approximation at smooth regions.\n\n## A Note on Axis Scale\n\nThe x-axis spans $[-2\\pi, 2\\pi]$ (~12.6 units) while the y-axis amplitude is only $\\pm 1$. The y-axis is stretched by default for visual clarity — use the **Y scale** slider to compress it toward true proportional scale.",
       "range": [
         [
           -7,
@@ -260,11 +266,7 @@
           0.5
         ]
       ],
-      "scale": [
-        1,
-        1,
-        1
-      ],
+      "scaleExpr": ["1", "yscale", "1"],
       "camera": {
         "position": [
           0,
@@ -376,6 +378,16 @@
         {
           "title": "Target: the square wave",
           "description": "The ideal square wave: $+1$ for $x \\in (0, \\pi)$ and $-1$ for $x \\in (-\\pi, 0)$. We will build this from pure sine waves.",
+          "sliders": [
+            {
+              "id": "yscale",
+              "label": "Y scale",
+              "min": 0.1,
+              "max": 1,
+              "step": 0.05,
+              "default": 1
+            }
+          ],
           "add": [
             {
               "id": "square-wave",
@@ -523,7 +535,6 @@
       "description": "Each Fourier term is a rotating phasor. In 3D — with time as the z-axis — every frequency component traces a helix. The y-z shadow of the combined helix IS the square wave.",
       "markdown": "# Fourier in 3D: Rotating Phasors\n\nEvery Fourier term is a **rotating phasor** — a vector spinning in the complex plane at a fixed frequency. In 3D, we let time advance along the **z-axis**, so each phasor sweeps out a **helix**:\n\n$$\\text{Term } n:\\quad x(t) = A_n\\cos(nt),\\quad y(t) = A_n\\sin(nt),\\quad z = t$$\n\n## Two Views, Two Insights\n\n| Camera | What you see |\n|--------|--------------|\n| **End On** (along −z) | Phasors as circles — radius = amplitude, speed = frequency |\n| **Wave View** (along −x) | The **y-z shadow** of the helix — the actual waveform |\n\n## Square Wave Phasors\n\nOnly odd harmonics appear, each with amplitude $4/(n\\pi)$:\n\n$$x(t) = \\frac{4}{\\pi}\\!\\left(\\cos t + \\frac{\\cos 3t}{3} + \\frac{\\cos 5t}{5} + \\cdots\\right)$$\n$$y(t) = \\frac{4}{\\pi}\\!\\left(\\sin t + \\frac{\\sin 3t}{3} + \\frac{\\sin 5t}{5} + \\cdots\\right)$$\n\nThe combined helix grows increasingly complex in 3D — but its **y-z shadow** step by step becomes a square wave.\n\n## The Deep Insight\n\nA Fourier series is not merely algebra — it is a **geometric fact**: any periodic signal is the shadow of rotating helices cast onto a plane.\n\n> **Gibbs phenomenon**: Even with $N=8$ terms the shadow overshoots ~9% at each jump. The overshoot gets thinner but never vanishes no matter how many helices you add.",
       "range": [[-3, 3], [-2, 2], [0, 7]],
-      "scale": [1, 1, 1],
       "camera": {"position": [6, 4, 9], "target": [0, 0, 3.14]},
       "views": [
         {
@@ -560,6 +571,7 @@
         {
           "title": "A phasor traces a helix in 3D",
           "description": "A phasor of amplitude 1 rotating at frequency 1 sweeps through time. In 3D this traces a **helix**. Switch to **End On** to see a circle; switch to **Wave View** to see that its y-shadow is $\\sin(t)$.",
+          "sliders": [],
           "add": [
             {
               "id": "unit-helix",

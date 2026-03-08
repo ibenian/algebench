@@ -32,6 +32,7 @@ let autoPlayTimer = null;
 const AUTO_PLAY_DEFAULT_DURATION = 3000; // default step duration in ms when playing
 let visitedSteps = new Set();   // track visited steps as "sceneIdx:stepIdx"
 let sceneView = null;           // MathBox cartesian view for current scene
+let currentScaleExpr = null;    // Optional ["xExpr","yExpr","zExpr"] for slider-driven axis scale
 let mainDirLight = null;        // main directional light, controlled via settings panel
 let stepTrackers = [];          // per-step tracking for incremental add/remove
 let elementRegistry = {};       // id -> { tracker, hidden } for named elements
@@ -3425,6 +3426,7 @@ function loadScene(spec) {
     // Store range/scale for coordinate conversion (must be set before buildCameraButtons which calls dataToWorld)
     currentRange = spec.range || [[-5, 5], [-5, 5], [-5, 5]];
     currentScale = spec.scale || [1, 1, 1];
+    currentScaleExpr = spec.scaleExpr || null;
     configureWorldStarfield(spec);
     buildCameraButtons(spec);
 
@@ -4731,6 +4733,7 @@ function buildSliderOverlay() {
             s.value = parseFloat(input.value);
             valSpan.textContent = Number(s.value).toFixed(1);
             recompileActiveExprs();
+            _applyScaleExpr();
             syncSliderState();
         });
 
@@ -4959,6 +4962,19 @@ function runAnimUpdaters(nowMs) {
         }
     }
     activeAnimUpdaters = next;
+}
+
+function _applyScaleExpr() {
+    if (!currentScaleExpr || !sceneView) return;
+    const scale = currentScaleExpr.map((expr, i) => {
+        try {
+            const val = evalExpr(compileExpr(expr), 0, { useVirtualTime: false });
+            return typeof val === 'number' && isFinite(val) && val > 0 ? val : (currentScale[i] ?? 1);
+        } catch(e) {
+            return currentScale[i] ?? 1;
+        }
+    });
+    sceneView.set('scale', scale);
 }
 
 function recompileActiveExprs() {
@@ -5900,6 +5916,7 @@ function navigateTo(sceneIdx, stepIdx) {
             markdown: scene.markdown,
             range: scene.range,
             scale: scene.scale,
+            scaleExpr: scene.scaleExpr,
             cameraUp: scene.cameraUp,
             camera: scene.camera,
             views: scene.views,
@@ -5918,6 +5935,7 @@ function navigateTo(sceneIdx, stepIdx) {
         // loadScene() already resets animation registries before rendering base elements.
         removeAllInfoOverlays();
         buildSliderOverlay();
+        _applyScaleExpr();
 
         // Add steps incrementally up to stepIdx
         for (let i = 0; i <= stepIdx; i++) {
