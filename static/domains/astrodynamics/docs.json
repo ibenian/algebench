@@ -1,0 +1,156 @@
+{
+  "name": "astrodynamics",
+  "description": "Orbital mechanics simulation engine. Integrates spacecraft trajectories using a Symplectic Euler integrator with a cached Float64Array state array. All functions share a single cache keyed by slider state — the cache is rebuilt only when slider values change. Functions are available in the expression sandbox after importing this domain.",
+  "implementation": {
+    "integrator": "Symplectic Euler (semi-implicit Euler). At each step: velocity is updated first using acceleration at current position, then position is updated using the new velocity. This preserves energy better than standard (explicit) Euler for conservative systems like gravity.",
+    "stepCount": "n = clamp(round(T / 1.25), 800, 6000). Time step dt = T / n.",
+    "storage": "Trajectory stored as Float64Array typed arrays (arrT, arrX, arrY, arrVx, arrVy, arrR, arrVr, arrVt, arrHit). Lookup is O(1) index calculation + linear interpolation between two adjacent steps.",
+    "cache": "Cache key is a string of all slider values. If any slider changes, the entire trajectory is re-integrated from t=0. All 7 public functions share the same cache.",
+    "gravitationalParameter": "mu = Gs * Mx * 10000  (km³/s²). With Earth defaults: mu ≈ 398600 km³/s².",
+    "coordinateSystem": "2D simulation plane. Planet center at origin. Launch point at (Rp+h, 0). Positive y is 'up' from launch. Radial unit vector: er = (x,y)/r. Tangential unit vector: et = (-y,x)/r (prograde direction).",
+    "equations": {
+      "gravity": "a_gravity = -mu / r^3 * (x, y)  — inverse square law in vector form",
+      "radialVelocity": "vr = v · er = (vx*x + vy*y) / r",
+      "tangentialVelocity": "vt = v · et = (-vx*y + vy*x) / r",
+      "circularOrbitSpeed": "v_circ = sqrt(mu / r)",
+      "escapeSpeed": "v_esc = sqrt(2 * mu / r)"
+    },
+    "impactDetection": "After each Euler step, if hypot(x,y) <= Rp the spacecraft is considered to have hit the surface. Position is snapped to the surface (scaled to Rp), velocity zeroed, and hit=true for all subsequent steps."
+  },
+  "note": "All functions read slider values by ID at call time via _sliderValueNum(). The scene must define sliders with the IDs listed in sliderContracts for the simulation to respond to user input.",
+  "sliderContracts": {
+    "Rp":          { "description": "Planet radius (km)",                      "default": 6371,    "modes": ["coast","powered","guided"] },
+    "Gs":          { "description": "Gravitational constant scaled (G×10^11)",  "default": 6.6743,  "modes": ["coast","powered","guided"] },
+    "Mx":          { "description": "Planet mass scaled (M/10^24 kg)",          "default": 5.972,   "modes": ["coast","powered","guided"] },
+    "h":           { "description": "Launch altitude above surface (km)",       "default": 1,       "modes": ["coast","powered","guided"] },
+    "h_target":    { "description": "Target orbit altitude above surface (km)", "default": 400,     "modes": ["coast","powered","guided"] },
+    "T":           { "description": "Simulation duration (s)",                  "default": 1800,    "modes": ["coast","powered","guided"] },
+    "phi":         { "description": "Launch angle from vertical (deg). 0 = straight up, 90 = horizontal prograde.", "default": 0, "modes": ["coast","powered","guided"] },
+    "vlaunch":     { "description": "Initial speed for coast mode (km/s). Applied at angle phi from vertical.", "default": 0, "modes": ["coast"] },
+    "v0":          { "description": "Initial speed for powered/guided modes (km/s).", "default": 0,  "modes": ["powered","guided"] },
+    "athrust":     { "description": "Thrust acceleration powered mode (km/s²). Applied at angle phi for tburn seconds.", "default": 0, "modes": ["powered"] },
+    "tburn":       { "description": "Burn duration powered mode (s). Thrust cuts off after this time.", "default": 0, "modes": ["powered"] },
+    "athrust1":    { "description": "First-stage thrust acceleration (km/s²). Applied during [0, tburn1] with pitch-over.", "default": 0, "modes": ["guided"] },
+    "athrust2":    { "description": "Second-stage thrust acceleration (km/s²). Applied during [tburn1+tcoast, tburn1+tcoast+tburn2] targeting circular orbit.", "default": 0, "modes": ["guided"] },
+    "tburn1":      { "description": "First burn duration (s).",                 "default": 180,     "modes": ["guided"] },
+    "tcoast":      { "description": "Coast phase duration (s) between burns.",  "default": 420,     "modes": ["guided"] },
+    "tburn2":      { "description": "Second burn duration (s). Thrust direction is actively steered to match target circular orbit speed at h_target.", "default": 120, "modes": ["guided"] },
+    "pitch_start": { "description": "Initial pitch angle (deg) at t=0 in guided mode. 90 = vertical, 0 = horizontal.", "default": 85, "modes": ["guided"] },
+    "pitch_end":   { "description": "Final pitch angle (deg) at end of pitch-over maneuver.", "default": 0, "modes": ["guided"] },
+    "tpitch":      { "description": "Duration (s) of the pitch-over gravity turn. Pitch interpolates linearly from pitch_start to pitch_end over [0, tpitch].", "default": 220, "modes": ["guided"] }
+  },
+  "modes": [
+    {
+      "value": 0,
+      "name": "coast",
+      "description": "Ballistic trajectory from initial velocity, no thrust.",
+      "implementation": "Initial velocity: vx = vlaunch * sin(phi), vy = vlaunch * cos(phi). Only gravity acts throughout. Closed-form Keplerian orbit for constant mu, but integrated numerically for consistency with other modes."
+    },
+    {
+      "value": 1,
+      "name": "powered",
+      "description": "Constant thrust at fixed angle for tburn seconds.",
+      "implementation": "Initial velocity: vx = v0 * sin(phi), vy = v0 * cos(phi). For t <= tburn, acceleration = a_gravity + athrust * (sin(phi)*er + cos(phi)*et). After tburn, coast only. Thrust direction is fixed to launch angle phi — it does not steer."
+    },
+    {
+      "value": 2,
+      "name": "guided",
+      "description": "Two-burn ascent with pitch-over gravity turn and active orbital insertion targeting.",
+      "implementation": "Phase 1 [0, tburn1]: thrust athrust1 with pitch angle interpolating from pitch_start to pitch_end over tpitch seconds. Pitch bias = phi - 90 deg added to align with launch site. Phase 2 [tburn1, tburn1+tcoast]: coast, no thrust. Phase 3 [tburn1+tcoast, tburn1+tcoast+tburn2]: active guidance — thrust athrust2 split between tangential (88%) and radial (34%) components, steered to close the error between current vt and v_circ(h_target), and drive vr toward zero."
+    }
+  ],
+  "functions": {
+    "orbitX": {
+      "signature": "orbitX(t, mode)",
+      "description": "Spacecraft x-coordinate (km) in the simulation plane at time t.",
+      "implementation": "Linearly interpolates between precomputed arrX[i0] and arrX[i1] where i0 = floor(t/dt). Planet center is at (0,0). Launch starts at x = Rp+h, y = 0.",
+      "params": [
+        { "name": "t",    "type": "number", "description": "Simulation time (s). Clamped to [0, T]." },
+        { "name": "mode", "type": "number|string", "description": "Simulation mode: 0 or 'coast', 1 or 'powered', 2 or 'guided'." }
+      ],
+      "returns": "number — x-coordinate in km.",
+      "sliderDeps": ["Rp","Gs","Mx","h","h_target","T","phi","vlaunch","v0","athrust","tburn","athrust1","athrust2","tburn1","tcoast","tburn2","pitch_start","pitch_end","tpitch"],
+      "example": "orbitX(t, 0)"
+    },
+    "orbitY": {
+      "signature": "orbitY(t, mode)",
+      "description": "Spacecraft y-coordinate (km) in the simulation plane at time t.",
+      "implementation": "Linearly interpolates arrY. See orbitX for coordinate system details.",
+      "params": [
+        { "name": "t",    "type": "number", "description": "Simulation time (s). Clamped to [0, T]." },
+        { "name": "mode", "type": "number|string", "description": "Simulation mode: 0 or 'coast', 1 or 'powered', 2 or 'guided'." }
+      ],
+      "returns": "number — y-coordinate in km.",
+      "sliderDeps": ["Rp","Gs","Mx","h","h_target","T","phi","vlaunch","v0","athrust","tburn","athrust1","athrust2","tburn1","tcoast","tburn2","pitch_start","pitch_end","tpitch"],
+      "example": "orbitY(t, 0)"
+    },
+    "orbitR": {
+      "signature": "orbitR(t, mode)",
+      "description": "Spacecraft distance from planet center (km) at time t.",
+      "implementation": "r = hypot(x, y) recomputed from interpolated (x, y). Equals Rp at surface, Rp+h at launch.",
+      "params": [
+        { "name": "t",    "type": "number", "description": "Simulation time (s)." },
+        { "name": "mode", "type": "number|string", "description": "Simulation mode." }
+      ],
+      "returns": "number — radial distance in km. Altitude above surface = orbitR(t,mode) - Rp.",
+      "sliderDeps": ["Rp","Gs","Mx","h","h_target","T","phi","vlaunch","v0","athrust","tburn","athrust1","athrust2","tburn1","tcoast","tburn2","pitch_start","pitch_end","tpitch"],
+      "example": "orbitR(t, 1)"
+    },
+    "orbitVr": {
+      "signature": "orbitVr(t, mode)",
+      "description": "Radial velocity component (km/s) — rate of change of distance from planet center.",
+      "implementation": "vr = vx * (x/r) + vy * (y/r) = v · er. Positive = moving away from planet (ascending). Negative = approaching (descending). For a stable circular orbit, vr = 0.",
+      "params": [
+        { "name": "t",    "type": "number", "description": "Simulation time (s)." },
+        { "name": "mode", "type": "number|string", "description": "Simulation mode." }
+      ],
+      "returns": "number — radial speed in km/s.",
+      "sliderDeps": ["Rp","Gs","Mx","h","h_target","T","phi","vlaunch","v0","athrust","tburn","athrust1","athrust2","tburn1","tcoast","tburn2","pitch_start","pitch_end","tpitch"],
+      "example": "orbitVr(t, 1)"
+    },
+    "orbitVt": {
+      "signature": "orbitVt(t, mode)",
+      "description": "Tangential (orbital) velocity component (km/s) — the sideways speed perpendicular to the radial direction.",
+      "implementation": "vt = -vx * (y/r) + vy * (x/r) = v · et. This is the component that sustains orbit. Circular orbit condition: vt = sqrt(mu/r), vr = 0. For Earth LEO at r = 6771 km: vt ≈ 7.67 km/s.",
+      "params": [
+        { "name": "t",    "type": "number", "description": "Simulation time (s)." },
+        { "name": "mode", "type": "number|string", "description": "Simulation mode." }
+      ],
+      "returns": "number — tangential speed in km/s. Positive = prograde (counterclockwise). Negative = retrograde.",
+      "sliderDeps": ["Rp","Gs","Mx","h","h_target","T","phi","vlaunch","v0","athrust","tburn","athrust1","athrust2","tburn1","tcoast","tburn2","pitch_start","pitch_end","tpitch"],
+      "example": "orbitVt(t, 0)"
+    },
+    "orbitHit": {
+      "signature": "orbitHit(t, mode)",
+      "description": "Returns 1 if the spacecraft has impacted the planet surface at or before time t, 0 otherwise.",
+      "implementation": "Impact is detected when hypot(x,y) <= Rp after an integration step. Once hit, arrHit[i]=1 for all i >= impact index. orbitHit returns 1 if arrHit[i0] or arrHit[i1] is set, or if t >= hitTime.",
+      "params": [
+        { "name": "t",    "type": "number", "description": "Simulation time (s)." },
+        { "name": "mode", "type": "number|string", "description": "Simulation mode." }
+      ],
+      "returns": "number — 1 (impact) or 0 (no impact). Useful for conditional color: orbitHit(t,1) ? '#ff0000' : '#00ff00'.",
+      "sliderDeps": ["Rp","Gs","Mx","h","T","phi","vlaunch","v0","athrust","tburn","athrust1","athrust2","tburn1","tcoast","tburn2","pitch_start","pitch_end","tpitch"],
+      "example": "orbitHit(t, 1)"
+    },
+    "orbitOutcome": {
+      "signature": "orbitOutcome(t, mode)",
+      "description": "Returns a human-readable outcome string classifying the trajectory status at time t.",
+      "implementation": "Evaluated at the given t: (1) if hit or r <= Rp+1e-3 → impact. (2) if v >= 0.995 * v_esc → escape. (3) if burn is complete and |r - r_target| <= 40 km and |vt - v_circ(r_target)| <= 0.25 km/s and |vr| <= 0.08 km/s → stable orbit achieved. Otherwise → bound but not stabilized. r_target = Rp + h_target. v_circ = sqrt(mu / r_target). v_esc = sqrt(2 * mu / r).",
+      "params": [
+        { "name": "t",    "type": "number", "description": "Simulation time (s)." },
+        { "name": "mode", "type": "number|string", "description": "Simulation mode." }
+      ],
+      "returns": {
+        "type": "string",
+        "values": [
+          "Outcome: impact/terrain intercept",
+          "Outcome: stable-orbit target achieved",
+          "Outcome: escape-leaning trajectory",
+          "Outcome: bound but not yet stabilized"
+        ]
+      },
+      "sliderDeps": ["Rp","Gs","Mx","h","h_target","T","phi","vlaunch","v0","athrust","tburn","athrust1","athrust2","tburn1","tcoast","tburn2","pitch_start","pitch_end","tpitch"],
+      "example": "orbitOutcome(t, 2)"
+    }
+  }
+}

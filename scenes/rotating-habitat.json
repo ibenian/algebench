@@ -1,0 +1,933 @@
+{
+  "title": "Rotating Space Habitats",
+  "scenes": [
+    {
+      "title": "Rotating Space Habitats",
+      "description": "Engineering artificial gravity through rotation — explore angular velocity, centripetal force, Coriolis effect, and the comfort constraints that shape real spacecraft design.",
+      "markdown": "# Rotating Space Habitats\n\n## The Problem: Weightlessness Kills\n\nIn deep space there is no natural gravity. Without it, astronauts suffer:\n- **Bone density loss** (~1–2% per month)\n- **Muscle atrophy** (heart included)\n- **Vestibular disruption**, fluid shifts, vision changes\n\nFor a Mars transit (6–9 months each way), this is unacceptable.\n\n## The Solution: Spin It\n\nA rotating habitat pushes occupants against the outer wall through **centripetal acceleration**. From inside, this is indistinguishable from gravity — it's the same fundamental effect.\n\n$$g_a = \\omega^2 R = \\left(\\frac{2\\pi n}{60}\\right)^2 R$$\n\nwhere $\\omega$ is angular velocity (rad/s), $n$ is spin rate (RPM), and $R$ is radius (m).\n\n## The Design Constraints\n\nThree competing physics effects must all be satisfied simultaneously:\n\n| Effect | Constraint | Why |\n|--------|-----------|-----|\n| Gravity level $g_a$ | $0.5 – 1.2\\,g$ | Too little: no benefit. Too much: overloading. |\n| Spin rate $n$ | $< 3$ RPM | Higher spin → Coriolis sickness, vestibular cross-coupling |\n| Gravity gradient | $< 10\\%$ | Head-to-foot $\\Delta g > 10\\%$ feels deeply wrong |\n\n## Historical Benchmarks\n\n| Design | Radius | RPM | $g_a$ |\n|--------|--------|-----|-------|\n| Stanford Torus | 895 m | 1.0 | 1.00 g |\n| O'Neill Cylinder | 3200 m | 0.5 | 0.90 g |\n| Near-term viable | ~100 m | ~3.0 | ~1.00 g |\n\nThe near-term constraint is clear: **you need at least ~100 m radius** to stay within all comfort bounds at acceptable gravity.\n\n## Key Formulas\n\n$$\\omega = \\frac{2\\pi n}{60} \\quad [\\text{rad/s}]$$\n\n$$g_a = \\omega^2 R \\quad [\\text{m/s}^2] \\quad = \\frac{\\omega^2 R}{9.81} \\quad [g]$$\n\n$$a_{\\text{Cor}} = 2\\omega v \\quad [\\text{m/s}^2]\\quad \\text{(for radial walking at speed } v\\text{)}$$\n\n$$\\Delta g / g = \\Delta r / R \\approx 1.8 / R \\quad \\text{(head-to-foot, \\%)}$$\n\n## Symbol Definitions\n\n$$P(t) = (R\\cos(\\omega t),\\;R\\sin(\\omega t),\\;0)$$\nPosition of an occupant on the rotating rim at time $t$.\n\n$$\\Delta g = g_{\\mathrm{feet}} - g_{\\mathrm{head}} = \\omega^2\\Delta r$$\nAbsolute head-to-foot gravity difference across body height $\\Delta r\\approx1.8\\,\\mathrm{m}$.\n\n$$\\Delta g/g = \\frac{\\Delta g}{g_{\\mathrm{feet}}} \\approx \\frac{\\Delta r}{R}$$\nRelative gravity gradient (usually reported as a percent). Smaller is more comfortable.",
+      "range": [
+        [
+          -1100,
+          1100
+        ],
+        [
+          -1100,
+          1100
+        ],
+        [
+          -100,
+          100
+        ]
+      ],
+      "camera": {
+        "position": [
+          240,
+          180,
+          120
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "starfield": {
+        "enabled": true,
+        "count": 1200,
+        "radiusMin": 21000,
+        "radiusMax": 47500,
+        "size": 1.8,
+        "opacity": 0.9,
+        "color": "#d7e3ff",
+        "twinkle": 0.35
+      },
+      "views": [
+        {
+          "name": "Overview",
+          "description": "Default 3D perspective view",
+          "position": [
+            240,
+            180,
+            120
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Top",
+          "description": "Top-down view along spin axis",
+          "position": [
+            0,
+            0,
+            900
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "name": "Side",
+          "description": "Side view in the XZ plane",
+          "position": [
+            0,
+            900,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "Ride Along",
+          "description": "Follow the person on the rotating rim — camera tracks from above along spin axis",
+          "follow": "person_walk",
+          "offset": [
+            0,
+            0,
+            20
+          ],
+          "angleLockAxis": [
+            0,
+            0,
+            1
+          ],
+          "angleLockVector": [
+            "walk_vel_vec",
+            "walk_vel_vec_full"
+          ],
+          "angleLockDirection": [
+            "person_walk",
+            "person_walk_head"
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "name": "Stationary Marker",
+          "description": "Follow the stationary rim marker from above along spin axis",
+          "follow": "person_stat",
+          "offset": [
+            0,
+            0,
+            20
+          ],
+          "angleLockAxis": [
+            0,
+            0,
+            1
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "id": "deep_space_bg",
+          "type": "skybox",
+          "style": "gradient",
+          "topColor": "#102040",
+          "bottomColor": "#01040b",
+          "starCount": 1400,
+          "starColor": "#dfe9ff",
+          "starMinSize": 0.5,
+          "starMaxSize": 2.2
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -80,
+            80
+          ],
+          "color": "#8899ff",
+          "width": 0.08,
+          "label": "spin axis"
+        }
+      ],
+      "steps": [
+        {
+          "title": "The Cylinder",
+          "description": "The habitat is a rotating cylinder. The outer curved wall becomes the floor — people live on the inside surface, pressed outward by spin. Adjust $R$ to see how radius changes the structure, and $n$ to feel the scale of what's being designed.",
+          "sliders": [
+            {
+              "id": "R",
+              "label": "$R$ — Radius (m)",
+              "min": 20,
+              "max": 1000,
+              "step": 5,
+              "default": 100
+            },
+            {
+              "id": "rpm",
+              "label": "$n$ — Spin Rate (RPM)",
+              "min": 0.1,
+              "max": 10,
+              "step": 0.1,
+              "default": 2
+            },
+            {
+              "id": "v_walk",
+              "label": "$v$ — Walk speed: $+$ prograde / $-$ retrograde (m/s)",
+              "min": -4,
+              "max": 4,
+              "step": 0.1,
+              "default": 1.5
+            }
+          ],
+          "add": [
+            {
+              "id": "axis_z_main",
+              "type": "animated_cylinder",
+              "fromExpr": [
+                "0",
+                "0",
+                "-16"
+              ],
+              "expr": [
+                "0",
+                "0",
+                "16"
+              ],
+              "radius": 0.35,
+              "radialSegments": 24,
+              "openEnded": false,
+              "color": "#aaaaff",
+              "label": "spin axis"
+            },
+            {
+              "id": "hull_shell",
+              "type": "animated_cylinder",
+              "fromExpr": [
+                "0",
+                "0",
+                "-25"
+              ],
+              "expr": [
+                "0",
+                "0",
+                "25"
+              ],
+              "radiusExpr": "R + 10",
+              "openEnded": true,
+              "radialSegments": 64,
+              "color": "#4488ff",
+              "opacity": 0.16,
+              "shader": {
+                "type": "phong",
+                "shininess": 25,
+                "specular": "#88aaff",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "spoke_e",
+              "type": "animated_cylinder",
+              "fromExpr": [
+                "(R+9.4)*cos(t * 2*PI*rpm/60 + PI)",
+                "(R+9.4)*sin(t * 2*PI*rpm/60 + PI)",
+                "0.08"
+              ],
+              "expr": [
+                "(R+9.4)*cos(t * 2*PI*rpm/60 + 0.0000000000)",
+                "(R+9.4)*sin(t * 2*PI*rpm/60 + 0.0000000000)",
+                "0.08"
+              ],
+              "radius": 5,
+              "color": "#4c2f7a",
+              "opacity": 1,
+              "radialSegments": 20,
+              "openEnded": false,
+              "shader": {
+                "type": "phong",
+                "shininess": 35
+              }
+            },
+            {
+              "id": "spoke_n",
+              "type": "animated_cylinder",
+              "fromExpr": [
+                "(R+9.4)*cos(t * 2*PI*rpm/60 + 3*PI/2)",
+                "(R+9.4)*sin(t * 2*PI*rpm/60 + 3*PI/2)",
+                "0.08"
+              ],
+              "expr": [
+                "(R+9.4)*cos(t * 2*PI*rpm/60 + 1.5707963268)",
+                "(R+9.4)*sin(t * 2*PI*rpm/60 + 1.5707963268)",
+                "0.08"
+              ],
+              "radius": 5,
+              "color": "#4c2f7a",
+              "opacity": 1,
+              "radialSegments": 20,
+              "openEnded": false,
+              "shader": {
+                "type": "phong",
+                "shininess": 35
+              }
+            },
+            {
+              "id": "spoke_cross_ne",
+              "type": "animated_cylinder",
+              "fromExpr": [
+                "(R+9.4)*cos(t * 2*PI*rpm/60 + 5*PI/4)",
+                "(R+9.4)*sin(t * 2*PI*rpm/60 + 5*PI/4)",
+                "0.08"
+              ],
+              "expr": [
+                "(R+9.4)*cos(t * 2*PI*rpm/60 + PI/4)",
+                "(R+9.4)*sin(t * 2*PI*rpm/60 + PI/4)",
+                "0.08"
+              ],
+              "radius": 2.5,
+              "color": "#2ecc71",
+              "opacity": 1,
+              "radialSegments": 20,
+              "openEnded": false,
+              "shader": {
+                "type": "phong",
+                "shininess": 35
+              }
+            },
+            {
+              "id": "spoke_cross_nw",
+              "type": "animated_cylinder",
+              "fromExpr": [
+                "(R+9.4)*cos(t * 2*PI*rpm/60 + 7*PI/4)",
+                "(R+9.4)*sin(t * 2*PI*rpm/60 + 7*PI/4)",
+                "0.08"
+              ],
+              "expr": [
+                "(R+9.4)*cos(t * 2*PI*rpm/60 + 3*PI/4)",
+                "(R+9.4)*sin(t * 2*PI*rpm/60 + 3*PI/4)",
+                "0.08"
+              ],
+              "radius": 2.5,
+              "color": "#2ecc71",
+              "opacity": 1,
+              "radialSegments": 20,
+              "openEnded": false,
+              "shader": {
+                "type": "phong",
+                "shininess": 35
+              }
+            },
+            {
+              "id": "strut_e_top",
+              "type": "animated_cylinder",
+              "fromExpr": [
+                "R*cos(t * 2*PI*rpm/60 + 0.0000000000)",
+                "R*sin(t * 2*PI*rpm/60 + 0.0000000000)",
+                "25"
+              ],
+              "expr": [
+                "R*cos(t * 2*PI*rpm/60 + 0.0000000000)",
+                "R*sin(t * 2*PI*rpm/60 + 0.0000000000)",
+                "-25"
+              ],
+              "radius": 0.45,
+              "color": "#335577",
+              "opacity": 1,
+              "radialSegments": 20,
+              "openEnded": false,
+              "shader": {
+                "type": "phong",
+                "shininess": 35
+              }
+            },
+            {
+              "id": "strut_n_top",
+              "type": "animated_cylinder",
+              "fromExpr": [
+                "R*cos(t * 2*PI*rpm/60 + 1.5707963268)",
+                "R*sin(t * 2*PI*rpm/60 + 1.5707963268)",
+                "25"
+              ],
+              "expr": [
+                "R*cos(t * 2*PI*rpm/60 + 1.5707963268)",
+                "R*sin(t * 2*PI*rpm/60 + 1.5707963268)",
+                "-25"
+              ],
+              "radius": 0.45,
+              "color": "#335577",
+              "opacity": 1,
+              "radialSegments": 20,
+              "openEnded": false,
+              "shader": {
+                "type": "phong",
+                "shininess": 35
+              }
+            },
+            {
+              "id": "strut_w_top",
+              "type": "animated_cylinder",
+              "fromExpr": [
+                "R*cos(t * 2*PI*rpm/60 + 3.1415926536)",
+                "R*sin(t * 2*PI*rpm/60 + 3.1415926536)",
+                "25"
+              ],
+              "expr": [
+                "R*cos(t * 2*PI*rpm/60 + 3.1415926536)",
+                "R*sin(t * 2*PI*rpm/60 + 3.1415926536)",
+                "-25"
+              ],
+              "radius": 0.45,
+              "color": "#335577",
+              "opacity": 1,
+              "radialSegments": 20,
+              "openEnded": false,
+              "shader": {
+                "type": "phong",
+                "shininess": 35
+              }
+            },
+            {
+              "id": "strut_s_top",
+              "type": "animated_cylinder",
+              "fromExpr": [
+                "R*cos(t * 2*PI*rpm/60 + 4.7123889804)",
+                "R*sin(t * 2*PI*rpm/60 + 4.7123889804)",
+                "25"
+              ],
+              "expr": [
+                "R*cos(t * 2*PI*rpm/60 + 4.7123889804)",
+                "R*sin(t * 2*PI*rpm/60 + 4.7123889804)",
+                "-25"
+              ],
+              "radius": 0.45,
+              "color": "#335577",
+              "opacity": 1,
+              "radialSegments": 20,
+              "openEnded": false,
+              "shader": {
+                "type": "phong",
+                "shininess": 35
+              }
+            },
+            {
+              "id": "center_hub",
+              "type": "point",
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "size": 4,
+              "color": "#8899bb",
+              "label": "hub"
+            }
+          ]
+        },
+        {
+          "title": "Angular Velocity ω",
+          "description": "The habitat rotates at $n$ RPM — angular velocity $\\omega = 2\\pi n/60$ rad/s. The yellow ball is a stationary rim marker (0.5 m diameter). Orange shows tangential speed $v = \\omega R$.",
+          "sliders": [
+            {
+              "id": "R",
+              "label": "$R$ — Radius (m)",
+              "min": 20,
+              "max": 1000,
+              "step": 5,
+              "default": 100
+            },
+            {
+              "id": "rpm",
+              "label": "$n$ — Spin Rate (RPM)",
+              "min": 0.1,
+              "max": 10,
+              "step": 0.1,
+              "default": 2
+            },
+            {
+              "id": "v_walk",
+              "label": "$v$ — Walk speed: $+$ prograde / $-$ retrograde (m/s)",
+              "min": -4,
+              "max": 4,
+              "step": 0.1,
+              "default": 0
+            }
+          ],
+          "add": [
+            {
+              "id": "person_stat",
+              "type": "animated_point",
+              "expr": [
+                "(R+10)*cos(t * 2*PI*rpm/60)",
+                "(R+10)*sin(t * 2*PI*rpm/60)",
+                "0"
+              ],
+              "radius": 0.25,
+              "color": "#ffdd00",
+              "label": "stationary marker"
+            },
+            {
+              "id": "omega_label",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  0,
+                  -75
+                ],
+                [
+                  0,
+                  0,
+                  78
+                ]
+              ],
+              "color": "#aaaaff",
+              "width": 0.2,
+              "label": "$\\vec{\\omega}$"
+            },
+            {
+              "id": "omega_arc",
+              "type": "parametric_curve",
+              "color": "#8899ff",
+              "width": 0.1,
+              "x": "25*cos(t)",
+              "y": "25*sin(t)",
+              "z": "68",
+              "range": [
+                0,
+                5.5
+              ],
+              "samples": 64
+            },
+            {
+              "id": "vel_vec",
+              "type": "animated_vector",
+              "fromExpr": [
+                "(R+10)*cos(t * 2*PI*rpm/60)",
+                "(R+10)*sin(t * 2*PI*rpm/60)",
+                "0"
+              ],
+              "expr": [
+                "(R+10)*cos(t * 2*PI*rpm/60) + 0.3*(2*PI*rpm/60)*R*(-sin(t * 2*PI*rpm/60))",
+                "(R+10)*sin(t * 2*PI*rpm/60) + 0.3*(2*PI*rpm/60)*R*( cos(t * 2*PI*rpm/60))",
+                "0"
+              ],
+              "color": "#ffaa00",
+              "width": 0.2,
+              "label": "$\\vec{v} = \\omega R$"
+            }
+          ],
+          "info": [
+            {
+              "id": "omega_info",
+              "position": "top-left",
+              "content": "### Angular Velocity\\n$\\omega = 2\\pi n / 60$\\n---\\n$n = {{rpm}}$ RPM\\n$\\omega = {{toFixed(2*PI*rpm/60, 4)}}$ rad/s\\n$T = {{toFixed(60/rpm, 1)}}$ s per revolution\\n$v = \\omega R = {{toFixed((2*PI*rpm/60)*R, 1)}}$ m/s"
+            }
+          ]
+        },
+        {
+          "title": "Artificial Gravity — $g_a = \\omega^2 R$",
+          "description": "Centripetal acceleration felt as outward gravity: $g_a = \\omega^2 R$. The red line shows effective gravity at the stationary rim marker. Target: $0.9$–$1.0\\,g$.",
+          "sliders": [
+            {
+              "id": "R",
+              "label": "$R$ — Radius (m)",
+              "min": 20,
+              "max": 1000,
+              "step": 5,
+              "default": 100
+            },
+            {
+              "id": "rpm",
+              "label": "$n$ — Spin Rate (RPM)",
+              "min": 0.1,
+              "max": 10,
+              "step": 0.1,
+              "default": 2
+            }
+          ],
+          "remove": [
+            {
+              "id": "omega_arc"
+            },
+            {
+              "id": "vel_vec"
+            }
+          ],
+          "add": [
+            {
+              "id": "gravity_vec",
+              "type": "animated_vector",
+              "fromExpr": [
+                "(R+10)*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "(R+10)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "0"
+              ],
+              "expr": [
+                "(R+10+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "(R+10+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "0"
+              ],
+              "color": "#ff2222",
+              "width": 0.2,
+              "label": "$\\vec{g}_a$"
+            }
+          ],
+          "info": [
+            {
+              "id": "gravity_info",
+              "position": "top-left",
+              "content": "### Artificial Gravity\\n$g_a = \\omega_{\\mathrm{eff}}^2 R$\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$\\omega_{\\mathrm{eff}} = \\omega + v/R = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s\\n$R = {{R}}$ m\\n$g_a = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R, 2)}}$ m/s²\\n$g_a = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81, 3)}}$ g\\n---\\n**Target: 0.9 – 1.0 g**"
+            }
+          ]
+        },
+        {
+          "title": "The Coriolis Effect",
+          "description": "Walking **tangentially** inside a rotating frame produces a radial Coriolis push: $a_{\\text{Cor}} = 2\\omega v$. Red is artificial gravity and blue is Coriolis at the same walker position, so you can see when they align (prograde) or oppose (retrograde).",
+          "sliders": [
+            {
+              "id": "R",
+              "label": "$R$ — Radius (m)",
+              "min": 20,
+              "max": 1000,
+              "step": 5,
+              "default": 100
+            },
+            {
+              "id": "rpm",
+              "label": "$n$ — Spin Rate (RPM)",
+              "min": 0.1,
+              "max": 10,
+              "step": 0.1,
+              "default": 2
+            },
+            {
+              "id": "v_walk",
+              "label": "$v$ — Walk speed: $+$ prograde / $-$ retrograde (m/s)",
+              "min": -4,
+              "max": 4,
+              "step": 0.1,
+              "default": 1.5
+            }
+          ],
+          "remove": [
+            {
+              "id": "gravity_vec"
+            }
+          ],
+          "add": [
+            {
+              "id": "person_walk",
+              "type": "animated_point",
+              "expr": [
+                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "radius": 0.35,
+              "color": "#44ffaa",
+              "label": "walker"
+            },
+            {
+              "id": "person_walk_head",
+              "type": "animated_point",
+              "expr": [
+                "(R-1.8)*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "(R-1.8)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "radius": 0.2,
+              "color": "#44ffaa"
+            },
+            {
+              "id": "gravity_vec_coriolis",
+              "type": "animated_vector",
+              "fromExpr": [
+                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "expr": [
+                "(R+pow(2*PI*rpm/60,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "(R+pow(2*PI*rpm/60,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "color": "#ff2222",
+              "width": 0.2,
+              "label": "$\\vec{g}_a$"
+            },
+            {
+              "id": "coriolis_vec",
+              "type": "animated_vector",
+              "abstract": true,
+              "fromExpr": [
+                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "expr": [
+                "(R+2*(2*PI*rpm/60)*v_walk/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "(R+2*(2*PI*rpm/60)*v_walk/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "color": "#22aaff",
+              "width": 0.12,
+              "label": "$\\vec{a}_{\\mathrm{Cor}}$"
+            },
+            {
+              "id": "walk_vel_vec",
+              "type": "animated_vector",
+              "arrowScale": 0.7,
+              "arrowMinFactor": 0.0004,
+              "arrowMaxFactor": 0.004,
+              "fromExpr": [
+                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "expr": [
+                "R*cos(t * (2*PI*rpm/60 + v_walk/R)) + 0.8*v_walk*(-sin(t * (2*PI*rpm/60 + v_walk/R)))",
+                "R*sin(t * (2*PI*rpm/60 + v_walk/R)) + 0.8*v_walk*( cos(t * (2*PI*rpm/60 + v_walk/R)))",
+                "12.5"
+              ],
+              "color": "#ffaa33",
+              "width": 0.2,
+              "label": "$\\vec{v}_{\\mathrm{walk}}$"
+            }
+          ],
+          "info": [
+            {
+              "id": "coriolis_info",
+              "position": "top-left",
+              "content": "### Coriolis Effect\\n$a_{\\mathrm{Cor}} = 2\\omega v$\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$v = {{v_walk}}$ m/s\\n$a_{\\mathrm{Cor}} = {{toFixed(2*(2*PI*rpm/60)*abs(v_walk)/9.81, 4)}}$ g\\n{{v_walk > 0 ? 'Prograde → heavier' : v_walk < 0 ? 'Retrograde → lighter' : 'No walk → no Coriolis'}}\\n---\\n$\\omega_{\\mathrm{eff}} = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s"
+            }
+          ]
+        },
+        {
+          "title": "Gravity Gradient — Head vs. Feet",
+          "description": "Your head is $1.8$ m closer to the spin axis than your feet. Since $g \\propto r$, your head experiences less gravity: $\\Delta g/g = 1.8/R$. The two orange arrows show gravity at feet (longer) and head (shorter).",
+          "sliders": [
+            {
+              "id": "R",
+              "label": "$R$ — Radius (m)",
+              "min": 20,
+              "max": 1000,
+              "step": 5,
+              "default": 100
+            },
+            {
+              "id": "rpm",
+              "label": "$n$ — Spin Rate (RPM)",
+              "min": 0.1,
+              "max": 10,
+              "step": 0.1,
+              "default": 2
+            }
+          ],
+          "remove": [
+            {
+              "id": "person_walk"
+            },
+            {
+              "id": "person_walk_head"
+            },
+            {
+              "id": "coriolis_vec"
+            },
+            {
+              "id": "gravity_vec_coriolis"
+            },
+            {
+              "id": "walk_vel_vec"
+            }
+          ],
+          "add": [
+            {
+              "id": "g_feet",
+              "type": "animated_vector",
+              "fromExpr": [
+                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "0"
+              ],
+              "expr": [
+                "(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "0"
+              ],
+              "color": "#ff8822",
+              "width": 0.2,
+              "label": "$g_{\\mathrm{feet}}$"
+            },
+            {
+              "id": "g_head",
+              "type": "animated_vector",
+              "fromExpr": [
+                "(R-1.8)*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "(R-1.8)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "0"
+              ],
+              "expr": [
+                "(R-1.8+pow(2*PI*rpm/60 + v_walk/R,2)*(R-1.8)/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "(R-1.8+pow(2*PI*rpm/60 + v_walk/R,2)*(R-1.8)/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "0"
+              ],
+              "color": "#ffaa44",
+              "width": 0.2,
+              "label": "$g_{\\mathrm{head}}$"
+            }
+          ],
+          "info": [
+            {
+              "id": "gradient_info",
+              "position": "top-left",
+              "content": "### Gravity Gradient\\n$\\Delta g / g = 1.8 / R$\\n---\\n$\\omega_{\\mathrm{eff}} = \\omega + v/R = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s\\n$g_{\\mathrm{feet}} = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81, 3)}}$ g\\n$g_{\\mathrm{head}} = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*(R-1.8)/9.81, 3)}}$ g\\n$\\Delta g / g = {{toFixed(180/R, 2)}}$%\\n---\\n**Gradient tolerance:** {{(180/R) < 10 ? 'within tolerance (<10%)' : (180/R) < 50 ? 'warning (<50%)' : 'out of tolerance'}}"
+            }
+          ]
+        },
+        {
+          "title": "Full Simulation — Design Your Habitat",
+          "description": "All effects simultaneously. Yellow is stationary, green is walker, orange is walk velocity, blue is Coriolis, red is artificial gravity.",
+          "sliders": [
+            {
+              "id": "R",
+              "label": "$R$ — Radius (m)",
+              "min": 20,
+              "max": 1000,
+              "step": 5,
+              "default": 100
+            },
+            {
+              "id": "rpm",
+              "label": "$n$ — Spin Rate (RPM)",
+              "min": 0.1,
+              "max": 10,
+              "step": 0.1,
+              "default": 2
+            },
+            {
+              "id": "v_walk",
+              "label": "$v$ — Walk speed: $+$ prograde / $-$ retrograde (m/s)",
+              "min": -4,
+              "max": 4,
+              "step": 0.1,
+              "default": 1.5
+            }
+          ],
+          "remove": [
+            {
+              "id": "g_feet"
+            },
+            {
+              "id": "g_head"
+            }
+          ],
+          "add": [
+            {
+              "id": "person_walk",
+              "type": "animated_point",
+              "expr": [
+                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "radius": 0.35,
+              "color": "#44ffaa",
+              "label": "walker"
+            },
+            {
+              "id": "person_walk_head",
+              "type": "animated_point",
+              "expr": [
+                "(R-1.8)*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "(R-1.8)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "radius": 0.2,
+              "color": "#44ffaa"
+            },
+            {
+              "id": "gravity_vec_full",
+              "type": "animated_vector",
+              "fromExpr": [
+                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "expr": [
+                "(R+pow(2*PI*rpm/60,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "(R+pow(2*PI*rpm/60,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "color": "#ff2222",
+              "width": 0.2,
+              "label": "$\\vec{g}_a$"
+            },
+            {
+              "id": "coriolis_vec_full",
+              "type": "animated_vector",
+              "abstract": true,
+              "fromExpr": [
+                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "expr": [
+                "(R+2*(2*PI*rpm/60)*v_walk/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "(R+2*(2*PI*rpm/60)*v_walk/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "color": "#22aaff",
+              "width": 0.12,
+              "label": "$\\vec{a}_{\\mathrm{Cor}}$"
+            },
+            {
+              "id": "walk_vel_vec_full",
+              "type": "animated_vector",
+              "arrowScale": 0.7,
+              "arrowMinFactor": 0.0004,
+              "arrowMaxFactor": 0.004,
+              "fromExpr": [
+                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
+              ],
+              "expr": [
+                "R*cos(t * (2*PI*rpm/60 + v_walk/R)) + 0.8*v_walk*(-sin(t * (2*PI*rpm/60 + v_walk/R)))",
+                "R*sin(t * (2*PI*rpm/60 + v_walk/R)) + 0.8*v_walk*( cos(t * (2*PI*rpm/60 + v_walk/R)))",
+                "12.5"
+              ],
+              "color": "#ffaa33",
+              "width": 0.2,
+              "label": "$\\vec{v}_{\\mathrm{walk}}$"
+            }
+          ],
+          "info": [
+            {
+              "id": "full_sim",
+              "position": "top-left",
+              "content": "### Habitat Analysis\\n$R = {{R}}$ m  |  $n = {{rpm}}$ RPM\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$g_a = {{toFixed(pow(2*PI*rpm/60,2)*R/9.81, 3)}}$ g\\n$a_{\\mathrm{Cor}} = {{toFixed(2*(2*PI*rpm/60)*abs(v_walk)/9.81, 4)}}$ g ({{v_walk >= 0 ? 'prograde' : 'retrograde'}})\\n$\\Delta g / g = {{toFixed(180/R, 2)}}$%\\n**Comfort status:** {{toFixed(100*exp(-pow(pow(2*PI*rpm/60,2)*R/9.81-1,2)/0.18)*exp(-pow(max(0,rpm-3),2)/3.0)*exp(-pow(min(180/R,20)/10,2)/1.0), 0) >= 50 ? 'within tolerance' : toFixed(100*exp(-pow(pow(2*PI*rpm/60,2)*R/9.81-1,2)/0.18)*exp(-pow(max(0,rpm-3),2)/3.0)*exp(-pow(min(180/R,20)/10,2)/1.0), 0) >= 10 ? 'warning' : 'out of tolerance'}}\\n---\\n**Comfort: {{toFixed(100*exp(-pow(pow(2*PI*rpm/60,2)*R/9.81-1,2)/0.18)*exp(-pow(max(0,rpm-3),2)/3.0)*exp(-pow(min(180/R,20)/10,2)/1.0), 0)}} / 100**"
+            }
+          ]
+        }
+      ],
+      "prompt": "Teach rotating-habitat artificial gravity with concise, equation-linked explanations. When the user changes sliders, explicitly connect each change to $\\omega$, $g_a$, Coriolis magnitude, and gradient ratio. Use symbol definitions exactly as shown: $P(t)$ is the occupant position on the rim, $\\Delta g = g_{\\mathrm{feet}} - g_{\\mathrm{head}}$, and $\\Delta g/g$ is the head-to-foot relative gravity gradient. Prioritize comfort constraints (target ~1 g, RPM <= 3, gradient < 10%) and call out when values exceed limits."
+    }
+  ]
+}

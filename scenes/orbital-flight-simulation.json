@@ -1,0 +1,2220 @@
+{
+  "title": "Orbital Flight Simulation",
+  "import": ["astrodynamics"],
+  "unsafe_explanation": "This lesson uses scene-level reusable functions with native JavaScript expressions (for loops/closures) to compute trajectory extrema like apogee and perigee from live simulation state. Allow only if you trust this scene source.",
+  "scenes": [
+    {
+      "title": "Orbit Basics: Speed vs Height",
+      "description": "Build intuition for circular orbit speed, escape speed, and gravity at altitude around a simple spherical planet.",
+      "markdown": "# Orbit Basics: Speed vs Height\n\nThis scene introduces the three key quantities that control orbital insertion:\n\n$$g(r)=\\frac{\\mu}{r^2}, \\qquad v_{\\text{circ}}=\\sqrt{\\frac{\\mu}{r}}, \\qquad v_{\\text{esc}}=\\sqrt{\\frac{2\\mu}{r}}$$\n\nwhere:\n- $r=R_p+h$ is distance from planet center (planet radius plus altitude),\n- $\\mu=GM$ is the gravitational parameter.\n\nIn the sliders, we use scaled values:\n- $G_s = G\\times 10^{11}$\n- $M_x = M/10^{24}$\n- so $\\mu = G_s\\,M_x\\times10^4$ in km$^3$/s$^2$.\n\n## What To Look For\n\n1. As altitude $h$ increases, both $v_{\\text{circ}}$ and $v_{\\text{esc}}$ decrease.\n2. Gravity weakens with $1/r^2$, but it never becomes zero.\n3. Orbital insertion is mostly a **sideways speed problem**: you need enough tangential speed at the chosen altitude.\n\n## Earth Reference (for context)\n\nUsing Earth-like values $R_p\\approx 6371\\,\\text{km}$ and $\\mu\\approx 398600\\,\\text{km}^3/\\text{s}^2$, low Earth orbit speeds are around $7.8\\,\\text{km/s}$ and escape speed near the surface is about $11.2\\,\\text{km/s}$.\n\nThese values match standard educational and agency references (NASA).",
+      "prompt": "Teach orbital insertion as speed-height-energy tradeoffs. Emphasize that altitude alone does not make orbit; tangential speed is essential. Keep formulas tied to the live sliders.",
+      "range": [
+        [
+          -15000,
+          15000
+        ],
+        [
+          -15000,
+          15000
+        ],
+        [
+          -15000,
+          15000
+        ]
+      ],
+      "camera": {
+        "position": [
+          15000,
+          9000,
+          9000
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cameraUp": [
+        0,
+        0,
+        1
+      ],
+      "views": [
+        {
+          "name": "Iso",
+          "description": "3D overview",
+          "position": [
+            15000,
+            9000,
+            9000
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Equatorial",
+          "description": "Face-on to the orbital plane",
+          "position": [
+            0,
+            0,
+            18000
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "name": "Side",
+          "description": "Side view for altitude scale",
+          "position": [
+            0,
+            18000,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "Follow Spacecraft",
+          "description": "Tracks the spacecraft \u2014 useful for watching forces as altitude changes",
+          "follow": "vcirc_arrow",
+          "offset": [
+            0,
+            3000,
+            5000
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -15000,
+            15000
+          ],
+          "tickStep": 2000,
+          "color": "#555577",
+          "width": 1,
+          "label": "x"
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -15000,
+            15000
+          ],
+          "tickStep": 2000,
+          "color": "#555577",
+          "width": 1,
+          "label": "y"
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -15000,
+            15000
+          ],
+          "tickStep": 2000,
+          "color": "#555577",
+          "width": 1,
+          "label": "z"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Parameter 1: Planet Radius Rp",
+          "description": "Start with planet radius $R_p$. This sets the size of the world and the base geometric scale for orbit.",
+          "sliders": [
+            {
+              "id": "Rp",
+              "label": "$R_p$ (km)",
+              "min": 3000,
+              "max": 8000,
+              "step": 10,
+              "default": 6371
+            }
+          ],
+          "add": [
+            {
+              "id": "planet_surface",
+              "type": "sphere",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radiusExpr": "Rp",
+              "widthSegments": 96,
+              "heightSegments": 64,
+              "color": "#3a6fa8",
+              "opacity": 0.85,
+              "shader": {
+                "shininess": 40,
+                "specular": "#9ec3e8",
+                "emissive": "#10223a"
+              }
+            }
+          ],
+          "info": [
+            {
+              "id": "rp_info",
+              "position": "top-right",
+              "content": "$$R_p={{Rp}}\\,\\text{km}$$"
+            }
+          ]
+        },
+        {
+          "title": "Parameter 2: Orbit Altitude h",
+          "description": "Set orbit altitude $h$. The orbital radius is $r = R_p + h$. All speeds and forces in this scene are evaluated at this radius.",
+          "sliders": [
+            {
+              "id": "h",
+              "label": "Orbit altitude h (km)",
+              "min": 0,
+              "max": 1200,
+              "step": 5,
+              "default": 420
+            }
+          ],
+          "add": [
+            {
+              "id": "launch_radius",
+              "type": "animated_line",
+              "points": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "Rp+h",
+                  "0",
+                  "0"
+                ]
+              ],
+              "color": "#ffd166",
+              "width": 3
+            },
+            {
+              "id": "launch_marker",
+              "type": "animated_point",
+              "expr": [
+                "Rp+h",
+                "0",
+                "0"
+              ],
+              "color": "#ff8866",
+              "size": 12,
+              "label": "launch point"
+            }
+          ],
+          "info": [
+            {
+              "id": "rh_info",
+              "position": "top-right",
+              "content": "$$r=R_p+h={{Rp+h}}\\,\\text{km}$$"
+            }
+          ]
+        },
+        {
+          "title": "Parameters 3-4: Gravity Inputs G and M",
+          "description": "Set gravity constant and planet mass with scaled sliders. We compute $\\mu=GM$ live, then gravity from $g(r)=\\mu/r^2$.",
+          "sliders": [
+            {
+              "id": "Gs",
+              "label": "$G_s=G\\times10^{11}$",
+              "min": 6.5,
+              "max": 6.9,
+              "step": 0.0001,
+              "default": 6.6743
+            },
+            {
+              "id": "Mx",
+              "label": "$M_x=M/10^{24}$ (kg)",
+              "min": 0.1,
+              "max": 10,
+              "step": 0.001,
+              "default": 5.972
+            }
+          ],
+          "info": [
+            {
+              "id": "basic_numbers",
+              "position": "top-right",
+              "content": "$$\\mu=GM={{toFixed(Gs*Mx*10000,1)}}\\,\\text{km}^3/\\text{s}^2\\\\ g(r)=\\frac{\\mu}{r^2}={{toFixed((Gs*Mx*10000)/((Rp+h)^2),5)}}\\,\\text{km/s}^2={{toFixed(1000*(Gs*Mx*10000)/((Rp+h)^2),2)}}\\,\\text{m/s}^2$$"
+            }
+          ]
+        },
+        {
+          "title": "Derived Targets: Orbital and Escape Speeds",
+          "description": "With $R_p,h,G,M$ fixed, the green arrow gives circular speed and the red arrow gives escape speed at the same radius.",
+          "camera": {
+            "position": [
+              5865,
+              480,
+              6135
+            ],
+            "target": [
+              5865,
+              480,
+              0
+            ],
+            "up": [
+              0,
+              1,
+              0
+            ]
+          },
+          "remove": [
+            {
+              "id": "launch_radius"
+            },
+            {
+              "id": "launch_marker"
+            }
+          ],
+          "add": [
+            {
+              "id": "spacecraft_pt",
+              "type": "animated_point",
+              "position": [
+                "Rp+h",
+                "0",
+                "0"
+              ],
+              "color": "#ffee66",
+              "size": 14,
+              "label": "spacecraft"
+            },
+            {
+              "id": "orbit_ring",
+              "type": "parametric_curve",
+              "x": "(Rp+h)*cos(t)",
+              "y": "(Rp+h)*sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 260,
+              "color": "#87f5a3",
+              "width": 0.33,
+              "opacity": 0.6,
+              "label": "circular orbit at h"
+            },
+            {
+              "id": "vcirc_arrow",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h",
+                "115*sqrt((Gs*Mx*10000)/(Rp+h))",
+                "0"
+              ],
+              "labelOffset": [
+                260,
+                -120,
+                120
+              ],
+              "color": "#8cff66",
+              "opacity": 0.8,
+              "width": 4,
+              "label": "$v_{circ}$"
+            },
+            {
+              "id": "vesc_arrow",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h+220",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h+220",
+                "115*sqrt(2*(Gs*Mx*10000)/(Rp+h))",
+                "0"
+              ],
+              "labelOffset": [
+                260,
+                120,
+                120
+              ],
+              "color": "#ff6b6b",
+              "opacity": 0.8,
+              "width": 4,
+              "label": "$v_{esc}$"
+            }
+          ],
+          "info": [
+            {
+              "id": "speed_targets",
+              "position": "top-left",
+              "content": "$$v_{\\mathrm{circ}}=\\sqrt{\\mu/r}={{toFixed(sqrt((Gs*Mx*10000)/(Rp+h)),3)}}\\,\\text{km/s}\\\\ v_{\\mathrm{esc}}=\\sqrt{2\\mu/r}={{toFixed(sqrt(2*(Gs*Mx*10000)/(Rp+h)),3)}}\\,\\text{km/s}$$"
+            }
+          ]
+        },
+        {
+          "title": "Force Balance: Gravity vs Centrifugal",
+          "description": "In the rotating-frame view, inward gravity and outward centrifugal balance at circular speed. Drag altitude to see both vectors shrink together with radius.",
+          "camera": {
+            "position": [
+              11000,
+              4000,
+              8000
+            ],
+            "target": [
+              6500,
+              0,
+              0
+            ],
+            "up": [
+              0,
+              0,
+              1
+            ]
+          },
+          "remove": [
+            {
+              "id": "vesc_arrow"
+            },
+            {
+              "id": "launch_radius"
+            },
+            {
+              "id": "launch_marker"
+            }
+          ],
+          "add": [
+            {
+              "id": "grav_arrow",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h - 30000*(Gs*Mx*10000)/((Rp+h)^2)",
+                "0",
+                "0"
+              ],
+              "labelOffset": [
+                140,
+                90,
+                60
+              ],
+              "color": "#ff4444",
+              "opacity": 0.8,
+              "width": 2.5,
+              "label": "$g(r)$ gravity"
+            },
+            {
+              "id": "centrifugal_label",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h + 30000*(Gs*Mx*10000)/((Rp+h)^2)",
+                "0",
+                "0"
+              ],
+              "labelOffset": [
+                -180,
+                -90,
+                -60
+              ],
+              "color": "#44aaff",
+              "opacity": 0.8,
+              "width": 3,
+              "label": "$v^2/r$ centrifugal (rotating frame)"
+            }
+          ],
+          "info": [
+            {
+              "id": "force_balance",
+              "position": "top-left",
+              "content": "$g(r) = \\dfrac{\\mu}{r^2} = \\dfrac{v_{\\mathrm{circ}}^2}{r}$\n$= {{toFixed((Gs*Mx*10000)/((Rp+h)^2), 6)}}\\,\\text{km/s}^2 = {{toFixed(1000*(Gs*Mx*10000)/((Rp+h)^2), 4)}}\\,\\text{m/s}^2$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Passive Coast Flight (No Thrust)",
+      "description": "This scene is a no-thrust coast model: choose initial speed and direction at launch height, then observe ballistic/gravity-dominated outcomes.",
+      "markdown": "# Launch and Insertion Simulator\n\nThis scene ties together **vehicle mass properties** and **orbital targets**.\n\n## Important Modeling Note\n\nThis simplified simulator starts at a **launch-height point** at altitude $h$ (post-ascent), not from ground liftoff. So $h$ is the simulation start height, while $h_{target}$ is the desired orbit height.\n\n## Mass and Propulsion Bookkeeping\n\n- Dry mass: $m_d$\n- Fuel mass: $m_f$\n- Initial mass: $m_0=m_d+m_f$\n\nMaximum ideal one-stage delta-v estimate:\n\n$$\\Delta v_{max}=I_{sp}g_0\\ln\\left(\\frac{m_0}{m_d}\\right)$$\n\n(with $g_0=9.81\\,\\text{m/s}^2$).\n\n## Gravity Inputs\n\nWe compute gravity live from:\n- $G_s=G\\times10^{11}$\n- $M_x=M/10^{24}$\n- $\\mu=G_sM_x\\times10^4$ (km$^3$/s$^2$)\n\n## Target Speeds for Orbit\n\nAt launch-height radius $r=R_p+h$:\n\n$$v_{\\text{circ}}=\\sqrt{\\frac{\\mu}{r}}, \\quad v_{\\text{esc}}=\\sqrt{\\frac{2\\mu}{r}}$$\n\nIf your speed is below circular, the trajectory is usually suborbital unless direction and staging are corrected.\n\n## Pedagogical Model Used Here\n\nFor interactive clarity, this simulator uses a blended 2D model:\n- ballistic-like arc when speed is below orbital target,\n- near-circular motion around $v_{\\text{circ}}$,\n- outward escape branch near/above $v_{\\text{esc}}$.\n\nThis keeps the controls intuitive while preserving the key speed-height logic used in real orbital mechanics.",
+      "prompt": "Teach this as a mission design loop: (1) compute speed targets from height, (2) check delta-v budget from mass and Isp, (3) tune launch direction for insertion quality.",
+      "range": [
+        [
+          -15000,
+          15000
+        ],
+        [
+          -15000,
+          15000
+        ],
+        [
+          -15000,
+          15000
+        ]
+      ],
+      "camera": {
+        "position": [
+          17000,
+          9500,
+          9200
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cameraUp": [
+        0,
+        0,
+        1
+      ],
+      "views": [
+        {
+          "name": "Iso",
+          "description": "3D mission overview",
+          "position": [
+            17000,
+            9500,
+            9200
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Plane",
+          "description": "Orbital plane view",
+          "position": [
+            5175,
+            -30,
+            17580
+          ],
+          "target": [
+            5865,
+            1545,
+            -1830
+          ],
+          "up": [
+            0.125,
+            0.988,
+            0.085
+          ]
+        },
+        {
+          "name": "Follow Rocket",
+          "description": "Camera follows the rocket marker",
+          "follow": "rocket_anim",
+          "offset": [
+            1400,
+            900,
+            700
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "id": "planet_surface_2",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radiusExpr": "Rp",
+          "widthSegments": 96,
+          "heightSegments": 64,
+          "color": "#325f95",
+          "opacity": 0.88,
+          "shader": {
+            "shininess": 35,
+            "specular": "#a5c8ef",
+            "emissive": "#0f2138"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "title": "Parameter 1: Planet Geometry and Gravity Inputs",
+          "description": "Set $R_p$, launch height $h$, and gravity inputs $G, M$. This defines $r=R_p+h$ and $\\mu=GM$.",
+          "sliders": [
+            {
+              "id": "Rp",
+              "label": "$R_p$ (km)",
+              "min": 3000,
+              "max": 8000,
+              "step": 10,
+              "default": 6371
+            },
+            {
+              "id": "Gs",
+              "label": "$G_s=G\\times10^{11}$",
+              "min": 6.5,
+              "max": 6.9,
+              "step": 0.0001,
+              "default": 6.6743
+            },
+            {
+              "id": "Mx",
+              "label": "$M_x=M/10^{24}$ (kg)",
+              "min": 0.1,
+              "max": 10,
+              "step": 0.001,
+              "default": 5.972
+            },
+            {
+              "id": "h",
+              "label": "Launch height h (km)",
+              "min": 0,
+              "max": 1200,
+              "step": 5,
+              "default": 1
+            }
+          ],
+          "add": [
+            {
+              "id": "launch_ring2",
+              "type": "parametric_curve",
+              "x": "(Rp+h)*cos(t)",
+              "y": "(Rp+h)*sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 260,
+              "color": "#90ee90",
+              "width": 0.33,
+              "opacity": 0.6,
+              "label": "launch-height ring"
+            },
+            {
+              "id": "launch_marker2",
+              "type": "animated_point",
+              "expr": [
+                "Rp+h",
+                "0",
+                "0"
+              ],
+              "color": "#ffd166",
+              "size": 11,
+              "label": "launch point"
+            },
+            {
+              "id": "grav_arrow_scene2",
+              "type": "animated_vector",
+              "visibleExpr": "orbitHit(0,0) < 0.5",
+              "fromExpr": [
+                "Rp+h",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h - 12000*(Gs*Mx*10000)/((Rp+h)^2)",
+                "0",
+                "0"
+              ],
+              "labelOffset": [
+                40,
+                25,
+                0
+              ],
+              "color": "#ff4444",
+              "opacity": 0.8,
+              "width": 2.5,
+              "label": "$g(r)$ gravity"
+            },
+            {
+              "id": "centrifugal_arrow_scene2",
+              "type": "animated_vector",
+              "visibleExpr": "orbitHit(0,0) < 0.5",
+              "fromExpr": [
+                "Rp+h",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h + 12000*(Gs*Mx*10000)/((Rp+h)^2)",
+                "0",
+                "0"
+              ],
+              "labelOffset": [
+                40,
+                -25,
+                0
+              ],
+              "color": "#44aaff",
+              "opacity": 0.8,
+              "width": 3,
+              "label": "$v^2/r$ centrifugal (rotating frame)"
+            }
+          ],
+          "info": [
+            {
+              "id": "gravity_inputs_info",
+              "position": "top-right",
+              "content": "$$\\mu=GM={{toFixed(Gs*Mx*10000,1)}}\\,\\text{km}^3/\\text{s}^2\\\\ r=R_p+h={{Rp+h}}\\,\\text{km}\\\\ g(r)={{toFixed(1000*(Gs*Mx*10000)/((Rp+h)^2),2)}}\\,\\text{m/s}^2$$"
+            }
+          ]
+        },
+        {
+          "title": "Parameters 2-3: Dry Mass and Fuel Mass",
+          "description": "Now set vehicle mass. Total mass is $m_0=m_d+m_f$, and weight magnitude scales with $m_0g$.",
+          "camera": {
+            "position": [
+              6330,
+              -480,
+              2265
+            ],
+            "target": [
+              6330,
+              -480,
+              0
+            ],
+            "up": [
+              0.125,
+              0.988,
+              0.085
+            ]
+          },
+          "sliders": [
+            {
+              "id": "mdry",
+              "label": "Dry mass $m_d$ (t)",
+              "min": 8,
+              "max": 120,
+              "step": 1,
+              "default": 25
+            },
+            {
+              "id": "mfuel",
+              "label": "Fuel mass $m_f$ (t)",
+              "min": 20,
+              "max": 500,
+              "step": 2,
+              "default": 180
+            }
+          ],
+          "add": [
+            {
+              "id": "weight_vector",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h-220*(mdry+mfuel)/300",
+                "0",
+                "0"
+              ],
+              "color": "#ff7f7f",
+              "width": 0.33,
+              "label": "weight"
+            }
+          ],
+          "info": [
+            {
+              "id": "mass_info",
+              "position": "top-left",
+              "content": "$$m_0=m_d+m_f={{mdry+mfuel}}\\,\\text{t}$$"
+            },
+            {
+              "id": "weight_info",
+              "position": "top-right",
+              "content": "$$\\mu=GM={{toFixed(Gs*Mx*10000,1)}}\\,\\text{km}^3/\\text{s}^2\\\\ g(r)={{toFixed(1000*(Gs*Mx*10000)/((Rp+h)^2),2)}}\\,\\text{m/s}^2\\\\ W=m_0 g={{toFixed((mdry+mfuel)*1000*1000*(Gs*Mx*10000)/((Rp+h)^2),0)}}\\,\\text{N}$$"
+            }
+          ]
+        },
+        {
+          "title": "Parameter 4: Engine Efficiency (Isp)",
+          "description": "Side-by-side comparison: your selected-$I_{sp}$ vector first, with reference rocket baselines immediately next to it.",
+          "sliders": [
+            {
+              "id": "Isp",
+              "label": "Specific impulse $I_{sp}$ (s)",
+              "min": 150,
+              "max": 520,
+              "step": 1,
+              "default": 350
+            }
+          ],
+          "add": [
+            {
+              "id": "dv_now_vec",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h",
+                "52*(Isp*9.81*log((mdry+mfuel)/mdry)/1000)",
+                "0"
+              ],
+              "color": "#fcbf49",
+              "width": 0.33,
+              "opacity": 0.9,
+              "label": "our vector (selected $I_{sp}$)"
+            },
+            {
+              "id": "dv_v2_vec",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h+250",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h+250",
+                "52*(210*9.81*log((mdry+mfuel)/mdry)/1000)",
+                "0"
+              ],
+              "color": "#7f8c8d",
+              "width": 0.33,
+              "opacity": 0.9,
+              "label": "V-2 class (210 s)"
+            },
+            {
+              "id": "dv_f1_vec",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h+500",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h+500",
+                "52*(263*9.81*log((mdry+mfuel)/mdry)/1000)",
+                "0"
+              ],
+              "color": "#9aa6b2",
+              "width": 0.33,
+              "opacity": 0.9,
+              "label": "Apollo F-1 sea level (263 s)"
+            },
+            {
+              "id": "dv_falcon_vec",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h+750",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h+750",
+                "52*(311*9.81*log((mdry+mfuel)/mdry)/1000)",
+                "0"
+              ],
+              "color": "#aab7c4",
+              "width": 0.33,
+              "opacity": 0.9,
+              "label": "Falcon 9 class (311 s)"
+            },
+            {
+              "id": "dv_starship_vec",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h+1000",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h+1000",
+                "52*(380*9.81*log((mdry+mfuel)/mdry)/1000)",
+                "0"
+              ],
+              "color": "#6ec5ff",
+              "width": 0.33,
+              "opacity": 0.9,
+              "label": "Starship class (380 s)"
+            },
+            {
+              "id": "dv_rl10_vec",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h+1250",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h+1250",
+                "52*(450*9.81*log((mdry+mfuel)/mdry)/1000)",
+                "0"
+              ],
+              "color": "#4db6ac",
+              "width": 0.2,
+              "opacity": 0.9,
+              "label": "RL10 class (450 s)"
+            }
+          ],
+          "info": [
+            {
+              "id": "mass_info",
+              "position": "top-left",
+              "content": "$$m_0=m_d+m_f={{mdry+mfuel}}\\,\\text{t}\\\\ \\Delta v_{max}=I_{sp}g_0\\ln\\left(\\frac{m_0}{m_d}\\right)={{toFixed(Isp*9.81*log((mdry+mfuel)/mdry)/1000,3)}}\\,\\text{km/s}$$"
+            },
+            {
+              "id": "isp_sensitivity",
+              "position": "top-right",
+              "content": "$$\\frac{\\partial \\Delta v}{\\partial I_{sp}}=\\frac{g_0\\ln(m_0/m_d)}{1000}={{toFixed(9.81*log((mdry+mfuel)/mdry)/1000,4)}}\\,\\text{km/s per s}\\\\ +10\\,\\text{s in }I_{sp}\\Rightarrow {{toFixed(10*9.81*log((mdry+mfuel)/mdry),1)}}\\,\\text{m/s more }\\Delta v$$"
+            },
+            {
+              "id": "isp_baseline_note",
+              "position": "bottom-right",
+              "content": "$$\\text{V-2 }(210\\,\\text{s}):\\;{{toFixed(210*9.81*log((mdry+mfuel)/mdry)/1000,3)}}\\,\\text{km/s}\\\\ \\text{F-1 }(263\\,\\text{s}):\\;{{toFixed(263*9.81*log((mdry+mfuel)/mdry)/1000,3)}}\\,\\text{km/s}\\\\ \\text{Falcon 9 }(311\\,\\text{s}):\\;{{toFixed(311*9.81*log((mdry+mfuel)/mdry)/1000,3)}}\\,\\text{km/s}\\\\ \\text{Starship }(380\\,\\text{s}):\\;{{toFixed(380*9.81*log((mdry+mfuel)/mdry)/1000,3)}}\\,\\text{km/s}\\\\ \\text{RL10 class }(450\\,\\text{s}):\\;{{toFixed(450*9.81*log((mdry+mfuel)/mdry)/1000,3)}}\\,\\text{km/s}\\\\ \\text{Your }I_{sp}={{toFixed(Isp,0)}}\\,\\text{s}:\\;{{toFixed(Isp*9.81*log((mdry+mfuel)/mdry)/1000,3)}}\\,\\text{km/s}$$"
+            }
+          ]
+        },
+        {
+          "title": "Parameters 5-6: Launch Speed and Direction",
+          "description": "Set launch speed, flight-path angle, and target height. Green ring = launch height, red ring = target height.",
+          "remove": [
+            {
+              "id": "dv_now_vec"
+            },
+            {
+              "id": "dv_v2_vec"
+            },
+            {
+              "id": "dv_f1_vec"
+            },
+            {
+              "id": "dv_falcon_vec"
+            },
+            {
+              "id": "dv_starship_vec"
+            },
+            {
+              "id": "dv_rl10_vec"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "vlaunch",
+              "label": "Launch speed (km/s)",
+              "min": 0.5,
+              "max": 14,
+              "step": 0.05,
+              "default": 7.85
+            },
+            {
+              "id": "phi",
+              "label": "Launch direction $\\phi$ (deg from local horizontal)",
+              "min": 0,
+              "max": 180,
+              "step": 1,
+              "default": 8
+            },
+            {
+              "id": "h_target",
+              "label": "Target height $h_{target}$ (km)",
+              "min": 50,
+              "max": 2000,
+              "step": 10,
+              "default": 300
+            }
+          ],
+          "add": [
+            {
+              "id": "launch_vec",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h+220*sin(phi*pi/180)",
+                "220*cos(phi*pi/180)",
+                "0"
+              ],
+              "color": "#fcbf49",
+              "width": 0.33,
+              "label": "launch direction"
+            },
+            {
+              "id": "orbit_start_ref",
+              "type": "parametric_curve",
+              "x": "(Rp+h)*cos(t)",
+              "y": "(Rp+h)*sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 260,
+              "color": "#90ee90",
+              "width": 0.33,
+              "opacity": 0.6,
+              "label": "launch-height ring"
+            },
+            {
+              "id": "orbit_target_ref",
+              "type": "parametric_curve",
+              "x": "(Rp+h_target)*cos(t)",
+              "y": "(Rp+h_target)*sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 260,
+              "color": "#ff7f7f",
+              "width": 0.33,
+              "opacity": 0.6,
+              "label": "target-height ring"
+            }
+          ],
+          "info": [
+            {
+              "id": "insertion_targets",
+              "position": "bottom-left",
+              "content": "$$r_{\\mathrm{launch}}=R_p+h={{toFixed(Rp+h,1)}}\\,\\text{km},\\;r_{\\mathrm{target}}=R_p+h_{target}={{toFixed(Rp+h_target,1)}}\\,\\text{km}\\\\ v_{\\mathrm{circ,target}}={{toFixed(sqrt((Gs*Mx*10000)/(Rp+h_target)),3)}}\\,\\text{km/s},\\;v_{\\mathrm{esc,target}}={{toFixed(sqrt(2*(Gs*Mx*10000)/(Rp+h_target)),3)}}\\,\\text{km/s}\\\\ v_{\\mathrm{launch}}={{toFixed(vlaunch,3)}}\\,\\text{km/s},\\;\\Delta v_{max}={{toFixed(Isp*9.81*log((mdry+mfuel)/mdry)/1000,3)}}\\,\\text{km/s}$$"
+            },
+            {
+              "id": "feasibility_note",
+              "position": "bottom-right",
+              "content": "{{vlaunch <= Isp*9.81*log((mdry+mfuel)/mdry)/1000 ? \"Within ideal delta-v budget\" : \"Requested speed exceeds ideal one-stage budget\"}}"
+            }
+          ]
+        },
+        {
+          "title": "Parameters 7-8: Simulation Horizon and Playback",
+          "description": "Set the simulation horizon $T$, then animate playback with $\\tau$ to inspect whether the trajectory falls, orbits, or escapes.",
+          "virtualTime": {
+            "expr": "tau*T"
+          },
+          "remove": [
+            {
+              "id": "launch_marker2"
+            },
+            {
+              "id": "weight_vector"
+            },
+            {
+              "id": "grav_arrow_scene2"
+            },
+            {
+              "id": "centrifugal_arrow_scene2"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "T",
+              "label": "Simulation horizon T (s)",
+              "min": 400,
+              "max": 5000,
+              "step": 50,
+              "default": 1800
+            },
+            {
+              "id": "tau",
+              "label": "Playback $\\tau$",
+              "min": 0,
+              "max": 1,
+              "step": 0.002,
+              "default": 0,
+              "animate": true,
+              "animateMode": "loop",
+              "duration": 5000
+            }
+          ],
+          "add": [
+            {
+              "id": "trajectory_est",
+              "type": "parametric_curve",
+              "x": "orbitX(t*T,0)",
+              "y": "orbitY(t*T,0)",
+              "z": "80",
+              "range": [
+                0,
+                1
+              ],
+              "samples": 300,
+              "color": "#5ee6ff",
+              "width": 0.125,
+              "opacity": 0.6,
+              "label": "estimated trajectory"
+            },
+            {
+              "id": "rocket_anim",
+              "type": "animated_vector",
+              "visibleExpr": "orbitHit(t,0) < 0.5",
+              "fromExpr": [
+                "orbitX(t,0)",
+                "orbitY(t,0)",
+                "80"
+              ],
+              "expr": [
+                "orbitX(t+40,0)",
+                "orbitY(t+40,0)",
+                "80"
+              ],
+              "color": "#ff5d73",
+              "width": 12.8,
+              "arrowScale": 1.2,
+              "labelShowAltitude": true,
+              "labelAltitudePrecision": 1,
+              "label": "rocket"
+            },
+            {
+              "id": "grav_arrow_scene2",
+              "type": "animated_vector",
+              "visibleExpr": "orbitHit(t,0) < 0.5",
+              "fromExpr": [
+                "orbitX(t,0)",
+                "orbitY(t,0)",
+                "80"
+              ],
+              "expr": [
+                "orbitX(t,0) - (12000*(Gs*Mx*10000)/(orbitR(t,0)^2))*(orbitX(t,0)/orbitR(t,0))",
+                "orbitY(t,0) - (12000*(Gs*Mx*10000)/(orbitR(t,0)^2))*(orbitY(t,0)/orbitR(t,0))",
+                "80"
+              ],
+              "labelOffset": [
+                40,
+                25,
+                0
+              ],
+              "color": "#ff4444",
+              "opacity": 0.8,
+              "width": 2.5,
+              "label": "$g(r)$ gravity"
+            },
+            {
+              "id": "centrifugal_arrow_scene2",
+              "type": "animated_vector",
+              "visibleExpr": "orbitHit(t,0) < 0.5",
+              "fromExpr": [
+                "orbitX(t,0)",
+                "orbitY(t,0)",
+                "80"
+              ],
+              "expr": [
+                "orbitX(t,0) + (12000*(Gs*Mx*10000)/(orbitR(t,0)^2))*(orbitX(t,0)/orbitR(t,0))",
+                "orbitY(t,0) + (12000*(Gs*Mx*10000)/(orbitR(t,0)^2))*(orbitY(t,0)/orbitR(t,0))",
+                "80"
+              ],
+              "labelOffset": [
+                40,
+                -25,
+                0
+              ],
+              "color": "#44aaff",
+              "opacity": 0.8,
+              "width": 3,
+              "label": "$v^2/r$ centrifugal (rotating frame)"
+            }
+          ],
+          "info": [
+            {
+              "id": "state_panel",
+              "position": "top-left",
+              "content": "{{orbitOutcome(t,0)}}"
+            },
+            {
+              "id": "guidance_panel",
+              "position": "top-right",
+              "content": "$$\\text{Rule of thumb:}\\;\\phi\\to 0^\\circ\\;\\text{and}\\;v\\to v_{\\mathrm{circ}}\\;\\text{for clean insertion at fixed }h.$$"
+            },
+            {
+              "id": "time_panel",
+              "position": "bottom-left",
+              "content": "$$\\tau={{toFixed(tau,3)}}\\;(\\text{normalized}),\\quad t_{\\mathrm{actual}}={{toFixed(t,1)}}\\,\\text{s}$$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Thrust-Driven Flight (Powered Model)",
+      "description": "This scene adds sustained thrust and burn duration. Unlike passive coast, the rocket accelerates during burn, then coasts under gravity.",
+      "markdown": "# Thrust-Driven Flight (Powered Model)\n\nThis scene shows a simplified powered ascent/insertion model.\n\n## Key Difference From Scene 2\n\n- Scene 2: no sustained thrust after start (passive coast).\n- Scene 3: thrust is applied for a burn duration $t_{burn}$.\n\n## Simplified Powered Dynamics Used Here\n\nWe split time into burn and coast:\n\n- $t_e = \\min(t, t_{burn})$ (engine-on time)\n- $t_c = \\max(0, t - t_{burn})$ (coast time)\n\nRadial and tangential motion get thrust contributions during burn, then coast with gravity.\n\nThis is still educational/simplified, but it captures the core operational idea: **orbit insertion depends on powered acceleration, not only an assumed initial speed**.",
+      "prompt": "Emphasize that sustained thrust over burn time changes both speed and trajectory. Contrast this with no-thrust ballistic coast from scene 2.",
+      "range": [
+        [
+          -15000,
+          15000
+        ],
+        [
+          -15000,
+          15000
+        ],
+        [
+          -15000,
+          15000
+        ]
+      ],
+      "camera": {
+        "position": [
+          17000,
+          9500,
+          9200
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cameraUp": [
+        0,
+        0,
+        1
+      ],
+      "views": [
+        {
+          "name": "Iso",
+          "description": "3D mission overview",
+          "position": [
+            17000,
+            9500,
+            9200
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Plane",
+          "description": "Orbital plane view",
+          "position": [
+            0,
+            0,
+            19500
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "name": "Follow Rocket",
+          "description": "Camera follows powered rocket",
+          "follow": "rocket_powered",
+          "offset": [
+            1400,
+            900,
+            700
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "orbitExtremumT",
+          "args": [
+            "mode",
+            "isApo"
+          ],
+          "expr": "(() => { let n = 720; let tBest = 0; let rBest = orbitR(0, mode); for (let i = 1; i <= n; i++) { let tt = i*T/n; if (orbitHit(tt, mode) > 0.5) break; let rr = orbitR(tt, mode); if ((isApo > 0.5 && rr > rBest) || (isApo <= 0.5 && rr < rBest)) { rBest = rr; tBest = tt; } } return tBest; })()"
+        },
+        {
+          "name": "orbitPeriT",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitExtremumT(mode, 0)"
+        },
+        {
+          "name": "orbitApoT",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitExtremumT(mode, 1)"
+        },
+        {
+          "name": "orbitPeriX",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitX(orbitPeriT(mode), mode)"
+        },
+        {
+          "name": "orbitPeriY",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitY(orbitPeriT(mode), mode)"
+        },
+        {
+          "name": "orbitApoX",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitX(orbitApoT(mode), mode)"
+        },
+        {
+          "name": "orbitApoY",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitY(orbitApoT(mode), mode)"
+        },
+        {
+          "name": "orbitImpactT",
+          "args": [
+            "mode"
+          ],
+          "expr": "(() => { let n = 720; for (let i = 0; i <= n; i++) { let tt = i*T/n; if (orbitHit(tt, mode) > 0.5) return tt; } return -1; })()"
+        },
+        {
+          "name": "orbitImpactX",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitImpactT(mode) >= 0 ? orbitX(orbitImpactT(mode), mode) : 0"
+        },
+        {
+          "name": "orbitImpactY",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitImpactT(mode) >= 0 ? orbitY(orbitImpactT(mode), mode) : 0"
+        }
+      ],
+      "elements": [
+        {
+          "id": "planet_surface_3",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radiusExpr": "Rp",
+          "widthSegments": 96,
+          "heightSegments": 64,
+          "color": "#325f95",
+          "opacity": 0.88,
+          "shader": {
+            "shininess": 35,
+            "specular": "#a5c8ef",
+            "emissive": "#0f2138"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "title": "Powered Flight Parameters and Playback",
+          "description": "Set launch/target heights, initial speed, thrust acceleration, burn time, and flight-path angle. Then animate with $\\tau$.",
+          "virtualTime": {
+            "expr": "tau*T"
+          },
+          "sliders": [
+            {
+              "id": "Rp",
+              "label": "$R_p$ (km)",
+              "min": 3000,
+              "max": 8000,
+              "step": 10,
+              "default": 6371
+            },
+            {
+              "id": "Gs",
+              "label": "$G_s=G\\times10^{11}$",
+              "min": 6.5,
+              "max": 6.9,
+              "step": 0.0001,
+              "default": 6.6743
+            },
+            {
+              "id": "Mx",
+              "label": "$M_x=M/10^{24}$ (kg)",
+              "min": 0.1,
+              "max": 10,
+              "step": 0.001,
+              "default": 5.972
+            },
+            {
+              "id": "h",
+              "label": "Launch height h (km)",
+              "min": 0,
+              "max": 1200,
+              "step": 5,
+              "default": 0
+            },
+            {
+              "id": "h_target",
+              "label": "Target height $h_{target}$ (km)",
+              "min": 50,
+              "max": 2000,
+              "step": 10,
+              "default": 420
+            },
+            {
+              "id": "v0",
+              "label": "Initial speed $v_0$ (km/s)",
+              "min": 0,
+              "max": 3,
+              "step": 0.05,
+              "default": 0.2
+            },
+            {
+              "id": "athrust",
+              "label": "Thrust accel $a_T$ (km/s$^2$)",
+              "min": 0,
+              "max": 0.2,
+              "step": 0.001,
+              "default": 0.05
+            },
+            {
+              "id": "tburn",
+              "label": "Burn time $t_{burn}$ (s)",
+              "min": 0,
+              "max": 800,
+              "step": 5,
+              "default": 100
+            },
+            {
+              "id": "phi",
+              "label": "Thrust direction $\\phi$ (deg from local horizontal)",
+              "min": 0,
+              "max": 180,
+              "step": 1,
+              "default": 45
+            },
+            {
+              "id": "T",
+              "label": "Simulation horizon T (s)",
+              "min": 400,
+              "max": 6000,
+              "step": 50,
+              "default": 2200
+            },
+            {
+              "id": "tau",
+              "label": "Playback $\\tau$",
+              "min": 0,
+              "max": 1,
+              "step": 0.002,
+              "default": 0,
+              "animate": true,
+              "animateMode": "loop",
+              "duration": 5000
+            }
+          ],
+          "add": [
+            {
+              "id": "launch_ring_powered",
+              "type": "parametric_curve",
+              "x": "(Rp+h)*cos(t)",
+              "y": "(Rp+h)*sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 260,
+              "color": "#90ee90",
+              "width": 1,
+              "opacity": 0.6,
+              "label": "launch-height ring"
+            },
+            {
+              "id": "target_ring_powered",
+              "type": "parametric_curve",
+              "x": "(Rp+h_target)*cos(t)",
+              "y": "(Rp+h_target)*sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 260,
+              "color": "#ff7f7f",
+              "width": 1,
+              "opacity": 0.6,
+              "label": "target-height ring"
+            },
+            {
+              "id": "perigee_marker_powered",
+              "type": "animated_point",
+              "expr": [
+                "orbitPeriX(1)",
+                "orbitPeriY(1)",
+                "80"
+              ],
+              "color": "#59f28f",
+              "size": 12,
+              "label": "perigee"
+            },
+            {
+              "id": "apogee_marker_powered",
+              "type": "animated_point",
+              "expr": [
+                "orbitApoX(1)",
+                "orbitApoY(1)",
+                "80"
+              ],
+              "color": "#ff9a5c",
+              "size": 12,
+              "label": "apogee"
+            },
+            {
+              "id": "impact_marker_powered",
+              "type": "animated_point",
+              "expr": [
+                "orbitImpactX(1)",
+                "orbitImpactY(1)",
+                "80"
+              ],
+              "visibleExpr": "orbitImpactT(1) >= 0",
+              "color": "#ff4d4f",
+              "size": 13,
+              "label": "impact"
+            },
+            {
+              "id": "trajectory_powered",
+              "type": "parametric_curve",
+              "x": "orbitX(t*T,1)",
+              "y": "orbitY(t*T,1)",
+              "z": "80",
+              "labelOffset": [
+                -600,
+                520,
+                180
+              ],
+              "range": [
+                0,
+                1
+              ],
+              "samples": 300,
+              "color": "#ffcf5e",
+              "width": 0.2,
+              "opacity": 0.6,
+              "label": "powered trajectory"
+            },
+            {
+              "id": "rocket_powered",
+              "type": "animated_vector",
+              "visibleExpr": "orbitHit(t,1) < 0.5",
+              "fromExpr": [
+                "orbitX(t,1)",
+                "orbitY(t,1)",
+                "80"
+              ],
+              "expr": [
+                "orbitX(t+40,1)",
+                "orbitY(t+40,1)",
+                "80"
+              ],
+              "color": "#ffd166",
+              "width": 12.8,
+              "arrowScale": 1.2,
+              "labelShowAltitude": true,
+              "labelAltitudePrecision": 1,
+              "label": "powered rocket"
+            },
+            {
+              "id": "grav_arrow_scene3",
+              "type": "animated_vector",
+              "visibleExpr": "orbitHit(t,1) < 0.5",
+              "fromExpr": [
+                "orbitX(t,1)",
+                "orbitY(t,1)",
+                "80"
+              ],
+              "expr": [
+                "orbitX(t,1) - (12000*(Gs*Mx*10000)/(orbitR(t,1)^2))*(orbitX(t,1)/orbitR(t,1))",
+                "orbitY(t,1) - (12000*(Gs*Mx*10000)/(orbitR(t,1)^2))*(orbitY(t,1)/orbitR(t,1))",
+                "80"
+              ],
+              "labelOffset": [
+                40,
+                25,
+                0
+              ],
+              "color": "#ff4444",
+              "opacity": 0.8,
+              "width": 2.5,
+              "label": "$g(r)$ gravity"
+            },
+            {
+              "id": "centrifugal_arrow_scene3",
+              "type": "animated_vector",
+              "visibleExpr": "orbitHit(t,1) < 0.5",
+              "fromExpr": [
+                "orbitX(t,1)",
+                "orbitY(t,1)",
+                "80"
+              ],
+              "expr": [
+                "orbitX(t,1) + (12000*(Gs*Mx*10000)/(orbitR(t,1)^2))*(orbitX(t,1)/orbitR(t,1))",
+                "orbitY(t,1) + (12000*(Gs*Mx*10000)/(orbitR(t,1)^2))*(orbitY(t,1)/orbitR(t,1))",
+                "80"
+              ],
+              "labelOffset": [
+                40,
+                -25,
+                0
+              ],
+              "color": "#44aaff",
+              "opacity": 0.8,
+              "width": 3,
+              "label": "$v^2/r$ centrifugal (rotating frame)"
+            }
+          ],
+          "info": [
+            {
+              "id": "powered_note",
+              "position": "top-left",
+              "content": "Powered mode: thrust is active while $t\\le t_{burn}$, then trajectory coasts under gravity."
+            },
+            {
+              "id": "powered_metrics",
+              "position": "bottom-left",
+              "content": "$$\\begin{aligned}r_{\\mathrm{launch}}&=R_p+h={{toFixed(Rp+h,1)}}\\,\\text{km}\\\\r_{\\mathrm{target}}&=R_p+h_{\\mathrm{target}}={{toFixed(Rp+h_target,1)}}\\,\\text{km}\\\\v_{\\mathrm{circ,target}}&={{toFixed(sqrt((Gs*Mx*10000)/(Rp+h_target)),3)}}\\,\\text{km/s}\\\\v_{\\mathrm{esc,target}}&={{toFixed(sqrt(2*(Gs*Mx*10000)/(Rp+h_target)),3)}}\\,\\text{km/s}\\\\a_T&={{toFixed(athrust*1000,1)}}\\,\\text{m/s}^2,\\;t_{\\mathrm{burn}}={{toFixed(tburn,0)}}\\,\\text{s}\\\\\\Delta v_{\\mathrm{burn}}&\\approx{{toFixed(athrust*tburn,3)}}\\,\\text{km/s}\\end{aligned}$$"
+            },
+            {
+              "id": "powered_orbit_checks",
+              "position": "bottom-right",
+              "content": "$$\\begin{aligned}r(t)&={{toFixed(orbitR(t,1),1)}}\\,\\text{km}\\\\v_{\\theta}(t)&={{toFixed(orbitVt(t,1),3)}}\\,\\text{km/s}\\\\v_r(t)&={{toFixed(orbitVr(t,1),3)}}\\,\\text{km/s}\\end{aligned}$$"
+            },
+            {
+              "id": "powered_outcome",
+              "position": "top-center",
+              "content": "{{orbitOutcome(t,1)}}"
+            },
+            {
+              "id": "powered_time",
+              "position": "top-right",
+              "content": "$$\\tau={{toFixed(tau,3)}},\\quad t_{\\mathrm{actual}}={{toFixed(t,1)}}\\,\\text{s}$$"
+            }
+          ],
+          "camera": {
+            "position": [
+              7785,
+              -330,
+              1560
+            ],
+            "target": [
+              4920,
+              2325,
+              -885
+            ],
+            "up": [
+              0.938,
+              0.28,
+              0.204
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "Guided Two-Burn Orbital Insertion",
+      "description": "A more realistic educational flight profile: ascent burn with pitch program, coast arc, then prograde circularization burn to achieve stable orbit.",
+      "markdown": "# Guided Two-Burn Orbital Insertion\n\nThis scene uses a simplified but physically grounded 2D orbital model with **central gravity** and **time integration**.\n\n## Physics Model Used\n\nState is propagated in the orbital plane with position and velocity:\n\n$$\\dot{\\mathbf{r}}=\\mathbf{v}, \\qquad \\dot{\\mathbf{v}}=\\mathbf{a}_g+\\mathbf{a}_T$$\n\nGravity is not constant; it updates with altitude each step:\n\n$$\\mathbf{a}_g=-\\mu\\,\\frac{\\mathbf{r}}{\\|\\mathbf{r}\\|^3}, \\qquad g(r)=\\frac{\\mu}{r^2}$$\n\nwith\n\n$$\\mu=GM=(G_s\\,M_x)\\times10^4\\;\\text{km}^3/\\text{s}^2$$\n\nin this slider scaling.\n\n## Circular-Orbit Balance\n\nAt radius $r$, the circular-orbit speed is\n\n$$v_{\\mathrm{circ}}(r)=\\sqrt{\\frac{\\mu}{r}}$$\n\nwhich is equivalent to centripetal balance:\n\n$$\\frac{v^2}{r}=\\frac{\\mu}{r^2}$$\n\nSo altitude alone is insufficient; you need the right **tangential speed** and near-zero radial speed.\n\n## Flight Phases in This Scene\n\n1. **Burn 1 (ascent + gravity turn):** thrust while pitch transitions from pitch_start to pitch_end over t_pitch.\n2. **Coast:** no thrust for t_coast.\n3. **Burn 2 (circularization):** guidance trims tangential speed toward $v_{\\mathrm{circ,target}}$ and damps radial speed $v_r$.\n\n## Numerical Integration Note\n\nThe trajectory is propagated with a stepwise symplectic-style update (interactive educational fidelity, not mission-grade guidance software).\n\n## Stable-Orbit Criterion (Displayed Outcome)\n\nAfter burns complete, the scene reports **stable-orbit target achieved** when all are met:\n\n- $|r-r_{target}|\\le 40\\,\\text{km}$\n- $|v_\\theta-v_{\\mathrm{circ,target}}|\\le 0.25\\,\\text{km/s}$\n- $|v_r|\\le 0.08\\,\\text{km/s}$\n\nwhere $r_{target}=R_p+h_{target}$.\n\n## Falcon 9-like Baseline (Simplified)\n\nDefaults are tuned to approximate a Falcon 9 style ISS insertion in this educational model:\n\n- $h_{target}=420\\,\\text{km}$ (ISS-class altitude)\n- Burn 1 / coast / burn 2 sequence tuned for near-circular insertion\n\nThese are educational defaults, not mission-certified flight software parameters.",
+      "prompt": "Explain the model transparently as a guided two-burn insertion under central gravity. Emphasize that g varies with radius (mu/r^2), show why circular orbit requires v^2/r = mu/r^2, and connect sliders to burn 1, coast, burn 2 guidance, and the explicit stability thresholds (radius error, tangential-speed error, radial speed). Contrast educational simplifications with real mission guidance.",
+      "range": [
+        [
+          -15000,
+          15000
+        ],
+        [
+          -15000,
+          15000
+        ],
+        [
+          -15000,
+          15000
+        ]
+      ],
+      "camera": {
+        "position": [
+          17000,
+          9500,
+          9200
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cameraUp": [
+        0,
+        0,
+        1
+      ],
+      "views": [
+        {
+          "name": "Iso",
+          "description": "3D mission overview",
+          "position": [
+            17000,
+            9500,
+            9200
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Plane",
+          "description": "Orbital plane view",
+          "position": [
+            0,
+            0,
+            19500
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "name": "Follow Rocket",
+          "description": "Camera follows guided rocket",
+          "follow": "rocket_guided",
+          "offset": [
+            1400,
+            900,
+            700
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "orbitExtremumT",
+          "args": [
+            "mode",
+            "isApo"
+          ],
+          "expr": "(() => { let n = 720; let tBest = 0; let rBest = orbitR(0, mode); for (let i = 1; i <= n; i++) { let tt = i*T/n; if (orbitHit(tt, mode) > 0.5) break; let rr = orbitR(tt, mode); if ((isApo > 0.5 && rr > rBest) || (isApo <= 0.5 && rr < rBest)) { rBest = rr; tBest = tt; } } return tBest; })()"
+        },
+        {
+          "name": "orbitPeriT",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitExtremumT(mode, 0)"
+        },
+        {
+          "name": "orbitApoT",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitExtremumT(mode, 1)"
+        },
+        {
+          "name": "orbitPeriX",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitX(orbitPeriT(mode), mode)"
+        },
+        {
+          "name": "orbitPeriY",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitY(orbitPeriT(mode), mode)"
+        },
+        {
+          "name": "orbitApoX",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitX(orbitApoT(mode), mode)"
+        },
+        {
+          "name": "orbitApoY",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitY(orbitApoT(mode), mode)"
+        },
+        {
+          "name": "orbitImpactT",
+          "args": [
+            "mode"
+          ],
+          "expr": "(() => { let n = 720; for (let i = 0; i <= n; i++) { let tt = i*T/n; if (orbitHit(tt, mode) > 0.5) return tt; } return -1; })()"
+        },
+        {
+          "name": "orbitImpactX",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitImpactT(mode) >= 0 ? orbitX(orbitImpactT(mode), mode) : 0"
+        },
+        {
+          "name": "orbitImpactY",
+          "args": [
+            "mode"
+          ],
+          "expr": "orbitImpactT(mode) >= 0 ? orbitY(orbitImpactT(mode), mode) : 0"
+        }
+      ],
+      "elements": [
+        {
+          "id": "planet_surface_4",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radiusExpr": "Rp",
+          "widthSegments": 96,
+          "heightSegments": 64,
+          "color": "#325f95",
+          "opacity": 0.88,
+          "shader": {
+            "shininess": 35,
+            "specular": "#a5c8ef",
+            "emissive": "#0f2138"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "title": "Guided Ascent, Coast, and Circularization",
+          "description": "Tune two burns and pitch program to hit a stable orbit at target height.",
+          "virtualTime": {
+            "expr": "tau*T"
+          },
+          "sliders": [
+            {
+              "id": "Rp",
+              "label": "$R_p$ (km)",
+              "min": 3000,
+              "max": 8000,
+              "step": 10,
+              "default": 6371
+            },
+            {
+              "id": "Gs",
+              "label": "$G_s=G\\times10^{11}$",
+              "min": 6.5,
+              "max": 6.9,
+              "step": 0.0001,
+              "default": 6.6743
+            },
+            {
+              "id": "Mx",
+              "label": "$M_x=M/10^{24}$ (kg)",
+              "min": 0.1,
+              "max": 10,
+              "step": 0.001,
+              "default": 5.972
+            },
+            {
+              "id": "h",
+              "label": "Launch height h (km)",
+              "min": 0,
+              "max": 1200,
+              "step": 5,
+              "default": 1
+            },
+            {
+              "id": "h_target",
+              "label": "Target height $h_{target}$ (km)",
+              "min": 120,
+              "max": 2000,
+              "step": 10,
+              "default": 420
+            },
+            {
+              "id": "v0",
+              "label": "Initial tangential speed $v_0$ (km/s)",
+              "min": 0,
+              "max": 8,
+              "step": 0.05,
+              "default": 0.05
+            },
+            {
+              "id": "phi",
+              "label": "Initial direction $\\phi$ (deg from local horizontal)",
+              "min": 0,
+              "max": 180,
+              "step": 1,
+              "default": 88
+            },
+            {
+              "id": "athrust1",
+              "label": "Burn 1 accel $a_{T1}$ (km/s$^2$)",
+              "min": 0,
+              "max": 0.08,
+              "step": 0.001,
+              "default": 0.024
+            },
+            {
+              "id": "tburn1",
+              "label": "Burn 1 duration $t_{burn1}$ (s)",
+              "min": 20,
+              "max": 800,
+              "step": 5,
+              "default": 240
+            },
+            {
+              "id": "pitch_start",
+              "label": "Pitch start (deg)",
+              "min": 60,
+              "max": 95,
+              "step": 1,
+              "default": 88
+            },
+            {
+              "id": "pitch_end",
+              "label": "Pitch end (deg)",
+              "min": -10,
+              "max": 20,
+              "step": 1,
+              "default": 4
+            },
+            {
+              "id": "tpitch",
+              "label": "Pitch program time $t_{pitch}$ (s)",
+              "min": 30,
+              "max": 600,
+              "step": 5,
+              "default": 240
+            },
+            {
+              "id": "tcoast",
+              "label": "Coast time (s)",
+              "min": 0,
+              "max": 1500,
+              "step": 10,
+              "default": 100
+            },
+            {
+              "id": "athrust2",
+              "label": "Burn 2 accel $a_{T2}$ (km/s$^2$)",
+              "min": 0,
+              "max": 0.08,
+              "step": 0.001,
+              "default": 0.024
+            },
+            {
+              "id": "tburn2",
+              "label": "Burn 2 duration $t_{burn2}$ (s)",
+              "min": 0,
+              "max": 800,
+              "step": 5,
+              "default": 300
+            },
+            {
+              "id": "T",
+              "label": "Simulation horizon T (s)",
+              "min": 600,
+              "max": 9000,
+              "step": 50,
+              "default": 3600
+            },
+            {
+              "id": "tau",
+              "label": "Playback $\\tau$",
+              "min": 0,
+              "max": 1,
+              "step": 0.002,
+              "default": 0,
+              "animate": true,
+              "animateMode": "loop",
+              "duration": 6000
+            }
+          ],
+          "add": [
+            {
+              "id": "launch_ring_guided",
+              "type": "parametric_curve",
+              "x": "(Rp+h)*cos(t)",
+              "y": "(Rp+h)*sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 260,
+              "color": "#90ee90",
+              "width": 0.33,
+              "opacity": 0.6,
+              "label": "launch-height ring"
+            },
+            {
+              "id": "target_ring_guided",
+              "type": "parametric_curve",
+              "x": "(Rp+h_target)*cos(t)",
+              "y": "(Rp+h_target)*sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 260,
+              "color": "#ff7f7f",
+              "width": 0.33,
+              "opacity": 0.6,
+              "label": "target-height ring"
+            },
+            {
+              "id": "initial_dir_guided",
+              "type": "animated_vector",
+              "fromExpr": [
+                "Rp+h",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "Rp+h+350*sin(phi*pi/180)",
+                "350*cos(phi*pi/180)",
+                "0"
+              ],
+              "color": "#fcbf49",
+              "width": 0.33,
+              "label": "initial direction"
+            },
+            {
+              "id": "perigee_marker_guided",
+              "type": "animated_point",
+              "expr": [
+                "orbitPeriX(2)",
+                "orbitPeriY(2)",
+                "80"
+              ],
+              "color": "#59f28f",
+              "size": 12,
+              "label": "perigee"
+            },
+            {
+              "id": "apogee_marker_guided",
+              "type": "animated_point",
+              "expr": [
+                "orbitApoX(2)",
+                "orbitApoY(2)",
+                "80"
+              ],
+              "color": "#ff9a5c",
+              "size": 12,
+              "label": "apogee"
+            },
+            {
+              "id": "impact_marker_guided",
+              "type": "animated_point",
+              "expr": [
+                "orbitImpactX(2)",
+                "orbitImpactY(2)",
+                "80"
+              ],
+              "visibleExpr": "orbitImpactT(2) >= 0",
+              "color": "#ff4d4f",
+              "size": 13,
+              "label": "impact"
+            },
+            {
+              "id": "trajectory_guided",
+              "type": "parametric_curve",
+              "x": "orbitX(t*T,2)",
+              "y": "orbitY(t*T,2)",
+              "z": "80",
+              "labelOffset": [
+                0,
+                240,
+                90
+              ],
+              "range": [
+                0,
+                1
+              ],
+              "samples": 420,
+              "color": "#82f7ff",
+              "width": 0.125,
+              "opacity": 0.6,
+              "label": "guided trajectory"
+            },
+            {
+              "id": "rocket_guided",
+              "type": "animated_vector",
+              "visibleExpr": "orbitHit(t,2) < 0.5",
+              "fromExpr": [
+                "orbitX(t,2)",
+                "orbitY(t,2)",
+                "80"
+              ],
+              "expr": [
+                "orbitX(t+35,2)",
+                "orbitY(t+35,2)",
+                "80"
+              ],
+              "color": "#ffd166",
+              "width": 12,
+              "arrowScale": 1.2,
+              "labelShowAltitude": true,
+              "labelAltitudePrecision": 1,
+              "label": "guided rocket"
+            },
+            {
+              "id": "grav_arrow_scene4",
+              "type": "animated_vector",
+              "visibleExpr": "orbitHit(t,2) < 0.5",
+              "fromExpr": [
+                "orbitX(t,2)",
+                "orbitY(t,2)",
+                "80"
+              ],
+              "expr": [
+                "orbitX(t,2) - (12000*(Gs*Mx*10000)/(orbitR(t,2)^2))*(orbitX(t,2)/orbitR(t,2))",
+                "orbitY(t,2) - (12000*(Gs*Mx*10000)/(orbitR(t,2)^2))*(orbitY(t,2)/orbitR(t,2))",
+                "80"
+              ],
+              "labelOffset": [
+                40,
+                25,
+                0
+              ],
+              "color": "#ff4444",
+              "opacity": 0.8,
+              "width": 2.5,
+              "label": "$g(r)$ gravity"
+            },
+            {
+              "id": "centrifugal_arrow_scene4",
+              "type": "animated_vector",
+              "visibleExpr": "orbitHit(t,2) < 0.5",
+              "fromExpr": [
+                "orbitX(t,2)",
+                "orbitY(t,2)",
+                "80"
+              ],
+              "expr": [
+                "orbitX(t,2) + (12000*(Gs*Mx*10000)/(orbitR(t,2)^2))*(orbitX(t,2)/orbitR(t,2))",
+                "orbitY(t,2) + (12000*(Gs*Mx*10000)/(orbitR(t,2)^2))*(orbitY(t,2)/orbitR(t,2))",
+                "80"
+              ],
+              "labelOffset": [
+                40,
+                -25,
+                0
+              ],
+              "color": "#44aaff",
+              "opacity": 0.8,
+              "width": 3,
+              "label": "$v^2/r$ centrifugal (rotating frame)"
+            }
+          ],
+          "info": [
+            {
+              "id": "guided_note",
+              "position": "top-left",
+              "content": "Guided mode: burn 1 + gravity turn, coast, then prograde burn 2 for circularization."
+            },
+            {
+              "id": "guided_timeline",
+              "position": "top-right",
+              "content": "$$t_{burn1}={{toFixed(tburn1,0)}}\\,s,\\;t_{coast}={{toFixed(tcoast,0)}}\\,s,\\;t_{burn2}={{toFixed(tburn2,0)}}\\,s\\\\t_{end,burn}={{toFixed(tburn1+tcoast+tburn2,0)}}\\,s$$"
+            },
+            {
+              "id": "guided_checks",
+              "position": "bottom-left",
+              "content": "$$\\begin{aligned}r(t)&={{toFixed(orbitR(t,2),1)}}\\,\\text{km}\\\\v_{\\theta}(t)&={{toFixed(orbitVt(t,2),3)}}\\,\\text{km/s}\\\\v_r(t)&={{toFixed(orbitVr(t,2),3)}}\\,\\text{km/s}\\\\v_{circ,target}&={{toFixed(sqrt((Gs*Mx*10000)/(Rp+h_target)),3)}}\\,\\text{km/s}\\end{aligned}$$"
+            },
+            {
+              "id": "guided_outcome",
+              "position": "bottom-right",
+              "content": "{{orbitOutcome(t,2)}}"
+            },
+            {
+              "id": "guided_time",
+              "position": "top-center",
+              "content": "$$\\tau={{toFixed(tau,3)}},\\quad t_{actual}={{toFixed(t,1)}}\\,\\text{s}$$"
+            },
+            {
+              "id": "guided_mach",
+              "position": "top-right",
+              "content": "$$v={{toFixed(sqrt(pow(orbitVr(t,2),2)+pow(orbitVt(t,2),2)),3)}}\\,\\text{km/s}\\\\M_{\\mathrm{SL}}\\approx\\frac{v}{0.343}={{toFixed(sqrt(pow(orbitVr(t,2),2)+pow(orbitVt(t,2),2))/0.343,2)}}$$"
+            }
+          ],
+          "camera": {
+            "position": [
+              7350,
+              -1470,
+              2160
+            ],
+            "target": [
+              4785,
+              2370,
+              -660
+            ],
+            "up": [
+              0.776,
+              0.616,
+              0.136
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

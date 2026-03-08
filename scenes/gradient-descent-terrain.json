@@ -1,0 +1,1260 @@
+{
+  "title": "Gradient Descent on a 3D Objective Terrain",
+  "unsafe": true,
+  "unsafe_explanation": "The Himmelblau animated descent scene uses iterative JavaScript loops to compute gradient descent paths step-by-step. No closed-form solution exists for this non-convex function, so native JS iteration is required. Scenes 1 and 2 (elliptic bowl) run entirely in the math.js sandbox.",
+  "scenes": [
+    {
+      "title": "Gradient Descent on an Elliptic Bowl",
+      "description": "We optimize the objective $f(x,y)=0.2(0.6x^2+2y^2)$. The surface is steeper in $y$ than $x$, so descent contracts faster along $y$.",
+      "markdown": "# Gradient Descent on a 3D Objective Surface\n\nWe minimize the objective\n\n$$f(x,y)=0.2\\,(a x^2+b y^2), \\quad a=0.6,\\; b=2.0$$\n\nThis is a convex bowl with anisotropic curvature.\n\n## Gradient\n\n$$\\nabla f(x,y)=\\left(0.4ax,\\;0.4by\\right)$$\n\nThe gradient points uphill. Gradient descent moves downhill:\n\n$$\\begin{aligned}\nx_{k+1} &= x_k-\\eta\\,a\\,x_k=(1-\\eta a)x_k \\\\\ny_{k+1} &= y_k-\\eta\\,b\\,y_k=(1-\\eta b)y_k\n\\end{aligned}$$\n\nSo the iterate contracts geometrically toward the minimizer $(0,0)$.\n\n## Stability Intuition\n\nFor a quadratic, convergence requires\n\n$$0<\\eta<\\frac{2}{\\lambda_{\\max}}$$\n\nHere the dominant curvature is $b=2$, so too-large $\\eta$ can cause oscillation or divergence in the steep direction.\n\n## How To Read The Visualization\n\n- The surface height is objective value $f(x,y)$\n- Gold curve: descent trajectory over iterations\n- Gold vector: current iterate $\\mathbf{x}_k=(x_k,y_k,f(x_k,y_k))$\n- Red segment: local downhill move direction from current point\n\nUse sliders to change start point and learning rate, then inspect how quickly (or smoothly) convergence happens.",
+      "range": [
+        [
+          -4,
+          4
+        ],
+        [
+          -4,
+          4
+        ],
+        [
+          0,
+          4.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          5.5,
+          6.5,
+          6
+        ],
+        "target": [
+          0,
+          0,
+          0.5
+        ]
+      },
+      "cameraUp": [
+        0,
+        0,
+        1
+      ],
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            6.5,
+            5.5,
+            6.5
+          ],
+          "target": [
+            0,
+            0,
+            0.7
+          ],
+          "description": "Isometric overview — see the terrain surface in 3D perspective"
+        },
+        {
+          "name": "Descent View",
+          "position": [
+            -1.5,
+            8,
+            9
+          ],
+          "target": [
+            -0.5,
+            0,
+            1.5
+          ],
+          "description": "Looking into the bowl from an elevated angle — follow the descent path"
+        },
+        {
+          "name": "Front (XZ)",
+          "position": [
+            0,
+            -10,
+            2.5
+          ],
+          "target": [
+            0,
+            0,
+            2.5
+          ],
+          "description": "Front view along Y — see how the loss changes along X"
+        },
+        {
+          "name": "Side (YZ)",
+          "position": [
+            10,
+            0,
+            2.5
+          ],
+          "target": [
+            0,
+            0,
+            2.5
+          ],
+          "description": "Side view along X — see how the loss changes along Y"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            0,
+            11
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down — see the loss landscape as a 2D contour map"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -4,
+            4
+          ],
+          "color": [
+            0.22,
+            0.24,
+            0.36
+          ],
+          "opacity": 0.2,
+          "divisions": 8
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -4,
+            4
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -4,
+            4
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            0,
+            4.5
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "Objective terrain",
+          "description": "The quadratic bowl $f(x,y)=0.2(0.6x^2+2y^2)$ is steeper along $y$, so level sets are ellipses.",
+          "add": [
+            {
+              "id": "objective-surface",
+              "type": "parametric_surface",
+              "x": "u",
+              "y": "v",
+              "z": "0.2*(0.6*u*u + 2.0*v*v)",
+              "uRange": [
+                -4,
+                4
+              ],
+              "vRange": [
+                -4,
+                4
+              ],
+              "uSamples": 64,
+              "vSamples": 64,
+              "color": "#2f4f82",
+              "opacity": 0.42,
+              "shader": {
+                "shininess": 80,
+                "emissive": "#0f203b",
+                "specular": "#9eb8f0"
+              }
+            }
+          ]
+        },
+        {
+          "title": "Start point and first descent direction",
+          "description": "Start at $(x_0,y_0)=(-3,2.5)$. The red segment points toward $\\mathbf{x}_1=\\mathbf{x}_0-\\eta\\nabla f(\\mathbf{x}_0)$ with $\\eta=0.2$.",
+          "add": [
+            {
+              "id": "start-iter",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                -3,
+                2.5,
+                3.58
+              ],
+              "color": "#ffcc00",
+              "label": "$\\mathbf{x}_0$"
+            },
+            {
+              "id": "first-step",
+              "type": "line",
+              "points": [
+                [
+                  -3,
+                  2.5,
+                  3.58
+                ],
+                [
+                  -2.64,
+                  1.5,
+                  1.736352
+                ]
+              ],
+              "color": "#ff5555",
+              "width": 4,
+              "label": "$\\mathbf{x}_0 \\to \\mathbf{x}_1$"
+            }
+          ]
+        },
+        {
+          "title": "Trajectory over iterations",
+          "description": "With fixed $\\eta=0.2$, iterates follow geometric decay: $x_k=x_0(1-0.6\\eta)^k$, $y_k=y_0(1-2\\eta)^k$.",
+          "remove": [
+            {
+              "id": "first-step"
+            }
+          ],
+          "add": [
+            {
+              "id": "gd-path-fixed",
+              "type": "parametric_curve",
+              "x": "-3*pow(1-0.2*0.6, t)",
+              "y": "2.5*pow(1-0.2*2.0, t)",
+              "z": "0.2*(0.6*pow(-3*pow(1-0.2*0.6, t),2)+2.0*pow(2.5*pow(1-0.2*2.0, t),2))",
+              "range": [
+                0,
+                30
+              ],
+              "samples": 240,
+              "color": "#ffcc00",
+              "width": 5,
+              "label": "descent path"
+            }
+          ]
+        },
+        {
+          "title": "Interactive simulator",
+          "description": "Tune learning rate and start point. The path clamps at iteration $n$, and the gold vector marks the current iterate at index $k$.",
+          "remove": [
+            {
+              "id": "start-iter"
+            },
+            {
+              "id": "gd-path-fixed"
+            }
+          ],
+          "add": [
+            {
+              "id": "gd-path-interactive",
+              "type": "parametric_curve",
+              "x": "x0*pow(1-eta*0.6, min(t,n))",
+              "y": "y0*pow(1-eta*2.0, min(t,n))",
+              "z": "0.2*(0.6*pow(x0*pow(1-eta*0.6, min(t,n)),2)+2.0*pow(y0*pow(1-eta*2.0, min(t,n)),2))",
+              "range": [
+                0,
+                40
+              ],
+              "samples": 320,
+              "color": "#ffcc00",
+              "width": 6,
+              "label": "$\\mathbf{x}_k$ trajectory"
+            },
+            {
+              "id": "iter-vector",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "x0*pow(1-eta*0.6, k)",
+                "y0*pow(1-eta*2.0, k)",
+                "0.2*(0.6*pow(x0*pow(1-eta*0.6, k),2)+2.0*pow(y0*pow(1-eta*2.0, k),2))"
+              ],
+              "color": "#ffd84d",
+              "label": "$\\mathbf{x}_k$"
+            },
+            {
+              "id": "descent-anim",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "x0*pow(1-eta*0.6, min((t*2.0)%(n+1), n))",
+                "y0*pow(1-eta*2.0, min((t*2.0)%(n+1), n))",
+                "0.2*(0.6*pow(x0*pow(1-eta*0.6, min((t*2.0)%(n+1), n)),2)+2.0*pow(y0*pow(1-eta*2.0, min((t*2.0)%(n+1), n)),2))"
+              ],
+              "color": "#7cf6ff",
+              "label": "animated descent",
+              "trail": {
+                "color": "#7cf6ff",
+                "width": 1.5,
+                "length": 120
+              }
+            },
+            {
+              "id": "iter-drop",
+              "type": "animated_line",
+              "points": [
+                [
+                  "x0*pow(1-eta*0.6, k)",
+                  "y0*pow(1-eta*2.0, k)",
+                  "0.2*(0.6*pow(x0*pow(1-eta*0.6, k),2)+2.0*pow(y0*pow(1-eta*2.0, k),2))"
+                ],
+                [
+                  "x0*pow(1-eta*0.6, k)",
+                  "y0*pow(1-eta*2.0, k)",
+                  "0"
+                ]
+              ],
+              "color": "#99aacc",
+              "width": 2
+            },
+            {
+              "id": "local-grad-step",
+              "type": "animated_line",
+              "points": [
+                [
+                  "x0*pow(1-eta*0.6, k)",
+                  "y0*pow(1-eta*2.0, k)",
+                  "0.2*(0.6*pow(x0*pow(1-eta*0.6, k),2)+2.0*pow(y0*pow(1-eta*2.0, k),2))"
+                ],
+                [
+                  "x0*pow(1-eta*0.6, k+1)",
+                  "y0*pow(1-eta*2.0, k+1)",
+                  "0.2*(0.6*pow(x0*pow(1-eta*0.6, k+1),2)+2.0*pow(y0*pow(1-eta*2.0, k+1),2))"
+                ]
+              ],
+              "color": "#ff6666",
+              "width": 4,
+              "label": "local descent step"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "eta",
+              "label": "$\\eta$ (learning rate)",
+              "min": 0.02,
+              "max": 0.45,
+              "step": 0.01,
+              "default": 0.2
+            },
+            {
+              "id": "x0",
+              "label": "$x_0$",
+              "min": -3.5,
+              "max": 3.5,
+              "step": 0.1,
+              "default": -3
+            },
+            {
+              "id": "y0",
+              "label": "$y_0$",
+              "min": -3.5,
+              "max": 3.5,
+              "step": 0.1,
+              "default": 2.5
+            },
+            {
+              "id": "n",
+              "label": "$n$ (path length)",
+              "min": 1,
+              "max": 40,
+              "step": 1,
+              "default": 24
+            },
+            {
+              "id": "k",
+              "label": "$k$ (current iterate)",
+              "min": 0,
+              "max": 40,
+              "step": 1,
+              "default": 8
+            }
+          ],
+          "info": [
+            {
+              "id": "iterate",
+              "content": "$$ \\mathbf{x}_k = \\begin{pmatrix}{{x0 * pow(1 - eta*0.6, k)}}\\\\ {{y0 * pow(1 - eta*2.0, k)}} \\end{pmatrix} $$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "One Gradient Descent Iteration: Step-by-Step Breakdown",
+      "description": "Break one update into pieces: current point, gradient, scaled step, and next point using $\\mathbf{x}_{k+1}=\\mathbf{x}_k-\\eta\\nabla f(\\mathbf{x}_k)$.",
+      "prompt": "You are teaching one-step gradient descent mechanics. Prioritize a numbered breakdown: (1) current point, (2) gradient direction and magnitude, (3) scaled step eta times gradient, (4) updated point. Keep responses concise (2-4 sentences), and always mention whether eta is stable or too large for this quadratic. If the user asks for intuition, relate steep vs flat axes to curvature.",
+      "markdown": "# One Iteration, Fully Decomposed\n\nFor this scene, use\n\n$$f(x,y)=\\frac{1}{2}\\left(0.6x^2+2y^2\\right)$$\n\nso\n\n$$\\nabla f(x,y)=\\begin{bmatrix}0.6x\\\\2y\\end{bmatrix}.$$\n\nA single gradient descent step is\n\n$$\\mathbf{x}_{k+1}=\\mathbf{x}_k-\\eta\\,\\nabla f(\\mathbf{x}_k).$$\n\nIf $\\mathbf{x}_k=(x_k,y_k)$, then component-wise:\n\n$$\\begin{aligned}\nx_{k+1}&=x_k-\\eta(0.6x_k),\\\\\ny_{k+1}&=y_k-\\eta(2y_k).\n\\end{aligned}$$\n\n## Why This Scene\n\nThis is a mechanics view of one update:\n\n1. Find slope at current point ($\\nabla f$)\n2. Scale by learning rate ($\\eta\\nabla f$)\n3. Move opposite slope\n4. Land at $\\mathbf{x}_{k+1}$\n\nUse the sliders to watch how each component changes. The $y$-component usually moves faster because curvature is higher along $y$.",
+      "range": [
+        [
+          -4,
+          4
+        ],
+        [
+          -4,
+          4
+        ],
+        [
+          0,
+          12
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          3.5,
+          9,
+          9
+        ],
+        "target": [
+          0,
+          0,
+          2.5
+        ]
+      },
+      "cameraUp": [
+        0,
+        0,
+        1
+      ],
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            6.5,
+            5.5,
+            9
+          ],
+          "target": [
+            0,
+            0,
+            2.5
+          ],
+          "description": "Isometric overview — see the terrain surface in 3D perspective"
+        },
+        {
+          "name": "Gradient View",
+          "position": [
+            -1.5,
+            9,
+            8
+          ],
+          "target": [
+            -1,
+            0,
+            2
+          ],
+          "description": "View aligned with the gradient step — clearly see the descent direction"
+        },
+        {
+          "name": "Front (XZ)",
+          "position": [
+            0,
+            -11,
+            5
+          ],
+          "target": [
+            0,
+            0,
+            5
+          ],
+          "description": "Front view along Y — see how the loss changes along X"
+        },
+        {
+          "name": "Side (YZ)",
+          "position": [
+            11,
+            0,
+            5
+          ],
+          "target": [
+            0,
+            0,
+            5
+          ],
+          "description": "Side view along X — see how the loss changes along Y"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            0,
+            15
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down — see the loss landscape as a 2D contour map"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -4,
+            4
+          ],
+          "color": [
+            0.22,
+            0.24,
+            0.36
+          ],
+          "opacity": 0.2,
+          "divisions": 8
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -4,
+            4
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -4,
+            4
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            0,
+            12
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "id": "objective-surface-step",
+          "type": "parametric_surface",
+          "x": "u",
+          "y": "v",
+          "z": "0.5*(0.6*u*u + 2.0*v*v)",
+          "uRange": [
+            -4,
+            4
+          ],
+          "vRange": [
+            -4,
+            4
+          ],
+          "uSamples": 64,
+          "vSamples": 64,
+          "color": "#314f86",
+          "opacity": 0.4,
+          "shader": {
+            "shininess": 85,
+            "emissive": "#112344",
+            "specular": "#99b5eb"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "title": "1) Current iterate $\\mathbf{x}_k$",
+          "description": "Start at $\\mathbf{x}_k=(-2.8,\\;2.2)$. The gold vector rises to the surface at height $f(\\mathbf{x}_k)$.",
+          "add": [
+            {
+              "id": "xk-static",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                -2.8,
+                2.2,
+                7.192
+              ],
+              "color": "#ffcc00",
+              "label": "$\\mathbf{x}_k$"
+            }
+          ]
+        },
+        {
+          "title": "2) Compute gradient $\\nabla f(\\mathbf{x}_k)$",
+          "description": "$\\nabla f(x_k,y_k)=(0.6x_k,\\,2y_k)=(-1.68,\\,4.4)$. Red and blue segments show each gradient component in the tangent plane direction.",
+          "add": [
+            {
+              "id": "grad-x-comp",
+              "type": "line",
+              "points": [
+                [
+                  -2.8,
+                  2.2,
+                  7.192
+                ],
+                [
+                  -4.48,
+                  2.2,
+                  7.192
+                ]
+              ],
+              "color": "#ff6666",
+              "width": 3,
+              "label": "$g_x=0.6x_k$"
+            },
+            {
+              "id": "grad-y-comp",
+              "type": "line",
+              "points": [
+                [
+                  -2.8,
+                  2.2,
+                  7.192
+                ],
+                [
+                  -2.8,
+                  6.6,
+                  7.192
+                ]
+              ],
+              "color": "#66aaff",
+              "width": 3,
+              "label": "$g_y=2y_k$"
+            }
+          ]
+        },
+        {
+          "title": "3) Scale by learning rate and step downhill",
+          "description": "With $\\eta=0.2$, move by $-\\eta\\nabla f(\\mathbf{x}_k)$ to get $\\mathbf{x}_{k+1}=(-2.464,\\;1.32)$.",
+          "add": [
+            {
+              "id": "update-step-static",
+              "type": "line",
+              "points": [
+                [
+                  -2.8,
+                  2.2,
+                  7.192
+                ],
+                [
+                  -2.464,
+                  1.32,
+                  3.5637888
+                ]
+              ],
+              "color": "#ff4444",
+              "width": 5,
+              "label": "$-\\eta\\nabla f$"
+            },
+            {
+              "id": "xk1-static",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                -2.464,
+                1.32,
+                3.5637888
+              ],
+              "color": "#7bff7b",
+              "label": "$\\mathbf{x}_{k+1}$"
+            }
+          ]
+        },
+        {
+          "title": "4) Interactive one-step simulator",
+          "description": "Adjust $x_k,y_k,\\eta$. Gold is current point, red is the update segment, green is next point. This is exactly one GD iteration.",
+          "remove": [
+            {
+              "id": "xk-static"
+            },
+            {
+              "id": "grad-x-comp"
+            },
+            {
+              "id": "grad-y-comp"
+            },
+            {
+              "id": "update-step-static"
+            },
+            {
+              "id": "xk1-static"
+            }
+          ],
+          "add": [
+            {
+              "id": "xk-live",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "xk",
+                "yk",
+                "0.5*(0.6*xk*xk + 2.0*yk*yk)"
+              ],
+              "color": "#ffcc00",
+              "label": "$\\mathbf{x}_k$"
+            },
+            {
+              "id": "update-live",
+              "type": "animated_line",
+              "points": [
+                [
+                  "xk",
+                  "yk",
+                  "0.5*(0.6*xk*xk + 2.0*yk*yk)"
+                ],
+                [
+                  "xk - eta*(0.6*xk)",
+                  "yk - eta*(2.0*yk)",
+                  "0.5*(0.6*pow(xk - eta*(0.6*xk),2) + 2.0*pow(yk - eta*(2.0*yk),2))"
+                ]
+              ],
+              "color": "#ff5555",
+              "width": 5,
+              "label": "$-\\eta\\nabla f(\\mathbf{x}_k)$"
+            },
+            {
+              "id": "xk1-live",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "xk - eta*(0.6*xk)",
+                "yk - eta*(2.0*yk)",
+                "0.5*(0.6*pow(xk - eta*(0.6*xk),2) + 2.0*pow(yk - eta*(2.0*yk),2))"
+              ],
+              "color": "#7bff7b",
+              "label": "$\\mathbf{x}_{k+1}$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "xk",
+              "label": "$x_k$",
+              "min": -3.5,
+              "max": 3.5,
+              "step": 0.1,
+              "default": -2.8
+            },
+            {
+              "id": "yk",
+              "label": "$y_k$",
+              "min": -3.5,
+              "max": 3.5,
+              "step": 0.1,
+              "default": 2.2
+            },
+            {
+              "id": "eta",
+              "label": "$\\eta$",
+              "min": 0.02,
+              "max": 0.95,
+              "step": 0.01,
+              "default": 0.2
+            }
+          ],
+          "info": [
+            {
+              "id": "current-point",
+              "position": "bottom-left",
+              "content": "$$ \\mathbf{x}_k = \\begin{pmatrix}{{xk}}\\\\ {{yk}} \\end{pmatrix} $$"
+            },
+            {
+              "id": "next-point",
+              "position": "bottom-right",
+              "content": "$$ \\mathbf{x}_{k+1} = \\begin{pmatrix}{{xk - eta*0.6*xk}}\\\\ {{yk - eta*2.0*yk}} \\end{pmatrix} $$"
+            },
+            {
+              "id": "gradient",
+              "content": "$$ \\nabla f(\\mathbf{x}_k) = \\begin{pmatrix}{{0.6*xk}}\\\\ {{2.0*yk}} \\end{pmatrix} $$"
+            },
+            {
+              "id": "update",
+              "position": "top-right",
+              "content": "$$ \\mathbf{x}_{k+1} = \\begin{pmatrix}{{xk - eta*0.6*xk}}\\\\ {{yk - eta*2.0*yk}} \\end{pmatrix} $$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Non-Convex Objective: Himmelblau Landscape",
+      "description": "Himmelblau's function is a non-convex objective with multiple local minima and saddle regions, illustrating basin dependence in gradient-based optimization.",
+      "prompt": "Teach non-convex optimization with precise terms: local minima, global minima, saddle points, and basin of attraction. Emphasize that initialization changes which minimum gradient descent converges to. Keep explanations concise and geometric.",
+      "markdown": "# Non-Convex Objective: Himmelblau's Function\n\nA standard non-convex benchmark is **Himmelblau's function**:\n\n$$f(x,y)=(x^2+y-11)^2+(x+y^2-7)^2$$\n\nIt is non-convex and has multiple isolated minima.\n\n## Gradient\n\n$$\\nabla f(x,y)=\\begin{bmatrix}\n4x(x^2+y-11)+2(x+y^2-7) \\\\\n2(x^2+y-11)+4y(x+y^2-7)\n\\end{bmatrix}$$\n\nA gradient-descent step is still\n\n$$\\mathbf{x}_{k+1}=\\mathbf{x}_k-\\eta\\,\\nabla f(\\mathbf{x}_k),$$\n\nbut convergence now depends strongly on initialization.\n\n## Key Non-Convex Ideas\n\n- **Multiple local minima**: several attraction basins\n- **Saddle regions**: flat/unstable geometry that can slow progress\n- **Initialization sensitivity**: different starts can converge to different minima\n\nIn the visualization, surface height is scaled as $z=f(x,y)/20$ for readability.",
+      "range": [
+        [
+          -6,
+          6
+        ],
+        [
+          -6,
+          6
+        ],
+        [
+          0,
+          16
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          4,
+          10,
+          7
+        ],
+        "target": [
+          0,
+          0,
+          2
+        ]
+      },
+      "cameraUp": [
+        0,
+        0,
+        1
+      ],
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            8.5,
+            6.6,
+            8.8
+          ],
+          "target": [
+            0,
+            0,
+            2
+          ],
+          "description": "Isometric overview — see the terrain surface in 3D perspective"
+        },
+        {
+          "name": "Basin Overview",
+          "position": [
+            -2,
+            11,
+            7
+          ],
+          "target": [
+            0,
+            0,
+            2
+          ],
+          "description": "Wide view showing all 4 Himmelblau basin minima"
+        },
+        {
+          "name": "Front (XZ)",
+          "position": [
+            0,
+            -13,
+            5
+          ],
+          "target": [
+            0,
+            0,
+            5
+          ],
+          "description": "Front view along Y — see how the loss changes along X"
+        },
+        {
+          "name": "Side (YZ)",
+          "position": [
+            13,
+            0,
+            5
+          ],
+          "target": [
+            0,
+            0,
+            5
+          ],
+          "description": "Side view along X — see how the loss changes along Y"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            0,
+            20
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down — see the loss landscape as a 2D contour map"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -6,
+            6
+          ],
+          "color": [
+            0.22,
+            0.24,
+            0.36
+          ],
+          "opacity": 0.2,
+          "divisions": 12
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -6,
+            6
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -6,
+            6
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            0,
+            16
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "Non-convex terrain surface",
+          "description": "Himmelblau's function creates multiple valleys separated by ridges and saddle-like regions.",
+          "add": [
+            {
+              "id": "himmel-surface",
+              "type": "parametric_surface",
+              "x": "u",
+              "y": "v",
+              "z": "(pow(u*u + v - 11,2) + pow(u + v*v - 7,2))/20",
+              "uRange": [
+                -6,
+                6
+              ],
+              "vRange": [
+                -6,
+                6
+              ],
+              "uSamples": 80,
+              "vSamples": 80,
+              "color": "#3a4e84",
+              "opacity": 0.46,
+              "shader": {
+                "shininess": 85,
+                "emissive": "#12213f",
+                "specular": "#9ab3ea"
+              }
+            }
+          ]
+        },
+        {
+          "title": "Multiple minima",
+          "description": "Four known local minima (also global for this function) are marked. Different starts can descend into different basins.",
+          "add": [
+            {
+              "id": "m1",
+              "type": "point",
+              "position": [
+                3,
+                2,
+                0
+              ],
+              "color": "#7bff7b",
+              "size": 9,
+              "label": "$(3,2)$"
+            },
+            {
+              "id": "m2",
+              "type": "point",
+              "position": [
+                -2.805,
+                3.131,
+                0
+              ],
+              "color": "#7bff7b",
+              "size": 9,
+              "label": "$(-2.81,3.13)$"
+            },
+            {
+              "id": "m3",
+              "type": "point",
+              "position": [
+                -3.779,
+                -3.283,
+                0
+              ],
+              "color": "#7bff7b",
+              "size": 9,
+              "label": "$(-3.78,-3.28)$"
+            },
+            {
+              "id": "m4",
+              "type": "point",
+              "position": [
+                3.584,
+                -1.848,
+                0
+              ],
+              "color": "#7bff7b",
+              "size": 9,
+              "label": "$(3.58,-1.85)$"
+            }
+          ]
+        },
+        {
+          "title": "Interactive local descent step",
+          "description": "Move $(x_p,y_p)$ and learning rate $\\eta$. Gold = current point, red = one gradient step. Watch how direction and destination vary across basins.",
+          "add": [
+            {
+              "id": "probe-vec",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "xp",
+                "yp",
+                "(pow(xp*xp + yp - 11,2) + pow(xp + yp*yp - 7,2))/20"
+              ],
+              "color": "#ffcc00",
+              "label": "$\\mathbf{x}_p$"
+            },
+            {
+              "id": "probe-step",
+              "type": "animated_line",
+              "points": [
+                [
+                  "xp",
+                  "yp",
+                  "(pow(xp*xp + yp - 11,2) + pow(xp + yp*yp - 7,2))/20"
+                ],
+                [
+                  "xp - eta_ncv*(4*xp*(xp*xp + yp - 11) + 2*(xp + yp*yp - 7))",
+                  "yp - eta_ncv*(2*(xp*xp + yp - 11) + 4*yp*(xp + yp*yp - 7))",
+                  "(pow(pow(xp - eta_ncv*(4*xp*(xp*xp + yp - 11) + 2*(xp + yp*yp - 7)),2) + (yp - eta_ncv*(2*(xp*xp + yp - 11) + 4*yp*(xp + yp*yp - 7))) - 11,2) + pow((xp - eta_ncv*(4*xp*(xp*xp + yp - 11) + 2*(xp + yp*yp - 7))) + pow(yp - eta_ncv*(2*(xp*xp + yp - 11) + 4*yp*(xp + yp*yp - 7)),2) - 7,2))/20"
+                ]
+              ],
+              "color": "#ff5555",
+              "width": 5,
+              "label": "$\\mathbf{x}_p-\\eta\\nabla f(\\mathbf{x}_p)$"
+            },
+            {
+              "id": "probe-next",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "xp - eta_ncv*(4*xp*(xp*xp + yp - 11) + 2*(xp + yp*yp - 7))",
+                "yp - eta_ncv*(2*(xp*xp + yp - 11) + 4*yp*(xp + yp*yp - 7))",
+                "(pow(pow(xp - eta_ncv*(4*xp*(xp*xp + yp - 11) + 2*(xp + yp*yp - 7)),2) + (yp - eta_ncv*(2*(xp*xp + yp - 11) + 4*yp*(xp + yp*yp - 7))) - 11,2) + pow((xp - eta_ncv*(4*xp*(xp*xp + yp - 11) + 2*(xp + yp*yp - 7))) + pow(yp - eta_ncv*(2*(xp*xp + yp - 11) + 4*yp*(xp + yp*yp - 7)),2) - 7,2))/20"
+              ],
+              "color": "#7bff7b",
+              "label": "next point"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "xp",
+              "label": "$x_p$",
+              "min": -5.5,
+              "max": 5.5,
+              "step": 0.1,
+              "default": -4
+            },
+            {
+              "id": "yp",
+              "label": "$y_p$",
+              "min": -5.5,
+              "max": 5.5,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "eta_ncv",
+              "label": "$\\eta$",
+              "min": 0.0005,
+              "max": 0.02,
+              "step": 0.0005,
+              "default": 0.004
+            }
+          ],
+          "info": [
+            {
+              "id": "gradient",
+              "content": "$$ \\nabla f(\\mathbf{x}_p) = \\begin{pmatrix}{{4*xp*(xp^2 + yp - 11) + 2*(xp + yp^2 - 7)}}\\\\ {{2*(xp^2 + yp - 11) + 4*yp*(xp + yp^2 - 7)}} \\end{pmatrix} $$"
+            }
+          ]
+        },
+        {
+          "title": "Animated descent probe",
+          "description": "Animate full gradient-descent iterations over Himmelblau from the current start point. The cyan path shows the entire descent trajectory toward a basin minimum.\n\n**Try it:** Move $x_p$, $y_p$ to start near different basins. Then **increase $\\eta$** — watch what happens when the learning rate is too large: the path overshoots the minimum and climbs back up. This divergence is why choosing the right learning rate matters.",
+          "remove": [
+            {
+              "id": "probe-step"
+            },
+            {
+              "id": "probe-next"
+            }
+          ],
+          "add": [
+            {
+              "id": "probe-path-ncv",
+              "type": "parametric_curve",
+              "x": "(() => { let x = xp, y = yp; const k = max(0, min(n_iter_ncv, floor(t))); const frac = t - floor(t); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })()",
+              "y": "(() => { let x = xp, y = yp; const k = max(0, min(n_iter_ncv, floor(t))); const frac = t - floor(t); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })()",
+              "z": "(pow(pow((() => { let x = xp, y = yp; const k = max(0, min(n_iter_ncv, floor(t))); const frac = t - floor(t); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })(),2) + ((() => { let x = xp, y = yp; const k = max(0, min(n_iter_ncv, floor(t))); const frac = t - floor(t); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })()) - 11,2) + pow(((() => { let x = xp, y = yp; const k = max(0, min(n_iter_ncv, floor(t))); const frac = t - floor(t); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })()) + pow((() => { let x = xp, y = yp; const k = max(0, min(n_iter_ncv, floor(t))); const frac = t - floor(t); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })(),2) - 7,2))/20",
+              "range": [
+                0,
+                80
+              ],
+              "samples": 320,
+              "color": "#7cf6ff",
+              "width": 5,
+              "label": "descent trajectory"
+            },
+            {
+              "id": "probe-anim-runner",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "(() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })()",
+                "(() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })()",
+                "(pow(pow((() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })(),2) + ((() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })()) - 11,2) + pow(((() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })()) + pow((() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })(),2) - 7,2))/20"
+              ],
+              "color": "#7cf6ff",
+              "label": "animated descent",
+              "trail": {
+                "color": "#7cf6ff",
+                "width": 1.8,
+                "length": 160
+              }
+            }
+          ],
+          "sliders": [
+            {
+              "id": "xp",
+              "label": "$x_p$",
+              "min": -5.5,
+              "max": 5.5,
+              "step": 0.1,
+              "default": -4
+            },
+            {
+              "id": "yp",
+              "label": "$y_p$",
+              "min": -5.5,
+              "max": 5.5,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "eta_ncv",
+              "label": "$\\eta$",
+              "min": 0.0005,
+              "max": 0.02,
+              "step": 0.0005,
+              "default": 0.004
+            },
+            {
+              "id": "n_iter_ncv",
+              "label": "iterations",
+              "min": 5,
+              "max": 80,
+              "step": 1,
+              "default": 45
+            },
+            {
+              "id": "speed_ncv",
+              "label": "animation speed",
+              "min": 0.2,
+              "max": 6,
+              "step": 0.1,
+              "default": 3
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

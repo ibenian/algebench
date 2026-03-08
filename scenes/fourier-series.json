@@ -1,0 +1,928 @@
+{
+  "title": "Fourier Series",
+  "scenes": [
+    {
+      "title": "Sine and Cosine: Building Blocks",
+      "description": "The sine and cosine functions are the fundamental building blocks of all periodic signals. They arise naturally from a point rotating on the unit circle.",
+      "markdown": "# Sine and Cosine: The Building Blocks\n\nThe unit circle parametrized by angle $t$:\n\n$$x(t) = \\cos t, \\quad y(t) = \\sin t, \\quad t \\in [0, 2\\pi]$$\n\nProjects onto two waves:\n- **Horizontal projection** gives the **cosine** wave\n- **Vertical projection** gives the **sine** wave\n\n## Key Properties\n\n$$\\sin(t + 2\\pi) = \\sin(t), \\quad \\cos(t + 2\\pi) = \\cos(t)$$\n\nBoth functions are **periodic** with period $T = 2\\pi$.\n\n## Orthogonality\n\nSine and cosine are **orthogonal** on $[0, 2\\pi]$:\n\n$$\\int_0^{2\\pi} \\sin(nt)\\cos(mt)\\,dt = 0 \\quad \\text{for all } n, m$$\n\n$$\\int_0^{2\\pi} \\sin(nt)\\sin(mt)\\,dt = \\begin{cases}\\pi & n = m \\\\ 0 & n \\neq m\\end{cases}$$\n\nThis orthogonality is what makes Fourier series work \u2014 the basis functions do not interfere with each other.\n\n## Frequency and Amplitude\n\nGeneralizing: $A\\sin(\\omega t + \\phi)$ has:\n- **Amplitude** $A$ \u2014 height of the wave\n- **Frequency** $\\omega$ \u2014 oscillations per $2\\pi$\n- **Phase** $\\phi$ \u2014 horizontal shift\n\n> **The Circle View**: The rotating point on the unit circle PRODUCES the sine wave as its $y$-coordinate. Watching the circle is the most intuitive way to understand all of trigonometry.",
+      "range": [
+        [
+          -1.5,
+          7
+        ],
+        [
+          -1.5,
+          1.5
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          3,
+          0,
+          6
+        ],
+        "target": [
+          3,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            8,
+            3,
+            5
+          ],
+          "target": [
+            3,
+            0,
+            0
+          ],
+          "description": "Angled isometric view \u2014 see the waveform in 3D perspective"
+        },
+        {
+          "name": "Top",
+          "position": [
+            3,
+            6,
+            0
+          ],
+          "target": [
+            3,
+            0,
+            0
+          ],
+          "description": "Top view looking down \u2014 edge-on view of the waveform"
+        },
+        {
+          "name": "Face On",
+          "position": [
+            3,
+            0,
+            7
+          ],
+          "target": [
+            3,
+            0,
+            0
+          ],
+          "description": "Face-on view \u2014 primary waveform viewing angle"
+        },
+        {
+          "name": "Side",
+          "position": [
+            8,
+            0,
+            0
+          ],
+          "target": [
+            3,
+            0,
+            0
+          ],
+          "description": "Side view along X \u2014 see the amplitude profile"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -2,
+            8
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.12,
+          "divisions": 16
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -1.5,
+            7
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -1.5,
+            1.5
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "The unit circle",
+          "description": "A point rotating on the unit circle: $x = \\cos t$, $y = \\sin t$. One full revolution takes $t = 2\\pi$.",
+          "add": [
+            {
+              "id": "unit-circle",
+              "type": "parametric_curve",
+              "x": "cos(t) - 1",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 128,
+              "color": "#4488ff",
+              "width": 3,
+              "label": "unit circle"
+            },
+            {
+              "id": "circle-pt",
+              "type": "point",
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "color": "#ffcc00",
+              "size": 10,
+              "label": "$t=0$"
+            },
+            {
+              "id": "circle-center",
+              "type": "point",
+              "position": [
+                -1,
+                0,
+                0
+              ],
+              "color": "#666699",
+              "size": 5,
+              "label": "center"
+            }
+          ]
+        },
+        {
+          "title": "The sine wave",
+          "description": "The $y$-coordinate of the rotating point traces the **sine wave** $y = \\sin(t)$ as $t$ increases from 0 to $2\\pi$.",
+          "add": [
+            {
+              "id": "sine-wave",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 256,
+              "color": "#ff6644",
+              "width": 4,
+              "label": "$y = \\sin(t)$"
+            }
+          ]
+        },
+        {
+          "title": "The cosine wave",
+          "description": "The $x$-coordinate traces the **cosine wave** $y = \\cos(t)$. Cosine is sine shifted left by $\\pi/2$: $\\cos(t) = \\sin(t + \\pi/2)$.",
+          "add": [
+            {
+              "id": "cosine-wave",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "cos(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 256,
+              "color": "#44ffaa",
+              "width": 4,
+              "label": "$y = \\cos(t)$"
+            }
+          ]
+        },
+        {
+          "title": "Higher frequencies",
+          "description": "The frequency-2 sine wave $\\sin(2t)$ completes 2 full oscillations in one period. These higher harmonics are the building blocks of the Fourier series.",
+          "add": [
+            {
+              "id": "sine2-wave",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "0.7*sin(2*t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 256,
+              "color": "#aa44ff",
+              "width": 3,
+              "label": "$y = 0.7\\sin(2t)$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Square Wave Approximation",
+      "description": "A square wave can be built from sine waves alone: $f(x) = \\frac{4}{\\pi}\\left(\\sin x + \\frac{\\sin 3x}{3} + \\frac{\\sin 5x}{5} + \\cdots\\right)$. More terms means a sharper approximation.",
+      "markdown": "# Fourier Series: Square Wave\n\nThe **square wave** with period $2\\pi$ and amplitude 1 can be represented as an infinite sum of sine waves:\n\n$$f(x) = \\frac{4}{\\pi}\\sum_{k=0}^{\\infty} \\frac{\\sin\\bigl((2k+1)x\\bigr)}{2k+1} = \\frac{4}{\\pi}\\left(\\sin x + \\frac{\\sin 3x}{3} + \\frac{\\sin 5x}{5} + \\cdots\\right)$$\n\n## Why Only Odd Harmonics?\n\nThe square wave is an **odd function** (symmetric about the origin) and has **half-wave symmetry** (the second half is minus the first half). These symmetries force:\n- Cosine coefficients: $a_n = 0$ (odd function)\n- Even sine coefficients: $b_{2k} = 0$ (half-wave symmetry)\n\n## Fourier Coefficients\n\nFor a general periodic function $f$ with period $2\\pi$:\n\n$$a_n = \\frac{1}{\\pi}\\int_{-\\pi}^{\\pi} f(x)\\cos(nx)\\,dx, \\quad b_n = \\frac{1}{\\pi}\\int_{-\\pi}^{\\pi} f(x)\\sin(nx)\\,dx$$\n\nFor the square wave: $b_n = \\frac{4}{n\\pi}$ (odd $n$), $0$ (even $n$).\n\n## Gibbs Phenomenon\n\nAt the jump discontinuities ($x = 0, \\pm\\pi$), the partial sums always overshoot by about **8.9%** no matter how many terms are used. This is the **Gibbs phenomenon**.\n\n> **Watch**: Adding each new odd harmonic adds a new \"wiggle\" while sharpening the approximation at smooth regions.",
+      "range": [
+        [
+          -7,
+          7
+        ],
+        [
+          -1.6,
+          1.6
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Wider face-on view \u2014 see all frequency components of the square wave"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            4,
+            2,
+            6
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "3D perspective of the frequency decomposition"
+        },
+        {
+          "name": "Top",
+          "position": [
+            0,
+            8,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Top view looking straight down"
+        },
+        {
+          "name": "Side",
+          "position": [
+            8,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Side view of the waveform"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -7,
+            7
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.12,
+          "divisions": 14
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -7,
+            7
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -1.6,
+            1.6
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "Target: the square wave",
+          "description": "The ideal square wave: $+1$ for $x \\in (0, \\pi)$ and $-1$ for $x \\in (-\\pi, 0)$. We will build this from pure sine waves.",
+          "add": [
+            {
+              "id": "square-wave",
+              "type": "line",
+              "points": [
+                [-6.2832,  1, 0],
+                [-3.1416,  1, 0],
+                [-3.1416, -1, 0],
+                [ 0,      -1, 0],
+                [ 0,       1, 0],
+                [ 3.1416,  1, 0],
+                [ 3.1416, -1, 0],
+                [ 6.2832, -1, 0]
+              ],
+              "color": "#666688",
+              "width": 3
+            },
+            {
+              "id": "sq-label",
+              "type": "text",
+              "position": [
+                4,
+                1.2,
+                0
+              ],
+              "text": "target square wave",
+              "color": "#666688",
+              "size": 11
+            }
+          ]
+        },
+        {
+          "title": "$N=1$: First term $\\frac{4}{\\pi}\\sin(x)$",
+          "description": "The first term alone is just a sine wave scaled to $4/\\pi \\approx 1.27$. It captures the right sign but is very smooth.",
+          "add": [
+            {
+              "id": "fourier-1",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "(4/pi)*sin(t)",
+              "z": "0",
+              "range": [
+                -6.2832,
+                6.2832
+              ],
+              "samples": 256,
+              "color": "#4488ff",
+              "width": 4,
+              "label": "$N=1$"
+            }
+          ]
+        },
+        {
+          "title": "$N=3$: Three terms through $\\sin(5x)/5$",
+          "description": "$\\frac{4}{\\pi}(\\sin x + \\frac{\\sin 3x}{3} + \\frac{\\sin 5x}{5})$. Already much closer to the square wave with flat top and bottom.",
+          "remove": [
+            {
+              "id": "fourier-1"
+            }
+          ],
+          "add": [
+            {
+              "id": "fourier-3",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "(4/pi)*(sin(t) + sin(3*t)/3 + sin(5*t)/5)",
+              "z": "0",
+              "range": [
+                -6.2832,
+                6.2832
+              ],
+              "samples": 512,
+              "color": "#ff8844",
+              "width": 4,
+              "label": "$N=3$"
+            }
+          ]
+        },
+        {
+          "title": "$N=7$: Seven terms, sharper corners",
+          "description": "Seven odd harmonics. The flat regions are well-approximated, but small Gibbs overshoots appear near the jumps.",
+          "remove": [
+            {
+              "id": "fourier-3"
+            }
+          ],
+          "add": [
+            {
+              "id": "fourier-7",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "(4/pi)*(sin(t)+sin(3*t)/3+sin(5*t)/5+sin(7*t)/7+sin(9*t)/9+sin(11*t)/11+sin(13*t)/13)",
+              "z": "0",
+              "range": [
+                -6.2832,
+                6.2832
+              ],
+              "samples": 512,
+              "color": "#44ffaa",
+              "width": 4,
+              "label": "$N=7$"
+            }
+          ]
+        },
+        {
+          "title": "Interactive: choose number of terms $N$",
+          "description": "Drag the $N$ slider to add more odd harmonics. Watch the Gibbs phenomenon at $x = 0, \\pm\\pi$ \u2014 it never fully disappears!",
+          "remove": [
+            {
+              "id": "fourier-7"
+            }
+          ],
+          "add": [
+            {
+              "id": "fourier-N",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "(4/pi)*(sin(t)+(N>=2?sin(3*t)/3:0)+(N>=3?sin(5*t)/5:0)+(N>=4?sin(7*t)/7:0)+(N>=5?sin(9*t)/9:0)+(N>=6?sin(11*t)/11:0)+(N>=7?sin(13*t)/13:0)+(N>=8?sin(15*t)/15:0))",
+              "z": "0",
+              "range": [
+                -6.2832,
+                6.2832
+              ],
+              "samples": 512,
+              "color": "#ffcc00",
+              "width": 4,
+              "label": "$N$-term Fourier sum"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "N",
+              "label": "$N$ (terms)",
+              "min": 1,
+              "max": 8,
+              "step": 1,
+              "default": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Phasors in 3D: The Helix Visualization",
+      "description": "Each Fourier term is a rotating phasor. In 3D — with time as the z-axis — every frequency component traces a helix. The y-z shadow of the combined helix IS the square wave.",
+      "markdown": "# Fourier in 3D: Rotating Phasors\n\nEvery Fourier term is a **rotating phasor** — a vector spinning in the complex plane at a fixed frequency. In 3D, we let time advance along the **z-axis**, so each phasor sweeps out a **helix**:\n\n$$\\text{Term } n:\\quad x(t) = A_n\\cos(nt),\\quad y(t) = A_n\\sin(nt),\\quad z = t$$\n\n## Two Views, Two Insights\n\n| Camera | What you see |\n|--------|--------------|\n| **End On** (along −z) | Phasors as circles — radius = amplitude, speed = frequency |\n| **Wave View** (along −x) | The **y-z shadow** of the helix — the actual waveform |\n\n## Square Wave Phasors\n\nOnly odd harmonics appear, each with amplitude $4/(n\\pi)$:\n\n$$x(t) = \\frac{4}{\\pi}\\!\\left(\\cos t + \\frac{\\cos 3t}{3} + \\frac{\\cos 5t}{5} + \\cdots\\right)$$\n$$y(t) = \\frac{4}{\\pi}\\!\\left(\\sin t + \\frac{\\sin 3t}{3} + \\frac{\\sin 5t}{5} + \\cdots\\right)$$\n\nThe combined helix grows increasingly complex in 3D — but its **y-z shadow** step by step becomes a square wave.\n\n## The Deep Insight\n\nA Fourier series is not merely algebra — it is a **geometric fact**: any periodic signal is the shadow of rotating helices cast onto a plane.\n\n> **Gibbs phenomenon**: Even with $N=8$ terms the shadow overshoots ~9% at each jump. The overshoot gets thinner but never vanishes no matter how many helices you add.",
+      "range": [[-3, 3], [-2, 2], [0, 7]],
+      "scale": [1, 1, 1],
+      "camera": {"position": [6, 4, 9], "target": [0, 0, 3.14]},
+      "views": [
+        {
+          "name": "End On",
+          "position": [0, 0, 15],
+          "target": [0, 0, 3.14],
+          "description": "Looking along the time axis — phasors appear as overlapping circles, radius = amplitude"
+        },
+        {
+          "name": "Wave View",
+          "position": [13, 0, 3.14],
+          "target": [0, 0, 3.14],
+          "description": "Side view along x — the y-z shadow on the back wall is the actual waveform"
+        },
+        {
+          "name": "Iso",
+          "position": [6, 4, 9],
+          "target": [0, 0, 3.14],
+          "description": "Isometric view — see the full 3D helix structure"
+        },
+        {
+          "name": "Top",
+          "position": [0, 12, 3],
+          "target": [0, 0, 3],
+          "description": "Top view — see the phasor paths from above"
+        }
+      ],
+      "elements": [
+        {"type": "axis", "axis": "x", "range": [-3, 3], "color": "#555577", "width": 1},
+        {"type": "axis", "axis": "y", "range": [-2, 2], "color": "#555577", "width": 1},
+        {"type": "axis", "axis": "z", "range": [0, 7], "color": "#555577", "width": 1, "label": "t"}
+      ],
+      "steps": [
+        {
+          "title": "A phasor traces a helix in 3D",
+          "description": "A phasor of amplitude 1 rotating at frequency 1 sweeps through time. In 3D this traces a **helix**. Switch to **End On** to see a circle; switch to **Wave View** to see that its y-shadow is $\\sin(t)$.",
+          "add": [
+            {
+              "id": "unit-helix",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "t",
+              "range": [0, 6.2832],
+              "samples": 256,
+              "color": "#4488ff",
+              "width": 3,
+              "label": "unit helix"
+            }
+          ]
+        },
+        {
+          "title": "n=1: the fundamental phasor",
+          "description": "The first square-wave term has amplitude $4/\\pi \\approx 1.27$, giving a wider helix. Switch to **Wave View** — the dark shadow on the back wall is $(4/\\pi)\\sin(t)$: a smooth start.",
+          "remove": [{"id": "unit-helix"}],
+          "add": [
+            {
+              "id": "helix-1",
+              "type": "parametric_curve",
+              "x": "(4/pi)*cos(t)",
+              "y": "(4/pi)*sin(t)",
+              "z": "t",
+              "range": [0, 6.2832],
+              "samples": 256,
+              "color": "#4488ff",
+              "width": 4,
+              "label": "n=1"
+            },
+            {
+              "id": "shadow-n1",
+              "type": "parametric_curve",
+              "x": "-2.5",
+              "y": "(4/pi)*sin(t)",
+              "z": "t",
+              "range": [0, 6.2832],
+              "samples": 256,
+              "color": "#224488",
+              "width": 2
+            }
+          ]
+        },
+        {
+          "title": "n=3: the third harmonic phasor",
+          "description": "The third harmonic has amplitude $4/(3\\pi) \\approx 0.42$ and spins **3× faster** — a tighter, narrower helix. From **End On** it appears as a smaller inner circle. Both phasors now rotate simultaneously.",
+          "add": [
+            {
+              "id": "helix-3",
+              "type": "parametric_curve",
+              "x": "(4/(3*pi))*cos(3*t)",
+              "y": "(4/(3*pi))*sin(3*t)",
+              "z": "t",
+              "range": [0, 6.2832],
+              "samples": 256,
+              "color": "#ff8844",
+              "width": 3,
+              "label": "n=3"
+            }
+          ]
+        },
+        {
+          "title": "N=3 combined: the sum phasor",
+          "description": "Adding the two phasors gives a winding 3D path. Switch to **Wave View** — the y-shadow is already recognizable as a rough square wave! A complex 3D path, a simple shadow.",
+          "remove": [
+            {"id": "helix-1"},
+            {"id": "shadow-n1"},
+            {"id": "helix-3"}
+          ],
+          "add": [
+            {
+              "id": "helix-sum-3",
+              "type": "parametric_curve",
+              "x": "(4/pi)*(cos(t)+cos(3*t)/3)",
+              "y": "(4/pi)*(sin(t)+sin(3*t)/3)",
+              "z": "t",
+              "range": [0, 6.2832],
+              "samples": 512,
+              "color": "#ffcc00",
+              "width": 4,
+              "label": "N=3 combined"
+            },
+            {
+              "id": "shadow-sum-3",
+              "type": "parametric_curve",
+              "x": "-2.5",
+              "y": "(4/pi)*(sin(t)+sin(3*t)/3)",
+              "z": "t",
+              "range": [0, 6.2832],
+              "samples": 512,
+              "color": "#887722",
+              "width": 2
+            }
+          ]
+        },
+        {
+          "title": "N=7: the square wave emerges from the shadow",
+          "description": "Seven phasors. The 3D helix grows intricate — but switch to **Wave View** and the shadow is nearly a perfect square wave. Seven rotating helices conspire to cast a square shadow.",
+          "remove": [
+            {"id": "helix-sum-3"},
+            {"id": "shadow-sum-3"}
+          ],
+          "add": [
+            {
+              "id": "helix-sum-7",
+              "type": "parametric_curve",
+              "x": "(4/pi)*(cos(t)+cos(3*t)/3+cos(5*t)/5+cos(7*t)/7+cos(9*t)/9+cos(11*t)/11+cos(13*t)/13)",
+              "y": "(4/pi)*(sin(t)+sin(3*t)/3+sin(5*t)/5+sin(7*t)/7+sin(9*t)/9+sin(11*t)/11+sin(13*t)/13)",
+              "z": "t",
+              "range": [0, 6.2832],
+              "samples": 512,
+              "color": "#44ffaa",
+              "width": 4,
+              "label": "N=7 combined"
+            },
+            {
+              "id": "shadow-sum-7",
+              "type": "parametric_curve",
+              "x": "-2.5",
+              "y": "(4/pi)*(sin(t)+sin(3*t)/3+sin(5*t)/5+sin(7*t)/7+sin(9*t)/9+sin(11*t)/11+sin(13*t)/13)",
+              "z": "t",
+              "range": [0, 6.2832],
+              "samples": 512,
+              "color": "#227755",
+              "width": 2
+            }
+          ]
+        },
+        {
+          "title": "Interactive: watch the helix and its shadow",
+          "description": "Drag $N$ from 1 to 8. Watch the 3D helix path change — and in **Wave View**, the shadow sharpen toward a square wave. Notice the Gibbs overshoot near the jumps never fully disappears.",
+          "remove": [
+            {"id": "helix-sum-7"},
+            {"id": "shadow-sum-7"}
+          ],
+          "add": [
+            {
+              "id": "helix-sum-N",
+              "type": "parametric_curve",
+              "x": "(4/pi)*(cos(t)+(N>=2?cos(3*t)/3:0)+(N>=3?cos(5*t)/5:0)+(N>=4?cos(7*t)/7:0)+(N>=5?cos(9*t)/9:0)+(N>=6?cos(11*t)/11:0)+(N>=7?cos(13*t)/13:0)+(N>=8?cos(15*t)/15:0))",
+              "y": "(4/pi)*(sin(t)+(N>=2?sin(3*t)/3:0)+(N>=3?sin(5*t)/5:0)+(N>=4?sin(7*t)/7:0)+(N>=5?sin(9*t)/9:0)+(N>=6?sin(11*t)/11:0)+(N>=7?sin(13*t)/13:0)+(N>=8?sin(15*t)/15:0))",
+              "z": "t",
+              "range": [0, 6.2832],
+              "samples": 512,
+              "color": "#ffcc00",
+              "width": 4,
+              "label": "$N$-term helix"
+            },
+            {
+              "id": "shadow-sum-N",
+              "type": "parametric_curve",
+              "x": "-2.5",
+              "y": "(4/pi)*(sin(t)+(N>=2?sin(3*t)/3:0)+(N>=3?sin(5*t)/5:0)+(N>=4?sin(7*t)/7:0)+(N>=5?sin(9*t)/9:0)+(N>=6?sin(11*t)/11:0)+(N>=7?sin(13*t)/13:0)+(N>=8?sin(15*t)/15:0))",
+              "z": "t",
+              "range": [0, 6.2832],
+              "samples": 512,
+              "color": "#887722",
+              "width": 2
+            }
+          ],
+          "sliders": [
+            {
+              "id": "N",
+              "label": "$N$ (harmonics)",
+              "min": 1,
+              "max": 8,
+              "step": 1,
+              "default": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Why Square Waves Arise: Bistable Dynamics",
+      "description": "Square waves emerge naturally from any system with two stable states. A periodic force tilts the energy landscape until one well disappears — the system snaps to the other side. Flat regions are stable equilibrium; sharp jumps are fast barrier crossings.",
+      "markdown": "# Why Square Waves Arise: Bistable Dynamics\n\nMany real systems have **two stable equilibria** — two states they naturally settle into. Under periodic forcing such systems **snap** between states, tracing a square wave in time.\n\n## The Double Well\n\nThe simplest model: a particle in a **double-well potential**:\n\n$$V(x) = x^4 - 2x^2$$\n\nStable minima at $x = \\pm 1$, unstable barrier at $x = 0$.\n\n## Periodic Forcing\n\nAn external tilt $-A\\sin(t)\\cdot x$ periodically raises one well:\n\n$$V(x,t) = x^4 - 2x^2 - A\\sin(t)\\cdot x$$\n\n- $\\sin(t) > 0$: right well deepens, left wall shrinks → ball snaps **right**\n- $\\sin(t) < 0$: left well deepens, right wall shrinks → ball snaps **left**\n\n## Why the Jumps Are Sharp\n\nAt the barrier $x=0$, the restoring force $-dV/dx = 4x - 4x^3$ is zero — but once the ball tips past, the cubic term accelerates it rapidly into the other well. The steeper the barrier, the faster the snap, and the **sharper the jump** in the time signal.\n\n## Real-World Examples\n\n| System | State $-1$ | State $+1$ |\n|--------|-----------|----------|\n| Digital logic | LOW (0 V) | HIGH (5 V) |\n| Thermostat | Heater OFF | Heater ON |\n| Neuron | Resting | Firing |\n| Relay | Open | Closed |\n\n> **Key insight**: Square waves don't require elaborate construction — they arise from any bistable system under periodic forcing. Fourier just tells you what frequencies are hidden inside the shape.",
+      "range": [[-2, 2], [-1.2, 1.2], [0, 7]],
+      "scale": [1, 1, 1],
+      "camera": {"position": [5, 3, 8], "target": [0, 0, 3]},
+      "views": [
+        {
+          "name": "Potential",
+          "position": [0, 0, 9],
+          "target": [0, 0, 0],
+          "description": "Face-on view of the double-well potential in the x-y plane"
+        },
+        {
+          "name": "Time View",
+          "position": [0, 9, 3.14],
+          "target": [0, 0, 3.14],
+          "up": [1, 0, 0],
+          "description": "Side view from y: position (vertical) vs time (horizontal) — reveals the square wave"
+        },
+        {
+          "name": "Iso",
+          "position": [5, 3, 8],
+          "target": [0, 0, 3],
+          "description": "Isometric view — see both the potential shape and the 3D trajectory"
+        },
+        {
+          "name": "Top",
+          "position": [0, 10, 3],
+          "target": [0, 0, 3],
+          "description": "Top view looking down at the trajectory path"
+        }
+      ],
+      "elements": [
+        {"type": "axis", "axis": "x", "range": [-2, 2], "color": "#555577", "width": 1, "label": "x"},
+        {"type": "axis", "axis": "y", "range": [-1.2, 1.2], "color": "#555577", "width": 1, "label": "V"},
+        {"type": "axis", "axis": "z", "range": [0, 7], "color": "#555577", "width": 1, "label": "t"}
+      ],
+      "steps": [
+        {
+          "title": "Two stable states: the double well",
+          "description": "The potential $V(x) = x^4 - 2x^2$ has **two minima** at $x = \\pm 1$ and an unstable **barrier** at $x = 0$. A ball placed anywhere will roll into one of the two valleys and stay. Neither state is preferred — both are equally stable. Switch to **Potential** view for a clear 2D picture.",
+          "add": [
+            {
+              "id": "well-0",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "0.7*(t*t*t*t - 2*t*t)",
+              "z": "0",
+              "range": [-1.7, 1.7],
+              "samples": 128,
+              "color": "#4488cc",
+              "width": 3,
+              "label": "V(x)"
+            },
+            {
+              "id": "pt-left",
+              "type": "point",
+              "position": [-1, -0.7, 0],
+              "color": "#ffcc00",
+              "size": 12,
+              "label": "stable $-1$"
+            },
+            {
+              "id": "pt-right",
+              "type": "point",
+              "position": [1, -0.7, 0],
+              "color": "#ffcc00",
+              "size": 12,
+              "label": "stable $+1$"
+            },
+            {
+              "id": "pt-barrier",
+              "type": "point",
+              "position": [0, 0, 0],
+              "color": "#ff4444",
+              "size": 10,
+              "label": "barrier"
+            }
+          ]
+        },
+        {
+          "title": "Trapped in equilibrium: a flat signal",
+          "description": "Without forcing the ball sits at $x = -1$ forever — its position over time is a **flat line**. The z-axis is time; the line extends straight ahead without changing. No wave, just a constant. To get a square wave we need something to periodically push the ball over the barrier.",
+          "add": [
+            {
+              "id": "trapped",
+              "type": "line",
+              "points": [[-1, -0.7, 0], [-1, -0.7, 6.5]],
+              "color": "#ffcc00",
+              "width": 3
+            },
+            {
+              "id": "trapped-pt",
+              "type": "point",
+              "position": [-1, -0.7, 0],
+              "color": "#ffcc00",
+              "size": 14,
+              "label": "ball at rest"
+            }
+          ]
+        },
+        {
+          "title": "Periodic forcing tilts the landscape",
+          "description": "The force $-A\\sin(t)\\cdot x$ periodically tilts the well. Each curve is a snapshot of $V(x)$ at a different time. **Orange** ($t = \\pi/2$): right well deepened, left wall nearly gone → ball snaps right. **Bright blue** ($t = 3\\pi/2$): the reverse. Switch to **Potential** view to compare the shapes.",
+          "remove": [
+            {"id": "trapped"},
+            {"id": "trapped-pt"}
+          ],
+          "add": [
+            {
+              "id": "well-tilt-r",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "0.7*(t*t*t*t - 2*t*t) - 0.7*t",
+              "z": "1.57",
+              "range": [-1.7, 1.7],
+              "samples": 128,
+              "color": "#ff8844",
+              "width": 2,
+              "label": "$t=\\pi/2$"
+            },
+            {
+              "id": "well-neutral-mid",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "0.7*(t*t*t*t - 2*t*t)",
+              "z": "3.14",
+              "range": [-1.7, 1.7],
+              "samples": 128,
+              "color": "#4488cc",
+              "width": 2
+            },
+            {
+              "id": "well-tilt-l",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "0.7*(t*t*t*t - 2*t*t) + 0.7*t",
+              "z": "4.71",
+              "range": [-1.7, 1.7],
+              "samples": 128,
+              "color": "#44aaff",
+              "width": 2,
+              "label": "$t=3\\pi/2$"
+            },
+            {
+              "id": "well-neutral-end",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "0.7*(t*t*t*t - 2*t*t)",
+              "z": "6.28",
+              "range": [-1.7, 1.7],
+              "samples": 128,
+              "color": "#4488cc",
+              "width": 2
+            }
+          ]
+        },
+        {
+          "title": "The ball snaps: a square wave is born",
+          "description": "The ball's full 3D trajectory through time. It hugs the well bottom at $x = \\pm 1$ (travelling along $y \\approx -0.7$) and briefly rises to $y = 0$ as it crosses the barrier. Switch to **Time View** to see this is a square wave: long flat stretches at $\\pm 1$, sharp vertical jumps at the transitions.",
+          "remove": [
+            {"id": "well-0"},
+            {"id": "pt-left"},
+            {"id": "pt-right"},
+            {"id": "pt-barrier"},
+            {"id": "well-tilt-r"},
+            {"id": "well-neutral-mid"},
+            {"id": "well-tilt-l"},
+            {"id": "well-neutral-end"}
+          ],
+          "add": [
+            {
+              "id": "trajectory",
+              "type": "parametric_curve",
+              "x": "tanh(10*sin(t))",
+              "y": "0.7*(pow(tanh(10*sin(t)),4)-2*pow(tanh(10*sin(t)),2))",
+              "z": "t",
+              "range": [0, 6.2832],
+              "samples": 1024,
+              "color": "#ffcc00",
+              "width": 4,
+              "label": "$x(t)$"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

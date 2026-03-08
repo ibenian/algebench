@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlgeBench</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.ico">
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/TrackballControls.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mathbox@2.3.1/build/mathbox.css">
+<script src="https://cdn.jsdelivr.net/npm/mathbox@2.3.1/build/bundle/mathbox.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@13.0.0/lib/browser/math.js"></script>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+    <div id="title-bar">
+        <div id="title-content">
+            <div id="scene-title-row">
+                <div id="scene-title">AlgeBench</div>
+                <span id="scene-source-file" title="">- no file</span>
+            </div>
+        </div>
+        <div id="toolbar">
+            <button class="tb-btn" id="btn-load" title="Load JSON file">Load JSON</button>
+            <div id="scenes-dropdown">
+                <button class="tb-btn" id="btn-scenes">Built-in Scenes &#9662;</button>
+                <div id="scenes-menu"></div>
+            </div>
+            <button class="tb-btn" id="btn-show-json" title="Show current scene JSON">{ }</button>
+            <button class="tb-btn" id="btn-export-video" title="Record current tab video with TTS audio">Export Video</button>
+        </div>
+    </div>
+    <div id="main-content">
+        <div id="scene-dock">
+            <div id="scene-dock-toggle" title="Scene tree (T)">&#9776;</div>
+            <div id="scene-dock-panel">
+                <div id="scene-tree"></div>
+            </div>
+        </div>
+        <div id="viewport">
+            <div id="mathbox-container"></div>
+            <div id="camera-buttons"></div>
+            <div id="viewport-top-left">
+                <div id="settings-toggle" title="Display settings">&#9881;</div>
+                <div id="projection-toggle">
+                    <button class="proj-btn active" data-proj="perspective" title="Perspective projection">Perspective</button>
+                    <button class="proj-btn" data-proj="orthographic" title="Orthographic projection">Orthographic</button>
+                </div>
+            </div>
+            <div id="labels-container"></div>
+            <div id="legend" class="hidden"></div>
+            <div id="follow-angle-lock-toggle" title="Toggle angle-lock for follow camera">&#10227;</div>
+            <div id="explain-toggle" title="Toggle explanation panel (E)">&#9776;</div>
+            <div id="settings-panel" class="hidden">
+                <div class="sp-header"><span></span><span class="sp-col-label">Size</span><span class="sp-col-label">Opacity</span></div>
+                <div class="sp-row"><span>Labels</span><span class="sp-ctrl"><button class="sp-btn" data-param="labelScale" data-dir="-">&minus;</button><span class="sp-val" id="val-labelScale">1.0</span><button class="sp-btn" data-param="labelScale" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="labelOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-labelOpacity">1.0</span><button class="sp-btn" data-param="labelOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Arrows</span><span class="sp-ctrl"><button class="sp-btn" data-param="arrowScale" data-dir="-">&minus;</button><span class="sp-val" id="val-arrowScale">1.0</span><button class="sp-btn" data-param="arrowScale" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="arrowOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-arrowOpacity">1.0</span><button class="sp-btn" data-param="arrowOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Axes</span><span class="sp-ctrl"><button class="sp-btn" data-param="axisWidth" data-dir="-">&minus;</button><span class="sp-val" id="val-axisWidth">1.0</span><button class="sp-btn" data-param="axisWidth" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="axisOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-axisOpacity">1.0</span><button class="sp-btn" data-param="axisOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Vectors</span><span class="sp-ctrl"><button class="sp-btn" data-param="vectorWidth" data-dir="-">&minus;</button><span class="sp-val" id="val-vectorWidth">1.0</span><button class="sp-btn" data-param="vectorWidth" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="vectorOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-vectorOpacity">1.0</span><button class="sp-btn" data-param="vectorOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Lines</span><span class="sp-ctrl"><button class="sp-btn" data-param="lineWidth" data-dir="-">&minus;</button><span class="sp-val" id="val-lineWidth">1.0</span><button class="sp-btn" data-param="lineWidth" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="lineOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-lineOpacity">1.0</span><button class="sp-btn" data-param="lineOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Planes</span><span class="sp-ctrl"><button class="sp-btn" data-param="planeScale" data-dir="-">&minus;</button><span class="sp-val" id="val-planeScale">1.0</span><button class="sp-btn" data-param="planeScale" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="planeOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-planeOpacity">0.2</span><button class="sp-btn" data-param="planeOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Caption</span><span class="sp-ctrl"><button class="sp-btn" data-param="captionScale" data-dir="-">&minus;</button><span class="sp-val" id="val-captionScale">1.0</span><button class="sp-btn" data-param="captionScale" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="overlayOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-overlayOpacity">0.7</span><button class="sp-btn" data-param="overlayOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-divider"></div>
+                <div class="sp-section-label">Light</div>
+                <div class="sp-light-row"><span>Azimuth</span><input type="range" id="light-az" min="0" max="360" value="35" class="sp-light-slider"><span class="sp-light-val" id="val-light-az">35°</span></div>
+                <div class="sp-light-row"><span>Elevation</span><input type="range" id="light-el" min="10" max="90" value="50" class="sp-light-slider"><span class="sp-light-val" id="val-light-el">50°</span></div>
+                <div class="sp-light-row"><span>Brightness</span><input type="range" id="light-int" min="10" max="250" value="80" class="sp-light-slider"><span class="sp-light-val" id="val-light-int">0.80</span></div>
+                <div class="sp-divider"></div>
+                <div class="sp-section-label">Controls</div>
+                <div class="sp-light-row"><span>Momentum</span><input type="range" id="momentum-slider" min="0" max="100" value="50" class="sp-light-slider"><span class="sp-light-val" id="val-momentum">50%</span></div>
+                <div class="sp-help">
+                    <div>Drag: rotate</div>
+                    <div>Shift+drag: pan</div>
+                    <div>Wheel / pinch: zoom</div>
+                    <div>&#8997;+drag: roll</div>
+                </div>
+            </div>
+            <div id="controls-hint">Drag: rotate &middot; Shift+drag: pan &middot; Zoom: pinch/wheel &middot; &#8997;+drag: roll</div>
+            <div id="drop-overlay">Drop JSON file here</div>
+            <div id="empty-state">
+                <h2>AlgeBench</h2>
+                <p>Drag &amp; drop a scene JSON, or use the toolbar above</p>
+            </div>
+            <div id="step-caption" class="hidden"></div>
+            <div id="scene-description"></div>
+            <div id="info-overlays"></div>
+            <div id="slider-overlay" class="hidden"></div>
+            <div id="scene-nav">
+                <button id="nav-prev" class="nav-btn" title="Previous (&#8593;)">&lsaquo;</button>
+                <button id="nav-play" class="nav-btn" title="Play (Space)">&#9654;</button>
+                <button id="nav-next" class="nav-btn" title="Next (&#8595;)">&rsaquo;</button>
+            </div>
+        </div>
+        <div id="panel-resize-handle"></div>
+        <div id="explanation-panel" class="hidden">
+            <div id="panel-tabs">
+                <button class="panel-tab active" data-tab="doc">Doc</button>
+                <button class="panel-tab" data-tab="chat">Chat</button>
+            </div>
+            <div id="tab-doc" class="tab-content active">
+                <div id="doc-toolbar">
+                    <button id="doc-speak-btn" title="Read the document aloud">🔊 Speak</button>
+                    <button id="doc-commentate-btn" title="AI commentary on this document">💬 Commentate</button>
+                </div>
+                <div id="explanation-content"></div>
+            </div>
+            <div id="tab-chat" class="tab-content">
+                <div id="chat-tts-controls">
+                    <div class="style-picker">
+                        <button id="chatCharacterBtn" class="chat-control-btn style-btn" title="Voice character (Ctrl/Cmd+K)">Character</button>
+                        <div id="chatCharacterPalette" class="style-palette" hidden>
+                            <input id="chatCharacterSearch" class="style-search" type="text" placeholder="Search characters..." />
+                            <div id="chatCharacterList" class="style-list"></div>
+                        </div>
+                    </div>
+                    <select id="chatVoiceSelect" class="chat-control-btn" title="Gemini voice"></select>
+                    <select id="chatTtsModeSelect" class="chat-control-btn" title="Read: verbatim · Perform: character interprets first · Silent: no TTS">
+                        <option value="read">Read</option>
+                        <option value="perform">Perform</option>
+                        <option value="silent">Silent</option>
+                    </select>
+                </div>
+                <div id="chat-unavailable-msg" class="hidden">
+                    <p>AI chat requires a Gemini API key.</p>
+                    <p>Set the <code>GEMINI_API_KEY</code> environment variable and restart the server to enable this feature.</p>
+                </div>
+                <div id="chat-messages"></div>
+                <div id="preset-prompts" class="hidden"></div>
+                <div id="chat-input-area">
+                    <textarea id="chat-input" placeholder="Ask about this visualization..." rows="1"></textarea>
+                    <button id="chat-send" title="Send">&#10148;</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="chatCharacterBackdrop" class="style-backdrop" hidden></div>
+
+    <!-- Trust Dialog Overlay -->
+    <div id="trust-dialog-overlay" class="hidden">
+        <div id="trust-dialog">
+            <div id="trust-dialog-title">⚠ Untrusted JavaScript Detected</div>
+            <div id="trust-dialog-body"></div>
+            <div id="trust-dialog-buttons">
+                <button id="trust-btn-deny" class="trust-btn trust-btn-deny">Run Safely (math.js only)</button>
+                <button id="trust-btn-allow" class="trust-btn trust-btn-allow">Trust &amp; Enable JS</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="status-bar">
+        <span id="js-trust-pill" class="hidden">
+            <span id="js-trust-pill-icon"></span><span id="js-trust-pill-label"></span>
+        </span>
+        <span id="slider-status" class="hidden">
+            <span class="slider-status-icon">🎚️</span><span class="slider-status-count"></span>
+            <div class="slider-status-tooltip"></div>
+        </span>
+        <span id="memory-status" class="hidden">
+            <span class="memory-status-icon">💾</span><span class="memory-status-count"></span>
+        </span>
+        <span id="cam-status">
+            <span class="cam-status-icon">📷</span>
+            <div class="cam-status-popup" id="cam-popup-content">
+                <div class="cam-popup-header">
+                    <span>Camera</span>
+                    <div class="cam-popup-actions">
+                        <button id="cam-popup-copy" title="Copy camera state">Copy</button>
+                        <button id="cam-popup-close" title="Close">&times;</button>
+                    </div>
+                </div>
+                <div id="cam-popup-text"></div>
+            </div>
+        </span>
+        <span id="debug-status-text"></span>
+    </div>
+
+    <!-- Memory popup -->
+    <div id="memory-popup" class="hidden">
+        <div id="memory-popup-header">
+            <span>Agent Memory</span>
+            <button id="memory-popup-close">&times;</button>
+        </div>
+        <div id="memory-popup-search-wrap">
+            <input id="memory-popup-search" type="text" placeholder="Search keys or values..." autocomplete="off">
+        </div>
+        <div id="memory-popup-body"></div>
+    </div>
+</div>
+<input type="file" id="file-input" accept=".json">
+<script>const DEBUG_MODE = __DEBUG_MODE__;</script>
+<script src="/app.js"></script>
+<script src="/gemini-live-tools/js/voice-character-selector.js"></script>
+<script src="/chat.js"></script>
+<div id="json-viewer-overlay" class="hidden">
+    <div id="json-viewer-header">
+        <span>Scene JSON</span>
+        <button id="json-viewer-copy" title="Copy to clipboard">Copy</button>
+        <button id="json-viewer-close" title="Close">&times;</button>
+    </div>
+    <div id="json-viewer-imports" class="hidden"></div>
+    <div id="json-viewer-summary" class="hidden"></div>
+    <pre id="json-viewer-content"></pre>
+</div>
+</body>
+</html>
