@@ -31,9 +31,10 @@ script_dir = Path(__file__).parent.resolve()
 scenes_dir = script_dir / "scenes"
 
 try:
-    from gemini_live_tools import GeminiLiveAPI, pcm_to_wav_bytes
+    from gemini_live_tools import GeminiLiveAPI, pcm_to_wav_bytes, get_static_content as _glt_static
     TTS_AVAILABLE = True
 except ImportError:
+    _glt_static = None
     TTS_AVAILABLE = False
 static_dir   = script_dir / "static"
 app_js_path  = static_dir / "app.js"
@@ -800,19 +801,17 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                 self.wfile.write(js.encode('utf-8'))
 
             elif path == '/gemini-live-tools/js/voice-character-selector.js':
-                shared_js_path = static_dir / "gemini-live-tools" / "js" / "voice-character-selector.js"
-                if not shared_js_path.exists():
-                    print("⚠ voice-character-selector.js not found — run ./algebench --update")
-                    self.send_response(404)
-                    self.end_headers()
-                else:
-                    with open(shared_js_path, 'r') as f:
-                        js = f.read()
+                try:
+                    js = _glt_static('voice-character-selector.js')
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/javascript')
                     self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                     self.end_headers()
                     self.wfile.write(js.encode('utf-8'))
+                except Exception:
+                    print("⚠ voice-character-selector.js not found in gemini-live-tools package")
+                    self.send_response(404)
+                    self.end_headers()
 
             elif path == '/style.css':
                 self.send_response(200)
