@@ -8,7 +8,6 @@ if [ "$1" = "--update" ]; then
     shift
     echo "Updating dependencies..."
     "$VENV/bin/pip" install --upgrade -r "$DIR/requirements.txt"
-    "$VENV/bin/pip" install --force-reinstall --no-deps "gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git#subdirectory=python"
     echo "✓ Update complete"
 elif [ ! -d "$VENV" ]; then
     echo "Setting up virtual environment (first run only)..."
