@@ -876,11 +876,11 @@ function renderKaTeX(text, displayMode) {
             }).join('');
         } else if (seg.startsWith('$$')) {
             const tex = seg.slice(2, -2);
-            try { return katex.renderToString(tex, { throwOnError: false, displayMode: true, trust: true }); }
+            try { return katex.renderToString(tex, { throwOnError: false, displayMode: true }); }
             catch(e) { return escapeHtml(seg); }
         } else {
             const tex = seg.slice(1, -1);
-            try { return katex.renderToString(tex, { throwOnError: false, displayMode: false, trust: true }); }
+            try { return katex.renderToString(tex, { throwOnError: false, displayMode: false }); }
             catch(e) { return escapeHtml(seg); }
         }
     }).join('');
@@ -924,8 +924,7 @@ function renderMarkdown(md) {
         try {
             return katex.renderToString(block.tex, {
                 throwOnError: false,
-                displayMode: block.display,
-                trust: true
+                displayMode: block.display
             });
         } catch(e) { return block.tex; }
     });
