@@ -89,4 +89,4 @@ algebench/
 
 ## Disclaimer
 
-This software is provided for educational and informational purposes only. The authors and contributors make no representations or warranties regarding the accuracy, completeness, or suitability of this software for any particular purpose. Use is entirely at your own risk. The authors shall not be held liable for any direct, indirect, incidental, special, or consequential damages arising from the use of or inability to use this software.
+This software is provided for educational and informational purposes only. The authors and contributors make no representations or warranties regarding the accuracy, completeness, or suitability of this software for any particular purpose. Use is entirely at your own risk. The authors shall not be held liable for any direct, indirect, incidental, special, or consequential damages arising from the use of or inability to use this software. Lesson scenes, mathematical visualizations, and AI-generated explanations are all works in progress — they may contain errors or approximations and should not be relied upon as authoritative references.
