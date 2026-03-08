@@ -1663,6 +1663,7 @@
       "description": "A more realistic educational flight profile: ascent burn with pitch program, coast arc, then prograde circularization burn to achieve stable orbit.",
       "markdown": "# Guided Two-Burn Orbital Insertion\n\nThis scene uses a simplified but physically grounded 2D orbital model with **central gravity** and **time integration**.\n\n## Physics Model Used\n\nState is propagated in the orbital plane with position and velocity:\n\n$$\\dot{\\mathbf{r}}=\\mathbf{v}, \\qquad \\dot{\\mathbf{v}}=\\mathbf{a}_g+\\mathbf{a}_T$$\n\nGravity is not constant; it updates with altitude each step:\n\n$$\\mathbf{a}_g=-\\mu\\,\\frac{\\mathbf{r}}{\\|\\mathbf{r}\\|^3}, \\qquad g(r)=\\frac{\\mu}{r^2}$$\n\nwith\n\n$$\\mu=GM=(G_s\\,M_x)\\times10^4\\;\\text{km}^3/\\text{s}^2$$\n\nin this slider scaling.\n\n## Circular-Orbit Balance\n\nAt radius $r$, the circular-orbit speed is\n\n$$v_{\\mathrm{circ}}(r)=\\sqrt{\\frac{\\mu}{r}}$$\n\nwhich is equivalent to centripetal balance:\n\n$$\\frac{v^2}{r}=\\frac{\\mu}{r^2}$$\n\nSo altitude alone is insufficient; you need the right **tangential speed** and near-zero radial speed.\n\n## Flight Phases in This Scene\n\n1. **Burn 1 (ascent + gravity turn):** thrust while pitch transitions from pitch_start to pitch_end over t_pitch.\n2. **Coast:** no thrust for t_coast.\n3. **Burn 2 (circularization):** guidance trims tangential speed toward $v_{\\mathrm{circ,target}}$ and damps radial speed $v_r$.\n\n## Numerical Integration Note\n\nThe trajectory is propagated with a stepwise symplectic-style update (interactive educational fidelity, not mission-grade guidance software).\n\n## Stable-Orbit Criterion (Displayed Outcome)\n\nAfter burns complete, the scene reports **stable-orbit target achieved** when all are met:\n\n- $|r-r_{target}|\\le 40\\,\\text{km}$\n- $|v_\\theta-v_{\\mathrm{circ,target}}|\\le 0.25\\,\\text{km/s}$\n- $|v_r|\\le 0.08\\,\\text{km/s}$\n\nwhere $r_{target}=R_p+h_{target}$.\n\n## Falcon 9-like Baseline (Simplified)\n\nDefaults are tuned to approximate a Falcon 9 style ISS insertion in this educational model:\n\n- $h_{target}=420\\,\\text{km}$ (ISS-class altitude)\n- Burn 1 / coast / burn 2 sequence tuned for near-circular insertion\n\nThese are educational defaults, not mission-certified flight software parameters.",
       "prompt": "Explain the model transparently as a guided two-burn insertion under central gravity. Emphasize that g varies with radius (mu/r^2), show why circular orbit requires v^2/r = mu/r^2, and connect sliders to burn 1, coast, burn 2 guidance, and the explicit stability thresholds (radius error, tangential-speed error, radial speed). Contrast educational simplifications with real mission guidance.",
+      "scaleExpr": ["xscale", "yscale", "1"],
       "range": [
         [
           -15000,
@@ -1984,6 +1985,22 @@
               "animate": true,
               "animateMode": "loop",
               "duration": 6000
+            },
+            {
+              "id": "xscale",
+              "label": "X scale",
+              "min": 0.1,
+              "max": 1,
+              "step": 0.05,
+              "default": 1
+            },
+            {
+              "id": "yscale",
+              "label": "Y scale",
+              "min": 0.1,
+              "max": 1,
+              "step": 0.05,
+              "default": 1
             }
           ],
           "add": [

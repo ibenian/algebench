@@ -4732,8 +4732,8 @@ function buildSliderOverlay() {
         input.addEventListener('input', () => {
             s.value = parseFloat(input.value);
             valSpan.textContent = Number(s.value).toFixed(1);
-            recompileActiveExprs();
             _applyScaleExpr();
+            recompileActiveExprs();
             syncSliderState();
         });
 
@@ -4974,6 +4974,7 @@ function _applyScaleExpr() {
             return currentScale[i] ?? 1;
         }
     });
+    currentScale = scale;
     sceneView.set('scale', scale);
 }
 
