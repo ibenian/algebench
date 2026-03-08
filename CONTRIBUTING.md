@@ -201,6 +201,14 @@ Use the built-in scenes in `scenes/` as reference — `eigenvalues.json` and `ma
 
 ---
 
+## Ideas and Roadmap
+
+If you are looking for inspiration, or want a sense of the technical directions the project is considering, see [`docs/feature-ideas.md`](docs/feature-ideas.md). It is a living document covering everything from AI pedagogy and new domain libraries to visualization element types, scene architecture, and longer-shot experimental ideas.
+
+Nothing in that document is committed to — it is a collection of seeds. If something there resonates with your interests or expertise, that is a good signal that a contribution in that area would be genuinely useful rather than speculative.
+
+---
+
 ## Adding a Voice Character
 
 Voice characters are defined in [`gemini-live-tools`](https://github.com/ibenian/gemini-live-tools) — see the contributing guide there and open a PR.
