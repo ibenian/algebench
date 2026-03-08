@@ -118,7 +118,11 @@ def list_builtin_scenes():
 
 def load_builtin_scene(name):
     """Load a built-in scene JSON by name."""
-    path = scenes_dir / f"{name}.json"
+    path = (scenes_dir / f"{name}.json").resolve()
+    try:
+        path.relative_to(scenes_dir.resolve())
+    except ValueError:
+        return None
     if path.exists():
         with open(path, 'r') as f:
             return json.load(f)
@@ -910,8 +914,14 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
             elif path.startswith('/api/domains/'):
                 name = path[len('/api/domains/'):]
-                docs_path = static_dir / 'domains' / name / 'docs.json'
-                if docs_path.exists():
+                domains_root = (static_dir / 'domains').resolve()
+                docs_path = (static_dir / 'domains' / name / 'docs.json').resolve()
+                try:
+                    docs_path.relative_to(domains_root)
+                    safe = True
+                except ValueError:
+                    safe = False
+                if safe and docs_path.exists():
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
                     self.end_headers()
@@ -924,8 +934,14 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
             elif path.startswith('/domains/'):
                 rel = path[len('/domains/'):]
-                domain_path = static_dir / 'domains' / rel
-                if domain_path.exists() and domain_path.is_file():
+                domains_root = (static_dir / 'domains').resolve()
+                domain_path = (static_dir / 'domains' / rel).resolve()
+                try:
+                    domain_path.relative_to(domains_root)
+                    safe = True
+                except ValueError:
+                    safe = False
+                if safe and domain_path.exists() and domain_path.is_file():
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/javascript')
                     self.end_headers()
