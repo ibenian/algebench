@@ -1,3 +1,3 @@
-gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git#subdirectory=python
+gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git@v0.1.2#subdirectory=python
 google-genai>=1.27.0
 numpy>=1.26.0

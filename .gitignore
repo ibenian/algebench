@@ -6,7 +6,6 @@ venv/
 .env
 *.wav
 *.m4a
-static/gemini-live-tools/
 settings.local.json
 
 # Override global gitignore to include project-level agent skill definitions

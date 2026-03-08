@@ -4,34 +4,16 @@
 DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV="$DIR/.venv"
 
-SYNC_JS=0
-JS_DEST="$DIR/static/gemini-live-tools/js/voice-character-selector.js"
-
 if [ "$1" = "--update" ]; then
     shift
     echo "Updating dependencies..."
     "$VENV/bin/pip" install --upgrade -r "$DIR/requirements.txt"
     "$VENV/bin/pip" install --force-reinstall --no-deps "gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git#subdirectory=python"
     echo "✓ Update complete"
-    SYNC_JS=1
 elif [ ! -d "$VENV" ]; then
     echo "Setting up virtual environment (first run only)..."
     python3 -m venv "$VENV"
     "$VENV/bin/pip" install -r "$DIR/requirements.txt"
-    SYNC_JS=1
-elif [ ! -f "$JS_DEST" ]; then
-    SYNC_JS=1
-fi
-
-if [ "$SYNC_JS" = "1" ]; then
-    JS_SRC=$("$VENV/bin/python3" -c "import gemini_live_tools, pathlib; print(pathlib.Path(gemini_live_tools.__file__).parent / 'static' / 'voice-character-selector.js')" 2>/dev/null)
-    if [ -f "$JS_SRC" ]; then
-        mkdir -p "$DIR/static/gemini-live-tools/js"
-        cp "$JS_SRC" "$JS_DEST"
-        echo "✓ voice-character-selector.js synced from gemini-live-tools"
-    else
-        echo "⚠ Could not locate voice-character-selector.js in gemini-live-tools package"
-    fi
 fi
 
 exec "$VENV/bin/python3" "$DIR/server.py" "$@"
