@@ -32,12 +32,15 @@ flowchart TD
         A --> B[app.js\nScene Renderer]
         A --> C[chat.js\nAI Chat Panel]
         B <-->|scene state / runtime context| C
+        B -->|GET /domains/name/index.js| D
     end
 
     subgraph Python Server
         D[server.py\nHTTP + API handler]
         E[agent_tools.py\nTool declarations + system prompt]
+        H[static/domains/\nDomain Library JS + docs.json]
         D --> E
+        D --> H
     end
 
     subgraph External
@@ -51,6 +54,7 @@ flowchart TD
     C <-->|/tts endpoint| G
     B -->|GET /scenes| D
     B -->|GET /static| D
+    B -->|GET /api/domains| D
 ```
 
 ---
@@ -69,6 +73,9 @@ A single-file Python HTTP server built on `http.server.BaseHTTPRequestHandler`. 
 | `/scenes/<file>` | GET | Serve a scene JSON file |
 | `/chat` | POST | Forward message to Gemini, handle tool calls, return response |
 | `/tts` | POST | Stream TTS audio via Gemini Live |
+| `/domains/<name>/index.js` | GET | Serve a domain library script (e.g. `astrodynamics`) |
+| `/api/domains` | GET | List all available domains with name, description, function names |
+| `/api/domains/<name>` | GET | Return full `docs.json` for a domain (signatures, params, slider contracts, math details) |
 
 ### Chat Request Lifecycle
 
@@ -282,18 +289,25 @@ User sees a **Trust Dialog** and must explicitly choose:
 
 ### Extended Sandbox Functions
 
-Beyond standard math.js, `app.js` injects domain-specific helpers available in all scenes:
+Beyond standard math.js, the expression scope is extended by two mechanisms:
+
+**Built-in helpers** (always available, defined in `app.js`):
 
 | Function | Description |
 |---|---|
-| `orbitX(t, mode)` | X position of orbital trajectory at time t |
-| `orbitY(t, mode)` | Y position |
-| `orbitR(t, mode)` | Radius from planet center |
-| `orbitVr(t, mode)` | Radial velocity |
-| `orbitVt(t, mode)` | Tangential velocity |
-| `orbitHit(t, mode)` | 1 if trajectory has hit the planet, else 0 |
-| `orbitOutcome(t, mode)` | Human-readable orbit outcome string |
 | `toFixed(val, n)` | Format number to n decimal places |
+
+**Domain library functions** (available after the scene declares `"import": ["name"]`):
+
+Imported domain functions are merged into the expression scope automatically when a scene
+is loaded. For example, a scene with `"import": ["astrodynamics"]` makes `orbitX`, `orbitY`,
+`orbitR`, `orbitVr`, `orbitVt`, `orbitHit`, and `orbitOutcome` available in all
+expressions, overlays, and scene-level functions in that scene.
+
+Domain imports do **not** require `"unsafe": true` — they are vetted built-in libraries,
+not arbitrary user code. The trust dialog is not shown for imports alone.
+
+See **Section 8 — Domain Library System** for how loading and registration work.
 
 ### Scene-Level Functions (`scene.functions`)
 
@@ -313,34 +327,99 @@ This is how the orbital scene implements apogee/perigee markers — the core `or
 
 ---
 
-## 8. Orbital Simulation Engine
+## 8. Domain Library System
 
-The orbital scenes use a custom numerical integrator built directly in `app.js`.
+Domain libraries are optional physics/math simulation engines that scenes can import.
+They live in `static/domains/<name>/` and self-register into a browser-global registry.
 
-### Three Modes
+### File Layout
 
-| Mode index | Name | Description |
+```
+static/domains/
+└── astrodynamics/
+    ├── index.js     # simulation engine IIFE — registers functions
+    └── docs.json    # machine-readable API documentation
+```
+
+### Loading Flow
+
+1. Scene JSON declares `"import": ["astrodynamics"]` at the top level.
+2. `loadLesson()` calls `_importDomains(spec.import)`.
+3. For each name not yet registered, `_loadDomainScript(name)` injects a `<script>` tag
+   pointing to `/domains/<name>/index.js`.
+4. The script executes as an IIFE and calls
+   `window.AlgeBenchDomains.register(name, { functionName: fn, ... })`.
+5. `app.js` merges all registered functions into `_activeDomainFunctions`, which is
+   spread into the expression scope on every `_buildScope()` call.
+
+### Registry API (`window.AlgeBenchDomains`)
+
+```js
+window.AlgeBenchDomains.register(name, functions)  // called by domain script
+window.AlgeBenchDomains._registry                  // { name → { fn, ... } }
+```
+
+### Server API
+
+| Endpoint | Response |
+|---|---|
+| `GET /api/domains` | `[{ name, description, functions: [name, ...] }]` — lists all domains |
+| `GET /api/domains/<name>` | Full `docs.json` — function signatures, params, returns, slider contracts, math formulas |
+| `GET /domains/<name>/index.js` | The executable domain script |
+
+The `/api/domains` and `/api/domains/<name>` endpoints are designed for **agent discoverability** — a code agent can hit these to learn what domains exist, what functions they expose, what slider IDs they require, and the exact math behind each function before authoring a scene.
+
+### docs.json Structure
+
+Each domain ships a `docs.json` with:
+
+```json
+{
+  "name": "astrodynamics",
+  "description": "...",
+  "implementation": { "integrator": "...", "equations": { ... } },
+  "sliderContracts": {
+    "Rp": { "description": "Planet radius (km)", "default": 6371, "modes": ["coast", ...] }
+  },
+  "modes": [
+    { "value": 0, "name": "coast", "description": "...", "implementation": "..." }
+  ],
+  "functions": {
+    "orbitX": {
+      "signature": "orbitX(t, mode)",
+      "description": "...",
+      "params": [...],
+      "returns": "...",
+      "sliderDeps": [...],
+      "example": "orbitX(t, 0)",
+      "implementation": "Linearly interpolates arrX[i0]..arrX[i1]..."
+    }
+  }
+}
+```
+
+### Astrodynamics Domain
+
+The first built-in domain. Provides a Symplectic Euler orbital integrator with three flight modes:
+
+| Mode | Value | Description |
 |---|---|---|
-| `0` | `coast` | Purely ballistic — initial conditions, no thrust |
-| `1` | `powered` | Constant thrust for `tburn` seconds, then coast |
-| `2` | `guided` | Two-burn: gravity-turn ascent + coast + prograde circularization |
+| `coast` | `0` | Purely ballistic — initial velocity, no thrust |
+| `powered` | `1` | Constant thrust for `tburn` seconds, then coast |
+| `guided` | `2` | Two-burn: gravity-turn ascent + coast + prograde circularization |
 
-### Integration
+**Integration details:**
+- **Method**: Symplectic Euler (velocity updated first → better energy conservation than explicit Euler)
+- **Step count**: `clamp(round(T / 1.25), 800, 6000)`
+- **Storage**: `Float64Array` typed arrays (`arrT`, `arrX`, `arrY`, `arrVx`, `arrVy`, `arrR`, `arrVr`, `arrVt`, `arrHit`)
+- **Cache**: keyed by all slider values as a concatenated string; rebuilt only when any slider changes
+- **Impact detection**: if `hypot(x, y) <= Rp` after any step, position snapped to surface, velocity zeroed, `arrHit[i] = 1` for all subsequent steps
 
-- **Method**: Symplectic Euler (energy-conserving for orbital mechanics)
-- **Step count**: 800–6000 steps depending on `T`
-- **Arrays stored**: `arrT`, `arrX`, `arrY`, `arrVx`, `arrVy`, `arrR`, `arrVr`, `arrVt`, `arrHit`
-- **Cache**: keyed by all relevant slider values; rebuilt only when sliders change
+**Exposed functions:** `orbitX`, `orbitY`, `orbitR`, `orbitVr`, `orbitVt`, `orbitHit`, `orbitOutcome`
 
-### Cache Lookup
+**Slider contracts** (scene must define sliders with these exact IDs for the simulation to respond to user input): `Rp`, `Gs`, `Mx`, `h`, `h_target`, `T`, `phi`, `vlaunch`, `v0`, `athrust`, `tburn`, `athrust1`, `athrust2`, `tburn1`, `tcoast`, `tburn2`, `pitch_start`, `pitch_end`, `tpitch`
 
-`_getOrbitalState(mode, tSec)` — linear interpolates between adjacent integration steps for smooth animation at any `t`.
-
-### Guided Mode Burn Logic
-
-- **Burn 1**: thrust along pitch angle that transitions from `pitch_start` to `pitch_end` over `t_pitch` seconds
-- **Coast**: pure gravity, no thrust
-- **Burn 2**: feedback guidance — trims tangential speed toward $v_\text{circ,target}$ and damps radial velocity
+Full documentation available at runtime via `GET /api/domains/astrodynamics`.
 
 ---
 
