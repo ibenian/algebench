@@ -31,7 +31,10 @@ docs/              Architecture, sandbox model, feature ideas
 
 ## Key Conventions
 
-- **Never commit without explicit user instruction.**
+- **Never commit without explicit user instruction.** Wait for the user to say "ok commit", "commit it", or similar before running `git commit`.
+- **Always announce who is committing before running `git commit`** — print a line in the format:
+  `Committing on behalf of <name> (<email>)`
+  using the output of `git config user.name` and `git config user.email`.
 - **Scene files are JSON** in `scenes/` — no Python or JS changes needed for new lessons.
 - **Pinned dependencies** — `requirements.txt` pins `gemini-live-tools` to a specific tag. Update the tag intentionally, don't switch back to `HEAD`.
 - **JS from package** — `voice-character-selector.js` is served at runtime from the installed `gemini_live_tools` package via `get_static_content()`. Do not copy it into `static/`.
