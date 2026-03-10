@@ -2945,6 +2945,9 @@ function renderAnimatedPoint(el, view) {
     registerAnimUpdater({
         animState,
         updateFrame(nowMs) {
+            // If hidden by element removal, don't override the hide state.
+            if (mesh._hiddenByRemove) return;
+
             const tSec = (nowMs - startTime) / 1000;
             const fns = animExprEntry.compiledFns || exprFns;
             let p = initPos;
@@ -5519,13 +5522,15 @@ function hideElementById(id) {
 
     fadeOutTracker(t, 200, () => {
         for (const entry of t.arrowMeshes) { entry.mesh.visible = false; entry.mesh._hiddenByRemove = true; }
-        for (const m of t.planeMeshes) m.visible = false;
+        for (const m of t.planeMeshes) { m.visible = false; m._hiddenByRemove = true; }
         for (const lbl of t.labels) lbl.el.style.display = 'none';
         for (const entry of t.pointNodes) { try { entry.node.set('visible', false); } catch(e) {} }
         if (t.group) { try { t.group.set('visible', false); } catch(e) {} }
     });
     // Hide arrow cones immediately to prevent animated orphans
     for (const entry of t.arrowMeshes) { entry.mesh.visible = false; entry.mesh._hiddenByRemove = true; }
+    // Hide plane meshes (animated points) immediately too
+    for (const m of t.planeMeshes) { m.visible = false; m._hiddenByRemove = true; }
     // Hide points immediately too
     for (const entry of (t.pointNodes || [])) { try { entry.node.set('visible', false); } catch(e) {} }
 }
@@ -5536,6 +5541,7 @@ function showElementById(id) {
     reg.hidden = false;
     const t = reg.tracker;
     for (const entry of t.arrowMeshes) { entry.mesh._hiddenByRemove = false; }
+    for (const m of t.planeMeshes) { m._hiddenByRemove = false; }
 
     for (const entry of t.arrowMeshes) entry.mesh.visible = true;
     for (const m of t.planeMeshes) m.visible = true;
