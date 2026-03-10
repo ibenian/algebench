@@ -11,8 +11,7 @@ Usage:
 import sys
 import json
 import os
-import http.server
-import socketserver
+import asyncio
 import webbrowser
 from pathlib import Path
 import threading
@@ -23,7 +22,11 @@ import argparse
 import tty
 import termios
 import select
-from urllib.parse import urlparse, parse_qs, quote
+from urllib.parse import quote
+from fastapi import FastAPI, Request
+from fastapi.responses import StreamingResponse, Response, JSONResponse, HTMLResponse
+from pydantic import BaseModel
+import uvicorn
 from google import genai
 from google.genai import types
 
@@ -754,383 +757,271 @@ def call_gemini_chat(message, history, context):
 
 DEBUG_MODE = False
 
-def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False, debug=False):
+def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False, debug=False,
+                   tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
+                   tts_style=None):
     """Serve the AlgeBench viewer and optionally open in browser."""
     global DEBUG_MODE
     DEBUG_MODE = debug
 
+    # Build TTS streaming kwargs — only include values that override library defaults
+    tts_stream_kwargs = {}
+    if tts_parallelism is not None:
+        tts_stream_kwargs['parallelism'] = tts_parallelism
+    if tts_min_buffer is not None:
+        tts_stream_kwargs['min_buffer_seconds'] = tts_min_buffer
+    if tts_min_sentence_chars is not None:
+        tts_stream_kwargs['min_sentence_chars'] = tts_min_sentence_chars
+    if tts_style is not None:
+        tts_stream_kwargs['style'] = tts_style
+
     html_content = generate_html(debug=debug)
     current_spec = [None]
 
-    # Read app.js once at startup
-    with open(app_js_path, 'r') as f:
-        app_js_content = f.read()
+    # ---- Pydantic request models ----
 
-    class Handler(http.server.SimpleHTTPRequestHandler):
-        def do_GET(self):
-            parsed = urlparse(self.path)
-            path = parsed.path
-            query = parse_qs(parsed.query)
+    class ChatRequest(BaseModel):
+        message: str = ''
+        history: list = []
+        context: dict = {}
 
-            if path == '/' or path == '/index.html':
-                self.send_response(200)
-                self.send_header('Content-Type', 'text/html')
-                self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                self.send_header('Content-Security-Policy',
-                    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'")
-                self.end_headers()
-                self.wfile.write(html_content.encode('utf-8'))
+    class TtsRequest(BaseModel):
+        text: str = ''
+        character: str = 'joker'
+        voice: str = 'Charon'
+        mode: str = 'read'
 
-            elif path == '/app.js':
-                # Re-read from disk each time for live development
-                with open(app_js_path, 'r') as f:
-                    js = f.read()
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/javascript')
-                self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                self.end_headers()
-                self.wfile.write(js.encode('utf-8'))
+    # ---- FastAPI app ----
 
-            elif path == '/chat.js':
-                with open(chat_js_path, 'r') as f:
-                    js = f.read()
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/javascript')
-                self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                self.end_headers()
-                self.wfile.write(js.encode('utf-8'))
+    fastapp = FastAPI(docs_url=None, redoc_url=None)
 
-            elif path == '/gemini-live-tools/js/voice-character-selector.js':
-                try:
-                    js = _glt_static('voice-character-selector.js')
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/javascript')
-                    self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                    self.end_headers()
-                    self.wfile.write(js.encode('utf-8'))
-                except Exception:
-                    print("⚠ voice-character-selector.js not found in gemini-live-tools package")
-                    self.send_response(404)
-                    self.end_headers()
+    # -- GET routes --
 
-            elif path == '/style.css':
-                self.send_response(200)
-                self.send_header('Content-Type', 'text/css')
-                self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                self.end_headers()
-                with open(style_css_path, 'r') as f:
-                    self.wfile.write(f.read().encode('utf-8'))
+    @fastapp.get("/")
+    @fastapp.get("/index.html")
+    async def get_index():
+        return HTMLResponse(
+            content=html_content,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Content-Security-Policy":
+                    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'",
+            }
+        )
 
-            elif path == '/favicon.ico':
-                self.send_response(200)
-                self.send_header('Content-Type', 'image/svg+xml')
-                self.send_header('Cache-Control', 'public, max-age=86400')
-                self.end_headers()
-                self.wfile.write(FAVICON_SVG.encode('utf-8'))
+    @fastapp.get("/app.js")
+    async def get_app_js():
+        with open(app_js_path, 'r') as f:
+            js = f.read()
+        return Response(content=js.encode('utf-8'), media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
-            elif path == '/api/chat/available':
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"available": bool(GEMINI_API_KEY)}).encode('utf-8'))
+    @fastapp.get("/chat.js")
+    async def get_chat_js():
+        with open(chat_js_path, 'r') as f:
+            js = f.read()
+        return Response(content=js.encode('utf-8'), media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
-            elif path == '/api/health':
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "ok"}).encode('utf-8'))
+    @fastapp.get("/gemini-live-tools/js/voice-character-selector.js")
+    async def get_voice_character_selector():
+        try:
+            js = _glt_static('voice-character-selector.js')
+            return Response(content=js.encode('utf-8'), media_type="application/javascript",
+                            headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+        except Exception:
+            print("⚠ voice-character-selector.js not found in gemini-live-tools package")
+            return Response(status_code=404)
 
-            elif path == '/api/memory':
-                # Return current agent memory state with per-key summaries
-                payload = {
-                    k: {"summary": _memory_summary(k, v), "value": v}
-                    for k, v in _agent_memory.items()
-                }
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps(payload).encode('utf-8'))
+    @fastapp.get("/style.css")
+    async def get_style_css():
+        with open(style_css_path, 'r') as f:
+            css = f.read()
+        return Response(content=css.encode('utf-8'), media_type="text/css",
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
-            elif path == '/api/scenes':
-                scenes = list_builtin_scenes()
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"scenes": scenes}).encode('utf-8'))
+    @fastapp.get("/favicon.ico")
+    async def get_favicon():
+        return Response(content=FAVICON_SVG.encode('utf-8'), media_type="image/svg+xml",
+                        headers={"Cache-Control": "public, max-age=86400"})
 
-            elif path == '/api/scene_file':
-                requested = query.get('path', [''])[0]
-                resolved_path = resolve_scene_path(requested)
-                if not resolved_path:
-                    self.send_response(404)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"error": "Scene file not found"}).encode('utf-8'))
-                    return
-                try:
-                    with open(resolved_path, 'r') as f:
-                        scene = json.load(f)
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({
-                        "spec": scene,
-                        "path": str(resolved_path),
-                        "label": resolved_path.name
-                    }).encode('utf-8'))
-                except json.JSONDecodeError:
-                    self.send_response(400)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"error": "Invalid JSON in scene file"}).encode('utf-8'))
-                except Exception as e:
-                    self.send_response(500)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+    @fastapp.get("/api/chat/available")
+    async def get_chat_available():
+        return JSONResponse({"available": bool(GEMINI_API_KEY)})
 
-            elif path == '/api/domains':
-                domains_dir = static_dir / 'domains'
-                result = []
-                if domains_dir.is_dir():
-                    for d in sorted(domains_dir.iterdir()):
-                        if d.is_dir():
-                            docs_path = d / 'docs.json'
-                            entry = {'name': d.name}
-                            if docs_path.exists():
-                                try:
-                                    with open(docs_path, 'r') as f:
-                                        docs = json.load(f)
-                                    entry['description'] = docs.get('description', '')
-                                    entry['functions'] = list(docs.get('functions', {}).keys())
-                                except Exception:
-                                    pass
-                            result.append(entry)
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps(result).encode('utf-8'))
+    @fastapp.get("/api/health")
+    async def get_health():
+        return JSONResponse({"status": "ok"})
 
-            elif path.startswith('/api/domains/'):
-                name = path[len('/api/domains/'):]
-                domains_root = (static_dir / 'domains').resolve()
-                docs_path = (static_dir / 'domains' / name / 'docs.json').resolve()
-                try:
-                    docs_path.relative_to(domains_root)
-                    safe = True
-                except ValueError:
-                    safe = False
-                if safe and docs_path.exists():
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    with open(docs_path, 'rb') as f:
-                        self.wfile.write(f.read())
-                else:
-                    self.send_response(404)
-                    self.end_headers()
-                    self.wfile.write(b'Domain not found')
+    @fastapp.get("/api/memory")
+    async def get_memory():
+        payload = {
+            k: {"summary": _memory_summary(k, v), "value": v}
+            for k, v in _agent_memory.items()
+        }
+        return JSONResponse(payload)
 
-            elif path.startswith('/domains/'):
-                rel = path[len('/domains/'):]
-                domains_root = (static_dir / 'domains').resolve()
-                domain_path = (static_dir / 'domains' / rel).resolve()
-                try:
-                    domain_path.relative_to(domains_root)
-                    safe = True
-                except ValueError:
-                    safe = False
-                if safe and domain_path.exists() and domain_path.is_file():
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/javascript')
-                    self.end_headers()
-                    with open(domain_path, 'rb') as f:
-                        self.wfile.write(f.read())
-                else:
-                    self.send_response(404)
-                    self.end_headers()
-                    self.wfile.write(b'Domain not found')
+    @fastapp.get("/api/scenes")
+    async def get_scenes():
+        return JSONResponse({"scenes": list_builtin_scenes()})
 
-            elif path.startswith('/scenes/'):
-                name = path[8:]
-                scene = load_builtin_scene(name)
-                if scene:
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps(scene).encode('utf-8'))
-                else:
-                    self.send_response(404)
-                    self.end_headers()
-                    self.wfile.write(b'Scene not found')
+    @fastapp.get("/api/scene_file")
+    async def get_scene_file(request: Request):
+        requested = request.query_params.get('path', '')
+        resolved_path = resolve_scene_path(requested)
+        if not resolved_path:
+            return JSONResponse({"error": "Scene file not found"}, status_code=404)
+        try:
+            with open(resolved_path, 'r') as f:
+                scene = json.load(f)
+            return JSONResponse({"spec": scene, "path": str(resolved_path),
+                                 "label": resolved_path.name})
+        except json.JSONDecodeError:
+            return JSONResponse({"error": "Invalid JSON in scene file"}, status_code=400)
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
 
-            elif path == '/api/scene':
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                data = current_spec[0] if current_spec[0] else {}
-                self.wfile.write(json.dumps(data).encode('utf-8'))
+    @fastapp.get("/api/domains")
+    async def get_domains():
+        domains_dir = static_dir / 'domains'
+        result = []
+        if domains_dir.is_dir():
+            for d in sorted(domains_dir.iterdir()):
+                if d.is_dir():
+                    docs_path = d / 'docs.json'
+                    entry = {'name': d.name}
+                    if docs_path.exists():
+                        try:
+                            with open(docs_path, 'r') as f:
+                                docs = json.load(f)
+                            entry['description'] = docs.get('description', '')
+                            entry['functions'] = list(docs.get('functions', {}).keys())
+                        except Exception:
+                            pass
+                    result.append(entry)
+        return JSONResponse(result)
 
-            elif path == '/shutdown':
-                self.send_response(200)
-                self.send_header('Content-Type', 'text/plain')
-                self.end_headers()
-                self.wfile.write(b'Shutting down...')
-                threading.Thread(target=lambda: (time.sleep(0.5), os._exit(0))).start()
+    @fastapp.get("/api/domains/{name}")
+    async def get_domain_docs(name: str):
+        domains_root = (static_dir / 'domains').resolve()
+        docs_path = (static_dir / 'domains' / name / 'docs.json').resolve()
+        try:
+            docs_path.relative_to(domains_root)
+            safe = True
+        except ValueError:
+            safe = False
+        if safe and docs_path.exists():
+            with open(docs_path, 'rb') as f:
+                return Response(content=f.read(), media_type="application/json")
+        return Response(content=b'Domain not found', status_code=404)
 
-            else:
-                self.send_response(404)
-                self.end_headers()
+    @fastapp.get("/domains/{path:path}")
+    async def get_domain_file(path: str):
+        domains_root = (static_dir / 'domains').resolve()
+        domain_path = (static_dir / 'domains' / path).resolve()
+        try:
+            domain_path.relative_to(domains_root)
+            safe = True
+        except ValueError:
+            safe = False
+        if safe and domain_path.exists() and domain_path.is_file():
+            with open(domain_path, 'rb') as f:
+                return Response(content=f.read(), media_type="application/javascript")
+        return Response(content=b'Domain not found', status_code=404)
 
-        def do_POST(self):
-            from urllib.parse import urlparse
-            parsed = urlparse(self.path)
-            path = parsed.path
+    @fastapp.get("/scenes/{name:path}")
+    async def get_scene(name: str):
+        scene = load_builtin_scene(name)
+        if scene:
+            return JSONResponse(scene)
+        return Response(content=b'Scene not found', status_code=404)
 
-            if path == '/api/chat':
-                content_length = int(self.headers.get('Content-Length', 0))
-                body = self.rfile.read(content_length).decode('utf-8')
-                try:
-                    req = json.loads(body)
-                    message = req.get('message', '')
-                    history = req.get('history', [])
-                    context = req.get('context', {})
+    @fastapp.get("/api/scene")
+    async def get_current_scene():
+        return JSONResponse(current_spec[0] if current_spec[0] else {})
 
-                    if not message.strip():
-                        self.send_response(400)
-                        self.send_header('Content-Type', 'application/json')
-                        self.end_headers()
-                        self.wfile.write(json.dumps({"error": "Empty message"}).encode('utf-8'))
-                        return
+    @fastapp.get("/shutdown")
+    async def shutdown():
+        threading.Thread(target=lambda: (time.sleep(0.5), os._exit(0))).start()
+        return Response(content=b'Shutting down...')
 
-                    response_text, tool_calls, debug_info = call_gemini_chat(message, history, context)
-                    print(f"   💬 Response ({len(response_text)} chars): {response_text}")
+    # -- POST routes --
 
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({
-                        "response": response_text,
-                        "toolCalls": tool_calls,
-                        "debug": debug_info
-                    }).encode('utf-8'))
+    @fastapp.post("/api/chat")
+    async def api_chat(req: ChatRequest):
+        if not req.message.strip():
+            return JSONResponse({"error": "Empty message"}, status_code=400)
+        try:
+            loop = asyncio.get_running_loop()
+            response_text, tool_calls, debug_info = await loop.run_in_executor(
+                None, lambda: call_gemini_chat(req.message, req.history, req.context)
+            )
+            print(f"   💬 Response ({len(response_text)} chars): {response_text}")
+            return JSONResponse({"response": response_text, "toolCalls": tool_calls,
+                                 "debug": debug_info})
+        except Exception as e:
+            import traceback
+            print(f"   ❌ /api/chat error: {e}\n{traceback.format_exc()}")
+            return JSONResponse({"error": str(e)}, status_code=500)
 
-                except json.JSONDecodeError:
-                    print("   ❌ /api/chat: invalid JSON in request body")
-                    self.send_response(400)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"error": "Invalid JSON"}).encode('utf-8'))
-                except Exception as e:
-                    import traceback
-                    print(f"   ❌ /api/chat error: {e}\n{traceback.format_exc()}")
-                    self.send_response(500)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+    @fastapp.post("/api/tts/stream")
+    async def api_tts_stream(req: TtsRequest):
+        if not TTS_AVAILABLE or not GEMINI_API_KEY:
+            return JSONResponse({"error": "TTS not available"}, status_code=503)
+        text = req.text.strip()
+        if not text:
+            return JSONResponse({"error": "Empty text"}, status_code=400)
 
-            elif path == '/api/tts':
-                if not TTS_AVAILABLE or not GEMINI_API_KEY:
-                    self.send_response(503)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"error": "TTS not available"}).encode('utf-8'))
-                    return
-                content_length = int(self.headers.get('Content-Length', 0))
-                body = self.rfile.read(content_length).decode('utf-8')
-                try:
-                    req = json.loads(body)
-                    text = req.get('text', '').strip()
-                    if not text:
-                        self.send_response(400)
-                        self.send_header('Content-Type', 'application/json')
-                        self.end_headers()
-                        self.wfile.write(json.dumps({"error": "Empty text"}).encode('utf-8'))
-                        return
+        import time as _time
+        print(f"\n🔊 TTS stream: character={req.character}, voice={req.voice}, "
+              f"mode={req.mode}, {len(text)} chars")
 
-                    import time as _time
-                    character = req.get('character', 'joker')
-                    voice = req.get('voice', 'Charon')
-                    mode = req.get('mode', 'read')
-                    api = GeminiLiveAPI(api_key=GEMINI_API_KEY, client=get_gemini_client())
-                    print(f"\n🔊 TTS: character={character}, voice={voice}, mode={mode}, {len(text)} chars")
-                    print(f"🔊 TTS input: {text}")
-                    t0 = _time.monotonic()
-                    if mode == 'perform':
-                        tts_text = api.prepare_text(text, character_name=character)
-                        print(f"🔊 TTS prepared ({_time.monotonic()-t0:.2f}s): {tts_text}")
-                    else:
-                        tts_text = text
-                    pcm_chunks = []
-                    ok = api.stream_tts(
-                        text=tts_text,
-                        on_chunk=lambda pcm: pcm_chunks.append(pcm),
-                        voice_name=voice,
-                        character_name=character,
-                        pre_cleaned=(mode == 'perform'),
-                    )
-                    t1 = _time.monotonic()
-                    if ok and pcm_chunks:
-                        wav_bytes = pcm_to_wav_bytes(b"".join(pcm_chunks))
-                        print(f"🔊 TTS done: total={t1-t0:.2f}s, wav={len(wav_bytes)//1024}KB")
-                        self.send_response(200)
-                        self.send_header('Content-Type', 'audio/wav')
-                        self.send_header('Content-Length', str(len(wav_bytes)))
-                        self.end_headers()
-                        self.wfile.write(wav_bytes)
-                    else:
-                        self.send_response(500)
-                        self.send_header('Content-Type', 'application/json')
-                        self.end_headers()
-                        self.wfile.write(json.dumps({"error": "TTS synthesis failed"}).encode('utf-8'))
-                except Exception as e:
-                    self.send_response(500)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+        api = GeminiLiveAPI(api_key=GEMINI_API_KEY, client=get_gemini_client())
 
-            elif path == '/api/load':
-                content_length = int(self.headers.get('Content-Length', 0))
-                body = self.rfile.read(content_length).decode('utf-8')
-                try:
-                    new_spec = json.loads(body)
-                    current_spec[0] = new_spec
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"status": "loaded"}).encode('utf-8'))
-                except json.JSONDecodeError:
-                    self.send_response(400)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"error": "Invalid JSON"}).encode('utf-8'))
-            else:
-                self.send_response(404)
-                self.end_headers()
+        if req.mode == 'perform':
+            t0 = _time.monotonic()
+            loop = asyncio.get_running_loop()
+            tts_text = await loop.run_in_executor(
+                None, lambda: api.prepare_text(text, character_name=req.character)
+            )
+            print(f"🔊 TTS prepared ({_time.monotonic()-t0:.2f}s): {tts_text}")
+        else:
+            tts_text = text
 
-        def log_message(self, format, *args):
-            pass
+        async def generate():
+            async for chunk in api.astream_parallel_wav(
+                text=tts_text,
+                voice_name=req.voice,
+                character_name=req.character,
+                **tts_stream_kwargs
+            ):
+                yield chunk
 
-        def finish(self):
-            try:
-                super().finish()
-            except (BrokenPipeError, ConnectionResetError):
-                pass
+        return StreamingResponse(
+            generate(),
+            media_type="audio/wav",
+            headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"},
+        )
 
-    class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-        allow_reuse_address = True
-        daemon_threads = True
+    @fastapp.post("/api/load")
+    async def api_load(request: Request):
+        body = await request.body()
+        try:
+            new_spec = json.loads(body)
+            current_spec[0] = new_spec
+            return JSONResponse({"status": "loaded"})
+        except json.JSONDecodeError:
+            return JSONResponse({"error": "Invalid JSON"}, status_code=400)
 
-    httpd_server = None
+    # ---- Start uvicorn in a background thread ----
 
-    def start_server():
-        nonlocal httpd_server
-        httpd_server = ThreadedTCPServer(("", port), Handler)
-        if not json_output:
-            print(f"Server started at http://localhost:{port}")
-        httpd_server.serve_forever()
+    config = uvicorn.Config(fastapp, host="0.0.0.0", port=port, log_level="error")
+    uvicorn_server = uvicorn.Server(config)
 
-    server_thread = threading.Thread(target=start_server, daemon=False)
+    def _run_server():
+        uvicorn_server.run()
+
+    server_thread = threading.Thread(target=_run_server, daemon=False)
     server_thread.start()
     time.sleep(0.5)
 
@@ -1164,15 +1055,13 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                         if char.lower() == 'q':
                             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
                             print(f"\nServer stopped")
-                            if httpd_server:
-                                httpd_server.shutdown()
+                            uvicorn_server.should_exit = True
                             sys.exit(0)
                     time.sleep(0.1)
             except KeyboardInterrupt:
                 termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
                 print(f"\n\nServer stopped")
-                if httpd_server:
-                    httpd_server.shutdown()
+                uvicorn_server.should_exit = True
                 sys.exit(0)
             finally:
                 try:
@@ -1181,8 +1070,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                     pass
         else:
             def signal_handler(signum, frame):
-                if httpd_server:
-                    httpd_server.shutdown()
+                uvicorn_server.should_exit = True
                 sys.exit(0)
             signal.signal(signal.SIGTERM, signal_handler)
             signal.signal(signal.SIGINT, signal_handler)
@@ -1203,12 +1091,24 @@ Examples:
   algebench scene.json                   Launch with scene
   algebench scenes/vector-addition.json  Load built-in scene
   algebench --port 9000                  Use custom port
+  algebench --tts-parallelism 4          Max concurrent TTS sentence synthesis
+  algebench --tts-min-buffer 30.0        Seconds of audio buffered before playback starts
+  algebench --tts-min-sentence-chars 80  Merge short sentences until this char count
         '''
     )
     parser.add_argument('scene', nargs='?', help='Path to scene JSON file')
     parser.add_argument('--json', action='store_true', help='Output JSON (for MCP integration)')
     parser.add_argument('--port', type=int, default=DEFAULT_PORT, help=f'Port (default: {DEFAULT_PORT})')
     parser.add_argument('--debug', action='store_true', help='Dump full Gemini API requests to console')
+    parser.add_argument('--tts-parallelism', type=int, default=None, choices=range(1, 5),
+                        metavar='N (1-4)',
+                        help='Max concurrent TTS sentence synthesis calls (default: library default, max: 4)')
+    parser.add_argument('--tts-min-buffer', type=float, default=None,
+                        help='Seconds of audio to buffer before first playback (default: library default)')
+    parser.add_argument('--tts-min-sentence-chars', type=int, default=None,
+                        help='Merge short sentences up to this char count (default: library default)')
+    parser.add_argument('--tts-style', type=str, default=None,
+                        help='Additional style guidance for TTS synthesis')
 
     args = parser.parse_args()
 
@@ -1227,7 +1127,16 @@ Examples:
             print(f"Loading scene: {scene_path}")
         initial_scene_path = str(scene_path)
 
-    serve_and_open(initial_scene_path, port=args.port, json_output=args.json, debug=args.debug)
+    serve_and_open(
+        initial_scene_path,
+        port=args.port,
+        json_output=args.json,
+        debug=args.debug,
+        tts_parallelism=args.tts_parallelism,
+        tts_min_buffer=args.tts_min_buffer,
+        tts_min_sentence_chars=args.tts_min_sentence_chars,
+        tts_style=args.tts_style,
+    )
 
 
 if __name__ == "__main__":

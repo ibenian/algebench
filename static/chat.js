@@ -528,7 +528,7 @@ async function sendChatMessage(text, { silent = false } = {}) {
                     if (typeof lessonSpec === 'undefined' || !lessonSpec) {
                         // Wrap the currently displayed single scene into a lesson
                         const existingScene = (typeof currentSpec !== 'undefined' && currentSpec) ? currentSpec : null;
-                        window.lessonSpec = { title: "Lesson", scenes: existingScene ? [existingScene] : [] };
+                        lessonSpec = { title: "Lesson", scenes: existingScene ? [existingScene] : [] };
                         console.log('  Created lesson wrapper, existing scenes:', lessonSpec.scenes.length);
                         // Sync navigation indices so navigateTo sees a scene change
                         if (existingScene) {
@@ -968,35 +968,24 @@ function renderToolCallChip(tc) {
     return chip;
 }
 
-// ----- TTS Playback -----
-let ttsAudio = null;
-let ttsRequestId = 0;  // Monotonic ID to cancel stale TTS fetches
-let ttsLoading = false; // true while fetch is in-flight (before ttsAudio is set)
+// ----- TTS Playback (streaming Web Audio API) -----
+let ttsRequestId = 0;         // Monotonic counter — invalidates stale streams on new request
+let ttsLoading = false;        // true while fetch is open but no audio scheduled yet
 let ttsPausedByUser = false;
-let ttsAudioContext = null;
+let ttsAbortController = null; // AbortController for the active fetch stream
+let ttsActiveSources = [];     // AudioBufferSourceNodes currently scheduled/playing
+let ttsScheduleEndTime = 0;    // ctx.currentTime when the last scheduled buffer ends
+let ttsStreamDone = false;     // true once all chunks have been received and scheduled
+let ttsAudioContext = null;    // Shared AudioContext (also used for video-export recording)
 let ttsMediaDestination = null;
 
+// Lazy-init the shared AudioContext and recording destination.
 function ensureTTSRecordingBus() {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return null;
     if (!ttsAudioContext) ttsAudioContext = new Ctx();
     if (!ttsMediaDestination) ttsMediaDestination = ttsAudioContext.createMediaStreamDestination();
     return { ctx: ttsAudioContext, dest: ttsMediaDestination };
-}
-
-function connectTTSForRecording(audioEl) {
-    const bus = ensureTTSRecordingBus();
-    if (!bus) return;
-    // Resume BEFORE connecting — a suspended context can fire spurious pause events
-    // on the audio element, which would incorrectly set ttsPausedByUser=true.
-    if (bus.ctx.state === 'suspended') bus.ctx.resume().catch(() => {});
-    try {
-        const source = bus.ctx.createMediaElementSource(audioEl);
-        source.connect(bus.dest);
-        source.connect(bus.ctx.destination);  // Keep live playback audible.
-    } catch (err) {
-        console.warn('TTS recording bus connect failed:', err);
-    }
 }
 
 window.algebenchGetTTSAudioStream = function() {
@@ -1006,135 +995,225 @@ window.algebenchGetTTSAudioStream = function() {
     return bus.dest.stream;
 };
 
+// ---- State queries (same public API as before) ----
+
 window.algebenchIsTTSSpeaking = function() {
-    return ttsAudio !== null && !ttsLoading && !ttsPausedByUser && !ttsAudio.paused;
+    if (ttsLoading || ttsPausedByUser) return false;
+    if (!ttsAudioContext) return false;
+    // Playing if the context is running and there are scheduled or active sources
+    return ttsAudioContext.state === 'running' &&
+           (ttsActiveSources.length > 0 || ttsScheduleEndTime > ttsAudioContext.currentTime);
 };
 
 window.algebenchIsTTSPaused = function() {
-    // Only true when the user explicitly paused — not during the brief gap where
-    // ttsAudio.paused is true before play() starts, or when AudioContext is suspended.
-    return ttsAudio !== null && ttsPausedByUser;
-};
-
-window.algebenchPauseTTS = function() {
-    if (ttsAudio) {
-        ttsPausedByUser = true;
-        ttsAudio.pause();
-    }
-};
-
-window.algebenchResumeTTS = function() {
-    if (ttsAudio) {
-        ttsPausedByUser = false;
-        ttsAudio.play().catch(() => {});
-    }
+    return ttsPausedByUser;
 };
 
 window.algebenchIsTTSLoading = function() { return ttsLoading; };
 
-window.algebenchStopTTS = function() {
-    if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
-    ttsLoading = false;
-    ttsPausedByUser = false;
-    ++ttsRequestId;  // invalidate any in-flight fetch
+// ---- Controls ----
+
+window.algebenchPauseTTS = function() {
+    if (!ttsAudioContext) return;
+    ttsPausedByUser = true;
+    ttsAudioContext.suspend().catch(() => {});
 };
 
+window.algebenchResumeTTS = function() {
+    if (!ttsAudioContext) return;
+    ttsPausedByUser = false;
+    ttsAudioContext.resume().catch(() => {});
+};
+
+window.algebenchStopTTS = function() {
+    ++ttsRequestId;  // invalidate any in-flight stream
+    _ttsStopActiveAudio();
+};
+
+function _ttsStopActiveAudio() {
+    if (ttsAbortController) {
+        ttsAbortController.abort();
+        ttsAbortController = null;
+    }
+    for (const src of ttsActiveSources) {
+        try { src.stop(); } catch (_) {}
+    }
+    ttsActiveSources = [];
+    ttsScheduleEndTime = 0;
+    ttsStreamDone = false;
+    ttsLoading = false;
+    ttsPausedByUser = false;
+    // Resume the AudioContext so it's ready for the next request
+    if (ttsAudioContext && ttsAudioContext.state === 'suspended') {
+        ttsAudioContext.resume().catch(() => {});
+    }
+}
+
+// ---- algebenchSpeakText with completion callback ----
+
 window.algebenchSpeakText = function(text, onEnd) {
-    // speakText does ++ttsRequestId synchronously; capture expected ID before calling it
     const expectedId = ttsRequestId + 1;
-    speakText(text, { explicit: true });  // sets ttsAudio=null initially, then non-null once fetch resolves
+    speakText(text, { explicit: true });
 
     if (typeof onEnd !== 'function') return;
 
-    // Track the ttsAudio null → non-null → null lifecycle.
-    // Avoids relying on paused/ended events which can fire prematurely when audio
-    // is routed through an AudioContext (createMediaElementSource).
-    let audioSeen = false;
     const startTime = Date.now();
     const poll = setInterval(() => {
-        // A newer speak/stop call superseded us
         if (ttsRequestId !== expectedId) {
-            clearInterval(poll);
-            onEnd();
-            return;
+            clearInterval(poll); onEnd(); return;
         }
-
-        if (!audioSeen) {
-            // Phase 1: waiting for speakText to load the audio (ttsAudio becomes non-null)
-            if (ttsAudio !== null) {
-                audioSeen = true;
-            } else if (Date.now() - startTime > 12000) {
-                // TTS unavailable or network error — give up
-                clearInterval(poll);
-                onEnd();
-            }
-        } else {
-            // Phase 2: audio was loaded; wait for it to finish (ttsAudio set to null by onended)
-            if (ttsAudio === null) {
-                clearInterval(poll);
-                onEnd();
-            }
+        // Done: stream finished and all scheduled audio has played out
+        if (!ttsLoading && ttsStreamDone && ttsActiveSources.length === 0) {
+            clearInterval(poll); onEnd(); return;
+        }
+        // Timeout fallback (e.g. TTS unavailable)
+        if (Date.now() - startTime > 60000) {
+            clearInterval(poll); onEnd();
         }
     }, 80);
 };
 
-function speakText(text, { explicit = false } = {}) {
-    // In silent mode: auto-TTS is suppressed; explicit (user-clicked) falls back to read.
+// ---- WAV chunk parser ----
+// The server yields self-contained WAV files. The fetch reader delivers raw bytes
+// that may span chunk boundaries, so we accumulate and split on RIFF headers.
+
+class _WavStreamParser {
+    constructor() { this._buf = new Uint8Array(0); }
+
+    push(data) {
+        const merged = new Uint8Array(this._buf.length + data.length);
+        merged.set(this._buf);
+        merged.set(data, this._buf.length);
+        this._buf = merged;
+
+        const wavs = [];
+        let pos = 0;
+        while (pos + 8 <= this._buf.length) {
+            // Verify RIFF magic
+            if (this._buf[pos]   !== 0x52 || this._buf[pos+1] !== 0x49 ||
+                this._buf[pos+2] !== 0x46 || this._buf[pos+3] !== 0x46) {
+                pos++; continue;  // resync
+            }
+            const riffPayload = new DataView(
+                this._buf.buffer, this._buf.byteOffset + pos + 4, 4
+            ).getUint32(0, true);
+            const total = riffPayload + 8;
+            if (pos + total > this._buf.length) break; // incomplete — wait for more
+            wavs.push(
+                this._buf.buffer.slice(
+                    this._buf.byteOffset + pos,
+                    this._buf.byteOffset + pos + total
+                )
+            );
+            pos += total;
+        }
+        this._buf = this._buf.slice(pos);
+        return wavs;
+    }
+}
+
+// ---- Core streaming speakText ----
+
+async function speakText(text, { explicit = false } = {}) {
     if (selectedTtsMode === 'silent' && !explicit) return;
 
-    // Pass text mostly as-is; prepare_text on the backend (Gemini) handles
-    // markdown stripping and LaTeX-to-speech conversion properly.
-    // Only do minimal local cleanup to avoid sending junk.
     const clean = text
-        .replace(/```[\s\S]*?```/g, '')           // drop code blocks (not useful for TTS)
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links -> text only
-        .replace(/[📍🤖👤]/g, '')                // remove non-speech emoji
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/[📍🤖👤]/g, '')
         .replace(/\s{2,}/g, ' ')
         .trim();
 
     if (!clean) return;
 
-    // Stop any current playback and invalidate pending fetches
+    // Stop previous playback and claim a new request ID
     const myId = ++ttsRequestId;
+    _ttsStopActiveAudio();
     ttsLoading = true;
-    ttsPausedByUser = false;
-    if (ttsAudio) {
-        ttsAudio.pause();
-        ttsAudio = null;
+    ttsStreamDone = false;
+
+    // Ensure AudioContext exists and is running
+    const bus = ensureTTSRecordingBus();
+    if (!bus) { ttsLoading = false; return; }
+    const ctx = bus.ctx;
+    const mediaDest = bus.dest;
+    if (ctx.state === 'suspended') await ctx.resume();
+
+    const abort = new AbortController();
+    ttsAbortController = abort;
+
+    let response;
+    try {
+        response = await fetch('/api/tts/stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: abort.signal,
+            body: JSON.stringify({
+                text: clean,
+                character: selectedTtsCharacter || 'joker',
+                voice: selectedTtsVoice || 'Charon',
+                mode: (selectedTtsMode === 'silent') ? 'perform' : (selectedTtsMode || 'read'),
+            }),
+        });
+    } catch (err) {
+        if (ttsRequestId === myId) { ttsLoading = false; ttsStreamDone = true; }
+        return;
     }
 
-    fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            text: clean,
-            character: selectedTtsCharacter || 'joker',
-            voice: selectedTtsVoice || 'Charon',
-            mode: (selectedTtsMode === 'silent') ? 'perform' : (selectedTtsMode || 'read')
-        })
-    })
-    .then(r => {
-        if (ttsRequestId !== myId) { ttsLoading = false; return null; }
-        if (!r.ok) { ttsLoading = false; return null; }
-        return r.blob();
-    })
-    .then(blob => {
-        ttsLoading = false;
-        if (!blob || ttsRequestId !== myId) return;
-        const url = URL.createObjectURL(blob);
-        ttsAudio = new Audio(url);
-        ttsPausedByUser = false;
-        connectTTSForRecording(ttsAudio);
-        ttsAudio.play().catch(() => {});
-        ttsAudio.onpause = () => { if (ttsAudio) ttsPausedByUser = true; };
-        ttsAudio.onplay = () => { ttsPausedByUser = false; };
-        ttsAudio.onended = () => {
-            URL.revokeObjectURL(url);
-            ttsPausedByUser = false;
-            ttsAudio = null;
-        };
-    })
-    .catch(() => { ttsLoading = false; });
+    if (!response.ok || ttsRequestId !== myId) {
+        ttsLoading = false; ttsStreamDone = true; return;
+    }
+
+    const parser = new _WavStreamParser();
+    const reader = response.body.getReader();
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done || ttsRequestId !== myId) break;
+
+            for (const wavBuf of parser.push(value)) {
+                if (ttsRequestId !== myId) break;
+
+                let audioBuffer;
+                try {
+                    audioBuffer = await ctx.decodeAudioData(wavBuf);
+                } catch (e) {
+                    console.warn('TTS: decodeAudioData failed', e);
+                    continue;
+                }
+
+                if (ttsRequestId !== myId || ctx.state === 'closed') break;
+
+                // First decoded chunk — audio is starting
+                if (ttsLoading) ttsLoading = false;
+
+                const source = ctx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(ctx.destination);
+                if (mediaDest) source.connect(mediaDest);
+
+                const now = ctx.currentTime;
+                const startAt = Math.max(ttsScheduleEndTime, now + 0.02);
+                source.start(startAt);
+                ttsScheduleEndTime = startAt + audioBuffer.duration;
+
+                ttsActiveSources.push(source);
+                source.onended = () => {
+                    const i = ttsActiveSources.indexOf(source);
+                    if (i >= 0) ttsActiveSources.splice(i, 1);
+                };
+            }
+        }
+    } catch (err) {
+        if (err.name !== 'AbortError') console.warn('TTS stream error:', err);
+    } finally {
+        if (ttsRequestId === myId) {
+            ttsLoading = false;
+            ttsStreamDone = true;
+            ttsAbortController = null;
+        }
+    }
 }
 
 // ----- Context Change Tracking -----
