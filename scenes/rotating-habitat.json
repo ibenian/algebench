@@ -3,8 +3,8 @@
   "scenes": [
     {
       "title": "Rotating Space Habitats",
-      "description": "Engineering artificial gravity through rotation — explore angular velocity, centripetal force, Coriolis effect, and the comfort constraints that shape real spacecraft design.",
-      "markdown": "# Rotating Space Habitats\n\n## The Problem: Weightlessness Kills\n\nIn deep space there is no natural gravity. Without it, astronauts suffer:\n- **Bone density loss** (~1–2% per month)\n- **Muscle atrophy** (heart included)\n- **Vestibular disruption**, fluid shifts, vision changes\n\nFor a Mars transit (6–9 months each way), this is unacceptable.\n\n## The Solution: Spin It\n\nA rotating habitat pushes occupants against the outer wall through **centripetal acceleration**. From inside, this is indistinguishable from gravity — it's the same fundamental effect.\n\n$$g_a = \\omega^2 R = \\left(\\frac{2\\pi n}{60}\\right)^2 R$$\n\nwhere $\\omega$ is angular velocity (rad/s), $n$ is spin rate (RPM), and $R$ is radius (m).\n\n## The Design Constraints\n\nThree competing physics effects must all be satisfied simultaneously:\n\n| Effect | Constraint | Why |\n|--------|-----------|-----|\n| Gravity level $g_a$ | $0.5 – 1.2\\,g$ | Too little: no benefit. Too much: overloading. |\n| Spin rate $n$ | $< 3$ RPM | Higher spin → Coriolis sickness, vestibular cross-coupling |\n| Gravity gradient | $< 10\\%$ | Head-to-foot $\\Delta g > 10\\%$ feels deeply wrong |\n\n## Historical Benchmarks\n\n| Design | Radius | RPM | $g_a$ |\n|--------|--------|-----|-------|\n| Stanford Torus | 895 m | 1.0 | 1.00 g |\n| O'Neill Cylinder | 3200 m | 0.5 | 0.90 g |\n| Near-term viable | ~100 m | ~3.0 | ~1.00 g |\n\nThe near-term constraint is clear: **you need at least ~100 m radius** to stay within all comfort bounds at acceptable gravity.\n\n## Key Formulas\n\n$$\\omega = \\frac{2\\pi n}{60} \\quad [\\text{rad/s}]$$\n\n$$g_a = \\omega^2 R \\quad [\\text{m/s}^2] \\quad = \\frac{\\omega^2 R}{9.81} \\quad [g]$$\n\n$$a_{\\text{Cor}} = 2\\omega v \\quad [\\text{m/s}^2]\\quad \\text{(for radial walking at speed } v\\text{)}$$\n\n$$\\Delta g / g = \\Delta r / R \\approx 1.8 / R \\quad \\text{(head-to-foot, \\%)}$$\n\n## Symbol Definitions\n\n$$P(t) = (R\\cos(\\omega t),\\;R\\sin(\\omega t),\\;0)$$\nPosition of an occupant on the rotating rim at time $t$.\n\n$$\\Delta g = g_{\\mathrm{feet}} - g_{\\mathrm{head}} = \\omega^2\\Delta r$$\nAbsolute head-to-foot gravity difference across body height $\\Delta r\\approx1.8\\,\\mathrm{m}$.\n\n$$\\Delta g/g = \\frac{\\Delta g}{g_{\\mathrm{feet}}} \\approx \\frac{\\Delta r}{R}$$\nRelative gravity gradient (usually reported as a percent). Smaller is more comfortable.",
+      "description": "Engineering artificial gravity through rotation \u2014 explore angular velocity, centripetal force, Coriolis effect, and the comfort constraints that shape real spacecraft design.",
+      "markdown": "# Rotating Space Habitats\n\n## The Problem: Weightlessness Kills\n\nIn deep space there is no natural gravity. Without it, astronauts suffer:\n- **Bone density loss** (~1\u20132% per month)\n- **Muscle atrophy** (heart included)\n- **Vestibular disruption**, fluid shifts, vision changes\n\nFor a Mars transit (6\u20139 months each way), this is unacceptable.\n\n## The Solution: Spin It\n\nA rotating habitat pushes occupants against the outer wall through **centripetal acceleration**. From inside, this is indistinguishable from gravity \u2014 it's the same fundamental effect.\n\n$$g_a = \\omega^2 R = \\left(\\frac{2\\pi n}{60}\\right)^2 R$$\n\nwhere $\\omega$ is angular velocity (rad/s), $n$ is spin rate (RPM), and $R$ is radius (m).\n\n## The Design Constraints\n\nThree competing physics effects must all be satisfied simultaneously:\n\n| Effect | Constraint | Why |\n|--------|-----------|-----|\n| Gravity level $g_a$ | $0.5 \u2013 1.2\\,g$ | Too little: no benefit. Too much: overloading. |\n| Spin rate $n$ | $< 3$ RPM | Higher spin \u2192 Coriolis sickness, vestibular cross-coupling |\n| Gravity gradient | $< 10\\%$ | Head-to-foot $\\Delta g > 10\\%$ feels deeply wrong |\n\n## Historical Benchmarks\n\n| Design | Radius | RPM | $g_a$ |\n|--------|--------|-----|-------|\n| Stanford Torus | 895 m | 1.0 | 1.00 g |\n| O'Neill Cylinder | 3200 m | 0.5 | 0.90 g |\n| Near-term viable | ~100 m | ~3.0 | ~1.00 g |\n\nThe near-term constraint is clear: **you need at least ~100 m radius** to stay within all comfort bounds at acceptable gravity.\n\n## Key Formulas\n\n$$\\omega = \\frac{2\\pi n}{60} \\quad [\\text{rad/s}]$$\n\n$$g_a = \\omega^2 R \\quad [\\text{m/s}^2] \\quad = \\frac{\\omega^2 R}{9.81} \\quad [g]$$\n\n$$a_{\\text{Cor}} = 2\\omega v \\quad [\\text{m/s}^2]\\quad \\text{(for radial walking at speed } v\\text{)}$$\n\n$$\\Delta g / g = \\Delta r / R \\approx 1.8 / R \\quad \\text{(head-to-foot, \\%)}$$\n\n## Symbol Definitions\n\n$$P(t) = (R\\cos(\\omega t),\\;R\\sin(\\omega t),\\;0)$$\nPosition of an occupant on the rotating rim at time $t$.\n\n$$\\Delta g = g_{\\mathrm{feet}} - g_{\\mathrm{head}} = \\omega^2\\Delta r$$\nAbsolute head-to-foot gravity difference across body height $\\Delta r\\approx1.8\\,\\mathrm{m}$.\n\n$$\\Delta g/g = \\frac{\\Delta g}{g_{\\mathrm{feet}}} \\approx \\frac{\\Delta r}{R}$$\nRelative gravity gradient (usually reported as a percent). Smaller is more comfortable.",
       "range": [
         [
           -1100,
@@ -96,7 +96,7 @@
         },
         {
           "name": "Ride Along",
-          "description": "Follow the person on the rotating rim — camera tracks from above along spin axis",
+          "description": "Follow the person on the rotating rim \u2014 camera tracks from above along spin axis",
           "follow": "person_walk",
           "offset": [
             0,
@@ -170,11 +170,11 @@
       "steps": [
         {
           "title": "The Cylinder",
-          "description": "The habitat is a rotating cylinder. The outer curved wall becomes the floor — people live on the inside surface, pressed outward by spin. Adjust $R$ to see how radius changes the structure, and $n$ to feel the scale of what's being designed.",
+          "description": "The habitat is a rotating cylinder. The outer curved wall becomes the floor \u2014 people live on the inside surface, pressed outward by spin. Adjust $R$ to see how radius changes the structure, and $n$ to feel the scale of what's being designed.",
           "sliders": [
             {
               "id": "R",
-              "label": "$R$ — Radius (m)",
+              "label": "$R$ \u2014 Radius (m)",
               "min": 20,
               "max": 1000,
               "step": 5,
@@ -182,7 +182,7 @@
             },
             {
               "id": "rpm",
-              "label": "$n$ — Spin Rate (RPM)",
+              "label": "$n$ \u2014 Spin Rate (RPM)",
               "min": 0.1,
               "max": 10,
               "step": 0.1,
@@ -190,7 +190,7 @@
             },
             {
               "id": "v_walk",
-              "label": "$v$ — Walk speed: $+$ prograde / $-$ retrograde (m/s)",
+              "label": "$v$ \u2014 Walk speed: $+$ prograde / $-$ retrograde (m/s)",
               "min": -4,
               "max": 4,
               "step": 0.1,
@@ -441,12 +441,12 @@
           ]
         },
         {
-          "title": "Angular Velocity ω",
-          "description": "The habitat rotates at $n$ RPM — angular velocity $\\omega = 2\\pi n/60$ rad/s. The yellow ball is a stationary rim marker (0.5 m diameter). Orange shows tangential speed $v = \\omega R$.",
+          "title": "Angular Velocity \u03c9",
+          "description": "The habitat rotates at $n$ RPM \u2014 angular velocity $\\omega = 2\\pi n/60$ rad/s. The yellow ball is a stationary rim marker (0.5 m diameter). Orange shows tangential speed $v = \\omega R$.",
           "sliders": [
             {
               "id": "R",
-              "label": "$R$ — Radius (m)",
+              "label": "$R$ \u2014 Radius (m)",
               "min": 20,
               "max": 1000,
               "step": 5,
@@ -454,7 +454,7 @@
             },
             {
               "id": "rpm",
-              "label": "$n$ — Spin Rate (RPM)",
+              "label": "$n$ \u2014 Spin Rate (RPM)",
               "min": 0.1,
               "max": 10,
               "step": 0.1,
@@ -462,7 +462,7 @@
             },
             {
               "id": "v_walk",
-              "label": "$v$ — Walk speed: $+$ prograde / $-$ retrograde (m/s)",
+              "label": "$v$ \u2014 Walk speed: $+$ prograde / $-$ retrograde (m/s)",
               "min": -4,
               "max": 4,
               "step": 0.1,
@@ -474,9 +474,9 @@
               "id": "person_stat",
               "type": "animated_point",
               "expr": [
-                "(R+10)*cos(t * 2*PI*rpm/60)",
-                "(R+10)*sin(t * 2*PI*rpm/60)",
-                "0"
+                "-R*cos(t * 2*PI*rpm/60)",
+                "-R*sin(t * 2*PI*rpm/60)",
+                "12.5"
               ],
               "radius": 0.25,
               "color": "#ffdd00",
@@ -519,14 +519,14 @@
               "id": "vel_vec",
               "type": "animated_vector",
               "fromExpr": [
-                "(R+10)*cos(t * 2*PI*rpm/60)",
-                "(R+10)*sin(t * 2*PI*rpm/60)",
-                "0"
+                "-R*cos(t * 2*PI*rpm/60)",
+                "-R*sin(t * 2*PI*rpm/60)",
+                "12.5"
               ],
               "expr": [
-                "(R+10)*cos(t * 2*PI*rpm/60) + 0.3*(2*PI*rpm/60)*R*(-sin(t * 2*PI*rpm/60))",
-                "(R+10)*sin(t * 2*PI*rpm/60) + 0.3*(2*PI*rpm/60)*R*( cos(t * 2*PI*rpm/60))",
-                "0"
+                "-R*cos(t * 2*PI*rpm/60) + 0.3*(2*PI*rpm/60)*R*sin(t * 2*PI*rpm/60)",
+                "-R*sin(t * 2*PI*rpm/60) - 0.3*(2*PI*rpm/60)*R*cos(t * 2*PI*rpm/60)",
+                "12.5"
               ],
               "color": "#ffaa00",
               "width": 0.2,
@@ -542,12 +542,12 @@
           ]
         },
         {
-          "title": "Artificial Gravity — $g_a = \\omega^2 R$",
-          "description": "Centripetal acceleration felt as outward gravity: $g_a = \\omega^2 R$. The red line shows effective gravity at the stationary rim marker. Target: $0.9$–$1.0\\,g$.",
+          "title": "Artificial Gravity \u2014 $g_a = \\omega^2 R$",
+          "description": "Centripetal acceleration felt as outward gravity: $g_a = \\omega^2 R$. The red line shows effective gravity at the stationary rim marker. Target: $0.9$\u2013$1.0\\,g$.",
           "sliders": [
             {
               "id": "R",
-              "label": "$R$ — Radius (m)",
+              "label": "$R$ \u2014 Radius (m)",
               "min": 20,
               "max": 1000,
               "step": 5,
@@ -555,7 +555,7 @@
             },
             {
               "id": "rpm",
-              "label": "$n$ — Spin Rate (RPM)",
+              "label": "$n$ \u2014 Spin Rate (RPM)",
               "min": 0.1,
               "max": 10,
               "step": 0.1,
@@ -575,14 +575,14 @@
               "id": "gravity_vec",
               "type": "animated_vector",
               "fromExpr": [
-                "(R+10)*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "(R+10)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "0"
+                "-R*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "-R*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
               ],
               "expr": [
-                "(R+10+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "(R+10+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "0"
+                "-(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
+                "-(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "12.5"
               ],
               "color": "#ff2222",
               "width": 0.2,
@@ -593,7 +593,7 @@
             {
               "id": "gravity_info",
               "position": "top-left",
-              "content": "### Artificial Gravity\\n$g_a = \\omega_{\\mathrm{eff}}^2 R$\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$\\omega_{\\mathrm{eff}} = \\omega + v/R = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s\\n$R = {{R}}$ m\\n$g_a = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R, 2)}}$ m/s²\\n$g_a = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81, 3)}}$ g\\n---\\n**Target: 0.9 – 1.0 g**"
+              "content": "### Artificial Gravity\\n$g_a = \\omega_{\\mathrm{eff}}^2 R$\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$\\omega_{\\mathrm{eff}} = \\omega + v/R = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s\\n$R = {{R}}$ m\\n$g_a = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R, 2)}}$ m/s\u00b2\\n$g_a = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81, 3)}}$ g\\n---\\n**Target: 0.9 \u2013 1.0 g**"
             }
           ]
         },
@@ -603,7 +603,7 @@
           "sliders": [
             {
               "id": "R",
-              "label": "$R$ — Radius (m)",
+              "label": "$R$ \u2014 Radius (m)",
               "min": 20,
               "max": 1000,
               "step": 5,
@@ -611,7 +611,7 @@
             },
             {
               "id": "rpm",
-              "label": "$n$ — Spin Rate (RPM)",
+              "label": "$n$ \u2014 Spin Rate (RPM)",
               "min": 0.1,
               "max": 10,
               "step": 0.1,
@@ -619,7 +619,7 @@
             },
             {
               "id": "v_walk",
-              "label": "$v$ — Walk speed: $+$ prograde / $-$ retrograde (m/s)",
+              "label": "$v$ \u2014 Walk speed: $+$ prograde / $-$ retrograde (m/s)",
               "min": -4,
               "max": 4,
               "step": 0.1,
@@ -659,13 +659,13 @@
               "id": "gravity_vec_coriolis",
               "type": "animated_vector",
               "fromExpr": [
-                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "-R*cos(t * 2*PI*rpm/60)",
+                "-R*sin(t * 2*PI*rpm/60)",
                 "12.5"
               ],
               "expr": [
-                "(R+pow(2*PI*rpm/60,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "(R+pow(2*PI*rpm/60,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
+                "-(R+pow(2*PI*rpm/60,2)*R/9.81*35)*cos(t * 2*PI*rpm/60)",
+                "-(R+pow(2*PI*rpm/60,2)*R/9.81*35)*sin(t * 2*PI*rpm/60)",
                 "12.5"
               ],
               "color": "#ff2222",
@@ -715,17 +715,17 @@
             {
               "id": "coriolis_info",
               "position": "top-left",
-              "content": "### Coriolis Effect\\n$a_{\\mathrm{Cor}} = 2\\omega v$\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$v = {{v_walk}}$ m/s\\n$a_{\\mathrm{Cor}} = {{toFixed(2*(2*PI*rpm/60)*abs(v_walk)/9.81, 4)}}$ g\\n{{v_walk > 0 ? 'Prograde → heavier' : v_walk < 0 ? 'Retrograde → lighter' : 'No walk → no Coriolis'}}\\n---\\n$\\omega_{\\mathrm{eff}} = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s"
+              "content": "### Coriolis Effect\\n$a_{\\mathrm{Cor}} = 2\\omega v$\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$v = {{v_walk}}$ m/s\\n$a_{\\mathrm{Cor}} = {{toFixed(2*(2*PI*rpm/60)*abs(v_walk)/9.81, 4)}}$ g\\n{{v_walk > 0 ? 'Prograde \u2192 heavier' : v_walk < 0 ? 'Retrograde \u2192 lighter' : 'No walk \u2192 no Coriolis'}}\\n---\\n$\\omega_{\\mathrm{eff}} = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s"
             }
           ]
         },
         {
-          "title": "Gravity Gradient — Head vs. Feet",
+          "title": "Gravity Gradient \u2014 Head vs. Feet",
           "description": "Your head is $1.8$ m closer to the spin axis than your feet. Since $g \\propto r$, your head experiences less gravity: $\\Delta g/g = 1.8/R$. The two orange arrows show gravity at feet (longer) and head (shorter).",
           "sliders": [
             {
               "id": "R",
-              "label": "$R$ — Radius (m)",
+              "label": "$R$ \u2014 Radius (m)",
               "min": 20,
               "max": 1000,
               "step": 5,
@@ -733,7 +733,7 @@
             },
             {
               "id": "rpm",
-              "label": "$n$ — Spin Rate (RPM)",
+              "label": "$n$ \u2014 Spin Rate (RPM)",
               "min": 0.1,
               "max": 10,
               "step": 0.1,
@@ -741,12 +741,6 @@
             }
           ],
           "remove": [
-            {
-              "id": "person_walk"
-            },
-            {
-              "id": "person_walk_head"
-            },
             {
               "id": "coriolis_vec"
             },
@@ -764,12 +758,12 @@
               "fromExpr": [
                 "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
                 "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "0"
+                "12.5"
               ],
               "expr": [
                 "(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
                 "(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "0"
+                "12.5"
               ],
               "color": "#ff8822",
               "width": 0.2,
@@ -781,12 +775,12 @@
               "fromExpr": [
                 "(R-1.8)*cos(t * (2*PI*rpm/60 + v_walk/R))",
                 "(R-1.8)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "0"
+                "12.5"
               ],
               "expr": [
                 "(R-1.8+pow(2*PI*rpm/60 + v_walk/R,2)*(R-1.8)/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
                 "(R-1.8+pow(2*PI*rpm/60 + v_walk/R,2)*(R-1.8)/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "0"
+                "12.5"
               ],
               "color": "#ffaa44",
               "width": 0.2,
@@ -802,12 +796,12 @@
           ]
         },
         {
-          "title": "Full Simulation — Design Your Habitat",
+          "title": "Full Simulation \u2014 Design Your Habitat",
           "description": "All effects simultaneously. Yellow is stationary, green is walker, orange is walk velocity, blue is Coriolis, red is artificial gravity.",
           "sliders": [
             {
               "id": "R",
-              "label": "$R$ — Radius (m)",
+              "label": "$R$ \u2014 Radius (m)",
               "min": 20,
               "max": 1000,
               "step": 5,
@@ -815,7 +809,7 @@
             },
             {
               "id": "rpm",
-              "label": "$n$ — Spin Rate (RPM)",
+              "label": "$n$ \u2014 Spin Rate (RPM)",
               "min": 0.1,
               "max": 10,
               "step": 0.1,
@@ -823,7 +817,7 @@
             },
             {
               "id": "v_walk",
-              "label": "$v$ — Walk speed: $+$ prograde / $-$ retrograde (m/s)",
+              "label": "$v$ \u2014 Walk speed: $+$ prograde / $-$ retrograde (m/s)",
               "min": -4,
               "max": 4,
               "step": 0.1,
@@ -839,29 +833,6 @@
             }
           ],
           "add": [
-            {
-              "id": "person_walk",
-              "type": "animated_point",
-              "expr": [
-                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
-              "radius": 0.35,
-              "color": "#44ffaa",
-              "label": "walker"
-            },
-            {
-              "id": "person_walk_head",
-              "type": "animated_point",
-              "expr": [
-                "(R-1.8)*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "(R-1.8)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
-              "radius": 0.2,
-              "color": "#44ffaa"
-            },
             {
               "id": "gravity_vec_full",
               "type": "animated_vector",

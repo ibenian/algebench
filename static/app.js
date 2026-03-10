@@ -45,6 +45,7 @@ const animatedElementPos = {};  // id -> [x,y,z] in data space — updated each 
 // Each animated object registers { animState, updateFrame(nowMs) } and is ticked in updateLoop.
 // This keeps all animated transforms and follow-cam sampling on the same frame clock.
 let activeAnimUpdaters = [];
+let sceneStartTime = 0;  // shared time origin for all animated elements in a scene
 const _sliderDrag = { active: false, startX: 0, startY: 0, startLeft: 0, startBottom: 0 };
 let videoRecorder = null;
 let videoRecordedChunks = [];
@@ -2599,7 +2600,7 @@ function renderAnimatedVector(el, view) {
     animExprEntry.animState = animState;
     if (useExpr) registerAnimExpr(animExprEntry);
 
-    const startTime = performance.now();
+    const startTime = sceneStartTime;
     registerAnimUpdater({
         animState,
         updateFrame(nowMs) {
@@ -2867,7 +2868,7 @@ function renderAnimatedLine(el, view) {
     };
     registerAnimExpr(animExprEntry);
 
-    const startTime = performance.now();
+    const startTime = sceneStartTime;
     registerAnimUpdater({
         animState,
         updateFrame(nowMs) {
@@ -2941,7 +2942,7 @@ function renderAnimatedPoint(el, view) {
     };
     registerAnimExpr(animExprEntry);
 
-    const startTime = performance.now();
+    const startTime = sceneStartTime;
     registerAnimUpdater({
         animState,
         updateFrame(nowMs) {
@@ -3178,7 +3179,7 @@ function renderAnimatedCylinder(el, view) {
     };
     registerAnimExpr(animExprEntry);
 
-    const startTime = performance.now();
+    const startTime = sceneStartTime;
     registerAnimUpdater({
         animState,
         updateFrame(nowMs) {
@@ -3304,7 +3305,7 @@ function renderAnimatedPolygon(el, view) {
     };
     registerAnimExpr(animExprEntry);
 
-    const startTime = performance.now();
+    const startTime = sceneStartTime;
     registerAnimUpdater({
         animState,
         updateFrame(nowMs) {
@@ -3397,6 +3398,7 @@ function loadScene(spec) {
     // Scene reload performs a full animation lifecycle reset.
     activeAnimExprs = [];
     activeAnimUpdaters = [];
+    sceneStartTime = performance.now();
     clearWorldStarfield();
     clearWorldSkybox();
     currentSpec = spec;
