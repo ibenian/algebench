@@ -45,6 +45,7 @@ const animatedElementPos = {};  // id -> [x,y,z] in data space — updated each 
 // Each animated object registers { animState, updateFrame(nowMs) } and is ticked in updateLoop.
 // This keeps all animated transforms and follow-cam sampling on the same frame clock.
 let activeAnimUpdaters = [];
+let sceneStartTime = 0;  // shared time origin for all animated elements in a scene
 const _sliderDrag = { active: false, startX: 0, startY: 0, startLeft: 0, startBottom: 0 };
 let videoRecorder = null;
 let videoRecordedChunks = [];
@@ -2599,7 +2600,7 @@ function renderAnimatedVector(el, view) {
     animExprEntry.animState = animState;
     if (useExpr) registerAnimExpr(animExprEntry);
 
-    const startTime = performance.now();
+    const startTime = sceneStartTime;
     registerAnimUpdater({
         animState,
         updateFrame(nowMs) {
@@ -2867,7 +2868,7 @@ function renderAnimatedLine(el, view) {
     };
     registerAnimExpr(animExprEntry);
 
-    const startTime = performance.now();
+    const startTime = sceneStartTime;
     registerAnimUpdater({
         animState,
         updateFrame(nowMs) {
@@ -2941,7 +2942,7 @@ function renderAnimatedPoint(el, view) {
     };
     registerAnimExpr(animExprEntry);
 
-    const startTime = performance.now();
+    const startTime = sceneStartTime;
     registerAnimUpdater({
         animState,
         updateFrame(nowMs) {
@@ -2953,6 +2954,16 @@ function renderAnimatedPoint(el, view) {
             } catch (err) {
                 // keep previous position
             }
+
+            // Always publish position so follow-cam keeps tracking even when element is hidden.
+            // Step-removal competition (same id re-added) is guarded by _hiddenByRemove below.
+            if (el.id) {
+                animatedElementPos[el.id] = { pos: p, startTime, time: nowMs };
+            }
+
+            // If hidden by element removal, don't override the hide state or update visuals.
+            if (mesh._hiddenByRemove) return;
+
             let isVisible = true;
             const curVisibleFn = animExprEntry.visibleFn || visibleFn;
             if (curVisibleFn) {
@@ -2974,11 +2985,6 @@ function renderAnimatedPoint(el, view) {
                 labelEl.dataPos[1] = p[1];
                 labelEl.dataPos[2] = p[2] + 0.3;
                 labelEl.forceHidden = !isVisible;
-            }
-
-            // Only publish while visible; hidden step elements must not compete for the same id.
-            if (el.id && mesh.visible) {
-                animatedElementPos[el.id] = { pos: p, startTime, time: nowMs };
             }
         },
     });
@@ -3175,7 +3181,7 @@ function renderAnimatedCylinder(el, view) {
     };
     registerAnimExpr(animExprEntry);
 
-    const startTime = performance.now();
+    const startTime = sceneStartTime;
     registerAnimUpdater({
         animState,
         updateFrame(nowMs) {
@@ -3301,7 +3307,7 @@ function renderAnimatedPolygon(el, view) {
     };
     registerAnimExpr(animExprEntry);
 
-    const startTime = performance.now();
+    const startTime = sceneStartTime;
     registerAnimUpdater({
         animState,
         updateFrame(nowMs) {
@@ -3394,6 +3400,7 @@ function loadScene(spec) {
     // Scene reload performs a full animation lifecycle reset.
     activeAnimExprs = [];
     activeAnimUpdaters = [];
+    sceneStartTime = performance.now();
     clearWorldStarfield();
     clearWorldSkybox();
     currentSpec = spec;
@@ -5519,13 +5526,15 @@ function hideElementById(id) {
 
     fadeOutTracker(t, 200, () => {
         for (const entry of t.arrowMeshes) { entry.mesh.visible = false; entry.mesh._hiddenByRemove = true; }
-        for (const m of t.planeMeshes) m.visible = false;
+        for (const m of t.planeMeshes) { m.visible = false; m._hiddenByRemove = true; }
         for (const lbl of t.labels) lbl.el.style.display = 'none';
         for (const entry of t.pointNodes) { try { entry.node.set('visible', false); } catch(e) {} }
         if (t.group) { try { t.group.set('visible', false); } catch(e) {} }
     });
     // Hide arrow cones immediately to prevent animated orphans
     for (const entry of t.arrowMeshes) { entry.mesh.visible = false; entry.mesh._hiddenByRemove = true; }
+    // Hide plane meshes (animated points) immediately too
+    for (const m of t.planeMeshes) { m.visible = false; m._hiddenByRemove = true; }
     // Hide points immediately too
     for (const entry of (t.pointNodes || [])) { try { entry.node.set('visible', false); } catch(e) {} }
 }
@@ -5536,6 +5545,7 @@ function showElementById(id) {
     reg.hidden = false;
     const t = reg.tracker;
     for (const entry of t.arrowMeshes) { entry.mesh._hiddenByRemove = false; }
+    for (const m of t.planeMeshes) { m._hiddenByRemove = false; }
 
     for (const entry of t.arrowMeshes) entry.mesh.visible = true;
     for (const m of t.planeMeshes) m.visible = true;
