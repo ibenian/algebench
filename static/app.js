@@ -2946,9 +2946,6 @@ function renderAnimatedPoint(el, view) {
     registerAnimUpdater({
         animState,
         updateFrame(nowMs) {
-            // If hidden by element removal, don't override the hide state.
-            if (mesh._hiddenByRemove) return;
-
             const tSec = (nowMs - startTime) / 1000;
             const fns = animExprEntry.compiledFns || exprFns;
             let p = initPos;
@@ -2957,6 +2954,16 @@ function renderAnimatedPoint(el, view) {
             } catch (err) {
                 // keep previous position
             }
+
+            // Always publish position so follow-cam keeps tracking even when element is hidden.
+            // Step-removal competition (same id re-added) is guarded by _hiddenByRemove below.
+            if (el.id) {
+                animatedElementPos[el.id] = { pos: p, startTime, time: nowMs };
+            }
+
+            // If hidden by element removal, don't override the hide state or update visuals.
+            if (mesh._hiddenByRemove) return;
+
             let isVisible = true;
             const curVisibleFn = animExprEntry.visibleFn || visibleFn;
             if (curVisibleFn) {
@@ -2978,11 +2985,6 @@ function renderAnimatedPoint(el, view) {
                 labelEl.dataPos[1] = p[1];
                 labelEl.dataPos[2] = p[2] + 0.3;
                 labelEl.forceHidden = !isVisible;
-            }
-
-            // Only publish while visible; hidden step elements must not compete for the same id.
-            if (el.id && mesh.visible) {
-                animatedElementPos[el.id] = { pos: p, startTime, time: nowMs };
             }
         },
     });

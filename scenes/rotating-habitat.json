@@ -653,7 +653,8 @@
                 "12.5"
               ],
               "radius": 0.2,
-              "color": "#44ffaa"
+              "color": "#44ffaa",
+              "label": "head"
             },
             {
               "id": "gravity_vec_coriolis",
