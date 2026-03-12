@@ -668,6 +668,8 @@ function addChatMessage(role, content, toolCalls) {
                 if (activeSpeakBtn._ttsLoadPoll) { clearInterval(activeSpeakBtn._ttsLoadPoll); activeSpeakBtn._ttsLoadPoll = null; }
                 if (activeSpeakBtn._ttsStatePoll) { clearInterval(activeSpeakBtn._ttsStatePoll); activeSpeakBtn._ttsStatePoll = null; }
                 if (typeof activeSpeakBtn._setBtnState === 'function') activeSpeakBtn._setBtnState(null);
+                if (activeSpeakBtn._chunkBar) activeSpeakBtn._chunkBar.style.display = 'none';
+                if (activeSpeakBtn._downloadBtn) activeSpeakBtn._downloadBtn.style.display = 'none';
                 activeSpeakBtn = null;
             }
         };
