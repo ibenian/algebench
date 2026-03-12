@@ -34,7 +34,7 @@ script_dir = Path(__file__).parent.resolve()
 scenes_dir = script_dir / "scenes"
 
 try:
-    from gemini_live_tools import GeminiLiveAPI, pcm_to_wav_bytes, get_static_content as _glt_static
+    from gemini_live_tools import GeminiLiveAPI, pcm_to_wav_bytes, get_static_content as _glt_static, _split_sentences
     TTS_AVAILABLE = True
 except ImportError:
     _glt_static = None
@@ -759,7 +759,8 @@ DEBUG_MODE = False
 
 def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False, debug=False,
                    tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
-                   tts_style=None):
+                   tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
+                   tts_max_retries=None, tts_retry_delay=None, tts_style=None):
     """Serve the AlgeBench viewer and optionally open in browser."""
     global DEBUG_MODE
     DEBUG_MODE = debug
@@ -772,6 +773,14 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         tts_stream_kwargs['min_buffer_seconds'] = tts_min_buffer
     if tts_min_sentence_chars is not None:
         tts_stream_kwargs['min_sentence_chars'] = tts_min_sentence_chars
+    if tts_min_sentence_chars_growth is not None:
+        tts_stream_kwargs['min_sentence_chars_growth'] = tts_min_sentence_chars_growth
+    if tts_chunk_timeout is not None:
+        tts_stream_kwargs['chunk_timeout'] = tts_chunk_timeout
+    if tts_max_retries is not None:
+        tts_stream_kwargs['max_retries'] = tts_max_retries
+    if tts_retry_delay is not None:
+        tts_stream_kwargs['retry_delay'] = tts_retry_delay
     if tts_style is not None:
         tts_stream_kwargs['style'] = tts_style
 
@@ -988,6 +997,13 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         else:
             tts_text = text
 
+        sentences = _split_sentences(
+            tts_text,
+            min_chars=tts_stream_kwargs.get('min_sentence_chars', 80),
+            growth=tts_stream_kwargs.get('min_sentence_chars_growth', 2.0),
+        )
+        chunk_count = len(sentences)
+
         async def generate():
             async for chunk in api.astream_parallel_wav(
                 text=tts_text,
@@ -1000,7 +1016,11 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         return StreamingResponse(
             generate(),
             media_type="audio/wav",
-            headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"},
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Content-Type-Options": "nosniff",
+                "X-TTS-Chunk-Count": str(chunk_count),
+            },
         )
 
     @fastapp.post("/api/load")
@@ -1107,6 +1127,14 @@ Examples:
                         help='Seconds of audio to buffer before first playback (default: library default)')
     parser.add_argument('--tts-min-sentence-chars', type=int, default=None,
                         help='Merge short sentences up to this char count (default: library default)')
+    parser.add_argument('--tts-min-sentence-chars-growth', type=float, default=None,
+                        help='Sentence char limit growth factor for merging (default: library default)')
+    parser.add_argument('--tts-chunk-timeout', type=float, default=None,
+                        help='Seconds to wait for next chunk before timing out (default: library default)')
+    parser.add_argument('--tts-max-retries', type=int, default=None,
+                        help='Max retries per sentence on TTS failure (default: library default)')
+    parser.add_argument('--tts-retry-delay', type=float, default=None,
+                        help='Seconds to wait between retries (default: library default)')
     parser.add_argument('--tts-style', type=str, default=None,
                         help='Additional style guidance for TTS synthesis')
 
@@ -1135,6 +1163,10 @@ Examples:
         tts_parallelism=args.tts_parallelism,
         tts_min_buffer=args.tts_min_buffer,
         tts_min_sentence_chars=args.tts_min_sentence_chars,
+        tts_min_sentence_chars_growth=args.tts_min_sentence_chars_growth,
+        tts_chunk_timeout=args.tts_chunk_timeout,
+        tts_max_retries=args.tts_max_retries,
+        tts_retry_delay=args.tts_retry_delay,
         tts_style=args.tts_style,
     )
 

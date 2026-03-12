@@ -755,7 +755,16 @@ function addChatMessage(role, content, toolCalls) {
             if (activeSpeakBtn === speakBtn) activeSpeakBtn = null;
             startPlay();
         });
-        msgDiv.appendChild(speakBtn);
+        // Chunk progress bar (hidden until TTS starts)
+        const chunkBar = document.createElement('div');
+        chunkBar.className = 'tts-chunk-bar';
+        chunkBar.style.display = 'none';
+        speakBtn._chunkBar = chunkBar;
+        const speakCol = document.createElement('div');
+        speakCol.className = 'tts-speak-col';
+        speakCol.appendChild(speakBtn);
+        speakCol.appendChild(chunkBar);
+        msgDiv.appendChild(speakCol);
     }
 
     messagesEl.appendChild(msgDiv);
@@ -979,6 +988,49 @@ let ttsStreamDone = false;     // true once all chunks have been received and sc
 let ttsAudioContext = null;    // Shared AudioContext (also used for video-export recording)
 let ttsMediaDestination = null;
 
+// ----- TTS Chunk Progress Tracking -----
+let ttsChunkTotal = 0;      // Total chunks expected (from X-TTS-Chunk-Count header)
+let ttsChunksReceived = 0;  // Chunks decoded and scheduled
+let ttsChunksPlayed = 0;    // Chunks that have finished playing
+
+function _ttsResetChunkTracking(total) {
+    ttsChunkTotal = total;
+    ttsChunksReceived = 0;
+    ttsChunksPlayed = 0;
+    _ttsUpdateChunkUI();
+}
+
+function _ttsUpdateChunkUI() {
+    if (!activeSpeakBtn) return;
+    const bar = activeSpeakBtn._chunkBar;
+    if (!bar) return;
+    const n = ttsChunkTotal;
+    if (n === 0) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    // Rebuild pips if count changed
+    if (bar.children.length !== n) {
+        bar.innerHTML = '';
+        for (let i = 0; i < n; i++) {
+            const pip = document.createElement('span');
+            pip.className = 'tts-pip';
+            bar.appendChild(pip);
+        }
+    }
+    const pips = bar.children;
+    for (let i = 0; i < n; i++) {
+        const pip = pips[i];
+        if (i < ttsChunksPlayed) {
+            pip.dataset.state = 'done';
+        } else if (i === ttsChunksPlayed && ttsChunksReceived > ttsChunksPlayed) {
+            pip.dataset.state = 'playing';
+        } else if (i < ttsChunksReceived) {
+            pip.dataset.state = 'buffered';
+        } else {
+            pip.dataset.state = 'pending';
+        }
+    }
+}
+
 // Lazy-init the shared AudioContext and recording destination.
 function ensureTTSRecordingBus() {
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -1043,6 +1095,12 @@ function _ttsStopActiveAudio() {
     ttsStreamDone = false;
     ttsLoading = false;
     ttsPausedByUser = false;
+    ttsChunkTotal = 0;
+    ttsChunksReceived = 0;
+    ttsChunksPlayed = 0;
+    if (activeSpeakBtn && activeSpeakBtn._chunkBar) {
+        activeSpeakBtn._chunkBar.style.display = 'none';
+    }
     // Resume the AudioContext so it's ready for the next request
     if (ttsAudioContext && ttsAudioContext.state === 'suspended') {
         ttsAudioContext.resume().catch(() => {});
@@ -1164,6 +1222,9 @@ async function speakText(text, { explicit = false } = {}) {
         ttsLoading = false; ttsStreamDone = true; return;
     }
 
+    const chunkCount = parseInt(response.headers.get('X-TTS-Chunk-Count') || '0', 10);
+    _ttsResetChunkTracking(chunkCount);
+
     const parser = new _WavStreamParser();
     const reader = response.body.getReader();
 
@@ -1198,10 +1259,15 @@ async function speakText(text, { explicit = false } = {}) {
                 source.start(startAt);
                 ttsScheduleEndTime = startAt + audioBuffer.duration;
 
+                ttsChunksReceived++;
+                _ttsUpdateChunkUI();
+
                 ttsActiveSources.push(source);
                 source.onended = () => {
                     const i = ttsActiveSources.indexOf(source);
                     if (i >= 0) ttsActiveSources.splice(i, 1);
+                    ttsChunksPlayed++;
+                    _ttsUpdateChunkUI();
                 };
             }
         }

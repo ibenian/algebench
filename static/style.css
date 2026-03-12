@@ -1844,7 +1844,6 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 /* Per-message speak button */
 .msg-speak-btn {
     flex-shrink: 0;
-    align-self: flex-start;
     margin-top: 3px;
     width: 22px;
     height: 22px;
@@ -1941,6 +1940,34 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     color: #c6d8ff;
     border-color: rgba(120, 140, 230, 0.45);
 }
+
+/* TTS speak column (button + pip strip) */
+.tts-speak-col {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+/* TTS chunk progress pips */
+.tts-chunk-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: center;
+}
+.tts-pip {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background 0.2s, box-shadow 0.2s;
+}
+.tts-pip[data-state='pending']  { background: rgba(120, 130, 160, 0.18); border: 1px solid rgba(120, 130, 160, 0.35); }
+.tts-pip[data-state='buffered'] { background: rgba(100, 150, 255, 0.35); border: 1px solid rgba(120, 170, 255, 0.55); }
+.tts-pip[data-state='playing']  { background: rgba(100, 200, 255, 0.9); border: 1px solid rgba(140, 220, 255, 0.9); box-shadow: 0 0 5px rgba(100, 200, 255, 0.7); }
+.tts-pip[data-state='done']     { background: rgba(80, 100, 160, 0.3); border: 1px solid rgba(90, 110, 170, 0.4); }
 
 /* Loading dots */
 .chat-loading {
