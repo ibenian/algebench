@@ -1142,7 +1142,8 @@ Examples:
                         help='Seconds to wait between retries (default: library default)')
     parser.add_argument('--tts-style', type=str, default=None,
                         help='Additional style guidance for TTS synthesis')
-    parser.add_argument('--tts-output-file', type=str, default=None,
+    parser.add_argument('--tts-output-file', '--output-file', type=str, default=None,
+                        dest='tts_output_file',
                         help='Save all TTS audio to this WAV file in addition to playing')
 
     args = parser.parse_args()
