@@ -974,7 +974,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             return JSONResponse({"error": str(e)}, status_code=500)
 
     @fastapp.post("/api/tts/stream")
-    async def api_tts_stream(req: TtsRequest):
+    async def api_tts_stream(req: TtsRequest, request: Request):
         if not TTS_AVAILABLE or not GEMINI_API_KEY:
             return JSONResponse({"error": "TTS not available"}, status_code=503)
         text = req.text.strip()
@@ -1011,6 +1011,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                 character_name=req.character,
                 **tts_stream_kwargs
             ):
+                if await request.is_disconnected():
+                    break
                 yield chunk
 
         return StreamingResponse(
