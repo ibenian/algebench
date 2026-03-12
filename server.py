@@ -24,7 +24,7 @@ import termios
 import select
 from urllib.parse import quote
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse, Response, JSONResponse, HTMLResponse
+from fastapi.responses import StreamingResponse, Response, JSONResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel
 import uvicorn
 from google import genai
@@ -1018,15 +1018,23 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                     break
                 yield chunk
 
-        return StreamingResponse(
-            generate(),
-            media_type="audio/wav",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Content-Type-Options": "nosniff",
-                "X-TTS-Chunk-Count": str(chunk_count),
-            },
-        )
+        headers = {
+            "Cache-Control": "no-cache",
+            "X-Content-Type-Options": "nosniff",
+            "X-TTS-Chunk-Count": str(chunk_count),
+        }
+        if tts_output_file:
+            headers["X-TTS-Has-Output-File"] = "1"
+
+        return StreamingResponse(generate(), media_type="audio/wav", headers=headers)
+
+    @fastapp.get("/api/tts/download")
+    async def api_tts_download():
+        if not tts_output_file or not os.path.exists(tts_output_file):
+            return JSONResponse({"error": "No output file available"}, status_code=404)
+        filename = os.path.basename(tts_output_file)
+        return FileResponse(tts_output_file, media_type="audio/wav",
+                            filename=filename, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
     @fastapp.post("/api/load")
     async def api_load(request: Request):
