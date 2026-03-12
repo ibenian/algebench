@@ -1348,7 +1348,7 @@ async function speakText(text, { explicit = false } = {}) {
             ttsLoading = false;
             ttsStreamDone = true;
             ttsAbortController = null;
-            if (ttsHasOutputFile && myDownloadBtn) {
+            if (ttsHasOutputFile && myDownloadBtn && ttsChunksReceived > 0) {
                 myDownloadBtn.style.display = 'flex';
             }
         }
