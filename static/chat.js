@@ -664,7 +664,7 @@ function addChatMessage(role, content, toolCalls) {
 
         const stopOtherBtn = () => {
             if (activeSpeakBtn && activeSpeakBtn !== speakBtn) {
-                if (typeof window.algebenchStopTTS === 'function') window.algebenchStopTTS();
+                // Only reset the previous button's UI — audio handoff is managed in speakText
                 if (activeSpeakBtn._ttsLoadPoll) { clearInterval(activeSpeakBtn._ttsLoadPoll); activeSpeakBtn._ttsLoadPoll = null; }
                 if (activeSpeakBtn._ttsStatePoll) { clearInterval(activeSpeakBtn._ttsStatePoll); activeSpeakBtn._ttsStatePoll = null; }
                 if (typeof activeSpeakBtn._setBtnState === 'function') activeSpeakBtn._setBtnState(null);
@@ -983,6 +983,7 @@ let ttsLoading = false;        // true while fetch is open but no audio schedule
 let ttsPausedByUser = false;
 let ttsAbortController = null; // AbortController for the active fetch stream
 let ttsActiveSources = [];     // AudioBufferSourceNodes currently scheduled/playing
+let ttsPrevSources = [];       // Sources from previous TTS kept playing until new audio starts
 let ttsScheduleEndTime = 0;    // ctx.currentTime when the last scheduled buffer ends
 let ttsStreamDone = false;     // true once all chunks have been received and scheduled
 let ttsAudioContext = null;    // Shared AudioContext (also used for video-export recording)
@@ -1110,9 +1111,10 @@ function _ttsStopActiveAudio() {
         ttsAbortController.abort();
         ttsAbortController = null;
     }
-    for (const src of ttsActiveSources) {
+    for (const src of [...ttsPrevSources, ...ttsActiveSources]) {
         try { src.stop(); } catch (_) {}
     }
+    ttsPrevSources = [];
     ttsActiveSources = [];
     ttsScheduleEndTime = 0;
     ttsStreamDone = false;
@@ -1208,15 +1210,30 @@ async function speakText(text, { explicit = false } = {}) {
 
     if (!clean) return;
 
-    // Stop previous playback and claim a new request ID
+    // Claim a new request ID, abort previous fetch, but keep previous audio playing
+    // until the first new chunk is ready — then cut over.
     const myId = ++ttsRequestId;
-    _ttsStopActiveAudio();
-    ttsLoading = true;
+    if (ttsAbortController) { ttsAbortController.abort(); ttsAbortController = null; }
+    // Stop any lingering handoff sources from an even earlier request
+    for (const src of ttsPrevSources) { try { src.stop(); } catch (_) {} }
+    // If previous was paused, stop it immediately (no point resuming it briefly)
+    if (ttsPausedByUser) {
+        for (const src of ttsActiveSources) { try { src.stop(); } catch (_) {} }
+        ttsActiveSources = [];
+    }
+    ttsPrevSources = ttsActiveSources;
+    ttsActiveSources = [];
+    ttsScheduleEndTime = 0;
     ttsStreamDone = false;
+    ttsLoading = true;
+    ttsPausedByUser = false;
+    ttsChunkTotal = 0; ttsChunksReceived = 0; ttsChunksPlayed = 0;
+    _ttsStopChunkRaf();
+    if (activeSpeakBtn && activeSpeakBtn._chunkBar) activeSpeakBtn._chunkBar.style.display = 'none';
 
     // Ensure AudioContext exists and is running
     const bus = ensureTTSRecordingBus();
-    if (!bus) { ttsLoading = false; return; }
+    if (!bus) { ttsLoading = false; ttsPrevSources = []; return; }
     const ctx = bus.ctx;
     const mediaDest = bus.dest;
     if (ctx.state === 'suspended') await ctx.resume();
@@ -1238,12 +1255,19 @@ async function speakText(text, { explicit = false } = {}) {
             }),
         });
     } catch (err) {
-        if (ttsRequestId === myId) { ttsLoading = false; ttsStreamDone = true; }
+        if (ttsRequestId === myId) {
+            ttsLoading = false; ttsStreamDone = true;
+            for (const src of ttsPrevSources) { try { src.stop(); } catch (_) {} }
+            ttsPrevSources = [];
+        }
         return;
     }
 
     if (!response.ok || ttsRequestId !== myId) {
-        ttsLoading = false; ttsStreamDone = true; return;
+        ttsLoading = false; ttsStreamDone = true;
+        for (const src of ttsPrevSources) { try { src.stop(); } catch (_) {} }
+        ttsPrevSources = [];
+        return;
     }
 
     const chunkCount = parseInt(response.headers.get('X-TTS-Chunk-Count') || '0', 10);
@@ -1270,7 +1294,7 @@ async function speakText(text, { explicit = false } = {}) {
 
                 if (ttsRequestId !== myId || ctx.state === 'closed') break;
 
-                // First decoded chunk — audio is starting
+                // First decoded chunk — schedule cut over precisely when new audio starts
                 if (ttsLoading) ttsLoading = false;
 
                 const source = ctx.createBufferSource();
@@ -1282,6 +1306,12 @@ async function speakText(text, { explicit = false } = {}) {
                 const startAt = Math.max(ttsScheduleEndTime, now + 0.02);
                 source.start(startAt);
                 ttsScheduleEndTime = startAt + audioBuffer.duration;
+
+                // Stop previous audio exactly when new audio begins
+                if (ttsPrevSources.length > 0) {
+                    for (const src of ttsPrevSources) { try { src.stop(startAt); } catch (_) {} }
+                    ttsPrevSources = [];
+                }
 
                 ttsChunksReceived++;
 
