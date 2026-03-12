@@ -10,6 +10,16 @@ algebench eigenvalues.json
 
 ---
 
+## Demo Videos
+
+**YouTube Channel:** [youtube.com/@AlgeBench](https://www.youtube.com/@AlgeBench)
+
+| Scene | Video |
+|-------|-------|
+| Rotating Space Habitat Simulation | [Watch](https://www.youtube.com/watch?v=HoZgrAxKKGA) |
+
+---
+
 ## Vision
 
 My ultimate goal is to create an agentic system that can genuinely engage in the tangible learning process — fostering that explorative, experimental mindset, willing and courageous enough to ask daring questions freely, supported by an infinitely patient tutor that can meet you exactly where you are and take you wherever you want to go.
