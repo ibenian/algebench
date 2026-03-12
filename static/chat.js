@@ -992,12 +992,33 @@ let ttsMediaDestination = null;
 let ttsChunkTotal = 0;      // Total chunks expected (from X-TTS-Chunk-Count header)
 let ttsChunksReceived = 0;  // Chunks decoded and scheduled
 let ttsChunksPlayed = 0;    // Chunks that have finished playing
+let _ttsRafId = null;       // requestAnimationFrame handle for pip UI loop
 
 function _ttsResetChunkTracking(total) {
     ttsChunkTotal = total;
     ttsChunksReceived = 0;
     ttsChunksPlayed = 0;
-    _ttsUpdateChunkUI();
+    _ttsStartChunkRaf();
+}
+
+function _ttsStartChunkRaf() {
+    if (_ttsRafId !== null) return; // already running
+    function loop() {
+        _ttsUpdateChunkUI();
+        if (ttsChunkTotal > 0) {
+            _ttsRafId = requestAnimationFrame(loop);
+        } else {
+            _ttsRafId = null;
+        }
+    }
+    _ttsRafId = requestAnimationFrame(loop);
+}
+
+function _ttsStopChunkRaf() {
+    if (_ttsRafId !== null) {
+        cancelAnimationFrame(_ttsRafId);
+        _ttsRafId = null;
+    }
 }
 
 function _ttsUpdateChunkUI() {
@@ -1019,15 +1040,17 @@ function _ttsUpdateChunkUI() {
     const pips = bar.children;
     for (let i = 0; i < n; i++) {
         const pip = pips[i];
+        let state;
         if (i < ttsChunksPlayed) {
-            pip.dataset.state = 'done';
+            state = 'done';
         } else if (i === ttsChunksPlayed && ttsChunksReceived > ttsChunksPlayed) {
-            pip.dataset.state = 'playing';
+            state = 'playing';
         } else if (i < ttsChunksReceived) {
-            pip.dataset.state = 'buffered';
+            state = 'buffered';
         } else {
-            pip.dataset.state = 'pending';
+            state = 'pending';
         }
+        if (pip.dataset.state !== state) pip.dataset.state = state;
     }
 }
 
@@ -1098,6 +1121,7 @@ function _ttsStopActiveAudio() {
     ttsChunkTotal = 0;
     ttsChunksReceived = 0;
     ttsChunksPlayed = 0;
+    _ttsStopChunkRaf();
     if (activeSpeakBtn && activeSpeakBtn._chunkBar) {
         activeSpeakBtn._chunkBar.style.display = 'none';
     }
@@ -1260,14 +1284,12 @@ async function speakText(text, { explicit = false } = {}) {
                 ttsScheduleEndTime = startAt + audioBuffer.duration;
 
                 ttsChunksReceived++;
-                _ttsUpdateChunkUI();
 
                 ttsActiveSources.push(source);
                 source.onended = () => {
                     const i = ttsActiveSources.indexOf(source);
                     if (i >= 0) ttsActiveSources.splice(i, 1);
                     ttsChunksPlayed++;
-                    _ttsUpdateChunkUI();
                 };
             }
         }

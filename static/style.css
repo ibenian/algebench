@@ -1964,10 +1964,10 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     flex-shrink: 0;
     transition: background 0.2s, box-shadow 0.2s;
 }
-.tts-pip[data-state='pending']  { background: rgba(120, 130, 160, 0.18); border: 1px solid rgba(120, 130, 160, 0.35); }
-.tts-pip[data-state='buffered'] { background: rgba(100, 150, 255, 0.35); border: 1px solid rgba(120, 170, 255, 0.55); }
-.tts-pip[data-state='playing']  { background: rgba(100, 200, 255, 0.9); border: 1px solid rgba(140, 220, 255, 0.9); box-shadow: 0 0 5px rgba(100, 200, 255, 0.7); }
-.tts-pip[data-state='done']     { background: rgba(80, 100, 160, 0.3); border: 1px solid rgba(90, 110, 170, 0.4); }
+.tts-pip[data-state='pending']  { background: rgba(80, 90, 120, 0.2);  border: 1px solid rgba(100, 110, 150, 0.3); }
+.tts-pip[data-state='buffered'] { background: rgba(80, 130, 255, 0.75); border: 1px solid rgba(100, 160, 255, 0.9); }
+.tts-pip[data-state='playing']  { background: rgba(100, 210, 255, 1.0); border: 1px solid rgba(140, 225, 255, 1.0); box-shadow: 0 0 5px rgba(100, 200, 255, 0.8); }
+.tts-pip[data-state='done']     { background: rgba(50, 70, 130, 0.7);  border: 1px solid rgba(70, 100, 180, 0.6); }
 
 /* Loading dots */
 .chat-loading {
