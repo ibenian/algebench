@@ -1239,9 +1239,12 @@ async function speakText(text, { explicit = false } = {}) {
     ttsStreamDone = false;
     ttsLoading = true;
     ttsPausedByUser = false;
+    ttsHasOutputFile = false;
     ttsChunkTotal = 0; ttsChunksReceived = 0; ttsChunksPlayed = 0;
     _ttsStopChunkRaf();
     if (activeSpeakBtn && activeSpeakBtn._chunkBar) activeSpeakBtn._chunkBar.style.display = 'none';
+    if (activeSpeakBtn && activeSpeakBtn._downloadBtn) activeSpeakBtn._downloadBtn.style.display = 'none';
+    const myDownloadBtn = activeSpeakBtn ? activeSpeakBtn._downloadBtn : null;
 
     // Ensure AudioContext exists and is running
     const bus = ensureTTSRecordingBus();
@@ -1343,8 +1346,8 @@ async function speakText(text, { explicit = false } = {}) {
             ttsLoading = false;
             ttsStreamDone = true;
             ttsAbortController = null;
-            if (ttsHasOutputFile && activeSpeakBtn && activeSpeakBtn._downloadBtn) {
-                activeSpeakBtn._downloadBtn.style.display = 'flex';
+            if (ttsHasOutputFile && myDownloadBtn) {
+                myDownloadBtn.style.display = 'flex';
             }
         }
     }
