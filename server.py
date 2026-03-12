@@ -24,7 +24,7 @@ import termios
 import select
 from urllib.parse import quote
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse, Response, JSONResponse, HTMLResponse
+from fastapi.responses import StreamingResponse, Response, JSONResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel
 import uvicorn
 from google import genai
@@ -760,7 +760,8 @@ DEBUG_MODE = False
 def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False, debug=False,
                    tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
                    tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
-                   tts_max_retries=None, tts_retry_delay=None, tts_style=None):
+                   tts_max_retries=None, tts_retry_delay=None, tts_style=None,
+                   tts_output_file=None):
     """Serve the AlgeBench viewer and optionally open in browser."""
     global DEBUG_MODE
     DEBUG_MODE = debug
@@ -783,6 +784,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         tts_stream_kwargs['retry_delay'] = tts_retry_delay
     if tts_style is not None:
         tts_stream_kwargs['style'] = tts_style
+    if tts_output_file is not None:
+        tts_stream_kwargs['output_path'] = tts_output_file
 
     html_content = generate_html(debug=debug)
     current_spec = [None]
@@ -1015,15 +1018,23 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                     break
                 yield chunk
 
-        return StreamingResponse(
-            generate(),
-            media_type="audio/wav",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Content-Type-Options": "nosniff",
-                "X-TTS-Chunk-Count": str(chunk_count),
-            },
-        )
+        headers = {
+            "Cache-Control": "no-cache",
+            "X-Content-Type-Options": "nosniff",
+            "X-TTS-Chunk-Count": str(chunk_count),
+        }
+        if tts_output_file:
+            headers["X-TTS-Has-Output-File"] = "1"
+
+        return StreamingResponse(generate(), media_type="audio/wav", headers=headers)
+
+    @fastapp.get("/api/tts/download")
+    async def api_tts_download():
+        if not tts_output_file or not os.path.exists(tts_output_file):
+            return JSONResponse({"error": "No output file available"}, status_code=404)
+        filename = os.path.basename(tts_output_file)
+        return FileResponse(tts_output_file, media_type="audio/wav",
+                            filename=filename, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
     @fastapp.post("/api/load")
     async def api_load(request: Request):
@@ -1139,6 +1150,9 @@ Examples:
                         help='Seconds to wait between retries (default: library default)')
     parser.add_argument('--tts-style', type=str, default=None,
                         help='Additional style guidance for TTS synthesis')
+    parser.add_argument('--tts-output-file', '--output-file', type=str, default=None,
+                        dest='tts_output_file',
+                        help='Save all TTS audio to this WAV file in addition to playing')
 
     args = parser.parse_args()
 
@@ -1170,6 +1184,7 @@ Examples:
         tts_max_retries=args.tts_max_retries,
         tts_retry_delay=args.tts_retry_delay,
         tts_style=args.tts_style,
+        tts_output_file=args.tts_output_file,
     )
 
 

@@ -668,6 +668,8 @@ function addChatMessage(role, content, toolCalls) {
                 if (activeSpeakBtn._ttsLoadPoll) { clearInterval(activeSpeakBtn._ttsLoadPoll); activeSpeakBtn._ttsLoadPoll = null; }
                 if (activeSpeakBtn._ttsStatePoll) { clearInterval(activeSpeakBtn._ttsStatePoll); activeSpeakBtn._ttsStatePoll = null; }
                 if (typeof activeSpeakBtn._setBtnState === 'function') activeSpeakBtn._setBtnState(null);
+                if (activeSpeakBtn._chunkBar) activeSpeakBtn._chunkBar.style.display = 'none';
+                if (activeSpeakBtn._downloadBtn) activeSpeakBtn._downloadBtn.style.display = 'none';
                 activeSpeakBtn = null;
             }
         };
@@ -760,10 +762,20 @@ function addChatMessage(role, content, toolCalls) {
         chunkBar.className = 'tts-chunk-bar';
         chunkBar.style.display = 'none';
         speakBtn._chunkBar = chunkBar;
+        const downloadBtn = document.createElement('a');
+        downloadBtn.className = 'tts-download-btn';
+        downloadBtn.href = '/api/tts/download';
+        downloadBtn.download = '';
+        downloadBtn.title = 'Download audio';
+        downloadBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5v-2z"/></svg>';
+        downloadBtn.style.display = 'none';
+        speakBtn._downloadBtn = downloadBtn;
+
         const speakCol = document.createElement('div');
         speakCol.className = 'tts-speak-col';
         speakCol.appendChild(speakBtn);
         speakCol.appendChild(chunkBar);
+        speakCol.appendChild(downloadBtn);
         msgDiv.appendChild(speakCol);
     }
 
@@ -993,6 +1005,7 @@ let ttsMediaDestination = null;
 let ttsChunkTotal = 0;      // Total chunks expected (from X-TTS-Chunk-Count header)
 let ttsChunksReceived = 0;  // Chunks decoded and scheduled
 let ttsChunksPlayed = 0;    // Chunks that have finished playing
+let ttsHasOutputFile = false; // Server is saving audio to file (X-TTS-Has-Output-File header)
 let _ttsRafId = null;       // requestAnimationFrame handle for pip UI loop
 
 function _ttsResetChunkTracking(total) {
@@ -1123,6 +1136,7 @@ function _ttsStopActiveAudio() {
     ttsChunkTotal = 0;
     ttsChunksReceived = 0;
     ttsChunksPlayed = 0;
+    ttsHasOutputFile = false;
     _ttsStopChunkRaf();
     if (activeSpeakBtn && activeSpeakBtn._chunkBar) {
         activeSpeakBtn._chunkBar.style.display = 'none';
@@ -1227,9 +1241,12 @@ async function speakText(text, { explicit = false } = {}) {
     ttsStreamDone = false;
     ttsLoading = true;
     ttsPausedByUser = false;
+    ttsHasOutputFile = false;
     ttsChunkTotal = 0; ttsChunksReceived = 0; ttsChunksPlayed = 0;
     _ttsStopChunkRaf();
     if (activeSpeakBtn && activeSpeakBtn._chunkBar) activeSpeakBtn._chunkBar.style.display = 'none';
+    if (activeSpeakBtn && activeSpeakBtn._downloadBtn) activeSpeakBtn._downloadBtn.style.display = 'none';
+    const myDownloadBtn = activeSpeakBtn ? activeSpeakBtn._downloadBtn : null;
 
     // Ensure AudioContext exists and is running
     const bus = ensureTTSRecordingBus();
@@ -1271,6 +1288,7 @@ async function speakText(text, { explicit = false } = {}) {
     }
 
     const chunkCount = parseInt(response.headers.get('X-TTS-Chunk-Count') || '0', 10);
+    ttsHasOutputFile = response.headers.get('X-TTS-Has-Output-File') === '1';
     _ttsResetChunkTracking(chunkCount);
 
     const parser = new _WavStreamParser();
@@ -1330,6 +1348,9 @@ async function speakText(text, { explicit = false } = {}) {
             ttsLoading = false;
             ttsStreamDone = true;
             ttsAbortController = null;
+            if (ttsHasOutputFile && myDownloadBtn && ttsChunksReceived > 0) {
+                myDownloadBtn.style.display = 'flex';
+            }
         }
     }
 }

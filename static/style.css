@@ -1950,6 +1950,28 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     gap: 3px;
 }
 
+/* TTS download button */
+.tts-download-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid rgba(100, 200, 120, 0.45);
+    background: rgba(40, 100, 60, 0.25);
+    color: rgba(100, 220, 130, 0.85);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+.tts-download-btn:hover {
+    background: rgba(50, 140, 80, 0.4);
+    color: #90ffb0;
+    border-color: rgba(120, 230, 140, 0.7);
+}
+
 /* TTS chunk progress pips */
 .tts-chunk-bar {
     display: flex;
