@@ -760,7 +760,8 @@ DEBUG_MODE = False
 def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False, debug=False,
                    tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
                    tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
-                   tts_max_retries=None, tts_retry_delay=None, tts_style=None):
+                   tts_max_retries=None, tts_retry_delay=None, tts_style=None,
+                   tts_output_file=None):
     """Serve the AlgeBench viewer and optionally open in browser."""
     global DEBUG_MODE
     DEBUG_MODE = debug
@@ -783,6 +784,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         tts_stream_kwargs['retry_delay'] = tts_retry_delay
     if tts_style is not None:
         tts_stream_kwargs['style'] = tts_style
+    if tts_output_file is not None:
+        tts_stream_kwargs['output_path'] = tts_output_file
 
     html_content = generate_html(debug=debug)
     current_spec = [None]
@@ -1139,6 +1142,8 @@ Examples:
                         help='Seconds to wait between retries (default: library default)')
     parser.add_argument('--tts-style', type=str, default=None,
                         help='Additional style guidance for TTS synthesis')
+    parser.add_argument('--tts-output-file', type=str, default=None,
+                        help='Save all TTS audio to this WAV file in addition to playing')
 
     args = parser.parse_args()
 
@@ -1170,6 +1175,7 @@ Examples:
         tts_max_retries=args.tts_max_retries,
         tts_retry_delay=args.tts_retry_delay,
         tts_style=args.tts_style,
+        tts_output_file=args.tts_output_file,
     )
 
 
