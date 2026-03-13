@@ -4,7 +4,7 @@
     {
       "title": "Conditional Probability & Bayes' Rule",
       "description": "Build intuition for conditional probability from joint distributions and areas — then apply Bayes' rule to three real-world problems.",
-      "range": [[-1.5, 12.5], [-2, 13.5], [-0.5, 4]],
+      "range": [[-1.5, 16.5], [-2, 13.5], [-0.5, 4]],
       "camera": {
         "position": [5, -2, 17],
         "target": [5, 5, 0]
@@ -158,7 +158,47 @@
         },
         {
           "title": "Independence Is a Straight Line",
-          "description": "**Independence** means knowing $A$ tells you nothing about $B$: $P(B \\mid A) = P(B \\mid \\overline{A})$.\n\nWhen both conditional heights are equal, the step line becomes **perfectly horizontal** — a straight line all the way across. This is what independence looks like geometrically.\n\n**Dependence** creates a step: the divider is higher in one column than the other. The height of that step tells you how much $A$ and $B$ are correlated.\n\nSet both sliders to the same value to see the line straighten.",
+          "description": "**Independence** means knowing $A$ tells you nothing about $B$: $P(B \\mid A) = P(B \\mid \\overline{A})$.\n\nThe **bar chart to the right** shows P(B|A) and P(B|¬A) side by side. When they match, the step line in the rectangle is a straight horizontal line — that is independence.\n\n**Dependence** creates mismatched bars and a step. Set both sliders to the same value to see the bars align and the step disappear.",
+          "add": [
+            {
+              "id":"indep_bar_border_a",
+              "type":"line",
+              "points":[[11.8,0,0.06],[13.2,0,0.06],[13.2,10,0.06],[11.8,10,0.06],[11.8,0,0.06]],
+              "color":"#4477ff44","width":0.07
+            },
+            {
+              "id":"indep_bar_border_na",
+              "type":"line",
+              "points":[[13.8,0,0.06],[15.2,0,0.06],[15.2,10,0.06],[13.8,10,0.06],[13.8,0,0.06]],
+              "color":"#88889944","width":0.07
+            },
+            {
+              "id":"indep_bar_a",
+              "type":"animated_polygon",
+              "vertices":[["11.8","0","0.08"],["13.2","0","0.08"],["13.2","pBgA*10","0.08"],["11.8","pBgA*10","0.08"]],
+              "color":"#4477ff","opacity":0.75,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"indep_bar_nota",
+              "type":"animated_polygon",
+              "vertices":[["13.8","0","0.08"],["15.2","0","0.08"],["15.2","pBgNA*10","0.08"],["13.8","pBgNA*10","0.08"]],
+              "color":"#888899","opacity":0.65,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"lbl_indep_bar_a",
+              "type":"animated_point",
+              "expr":["12.5","pBgA*10+0.8","0.1"],
+              "radius":0,"color":"#7799ff","label":"P(B|A)"
+            },
+            {
+              "id":"lbl_indep_bar_nota",
+              "type":"animated_point",
+              "expr":["14.5","pBgNA*10+0.8","0.1"],
+              "radius":0,"color":"#aaaacc","label":"P(B|¬A)"
+            }
+          ],
           "info": [
             {
               "id":"main_info",
@@ -170,6 +210,11 @@
         {
           "title": "Conditioning on B: Zoom In",
           "description": "**Conditioning on B** means restricting attention to just the $B$-row — the bottom strip. We zoom in on it, stretching it to fill the entire square.\n\nIn the zoomed view (elevated at z = 2.5), the $A$ column occupies exactly $P(A \\mid B)$ of the width. The **column widths change** when you zoom in, because the B-row has different heights in each column.\n\n$$P(A \\mid B) = \\frac{\\text{area of } A \\cap B}{\\text{area of } B\\text{-row}} = \\frac{P(A) \\cdot P(B \\mid A)}{P(B)}$$\n\nUse the **Side** camera view to see the 3D projection clearly.",
+          "remove": [
+            {"id":"indep_bar_border_a"},{"id":"indep_bar_border_na"},
+            {"id":"indep_bar_a"},{"id":"indep_bar_nota"},
+            {"id":"lbl_indep_bar_a"},{"id":"lbl_indep_bar_nota"}
+          ],
           "add": [
             {
               "id":"b_row_left_border",
@@ -273,14 +318,126 @@
           ]
         },
         {
-          "title": "Asymmetry: $P(A \\mid B) \\neq P(B \\mid A)$",
-          "description": "There are two ways to slice the joint distribution:\n\n- **Condition on B** (zoom into B-row): columns = A and ¬A, proportions = $P(A \\mid B)$ and $P(\\overline{A} \\mid B)$\n- **Condition on A** (zoom into A-column): rows = B and ¬B, proportions = $P(B \\mid A)$ and $P(\\overline{B} \\mid A)$\n\nThe same four cell areas, divided two different ways. That's why $P(A \\mid B) \\neq P(B \\mid A)$ in general — same intersection, different normalization.",
+          "title": "Conditioning on A: Zoom In",
+          "description": "**Conditioning on A** means restricting attention to just the $A$-column — the left strip. We zoom it horizontally to fill the entire square.\n\nIn the zoomed view (elevated at z = 2.5), the $B$ row occupies exactly $P(B \\mid A)$ of the height. Compare this to the previous slide where we zoomed the B-row.\n\n$$P(B \\mid A) = \\frac{\\text{area of } A \\cap B}{\\text{area of } A\\text{-column}} = \\frac{P(A) \\cdot P(B \\mid A)}{P(A)}$$\n\nUse the **Side** camera view to see both zoom levels.",
           "remove": [
             {"id":"b_row_left_border"},{"id":"b_row_right_border"},
             {"id":"zoom_corner_bl"},{"id":"zoom_corner_br"},{"id":"zoom_corner_tl"},{"id":"zoom_corner_tr"},
             {"id":"zoom_divider_a"},{"id":"zoom_divider_na"},
             {"id":"zoomed_ab"},{"id":"zoomed_notab"},{"id":"zoomed_border"},{"id":"zoomed_divider"},
             {"id":"lbl_zoomed_title"},{"id":"lbl_zoomed_pab"},{"id":"lbl_zoomed_pnab"}
+          ],
+          "add": [
+            {
+              "id":"a_col_left_border",
+              "type":"line",
+              "points":[[0,0,0.2],[0,10,0.2]],
+              "color":"#ff8844","width":0.13
+            },
+            {
+              "id":"a_col_right_border",
+              "type":"animated_line",
+              "points":[["pA*10","0","0.2"],["pA*10","10","0.2"]],
+              "color":"#ff8844","width":0.13
+            },
+            {
+              "id":"zoom_a_corner_bl",
+              "type":"line",
+              "points":[[0,0,0.22],[0,0,2.5]],
+              "color":"#ff884466","width":0.07
+            },
+            {
+              "id":"zoom_a_corner_tl",
+              "type":"line",
+              "points":[[0,10,0.22],[0,10,2.5]],
+              "color":"#ff884466","width":0.07
+            },
+            {
+              "id":"zoom_a_corner_br",
+              "type":"animated_line",
+              "points":[["pA*10","0","0.22"],["10","0","2.5"]],
+              "color":"#ff884466","width":0.07
+            },
+            {
+              "id":"zoom_a_corner_tr",
+              "type":"animated_line",
+              "points":[["pA*10","10","0.22"],["10","10","2.5"]],
+              "color":"#ff884466","width":0.07
+            },
+            {
+              "id":"zoom_a_divider_bl",
+              "type":"animated_line",
+              "points":[["0","pBgA*10","0.22"],["0","pBgA*10","2.5"]],
+              "color":"#aabbdd88","width":0.07
+            },
+            {
+              "id":"zoom_a_divider_br",
+              "type":"animated_line",
+              "points":[["pA*10","pBgA*10","0.22"],["10","pBgA*10","2.5"]],
+              "color":"#aabbdd88","width":0.07
+            },
+            {
+              "id":"zoomed_ba",
+              "type":"animated_polygon",
+              "vertices":[["0","0","2.55"],["10","0","2.55"],["10","pBgA*10","2.55"],["0","pBgA*10","2.55"]],
+              "color":"#44ff88","opacity":0.75,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"zoomed_nba",
+              "type":"animated_polygon",
+              "vertices":[["0","pBgA*10","2.55"],["10","pBgA*10","2.55"],["10","10","2.55"],["0","10","2.55"]],
+              "color":"#6688cc","opacity":0.45,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"zoomed_a_border",
+              "type":"line",
+              "points":[[0,0,2.5],[10,0,2.5],[10,10,2.5],[0,10,2.5],[0,0,2.5]],
+              "color":"#ff8844","width":0.1
+            },
+            {
+              "id":"zoomed_a_divider",
+              "type":"animated_line",
+              "points":[["0","pBgA*10","2.56"],["10","pBgA*10","2.56"]],
+              "color":"#ffffff","width":0.12
+            },
+            {
+              "id":"lbl_zoomed_a_title",
+              "type":"text",
+              "text":"Given A  —  zoomed",
+              "position":[0,11.3,2.5],"color":"#ff8844"
+            },
+            {
+              "id":"lbl_zoomed_pba",
+              "type":"animated_point",
+              "expr":["5","pBgA*5","2.65"],
+              "radius":0,"color":"#44ff88","label":"P(B|A)"
+            },
+            {
+              "id":"lbl_zoomed_pnba",
+              "type":"animated_point",
+              "expr":["5","pBgA*10+(1-pBgA)*5","2.65"],
+              "radius":0,"color":"#8899cc","label":"P(¬B|A)"
+            }
+          ],
+          "info": [
+            {
+              "id":"main_info",
+              "position":"top-right",
+              "content":"### Conditioning on A\n$P(B \\mid A) = \\dfrac{P(A) \\cdot P(B \\mid A)}{P(A)}$\n---\n$P(A \\cap B) = {{toFixed(pA*pBgA,3)}}$\n$P(A) = {{pA}}$\n---\n$P(B \\mid A) = {{toFixed(pBgA,3)}}$\n$P(\\overline{B} \\mid A) = {{toFixed(1-pBgA,3)}}$\n---\nNote: $P(B)={{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$ but $P(B \\mid A)={{pBgA}}$\n{{abs(pBgA-(pA*pBgA+(1-pA)*pBgNA))<0.02 ? 'Same! A and B are independent.' : 'Different — A changes the probability of B.'}}"
+            }
+          ]
+        },
+        {
+          "title": "Asymmetry: $P(A \\mid B) \\neq P(B \\mid A)$",
+          "description": "You have now seen both zoomed views — conditioning on B and conditioning on A.\n\nSame four cells, two different lenses. The intersection area $P(A \\cap B)$ is shared, but the denominators differ: $P(B)$ vs $P(A)$. That's why $P(A \\mid B) \\neq P(B \\mid A)$ in general — same intersection, different normalization.",
+          "remove": [
+            {"id":"a_col_left_border"},{"id":"a_col_right_border"},
+            {"id":"zoom_a_corner_bl"},{"id":"zoom_a_corner_tl"},{"id":"zoom_a_corner_br"},{"id":"zoom_a_corner_tr"},
+            {"id":"zoom_a_divider_bl"},{"id":"zoom_a_divider_br"},
+            {"id":"zoomed_ba"},{"id":"zoomed_nba"},{"id":"zoomed_a_border"},{"id":"zoomed_a_divider"},
+            {"id":"lbl_zoomed_a_title"},{"id":"lbl_zoomed_pba"},{"id":"lbl_zoomed_pnba"}
           ],
           "info": [
             {
@@ -303,7 +460,7 @@
         },
         {
           "title": "Example 1 — Medical Testing",
-          "description": "A disease affects **0.1%** of people. A test is **99% sensitive** (correctly detects disease) and has a **2% false positive rate**.\n\n**You test positive. What's the probability you actually have the disease?**\n\nMost people say ~99%. The real answer is ~**4.7%**.\n\n**Left column** (red) = WITH disease (width = prevalence). **Right column** (blue) = WITHOUT disease. **Bottom row** of each = those who **test positive**.\n\nThe green cell (TP) and orange cell (FP) form the bottom row. The posterior $P(D \\mid +)$ is the green fraction of that row.",
+          "description": "A disease affects **0.1%** of people. A test is **99% sensitive** and has a **2% false positive rate**.\n\n**You test positive. What's the probability you actually have the disease?**\n\nMost people say ~99%. The real answer is ~**4.7%**.\n\n**Left column** = **test positive** (narrow — only ~2% of people test positive). **Right column** = test negative. Within each column the height shows who has the disease: **green** = disease (true positive), **orange** = no disease (false positive).\n\nThe tiny green sliver in the narrow left column *is* the 4.7%. Try sliding prevalence up to see both the column and the green fraction grow.",
           "sliders": [
             {"id":"prev","label":"$P(\\text{disease})$ — Prevalence","min":0.001,"max":0.15,"step":0.001,"default":0.001},
             {"id":"sens","label":"$P(+ \\mid D)$ — Sensitivity","min":0.5,"max":1.0,"step":0.01,"default":0.99},
@@ -315,7 +472,7 @@
             {"id":"cell_ab"},{"id":"cell_notab"},{"id":"cell_anotb"},{"id":"cell_notanotb"},
             {"id":"step_line"},
             {"id":"lbl_ab"},{"id":"lbl_notab"},{"id":"lbl_b_row"},{"id":"lbl_notb_row"},
-            {"id":"square_border"}
+            {"id":"square_border"},{"type":"slider"}
           ],
           "add": [
             {
@@ -327,54 +484,54 @@
             {
               "id":"med_col_div",
               "type":"animated_line",
-              "points":[["prev*10","0","0.05"],["prev*10","10","0.05"]],
+              "points":[["(prev*sens+(1-prev)*fpr)*10","0","0.05"],["(prev*sens+(1-prev)*fpr)*10","10","0.05"]],
               "color":"#aabbdd","width":0.1
             },
             {
               "id":"med_true_pos",
               "type":"animated_polygon",
-              "vertices":[["0","0","0.08"],["prev*10","0","0.08"],["prev*10","sens*10","0.08"],["0","sens*10","0.08"]],
+              "vertices":[["0","0","0.08"],["(prev*sens+(1-prev)*fpr)*10","0","0.08"],["(prev*sens+(1-prev)*fpr)*10","prev*sens/(prev*sens+(1-prev)*fpr)*10","0.08"],["0","prev*sens/(prev*sens+(1-prev)*fpr)*10","0.08"]],
               "color":"#44ff66","opacity":0.85,
               "shader":{"type":"basic","depthWrite":false}
             },
             {
               "id":"med_false_pos",
               "type":"animated_polygon",
-              "vertices":[["prev*10","0","0.08"],["10","0","0.08"],["10","fpr*10","0.08"],["prev*10","fpr*10","0.08"]],
+              "vertices":[["0","prev*sens/(prev*sens+(1-prev)*fpr)*10","0.08"],["(prev*sens+(1-prev)*fpr)*10","prev*sens/(prev*sens+(1-prev)*fpr)*10","0.08"],["(prev*sens+(1-prev)*fpr)*10","10","0.08"],["0","10","0.08"]],
               "color":"#ff8800","opacity":0.7,
-              "shader":{"type":"basic","depthWrite":false}
-            },
-            {
-              "id":"med_true_neg",
-              "type":"animated_polygon",
-              "vertices":[["prev*10","fpr*10","0.08"],["10","fpr*10","0.08"],["10","10","0.08"],["prev*10","10","0.08"]],
-              "color":"#2244aa","opacity":0.2,
               "shader":{"type":"basic","depthWrite":false}
             },
             {
               "id":"med_false_neg",
               "type":"animated_polygon",
-              "vertices":[["0","sens*10","0.08"],["prev*10","sens*10","0.08"],["prev*10","10","0.08"],["0","10","0.08"]],
-              "color":"#cc2222","opacity":0.15,
+              "vertices":[["(prev*sens+(1-prev)*fpr)*10","0","0.08"],["10","0","0.08"],["10","prev*(1-sens)/(1-(prev*sens+(1-prev)*fpr))*10","0.08"],["(prev*sens+(1-prev)*fpr)*10","prev*(1-sens)/(1-(prev*sens+(1-prev)*fpr))*10","0.08"]],
+              "color":"#cc2222","opacity":0.2,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"med_true_neg",
+              "type":"animated_polygon",
+              "vertices":[["(prev*sens+(1-prev)*fpr)*10","prev*(1-sens)/(1-(prev*sens+(1-prev)*fpr))*10","0.08"],["10","prev*(1-sens)/(1-(prev*sens+(1-prev)*fpr))*10","0.08"],["10","10","0.08"],["(prev*sens+(1-prev)*fpr)*10","10","0.08"]],
+              "color":"#2244aa","opacity":0.2,
               "shader":{"type":"basic","depthWrite":false}
             },
             {
               "id":"med_step_line",
               "type":"animated_line",
-              "points":[["0","sens*10","0.12"],["prev*10","sens*10","0.12"],["prev*10","fpr*10","0.12"],["10","fpr*10","0.12"]],
+              "points":[["0","prev*sens/(prev*sens+(1-prev)*fpr)*10","0.12"],["(prev*sens+(1-prev)*fpr)*10","prev*sens/(prev*sens+(1-prev)*fpr)*10","0.12"],["(prev*sens+(1-prev)*fpr)*10","prev*(1-sens)/(1-(prev*sens+(1-prev)*fpr))*10","0.12"],["10","prev*(1-sens)/(1-(prev*sens+(1-prev)*fpr))*10","0.12"]],
               "color":"#ffffff","width":0.14
             },
             {
               "id":"lbl_disease_col",
               "type":"animated_point",
-              "expr":["prev*5","10.8","0.1"],
-              "radius":0,"color":"#cc4444","label":"disease"
+              "expr":["(prev*sens+(1-prev)*fpr)*5","10.8","0.1"],
+              "radius":0,"color":"#44ff88","label":"test +"
             },
             {
               "id":"lbl_nodisease_col",
               "type":"animated_point",
-              "expr":["prev*10+(1-prev)*5","10.8","0.1"],
-              "radius":0,"color":"#4466cc","label":"no disease"
+              "expr":["(prev*sens+(1-prev)*fpr)*10+(1-(prev*sens+(1-prev)*fpr))*5","10.8","0.1"],
+              "radius":0,"color":"#6688cc","label":"test −"
             }
           ],
           "info": [
@@ -396,7 +553,8 @@
           "remove": [
             {"id":"med_border"},{"id":"med_col_div"},
             {"id":"med_true_pos"},{"id":"med_false_pos"},{"id":"med_true_neg"},{"id":"med_false_neg"},
-            {"id":"med_step_line"},{"id":"lbl_disease_col"},{"id":"lbl_nodisease_col"}
+            {"id":"med_false_neg"},{"id":"med_step_line"},{"id":"lbl_disease_col"},{"id":"lbl_nodisease_col"},
+            {"type":"slider"}
           ],
           "add": [
             {
@@ -468,7 +626,7 @@
         },
         {
           "title": "Example 3 — Tornado Warning",
-          "description": "Only **2%** of severe storm alerts are real tornadoes. Radar detects **95%** of actual tornadoes, but triggers for **3%** of non-tornado storms.\n\n**The radar fires. What's the probability of an actual tornado?** Answer: ~**39.3%**.\n\nLeft column (red) = real tornadoes (rare — note how thin it is). Right column (gray) = non-tornado storms. Bottom row = radar fired. The large step in the dividing line shows the radar is informative — but the thin left column means false alarms still dominate.\n\n**Try increasing the base rate**: as tornadoes become more common, the posterior climbs rapidly.",
+          "description": "Only **2%** of severe storm alerts are real tornadoes. Radar detects **95%** of actual tornadoes, but triggers for **3%** of non-tornado storms.\n\n**The radar fires. What's the probability of an actual tornado?** Answer: ~**39.3%**.\n\n**Left column** = **radar alarm** (width = total alarm rate ~5%). **Right column** = no alarm. Within each column: **red** = real tornado, **orange** = false alarm. The red fraction in the left column is P(T|alarm) = 39.3%.\n\n**Try increasing the base rate**: as tornadoes become more common, the posterior climbs rapidly.",
           "sliders": [
             {"id":"pTorn","label":"$P(\\text{tornado})$ — Base rate","min":0.001,"max":0.2,"step":0.001,"default":0.02},
             {"id":"pDet","label":"$P(\\text{radar} \\mid \\text{tornado})$","min":0.5,"max":1.0,"step":0.01,"default":0.95},
@@ -477,7 +635,8 @@
           "remove": [
             {"id":"spam_border"},{"id":"spam_col_div"},
             {"id":"spam_word_cell"},{"id":"legit_word_cell"},{"id":"spam_noword_cell"},{"id":"legit_noword_cell"},
-            {"id":"spam_step_line"},{"id":"lbl_spam_col"},{"id":"lbl_legit_col"}
+            {"id":"spam_step_line"},{"id":"lbl_spam_col"},{"id":"lbl_legit_col"},
+            {"type":"slider"}
           ],
           "add": [
             {
@@ -489,61 +648,61 @@
             {
               "id":"torn_col_div",
               "type":"animated_line",
-              "points":[["pTorn*10","0","0.05"],["pTorn*10","10","0.05"]],
+              "points":[["(pTorn*pDet+(1-pTorn)*pFal)*10","0","0.05"],["(pTorn*pDet+(1-pTorn)*pFal)*10","10","0.05"]],
               "color":"#aabbdd","width":0.1
             },
             {
               "id":"torn_true_alarm",
               "type":"animated_polygon",
-              "vertices":[["0","0","0.08"],["pTorn*10","0","0.08"],["pTorn*10","pDet*10","0.08"],["0","pDet*10","0.08"]],
+              "vertices":[["0","0","0.08"],["(pTorn*pDet+(1-pTorn)*pFal)*10","0","0.08"],["(pTorn*pDet+(1-pTorn)*pFal)*10","pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*10","0.08"],["0","pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*10","0.08"]],
               "color":"#ff3300","opacity":0.9,
               "shader":{"type":"basic","depthWrite":false}
             },
             {
               "id":"torn_false_alarm",
               "type":"animated_polygon",
-              "vertices":[["pTorn*10","0","0.08"],["10","0","0.08"],["10","pFal*10","0.08"],["pTorn*10","pFal*10","0.08"]],
+              "vertices":[["0","pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*10","0.08"],["(pTorn*pDet+(1-pTorn)*pFal)*10","pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*10","0.08"],["(pTorn*pDet+(1-pTorn)*pFal)*10","10","0.08"],["0","10","0.08"]],
               "color":"#ffaa00","opacity":0.7,
               "shader":{"type":"basic","depthWrite":false}
             },
             {
               "id":"torn_missed",
               "type":"animated_polygon",
-              "vertices":[["0","pDet*10","0.08"],["pTorn*10","pDet*10","0.08"],["pTorn*10","10","0.08"],["0","10","0.08"]],
-              "color":"#cc3300","opacity":0.12,
+              "vertices":[["(pTorn*pDet+(1-pTorn)*pFal)*10","0","0.08"],["10","0","0.08"],["10","pTorn*(1-pDet)/(1-(pTorn*pDet+(1-pTorn)*pFal))*10","0.08"],["(pTorn*pDet+(1-pTorn)*pFal)*10","pTorn*(1-pDet)/(1-(pTorn*pDet+(1-pTorn)*pFal))*10","0.08"]],
+              "color":"#cc3300","opacity":0.2,
               "shader":{"type":"basic","depthWrite":false}
             },
             {
               "id":"torn_true_neg",
               "type":"animated_polygon",
-              "vertices":[["pTorn*10","pFal*10","0.08"],["10","pFal*10","0.08"],["10","10","0.08"],["pTorn*10","10","0.08"]],
-              "color":"#446677","opacity":0.15,
+              "vertices":[["(pTorn*pDet+(1-pTorn)*pFal)*10","pTorn*(1-pDet)/(1-(pTorn*pDet+(1-pTorn)*pFal))*10","0.08"],["10","pTorn*(1-pDet)/(1-(pTorn*pDet+(1-pTorn)*pFal))*10","0.08"],["10","10","0.08"],["(pTorn*pDet+(1-pTorn)*pFal)*10","10","0.08"]],
+              "color":"#446677","opacity":0.2,
               "shader":{"type":"basic","depthWrite":false}
             },
             {
               "id":"torn_step_line",
               "type":"animated_line",
-              "points":[["0","pDet*10","0.12"],["pTorn*10","pDet*10","0.12"],["pTorn*10","pFal*10","0.12"],["10","pFal*10","0.12"]],
+              "points":[["0","pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*10","0.12"],["(pTorn*pDet+(1-pTorn)*pFal)*10","pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*10","0.12"],["(pTorn*pDet+(1-pTorn)*pFal)*10","pTorn*(1-pDet)/(1-(pTorn*pDet+(1-pTorn)*pFal))*10","0.12"],["10","pTorn*(1-pDet)/(1-(pTorn*pDet+(1-pTorn)*pFal))*10","0.12"]],
               "color":"#ffffff","width":0.14
             },
             {
               "id":"lbl_torn_col",
               "type":"animated_point",
-              "expr":["pTorn*5","10.8","0.1"],
-              "radius":0,"color":"#ff5533","label":"tornado"
+              "expr":["(pTorn*pDet+(1-pTorn)*pFal)*5","10.8","0.1"],
+              "radius":0,"color":"#ff5533","label":"alarm"
             },
             {
               "id":"lbl_storm_col",
               "type":"animated_point",
-              "expr":["pTorn*10+(1-pTorn)*5","10.8","0.1"],
-              "radius":0,"color":"#8899aa","label":"no tornado"
+              "expr":["(pTorn*pDet+(1-pTorn)*pFal)*10+(1-(pTorn*pDet+(1-pTorn)*pFal))*5","10.8","0.1"],
+              "radius":0,"color":"#8899aa","label":"no alarm"
             }
           ],
           "info": [
             {
               "id":"main_info",
               "position":"top-right",
-              "content":"### Tornado Warning\n$P(T) = {{pTorn}}$\n$P(\\text{radar} \\mid T) = {{pDet}}$\n$P(\\text{radar} \\mid \\overline{T}) = {{pFal}}$\n---\n**Per 5,000 storm alerts:**\nReal tornadoes: {{toFixed(pTorn*5000,1)}}\nTrue alarms: {{toFixed(pTorn*pDet*5000,1)}}\nFalse alarms: {{toFixed((1-pTorn)*pFal*5000,1)}}\nTotal radar signals: {{toFixed((pTorn*pDet+(1-pTorn)*pFal)*5000,1)}}\n---\n$P(T \\mid \\text{radar}) = {{toFixed(pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$\n---\n{{pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal) > 0.5 ? 'Issue warning (>50%)' : 'Mostly false alarms (<50%)'}}"
+              "content":"### Tornado Warning\n$P(T) = {{pTorn}}$\n$P(\\text{alarm} \\mid T) = {{pDet}}$\n$P(\\text{alarm} \\mid \\overline{T}) = {{pFal}}$\n---\n**Left column (alarm) width:**\n$P(\\text{alarm}) = {{toFixed(pTorn*pDet+(1-pTorn)*pFal,3)}}$\n---\n**Per 5,000 storm alerts:**\nReal tornadoes: {{toFixed(pTorn*5000,1)}}\nTrue alarms: {{toFixed(pTorn*pDet*5000,1)}}\nFalse alarms: {{toFixed((1-pTorn)*pFal*5000,1)}}\n---\n$P(T \\mid \\text{alarm}) = {{toFixed(pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$\n---\n{{pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal) > 0.5 ? 'Issue warning (>50%)' : 'Mostly false alarms (<50%)'}}"
             }
           ]
         }
