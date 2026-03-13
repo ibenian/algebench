@@ -54,6 +54,12 @@ To update to the latest version of [`gemini-live-tools`](https://github.com/iben
 
 This reinstalls `gemini-live-tools` from GitHub and copies the updated `voice-character-selector.js` into the app. Not ideal, but simple enough for now.
 
+For all available CLI options including TTS settings:
+
+```bash
+./algebench --help
+```
+
 ---
 
 ## Contributing
