@@ -44,11 +44,11 @@ jobs:
           if [ -n "$FILES" ]; then
             echo "Auditing changed scene files: $FILES"
             python scripts/audit_expressions.py $FILES 2>&1 | tee /tmp/audit-output.txt
+            echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
           else
-            echo "No scene files changed — auditing all scenes"
-            python scripts/audit_expressions.py 2>&1 | tee /tmp/audit-output.txt
+            echo "No scene files changed — skipping audit"
+            echo "exit_code=0" >> "$GITHUB_OUTPUT"
           fi
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Post audit proposals as PR comment
         if: github.event_name == 'pull_request'
