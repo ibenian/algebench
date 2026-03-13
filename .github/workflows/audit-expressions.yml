@@ -36,8 +36,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Extract the Coverage Proposals section using the PROPOSALS_START marker
-          PROPOSALS=$(awk '/^# PROPOSALS_START/{found=1; next} found' /tmp/audit-output.txt || true)
+          # Extract the Coverage Proposals section
+          PROPOSALS=$(awk '/^📋 Coverage Proposals/{found=1} found' /tmp/audit-output.txt || true)
           if [ -n "$PROPOSALS" ]; then
             BODY="<!-- audit-expressions-proposals -->
           ### 📋 Coverage Proposals

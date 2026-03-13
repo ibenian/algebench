@@ -476,8 +476,7 @@ def _print_proposals(totals, all_uncovered, all_js_builtin, template_builtin,
 
     # The marker below is used by the GitHub Actions workflow to extract this
     # section from stdout for the PR comment body.
-    print('\n# PROPOSALS_START')
-    print('─' * 60)
+    print('\n' + '─' * 60)
     print('📋 Coverage Proposals')
     print('   The following additions would improve trust coverage:\n')
     for i, (title, lines) in enumerate(proposals, 1):
