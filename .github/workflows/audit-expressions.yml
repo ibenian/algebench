@@ -29,16 +29,25 @@ jobs:
         id: changed
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'scenes/*.json' | tr '\n' ' ')
+            # Filter to only scenes/*.json files changed in this PR
+            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+              | grep '^scenes/.*\.json$' | tr '\n' ' ')
+            echo "files=${CHANGED}" >> "$GITHUB_OUTPUT"
           else
-            FILES=""
+            echo "files=" >> "$GITHUB_OUTPUT"
           fi
-          echo "files=${FILES}" >> "$GITHUB_OUTPUT"
 
       - name: Run expression sandbox audit
         id: audit
         run: |
-          python scripts/audit_expressions.py ${{ steps.changed.outputs.files }} 2>&1 | tee /tmp/audit-output.txt
+          FILES="${{ steps.changed.outputs.files }}"
+          if [ -n "$FILES" ]; then
+            echo "Auditing changed scene files: $FILES"
+            python scripts/audit_expressions.py $FILES 2>&1 | tee /tmp/audit-output.txt
+          else
+            echo "No scene files changed — auditing all scenes"
+            python scripts/audit_expressions.py 2>&1 | tee /tmp/audit-output.txt
+          fi
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Post audit proposals as PR comment
