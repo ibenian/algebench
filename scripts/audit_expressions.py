@@ -19,6 +19,7 @@ Exit codes:
   1 — uncovered expressions found (require JS but not gated by trust dialog)
 """
 
+import glob as glob_module
 import json
 import os
 import re
@@ -244,10 +245,14 @@ def main(argv=None):
     scenes_dir = repo_root / 'scenes'
 
     if argv:
-        # Explicit file list (e.g. only PR-changed files passed by CI)
-        scene_files = sorted(Path(f) for f in argv if f.endswith('.json'))
+        # Expand glob patterns and collect .json files
+        expanded = []
+        for arg in argv:
+            matches = glob_module.glob(arg)
+            expanded.extend(matches if matches else [arg])
+        scene_files = sorted(Path(f) for f in expanded if f.endswith('.json'))
         if not scene_files:
-            print('No scene JSON files in the provided list — nothing to audit.')
+            print('No scene JSON files matched — nothing to audit.')
             sys.exit(0)
     else:
         scene_files = sorted(scenes_dir.glob('*.json'))
