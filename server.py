@@ -761,12 +761,12 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                    tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
                    tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
                    tts_max_retries=None, tts_retry_delay=None, tts_style=None,
-                   tts_output_file=None):
+                   tts_live=True, tts_output_file=None):
     """Serve the AlgeBench viewer and optionally open in browser."""
     global DEBUG_MODE
     DEBUG_MODE = debug
 
-    # Build TTS streaming kwargs — only include values that override library defaults
+    # Build TTS streaming kwargs
     tts_stream_kwargs = {}
     if tts_parallelism is not None:
         tts_stream_kwargs['parallelism'] = tts_parallelism
@@ -784,6 +784,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         tts_stream_kwargs['retry_delay'] = tts_retry_delay
     if tts_style is not None:
         tts_stream_kwargs['style'] = tts_style
+    if tts_live:
+        tts_stream_kwargs['use_live'] = True
     if tts_output_file is not None:
         tts_stream_kwargs['output_path'] = tts_output_file
 
@@ -1133,23 +1135,27 @@ Examples:
     parser.add_argument('--json', action='store_true', help='Output JSON (for MCP integration)')
     parser.add_argument('--port', type=int, default=DEFAULT_PORT, help=f'Port (default: {DEFAULT_PORT})')
     parser.add_argument('--debug', action='store_true', help='Dump full Gemini API requests to console')
-    parser.add_argument('--tts-parallelism', type=int, default=None, choices=range(1, 5),
+    parser.add_argument('--tts-parallelism', type=int, default=3, choices=range(1, 5),
                         metavar='N (1-4)',
-                        help='Max concurrent TTS sentence synthesis calls (default: library default, max: 4)')
-    parser.add_argument('--tts-min-buffer', type=float, default=None,
-                        help='Seconds of audio to buffer before first playback (default: library default)')
-    parser.add_argument('--tts-min-sentence-chars', type=int, default=None,
-                        help='Merge short sentences up to this char count (default: library default)')
-    parser.add_argument('--tts-min-sentence-chars-growth', type=float, default=None,
-                        help='Sentence char limit growth factor for merging (default: library default)')
-    parser.add_argument('--tts-chunk-timeout', type=float, default=None,
-                        help='Seconds to wait for next chunk before timing out (default: library default)')
+                        help='Max concurrent TTS sentence synthesis calls (default: 3, max: 4)')
+    parser.add_argument('--tts-min-buffer', type=float, default=30.0,
+                        help='Seconds of audio to buffer before first playback (default: 30.0)')
+    parser.add_argument('--tts-min-sentence-chars', type=int, default=100,
+                        help='Merge short sentences up to this char count (default: 100)')
+    parser.add_argument('--tts-min-sentence-chars-growth', type=float, default=1.2,
+                        help='Sentence char limit growth factor for merging (default: 1.2)')
+    parser.add_argument('--tts-chunk-timeout', type=float, default=15.0,
+                        help='Seconds to wait for next chunk before timing out (default: 15.0)')
     parser.add_argument('--tts-max-retries', type=int, default=None,
                         help='Max retries per sentence on TTS failure (default: library default)')
     parser.add_argument('--tts-retry-delay', type=float, default=None,
                         help='Seconds to wait between retries (default: library default)')
     parser.add_argument('--tts-style', type=str, default=None,
                         help='Additional style guidance for TTS synthesis')
+    parser.add_argument('--tts-live', action='store_true', default=True,
+                        help='Use Gemini Live API for TTS synthesis instead of standard TTS (default: enabled)')
+    parser.add_argument('--no-tts-live', action='store_false', dest='tts_live',
+                        help='Disable Gemini Live API for TTS synthesis')
     parser.add_argument('--tts-output-file', '--output-file', type=str, default=None,
                         dest='tts_output_file',
                         help='Save all TTS audio to this WAV file in addition to playing')
@@ -1184,6 +1190,7 @@ Examples:
         tts_max_retries=args.tts_max_retries,
         tts_retry_delay=args.tts_retry_delay,
         tts_style=args.tts_style,
+        tts_live=args.tts_live,
         tts_output_file=args.tts_output_file,
     )
 
