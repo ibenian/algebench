@@ -25,10 +25,20 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Resolve scene files to audit
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'scenes/*.json' | tr '\n' ' ')
+          else
+            FILES=""
+          fi
+          echo "files=${FILES}" >> "$GITHUB_OUTPUT"
+
       - name: Run expression sandbox audit
         id: audit
         run: |
-          python scripts/audit_expressions.py 2>&1 | tee /tmp/audit-output.txt
+          python scripts/audit_expressions.py ${{ steps.changed.outputs.files }} 2>&1 | tee /tmp/audit-output.txt
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Post audit proposals as PR comment
@@ -51,7 +61,7 @@ jobs:
 
           </details>
 
-          > Run \`python scripts/audit_expressions.py\` locally to see the full report."
+          > Run \`python scripts/audit_expressions.py scenes/your-scene.json\` (or no args for all scenes) locally to see the full report."
             # Delete any previous comment from this workflow, then post a fresh one
             gh pr comment "${{ github.event.pull_request.number }}" \
               --body "$BODY" \

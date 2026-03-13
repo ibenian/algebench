@@ -243,10 +243,17 @@ def main(argv=None):
     repo_root = Path(__file__).resolve().parent.parent
     scenes_dir = repo_root / 'scenes'
 
-    scene_files = sorted(scenes_dir.glob('*.json'))
-    if not scene_files:
-        print('No scene files found in', scenes_dir)
-        sys.exit(0)
+    if argv:
+        # Explicit file list (e.g. only PR-changed files passed by CI)
+        scene_files = sorted(Path(f) for f in argv if f.endswith('.json'))
+        if not scene_files:
+            print('No scene JSON files in the provided list — nothing to audit.')
+            sys.exit(0)
+    else:
+        scene_files = sorted(scenes_dir.glob('*.json'))
+        if not scene_files:
+            print('No scene files found in', scenes_dir)
+            sys.exit(0)
 
     # ── Legend ─────────────────────────────────────────────────────────────
     print('Legend:')
@@ -257,7 +264,7 @@ def main(argv=None):
     print('  🔶 js-builtin    — uses toFixed/etc.; bypasses _JS_ONLY_RE via catch-fallback')
     print()
 
-    print(f'Auditing {len(scene_files)} scene file(s) in {scenes_dir}\n')
+    print(f'Auditing {len(scene_files)} scene file(s)\n')
 
     totals = {k: 0 for k in _CLASSIFICATION_LABELS}
     all_uncovered = []    # (scene_name, record)
