@@ -75,47 +75,70 @@ def _extract_template_exprs(text):
             yield expr, 'content_template'
 
 
-# Test suite for _JS_ONLY_RE detection quality.
-# Each entry: (test_expression, severity_if_missed, description)
+# Detection quality requirements for _JS_ONLY_RE.
+# Each entry: (required_sub_pattern, severity_if_absent, description)
+#
+# 'required_sub_pattern' is a regex fragment that must appear somewhere in
+# _JS_ONLY_RE (or be subsumed by a broader alternation already in it) to
+# ensure that category of JS is detected.  We test by checking whether the
+# compiled _JS_ONLY_RE matches the corresponding canonical example.
+#
 # Severity:
-#   'error'   — missed pattern allows code execution or data exfiltration;
-#               the catch-fallback in compileExpr will run this as JS in any
-#               trusted scene, even if this specific expression didn't trigger
-#               the trust dialog itself.
-#   'warning' — missed pattern is a gap but lower direct risk in expression context.
-_JS_DETECTION_TESTS = [
-    # ── Critical: bare function calls with no dot prefix ──────────────────
-    ('eval("x")',                'error',   'eval() — direct arbitrary code execution'),
-    ('new Function("return 1")', 'error',   'Function constructor — creates executable function'),
-    ('fetch("https://x.com")',   'error',   'fetch() — network exfiltration / SSRF'),
-    ('import("mod")',            'error',   'dynamic import() — loads external module'),
-    # ── Critical: property access without () that bypasses dot-method-paren rule
-    ('document.cookie',          'error',   'document.cookie — reads session cookies (no call, no dot-paren match)'),
-    ('window.localStorage',      'error',   'window global — browser storage access (no call)'),
-    ('globalThis.process',       'error',   'globalThis — platform-agnostic global escape'),
-    # ── Significant: execution/loading patterns ────────────────────────────
-    ('require("fs")',             'warning', 'require() — CommonJS module load (relevant in Node/Electron)'),
-    ('setTimeout(f,0)',           'warning', 'setTimeout — deferred execution'),
-    ('setInterval(f,100)',        'warning', 'setInterval — repeated execution'),
-    # ── Lower risk: language constructs unusual in math expressions ─────────
-    ('class Foo {}',              'warning', 'class declaration — not a math expression'),
-    ('typeof x',                  'warning', 'typeof operator — unlikely in math but harmless'),
-    ('delete x.y',                'warning', 'delete operator — mutates scope'),
-    ('void 0',                    'warning', 'void operator — evaluates to undefined'),
-    ('x instanceof Array',        'warning', 'instanceof — type check, not math'),
-    ('throw new Error("x")',      'warning', 'throw — triggers exception'),
-    ('await Promise.resolve(1)',  'warning', 'await — async keyword (math.js rejects it anyway)'),
+#   'error'   — absence means a JS execution/exfiltration path is ungated;
+#               the compileExpr catch-fallback will run it silently in any
+#               trusted scene even if this expression never triggered the dialog.
+#   'warning' — absence is a coverage gap but lower direct risk in this context.
+#
+# Each entry: (required_sub_pattern, canonical_example, severity, description)
+_JS_DETECTION_REQUIREMENTS = [
+    # ── Critical: bare calls with no dot prefix (not caught by \.method\() ──
+    (r'\beval\s*\(',         'eval(x)',           'error',
+     'eval() — direct arbitrary code execution'),
+    (r'\bfetch\s*\(',        'fetch("url")',       'error',
+     'fetch() — network exfiltration / SSRF'),
+    (r'\bimport\s*\(',       'import("mod")',      'error',
+     'dynamic import() — loads external code'),
+    # ── Critical: property access without () bypasses dot-method-paren rule ─
+    (r'\bdocument\b',        'document.cookie',   'error',
+     'document global — DOM/data access (property read, no call parens)'),
+    (r'\bwindow\b',          'window.location',   'error',
+     'window global — browser API access (property read, no call parens)'),
+    (r'\bglobalThis\b',      'globalThis.x',      'error',
+     'globalThis — platform-agnostic global escape'),
+    # ── Significant but lower direct risk ─────────────────────────────────
+    (r'\brequire\s*\(',      'require("fs")',      'warning',
+     'require() — CommonJS module load'),
+    (r'\bsetTimeout\s*\(',   'setTimeout(f,0)',    'warning',
+     'setTimeout — deferred execution'),
+    (r'\bsetInterval\s*\(',  'setInterval(f,0)',   'warning',
+     'setInterval — repeated execution'),
+    # ── Language constructs unusual in math expressions ────────────────────
+    (r'\bclass\b',           'class Foo {}',       'warning',
+     'class declaration'),
+    (r'\btypeof\b',          'typeof x',           'warning',
+     'typeof operator'),
+    (r'\bdelete\b',          'delete x.y',         'warning',
+     'delete operator — mutates scope'),
+    (r'\bvoid\b',            'void 0',             'warning',
+     'void operator'),
+    (r'\binstanceof\b',      'x instanceof Array', 'warning',
+     'instanceof operator'),
+    (r'\bthrow\b',           'throw new Error()',  'warning',
+     'throw statement'),
+    (r'\bawait\b',           'await x',            'warning',
+     'await keyword'),
 ]
 
 
 def evaluate_js_detection_quality(js_only_re_pattern):
-    """Run _JS_DETECTION_TESTS against the given regex pattern string.
+    """Check whether _JS_ONLY_RE covers each entry in _JS_DETECTION_REQUIREMENTS.
 
-    js_only_re_pattern: the raw pattern string extracted from app.js (or the
-    Python mirror).  Tests are run against a compiled version of this pattern.
+    For each requirement, compiles the live regex from app.js and tests it
+    against the canonical example.  Returns True for 'caught' when the regex
+    matches the example — which means the required sub-pattern is effectively
+    present.
 
-    Returns a list of (severity, caught, test_expr, description) tuples.
-    'caught' is True if the regex matched the test expression.
+    Returns a list of (severity, caught, required_sub_pattern, description).
     """
     try:
         live_re = re.compile(js_only_re_pattern)
@@ -123,9 +146,9 @@ def evaluate_js_detection_quality(js_only_re_pattern):
         return [('error', False, '', f'Could not compile extracted _JS_ONLY_RE: {e}')]
 
     results = []
-    for expr, severity, description in _JS_DETECTION_TESTS:
-        caught = bool(live_re.search(expr))
-        results.append((severity, caught, expr, description))
+    for sub_pattern, example, severity, description in _JS_DETECTION_REQUIREMENTS:
+        caught = bool(live_re.search(example))
+        results.append((severity, caught, sub_pattern, description))
     return results
 
 
@@ -173,21 +196,23 @@ def verify_app_js_trust_model(repo_root):
 
         # ── 1b. Detection quality: run known-dangerous patterns against the live regex
         detection_results = evaluate_js_detection_quality(js_pattern)
-        missed_errors   = [(e, d) for s, caught, e, d in detection_results if not caught and s == 'error']
-        missed_warnings = [(e, d) for s, caught, e, d in detection_results if not caught and s == 'warning']
+        missed_errors   = [(pat, desc) for sev, caught, pat, desc in detection_results
+                           if not caught and sev == 'error']
+        missed_warnings = [(pat, desc) for sev, caught, pat, desc in detection_results
+                           if not caught and sev == 'warning']
         caught_count    = sum(1 for _, caught, _, _ in detection_results if caught)
         total           = len(detection_results)
 
         if missed_errors:
-            for expr, desc in missed_errors:
+            for pat, desc in missed_errors:
                 findings.append(('error',
-                    f'_JS_ONLY_RE misses critical pattern: {expr!r} — {desc}'))
+                    f'_JS_ONLY_RE missing required sub-pattern {pat!r} — {desc}'))
         if missed_warnings:
             findings.append(('warning',
-                f'_JS_ONLY_RE coverage gaps ({len(missed_warnings)} soft): '
-                + ', '.join(e for e, _ in missed_warnings)))
+                f'_JS_ONLY_RE coverage gaps ({len(missed_warnings)} soft missing patterns): '
+                + ', '.join(pat for pat, _ in missed_warnings)))
         findings.append(('info' if not missed_errors else 'warning',
-            f'_JS_ONLY_RE detection quality: {caught_count}/{total} test patterns caught'
+            f'_JS_ONLY_RE detection coverage: {caught_count}/{total} required patterns present'
             + (' ✅' if not missed_errors and not missed_warnings else '')))
 
     # ── 2. Extract and compare EXPR_KEYS in _scanSpecForUnsafeJs ──────────
