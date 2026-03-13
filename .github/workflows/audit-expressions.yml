@@ -1,0 +1,67 @@
+name: Audit Expression Sandbox Coverage
+
+on:
+  pull_request:
+    paths:
+      - 'scenes/*.json'
+      - 'static/app.js'
+      - 'scripts/audit_expressions.py'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Expression Sandbox Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run expression sandbox audit
+        id: audit
+        run: |
+          python scripts/audit_expressions.py 2>&1 | tee /tmp/audit-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Post audit proposals as PR comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract the Coverage Proposals section using the PROPOSALS_START marker
+          PROPOSALS=$(awk '/^# PROPOSALS_START/{found=1; next} found' /tmp/audit-output.txt || true)
+          if [ -n "$PROPOSALS" ]; then
+            BODY="<!-- audit-expressions-proposals -->
+          ### 📋 Trust Coverage Audit — Proposals
+
+          <details>
+          <summary>Click to expand improvement proposals from the expression sandbox audit</summary>
+
+          \`\`\`
+          ${PROPOSALS}
+          \`\`\`
+
+          </details>
+
+          > Run \`python scripts/audit_expressions.py\` locally to see the full report."
+            # Delete any previous comment from this workflow, then post a fresh one
+            gh pr comment "${{ github.event.pull_request.number }}" \
+              --body "$BODY" \
+              --edit-last 2>/dev/null || \
+            gh pr comment "${{ github.event.pull_request.number }}" \
+              --body "$BODY"
+          fi
+
+      - name: Fail if uncovered expressions found
+        if: steps.audit.outputs.exit_code != '0'
+        run: |
+          echo "❌ Uncovered JS expressions detected — see the Coverage Proposals above."
+          exit 1
