@@ -6,6 +6,9 @@ each one is handled by the math.js sandbox (safe), requires the JS trust
 dialog, or is uncovered (requires JS but sits in a field that
 _scanSpecForUnsafeJs does not scan).
 
+After the per-file report the script emits a Proposals section that suggests
+concrete improvements to trust coverage based on what was found.
+
 Exit codes:
   0 — all expressions are covered (safe math.js or properly gated JS)
   1 — uncovered expressions found (require JS but not gated by trust dialog)
@@ -36,6 +39,14 @@ _JS_BUILTIN_FUNC_RE = re.compile(
 # Expressions found under these keys trigger the trust dialog when they
 # contain JS-only patterns.
 _SCANNED_KEYS = frozenset({'expr', 'x', 'y', 'z', 'expression', 'fx', 'fy', 'fz'})
+
+# Additional expression-bearing keys that app.js compiles via compileExpr but
+# that _scanSpecForUnsafeJs does NOT currently scan.  Expressions found here
+# are classified as 'js_uncovered' when they match _JS_ONLY_RE.
+_UNSCANNED_EXPR_KEYS = frozenset({
+    'visibleExpr', 'radiusExpr', 'radiiExpr', 'centerExpr',
+    'fromExpr', 'toExpr', 'positionExpr',
+})
 
 # Regex that extracts {{...}} template expressions from content strings.
 _TEMPLATE_RE = re.compile(r'\{\{([\s\S]*?)\}\}')
@@ -77,6 +88,17 @@ def extract_expressions(obj, parent_key=None):
 
             elif k in _SCANNED_KEYS and isinstance(v, str) and v.strip():
                 results.append((v.strip(), k))
+
+            elif k in _UNSCANNED_EXPR_KEYS:
+                # These fields are compiled by app.js but not scanned by
+                # _scanSpecForUnsafeJs.  Extract string expressions from them
+                # so we can flag any JS patterns as uncovered.
+                if isinstance(v, str) and v.strip():
+                    results.append((v.strip(), k))
+                elif isinstance(v, list):
+                    for item in v:
+                        if isinstance(item, str) and item.strip():
+                            results.append((item.strip(), k))
 
             else:
                 results.extend(extract_expressions(v, k))
@@ -261,10 +283,128 @@ def main(argv=None):
             '\n   expression, fx, fy, fz), add "unsafe": true to the scene, or'
             '\n   extend _scanSpecForUnsafeJs in static/app.js to cover the field.'
         )
+
+    # ── Coverage proposals ─────────────────────────────────────────────────
+    _print_proposals(totals, all_uncovered, all_js_builtin)
+
+    if all_uncovered:
         sys.exit(1)
 
     print('\n✅ All expression-bearing fields are covered by the sandbox / trust model.')
     sys.exit(0)
+
+
+def _print_proposals(totals, all_uncovered, all_js_builtin):
+    """Emit the Coverage Proposals section.
+
+    Analyses what was found across all scenes and produces actionable
+    suggestions for expanding trust coverage in static/app.js.
+    """
+    proposals = []
+
+    # ── Proposal 1: expand _JS_ONLY_RE to catch JS-only built-ins ─────────
+    if totals['js_builtin'] > 0:
+        builtin_names = set()
+        for _, r in all_js_builtin:
+            m = _JS_BUILTIN_FUNC_RE.search(r['expr'])
+            if m:
+                builtin_names.add(m.group(1))
+
+        by_field = {}
+        for _, r in all_js_builtin:
+            by_field.setdefault(r['field'], 0)
+            by_field[r['field']] += 1
+
+        unique_scenes = {s for s, _ in all_js_builtin}
+        names_str = '|'.join(f'\\b{n}\\b' for n in sorted(builtin_names))
+        proposals.append((
+            f'Expand _JS_ONLY_RE to catch JS-only built-in functions'
+            f' ({totals["js_builtin"]} expressions across'
+            f' {len(unique_scenes)} scene(s))',
+            [
+                f'Found {totals["js_builtin"]} expression(s) using JS-only built-ins'
+                f' ({", ".join(sorted(builtin_names))}) that do not match _JS_ONLY_RE.',
+                'These bypass the trust dialog and silently fall back to native JS'
+                ' (returning 0 / "?" when untrusted).',
+                'To gate them proactively, add them to _JS_ONLY_RE in static/app.js:',
+                '',
+                '  // Before:',
+                '  const _JS_ONLY_RE = /\\blet\\b|...existing patterns.../;',
+                '',
+                '  // After (add at start of alternation):',
+                f'  const _JS_ONLY_RE = /{names_str}|\\blet\\b|...existing patterns.../;',
+                '',
+                f'  Fields with builtin expressions: {", ".join(sorted(by_field))}',
+            ]
+        ))
+
+    # ── Proposal 2: scan content templates in _scanSpecForUnsafeJs ─────────
+    template_builtin = [
+        (sn, r) for sn, r in all_js_builtin if r['field'] == 'content_template'
+    ]
+    if template_builtin:
+        proposals.append((
+            f'Extend _scanSpecForUnsafeJs to scan {{{{...}}}} content templates'
+            f' ({len(template_builtin)} template expression(s) use JS built-ins)',
+            [
+                '_scanSpecForUnsafeJs currently only inspects known EXPR_KEYS.',
+                'Expressions inside {{...}} content templates are compiled by'
+                ' _evalInfoExpr via the JS fallback but are never pre-scanned.',
+                'Fix: extract {{...}} blocks from "content" strings inside'
+                ' _scanSpecForUnsafeJs and test them against _JS_ONLY_RE',
+                '(plus the built-in pattern once Proposal 1 is applied):',
+                '',
+                '  // In _scanSpecForUnsafeJs, inside walk():',
+                '  if (k === "content" && typeof v === "string") {',
+                '    const tmplRe = /\\{\\{([\\s\\S]*?)\\}\\}/g;',
+                '    let m;',
+                '    while ((m = tmplRe.exec(v)) !== null) {',
+                '      if (_JS_ONLY_RE.test(m[1])) return true;',
+                '    }',
+                '  }',
+            ]
+        ))
+
+    # ── Proposal 3: add unscanned expr keys to EXPR_KEYS ──────────────────
+    uncovered_keys = {r['field'] for _, r in all_uncovered
+                      if r['field'] in _UNSCANNED_EXPR_KEYS}
+    proposals.append((
+        'Add expression-bearing keys to EXPR_KEYS in _scanSpecForUnsafeJs',
+        [
+            'The following keys are compiled by compileExpr in app.js but are NOT'
+            ' in the EXPR_KEYS set that _scanSpecForUnsafeJs walks:',
+            '',
+            f'  {", ".join(sorted(_UNSCANNED_EXPR_KEYS))}',
+            '',
+            'If any of these fields ever contains a JS expression, the trust dialog'
+            ' will NOT fire, creating a silent privilege-escalation path.',
+            'Fix: expand EXPR_KEYS in _scanSpecForUnsafeJs:',
+            '',
+            "  const EXPR_KEYS = new Set(['expr','x','y','z','expression',",
+            "                             'fx','fy','fz',",
+            "                             'visibleExpr','radiusExpr','radiiExpr',",
+            "                             'centerExpr','fromExpr','toExpr','positionExpr']);",
+        ] + (
+            [
+                '',
+                '⚠️  These uncovered keys already contain JS expressions in the'
+                ' current scene files — immediate fix required:',
+            ] + [f'   {k}' for k in sorted(uncovered_keys)]
+            if uncovered_keys else []
+        )
+    ))
+
+    if not proposals:
+        return
+
+    print('\n' + '─' * 60)
+    print('📋 Coverage Proposals')
+    print('   The following additions would improve trust coverage:\n')
+    for i, (title, lines) in enumerate(proposals, 1):
+        print(f'  {i}. {title}')
+        for line in lines:
+            print(f'     {line}' if line else '')
+        print()
 
 
 if __name__ == '__main__':
