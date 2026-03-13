@@ -556,7 +556,7 @@
         },
         {
           "title": "Example 2 — Spam Filtering",
-          "description": "**15%** of emails are spam. **80%** of spam contains \"Nigeria\". Only **5%** of legitimate emails contain it.\n\n**An email with \"Nigeria\" arrives — what's the probability it's spam?**\n\n**Left column** = emails **containing the word** (width = ~16%). **Right column** = no word. Within each column: **orange** = spam, **blue** = legit. The posterior $P(\\text{spam} \\mid W) \\approx 73.8\\%$ is the orange fraction in the left column.",
+          "description": "**15%** of emails are spam. **80%** of spam contains \"Nigeria\". Only **5%** of legitimate emails contain it.\n\n**An email with \"Nigeria\" arrives — what's the probability it's spam?**\n\n**Left column** (width = 15%) = spam. **Right column** = legit. **Bottom row** = emails containing the keyword. Orange = spam∩word, blue = legit∩word. The posterior $P(\\text{spam} \\mid W) \\approx 73.8\\%$ is the orange fraction of the bottom row.",
           "sliders": [
             {"id":"pSpam","label":"$P(\\text{spam})$","min":0.05,"max":0.5,"step":0.01,"default":0.15},
             {"id":"pWspam","label":"$P(\\text{word} \\mid \\text{spam})$","min":0.1,"max":1.0,"step":0.01,"default":0.8},
@@ -579,61 +579,73 @@
             {
               "id":"spam_col_div",
               "type":"animated_line",
-              "points":[["(pSpam*pWspam+(1-pSpam)*pWleg)*10","0","0.05"],["(pSpam*pWspam+(1-pSpam)*pWleg)*10","10","0.05"]],
+              "points":[["pSpam*10","0","0.05"],["pSpam*10","10","0.05"]],
               "color":"#aabbdd","width":0.1
             },
             {
               "id":"spam_word_cell",
               "type":"animated_polygon",
-              "vertices":[["0","0","0.08"],["(pSpam*pWspam+(1-pSpam)*pWleg)*10","0","0.08"],["(pSpam*pWspam+(1-pSpam)*pWleg)*10","pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*10","0.08"],["0","pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*10","0.08"]],
+              "vertices":[["0","0","0.08"],["pSpam*10","0","0.08"],["pSpam*10","pWspam*10","0.08"],["0","pWspam*10","0.08"]],
               "color":"#ff6633","opacity":0.85,
               "shader":{"type":"basic","depthWrite":false}
             },
             {
               "id":"legit_word_cell",
               "type":"animated_polygon",
-              "vertices":[["0","pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*10","0.08"],["(pSpam*pWspam+(1-pSpam)*pWleg)*10","pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*10","0.08"],["(pSpam*pWspam+(1-pSpam)*pWleg)*10","10","0.08"],["0","10","0.08"]],
+              "vertices":[["pSpam*10","0","0.08"],["10","0","0.08"],["10","pWleg*10","0.08"],["pSpam*10","pWleg*10","0.08"]],
               "color":"#4488ff","opacity":0.7,
               "shader":{"type":"basic","depthWrite":false}
             },
             {
               "id":"spam_noword_cell",
               "type":"animated_polygon",
-              "vertices":[["(pSpam*pWspam+(1-pSpam)*pWleg)*10","0","0.08"],["10","0","0.08"],["10","pSpam*(1-pWspam)/(pSpam*(1-pWspam)+(1-pSpam)*(1-pWleg))*10","0.08"],["(pSpam*pWspam+(1-pSpam)*pWleg)*10","pSpam*(1-pWspam)/(pSpam*(1-pWspam)+(1-pSpam)*(1-pWleg))*10","0.08"]],
-              "color":"#ff4422","opacity":0.3,
+              "vertices":[["0","pWspam*10","0.08"],["pSpam*10","pWspam*10","0.08"],["pSpam*10","10","0.08"],["0","10","0.08"]],
+              "color":"#ff4422","opacity":0.15,
               "shader":{"type":"basic","depthWrite":false}
             },
             {
               "id":"legit_noword_cell",
               "type":"animated_polygon",
-              "vertices":[["(pSpam*pWspam+(1-pSpam)*pWleg)*10","pSpam*(1-pWspam)/(pSpam*(1-pWspam)+(1-pSpam)*(1-pWleg))*10","0.08"],["10","pSpam*(1-pWspam)/(pSpam*(1-pWspam)+(1-pSpam)*(1-pWleg))*10","0.08"],["10","10","0.08"],["(pSpam*pWspam+(1-pSpam)*pWleg)*10","10","0.08"]],
-              "color":"#2266ff","opacity":0.15,
+              "vertices":[["pSpam*10","pWleg*10","0.08"],["10","pWleg*10","0.08"],["10","10","0.08"],["pSpam*10","10","0.08"]],
+              "color":"#2266ff","opacity":0.12,
               "shader":{"type":"basic","depthWrite":false}
             },
             {
               "id":"spam_step_line",
               "type":"animated_line",
-              "points":[["0","pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*10","0.12"],["(pSpam*pWspam+(1-pSpam)*pWleg)*10","pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*10","0.12"],["(pSpam*pWspam+(1-pSpam)*pWleg)*10","pSpam*(1-pWspam)/(pSpam*(1-pWspam)+(1-pSpam)*(1-pWleg))*10","0.12"],["10","pSpam*(1-pWspam)/(pSpam*(1-pWspam)+(1-pSpam)*(1-pWleg))*10","0.12"]],
+              "points":[["0","pWspam*10","0.12"],["pSpam*10","pWspam*10","0.12"],["pSpam*10","pWleg*10","0.12"],["10","pWleg*10","0.12"]],
               "color":"#ffffff","width":0.14
             },
             {
               "id":"lbl_spam_col",
               "type":"animated_point",
-              "expr":["(pSpam*pWspam+(1-pSpam)*pWleg)*5","10.8","0.1"],
-              "radius":0,"color":"#ff8866","label":"has word"
+              "expr":["pSpam*5","10.8","0.1"],
+              "radius":0,"color":"#ff8866","label":"spam"
             },
             {
               "id":"lbl_legit_col",
               "type":"animated_point",
-              "expr":["(pSpam*pWspam+(1-pSpam)*pWleg)*10+(1-(pSpam*pWspam+(1-pSpam)*pWleg))*5","10.8","0.1"],
-              "radius":0,"color":"#6688ff","label":"no word"
+              "expr":["pSpam*10+(1-pSpam)*5","10.8","0.1"],
+              "radius":0,"color":"#6688ff","label":"legit"
+            },
+            {
+              "id":"lbl_word_row",
+              "type":"animated_point",
+              "expr":["-1.5","pWspam*5","0.1"],
+              "radius":0,"color":"#ffaa88","label":"word +"
+            },
+            {
+              "id":"lbl_noword_row",
+              "type":"animated_point",
+              "expr":["-1.5","pWspam*10+(1-pWspam)*5","0.1"],
+              "radius":0,"color":"#7799bb","label":"word −"
             }
           ],
           "info": [
             {
               "id":"main_info",
               "position":"top-right",
-              "content":"### Spam Filter\nKeyword: \"Nigeria\"\n---\n$P(\\text{spam}) = {{pSpam}}$\n$P(W \\mid \\text{spam}) = {{pWspam}}$\n$P(W \\mid \\text{legit}) = {{pWleg}}$\n---\n**Left column width:**\n$P(W) = {{toFixed(pSpam*pWspam+(1-pSpam)*pWleg,3)}}$\n---\n**Per 10,000 emails:**\nSpam with word: {{toFixed(pSpam*pWspam*10000,0)}}\nLegit with word: {{toFixed((1-pSpam)*pWleg*10000,0)}}\n---\n$P(\\text{spam} \\mid W) = {{toFixed(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$"
+              "content":"### Spam Filter\nKeyword: \"Nigeria\"\n---\n$P(\\text{spam}) = {{pSpam}}$\n$P(W \\mid \\text{spam}) = {{pWspam}}$\n$P(W \\mid \\text{legit}) = {{pWleg}}$\n---\n**Per 10,000 emails:**\nSpam with word: {{toFixed(pSpam*pWspam*10000,0)}}\nLegit with word: {{toFixed((1-pSpam)*pWleg*10000,0)}}\nTotal with word: {{toFixed((pSpam*pWspam+(1-pSpam)*pWleg)*10000,0)}}\n---\n$P(\\text{spam} \\mid W) = {{toFixed(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$"
             }
           ]
         },
@@ -649,8 +661,8 @@
             {"id":"spam_border"},{"id":"spam_col_div"},
             {"id":"spam_word_cell"},{"id":"legit_word_cell"},{"id":"spam_noword_cell"},{"id":"legit_noword_cell"},
             {"id":"spam_step_line"},{"id":"lbl_spam_col"},{"id":"lbl_legit_col"},
+            {"id":"lbl_word_row"},{"id":"lbl_noword_row"},
             {"type":"slider"}
-
           ],
           "add": [
             {
