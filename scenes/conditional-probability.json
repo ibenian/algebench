@@ -172,13 +172,6 @@
           "description": "**Conditioning on B** means restricting attention to just the $B$-row — the bottom strip. We zoom in on it, stretching it to fill the entire square.\n\nIn the zoomed view (elevated at z = 2.5), the $A$ column occupies exactly $P(A \\mid B)$ of the width. The **column widths change** when you zoom in, because the B-row has different heights in each column.\n\n$$P(A \\mid B) = \\frac{\\text{area of } A \\cap B}{\\text{area of } B\\text{-row}} = \\frac{P(A) \\cdot P(B \\mid A)}{P(B)}$$\n\nUse the **Side** camera view to see the 3D projection clearly.",
           "add": [
             {
-              "id":"b_row_frame",
-              "type":"animated_polygon",
-              "vertices":[["0","0","0.18"],["10","0","0.18"],["10","pBgNA*10","0.18"],["0","pBgA*10","0.18"]],
-              "color":"#ffff44","opacity":0.08,
-              "shader":{"type":"basic","depthWrite":false}
-            },
-            {
               "id":"b_row_left_border",
               "type":"animated_line",
               "points":[["0","0","0.2"],["0","pBgA*10","0.2"]],
@@ -283,7 +276,7 @@
           "title": "Asymmetry: $P(A \\mid B) \\neq P(B \\mid A)$",
           "description": "There are two ways to slice the joint distribution:\n\n- **Condition on B** (zoom into B-row): columns = A and ¬A, proportions = $P(A \\mid B)$ and $P(\\overline{A} \\mid B)$\n- **Condition on A** (zoom into A-column): rows = B and ¬B, proportions = $P(B \\mid A)$ and $P(\\overline{B} \\mid A)$\n\nThe same four cell areas, divided two different ways. That's why $P(A \\mid B) \\neq P(B \\mid A)$ in general — same intersection, different normalization.",
           "remove": [
-            {"id":"b_row_frame"},{"id":"b_row_left_border"},{"id":"b_row_right_border"},
+            {"id":"b_row_left_border"},{"id":"b_row_right_border"},
             {"id":"zoom_corner_bl"},{"id":"zoom_corner_br"},{"id":"zoom_corner_tl"},{"id":"zoom_corner_tr"},
             {"id":"zoom_divider_a"},{"id":"zoom_divider_na"},
             {"id":"zoomed_ab"},{"id":"zoomed_notab"},{"id":"zoomed_border"},{"id":"zoomed_divider"},
