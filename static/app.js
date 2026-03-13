@@ -5231,16 +5231,7 @@ function resolveInfoContent(template) {
 function updateInfoOverlays() {
     for (const ov of Object.values(activeInfoOverlays)) {
         const resolved = resolveInfoContent(ov.content);
-        const html = resolved.split('\n').map(line => {
-            const m = line.match(/^(#{1,3}) (.*)$/);
-            if (m) {
-                const styles = ['font-size:1.05em;font-weight:700', 'font-size:0.95em;font-weight:700', 'font-size:0.88em;font-weight:700'];
-                const style = styles[m[1].length - 1];
-                return `<span style="${style};display:block;margin-bottom:3px">${renderKaTeX(m[2], false)}</span>`;
-            }
-            return renderKaTeX(line, false);
-        }).join('<br>');
-        ov.contentEl.innerHTML = html;
+        ov.contentEl.innerHTML = renderKaTeX(resolved, false);
     }
 }
 
