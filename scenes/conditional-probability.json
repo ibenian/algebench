@@ -911,7 +911,7 @@
           ]
         },
         {
-          "title": "$P(B \\mid \\overline{A})$",
+          "title": "$P(B \\mid \\overline{A})$ — False positive rate",
           "description": "**P(B|¬A)** is the row height within the ¬A column.\n\n$$P(B \\mid \\overline{A}) = \\frac{P(\\overline{A} \\cap B)}{P(\\overline{A})}$$\n\nWhen $P(B \\mid A) = P(B \\mid \\overline{A})$, $A$ and $B$ are **independent**.",
           "remove": [
             {
@@ -991,7 +991,7 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### $P(B \\mid \\overline{A})$\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n---\nRow height in $\\overline{A}$-column.\n$= \\dfrac{P(\\overline{A} \\cap B)}{P(\\overline{A})}$\n$= {{toFixed((1-pA)*pBgNA,3)}} / {{toFixed(1-pA,2)}} = {{pBgNA}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? 'Equal to P(B|A) — independent' : abs(pBgA-pBgNA)<0.1 ? 'Nearly independent' : 'Dependent — step is visible'}}"
+              "content": "### $P(B \\mid \\overline{A})$ — False positive rate\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n---\nRow height in $\\overline{A}$-column.\n$= \\dfrac{P(\\overline{A} \\cap B)}{P(\\overline{A})}$\n$= {{toFixed((1-pA)*pBgNA,3)}} / {{toFixed(1-pA,2)}} = {{pBgNA}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? 'Equal to P(B|A) — independent' : abs(pBgA-pBgNA)<0.1 ? 'Nearly independent' : 'Dependent — step is visible'}}"
             }
           ]
         },
@@ -1113,7 +1113,7 @@
           ]
         },
         {
-          "title": "$P(A \\mid \\overline{B})$",
+          "title": "$P(A \\mid \\overline{B})$ — Posterior given $\\overline{B}$",
           "description": "**P(A|¬B)** — how likely is $A$ given that $B$ did **not** occur?\n\n$$P(A \\mid \\overline{B}) = \\frac{P(A \\cap \\overline{B})}{P(\\overline{B})}$$\n\nIf $B$ is a positive test, this is the probability of the condition given a **negative** result.",
           "remove": [
             {
@@ -1228,12 +1228,13 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### $P(A \\mid \\overline{B})$\n$P(A \\mid \\overline{B}) = {{toFixed(pA*(1-pBgA)/(pA*(1-pBgA)+(1-pA)*(1-pBgNA)),3)}}$\n---\nA-fraction of $\\overline{B}$ region.\n$= \\dfrac{P(A \\cap \\overline{B})}{P(\\overline{B})}$\n$= {{toFixed(pA*(1-pBgA),3)}} / {{toFixed(pA*(1-pBgA)+(1-pA)*(1-pBgNA),3)}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? 'Independent: P(A|~B) = P(A)' : pA*(1-pBgA)/(pA*(1-pBgA)+(1-pA)*(1-pBgNA)) > pA ? '~B raised belief in A' : '~B lowered belief in A'}}"
+              "content": "### $P(A \\mid \\overline{B})$ — Posterior given $\\overline{B}$\n$P(A \\mid \\overline{B}) = {{toFixed(pA*(1-pBgA)/(pA*(1-pBgA)+(1-pA)*(1-pBgNA)),3)}}$\n---\nA-fraction of $\\overline{B}$ region.\n$= \\dfrac{P(A \\cap \\overline{B})}{P(\\overline{B})}$\n$= {{toFixed(pA*(1-pBgA),3)}} / {{toFixed(pA*(1-pBgA)+(1-pA)*(1-pBgNA),3)}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? 'Independent: P(A|~B) = P(A)' : pA*(1-pBgA)/(pA*(1-pBgA)+(1-pA)*(1-pBgNA)) > pA ? '~B raised belief in A' : '~B lowered belief in A'}}"
             }
           ]
         }
       ],
-      "prompt": "You are teaching probability terms using the rectangle model. Each term corresponds to a specific geometric region:\n- P(A), P(~A): column widths\n- P(B), P(~B): row areas (total across columns)\n- P(A∩B), P(~A∩B), P(A∩~B), P(~A∩~B): individual cell areas\n- P(B|A), P(B|~A): row height within a specific column\n- P(A|B), P(A|~B): column fraction within a specific row\nAll 12 terms are determined by just 3 sliders: P(A), P(B|A), P(B|~A)."
+      "markdown": "# Probability Terms\n\nEvery probability term you will ever encounter lives somewhere in this rectangle. Three sliders — $P(A)$, $P(B \\mid A)$, $P(B \\mid \\overline{A})$ — define the entire joint distribution of two binary events.\n\n## The Rectangle Geometry\n\n| Geometry | Term |\n|----------|------|\n| Left column width | $P(A)$ |\n| Right column width | $P(\\overline{A}) = 1 - P(A)$ |\n| Row height in A-column | $P(B \\mid A)$ |\n| Row height in ¬A-column | $P(B \\mid \\overline{A})$ |\n| Bottom-left cell area | $P(A \\cap B)$ |\n| Bottom-right cell area | $P(\\overline{A} \\cap B)$ |\n| Top-left cell area | $P(A \\cap \\overline{B})$ |\n| Top-right cell area | $P(\\overline{A} \\cap \\overline{B})$ |\n\n## Derived Terms\n\n**Marginals** (sum across rows or columns):\n$$P(B) = P(B \\mid A)\\,P(A) + P(B \\mid \\overline{A})\\,P(\\overline{A})$$\n\n**Conditionals** (fraction within a row or column):\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)} \\qquad P(B \\mid A) = \\frac{P(A \\cap B)}{P(A)}$$\n\n## Independence\n\nWhen $P(B \\mid A) = P(B \\mid \\overline{A})$, the step line is horizontal — $A$ and $B$ are **independent**. Every conditional collapses to the unconditional: $P(A \\mid B) = P(A)$, $P(B \\mid A) = P(B)$.\n\n## All 12 Terms from 3 Numbers\n\n$$P(A),\\; P(B \\mid A),\\; P(B \\mid \\overline{A}) \\;\\Rightarrow\\; \\text{all 12 terms}$$\n\n## Naming Conventions\n\n$P(B)$ goes by two names depending on context:\n\n- **Marginal probability** — the mathematical term. $P(B)$ is obtained by *marginalizing* the joint distribution over $A$: summing $P(A \\cap B)$ and $P(\\overline{A} \\cap B)$.\n- **Evidence** — the Bayesian term. When $B$ is an observation, $P(B)$ is the total probability of that evidence occurring, used as the normalizing denominator in Bayes' rule.\n\nSame quantity, two lenses. You will see both in the literature.",
+      "prompt": "You are a patient tutor helping a student explore every probability term in the joint distribution rectangle.\n\n## The 12 Terms and Their Geometry\nAll terms are determined by just three numbers: P(A), P(B|A), P(B|¬A).\n\n**Marginals** — widths or total row areas:\n- P(A) = left column width\n- P(¬A) = right column width = 1 - P(A)\n- P(B) = total B-row area = P(B|A)·P(A) + P(B|¬A)·P(¬A)\n- P(¬B) = 1 - P(B)\n\n**Joints** — individual cell areas:\n- P(A∩B) = bottom-left cell = P(A)·P(B|A)\n- P(¬A∩B) = bottom-right cell = P(¬A)·P(B|¬A)\n- P(A∩¬B) = top-left cell = P(A)·(1-P(B|A))\n- P(¬A∩¬B) = top-right cell = P(¬A)·(1-P(B|¬A))\n\n**Conditionals** — fraction within a column or row:\n- P(B|A) = row height in A-column (slider directly)\n- P(B|¬A) = row height in ¬A-column (slider directly)\n- P(A|B) = A-fraction of B-row = P(A∩B)/P(B) — Bayes posterior\n- P(A|¬B) = A-fraction of ¬B region = P(A∩¬B)/P(¬B)\n\n## Independence Special Case\nWhen P(B|A) = P(B|¬A): the step line is horizontal, P(B) = P(B|A), and all conditionals collapse: P(A|B) = P(A|¬B) = P(A), P(B|A) = P(B|¬A) = P(B).\n\n## Teaching Approach\n- Point to the highlighted region in the rectangle when explaining each term\n- Emphasize that all 12 terms come from just 3 slider values\n- Use the independence check to connect conditional and marginal probabilities\n- Encourage the student to predict how a term changes before moving the slider"
     },
     {
       "title": "Conditional Probability",
