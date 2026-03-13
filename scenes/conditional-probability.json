@@ -1,0 +1,500 @@
+{
+  "title": "Conditional Probability & Bayes' Rule",
+  "scenes": [
+    {
+      "title": "Conditional Probability & Bayes' Rule",
+      "description": "Build intuition from events and areas to conditional probability and Bayes' rule — with three real-world examples.",
+      "range": [[-1.5, 12.5], [-2, 13.5], [-0.5, 4]],
+      "camera": {
+        "position": [5, -2, 17],
+        "target": [5, 5, 0]
+      },
+      "views": [
+        {"name":"Overview","position":[5,-2,17],"target":[5,5,0],"description":"Angled view showing Z-layers"},
+        {"name":"Top Down","position":[5,5,20],"target":[5,5,0],"description":"Face-on probability square"},
+        {"name":"Side","position":[5,-10,8],"target":[5,5,0],"description":"See the elevation layers"}
+      ],
+      "markdown": "# Conditional Probability & Bayes' Rule\n\n## The Unit Square\n\nRepresent the complete sample space $\\Omega$ as a **unit square** (area = 1). Any event occupies a fraction of that area equal to its probability:\n\n$$P(\\text{event}) = \\text{fraction of square covered}$$\n\n## Conditional Probability\n\nConditioning on event $B$ means **restricting the sample space** to only the outcomes where $B$ occurs. The probability of $A$ within that restricted space:\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)}$$\n\nGeometrically: **zoom into the B-region**, then ask what fraction of it contains $A$.\n\n## The Asymmetry\n\n$P(A \\mid B) \\neq P(B \\mid A)$ in general — same intersection, different denominators:\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)} \\qquad P(B \\mid A) = \\frac{P(A \\cap B)}{P(A)}$$\n\n## Bayes' Rule\n\nFrom the symmetry of the intersection $P(A \\cap B) = P(A \\mid B) \\cdot P(B) = P(B \\mid A) \\cdot P(A)$:\n\n$$\\boxed{P(A \\mid B) = \\frac{P(B \\mid A) \\cdot P(A)}{P(B)}}$$\n\n**Belief update interpretation:**\n- $P(A)$ — **prior**: belief before observing $B$\n- $P(B \\mid A)$ — **likelihood**: how probable is $B$ if $A$ is true?\n- $P(B)$ — **marginal**: how probable is $B$ overall? (normalizing constant)\n- $P(A \\mid B)$ — **posterior**: updated belief after observing $B$\n\n## Why It Surprises Everyone\n\nThree examples where intuition fails due to **base rate neglect** — forgetting how rare the condition is:\n\n| Scenario | Naive guess | Actual answer |\n|----------|------------|---------------|\n| Medical test (0.1% disease, 99% accurate) | ~99% | **~4.7%** |\n| Spam filter (\"Nigeria\" keyword) | high | **~73.8%** |\n| Tornado radar (2% base rate, 95% detection) | ~95% | **~39.3%** |\n\n## Key Formulas\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)}$$\n\n$$P(A \\cap B) = P(A \\mid B) \\cdot P(B) = P(B \\mid A) \\cdot P(A)$$\n\n$$P(A \\mid B) = \\frac{P(B \\mid A) \\cdot P(A)}{P(B \\mid A) \\cdot P(A) + P(B \\mid \\overline{A}) \\cdot P(\\overline{A})}$$",
+      "elements": [
+        {"type":"skybox","style":"gradient","topColor":"#080818","bottomColor":"#030310"}
+      ],
+      "steps": [
+        {
+          "title": "The Sample Space",
+          "description": "Every possible outcome lives inside this square. **Area = probability** — the entire square has area 1.0 (100%). An event covering half the square has probability 0.5.\n\nAll of probability theory lives here. Use the sliders to set $P(A)$ and $P(B)$ — we'll use them in the next steps.",
+          "sliders": [
+            {"id":"pA","label":"$P(A)$ — Probability of Event A","min":0.05,"max":0.95,"step":0.01,"default":0.4},
+            {"id":"pB","label":"$P(B)$ — Probability of Event B","min":0.05,"max":0.95,"step":0.01,"default":0.3}
+          ],
+          "add": [
+            {
+              "id":"square_border",
+              "type":"line",
+              "points":[[0,0,0],[10,0,0],[10,10,0],[0,10,0],[0,0,0]],
+              "color":"#8899bb",
+              "width":0.12
+            },
+            {"id":"lbl_orig","type":"text","text":"0","position":[-0.6,-0.5,0],"color":"#556677"},
+            {"id":"lbl_1x","type":"text","text":"1","position":[10,-0.5,0],"color":"#556677"},
+            {"id":"lbl_1y","type":"text","text":"1","position":[-0.9,10,0],"color":"#556677"},
+            {"id":"lbl_omega","type":"text","text":"Ω  (total probability = 1)","position":[2.8,5,0],"color":"#445566"}
+          ],
+          "info": [
+            {
+              "id":"main_info",
+              "position":"top-right",
+              "content":"### Sample Space $\\Omega$\n$P(\\Omega) = 1.0$\n---\n$P(A) = {{pA}}$\n$P(B) = {{pB}}$\n---\n*Area = probability.*\n*Full square = certainty.*"
+            }
+          ]
+        },
+        {
+          "title": "Events A and B",
+          "description": "**Event A** (blue) spans the left $P(A)$ fraction — a vertical strip. **Event B** (orange) spans the bottom $P(B)$ fraction — a horizontal strip.\n\nThe two strips overlap in the bottom-left corner. That overlap is $A \\cap B$ — outcomes where **both** A and B occur.\n\n**Independence check**: if knowing B tells you nothing about A, then $P(A \\mid B) = P(A)$ — the blue fraction within the orange strip equals the total blue fraction.",
+          "remove": [{"id":"lbl_omega"}],
+          "add": [
+            {
+              "id":"event_a",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.05"],["pA*10","0","0.05"],["pA*10","10","0.05"],["0","10","0.05"]],
+              "color":"#4477ff","opacity":0.3,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"border_a",
+              "type":"animated_line",
+              "points":[["pA*10","0","0.06"],["pA*10","10","0.06"]],
+              "color":"#7799ff","width":0.1
+            },
+            {
+              "id":"lbl_a",
+              "type":"animated_point",
+              "expr":["pA*5","10.8","0.1"],
+              "radius":0,"color":"#7799ff","label":"A"
+            },
+            {
+              "id":"event_b",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.1"],["10","0","0.1"],["10","pB*10","0.1"],["0","pB*10","0.1"]],
+              "color":"#ff8833","opacity":0.3,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"border_b",
+              "type":"animated_line",
+              "points":[["0","pB*10","0.11"],["10","pB*10","0.11"]],
+              "color":"#ffaa55","width":0.1
+            },
+            {
+              "id":"lbl_b",
+              "type":"animated_point",
+              "expr":["10.8","pB*5","0.1"],
+              "radius":0,"color":"#ffaa55","label":"B"
+            }
+          ],
+          "info": [
+            {
+              "id":"main_info",
+              "position":"top-right",
+              "content":"### Events A and B\n$P(A) = {{pA}}$ (blue strip width)\n$P(B) = {{pB}}$ (orange strip height)\n---\n$P(\\overline{A}) = {{toFixed(1-pA,2)}}$\n$P(\\overline{B}) = {{toFixed(1-pB,2)}}$\n---\nIf independent:\n$P(A \\cap B) = P(A) \\cdot P(B)$\n$\\quad\\quad\\quad\\; = {{toFixed(pA*pB,3)}}$"
+            }
+          ]
+        },
+        {
+          "title": "The Intersection and $P(A \\mid B)$",
+          "description": "The **green region** is $A \\cap B$ — outcomes where **both** A and B occur. It lives entirely inside the B strip.\n\n$P(A \\mid B)$ is the **fraction of the B strip that is green**. Adjust the slider below to change this directly. When $P(A \\mid B) = P(A)$, the events are **independent** — knowing B happened doesn't change how likely A is.\n\n$$P(A \\cap B) = P(A \\mid B) \\cdot P(B)$$",
+          "sliders": [
+            {"id":"pA","label":"$P(A)$ — width of A strip","min":0.05,"max":0.95,"step":0.01,"default":0.4},
+            {"id":"pB","label":"$P(B)$ — height of B strip","min":0.05,"max":0.95,"step":0.01,"default":0.3},
+            {"id":"pAgivenB","label":"$P(A \\mid B)$ — fraction of B containing A","min":0.01,"max":0.99,"step":0.01,"default":0.4}
+          ],
+          "add": [
+            {
+              "id":"intersect_ab",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.15"],["pAgivenB*10","0","0.15"],["pAgivenB*10","pB*10","0.15"],["0","pB*10","0.15"]],
+              "color":"#44ff88","opacity":0.8,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"intersect_border",
+              "type":"animated_line",
+              "points":[["pAgivenB*10","0","0.16"],["pAgivenB*10","pB*10","0.16"]],
+              "color":"#88ffaa","width":0.12
+            },
+            {
+              "id":"lbl_intersect",
+              "type":"animated_point",
+              "expr":["pAgivenB*5","pB*5","0.2"],
+              "radius":0,"color":"#44ff88","label":"A∩B"
+            }
+          ],
+          "info": [
+            {
+              "id":"main_info",
+              "position":"top-right",
+              "content":"### Intersection & Conditional\n$P(A \\cap B) = P(A \\mid B) \\cdot P(B)$\n$\\quad\\quad\\quad\\; = {{pAgivenB}} \\times {{pB}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pAgivenB*pB,3)}}$\n---\n$P(A \\mid B) = {{toFixed(pAgivenB,3)}}$\n$P(A) = {{pA}}$\n---\n**Independent?**\n{{abs(pAgivenB - pA) < 0.02 ? 'Yes — P(A|B) ≈ P(A)' : pAgivenB > pA ? 'No — B makes A more likely' : 'No — B makes A less likely'}}"
+            }
+          ]
+        },
+        {
+          "title": "Conditioning: Zoom into B",
+          "description": "**Conditioning on B** shrinks the sample space to only the B-region. We literally **zoom in** on it.\n\nThe **elevated square** (z = 2.5) shows the view after conditioning on B: the B strip stretched to fill the entire square. Within it, the green region is $A$ — its width is exactly $P(A \\mid B)$.\n\nThe dashed connecting lines trace the geometric mapping: the B strip expands to become the new sample space.\n\nUse the **Side** camera view to see the elevation clearly.",
+          "add": [
+            {
+              "id":"b_frame",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.2"],["10","0","0.2"],["10","pB*10","0.2"],["0","pB*10","0.2"]],
+              "color":"#ffff00","opacity":0.06,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"b_frame_border",
+              "type":"animated_line",
+              "points":[["0","0","0.22"],["10","0","0.22"],["10","pB*10","0.22"],["0","pB*10","0.22"],["0","0","0.22"]],
+              "color":"#ffff44","width":0.15
+            },
+            {
+              "id":"zoom_bl",
+              "type":"animated_line",
+              "points":[["0","0","0.25"],["0","0","2.5"]],
+              "color":"#ffff4488","width":0.07
+            },
+            {
+              "id":"zoom_br",
+              "type":"animated_line",
+              "points":[["10","0","0.25"],["10","0","2.5"]],
+              "color":"#ffff4488","width":0.07
+            },
+            {
+              "id":"zoom_tl",
+              "type":"animated_line",
+              "points":[["0","pB*10","0.25"],["0","10","2.5"]],
+              "color":"#ffff4488","width":0.07
+            },
+            {
+              "id":"zoom_tr",
+              "type":"animated_line",
+              "points":[["10","pB*10","0.25"],["10","10","2.5"]],
+              "color":"#ffff4488","width":0.07
+            },
+            {
+              "id":"zoomed_b",
+              "type":"polygon",
+              "vertices":[[0,0,2.5],[10,0,2.5],[10,10,2.5],[0,10,2.5]],
+              "color":"#ff8833","opacity":0.18,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"zoomed_b_border",
+              "type":"line",
+              "points":[[0,0,2.5],[10,0,2.5],[10,10,2.5],[0,10,2.5],[0,0,2.5]],
+              "color":"#ffaa55","width":0.1
+            },
+            {
+              "id":"zoomed_a_in_b",
+              "type":"animated_polygon",
+              "vertices":[["0","0","2.55"],["pAgivenB*10","0","2.55"],["pAgivenB*10","10","2.55"],["0","10","2.55"]],
+              "color":"#44ff88","opacity":0.75,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"lbl_zoomed_title",
+              "type":"text",
+              "text":"Given B  —  new sample space",
+              "position":[0,11.2,2.5],
+              "color":"#ffdd44"
+            },
+            {
+              "id":"lbl_zoomed_prob",
+              "type":"animated_point",
+              "expr":["pAgivenB*5","5","2.6"],
+              "radius":0,"color":"#44ff88","label":"P(A|B)"
+            }
+          ],
+          "info": [
+            {
+              "id":"main_info",
+              "position":"top-right",
+              "content":"### Zoom into B\n$P(A \\mid B) = \\dfrac{P(A \\cap B)}{P(B)}$\n---\n$P(A \\cap B) = {{toFixed(pAgivenB*pB,3)}}$\n$P(B) = {{pB}}$\n---\n$P(A \\mid B) = {{toFixed(pAgivenB,3)}}$\n---\nZoomed view (top):\nGreen fraction = ${{toFixed(pAgivenB*10,1)}}$ / $10$\n$\\quad\\quad\\quad\\quad\\quad\\; = {{toFixed(pAgivenB,3)}}$ ✓"
+            }
+          ]
+        },
+        {
+          "title": "Asymmetry: $P(A \\mid B) \\neq P(B \\mid A)$",
+          "description": "Both conditionals use the **same green intersection** — but divide by different things:\n\n- $P(A \\mid B)$ = what fraction of the **B strip** (orange) is green?\n- $P(B \\mid A)$ = what fraction of the **A strip** (blue dashed) is green?\n\nThe blue dashed frame highlights the A strip. The green region within it is $A \\cap B$ — its height divided by the A strip height gives $P(B \\mid A)$.\n\nThey're equal only when $P(A) = P(B)$. This asymmetry is the source of countless reasoning errors.",
+          "remove": [
+            {"id":"b_frame"},{"id":"b_frame_border"},
+            {"id":"zoom_bl"},{"id":"zoom_br"},{"id":"zoom_tl"},{"id":"zoom_tr"},
+            {"id":"zoomed_b"},{"id":"zoomed_b_border"},{"id":"zoomed_a_in_b"},
+            {"id":"lbl_zoomed_title"},{"id":"lbl_zoomed_prob"}
+          ],
+          "add": [
+            {
+              "id":"a_frame",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.2"],["pA*10","0","0.2"],["pA*10","10","0.2"],["0","10","0.2"]],
+              "color":"#aabbff","opacity":0.06,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"a_frame_border",
+              "type":"animated_line",
+              "points":[["0","0","0.22"],["pA*10","0","0.22"],["pA*10","10","0.22"],["0","10","0.22"],["0","0","0.22"]],
+              "color":"#aabbff","width":0.15
+            }
+          ],
+          "info": [
+            {
+              "id":"main_info",
+              "position":"top-right",
+              "content":"### Asymmetry\n$P(A \\cap B) = {{toFixed(pAgivenB*pB,3)}}$\n---\n$P(A \\mid B) = \\dfrac{{{toFixed(pAgivenB*pB,3)}}}{{{pB}}} = {{toFixed(pAgivenB,3)}}$\n\n$P(B \\mid A) = \\dfrac{{{toFixed(pAgivenB*pB,3)}}}{{{pA}}} = {{toFixed(pAgivenB*pB/pA,3)}}$\n---\n{{abs(pAgivenB - pAgivenB*pB/pA) < 0.01 ? 'Equal here: P(A) ≈ P(B)' : pAgivenB > pAgivenB*pB/pA ? 'P(A|B) > P(B|A)' : 'P(A|B) < P(B|A)'}}"
+            }
+          ]
+        },
+        {
+          "title": "Bayes' Rule",
+          "description": "The intersection is symmetric:\n$$P(A \\cap B) = P(A \\mid B) \\cdot P(B) = P(B \\mid A) \\cdot P(A)$$\n\nRearranging gives **Bayes' rule** — the formula for updating beliefs with evidence:\n$$P(A \\mid B) = \\frac{P(B \\mid A) \\cdot P(A)}{P(B)}$$\n\n- **Prior** $P(A)$: what you believed before seeing B\n- **Likelihood** $P(B \\mid A)$: how probable is B if A is true?\n- **Marginal** $P(B)$: how probable is B overall?\n- **Posterior** $P(A \\mid B)$: updated belief after seeing B\n\nThe three examples next show where naive intuition fails spectacularly.",
+          "remove": [
+            {"id":"a_frame"},{"id":"a_frame_border"}
+          ],
+          "info": [
+            {
+              "id":"main_info",
+              "position":"top-right",
+              "content":"### Bayes' Rule\n$P(A \\mid B) = \\dfrac{P(B \\mid A) \\cdot P(A)}{P(B)}$\n---\n**Prior** $P(A) = {{pA}}$\n**Likelihood** $P(B \\mid A) = {{toFixed(pAgivenB*pB/pA,3)}}$\n**Marginal** $P(B) = {{pB}}$\n---\n**Posterior** $P(A \\mid B) = {{toFixed(pAgivenB,3)}}$\n---\nVerify:\n$\\dfrac{{{toFixed(pAgivenB*pB/pA,3)}} \\times {{pA}}}{{{pB}}} = {{toFixed(pAgivenB,3)}}$ ✓"
+            }
+          ]
+        },
+        {
+          "title": "Example 1 — Medical Testing",
+          "description": "A disease affects **0.1%** of the population. A test is **99% sensitive** (correctly detects disease) and has a **2% false positive rate** (positive result despite no disease).\n\n**You test positive. What's the probability you actually have the disease?**\n\nMost people say ~99%. The real answer is ~**4.7%**.\n\n**Left column** (red) = people WITH disease (width = prevalence). **Right column** (blue) = without disease. **Bottom strip** of each column = those who test positive. The posterior $P(D \\mid +)$ is the bright green area divided by the full bottom strip.",
+          "sliders": [
+            {"id":"prev","label":"$P(\\text{disease})$ — Prevalence","min":0.001,"max":0.15,"step":0.001,"default":0.001},
+            {"id":"sens","label":"$P(+ \\mid D)$ — Sensitivity (true positive rate)","min":0.5,"max":1.0,"step":0.01,"default":0.99},
+            {"id":"fpr","label":"$P(+ \\mid \\overline{D})$ — False positive rate","min":0.001,"max":0.3,"step":0.001,"default":0.02}
+          ],
+          "remove": [
+            {"id":"event_a"},{"id":"border_a"},{"id":"lbl_a"},
+            {"id":"event_b"},{"id":"border_b"},{"id":"lbl_b"},
+            {"id":"intersect_ab"},{"id":"intersect_border"},{"id":"lbl_intersect"},
+            {"id":"square_border"},{"id":"lbl_orig"},{"id":"lbl_1x"},{"id":"lbl_1y"}
+          ],
+          "add": [
+            {
+              "id":"med_border",
+              "type":"line",
+              "points":[[0,0,0],[10,0,0],[10,10,0],[0,10,0],[0,0,0]],
+              "color":"#8899bb","width":0.12
+            },
+            {
+              "id":"disease_col",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.05"],["prev*10","0","0.05"],["prev*10","10","0.05"],["0","10","0.05"]],
+              "color":"#cc2222","opacity":0.25,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"nodisease_col",
+              "type":"animated_polygon",
+              "vertices":[["prev*10","0","0.05"],["10","0","0.05"],["10","10","0.05"],["prev*10","10","0.05"]],
+              "color":"#2244aa","opacity":0.15,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"true_pos",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.15"],["prev*10","0","0.15"],["prev*10","sens*10","0.15"],["0","sens*10","0.15"]],
+              "color":"#44ff66","opacity":0.85,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"false_pos",
+              "type":"animated_polygon",
+              "vertices":[["prev*10","0","0.15"],["10","0","0.15"],["10","fpr*10","0.15"],["prev*10","fpr*10","0.15"]],
+              "color":"#ff8800","opacity":0.7,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"col_div",
+              "type":"animated_line",
+              "points":[["prev*10","0","0.2"],["prev*10","10","0.2"]],
+              "color":"#ffffff","width":0.12
+            },
+            {
+              "id":"lbl_disease",
+              "type":"animated_point",
+              "expr":["prev*5","10.8","0.1"],
+              "radius":0,"color":"#cc4444","label":"disease"
+            },
+            {
+              "id":"lbl_nodisease",
+              "type":"animated_point",
+              "expr":["prev*10+(1-prev)*5","10.8","0.1"],
+              "radius":0,"color":"#4466cc","label":"no disease"
+            }
+          ],
+          "info": [
+            {
+              "id":"main_info",
+              "position":"top-right",
+              "content":"### Medical Test\n$P(D) = {{prev}}$\n$P(+ \\mid D) = {{sens}}$\n$P(+ \\mid \\overline{D}) = {{fpr}}$\n---\n**Per 100,000 people:**\nWith disease: {{toFixed(prev*100000,0)}}\nTrue positives: {{toFixed(prev*sens*100000,1)}}\nFalse positives: {{toFixed((1-prev)*fpr*100000,1)}}\nTotal positives: {{toFixed((prev*sens+(1-prev)*fpr)*100000,1)}}\n---\n$P(D \\mid +) = {{toFixed(prev*sens/(prev*sens+(1-prev)*fpr)*100,1)}}\\%$\n---\n{{prev*sens/(prev*sens+(1-prev)*fpr) < 0.1 ? 'Surprise: most positives are FALSE alarms' : prev*sens/(prev*sens+(1-prev)*fpr) < 0.5 ? 'Still mostly false positives' : 'Majority are true positives'}}"
+            }
+          ]
+        },
+        {
+          "title": "Example 2 — Spam Filtering",
+          "description": "**15%** of emails are spam. **80%** of spam emails contain \"Nigeria\". Only **5%** of legitimate emails contain it.\n\n**An email arrives with \"Nigeria\" in the subject — is it spam?**\n\nLeft column (orange) = spam emails. Right column (blue) = legitimate. Bottom strip of each = emails containing the keyword. The posterior $P(\\text{spam} \\mid \\text{word})$ is the orange bottom area divided by the total bottom area.\n\nTry adding a second word: if $P(\\text{word}_2 \\mid \\text{spam})$ is also high but $P(\\text{word}_2 \\mid \\text{legit})$ is tiny, the posterior jumps toward 99%.",
+          "sliders": [
+            {"id":"pSpam","label":"$P(\\text{spam})$ — Base rate","min":0.05,"max":0.5,"step":0.01,"default":0.15},
+            {"id":"pWspam","label":"$P(\\text{word} \\mid \\text{spam})$","min":0.1,"max":1.0,"step":0.01,"default":0.8},
+            {"id":"pWleg","label":"$P(\\text{word} \\mid \\text{legit})$","min":0.001,"max":0.2,"step":0.001,"default":0.05}
+          ],
+          "remove": [
+            {"id":"med_border"},
+            {"id":"disease_col"},{"id":"nodisease_col"},
+            {"id":"true_pos"},{"id":"false_pos"},
+            {"id":"col_div"},{"id":"lbl_disease"},{"id":"lbl_nodisease"}
+          ],
+          "add": [
+            {
+              "id":"spam_border",
+              "type":"line",
+              "points":[[0,0,0],[10,0,0],[10,10,0],[0,10,0],[0,0,0]],
+              "color":"#8899bb","width":0.12
+            },
+            {
+              "id":"spam_col",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.05"],["pSpam*10","0","0.05"],["pSpam*10","10","0.05"],["0","10","0.05"]],
+              "color":"#ff4422","opacity":0.25,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"legit_col",
+              "type":"animated_polygon",
+              "vertices":[["pSpam*10","0","0.05"],["10","0","0.05"],["10","10","0.05"],["pSpam*10","10","0.05"]],
+              "color":"#2266ff","opacity":0.15,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"spam_word",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.15"],["pSpam*10","0","0.15"],["pSpam*10","pWspam*10","0.15"],["0","pWspam*10","0.15"]],
+              "color":"#ff6633","opacity":0.85,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"legit_word",
+              "type":"animated_polygon",
+              "vertices":[["pSpam*10","0","0.15"],["10","0","0.15"],["10","pWleg*10","0.15"],["pSpam*10","pWleg*10","0.15"]],
+              "color":"#4488ff","opacity":0.75,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"spam_div",
+              "type":"animated_line",
+              "points":[["pSpam*10","0","0.2"],["pSpam*10","10","0.2"]],
+              "color":"#ffffff","width":0.12
+            },
+            {
+              "id":"lbl_spam",
+              "type":"animated_point",
+              "expr":["pSpam*5","10.8","0.1"],
+              "radius":0,"color":"#ff6644","label":"spam"
+            },
+            {
+              "id":"lbl_legit",
+              "type":"animated_point",
+              "expr":["pSpam*10+(1-pSpam)*5","10.8","0.1"],
+              "radius":0,"color":"#6688ff","label":"legit"
+            }
+          ],
+          "info": [
+            {
+              "id":"main_info",
+              "position":"top-right",
+              "content":"### Spam Filter\nKeyword: \"Nigeria\"\n---\n$P(\\text{spam}) = {{pSpam}}$\n$P(W \\mid \\text{spam}) = {{pWspam}}$\n$P(W \\mid \\text{legit}) = {{pWleg}}$\n---\n**Per 10,000 emails:**\nSpam with word: {{toFixed(pSpam*pWspam*10000,0)}}\nLegit with word: {{toFixed((1-pSpam)*pWleg*10000,0)}}\nTotal with word: {{toFixed((pSpam*pWspam+(1-pSpam)*pWleg)*10000,0)}}\n---\n$P(\\text{spam} \\mid W) = {{toFixed(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$"
+            }
+          ]
+        },
+        {
+          "title": "Example 3 — Tornado Warning",
+          "description": "Only **2%** of severe storm alerts involve real tornadoes. Radar detects **95%** of actual tornadoes (true detection rate). But it triggers for **3%** of non-tornado storms (false alarm rate).\n\n**The radar fires. What's the probability of an actual tornado?**\n\nEven with a 95%-accurate sensor, most alerts are false alarms — because tornadoes are so rare. The answer is ~**39%**.\n\nLeft column (red) = real tornadoes. Right column (gray) = non-tornado storms. Bottom strip = radar signal fired.\n\n**Try the base rate slider**: dragging prevalence up dramatically increases the posterior — rarity is what kills the accuracy.",
+          "sliders": [
+            {"id":"pTorn","label":"$P(\\text{tornado})$ — Base rate","min":0.001,"max":0.2,"step":0.001,"default":0.02},
+            {"id":"pDet","label":"$P(\\text{radar} \\mid \\text{tornado})$ — True detection rate","min":0.5,"max":1.0,"step":0.01,"default":0.95},
+            {"id":"pFal","label":"$P(\\text{radar} \\mid \\text{no tornado})$ — False alarm rate","min":0.001,"max":0.2,"step":0.001,"default":0.03}
+          ],
+          "remove": [
+            {"id":"spam_border"},
+            {"id":"spam_col"},{"id":"legit_col"},
+            {"id":"spam_word"},{"id":"legit_word"},
+            {"id":"spam_div"},{"id":"lbl_spam"},{"id":"lbl_legit"}
+          ],
+          "add": [
+            {
+              "id":"torn_border",
+              "type":"line",
+              "points":[[0,0,0],[10,0,0],[10,10,0],[0,10,0],[0,0,0]],
+              "color":"#8899bb","width":0.12
+            },
+            {
+              "id":"torn_col",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.05"],["pTorn*10","0","0.05"],["pTorn*10","10","0.05"],["0","10","0.05"]],
+              "color":"#cc3300","opacity":0.3,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"storm_col",
+              "type":"animated_polygon",
+              "vertices":[["pTorn*10","0","0.05"],["10","0","0.05"],["10","10","0.05"],["pTorn*10","10","0.05"]],
+              "color":"#667788","opacity":0.15,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"true_alarm",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.15"],["pTorn*10","0","0.15"],["pTorn*10","pDet*10","0.15"],["0","pDet*10","0.15"]],
+              "color":"#ff3300","opacity":0.9,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"false_alarm",
+              "type":"animated_polygon",
+              "vertices":[["pTorn*10","0","0.15"],["10","0","0.15"],["10","pFal*10","0.15"],["pTorn*10","pFal*10","0.15"]],
+              "color":"#ffaa00","opacity":0.7,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"torn_div",
+              "type":"animated_line",
+              "points":[["pTorn*10","0","0.2"],["pTorn*10","10","0.2"]],
+              "color":"#ffffff","width":0.12
+            },
+            {
+              "id":"lbl_torn",
+              "type":"animated_point",
+              "expr":["pTorn*5","10.8","0.1"],
+              "radius":0,"color":"#ff5533","label":"real tornado"
+            },
+            {
+              "id":"lbl_storm",
+              "type":"animated_point",
+              "expr":["pTorn*10+(1-pTorn)*5","10.8","0.1"],
+              "radius":0,"color":"#8899aa","label":"no tornado"
+            }
+          ],
+          "info": [
+            {
+              "id":"main_info",
+              "position":"top-right",
+              "content":"### Tornado Warning\n$P(T) = {{pTorn}}$\n$P(\\text{radar} \\mid T) = {{pDet}}$\n$P(\\text{radar} \\mid \\overline{T}) = {{pFal}}$\n---\n**Per 5,000 storm alerts:**\nReal tornadoes: {{toFixed(pTorn*5000,1)}}\nTrue alarms: {{toFixed(pTorn*pDet*5000,1)}}\nFalse alarms: {{toFixed((1-pTorn)*pFal*5000,1)}}\nTotal radar signals: {{toFixed((pTorn*pDet+(1-pTorn)*pFal)*5000,1)}}\n---\n$P(T \\mid \\text{radar}) = {{toFixed(pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$\n---\n{{pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal) > 0.5 ? 'Issue warning (posterior > 50%)' : 'Mostly false alarms (posterior < 50%)'}}"
+            }
+          ]
+        }
+      ],
+      "prompt": "You are teaching conditional probability and Bayes' rule using the unit square area model.\n\n## Core Geometric Intuition\n- The 10×10 square represents the full sample space (area = 1)\n- Blue A strip: vertical, width = P(A)\n- Orange B strip: horizontal, height = P(B)\n- Green intersection A∩B: within B strip, width = P(A|B)\n- Step 4 shows the 3D 'zoom into B' — the B strip elevated and stretched to full size at z=2.5\n\n## Slider Connections to Always Make\nWhen sliders change, explicitly connect to geometry:\n- P(A) → blue strip width changes\n- P(B) → orange strip height changes; posterior changes even if likelihoods are fixed (base rate effect!)\n- P(A|B) → green width within B strip changes\n\n## For Real-World Examples (steps 7–9)\n- Base rate neglect is the key insight: rare condition → most positives are false\n- Medical: at 0.1% prevalence, even a 99% test gives only ~4.7% posterior — false positives outnumber true positives 20:1\n- Spam: more intuitive, shows how keyword evidence shifts belief; mention Naive Bayes classifiers\n- Tornado: connect to policy decisions — what posterior threshold justifies issuing a warning?\n\n## Exploration Prompts to Offer Proactively\n- 'Try setting disease prevalence to 1% vs 0.01% and compare the posteriors'\n- 'What sensitivity would make the medical test truly useful at 0.1% prevalence?'\n- 'For the tornado warning, what base rate makes the posterior cross 50%?'\n- 'Can you derive what P(B|A) is from the sliders on step 5?'\n\n## Follow-Up Topics to Suggest\n- Sequential updates: applying Bayes twice with two pieces of evidence\n- The prosecutor's fallacy: confusing P(evidence|innocent) with P(innocent|evidence)\n- Likelihood ratios as a cleaner framework: LR = P(E|H) / P(E|¬H)\n- Naive Bayes classifiers in machine learning"
+    }
+  ]
+}
