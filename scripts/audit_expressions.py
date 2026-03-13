@@ -75,6 +75,129 @@ def _extract_template_exprs(text):
             yield expr, 'content_template'
 
 
+def verify_app_js_trust_model(repo_root):
+    """Parse static/app.js and verify the trust checker is intact and in sync.
+
+    Checks:
+    1. _JS_ONLY_RE in app.js matches the Python mirror in this script
+    2. EXPR_KEYS in _scanSpecForUnsafeJs matches _SCANNED_KEYS in this script
+    3. compileExpr catch-fallback bypass is documented (known, expected path)
+    4. No additional compileExpr-style functions bypass the trust check
+
+    Returns a list of (severity, message) tuples where severity is
+    'error', 'warning', or 'info'.
+    """
+    app_js_path = repo_root / 'static' / 'app.js'
+    if not app_js_path.exists():
+        return [('error', f'static/app.js not found at {app_js_path}')]
+
+    content = app_js_path.read_text(encoding='utf-8')
+    findings = []
+
+    # ── 1. Extract and compare _JS_ONLY_RE ────────────────────────────────
+    js_re_match = re.search(r'const _JS_ONLY_RE\s*=\s*/(.+?)/;', content)
+    if not js_re_match:
+        findings.append(('error', '_JS_ONLY_RE declaration not found in static/app.js'))
+    else:
+        js_pattern = js_re_match.group(1)
+        py_pattern = _JS_ONLY_RE.pattern
+        # Extract \bWORD\b terms from each pattern for structural comparison
+        js_terms = set(re.findall(r'\\b([a-zA-Z_]\w*)\\b', js_pattern))
+        py_terms = set(re.findall(r'\\b([a-zA-Z_]\w*)\\b', py_pattern))
+        only_in_app = js_terms - py_terms
+        only_in_script = py_terms - js_terms
+        if only_in_app:
+            findings.append(('warning',
+                f'_JS_ONLY_RE drift: terms in app.js not in audit script: {sorted(only_in_app)}'
+                ' — audit may miss JS patterns that app.js catches'))
+        if only_in_script:
+            findings.append(('warning',
+                f'_JS_ONLY_RE drift: terms in audit script not in app.js: {sorted(only_in_script)}'
+                ' — audit flags patterns that app.js does not gate'))
+        if not only_in_app and not only_in_script:
+            findings.append(('info', '_JS_ONLY_RE is in sync between app.js and audit script'))
+
+    # ── 2. Extract and compare EXPR_KEYS in _scanSpecForUnsafeJs ──────────
+    expr_keys_match = re.search(
+        r'function _scanSpecForUnsafeJs\b.*?const EXPR_KEYS\s*=\s*new Set\(\[([^\]]+)\]\)',
+        content, re.DOTALL
+    )
+    if not expr_keys_match:
+        findings.append(('error',
+            'EXPR_KEYS declaration not found inside _scanSpecForUnsafeJs in static/app.js'))
+    else:
+        app_keys = frozenset(re.findall(r"'([^']+)'", expr_keys_match.group(1)))
+        only_in_app = app_keys - _SCANNED_KEYS
+        only_in_script = _SCANNED_KEYS - app_keys
+        if only_in_app:
+            findings.append(('error',
+                f'EXPR_KEYS drift: keys scanned by app.js but missing from _SCANNED_KEYS: '
+                f'{sorted(only_in_app)} — audit will NOT flag JS expressions in these fields'))
+        if only_in_script:
+            findings.append(('warning',
+                f'EXPR_KEYS drift: keys in _SCANNED_KEYS but absent from app.js EXPR_KEYS: '
+                f'{sorted(only_in_script)} — audit over-reports coverage for these fields'))
+        if not only_in_app and not only_in_script:
+            findings.append(('info', 'EXPR_KEYS is in sync between app.js and audit script'))
+
+    # ── 3. Verify compileExpr catch-fallback bypass is present and bounded ─
+    # Expected: math.js parse failure → JS Function() fallback when trusted
+    compile_fn_match = re.search(
+        r'function compileExpr\s*\([^)]*\)\s*\{(.*?)\n\}',
+        content, re.DOTALL
+    )
+    if not compile_fn_match:
+        findings.append(('error', 'compileExpr function not found in static/app.js'))
+    else:
+        fn_body = compile_fn_match.group(1)
+        has_js_guard = '_JS_ONLY_RE.test(' in fn_body
+        has_trust_check = "_sceneJsTrustState === 'trusted'" in fn_body
+        has_catch_fallback = 'catch' in fn_body and 'Function(' in fn_body
+        has_untrusted_noop = "_mathjs.compile('0')" in fn_body
+
+        if not has_js_guard:
+            findings.append(('error',
+                'compileExpr: _JS_ONLY_RE guard missing — JS expressions may execute without check'))
+        if not has_trust_check:
+            findings.append(('error',
+                'compileExpr: trust state check missing — JS may execute without user approval'))
+        if not has_catch_fallback:
+            findings.append(('warning',
+                'compileExpr: catch-fallback not found — toFixed/JS-builtin handling may have changed'))
+        if not has_untrusted_noop:
+            findings.append(('error',
+                'compileExpr: no-op return for untrusted scenes not found — untrusted JS may execute'))
+        if has_js_guard and has_trust_check and has_catch_fallback and has_untrusted_noop:
+            findings.append(('info',
+                'compileExpr: trust guard intact (JS_ONLY_RE gate + trust check + catch-fallback + untrusted no-op)'))
+
+    # ── 4. Check for other compile-style functions that bypass the pattern ─
+    compile_fns = re.findall(r'function (compile\w+)\s*\(', content)
+    for fn_name in compile_fns:
+        if fn_name == 'compileExpr':
+            continue
+        fn_match = re.search(
+            rf'function {re.escape(fn_name)}\s*\([^)]*\)\s*\{{(.*?)\n\}}',
+            content, re.DOTALL
+        )
+        if fn_match:
+            body = fn_match.group(1)
+            uses_js = 'Function(' in body
+            has_trust = "_sceneJsTrustState === 'trusted'" in body
+            has_guard = '_JS_ONLY_RE.test(' in body
+            if uses_js and not has_trust:
+                findings.append(('error',
+                    f'{fn_name}: uses Function() without trust check — potential bypass'))
+            elif uses_js and not has_guard:
+                findings.append(('warning',
+                    f'{fn_name}: uses Function() with trust check but no _JS_ONLY_RE pre-scan'))
+            elif uses_js and has_trust and has_guard:
+                findings.append(('info',
+                    f'{fn_name}: properly gated (JS_ONLY_RE + trust check)'))
+
+    return findings
+
+
 def discover_unregistered_expr_keys(scene_files):
     """Scan all string-valued fields across scene files and return a dict of
     { key: example_expr } for keys that:
@@ -246,6 +369,29 @@ def main(argv=None):
         print('No scene files found in', scenes_dir)
         sys.exit(0)
 
+    # ── Legend ─────────────────────────────────────────────────────────────
+    print('Legend:')
+    print('  ✅ safe          — pure math.js expression; no JS patterns detected')
+    print('  🔓 unsafe-scene  — scene has "unsafe":true; all JS opted in explicitly')
+    print('  ⚠️  js/covered    — JS pattern found in a scanned field; trust dialog fires')
+    print('  ❌ js/uncovered  — JS pattern in an UNSCANNED field; trust dialog will NOT fire')
+    print('  🔶 js-builtin    — uses toFixed/etc.; bypasses _JS_ONLY_RE via catch-fallback')
+    print()
+    print('Trust checker integrity:')
+    print('  🔴 error   — trust model is broken or bypassed; must fix before merge')
+    print('  🟡 warning — potential drift or gap; review recommended')
+    print('  🟢 info    — component verified intact')
+    print()
+
+    # ── Trust checker integrity ────────────────────────────────────────────
+    trust_findings = verify_app_js_trust_model(repo_root)
+    severity_icon = {'error': '🔴', 'warning': '🟡', 'info': '🟢'}
+    has_trust_errors = any(s == 'error' for s, _ in trust_findings)
+    print('── Trust Checker (static/app.js) ──')
+    for severity, msg in trust_findings:
+        print(f'  {severity_icon[severity]} {msg}')
+    print()
+
     print(f'Auditing {len(scene_files)} scene file(s) in {scenes_dir}\n')
 
     totals = {k: 0 for k in _CLASSIFICATION_LABELS}
@@ -350,7 +496,7 @@ def main(argv=None):
         )
     )
 
-    if all_uncovered:
+    if all_uncovered or has_trust_errors:
         sys.exit(1)
 
     print('\n✅ All expression-bearing fields are covered by the sandbox / trust model.')
