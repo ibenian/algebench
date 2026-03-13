@@ -87,7 +87,18 @@ _mathjs.import({
 // \.[a-zA-Z_]\w*\s*\( catches method calls like .toFixed( .constructor( — prevents
 // prototype-chain escapes (e.g. (0).constructor.constructor('return fetch(...)')()).
 // Decimal numbers (3.14) are safe because digits follow the dot, not letters.
-const _JS_ONLY_RE = /\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\(|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\(/;
+// JS-only global built-ins (toFixed, toPrecision, etc.) are included so that
+// content-template expressions using them proactively trigger the trust dialog.
+const _JS_ONLY_RE = new RegExp(
+    // JS-only global built-ins not supported by math.js
+    '\\btoFixed\\b|\\btoPrecision\\b|\\btoString\\b|\\bparseInt\\b|\\bparseFloat\\b|' +
+    '\\bisNaN\\b|\\bisFinite\\b|' +
+    // Variable declarations, control flow, and arrow/named functions
+    '\\blet\\b|\\bconst\\b|\\bvar\\b|\\breturn\\b|\\bfor\\s*\\(|\\bwhile\\s*\\(|=>|\\bfunction\\b|' +
+    // Math namespace and dot-method calls (catches .toFixed(, .constructor(, etc.)
+    '\\bMath\\.|' +
+    '\\.([a-zA-Z_]\\w*)\\s*\\('
+);
 
 // Trust state for the currently loaded scene
 // null = clean (math.js only, no dialog shown)
@@ -4183,13 +4194,23 @@ function _scanSpecForUnsafeJs(spec) {
     // Only scan strings under known expression-bearing keys to avoid false positives
     // from natural-language text that contains 'let', '=>', 'return', etc.
     const EXPR_KEYS = new Set(['expr', 'x', 'y', 'z', 'expression', 'fx', 'fy', 'fz']);
+    const _TEMPLATE_RE = /\{\{([\s\S]*?)\}\}/g;
     function walk(obj, parentKey) {
         if (typeof obj === 'string') {
             return !!(parentKey && EXPR_KEYS.has(parentKey) && _JS_ONLY_RE.test(obj));
         }
         if (Array.isArray(obj)) return obj.some(item => walk(item, parentKey));
         if (obj && typeof obj === 'object') {
-            return Object.entries(obj).some(([k, v]) => walk(v, k));
+            return Object.entries(obj).some(([k, v]) => {
+                // Scan {{...}} expression blocks inside content strings
+                if (k === 'content' && typeof v === 'string') {
+                    let m;
+                    while ((m = _TEMPLATE_RE.exec(v)) !== null) {
+                        if (_JS_ONLY_RE.test(m[1])) return true;
+                    }
+                }
+                return walk(v, k);
+            });
         }
         return false;
     }

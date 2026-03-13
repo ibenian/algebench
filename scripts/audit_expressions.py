@@ -29,18 +29,19 @@ from pathlib import Path
 
 # Mirrors _JS_ONLY_RE from static/app.js (line 90).
 # Detects expressions that require native JS execution.
+# JS-only global built-ins (toFixed, toPrecision, etc.) are included first so
+# that content-template expressions using them are caught proactively.
 _JS_ONLY_RE = re.compile(
-    r'\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\('
+    r'\btoFixed\b|\btoPrecision\b|\btoString\b|\bparseInt\b|\bparseFloat\b'
+    r'|\bisNaN\b|\bisFinite\b'
+    r'|\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\('
     r'|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\('
 )
 
-# Secondary pattern: JS-only built-in functions used without a leading dot
-# (e.g. toFixed(h, 2)) — these don't match _JS_ONLY_RE but fail math.js
-# parsing and are silently evaluated via the JS fallback in compileExpr /
-# _evalInfoExpr, without triggering the trust dialog proactively.
-_JS_BUILTIN_FUNC_RE = re.compile(
-    r'\b(toFixed|toPrecision|toString|parseInt|parseFloat|isNaN|isFinite)\s*\('
-)
+# All previously-separate JS-only built-ins are now part of _JS_ONLY_RE above.
+# This pattern intentionally matches nothing; kept as a named constant so
+# any future additions can be made in one place.
+_JS_BUILTIN_FUNC_RE = re.compile(r'(?!)')
 
 # Fields actively scanned by _scanSpecForUnsafeJs in static/app.js.
 # Expressions found under these keys trigger the trust dialog when they
@@ -198,7 +199,9 @@ def classify_expression(expr, field_key, scene_unsafe):
         return 'unsafe_scene'
 
     if _JS_ONLY_RE.search(expr):
-        if field_key in _SCANNED_KEYS:
+        # content_template is now scanned by _scanSpecForUnsafeJs (via the
+        # {{...}} template pass added in Proposal 2), so it counts as covered.
+        if field_key in _SCANNED_KEYS or field_key == 'content_template':
             return 'js_covered'
         return 'js_uncovered'
 
