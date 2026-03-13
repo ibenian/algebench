@@ -75,6 +75,60 @@ def _extract_template_exprs(text):
             yield expr, 'content_template'
 
 
+# Test suite for _JS_ONLY_RE detection quality.
+# Each entry: (test_expression, severity_if_missed, description)
+# Severity:
+#   'error'   — missed pattern allows code execution or data exfiltration;
+#               the catch-fallback in compileExpr will run this as JS in any
+#               trusted scene, even if this specific expression didn't trigger
+#               the trust dialog itself.
+#   'warning' — missed pattern is a gap but lower direct risk in expression context.
+_JS_DETECTION_TESTS = [
+    # ── Critical: bare function calls with no dot prefix ──────────────────
+    ('eval("x")',                'error',   'eval() — direct arbitrary code execution'),
+    ('new Function("return 1")', 'error',   'Function constructor — creates executable function'),
+    ('fetch("https://x.com")',   'error',   'fetch() — network exfiltration / SSRF'),
+    ('import("mod")',            'error',   'dynamic import() — loads external module'),
+    # ── Critical: property access without () that bypasses dot-method-paren rule
+    ('document.cookie',          'error',   'document.cookie — reads session cookies (no call, no dot-paren match)'),
+    ('window.localStorage',      'error',   'window global — browser storage access (no call)'),
+    ('globalThis.process',       'error',   'globalThis — platform-agnostic global escape'),
+    # ── Significant: execution/loading patterns ────────────────────────────
+    ('require("fs")',             'warning', 'require() — CommonJS module load (relevant in Node/Electron)'),
+    ('setTimeout(f,0)',           'warning', 'setTimeout — deferred execution'),
+    ('setInterval(f,100)',        'warning', 'setInterval — repeated execution'),
+    # ── Lower risk: language constructs unusual in math expressions ─────────
+    ('class Foo {}',              'warning', 'class declaration — not a math expression'),
+    ('typeof x',                  'warning', 'typeof operator — unlikely in math but harmless'),
+    ('delete x.y',                'warning', 'delete operator — mutates scope'),
+    ('void 0',                    'warning', 'void operator — evaluates to undefined'),
+    ('x instanceof Array',        'warning', 'instanceof — type check, not math'),
+    ('throw new Error("x")',      'warning', 'throw — triggers exception'),
+    ('await Promise.resolve(1)',  'warning', 'await — async keyword (math.js rejects it anyway)'),
+]
+
+
+def evaluate_js_detection_quality(js_only_re_pattern):
+    """Run _JS_DETECTION_TESTS against the given regex pattern string.
+
+    js_only_re_pattern: the raw pattern string extracted from app.js (or the
+    Python mirror).  Tests are run against a compiled version of this pattern.
+
+    Returns a list of (severity, caught, test_expr, description) tuples.
+    'caught' is True if the regex matched the test expression.
+    """
+    try:
+        live_re = re.compile(js_only_re_pattern)
+    except re.error as e:
+        return [('error', False, '', f'Could not compile extracted _JS_ONLY_RE: {e}')]
+
+    results = []
+    for expr, severity, description in _JS_DETECTION_TESTS:
+        caught = bool(live_re.search(expr))
+        results.append((severity, caught, expr, description))
+    return results
+
+
 def verify_app_js_trust_model(repo_root):
     """Parse static/app.js and verify the trust checker is intact and in sync.
 
@@ -116,6 +170,25 @@ def verify_app_js_trust_model(repo_root):
                 ' — audit flags patterns that app.js does not gate'))
         if not only_in_app and not only_in_script:
             findings.append(('info', '_JS_ONLY_RE is in sync between app.js and audit script'))
+
+        # ── 1b. Detection quality: run known-dangerous patterns against the live regex
+        detection_results = evaluate_js_detection_quality(js_pattern)
+        missed_errors   = [(e, d) for s, caught, e, d in detection_results if not caught and s == 'error']
+        missed_warnings = [(e, d) for s, caught, e, d in detection_results if not caught and s == 'warning']
+        caught_count    = sum(1 for _, caught, _, _ in detection_results if caught)
+        total           = len(detection_results)
+
+        if missed_errors:
+            for expr, desc in missed_errors:
+                findings.append(('error',
+                    f'_JS_ONLY_RE misses critical pattern: {expr!r} — {desc}'))
+        if missed_warnings:
+            findings.append(('warning',
+                f'_JS_ONLY_RE coverage gaps ({len(missed_warnings)} soft): '
+                + ', '.join(e for e, _ in missed_warnings)))
+        findings.append(('info' if not missed_errors else 'warning',
+            f'_JS_ONLY_RE detection quality: {caught_count}/{total} test patterns caught'
+            + (' ✅' if not missed_errors and not missed_warnings else '')))
 
     # ── 2. Extract and compare EXPR_KEYS in _scanSpecForUnsafeJs ──────────
     expr_keys_match = re.search(
