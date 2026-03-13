@@ -1,0 +1,28 @@
+name: Audit Expression Sandbox Coverage
+
+on:
+  pull_request:
+    paths:
+      - 'scenes/**/*.json'
+      - 'static/app.js'
+      - 'scripts/audit_expressions.py'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Expression Sandbox Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run expression sandbox audit
+        run: python scripts/audit_expressions.py
