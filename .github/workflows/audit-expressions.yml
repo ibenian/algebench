@@ -30,7 +30,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             # Filter to only scenes/*.json files changed in this PR
-            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+            CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...HEAD \
               | grep '^scenes/.*\.json$' | tr '\n' ' ')
             echo "files=${CHANGED}" >> "$GITHUB_OUTPUT"
           else
