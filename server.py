@@ -1122,13 +1122,20 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 Examples:
-  algebench                              Launch empty viewer
-  algebench scene.json                   Launch with scene
-  algebench scenes/vector-addition.json  Load built-in scene
-  algebench --port 9000                  Use custom port
-  algebench --tts-parallelism 4          Max concurrent TTS sentence synthesis
-  algebench --tts-min-buffer 30.0        Seconds of audio buffered before playback starts
-  algebench --tts-min-sentence-chars 80  Merge short sentences until this char count
+  algebench                                      Launch empty viewer
+  algebench scene.json                           Launch with scene
+  algebench scenes/vector-addition.json          Load built-in scene
+  algebench --port 9000                          Use custom port
+  algebench --no-tts-live                        Use standard TTS instead of Gemini Live
+  algebench --tts-parallelism 4                  Max concurrent TTS sentence synthesis (default: 3)
+  algebench --tts-min-buffer 60.0                Seconds of audio buffered before playback (default: 30)
+  algebench --tts-min-sentence-chars 150         Merge short sentences to this char count (default: 100)
+  algebench --tts-min-sentence-chars-growth 1.5  Sentence char growth factor (default: 1.2)
+  algebench --tts-chunk-timeout 30               Seconds before chunk timeout (default: 15)
+  algebench --tts-max-retries 5                  Max retries per sentence (default: library default)
+  algebench --tts-retry-delay 2.0                Seconds between retries (default: library default)
+  algebench --tts-style "speak slowly"           Additional style guidance for TTS
+  algebench --tts-output-file out.wav            Save TTS audio to WAV file
         '''
     )
     parser.add_argument('scene', nargs='?', help='Path to scene JSON file')
