@@ -19,6 +19,7 @@ Exit codes:
   1 — uncovered expressions found (require JS but not gated by trust dialog)
 """
 
+import glob as glob_module
 import json
 import os
 import re
@@ -54,6 +55,15 @@ _UNSCANNED_EXPR_KEYS = frozenset({
     'fromExpr', 'toExpr', 'positionExpr',
 })
 
+# Keys whose string values are never mathematical expressions — labels, ids,
+# documentation fields, etc.  Excluded from the dynamic discovery pass.
+_NON_EXPR_KEYS = frozenset({
+    'type', 'id', 'name', 'label', 'color', 'title', 'description',
+    'doc', 'prompt', 'caption', 'content', 'format', 'unit',
+    'axis', 'camera', 'range', 'theme',
+    'markdown', 'text', 'unsafe_explanation',
+})
+
 # Regex that extracts {{...}} template expressions from content strings.
 _TEMPLATE_RE = re.compile(r'\{\{([\s\S]*?)\}\}')
 
@@ -64,6 +74,42 @@ def _extract_template_exprs(text):
         expr = m.group(1).strip()
         if expr:
             yield expr, 'content_template'
+
+
+
+
+def discover_unregistered_expr_keys(scene_files):
+    """Scan all string-valued fields across scene files and return a dict of
+    { key: example_expr } for keys that:
+      - are not in _SCANNED_KEYS, _UNSCANNED_EXPR_KEYS, or _NON_EXPR_KEYS
+      - have at least one value that looks like a JS or JS-builtin expression
+    These are expression-bearing keys the audit doesn't know about yet.
+    """
+    known = _SCANNED_KEYS | _UNSCANNED_EXPR_KEYS | _NON_EXPR_KEYS
+    found = {}
+
+    def _walk(obj):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if k in known or k in ('vertices', 'points'):
+                    continue
+                if isinstance(v, str) and v.strip() and k not in found:
+                    if _JS_ONLY_RE.search(v) or _JS_BUILTIN_FUNC_RE.search(v):
+                        found[k] = v.strip()
+                elif isinstance(v, (dict, list)):
+                    _walk(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                _walk(item)
+
+    for path in scene_files:
+        try:
+            with open(path, encoding='utf-8') as fh:
+                _walk(json.load(fh))
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    return found
 
 
 def extract_expressions(obj, parent_key=None):
@@ -198,12 +244,32 @@ def main(argv=None):
     repo_root = Path(__file__).resolve().parent.parent
     scenes_dir = repo_root / 'scenes'
 
-    scene_files = sorted(scenes_dir.glob('*.json'))
-    if not scene_files:
-        print('No scene files found in', scenes_dir)
-        sys.exit(0)
+    if argv:
+        # Expand glob patterns and collect .json files
+        expanded = []
+        for arg in argv:
+            matches = glob_module.glob(arg)
+            expanded.extend(matches if matches else [arg])
+        scene_files = sorted(Path(f) for f in expanded if f.endswith('.json'))
+        if not scene_files:
+            print('No scene JSON files matched — nothing to audit.')
+            sys.exit(0)
+    else:
+        scene_files = sorted(scenes_dir.glob('*.json'))
+        if not scene_files:
+            print('No scene files found in', scenes_dir)
+            sys.exit(0)
 
-    print(f'Auditing {len(scene_files)} scene file(s) in {scenes_dir}\n')
+    # ── Legend ─────────────────────────────────────────────────────────────
+    print('Legend:')
+    print('  ✅ safe          — pure math.js expression; no JS patterns detected')
+    print('  🔓 unsafe-scene  — scene has "unsafe":true; all JS opted in explicitly')
+    print('  ⚠️  js/covered    — JS pattern found in a scanned field; trust dialog fires')
+    print('  ❌ js/uncovered  — JS pattern in an UNSCANNED field; trust dialog will NOT fire')
+    print('  🔶 js-builtin    — uses toFixed/etc.; bypasses _JS_ONLY_RE via catch-fallback')
+    print()
+
+    print(f'Auditing {len(scene_files)} scene file(s)\n')
 
     totals = {k: 0 for k in _CLASSIFICATION_LABELS}
     all_uncovered = []    # (scene_name, record)
@@ -296,12 +362,14 @@ def main(argv=None):
     template_builtin = [
         (sn, r) for sn, r in all_js_builtin if r['field'] == 'content_template'
     ]
-    _print_proposals(totals, all_uncovered, all_js_builtin, template_builtin)
+    unregistered_keys = discover_unregistered_expr_keys(scene_files)
+    _print_proposals(totals, all_uncovered, all_js_builtin, template_builtin, unregistered_keys)
 
     # ── GitHub step summary (CI only) ──────────────────────────────────────
     _write_github_summary(
         _build_github_summary(
-            scene_results_map, totals, all_uncovered, all_js_builtin, template_builtin
+            scene_results_map, totals, all_uncovered, all_js_builtin,
+            template_builtin, unregistered_keys
         )
     )
 
@@ -312,7 +380,8 @@ def main(argv=None):
     sys.exit(0)
 
 
-def _print_proposals(totals, all_uncovered, all_js_builtin, template_builtin):
+def _print_proposals(totals, all_uncovered, all_js_builtin, template_builtin,
+                     unregistered_keys):
     """Emit the Coverage Proposals section.
 
     Analyses what was found across all scenes and produces actionable
@@ -320,6 +389,7 @@ def _print_proposals(totals, all_uncovered, all_js_builtin, template_builtin):
 
     template_builtin: pre-filtered list of (scene_name, record) for
     content_template js-builtin findings (avoids recomputing in callers).
+    unregistered_keys: dict of {key: example} from discover_unregistered_expr_keys().
     """
     proposals = []
 
@@ -383,42 +453,42 @@ def _print_proposals(totals, all_uncovered, all_js_builtin, template_builtin):
             ]
         ))
 
-    # ── Proposal 3: add unscanned expr keys to EXPR_KEYS ──────────────────
-    uncovered_keys = {r['field'] for _, r in all_uncovered
-                      if r['field'] in _UNSCANNED_EXPR_KEYS}
-    proposals.append((
-        'Add expression-bearing keys to EXPR_KEYS in _scanSpecForUnsafeJs',
-        [
-            'The following keys are compiled by compileExpr in app.js but are NOT'
-            ' in the EXPR_KEYS set that _scanSpecForUnsafeJs walks:',
-            '',
-            f'  {", ".join(sorted(_UNSCANNED_EXPR_KEYS))}',
-            '',
-            'If any of these fields ever contains a JS expression, the trust dialog'
-            ' will NOT fire, creating a silent privilege-escalation path.',
-            'Fix: expand EXPR_KEYS in _scanSpecForUnsafeJs:',
-            '',
-            "  const EXPR_KEYS = new Set(['expr','x','y','z','expression',",
-            "                             'fx','fy','fz',",
-            "                             'visibleExpr','radiusExpr','radiiExpr',",
-            "                             'centerExpr','fromExpr','toExpr','positionExpr']);",
-        ] + (
+    # ── Proposal 3: dynamically discovered unregistered expression-bearing keys
+    if unregistered_keys:
+        uncovered_js_keys = {r['field'] for _, r in all_uncovered
+                             if r['field'] not in _SCANNED_KEYS}
+        proposals.append((
+            f'Register newly discovered expression-bearing keys in the audit'
+            f' ({len(unregistered_keys)} unregistered key(s) found in scene files)',
             [
+                'The audit found string fields with JS/expression values that are'
+                ' not yet tracked in _SCANNED_KEYS or _UNSCANNED_EXPR_KEYS:',
                 '',
-                '⚠️  These uncovered keys already contain JS expressions in the'
-                ' current scene files — immediate fix required:',
-            ] + [f'   {k}' for k in sorted(uncovered_keys)]
-            if uncovered_keys else []
-        )
-    ))
+            ] + [
+                f'  {k!r}: e.g. {v!r}'
+                for k, v in sorted(unregistered_keys.items())
+            ] + [
+                '',
+                'For each key, decide:',
+                '  a) If app.js evaluates it via compileExpr → add to _UNSCANNED_EXPR_KEYS',
+                '     (and ideally also add it to EXPR_KEYS in _scanSpecForUnsafeJs)',
+                '  b) If it is not evaluated as an expression → add to _NON_EXPR_KEYS',
+                '     to suppress this proposal in future runs.',
+            ] + (
+                [
+                    '',
+                    '⚠️  These already contain JS patterns — immediate review required:',
+                ] + [f'   {k}' for k in sorted(uncovered_js_keys)]
+                if uncovered_js_keys else []
+            )
+        ))
 
     if not proposals:
         return
 
     # The marker below is used by the GitHub Actions workflow to extract this
     # section from stdout for the PR comment body.
-    print('\n# PROPOSALS_START')
-    print('─' * 60)
+    print('\n' + '─' * 60)
     print('📋 Coverage Proposals')
     print('   The following additions would improve trust coverage:\n')
     for i, (title, lines) in enumerate(proposals, 1):
@@ -429,11 +499,12 @@ def _print_proposals(totals, all_uncovered, all_js_builtin, template_builtin):
 
 
 def _build_github_summary(scene_results_map, totals, all_uncovered, all_js_builtin,
-                          template_builtin):
+                          template_builtin, unregistered_keys):
     """Return a markdown string suitable for the GitHub Actions step summary.
 
     scene_results_map: {scene_name: (results, scene_unsafe)}
     template_builtin: pre-filtered list of records for content_template js-builtin findings.
+    unregistered_keys: dict of {key: example} from discover_unregistered_expr_keys().
     """
     lines = []
     lines.append('## 🔒 Expression Sandbox Audit\n')
@@ -539,21 +610,26 @@ def _build_github_summary(scene_results_map, totals, all_uncovered, all_js_built
             f'```\n'
         )
 
-    proposal_num += 1
-    lines.append(
-        f'**{proposal_num}. Add expression-bearing keys to `EXPR_KEYS` in `_scanSpecForUnsafeJs`**  \n'
-        f'These keys are compiled by `compileExpr` but absent from `EXPR_KEYS`:\n'
-        f'`{", ".join(sorted(_UNSCANNED_EXPR_KEYS))}`\n\n'
-        f'Replace the `EXPR_KEYS` definition in `_scanSpecForUnsafeJs` (`static/app.js`):\n'
-        f'```js\n'
-        f"const EXPR_KEYS = new Set(['expr','x','y','z','expression',\n"
-        f"                           'fx','fy','fz',\n"
-        f"                           'visibleExpr','radiusExpr','radiiExpr',\n"
-        f"                           'centerExpr','fromExpr','toExpr','positionExpr']);\n"
-        f'```\n'
-        f'Then update `_SCANNED_KEYS` and `_UNSCANNED_EXPR_KEYS` in'
-        f' `scripts/audit_expressions.py` to match.\n'
-    )
+    if unregistered_keys:
+        proposal_num += 1
+        uncovered_js_keys = {r['field'] for _, r in all_uncovered
+                             if r['field'] not in _SCANNED_KEYS}
+        key_list = '\n'.join(
+            f'- `{k}`: e.g. `{v}`' for k, v in sorted(unregistered_keys.items())
+        )
+        lines.append(
+            f'**{proposal_num}. Register newly discovered expression-bearing keys**  \n'
+            f'The audit found {len(unregistered_keys)} key(s) with JS/expression values'
+            f' not yet tracked:\n\n{key_list}\n\n'
+            f'For each key: add to `_UNSCANNED_EXPR_KEYS` in `audit_expressions.py`'
+            f' (and `EXPR_KEYS` in `_scanSpecForUnsafeJs` if app.js evaluates it),'
+            f' or add to `_NON_EXPR_KEYS` to suppress.\n'
+        )
+        if uncovered_js_keys:
+            lines.append(
+                f'⚠️ **These already contain JS patterns — immediate review required:**\n'
+                + '\n'.join(f'- `{k}`' for k in sorted(uncovered_js_keys)) + '\n'
+            )
 
     return ''.join(lines)
 

@@ -25,25 +25,44 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Resolve scene files to audit
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Filter to only scenes/*.json files changed in this PR
+            CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...HEAD \
+              | grep '^scenes/.*\.json$' | tr '\n' ' ')
+            echo "files=${CHANGED}" >> "$GITHUB_OUTPUT"
+          else
+            echo "files=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run expression sandbox audit
         id: audit
         run: |
-          python scripts/audit_expressions.py 2>&1 | tee /tmp/audit-output.txt
-          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          FILES="${{ steps.changed.outputs.files }}"
+          if [ -n "$FILES" ]; then
+            echo "Auditing changed scene files: $FILES"
+            python scripts/audit_expressions.py $FILES 2>&1 | tee /tmp/audit-output.txt
+            echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "No scene files changed — skipping audit"
+            echo "exit_code=0" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Post audit proposals as PR comment
         if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Extract the Coverage Proposals section using the PROPOSALS_START marker
-          PROPOSALS=$(awk '/^# PROPOSALS_START/{found=1; next} found' /tmp/audit-output.txt || true)
+          # Extract the Coverage Proposals section
+          PROPOSALS=$(awk '/^📋 Coverage Proposals/{found=1} found' /tmp/audit-output.txt || true)
           if [ -n "$PROPOSALS" ]; then
             BODY="<!-- audit-expressions-proposals -->
-          ### 📋 Trust Coverage Audit — Proposals
+          ### 📋 Coverage Proposals
 
           <details>
-          <summary>Click to expand improvement proposals from the expression sandbox audit</summary>
+          <summary>Click to expand coverage proposals from the expression sandbox audit</summary>
 
           \`\`\`
           ${PROPOSALS}
@@ -51,7 +70,7 @@ jobs:
 
           </details>
 
-          > Run \`python scripts/audit_expressions.py\` locally to see the full report."
+          > Run \`python scripts/audit_expressions.py scenes/your-scene.json\` (or no args for all scenes) locally to see the full report."
             # Delete any previous comment from this workflow, then post a fresh one
             gh pr comment "${{ github.event.pull_request.number }}" \
               --body "$BODY" \
