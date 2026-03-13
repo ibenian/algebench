@@ -2,8 +2,8 @@
   "title": "Conditional Probability & Bayes' Rule",
   "scenes": [
     {
-      "title": "Conditional Probability & Bayes' Rule",
-      "description": "Build intuition for conditional probability from joint distributions and areas — then apply Bayes' rule to three real-world problems.",
+      "title": "Conditional Probability",
+      "description": "Build intuition for conditional probability from joint distributions and areas — the probability rectangle.",
       "range": [[-1.5, 16.5], [-2, 13.5], [-0.5, 4]],
       "camera": {
         "position": [5, -2, 17],
@@ -14,7 +14,7 @@
         {"name":"Top Down","position":[5,5,20],"target":[5,5,0],"description":"Face-on probability square"},
         {"name":"Side","position":[5,-10,8],"target":[5,5,0],"description":"See the Z-layers from the side"}
       ],
-      "markdown": "# Conditional Probability & Bayes' Rule\n\n## The Probability Rectangle\n\nRepresent the joint distribution of two binary events as a **unit square** (area = 1):\n\n- **Column width** = $P(X)$ — marginal probability of $X$\n- **Row height within each column** = $P(Y \\mid X)$ — conditional probability of $Y$ given $X$\n- **Cell area** = $P(X) \\times P(Y \\mid X) = P(X, Y)$\n\nThis layout correctly encodes the full joint distribution in the four cells:\n\n$$\\text{Area of cell} = P(X, Y)$$\n\n## Independence Is a Straight Line\n\nWhen $X$ and $Y$ are **independent**, $P(Y \\mid X = 0) = P(Y \\mid X = 1) = P(Y)$. The horizontal divider between rows is the **same height in every column** — a perfectly straight line.\n\nWhen they are **dependent**, the divider is **stepped** — different heights in different columns. The size of that step measures the strength of dependence.\n\n## Conditional Probability\n\nConditioning on $B$ means focusing on just the $B$-row. Within that row, $P(A \\mid B)$ is the fraction belonging to the $A$ column:\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)} = \\frac{P(A) \\cdot P(B \\mid A)}{P(B)}$$\n\nGeometrically: **zoom into the B-row**, stretching it to fill the full square. The fraction occupied by the $A$ column in that zoomed view is $P(A \\mid B)$.\n\n## Bayes' Rule\n\nFrom the symmetry of the joint probability:\n$$P(A, B) = P(A \\mid B) \\cdot P(B) = P(B \\mid A) \\cdot P(A)$$\n\n$$\\boxed{P(A \\mid B) = \\frac{P(B \\mid A) \\cdot P(A)}{P(B)}}$$\n\n**Belief update:** prior $P(A)$ → observe $B$ → posterior $P(A \\mid B)$.\n\n## Why It Surprises Everyone\n\nThree examples where naive intuition fails due to **base rate neglect**:\n\n| Scenario | Naive guess | Actual answer |\n|----------|------------|---------------|\n| Medical test (0.1% disease, 99% accurate) | ~99% | **~4.7%** |\n| Spam filter (\"lottery\" keyword) | high | **~73.8%** |\n| Tornado radar (2% base rate, 95% detection) | ~95% | **~39.3%** |\n\n## Key Formulas\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)}$$\n\n$$P(B) = P(B \\mid A) \\cdot P(A) + P(B \\mid \\overline{A}) \\cdot P(\\overline{A})$$\n\n$$P(A \\mid B) = \\frac{P(B \\mid A) \\cdot P(A)}{P(B \\mid A) \\cdot P(A) + P(B \\mid \\overline{A}) \\cdot P(\\overline{A})}$$",
+      "markdown": "# Conditional Probability\n\n## The Probability Rectangle\n\nRepresent the joint distribution of two binary events as a **unit square** (area = 1):\n\n- **Column width** = $P(X)$ — marginal probability of $X$\n- **Row height within each column** = $P(Y \\mid X)$ — conditional probability of $Y$ given $X$\n- **Cell area** = $P(X) \\times P(Y \\mid X) = P(X, Y)$\n\n## Independence Is a Straight Line\n\nWhen $X$ and $Y$ are **independent**, $P(Y \\mid X = 0) = P(Y \\mid X = 1) = P(Y)$. The horizontal divider is the **same height in every column** — a straight line.\n\nWhen **dependent**, the divider is **stepped**.\n\n## Conditional Probability\n\nConditioning on $B$ means focusing on just the $B$-row:\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)} = \\frac{P(A) \\cdot P(B \\mid A)}{P(B)}$$\n\nGeometrically: **zoom into the B-row**, stretching it to fill the full square.\n\n## Key Formulas\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)}$$\n\n$$P(B) = P(B \\mid A) \\cdot P(A) + P(B \\mid \\overline{A}) \\cdot P(\\overline{A})$$",
       "elements": [
         {"type":"skybox","style":"gradient","topColor":"#080818","bottomColor":"#030310"}
       ],
@@ -216,98 +216,21 @@
             {"id":"lbl_indep_bar_a"},{"id":"lbl_indep_bar_nota"}
           ],
           "add": [
-            {
-              "id":"b_row_left_border",
-              "type":"animated_line",
-              "points":[["0","0","0.2"],["0","pBgA*10","0.2"]],
-              "color":"#ffff44","width":0.13
-            },
-            {
-              "id":"b_row_right_border",
-              "type":"animated_line",
-              "points":[["10","0","0.2"],["10","pBgNA*10","0.2"]],
-              "color":"#ffff44","width":0.13
-            },
-            {
-              "id":"zoom_corner_bl",
-              "type":"line",
-              "points":[[0,0,0.22],[0,0,2.5]],
-              "color":"#ffff4466","width":0.07
-            },
-            {
-              "id":"zoom_corner_br",
-              "type":"line",
-              "points":[[10,0,0.22],[10,0,2.5]],
-              "color":"#ffff4466","width":0.07
-            },
-            {
-              "id":"zoom_corner_tl",
-              "type":"animated_line",
-              "points":[["0","pBgA*10","0.22"],["0","10","2.5"]],
-              "color":"#ffff4466","width":0.07
-            },
-            {
-              "id":"zoom_corner_tr",
-              "type":"animated_line",
-              "points":[["10","pBgNA*10","0.22"],["10","10","2.5"]],
-              "color":"#ffff4466","width":0.07
-            },
-            {
-              "id":"zoom_divider_a",
-              "type":"animated_line",
-              "points":[["pA*10","pBgA*10","0.22"],["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","10","2.5"]],
-              "color":"#aabbdd88","width":0.07
-            },
-            {
-              "id":"zoom_divider_na",
-              "type":"animated_line",
-              "points":[["pA*10","pBgNA*10","0.22"],["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","10","2.5"]],
-              "color":"#aabbdd88","width":0.07
-            },
-            {
-              "id":"zoomed_ab",
-              "type":"animated_polygon",
-              "vertices":[["0","0","2.55"],["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","0","2.55"],["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","10","2.55"],["0","10","2.55"]],
-              "color":"#44ff88","opacity":0.75,
-              "shader":{"type":"basic","depthWrite":false}
-            },
-            {
-              "id":"zoomed_notab",
-              "type":"animated_polygon",
-              "vertices":[["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","0","2.55"],["10","0","2.55"],["10","10","2.55"],["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","10","2.55"]],
-              "color":"#ff8833","opacity":0.65,
-              "shader":{"type":"basic","depthWrite":false}
-            },
-            {
-              "id":"zoomed_border",
-              "type":"line",
-              "points":[[0,0,2.5],[10,0,2.5],[10,10,2.5],[0,10,2.5],[0,0,2.5]],
-              "color":"#ffaa44","width":0.1
-            },
-            {
-              "id":"zoomed_divider",
-              "type":"animated_line",
-              "points":[["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","0","2.56"],["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","10","2.56"]],
-              "color":"#ffffff","width":0.12
-            },
-            {
-              "id":"lbl_zoomed_title",
-              "type":"text",
-              "text":"Given B  —  zoomed",
-              "position":[0,11.3,2.5],"color":"#ffdd44"
-            },
-            {
-              "id":"lbl_zoomed_pab",
-              "type":"animated_point",
-              "expr":["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*5","5","2.65"],
-              "radius":0,"color":"#44ff88","label":"P(A|B)"
-            },
-            {
-              "id":"lbl_zoomed_pnab",
-              "type":"animated_point",
-              "expr":["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10+(1-pA*pBgA/(pA*pBgA+(1-pA)*pBgNA))*5","5","2.65"],
-              "radius":0,"color":"#ffaa55","label":"P(¬A|B)"
-            }
+            {"id":"b_row_left_border","type":"animated_line","points":[["0","0","0.2"],["0","pBgA*10","0.2"]],"color":"#ffff44","width":0.13},
+            {"id":"b_row_right_border","type":"animated_line","points":[["10","0","0.2"],["10","pBgNA*10","0.2"]],"color":"#ffff44","width":0.13},
+            {"id":"zoom_corner_bl","type":"line","points":[[0,0,0.22],[0,0,2.5]],"color":"#ffff4466","width":0.07},
+            {"id":"zoom_corner_br","type":"line","points":[[10,0,0.22],[10,0,2.5]],"color":"#ffff4466","width":0.07},
+            {"id":"zoom_corner_tl","type":"animated_line","points":[["0","pBgA*10","0.22"],["0","10","2.5"]],"color":"#ffff4466","width":0.07},
+            {"id":"zoom_corner_tr","type":"animated_line","points":[["10","pBgNA*10","0.22"],["10","10","2.5"]],"color":"#ffff4466","width":0.07},
+            {"id":"zoom_divider_a","type":"animated_line","points":[["pA*10","pBgA*10","0.22"],["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","10","2.5"]],"color":"#aabbdd88","width":0.07},
+            {"id":"zoom_divider_na","type":"animated_line","points":[["pA*10","pBgNA*10","0.22"],["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","10","2.5"]],"color":"#aabbdd88","width":0.07},
+            {"id":"zoomed_ab","type":"animated_polygon","vertices":[["0","0","2.55"],["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","0","2.55"],["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","10","2.55"],["0","10","2.55"]],"color":"#44ff88","opacity":0.75,"shader":{"type":"basic","depthWrite":false}},
+            {"id":"zoomed_notab","type":"animated_polygon","vertices":[["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","0","2.55"],["10","0","2.55"],["10","10","2.55"],["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","10","2.55"]],"color":"#ff8833","opacity":0.65,"shader":{"type":"basic","depthWrite":false}},
+            {"id":"zoomed_border","type":"line","points":[[0,0,2.5],[10,0,2.5],[10,10,2.5],[0,10,2.5],[0,0,2.5]],"color":"#ffaa44","width":0.1},
+            {"id":"zoomed_divider","type":"animated_line","points":[["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","0","2.56"],["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10","10","2.56"]],"color":"#ffffff","width":0.12},
+            {"id":"lbl_zoomed_title","type":"text","text":"Given B  —  zoomed","position":[0,11.3,2.5],"color":"#ffdd44"},
+            {"id":"lbl_zoomed_pab","type":"animated_point","expr":["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*5","5","2.65"],"radius":0,"color":"#44ff88","label":"P(A|B)"},
+            {"id":"lbl_zoomed_pnab","type":"animated_point","expr":["pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)*10+(1-pA*pBgA/(pA*pBgA+(1-pA)*pBgNA))*5","5","2.65"],"radius":0,"color":"#ffaa55","label":"P(¬A|B)"}
           ],
           "info": [
             {
@@ -328,98 +251,21 @@
             {"id":"lbl_zoomed_title"},{"id":"lbl_zoomed_pab"},{"id":"lbl_zoomed_pnab"}
           ],
           "add": [
-            {
-              "id":"a_col_left_border",
-              "type":"line",
-              "points":[[0,0,0.2],[0,10,0.2]],
-              "color":"#ff8844","width":0.13
-            },
-            {
-              "id":"a_col_right_border",
-              "type":"animated_line",
-              "points":[["pA*10","0","0.2"],["pA*10","10","0.2"]],
-              "color":"#ff8844","width":0.13
-            },
-            {
-              "id":"zoom_a_corner_bl",
-              "type":"line",
-              "points":[[0,0,0.22],[0,0,2.5]],
-              "color":"#ff884466","width":0.07
-            },
-            {
-              "id":"zoom_a_corner_tl",
-              "type":"line",
-              "points":[[0,10,0.22],[0,10,2.5]],
-              "color":"#ff884466","width":0.07
-            },
-            {
-              "id":"zoom_a_corner_br",
-              "type":"animated_line",
-              "points":[["pA*10","0","0.22"],["10","0","2.5"]],
-              "color":"#ff884466","width":0.07
-            },
-            {
-              "id":"zoom_a_corner_tr",
-              "type":"animated_line",
-              "points":[["pA*10","10","0.22"],["10","10","2.5"]],
-              "color":"#ff884466","width":0.07
-            },
-            {
-              "id":"zoom_a_divider_bl",
-              "type":"animated_line",
-              "points":[["0","pBgA*10","0.22"],["0","pBgA*10","2.5"]],
-              "color":"#aabbdd88","width":0.07
-            },
-            {
-              "id":"zoom_a_divider_br",
-              "type":"animated_line",
-              "points":[["pA*10","pBgA*10","0.22"],["10","pBgA*10","2.5"]],
-              "color":"#aabbdd88","width":0.07
-            },
-            {
-              "id":"zoomed_ba",
-              "type":"animated_polygon",
-              "vertices":[["0","0","2.55"],["10","0","2.55"],["10","pBgA*10","2.55"],["0","pBgA*10","2.55"]],
-              "color":"#44ff88","opacity":0.75,
-              "shader":{"type":"basic","depthWrite":false}
-            },
-            {
-              "id":"zoomed_nba",
-              "type":"animated_polygon",
-              "vertices":[["0","pBgA*10","2.55"],["10","pBgA*10","2.55"],["10","10","2.55"],["0","10","2.55"]],
-              "color":"#6688cc","opacity":0.45,
-              "shader":{"type":"basic","depthWrite":false}
-            },
-            {
-              "id":"zoomed_a_border",
-              "type":"line",
-              "points":[[0,0,2.5],[10,0,2.5],[10,10,2.5],[0,10,2.5],[0,0,2.5]],
-              "color":"#ff8844","width":0.1
-            },
-            {
-              "id":"zoomed_a_divider",
-              "type":"animated_line",
-              "points":[["0","pBgA*10","2.56"],["10","pBgA*10","2.56"]],
-              "color":"#ffffff","width":0.12
-            },
-            {
-              "id":"lbl_zoomed_a_title",
-              "type":"text",
-              "text":"Given A  —  zoomed",
-              "position":[0,11.3,2.5],"color":"#ff8844"
-            },
-            {
-              "id":"lbl_zoomed_pba",
-              "type":"animated_point",
-              "expr":["5","pBgA*5","2.65"],
-              "radius":0,"color":"#44ff88","label":"P(B|A)"
-            },
-            {
-              "id":"lbl_zoomed_pnba",
-              "type":"animated_point",
-              "expr":["5","pBgA*10+(1-pBgA)*5","2.65"],
-              "radius":0,"color":"#8899cc","label":"P(¬B|A)"
-            }
+            {"id":"a_col_left_border","type":"line","points":[[0,0,0.2],[0,10,0.2]],"color":"#ff8844","width":0.13},
+            {"id":"a_col_right_border","type":"animated_line","points":[["pA*10","0","0.2"],["pA*10","10","0.2"]],"color":"#ff8844","width":0.13},
+            {"id":"zoom_a_corner_bl","type":"line","points":[[0,0,0.22],[0,0,2.5]],"color":"#ff884466","width":0.07},
+            {"id":"zoom_a_corner_tl","type":"line","points":[[0,10,0.22],[0,10,2.5]],"color":"#ff884466","width":0.07},
+            {"id":"zoom_a_corner_br","type":"animated_line","points":[["pA*10","0","0.22"],["10","0","2.5"]],"color":"#ff884466","width":0.07},
+            {"id":"zoom_a_corner_tr","type":"animated_line","points":[["pA*10","10","0.22"],["10","10","2.5"]],"color":"#ff884466","width":0.07},
+            {"id":"zoom_a_divider_bl","type":"animated_line","points":[["0","pBgA*10","0.22"],["0","pBgA*10","2.5"]],"color":"#aabbdd88","width":0.07},
+            {"id":"zoom_a_divider_br","type":"animated_line","points":[["pA*10","pBgA*10","0.22"],["10","pBgA*10","2.5"]],"color":"#aabbdd88","width":0.07},
+            {"id":"zoomed_ba","type":"animated_polygon","vertices":[["0","0","2.55"],["10","0","2.55"],["10","pBgA*10","2.55"],["0","pBgA*10","2.55"]],"color":"#44ff88","opacity":0.75,"shader":{"type":"basic","depthWrite":false}},
+            {"id":"zoomed_nba","type":"animated_polygon","vertices":[["0","pBgA*10","2.55"],["10","pBgA*10","2.55"],["10","10","2.55"],["0","10","2.55"]],"color":"#6688cc","opacity":0.45,"shader":{"type":"basic","depthWrite":false}},
+            {"id":"zoomed_a_border","type":"line","points":[[0,0,2.5],[10,0,2.5],[10,10,2.5],[0,10,2.5],[0,0,2.5]],"color":"#ff8844","width":0.1},
+            {"id":"zoomed_a_divider","type":"animated_line","points":[["0","pBgA*10","2.56"],["10","pBgA*10","2.56"]],"color":"#ffffff","width":0.12},
+            {"id":"lbl_zoomed_a_title","type":"text","text":"Given A  —  zoomed","position":[0,11.3,2.5],"color":"#ff8844"},
+            {"id":"lbl_zoomed_pba","type":"animated_point","expr":["5","pBgA*5","2.65"],"radius":0,"color":"#44ff88","label":"P(B|A)"},
+            {"id":"lbl_zoomed_pnba","type":"animated_point","expr":["5","pBgA*10+(1-pBgA)*5","2.65"],"radius":0,"color":"#8899cc","label":"P(¬B|A)"}
           ],
           "info": [
             {
@@ -446,15 +292,167 @@
               "content":"### Asymmetry\nSame intersection, different denominators:\n---\n$P(A \\cap B) = {{toFixed(pA*pBgA,3)}}$\n---\n$P(A \\mid B) = {{toFixed(pA*pBgA,3)}} / {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n\n$P(B \\mid A) = {{toFixed(pA*pBgA,3)}} / {{pA}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pBgA,3)}}$\n---\n{{abs(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)-pBgA)<0.01 ? 'Equal here (independent)' : 'Unequal — this is the usual case'}}"
             }
           ]
-        },
+        }
+      ],
+      "prompt": "You are teaching conditional probability using the correct area-based rectangle model.\n\n## The Core Geometric Model (CRITICAL)\nThe rectangle divides into four cells:\n- **Columns** = values of X (A vs ¬A). Column WIDTH = P(X) — marginal probability.\n- **Rows within each column** = conditional distribution P(Y|X). Row HEIGHT in each column = P(Y|X).\n- **Cell area** = P(X) × P(Y|X) = P(X,Y) — joint probability.\n- The dividing line between rows is STEPPED (not horizontal) when dependent.\n- Independence means straight horizontal line: P(B|A) = P(B|¬A).\n\n## When Explaining Conditioning\n- Conditioning on B = zoom into the B-row (bottom strip)\n- After zooming: A-column occupies P(A|B) fraction, NOT P(A) fraction\n- This is why P(A|B) ≠ P(A) when dependent\n\n## Exploration Prompts\n- 'Set P(B|A) = P(B|¬A) and notice the step disappears — that is what independence looks like'\n- 'Can you find slider values where P(A|B) is actually less than P(A)?'"
+    },
+    {
+      "title": "Bayes' Rule",
+      "description": "Apply Bayes' rule to three real-world problems where intuition fails — medical testing, spam filtering, and tornado warnings.",
+      "range": [[-1.5, 12.5], [-2, 13.5], [-0.5, 4]],
+      "camera": {
+        "position": [5, -2, 17],
+        "target": [5, 5, 0]
+      },
+      "views": [
+        {"name":"Overview","position":[5,-2,17],"target":[5,5,0],"description":"Angled view showing Z-layers"},
+        {"name":"Top Down","position":[5,5,20],"target":[5,5,0],"description":"Face-on probability square"},
+        {"name":"Side","position":[5,-10,8],"target":[5,5,0],"description":"See the Z-layers from the side"}
+      ],
+      "markdown": "# Bayes' Rule\n\n## Derivation\n\nFrom the symmetry of joint probability:\n$$P(A, B) = P(B \\mid A) \\cdot P(A) = P(A \\mid B) \\cdot P(B)$$\n\nRearranging gives **Bayes' rule**:\n$$P(A \\mid B) = \\frac{P(B \\mid A) \\cdot P(A)}{P(B)}$$\n\nwhere the denominator expands as the **law of total probability**:\n$$P(B) = P(B \\mid A) \\cdot P(A) + P(B \\mid \\overline{A}) \\cdot P(\\overline{A})$$\n\n## Interpretation\n\n| Term | Name | Meaning |\n|------|------|---------|\n| $P(A)$ | **Prior** | Belief before seeing evidence |\n| $P(B \\mid A)$ | **Likelihood** | How probable the evidence is given A |\n| $P(B)$ | **Marginal** | Total probability of the evidence |\n| $P(A \\mid B)$ | **Posterior** | Updated belief after seeing evidence |\n\n## Base Rate Neglect\n\nThe most common intuition failure: ignoring the **prior** $P(A)$. When the base rate is very low, even a highly accurate test produces mostly false positives.",
+      "elements": [
+        {"type":"skybox","style":"gradient","topColor":"#080818","bottomColor":"#030310"}
+      ],
+      "steps": [
         {
           "title": "Bayes' Rule",
-          "description": "From the symmetry of joint probability:\n$$P(A, B) = P(B \\mid A) \\cdot P(A) = P(A \\mid B) \\cdot P(B)$$\n\nRearranging gives **Bayes' rule**:\n$$P(A \\mid B) = \\frac{P(B \\mid A) \\cdot P(A)}{P(B)}$$\n\nThis is the **belief update formula**: start with prior $P(A)$, observe evidence $B$, compute posterior $P(A \\mid B)$. The denominator $P(B) = P(B \\mid A)P(A) + P(B \\mid \\overline{A})P(\\overline{A})$ just normalizes so probabilities sum to 1.\n\nThe three examples next show where intuition fails catastrophically.",
+          "description": "From the symmetry of joint probability:\n$$P(A, B) = P(B \\mid A) \\cdot P(A) = P(A \\mid B) \\cdot P(B)$$\n\nRearranging gives **Bayes' rule**:\n$$P(A \\mid B) = \\frac{P(B \\mid A) \\cdot P(A)}{P(B)}$$\n\nThis is the **belief update formula**: start with prior $P(A)$, observe evidence $B$, compute posterior $P(A \\mid B)$. The denominator $P(B)$ just normalizes so probabilities sum to 1.\n\nTry setting both likelihood sliders to the same value to see the independence special case.",
+          "sliders": [
+            {"id":"pA","label":"$P(A)$ — Prior","min":0.05,"max":0.95,"step":0.01,"default":0.4},
+            {"id":"pBgA","label":"$P(B \\mid A)$ — Likelihood","min":0.01,"max":0.99,"step":0.01,"default":0.65},
+            {"id":"pBgNA","label":"$P(B \\mid \\overline{A})$ — False positive rate","min":0.01,"max":0.99,"step":0.01,"default":0.25}
+          ],
+          "add": [
+            {
+              "id":"square_border",
+              "type":"line",
+              "points":[[0,0,0],[10,0,0],[10,10,0],[0,10,0],[0,0,0]],
+              "color":"#8899bb","width":0.12
+            },
+            {
+              "id":"col_a_bg",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.03"],["pA*10","0","0.03"],["pA*10","10","0.03"],["0","10","0.03"]],
+              "color":"#4477ff","opacity":0.15,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"col_nota_bg",
+              "type":"animated_polygon",
+              "vertices":[["pA*10","0","0.03"],["10","0","0.03"],["10","10","0.03"],["pA*10","10","0.03"]],
+              "color":"#888899","opacity":0.08,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"col_divider",
+              "type":"animated_line",
+              "points":[["pA*10","0","0.06"],["pA*10","10","0.06"]],
+              "color":"#aabbdd","width":0.12
+            },
+            {
+              "id":"lbl_a_col",
+              "type":"animated_point",
+              "expr":["pA*5","10.8","0.1"],
+              "radius":0,"color":"#7799ff","label":"A"
+            },
+            {
+              "id":"lbl_nota_col",
+              "type":"animated_point",
+              "expr":["pA*10+(1-pA)*5","10.8","0.1"],
+              "radius":0,"color":"#aaaacc","label":"¬A"
+            },
+            {
+              "id":"cell_ab",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.08"],["pA*10","0","0.08"],["pA*10","pBgA*10","0.08"],["0","pBgA*10","0.08"]],
+              "color":"#44ff88","opacity":0.75,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"cell_notab",
+              "type":"animated_polygon",
+              "vertices":[["pA*10","0","0.08"],["10","0","0.08"],["10","pBgNA*10","0.08"],["pA*10","pBgNA*10","0.08"]],
+              "color":"#ff8833","opacity":0.65,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"cell_anotb",
+              "type":"animated_polygon",
+              "vertices":[["0","pBgA*10","0.08"],["pA*10","pBgA*10","0.08"],["pA*10","10","0.08"],["0","10","0.08"]],
+              "color":"#4477ff","opacity":0.2,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"cell_notanotb",
+              "type":"animated_polygon",
+              "vertices":[["pA*10","pBgNA*10","0.08"],["10","pBgNA*10","0.08"],["10","10","0.08"],["pA*10","10","0.08"]],
+              "color":"#445566","opacity":0.2,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"step_line",
+              "type":"animated_line",
+              "points":[["0","pBgA*10","0.12"],["pA*10","pBgA*10","0.12"],["pA*10","pBgNA*10","0.12"],["10","pBgNA*10","0.12"]],
+              "color":"#ffffff","width":0.14
+            },
+            {
+              "id":"lbl_ab",
+              "type":"animated_point",
+              "expr":["pA*5","pBgA*5","0.15"],
+              "radius":0,"color":"#44ff88","label":"A∩B"
+            },
+            {
+              "id":"lbl_notab",
+              "type":"animated_point",
+              "expr":["pA*10+(1-pA)*5","pBgNA*5","0.15"],
+              "radius":0,"color":"#ffaa55","label":"¬A∩B"
+            },
+            {
+              "id":"lbl_b_row",
+              "type":"animated_point",
+              "expr":["-1.2","pBgNA*5","0.1"],
+              "radius":0,"color":"#aaffcc","label":"B"
+            },
+            {
+              "id":"lbl_notb_row",
+              "type":"animated_point",
+              "expr":["-1.4","pBgA*10+(10-pBgA*10)*0.5","0.1"],
+              "radius":0,"color":"#aabbcc","label":"¬B"
+            },
+            {
+              "id":"bayes_highlight_ab",
+              "type":"animated_polygon",
+              "vertices":[["0","0","0.25"],["pA*10","0","0.25"],["pA*10","pBgA*10","0.25"],["0","pBgA*10","0.25"]],
+              "color":"#44ff88","opacity":0.55,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"bayes_highlight_nab",
+              "type":"animated_polygon",
+              "vertices":[["pA*10","0","0.25"],["10","0","0.25"],["10","pBgNA*10","0.25"],["pA*10","pBgNA*10","0.25"]],
+              "color":"#ffdd00","opacity":0.35,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"indep_dim_anotb",
+              "type":"animated_polygon",
+              "vertices":[["0","pBgA*10","0.3"],["pA*10","pBgA*10","0.3"],["pA*10","abs(pBgA-pBgNA)<0.02 ? 10 : pBgA*10","0.3"],["0","abs(pBgA-pBgNA)<0.02 ? 10 : pBgA*10","0.3"]],
+              "color":"#000000","opacity":0.5,
+              "shader":{"type":"basic","depthWrite":false}
+            },
+            {
+              "id":"indep_dim_notanotb",
+              "type":"animated_polygon",
+              "vertices":[["pA*10","pBgNA*10","0.3"],["10","pBgNA*10","0.3"],["10","abs(pBgA-pBgNA)<0.02 ? 10 : pBgNA*10","0.3"],["pA*10","abs(pBgA-pBgNA)<0.02 ? 10 : pBgNA*10","0.3"]],
+              "color":"#000000","opacity":0.5,
+              "shader":{"type":"basic","depthWrite":false}
+            }
+          ],
           "info": [
             {
               "id":"main_info",
               "position":"top-right",
-              "content":"### Bayes' Rule\n$P(A \\mid B) = \\dfrac{P(B \\mid A) \\cdot P(A)}{P(B)}$\n---\n**Prior** $P(A) = {{pA}}$\n**Likelihood** $P(B \\mid A) = {{pBgA}}$\n**Marginal** $P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n---\n**Posterior** $P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n---\nVerify from rectangle:\n$A \\cap B$ area = ${{toFixed(pA*pBgA,3)}}$\n$B$-row area = ${{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\nRatio = ${{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$ ✓"
+              "content":"### Bayes' Rule\n$P(A \\mid B) = \\dfrac{P(B \\mid A) \\cdot P(A)}{P(B)}$\n---\n**Prior** $P(A) = {{pA}}$\n**Likelihood** $P(B \\mid A) = {{pBgA}}$\n**Marginal** $P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n---\n**Posterior** $P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? 'Independent: P(B) cancels, P(A|B) = P(A)' : pA*pBgA/(pA*pBgA+(1-pA)*pBgNA) > pA ? 'B raises belief in A' : 'B lowers belief in A'}}"
             }
           ]
         },
@@ -472,6 +470,8 @@
             {"id":"cell_ab"},{"id":"cell_notab"},{"id":"cell_anotb"},{"id":"cell_notanotb"},
             {"id":"step_line"},
             {"id":"lbl_ab"},{"id":"lbl_notab"},{"id":"lbl_b_row"},{"id":"lbl_notb_row"},
+            {"id":"bayes_highlight_ab"},{"id":"bayes_highlight_nab"},
+            {"id":"indep_dim_anotb"},{"id":"indep_dim_notanotb"},
             {"id":"square_border"},{"type":"slider"}
           ],
           "add": [
@@ -645,7 +645,7 @@
             {
               "id":"main_info",
               "position":"top-right",
-              "content":"### Spam Filter\nKeyword: \"lottery\"\n---\n$P(\\text{spam}) = {{pSpam}}$\n$P(W \\mid \\text{spam}) = {{pWspam}}$\n$P(W \\mid \\text{legit}) = {{pWleg}}$\n---\n**Per 10,000 emails:**\nSpam with word: {{toFixed(pSpam*pWspam*10000,0)}}\nLegit with word: {{toFixed((1-pSpam)*pWleg*10000,0)}}\nTotal with word: {{toFixed((pSpam*pWspam+(1-pSpam)*pWleg)*10000,0)}}\n---\n$P(\\text{spam} \\mid W) = {{toFixed(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$"
+              "content":"### Spam Filter\nKeyword: \"lottery\"\n---\n$P(\\text{spam}) = {{pSpam}}$\n$P(W \\mid \\text{spam}) = {{pWspam}}$\n$P(W \\mid \\text{legit}) = {{pWleg}}$\n---\n**Per 10,000 emails:**\nSpam with word: {{toFixed(pSpam*pWspam*10000,0)}}\nLegit with word: {{toFixed((1-pSpam)*pWleg*10000,0)}}\nTotal with word: {{toFixed((pSpam*pWspam+(1-pSpam)*pWleg)*10000,0)}}\n---\n$P(\\text{spam} \\mid W) = {{toFixed(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$\n---\n{{pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.3 ? 'Mostly legit — word is too common to filter' : pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.7 ? 'Mixed signal — filter with caution' : 'Strong signal: word is a reliable spam indicator'}}"
             }
           ]
         },
@@ -745,7 +745,7 @@
           ]
         }
       ],
-      "prompt": "You are teaching conditional probability and Bayes' rule using the correct area-based rectangle model.\n\n## The Core Geometric Model (CRITICAL)\nThe rectangle divides into four cells:\n- **Columns** = values of X (A vs ¬A). Column WIDTH = P(X) — marginal probability.\n- **Rows within each column** = conditional distribution P(Y|X). Row HEIGHT in each column = P(Y|X).\n- **Cell area** = P(X) × P(Y|X) = P(X,Y) — joint probability.\n- The dividing line between rows is STEPPED (not horizontal) when dependent.\n- Independence means straight horizontal line: P(B|A) = P(B|¬A).\n\n## When Explaining Conditioning\n- Conditioning on B = zoom into the B-row (bottom strip)\n- The B-row has height pBgA in the A-column and height pBgNA in the ¬A-column\n- After zooming: A-column occupies P(A|B) fraction, NOT P(A) fraction\n- This is why P(A|B) ≠ P(A) when dependent\n\n## For Real-World Examples\nAll three examples use the same column/row structure:\n- Column width = base rate (P(disease), P(spam), P(tornado))\n- Row height in each column = conditional test/signal probability\n- The stepped dividing line size = how informative the test is\n- Base rate neglect = the left column is tiny, so even a tall green cell has small area\n\n## Exploration Prompts\n- 'Set P(B|A) = P(B|¬A) and notice the step disappears — that is what independence looks like'\n- 'In the medical example, try prevalence 10% vs 0.1% and see how the posterior swings'\n- 'What makes a test useful? Both low FPR and high base rate matter'\n- 'Can you find slider values where P(A|B) is actually less than P(A)?'"
+      "prompt": "You are teaching Bayes' rule using the correct area-based rectangle model.\n\n## The Core Geometric Model (CRITICAL)\nThe rectangle divides into four cells:\n- **Columns** = prior categories (disease/healthy, spam/legit, tornado/no tornado). Column WIDTH = prior probability.\n- **Rows within each column** = conditional distribution P(evidence|category). Row HEIGHT in each column = P(evidence|category).\n- **Cell area** = P(category) × P(evidence|category) = P(category, evidence) — joint probability.\n- The stepped dividing line separates positive evidence (bottom row) from negative (top row).\n\n## Independence Special Case\nWhen A and B are independent, P(B|A) = P(B|¬A) = P(B). Substituting into Bayes' rule:\n  P(A|B) = P(B|A)·P(A) / P(B) = P(B)·P(A) / P(B) = P(A)\nThe posterior equals the prior — observing B gives zero information about A. Geometrically: the step line is horizontal, so the B-row is a rectangle and conditioning on it doesn't change the column proportions.\n\n## For Real-World Examples\nAll three examples use the same column/row structure:\n- Column width = base rate (P(disease), P(spam), P(tornado))\n- Row height in each column = conditional test/signal probability\n- The stepped dividing line size = how informative the test is\n- Base rate neglect = the left column is tiny, so even a tall green cell has small area\n\n## Exploration Prompts\n- 'Set both likelihood sliders equal — the panel shows the independence collapse P(A|B) = P(A)'\n- 'In the medical example, try prevalence 10% vs 0.1% and see how the posterior swings'\n- 'What makes a test useful? Both low FPR and high base rate matter'\n- 'Compare all three examples: which has the most dramatic base rate effect?'"
     }
   ]
 }
