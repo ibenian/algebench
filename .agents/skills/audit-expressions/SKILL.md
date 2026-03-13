@@ -15,6 +15,28 @@ It is the CLI companion to the `audit-expressions` GitHub Actions workflow, whic
 
 Follow these steps in order every time this skill is invoked.
 
+### Step 0 — Review the trust detection code in `static/app.js`
+
+Before running any script, read the following sections of `static/app.js` directly:
+
+1. The `_JS_ONLY_RE` constant (search for `const _JS_ONLY_RE`)
+2. The `_scanSpecForUnsafeJs` function
+3. The `compileExpr` function (and any other `compile*` functions)
+
+Then reason about them as a security reviewer — **without running any tool** — and produce a short verdict covering:
+
+- **`_JS_ONLY_RE` sufficiency**: What categories of JS does the regex catch? What dangerous patterns (e.g. `eval`, `fetch`, bare global access) would pass through undetected? State clearly whether the regex is *sufficient*, *partial*, or *insufficient* and why.
+- **`_scanSpecForUnsafeJs` coverage**: Which JSON fields does it walk? Are there expression-bearing fields it skips (e.g. `visibleExpr`, content templates)? Could a malicious expression reach `compileExpr` without triggering the trust dialog?
+- **`compileExpr` trust enforcement**: Does every execution path check `_sceneJsTrustState`? Is the math.js catch-fallback properly gated? Could an expression execute native JS without the user approving?
+- **Overall verdict**: One of:
+  - ✅ **Sufficient** — trust model correctly gates all JS execution paths
+  - ⚠️ **Partial** — known gaps exist but are low-risk or mitigated elsewhere; safe to merge with documented caveats
+  - ❌ **Insufficient** — at least one ungated JS execution path exists; do not merge until fixed
+
+Present the verdict before proceeding to Step 1. If the verdict is ❌, flag it to the user and ask whether to continue.
+
+---
+
 ### Step 1 — Run the audit
 
 ```bash
