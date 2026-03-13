@@ -40,10 +40,10 @@ jobs:
           PROPOSALS=$(awk '/^# PROPOSALS_START/{found=1; next} found' /tmp/audit-output.txt || true)
           if [ -n "$PROPOSALS" ]; then
             BODY="<!-- audit-expressions-proposals -->
-          ### 📋 Trust Coverage Audit — Proposals
+          ### 📋 Coverage Proposals
 
           <details>
-          <summary>Click to expand improvement proposals from the expression sandbox audit</summary>
+          <summary>Click to expand coverage proposals from the expression sandbox audit</summary>
 
           \`\`\`
           ${PROPOSALS}
