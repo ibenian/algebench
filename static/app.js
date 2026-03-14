@@ -3379,10 +3379,10 @@ function renderAnimatedPolygon(el, view) {
     let outlineOpacityExpr = null;
     const OUTLINE_MAX_PTS = 513; // max N + 1 for loop closure
     function buildOutlinePts(dataVerts) {
-        const pts = dataVerts.map(v => dataToWorld(v));
+        const pts = dataVerts.slice(); // data-space — MathBox transforms internally
         pts.push(pts[0]); // close the loop
         const last = pts[pts.length - 1];
-        while (pts.length < OUTLINE_MAX_PTS) pts.push(last); // pad with last point — zero-length segments are invisible
+        while (pts.length < OUTLINE_MAX_PTS) pts.push(last); // pad — zero-length segments are invisible
         return pts;
     }
     const outlineWidthRaw = el.outlineWidth != null ? el.outlineWidth : (isRegular ? 1.5 : 0);
