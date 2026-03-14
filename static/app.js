@@ -2741,8 +2741,26 @@ function renderAnimatedVector(el, view) {
 function renderPolygon(el, view) {
     const color = parseColor(el.color || '#aa66ff');
     const opacity = el.opacity !== undefined ? el.opacity : 0.5;
-    const vertices = el.vertices || el.points || [[0,0,0],[1,0,0],[1,1,0],[0,1,0]];
     const thickness = el.thickness || 0.02;
+
+    // Resolve vertices: regular substructure or explicit list
+    let vertices;
+    if (el.regular && typeof el.regular === 'object') {
+        const reg = el.regular;
+        const N   = Math.max(3, Math.round(Number(reg.n) || 3));
+        const r   = Number(reg.radius != null ? reg.radius : 1);
+        const cx  = Array.isArray(reg.center) ? Number(reg.center[0] ?? 0) : 0;
+        const cy  = Array.isArray(reg.center) ? Number(reg.center[1] ?? 0) : 0;
+        const cz  = Array.isArray(reg.center) ? Number(reg.center[2] ?? 0) : 0;
+        const rot = Number(reg.rotation ?? 0);
+        vertices = [];
+        for (let k = 0; k < N; k++) {
+            const angle = rot + (2 * Math.PI * k) / N;
+            vertices.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle), cz]);
+        }
+    } else {
+        vertices = el.vertices || el.points || [[0,0,0],[1,0,0],[1,1,0],[0,1,0]];
+    }
     const label = el.label;
 
     // Convert vertices to world space
@@ -2819,6 +2837,17 @@ function renderPolygon(el, view) {
         const cy = vertices.reduce((s, v) => s + v[1], 0) / vertices.length;
         const cz = vertices.reduce((s, v) => s + v[2], 0) / vertices.length;
         addLabel3D(label, [cx, cy, cz], color);
+    }
+
+    // Optional static outline
+    const outlineWidthVal = el.outlineWidth != null ? Number(el.outlineWidth) : (el.regular ? 1.5 : 0);
+    if (outlineWidthVal > 0 && view) {
+        const outlineColor = parseColor(el.outlineColor || el.color || '#aa66ff');
+        const outlineOpacity = el.outlineOpacity != null ? Number(el.outlineOpacity) : Math.min(1, opacity * 2);
+        const pts = vertices.slice();
+        pts.push(pts[0]); // close the loop
+        view.array({ channels: 3, width: pts.length, data: pts })
+            .line({ color: new THREE.Color(...outlineColor), width: outlineWidthVal, opacity: outlineOpacity, zBias: 2 });
     }
 
     return { type: 'polygon', color, label };
