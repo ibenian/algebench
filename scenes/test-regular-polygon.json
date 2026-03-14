@@ -88,6 +88,10 @@
         {
           "title": "Offset Center and Rotation",
           "description": "The same regular polygon with a movable center and live rotation, testing all parameters of the `regular` substructure.",
+          "remove": [
+            { "id": "ngon" },
+            { "id": "unit-circle" }
+          ],
           "add": [
             {
               "id": "ngon2",
