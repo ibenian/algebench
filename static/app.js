@@ -4458,6 +4458,12 @@ const _CORE_MATH_NAMES = ['sin','cos','tan','asin','acos','atan','atan2','sinh',
     'abs','sqrt','cbrt','pow','exp','log','log2','log10','floor','ceil','round','trunc',
     'min','max','sign','hypot','PI','E'];
 
+// Precomputed scope of core math functions for JS fallback expressions.
+// Spread into _buildScope so IIFE-style expressions can use max/min/floor etc.
+const _MATH_SCOPE = Object.fromEntries(
+    _CORE_MATH_NAMES.map(n => [n, Object.prototype.hasOwnProperty.call(_EXPR_HELPERS, n) ? _EXPR_HELPERS[n] : Math[n]])
+);
+
 const _SCENE_FN_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function _isValidSceneFunctionName(name) {
@@ -4479,7 +4485,7 @@ function _getMathNamesAndValues() {
 }
 
 function _buildScope(extras) {
-    const scope = { ..._EXPR_HELPERS, ..._activeDomainFunctions, ...(activeSceneExprFunctions || {}), ...extras };
+    const scope = { ..._MATH_SCOPE, ..._EXPR_HELPERS, ..._activeDomainFunctions, ...(activeSceneExprFunctions || {}), ...extras };
     for (const [id, s] of Object.entries(sceneSliders)) scope[id] = s ? s.value : 0;
     return scope;
 }
