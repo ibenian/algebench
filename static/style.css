@@ -256,6 +256,85 @@ html, body {
     border-left: 2px solid rgba(80, 110, 200, 0.25);
     margin-left: 4px;
 }
+/* JS Issues badge in summary bar */
+.summary-stat-js-issues {
+    cursor: pointer;
+    border: 1px solid rgba(255, 160, 40, 0.4);
+    background: rgba(255, 140, 20, 0.12);
+}
+.summary-stat-js-issues:hover { background: rgba(255, 140, 20, 0.22); }
+.summary-stat-js-issues.js-trusted {
+    border-color: rgba(80, 140, 255, 0.4);
+    background: rgba(80, 140, 255, 0.12);
+}
+.summary-stat-js-issues.js-trusted:hover { background: rgba(80, 140, 255, 0.22); }
+.summary-stat-js-issues .summary-stat-value { color: rgba(255, 190, 80, 0.95); }
+.summary-stat-js-issues.js-trusted .summary-stat-value { color: rgba(140, 190, 255, 0.95); }
+.summary-stat-js-issues .summary-stat-label { color: rgba(255, 170, 60, 0.8); }
+.summary-stat-js-issues.js-trusted .summary-stat-label { color: rgba(120, 170, 255, 0.8); }
+
+/* JS Issues report panel */
+#json-viewer-issues {
+    margin-bottom: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(80, 100, 200, 0.25);
+    background: rgba(20, 24, 48, 0.7);
+    overflow: hidden;
+}
+#json-viewer-issues.hidden { display: none; }
+.ji-header {
+    padding: 8px 14px;
+    font-size: 0.85em;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+.ji-header.js-issues-state-trusted {
+    background: rgba(80, 140, 255, 0.15);
+    color: rgba(140, 190, 255, 0.95);
+    border-bottom: 1px solid rgba(80, 140, 255, 0.25);
+}
+.ji-header.js-issues-state-untrusted {
+    background: rgba(255, 140, 20, 0.12);
+    color: rgba(255, 190, 80, 0.95);
+    border-bottom: 1px solid rgba(255, 140, 20, 0.25);
+}
+.ji-scroll {
+    max-height: 240px;
+    overflow-y: auto;
+}
+.ji-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78em;
+}
+.ji-table thead th {
+    position: sticky;
+    top: 0;
+    background: rgba(30, 35, 65, 0.95);
+    color: rgba(120, 140, 200, 0.8);
+    text-transform: uppercase;
+    font-size: 0.75em;
+    letter-spacing: 0.06em;
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 1px solid rgba(80, 100, 200, 0.2);
+}
+.ji-table tbody tr:hover { background: rgba(80, 100, 200, 0.08); }
+.ji-table td {
+    padding: 5px 10px;
+    border-bottom: 1px solid rgba(80, 100, 200, 0.1);
+    vertical-align: top;
+    color: rgba(200, 210, 240, 0.85);
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ji-path { color: rgba(140, 160, 220, 0.7); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.9em; }
+.ji-expr code { font-family: 'SF Mono', 'Fira Code', monospace; color: rgba(255, 210, 120, 0.9); }
+.ji-type { color: rgba(150, 160, 200, 0.65); font-size: 0.9em; }
+.ji-running { color: rgba(100, 220, 120, 0.9); }
+.ji-disabled { color: rgba(255, 140, 60, 0.9); }
 #json-viewer-imports {
     display: flex;
     align-items: center;
