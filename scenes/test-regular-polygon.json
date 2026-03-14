@@ -1,0 +1,134 @@
+{
+  "title": "Test — Regular Polygon",
+  "scenes": [
+    {
+      "title": "Regular Polygon",
+      "description": "Test scene for the `regular` substructure on `animated_polygon`. Drag the **N** slider to change the number of sides and watch the polygon converge to a circle.",
+      "range": [[-2.5, 2.5], [-2.5, 2.5], [-1, 1]],
+      "camera": { "position": [0, 0, 8], "target": [0, 0, 0] },
+      "elements": [
+        { "type": "axis", "axis": "x", "range": [-2.5, 2.5], "color": "#444444" },
+        { "type": "axis", "axis": "y", "range": [-2.5, 2.5], "color": "#444444" }
+      ],
+      "steps": [
+        {
+          "title": "Converging to a Circle",
+          "description": "A regular N-gon inscribed in the unit circle. As N increases, its perimeter converges to $2\\pi$.",
+          "add": [
+            {
+              "id": "unit-circle",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [0, 6.2832],
+              "samples": 128,
+              "color": "#555555",
+              "opacity": 0.5,
+              "width": 1
+            },
+            {
+              "id": "ngon",
+              "type": "animated_polygon",
+              "regular": {
+                "n": "N",
+                "radius": "1",
+                "center": ["0", "0", "0"],
+                "rotation": "0"
+              },
+              "color": "#4da6ff",
+              "opacity": 0.35
+            },
+            {
+              "id": "ngon-outline",
+              "type": "parametric_curve",
+              "x": "cos(floor(t * N) / N * 2 * pi)",
+              "y": "sin(floor(t * N) / N * 2 * pi)",
+              "z": "0.001",
+              "range": [0, 1],
+              "samples": 512,
+              "color": "#4da6ff",
+              "width": 2
+            }
+          ],
+          "sliders": [
+            {
+              "id": "N",
+              "label": "$N$ (sides)",
+              "min": 3,
+              "max": 96,
+              "step": 1,
+              "default": 6
+            }
+          ],
+          "info": [
+            {
+              "id": "info",
+              "content": "$$N = {{N}} \\qquad \\text{Perimeter} = N \\cdot 2\\sin\\!\\left(\\frac{\\pi}{N}\\right) \\approx {{toFixed(N * 2 * sin(pi / N), 6)}} \\xrightarrow{N\\to\\infty} 2\\pi \\approx 6.283185$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Offset Center and Rotation",
+          "description": "The same regular polygon with a movable center and live rotation, testing all parameters of the `regular` substructure.",
+          "add": [
+            {
+              "id": "ngon2",
+              "type": "animated_polygon",
+              "regular": {
+                "n": "N",
+                "radius": "R",
+                "center": ["cx", "cy", "0"],
+                "rotation": "t"
+              },
+              "color": "#ff9944",
+              "opacity": 0.4
+            }
+          ],
+          "sliders": [
+            {
+              "id": "N",
+              "label": "$N$ (sides)",
+              "min": 3,
+              "max": 24,
+              "step": 1,
+              "default": 5
+            },
+            {
+              "id": "R",
+              "label": "$R$ (radius)",
+              "min": 0.5,
+              "max": 2,
+              "step": 0.1,
+              "default": 1
+            },
+            {
+              "id": "cx",
+              "label": "$c_x$",
+              "min": -1,
+              "max": 1,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "cy",
+              "label": "$c_y$",
+              "min": -1,
+              "max": 1,
+              "step": 0.1,
+              "default": 0
+            }
+          ],
+          "info": [
+            {
+              "id": "info2",
+              "content": "$$N={{N}},\\; R={{R}},\\; \\text{center}=({{cx}},\\,{{cy}}),\\; \\text{rotation}=t$$",
+              "position": "top-left"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
