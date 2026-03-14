@@ -832,7 +832,7 @@
       "title": "Non-Convex Objective: Himmelblau Landscape",
       "description": "Himmelblau's function is a non-convex objective with multiple local minima and saddle regions, illustrating basin dependence in gradient-based optimization.",
       "prompt": "Teach non-convex optimization with precise terms: local minima, global minima, saddle points, and basin of attraction. Emphasize that initialization changes which minimum gradient descent converges to. Keep explanations concise and geometric.",
-      "markdown": "# Non-Convex Objective: Himmelblau's Function\n\nA standard non-convex benchmark is **Himmelblau's function**:\n\n$$f(x,y)=(x^2+y-11)^2+(x+y^2-7)^2$$\n\nIt is non-convex and has multiple isolated minima.\n\n## Gradient\n\n$$\\nabla f(x,y)=\\begin{bmatrix}\n4x(x^2+y-11)+2(x+y^2-7) \\\\\n2(x^2+y-11)+4y(x+y^2-7)\n\\end{bmatrix}$$\n\nA gradient-descent step is still\n\n$$\\mathbf{x}_{k+1}=\\mathbf{x}_k-\\eta\\,\\nabla f(\\mathbf{x}_k),$$\n\nbut convergence now depends strongly on initialization.\n\n## Key Non-Convex Ideas\n\n- **Multiple local minima**: several attraction basins\n- **Saddle regions**: flat/unstable geometry that can slow progress\n- **Initialization sensitivity**: different starts can converge to different minima\n\nIn the visualization, surface height is scaled as $z=f(x,y)/20$ for readability.",
+      "markdown": "# Non-Convex Objective: Himmelblau's Function\n\nA standard non-convex benchmark is **Himmelblau's function**:\n\n$$f(x,y)=(x^2+y-11)^2+(x+y^2-7)^2$$\n\nIt is non-convex and has multiple isolated minima.\n\n## Gradient\n\n$$\\nabla f(x,y)=\\begin{bmatrix}\n4x(x^2+y-11)+2(x+y^2-7) \\\\\n2(x^2+y-11)+4y(x+y^2-7)\n\\end{bmatrix}$$\n\n### Shorthand: intermediate terms\n\nIt is convenient to name the two squared factors:\n\n$$A = x^2+y-11, \\qquad B = x+y^2-7$$\n\nso that $f = A^2+B^2$ and the gradient becomes\n\n$$\\nabla f = \\begin{bmatrix}4xA+2B \\\\ 2A+4yB\\end{bmatrix}$$\n\nThe animated overlay shows $A$, $B$, and the gradient components evaluated at each iterate $\\mathbf{x}_k$.\n\nA gradient-descent step is still\n\n$$\\mathbf{x}_{k+1}=\\mathbf{x}_k-\\eta\\,\\nabla f(\\mathbf{x}_k),$$\n\nbut convergence now depends strongly on initialization.\n\n## Key Non-Convex Ideas\n\n- **Multiple local minima**: several attraction basins\n- **Saddle regions**: flat/unstable geometry that can slow progress\n- **Initialization sensitivity**: different starts can converge to different minima\n\nIn the visualization, surface height is scaled as $z=f(x,y)/20$ for readability.",
       "range": [
         [
           -6,
@@ -1198,9 +1198,9 @@
                 0
               ],
               "expr": [
-                "(() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })()",
-                "(() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })()",
-                "(pow(pow((() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })(),2) + ((() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })()) - 11,2) + pow(((() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })()) + pow((() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })(),2) - 7,2))/20"
+                "hx()",
+                "hy()",
+                "((hx()^2 + hy() - 11)^2 + (hx() + hy()^2 - 7)^2) / 20"
               ],
               "color": "#7cf6ff",
               "label": "animated descent",
@@ -1245,14 +1245,38 @@
               "default": 45
             },
             {
-              "id": "speed_ncv",
-              "label": "animation speed",
-              "min": 0.2,
-              "max": 6,
-              "step": 0.1,
-              "default": 3
+              "id": "t_ncv",
+              "label": "$t$ (playback)",
+              "min": 0,
+              "max": 80,
+              "step": 0.5,
+              "default": 0,
+              "animate": true,
+              "animateMode": "loop",
+              "duration": 6000
             }
-          ]
+          ],
+          "info": [
+            {
+              "id": "descent-step-values",
+              "content": "$$ \\mathbf{x}_{k+1} = \\mathbf{x}_k - \\eta\\,\\nabla f(\\mathbf{x}_k) $$\n\n$$\\begin{aligned}k &= {{floor(min(t_ncv,n_iter_ncv))}} \\\\[4pt]\\mathbf{x}_k &= \\bigl({{toFixed(hx(),3)}},\\;{{toFixed(hy(),3)}}\\bigr) \\\\[4pt]\\eta &= {{toFixed(eta_ncv,4)}} \\\\[4pt]A &= x_k^2+y_k-11 = {{toFixed(hx()^2+hy()-11,3)}} \\\\[4pt]B &= x_k+y_k^2-7 = {{toFixed(hx()+hy()^2-7,3)}} \\\\[4pt]\\nabla_x f &= 4x_k A+2B = {{toFixed(4*hx()*(hx()^2+hy()-11)+2*(hx()+hy()^2-7),3)}} \\\\[4pt]\\nabla_y f &= 2A+4y_k B = {{toFixed(2*(hx()^2+hy()-11)+4*hy()*(hx()+hy()^2-7),3)}} \\\\[4pt]f(\\mathbf{x}_k) &= A^2+B^2 = {{toFixed((hx()^2+hy()-11)^2+(hx()+hy()^2-7)^2,3)}} \\\\[4pt]\\mathbf{x}_{k+1} &= \\bigl({{toFixed(hx()-eta_ncv*(4*hx()*(hx()^2+hy()-11)+2*(hx()+hy()^2-7)),3)}},\\;{{toFixed(hy()-eta_ncv*(2*(hx()^2+hy()-11)+4*hy()*(hx()+hy()^2-7)),3)}}\\bigr)\\end{aligned}$$"
+            }
+          ],
+          "virtualTime": {
+            "expr": "t_ncv"
+          }
+        }
+      ],
+      "functions": [
+        {
+          "name": "hx",
+          "args": [],
+          "expr": "(()=>{let x=xp,y=yp,k=max(0,min(n_iter_ncv,floor(t)));for(let i=0;i<k;i++){const gx=4*x*(x*x+y-11)+2*(x+y*y-7),gy=2*(x*x+y-11)+4*y*(x+y*y-7);x-=eta_ncv*gx;y-=eta_ncv*gy;}return x;})()"
+        },
+        {
+          "name": "hy",
+          "args": [],
+          "expr": "(()=>{let x=xp,y=yp,k=max(0,min(n_iter_ncv,floor(t)));for(let i=0;i<k;i++){const gx=4*x*(x*x+y-11)+2*(x+y*y-7),gy=2*(x*x+y-11)+4*y*(x+y*y-7);x-=eta_ncv*gx;y-=eta_ncv*gy;}return y;})()"
         }
       ]
     }

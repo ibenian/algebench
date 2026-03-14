@@ -198,6 +198,40 @@ Sliders are defined per-step in `step.sliders`. Each slider gets:
 - Its value stored in `sceneSliders[id].value`
 - An animation system (`set_sliders` tool) that tweens values over ~800ms
 
+**Animated sliders** — sliders with `"animate": true` grow a ▶/⏸ play button and self-drive their own value over time via a dedicated `requestAnimationFrame` loop (`startSliderLoop`). Three modes:
+
+| `animateMode` | Behaviour |
+|---|---|
+| `loop` (default) | Sawtooth 0 → max, then wraps instantly back to 0 |
+| `once` | Runs 0 → max once then stops |
+| `pingpong` | Oscillates 0 → max → 0 repeatedly |
+
+`duration` (ms) sets the period of one full sweep. Animated sliders auto-start unless `"autoplay": false`.
+
+#### Virtual Time
+
+`virtualTime` is a step- or scene-level field that remaps the animation clock `t` for **all** animated elements in that step/scene. Instead of `t` being raw wall-clock seconds since scene load, every `evalExpr` call passes the result of the `virtualTime` expression as `t`.
+
+```json
+"virtualTime": { "expr": "tau * T" }
+```
+
+This is the canonical way to hook a scrubable playback slider to a simulation. The pattern used in orbital-flight and gradient-descent scenes:
+
+1. Define an animated slider with `"animate": true`.
+2. Set `virtualTime` on the step so `t` maps to the desired simulation time.
+3. All `animated_vector`, `animated_point`, etc. expressions use `t` normally — they receive the remapped value transparently.
+
+Two common shapes:
+
+- **Normalized slider** (`tau` 0→1): `"expr": "tau * T"` where `T` is a separate slider holding the total simulation duration. `t` becomes `tau * T`, ranging 0→T seconds. This separates *where you are in playback* from *how long the simulation runs* — changing `T` recomputes the trajectory without needing to rescale the playback slider. `tau` always means "what fraction of the simulation have I watched", regardless of whether `T` is 400 s or 5000 s.
+
+- **Direct time slider** (`t_ncv` 0→80): `"expr": "t_ncv"`. The slider range already matches the simulation's time units (here: iteration index), so no scaling is needed. Use this when there is no separate "duration" concept — the slider range *is* the full extent of the simulation.
+
+The `virtualTime` expression has access to both slider values **and** the raw wall-clock `t` (seconds since scene load). This means you can mix slider scrub with live animation — e.g. `"expr": "tau * T + 0.1 * sin(t)"` scrubs position via `tau` while adding a live wobble driven by real time.
+
+Resolution order: step-level `virtualTime` overrides scene-level; if neither is set, raw wall time is used. The `_resolveVirtualAnimTime(rawT)` function in `app.js` performs the mapping, calling `evalExpr` with `useVirtualTime: false` to avoid infinite recursion.
+
 #### Camera System
 
 Three modes:
@@ -324,6 +358,42 @@ Scenes can define their own reusable expression helpers in a top-level `function
 ```
 
 This is how the orbital scene implements apogee/perigee markers — the core `orbitX/orbitR` helpers are built into `app.js`, but the higher-level `orbitPeriX`, `orbitApoX` etc. are defined as scene functions in the JSON itself. Scene functions can call other scene functions and all built-in helpers, and can use IIFE expressions for loops or complex logic (which marks the scene as `unsafe`).
+
+#### Scope / available context inside a function body
+
+A function body is evaluated with the same scope that any other expression in the scene
+receives (assembled by `_buildScope()`). The following are all in scope:
+
+| What | How it gets there |
+|---|---|
+| All slider values | Every slider `id` declared in scene or step sliders is injected as a plain variable |
+| Virtual time `t` | Set to `frame.t` (resolved virtual time) before the function is called |
+| Other scene functions | Compiled and added to scope during scene load |
+| Domain library functions | Merged into scope for any domain listed in `"import"` |
+| Built-in math helpers | Always present (`lerp`, `clamp`, `sin`, `cos`, …) |
+
+Memory variables (`agentMemoryValues`) are **not** available inside scene functions when
+called from `animated_vector` / `parametric_curve` expressions. They are only injected
+for info-overlay expressions.
+
+So: **yes**, you can reference a slider `eta` directly by name inside a function body, and
+**yes**, you can reference `t` to get the current virtual time. These work the same way
+they do in any scene expression.
+
+#### Stateless execution
+
+Each call to a scene function receives a **fresh, independent scope**. There is no shared
+mutable state between calls — a function cannot write a variable that another function (or
+another call to the same function) reads back in the same frame. Every invocation is
+self-contained.
+
+#### Future consideration — caching for scene functions
+
+Two related but distinct caching features are tracked as open issues:
+
+**[#25 — Per-expression memoization](https://github.com/ibenian/algebench/issues/25)** — a read-only, per-`evalExpr` cache: if the same scene function is called more than once with identical arguments within one expression evaluation, return the cached result instead of re-running the body. Safe by construction (pure functions, cache discarded after each eval). Low implementation complexity.
+
+**[#26 — Mutable multi-level cache](https://github.com/ibenian/algebench/issues/26)** — a persistent, writable cache with three tiers: `frameCache` (cleared each animation frame), `stepCache` (cleared each simulation step), and `sceneCache` (cleared on scene load or slider change). Required for simulation-style scenes with heavy per-frame computation. Introduces evaluation-order dependencies and potential feedback loops; requires explicit dependency declarations from authors to remain correct.
 
 ---
 
@@ -462,11 +532,14 @@ Scenes are standalone JSON files loaded at startup or dropped into the browser.
   "title": "Step title",
   "description": "Caption shown below viewport",
   "camera": { "position": [...], "target": [...] },
+  "virtualTime": { "expr": "tau * T" },
   "sliders": [ { slider }, ... ],
   "add": [ { element }, ... ],
   "info": [ { overlay }, ... ]
 }
 ```
+
+`virtualTime` remaps `t` for all animated elements in this step. See **Virtual Time** in Section 5.
 
 ### Slider Object
 
