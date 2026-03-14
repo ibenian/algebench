@@ -4191,13 +4191,24 @@ function _scanSpecForUnsafeJs(spec) {
     // Only scan strings under known expression-bearing keys to avoid false positives
     // from natural-language text that contains 'let', '=>', 'return', etc.
     const EXPR_KEYS = new Set(['expr', 'x', 'y', 'z', 'expression', 'fx', 'fy', 'fz']);
+    const _TEMPLATE_RE = /\{\{([\s\S]*?)\}\}/g;
     function walk(obj, parentKey) {
         if (typeof obj === 'string') {
             return !!(parentKey && EXPR_KEYS.has(parentKey) && _JS_ONLY_RE.test(obj));
         }
         if (Array.isArray(obj)) return obj.some(item => walk(item, parentKey));
         if (obj && typeof obj === 'object') {
-            return Object.entries(obj).some(([k, v]) => walk(v, k));
+            return Object.entries(obj).some(([k, v]) => {
+                // Scan {{...}} expression blocks inside content strings
+                if (k === 'content' && typeof v === 'string') {
+                    let m;
+                    _TEMPLATE_RE.lastIndex = 0;
+                    while ((m = _TEMPLATE_RE.exec(v)) !== null) {
+                        if (_JS_ONLY_RE.test(m[1])) return true;
+                    }
+                }
+                return walk(v, k);
+            });
         }
         return false;
     }
