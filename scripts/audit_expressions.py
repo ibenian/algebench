@@ -198,7 +198,7 @@ def classify_expression(expr, field_key, scene_unsafe):
         return 'unsafe_scene'
 
     if _JS_ONLY_RE.search(expr):
-        if field_key in _SCANNED_KEYS:
+        if field_key in _SCANNED_KEYS or field_key == 'content_template':
             return 'js_covered'
         return 'js_uncovered'
 
