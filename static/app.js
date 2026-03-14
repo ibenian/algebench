@@ -102,6 +102,13 @@ const _JS_ONLY_RE = /\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\
 // 'trusted' = user approved JS execution
 // 'untrusted' = user denied JS execution (JS exprs become no-ops)
 let _sceneJsTrustState = null;
+// Issues collected by _scanSpecForUnsafeJs; reset on each scene load.
+// Each entry: { path, expr, type }  where type is 'expr' or 'template'.
+let _sceneJsIssues = [];
+// True when the scene has "unsafe":true — entire scene opted in to native JS.
+let _sceneIsUnsafe = false;
+// Author-provided explanation shown in the trust dialog (unsafe_explanation field).
+let _sceneUnsafeExplanation = '';
 // Prefer OrbitControls so modifier-based pan behavior is consistent.
 const CONTROL_CLASS = (typeof THREE !== 'undefined' && THREE.OrbitControls) ? THREE.OrbitControls : THREE.TrackballControls;
 let sceneUp = [0, 1, 0];           // scene's up vector (set per-scene in buildCameraButtons)
@@ -4188,31 +4195,43 @@ function buildCameraButtons(spec) {
 // ----- Expression Trust System -----
 
 function _scanSpecForUnsafeJs(spec) {
-    // Only scan strings under known expression-bearing keys to avoid false positives
-    // from natural-language text that contains 'let', '=>', 'return', etc.
+    // Scan for JS-only patterns and collect issues with their JSON paths.
+    // Only inspects known expression-bearing keys to avoid false positives from
+    // natural-language text that contains 'let', '=>', 'return', etc.
+    // Also extracts {{...}} blocks from content strings.
+    const issues = [];
     const EXPR_KEYS = new Set(['expr', 'x', 'y', 'z', 'expression', 'fx', 'fy', 'fz']);
     const _TEMPLATE_RE = /\{\{([\s\S]*?)\}\}/g;
-    function walk(obj, parentKey) {
+    function walk(obj, parentKey, path) {
         if (typeof obj === 'string') {
-            return !!(parentKey && EXPR_KEYS.has(parentKey) && _JS_ONLY_RE.test(obj));
+            if (parentKey && EXPR_KEYS.has(parentKey) && _JS_ONLY_RE.test(obj)) {
+                issues.push({ path, expr: obj, type: 'expr' });
+            }
+            return;
         }
-        if (Array.isArray(obj)) return obj.some(item => walk(item, parentKey));
+        if (Array.isArray(obj)) {
+            obj.forEach((item, i) => walk(item, parentKey, `${path}[${i}]`));
+            return;
+        }
         if (obj && typeof obj === 'object') {
-            return Object.entries(obj).some(([k, v]) => {
-                // Scan {{...}} expression blocks inside content strings
+            Object.entries(obj).forEach(([k, v]) => {
+                const childPath = path ? `${path}.${k}` : k;
                 if (k === 'content' && typeof v === 'string') {
                     let m;
                     _TEMPLATE_RE.lastIndex = 0;
                     while ((m = _TEMPLATE_RE.exec(v)) !== null) {
-                        if (_JS_ONLY_RE.test(m[1])) return true;
+                        if (_JS_ONLY_RE.test(m[1])) {
+                            issues.push({ path: childPath, expr: m[1].trim(), type: 'template' });
+                        }
                     }
                 }
-                return walk(v, k);
+                walk(v, k, childPath);
             });
         }
-        return false;
     }
-    return walk(spec, null);
+    walk(spec, null, '');
+    _sceneJsIssues = issues;
+    return issues.length > 0;
 }
 
 function _showTrustDialog(explanation, imports) {
@@ -4278,6 +4297,13 @@ function _updateJsTrustPill() {
     } else {
         pill.classList.add('hidden');
     }
+    // Clicking the pill opens the JSON viewer and jumps straight to the issues report.
+    const pillClickable = _sceneIsUnsafe || _sceneJsIssues.length > 0;
+    pill.onclick = pillClickable ? () => {
+        document.getElementById('btn-show-json').click();
+        _toggleJsIssuesPanel(document.getElementById('json-viewer-issues'));
+    } : null;
+    pill.style.cursor = pillClickable ? 'pointer' : '';
 }
 
 // ----- Lesson Navigation -----
@@ -4292,8 +4318,14 @@ async function loadLesson(spec) {
     // Otherwise scan expression fields; only ask if JS patterns are found.
     // The unsafe_explanation is shown in the dialog in either case.
     _sceneJsTrustState = null;
+    _sceneJsIssues = [];
+    _sceneIsUnsafe = false;
+    _sceneUnsafeExplanation = '';
     if (spec) {
-        const needsDialog = spec.unsafe === true || _scanSpecForUnsafeJs(spec);
+        _sceneIsUnsafe = spec.unsafe === true;
+        _sceneUnsafeExplanation = spec.unsafe_explanation || '';
+        const scanned = _scanSpecForUnsafeJs(spec);
+        const needsDialog = _sceneIsUnsafe || scanned;
         if (needsDialog) {
             const explanation = spec.unsafe_explanation ||
                 'This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.';
@@ -6893,6 +6925,57 @@ function _computeAgenticScore(spec) {
     return { score, label, color };
 }
 
+function _toggleJsIssuesPanel(panel) {
+    if (!panel) return;
+    if (!panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+        return;
+    }
+
+    const trusted = _sceneJsTrustState === 'trusted';
+    const stateLabel = trusted
+        ? '⚡ JS Trusted — expressions are running natively'
+        : '⚠ JS Disabled — expressions are no-ops (returning 0 / "?")';
+    const stateClass = trusted ? 'js-issues-state-trusted' : 'js-issues-state-untrusted';
+
+    const explanationBlock = _sceneUnsafeExplanation
+        ? `<div class="ji-explanation"><span class="ji-explanation-label">Scene-declared explanation:</span> ${_escHtml(_sceneUnsafeExplanation)}</div>`
+        : '';
+
+    const unsafeBanner = _sceneIsUnsafe
+        ? `<div class="ji-unsafe-banner">⚠ This scene sets <code>unsafe: true</code> — all expressions execute as native JavaScript regardless of pattern matching.</div>`
+        : '';
+
+    const rows = _sceneJsIssues.map(({ path, expr, type }) => {
+        const truncExpr = expr.length > 60 ? expr.slice(0, 57) + '…' : expr;
+        const typeLabel = type === 'template' ? '{{…}} template' : 'expr field';
+        const action = trusted ? '✅ Running' : '🚫 Disabled';
+        return `<tr>
+            <td class="ji-path" title="${_escHtml(path)}">${_escHtml(path)}</td>
+            <td class="ji-expr" title="${_escHtml(expr)}"><code>${_escHtml(truncExpr)}</code></td>
+            <td class="ji-type">${typeLabel}</td>
+            <td class="ji-action ${trusted ? 'ji-running' : 'ji-disabled'}">${action}</td>
+        </tr>`;
+    }).join('');
+
+    const noRows = _sceneJsIssues.length === 0
+        ? `<tr><td colspan="4" class="ji-empty">No specific JS patterns detected — scene uses <code>unsafe: true</code> to opt in globally.</td></tr>`
+        : '';
+
+    panel.innerHTML =
+        `<div class="ji-header ${stateClass}">${stateLabel}</div>` +
+        explanationBlock +
+        unsafeBanner +
+        `<div class="ji-scroll"><table class="ji-table">` +
+        `<thead><tr><th>JSON Path</th><th>Expression</th><th>Type</th><th>Action</th></tr></thead>` +
+        `<tbody>${rows || noRows}</tbody></table></div>`;
+    panel.classList.remove('hidden');
+}
+
+function _escHtml(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function setupJsonViewer() {
     const btn = document.getElementById('btn-show-json');
     const overlay = document.getElementById('json-viewer-overlay');
@@ -6902,9 +6985,12 @@ function setupJsonViewer() {
     const closeBtn = document.getElementById('json-viewer-close');
     const copyBtn = document.getElementById('json-viewer-copy');
 
+    const issuesPanel = document.getElementById('json-viewer-issues');
+
     if (!btn || !overlay) return;
 
     btn.addEventListener('click', () => {
+        if (issuesPanel) issuesPanel.classList.add('hidden');
         let json;
         if (lessonSpec) {
             json = lessonSpec;
@@ -6963,6 +7049,24 @@ function setupJsonViewer() {
                 desc.textContent = s.description;
                 summaryBar.appendChild(desc);
             }
+            // JS Issues badge — shown when trust dialog was triggered
+            const existingBadge = summaryBar.querySelector('.summary-stat-js-issues');
+            if (existingBadge) existingBadge.remove();
+            if (_sceneIsUnsafe || _sceneJsIssues.length > 0) {
+                const trusted = _sceneJsTrustState === 'trusted';
+                const count = _sceneIsUnsafe && _sceneJsIssues.length === 0 ? '!' : _sceneJsIssues.length;
+                const badge = document.createElement('span');
+                badge.className = 'summary-stat summary-stat-js-issues' + (trusted ? ' js-trusted' : ' js-untrusted');
+                badge.title = 'Click to view detected JavaScript expressions and trust status';
+                badge.innerHTML =
+                    `<span class="summary-stat-value">${count}</span>` +
+                    `<span class="summary-stat-label">JS ${trusted ? '⚡' : '⚠'}</span>`;
+                summaryBar.appendChild(badge);
+                badge.addEventListener('click', () => _toggleJsIssuesPanel(issuesPanel));
+            } else if (issuesPanel) {
+                issuesPanel.classList.add('hidden');
+            }
+
             summaryBar.classList.remove('hidden');
         } else if (summaryBar) {
             summaryBar.classList.add('hidden');
