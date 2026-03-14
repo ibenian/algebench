@@ -107,6 +107,8 @@ let _sceneJsTrustState = null;
 let _sceneJsIssues = [];
 // True when the scene has "unsafe":true — entire scene opted in to native JS.
 let _sceneIsUnsafe = false;
+// Author-provided explanation shown in the trust dialog (unsafe_explanation field).
+let _sceneUnsafeExplanation = '';
 // Prefer OrbitControls so modifier-based pan behavior is consistent.
 const CONTROL_CLASS = (typeof THREE !== 'undefined' && THREE.OrbitControls) ? THREE.OrbitControls : THREE.TrackballControls;
 let sceneUp = [0, 1, 0];           // scene's up vector (set per-scene in buildCameraButtons)
@@ -4318,8 +4320,10 @@ async function loadLesson(spec) {
     _sceneJsTrustState = null;
     _sceneJsIssues = [];
     _sceneIsUnsafe = false;
+    _sceneUnsafeExplanation = '';
     if (spec) {
         _sceneIsUnsafe = spec.unsafe === true;
+        _sceneUnsafeExplanation = spec.unsafe_explanation || '';
         const scanned = _scanSpecForUnsafeJs(spec);
         const needsDialog = _sceneIsUnsafe || scanned;
         if (needsDialog) {
@@ -6934,6 +6938,10 @@ function _toggleJsIssuesPanel(panel) {
         : '⚠ JS Disabled — expressions are no-ops (returning 0 / "?")';
     const stateClass = trusted ? 'js-issues-state-trusted' : 'js-issues-state-untrusted';
 
+    const explanationBlock = _sceneUnsafeExplanation
+        ? `<div class="ji-explanation">${_escHtml(_sceneUnsafeExplanation)}</div>`
+        : '';
+
     const unsafeBanner = _sceneIsUnsafe
         ? `<div class="ji-unsafe-banner">⚠ This scene sets <code>unsafe: true</code> — all expressions execute as native JavaScript regardless of pattern matching.</div>`
         : '';
@@ -6956,6 +6964,7 @@ function _toggleJsIssuesPanel(panel) {
 
     panel.innerHTML =
         `<div class="ji-header ${stateClass}">${stateLabel}</div>` +
+        explanationBlock +
         unsafeBanner +
         `<div class="ji-scroll"><table class="ji-table">` +
         `<thead><tr><th>JSON Path</th><th>Expression</th><th>Type</th><th>Action</th></tr></thead>` +
