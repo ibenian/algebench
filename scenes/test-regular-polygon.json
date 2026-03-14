@@ -37,7 +37,7 @@
                 "rotation": "0"
               },
               "color": "#4da6ff",
-              "opacity": 0.35
+              "opacity": "fill_opacity"
             }
           ],
           "sliders": [
@@ -48,6 +48,14 @@
               "max": 96,
               "step": 1,
               "default": 6
+            },
+            {
+              "id": "fill_opacity",
+              "label": "fill opacity",
+              "min": 0,
+              "max": 0.8,
+              "step": 0.05,
+              "default": 0.35
             }
           ],
           "info": [

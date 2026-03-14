@@ -3229,7 +3229,9 @@ function renderAnimatedCylinder(el, view) {
 
 function renderAnimatedPolygon(el, view) {
     const color = parseColor(el.color || '#aa66ff');
-    const opacity = el.opacity !== undefined ? el.opacity : 0.3;
+    const opacityRaw = el.opacity !== undefined ? el.opacity : 0.3;
+    const opacityExpr = typeof opacityRaw === 'string' ? compileExpr(opacityRaw) : null;
+    const opacity = opacityExpr ? 0.3 : opacityRaw; // initial value; updated per-frame if expr
     const thickness = el.thickness || 0.02;
     const label = el.label;
     const sh = el.shader || {};
@@ -3416,6 +3418,12 @@ function renderAnimatedPolygon(el, view) {
             try {
                 const verts = getVerts(tSec);
                 applyGeomVerts(verts);
+
+                if (opacityExpr) {
+                    const op = evalExpr(opacityExpr, tSec);
+                    mat.opacity = displayParams.planeOpacity * (op / 0.5);
+                    if (outlineLine) outlineLine.material.opacity = Math.min(1, op * 2);
+                }
 
                 if (outlineLine) {
                     const outlinePos = verts.map(v => dataToWorld(v)).flat();
