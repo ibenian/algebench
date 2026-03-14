@@ -223,8 +223,10 @@ This is the canonical way to hook a scrubable playback slider to a simulation. T
 3. All `animated_vector`, `animated_point`, etc. expressions use `t` normally — they receive the remapped value transparently.
 
 Two common shapes:
-- **Normalized slider** (`tau` 0→1): `"expr": "tau * T"` where `T` is a separate slider holding the total duration. `t` becomes 0→T.
-- **Direct time slider** (`t_ncv` 0→80): `"expr": "t_ncv"`. The slider range already matches the simulation's time units, so no scaling is needed.
+
+- **Normalized slider** (`tau` 0→1): `"expr": "tau * T"` where `T` is a separate slider holding the total simulation duration. `t` becomes `tau * T`, ranging 0→T seconds. This separates *where you are in playback* from *how long the simulation runs* — changing `T` recomputes the trajectory without needing to rescale the playback slider. `tau` always means "what fraction of the simulation have I watched", regardless of whether `T` is 400 s or 5000 s.
+
+- **Direct time slider** (`t_ncv` 0→80): `"expr": "t_ncv"`. The slider range already matches the simulation's time units (here: iteration index), so no scaling is needed. Use this when there is no separate "duration" concept — the slider range *is* the full extent of the simulation.
 
 Resolution order: step-level `virtualTime` overrides scene-level; if neither is set, raw wall time is used. The `_resolveVirtualAnimTime(rawT)` function in `app.js` performs the mapping, calling `evalExpr` with `useVirtualTime: false` to avoid infinite recursion.
 
