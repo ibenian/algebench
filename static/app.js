@@ -2741,8 +2741,26 @@ function renderAnimatedVector(el, view) {
 function renderPolygon(el, view) {
     const color = parseColor(el.color || '#aa66ff');
     const opacity = el.opacity !== undefined ? el.opacity : 0.5;
-    const vertices = el.vertices || el.points || [[0,0,0],[1,0,0],[1,1,0],[0,1,0]];
     const thickness = el.thickness || 0.02;
+
+    // Resolve vertices: regular substructure or explicit list
+    let vertices;
+    if (el.regular && typeof el.regular === 'object') {
+        const reg = el.regular;
+        const N   = Math.max(3, Math.round(Number(reg.n) || 3));
+        const r   = Number(reg.radius != null ? reg.radius : 1);
+        const cx  = Array.isArray(reg.center) ? Number(reg.center[0] ?? 0) : 0;
+        const cy  = Array.isArray(reg.center) ? Number(reg.center[1] ?? 0) : 0;
+        const cz  = Array.isArray(reg.center) ? Number(reg.center[2] ?? 0) : 0;
+        const rot = Number(reg.rotation ?? 0);
+        vertices = [];
+        for (let k = 0; k < N; k++) {
+            const angle = rot + (2 * Math.PI * k) / N;
+            vertices.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle), cz]);
+        }
+    } else {
+        vertices = el.vertices || el.points || [[0,0,0],[1,0,0],[1,1,0],[0,1,0]];
+    }
     const label = el.label;
 
     // Convert vertices to world space
@@ -2819,6 +2837,17 @@ function renderPolygon(el, view) {
         const cy = vertices.reduce((s, v) => s + v[1], 0) / vertices.length;
         const cz = vertices.reduce((s, v) => s + v[2], 0) / vertices.length;
         addLabel3D(label, [cx, cy, cz], color);
+    }
+
+    // Optional static outline
+    const outlineWidthVal = el.outlineWidth != null ? Number(el.outlineWidth) : (el.regular ? 1.5 : 0);
+    if (outlineWidthVal > 0 && view) {
+        const outlineColor = parseColor(el.outlineColor || el.color || '#aa66ff');
+        const outlineOpacity = el.outlineOpacity != null ? Number(el.outlineOpacity) : Math.min(1, opacity * 2);
+        const pts = vertices.slice();
+        pts.push(pts[0]); // close the loop
+        view.array({ channels: 3, width: pts.length, data: pts })
+            .line({ color: new THREE.Color(...outlineColor), width: outlineWidthVal, opacity: outlineOpacity, zBias: 2 });
     }
 
     return { type: 'polygon', color, label };
@@ -3229,31 +3258,88 @@ function renderAnimatedCylinder(el, view) {
 
 function renderAnimatedPolygon(el, view) {
     const color = parseColor(el.color || '#aa66ff');
-    const opacity = el.opacity !== undefined ? el.opacity : 0.3;
-    const vertexExprs = el.vertices; // array of [exprX, exprY, exprZ] per vertex
+    const opacityRaw = el.opacity !== undefined ? el.opacity : 0.3;
+    const opacityExpr = typeof opacityRaw === 'string' ? compileExpr(opacityRaw) : null;
+    const opacity = opacityExpr ? 0.3 : opacityRaw; // initial value; updated per-frame if expr
     const thickness = el.thickness || 0.02;
     const label = el.label;
     const sh = el.shader || {};
 
-    if (!Array.isArray(vertexExprs) || vertexExprs.length < 3) return null;
+    const animState = { stopped: false };
+    const isRegular = el.regular && typeof el.regular === 'object';
+    let getVerts;       // (tSec) → [[x,y,z], ...]
+    let animExprEntry;
 
-    // Compile all vertex expressions
-    let compiledVerts = vertexExprs.map(v => v.map(e => compileExpr(e)));
+    if (isRegular) {
+        // Regular polygon mode: vertices computed from n, radius, center, rotation
+        const reg = el.regular;
+        const nExpr   = String(reg.n        != null ? reg.n        : '3');
+        const rExpr   = String(reg.radius   != null ? reg.radius   : '1');
+        const cxExpr  = String(Array.isArray(reg.center) && reg.center[0] != null ? reg.center[0] : '0');
+        const cyExpr  = String(Array.isArray(reg.center) && reg.center[1] != null ? reg.center[1] : '0');
+        const czExpr  = String(Array.isArray(reg.center) && reg.center[2] != null ? reg.center[2] : '0');
+        const rotExpr = String(reg.rotation != null ? reg.rotation : '0');
+        const regExprs = [nExpr, rExpr, cxExpr, cyExpr, czExpr, rotExpr];
 
-    // Evaluate vertices at t=0
-    function evalVerts(fns, tSec) {
-        return fns.map(vfns => vfns.map(fn => evalExpr(fn, tSec)));
+        const regState = {
+            cN:   compileExpr(nExpr),
+            cR:   compileExpr(rExpr),
+            cCx:  compileExpr(cxExpr),
+            cCy:  compileExpr(cyExpr),
+            cCz:  compileExpr(czExpr),
+            cRot: compileExpr(rotExpr),
+        };
+
+        getVerts = (tSec) => {
+            const N   = Math.max(3, Math.round(evalExpr(regState.cN,   tSec)));
+            const r   = evalExpr(regState.cR,   tSec);
+            const cx  = evalExpr(regState.cCx,  tSec);
+            const cy  = evalExpr(regState.cCy,  tSec);
+            const cz  = evalExpr(regState.cCz,  tSec);
+            const rot = evalExpr(regState.cRot, tSec);
+            const verts = [];
+            for (let k = 0; k < N; k++) {
+                const angle = rot + (2 * Math.PI * k) / N;
+                verts.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle), cz]);
+            }
+            return verts;
+        };
+
+        animExprEntry = {
+            exprStrings: regExprs,
+            animState,
+            compiledFns: Object.values(regState),
+            _isRegularPolygon: true,
+            _regExprs: regExprs,
+            _regState: regState,
+        };
+    } else {
+        // Explicit vertices mode: array of [exprX, exprY, exprZ] per vertex
+        const vertexExprs = el.vertices;
+        if (!Array.isArray(vertexExprs) || vertexExprs.length < 3) return null;
+
+        let compiledVerts = vertexExprs.map(v => v.map(e => compileExpr(e)));
+        getVerts = (tSec) => animExprEntry._compiledVerts.map(vfns => vfns.map(fn => evalExpr(fn, tSec)));
+
+        animExprEntry = {
+            exprStrings: vertexExprs.flat(),
+            animState,
+            compiledFns: compiledVerts.flat(),
+            _isAnimatedPolygon: true,
+            _vertexExprs: vertexExprs,
+            _compiledVerts: compiledVerts,
+        };
     }
 
     let currentDataVerts;
     try {
-        currentDataVerts = evalVerts(compiledVerts, 0);
+        currentDataVerts = getVerts(0);
     } catch(err) {
         console.warn('animated_polygon eval error:', err);
         return null;
     }
 
-    // Build initial mesh geometry
+    // Build mesh geometry from data-space vertices
     function rebuildGeometry(dataVerts) {
         const wVerts = dataVerts.map(v => dataToWorld(v));
         const a = new THREE.Vector3(wVerts[1][0]-wVerts[0][0], wVerts[1][1]-wVerts[0][1], wVerts[1][2]-wVerts[0][2]);
@@ -3274,9 +3360,23 @@ function renderAnimatedPolygon(el, view) {
         return new Float32Array(positions);
     }
 
+    // Pre-allocate fill buffer large enough for any practical N (512 sides max).
+    // Three.js cannot grow a GPU buffer in place — replacing the attribute mid-frame
+    // silently stalls for larger sizes. Instead we over-allocate once and use
+    // setDrawRange to tell the renderer how many vertices are actually active.
+    const FILL_MAX_FLOATS = 12 * 512 * 3;
+    const fillAttr = new THREE.Float32BufferAttribute(new Float32Array(FILL_MAX_FLOATS), 3);
+    fillAttr.setUsage(THREE.DynamicDrawUsage);
     const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.Float32BufferAttribute(rebuildGeometry(currentDataVerts), 3));
-    geom.computeVertexNormals();
+    geom.setAttribute('position', fillAttr);
+    function applyGeomVerts(dataVerts) {
+        const arr = rebuildGeometry(dataVerts);
+        fillAttr.array.set(arr);
+        fillAttr.needsUpdate = true;
+        geom.setDrawRange(0, arr.length / 3);
+        geom.computeVertexNormals();
+    }
+    applyGeomVerts(currentDataVerts);
 
     const matType = sh.type === 'basic' ? THREE.MeshBasicMaterial : THREE.MeshPhongMaterial;
     const matOpts = {
@@ -3299,6 +3399,41 @@ function renderAnimatedPolygon(el, view) {
     three.scene.add(mesh);
     planeMeshes.push(mesh);
 
+    // Optional outline: MathBox geometry-based line (supports real variable width unlike gl.lineWidth).
+    // Points are padded to a fixed max size; setDrawRange equivalent is achieved by repeating the
+    // last valid point so extra segments are zero-length and invisible.
+    let outlineArrayNode = null;
+    let outlineLineNode = null;
+    let outlineWidthExpr = null;
+    let outlineOpacityExpr = null;
+    const OUTLINE_MAX_PTS = 513; // max N + 1 for loop closure
+    function buildOutlinePts(dataVerts) {
+        const pts = dataVerts.slice(); // data-space — MathBox transforms internally
+        pts.push(pts[0]); // close the loop
+        const last = pts[pts.length - 1];
+        while (pts.length < OUTLINE_MAX_PTS) pts.push(last); // pad — zero-length segments are invisible
+        return pts;
+    }
+    const outlineWidthRaw = el.outlineWidth != null ? el.outlineWidth : (isRegular ? 1.5 : 0);
+    const outlineOpacityRaw = el.outlineOpacity != null ? el.outlineOpacity : null;
+    const outlineWidthInit = typeof outlineWidthRaw === 'string' ? (evalExpr(compileExpr(outlineWidthRaw), 0) || 1.5) : outlineWidthRaw;
+    if (outlineWidthInit > 0 || typeof outlineWidthRaw === 'string') {
+        if (typeof outlineWidthRaw === 'string') outlineWidthExpr = compileExpr(outlineWidthRaw);
+        if (outlineOpacityRaw != null && typeof outlineOpacityRaw === 'string') outlineOpacityExpr = compileExpr(String(outlineOpacityRaw));
+        const outlineColor = parseColor(el.outlineColor || el.color || '#aa66ff');
+        const outlineOpacityInit = outlineOpacityRaw != null
+            ? (typeof outlineOpacityRaw === 'string' ? evalExpr(compileExpr(String(outlineOpacityRaw)), 0) : Number(outlineOpacityRaw))
+            : Math.min(1, opacity * 2);
+
+        outlineArrayNode = view.array({ channels: 3, width: OUTLINE_MAX_PTS, data: buildOutlinePts(currentDataVerts), live: true });
+        outlineLineNode = outlineArrayNode.line({
+            color: new THREE.Color(...outlineColor),
+            width: outlineWidthInit,
+            opacity: outlineOpacityInit,
+            zBias: 2,
+        });
+    }
+
     // Label at centroid
     let labelEl = null;
     if (label) {
@@ -3308,18 +3443,6 @@ function renderAnimatedPolygon(el, view) {
         labelEl = addLabel3D(label, [cx, cy, cz], color);
     }
 
-    // Register for slider recompilation
-    const exprStrings = vertexExprs; // keep reference for recompilation
-    const animState = { stopped: false };
-    const animExprEntry = {
-        exprStrings: vertexExprs.flat(), // flat list for recompile detection
-        animState,
-        compiledFns: compiledVerts.flat(),
-        // Custom recompile handler
-        _isAnimatedPolygon: true,
-        _vertexExprs: vertexExprs,
-        _compiledVerts: compiledVerts,
-    };
     registerAnimExpr(animExprEntry);
 
     const startTime = sceneStartTime;
@@ -3329,12 +3452,24 @@ function renderAnimatedPolygon(el, view) {
             if (!mesh.visible) return;
 
             const tSec = (nowMs - startTime) / 1000;
-            const fns = animExprEntry._compiledVerts;
             try {
-                const verts = evalVerts(fns, tSec);
-                const posArray = rebuildGeometry(verts);
-                geom.setAttribute('position', new THREE.Float32BufferAttribute(posArray, 3));
-                geom.computeVertexNormals();
+                const verts = getVerts(tSec);
+                applyGeomVerts(verts);
+
+                if (opacityExpr) {
+                    const op = evalExpr(opacityExpr, tSec);
+                    mat.opacity = displayParams.planeOpacity * (op / 0.5);
+                    if (outlineLineNode && !outlineOpacityExpr) outlineLineNode.set('opacity', Math.min(1, op * 2));
+                }
+                if (outlineArrayNode) {
+                    outlineArrayNode.set('data', buildOutlinePts(verts));
+                }
+                if (outlineLineNode && outlineWidthExpr) {
+                    outlineLineNode.set('width', evalExpr(outlineWidthExpr, tSec));
+                }
+                if (outlineLineNode && outlineOpacityExpr) {
+                    outlineLineNode.set('opacity', evalExpr(outlineOpacityExpr, tSec));
+                }
 
                 if (labelEl) {
                     labelEl.dataPos[0] = verts.reduce((s, v) => s + v[0], 0) / verts.length;
@@ -5069,6 +5204,19 @@ function recompileActiveExprs() {
                 entry._compiledVerts = entry._vertexExprs.map(v => v.map(e => compileExpr(e)));
             } catch (err) {
                 console.warn('Slider animated_polygon recompile error:', err);
+            }
+        }
+        if (entry._isRegularPolygon && entry._regExprs) {
+            try {
+                const [nE, rE, cxE, cyE, czE, rotE] = entry._regExprs;
+                entry._regState.cN   = compileExpr(nE);
+                entry._regState.cR   = compileExpr(rE);
+                entry._regState.cCx  = compileExpr(cxE);
+                entry._regState.cCy  = compileExpr(cyE);
+                entry._regState.cCz  = compileExpr(czE);
+                entry._regState.cRot = compileExpr(rotE);
+            } catch (err) {
+                console.warn('Slider regular polygon recompile error:', err);
             }
         }
         if (entry._isAnimatedLine && entry._pointExprs) {
