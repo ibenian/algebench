@@ -37,7 +37,9 @@
                 "rotation": "0"
               },
               "color": "#4da6ff",
-              "opacity": "fill_opacity"
+              "opacity": "fill_opacity",
+              "outlineWidth": 2,
+              "outlineColor": "#88ccff"
             }
           ],
           "sliders": [
@@ -80,7 +82,9 @@
                 "rotation": "t"
               },
               "color": "#ff9944",
-              "opacity": "fill_opacity"
+              "opacity": "fill_opacity",
+              "outlineWidth": 1.5,
+              "outlineColor": "#ffcc88"
             }
           ],
           "sliders": [
