@@ -735,6 +735,8 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     margin-right: 4px;
 }
 #js-trust-pill.hidden { display: none; }
+#js-trust-pill:not([style*="pointer"]) { cursor: default; }
+#js-trust-pill[style*="pointer"]:hover { filter: brightness(1.2); }
 #js-trust-pill.js-trusted {
     background: rgba(80, 140, 255, 0.15);
     border: 1px solid rgba(80, 140, 255, 0.4);

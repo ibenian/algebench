@@ -4293,6 +4293,12 @@ function _updateJsTrustPill() {
     } else {
         pill.classList.add('hidden');
     }
+    // Clicking the pill opens the JSON viewer and jumps straight to the issues report.
+    pill.onclick = _sceneJsIssues.length > 0 ? () => {
+        document.getElementById('btn-show-json').click();
+        _toggleJsIssuesPanel(document.getElementById('json-viewer-issues'));
+    } : null;
+    pill.style.cursor = _sceneJsIssues.length > 0 ? 'pointer' : '';
 }
 
 // ----- Lesson Navigation -----
@@ -6960,6 +6966,7 @@ function setupJsonViewer() {
     if (!btn || !overlay) return;
 
     btn.addEventListener('click', () => {
+        if (issuesPanel) issuesPanel.classList.add('hidden');
         let json;
         if (lessonSpec) {
             json = lessonSpec;
