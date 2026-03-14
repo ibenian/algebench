@@ -80,7 +80,7 @@
                 "rotation": "t"
               },
               "color": "#ff9944",
-              "opacity": 0.4
+              "opacity": "fill_opacity"
             }
           ],
           "sliders": [

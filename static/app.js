@@ -3421,6 +3421,7 @@ function renderAnimatedPolygon(el, view) {
 
                 if (opacityExpr) {
                     const op = evalExpr(opacityExpr, tSec);
+                    mesh.visible = op > 0.001;
                     mat.opacity = displayParams.planeOpacity * (op / 0.5);
                     if (outlineLine) outlineLine.material.opacity = Math.min(1, op * 2);
                 }
