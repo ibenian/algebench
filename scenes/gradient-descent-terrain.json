@@ -56,7 +56,7 @@
             0,
             0.7
           ],
-          "description": "Isometric overview — see the terrain surface in 3D perspective"
+          "description": "Isometric overview \u2014 see the terrain surface in 3D perspective"
         },
         {
           "name": "Descent View",
@@ -70,7 +70,7 @@
             0,
             1.5
           ],
-          "description": "Looking into the bowl from an elevated angle — follow the descent path"
+          "description": "Looking into the bowl from an elevated angle \u2014 follow the descent path"
         },
         {
           "name": "Front (XZ)",
@@ -84,7 +84,7 @@
             0,
             2.5
           ],
-          "description": "Front view along Y — see how the loss changes along X"
+          "description": "Front view along Y \u2014 see how the loss changes along X"
         },
         {
           "name": "Side (YZ)",
@@ -98,7 +98,7 @@
             0,
             2.5
           ],
-          "description": "Side view along X — see how the loss changes along Y"
+          "description": "Side view along X \u2014 see how the loss changes along Y"
         },
         {
           "name": "Top Down",
@@ -112,7 +112,7 @@
             0,
             0
           ],
-          "description": "Looking straight down — see the loss landscape as a 2D contour map"
+          "description": "Looking straight down \u2014 see the loss landscape as a 2D contour map"
         }
       ],
       "elements": [
@@ -467,7 +467,7 @@
             0,
             2.5
           ],
-          "description": "Isometric overview — see the terrain surface in 3D perspective"
+          "description": "Isometric overview \u2014 see the terrain surface in 3D perspective"
         },
         {
           "name": "Gradient View",
@@ -481,7 +481,7 @@
             0,
             2
           ],
-          "description": "View aligned with the gradient step — clearly see the descent direction"
+          "description": "View aligned with the gradient step \u2014 clearly see the descent direction"
         },
         {
           "name": "Front (XZ)",
@@ -495,7 +495,7 @@
             0,
             5
           ],
-          "description": "Front view along Y — see how the loss changes along X"
+          "description": "Front view along Y \u2014 see how the loss changes along X"
         },
         {
           "name": "Side (YZ)",
@@ -509,7 +509,7 @@
             0,
             5
           ],
-          "description": "Side view along X — see how the loss changes along Y"
+          "description": "Side view along X \u2014 see how the loss changes along Y"
         },
         {
           "name": "Top Down",
@@ -523,7 +523,7 @@
             0,
             0
           ],
-          "description": "Looking straight down — see the loss landscape as a 2D contour map"
+          "description": "Looking straight down \u2014 see the loss landscape as a 2D contour map"
         }
       ],
       "elements": [
@@ -882,7 +882,7 @@
             0,
             2
           ],
-          "description": "Isometric overview — see the terrain surface in 3D perspective"
+          "description": "Isometric overview \u2014 see the terrain surface in 3D perspective"
         },
         {
           "name": "Basin Overview",
@@ -910,7 +910,7 @@
             0,
             5
           ],
-          "description": "Front view along Y — see how the loss changes along X"
+          "description": "Front view along Y \u2014 see how the loss changes along X"
         },
         {
           "name": "Side (YZ)",
@@ -924,7 +924,7 @@
             0,
             5
           ],
-          "description": "Side view along X — see how the loss changes along Y"
+          "description": "Side view along X \u2014 see how the loss changes along Y"
         },
         {
           "name": "Top Down",
@@ -938,7 +938,7 @@
             0,
             0
           ],
-          "description": "Looking straight down — see the loss landscape as a 2D contour map"
+          "description": "Looking straight down \u2014 see the loss landscape as a 2D contour map"
         }
       ],
       "elements": [
@@ -1164,7 +1164,7 @@
         },
         {
           "title": "Animated descent probe",
-          "description": "Animate full gradient-descent iterations over Himmelblau from the current start point. The cyan path shows the entire descent trajectory toward a basin minimum.\n\n**Try it:** Move $x_p$, $y_p$ to start near different basins. Then **increase $\\eta$** — watch what happens when the learning rate is too large: the path overshoots the minimum and climbs back up. This divergence is why choosing the right learning rate matters.",
+          "description": "Animate full gradient-descent iterations over Himmelblau from the current start point. The cyan path shows the entire descent trajectory toward a basin minimum.\n\n**Try it:** Move $x_p$, $y_p$ to start near different basins. Then **increase $\\eta$** \u2014 watch what happens when the learning rate is too large: the path overshoots the minimum and climbs back up. This divergence is why choosing the right learning rate matters.",
           "remove": [
             {
               "id": "probe-step"
@@ -1198,9 +1198,9 @@
                 0
               ],
               "expr": [
-                "(() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })()",
-                "(() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })()",
-                "(pow(pow((() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })(),2) + ((() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })()) - 11,2) + pow(((() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })()) + pow((() => { let x = xp, y = yp; const tf = (t % (n_iter_ncv / speed_ncv)) * speed_ncv; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })(),2) - 7,2))/20"
+                "(() => { let x = xp, y = yp; const tf = t; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })()",
+                "(() => { let x = xp, y = yp; const tf = t; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })()",
+                "(pow(pow((() => { let x = xp, y = yp; const tf = t; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })(),2) + ((() => { let x = xp, y = yp; const tf = t; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })()) - 11,2) + pow(((() => { let x = xp, y = yp; const tf = t; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return x; })()) + pow((() => { let x = xp, y = yp; const tf = t; const k = max(0, min(n_iter_ncv, floor(tf))); const frac = tf - floor(tf); for (let i = 0; i < k; i++) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - eta_ncv*gx; y = y - eta_ncv*gy; } if (k < n_iter_ncv) { const gx = 4*x*(x*x + y - 11) + 2*(x + y*y - 7); const gy = 2*(x*x + y - 11) + 4*y*(x + y*y - 7); x = x - frac*eta_ncv*gx; y = y - frac*eta_ncv*gy; } return y; })(),2) - 7,2))/20"
               ],
               "color": "#7cf6ff",
               "label": "animated descent",
@@ -1251,6 +1251,17 @@
               "max": 6,
               "step": 0.1,
               "default": 3
+            },
+            {
+              "id": "t_ncv",
+              "label": "$t$ (playback)",
+              "min": 0,
+              "max": 80,
+              "step": 0.5,
+              "default": 0,
+              "animate": true,
+              "animateMode": "loop",
+              "duration": 6000
             }
           ],
           "info": [
@@ -1258,7 +1269,10 @@
               "id": "descent-step-values",
               "content": "$$ \\mathbf{x}_{k+1} = \\mathbf{x}_k - \\eta\\,\\nabla f(\\mathbf{x}_k) $$\n\n$$\\begin{aligned}\\mathbf{x}_k &= ({{toFixed(xp,2)}},\\;{{toFixed(yp,2)}}) \\\\[4pt]\\eta &= {{toFixed(eta_ncv,4)}} \\\\[4pt]\\nabla_x f &= {{toFixed(4*xp*(xp^2+yp-11)+2*(xp+yp^2-7),3)}} \\\\[4pt]\\nabla_y f &= {{toFixed(2*(xp^2+yp-11)+4*yp*(xp+yp^2-7),3)}} \\\\[4pt]\\mathbf{x}_{k+1} &= ({{toFixed(xp-eta_ncv*(4*xp*(xp^2+yp-11)+2*(xp+yp^2-7)),3)}},\\;{{toFixed(yp-eta_ncv*(2*(xp^2+yp-11)+4*yp*(xp+yp^2-7)),3)}})\\end{aligned}$$"
             }
-          ]
+          ],
+          "virtualTime": {
+            "expr": "t_ncv"
+          }
         }
       ]
     }
