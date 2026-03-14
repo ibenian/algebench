@@ -3329,9 +3329,23 @@ function renderAnimatedPolygon(el, view) {
         return new Float32Array(positions);
     }
 
+    // Pre-allocate fill buffer large enough for any practical N (512 sides max).
+    // Three.js cannot grow a GPU buffer in place — replacing the attribute mid-frame
+    // silently stalls for larger sizes. Instead we over-allocate once and use
+    // setDrawRange to tell the renderer how many vertices are actually active.
+    const FILL_MAX_FLOATS = 12 * 512 * 3;
+    const fillAttr = new THREE.Float32BufferAttribute(new Float32Array(FILL_MAX_FLOATS), 3);
+    fillAttr.setUsage(THREE.DynamicDrawUsage);
     const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.Float32BufferAttribute(rebuildGeometry(currentDataVerts), 3));
-    geom.computeVertexNormals();
+    geom.setAttribute('position', fillAttr);
+    function applyGeomVerts(dataVerts) {
+        const arr = rebuildGeometry(dataVerts);
+        fillAttr.array.set(arr);
+        fillAttr.needsUpdate = true;
+        geom.setDrawRange(0, arr.length / 3);
+        geom.computeVertexNormals();
+    }
+    applyGeomVerts(currentDataVerts);
 
     const matType = sh.type === 'basic' ? THREE.MeshBasicMaterial : THREE.MeshPhongMaterial;
     const matOpts = {
@@ -3354,14 +3368,21 @@ function renderAnimatedPolygon(el, view) {
     three.scene.add(mesh);
     planeMeshes.push(mesh);
 
-    // Optional outline: LineLoop drawn on top of the fill for antialiased edges
+    // Optional outline: LineLoop drawn on top of the fill for antialiased edges.
+    // Also pre-allocated for the same reason as the fill buffer.
     let outlineLine = null;
+    let outlineAttr = null;
     const outlineWidth = el.outlineWidth != null ? el.outlineWidth : (isRegular ? 1.5 : 0);
     if (outlineWidth > 0) {
         const outlineColor = parseColor(el.outlineColor || el.color || '#aa66ff');
+        outlineAttr = new THREE.Float32BufferAttribute(new Float32Array(512 * 3), 3);
+        outlineAttr.setUsage(THREE.DynamicDrawUsage);
         const outlineGeom = new THREE.BufferGeometry();
-        const outlinePositions = currentDataVerts.map(v => dataToWorld(v)).flat();
-        outlineGeom.setAttribute('position', new THREE.Float32BufferAttribute(outlinePositions, 3));
+        outlineGeom.setAttribute('position', outlineAttr);
+        const initOutlinePos = currentDataVerts.map(v => dataToWorld(v)).flat();
+        outlineAttr.array.set(initOutlinePos);
+        outlineAttr.needsUpdate = true;
+        outlineGeom.setDrawRange(0, currentDataVerts.length);
         const outlineMat = new THREE.LineBasicMaterial({
             color: new THREE.Color(...outlineColor),
             linewidth: outlineWidth,
@@ -3394,13 +3415,13 @@ function renderAnimatedPolygon(el, view) {
             const tSec = (nowMs - startTime) / 1000;
             try {
                 const verts = getVerts(tSec);
-                const posArray = rebuildGeometry(verts);
-                geom.setAttribute('position', new THREE.Float32BufferAttribute(posArray, 3));
-                geom.computeVertexNormals();
+                applyGeomVerts(verts);
 
                 if (outlineLine) {
                     const outlinePos = verts.map(v => dataToWorld(v)).flat();
-                    outlineLine.geometry.setAttribute('position', new THREE.Float32BufferAttribute(outlinePos, 3));
+                    outlineAttr.array.set(outlinePos);
+                    outlineAttr.needsUpdate = true;
+                    outlineLine.geometry.setDrawRange(0, verts.length);
                 }
 
                 if (labelEl) {
