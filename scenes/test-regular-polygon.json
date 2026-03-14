@@ -3,7 +3,7 @@
   "scenes": [
     {
       "title": "Regular Polygon",
-      "description": "Test scene for the `regular` substructure on `animated_polygon`. Drag the **N** slider to change the number of sides and watch the polygon converge to a circle.",
+      "description": "This scene tests the `regular` substructure available on both `animated_polygon` and `polygon`.\n\n**When to use `animated_polygon` with `regular`**: when the number of sides, radius, center, or rotation must respond to a slider or change over time. Every property inside `regular` is a live expression evaluated each frame.\n\n**When to use `polygon` with `regular`**: when the polygon is fixed — its shape is known at scene-load time and never changes. Zero per-frame cost; geometry is built once.\n\n**Rule of thumb**: start with `polygon`; switch to `animated_polygon` only when you need interactivity or animation.",
       "range": [[-2.5, 2.5], [-2.5, 2.5], [-1, 1]],
       "camera": { "position": [0, 0, 8], "target": [0, 0, 0] },
       "elements": [
@@ -12,8 +12,8 @@
       ],
       "steps": [
         {
-          "title": "Converging to a Circle",
-          "description": "A regular N-gon inscribed in the unit circle. As N increases, its perimeter converges to $2\\pi$.",
+          "title": "animated_polygon — Live N slider",
+          "description": "Uses `animated_polygon` with `regular`. All fields inside `regular` are **expression strings** — they can reference sliders, time `t`, or any scene function.\n\nDrag **N** to change the number of sides live. `fill_opacity`, `outline_width`, and `outline_opacity` are also expressions driving the material each frame.\n\n```json\n{\n  \"type\": \"animated_polygon\",\n  \"regular\": { \"n\": \"N\", \"radius\": \"1\", \"center\": [\"0\",\"0\",\"0\"], \"rotation\": \"0\" },\n  \"opacity\": \"fill_opacity\",\n  \"outlineWidth\": \"outline_width\",\n  \"outlineOpacity\": \"outline_opacity\"\n}\n```",
           "add": [
             {
               "id": "unit-circle",
@@ -86,8 +86,8 @@
           ]
         },
         {
-          "title": "Offset Center and Rotation",
-          "description": "The same regular polygon with a movable center and live rotation, testing all parameters of the `regular` substructure.",
+          "title": "animated_polygon — All regular parameters",
+          "description": "Tests every field in `regular`: `n`, `radius`, `center` (x/y), and `rotation`. Rotation is set to `\"t\"` so it animates with wall-clock time even without a playback slider.\n\nAll four fields independently accept slider variables or any valid expression.\n\n```json\n{\n  \"type\": \"animated_polygon\",\n  \"regular\": { \"n\": \"N\", \"radius\": \"R\", \"center\": [\"cx\",\"cy\",\"0\"], \"rotation\": \"t\" }\n}\n```",
           "remove": [
             { "id": "ngon" },
             { "id": "unit-circle" }
@@ -152,8 +152,8 @@
           ]
         },
         {
-          "title": "Static Regular Polygon",
-          "description": "Tests the static `polygon` element with the `regular` substructure. Values are plain numbers — no expressions, no animation.",
+          "title": "polygon — Static, zero per-frame cost",
+          "description": "Uses the static `polygon` element with `regular`. Fields inside `regular` are **plain numbers**, not expressions. Geometry is built once at scene load and never rebuilt — no updater, no expression evaluation, no GPU upload after init.\n\nUse this for fixed reference shapes, background geometry, or any polygon whose shape is determined by the scene design rather than user interaction.\n\n```json\n{\n  \"type\": \"polygon\",\n  \"regular\": { \"n\": 6, \"radius\": 0.8, \"center\": [0, 0, 0], \"rotation\": 0 },\n  \"outlineWidth\": 2\n}\n```",
           "remove": [
             { "id": "ngon2" }
           ],
