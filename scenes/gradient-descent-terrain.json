@@ -1245,14 +1245,6 @@
               "default": 45
             },
             {
-              "id": "speed_ncv",
-              "label": "animation speed",
-              "min": 0.2,
-              "max": 6,
-              "step": 0.1,
-              "default": 3
-            },
-            {
               "id": "t_ncv",
               "label": "$t$ (playback)",
               "min": 0,
