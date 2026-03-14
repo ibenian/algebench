@@ -359,6 +359,42 @@ Scenes can define their own reusable expression helpers in a top-level `function
 
 This is how the orbital scene implements apogee/perigee markers — the core `orbitX/orbitR` helpers are built into `app.js`, but the higher-level `orbitPeriX`, `orbitApoX` etc. are defined as scene functions in the JSON itself. Scene functions can call other scene functions and all built-in helpers, and can use IIFE expressions for loops or complex logic (which marks the scene as `unsafe`).
 
+#### Scope / available context inside a function body
+
+A function body is evaluated with the same scope that any other expression in the scene
+receives (assembled by `_buildScope()`). The following are all in scope:
+
+| What | How it gets there |
+|---|---|
+| All slider values | Every slider `id` declared in scene or step sliders is injected as a plain variable |
+| Virtual time `t` | Set to `frame.t` (resolved virtual time) before the function is called |
+| Other scene functions | Compiled and added to scope during scene load |
+| Domain library functions | Merged into scope for any domain listed in `"import"` |
+| Built-in math helpers | Always present (`lerp`, `clamp`, `sin`, `cos`, …) |
+
+Memory variables (`agentMemoryValues`) are **not** available inside scene functions when
+called from `animated_vector` / `parametric_curve` expressions. They are only injected
+for info-overlay expressions.
+
+So: **yes**, you can reference a slider `eta` directly by name inside a function body, and
+**yes**, you can reference `t` to get the current virtual time. These work the same way
+they do in any scene expression.
+
+#### Stateless execution
+
+Each call to a scene function receives a **fresh, independent scope**. There is no shared
+mutable state between calls — a function cannot write a variable that another function (or
+another call to the same function) reads back in the same frame. Every invocation is
+self-contained.
+
+#### Future consideration — caching for scene functions
+
+Two related but distinct caching features are tracked as open issues:
+
+**[#25 — Per-expression memoization](https://github.com/ibenian/algebench/issues/25)** — a read-only, per-`evalExpr` cache: if the same scene function is called more than once with identical arguments within one expression evaluation, return the cached result instead of re-running the body. Safe by construction (pure functions, cache discarded after each eval). Low implementation complexity.
+
+**[#26 — Mutable multi-level cache](https://github.com/ibenian/algebench/issues/26)** — a persistent, writable cache with three tiers: `frameCache` (cleared each animation frame), `stepCache` (cleared each simulation step), and `sceneCache` (cleared on scene load or slider change). Required for simulation-style scenes with heavy per-frame computation. Introduces evaluation-order dependencies and potential feedback loops; requires explicit dependency declarations from authors to remain correct.
+
 ---
 
 ## 8. Domain Library System
