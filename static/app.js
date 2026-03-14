@@ -3395,6 +3395,7 @@ function renderAnimatedPolygon(el, view) {
         outlineLine = new THREE.LineLoop(outlineGeom, outlineMat);
         outlineLine.renderOrder = mesh.renderOrder + 1;
         three.scene.add(outlineLine);
+        planeMeshes.push(outlineLine);
     }
 
     // Label at centroid
