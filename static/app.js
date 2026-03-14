@@ -5339,7 +5339,7 @@ function addInfoOverlay(id, content, position, stepDefined = false) {
 
         // AI ask button
         const aiBtn = makeAiAskButton('info-overlay-ai-btn', 'Ask AI about this',
-            () => { const ov = activeInfoOverlays[id]; return 'Can you explain this:\n' + (ov ? resolveInfoContent(ov.content).replace(/\\n/g, '\n') : '').trim(); });
+            () => { const ov = activeInfoOverlays[id]; return 'Can you explain this:\n' + (ov ? resolveInfoContent(ov.content) : '').trim(); });
         aiBtn.addEventListener('mousedown', e => e.stopPropagation()); // prevent drag on overlay
         el.appendChild(aiBtn);
 

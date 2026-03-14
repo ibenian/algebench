@@ -1252,6 +1252,12 @@
               "step": 0.1,
               "default": 3
             }
+          ],
+          "info": [
+            {
+              "id": "descent-step-values",
+              "content": "$$ \\mathbf{x}_{k+1} = \\mathbf{x}_k - \\eta\\,\\nabla f(\\mathbf{x}_k) $$\n\n$$\\begin{aligned}\\mathbf{x}_k &= ({{toFixed(xp,2)}},\\;{{toFixed(yp,2)}}) \\\\[4pt]\\eta &= {{toFixed(eta_ncv,4)}} \\\\[4pt]\\nabla_x f &= {{toFixed(4*xp*(xp^2+yp-11)+2*(xp+yp^2-7),3)}} \\\\[4pt]\\nabla_y f &= {{toFixed(2*(xp^2+yp-11)+4*yp*(xp+yp^2-7),3)}} \\\\[4pt]\\mathbf{x}_{k+1} &= ({{toFixed(xp-eta_ncv*(4*xp*(xp^2+yp-11)+2*(xp+yp^2-7)),3)}},\\;{{toFixed(yp-eta_ncv*(2*(xp^2+yp-11)+4*yp*(xp+yp^2-7)),3)}})\\end{aligned}$$"
+            }
           ]
         }
       ]
