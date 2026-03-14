@@ -38,7 +38,8 @@
               },
               "color": "#4da6ff",
               "opacity": "fill_opacity",
-              "outlineWidth": 2,
+              "outlineWidth": "outline_width",
+              "outlineOpacity": "outline_opacity",
               "outlineColor": "#88ccff"
             }
           ],
@@ -58,6 +59,22 @@
               "max": 0.8,
               "step": 0.05,
               "default": 0.35
+            },
+            {
+              "id": "outline_width",
+              "label": "outline width",
+              "min": 0,
+              "max": 6,
+              "step": 0.5,
+              "default": 2
+            },
+            {
+              "id": "outline_opacity",
+              "label": "outline opacity",
+              "min": 0,
+              "max": 1,
+              "step": 0.05,
+              "default": 0.9
             }
           ],
           "info": [
@@ -83,7 +100,8 @@
               },
               "color": "#ff9944",
               "opacity": "fill_opacity",
-              "outlineWidth": 1.5,
+              "outlineWidth": "outline_width",
+              "outlineOpacity": "outline_opacity",
               "outlineColor": "#ffcc88"
             }
           ],

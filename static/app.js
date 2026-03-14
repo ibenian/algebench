@@ -3374,9 +3374,18 @@ function renderAnimatedPolygon(el, view) {
     // Also pre-allocated for the same reason as the fill buffer.
     let outlineLine = null;
     let outlineAttr = null;
-    const outlineWidth = el.outlineWidth != null ? el.outlineWidth : (isRegular ? 1.5 : 0);
-    if (outlineWidth > 0) {
+    let outlineWidthExpr = null;
+    let outlineOpacityExpr = null;
+    const outlineWidthRaw = el.outlineWidth != null ? el.outlineWidth : (isRegular ? 1.5 : 0);
+    const outlineOpacityRaw = el.outlineOpacity != null ? el.outlineOpacity : null;
+    const outlineWidthInit = typeof outlineWidthRaw === 'string' ? (evalExpr(compileExpr(outlineWidthRaw), 0) || 1.5) : outlineWidthRaw;
+    if (outlineWidthInit > 0 || typeof outlineWidthRaw === 'string') {
+        if (typeof outlineWidthRaw === 'string') outlineWidthExpr = compileExpr(outlineWidthRaw);
+        if (outlineOpacityRaw != null && typeof outlineOpacityRaw === 'string') outlineOpacityExpr = compileExpr(outlineOpacityRaw);
         const outlineColor = parseColor(el.outlineColor || el.color || '#aa66ff');
+        const outlineOpacityInit = outlineOpacityRaw != null
+            ? (typeof outlineOpacityRaw === 'string' ? evalExpr(compileExpr(outlineOpacityRaw), 0) : outlineOpacityRaw)
+            : Math.min(1, opacity * 2);
         outlineAttr = new THREE.Float32BufferAttribute(new Float32Array(512 * 3), 3);
         outlineAttr.setUsage(THREE.DynamicDrawUsage);
         const outlineGeom = new THREE.BufferGeometry();
@@ -3387,9 +3396,9 @@ function renderAnimatedPolygon(el, view) {
         outlineGeom.setDrawRange(0, currentDataVerts.length);
         const outlineMat = new THREE.LineBasicMaterial({
             color: new THREE.Color(...outlineColor),
-            linewidth: outlineWidth,
+            linewidth: outlineWidthInit,
             transparent: true,
-            opacity: Math.min(1, (opacity * 2)),
+            opacity: outlineOpacityInit,
             depthWrite: false,
         });
         outlineLine = new THREE.LineLoop(outlineGeom, outlineMat);
@@ -3423,7 +3432,13 @@ function renderAnimatedPolygon(el, view) {
                 if (opacityExpr) {
                     const op = evalExpr(opacityExpr, tSec);
                     mat.opacity = displayParams.planeOpacity * (op / 0.5);
-                    if (outlineLine) outlineLine.material.opacity = Math.min(1, op * 2);
+                    if (outlineLine && !outlineOpacityExpr) outlineLine.material.opacity = Math.min(1, op * 2);
+                }
+                if (outlineLine && outlineWidthExpr) {
+                    outlineLine.material.linewidth = evalExpr(outlineWidthExpr, tSec);
+                }
+                if (outlineLine && outlineOpacityExpr) {
+                    outlineLine.material.opacity = evalExpr(outlineOpacityExpr, tSec);
                 }
 
                 if (outlineLine) {
