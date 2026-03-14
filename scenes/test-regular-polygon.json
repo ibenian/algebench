@@ -150,6 +150,50 @@
               "position": "top-left"
             }
           ]
+        },
+        {
+          "title": "Static Regular Polygon",
+          "description": "Tests the static `polygon` element with the `regular` substructure. Values are plain numbers — no expressions, no animation.",
+          "remove": [
+            { "id": "ngon2" }
+          ],
+          "add": [
+            {
+              "id": "static-tri",
+              "type": "polygon",
+              "regular": { "n": 3, "radius": 0.8, "center": [-1.2, 0, 0], "rotation": 0 },
+              "color": "#ff6666",
+              "opacity": 0.4,
+              "outlineWidth": 2,
+              "outlineColor": "#ff9999"
+            },
+            {
+              "id": "static-hex",
+              "type": "polygon",
+              "regular": { "n": 6, "radius": 0.8, "center": [0, 0, 0], "rotation": 0 },
+              "color": "#66cc88",
+              "opacity": 0.4,
+              "outlineWidth": 2,
+              "outlineColor": "#99ffbb"
+            },
+            {
+              "id": "static-oct",
+              "type": "polygon",
+              "regular": { "n": 8, "radius": 0.8, "center": [1.2, 0, 0], "rotation": 0.39 },
+              "color": "#aa88ff",
+              "opacity": 0.4,
+              "outlineWidth": 2,
+              "outlineColor": "#ccbbff",
+              "outlineOpacity": 0.9
+            }
+          ],
+          "info": [
+            {
+              "id": "info3",
+              "content": "Static polygons — triangle ($N=3$), hexagon ($N=6$), octagon ($N=8$). No sliders, no animation.",
+              "position": "top-left"
+            }
+          ]
         }
       ]
     }
