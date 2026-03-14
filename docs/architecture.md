@@ -218,9 +218,13 @@ Sliders are defined per-step in `step.sliders`. Each slider gets:
 
 This is the canonical way to hook a scrubable playback slider to a simulation. The pattern used in orbital-flight and gradient-descent scenes:
 
-1. Define an animated slider (e.g. `tau` 0→1, or `t_ncv` 0→80) with `"animate": true`.
-2. Set `"virtualTime": { "expr": "tau * T" }` (or `"t_ncv"`) on the step.
+1. Define an animated slider with `"animate": true`.
+2. Set `virtualTime` on the step so `t` maps to the desired simulation time.
 3. All `animated_vector`, `animated_point`, etc. expressions use `t` normally — they receive the remapped value transparently.
+
+Two common shapes:
+- **Normalized slider** (`tau` 0→1): `"expr": "tau * T"` where `T` is a separate slider holding the total duration. `t` becomes 0→T.
+- **Direct time slider** (`t_ncv` 0→80): `"expr": "t_ncv"`. The slider range already matches the simulation's time units, so no scaling is needed.
 
 Resolution order: step-level `virtualTime` overrides scene-level; if neither is set, raw wall time is used. The `_resolveVirtualAnimTime(rawT)` function in `app.js` performs the mapping, calling `evalExpr` with `useVirtualTime: false` to avoid infinite recursion.
 
