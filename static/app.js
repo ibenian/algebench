@@ -3370,41 +3370,39 @@ function renderAnimatedPolygon(el, view) {
     three.scene.add(mesh);
     planeMeshes.push(mesh);
 
-    // Optional outline: LineLoop drawn on top of the fill for antialiased edges.
-    // Also pre-allocated for the same reason as the fill buffer.
-    let outlineLine = null;
-    let outlineAttr = null;
+    // Optional outline: MathBox geometry-based line (supports real variable width unlike gl.lineWidth).
+    // Points are padded to a fixed max size; setDrawRange equivalent is achieved by repeating the
+    // last valid point so extra segments are zero-length and invisible.
+    let outlineArrayNode = null;
+    let outlineLineNode = null;
     let outlineWidthExpr = null;
     let outlineOpacityExpr = null;
+    const OUTLINE_MAX_PTS = 513; // max N + 1 for loop closure
+    function buildOutlinePts(dataVerts) {
+        const pts = dataVerts.map(v => dataToWorld(v));
+        pts.push(pts[0]); // close the loop
+        const last = pts[pts.length - 1];
+        while (pts.length < OUTLINE_MAX_PTS) pts.push(last); // pad with last point — zero-length segments are invisible
+        return pts;
+    }
     const outlineWidthRaw = el.outlineWidth != null ? el.outlineWidth : (isRegular ? 1.5 : 0);
     const outlineOpacityRaw = el.outlineOpacity != null ? el.outlineOpacity : null;
     const outlineWidthInit = typeof outlineWidthRaw === 'string' ? (evalExpr(compileExpr(outlineWidthRaw), 0) || 1.5) : outlineWidthRaw;
     if (outlineWidthInit > 0 || typeof outlineWidthRaw === 'string') {
         if (typeof outlineWidthRaw === 'string') outlineWidthExpr = compileExpr(outlineWidthRaw);
-        if (outlineOpacityRaw != null && typeof outlineOpacityRaw === 'string') outlineOpacityExpr = compileExpr(outlineOpacityRaw);
+        if (outlineOpacityRaw != null && typeof outlineOpacityRaw === 'string') outlineOpacityExpr = compileExpr(String(outlineOpacityRaw));
         const outlineColor = parseColor(el.outlineColor || el.color || '#aa66ff');
         const outlineOpacityInit = outlineOpacityRaw != null
-            ? (typeof outlineOpacityRaw === 'string' ? evalExpr(compileExpr(outlineOpacityRaw), 0) : outlineOpacityRaw)
+            ? (typeof outlineOpacityRaw === 'string' ? evalExpr(compileExpr(String(outlineOpacityRaw)), 0) : Number(outlineOpacityRaw))
             : Math.min(1, opacity * 2);
-        outlineAttr = new THREE.Float32BufferAttribute(new Float32Array(512 * 3), 3);
-        outlineAttr.setUsage(THREE.DynamicDrawUsage);
-        const outlineGeom = new THREE.BufferGeometry();
-        outlineGeom.setAttribute('position', outlineAttr);
-        const initOutlinePos = currentDataVerts.map(v => dataToWorld(v)).flat();
-        outlineAttr.array.set(initOutlinePos);
-        outlineAttr.needsUpdate = true;
-        outlineGeom.setDrawRange(0, currentDataVerts.length);
-        const outlineMat = new THREE.LineBasicMaterial({
+
+        outlineArrayNode = view.array({ channels: 3, width: OUTLINE_MAX_PTS, data: buildOutlinePts(currentDataVerts), live: true });
+        outlineLineNode = outlineArrayNode.line({
             color: new THREE.Color(...outlineColor),
-            linewidth: outlineWidthInit,
-            transparent: true,
+            width: outlineWidthInit,
             opacity: outlineOpacityInit,
-            depthWrite: false,
+            zBias: 2,
         });
-        outlineLine = new THREE.LineLoop(outlineGeom, outlineMat);
-        outlineLine.renderOrder = mesh.renderOrder + 1;
-        three.scene.add(outlineLine);
-        planeMeshes.push(outlineLine);
     }
 
     // Label at centroid
@@ -3432,20 +3430,16 @@ function renderAnimatedPolygon(el, view) {
                 if (opacityExpr) {
                     const op = evalExpr(opacityExpr, tSec);
                     mat.opacity = displayParams.planeOpacity * (op / 0.5);
-                    if (outlineLine && !outlineOpacityExpr) outlineLine.material.opacity = Math.min(1, op * 2);
+                    if (outlineLineNode && !outlineOpacityExpr) outlineLineNode.set('opacity', Math.min(1, op * 2));
                 }
-                if (outlineLine && outlineWidthExpr) {
-                    outlineLine.material.linewidth = evalExpr(outlineWidthExpr, tSec);
+                if (outlineArrayNode) {
+                    outlineArrayNode.set('data', buildOutlinePts(verts));
                 }
-                if (outlineLine && outlineOpacityExpr) {
-                    outlineLine.material.opacity = evalExpr(outlineOpacityExpr, tSec);
+                if (outlineLineNode && outlineWidthExpr) {
+                    outlineLineNode.set('width', evalExpr(outlineWidthExpr, tSec));
                 }
-
-                if (outlineLine) {
-                    const outlinePos = verts.map(v => dataToWorld(v)).flat();
-                    outlineAttr.array.set(outlinePos);
-                    outlineAttr.needsUpdate = true;
-                    outlineLine.geometry.setDrawRange(0, verts.length);
+                if (outlineLineNode && outlineOpacityExpr) {
+                    outlineLineNode.set('opacity', evalExpr(outlineOpacityExpr, tSec));
                 }
 
                 if (labelEl) {
