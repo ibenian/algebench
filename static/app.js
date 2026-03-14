@@ -5230,7 +5230,8 @@ function resolveInfoContent(template) {
 
 function updateInfoOverlays() {
     for (const ov of Object.values(activeInfoOverlays)) {
-        ov.contentEl.innerHTML = renderKaTeX(resolveInfoContent(ov.content), false);
+        const resolved = resolveInfoContent(ov.content);
+        ov.contentEl.innerHTML = renderKaTeX(resolved, false);
     }
 }
 
