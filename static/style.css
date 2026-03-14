@@ -343,6 +343,13 @@ html, body {
     white-space: pre-wrap;
     line-height: 1.5;
 }
+.ji-explanation-label {
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(120, 140, 200, 0.7);
+    margin-right: 4px;
+}
 .ji-unsafe-banner {
     padding: 6px 14px;
     font-size: 0.78em;

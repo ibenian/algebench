@@ -6939,7 +6939,7 @@ function _toggleJsIssuesPanel(panel) {
     const stateClass = trusted ? 'js-issues-state-trusted' : 'js-issues-state-untrusted';
 
     const explanationBlock = _sceneUnsafeExplanation
-        ? `<div class="ji-explanation">${_escHtml(_sceneUnsafeExplanation)}</div>`
+        ? `<div class="ji-explanation"><span class="ji-explanation-label">Scene-declared explanation:</span> ${_escHtml(_sceneUnsafeExplanation)}</div>`
         : '';
 
     const unsafeBanner = _sceneIsUnsafe
