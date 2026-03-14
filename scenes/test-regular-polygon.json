@@ -38,17 +38,6 @@
               },
               "color": "#4da6ff",
               "opacity": 0.35
-            },
-            {
-              "id": "ngon-outline",
-              "type": "parametric_curve",
-              "x": "cos(floor(t * N) / N * 2 * pi)",
-              "y": "sin(floor(t * N) / N * 2 * pi)",
-              "z": "0.001",
-              "range": [0, 1],
-              "samples": 512,
-              "color": "#4da6ff",
-              "width": 2
             }
           ],
           "sliders": [

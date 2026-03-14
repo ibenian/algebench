@@ -3354,6 +3354,26 @@ function renderAnimatedPolygon(el, view) {
     three.scene.add(mesh);
     planeMeshes.push(mesh);
 
+    // Optional outline: LineLoop drawn on top of the fill for antialiased edges
+    let outlineLine = null;
+    const outlineWidth = el.outlineWidth != null ? el.outlineWidth : (isRegular ? 1.5 : 0);
+    if (outlineWidth > 0) {
+        const outlineColor = parseColor(el.outlineColor || el.color || '#aa66ff');
+        const outlineGeom = new THREE.BufferGeometry();
+        const outlinePositions = currentDataVerts.map(v => dataToWorld(v)).flat();
+        outlineGeom.setAttribute('position', new THREE.Float32BufferAttribute(outlinePositions, 3));
+        const outlineMat = new THREE.LineBasicMaterial({
+            color: new THREE.Color(...outlineColor),
+            linewidth: outlineWidth,
+            transparent: true,
+            opacity: Math.min(1, (opacity * 2)),
+            depthWrite: false,
+        });
+        outlineLine = new THREE.LineLoop(outlineGeom, outlineMat);
+        outlineLine.renderOrder = mesh.renderOrder + 1;
+        three.scene.add(outlineLine);
+    }
+
     // Label at centroid
     let labelEl = null;
     if (label) {
@@ -3377,6 +3397,11 @@ function renderAnimatedPolygon(el, view) {
                 const posArray = rebuildGeometry(verts);
                 geom.setAttribute('position', new THREE.Float32BufferAttribute(posArray, 3));
                 geom.computeVertexNormals();
+
+                if (outlineLine) {
+                    const outlinePos = verts.map(v => dataToWorld(v)).flat();
+                    outlineLine.geometry.setAttribute('position', new THREE.Float32BufferAttribute(outlinePos, 3));
+                }
 
                 if (labelEl) {
                     labelEl.dataPos[0] = verts.reduce((s, v) => s + v[0], 0) / verts.length;
