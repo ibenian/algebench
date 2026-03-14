@@ -72,9 +72,17 @@ let _activeExprEvalFrame = null;   // tracks current eval scope for nested scene
 // ----- Expression Sandbox -----
 // Sandboxed math.js instance — no browser API access from expressions
 const _mathjs = math.create(math.all);
-_mathjs.import({
-    // Safe utility functions available in all expressions without trust
+// ── Math.js extensions ────────────────────────────────────────────────────────
+// Add custom helper functions HERE ONLY. They are automatically imported into
+// both the math.js evaluator (_mathjs.import) and the JS fallback scope
+// (_EXPR_HELPERS), so both evaluators always stay consistent.
+// Do NOT add helpers directly to _mathjs.import or _EXPR_HELPERS.
+const _MATHJS_EXTENSIONS = {
     toFixed: (val, decimals) => Number(val).toFixed(Number(decimals)),
+};
+
+_mathjs.import({
+    ..._MATHJS_EXTENSIONS,
     // Disable escape hatches — must come after custom functions
     import:     function() { throw new Error('import disabled'); },
     createUnit: function() { throw new Error('createUnit disabled'); },
@@ -4399,7 +4407,8 @@ function _sliderValueNum(id, fallback = 0) {
 
 // --- Orbital simulation moved to static/domains/astrodynamics/index.js ---
 
-const _EXPR_HELPERS = {};
+// Populated from _MATHJS_EXTENSIONS — do not add helpers here directly.
+const _EXPR_HELPERS = { ..._MATHJS_EXTENSIONS };
 
 // Core math/helper names for JS fallback execution.
 const _CORE_MATH_NAMES = ['sin','cos','tan','asin','acos','atan','atan2','sinh','cosh','tanh',
