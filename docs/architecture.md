@@ -198,6 +198,32 @@ Sliders are defined per-step in `step.sliders`. Each slider gets:
 - Its value stored in `sceneSliders[id].value`
 - An animation system (`set_sliders` tool) that tweens values over ~800ms
 
+**Animated sliders** — sliders with `"animate": true` grow a ▶/⏸ play button and self-drive their own value over time via a dedicated `requestAnimationFrame` loop (`startSliderLoop`). Three modes:
+
+| `animateMode` | Behaviour |
+|---|---|
+| `loop` (default) | Sawtooth 0 → max, then wraps instantly back to 0 |
+| `once` | Runs 0 → max once then stops |
+| `pingpong` | Oscillates 0 → max → 0 repeatedly |
+
+`duration` (ms) sets the period of one full sweep. Animated sliders auto-start unless `"autoplay": false`.
+
+#### Virtual Time
+
+`virtualTime` is a step- or scene-level field that remaps the animation clock `t` for **all** animated elements in that step/scene. Instead of `t` being raw wall-clock seconds since scene load, every `evalExpr` call passes the result of the `virtualTime` expression as `t`.
+
+```json
+"virtualTime": { "expr": "tau * T" }
+```
+
+This is the canonical way to hook a scrubable playback slider to a simulation. The pattern used in orbital-flight and gradient-descent scenes:
+
+1. Define an animated slider (e.g. `tau` 0→1, or `t_ncv` 0→80) with `"animate": true`.
+2. Set `"virtualTime": { "expr": "tau * T" }` (or `"t_ncv"`) on the step.
+3. All `animated_vector`, `animated_point`, etc. expressions use `t` normally — they receive the remapped value transparently.
+
+Resolution order: step-level `virtualTime` overrides scene-level; if neither is set, raw wall time is used. The `_resolveVirtualAnimTime(rawT)` function in `app.js` performs the mapping, calling `evalExpr` with `useVirtualTime: false` to avoid infinite recursion.
+
 #### Camera System
 
 Three modes:
@@ -462,11 +488,14 @@ Scenes are standalone JSON files loaded at startup or dropped into the browser.
   "title": "Step title",
   "description": "Caption shown below viewport",
   "camera": { "position": [...], "target": [...] },
+  "virtualTime": { "expr": "tau * T" },
   "sliders": [ { slider }, ... ],
   "add": [ { element }, ... ],
   "info": [ { overlay }, ... ]
 }
 ```
+
+`virtualTime` remaps `t` for all animated elements in this step. See **Virtual Time** in Section 5.
 
 ### Slider Object
 
