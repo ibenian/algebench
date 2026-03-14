@@ -105,6 +105,8 @@ let _sceneJsTrustState = null;
 // Issues collected by _scanSpecForUnsafeJs; reset on each scene load.
 // Each entry: { path, expr, type }  where type is 'expr' or 'template'.
 let _sceneJsIssues = [];
+// True when the scene has "unsafe":true — entire scene opted in to native JS.
+let _sceneIsUnsafe = false;
 // Prefer OrbitControls so modifier-based pan behavior is consistent.
 const CONTROL_CLASS = (typeof THREE !== 'undefined' && THREE.OrbitControls) ? THREE.OrbitControls : THREE.TrackballControls;
 let sceneUp = [0, 1, 0];           // scene's up vector (set per-scene in buildCameraButtons)
@@ -4294,11 +4296,12 @@ function _updateJsTrustPill() {
         pill.classList.add('hidden');
     }
     // Clicking the pill opens the JSON viewer and jumps straight to the issues report.
-    pill.onclick = _sceneJsIssues.length > 0 ? () => {
+    const pillClickable = _sceneIsUnsafe || _sceneJsIssues.length > 0;
+    pill.onclick = pillClickable ? () => {
         document.getElementById('btn-show-json').click();
         _toggleJsIssuesPanel(document.getElementById('json-viewer-issues'));
     } : null;
-    pill.style.cursor = _sceneJsIssues.length > 0 ? 'pointer' : '';
+    pill.style.cursor = pillClickable ? 'pointer' : '';
 }
 
 // ----- Lesson Navigation -----
@@ -4314,8 +4317,11 @@ async function loadLesson(spec) {
     // The unsafe_explanation is shown in the dialog in either case.
     _sceneJsTrustState = null;
     _sceneJsIssues = [];
+    _sceneIsUnsafe = false;
     if (spec) {
-        const needsDialog = spec.unsafe === true || _scanSpecForUnsafeJs(spec);
+        _sceneIsUnsafe = spec.unsafe === true;
+        const scanned = _scanSpecForUnsafeJs(spec);
+        const needsDialog = _sceneIsUnsafe || scanned;
         if (needsDialog) {
             const explanation = spec.unsafe_explanation ||
                 'This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.';
@@ -6928,6 +6934,10 @@ function _toggleJsIssuesPanel(panel) {
         : '⚠ JS Disabled — expressions are no-ops (returning 0 / "?")';
     const stateClass = trusted ? 'js-issues-state-trusted' : 'js-issues-state-untrusted';
 
+    const unsafeBanner = _sceneIsUnsafe
+        ? `<div class="ji-unsafe-banner">⚠ This scene sets <code>unsafe: true</code> — all expressions execute as native JavaScript regardless of pattern matching.</div>`
+        : '';
+
     const rows = _sceneJsIssues.map(({ path, expr, type }) => {
         const truncExpr = expr.length > 60 ? expr.slice(0, 57) + '…' : expr;
         const typeLabel = type === 'template' ? '{{…}} template' : 'expr field';
@@ -6940,11 +6950,16 @@ function _toggleJsIssuesPanel(panel) {
         </tr>`;
     }).join('');
 
+    const noRows = _sceneJsIssues.length === 0
+        ? `<tr><td colspan="4" class="ji-empty">No specific JS patterns detected — scene uses <code>unsafe: true</code> to opt in globally.</td></tr>`
+        : '';
+
     panel.innerHTML =
         `<div class="ji-header ${stateClass}">${stateLabel}</div>` +
+        unsafeBanner +
         `<div class="ji-scroll"><table class="ji-table">` +
         `<thead><tr><th>JSON Path</th><th>Expression</th><th>Type</th><th>Action</th></tr></thead>` +
-        `<tbody>${rows}</tbody></table></div>`;
+        `<tbody>${rows || noRows}</tbody></table></div>`;
     panel.classList.remove('hidden');
 }
 
@@ -7025,16 +7040,17 @@ function setupJsonViewer() {
                 desc.textContent = s.description;
                 summaryBar.appendChild(desc);
             }
-            // JS Issues badge — only when trust dialog was triggered
+            // JS Issues badge — shown when trust dialog was triggered
             const existingBadge = summaryBar.querySelector('.summary-stat-js-issues');
             if (existingBadge) existingBadge.remove();
-            if (_sceneJsIssues.length > 0) {
+            if (_sceneIsUnsafe || _sceneJsIssues.length > 0) {
                 const trusted = _sceneJsTrustState === 'trusted';
+                const count = _sceneIsUnsafe && _sceneJsIssues.length === 0 ? '!' : _sceneJsIssues.length;
                 const badge = document.createElement('span');
                 badge.className = 'summary-stat summary-stat-js-issues' + (trusted ? ' js-trusted' : ' js-untrusted');
                 badge.title = 'Click to view detected JavaScript expressions and trust status';
                 badge.innerHTML =
-                    `<span class="summary-stat-value">${_sceneJsIssues.length}</span>` +
+                    `<span class="summary-stat-value">${count}</span>` +
                     `<span class="summary-stat-label">JS ${trusted ? '⚡' : '⚠'}</span>`;
                 summaryBar.appendChild(badge);
                 badge.addEventListener('click', () => _toggleJsIssuesPanel(issuesPanel));

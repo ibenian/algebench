@@ -335,6 +335,21 @@ html, body {
 .ji-type { color: rgba(150, 160, 200, 0.65); font-size: 0.9em; }
 .ji-running { color: rgba(100, 220, 120, 0.9); }
 .ji-disabled { color: rgba(255, 140, 60, 0.9); }
+.ji-unsafe-banner {
+    padding: 6px 14px;
+    font-size: 0.78em;
+    color: rgba(255, 200, 80, 0.85);
+    background: rgba(255, 160, 20, 0.08);
+    border-bottom: 1px solid rgba(255, 140, 20, 0.2);
+}
+.ji-unsafe-banner code { color: rgba(255, 220, 100, 0.95); }
+.ji-empty {
+    padding: 12px 14px;
+    color: rgba(150, 160, 200, 0.6);
+    font-style: italic;
+    text-align: center;
+}
+.ji-empty code { color: rgba(200, 180, 100, 0.8); }
 #json-viewer-imports {
     display: flex;
     align-items: center;
