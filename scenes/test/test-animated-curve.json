@@ -229,6 +229,84 @@
               "position": "top-left"
             }
           ]
+        },
+        {
+          "title": "Vertical boundaries with rightOf / leftOf",
+          "description": "Both fill regions now also use `rightOf: \"L\"` and `leftOf: \"R\"` — the fills only appear between x=L and x=R. Two `animated_line` elements mark the boundary positions as dashed vertical lines that move with the sliders.",
+          "remove": [{ "id": "cos-line2" }, { "id": "sin-fill2" }],
+          "add": [
+            {
+              "id": "cos-line3",
+              "type": "animated_curve",
+              "expr": "B * cos(x + psi) - C",
+              "range": [0, 6.2832],
+              "samples": 200,
+              "color": "#ff5566",
+              "width": 2.5,
+              "opacity": 0.9
+            },
+            {
+              "id": "sin-fill3",
+              "type": "animated_curve",
+              "expr": "A * sin(x + phi)",
+              "range": [0, 6.2832],
+              "samples": 200,
+              "color": "#44ccff",
+              "width": 2.5,
+              "opacity": 0.9,
+              "fill_regions": [
+                {
+                  "id": "above-clipped",
+                  "color": "#66aaff",
+                  "opacity": 0.4,
+                  "above": "B * cos(x + psi) - C",
+                  "rightOf": "L",
+                  "leftOf": "R",
+                  "outlineWidth": "outline_w",
+                  "outlineColor": "#ffffff",
+                  "outlineOpacity": "outline_op"
+                },
+                {
+                  "id": "below-clipped",
+                  "color": "#ff7788",
+                  "opacity": 0.4,
+                  "below": "B * cos(x + psi) - C",
+                  "rightOf": "L",
+                  "leftOf": "R",
+                  "outlineWidth": "outline_w",
+                  "outlineColor": "#ffffff",
+                  "outlineOpacity": "outline_op"
+                }
+              ]
+            },
+            {
+              "id": "bound-left",
+              "type": "animated_line",
+              "points": [["L", "-2.5", "0"], ["L", "2.5", "0"]],
+              "color": "#ffdd44",
+              "width": 1.5,
+              "opacity": 0.7
+            },
+            {
+              "id": "bound-right",
+              "type": "animated_line",
+              "points": [["R", "-2.5", "0"], ["R", "2.5", "0"]],
+              "color": "#ffdd44",
+              "width": 1.5,
+              "opacity": 0.7
+            }
+          ],
+          "sliders": [
+            { "id": "L", "label": "$L$ — left boundary",  "min": 0, "max": 6.2832, "step": 0.1, "default": 1 },
+            { "id": "R", "label": "$R$ — right boundary", "min": 0, "max": 6.2832, "step": 0.1, "default": 5.2 }
+          ],
+          "info": [
+            {
+              "id": "info6",
+              "content": "Fill active for ${{toFixed(L,2)}} \\leq x \\leq {{toFixed(R,2)}}$",
+              "position": "top-left"
+            }
+          ]
         }
       ]
     }
