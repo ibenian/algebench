@@ -3622,8 +3622,6 @@ function renderAnimatedCurve(el, view) {
 
     function updateFillMesh(entry, tSec, pts) {
         const { cAbove, cBelow, cRightOf, cLeftOf, fillAttr, fillGeom } = entry;
-        const rightOfX = cRightOf ? evalExpr(cRightOf, tSec) : null; // fill where x >= rightOfX
-        const leftOfX  = cLeftOf  ? evalExpr(cLeftOf,  tSec) : null; // fill where x <= leftOfX
         const floats = fillAttr.array;
         let idx = 0;
 
@@ -3631,8 +3629,14 @@ function renderAnimatedCurve(el, view) {
             const x0 = pts[i][0],   x1 = pts[i + 1][0];
             const cy0 = pts[i][1],  cy1 = pts[i + 1][1];
 
-            if (rightOfX != null && x1 < rightOfX) continue; // quad fully left of rightOf bound
-            if (leftOfX  != null && x0 > leftOfX)  continue; // quad fully right of leftOf bound
+            // rightOf/leftOf evaluated per-sample with x in scope (supports "m * x + b")
+            const rightOf0 = cRightOf ? evalBound(cRightOf, x0, tSec) : null;
+            const rightOf1 = cRightOf ? evalBound(cRightOf, x1, tSec) : null;
+            const leftOf0  = cLeftOf  ? evalBound(cLeftOf,  x0, tSec) : null;
+            const leftOf1  = cLeftOf  ? evalBound(cLeftOf,  x1, tSec) : null;
+
+            if (rightOf0 != null && x1 < rightOf0 && x1 < rightOf1) continue;
+            if (leftOf0  != null && x0 > leftOf0  && x0 > leftOf1)  continue;
 
             // Evaluate per-sample boundaries (supports x-dependent exprs like "cos(x)-1")
             const aboveY0 = cAbove ? evalBound(cAbove, x0, tSec) : null;
@@ -3685,15 +3689,15 @@ function renderAnimatedCurve(el, view) {
     // Traces: top side left→right, right vertical cap, bottom side right→left, left vertical cap, closure.
     function buildOutlinePts(entry, tSec, pts) {
         const { cAbove, cBelow, cRightOf, cLeftOf } = entry;
-        const rightOfX = cRightOf ? evalExpr(cRightOf, tSec) : null;
-        const leftOfX  = cLeftOf  ? evalExpr(cLeftOf,  tSec) : null;
 
         // Collect samples within the x membership bounds
         const clipped = [];
         for (const p of pts) {
             const x = p[0], cy = p[1];
-            if (rightOfX != null && x < rightOfX - 1e-9) continue;
-            if (leftOfX  != null && x > leftOfX  + 1e-9) continue;
+            const rightOfV = cRightOf ? evalBound(cRightOf, x, tSec) : null;
+            const leftOfV  = cLeftOf  ? evalBound(cLeftOf,  x, tSec) : null;
+            if (rightOfV != null && x < rightOfV - 1e-9) continue;
+            if (leftOfV  != null && x > leftOfV  + 1e-9) continue;
             let topY, botY;
             if (cAbove != null && cBelow != null) {
                 // Band fill: outline spans between the two expressions directly
