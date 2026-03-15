@@ -2321,7 +2321,8 @@ function renderAnimatedVector(el, view) {
     const keyframes = el.keyframes || [];
     const duration = el.duration || 2000;
     const loop = el.loop !== false;
-    const exprStrings = el.expr || el.toExpr; // array of 3 JS expression strings using 't'
+    const exprStrings = el.expr || el.toExpr
+        || (Array.isArray(el.to) && el.to.length === 3 ? el.to.map(v => String(v)) : null); // array of 3 JS expression strings using 't'
     const fromExprStrings = el.fromExpr; // optional array of 3 JS expression strings for dynamic origin
     const visibleExprString = (typeof el.visibleExpr === 'string' && el.visibleExpr.trim()) ? el.visibleExpr.trim() : null;
     const labelShowAltitude = !!el.labelShowAltitude;
@@ -2939,7 +2940,8 @@ function renderAnimatedPoint(el, view) {
     const color = parseColor(el.color || '#ffdd00');
     const radius = el.radius !== undefined ? el.radius : 0.25; // data-space radius (m in this scene)
     const label = el.label;
-    const exprStrings = el.expr || el.positionExpr || el.toExpr;
+    const exprStrings = el.expr || el.positionExpr || el.toExpr
+        || (Array.isArray(el.position) && el.position.length === 3 ? el.position.map(v => String(v)) : null);
     const visibleExprString = (typeof el.visibleExpr === 'string' && el.visibleExpr.trim()) ? el.visibleExpr.trim() : null;
 
     if (!Array.isArray(exprStrings) || exprStrings.length !== 3) return null;
@@ -5241,6 +5243,7 @@ function buildSliderOverlay() {
                 playBtn.textContent = s._loopPlaying ? '⏸' : '▶';
                 playBtn.title = s._loopPlaying ? 'Pause animation' : 'Play animation';
             };
+            s._onPlayStateChange = updatePlayBtn;
             updatePlayBtn();
             playBtn.addEventListener('click', () => {
                 if (s._loopPlaying) {
@@ -5313,6 +5316,10 @@ function registerSliders(sliderDefs) {
     if (!sliderDefs || !Array.isArray(sliderDefs)) return [];
     const ids = [];
     for (const def of sliderDefs) {
+        // Stop any existing loop for this id before overwriting the slider state.
+        // The old tick closure still holds a reference to the old object, so
+        // we must stop it here — otherwise two loops run for the same slider id.
+        if (sceneSliders[def.id]) stopSliderLoop(def.id);
         sceneSliders[def.id] = {
             value: def.default !== undefined ? def.default : (def.min + def.max) / 2,
             min: def.min !== undefined ? def.min : 0,
@@ -5343,10 +5350,14 @@ function startSliderLoop(id) {
     const slider = sceneSliders[id];
     if (!slider) return;
     slider._loopPlaying = true;
+    if (typeof slider._onPlayStateChange === 'function') slider._onPlayStateChange();
     const range = slider.max - slider.min;
     const period = slider.duration;
     const mode = (slider.animateMode || 'loop');
-    const startTime = performance.now();
+    // Resume from current position; for 'once' mode already at end, restart from beginning.
+    const rawResumeT = range > 0 ? Math.max(0, Math.min(1, (slider.value - slider.min) / range)) : 0;
+    const resumeT = (mode === 'once' && rawResumeT >= 1) ? 0 : rawResumeT;
+    const startTime = performance.now() - resumeT * period;
 
     function tick(now) {
         if (!slider._loopPlaying || !sceneSliders[id]) return;
@@ -5358,6 +5369,7 @@ function startSliderLoop(id) {
             tNorm = Math.min(elapsed, 1);                   // one-shot 0→1 then stop
             if (tNorm >= 1) {
                 slider._loopPlaying = false;
+                if (typeof slider._onPlayStateChange === 'function') slider._onPlayStateChange();
             }
         } else {
             const phase = elapsed % 2;                      // 0–2 repeating
@@ -5388,6 +5400,7 @@ function stopSliderLoop(id) {
         cancelAnimationFrame(slider._loopRaf);
         slider._loopRaf = null;
     }
+    if (typeof slider._onPlayStateChange === 'function') slider._onPlayStateChange();
 }
 
 function stopAllSliderLoops() {
@@ -6070,6 +6083,7 @@ function removeTrackSliders(tracker) {
     for (const id of Object.keys(sceneSliders)) {
         if (ownIds.has(id)) continue;
         if (!tracker.removedSliders[id]) {
+            stopSliderLoop(id);
             tracker.removedSliders[id] = { ...sceneSliders[id] };
             delete sceneSliders[id];
             changed = true;
@@ -6085,6 +6099,7 @@ function removeTrackSliderById(id, tracker) {
     // Skip sliders owned by this step
     if (tracker.sliderIds && tracker.sliderIds.includes(id)) return false;
     if (sceneSliders[id] && !tracker.removedSliders[id]) {
+        stopSliderLoop(id);
         tracker.removedSliders[id] = { ...sceneSliders[id] };
         delete sceneSliders[id];
         return true;
