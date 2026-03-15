@@ -148,7 +148,7 @@
               "type": "animated_point",
               "position": ["N", "partialLeibniz()", "0"],
               "color": "#ff8844",
-              "size": 10
+              "radius": 0.04
             }
           ],
           "sliders": [
@@ -198,7 +198,7 @@
               "type": "animated_point",
               "position": ["N", "baselSum()", "0"],
               "color": "#ff8844",
-              "size": 10
+              "radius": 0.04
             }
           ],
           "sliders": [
@@ -293,11 +293,11 @@
               "type": "animated_point",
               "position": ["1", "compoundVal()", "0"],
               "color": "#ff8844",
-              "size": 10
+              "radius": 0.04
             }
           ],
           "sliders": [
-            { "id": "n", "label": "$n$ (compounding periods)", "min": 1, "max": 500, "step": 1, "default": 1 }
+            { "id": "n", "label": "$n$ (compounding periods)", "min": 0, "max": 50, "step": 1, "default": 0, "animate": true, "animateMode": "loop", "duration": 6000 }
           ],
           "info": [
             {
@@ -547,7 +547,7 @@
         {
           "title": "The Gaussian Integral — ∫e^(−x²)dx = √π",
           "description": "The bell-shaped surface $z = e^{-(x^2+y^2)}$ has total volume exactly $\\pi$. The gold cross-section shows $e^{-x^2}$ along the x-axis — integrating it gives $\\sqrt{\\pi}$. The proof squares the integral, rewrites the double integral in polar coordinates, and the $2\\pi$ from the full rotation around the z-axis delivers $\\pi$. π enters through the circular symmetry of the Gaussian — the same circle constant that appeared in Archimedes' polygons.",
-          "remove": [{ "id": "guide-circle" }, { "id": "euler-id-vec" }, { "id": "plus-one-vec" }, { "id": "neg-one-pt" }, { "id": "zero-pt" }],
+          "remove": [{ "id": "guide-circle" }, { "id": "euler-id-vec" }, { "id": "euler-id-dot" }, { "id": "plus-one-vec" }, { "id": "neg-one-pt" }, { "id": "zero-pt" }, { "type": "slider" }],
           "camera": { "position": [4, -5, 6], "target": [0, 0, 0] },
           "range": [[-3, 3], [-3, 3], [0, 1.2]],
           "add": [
