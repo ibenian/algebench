@@ -152,9 +152,9 @@
                   "color": "#66aaff",
                   "opacity": 0.35,
                   "above": "B * cos(x + psi) - C",
-                  "outlineWidth": 1.5,
+                  "outlineWidth": "outline_w",
                   "outlineColor": "#ffffff",
-                  "outlineOpacity": 0.25
+                  "outlineOpacity": "outline_op"
                 }
               ]
             }
@@ -164,7 +164,9 @@
             { "id": "phi", "label": "$\\varphi$ — sin phase","min": -3.14, "max": 3.14, "step": 0.1, "default": 0 },
             { "id": "B",   "label": "$B$ — cos amplitude",  "min": 0.1, "max": 2,    "step": 0.1,  "default": 1 },
             { "id": "psi", "label": "$\\psi$ — cos phase",  "min": -3.14, "max": 3.14, "step": 0.1, "default": 0 },
-            { "id": "C",   "label": "$C$ — cos offset",     "min": -2,  "max": 2,    "step": 0.1,  "default": 1 }
+            { "id": "C",       "label": "$C$ — cos offset",     "min": -2,  "max": 2,    "step": 0.1,  "default": 1 },
+            { "id": "outline_w", "label": "outline width",       "min": 0,   "max": 6,    "step": 0.5,  "default": 1.5 },
+            { "id": "outline_op","label": "outline opacity",     "min": 0,   "max": 1,    "step": 0.05, "default": 0.25 }
           ],
           "info": [
             {
