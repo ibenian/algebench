@@ -3556,10 +3556,10 @@ function renderAnimatedCurve(el, view) {
         const frOpacityRaw = fr.opacity != null ? fr.opacity : 0.35;
         const frOpacityExpr = typeof frOpacityRaw === 'string' ? compileExpr(frOpacityRaw) : null;
         const frOpacity = frOpacityExpr ? evalExpr(frOpacityExpr, 0) : Number(frOpacityRaw);
-        const cAbove = fr.above != null ? compileExpr(String(fr.above)) : null;
-        const cBelow = fr.below != null ? compileExpr(String(fr.below)) : null;
-        const cLeft  = fr.left  != null ? compileExpr(String(fr.left))  : null;
-        const cRight = fr.right != null ? compileExpr(String(fr.right)) : null;
+        const cAbove   = fr.above   != null ? compileExpr(String(fr.above))   : null;
+        const cBelow   = fr.below   != null ? compileExpr(String(fr.below))   : null;
+        const cRightOf = fr.rightOf != null ? compileExpr(String(fr.rightOf)) : null; // fill where x >= rightOf
+        const cLeftOf  = fr.leftOf  != null ? compileExpr(String(fr.leftOf))  : null; // fill where x <= leftOf
 
         const fillAttr = new THREE.Float32BufferAttribute(new Float32Array(FILL_MAX_FLOATS), 3);
         fillAttr.setUsage(THREE.DynamicDrawUsage);
@@ -3607,7 +3607,7 @@ function renderAnimatedCurve(el, view) {
             });
         }
 
-        return { fr, frOpacityExpr, frOpacity, cAbove, cBelow, cLeft, cRight, fillAttr, fillGeom, fillMat,
+        return { fr, frOpacityExpr, frOpacity, cAbove, cBelow, cRightOf, cLeftOf, fillAttr, fillGeom, fillMat,
                  cBoundary, outlineArrayNode, outlineLineNode, outlineWidthExpr, outlineOpacityExpr, outlineOpacityRaw, frOpacity };
     });
 
@@ -3621,9 +3621,9 @@ function renderAnimatedCurve(el, view) {
     }
 
     function updateFillMesh(entry, tSec, pts) {
-        const { cAbove, cBelow, cLeft, cRight, fillAttr, fillGeom } = entry;
-        const leftX  = cLeft  ? evalExpr(cLeft,  tSec) : null;
-        const rightX = cRight ? evalExpr(cRight, tSec) : null;
+        const { cAbove, cBelow, cRightOf, cLeftOf, fillAttr, fillGeom } = entry;
+        const rightOfX = cRightOf ? evalExpr(cRightOf, tSec) : null; // fill where x >= rightOfX
+        const leftOfX  = cLeftOf  ? evalExpr(cLeftOf,  tSec) : null; // fill where x <= leftOfX
         const floats = fillAttr.array;
         let idx = 0;
 
@@ -3631,8 +3631,8 @@ function renderAnimatedCurve(el, view) {
             const x0 = pts[i][0],   x1 = pts[i + 1][0];
             const cy0 = pts[i][1],  cy1 = pts[i + 1][1];
 
-            if (leftX  != null && x1 < leftX)  continue;
-            if (rightX != null && x0 > rightX)  continue;
+            if (rightOfX != null && x1 < rightOfX) continue; // quad fully left of rightOf bound
+            if (leftOfX  != null && x0 > leftOfX)  continue; // quad fully right of leftOf bound
 
             // Evaluate per-sample boundaries (supports x-dependent exprs like "cos(x)-1")
             const aboveY0 = cAbove ? evalBound(cAbove, x0, tSec) : null;
@@ -3683,16 +3683,16 @@ function renderAnimatedCurve(el, view) {
     // Build a closed perimeter loop for a fill region outline.
     // Traces: top side left→right, right vertical cap, bottom side right→left, left vertical cap, closure.
     function buildOutlinePts(entry, tSec, pts) {
-        const { cAbove, cBelow, cLeft, cRight } = entry;
-        const leftX  = cLeft  ? evalExpr(cLeft,  tSec) : null;
-        const rightX = cRight ? evalExpr(cRight, tSec) : null;
+        const { cAbove, cBelow, cRightOf, cLeftOf } = entry;
+        const rightOfX = cRightOf ? evalExpr(cRightOf, tSec) : null;
+        const leftOfX  = cLeftOf  ? evalExpr(cLeftOf,  tSec) : null;
 
-        // Collect clipped samples with top/bottom Y at each x
+        // Collect samples within the x membership bounds
         const clipped = [];
         for (const p of pts) {
             const x = p[0], cy = p[1];
-            if (leftX  != null && x < leftX - 1e-9) continue;
-            if (rightX != null && x > rightX + 1e-9) continue;
+            if (rightOfX != null && x < rightOfX - 1e-9) continue;
+            if (leftOfX  != null && x > leftOfX  + 1e-9) continue;
             let topY, botY;
             if (cAbove != null && cBelow != null) {
                 topY = Math.min(cy, evalBound(cBelow, x, tSec));
