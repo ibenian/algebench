@@ -175,6 +175,60 @@
               "position": "top-left"
             }
           ]
+        },
+        {
+          "title": "Above and below — both regions at once",
+          "description": "Same two curves, now with two fill regions on the sin curve. `above: \"B·cos(x+ψ)−C\"` (blue) fills where sin is on top; `below: \"B·cos(x+ψ)−C\"` (red) fills where cos is on top. Together they shade the complete area between the curves in two colors.",
+          "remove": [{ "id": "cos-line" }, { "id": "sin-fill" }],
+          "add": [
+            {
+              "id": "cos-line2",
+              "type": "animated_curve",
+              "expr": "B * cos(x + psi) - C",
+              "range": [0, 6.2832],
+              "samples": 200,
+              "color": "#ff5566",
+              "width": 2.5,
+              "opacity": 0.9
+            },
+            {
+              "id": "sin-fill2",
+              "type": "animated_curve",
+              "expr": "A * sin(x + phi)",
+              "range": [0, 6.2832],
+              "samples": 200,
+              "color": "#44ccff",
+              "width": 2.5,
+              "opacity": 0.9,
+              "fill_regions": [
+                {
+                  "id": "above-region",
+                  "color": "#66aaff",
+                  "opacity": 0.4,
+                  "above": "B * cos(x + psi) - C",
+                  "outlineWidth": "outline_w",
+                  "outlineColor": "#ffffff",
+                  "outlineOpacity": "outline_op"
+                },
+                {
+                  "id": "below-region",
+                  "color": "#ff7788",
+                  "opacity": 0.4,
+                  "below": "B * cos(x + psi) - C",
+                  "outlineWidth": "outline_w",
+                  "outlineColor": "#ffffff",
+                  "outlineOpacity": "outline_op"
+                }
+              ]
+            }
+          ],
+          "info": [
+            {
+              "id": "info5",
+              "content": "Blue: $\\sin \\geq \\cos{-}C$ \\quad Red: $\\sin \\leq \\cos{-}C$",
+              "position": "top-left"
+            }
+          ]
         }
       ]
     }
