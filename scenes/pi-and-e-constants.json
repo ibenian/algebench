@@ -136,7 +136,7 @@
             {
               "id": "sum-point",
               "type": "animated_point",
-              "position": ["N", "partialLeibniz", "0"],
+              "position": ["N", "partialLeibniz()", "0"],
               "color": "#ff8844",
               "size": 10
             }
@@ -147,7 +147,7 @@
           "info": [
             {
               "id": "info3",
-              "content": "$$S_N = \\sum_{k=0}^{N-1}\\frac{(-1)^k}{2k+1} = {{toFixed(partialLeibniz, 6)}} \\quad \\Rightarrow \\quad \\pi \\approx 4 S_N = {{toFixed(4*partialLeibniz, 6)}}$$",
+              "content": "$$S_N = \\sum_{k=0}^{N-1}\\frac{(-1)^k}{2k+1} = {{toFixed(partialLeibniz(), 6)}} \\quad \\Rightarrow \\quad \\pi \\approx 4 S_N = {{toFixed(4*partialLeibniz(), 6)}}$$",
               "position": "top-left"
             }
           ]
@@ -181,7 +181,7 @@
             {
               "id": "basel-point",
               "type": "animated_point",
-              "position": ["N", "baselSum", "0"],
+              "position": ["N", "baselSum()", "0"],
               "color": "#ff8844",
               "size": 10
             }
@@ -192,7 +192,7 @@
           "info": [
             {
               "id": "info4",
-              "content": "$$\\sum_{k=1}^{N}\\frac{1}{k^2} = {{toFixed(baselSum, 6)}} \\xrightarrow{N\\to\\infty} \\frac{\\pi^2}{6} = {{toFixed(pi*pi/6, 6)}}\\ldots$$",
+              "content": "$$\\sum_{k=1}^{N}\\frac{1}{k^2} = {{toFixed(baselSum(), 6)}} \\xrightarrow{N\\to\\infty} \\frac{\\pi^2}{6} = {{toFixed(pi*pi/6, 6)}}\\ldots$$",
               "position": "top-left"
             }
           ]
