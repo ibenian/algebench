@@ -309,7 +309,7 @@
           ]
         },
         {
-          "title": "All four constraints — vertical and horizontal bounds combined",
+          "title": "Band fill — all four constraints",
           "description": "Two complementary band fills, all four constraints active in each. **Blue**: `above: max(cos, bot)` → `below: min(sin, top)` — fills where sin is on top, clamped to `[bot, top]`. **Red**: `above: max(sin, bot)` → `below: min(cos, top)` — fills where cos is on top, clamped to `[bot, top]`. Together they tile the entire `[bot, top]` band within `[L, R]`, split wherever the two curves cross.",
           "remove": [{ "id": "cos-line3" }, { "id": "sin-fill3" }, { "id": "bound-left" }, { "id": "bound-right" }],
           "add": [
