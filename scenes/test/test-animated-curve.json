@@ -14,7 +14,7 @@
       "steps": [
         {
           "title": "Basic curve — no fill",
-          "description": "A simple `animated_curve` plotting `y = A·sin(x + φ)`. Drag the sliders to reshape the wave. No fill regions — just the curve line.",
+          "description": "A simple `animated_curve` plotting `y = A·sin(x + φ)`. No `fill_regions` — just the curve line. Drag the sliders to reshape the wave.",
           "add": [
             {
               "id": "wave",
@@ -41,7 +41,7 @@
         },
         {
           "title": "Fill between curve and x-axis",
-          "description": "Same wave with a fill region that shades between the curve and the x-axis (y=0). Blue above zero, red below — each a separate fill region.",
+          "description": "Two fill regions on the same curve. The blue region uses `above: \"0\"` — fill where curve ≥ 0, spanning [0, curve]. The red region uses `below: \"0\"` — fill where curve ≤ 0, spanning [curve, 0]. No `rightOf`/`leftOf` — both cover the full x range.",
           "remove": [{ "id": "wave" }],
           "add": [
             {
@@ -79,7 +79,7 @@
         },
         {
           "title": "Fill clipped by left/right bounds",
-          "description": "Fill region clipped to a horizontal window [L, R]. Drag the L and R sliders to move the shaded interval. The fill only appears where the x coordinate falls inside [L, R].",
+          "description": "One fill region using `rightOf: \"L\"` and `leftOf: \"R\"` — fill only where L ≤ x ≤ R. No `above`/`below`, so the fill spans from the curve to y=0. The outline traces the full perimeter: curve top, vertical caps at L and R, and the x-axis along the bottom.",
           "remove": [{ "id": "wave2" }],
           "add": [
             {
@@ -124,7 +124,7 @@
         },
         {
           "title": "Fill between two curves",
-          "description": "Fill the area between `sin(x)` (top) and `cos(x) - 1` (bottom), over the range [0, π]. Uses `above` to clip where curve ≥ other curve.",
+          "description": "The blue curve (`A·sin(x+φ)`) has a fill region with `above: \"B·cos(x+ψ)−C\"`. Because `above` accepts x-dependent expressions, it fills exactly where sin ≥ cos−C, with the cos curve as the lower boundary. Drag sliders to reshape both curves and watch the shaded area update.",
           "remove": [{ "id": "wave3" }, { "type": "slider" }],
           "add": [
             {
