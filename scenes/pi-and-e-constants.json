@@ -1,0 +1,687 @@
+{
+  "title": "π and e — The Two Great Constants",
+  "unsafe": true,
+  "unsafe_explanation": "Scene functions use IIFE loops to compute partial sums for Leibniz series, Basel problem, and Taylor approximation of e^x.",
+  "scenes": [
+    {
+      "title": "Scene 1 — The Circle Constant π",
+      "description": "π is the ratio of a circle's circumference to its diameter. We approach it three ways: geometrically via inscribed polygons, analytically via the Leibniz series, and via the Basel problem.",
+      "markdown": "# The Circle Constant π\n\nπ ≈ 3.14159265… is perhaps the most famous number in mathematics. It appears wherever circles appear — and in many places where circles seem to have nothing to do with the problem.\n\n---\n\n## Definition\n\nFor any circle with radius $r$:\n\n$$C = 2\\pi r \\qquad A = \\pi r^2$$\n\nπ is the *ratio* of circumference to diameter — a constant independent of the circle's size. That this ratio is the same for every circle is a non-obvious geometric fact.\n\n---\n\n## Archimedes' Method (c. 250 BC)\n\nArchimedes computed π by squeezing a circle between inscribed and circumscribed regular polygons. For an **inscribed** regular $N$-gon of circumradius 1:\n\n$$P_N = N \\cdot 2\\sin\\!\\frac{\\pi}{N} \\xrightarrow{N\\to\\infty} 2\\pi$$\n\nEach vertex lies on the unit circle. As $N$ grows, the polygon fills the circle and its perimeter approaches $2\\pi$.\n\n| $N$ | $P_N$ |\n|---|---|\n| 6 | 6.000000 |\n| 12 | 6.211657 |\n| 24 | 6.265257 |\n| 96 | 6.282063 |\n| ∞ | 6.283185… = 2π |\n\n---\n\n## Leibniz Series (1673)\n\nGottfried Leibniz discovered that π hides inside the simplest alternating sum:\n\n$$\\frac{\\pi}{4} = 1 - \\frac{1}{3} + \\frac{1}{5} - \\frac{1}{7} + \\cdots = \\sum_{k=0}^{\\infty} \\frac{(-1)^k}{2k+1}$$\n\nThe convergence is painfully slow — you need thousands of terms for a few decimal places — but the formula is exact and beautiful.\n\n---\n\n## Basel Problem (Euler, 1734)\n\nLeonhard Euler shocked the mathematical world by proving:\n\n$$\\sum_{k=1}^{\\infty} \\frac{1}{k^2} = 1 + \\frac{1}{4} + \\frac{1}{9} + \\frac{1}{16} + \\cdots = \\frac{\\pi^2}{6}$$\n\nπ appears in the sum of reciprocal squares — completely unexpected. The proof uses the fact that $\\sin x / x$ can be written as an infinite product over its zeros $x = \\pm k\\pi$.\n\n---\n\n## Why π Appears Everywhere\n\nπ shows up far beyond geometry: in probability (the Gaussian), in number theory (the Basel problem), in Fourier analysis, and in quantum mechanics. Anywhere oscillation, rotation, or symmetry appears, π is nearby.",
+      "range": [[-2.2, 2.2], [-2.2, 2.2], [-1, 1]],
+      "camera": { "position": [0, 0, 6], "target": [0, 0, 0] },
+      "functions": [
+        {
+          "name": "partialLeibniz",
+          "args": [],
+          "expr": "(()=>{let s=0;const n=max(1,floor(N));for(let k=0;k<n;k++){s+=((k%2===0)?1:-1)/(2*k+1);}return s;})()"
+        },
+        {
+          "name": "baselSum",
+          "args": [],
+          "expr": "(()=>{let s=0;const n=max(1,floor(N));for(let k=1;k<=n;k++){s+=1/(k*k);}return s;})()"
+        },
+        {
+          "name": "leibnizExpanded",
+          "args": [],
+          "expr": "(()=>{const n=max(1,floor(N));let s='';const maxFull=6;const show=n<=maxFull?n:4;for(let k=0;k<show;k++){const d=2*k+1,pos=k%2===0;const frac=d===1?'1':'\\\\frac{1}{'+d+'}';s+=k===0?frac:(pos?'+':'-')+frac;}if(n>maxFull){const ns=show%2===0?'+':'-';const lk=n-1,ld=2*lk+1,lp=lk%2===0;s+=ns+'\\\\cdots'+(lp?'+':'-')+'\\\\frac{1}{'+ld+'}';}return s;})()"
+        },
+        {
+          "name": "baselExpanded",
+          "args": [],
+          "expr": "(()=>{const n=max(1,floor(N));let s='';const maxFull=5;const show=n<=maxFull?n:4;for(let k=1;k<=show;k++){const frac=k===1?'1':'\\\\frac{1}{'+k*k+'}';s+=k===1?frac:'+'+frac;}if(n>maxFull){s+='+\\\\cdots+\\\\frac{1}{'+n*n+'}';}return s;})()"
+        }
+      ],
+      "elements": [
+        { "type": "axis", "axis": "x", "range": [-2.2, 2.2], "color": "#444444" },
+        { "type": "axis", "axis": "y", "range": [-2.2, 2.2], "color": "#444444" }
+      ],
+      "steps": [
+        {
+          "title": "The Unit Circle",
+          "description": "π is defined as the ratio of a circle's circumference to its diameter — a constant that is the same for every circle regardless of size. For a unit circle ($r = 1$) the circumference is $C = 2\\pi \\approx 6.2832$ and the area is $A = \\pi \\approx 3.1416$. These two formulas are the reason π is fundamental to all of geometry.",
+          "add": [
+            {
+              "id": "unit-circle",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [0, 6.2832],
+              "samples": 128,
+              "color": "#4da6ff",
+              "opacity": 0.9,
+              "width": 2.5
+            },
+            {
+              "id": "radius-vec",
+              "type": "vector",
+              "from": [0, 0, 0],
+              "to": [1, 0, 0],
+              "color": "#ffdd44",
+              "width": 3,
+              "label": "r = 1"
+            },
+            {
+              "id": "origin-pt",
+              "type": "point",
+              "position": [0, 0, 0],
+              "color": "#ffffff",
+              "size": 6
+            },
+            {
+              "id": "rim-pt",
+              "type": "point",
+              "position": [1, 0, 0],
+              "color": "#4da6ff",
+              "size": 6,
+              "label": "(1, 0)"
+            }
+          ],
+          "info": [
+            {
+              "id": "info1",
+              "content": "$$C = 2\\pi r = {{toFixed(2*pi*1, 6)}}\\ldots \\qquad A = \\pi r^2 = {{toFixed(pi, 6)}}\\ldots$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Archimedes' Method — N-gon Approximation",
+          "description": "Long before calculus, Archimedes trapped π between inscribed and circumscribed regular polygons. Each vertex of the inscribed $N$-gon sits exactly on the unit circle. The perimeter $P_N = N \\cdot 2\\sin(\\pi/N)$ approaches $2\\pi$ from below as $N$ grows. At $N = 6$ the hexagon gives $P = 6.000$; at $N = 96$ (Archimedes' own calculation) we already have $3.14103 < \\pi < 3.14271$. Drag the slider and watch the polygon fill the circle.",
+          "remove": [{ "id": "radius-vec" }, { "id": "rim-pt" }, { "id": "origin-pt" }],
+          "add": [
+            {
+              "id": "ngon",
+              "type": "animated_polygon",
+              "regular": {
+                "n": "N",
+                "radius": "1",
+                "center": ["0", "0", "0"],
+                "rotation": "0"
+              },
+              "color": "#66cc88",
+              "opacity": "0.35",
+              "outlineWidth": "2",
+              "outlineColor": "#99ffbb",
+              "outlineOpacity": "0.9"
+            }
+          ],
+          "sliders": [
+            { "id": "N", "label": "$N$ (sides)", "min": 3, "max": 96, "step": 1, "default": 6 }
+          ],
+          "info": [
+            {
+              "id": "info2",
+              "content": "$$N = {{N}} \\qquad P = N \\cdot 2\\sin\\!\\frac{\\pi}{N} = {{toFixed(N*2*sin(pi/N), 6)}} \\xrightarrow{N\\to\\infty} 2\\pi = {{toFixed(2*pi, 6)}}\\ldots$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Leibniz Series — π from an Alternating Sum",
+          "description": "Leibniz discovered in 1673 that $\\pi/4 = 1 - 1/3 + 1/5 - 1/7 + \\cdots$ — π emerges from the reciprocals of odd integers with alternating signs. The blue curve shows all partial sums from 1 to 300; the partial sums oscillate above and below $\\pi/4$ (the gold line), converging slowly. Drag $N$ and the orange dot tracks the current sum — you need roughly 300 terms for just 3 decimal places. Despite the slow convergence, the formula is exact: $\\pi = 4\\sum_{k=0}^{\\infty}(-1)^k/(2k+1)$.",
+          "remove": [{ "id": "ngon" }, { "id": "unit-circle" }, { "type": "slider" }],
+          "add": [
+            {
+              "id": "target-line",
+              "type": "line",
+              "from": [0, 0.7854, 0],
+              "to": [2.1, 0.7854, 0],
+              "color": "#ffdd44",
+              "opacity": 0.6,
+              "width": 1.5
+            },
+            {
+              "id": "leibniz-curve",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "(()=>{let s=0;const n=max(1,floor(t));for(let k=0;k<n;k++){s+=((k%2===0)?1:-1)/(2*k+1);}return s;})()",
+              "z": "0",
+              "range": [1, 300],
+              "samples": 300,
+              "color": "#4da6ff",
+              "opacity": 0.9,
+              "width": 2
+            },
+            {
+              "id": "sum-point",
+              "type": "animated_point",
+              "position": ["N", "partialLeibniz()", "0"],
+              "color": "#ff8844",
+              "size": 10
+            }
+          ],
+          "sliders": [
+            { "id": "N", "label": "$N$ (terms)", "min": 1, "max": 300, "step": 1, "default": 10 }
+          ],
+          "info": [
+            {
+              "id": "info3",
+              "content": "$$S_N = \\sum_{k=0}^{N-1}\\frac{(-1)^k}{2k+1} = {{toFixed(partialLeibniz(), 6)}} \\quad \\Rightarrow \\quad \\pi \\approx 4 S_N = {{toFixed(4*partialLeibniz(), 6)}}$$",
+              "position": "top-left"
+            },
+            {
+              "id": "info3-expanded",
+              "content": "$${{leibnizExpanded()}} = {{toFixed(partialLeibniz(), 6)}}$$",
+              "position": "bottom-center"
+            }
+          ]
+        },
+        {
+          "title": "Basel Problem — ∑ 1/n² = π²/6",
+          "description": "In 1734 Euler proved: $\\sum_{k=1}^{\\infty} 1/k^2 = \\pi^2/6 \\approx 1.6449$. The purple curve shows all partial sums from 1 to 500 — they grow quickly at first then level off near the gold target line $\\pi^2/6$. Drag $N$ and the orange dot follows the current sum. Even at $N=500$ you're still off by about $0.002$. Euler's proof expanded $\\sin(x)/x$ as an infinite product over its zeros and matched the $x^2$ coefficient — one of the most elegant arguments in all of mathematics.",
+          "remove": [{ "id": "target-line" }, { "id": "leibniz-curve" }, { "id": "sum-point" }, { "type": "slider" }],
+          "add": [
+            {
+              "id": "basel-target",
+              "type": "line",
+              "from": [0, 1.6449, 0],
+              "to": [2.1, 1.6449, 0],
+              "color": "#ffdd44",
+              "opacity": 0.6,
+              "width": 1.5
+            },
+            {
+              "id": "basel-curve",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "(()=>{let s=0;const n=max(1,floor(t));for(let k=1;k<=n;k++){s+=1/(k*k);}return s;})()",
+              "z": "0",
+              "range": [1, 500],
+              "samples": 300,
+              "color": "#cc88ff",
+              "opacity": 0.9,
+              "width": 2
+            },
+            {
+              "id": "basel-point",
+              "type": "animated_point",
+              "position": ["N", "baselSum()", "0"],
+              "color": "#ff8844",
+              "size": 10
+            }
+          ],
+          "sliders": [
+            { "id": "N", "label": "$N$ (terms)", "min": 1, "max": 500, "step": 1, "default": 20 }
+          ],
+          "info": [
+            {
+              "id": "info4",
+              "content": "$$\\sum_{k=1}^{N}\\frac{1}{k^2} = {{toFixed(baselSum(), 6)}} \\xrightarrow{N\\to\\infty} \\frac{\\pi^2}{6} = {{toFixed(pi*pi/6, 6)}}\\ldots$$",
+              "position": "top-left"
+            },
+            {
+              "id": "info4-expanded",
+              "content": "$${{baselExpanded()}} = {{toFixed(baselSum(), 6)}}$$",
+              "position": "bottom-center"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Scene 2 — The Growth Constant e",
+      "description": "e is the base of natural exponential growth. It appears as the limit of compound interest, as the unique base whose logarithm equals area under 1/x, and as the function equal to its own derivative.",
+      "markdown": "# The Growth Constant e\n\n$e \\approx 2.71828182845\\ldots$ is the base of natural exponential growth and the foundation of calculus.\n\n---\n\n## Three Definitions — All Equivalent\n\n**1. Compound interest limit**\n\n$$e = \\lim_{n\\to\\infty}\\left(1+\\frac{1}{n}\\right)^n$$\n\nInvest 1 unit at 100% annual interest compounded $n$ times per year; the balance after one year is $(1+1/n)^n$. As compounding becomes continuous ($n\\to\\infty$), the balance converges to $e$.\n\n**2. Area under $1/x$**\n\n$$\\int_1^e \\frac{1}{x}\\,dx = 1$$\n\n$e$ is the unique number such that the area under the hyperbola $y = 1/x$ from $x=1$ to $x=e$ equals exactly 1. This is also the definition of $\\ln(e) = 1$.\n\n**3. Self-derivative**\n\n$$\\frac{d}{dx}\\,e^x = e^x$$\n\n$e^x$ is the unique exponential function (up to scaling) that equals its own derivative. This is why $e$ is the natural base for calculus.\n\n---\n\n## Taylor Series\n\n$$e^x = \\sum_{k=0}^{\\infty}\\frac{x^k}{k!} = 1 + x + \\frac{x^2}{2!} + \\frac{x^3}{3!} + \\cdots$$\n\nThe series converges for all $x$. The more terms you include, the wider the interval over which the approximation is accurate. At $x=0$, even 1 term is exact.\n\n---\n\n## Key Values\n\n| Expression | Value |\n|---|---|\n| $e$ | $2.718281828\\ldots$ |\n| $e^2$ | $7.389056099\\ldots$ |\n| $1/e$ | $0.367879441\\ldots$ |\n| $\\ln 2$ | $0.693147180\\ldots$ |\n| $e^{i\\pi}$ | $-1$ (Euler's identity) |",
+      "range": [[-0.5, 5], [-0.5, 8], [-1, 1]],
+      "camera": { "position": [0, 0, 9], "target": [2, 3, 0] },
+      "functions": [
+        {
+          "name": "taylorE",
+          "args": [],
+          "expr": "(()=>{let s=0,term=1;const n=max(1,floor(N)),xv=tx;for(let k=0;k<n;k++){if(k>0)term*=xv/k;s+=term;}return s;})()"
+        },
+        {
+          "name": "compoundVal",
+          "args": [],
+          "expr": "pow(1 + 1/max(1,floor(n)), floor(n))"
+        },
+        {
+          "name": "taylorExpanded",
+          "args": [],
+          "expr": "(()=>{const n=max(1,floor(N));const maxFull=5;const show=n<=maxFull?n:4;let s='';let fact=1;for(let k=0;k<show;k++){if(k>0)fact*=k;let term;if(k===0)term='1';else if(k===1)term='x';else term='\\\\frac{x^{'+k+'}}{'+fact+'}';s+=k===0?term:'+'+term;}if(n>maxFull){let lf=1;const lk=n-1;for(let j=1;j<=lk;j++)lf*=j;const lt=lk===1?'x':lk===0?'1':'\\\\frac{x^{'+lk+'}}{'+lf+'}';s+='+\\\\cdots+'+lt;}return s;})()"
+        },
+        {
+          "name": "taylorDerivExpanded",
+          "args": [],
+          "expr": "(()=>{const n=max(0,floor(N)-1);if(n<=0)return'0';const maxFull=5;const show=n<=maxFull?n:4;let s='';let fact=1;for(let k=0;k<show;k++){if(k>0)fact*=k;let term;if(k===0)term='1';else if(k===1)term='x';else term='\\\\frac{x^{'+k+'}}{'+fact+'}';s+=k===0?term:'+'+term;}if(n>maxFull){let lf=1;const lk=n-1;for(let j=1;j<=lk;j++)lf*=j;const lt=lk===1?'x':lk===0?'1':'\\\\frac{x^{'+lk+'}}{'+lf+'}';s+='+\\\\cdots+'+lt;}return s;})()"
+        }
+      ],
+      "elements": [
+        { "type": "axis", "axis": "x", "range": [-0.5, 5], "color": "#444444" },
+        { "type": "axis", "axis": "y", "range": [-0.5, 8], "color": "#444444" }
+      ],
+      "steps": [
+        {
+          "title": "Compound Interest Limit",
+          "description": "Invest 1 unit at 100% annual interest compounded $n$ times per year. After one year the balance is $(1+1/n)^n$. At $n=1$ (annual): 2.00. At $n=12$ (monthly): 2.613. At $n=365$ (daily): 2.7146. The limit as $n\\to\\infty$ is $e \\approx 2.7183$ — continuous compounding. The blue curve $(1+1/n)^{nx}$ approaches the gold $e^x$ as you drag $n$ higher. The orange dot at $x=1$ shows the current value.",
+          "add": [
+            {
+              "id": "exp-true",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "exp(t)",
+              "z": "0",
+              "range": [0, 2.1],
+              "samples": 128,
+              "color": "#ffdd44",
+              "opacity": 0.9,
+              "width": 2.5
+            },
+            {
+              "id": "compound-curve",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "pow(1 + 1/max(1,floor(n)), floor(n) * t)",
+              "z": "0",
+              "range": [0, 2.1],
+              "samples": 128,
+              "color": "#4da6ff",
+              "opacity": 0.85,
+              "width": 2
+            },
+            {
+              "id": "compound-marker",
+              "type": "animated_line",
+              "points": [["1", "0", "0"], ["1", "compoundVal()", "0"]],
+              "color": "#4da6ff",
+              "width": 1.5,
+              "opacity": 0.7
+            },
+            {
+              "id": "compound-dot",
+              "type": "animated_point",
+              "position": ["1", "compoundVal()", "0"],
+              "color": "#ff8844",
+              "size": 10
+            }
+          ],
+          "sliders": [
+            { "id": "n", "label": "$n$ (compounding periods)", "min": 1, "max": 500, "step": 1, "default": 1 }
+          ],
+          "info": [
+            {
+              "id": "info5",
+              "content": "$$\\left(1+\\frac{1}{n}\\right)^n = {{toFixed(compoundVal(), 6)}} \\xrightarrow{n\\to\\infty} e = 2.718281\\ldots$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Area Under 1/x",
+          "description": "The natural logarithm is defined as $\\ln(b) = \\int_1^b 1/x\\,dx$ — the area under the hyperbola $y=1/x$ from 1 to $b$. This area equals exactly 1 when $b = e$. Drag the slider: below $e$ the area is less than 1, above $e$ it exceeds 1. The orange marker at $x = e \\approx 2.718$ shows where the transition happens. This is not a coincidence — it's actually the geometric definition of $e$.",
+          "remove": [{ "id": "exp-true" }, { "id": "compound-curve" }, { "id": "compound-marker" }, { "id": "compound-dot" }, { "type": "slider" }],
+          "add": [
+            {
+              "id": "recip-curve",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "1/t",
+              "z": "0",
+              "range": [0.2, 5],
+              "samples": 128,
+              "color": "#ffffff",
+              "opacity": 0.8,
+              "width": 2
+            },
+            {
+              "id": "area-fill",
+              "type": "animated_curve",
+              "expr": "1/x",
+              "range": ["1", "max(1.001, b)"],
+              "samples": 120,
+              "showCurve": false,
+              "fill_regions": [
+                {
+                  "id": "under-recip",
+                  "color": "#4da6ff",
+                  "opacity": 0.4,
+                  "above": "0"
+                }
+              ]
+            },
+            {
+              "id": "b-marker",
+              "type": "animated_line",
+              "points": [["b", "0", "0"], ["b", "1/max(0.001,b)", "0"]],
+              "color": "#ffdd44",
+              "width": 1.5,
+              "opacity": 0.8
+            },
+            {
+              "id": "e-marker",
+              "type": "line",
+              "from": [2.71828, 0, 0],
+              "to": [2.71828, 0.37, 0],
+              "color": "#ff8844",
+              "opacity": 0.5,
+              "width": 1
+            }
+          ],
+          "sliders": [
+            { "id": "b", "label": "$b$ (upper limit)", "min": 1.01, "max": 5, "step": 0.01, "default": 2.718 }
+          ],
+          "info": [
+            {
+              "id": "info6",
+              "content": "$$\\int_1^b \\frac{1}{x}\\,dx = \\ln(b) = {{toFixed(log(max(0.001,b)), 5)}} \\quad\\Longrightarrow\\quad \\text{area} = 1 \\text{ when } b = e$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "$e^x$ Is Its Own Derivative — Taylor Series",
+          "description": "$e^x$ is the unique function satisfying $f'(x) = f(x)$. The Taylor series makes this visible: differentiate term by term — $\\frac{d}{dx}\\frac{x^k}{k!} = \\frac{k\\,x^{k-1}}{k!} = \\frac{x^{k-1}}{(k-1)!}$ — and each term shifts one place to the left, reproducing the same series. The derivative of $N$ terms gives $N-1$ terms of the identical series; as $N\\to\\infty$ nothing is lost and $\\frac{d}{dx}e^x = e^x$ exactly. Drag $N$ and watch the bottom overlay: the right-hand side is always the same sequence, just one term shorter.",
+          "remove": [{ "id": "recip-curve" }, { "id": "area-fill" }, { "id": "b-marker" }, { "id": "e-marker" }, { "type": "slider" }],
+          "add": [
+            {
+              "id": "exp-gold",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "exp(t)",
+              "z": "0",
+              "range": [-2, 2.5],
+              "samples": 128,
+              "color": "#ffdd44",
+              "opacity": 0.9,
+              "width": 2.5
+            },
+            {
+              "id": "taylor-curve",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "(()=>{let s=0,term=1;const n=max(1,floor(N)),xv=t;for(let k=0;k<n;k++){if(k>0)term*=xv/k;s+=term;}return s;})()",
+              "z": "0",
+              "range": [-2, 2.5],
+              "samples": 128,
+              "color": "#44ccff",
+              "opacity": 0.85,
+              "width": 2
+            }
+          ],
+          "sliders": [
+            { "id": "N", "label": "$N$ (terms)", "min": 1, "max": 12, "step": 1, "default": 3 }
+          ],
+          "info": [
+            {
+              "id": "info7",
+              "content": "$$e^x \\approx \\sum_{k=0}^{N-1}\\frac{x^k}{k!} \\quad (N={{N}} \\text{ terms})$$",
+              "position": "top-left"
+            },
+            {
+              "id": "info7-expanded",
+              "content": "$$\\tfrac{d}{dx}\\!\\left({{taylorExpanded()}}\\right) = {{taylorDerivExpanded()}}$$",
+              "position": "bottom-center"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Scene 3 — Where They Meet",
+      "description": "π and e are not independent. They meet in Euler's formula e^(iθ) = cos θ + i sin θ — which unifies rotation, exponential growth, and the circle constant in one equation.",
+      "markdown": "# Where π and e Meet\n\nπ and e look like they come from completely different worlds — one from circles, one from growth. Yet they are deeply intertwined.\n\n---\n\n## Euler's Formula\n\n$$e^{i\\theta} = \\cos\\theta + i\\sin\\theta$$\n\nThis single equation connects:\n- **e** — the base of natural growth\n- **i** — the imaginary unit, $\\sqrt{-1}$\n- **π** — the circle constant\n- **cos** and **sin** — the language of rotation\n\nPlugging a purely imaginary number $i\\theta$ into the exponential function produces a rotation by angle $\\theta$ in the complex plane. The point $e^{i\\theta}$ traces the unit circle.\n\n---\n\n## Euler's Identity\n\nAt $\\theta = \\pi$:\n\n$$e^{i\\pi} + 1 = 0$$\n\nFive fundamental constants — $e$, $i$, $\\pi$, $1$, $0$ — in one equation. It is often called the most beautiful equation in mathematics.\n\n---\n\n## The Gaussian Integral\n\n$$\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}$$\n\nThe integral of $e^{-x^2}$ (a bell curve) gives $\\sqrt{\\pi}$. The standard proof squares the integral:\n\n$$\\left(\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx\\right)^2 = \\iint e^{-(x^2+y^2)}\\,dA$$\n\nSwitching to polar coordinates $r, \\theta$:\n\n$$= \\int_0^{2\\pi}\\int_0^{\\infty} e^{-r^2}\\,r\\,dr\\,d\\theta = 2\\pi \\cdot \\frac{1}{2} = \\pi$$\n\nThe $2\\pi$ from the angular integral is exactly the circumference of the unit circle — π sneaks in through the back door.\n\n---\n\n## The Normal Distribution\n\n$$f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}}\\,e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}}$$\n\nNormalizing the Gaussian gives the bell curve. Both $e$ (in the exponent) and $\\pi$ (in the normalization) appear together. The $\\sqrt{2\\pi}$ factor ensures $\\int_{-\\infty}^{\\infty} f(x)\\,dx = 1$.\n\n### Empirical Rule\n\n| Band | Probability |\n|---|---|\n| $\\mu \\pm \\sigma$ | 68.3% |\n| $\\mu \\pm 2\\sigma$ | 95.4% |\n| $\\mu \\pm 3\\sigma$ | 99.7% |",
+      "range": [[-1.8, 1.8], [-1.8, 1.8], [-1, 1]],
+      "camera": { "position": [0, 0, 6], "target": [0, 0, 0] },
+      "elements": [
+        { "type": "axis", "axis": "x", "range": [-1.8, 1.8], "color": "#444444", "label": "Re" },
+        { "type": "axis", "axis": "y", "range": [-1.8, 1.8], "color": "#444444", "label": "Im" }
+      ],
+      "steps": [
+        {
+          "title": "e^(iθ) Traces the Unit Circle",
+          "description": "Plug a purely imaginary number $i\\theta$ into $e$ and the result is a rotation: $e^{i\\theta} = \\cos\\theta + i\\sin\\theta$. The gold vector has real part $\\cos\\theta$ (blue projection onto Re axis) and imaginary part $\\sin\\theta$ (pink projection onto Im axis). As $\\theta$ increases from 0 to $2\\pi$, the tip traces the entire unit circle. Press **Animate** to watch it rotate continuously.",
+          "add": [
+            {
+              "id": "guide-circle",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [0, 6.2832],
+              "samples": 128,
+              "color": "#555555",
+              "opacity": 0.6,
+              "width": 1
+            },
+            {
+              "id": "euler-vec",
+              "type": "animated_vector",
+              "from": ["0", "0", "0"],
+              "to": ["cos(theta)", "sin(theta)", "0"],
+              "color": "#ffdd44",
+              "width": 3
+            },
+            {
+              "id": "re-proj",
+              "type": "animated_line",
+              "points": [["cos(theta)", "sin(theta)", "0"], ["cos(theta)", "0", "0"]],
+              "color": "#4da6ff",
+              "width": 1.5,
+              "opacity": 0.75
+            },
+            {
+              "id": "im-proj",
+              "type": "animated_line",
+              "points": [["cos(theta)", "sin(theta)", "0"], ["0", "sin(theta)", "0"]],
+              "color": "#ff6688",
+              "width": 1.5,
+              "opacity": 0.75
+            },
+            {
+              "id": "euler-dot",
+              "type": "animated_point",
+              "position": ["cos(theta)", "sin(theta)", "0"],
+              "color": "#ffdd44",
+              "size": 10
+            }
+          ],
+          "sliders": [
+            { "id": "theta", "label": "$\\theta$", "min": 0, "max": 6.2832, "step": 0.05, "default": 0.8, "animate": true }
+          ],
+          "info": [
+            {
+              "id": "info8",
+              "content": "$$e^{i\\theta} = \\cos\\theta + i\\sin\\theta \\qquad \\theta = {{toFixed(theta, 3)}}$$\n$$\\operatorname{Re} = {{toFixed(cos(theta), 4)}} \\qquad \\operatorname{Im} = {{toFixed(sin(theta), 4)}}$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Euler's Identity — e^(iπ) + 1 = 0",
+          "description": "Set $\\theta = \\pi$: the rotating vector lands exactly on $-1$. The green arrow adds $+1$, bringing it back to the origin. Five of the most fundamental constants — $e$ (growth), $i$ (rotation), $\\pi$ (circle), $1$ (identity), $0$ (origin) — united in one equation: $e^{i\\pi} + 1 = 0$. Richard Feynman called it \"the most remarkable formula in mathematics.\"",
+          "remove": [{ "id": "euler-vec" }, { "id": "re-proj" }, { "id": "im-proj" }, { "id": "euler-dot" }, { "type": "slider" }],
+          "add": [
+            {
+              "id": "euler-id-vec",
+              "type": "vector",
+              "from": [0, 0, 0],
+              "to": [-1, 0, 0],
+              "color": "#ffdd44",
+              "width": 3
+            },
+            {
+              "id": "plus-one-vec",
+              "type": "vector",
+              "from": [-1, 0, 0],
+              "to": [0, 0, 0],
+              "color": "#44ff88",
+              "width": 2.5,
+              "label": "+1"
+            },
+            {
+              "id": "neg-one-pt",
+              "type": "point",
+              "position": [-1, 0, 0],
+              "color": "#ffdd44",
+              "size": 8,
+              "label": "$e^{i\\pi} = -1$"
+            },
+            {
+              "id": "zero-pt",
+              "type": "point",
+              "position": [0, 0, 0],
+              "color": "#ffffff",
+              "size": 8,
+              "label": "0"
+            }
+          ],
+          "info": [
+            {
+              "id": "info9",
+              "content": "$$e^{i\\pi} + 1 = 0$$\n$$\\underbrace{e}_{\\text{growth}} \\cdot \\underbrace{i}_{\\text{rotation}} \\cdot \\underbrace{\\pi}_{\\text{circle}} + \\underbrace{1}_{\\text{identity}} = \\underbrace{0}_{\\text{origin}}$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "The Gaussian Integral — ∫e^(−x²)dx = √π",
+          "description": "The bell-shaped surface $z = e^{-(x^2+y^2)}$ has total volume exactly $\\pi$. The gold cross-section shows $e^{-x^2}$ along the x-axis — integrating it gives $\\sqrt{\\pi}$. The proof squares the integral, rewrites the double integral in polar coordinates, and the $2\\pi$ from the full rotation around the z-axis delivers $\\pi$. π enters through the circular symmetry of the Gaussian — the same circle constant that appeared in Archimedes' polygons.",
+          "remove": [{ "id": "guide-circle" }, { "id": "euler-id-vec" }, { "id": "plus-one-vec" }, { "id": "neg-one-pt" }, { "id": "zero-pt" }],
+          "camera": { "position": [4, -5, 6], "target": [0, 0, 0] },
+          "range": [[-3, 3], [-3, 3], [0, 1.2]],
+          "add": [
+            {
+              "id": "gaussian-surface",
+              "type": "parametric_surface",
+              "x": "u",
+              "y": "v",
+              "z": "exp(-(u*u + v*v))",
+              "uRange": [-3, 3],
+              "vRange": [-3, 3],
+              "uSamples": 64,
+              "vSamples": 64,
+              "color": "#3a6fa8",
+              "opacity": 0.55
+            },
+            {
+              "id": "gaussian-cross",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "0",
+              "z": "exp(-(t*t))",
+              "range": [-3, 3],
+              "samples": 128,
+              "color": "#ffdd44",
+              "opacity": 1,
+              "width": 3
+            }
+          ],
+          "info": [
+            {
+              "id": "info10",
+              "content": "$$\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi} \\approx {{toFixed(sqrt(pi), 6)}}$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "The Normal Distribution — π and e Together",
+          "description": "Normalize $e^{-x^2}$ by $1/(\\sigma\\sqrt{2\\pi})$ to get a probability distribution that integrates to 1. Both $e$ and $\\pi$ appear in the formula — $e$ shapes the curve, $\\pi$ calibrates the area. The three blue bands show the empirical rule: $\\mu \\pm \\sigma$ contains 68.3% of probability, $\\mu \\pm 2\\sigma$ contains 95.4%, $\\mu \\pm 3\\sigma$ contains 99.7%. Drag $\\mu$ to shift the distribution and $\\sigma$ to widen or narrow it.",
+          "remove": [{ "id": "gaussian-surface" }, { "id": "gaussian-cross" }],
+          "camera": { "position": [0, 0, 8], "target": [0, 0, 0] },
+          "range": [[-5, 5], [-0.1, 0.6], [-1, 1]],
+          "add": [
+            {
+              "id": "bell-axis-x",
+              "type": "axis",
+              "axis": "x",
+              "range": [-5, 5],
+              "color": "#444444"
+            },
+            {
+              "id": "bell-axis-y",
+              "type": "axis",
+              "axis": "y",
+              "range": [-0.1, 0.6],
+              "color": "#444444"
+            },
+            {
+              "id": "sigma3-fill",
+              "type": "animated_curve",
+              "expr": "exp(-((x-mu)*(x-mu))/(2*sigma*sigma)) / (sigma * sqrt(2*pi))",
+              "range": ["-5", "5"],
+              "samples": 200,
+              "showCurve": false,
+              "fill_regions": [
+                {
+                  "id": "s3",
+                  "color": "#4466ff",
+                  "opacity": 0.15,
+                  "above": "0",
+                  "rightOf": "mu - 3*sigma",
+                  "leftOf": "mu + 3*sigma"
+                }
+              ]
+            },
+            {
+              "id": "sigma2-fill",
+              "type": "animated_curve",
+              "expr": "exp(-((x-mu)*(x-mu))/(2*sigma*sigma)) / (sigma * sqrt(2*pi))",
+              "range": ["-5", "5"],
+              "samples": 200,
+              "showCurve": false,
+              "fill_regions": [
+                {
+                  "id": "s2",
+                  "color": "#4488ff",
+                  "opacity": 0.25,
+                  "above": "0",
+                  "rightOf": "mu - 2*sigma",
+                  "leftOf": "mu + 2*sigma"
+                }
+              ]
+            },
+            {
+              "id": "sigma1-fill",
+              "type": "animated_curve",
+              "expr": "exp(-((x-mu)*(x-mu))/(2*sigma*sigma)) / (sigma * sqrt(2*pi))",
+              "range": ["-5", "5"],
+              "samples": 200,
+              "showCurve": false,
+              "fill_regions": [
+                {
+                  "id": "s1",
+                  "color": "#44aaff",
+                  "opacity": 0.4,
+                  "above": "0",
+                  "rightOf": "mu - sigma",
+                  "leftOf": "mu + sigma"
+                }
+              ]
+            },
+            {
+              "id": "bell-curve",
+              "type": "animated_curve",
+              "expr": "exp(-((x-mu)*(x-mu))/(2*sigma*sigma)) / (sigma * sqrt(2*pi))",
+              "range": ["-5", "5"],
+              "samples": 200,
+              "color": "#ffffff",
+              "width": 2.5,
+              "opacity": 0.9
+            },
+            {
+              "id": "mean-marker",
+              "type": "animated_line",
+              "points": [["mu", "0", "0"], ["mu", "1/(sigma*sqrt(2*pi))", "0"]],
+              "color": "#ffdd44",
+              "width": 1.5,
+              "opacity": 0.7
+            }
+          ],
+          "sliders": [
+            { "id": "mu",    "label": "$\\mu$ (mean)",  "min": -2, "max": 2, "step": 0.1, "default": 0 },
+            { "id": "sigma", "label": "$\\sigma$ (std dev)", "min": 0.2, "max": 2, "step": 0.1, "default": 1 }
+          ],
+          "info": [
+            {
+              "id": "info11",
+              "content": "$$f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}}\\,e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}} \\qquad \\mu={{toFixed(mu,2)}},\\;\\sigma={{toFixed(sigma,2)}}$$\n$$\\mu\\pm\\sigma:\\;68.3\\% \\quad \\mu\\pm2\\sigma:\\;95.4\\% \\quad \\mu\\pm3\\sigma:\\;99.7\\%$$",
+              "position": "top-left"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
