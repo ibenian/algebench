@@ -130,39 +130,46 @@
             {
               "id": "cos-line",
               "type": "animated_curve",
-              "expr": "cos(x) - 1",
+              "expr": "B * cos(x + psi) - C",
               "range": [0, 6.2832],
               "samples": 200,
-              "color": "#ff9944",
-              "width": 2,
-              "opacity": 0.8
+              "color": "#ff5566",
+              "width": 2.5,
+              "opacity": 0.9
             },
             {
               "id": "sin-fill",
               "type": "animated_curve",
-              "expr": "sin(x)",
+              "expr": "A * sin(x + phi)",
               "range": [0, 6.2832],
               "samples": 200,
-              "color": "#4da6ff",
-              "width": 2,
+              "color": "#44ccff",
+              "width": 2.5,
               "opacity": 0.9,
               "fill_regions": [
                 {
                   "id": "between",
-                  "color": "#aa88ff",
-                  "opacity": 0.45,
-                  "above": "cos(x) - 1",
-                  "outlineWidth": 2,
-                  "outlineColor": "#ffaa44",
-                  "outlineOpacity": 0.85
+                  "color": "#66aaff",
+                  "opacity": 0.35,
+                  "above": "B * cos(x + psi) - C",
+                  "outlineWidth": 1.5,
+                  "outlineColor": "#ffffff",
+                  "outlineOpacity": 0.25
                 }
               ]
             }
           ],
+          "sliders": [
+            { "id": "A",   "label": "$A$ — sin amplitude",  "min": 0.1, "max": 2,    "step": 0.1,  "default": 1 },
+            { "id": "phi", "label": "$\\varphi$ — sin phase","min": -3.14, "max": 3.14, "step": 0.1, "default": 0 },
+            { "id": "B",   "label": "$B$ — cos amplitude",  "min": 0.1, "max": 2,    "step": 0.1,  "default": 1 },
+            { "id": "psi", "label": "$\\psi$ — cos phase",  "min": -3.14, "max": 3.14, "step": 0.1, "default": 0 },
+            { "id": "C",   "label": "$C$ — cos offset",     "min": -2,  "max": 2,    "step": 0.1,  "default": 1 }
+          ],
           "info": [
             {
               "id": "info4",
-              "content": "Shaded region: $\\sin x \\geq \\cos x - 1$ over $[0,\\, 2\\pi]$",
+              "content": "$${{toFixed(A,2)}}\\sin(x+{{toFixed(phi,2)}}) \\geq {{toFixed(B,2)}}\\cos(x+{{toFixed(psi,2)}})-{{toFixed(C,2)}}$$",
               "position": "top-left"
             }
           ]
