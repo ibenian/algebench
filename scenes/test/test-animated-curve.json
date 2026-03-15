@@ -307,6 +307,80 @@
               "position": "top-left"
             }
           ]
+        },
+        {
+          "title": "Horizontal boundaries with above / below",
+          "description": "Both fill regions are now clipped by scalar y-values. `above: \"bot\"` keeps only the portion where sin ≥ bot; `below: \"top\"` keeps only where sin ≤ top. Two `animated_line` elements mark the horizontal boundary positions and move with the sliders.",
+          "remove": [{ "id": "cos-line3" }, { "id": "sin-fill3" }, { "id": "bound-left" }, { "id": "bound-right" }],
+          "add": [
+            {
+              "id": "cos-line4",
+              "type": "animated_curve",
+              "expr": "B * cos(x + psi) - C",
+              "range": [0, 6.2832],
+              "samples": 200,
+              "color": "#ff5566",
+              "width": 2.5,
+              "opacity": 0.9
+            },
+            {
+              "id": "sin-fill4",
+              "type": "animated_curve",
+              "expr": "A * sin(x + phi)",
+              "range": [0, 6.2832],
+              "samples": 200,
+              "color": "#44ccff",
+              "width": 2.5,
+              "opacity": 0.9,
+              "fill_regions": [
+                {
+                  "id": "above-band",
+                  "color": "#66aaff",
+                  "opacity": 0.4,
+                  "above": "bot",
+                  "outlineWidth": "outline_w",
+                  "outlineColor": "#ffffff",
+                  "outlineOpacity": "outline_op"
+                },
+                {
+                  "id": "below-band",
+                  "color": "#ff7788",
+                  "opacity": 0.4,
+                  "below": "top",
+                  "outlineWidth": "outline_w",
+                  "outlineColor": "#ffffff",
+                  "outlineOpacity": "outline_op"
+                }
+              ]
+            },
+            {
+              "id": "bound-top",
+              "type": "animated_line",
+              "points": [["-4", "top", "0"], ["7", "top", "0"]],
+              "color": "#ffdd44",
+              "width": 1.5,
+              "opacity": 0.7
+            },
+            {
+              "id": "bound-bot",
+              "type": "animated_line",
+              "points": [["-4", "bot", "0"], ["7", "bot", "0"]],
+              "color": "#ffdd44",
+              "width": 1.5,
+              "opacity": 0.7
+            }
+          ],
+          "sliders": [
+            { "id": "top", "label": "top boundary", "min": -2, "max": 2, "step": 0.1, "default": 0.5 },
+            { "id": "bot", "label": "bottom boundary", "min": -2, "max": 2, "step": 0.1, "default": -0.5 }
+          ],
+          "info": [
+            {
+              "id": "info7",
+              "content": "Blue: $\\sin \\geq {{toFixed(bot,2)}}$ \\quad Red: $\\sin \\leq {{toFixed(top,2)}}$",
+              "position": "top-left"
+            }
+          ]
         }
       ]
     }
