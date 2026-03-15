@@ -3642,10 +3642,11 @@ function renderAnimatedCurve(el, view) {
 
             let yTop0, yBot0, yTop1, yBot1, show0, show1;
             if (cAbove != null && cBelow != null) {
-                show0 = cy0 >= aboveY0 && cy0 <= belowY0;
-                show1 = cy1 >= aboveY1 && cy1 <= belowY1;
-                yTop0 = Math.min(cy0, belowY0); yBot0 = Math.max(cy0, aboveY0);
-                yTop1 = Math.min(cy1, belowY1); yBot1 = Math.max(cy1, aboveY1);
+                // Band fill: shade directly from above_expr (lower) to below_expr (upper), curve not required as boundary
+                yBot0 = aboveY0; yTop0 = belowY0;
+                yBot1 = aboveY1; yTop1 = belowY1;
+                show0 = yTop0 > yBot0;
+                show1 = yTop1 > yBot1;
             } else if (cAbove != null) {
                 show0 = cy0 >= aboveY0; show1 = cy1 >= aboveY1;
                 yTop0 = cy0; yBot0 = aboveY0; yTop1 = cy1; yBot1 = aboveY1;
@@ -3695,8 +3696,9 @@ function renderAnimatedCurve(el, view) {
             if (leftOfX  != null && x > leftOfX  + 1e-9) continue;
             let topY, botY;
             if (cAbove != null && cBelow != null) {
-                topY = Math.min(cy, evalBound(cBelow, x, tSec));
-                botY = Math.max(cy, evalBound(cAbove, x, tSec));
+                // Band fill: outline spans between the two expressions directly
+                topY = evalBound(cBelow, x, tSec);
+                botY = evalBound(cAbove, x, tSec);
             } else if (cAbove != null) {
                 topY = cy; botY = evalBound(cAbove, x, tSec);
             } else if (cBelow != null) {
