@@ -7564,17 +7564,6 @@ function setupJsonViewer() {
 }
 
 function pickVideoRecorderFormat() {
-    const mp4Options = [
-        'video/mp4;codecs=h264,aac',
-        'video/mp4;codecs=avc1,mp4a.40.2',
-        'video/mp4',
-    ];
-    for (const mimeType of mp4Options) {
-        if (MediaRecorder.isTypeSupported(mimeType)) {
-            return { mimeType, containerMime: 'video/mp4', ext: 'mp4' };
-        }
-    }
-
     const webmOptions = [
         'video/webm;codecs=vp9,opus',
         'video/webm;codecs=vp8,opus',
@@ -7583,6 +7572,18 @@ function pickVideoRecorderFormat() {
     for (const mimeType of webmOptions) {
         if (MediaRecorder.isTypeSupported(mimeType)) {
             return { mimeType, containerMime: 'video/webm', ext: 'webm' };
+        }
+    }
+
+    const mp4Options = [
+        'video/mp4;codecs=avc3,mp4a.40.2',
+        'video/mp4;codecs=h264,aac',
+        'video/mp4;codecs=avc1,mp4a.40.2',
+        'video/mp4',
+    ];
+    for (const mimeType of mp4Options) {
+        if (MediaRecorder.isTypeSupported(mimeType)) {
+            return { mimeType, containerMime: 'video/mp4', ext: 'mp4' };
         }
     }
     return null;
@@ -7658,6 +7659,11 @@ function setupVideoExport() {
                 if (event.data && event.data.size > 0) videoRecordedChunks.push(event.data);
             };
 
+            videoRecorder.onerror = (event) => {
+                const error = event?.error || event;
+                console.error('Video recorder error:', error);
+            };
+
             videoRecorder.onstop = () => {
                 const blob = new Blob(videoRecordedChunks, { type: videoRecordingMime });
                 const url = URL.createObjectURL(blob);
@@ -7670,6 +7676,7 @@ function setupVideoExport() {
                 URL.revokeObjectURL(url);
 
                 cleanupVideoRecording();
+                videoRecorder = null;
                 btn.textContent = 'Export Video';
                 btn.classList.remove('active');
             };
