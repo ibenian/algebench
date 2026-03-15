@@ -1,0 +1,173 @@
+{
+  "title": "Test — Animated Curve",
+  "scenes": [
+    {
+      "title": "Animated Curve",
+      "description": "Tests the `animated_curve` element: a y=f(x) curve with optional `fill_regions` for shading areas. Use the Doc tab for full reference.",
+      "markdown": "# Animated Curve\n\n`animated_curve` plots a function $y = f(x)$ over a range and optionally shades **fill regions** between the curve and one or more boundary expressions. All fields are live — driven by sliders, time $t$, or scene functions.\n\n---\n\n## Minimal example\n\n```json\n{\n  \"type\": \"animated_curve\",\n  \"expr\": \"sin(x)\",\n  \"range\": [-3.14159, 3.14159],\n  \"color\": \"#4da6ff\"\n}\n```\n\n---\n\n## Full field reference\n\n| Field | Default | Description |\n|---|---|---|\n| `expr` | `\"0\"` | Expression for $y = f(x)$. Variable `x` is injected automatically. |\n| `range` | `[-1, 1]` | `[xMin, xMax]` — numbers or expression strings driven by sliders / $t$ |\n| `samples` | `200` | Number of sample points along $x$ |\n| `color` | `\"#ff8844\"` | Curve line color |\n| `width` | `3` | Line width in pixels |\n| `opacity` | `1` | Curve opacity — number or expression string |\n| `showCurve` | `true` | Set `false` to hide the line and show fills only |\n| `fill_regions` | `[]` | List of fill region objects (see below) |\n\n---\n\n## `fill_regions`\n\nEach entry in `fill_regions` shades an area relative to the curve.\n\n```json\n\"fill_regions\": [\n  {\n    \"id\": \"my-fill\",\n    \"color\": \"#4488ff\",\n    \"opacity\": 0.4,\n    \"above\": \"0\",\n    \"left\": \"a\",\n    \"right\": \"b\"\n  }\n]\n```\n\n### Fill region fields\n\n| Field | Default | Description |\n|---|---|---|\n| `id` | — | Optional identifier |\n| `color` | inherits curve color | Fill color |\n| `opacity` | `0.35` | Fill opacity — number or expression string |\n| `above` | — | Lower boundary $y = g(x)$. Fill where $\\text{curve} \\geq g(x)$, spanning $[g(x),\\,\\text{curve}]$ |\n| `below` | — | Upper boundary $y = h(x)$. Fill where $\\text{curve} \\leq h(x)$, spanning $[\\text{curve},\\,h(x)]$ |\n| `left` | — | Left $x$ clipping bound (scalar expression) |\n| `right` | — | Right $x$ clipping bound (scalar expression) |\n| `outlineWidth` | — | Width (px) of a line drawn along the boundary expression (`above`/`below`). Number or expression string. **Omit for no boundary.** |\n| `outlineColor` | inherits `color` | Boundary line color |\n| `outlineOpacity` | `min(1, opacity × 2)` | Boundary line opacity — number or expression string |\n\n### Boundary semantics\n\n| Boundaries specified | Region filled |\n|---|---|\n| `above` only | Between $g(x)$ and curve, where curve $\\geq g(x)$ |\n| `below` only | Between curve and $h(x)$, where curve $\\leq h(x)$ |\n| Both `above` and `below` | Curve clipped to the band $[g(x), h(x)]$ |\n| Neither | Between $y=0$ and curve (above and below the axis) |\n\nThe curve is **always one boundary** of the filled area. `above`/`below` supply the opposite boundary.\n\n`above` and `below` may depend on `x` (e.g. `\"cos(x) - 1\"`), enabling **fill between two curves**.\n\nWhen `outlineWidth` is set, a MathBox line is drawn along the boundary expression (`above` takes priority over `below`; falls back to $y=0$). The boundary line respects `left`/`right` clipping. **Default: no boundary.**\n\n---\n\n## Recipes\n\n### Fill between curve and x-axis\n\n```json\n\"fill_regions\": [\n  { \"color\": \"#4488ff\", \"opacity\": 0.4, \"above\": \"0\" },\n  { \"color\": \"#ff4455\", \"opacity\": 0.4, \"below\": \"0\" }\n]\n```\n\nBlue above zero, red below — two regions, each specifying one boundary.\n\n### Definite integral shading\n\n```json\n\"fill_regions\": [\n  { \"color\": \"#88ffcc\", \"opacity\": \"fill_op\", \"left\": \"a\", \"right\": \"b\" }\n]\n```\n\nSliders `a` and `b` control the integration window. No `above`/`below` → fills between curve and $y=0$.\n\n### Fill between two curves\n\n```json\n{\n  \"expr\": \"sin(x)\",\n  \"fill_regions\": [\n    { \"color\": \"#aa88ff\", \"opacity\": 0.4, \"above\": \"cos(x) - 1\" }\n  ]\n}\n```\n\nShades where $\\sin x \\geq \\cos x - 1$. The `above` expression is evaluated at each sample $x$.\n\n### Animated range\n\n```json\n{\n  \"expr\": \"sin(x)\",\n  \"range\": [\"-pi\", \"pi + A * t\"],\n  \"fill_regions\": [{ \"above\": \"0\" }]\n}\n```\n\nBoth range endpoints are live expressions — the curve extends in real time.\n\n---\n\n## Notes\n\n- `expr`, `above`, `below`, `left`, `right`, and `opacity` all support **slider variables**, **time `t`**, and **scene functions**.\n- `above`/`below` boundaries support `x` as a variable, making fill-between-curves natural.\n- `left`/`right` are scalar clipping bounds (not yet curve-of-y expressions).\n- For static curves that never change, `parametric_curve` with `y`/`x` fields is simpler. Use `animated_curve` when interactivity or fill regions are needed.",
+      "range": [[-4, 4], [-2.5, 2.5], [-1, 1]],
+      "camera": { "position": [0, 0, 6], "target": [0, 0, 0] },
+      "elements": [
+        { "type": "axis", "axis": "x", "range": [-4, 4], "color": "#444444" },
+        { "type": "axis", "axis": "y", "range": [-2.5, 2.5], "color": "#444444" }
+      ],
+      "steps": [
+        {
+          "title": "Basic curve — no fill",
+          "description": "A simple `animated_curve` plotting `y = A·sin(x + φ)`. Drag the sliders to reshape the wave. No fill regions — just the curve line.",
+          "add": [
+            {
+              "id": "wave",
+              "type": "animated_curve",
+              "expr": "A * sin(x + phi)",
+              "range": [-4, 4],
+              "samples": 200,
+              "color": "#4da6ff",
+              "width": 3,
+              "opacity": 1
+            }
+          ],
+          "sliders": [
+            { "id": "A",   "label": "$A$ (amplitude)", "min": 0.1, "max": 2, "step": 0.1, "default": 1 },
+            { "id": "phi", "label": "$\\varphi$ (phase)", "min": -3.14, "max": 3.14, "step": 0.1, "default": 0 }
+          ],
+          "info": [
+            {
+              "id": "info1",
+              "content": "$$y = {{toFixed(A,2)}}\\,\\sin(x + {{toFixed(phi,2)}})$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Fill between curve and x-axis",
+          "description": "Same wave with a fill region that shades between the curve and the x-axis (y=0). Blue above zero, red below — each a separate fill region.",
+          "remove": [{ "id": "wave" }],
+          "add": [
+            {
+              "id": "wave2",
+              "type": "animated_curve",
+              "expr": "A * sin(x + phi)",
+              "range": [-4, 4],
+              "samples": 200,
+              "color": "#ffffff",
+              "width": 2,
+              "opacity": 0.9,
+              "fill_regions": [
+                {
+                  "id": "fill-above",
+                  "color": "#4488ff",
+                  "opacity": 0.45,
+                  "above": "0"
+                },
+                {
+                  "id": "fill-below",
+                  "color": "#ff4455",
+                  "opacity": 0.45,
+                  "below": "0"
+                }
+              ]
+            }
+          ],
+          "info": [
+            {
+              "id": "info2",
+              "content": "$$y = {{toFixed(A,2)}}\\,\\sin(x + {{toFixed(phi,2)}})$$  — blue fills $y>0$, red fills $y<0$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Fill clipped by left/right bounds",
+          "description": "Fill region clipped to a horizontal window [L, R]. Drag the L and R sliders to move the shaded interval. The fill only appears where the x coordinate falls inside [L, R].",
+          "remove": [{ "id": "wave2" }],
+          "add": [
+            {
+              "id": "wave3",
+              "type": "animated_curve",
+              "expr": "A * sin(x + phi)",
+              "range": [-4, 4],
+              "samples": 200,
+              "color": "#aaaaaa",
+              "width": 2,
+              "opacity": 0.6,
+              "fill_regions": [
+                {
+                  "id": "fill-window",
+                  "color": "#88ffcc",
+                  "opacity": "fill_op",
+                  "left": "L",
+                  "right": "R",
+                  "outlineWidth": "outline_w",
+                  "outlineColor": "#44ffaa",
+                  "outlineOpacity": "outline_op"
+                }
+              ]
+            }
+          ],
+          "sliders": [
+            { "id": "A",   "label": "$A$ (amplitude)", "min": 0.1, "max": 2, "step": 0.1, "default": 1 },
+            { "id": "phi", "label": "$\\varphi$ (phase)", "min": -3.14, "max": 3.14, "step": 0.1, "default": 0 },
+            { "id": "L", "label": "$L$ (left bound)", "min": -4, "max": 4, "step": 0.1, "default": -1 },
+            { "id": "R", "label": "$R$ (right bound)", "min": -4, "max": 4, "step": 0.1, "default": 1 },
+            { "id": "fill_op",   "label": "fill opacity",    "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
+            { "id": "outline_w", "label": "outline width",   "min": 0, "max": 6, "step": 0.5,  "default": 2 },
+            { "id": "outline_op","label": "outline opacity", "min": 0, "max": 1, "step": 0.05, "default": 0.9 }
+          ],
+          "info": [
+            {
+              "id": "info3",
+              "content": "$$\\int_{{L}}^{{R}} {{toFixed(A,2)}}\\sin(x+{{toFixed(phi,2)}})\\,dx = {{toFixed(A*(-cos(R+phi) + cos(L+phi)), 4)}}$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Fill between two curves",
+          "description": "Fill the area between `sin(x)` (top) and `cos(x) - 1` (bottom), over the range [0, π]. Uses `above` to clip where curve ≥ other curve.",
+          "remove": [{ "id": "wave3" }, { "type": "slider" }],
+          "add": [
+            {
+              "id": "cos-line",
+              "type": "animated_curve",
+              "expr": "cos(x) - 1",
+              "range": [0, 6.2832],
+              "samples": 200,
+              "color": "#ff9944",
+              "width": 2,
+              "opacity": 0.8
+            },
+            {
+              "id": "sin-fill",
+              "type": "animated_curve",
+              "expr": "sin(x)",
+              "range": [0, 6.2832],
+              "samples": 200,
+              "color": "#4da6ff",
+              "width": 2,
+              "opacity": 0.9,
+              "fill_regions": [
+                {
+                  "id": "between",
+                  "color": "#aa88ff",
+                  "opacity": 0.45,
+                  "above": "cos(x) - 1",
+                  "outlineWidth": 2,
+                  "outlineColor": "#ffaa44",
+                  "outlineOpacity": 0.85
+                }
+              ]
+            }
+          ],
+          "info": [
+            {
+              "id": "info4",
+              "content": "Shaded region: $\\sin x \\geq \\cos x - 1$ over $[0,\\, 2\\pi]$",
+              "position": "top-left"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
