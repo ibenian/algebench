@@ -381,6 +381,104 @@
               "position": "top-left"
             }
           ]
+        },
+        {
+          "title": "All four constraints — vertical and horizontal bounds combined",
+          "description": "All constraints active at once: `rightOf`/`leftOf` clip the x range, and `above`/`below` use `max(cos, bot)` and `min(cos, top)` so the boundary is whichever is tighter — the cos curve or the horizontal line. Four `animated_line` markers show all four boundaries live.",
+          "remove": [{ "id": "cos-line4" }, { "id": "sin-fill4" }, { "id": "bound-top" }, { "id": "bound-bot" }],
+          "add": [
+            {
+              "id": "cos-line5",
+              "type": "animated_curve",
+              "expr": "B * cos(x + psi) - C",
+              "range": [0, 6.2832],
+              "samples": 200,
+              "color": "#ff5566",
+              "width": 2.5,
+              "opacity": 0.9
+            },
+            {
+              "id": "sin-fill5",
+              "type": "animated_curve",
+              "expr": "A * sin(x + phi)",
+              "range": [0, 6.2832],
+              "samples": 200,
+              "color": "#44ccff",
+              "width": 2.5,
+              "opacity": 0.9,
+              "fill_regions": [
+                {
+                  "id": "above-all",
+                  "color": "#66aaff",
+                  "opacity": 0.4,
+                  "above": "max(B * cos(x + psi) - C, bot)",
+                  "rightOf": "L",
+                  "leftOf": "R",
+                  "outlineWidth": "outline_w",
+                  "outlineColor": "#ffffff",
+                  "outlineOpacity": "outline_op"
+                },
+                {
+                  "id": "below-all",
+                  "color": "#ff7788",
+                  "opacity": 0.4,
+                  "below": "min(B * cos(x + psi) - C, top)",
+                  "rightOf": "L",
+                  "leftOf": "R",
+                  "outlineWidth": "outline_w",
+                  "outlineColor": "#ffffff",
+                  "outlineOpacity": "outline_op"
+                }
+              ]
+            },
+            {
+              "id": "vbound-left",
+              "type": "animated_line",
+              "points": [["L", "-2.5", "0"], ["L", "2.5", "0"]],
+              "color": "#ffdd44",
+              "width": 1.5,
+              "opacity": 0.7
+            },
+            {
+              "id": "vbound-right",
+              "type": "animated_line",
+              "points": [["R", "-2.5", "0"], ["R", "2.5", "0"]],
+              "color": "#ffdd44",
+              "width": 1.5,
+              "opacity": 0.7
+            },
+            {
+              "id": "hbound-top",
+              "type": "animated_line",
+              "points": [["-4", "top", "0"], ["7", "top", "0"]],
+              "color": "#ff44aa",
+              "width": 1.5,
+              "opacity": 0.7
+            },
+            {
+              "id": "hbound-bot",
+              "type": "animated_line",
+              "points": [["-4", "bot", "0"], ["7", "bot", "0"]],
+              "color": "#ff44aa",
+              "width": 1.5,
+              "opacity": 0.7
+            }
+          ],
+          "sliders": [
+            { "id": "L",   "label": "$L$ — left boundary",   "min": 0,   "max": 6.2832, "step": 0.1,  "default": 1 },
+            { "id": "R",   "label": "$R$ — right boundary",  "min": 0,   "max": 6.2832, "step": 0.1,  "default": 5.2 },
+            { "id": "top", "label": "top boundary",          "min": -2,  "max": 2,      "step": 0.1,  "default": 0.5 },
+            { "id": "bot", "label": "bottom boundary",       "min": -2,  "max": 2,      "step": 0.1,  "default": -0.5 },
+            { "id": "outline_w",  "label": "outline width",   "min": 0,   "max": 6,      "step": 0.5,  "default": 1.5 },
+            { "id": "outline_op", "label": "outline opacity", "min": 0,   "max": 1,      "step": 0.05, "default": 0.25 }
+          ],
+          "info": [
+            {
+              "id": "info8",
+              "content": "${{toFixed(L,2)}} \\leq x \\leq {{toFixed(R,2)}}$ \\quad $\\max(\\cos,{{toFixed(bot,2)}}) \\leq \\sin \\leq \\min(\\cos,{{toFixed(top,2)}})$",
+              "position": "top-left"
+            }
+          ]
         }
       ]
     }
