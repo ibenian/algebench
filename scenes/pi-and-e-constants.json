@@ -489,16 +489,23 @@
         },
         {
           "title": "Euler's Identity — e^(iπ) + 1 = 0",
-          "description": "Set $\\theta = \\pi$: the rotating vector lands exactly on $-1$. The green arrow adds $+1$, bringing it back to the origin. Five of the most fundamental constants — $e$ (growth), $i$ (rotation), $\\pi$ (circle), $1$ (identity), $0$ (origin) — united in one equation: $e^{i\\pi} + 1 = 0$. Richard Feynman called it \"the most remarkable formula in mathematics.\"",
+          "description": "Watch the vector rotate from $(1,0)$ to $(-1,0)$ as $\\theta$ sweeps from $0$ to $\\pi$. At exactly $\\theta = \\pi$ the tip lands on $-1$, and the green $+1$ arrow returns it to the origin: $e^{i\\pi} + 1 = 0$. Five of the most fundamental constants — $e$ (growth), $i$ (rotation), $\\pi$ (circle), $1$ (identity), $0$ (origin) — united in one equation. Richard Feynman called it \"the most remarkable formula in mathematics.\"",
           "remove": [{ "id": "euler-vec" }, { "id": "re-proj" }, { "id": "im-proj" }, { "id": "euler-dot" }, { "type": "slider" }],
           "add": [
             {
               "id": "euler-id-vec",
-              "type": "vector",
-              "from": [0, 0, 0],
-              "to": [-1, 0, 0],
+              "type": "animated_vector",
+              "from": ["0", "0", "0"],
+              "to": ["cos(theta)", "sin(theta)", "0"],
               "color": "#ffdd44",
-              "width": 3
+              "width": 1.5
+            },
+            {
+              "id": "euler-id-dot",
+              "type": "animated_point",
+              "position": ["cos(theta)", "sin(theta)", "0"],
+              "color": "#ffdd44",
+              "radius": 0.04
             },
             {
               "id": "plus-one-vec",
@@ -506,7 +513,7 @@
               "from": [-1, 0, 0],
               "to": [0, 0, 0],
               "color": "#44ff88",
-              "width": 2.5,
+              "width": 2,
               "label": "+1"
             },
             {
@@ -526,10 +533,13 @@
               "label": "0"
             }
           ],
+          "sliders": [
+            { "id": "theta", "label": "$\\theta$", "min": 0, "max": 3.14159, "step": 0.01, "default": 0, "animate": true, "animateMode": "once", "duration": 4000 }
+          ],
           "info": [
             {
               "id": "info9",
-              "content": "$$e^{i\\pi} + 1 = 0$$\n$$\\underbrace{e}_{\\text{growth}} \\cdot \\underbrace{i}_{\\text{rotation}} \\cdot \\underbrace{\\pi}_{\\text{circle}} + \\underbrace{1}_{\\text{identity}} = \\underbrace{0}_{\\text{origin}}$$",
+              "content": "$$e^{i\\theta} = \\cos\\theta + i\\sin\\theta \\qquad \\theta = {{toFixed(theta, 3)}}$$\n$$e^{i\\pi} + 1 = 0 \\quad\\Longleftarrow\\quad \\underbrace{e}_{\\text{growth}},\\; \\underbrace{i}_{\\text{rotation}},\\; \\underbrace{\\pi}_{\\text{circle}},\\; \\underbrace{1}_{\\text{identity}},\\; \\underbrace{0}_{\\text{origin}}$$",
               "position": "top-left"
             }
           ]
