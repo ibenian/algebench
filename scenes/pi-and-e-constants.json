@@ -450,7 +450,7 @@
               "from": ["0", "0", "0"],
               "to": ["cos(theta)", "sin(theta)", "0"],
               "color": "#ffdd44",
-              "width": 3
+              "width": 1.5
             },
             {
               "id": "re-proj",
@@ -473,7 +473,7 @@
               "type": "animated_point",
               "position": ["cos(theta)", "sin(theta)", "0"],
               "color": "#ffdd44",
-              "size": 10
+              "radius": 0.04
             }
           ],
           "sliders": [

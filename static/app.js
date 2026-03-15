@@ -2321,7 +2321,8 @@ function renderAnimatedVector(el, view) {
     const keyframes = el.keyframes || [];
     const duration = el.duration || 2000;
     const loop = el.loop !== false;
-    const exprStrings = el.expr || el.toExpr; // array of 3 JS expression strings using 't'
+    const exprStrings = el.expr || el.toExpr
+        || (Array.isArray(el.to) && el.to.length === 3 ? el.to.map(v => String(v)) : null); // array of 3 JS expression strings using 't'
     const fromExprStrings = el.fromExpr; // optional array of 3 JS expression strings for dynamic origin
     const visibleExprString = (typeof el.visibleExpr === 'string' && el.visibleExpr.trim()) ? el.visibleExpr.trim() : null;
     const labelShowAltitude = !!el.labelShowAltitude;
@@ -2939,7 +2940,8 @@ function renderAnimatedPoint(el, view) {
     const color = parseColor(el.color || '#ffdd00');
     const radius = el.radius !== undefined ? el.radius : 0.25; // data-space radius (m in this scene)
     const label = el.label;
-    const exprStrings = el.expr || el.positionExpr || el.toExpr;
+    const exprStrings = el.expr || el.positionExpr || el.toExpr
+        || (Array.isArray(el.position) && el.position.length === 3 ? el.position.map(v => String(v)) : null);
     const visibleExprString = (typeof el.visibleExpr === 'string' && el.visibleExpr.trim()) ? el.visibleExpr.trim() : null;
 
     if (!Array.isArray(exprStrings) || exprStrings.length !== 3) return null;
