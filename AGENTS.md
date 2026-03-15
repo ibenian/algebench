@@ -49,6 +49,18 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full scene format reference, el
 
 For building scenes interactively, use the **`algebench-scene-builder`** skill for Claude Code.
 
+## GitHub Issues
+
+When creating a GitHub issue, always apply a label. Run `gh label list` to see available labels and pick the most appropriate one. Common choices:
+
+- `enhancement` — new feature or improvement request
+- `bug` — something broken or incorrect
+- `scene` — new or improved scene content
+- `documentation` — docs additions or corrections
+- `architecture` — design or structural decisions
+
+Apply the label as part of the create command or immediately after with `gh issue edit <n> --add-label "<label>"`.
+
 ## In-App Agent Tools
 
 See [`agent-tools-reference.md`](agent-tools-reference.md) for the full reference on tools available to the in-app Gemini agent (`add_scene`, `eval_math`, `set_sliders`, `navigate_to`, `set_camera`, `set_info_overlay`, `mem_get`/`mem_set`, `set_preset_prompts`).
