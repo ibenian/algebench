@@ -1,0 +1,649 @@
+{
+  "title": "π and e — The Two Great Constants",
+  "unsafe": true,
+  "unsafe_explanation": "Scene functions use IIFE loops to compute partial sums for Leibniz series, Basel problem, and Taylor approximation of e^x.",
+  "scenes": [
+    {
+      "title": "Scene 1 — The Circle Constant π",
+      "description": "π is the ratio of a circle's circumference to its diameter. We approach it three ways: geometrically via inscribed polygons, analytically via the Leibniz series, and via the Basel problem.",
+      "range": [[-2.2, 2.2], [-2.2, 2.2], [-1, 1]],
+      "camera": { "position": [0, 0, 6], "target": [0, 0, 0] },
+      "functions": [
+        {
+          "name": "partialLeibniz",
+          "args": [],
+          "expr": "(()=>{let s=0;const n=max(1,floor(N));for(let k=0;k<n;k++){s+=((k%2===0)?1:-1)/(2*k+1);}return s;})()"
+        },
+        {
+          "name": "baselSum",
+          "args": [],
+          "expr": "(()=>{let s=0;const n=max(1,floor(N));for(let k=1;k<=n;k++){s+=1/(k*k);}return s;})()"
+        }
+      ],
+      "elements": [
+        { "type": "axis", "axis": "x", "range": [-2.2, 2.2], "color": "#444444" },
+        { "type": "axis", "axis": "y", "range": [-2.2, 2.2], "color": "#444444" }
+      ],
+      "steps": [
+        {
+          "title": "The Unit Circle",
+          "description": "π is defined as the ratio of circumference to diameter. For a unit circle (r = 1), the circumference is exactly 2π and the area is exactly π.",
+          "add": [
+            {
+              "id": "unit-circle",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [0, 6.2832],
+              "samples": 128,
+              "color": "#4da6ff",
+              "opacity": 0.9,
+              "width": 2.5
+            },
+            {
+              "id": "radius-vec",
+              "type": "vector",
+              "from": [0, 0, 0],
+              "to": [1, 0, 0],
+              "color": "#ffdd44",
+              "width": 3,
+              "label": "r = 1"
+            },
+            {
+              "id": "origin-pt",
+              "type": "point",
+              "position": [0, 0, 0],
+              "color": "#ffffff",
+              "size": 6
+            },
+            {
+              "id": "rim-pt",
+              "type": "point",
+              "position": [1, 0, 0],
+              "color": "#4da6ff",
+              "size": 6,
+              "label": "(1, 0)"
+            }
+          ],
+          "info": [
+            {
+              "id": "info1",
+              "content": "$$C = 2\\pi r = {{toFixed(2*pi*1, 6)}}\\ldots \\qquad A = \\pi r^2 = {{toFixed(pi, 6)}}\\ldots$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Archimedes' Method — N-gon Approximation",
+          "description": "Long before calculus, Archimedes squeezed π between inscribed and circumscribed polygons. As the number of sides N grows, the perimeter of the inscribed regular N-gon converges to 2π. Drag the slider to watch it happen.",
+          "remove": [{ "id": "radius-vec" }, { "id": "rim-pt" }, { "id": "origin-pt" }],
+          "add": [
+            {
+              "id": "ngon",
+              "type": "animated_polygon",
+              "regular": {
+                "n": "N",
+                "radius": "1",
+                "center": ["0", "0", "0"],
+                "rotation": "0"
+              },
+              "color": "#66cc88",
+              "opacity": "0.35",
+              "outlineWidth": "2",
+              "outlineColor": "#99ffbb",
+              "outlineOpacity": "0.9"
+            }
+          ],
+          "sliders": [
+            { "id": "N", "label": "$N$ (sides)", "min": 3, "max": 96, "step": 1, "default": 6 }
+          ],
+          "info": [
+            {
+              "id": "info2",
+              "content": "$$N = {{N}} \\qquad P = N \\cdot 2\\sin\\!\\frac{\\pi}{N} = {{toFixed(N*2*sin(pi/N), 6)}} \\xrightarrow{N\\to\\infty} 2\\pi = {{toFixed(2*pi, 6)}}\\ldots$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Leibniz Series — π from an Alternating Sum",
+          "description": "π hides inside the simplest alternating series: π/4 = 1 − 1/3 + 1/5 − 1/7 + ⋯. The convergence is slow but the formula is stunning. Drag N to add more terms.",
+          "remove": [{ "id": "ngon" }, { "id": "unit-circle" }, { "type": "slider" }],
+          "add": [
+            {
+              "id": "target-line",
+              "type": "line",
+              "from": [0, 0.7854, 0],
+              "to": [2.1, 0.7854, 0],
+              "color": "#ffdd44",
+              "opacity": 0.6,
+              "width": 1.5
+            },
+            {
+              "id": "leibniz-curve",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "(()=>{let s=0;const n=max(1,floor(t));for(let k=0;k<n;k++){s+=((k%2===0)?1:-1)/(2*k+1);}return s;})()",
+              "z": "0",
+              "range": [1, "N"],
+              "samples": "N",
+              "color": "#4da6ff",
+              "opacity": 0.9,
+              "width": 2
+            },
+            {
+              "id": "sum-point",
+              "type": "animated_point",
+              "position": ["N", "partialLeibniz", "0"],
+              "color": "#ff8844",
+              "size": 10
+            }
+          ],
+          "sliders": [
+            { "id": "N", "label": "$N$ (terms)", "min": 1, "max": 300, "step": 1, "default": 10 }
+          ],
+          "info": [
+            {
+              "id": "info3",
+              "content": "$$S_N = \\sum_{k=0}^{N-1}\\frac{(-1)^k}{2k+1} = {{toFixed(partialLeibniz, 6)}} \\quad \\Rightarrow \\quad \\pi \\approx 4 S_N = {{toFixed(4*partialLeibniz, 6)}}$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Basel Problem — ∑ 1/n² = π²/6",
+          "description": "Euler shocked Europe in 1734: the sum of reciprocals of perfect squares equals exactly π²/6. Drag N to watch the partial sum converge.",
+          "remove": [{ "id": "target-line" }, { "id": "leibniz-curve" }, { "id": "sum-point" }, { "type": "slider" }],
+          "add": [
+            {
+              "id": "basel-target",
+              "type": "line",
+              "from": [0, 1.6449, 0],
+              "to": [2.1, 1.6449, 0],
+              "color": "#ffdd44",
+              "opacity": 0.6,
+              "width": 1.5
+            },
+            {
+              "id": "basel-curve",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "(()=>{let s=0;const n=max(1,floor(t));for(let k=1;k<=n;k++){s+=1/(k*k);}return s;})()",
+              "z": "0",
+              "range": [1, "N"],
+              "samples": "N",
+              "color": "#cc88ff",
+              "opacity": 0.9,
+              "width": 2
+            },
+            {
+              "id": "basel-point",
+              "type": "animated_point",
+              "position": ["N", "baselSum", "0"],
+              "color": "#ff8844",
+              "size": 10
+            }
+          ],
+          "sliders": [
+            { "id": "N", "label": "$N$ (terms)", "min": 1, "max": 500, "step": 1, "default": 20 }
+          ],
+          "info": [
+            {
+              "id": "info4",
+              "content": "$$\\sum_{k=1}^{N}\\frac{1}{k^2} = {{toFixed(baselSum, 6)}} \\xrightarrow{N\\to\\infty} \\frac{\\pi^2}{6} = {{toFixed(pi*pi/6, 6)}}\\ldots$$",
+              "position": "top-left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Scene 2 — The Growth Constant e",
+      "description": "e is the base of natural exponential growth. It appears as the limit of compound interest, as the unique base whose logarithm equals area under 1/x, and as the function equal to its own derivative.",
+      "range": [[-0.5, 5], [-0.5, 8], [-1, 1]],
+      "camera": { "position": [0, 0, 9], "target": [2, 3, 0] },
+      "functions": [
+        {
+          "name": "taylorE",
+          "args": [],
+          "expr": "(()=>{let s=0,term=1;const n=max(1,floor(N)),xv=tx;for(let k=0;k<n;k++){if(k>0)term*=xv/k;s+=term;}return s;})()"
+        },
+        {
+          "name": "compoundVal",
+          "args": [],
+          "expr": "pow(1 + 1/max(1,floor(n)), floor(n))"
+        }
+      ],
+      "elements": [
+        { "type": "axis", "axis": "x", "range": [-0.5, 5], "color": "#444444" },
+        { "type": "axis", "axis": "y", "range": [-0.5, 8], "color": "#444444" }
+      ],
+      "steps": [
+        {
+          "title": "Compound Interest Limit",
+          "description": "e is what you get when interest compounds infinitely often. The formula (1 + 1/n)^n approaches e as n → ∞. The blue curve (1+1/n)^(nx) converges to the gold curve e^x as you drag n higher.",
+          "add": [
+            {
+              "id": "exp-true",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "exp(t)",
+              "z": "0",
+              "range": [0, 2.1],
+              "samples": 128,
+              "color": "#ffdd44",
+              "opacity": 0.9,
+              "width": 2.5
+            },
+            {
+              "id": "compound-curve",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "pow(1 + 1/max(1,floor(n)), floor(n) * t)",
+              "z": "0",
+              "range": [0, 2.1],
+              "samples": 128,
+              "color": "#4da6ff",
+              "opacity": 0.85,
+              "width": 2
+            },
+            {
+              "id": "compound-marker",
+              "type": "animated_line",
+              "points": [["1", "0", "0"], ["1", "compoundVal", "0"]],
+              "color": "#4da6ff",
+              "width": 1.5,
+              "opacity": 0.7
+            },
+            {
+              "id": "compound-dot",
+              "type": "animated_point",
+              "position": ["1", "compoundVal", "0"],
+              "color": "#ff8844",
+              "size": 10
+            }
+          ],
+          "sliders": [
+            { "id": "n", "label": "$n$ (compounding periods)", "min": 1, "max": 500, "step": 1, "default": 1 }
+          ],
+          "info": [
+            {
+              "id": "info5",
+              "content": "$$\\left(1+\\frac{1}{n}\\right)^n = {{toFixed(compoundVal, 6)}} \\xrightarrow{n\\to\\infty} e = 2.718281\\ldots$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Area Under 1/x",
+          "description": "e is the unique number where the area under 1/x from 1 to e equals exactly 1. Drag b and watch the area — the integral ln(b) reaches 1 precisely at b = e ≈ 2.718.",
+          "remove": [{ "id": "exp-true" }, { "id": "compound-curve" }, { "id": "compound-marker" }, { "id": "compound-dot" }, { "type": "slider" }],
+          "add": [
+            {
+              "id": "recip-curve",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "1/t",
+              "z": "0",
+              "range": [0.2, 5],
+              "samples": 128,
+              "color": "#ffffff",
+              "opacity": 0.8,
+              "width": 2
+            },
+            {
+              "id": "area-fill",
+              "type": "animated_curve",
+              "expr": "1/x",
+              "range": ["1", "max(1.001, b)"],
+              "samples": 120,
+              "showCurve": false,
+              "fill_regions": [
+                {
+                  "id": "under-recip",
+                  "color": "#4da6ff",
+                  "opacity": 0.4,
+                  "above": "0"
+                }
+              ]
+            },
+            {
+              "id": "b-marker",
+              "type": "animated_line",
+              "points": [["b", "0", "0"], ["b", "1/max(0.001,b)", "0"]],
+              "color": "#ffdd44",
+              "width": 1.5,
+              "opacity": 0.8
+            },
+            {
+              "id": "e-marker",
+              "type": "line",
+              "from": [2.71828, 0, 0],
+              "to": [2.71828, 0.37, 0],
+              "color": "#ff8844",
+              "opacity": 0.5,
+              "width": 1
+            }
+          ],
+          "sliders": [
+            { "id": "b", "label": "$b$ (upper limit)", "min": 1.01, "max": 5, "step": 0.01, "default": 2.718 }
+          ],
+          "info": [
+            {
+              "id": "info6",
+              "content": "$$\\int_1^b \\frac{1}{x}\\,dx = \\ln(b) = {{toFixed(ln(max(0.001,b)), 5)}} \\quad\\Longrightarrow\\quad \\text{area} = 1 \\text{ when } b = e$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "e^x Is Its Own Derivative — Taylor Series",
+          "description": "Among all exponentials, e^x is the only one equal to its own rate of change. Its Taylor series is e^x = 1 + x + x²/2! + x³/3! + ⋯. Add more terms and the cyan approximation converges to the gold curve.",
+          "remove": [{ "id": "recip-curve" }, { "id": "area-fill" }, { "id": "b-marker" }, { "id": "e-marker" }, { "type": "slider" }],
+          "add": [
+            {
+              "id": "exp-gold",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "exp(t)",
+              "z": "0",
+              "range": [-2, 2.5],
+              "samples": 128,
+              "color": "#ffdd44",
+              "opacity": 0.9,
+              "width": 2.5
+            },
+            {
+              "id": "taylor-curve",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "(()=>{let s=0,term=1;const n=max(1,floor(N)),xv=t;for(let k=0;k<n;k++){if(k>0)term*=xv/k;s+=term;}return s;})()",
+              "z": "0",
+              "range": [-2, 2.5],
+              "samples": 128,
+              "color": "#44ccff",
+              "opacity": 0.85,
+              "width": 2
+            }
+          ],
+          "sliders": [
+            { "id": "N", "label": "$N$ (terms)", "min": 1, "max": 12, "step": 1, "default": 3 }
+          ],
+          "info": [
+            {
+              "id": "info7",
+              "content": "$$e^x \\approx \\sum_{k=0}^{N-1}\\frac{x^k}{k!} = 1 + x + \\frac{x^2}{2} + \\cdots \\quad (N={{N}} \\text{ terms})$$",
+              "position": "top-left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Scene 3 — Where They Meet",
+      "description": "π and e are not independent. They meet in Euler's formula e^(iθ) = cos θ + i sin θ — which unifies rotation, exponential growth, and the circle constant in one equation.",
+      "range": [[-1.8, 1.8], [-1.8, 1.8], [-1, 1]],
+      "camera": { "position": [0, 0, 6], "target": [0, 0, 0] },
+      "elements": [
+        { "type": "axis", "axis": "x", "range": [-1.8, 1.8], "color": "#444444", "label": "Re" },
+        { "type": "axis", "axis": "y", "range": [-1.8, 1.8], "color": "#444444", "label": "Im" }
+      ],
+      "steps": [
+        {
+          "title": "e^(iθ) Traces the Unit Circle",
+          "description": "Plug an imaginary number into e and out comes a rotation. Euler's formula says e^(iθ) = cos θ + i sin θ — the real part is cos θ, the imaginary part is sin θ, and the point traces the unit circle as θ varies. Drag θ or animate it.",
+          "add": [
+            {
+              "id": "guide-circle",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [0, 6.2832],
+              "samples": 128,
+              "color": "#555555",
+              "opacity": 0.6,
+              "width": 1
+            },
+            {
+              "id": "euler-vec",
+              "type": "animated_vector",
+              "from": ["0", "0", "0"],
+              "to": ["cos(theta)", "sin(theta)", "0"],
+              "color": "#ffdd44",
+              "width": 3
+            },
+            {
+              "id": "re-proj",
+              "type": "animated_line",
+              "points": [["cos(theta)", "sin(theta)", "0"], ["cos(theta)", "0", "0"]],
+              "color": "#4da6ff",
+              "width": 1.5,
+              "opacity": 0.75
+            },
+            {
+              "id": "im-proj",
+              "type": "animated_line",
+              "points": [["cos(theta)", "sin(theta)", "0"], ["0", "sin(theta)", "0"]],
+              "color": "#ff6688",
+              "width": 1.5,
+              "opacity": 0.75
+            },
+            {
+              "id": "euler-dot",
+              "type": "animated_point",
+              "position": ["cos(theta)", "sin(theta)", "0"],
+              "color": "#ffdd44",
+              "size": 10
+            }
+          ],
+          "sliders": [
+            { "id": "theta", "label": "$\\theta$", "min": 0, "max": 6.2832, "step": 0.05, "default": 0.8, "animate": true }
+          ],
+          "info": [
+            {
+              "id": "info8",
+              "content": "$$e^{i\\theta} = \\cos\\theta + i\\sin\\theta \\qquad \\theta = {{toFixed(theta, 3)}}$$\n$$\\operatorname{Re} = {{toFixed(cos(theta), 4)}} \\qquad \\operatorname{Im} = {{toFixed(sin(theta), 4)}}$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Euler's Identity — e^(iπ) + 1 = 0",
+          "description": "Set θ = π. The vector lands exactly on −1. Adding 1 brings it to 0. Five of the most fundamental constants — e, i, π, 1, and 0 — united in one equation.",
+          "remove": [{ "id": "euler-vec" }, { "id": "re-proj" }, { "id": "im-proj" }, { "id": "euler-dot" }, { "type": "slider" }],
+          "add": [
+            {
+              "id": "euler-id-vec",
+              "type": "vector",
+              "from": [0, 0, 0],
+              "to": [-1, 0, 0],
+              "color": "#ffdd44",
+              "width": 3
+            },
+            {
+              "id": "plus-one-vec",
+              "type": "vector",
+              "from": [-1, 0, 0],
+              "to": [0, 0, 0],
+              "color": "#44ff88",
+              "width": 2.5,
+              "label": "+1"
+            },
+            {
+              "id": "neg-one-pt",
+              "type": "point",
+              "position": [-1, 0, 0],
+              "color": "#ffdd44",
+              "size": 8,
+              "label": "e^{iπ} = −1"
+            },
+            {
+              "id": "zero-pt",
+              "type": "point",
+              "position": [0, 0, 0],
+              "color": "#ffffff",
+              "size": 8,
+              "label": "0"
+            }
+          ],
+          "info": [
+            {
+              "id": "info9",
+              "content": "$$e^{i\\pi} + 1 = 0$$\n$$\\underbrace{e}_{\\text{growth}} \\cdot \\underbrace{i}_{\\text{rotation}} \\cdot \\underbrace{\\pi}_{\\text{circle}} + \\underbrace{1}_{\\text{identity}} = \\underbrace{0}_{\\text{origin}}$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "The Gaussian Integral — ∫e^(−x²)dx = √π",
+          "description": "Integrate e^(−x²) over the whole real line and you get √π. π and e are inseparable. The proof squares the integral, converts to polar coordinates, and arrives at π.",
+          "remove": [{ "id": "guide-circle" }, { "id": "euler-id-vec" }, { "id": "plus-one-vec" }, { "id": "neg-one-pt" }, { "id": "zero-pt" }],
+          "camera": { "position": [4, -5, 6], "target": [0, 0, 0] },
+          "range": [[-3, 3], [-3, 3], [0, 1.2]],
+          "add": [
+            {
+              "id": "gaussian-surface",
+              "type": "parametric_surface",
+              "x": "u",
+              "y": "v",
+              "z": "exp(-(u*u + v*v))",
+              "uRange": [-3, 3],
+              "vRange": [-3, 3],
+              "uSamples": 64,
+              "vSamples": 64,
+              "color": "#3a6fa8",
+              "opacity": 0.55
+            },
+            {
+              "id": "gaussian-cross",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "0",
+              "z": "exp(-(t*t))",
+              "range": [-3, 3],
+              "samples": 128,
+              "color": "#ffdd44",
+              "opacity": 1,
+              "width": 3
+            }
+          ],
+          "info": [
+            {
+              "id": "info10",
+              "content": "$$\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi} \\approx {{toFixed(sqrt(pi), 6)}}$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "The Normal Distribution — π and e Together",
+          "description": "Normalize the Gaussian and you get the bell curve — both π and e appear in one formula. The σ bands contain 68%, 95%, and 99.7% of all probability. Drag μ and σ to reshape it.",
+          "remove": [{ "id": "gaussian-surface" }, { "id": "gaussian-cross" }],
+          "camera": { "position": [0, 0, 8], "target": [0, 0, 0] },
+          "range": [[-5, 5], [-0.1, 0.6], [-1, 1]],
+          "add": [
+            {
+              "id": "bell-axis-x",
+              "type": "axis",
+              "axis": "x",
+              "range": [-5, 5],
+              "color": "#444444"
+            },
+            {
+              "id": "bell-axis-y",
+              "type": "axis",
+              "axis": "y",
+              "range": [-0.1, 0.6],
+              "color": "#444444"
+            },
+            {
+              "id": "sigma3-fill",
+              "type": "animated_curve",
+              "expr": "exp(-((x-mu)*(x-mu))/(2*sigma*sigma)) / (sigma * sqrt(2*pi))",
+              "range": ["-5", "5"],
+              "samples": 200,
+              "showCurve": false,
+              "fill_regions": [
+                {
+                  "id": "s3",
+                  "color": "#4466ff",
+                  "opacity": 0.15,
+                  "above": "0",
+                  "rightOf": "mu - 3*sigma",
+                  "leftOf": "mu + 3*sigma"
+                }
+              ]
+            },
+            {
+              "id": "sigma2-fill",
+              "type": "animated_curve",
+              "expr": "exp(-((x-mu)*(x-mu))/(2*sigma*sigma)) / (sigma * sqrt(2*pi))",
+              "range": ["-5", "5"],
+              "samples": 200,
+              "showCurve": false,
+              "fill_regions": [
+                {
+                  "id": "s2",
+                  "color": "#4488ff",
+                  "opacity": 0.25,
+                  "above": "0",
+                  "rightOf": "mu - 2*sigma",
+                  "leftOf": "mu + 2*sigma"
+                }
+              ]
+            },
+            {
+              "id": "sigma1-fill",
+              "type": "animated_curve",
+              "expr": "exp(-((x-mu)*(x-mu))/(2*sigma*sigma)) / (sigma * sqrt(2*pi))",
+              "range": ["-5", "5"],
+              "samples": 200,
+              "showCurve": false,
+              "fill_regions": [
+                {
+                  "id": "s1",
+                  "color": "#44aaff",
+                  "opacity": 0.4,
+                  "above": "0",
+                  "rightOf": "mu - sigma",
+                  "leftOf": "mu + sigma"
+                }
+              ]
+            },
+            {
+              "id": "bell-curve",
+              "type": "animated_curve",
+              "expr": "exp(-((x-mu)*(x-mu))/(2*sigma*sigma)) / (sigma * sqrt(2*pi))",
+              "range": ["-5", "5"],
+              "samples": 200,
+              "color": "#ffffff",
+              "width": 2.5,
+              "opacity": 0.9
+            },
+            {
+              "id": "mean-marker",
+              "type": "animated_line",
+              "points": [["mu", "0", "0"], ["mu", "1/(sigma*sqrt(2*pi))", "0"]],
+              "color": "#ffdd44",
+              "width": 1.5,
+              "opacity": 0.7
+            }
+          ],
+          "sliders": [
+            { "id": "mu",    "label": "$\\mu$ (mean)",  "min": -2, "max": 2, "step": 0.1, "default": 0 },
+            { "id": "sigma", "label": "$\\sigma$ (std dev)", "min": 0.2, "max": 2, "step": 0.1, "default": 1 }
+          ],
+          "info": [
+            {
+              "id": "info11",
+              "content": "$$f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}}\\,e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}} \\qquad \\mu={{toFixed(mu,2)}},\\;\\sigma={{toFixed(sigma,2)}}$$\n$$\\mu\\pm\\sigma:\\;68.3\\% \\quad \\mu\\pm2\\sigma:\\;95.4\\% \\quad \\mu\\pm3\\sigma:\\;99.7\\%$$",
+              "position": "top-left"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
