@@ -407,69 +407,6 @@
               "position": "top-left"
             }
           ]
-        },
-        {
-          "title": "Sloped x-boundaries — rightOf and leftOf with x",
-          "description": "`rightOf` and `leftOf` accept `x` in scope, so the x-boundary can be any expression of `x` — including a line `m * x + b`. Here the fill is clipped between two parallel sloped lines: `rightOf: \"m * x + b\"` (left edge) and `leftOf: \"m * x + b + W\"` (right edge, shifted by `W`). Two `animated_line` elements mark the boundary lines. Drag `m` to tilt, `b` to translate, `W` to widen the stripe.",
-          "remove": [
-            { "id": "cos-line5" }, { "id": "sin-fill5" },
-            { "id": "vbound-left" }, { "id": "vbound-right" },
-            { "id": "hbound-top" }, { "id": "hbound-bot" }
-          ],
-          "add": [
-            {
-              "id": "curve9",
-              "type": "animated_curve",
-              "expr": "A * sin(x + phi)",
-              "range": [-4, 4],
-              "samples": 200,
-              "color": "#44ccff",
-              "width": 2.5,
-              "opacity": 0.9,
-              "fill_regions": [
-                {
-                  "id": "sloped-stripe",
-                  "color": "#88ffcc",
-                  "opacity": 0.45,
-                  "rightOf": "m * x + b",
-                  "leftOf": "m * x + b + W",
-                  "outlineWidth": 1.5,
-                  "outlineColor": "#44ffaa",
-                  "outlineOpacity": 0.8
-                }
-              ]
-            },
-            {
-              "id": "line-left",
-              "type": "animated_line",
-              "points": [["-4", "m * (-4) + b", "0"], ["4", "m * 4 + b", "0"]],
-              "color": "#ffdd44",
-              "width": 1.5,
-              "opacity": 0.7
-            },
-            {
-              "id": "line-right",
-              "type": "animated_line",
-              "points": [["-4", "m * (-4) + b + W", "0"], ["4", "m * 4 + b + W", "0"]],
-              "color": "#ffdd44",
-              "width": 1.5,
-              "opacity": 0.7
-            }
-          ],
-          "sliders": [
-            { "id": "A",   "label": "$A$ (amplitude)", "min": 0.1, "max": 2,    "step": 0.1,  "default": 1 },
-            { "id": "phi", "label": "$\\varphi$ (phase)", "min": -3.14, "max": 3.14, "step": 0.1, "default": 0 },
-            { "id": "m",   "label": "$m$ (slope)",     "min": -2,  "max": 2,    "step": 0.1,  "default": 0.5 },
-            { "id": "b",   "label": "$b$ (offset)",    "min": -3,  "max": 3,    "step": 0.1,  "default": -1 },
-            { "id": "W",   "label": "$W$ (width)",     "min": 0.1, "max": 4,    "step": 0.1,  "default": 2 }
-          ],
-          "info": [
-            {
-              "id": "info9",
-              "content": "Fill where ${{toFixed(m,2)}}x + {{toFixed(b,2)}} \\leq x \\leq {{toFixed(m,2)}}x + {{toFixed(b+W,2)}}$ \\quad stripe width $W = {{toFixed(W,1)}}$",
-              "position": "top-left"
-            }
-          ]
         }
       ]
     }
