@@ -32,7 +32,17 @@
                 <div id="scenes-menu"></div>
             </div>
             <button class="tb-btn" id="btn-show-json" title="Show current scene JSON">{ }</button>
-            <button class="tb-btn" id="btn-export-video" title="Record current tab video with TTS audio">Export Video</button>
+            <div id="video-export-format-dropdown" class="toolbar-dropdown">
+                <button class="tb-btn tb-btn-split" id="btn-video-record" title="Record current tab video with TTS audio">
+                    <span>Record <span id="video-export-format-label">(Auto)</span></span>
+                    <span class="tb-btn-caret">&#9662;</span>
+                </button>
+                <div id="video-export-format-menu" class="toolbar-menu">
+                    <button class="toolbar-menu-item" type="button" data-format="auto">Auto</button>
+                    <button class="toolbar-menu-item" type="button" data-format="webm">WebM</button>
+                    <button class="toolbar-menu-item" type="button" data-format="mp4">MP4</button>
+                </div>
+            </div>
         </div>
     </div>
     <div id="main-content">
