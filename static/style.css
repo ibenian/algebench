@@ -1076,12 +1076,32 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     font-family: 'SF Mono', 'Fira Code', monospace;
     font-size: 12px;
     color: rgba(212, 220, 255, 0.94);
-    transition: width 180ms ease, right 180ms ease;
 }
 #context-popup.hidden { display: none; }
 #context-popup.collapsed {
     right: auto;
     width: 272px;
+}
+#context-popup-top-resize {
+    position: absolute;
+    top: -8px;
+    left: 10px;
+    right: 10px;
+    height: 14px;
+    cursor: ns-resize;
+    z-index: 3;
+}
+#context-popup-right-resize {
+    position: absolute;
+    top: 12px;
+    right: -8px;
+    bottom: 12px;
+    width: 14px;
+    cursor: ew-resize;
+    z-index: 3;
+}
+#context-popup.collapsed #context-popup-right-resize {
+    display: none;
 }
 #context-popup-header {
     display: flex;
@@ -1234,6 +1254,13 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
         left: 8px;
         right: 8px;
         width: auto;
+    }
+    #context-popup-top-resize {
+        left: 8px;
+        right: 8px;
+    }
+    #context-popup-right-resize {
+        display: none;
     }
     #context-popup-nav {
         border-right: none;

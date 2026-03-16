@@ -429,7 +429,7 @@ def build_system_prompt(context, agent_memory=None):
 
     # Scene-specific agent instructions
     if scene.get('prompt'):
-        parts.append(f"\n## Scene Instructions\n{scene['prompt']}")
+        parts.append(f"\n## Current Scene Instructions\n{scene['prompt']}")
 
     # Step-specific agent instructions for the active step only
     if total_steps > 0 and step_num >= 1 and step_num <= total_steps:
@@ -442,7 +442,7 @@ def build_system_prompt(context, agent_memory=None):
         parts.append(_AGENT_TOOLS_REFERENCE)
 
     # Log context breadcrumbs — which sections were included
-    sections = ["Instructions", "Current State", "Lesson Structure", "Current Scene Definition", "Scene Documentation", "Scene Instructions", "Current Step Instructions", "Agent Tools Reference"]
+    sections = ["Instructions", "Current State", "Lesson Structure", "Current Scene Definition", "Scene Documentation", "Current Scene Instructions", "Current Step Instructions", "Agent Tools Reference"]
     included = []
     prompt_text = "\n".join(parts)
     for s in sections:

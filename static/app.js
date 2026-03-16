@@ -7573,7 +7573,9 @@ function setupContextStatusPopup() {
     const closeBtn = document.getElementById('context-popup-close');
     const copyBtn = document.getElementById('context-popup-copy');
     const toggleBtn = document.getElementById('context-popup-toggle');
-    if (!pill || !popup || !meta || !nav || !body || !closeBtn || !copyBtn || !toggleBtn) return;
+    const topResizeHandle = document.getElementById('context-popup-top-resize');
+    const rightResizeHandle = document.getElementById('context-popup-right-resize');
+    if (!pill || !popup || !meta || !nav || !body || !closeBtn || !copyBtn || !toggleBtn || !topResizeHandle || !rightResizeHandle) return;
 
     if (!DEBUG_MODE) {
         pill.classList.add('hidden');
@@ -7589,11 +7591,171 @@ function setupContextStatusPopup() {
     let contextScrollAnimFrame = null;
     let contextRefreshTimer = null;
     let contextCollapsed = true;
+    let popupResizeCleanup = null;
+    const CONTEXT_POPUP_SIZE_KEY = 'algebench-context-popup-size';
+    const CONTEXT_POPUP_STATE_KEY = 'algebench-context-popup-state';
+
+    function readStoredContextPopupState() {
+        try {
+            const raw = localStorage.getItem(CONTEXT_POPUP_STATE_KEY);
+            if (!raw) return {};
+            const parsed = JSON.parse(raw);
+            return {
+                collapsed: typeof parsed?.collapsed === 'boolean' ? parsed.collapsed : null,
+            };
+        } catch (_err) {
+            return {};
+        }
+    }
+
+    function storeContextPopupState({ collapsed }) {
+        const current = readStoredContextPopupState();
+        const next = {
+            collapsed: typeof collapsed === 'boolean' ? collapsed : current.collapsed,
+        };
+        try {
+            localStorage.setItem(CONTEXT_POPUP_STATE_KEY, JSON.stringify(next));
+        } catch (_err) {
+            // Ignore storage failures.
+        }
+    }
+
+    function readStoredContextPopupSize() {
+        try {
+            const raw = localStorage.getItem(CONTEXT_POPUP_SIZE_KEY);
+            if (!raw) return {};
+            const parsed = JSON.parse(raw);
+            return {
+                width: Number.isFinite(parsed?.width) ? parsed.width : null,
+                height: Number.isFinite(parsed?.height) ? parsed.height : null,
+            };
+        } catch (_err) {
+            return {};
+        }
+    }
+
+    function storeContextPopupSize({ width, height }) {
+        const current = readStoredContextPopupSize();
+        const next = {
+            width: Number.isFinite(width) ? Math.round(width) : current.width,
+            height: Number.isFinite(height) ? Math.round(height) : current.height,
+        };
+        try {
+            localStorage.setItem(CONTEXT_POPUP_SIZE_KEY, JSON.stringify(next));
+        } catch (_err) {
+            // Ignore storage failures.
+        }
+    }
+
+    function getContextPopupSizeCaps() {
+        const sideGap = window.innerWidth <= 900 ? 8 : 12;
+        return {
+            maxWidth: Math.max(272, window.innerWidth - sideGap * 2),
+            maxHeight: Math.max(220, window.innerHeight - 48),
+        };
+    }
+
+    function applyStoredContextPopupSize() {
+        const stored = readStoredContextPopupSize();
+        const caps = getContextPopupSizeCaps();
+        const width = Number.isFinite(stored.width) ? Math.min(stored.width, caps.maxWidth) : null;
+        const height = Number.isFinite(stored.height) ? Math.min(stored.height, caps.maxHeight) : null;
+
+        if (contextCollapsed) {
+            popup.style.right = '';
+            popup.style.width = '';
+        } else if (width != null) {
+            popup.style.right = window.innerWidth <= 900 ? '8px' : '12px';
+            popup.style.width = `${Math.round(width)}px`;
+        } else {
+            popup.style.right = '';
+            popup.style.width = '';
+        }
+
+        if (height != null) {
+            popup.style.height = `${Math.round(height)}px`;
+        } else {
+            popup.style.height = '';
+        }
+    }
 
     function updateContextPopupMode() {
         popup.classList.toggle('collapsed', contextCollapsed);
-        toggleBtn.textContent = contextCollapsed ? '\u2630' : '\u25E7';
+        toggleBtn.textContent = contextCollapsed ? '\u2630' : '\u2630';
         toggleBtn.title = contextCollapsed ? 'Expand text pane' : 'Collapse text pane';
+        storeContextPopupState({ collapsed: contextCollapsed });
+        applyStoredContextPopupSize();
+    }
+
+    function clearPopupResizeHandlers() {
+        if (popupResizeCleanup) {
+            popupResizeCleanup();
+            popupResizeCleanup = null;
+        }
+    }
+
+    function beginContextHeightResize(startEvent) {
+        startEvent.preventDefault();
+        startEvent.stopPropagation();
+        clearPopupResizeHandlers();
+
+        const startY = startEvent.clientY;
+        const rect = popup.getBoundingClientRect();
+        const startHeight = rect.height;
+        const { maxHeight } = getContextPopupSizeCaps();
+        const minHeight = 220;
+
+        popup.style.height = `${Math.round(startHeight)}px`;
+
+        const onMove = (moveEvt) => {
+            const dy = moveEvt.clientY - startY;
+            const nextHeight = Math.max(minHeight, Math.min(maxHeight, startHeight - dy));
+            popup.style.height = `${Math.round(nextHeight)}px`;
+            storeContextPopupSize({ height: nextHeight });
+        };
+
+        const onUp = () => {
+            clearPopupResizeHandlers();
+        };
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp, { once: true });
+        popupResizeCleanup = () => {
+            window.removeEventListener('mousemove', onMove);
+        };
+    }
+
+    function beginContextWidthResize(startEvent) {
+        if (contextCollapsed) return;
+        startEvent.preventDefault();
+        startEvent.stopPropagation();
+        clearPopupResizeHandlers();
+
+        const startX = startEvent.clientX;
+        const rect = popup.getBoundingClientRect();
+        const startWidth = rect.width;
+        const { maxWidth } = getContextPopupSizeCaps();
+        const minWidth = 320;
+
+        popup.style.right = window.innerWidth <= 900 ? '8px' : '12px';
+        popup.style.width = `${Math.round(startWidth)}px`;
+
+        const onMove = (moveEvt) => {
+            const dx = moveEvt.clientX - startX;
+            const nextWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + dx));
+            popup.style.width = `${Math.round(nextWidth)}px`;
+            storeContextPopupSize({ width: nextWidth });
+        };
+
+        const onUp = () => {
+            clearPopupResizeHandlers();
+        };
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp, { once: true });
+        popupResizeCleanup = () => {
+            window.removeEventListener('mousemove', onMove);
+        };
     }
 
     function parsePromptSections(text) {
@@ -7807,6 +7969,12 @@ function setupContextStatusPopup() {
     };
 
     pill.classList.remove('hidden');
+    {
+        const storedState = readStoredContextPopupState();
+        if (typeof storedState.collapsed === 'boolean') {
+            contextCollapsed = storedState.collapsed;
+        }
+    }
     updateContextPopupMode();
     pill.addEventListener('click', async () => {
         const opening = popup.classList.contains('hidden');
@@ -7817,6 +7985,7 @@ function setupContextStatusPopup() {
         popup.classList.remove('hidden');
         currentPromptText = '';
         clearProgrammaticScroll();
+        applyStoredContextPopupSize();
         nav.innerHTML = '';
         body.innerHTML = '<div class="context-popup-empty">Building current system prompt…</div>';
         meta.textContent = 'Fetching live prompt context…';
@@ -7839,6 +8008,7 @@ function setupContextStatusPopup() {
 
     closeBtn.addEventListener('click', () => {
         clearProgrammaticScroll();
+        clearPopupResizeHandlers();
         popup.classList.add('hidden');
     });
 
@@ -7854,9 +8024,17 @@ function setupContextStatusPopup() {
         }
     });
 
+    topResizeHandle.addEventListener('mousedown', beginContextHeightResize);
+    rightResizeHandle.addEventListener('mousedown', beginContextWidthResize);
+
+    window.addEventListener('resize', () => {
+        applyStoredContextPopupSize();
+    });
+
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !popup.classList.contains('hidden')) {
             clearProgrammaticScroll();
+            clearPopupResizeHandlers();
             popup.classList.add('hidden');
         }
     });
