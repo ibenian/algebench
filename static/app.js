@@ -7585,6 +7585,7 @@ function setupContextStatusPopup() {
     let navButtons = [];
     let programmaticScrollIndex = -1;
     let programmaticScrollTimer = null;
+    let contextScrollAnimFrame = null;
 
     function parsePromptSections(text) {
         const lines = String(text || '').split('\n');
@@ -7621,8 +7622,18 @@ function setupContextStatusPopup() {
         navButtons.forEach((btn, i) => btn.classList.toggle('active', i === index));
     }
 
+    function getContextScrollLeadRows(rowCount = 3) {
+        const lineHeight = parseFloat(window.getComputedStyle(body).lineHeight);
+        const rowHeight = Number.isFinite(lineHeight) ? lineHeight : 20;
+        return Math.round(rowHeight * rowCount);
+    }
+
     function clearProgrammaticScroll() {
         programmaticScrollIndex = -1;
+        if (contextScrollAnimFrame != null) {
+            cancelAnimationFrame(contextScrollAnimFrame);
+            contextScrollAnimFrame = null;
+        }
         if (programmaticScrollTimer) {
             clearTimeout(programmaticScrollTimer);
             programmaticScrollTimer = null;
@@ -7637,6 +7648,34 @@ function setupContextStatusPopup() {
             }
             clearProgrammaticScroll();
         }, 140);
+    }
+
+    function animateContextScrollTo(targetTop, duration = 160) {
+        if (contextScrollAnimFrame != null) {
+            cancelAnimationFrame(contextScrollAnimFrame);
+            contextScrollAnimFrame = null;
+        }
+        const startTop = body.scrollTop;
+        const delta = targetTop - startTop;
+        if (Math.abs(delta) < 1) {
+            body.scrollTop = targetTop;
+            return;
+        }
+        const startTime = performance.now();
+
+        function step(now) {
+            const t = Math.min(1, (now - startTime) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            body.scrollTop = startTop + delta * eased;
+            if (t < 1) {
+                contextScrollAnimFrame = requestAnimationFrame(step);
+            } else {
+                contextScrollAnimFrame = null;
+                body.scrollTop = targetTop;
+            }
+        }
+
+        contextScrollAnimFrame = requestAnimationFrame(step);
     }
 
     function syncActiveSectionFromScroll() {
@@ -7671,13 +7710,10 @@ function setupContextStatusPopup() {
             btn.addEventListener('click', () => {
                 const target = sectionEls[index];
                 if (!target) return;
-                const targetTop = Math.max(0, target.offsetTop - 8);
+                const targetTop = Math.max(0, target.offsetTop - getContextScrollLeadRows(5));
                 programmaticScrollIndex = index;
                 scheduleProgrammaticScrollRelease();
-                body.scrollTo({
-                    top: targetTop,
-                    behavior: 'smooth',
-                });
+                animateContextScrollTo(targetTop);
                 setActiveSection(index);
             });
             nav.appendChild(btn);
