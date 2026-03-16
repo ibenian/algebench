@@ -7584,7 +7584,6 @@ function setupContextStatusPopup() {
     let sectionEls = [];
     let navButtons = [];
     let programmaticScrollIndex = -1;
-    let programmaticScrollTop = null;
     let programmaticScrollTimer = null;
 
     function parsePromptSections(text) {
@@ -7624,23 +7623,31 @@ function setupContextStatusPopup() {
 
     function clearProgrammaticScroll() {
         programmaticScrollIndex = -1;
-        programmaticScrollTop = null;
         if (programmaticScrollTimer) {
             clearTimeout(programmaticScrollTimer);
             programmaticScrollTimer = null;
         }
     }
 
+    function scheduleProgrammaticScrollRelease() {
+        if (programmaticScrollTimer) clearTimeout(programmaticScrollTimer);
+        programmaticScrollTimer = setTimeout(() => {
+            if (programmaticScrollIndex >= 0) {
+                setActiveSection(programmaticScrollIndex);
+            }
+            clearProgrammaticScroll();
+        }, 140);
+    }
+
     function syncActiveSectionFromScroll() {
         if (!sectionEls.length) return;
         if (programmaticScrollIndex >= 0) {
-            if (programmaticScrollTop != null && Math.abs(body.scrollTop - programmaticScrollTop) <= 4) {
-                setActiveSection(programmaticScrollIndex);
-                clearProgrammaticScroll();
-            }
+            scheduleProgrammaticScrollRelease();
             return;
         }
-        const scrollTop = body.scrollTop + 24;
+        // Switch the active nav item a little before the heading reaches the top
+        // so scroll tracking feels less laggy while reading through long sections.
+        const scrollTop = body.scrollTop + 108;
         let activeIndex = 0;
         for (let i = 0; i < sectionEls.length; i++) {
             if (sectionEls[i].offsetTop <= scrollTop) activeIndex = i;
@@ -7666,12 +7673,7 @@ function setupContextStatusPopup() {
                 if (!target) return;
                 const targetTop = Math.max(0, target.offsetTop - 8);
                 programmaticScrollIndex = index;
-                programmaticScrollTop = targetTop;
-                if (programmaticScrollTimer) clearTimeout(programmaticScrollTimer);
-                programmaticScrollTimer = setTimeout(() => {
-                    setActiveSection(index);
-                    clearProgrammaticScroll();
-                }, 450);
+                scheduleProgrammaticScrollRelease();
                 body.scrollTo({
                     top: targetTop,
                     behavior: 'smooth',
