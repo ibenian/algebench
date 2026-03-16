@@ -52,6 +52,7 @@ let videoRecordedChunks = [];
 let videoRecordingStream = null;
 let videoRecordingExt = 'webm';
 let videoRecordingMime = 'video/webm';
+let videoExportFormatPreference = 'auto';
 let activeVirtualTimeExpr = null;
 let activeVirtualTimeCompiled = null;
 let activeSceneExprFunctions = {}; // scene-level expression helpers defined in scene.functions
@@ -7564,25 +7565,41 @@ function setupJsonViewer() {
 }
 
 function pickVideoRecorderFormat() {
-    const mp4Options = [
-        'video/mp4;codecs=h264,aac',
-        'video/mp4;codecs=avc1,mp4a.40.2',
-        'video/mp4',
-    ];
-    for (const mimeType of mp4Options) {
-        if (MediaRecorder.isTypeSupported(mimeType)) {
-            return { mimeType, containerMime: 'video/mp4', ext: 'mp4' };
-        }
-    }
-
     const webmOptions = [
         'video/webm;codecs=vp9,opus',
         'video/webm;codecs=vp8,opus',
         'video/webm',
     ];
-    for (const mimeType of webmOptions) {
-        if (MediaRecorder.isTypeSupported(mimeType)) {
-            return { mimeType, containerMime: 'video/webm', ext: 'webm' };
+
+    const mp4Options = [
+        'video/mp4;codecs=avc3,mp4a.40.2',
+        'video/mp4;codecs=h264,aac',
+        'video/mp4;codecs=avc1,mp4a.40.2',
+        'video/mp4',
+    ];
+
+    const preference = videoExportFormatPreference;
+    const candidates = [];
+    if (preference === 'webm') {
+        candidates.push({ options: webmOptions, containerMime: 'video/webm', ext: 'webm' });
+    } else if (preference === 'mp4') {
+        candidates.push({ options: mp4Options, containerMime: 'video/mp4', ext: 'mp4' });
+    } else {
+        candidates.push(
+            { options: webmOptions, containerMime: 'video/webm', ext: 'webm' },
+            { options: mp4Options, containerMime: 'video/mp4', ext: 'mp4' },
+        );
+    }
+
+    for (const candidate of candidates) {
+        for (const mimeType of candidate.options) {
+            if (MediaRecorder.isTypeSupported(mimeType)) {
+                return {
+                    mimeType,
+                    containerMime: candidate.containerMime,
+                    ext: candidate.ext,
+                };
+            }
         }
     }
     return null;
@@ -7593,6 +7610,15 @@ function sanitizeFilename(name) {
         .replace(/[^a-zA-Z0-9._-]+/g, '_')
         .replace(/^_+|_+$/g, '')
         .slice(0, 80) || 'algebench';
+}
+
+function updateVideoExportFormatUI() {
+    const selected = videoExportFormatPreference;
+    const label = document.getElementById('video-export-format-label');
+    if (label) label.textContent = `(${selected === 'auto' ? 'Auto' : selected.toUpperCase()})`;
+    document.querySelectorAll('#video-export-format-menu .toolbar-menu-item').forEach((item) => {
+        item.classList.toggle('active', item.dataset.format === selected);
+    });
 }
 
 function getExportBaseName() {
@@ -7609,85 +7635,126 @@ function cleanupVideoRecording() {
     }
 }
 
-function setupVideoExport() {
-    const btn = document.getElementById('btn-export-video');
+function updateVideoRecordButtonUI() {
+    const btn = document.getElementById('btn-video-record');
+    if (!btn) return;
+    updateVideoExportFormatUI();
+    if (videoRecorder && videoRecorder.state === 'recording') {
+        btn.classList.add('active');
+        btn.title = 'Stop recording';
+    } else {
+        btn.classList.remove('active');
+        btn.title = 'Record current tab video with TTS audio';
+    }
+}
+
+async function startVideoExport() {
+    const btn = document.getElementById('btn-video-record');
     if (!btn) return;
 
-    btn.addEventListener('click', async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia || typeof MediaRecorder === 'undefined') {
+        alert('Screen recording is not supported in this browser.');
+        return;
+    }
+
+    try {
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+                displaySurface: 'browser',
+                cursor: 'never',
+            },
+            audio: false,
+            preferCurrentTab: true,
+        });
+
+        const tracks = [...displayStream.getVideoTracks()];
+        const getTTSStream = window.algebenchGetTTSAudioStream;
+        if (typeof getTTSStream === 'function') {
+            const ttsStream = getTTSStream();
+            if (ttsStream) tracks.push(...ttsStream.getAudioTracks());
+        }
+        const combinedStream = new MediaStream(tracks);
+        videoRecordingStream = displayStream;
+
+        const selected = pickVideoRecorderFormat();
+        if (!selected) throw new Error('No supported recorder format');
+        videoRecordingMime = selected.containerMime;
+        videoRecordingExt = selected.ext;
+
+        videoRecordedChunks = [];
+        videoRecorder = new MediaRecorder(combinedStream, {
+            mimeType: selected.mimeType,
+            videoBitsPerSecond: 3000000,
+        });
+
+        videoRecorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) videoRecordedChunks.push(event.data);
+        };
+
+        videoRecorder.onerror = (event) => {
+            const error = event?.error || event;
+            console.error('Video recorder error:', error);
+        };
+
+        videoRecorder.onstop = () => {
+            const blob = new Blob(videoRecordedChunks, { type: videoRecordingMime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${getExportBaseName()}_${Date.now()}.${videoRecordingExt}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            cleanupVideoRecording();
+            videoRecorder = null;
+            updateVideoRecordButtonUI();
+        };
+
+        displayStream.getVideoTracks()[0].onended = () => {
+            if (videoRecorder && videoRecorder.state === 'recording') videoRecorder.stop();
+        };
+
+        videoRecorder.start(150);
+        updateVideoRecordButtonUI();
+    } catch (err) {
+        cleanupVideoRecording();
+        videoRecorder = null;
+        updateVideoRecordButtonUI();
+        console.error('Video export failed:', err);
+        alert('Failed to start video export. Select the current browser tab when prompted.');
+    }
+}
+
+function setupVideoExportControls() {
+    const btn = document.getElementById('btn-video-record');
+    const menu = document.getElementById('video-export-format-menu');
+    if (!btn || !menu) return;
+
+    updateVideoRecordButtonUI();
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         if (videoRecorder && videoRecorder.state === 'recording') {
             videoRecorder.stop();
             return;
         }
+        menu.classList.toggle('open');
+    });
 
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia || typeof MediaRecorder === 'undefined') {
-            alert('Screen recording is not supported in this browser.');
-            return;
-        }
+    menu.querySelectorAll('.toolbar-menu-item').forEach((item) => {
+        item.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            videoExportFormatPreference = item.dataset.format || 'auto';
+            updateVideoRecordButtonUI();
+            menu.classList.remove('open');
+            await startVideoExport();
+        });
+    });
 
-        try {
-            const displayStream = await navigator.mediaDevices.getDisplayMedia({
-                video: {
-                    displaySurface: 'browser',
-                    cursor: 'never',
-                },
-                audio: false,
-                preferCurrentTab: true,
-            });
-
-            const tracks = [...displayStream.getVideoTracks()];
-            const getTTSStream = window.algebenchGetTTSAudioStream;
-            if (typeof getTTSStream === 'function') {
-                const ttsStream = getTTSStream();
-                if (ttsStream) tracks.push(...ttsStream.getAudioTracks());
-            }
-            const combinedStream = new MediaStream(tracks);
-            videoRecordingStream = displayStream;
-
-            const selected = pickVideoRecorderFormat();
-            if (!selected) throw new Error('No supported recorder format');
-            videoRecordingMime = selected.containerMime;
-            videoRecordingExt = selected.ext;
-
-            videoRecordedChunks = [];
-            videoRecorder = new MediaRecorder(combinedStream, {
-                mimeType: selected.mimeType,
-                videoBitsPerSecond: 3000000,
-            });
-
-            videoRecorder.ondataavailable = (event) => {
-                if (event.data && event.data.size > 0) videoRecordedChunks.push(event.data);
-            };
-
-            videoRecorder.onstop = () => {
-                const blob = new Blob(videoRecordedChunks, { type: videoRecordingMime });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${getExportBaseName()}_${Date.now()}.${videoRecordingExt}`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-
-                cleanupVideoRecording();
-                btn.textContent = 'Export Video';
-                btn.classList.remove('active');
-            };
-
-            displayStream.getVideoTracks()[0].onended = () => {
-                if (videoRecorder && videoRecorder.state === 'recording') videoRecorder.stop();
-            };
-
-            videoRecorder.start(150);
-            btn.textContent = `Stop Recording (${videoRecordingExt.toUpperCase()})`;
-            btn.classList.add('active');
-        } catch (err) {
-            cleanupVideoRecording();
-            btn.textContent = 'Export Video';
-            btn.classList.remove('active');
-            console.error('Video export failed:', err);
-            alert('Failed to start video export. Select the current browser tab when prompted.');
-        }
+    document.addEventListener('click', () => {
+        menu.classList.remove('open');
     });
 }
 
@@ -7698,6 +7765,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupDragDrop();
     setupFilePicker();
     setupScenesDropdown();
+    setupVideoExportControls();
     setupSettingsPanel();
     initLightControls();
     setupProjectionToggle();
@@ -7709,7 +7777,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCaptionDrag();
     setupSceneDescDrag();
     setupJsonViewer();
-    setupVideoExport();
     setupCamStatusPopup();
     loadBuiltinScenesList();
     await loadInitialSceneFromQuery();

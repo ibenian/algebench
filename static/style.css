@@ -132,6 +132,62 @@ html, body {
     color: #eafff1;
 }
 
+.toolbar-dropdown {
+    position: relative;
+}
+
+.tb-btn-split {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tb-btn-caret {
+    font-size: 0.72em;
+    opacity: 0.85;
+}
+
+.toolbar-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    min-width: 140px;
+    padding: 4px 0;
+    background: rgba(20, 20, 40, 0.98);
+    border: 1px solid rgba(100, 100, 255, 0.3);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    z-index: 200;
+}
+
+.toolbar-menu.open {
+    display: block;
+}
+
+.toolbar-menu-item {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    background: transparent;
+    border: 0;
+    color: #c0c0e0;
+    text-align: left;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.toolbar-menu-item:hover {
+    background: rgba(100, 100, 255, 0.15);
+    color: #fff;
+}
+
+.toolbar-menu-item.active {
+    color: #fff;
+    background: rgba(70, 120, 220, 0.22);
+}
+
 #btn-show-json {
     font-family: 'SF Mono', 'Fira Code', monospace;
     font-weight: bold;
