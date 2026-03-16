@@ -1,6 +1,7 @@
 """Agent tool declarations and system prompt builder for AlgeBench."""
 
 import json
+import re
 import os
 from google.genai import types
 from gemini_live_tools import safe_eval_math, eval_math_sweep, MATH_NAMES, HAS_NUMPY
@@ -300,6 +301,18 @@ def _memory_summary_line(key, value):
     return str(type(value).__name__)
 
 
+def _demote_markdown_headers(markdown_text):
+    """Shift embedded markdown headings down two levels, capped at ######."""
+    if not markdown_text:
+        return markdown_text
+
+    def repl(match):
+        level = min(len(match.group(1)) + 2, 6)
+        return ('#' * level) + ' '
+
+    return re.sub(r'^(#{1,6})\s+', repl, markdown_text, flags=re.MULTILINE)
+
+
 def build_system_prompt(context, agent_memory=None):
     """Build system prompt with full visualization context."""
     parts = ["You are an AI math tutor embedded in an interactive 3D linear algebra visualization.\n"]
@@ -404,9 +417,10 @@ def build_system_prompt(context, agent_memory=None):
             ]
         parts.append(f"\n## Current Scene Definition\n```json\n{json.dumps(scene_for_prompt, indent=2)}\n```")
 
-    # Current explanation (from scene markdown)
+    # Scene documentation (from scene markdown) is nested one level deeper so it
+    # stays subordinate to the prompt's own top-level sections.
     if scene.get('markdown'):
-        parts.append(f"\n## Current Explanation\n{scene['markdown']}")
+        parts.append(f"\n## Scene Documentation\n{_demote_markdown_headers(scene['markdown'])}")
 
     # Agent memory — show stored keys so agent knows what's available
     if agent_memory:
@@ -428,7 +442,7 @@ def build_system_prompt(context, agent_memory=None):
         parts.append(_AGENT_TOOLS_REFERENCE)
 
     # Log context breadcrumbs — which sections were included
-    sections = ["Current State", "Lesson Structure", "Current Scene Definition", "Current Explanation", "Scene Instructions", "Current Step Instructions", "Instructions", "Agent Tools Reference"]
+    sections = ["Instructions", "Current State", "Lesson Structure", "Current Scene Definition", "Scene Documentation", "Scene Instructions", "Current Step Instructions", "Agent Tools Reference"]
     included = []
     prompt_text = "\n".join(parts)
     for s in sections:
