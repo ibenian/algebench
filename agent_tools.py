@@ -366,8 +366,13 @@ def build_system_prompt(context, agent_memory=None):
         step_num = runtime.get('stepNumber', 0)
         scene_for_prompt = {k: v for k, v in scene.items() if k not in ('markdown', 'prompt', 'steps')}
         if scene.get('steps'):
-            # Only include steps up to and including the current step (1-based → slice [:step_num])
-            scene_for_prompt['steps'] = scene['steps'][:step_num] if step_num > 0 else []
+            # Only include steps up to and including the current step (1-based → slice [:step_num]).
+            # Strip instructional fields here so raw scene JSON stays focused on render state.
+            visible_steps = scene['steps'][:step_num] if step_num > 0 else []
+            scene_for_prompt['steps'] = [
+                {k: v for k, v in step.items() if k not in ('prompt', 'markdown')}
+                for step in visible_steps
+            ]
         parts.append(f"\n## Current Scene Definition\n```json\n{json.dumps(scene_for_prompt, indent=2)}\n```")
 
     # Current explanation (from scene markdown)
@@ -382,6 +387,12 @@ def build_system_prompt(context, agent_memory=None):
     # Scene-specific agent instructions
     if scene.get('prompt'):
         parts.append(f"\n## Scene Instructions\n{scene['prompt']}")
+
+    # Step-specific agent instructions for the active step only
+    if total_steps > 0 and step_num >= 1 and step_num <= total_steps:
+        step = scene['steps'][step_num - 1]
+        if step.get('prompt'):
+            parts.append(f"\n## Current Step Instructions\n{step['prompt']}")
 
     # Instructions
     parts.append("""
@@ -418,7 +429,7 @@ def build_system_prompt(context, agent_memory=None):
         parts.append(_AGENT_TOOLS_REFERENCE)
 
     # Log context breadcrumbs — which sections were included
-    sections = ["Current State", "Lesson Structure", "Current Scene Definition", "Current Explanation", "Scene Instructions", "Instructions", "Agent Tools Reference"]
+    sections = ["Current State", "Lesson Structure", "Current Scene Definition", "Current Explanation", "Scene Instructions", "Current Step Instructions", "Instructions", "Agent Tools Reference"]
     included = []
     prompt_text = "\n".join(parts)
     for s in sections:
