@@ -597,6 +597,9 @@ async function sendChatMessage(text, { silent = false } = {}) {
         if (assistantMsg && typeof assistantMsg._startSpeak === 'function' && data.response && selectedTtsMode !== 'silent') {
             assistantMsg._startSpeak();
         }
+        if (typeof window.algebenchRefreshPromptContext === 'function') {
+            window.algebenchRefreshPromptContext('chat-turn');
+        }
 
     } catch (err) {
         loadingEl.remove();
@@ -1367,6 +1370,9 @@ function logContextIfChanged() {
     _lastContextJson = json;
 
     localStorage.setItem('algebench-chat-context', json);
+    window.dispatchEvent(new CustomEvent('algebench-context-changed', {
+        detail: { context, json }
+    }));
 
     const scene = context.currentScene || {};
     const rt = context.runtime || {};

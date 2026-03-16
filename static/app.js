@@ -7586,6 +7586,7 @@ function setupContextStatusPopup() {
     let programmaticScrollIndex = -1;
     let programmaticScrollTimer = null;
     let contextScrollAnimFrame = null;
+    let contextRefreshTimer = null;
 
     function parsePromptSections(text) {
         const lines = String(text || '').split('\n');
@@ -7638,6 +7639,25 @@ function setupContextStatusPopup() {
             clearTimeout(programmaticScrollTimer);
             programmaticScrollTimer = null;
         }
+    }
+
+    function scheduleContextRefresh(_reason = 'context-change') {
+        if (popup.classList.contains('hidden')) return;
+        if (contextRefreshTimer) clearTimeout(contextRefreshTimer);
+        contextRefreshTimer = setTimeout(async () => {
+            contextRefreshTimer = null;
+            meta.textContent = 'Refreshing live prompt context…';
+            try {
+                await loadPromptContext();
+            } catch (err) {
+                body.innerHTML = '';
+                const empty = document.createElement('div');
+                empty.className = 'context-popup-empty';
+                empty.textContent = `Unable to build prompt context: ${err.message || err}`;
+                body.appendChild(empty);
+                meta.textContent = 'Prompt context unavailable';
+            }
+        }, 120);
     }
 
     function scheduleProgrammaticScrollRelease() {
@@ -7766,6 +7786,12 @@ function setupContextStatusPopup() {
     }
 
     body.addEventListener('scroll', syncActiveSectionFromScroll);
+    window.addEventListener('algebench-context-changed', () => {
+        scheduleContextRefresh('context-changed');
+    });
+    window.algebenchRefreshPromptContext = (reason = 'manual') => {
+        scheduleContextRefresh(reason);
+    };
 
     pill.classList.remove('hidden');
     pill.addEventListener('click', async () => {
