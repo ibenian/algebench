@@ -35,6 +35,9 @@ docs/              Architecture, sandbox model, feature ideas
 - **Always announce who is committing before running `git commit`** — print a line in the format:
   `Committing on behalf of <name> (<email>)`
   using the output of `git config user.name` and `git config user.email`.
+- **Codex-only co-author trailer** — when Codex creates a commit in this repo, append
+  `Co-authored-by: Codex <codex@openai.com>`
+  to the commit message so the commit clearly shows Codex participation in GitHub. Do not add Claude/Anthropic co-author trailers unless the user explicitly asks for that.
 - **Scene files are JSON** in `scenes/` — no Python or JS changes needed for new lessons.
 - **Pinned dependencies** — `requirements.txt` pins `gemini-live-tools` to a specific tag. Update the tag intentionally, don't switch back to `HEAD`.
 - **JS from package** — `voice-character-selector.js` is served at runtime from the installed `gemini_live_tools` package via `get_static_content()`. Do not copy it into `static/`.
