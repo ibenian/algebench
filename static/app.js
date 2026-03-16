@@ -7583,6 +7583,9 @@ function setupContextStatusPopup() {
     let currentPromptText = '';
     let sectionEls = [];
     let navButtons = [];
+    let programmaticScrollIndex = -1;
+    let programmaticScrollTop = null;
+    let programmaticScrollTimer = null;
 
     function parsePromptSections(text) {
         const lines = String(text || '').split('\n');
@@ -7619,8 +7622,24 @@ function setupContextStatusPopup() {
         navButtons.forEach((btn, i) => btn.classList.toggle('active', i === index));
     }
 
+    function clearProgrammaticScroll() {
+        programmaticScrollIndex = -1;
+        programmaticScrollTop = null;
+        if (programmaticScrollTimer) {
+            clearTimeout(programmaticScrollTimer);
+            programmaticScrollTimer = null;
+        }
+    }
+
     function syncActiveSectionFromScroll() {
         if (!sectionEls.length) return;
+        if (programmaticScrollIndex >= 0) {
+            if (programmaticScrollTop != null && Math.abs(body.scrollTop - programmaticScrollTop) <= 4) {
+                setActiveSection(programmaticScrollIndex);
+                clearProgrammaticScroll();
+            }
+            return;
+        }
         const scrollTop = body.scrollTop + 24;
         let activeIndex = 0;
         for (let i = 0; i < sectionEls.length; i++) {
@@ -7645,8 +7664,16 @@ function setupContextStatusPopup() {
             btn.addEventListener('click', () => {
                 const target = sectionEls[index];
                 if (!target) return;
+                const targetTop = Math.max(0, target.offsetTop - 8);
+                programmaticScrollIndex = index;
+                programmaticScrollTop = targetTop;
+                if (programmaticScrollTimer) clearTimeout(programmaticScrollTimer);
+                programmaticScrollTimer = setTimeout(() => {
+                    setActiveSection(index);
+                    clearProgrammaticScroll();
+                }, 450);
                 body.scrollTo({
-                    top: Math.max(0, target.offsetTop - 8),
+                    top: targetTop,
                     behavior: 'smooth',
                 });
                 setActiveSection(index);
@@ -7672,6 +7699,7 @@ function setupContextStatusPopup() {
         });
 
         meta.textContent = `${text.length} chars • ${sections.length} sections • built from live client context`;
+        clearProgrammaticScroll();
         setActiveSection(0);
         body.scrollTop = 0;
     }
@@ -7710,6 +7738,7 @@ function setupContextStatusPopup() {
         }
         popup.classList.remove('hidden');
         currentPromptText = '';
+        clearProgrammaticScroll();
         nav.innerHTML = '';
         body.innerHTML = '<div class="context-popup-empty">Building current system prompt…</div>';
         meta.textContent = 'Fetching live prompt context…';
@@ -7726,6 +7755,7 @@ function setupContextStatusPopup() {
     });
 
     closeBtn.addEventListener('click', () => {
+        clearProgrammaticScroll();
         popup.classList.add('hidden');
     });
 
@@ -7743,6 +7773,7 @@ function setupContextStatusPopup() {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !popup.classList.contains('hidden')) {
+            clearProgrammaticScroll();
             popup.classList.add('hidden');
         }
     });
