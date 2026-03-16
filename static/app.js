@@ -7572,7 +7572,8 @@ function setupContextStatusPopup() {
     const body = document.getElementById('context-popup-body');
     const closeBtn = document.getElementById('context-popup-close');
     const copyBtn = document.getElementById('context-popup-copy');
-    if (!pill || !popup || !meta || !nav || !body || !closeBtn || !copyBtn) return;
+    const toggleBtn = document.getElementById('context-popup-toggle');
+    if (!pill || !popup || !meta || !nav || !body || !closeBtn || !copyBtn || !toggleBtn) return;
 
     if (!DEBUG_MODE) {
         pill.classList.add('hidden');
@@ -7587,6 +7588,13 @@ function setupContextStatusPopup() {
     let programmaticScrollTimer = null;
     let contextScrollAnimFrame = null;
     let contextRefreshTimer = null;
+    let contextCollapsed = true;
+
+    function updateContextPopupMode() {
+        popup.classList.toggle('collapsed', contextCollapsed);
+        toggleBtn.textContent = contextCollapsed ? '\u2630' : '\u25E7';
+        toggleBtn.title = contextCollapsed ? 'Expand text pane' : 'Collapse text pane';
+    }
 
     function parsePromptSections(text) {
         const lines = String(text || '').split('\n');
@@ -7700,6 +7708,7 @@ function setupContextStatusPopup() {
 
     function syncActiveSectionFromScroll() {
         if (!sectionEls.length) return;
+        if (contextCollapsed) return;
         if (programmaticScrollIndex >= 0) {
             scheduleProgrammaticScrollRelease();
             return;
@@ -7730,6 +7739,10 @@ function setupContextStatusPopup() {
             btn.addEventListener('click', () => {
                 const target = sectionEls[index];
                 if (!target) return;
+                if (contextCollapsed) {
+                    contextCollapsed = false;
+                    updateContextPopupMode();
+                }
                 const targetTop = Math.max(0, target.offsetTop - getContextScrollLeadRows(5));
                 programmaticScrollIndex = index;
                 scheduleProgrammaticScrollRelease();
@@ -7794,6 +7807,7 @@ function setupContextStatusPopup() {
     };
 
     pill.classList.remove('hidden');
+    updateContextPopupMode();
     pill.addEventListener('click', async () => {
         const opening = popup.classList.contains('hidden');
         if (!opening) {
@@ -7816,6 +7830,11 @@ function setupContextStatusPopup() {
             body.appendChild(empty);
             meta.textContent = 'Prompt context unavailable';
         }
+    });
+
+    toggleBtn.addEventListener('click', () => {
+        contextCollapsed = !contextCollapsed;
+        updateContextPopupMode();
     });
 
     closeBtn.addEventListener('click', () => {
