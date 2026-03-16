@@ -7445,10 +7445,183 @@ function _escHtml(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// ─── JSON tree helpers ────────────────────────────────────────────────────────
+
+function _buildJsonWithLineMap(obj) {
+    const lines = [''];
+
+    function append(str) { lines[lines.length - 1] += str; }
+    function newline(indent) { lines.push('  '.repeat(indent)); }
+
+    const pathLineMap = {};
+
+    function serialize(val, path, indent) {
+        if (val === null) { append('null'); return; }
+        if (typeof val === 'string') { append(JSON.stringify(val)); return; }
+        if (typeof val === 'number' || typeof val === 'boolean') { append(String(val)); return; }
+
+        pathLineMap[path] = lines.length - 1;
+
+        if (Array.isArray(val)) {
+            if (val.length === 0) { append('[]'); return; }
+            append('[');
+            val.forEach((item, i) => {
+                newline(indent + 1);
+                const cp = path ? `${path}[${i}]` : `[${i}]`;
+                pathLineMap[cp] = lines.length - 1;
+                serialize(item, cp, indent + 1);
+                if (i < val.length - 1) append(',');
+            });
+            newline(indent);
+            append(']');
+        } else {
+            const keys = Object.keys(val);
+            if (keys.length === 0) { append('{}'); return; }
+            append('{');
+            keys.forEach((key, i) => {
+                newline(indent + 1);
+                const cp = path ? `${path}.${key}` : key;
+                pathLineMap[cp] = lines.length - 1;
+                append(JSON.stringify(key) + ': ');
+                serialize(val[key], cp, indent + 1);
+                if (i < keys.length - 1) append(',');
+            });
+            newline(indent);
+            append('}');
+        }
+    }
+
+    serialize(obj, '', 0);
+    return { text: lines.join('\n'), pathLineMap };
+}
+
+function _jsonTreeSummary(val) {
+    if (Array.isArray(val)) return `[${val.length}]`;
+    if (val && typeof val === 'object') {
+        const keys = Object.keys(val);
+        const preview = keys.slice(0, 3).map(k => {
+            const v = val[k];
+            if (typeof v === 'string') return `${k}: "${v.length > 12 ? v.slice(0, 12) + '\u2026' : v}"`;
+            if (typeof v === 'number' || typeof v === 'boolean') return `${k}: ${v}`;
+            return k;
+        }).join(', ');
+        return `{ ${preview}${keys.length > 3 ? ', \u2026' : ''} }`;
+    }
+    return '';
+}
+
+function _buildTreeNodes(ul, val, path, depth) {
+    const isArray = Array.isArray(val);
+    const entries = isArray ? val.map((v, i) => [i, v]) : Object.entries(val);
+
+    for (const [key, value] of entries) {
+        const childPath = path
+            ? (isArray ? `${path}[${key}]` : `${path}.${key}`)
+            : String(key);
+
+        const li = document.createElement('li');
+        li.className = 'jt-item';
+        li.dataset.path = childPath;
+
+        const row = document.createElement('div');
+        row.className = 'jt-row';
+
+        const isPrimitive = value === null || typeof value !== 'object';
+
+        if (!isPrimitive) {
+            const toggle = document.createElement('span');
+            toggle.className = 'jt-toggle';
+            const collapsed = depth >= 1;
+            toggle.textContent = collapsed ? '\u25B6' : '\u25BC';
+
+            const keyEl = document.createElement('span');
+            keyEl.className = 'jt-key';
+            keyEl.textContent = isArray ? `[${key}]` : key;
+
+            const summary = document.createElement('span');
+            summary.className = 'jt-summary';
+            summary.textContent = ' ' + _jsonTreeSummary(value);
+
+            row.appendChild(toggle);
+            row.appendChild(keyEl);
+            row.appendChild(summary);
+
+            const children = document.createElement('ul');
+            children.className = 'jt-children' + (collapsed ? ' jt-collapsed' : '');
+            _buildTreeNodes(children, value, childPath, depth + 1);
+
+            toggle.addEventListener('click', e => {
+                e.stopPropagation();
+                const nowCollapsed = children.classList.toggle('jt-collapsed');
+                toggle.textContent = nowCollapsed ? '\u25B6' : '\u25BC';
+            });
+
+            li.appendChild(row);
+            li.appendChild(children);
+        } else {
+            const indent = document.createElement('span');
+            indent.className = 'jt-indent';
+
+            const keyEl = document.createElement('span');
+            keyEl.className = 'jt-key';
+            keyEl.textContent = isArray ? `[${key}]` : key;
+
+            const colon = document.createElement('span');
+            colon.className = 'jt-colon';
+            colon.textContent = ': ';
+
+            const valEl = document.createElement('span');
+            valEl.className = 'jt-val jt-val-' + (value === null ? 'null' : typeof value);
+            valEl.textContent = JSON.stringify(value);
+
+            row.appendChild(indent);
+            row.appendChild(keyEl);
+            row.appendChild(colon);
+            row.appendChild(valEl);
+            li.appendChild(row);
+        }
+
+        ul.appendChild(li);
+    }
+}
+
+function _renderJsonTree(treePanel, obj) {
+    treePanel.innerHTML = '';
+    if (!obj || typeof obj !== 'object') {
+        treePanel.innerHTML = '<div class="jt-empty">No scene loaded</div>';
+        return;
+    }
+    const ul = document.createElement('ul');
+    ul.className = 'jt-root';
+    _buildTreeNodes(ul, obj, '', 0);
+    treePanel.appendChild(ul);
+}
+
+function _getParentPath(path) {
+    if (!path) return null;
+    const dot = path.lastIndexOf('.');
+    if (dot > 0) return path.substring(0, dot);
+    const bracket = path.lastIndexOf('[');
+    if (bracket > 0) return path.substring(0, bracket);
+    return null;
+}
+
+function _findPathAtLine(line, pathLineMap) {
+    let bestPath = '';
+    let bestLine = -1;
+    for (const [p, ln] of Object.entries(pathLineMap)) {
+        if (ln <= line && ln > bestLine) { bestLine = ln; bestPath = p; }
+    }
+    return bestPath;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function setupJsonViewer() {
     const btn = document.getElementById('btn-show-json');
     const overlay = document.getElementById('json-viewer-overlay');
     const content = document.getElementById('json-viewer-content');
+    const treePanel = document.getElementById('json-tree-panel');
     const importsBar = document.getElementById('json-viewer-imports');
     const summaryBar = document.getElementById('json-viewer-summary');
     const closeBtn = document.getElementById('json-viewer-close');
@@ -7458,6 +7631,140 @@ function setupJsonViewer() {
 
     if (!btn || !overlay) return;
 
+    let _pathLineMap = {};
+    let _jsonScrollAnimFrame = null;
+    let _jsonScrollProgrammatic = false;
+    let _jsonLineHeight = 0;
+
+    function getLineHeight() {
+        if (!_jsonLineHeight) {
+            _jsonLineHeight = parseFloat(window.getComputedStyle(content).lineHeight) || 20;
+        }
+        return _jsonLineHeight;
+    }
+
+    function animateJsonScrollTo(targetTop, duration = 160) {
+        if (_jsonScrollAnimFrame != null) { cancelAnimationFrame(_jsonScrollAnimFrame); _jsonScrollAnimFrame = null; }
+        const startTop = content.scrollTop;
+        const delta = targetTop - startTop;
+        if (Math.abs(delta) < 2) { content.scrollTop = targetTop; return; }
+        const startTime = performance.now();
+        _jsonScrollProgrammatic = true;
+        function step(now) {
+            const t = Math.min(1, (now - startTime) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            content.scrollTop = startTop + delta * eased;
+            if (t < 1) {
+                _jsonScrollAnimFrame = requestAnimationFrame(step);
+            } else {
+                _jsonScrollAnimFrame = null;
+                content.scrollTop = targetTop;
+                setTimeout(() => { _jsonScrollProgrammatic = false; }, 60);
+            }
+        }
+        _jsonScrollAnimFrame = requestAnimationFrame(step);
+    }
+
+    function setActiveTreeItem(path) {
+        if (!treePanel) return;
+        treePanel.querySelectorAll('.jt-active').forEach(el => el.classList.remove('jt-active'));
+        let target = path;
+        let el = null;
+        while (target !== null) {
+            const found = [...treePanel.querySelectorAll('.jt-item')].find(e => e.dataset.path === target);
+            if (found) { el = found; break; }
+            target = _getParentPath(target);
+        }
+        if (!el) return;
+        // Ensure collapsed ancestors are expanded
+        let parent = el.parentElement;
+        while (parent && parent !== treePanel) {
+            if (parent.classList.contains('jt-children') && parent.classList.contains('jt-collapsed')) {
+                parent.classList.remove('jt-collapsed');
+                const row = parent.previousElementSibling;
+                if (row) { const t = row.querySelector('.jt-toggle'); if (t) t.textContent = '\u25BC'; }
+            }
+            parent = parent.parentElement;
+        }
+        el.classList.add('jt-active');
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    function syncTreeFromJsonScroll() {
+        if (_jsonScrollProgrammatic) return;
+        const lh = getLineHeight();
+        const topLine = Math.floor((content.scrollTop + lh * 0.5) / lh);
+        setActiveTreeItem(_findPathAtLine(topLine, _pathLineMap));
+    }
+
+    function syncJsonFromTreeClick(path) {
+        const line = _pathLineMap[path];
+        if (line === undefined) return;
+        const lh = getLineHeight();
+        animateJsonScrollTo(Math.max(0, line * lh - lh * 1.5));
+        setActiveTreeItem(path);
+    }
+
+    // Wire up tree clicks (delegated)
+    if (treePanel) {
+        treePanel.addEventListener('click', e => {
+            const item = e.target.closest('.jt-item');
+            if (!item || e.target.classList.contains('jt-toggle')) return;
+            syncJsonFromTreeClick(item.dataset.path);
+        });
+
+        // Restore saved width
+        const savedWidth = localStorage.getItem('jsonTreePanelWidth');
+        if (savedWidth) treePanel.style.width = savedWidth + 'px';
+
+        // Resize handle
+        const resizeHandle = document.getElementById('json-tree-resize-handle');
+        if (resizeHandle) {
+            let startX = 0;
+            let startWidth = 0;
+            resizeHandle.addEventListener('mousedown', e => {
+                e.preventDefault();
+                startX = e.clientX;
+                startWidth = treePanel.offsetWidth;
+                resizeHandle.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+
+                function onMove(e) {
+                    const newWidth = Math.min(520, Math.max(120, startWidth + (e.clientX - startX)));
+                    treePanel.style.width = newWidth + 'px';
+                }
+                function onUp() {
+                    resizeHandle.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    localStorage.setItem('jsonTreePanelWidth', treePanel.offsetWidth);
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                }
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+        }
+    }
+
+    // Wire up JSON scroll → tree
+    content.addEventListener('scroll', syncTreeFromJsonScroll);
+
+    // Wire up selection/click in JSON → tree
+    document.addEventListener('selectionchange', () => {
+        if (overlay.classList.contains('hidden')) return;
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return;
+        const range = sel.getRangeAt(0);
+        if (!content.contains(range.startContainer)) return;
+        const textNode = content.firstChild;
+        if (!textNode) return;
+        const offset = range.startContainer === textNode ? range.startOffset : 0;
+        const lineNum = content.textContent.substring(0, offset).split('\n').length - 1;
+        setActiveTreeItem(_findPathAtLine(lineNum, _pathLineMap));
+    });
+
     btn.addEventListener('click', () => {
         if (issuesPanel) issuesPanel.classList.add('hidden');
         let json;
@@ -7466,7 +7773,18 @@ function setupJsonViewer() {
         } else if (typeof currentSpec !== 'undefined' && currentSpec) {
             json = currentSpec;
         }
-        content.textContent = json ? JSON.stringify(json, null, 2) : '// No scene loaded';
+        // Build JSON text with line map and render tree
+        _jsonLineHeight = 0; // reset cached line height
+        if (json) {
+            const { text, pathLineMap } = _buildJsonWithLineMap(json);
+            content.textContent = text;
+            _pathLineMap = pathLineMap;
+            if (treePanel) _renderJsonTree(treePanel, json);
+        } else {
+            content.textContent = '// No scene loaded';
+            _pathLineMap = {};
+            if (treePanel) treePanel.innerHTML = '<div class="jt-empty">No scene loaded</div>';
+        }
 
         // Imports section
         const imports = json && Array.isArray(json.import) ? json.import : [];

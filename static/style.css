@@ -458,6 +458,140 @@ html, body {
     background: rgba(80, 110, 220, 0.4);
     color: #fff;
 }
+#json-viewer-body {
+    display: flex;
+    flex: 1;
+    gap: 8px;
+    overflow: hidden;
+    min-height: 0;
+    position: relative;
+}
+
+#json-tree-panel {
+    width: 240px;
+    min-width: 120px;
+    max-width: 520px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: rgba(8, 8, 24, 0.75);
+    border: 1px solid rgba(80, 100, 160, 0.3);
+    border-radius: 8px;
+    padding: 8px 0;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.78em;
+    line-height: 1.6;
+    user-select: none;
+    position: relative;
+}
+
+#json-tree-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10;
+    border-radius: 4px;
+    transition: background 0.15s;
+}
+#json-tree-resize-handle:hover,
+#json-tree-resize-handle.dragging {
+    background: rgba(100, 130, 255, 0.35);
+}
+
+.jt-empty {
+    padding: 16px;
+    color: rgba(120, 130, 170, 0.5);
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* Root list resets */
+#json-tree-panel ul {
+    list-style: none;
+    margin: 0;
+}
+#json-tree-panel ul.jt-root { padding: 0; }
+
+.jt-root { padding: 0; }
+
+.jt-item {
+    display: block;
+    cursor: pointer;
+}
+
+/* Each row */
+.jt-row {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    padding: 1px 6px 1px 0;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: background 0.1s;
+}
+.jt-row:hover { background: rgba(80, 100, 200, 0.15); }
+
+.jt-item.jt-active > .jt-row {
+    background: rgba(80, 120, 255, 0.22);
+    color: #fff;
+}
+
+/* Toggle arrow */
+.jt-toggle {
+    display: inline-block;
+    width: 14px;
+    flex-shrink: 0;
+    text-align: center;
+    color: rgba(120, 140, 200, 0.6);
+    font-size: 0.7em;
+    cursor: pointer;
+    transition: color 0.1s;
+}
+.jt-toggle:hover { color: rgba(160, 180, 255, 0.9); }
+
+/* Indent placeholder for leaf nodes */
+.jt-indent {
+    display: inline-block;
+    width: 14px;
+    flex-shrink: 0;
+}
+
+.jt-key {
+    color: rgba(150, 185, 255, 0.85);
+    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+}
+
+.jt-colon { color: rgba(120, 130, 170, 0.6); flex-shrink: 0; }
+
+.jt-summary {
+    color: rgba(100, 120, 170, 0.55);
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Primitive value colors */
+.jt-val { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.jt-val-string  { color: rgba(150, 220, 130, 0.85); }
+.jt-val-number  { color: rgba(255, 195, 100, 0.85); }
+.jt-val-boolean { color: rgba(120, 200, 255, 0.85); }
+.jt-val-null    { color: rgba(180, 130, 180, 0.75); }
+
+/* Children indented */
+.jt-children {
+    padding-left: 16px;
+}
+.jt-children.jt-collapsed { display: none; }
+
 #json-viewer-content {
     flex: 1;
     overflow: auto;
