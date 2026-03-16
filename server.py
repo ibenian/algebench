@@ -799,6 +799,9 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         history: list = []
         context: dict = {}
 
+    class ContextRequest(BaseModel):
+        context: dict = {}
+
     class TtsRequest(BaseModel):
         text: str = ''
         character: str = 'joker'
@@ -874,6 +877,17 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             for k, v in _agent_memory.items()
         }
         return JSONResponse(payload)
+
+    @fastapp.post("/api/debug/system_prompt")
+    async def get_debug_system_prompt(req: ContextRequest):
+        if not DEBUG_MODE:
+            return JSONResponse({"error": "Debug mode is disabled."}, status_code=404)
+        context = req.context or {}
+        prompt = build_system_prompt(context, agent_memory=_agent_memory)
+        return JSONResponse({
+            "systemPrompt": prompt,
+            "charCount": len(prompt),
+        })
 
     @fastapp.get("/api/scenes")
     async def get_scenes():

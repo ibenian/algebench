@@ -181,6 +181,8 @@ function buildChatContext() {
     return ctx;
 }
 
+window.algebenchBuildChatContext = buildChatContext;
+
 // ----- Tab Switching -----
 function switchPanelTab(tabName) {
     // Update tab buttons

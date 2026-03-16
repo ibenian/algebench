@@ -173,6 +173,9 @@
         <span id="memory-status" class="hidden">
             <span class="memory-status-icon">💾</span><span class="memory-status-count"></span>
         </span>
+        <span id="context-status" class="hidden" title="Show current prompt context">
+            <span class="context-status-icon">CTX</span>
+        </span>
         <span id="cam-status">
             <span class="cam-status-icon">📷</span>
             <div class="cam-status-popup" id="cam-popup-content">
@@ -198,7 +201,23 @@
         <div id="memory-popup-search-wrap">
             <input id="memory-popup-search" type="text" placeholder="Search keys or values..." autocomplete="off">
         </div>
-        <div id="memory-popup-body"></div>
+    <div id="memory-popup-body"></div>
+    </div>
+
+    <!-- Context popup -->
+    <div id="context-popup" class="hidden">
+        <div id="context-popup-header">
+            <span>Prompt Context</span>
+            <div id="context-popup-actions">
+                <button id="context-popup-copy" title="Copy system prompt">Copy</button>
+                <button id="context-popup-close">&times;</button>
+            </div>
+        </div>
+        <div id="context-popup-meta"></div>
+        <div id="context-popup-layout">
+            <nav id="context-popup-nav"></nav>
+            <div id="context-popup-body"></div>
+        </div>
     </div>
 </div>
 <input type="file" id="file-input" accept=".json">

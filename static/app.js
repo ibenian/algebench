@@ -7564,6 +7564,190 @@ function setupJsonViewer() {
     });
 }
 
+function setupContextStatusPopup() {
+    const pill = document.getElementById('context-status');
+    const popup = document.getElementById('context-popup');
+    const meta = document.getElementById('context-popup-meta');
+    const nav = document.getElementById('context-popup-nav');
+    const body = document.getElementById('context-popup-body');
+    const closeBtn = document.getElementById('context-popup-close');
+    const copyBtn = document.getElementById('context-popup-copy');
+    if (!pill || !popup || !meta || !nav || !body || !closeBtn || !copyBtn) return;
+
+    if (!DEBUG_MODE) {
+        pill.classList.add('hidden');
+        popup.classList.add('hidden');
+        return;
+    }
+
+    let currentPromptText = '';
+    let sectionEls = [];
+    let navButtons = [];
+
+    function parsePromptSections(text) {
+        const lines = String(text || '').split('\n');
+        const sections = [];
+        let current = { title: 'Prelude', body: [] };
+
+        function flushCurrent() {
+            const content = current.body.join('\n').trim();
+            if (!content) return;
+            sections.push({
+                title: current.title,
+                content,
+            });
+        }
+
+        for (const line of lines) {
+            const match = line.match(/^##\s+(.*)$/);
+            if (match) {
+                flushCurrent();
+                current = { title: match[1].trim(), body: [] };
+            } else {
+                current.body.push(line);
+            }
+        }
+        flushCurrent();
+
+        if (!sections.length) {
+            return [{ title: 'Prompt', content: String(text || '').trim() || '(empty prompt)' }];
+        }
+        return sections;
+    }
+
+    function setActiveSection(index) {
+        navButtons.forEach((btn, i) => btn.classList.toggle('active', i === index));
+    }
+
+    function syncActiveSectionFromScroll() {
+        if (!sectionEls.length) return;
+        const scrollTop = body.scrollTop + 24;
+        let activeIndex = 0;
+        for (let i = 0; i < sectionEls.length; i++) {
+            if (sectionEls[i].offsetTop <= scrollTop) activeIndex = i;
+            else break;
+        }
+        setActiveSection(activeIndex);
+    }
+
+    function renderPrompt(text) {
+        const sections = parsePromptSections(text);
+        sectionEls = [];
+        navButtons = [];
+        nav.innerHTML = '';
+        body.innerHTML = '';
+
+        sections.forEach((section, index) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'context-nav-btn';
+            btn.textContent = section.title;
+            btn.addEventListener('click', () => {
+                const target = sectionEls[index];
+                if (!target) return;
+                body.scrollTo({
+                    top: Math.max(0, target.offsetTop - 8),
+                    behavior: 'smooth',
+                });
+                setActiveSection(index);
+            });
+            nav.appendChild(btn);
+            navButtons.push(btn);
+
+            const sec = document.createElement('section');
+            sec.className = 'context-section';
+
+            const heading = document.createElement('div');
+            heading.className = 'context-section-heading';
+            heading.textContent = section.title;
+            sec.appendChild(heading);
+
+            const pre = document.createElement('pre');
+            pre.className = 'context-section-pre';
+            pre.textContent = section.content;
+            sec.appendChild(pre);
+
+            body.appendChild(sec);
+            sectionEls.push(sec);
+        });
+
+        meta.textContent = `${text.length} chars • ${sections.length} sections • built from live client context`;
+        setActiveSection(0);
+        body.scrollTop = 0;
+    }
+
+    async function loadPromptContext() {
+        const contextBuilder = window.algebenchBuildChatContext;
+        if (typeof contextBuilder !== 'function') {
+            throw new Error('Chat context builder is not available yet.');
+        }
+        const res = await fetch('/api/debug/system_prompt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ context: contextBuilder() }),
+        });
+        if (!res.ok) {
+            let message = `HTTP ${res.status}`;
+            try {
+                const data = await res.json();
+                if (data && data.error) message = data.error;
+            } catch (_err) {}
+            throw new Error(message);
+        }
+        const data = await res.json();
+        currentPromptText = data.systemPrompt || '';
+        renderPrompt(currentPromptText);
+    }
+
+    body.addEventListener('scroll', syncActiveSectionFromScroll);
+
+    pill.classList.remove('hidden');
+    pill.addEventListener('click', async () => {
+        const opening = popup.classList.contains('hidden');
+        if (!opening) {
+            popup.classList.add('hidden');
+            return;
+        }
+        popup.classList.remove('hidden');
+        currentPromptText = '';
+        nav.innerHTML = '';
+        body.innerHTML = '<div class="context-popup-empty">Building current system prompt…</div>';
+        meta.textContent = 'Fetching live prompt context…';
+        try {
+            await loadPromptContext();
+        } catch (err) {
+            body.innerHTML = '';
+            const empty = document.createElement('div');
+            empty.className = 'context-popup-empty';
+            empty.textContent = `Unable to build prompt context: ${err.message || err}`;
+            body.appendChild(empty);
+            meta.textContent = 'Prompt context unavailable';
+        }
+    });
+
+    closeBtn.addEventListener('click', () => {
+        popup.classList.add('hidden');
+    });
+
+    copyBtn.addEventListener('click', async () => {
+        if (!currentPromptText) return;
+        try {
+            await navigator.clipboard.writeText(currentPromptText);
+            const prev = copyBtn.textContent;
+            copyBtn.textContent = 'Copied';
+            setTimeout(() => { copyBtn.textContent = prev; }, 900);
+        } catch (_err) {
+            // Ignore clipboard failures.
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !popup.classList.contains('hidden')) {
+            popup.classList.add('hidden');
+        }
+    });
+}
+
 function pickVideoRecorderFormat() {
     const webmOptions = [
         'video/webm;codecs=vp9,opus',
@@ -7777,6 +7961,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCaptionDrag();
     setupSceneDescDrag();
     setupJsonViewer();
+    setupContextStatusPopup();
     setupCamStatusPopup();
     loadBuiltinScenesList();
     await loadInitialSceneFromQuery();
