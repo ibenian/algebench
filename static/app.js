@@ -7447,6 +7447,63 @@ function _escHtml(str) {
 
 // ─── JSON tree helpers ────────────────────────────────────────────────────────
 
+const _JT_TYPE_ICONS = {
+    point:              { icon: '\u25CF', cls: 'jti-point' },       // ●
+    animated_point:     { icon: '\u25C9', cls: 'jti-anim' },        // ◉
+    vector:             { icon: '\u2197', cls: 'jti-vector' },       // ↗
+    animated_vector:    { icon: '\u21D7', cls: 'jti-anim' },        // ⇗
+    line:               { icon: '\u2500', cls: 'jti-line' },         // ─
+    animated_line:      { icon: '\u2248', cls: 'jti-anim' },        // ≈
+    axis:               { icon: '\u2194', cls: 'jti-axis' },         // ↔
+    grid:               { icon: '\u229E', cls: 'jti-grid' },         // ⊞
+    sphere:             { icon: '\u25CE', cls: 'jti-sphere' },       // ◎
+    surface:            { icon: '\u25A6', cls: 'jti-surface' },      // ▦
+    parametric_surface: { icon: '\u25A6', cls: 'jti-surface' },     // ▦
+    parametric_curve:   { icon: '\u223F', cls: 'jti-curve' },       // ∿
+    animated_curve:     { icon: '\u224B', cls: 'jti-anim' },        // ≋
+    polygon:            { icon: '\u2B21', cls: 'jti-polygon' },      // ⬡
+    animated_polygon:   { icon: '\u2B21', cls: 'jti-anim' },        // ⬡
+    cylinder:           { icon: '\u232D', cls: 'jti-sphere' },       // ⌭
+    animated_cylinder:  { icon: '\u232D', cls: 'jti-anim' },        // ⌭
+    text:               { icon: '\uFF21', cls: 'jti-text' },         // Ａ
+    slider:             { icon: '\u229D', cls: 'jti-slider' },       // ⊝
+    skybox:             { icon: '\u25CC', cls: 'jti-skybox' },       // ◌
+};
+
+const _JT_KEY_ICONS = {
+    title:       { icon: '\u25C6', cls: 'jti-title' },       // ◆
+    description: { icon: '\u00B6', cls: 'jti-desc' },        // ¶
+    markdown:    { icon: '\u00B6', cls: 'jti-desc' },        // ¶
+    prompt:      { icon: '\u25C8', cls: 'jti-prompt' },      // ◈
+    elements:    { icon: '\u25FB', cls: 'jti-elements' },    // ◻
+    steps:       { icon: '\u22EE', cls: 'jti-steps' },       // ⋮
+    sliders:     { icon: '\u229D', cls: 'jti-slider' },      // ⊝
+    functions:   { icon: '\u03BB', cls: 'jti-fn' },          // λ
+    import:      { icon: '\u2B06', cls: 'jti-import' },      // ⬆
+    scenes:      { icon: '\u25A3', cls: 'jti-scenes' },      // ▣
+    show:        { icon: '\u25D1', cls: 'jti-show' },        // ◑
+    hide:        { icon: '\u25D0', cls: 'jti-hide' },        // ◐
+    remove:      { icon: '\u2715', cls: 'jti-remove' },      // ✕
+    caption:     { icon: '\u2736', cls: 'jti-caption' },     // ✶
+    color:       { icon: '\u25D4', cls: 'jti-color' },       // ◔
+    label:       { icon: '\u25CE', cls: 'jti-label' },       // ◎
+    type:        { icon: '\u25B8', cls: 'jti-type-key' },    // ▸
+};
+
+function _getTreeIcon(key, value) {
+    // For objects/arrays: icon from their type field first, then from key
+    if (value !== null && typeof value === 'object' && !Array.isArray(value) && typeof value.type === 'string') {
+        const ti = _JT_TYPE_ICONS[value.type];
+        if (ti) return ti;
+    }
+    // For type primitive value
+    if (key === 'type' && typeof value === 'string') {
+        const ti = _JT_TYPE_ICONS[value];
+        if (ti) return ti;
+    }
+    return _JT_KEY_ICONS[key] || null;
+}
+
 function _buildJsonWithLineMap(obj) {
     const lines = [''];
 
@@ -7527,6 +7584,14 @@ function _buildTreeNodes(ul, val, path, depth) {
         row.className = 'jt-row';
 
         const isPrimitive = value === null || typeof value !== 'object';
+        const iconInfo = _getTreeIcon(String(key), value);
+
+        function makeIcon(info) {
+            const ic = document.createElement('span');
+            ic.className = 'jt-icon ' + info.cls;
+            ic.textContent = info.icon;
+            return ic;
+        }
 
         if (!isPrimitive) {
             const toggle = document.createElement('span');
@@ -7543,6 +7608,7 @@ function _buildTreeNodes(ul, val, path, depth) {
             summary.textContent = ' ' + _jsonTreeSummary(value);
 
             row.appendChild(toggle);
+            if (iconInfo) row.appendChild(makeIcon(iconInfo));
             row.appendChild(keyEl);
             row.appendChild(summary);
 
@@ -7575,6 +7641,7 @@ function _buildTreeNodes(ul, val, path, depth) {
             valEl.textContent = JSON.stringify(value);
 
             row.appendChild(indent);
+            if (iconInfo) row.appendChild(makeIcon(iconInfo));
             row.appendChild(keyEl);
             row.appendChild(colon);
             row.appendChild(valEl);
