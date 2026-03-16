@@ -7564,6 +7564,482 @@ function setupJsonViewer() {
     });
 }
 
+function setupContextStatusPopup() {
+    const pill = document.getElementById('context-status');
+    const popup = document.getElementById('context-popup');
+    const meta = document.getElementById('context-popup-meta');
+    const nav = document.getElementById('context-popup-nav');
+    const body = document.getElementById('context-popup-body');
+    const closeBtn = document.getElementById('context-popup-close');
+    const copyBtn = document.getElementById('context-popup-copy');
+    const toggleBtn = document.getElementById('context-popup-toggle');
+    const topResizeHandle = document.getElementById('context-popup-top-resize');
+    const rightResizeHandle = document.getElementById('context-popup-right-resize');
+    if (!pill || !popup || !meta || !nav || !body || !closeBtn || !copyBtn || !toggleBtn || !topResizeHandle || !rightResizeHandle) return;
+
+    if (!DEBUG_MODE) {
+        pill.classList.add('hidden');
+        popup.classList.add('hidden');
+        return;
+    }
+
+    let currentPromptText = '';
+    let sectionEls = [];
+    let navButtons = [];
+    let programmaticScrollIndex = -1;
+    let programmaticScrollTimer = null;
+    let contextScrollAnimFrame = null;
+    let contextRefreshTimer = null;
+    let contextCollapsed = true;
+    let popupResizeCleanup = null;
+    const CONTEXT_POPUP_SIZE_KEY = 'algebench-context-popup-size';
+    const CONTEXT_POPUP_STATE_KEY = 'algebench-context-popup-state';
+
+    function readStoredContextPopupState() {
+        try {
+            const raw = localStorage.getItem(CONTEXT_POPUP_STATE_KEY);
+            if (!raw) return {};
+            const parsed = JSON.parse(raw);
+            return {
+                collapsed: typeof parsed?.collapsed === 'boolean' ? parsed.collapsed : null,
+            };
+        } catch (_err) {
+            return {};
+        }
+    }
+
+    function storeContextPopupState({ collapsed }) {
+        const current = readStoredContextPopupState();
+        const next = {
+            collapsed: typeof collapsed === 'boolean' ? collapsed : current.collapsed,
+        };
+        try {
+            localStorage.setItem(CONTEXT_POPUP_STATE_KEY, JSON.stringify(next));
+        } catch (_err) {
+            // Ignore storage failures.
+        }
+    }
+
+    function readStoredContextPopupSize() {
+        try {
+            const raw = localStorage.getItem(CONTEXT_POPUP_SIZE_KEY);
+            if (!raw) return {};
+            const parsed = JSON.parse(raw);
+            return {
+                width: Number.isFinite(parsed?.width) ? parsed.width : null,
+                height: Number.isFinite(parsed?.height) ? parsed.height : null,
+            };
+        } catch (_err) {
+            return {};
+        }
+    }
+
+    function storeContextPopupSize({ width, height }) {
+        const current = readStoredContextPopupSize();
+        const next = {
+            width: Number.isFinite(width) ? Math.round(width) : current.width,
+            height: Number.isFinite(height) ? Math.round(height) : current.height,
+        };
+        try {
+            localStorage.setItem(CONTEXT_POPUP_SIZE_KEY, JSON.stringify(next));
+        } catch (_err) {
+            // Ignore storage failures.
+        }
+    }
+
+    function getContextPopupSizeCaps() {
+        const sideGap = window.innerWidth <= 900 ? 8 : 12;
+        return {
+            maxWidth: Math.max(272, window.innerWidth - sideGap * 2),
+            maxHeight: Math.max(220, window.innerHeight - 48),
+        };
+    }
+
+    function applyStoredContextPopupSize() {
+        const stored = readStoredContextPopupSize();
+        const caps = getContextPopupSizeCaps();
+        const width = Number.isFinite(stored.width) ? Math.min(stored.width, caps.maxWidth) : null;
+        const height = Number.isFinite(stored.height) ? Math.min(stored.height, caps.maxHeight) : null;
+
+        if (contextCollapsed) {
+            popup.style.right = '';
+            popup.style.width = '';
+        } else if (width != null) {
+            popup.style.right = window.innerWidth <= 900 ? '8px' : '12px';
+            popup.style.width = `${Math.round(width)}px`;
+        } else {
+            popup.style.right = '';
+            popup.style.width = '';
+        }
+
+        if (height != null) {
+            popup.style.height = `${Math.round(height)}px`;
+        } else {
+            popup.style.height = '';
+        }
+    }
+
+    function updateContextPopupMode() {
+        popup.classList.toggle('collapsed', contextCollapsed);
+        toggleBtn.textContent = contextCollapsed ? '\u2630' : '\u2630';
+        toggleBtn.title = contextCollapsed ? 'Expand text pane' : 'Collapse text pane';
+        storeContextPopupState({ collapsed: contextCollapsed });
+        applyStoredContextPopupSize();
+    }
+
+    function clearPopupResizeHandlers() {
+        if (popupResizeCleanup) {
+            popupResizeCleanup();
+            popupResizeCleanup = null;
+        }
+    }
+
+    function beginContextHeightResize(startEvent) {
+        startEvent.preventDefault();
+        startEvent.stopPropagation();
+        clearPopupResizeHandlers();
+
+        const startY = startEvent.clientY;
+        const rect = popup.getBoundingClientRect();
+        const startHeight = rect.height;
+        const { maxHeight } = getContextPopupSizeCaps();
+        const minHeight = 220;
+
+        popup.style.height = `${Math.round(startHeight)}px`;
+
+        const onMove = (moveEvt) => {
+            const dy = moveEvt.clientY - startY;
+            const nextHeight = Math.max(minHeight, Math.min(maxHeight, startHeight - dy));
+            popup.style.height = `${Math.round(nextHeight)}px`;
+            storeContextPopupSize({ height: nextHeight });
+        };
+
+        const onUp = () => {
+            clearPopupResizeHandlers();
+        };
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp, { once: true });
+        popupResizeCleanup = () => {
+            window.removeEventListener('mousemove', onMove);
+        };
+    }
+
+    function beginContextWidthResize(startEvent) {
+        if (contextCollapsed) return;
+        startEvent.preventDefault();
+        startEvent.stopPropagation();
+        clearPopupResizeHandlers();
+
+        const startX = startEvent.clientX;
+        const rect = popup.getBoundingClientRect();
+        const startWidth = rect.width;
+        const { maxWidth } = getContextPopupSizeCaps();
+        const minWidth = 320;
+
+        popup.style.right = window.innerWidth <= 900 ? '8px' : '12px';
+        popup.style.width = `${Math.round(startWidth)}px`;
+
+        const onMove = (moveEvt) => {
+            const dx = moveEvt.clientX - startX;
+            const nextWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + dx));
+            popup.style.width = `${Math.round(nextWidth)}px`;
+            storeContextPopupSize({ width: nextWidth });
+        };
+
+        const onUp = () => {
+            clearPopupResizeHandlers();
+        };
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp, { once: true });
+        popupResizeCleanup = () => {
+            window.removeEventListener('mousemove', onMove);
+        };
+    }
+
+    function parsePromptSections(text) {
+        const lines = String(text || '').split('\n');
+        const sections = [];
+        let current = { title: 'Prelude', body: [] };
+
+        function flushCurrent() {
+            const content = current.body.join('\n').trim();
+            if (!content) return;
+            sections.push({
+                title: current.title,
+                content,
+            });
+        }
+
+        for (const line of lines) {
+            const match = line.match(/^##\s+(.*)$/);
+            if (match) {
+                flushCurrent();
+                current = { title: match[1].trim(), body: [] };
+            } else {
+                current.body.push(line);
+            }
+        }
+        flushCurrent();
+
+        if (!sections.length) {
+            return [{ title: 'Prompt', content: String(text || '').trim() || '(empty prompt)' }];
+        }
+        return sections;
+    }
+
+    function setActiveSection(index) {
+        navButtons.forEach((btn, i) => btn.classList.toggle('active', i === index));
+    }
+
+    function getContextScrollLeadRows(rowCount = 3) {
+        const lineHeight = parseFloat(window.getComputedStyle(body).lineHeight);
+        const rowHeight = Number.isFinite(lineHeight) ? lineHeight : 20;
+        return Math.round(rowHeight * rowCount);
+    }
+
+    function clearProgrammaticScroll() {
+        programmaticScrollIndex = -1;
+        if (contextScrollAnimFrame != null) {
+            cancelAnimationFrame(contextScrollAnimFrame);
+            contextScrollAnimFrame = null;
+        }
+        if (programmaticScrollTimer) {
+            clearTimeout(programmaticScrollTimer);
+            programmaticScrollTimer = null;
+        }
+    }
+
+    function scheduleContextRefresh(_reason = 'context-change') {
+        if (popup.classList.contains('hidden')) return;
+        if (contextRefreshTimer) clearTimeout(contextRefreshTimer);
+        contextRefreshTimer = setTimeout(async () => {
+            contextRefreshTimer = null;
+            meta.textContent = 'Refreshing live prompt context…';
+            try {
+                await loadPromptContext();
+            } catch (err) {
+                body.innerHTML = '';
+                const empty = document.createElement('div');
+                empty.className = 'context-popup-empty';
+                empty.textContent = `Unable to build prompt context: ${err.message || err}`;
+                body.appendChild(empty);
+                meta.textContent = 'Prompt context unavailable';
+            }
+        }, 120);
+    }
+
+    function scheduleProgrammaticScrollRelease() {
+        if (programmaticScrollTimer) clearTimeout(programmaticScrollTimer);
+        programmaticScrollTimer = setTimeout(() => {
+            if (programmaticScrollIndex >= 0) {
+                setActiveSection(programmaticScrollIndex);
+            }
+            clearProgrammaticScroll();
+        }, 140);
+    }
+
+    function animateContextScrollTo(targetTop, duration = 160) {
+        if (contextScrollAnimFrame != null) {
+            cancelAnimationFrame(contextScrollAnimFrame);
+            contextScrollAnimFrame = null;
+        }
+        const startTop = body.scrollTop;
+        const delta = targetTop - startTop;
+        if (Math.abs(delta) < 1) {
+            body.scrollTop = targetTop;
+            return;
+        }
+        const startTime = performance.now();
+
+        function step(now) {
+            const t = Math.min(1, (now - startTime) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            body.scrollTop = startTop + delta * eased;
+            if (t < 1) {
+                contextScrollAnimFrame = requestAnimationFrame(step);
+            } else {
+                contextScrollAnimFrame = null;
+                body.scrollTop = targetTop;
+            }
+        }
+
+        contextScrollAnimFrame = requestAnimationFrame(step);
+    }
+
+    function syncActiveSectionFromScroll() {
+        if (!sectionEls.length) return;
+        if (contextCollapsed) return;
+        if (programmaticScrollIndex >= 0) {
+            scheduleProgrammaticScrollRelease();
+            return;
+        }
+        // Switch the active nav item a little before the heading reaches the top
+        // so scroll tracking feels less laggy while reading through long sections.
+        const scrollTop = body.scrollTop + 108;
+        let activeIndex = 0;
+        for (let i = 0; i < sectionEls.length; i++) {
+            if (sectionEls[i].offsetTop <= scrollTop) activeIndex = i;
+            else break;
+        }
+        setActiveSection(activeIndex);
+    }
+
+    function renderPrompt(text) {
+        const sections = parsePromptSections(text);
+        sectionEls = [];
+        navButtons = [];
+        nav.innerHTML = '';
+        body.innerHTML = '';
+
+        sections.forEach((section, index) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'context-nav-btn';
+            btn.textContent = section.title;
+            btn.addEventListener('click', () => {
+                const target = sectionEls[index];
+                if (!target) return;
+                if (contextCollapsed) {
+                    contextCollapsed = false;
+                    updateContextPopupMode();
+                }
+                const targetTop = Math.max(0, target.offsetTop - getContextScrollLeadRows(5));
+                programmaticScrollIndex = index;
+                scheduleProgrammaticScrollRelease();
+                animateContextScrollTo(targetTop);
+                setActiveSection(index);
+            });
+            nav.appendChild(btn);
+            navButtons.push(btn);
+
+            const sec = document.createElement('section');
+            sec.className = 'context-section';
+
+            const heading = document.createElement('div');
+            heading.className = 'context-section-heading';
+            heading.textContent = section.title;
+            sec.appendChild(heading);
+
+            const pre = document.createElement('pre');
+            pre.className = 'context-section-pre';
+            pre.textContent = section.content;
+            sec.appendChild(pre);
+
+            body.appendChild(sec);
+            sectionEls.push(sec);
+        });
+
+        meta.textContent = `${text.length} chars • ${sections.length} sections • built from live client context`;
+        clearProgrammaticScroll();
+        setActiveSection(0);
+        body.scrollTop = 0;
+    }
+
+    async function loadPromptContext() {
+        const contextBuilder = window.algebenchBuildChatContext;
+        if (typeof contextBuilder !== 'function') {
+            throw new Error('Chat context builder is not available yet.');
+        }
+        const res = await fetch('/api/debug/system_prompt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ context: contextBuilder() }),
+        });
+        if (!res.ok) {
+            let message = `HTTP ${res.status}`;
+            try {
+                const data = await res.json();
+                if (data && data.error) message = data.error;
+            } catch (_err) {}
+            throw new Error(message);
+        }
+        const data = await res.json();
+        currentPromptText = data.systemPrompt || '';
+        renderPrompt(currentPromptText);
+    }
+
+    body.addEventListener('scroll', syncActiveSectionFromScroll);
+    window.addEventListener('algebench-context-changed', () => {
+        scheduleContextRefresh('context-changed');
+    });
+    window.algebenchRefreshPromptContext = (reason = 'manual') => {
+        scheduleContextRefresh(reason);
+    };
+
+    pill.classList.remove('hidden');
+    {
+        const storedState = readStoredContextPopupState();
+        if (typeof storedState.collapsed === 'boolean') {
+            contextCollapsed = storedState.collapsed;
+        }
+    }
+    updateContextPopupMode();
+    pill.addEventListener('click', async () => {
+        const opening = popup.classList.contains('hidden');
+        if (!opening) {
+            popup.classList.add('hidden');
+            return;
+        }
+        popup.classList.remove('hidden');
+        currentPromptText = '';
+        clearProgrammaticScroll();
+        applyStoredContextPopupSize();
+        nav.innerHTML = '';
+        body.innerHTML = '<div class="context-popup-empty">Building current system prompt…</div>';
+        meta.textContent = 'Fetching live prompt context…';
+        try {
+            await loadPromptContext();
+        } catch (err) {
+            body.innerHTML = '';
+            const empty = document.createElement('div');
+            empty.className = 'context-popup-empty';
+            empty.textContent = `Unable to build prompt context: ${err.message || err}`;
+            body.appendChild(empty);
+            meta.textContent = 'Prompt context unavailable';
+        }
+    });
+
+    toggleBtn.addEventListener('click', () => {
+        contextCollapsed = !contextCollapsed;
+        updateContextPopupMode();
+    });
+
+    closeBtn.addEventListener('click', () => {
+        clearProgrammaticScroll();
+        clearPopupResizeHandlers();
+        popup.classList.add('hidden');
+    });
+
+    copyBtn.addEventListener('click', async () => {
+        if (!currentPromptText) return;
+        try {
+            await navigator.clipboard.writeText(currentPromptText);
+            const prev = copyBtn.textContent;
+            copyBtn.textContent = 'Copied';
+            setTimeout(() => { copyBtn.textContent = prev; }, 900);
+        } catch (_err) {
+            // Ignore clipboard failures.
+        }
+    });
+
+    topResizeHandle.addEventListener('mousedown', beginContextHeightResize);
+    rightResizeHandle.addEventListener('mousedown', beginContextWidthResize);
+
+    window.addEventListener('resize', () => {
+        applyStoredContextPopupSize();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !popup.classList.contains('hidden')) {
+            clearProgrammaticScroll();
+            clearPopupResizeHandlers();
+            popup.classList.add('hidden');
+        }
+    });
+}
+
 function pickVideoRecorderFormat() {
     const webmOptions = [
         'video/webm;codecs=vp9,opus',
@@ -7777,6 +8253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCaptionDrag();
     setupSceneDescDrag();
     setupJsonViewer();
+    setupContextStatusPopup();
     setupCamStatusPopup();
     loadBuiltinScenesList();
     await loadInitialSceneFromQuery();

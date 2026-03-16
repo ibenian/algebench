@@ -181,6 +181,8 @@ function buildChatContext() {
     return ctx;
 }
 
+window.algebenchBuildChatContext = buildChatContext;
+
 // ----- Tab Switching -----
 function switchPanelTab(tabName) {
     // Update tab buttons
@@ -594,6 +596,9 @@ async function sendChatMessage(text, { silent = false } = {}) {
         // Silent mode: skip auto-speak; user can still click the speaker button (uses Read).
         if (assistantMsg && typeof assistantMsg._startSpeak === 'function' && data.response && selectedTtsMode !== 'silent') {
             assistantMsg._startSpeak();
+        }
+        if (typeof window.algebenchRefreshPromptContext === 'function') {
+            window.algebenchRefreshPromptContext('chat-turn');
         }
 
     } catch (err) {
@@ -1365,6 +1370,9 @@ function logContextIfChanged() {
     _lastContextJson = json;
 
     localStorage.setItem('algebench-chat-context', json);
+    window.dispatchEvent(new CustomEvent('algebench-context-changed', {
+        detail: { context, json }
+    }));
 
     const scene = context.currentScene || {};
     const rt = context.runtime || {};

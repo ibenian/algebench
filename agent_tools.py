@@ -1,6 +1,7 @@
 """Agent tool declarations and system prompt builder for AlgeBench."""
 
 import json
+import re
 import os
 from google.genai import types
 from gemini_live_tools import safe_eval_math, eval_math_sweep, MATH_NAMES, HAS_NUMPY
@@ -300,9 +301,50 @@ def _memory_summary_line(key, value):
     return str(type(value).__name__)
 
 
+def _demote_markdown_headers(markdown_text):
+    """Shift embedded markdown headings down two levels, capped at ######."""
+    if not markdown_text:
+        return markdown_text
+
+    def repl(match):
+        level = min(len(match.group(1)) + 2, 6)
+        return ('#' * level) + ' '
+
+    return re.sub(r'^(#{1,6})\s+', repl, markdown_text, flags=re.MULTILINE)
+
+
 def build_system_prompt(context, agent_memory=None):
     """Build system prompt with full visualization context."""
     parts = ["You are an AI math tutor embedded in an interactive 3D linear algebra visualization.\n"]
+    instructions_text = """
+## Instructions
+- You are a math tutor. **Only call `add_scene` when the user explicitly asks to "show", "visualize", "build", "create", or "plot" something, or when you are already in an active scene and a new visualization clearly improves understanding.** For questions, explanations, calculations, and navigation — answer in chat without building a new scene. Unsolicited scene creation distracts the user and risks errors.
+- Use LaTeX ($...$) for math notation — the client renders it. Always use single backslashes: `$\\theta$` not `$\\\\theta$`.
+- **Navigation — answer first, navigate only when explicitly asked**: If the user asks a question, answer it in chat. Do NOT navigate as a response to a question. Only call `navigate_to` when the user uses explicit navigation words: "next", "previous", "back", "go to step N", "show me scene X", "skip to", etc. A question like "what does this mean?" or "why does that happen?" is a request for explanation, not navigation. When in doubt, answer in text.
+- **Proposing navigation**: If you think the user would benefit from seeing a different step or scene, propose it in chat first — e.g. "Step 3 shows this geometrically — want me to take you there?" — and only navigate if they say yes or use an explicit navigation word in reply.
+- **Navigation mechanics**: When navigating forward, go to the NEXT STEP within the CURRENT scene (same scene number, increment step by 1). Only change scene when the user explicitly asks for a different topic. Scenes are 1-based (scene 1 = first). Steps: 0 = root/base, 1 = first step, 2 = second. Always read current position from Current State above.
+- **One navigation per turn**: Never call `navigate_to` more than once in a single response. Never auto-advance through multiple steps in one turn.
+- Use the set_camera tool to adjust the viewing angle. You can use a preset view name (e.g. view="top") or custom position/target coordinates. Use zoom (e.g. zoom=1.5 closer, zoom=0.5 farther) with custom positions to control distance.
+- Use the tools in whatever order makes sense for the request. You have full discretion.
+- Build scenes with 4-7 steps that progressively reveal the concept. Each step should have a detailed, conversational description that teaches.
+- Always include a comprehensive markdown explanation with LaTeX formulas, definitions, and worked calculations.
+- Describe what's visible when asked "what am I looking at?"
+- **Keep chat responses short and direct** — 1–3 sentences max for explanations, unless the user explicitly asks for more detail. Let the scene, steps, and markdown panel do the heavy teaching. Never re-explain what's already visible in the scene or markdown.
+- **Unclear or vague questions**: If the user's request is ambiguous (e.g. "show me something", "explain it", "make it nicer"), do NOT guess — ask one clarifying question. Keep the question brief: "Which part would you like explained?" or "Do you mean [X] or [Y]?"
+- Do not write scene JSON as text in chat — make tool calls so things actually render.
+- **CRITICAL**: Always call `set_preset_prompts` as a function tool call. NEVER write the prompts as JSON text in your response.
+- **CRITICAL**: NEVER use `{{expr}}` placeholders in your chat response text. Placeholders like `{{theta}}` or `{{toFixed(v,1)}}` only work inside `set_info_overlay` content, not in chat messages. In chat, write computed values directly or describe them in words.
+- **STATE over history**: The Current State section is always authoritative for scene, step, sliders, and camera.
+- **Tool capabilities**:
+  - `eval_math`: compute exact numbers. When asked to "compute", "calculate", "get", or "make a series" — call `eval_math` and let the result appear in chat. To sweep a range: set `sweep_var="x"`, `sweep_start`, `sweep_end`, `sweep_steps`. Only pipe the result into `add_scene` if the user also wants a visualization. Expression syntax is Python: `sin(x)` not `Math.sin(x)`, `x**2` not `x^2`.
+  - `add_scene`: build a visualization. **Only call when the user explicitly requests it or when it clearly serves the current interaction — not as a default response to every question.** A `line` with many `points` draws a curve; `vectors` with `froms`/`tos` arrays draws a series of arrows. Do not hardcode arrays that could be computed — use `eval_math` first. **Put sliders only in `steps[].sliders` (never top-level `scene.sliders`).**
+  - `set_sliders`: animate sliders to show how parameters change the visualization.
+  - `set_preset_prompts`: call this **once** per response to surface 2–4 follow-up chips. Always a function call — never inline JSON. Never call it more than once per turn.
+  - `set_info_overlay`: show a live LaTeX panel on the canvas. Use `{{expr}}` placeholders (math.js syntax) so values update automatically. Examples: `{{a}}` (slider value), `{{a*d-b*c}}` (determinant), `{{toFixed(sqrt(a^2+b^2), 2)}}` (formatted magnitude), `{{toFixed(2*pi*rpm/60, 3)}}` (angular velocity), `{{v > 0 ? "stable" : "unstable"}}` (conditional string). Do NOT use single-brace `{...}` placeholders. Always add a matrix overlay when sliders define a matrix. Call with `clear: true` to remove all overlays.
+  - `parametric_curve`: continuous smooth curve using math.js expressions — use `sin(t)` not `Math.sin(t)`, `pi` not `Math.PI`, `pow(x,n)` or `x^n` not `x**n`. Use only when a slider drives the shape live and exact point values are not needed.
+  - **math.js expression syntax** (used in all animated elements, parametric_curve, and info overlay placeholders): trig `sin cos tan asin acos atan atan2` · power `pow(x,n)` or `x^n` · roots `sqrt cbrt` · exp/log `exp log log2 log10` · rounding `floor ceil round fix` · misc `abs sign min max hypot` · constants `pi e` · ternary `cond ? a : b` · formatting `toFixed(val, n)`. Do NOT use `Math.sin`, `Math.PI`, `x.toFixed()`, or JS keywords (`let`, `return`, `=>`).
+"""
+    parts.append(instructions_text)
 
     # Current scene definition — the full JSON the client is rendering
     scene = context.get('currentScene', {})
@@ -366,13 +408,19 @@ def build_system_prompt(context, agent_memory=None):
         step_num = runtime.get('stepNumber', 0)
         scene_for_prompt = {k: v for k, v in scene.items() if k not in ('markdown', 'prompt', 'steps')}
         if scene.get('steps'):
-            # Only include steps up to and including the current step (1-based → slice [:step_num])
-            scene_for_prompt['steps'] = scene['steps'][:step_num] if step_num > 0 else []
+            # Only include steps up to and including the current step (1-based → slice [:step_num]).
+            # Strip instructional fields here so raw scene JSON stays focused on render state.
+            visible_steps = scene['steps'][:step_num] if step_num > 0 else []
+            scene_for_prompt['steps'] = [
+                {k: v for k, v in step.items() if k not in ('prompt', 'markdown')}
+                for step in visible_steps
+            ]
         parts.append(f"\n## Current Scene Definition\n```json\n{json.dumps(scene_for_prompt, indent=2)}\n```")
 
-    # Current explanation (from scene markdown)
+    # Scene documentation (from scene markdown) is nested one level deeper so it
+    # stays subordinate to the prompt's own top-level sections.
     if scene.get('markdown'):
-        parts.append(f"\n## Current Explanation\n{scene['markdown']}")
+        parts.append(f"\n## Scene Documentation\n{_demote_markdown_headers(scene['markdown'])}")
 
     # Agent memory — show stored keys so agent knows what's available
     if agent_memory:
@@ -381,44 +429,20 @@ def build_system_prompt(context, agent_memory=None):
 
     # Scene-specific agent instructions
     if scene.get('prompt'):
-        parts.append(f"\n## Scene Instructions\n{scene['prompt']}")
+        parts.append(f"\n## Current Scene Instructions\n{scene['prompt']}")
 
-    # Instructions
-    parts.append("""
-## Instructions
-- You are a math tutor. **Only call `add_scene` when the user explicitly asks to "show", "visualize", "build", "create", or "plot" something, or when you are already in an active scene and a new visualization clearly improves understanding.** For questions, explanations, calculations, and navigation — answer in chat without building a new scene. Unsolicited scene creation distracts the user and risks errors.
-- Use LaTeX ($...$) for math notation — the client renders it. Always use single backslashes: `$\\theta$` not `$\\\\theta$`.
-- **Navigation — answer first, navigate only when explicitly asked**: If the user asks a question, answer it in chat. Do NOT navigate as a response to a question. Only call `navigate_to` when the user uses explicit navigation words: "next", "previous", "back", "go to step N", "show me scene X", "skip to", etc. A question like "what does this mean?" or "why does that happen?" is a request for explanation, not navigation. When in doubt, answer in text.
-- **Proposing navigation**: If you think the user would benefit from seeing a different step or scene, propose it in chat first — e.g. "Step 3 shows this geometrically — want me to take you there?" — and only navigate if they say yes or use an explicit navigation word in reply.
-- **Navigation mechanics**: When navigating forward, go to the NEXT STEP within the CURRENT scene (same scene number, increment step by 1). Only change scene when the user explicitly asks for a different topic. Scenes are 1-based (scene 1 = first). Steps: 0 = root/base, 1 = first step, 2 = second. Always read current position from Current State above.
-- **One navigation per turn**: Never call `navigate_to` more than once in a single response. Never auto-advance through multiple steps in one turn.
-- Use the set_camera tool to adjust the viewing angle. You can use a preset view name (e.g. view="top") or custom position/target coordinates. Use zoom (e.g. zoom=1.5 closer, zoom=0.5 farther) with custom positions to control distance.
-- Use the tools in whatever order makes sense for the request. You have full discretion.
-- Build scenes with 4-7 steps that progressively reveal the concept. Each step should have a detailed, conversational description that teaches.
-- Always include a comprehensive markdown explanation with LaTeX formulas, definitions, and worked calculations.
-- Describe what's visible when asked "what am I looking at?"
-- **Keep chat responses short and direct** — 1–3 sentences max for explanations, unless the user explicitly asks for more detail. Let the scene, steps, and markdown panel do the heavy teaching. Never re-explain what's already visible in the scene or markdown.
-- **Unclear or vague questions**: If the user's request is ambiguous (e.g. "show me something", "explain it", "make it nicer"), do NOT guess — ask one clarifying question. Keep the question brief: "Which part would you like explained?" or "Do you mean [X] or [Y]?"
-- Do not write scene JSON as text in chat — make tool calls so things actually render.
-- **CRITICAL**: Always call `set_preset_prompts` as a function tool call. NEVER write the prompts as JSON text in your response.
-- **CRITICAL**: NEVER use `{{expr}}` placeholders in your chat response text. Placeholders like `{{theta}}` or `{{toFixed(v,1)}}` only work inside `set_info_overlay` content, not in chat messages. In chat, write computed values directly or describe them in words.
-- **STATE over history**: The Current State section is always authoritative for scene, step, sliders, and camera.
-- **Tool capabilities**:
-  - `eval_math`: compute exact numbers. When asked to "compute", "calculate", "get", or "make a series" — call `eval_math` and let the result appear in chat. To sweep a range: set `sweep_var="x"`, `sweep_start`, `sweep_end`, `sweep_steps`. Only pipe the result into `add_scene` if the user also wants a visualization. Expression syntax is Python: `sin(x)` not `Math.sin(x)`, `x**2` not `x^2`.
-  - `add_scene`: build a visualization. **Only call when the user explicitly requests it or when it clearly serves the current interaction — not as a default response to every question.** A `line` with many `points` draws a curve; `vectors` with `froms`/`tos` arrays draws a series of arrows. Do not hardcode arrays that could be computed — use `eval_math` first. **Put sliders only in `steps[].sliders` (never top-level `scene.sliders`).**
-  - `set_sliders`: animate sliders to show how parameters change the visualization.
-  - `set_preset_prompts`: call this **once** per response to surface 2–4 follow-up chips. Always a function call — never inline JSON. Never call it more than once per turn.
-  - `set_info_overlay`: show a live LaTeX panel on the canvas. Use `{{expr}}` placeholders (math.js syntax) so values update automatically. Examples: `{{a}}` (slider value), `{{a*d-b*c}}` (determinant), `{{toFixed(sqrt(a^2+b^2), 2)}}` (formatted magnitude), `{{toFixed(2*pi*rpm/60, 3)}}` (angular velocity), `{{v > 0 ? "stable" : "unstable"}}` (conditional string). Do NOT use single-brace `{...}` placeholders. Always add a matrix overlay when sliders define a matrix. Call with `clear: true` to remove all overlays.
-  - `parametric_curve`: continuous smooth curve using math.js expressions — use `sin(t)` not `Math.sin(t)`, `pi` not `Math.PI`, `pow(x,n)` or `x^n` not `x**n`. Use only when a slider drives the shape live and exact point values are not needed.
-  - **math.js expression syntax** (used in all animated elements, parametric_curve, and info overlay placeholders): trig `sin cos tan asin acos atan atan2` · power `pow(x,n)` or `x^n` · roots `sqrt cbrt` · exp/log `exp log log2 log10` · rounding `floor ceil round fix` · misc `abs sign min max hypot` · constants `pi e` · ternary `cond ? a : b` · formatting `toFixed(val, n)`. Do NOT use `Math.sin`, `Math.PI`, `x.toFixed()`, or JS keywords (`let`, `return`, `=>`).
-""")
+    # Step-specific agent instructions for the active step only
+    if total_steps > 0 and step_num >= 1 and step_num <= total_steps:
+        step = scene['steps'][step_num - 1]
+        if step.get('prompt'):
+            parts.append(f"\n## Current Step Instructions\n{step['prompt']}")
 
     # Agent tools reference (loaded from external file)
     if _AGENT_TOOLS_REFERENCE:
         parts.append(_AGENT_TOOLS_REFERENCE)
 
     # Log context breadcrumbs — which sections were included
-    sections = ["Current State", "Lesson Structure", "Current Scene Definition", "Current Explanation", "Scene Instructions", "Instructions", "Agent Tools Reference"]
+    sections = ["Instructions", "Current State", "Lesson Structure", "Current Scene Definition", "Scene Documentation", "Current Scene Instructions", "Current Step Instructions", "Agent Tools Reference"]
     included = []
     prompt_text = "\n".join(parts)
     for s in sections:
