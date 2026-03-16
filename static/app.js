@@ -7764,12 +7764,32 @@ function setupJsonViewer() {
         setActiveTreeItem(_findPathAtLine(topLine, _pathLineMap));
     }
 
+    function selectJsonLine(lineNum) {
+        const textNode = content.firstChild;
+        if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return;
+        const text = textNode.textContent;
+        const lines = text.split('\n');
+        let offset = 0;
+        for (let i = 0; i < lineNum; i++) offset += lines[i].length + 1;
+        const lineText = (lines[lineNum] || '').trimStart();
+        const start = offset + (lines[lineNum] || '').length - lineText.length;
+        const end = offset + (lines[lineNum] || '').length;
+        if (start >= end) return;
+        const range = document.createRange();
+        range.setStart(textNode, start);
+        range.setEnd(textNode, end);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
     function syncJsonFromTreeClick(path) {
         const line = _pathLineMap[path];
         if (line === undefined) return;
         const lh = getLineHeight();
         animateJsonScrollTo(Math.max(0, line * lh - lh * 1.5));
         setActiveTreeItem(path);
+        selectJsonLine(line);
     }
 
     // Wire up tree clicks (delegated)
