@@ -458,6 +458,76 @@ html, body {
     background: rgba(80, 110, 220, 0.4);
     color: #fff;
 }
+#json-search-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    background: rgba(12, 14, 36, 0.6);
+    border: 1px solid rgba(60, 80, 140, 0.3);
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+.jsb-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+}
+.jsb-label {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.72em;
+    color: rgba(120, 140, 190, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+#json-search-key, #json-search-val {
+    flex: 1;
+    background: rgba(20, 24, 55, 0.7);
+    border: 1px solid rgba(70, 90, 160, 0.3);
+    border-radius: 4px;
+    color: rgba(190, 205, 245, 0.9);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.8em;
+    padding: 3px 8px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+#json-search-key:focus, #json-search-val:focus {
+    border-color: rgba(100, 130, 255, 0.55);
+}
+#json-search-key.jsb-has-results { border-color: rgba(100, 220, 130, 0.5); }
+#json-search-key.jsb-no-results  { border-color: rgba(220, 100, 100, 0.5); }
+#json-search-val.jsb-has-results { border-color: rgba(100, 220, 130, 0.5); }
+#json-search-val.jsb-no-results  { border-color: rgba(220, 100, 100, 0.5); }
+.jsb-count {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.72em;
+    color: rgba(140, 160, 210, 0.65);
+    min-width: 28px;
+    flex-shrink: 0;
+}
+.jsb-nav {
+    background: rgba(50, 60, 120, 0.4);
+    border: 1px solid rgba(80, 100, 200, 0.3);
+    color: rgba(160, 180, 240, 0.85);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 0.78em;
+    cursor: pointer;
+    line-height: 1;
+    transition: background 0.1s;
+    flex-shrink: 0;
+}
+.jsb-nav:hover { background: rgba(70, 90, 180, 0.5); color: #fff; }
+
+/* Tree key-search filter states */
+.jt-item.jt-dim > .jt-row { opacity: 0.18; }
+.jt-item.jt-match > .jt-row { background: rgba(80, 200, 120, 0.14); }
+.jt-item.jt-match > .jt-row .jt-key { color: rgba(120, 240, 160, 0.95); }
+
 #json-viewer-body {
     display: flex;
     flex: 1;

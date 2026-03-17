@@ -7817,13 +7817,13 @@ function setupJsonViewer() {
         sel.addRange(range);
     }
 
-    function syncJsonFromTreeClick(path) {
+    function syncJsonFromTreeClick(path, { select = true } = {}) {
         const line = _pathLineMap[path];
         if (line === undefined) return;
         const lh = getLineHeight();
         animateJsonScrollTo(Math.max(0, lineToScrollTop(line) - lh * 1.5));
         setActiveTreeItem(path);
-        selectJsonLine(line);
+        if (select) selectJsonLine(line);
     }
 
     // Wire up tree clicks (delegated)
@@ -8003,6 +8003,134 @@ function setupJsonViewer() {
             overlay.classList.add('hidden');
         }
     });
+
+    // ── Search ──────────────────────────────────────────────────────────────
+
+    const keyInput = document.getElementById('json-search-key');
+    const valInput = document.getElementById('json-search-val');
+    const keyCount = document.getElementById('json-search-key-count');
+    const valCount = document.getElementById('json-search-val-count');
+    const prevBtn  = document.getElementById('json-search-prev');
+    const nextBtn  = document.getElementById('json-search-next');
+    if (!keyInput || !valInput) return;
+
+    let _matchItems = []; // ordered list of .jt-item elements that are jt-match
+    let _matchIndex = -1;
+
+    function refocusSearchInput() {
+        const a = document.activeElement;
+        if (a !== keyInput && a !== valInput) {
+            (document.activeElement === nextBtn || document.activeElement === prevBtn
+                ? document.activeElement : keyInput).focus();
+        }
+    }
+
+    function applyTreeSearch() {
+        if (!treePanel) return;
+        const focused = document.activeElement;
+        const keyTerm = keyInput.value.trim().toLowerCase();
+        const valTerm = valInput.value.trim().toLowerCase();
+        const items   = [...treePanel.querySelectorAll('.jt-item')];
+
+        // Clear states
+        items.forEach(el => el.classList.remove('jt-dim', 'jt-match'));
+        [keyInput, valInput].forEach(inp =>
+            inp.classList.remove('jsb-has-results', 'jsb-no-results'));
+        if (keyCount) keyCount.textContent = '';
+        if (valCount) valCount.textContent = '';
+        _matchItems = [];
+        _matchIndex = -1;
+
+        if (!keyTerm && !valTerm) return;
+
+        // First pass: mark each item
+        items.forEach(el => {
+            const keyEl = el.querySelector(':scope > .jt-row .jt-key');
+            const valEl = el.querySelector(':scope > .jt-row .jt-val'); // only on primitives
+            const keyText = keyEl ? keyEl.textContent.toLowerCase() : '';
+            const valText = valEl ? valEl.textContent.toLowerCase() : '';
+
+            const keyOk = !keyTerm || keyText.includes(keyTerm);
+            // Non-primitives have no valEl; they match valTerm only if valTerm is empty
+            const valOk = !valTerm || valText.includes(valTerm);
+
+            if (keyOk && valOk) {
+                el.classList.add('jt-match');
+            } else {
+                el.classList.add('jt-dim');
+            }
+        });
+
+        // Second pass: un-dim ancestors of matches and expand collapsed parents
+        treePanel.querySelectorAll('.jt-item.jt-match').forEach(matchEl => {
+            let ancestor = matchEl.parentElement;
+            while (ancestor && ancestor !== treePanel) {
+                if (ancestor.classList.contains('jt-item')) {
+                    ancestor.classList.remove('jt-dim');
+                }
+                if (ancestor.classList.contains('jt-children') && ancestor.classList.contains('jt-collapsed')) {
+                    ancestor.classList.remove('jt-collapsed');
+                    const row = ancestor.previousElementSibling;
+                    if (row) { const t = row.querySelector('.jt-toggle'); if (t) t.textContent = '\u25BC'; }
+                }
+                ancestor = ancestor.parentElement;
+            }
+        });
+
+        _matchItems = [...treePanel.querySelectorAll('.jt-item.jt-match')];
+        const n = _matchItems.length;
+
+        // Update input states
+        if (keyTerm) {
+            keyInput.classList.toggle('jsb-has-results', n > 0);
+            keyInput.classList.toggle('jsb-no-results',  n === 0);
+        }
+        if (valTerm) {
+            valInput.classList.toggle('jsb-has-results', n > 0);
+            valInput.classList.toggle('jsb-no-results',  n === 0);
+        }
+        if (keyCount) keyCount.textContent = n || (keyTerm ? 'none' : '');
+        if (valCount) valCount.textContent = n ? `1/${n}` : (valTerm ? 'none' : '');
+
+        if (n > 0) {
+            _matchIndex = 0;
+            navigateMatch(0);
+        }
+        if (focused === keyInput || focused === valInput) setTimeout(() => focused.focus(), 0);
+    }
+
+    function navigateMatch(delta) {
+        if (!_matchItems.length) return;
+        const focused = document.activeElement;
+        _matchIndex = ((_matchIndex + delta) % _matchItems.length + _matchItems.length) % _matchItems.length;
+        const el = _matchItems[_matchIndex];
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        // Jump JSON without text selection (would steal focus)
+        syncJsonFromTreeClick(el.dataset.path, { select: false });
+        // Restore focus after browser has processed any side effects
+        if (focused === keyInput || focused === valInput) {
+            setTimeout(() => focused.focus(), 0);
+        }
+        // Update counters
+        const label = `${_matchIndex + 1}/${_matchItems.length}`;
+        if (valCount) valCount.textContent = label;
+        if (keyCount) keyCount.textContent = label;
+    }
+
+    keyInput.addEventListener('input', applyTreeSearch);
+    valInput.addEventListener('input', applyTreeSearch);
+
+    [keyInput, valInput].forEach(inp => {
+        inp.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                navigateMatch(e.shiftKey ? -1 : 1);
+            }
+        });
+    });
+
+    nextBtn.addEventListener('click', () => navigateMatch(1));
+    prevBtn.addEventListener('click', () => navigateMatch(-1));
 }
 
 function setupContextStatusPopup() {
