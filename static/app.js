@@ -8157,6 +8157,15 @@ function setupJsonViewer() {
 
     nextBtn.addEventListener('click', () => navigateMatch(1));
     prevBtn.addEventListener('click', () => navigateMatch(-1));
+
+    const clearBtn = document.getElementById('json-search-clear');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            keyInput.value = '';
+            valInput.value = '';
+            applyTreeSearch();
+        });
+    }
 }
 
 function setupContextStatusPopup() {

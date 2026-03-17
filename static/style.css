@@ -522,6 +522,18 @@ html, body {
     flex-shrink: 0;
 }
 .jsb-nav:hover { background: rgba(70, 90, 180, 0.5); color: #fff; }
+.jsb-clear {
+    background: none;
+    border: none;
+    color: rgba(140, 155, 200, 0.45);
+    font-size: 0.8em;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    transition: color 0.1s;
+}
+.jsb-clear:hover { color: rgba(220, 100, 100, 0.85); }
 
 /* Tree key-search filter states */
 .jt-item.jt-dim > .jt-row { opacity: 0.18; }
