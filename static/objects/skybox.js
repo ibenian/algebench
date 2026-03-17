@@ -1,7 +1,7 @@
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
 
-function clearWorldStarfield() {
+export function clearWorldStarfield() {
     if (!state.worldStarfield || !state.three || !state.three.scene) return;
     state.three.scene.remove(state.worldStarfield);
     if (state.worldStarfield.geometry) state.worldStarfield.geometry.dispose();
@@ -9,7 +9,7 @@ function clearWorldStarfield() {
     state.worldStarfield = null;
 }
 
-function clearWorldSkybox() {
+export function clearWorldSkybox() {
     if (!state.three || !state.three.scene) return;
     if (state.worldSkybox && state.worldSkybox.texture && typeof state.worldSkybox.texture.dispose === 'function') {
         state.worldSkybox.texture.dispose();

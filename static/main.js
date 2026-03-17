@@ -16,6 +16,15 @@ import { navigateTo, setupSceneDock, loadScene, loadLesson, isLessonFormat } fro
 import { buildSceneTree } from '/context-browser.js';
 import { setupJsonViewer, setupContextStatusPopup } from '/json-browser.js';
 
+// Domain library registry — scripts under static/domains/<name>/index.js self-register here.
+window.AlgeBenchDomains = window.AlgeBenchDomains || {
+    _registry: {},
+    register(name, functions) {
+        this._registry[name] = functions;
+        console.log(`[domains] registered: ${name} (${Object.keys(functions).join(', ')})`);
+    },
+};
+
 // Wire the build-scene-tree function into overlay.js for use in updateStatusBar
 setBuildSceneTreeFn(buildSceneTree);
 
