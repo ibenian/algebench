@@ -857,6 +857,37 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         return Response(content=css.encode('utf-8'), media_type="text/css",
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
+    @fastapp.get("/objects/{filename:path}")
+    async def get_objects_js(filename: str):
+        """Serve ES module files from static/objects/ subdirectory."""
+        safe = filename.replace('..', '').lstrip('/')
+        path = static_dir / "objects" / safe
+        if not path.is_file() or not path.suffix == '.js':
+            return Response(status_code=404)
+        with open(path, 'r') as f:
+            js = f.read()
+        return Response(content=js.encode('utf-8'), media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+    _TOP_LEVEL_MODULES = {
+        'state', 'expr', 'trust', 'coords', 'labels', 'follow-cam', 'camera',
+        'sliders', 'overlay', 'context-browser', 'scene-loader', 'ui',
+        'json-browser', 'main',
+    }
+
+    @fastapp.get("/{name}.js")
+    async def get_module_js(name: str):
+        """Serve any top-level ES module from the static directory."""
+        if name not in _TOP_LEVEL_MODULES:
+            return Response(status_code=404)
+        path = static_dir / f"{name}.js"
+        if not path.is_file():
+            return Response(status_code=404)
+        with open(path, 'r') as f:
+            js = f.read()
+        return Response(content=js.encode('utf-8'), media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
     @fastapp.get("/favicon.ico")
     async def get_favicon():
         return Response(content=FAVICON_SVG.encode('utf-8'), media_type="image/svg+xml",
