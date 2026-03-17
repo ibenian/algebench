@@ -7445,10 +7445,255 @@ function _escHtml(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// ─── JSON tree helpers ────────────────────────────────────────────────────────
+
+const _JT_TYPE_ICONS = {
+    point:              { icon: '\u25CF', cls: 'jti-point' },       // ●
+    animated_point:     { icon: '\u25C9', cls: 'jti-anim' },        // ◉
+    vector:             { icon: '\u2197', cls: 'jti-vector' },       // ↗
+    animated_vector:    { icon: '\u21D7', cls: 'jti-anim' },        // ⇗
+    line:               { icon: '\u2500', cls: 'jti-line' },         // ─
+    animated_line:      { icon: '\u2248', cls: 'jti-anim' },        // ≈
+    axis:               { icon: '\u2194', cls: 'jti-axis' },         // ↔
+    grid:               { icon: '\u229E', cls: 'jti-grid' },         // ⊞
+    sphere:             { icon: '\u25CE', cls: 'jti-sphere' },       // ◎
+    surface:            { icon: '\u25A6', cls: 'jti-surface' },      // ▦
+    parametric_surface: { icon: '\u25A6', cls: 'jti-surface' },     // ▦
+    parametric_curve:   { icon: '\u223F', cls: 'jti-curve' },       // ∿
+    animated_curve:     { icon: '\u224B', cls: 'jti-anim' },        // ≋
+    polygon:            { icon: '\u2B21', cls: 'jti-polygon' },      // ⬡
+    animated_polygon:   { icon: '\u2B21', cls: 'jti-anim' },        // ⬡
+    cylinder:           { icon: '\u232D', cls: 'jti-sphere' },       // ⌭
+    animated_cylinder:  { icon: '\u232D', cls: 'jti-anim' },        // ⌭
+    text:               { icon: '\uFF21', cls: 'jti-text' },         // Ａ
+    slider:             { icon: '\u229D', cls: 'jti-slider' },       // ⊝
+    skybox:             { icon: '\u25CC', cls: 'jti-skybox' },       // ◌
+};
+
+const _JT_KEY_ICONS = {
+    title:       { icon: '\u25C6', cls: 'jti-title' },       // ◆
+    description: { icon: '\u00B6', cls: 'jti-desc' },        // ¶
+    markdown:    { icon: '\u00B6', cls: 'jti-desc' },        // ¶
+    prompt:      { icon: '\u25C8', cls: 'jti-prompt' },      // ◈
+    elements:    { icon: '\u25FB', cls: 'jti-elements' },    // ◻
+    steps:       { icon: '\u22EE', cls: 'jti-steps' },       // ⋮
+    sliders:     { icon: '\u229D', cls: 'jti-slider' },      // ⊝
+    functions:   { icon: '\u03BB', cls: 'jti-fn' },          // λ
+    import:      { icon: '\u2B06', cls: 'jti-import' },      // ⬆
+    scenes:      { icon: '\u25A3', cls: 'jti-scenes' },      // ▣
+    show:        { icon: '\u25D1', cls: 'jti-show' },        // ◑
+    hide:        { icon: '\u25D0', cls: 'jti-hide' },        // ◐
+    remove:      { icon: '\u2715', cls: 'jti-remove' },      // ✕
+    caption:     { icon: '\u2736', cls: 'jti-caption' },     // ✶
+    color:       { icon: '\u25D4', cls: 'jti-color' },       // ◔
+    label:       { icon: '\u25CE', cls: 'jti-label' },       // ◎
+    type:        { icon: '\u25B8', cls: 'jti-type-key' },    // ▸
+    axis:        { icon: '\u2194', cls: 'jti-axis' },         // ↔
+    camera:      { icon: '\u2316', cls: 'jti-camera' },      // ⌖
+    range:       { icon: '\u21D4', cls: 'jti-range' },       // ⇔
+    info:        { icon: '\u2139', cls: 'jti-info' },        // ℹ
+};
+
+function _getTreeIcon(key, value) {
+    // For objects/arrays: icon from their type field first, then from key
+    if (value !== null && typeof value === 'object' && !Array.isArray(value) && typeof value.type === 'string') {
+        const ti = _JT_TYPE_ICONS[value.type];
+        if (ti) return ti;
+    }
+    // For type primitive value
+    if (key === 'type' && typeof value === 'string') {
+        const ti = _JT_TYPE_ICONS[value];
+        if (ti) return ti;
+    }
+    if (key.startsWith('unsafe')) return { icon: '\u26A0', cls: 'jti-unsafe' }; // ⚠
+    return _JT_KEY_ICONS[key] || null;
+}
+
+function _buildJsonWithLineMap(obj) {
+    const lines = [''];
+
+    function append(str) { lines[lines.length - 1] += str; }
+    function newline(indent) { lines.push('  '.repeat(indent)); }
+
+    const pathLineMap = {};
+
+    function serialize(val, path, indent) {
+        if (val === null) { append('null'); return; }
+        if (typeof val === 'string') { append(JSON.stringify(val)); return; }
+        if (typeof val === 'number' || typeof val === 'boolean') { append(String(val)); return; }
+
+        pathLineMap[path] = lines.length - 1;
+
+        if (Array.isArray(val)) {
+            if (val.length === 0) { append('[]'); return; }
+            append('[');
+            val.forEach((item, i) => {
+                newline(indent + 1);
+                const cp = path ? `${path}[${i}]` : `[${i}]`;
+                pathLineMap[cp] = lines.length - 1;
+                serialize(item, cp, indent + 1);
+                if (i < val.length - 1) append(',');
+            });
+            newline(indent);
+            append(']');
+        } else {
+            const keys = Object.keys(val);
+            if (keys.length === 0) { append('{}'); return; }
+            append('{');
+            keys.forEach((key, i) => {
+                newline(indent + 1);
+                const cp = path ? `${path}.${key}` : key;
+                pathLineMap[cp] = lines.length - 1;
+                append(JSON.stringify(key) + ': ');
+                serialize(val[key], cp, indent + 1);
+                if (i < keys.length - 1) append(',');
+            });
+            newline(indent);
+            append('}');
+        }
+    }
+
+    serialize(obj, '', 0);
+    return { text: lines.join('\n'), pathLineMap };
+}
+
+function _jsonTreeSummary(val) {
+    if (Array.isArray(val)) return `[${val.length}]`;
+    if (val && typeof val === 'object') {
+        const keys = Object.keys(val);
+        const preview = keys.slice(0, 3).map(k => {
+            const v = val[k];
+            if (typeof v === 'string') return `${k}: "${v.length > 12 ? v.slice(0, 12) + '\u2026' : v}"`;
+            if (typeof v === 'number' || typeof v === 'boolean') return `${k}: ${v}`;
+            return k;
+        }).join(', ');
+        return `{ ${preview}${keys.length > 3 ? ', \u2026' : ''} }`;
+    }
+    return '';
+}
+
+function _buildTreeNodes(ul, val, path, depth) {
+    const isArray = Array.isArray(val);
+    const entries = isArray ? val.map((v, i) => [i, v]) : Object.entries(val);
+
+    for (const [key, value] of entries) {
+        const childPath = path
+            ? (isArray ? `${path}[${key}]` : `${path}.${key}`)
+            : String(key);
+
+        const li = document.createElement('li');
+        li.className = 'jt-item';
+        li.dataset.path = childPath;
+
+        const row = document.createElement('div');
+        row.className = 'jt-row';
+
+        const isPrimitive = value === null || typeof value !== 'object';
+        const iconInfo = _getTreeIcon(String(key), value);
+
+        function makeIcon(info) {
+            const ic = document.createElement('span');
+            ic.className = 'jt-icon ' + info.cls;
+            ic.textContent = info.icon;
+            return ic;
+        }
+
+        if (!isPrimitive) {
+            const toggle = document.createElement('span');
+            toggle.className = 'jt-toggle';
+            const collapsed = depth >= 1;
+            toggle.textContent = collapsed ? '\u25B6' : '\u25BC';
+
+            const keyEl = document.createElement('span');
+            keyEl.className = 'jt-key';
+            keyEl.textContent = isArray ? `[${key}]` : key;
+
+            const summary = document.createElement('span');
+            summary.className = 'jt-summary';
+            summary.textContent = ' ' + _jsonTreeSummary(value);
+
+            row.appendChild(toggle);
+            if (iconInfo) row.appendChild(makeIcon(iconInfo));
+            row.appendChild(keyEl);
+            row.appendChild(summary);
+
+            const children = document.createElement('ul');
+            children.className = 'jt-children' + (collapsed ? ' jt-collapsed' : '');
+            _buildTreeNodes(children, value, childPath, depth + 1);
+
+            toggle.addEventListener('click', e => {
+                e.stopPropagation();
+                const nowCollapsed = children.classList.toggle('jt-collapsed');
+                toggle.textContent = nowCollapsed ? '\u25B6' : '\u25BC';
+            });
+
+            li.appendChild(row);
+            li.appendChild(children);
+        } else {
+            const indent = document.createElement('span');
+            indent.className = 'jt-indent';
+
+            const keyEl = document.createElement('span');
+            keyEl.className = 'jt-key';
+            keyEl.textContent = isArray ? `[${key}]` : key;
+
+            const colon = document.createElement('span');
+            colon.className = 'jt-colon';
+            colon.textContent = ': ';
+
+            const valEl = document.createElement('span');
+            valEl.className = 'jt-val jt-val-' + (value === null ? 'null' : typeof value);
+            valEl.textContent = JSON.stringify(value);
+
+            row.appendChild(indent);
+            if (iconInfo) row.appendChild(makeIcon(iconInfo));
+            row.appendChild(keyEl);
+            row.appendChild(colon);
+            row.appendChild(valEl);
+            li.appendChild(row);
+        }
+
+        ul.appendChild(li);
+    }
+}
+
+function _renderJsonTree(treePanel, obj) {
+    treePanel.innerHTML = '';
+    if (!obj || typeof obj !== 'object') {
+        treePanel.innerHTML = '<div class="jt-empty">No scene loaded</div>';
+        return;
+    }
+    const ul = document.createElement('ul');
+    ul.className = 'jt-root';
+    _buildTreeNodes(ul, obj, '', 0);
+    treePanel.appendChild(ul);
+}
+
+function _getParentPath(path) {
+    if (!path) return null;
+    const dot = path.lastIndexOf('.');
+    if (dot > 0) return path.substring(0, dot);
+    const bracket = path.lastIndexOf('[');
+    if (bracket > 0) return path.substring(0, bracket);
+    return null;
+}
+
+function _findPathAtLine(line, pathLineMap) {
+    let bestPath = '';
+    let bestLine = -1;
+    for (const [p, ln] of Object.entries(pathLineMap)) {
+        if (ln <= line && ln > bestLine) { bestLine = ln; bestPath = p; }
+    }
+    return bestPath;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function setupJsonViewer() {
     const btn = document.getElementById('btn-show-json');
     const overlay = document.getElementById('json-viewer-overlay');
     const content = document.getElementById('json-viewer-content');
+    const treePanel = document.getElementById('json-tree-panel');
     const importsBar = document.getElementById('json-viewer-imports');
     const summaryBar = document.getElementById('json-viewer-summary');
     const closeBtn = document.getElementById('json-viewer-close');
@@ -7458,6 +7703,217 @@ function setupJsonViewer() {
 
     if (!btn || !overlay) return;
 
+    let _pathLineMap = {};
+    let _jsonScrollAnimFrame = null;
+    let _jsonScrollProgrammatic = false;
+    let _jsonLineHeight = 0;
+
+    function getLineHeight() {
+        if (!_jsonLineHeight) {
+            _jsonLineHeight = parseFloat(window.getComputedStyle(content).lineHeight) || 20;
+        }
+        return _jsonLineHeight;
+    }
+
+    function animateJsonScrollTo(targetTop, duration = 160) {
+        if (_jsonScrollAnimFrame != null) { cancelAnimationFrame(_jsonScrollAnimFrame); _jsonScrollAnimFrame = null; }
+        const startTop = content.scrollTop;
+        const delta = targetTop - startTop;
+        if (Math.abs(delta) < 2) { content.scrollTop = targetTop; return; }
+        const startTime = performance.now();
+        _jsonScrollProgrammatic = true;
+        function step(now) {
+            const t = Math.min(1, (now - startTime) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            content.scrollTop = startTop + delta * eased;
+            if (t < 1) {
+                _jsonScrollAnimFrame = requestAnimationFrame(step);
+            } else {
+                _jsonScrollAnimFrame = null;
+                content.scrollTop = targetTop;
+                setTimeout(() => { _jsonScrollProgrammatic = false; }, 60);
+            }
+        }
+        _jsonScrollAnimFrame = requestAnimationFrame(step);
+    }
+
+    let _treeScrollAnimFrame = null;
+    function scrollTreeIntoView(el, duration = 160) {
+        if (!treePanel || !el) return;
+        const elRect  = el.getBoundingClientRect();
+        const ctRect  = treePanel.getBoundingClientRect();
+        const elTop    = treePanel.scrollTop + (elRect.top - ctRect.top);
+        const elBottom = elTop + elRect.height;
+        const ctTop    = treePanel.scrollTop;
+        const ctBottom = ctTop + treePanel.clientHeight;
+        let target = ctTop;
+        if (elTop < ctTop + 8)           target = elTop - 8;
+        else if (elBottom > ctBottom - 8) target = elBottom - treePanel.clientHeight + 8;
+        if (target === ctTop) return;
+        if (_treeScrollAnimFrame != null) { cancelAnimationFrame(_treeScrollAnimFrame); _treeScrollAnimFrame = null; }
+        const startTop = treePanel.scrollTop;
+        const delta    = target - startTop;
+        if (Math.abs(delta) < 2) { treePanel.scrollTop = target; return; }
+        const startTime = performance.now();
+        function step(now) {
+            const t = Math.min(1, (now - startTime) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            treePanel.scrollTop = startTop + delta * eased;
+            if (t < 1) { _treeScrollAnimFrame = requestAnimationFrame(step); }
+            else { _treeScrollAnimFrame = null; treePanel.scrollTop = target; }
+        }
+        _treeScrollAnimFrame = requestAnimationFrame(step);
+    }
+
+    function setActiveTreeItem(path) {
+        if (!treePanel) return;
+        treePanel.querySelectorAll('.jt-active').forEach(el => el.classList.remove('jt-active'));
+        let target = path;
+        let el = null;
+        while (target !== null) {
+            const found = [...treePanel.querySelectorAll('.jt-item')].find(e => e.dataset.path === target);
+            if (found) { el = found; break; }
+            target = _getParentPath(target);
+        }
+        if (!el) return;
+        // Ensure collapsed ancestors are expanded
+        let parent = el.parentElement;
+        while (parent && parent !== treePanel) {
+            if (parent.classList.contains('jt-children') && parent.classList.contains('jt-collapsed')) {
+                parent.classList.remove('jt-collapsed');
+                const row = parent.previousElementSibling;
+                if (row) { const t = row.querySelector('.jt-toggle'); if (t) t.textContent = '\u25BC'; }
+            }
+            parent = parent.parentElement;
+        }
+        el.classList.add('jt-active');
+        scrollTreeIntoView(el);
+    }
+
+    function getContentPaddingTop() {
+        return parseFloat(window.getComputedStyle(content).paddingTop) || 0;
+    }
+
+    // Build a cache of line number → character offset for fast lookup
+    let _lineOffsets = [];
+    function buildLineOffsets(text) {
+        _lineOffsets = [0];
+        for (let i = 0; i < text.length; i++) {
+            if (text[i] === '\n') _lineOffsets.push(i + 1);
+        }
+    }
+
+    // Use Range to get the exact scrollTop needed to bring lineNum to the top
+    function lineToScrollTop(lineNum) {
+        const textNode = content.firstChild;
+        if (!textNode || textNode.nodeType !== Node.TEXT_NODE || !_lineOffsets.length) {
+            return getContentPaddingTop() + lineNum * getLineHeight();
+        }
+        const charOffset = _lineOffsets[lineNum] || 0;
+        const range = document.createRange();
+        range.setStart(textNode, charOffset);
+        range.setEnd(textNode, charOffset);
+        const charRect = range.getBoundingClientRect();
+        const containerRect = content.getBoundingClientRect();
+        return content.scrollTop + (charRect.top - containerRect.top);
+    }
+
+    function syncTreeFromJsonScroll() {
+        if (_jsonScrollProgrammatic) return;
+        const pt = getContentPaddingTop();
+        const lh = getLineHeight();
+        const topLine = Math.floor(Math.max(0, content.scrollTop - pt + lh * 0.5) / lh);
+        setActiveTreeItem(_findPathAtLine(topLine, _pathLineMap));
+    }
+
+    function selectJsonLine(lineNum) {
+        const textNode = content.firstChild;
+        if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return;
+        const text = textNode.textContent;
+        const lines = text.split('\n');
+        let offset = 0;
+        for (let i = 0; i < lineNum; i++) offset += lines[i].length + 1;
+        const lineText = (lines[lineNum] || '').trimStart();
+        const start = offset + (lines[lineNum] || '').length - lineText.length;
+        const end = offset + (lines[lineNum] || '').length;
+        if (start >= end) return;
+        const range = document.createRange();
+        range.setStart(textNode, start);
+        range.setEnd(textNode, end);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    function syncJsonFromTreeClick(path, { select = true } = {}) {
+        const line = _pathLineMap[path];
+        if (line === undefined) return;
+        const lh = getLineHeight();
+        animateJsonScrollTo(Math.max(0, lineToScrollTop(line) - lh * 1.5));
+        setActiveTreeItem(path);
+        if (select) selectJsonLine(line);
+    }
+
+    // Wire up tree clicks (delegated)
+    if (treePanel) {
+        treePanel.addEventListener('click', e => {
+            const item = e.target.closest('.jt-item');
+            if (!item || e.target.classList.contains('jt-toggle')) return;
+            syncJsonFromTreeClick(item.dataset.path);
+        });
+
+        // Restore saved width
+        const savedWidth = localStorage.getItem('jsonTreePanelWidth');
+        if (savedWidth) treePanel.style.width = savedWidth + 'px';
+
+        // Resize handle
+        const resizeHandle = document.getElementById('json-tree-resize-handle');
+        if (resizeHandle) {
+            let startX = 0;
+            let startWidth = 0;
+            resizeHandle.addEventListener('mousedown', e => {
+                e.preventDefault();
+                startX = e.clientX;
+                startWidth = treePanel.offsetWidth;
+                resizeHandle.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+
+                function onMove(e) {
+                    const newWidth = Math.min(520, Math.max(120, startWidth + (e.clientX - startX)));
+                    treePanel.style.width = newWidth + 'px';
+                }
+                function onUp() {
+                    resizeHandle.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    localStorage.setItem('jsonTreePanelWidth', treePanel.offsetWidth);
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                }
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+        }
+    }
+
+    // Wire up JSON scroll → tree
+    content.addEventListener('scroll', syncTreeFromJsonScroll);
+
+    // Wire up selection/click in JSON → tree
+    document.addEventListener('selectionchange', () => {
+        if (overlay.classList.contains('hidden')) return;
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return;
+        const range = sel.getRangeAt(0);
+        if (!content.contains(range.startContainer)) return;
+        const textNode = content.firstChild;
+        if (!textNode) return;
+        const offset = range.startContainer === textNode ? range.startOffset : 0;
+        const lineNum = content.textContent.substring(0, offset).split('\n').length - 1;
+        setActiveTreeItem(_findPathAtLine(lineNum, _pathLineMap));
+    });
+
     btn.addEventListener('click', () => {
         if (issuesPanel) issuesPanel.classList.add('hidden');
         let json;
@@ -7466,7 +7922,20 @@ function setupJsonViewer() {
         } else if (typeof currentSpec !== 'undefined' && currentSpec) {
             json = currentSpec;
         }
-        content.textContent = json ? JSON.stringify(json, null, 2) : '// No scene loaded';
+        // Build JSON text with line map and render tree
+        _jsonLineHeight = 0; // reset cached line height
+        if (json) {
+            const { text, pathLineMap } = _buildJsonWithLineMap(json);
+            content.textContent = text;
+            buildLineOffsets(text);
+            _pathLineMap = pathLineMap;
+            if (treePanel) _renderJsonTree(treePanel, json);
+        } else {
+            content.textContent = '// No scene loaded';
+            buildLineOffsets('// No scene loaded');
+            _pathLineMap = {};
+            if (treePanel) treePanel.innerHTML = '<div class="jt-empty">No scene loaded</div>';
+        }
 
         // Imports section
         const imports = json && Array.isArray(json.import) ? json.import : [];
@@ -7562,6 +8031,143 @@ function setupJsonViewer() {
             overlay.classList.add('hidden');
         }
     });
+
+    // ── Search ──────────────────────────────────────────────────────────────
+
+    const keyInput = document.getElementById('json-search-key');
+    const valInput = document.getElementById('json-search-val');
+    const keyCount = document.getElementById('json-search-key-count');
+    const valCount = document.getElementById('json-search-val-count');
+    const prevBtn  = document.getElementById('json-search-prev');
+    const nextBtn  = document.getElementById('json-search-next');
+    if (!keyInput || !valInput) return;
+
+    let _matchItems = []; // ordered list of .jt-item elements that are jt-match
+    let _matchIndex = -1;
+
+    function refocusSearchInput() {
+        const a = document.activeElement;
+        if (a !== keyInput && a !== valInput) {
+            (document.activeElement === nextBtn || document.activeElement === prevBtn
+                ? document.activeElement : keyInput).focus();
+        }
+    }
+
+    function applyTreeSearch() {
+        if (!treePanel) return;
+        const focused = document.activeElement;
+        const keyTerm = keyInput.value.trim().toLowerCase();
+        const valTerm = valInput.value.trim().toLowerCase();
+        const items   = [...treePanel.querySelectorAll('.jt-item')];
+
+        // Clear states
+        items.forEach(el => el.classList.remove('jt-dim', 'jt-match'));
+        [keyInput, valInput].forEach(inp =>
+            inp.classList.remove('jsb-has-results', 'jsb-no-results'));
+        if (keyCount) keyCount.textContent = '';
+        if (valCount) valCount.textContent = '';
+        _matchItems = [];
+        _matchIndex = -1;
+
+        if (!keyTerm && !valTerm) return;
+
+        // First pass: mark each item
+        items.forEach(el => {
+            const keyEl = el.querySelector(':scope > .jt-row .jt-key');
+            const valEl = el.querySelector(':scope > .jt-row .jt-val'); // only on primitives
+            const keyText = keyEl ? keyEl.textContent.toLowerCase() : '';
+            const valText = valEl ? valEl.textContent.toLowerCase() : '';
+
+            const keyOk = !keyTerm || keyText.includes(keyTerm);
+            // Non-primitives have no valEl; they match valTerm only if valTerm is empty
+            const valOk = !valTerm || valText.includes(valTerm);
+
+            if (keyOk && valOk) {
+                el.classList.add('jt-match');
+            } else {
+                el.classList.add('jt-dim');
+            }
+        });
+
+        // Second pass: un-dim ancestors of matches and expand collapsed parents
+        treePanel.querySelectorAll('.jt-item.jt-match').forEach(matchEl => {
+            let ancestor = matchEl.parentElement;
+            while (ancestor && ancestor !== treePanel) {
+                if (ancestor.classList.contains('jt-item')) {
+                    ancestor.classList.remove('jt-dim');
+                }
+                if (ancestor.classList.contains('jt-children') && ancestor.classList.contains('jt-collapsed')) {
+                    ancestor.classList.remove('jt-collapsed');
+                    const row = ancestor.previousElementSibling;
+                    if (row) { const t = row.querySelector('.jt-toggle'); if (t) t.textContent = '\u25BC'; }
+                }
+                ancestor = ancestor.parentElement;
+            }
+        });
+
+        _matchItems = [...treePanel.querySelectorAll('.jt-item.jt-match')];
+        const n = _matchItems.length;
+
+        // Update input states
+        if (keyTerm) {
+            keyInput.classList.toggle('jsb-has-results', n > 0);
+            keyInput.classList.toggle('jsb-no-results',  n === 0);
+        }
+        if (valTerm) {
+            valInput.classList.toggle('jsb-has-results', n > 0);
+            valInput.classList.toggle('jsb-no-results',  n === 0);
+        }
+        if (keyCount) keyCount.textContent = n || (keyTerm ? 'none' : '');
+        if (valCount) valCount.textContent = n ? `1/${n}` : (valTerm ? 'none' : '');
+
+        if (n > 0) {
+            _matchIndex = 0;
+            navigateMatch(0);
+        }
+        if (focused === keyInput || focused === valInput) setTimeout(() => focused.focus(), 0);
+    }
+
+    function navigateMatch(delta) {
+        if (!_matchItems.length) return;
+        const focused = document.activeElement;
+        _matchIndex = ((_matchIndex + delta) % _matchItems.length + _matchItems.length) % _matchItems.length;
+        const el = _matchItems[_matchIndex];
+        scrollTreeIntoView(el);
+        // Jump JSON without text selection (would steal focus)
+        syncJsonFromTreeClick(el.dataset.path, { select: false });
+        // Restore focus after browser has processed any side effects
+        if (focused === keyInput || focused === valInput) {
+            setTimeout(() => focused.focus(), 0);
+        }
+        // Update counters
+        const label = `${_matchIndex + 1}/${_matchItems.length}`;
+        if (valCount) valCount.textContent = label;
+        if (keyCount) keyCount.textContent = label;
+    }
+
+    keyInput.addEventListener('input', applyTreeSearch);
+    valInput.addEventListener('input', applyTreeSearch);
+
+    [keyInput, valInput].forEach(inp => {
+        inp.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                navigateMatch(e.shiftKey ? -1 : 1);
+            }
+        });
+    });
+
+    nextBtn.addEventListener('click', () => navigateMatch(1));
+    prevBtn.addEventListener('click', () => navigateMatch(-1));
+
+    const clearBtn = document.getElementById('json-search-clear');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            keyInput.value = '';
+            valInput.value = '';
+            applyTreeSearch();
+        });
+    }
 }
 
 function setupContextStatusPopup() {

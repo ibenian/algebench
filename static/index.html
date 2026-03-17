@@ -237,7 +237,26 @@
     <div id="json-viewer-imports" class="hidden"></div>
     <div id="json-viewer-summary" class="hidden"></div>
     <div id="json-viewer-issues" class="hidden"></div>
-    <pre id="json-viewer-content"></pre>
+    <div id="json-search-bar">
+        <div class="jsb-group">
+            <span class="jsb-label">key</span>
+            <input id="json-search-key" type="text" placeholder="filter keys…" autocomplete="off" spellcheck="false" />
+            <span id="json-search-key-count" class="jsb-count"></span>
+        </div>
+        <div class="jsb-group">
+            <span class="jsb-label">value</span>
+            <input id="json-search-val" type="text" placeholder="search values…" autocomplete="off" spellcheck="false" />
+            <span id="json-search-val-count" class="jsb-count"></span>
+            <button id="json-search-prev" class="jsb-nav" title="Previous (Shift+Enter)">↑</button>
+            <button id="json-search-next" class="jsb-nav" title="Next (Enter)">↓</button>
+        </div>
+        <button id="json-search-clear" class="jsb-clear" title="Clear search">✕</button>
+    </div>
+    <div id="json-viewer-body">
+        <div id="json-tree-panel"><div class="jt-empty">No scene loaded</div></div>
+        <div id="json-tree-resize-handle"></div>
+        <pre id="json-viewer-content"></pre>
+    </div>
 </div>
 </body>
 </html>
