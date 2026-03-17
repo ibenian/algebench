@@ -7737,6 +7737,32 @@ function setupJsonViewer() {
         _jsonScrollAnimFrame = requestAnimationFrame(step);
     }
 
+    let _treeScrollAnimFrame = null;
+    function scrollTreeIntoView(el, duration = 160) {
+        if (!treePanel || !el) return;
+        const elTop    = el.offsetTop;
+        const elBottom = elTop + el.offsetHeight;
+        const ctTop    = treePanel.scrollTop;
+        const ctBottom = ctTop + treePanel.clientHeight;
+        let target = ctTop;
+        if (elTop < ctTop + 8)           target = elTop - 8;
+        else if (elBottom > ctBottom - 8) target = elBottom - treePanel.clientHeight + 8;
+        if (target === ctTop) return;
+        if (_treeScrollAnimFrame != null) { cancelAnimationFrame(_treeScrollAnimFrame); _treeScrollAnimFrame = null; }
+        const startTop = treePanel.scrollTop;
+        const delta    = target - startTop;
+        if (Math.abs(delta) < 2) { treePanel.scrollTop = target; return; }
+        const startTime = performance.now();
+        function step(now) {
+            const t = Math.min(1, (now - startTime) / duration);
+            const eased = 1 - Math.pow(1 - t, 3);
+            treePanel.scrollTop = startTop + delta * eased;
+            if (t < 1) { _treeScrollAnimFrame = requestAnimationFrame(step); }
+            else { _treeScrollAnimFrame = null; treePanel.scrollTop = target; }
+        }
+        _treeScrollAnimFrame = requestAnimationFrame(step);
+    }
+
     function setActiveTreeItem(path) {
         if (!treePanel) return;
         treePanel.querySelectorAll('.jt-active').forEach(el => el.classList.remove('jt-active'));
@@ -7759,7 +7785,7 @@ function setupJsonViewer() {
             parent = parent.parentElement;
         }
         el.classList.add('jt-active');
-        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        scrollTreeIntoView(el);
     }
 
     function getContentPaddingTop() {
@@ -8104,7 +8130,7 @@ function setupJsonViewer() {
         const focused = document.activeElement;
         _matchIndex = ((_matchIndex + delta) % _matchItems.length + _matchItems.length) % _matchItems.length;
         const el = _matchItems[_matchIndex];
-        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        scrollTreeIntoView(el);
         // Jump JSON without text selection (would steal focus)
         syncJsonFromTreeClick(el.dataset.path, { select: false });
         // Restore focus after browser has processed any side effects
