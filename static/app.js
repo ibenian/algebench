@@ -7757,10 +7757,39 @@ function setupJsonViewer() {
         el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
 
+    function getContentPaddingTop() {
+        return parseFloat(window.getComputedStyle(content).paddingTop) || 0;
+    }
+
+    // Build a cache of line number → character offset for fast lookup
+    let _lineOffsets = [];
+    function buildLineOffsets(text) {
+        _lineOffsets = [0];
+        for (let i = 0; i < text.length; i++) {
+            if (text[i] === '\n') _lineOffsets.push(i + 1);
+        }
+    }
+
+    // Use Range to get the exact scrollTop needed to bring lineNum to the top
+    function lineToScrollTop(lineNum) {
+        const textNode = content.firstChild;
+        if (!textNode || textNode.nodeType !== Node.TEXT_NODE || !_lineOffsets.length) {
+            return getContentPaddingTop() + lineNum * getLineHeight();
+        }
+        const charOffset = _lineOffsets[lineNum] || 0;
+        const range = document.createRange();
+        range.setStart(textNode, charOffset);
+        range.setEnd(textNode, charOffset);
+        const charRect = range.getBoundingClientRect();
+        const containerRect = content.getBoundingClientRect();
+        return content.scrollTop + (charRect.top - containerRect.top);
+    }
+
     function syncTreeFromJsonScroll() {
         if (_jsonScrollProgrammatic) return;
+        const pt = getContentPaddingTop();
         const lh = getLineHeight();
-        const topLine = Math.floor((content.scrollTop + lh * 0.5) / lh);
+        const topLine = Math.floor(Math.max(0, content.scrollTop - pt + lh * 0.5) / lh);
         setActiveTreeItem(_findPathAtLine(topLine, _pathLineMap));
     }
 
@@ -7787,7 +7816,7 @@ function setupJsonViewer() {
         const line = _pathLineMap[path];
         if (line === undefined) return;
         const lh = getLineHeight();
-        animateJsonScrollTo(Math.max(0, line * lh - lh * 1.5));
+        animateJsonScrollTo(Math.max(0, lineToScrollTop(line) - lh * 1.5));
         setActiveTreeItem(path);
         selectJsonLine(line);
     }
@@ -7865,10 +7894,12 @@ function setupJsonViewer() {
         if (json) {
             const { text, pathLineMap } = _buildJsonWithLineMap(json);
             content.textContent = text;
+            buildLineOffsets(text);
             _pathLineMap = pathLineMap;
             if (treePanel) _renderJsonTree(treePanel, json);
         } else {
             content.textContent = '// No scene loaded';
+            buildLineOffsets('// No scene loaded');
             _pathLineMap = {};
             if (treePanel) treePanel.innerHTML = '<div class="jt-empty">No scene loaded</div>';
         }
