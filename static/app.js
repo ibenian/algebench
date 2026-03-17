@@ -7740,8 +7740,10 @@ function setupJsonViewer() {
     let _treeScrollAnimFrame = null;
     function scrollTreeIntoView(el, duration = 160) {
         if (!treePanel || !el) return;
-        const elTop    = el.offsetTop;
-        const elBottom = elTop + el.offsetHeight;
+        const elRect  = el.getBoundingClientRect();
+        const ctRect  = treePanel.getBoundingClientRect();
+        const elTop    = treePanel.scrollTop + (elRect.top - ctRect.top);
+        const elBottom = elTop + elRect.height;
         const ctTop    = treePanel.scrollTop;
         const ctBottom = ctTop + treePanel.clientHeight;
         let target = ctTop;
