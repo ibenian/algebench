@@ -619,6 +619,10 @@ html, body {
 .jti-color    { color: rgba(255, 160, 200, 0.8); }
 .jti-label    { color: rgba(180, 195, 255, 0.7); }
 .jti-type-key { color: rgba(140, 155, 200, 0.65); }
+.jti-camera   { color: rgba(100, 210, 240, 0.85); }
+.jti-range    { color: rgba(140, 165, 215, 0.75); }
+.jti-unsafe   { color: rgba(255, 170, 50, 0.9); }
+.jti-info     { color: rgba(120, 190, 255, 0.8); }
 
 /* Children indented */
 .jt-children {

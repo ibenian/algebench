@@ -7488,6 +7488,10 @@ const _JT_KEY_ICONS = {
     color:       { icon: '\u25D4', cls: 'jti-color' },       // ◔
     label:       { icon: '\u25CE', cls: 'jti-label' },       // ◎
     type:        { icon: '\u25B8', cls: 'jti-type-key' },    // ▸
+    axis:        { icon: '\u2194', cls: 'jti-axis' },         // ↔
+    camera:      { icon: '\u2316', cls: 'jti-camera' },      // ⌖
+    range:       { icon: '\u21D4', cls: 'jti-range' },       // ⇔
+    info:        { icon: '\u2139', cls: 'jti-info' },        // ℹ
 };
 
 function _getTreeIcon(key, value) {
@@ -7501,6 +7505,7 @@ function _getTreeIcon(key, value) {
         const ti = _JT_TYPE_ICONS[value];
         if (ti) return ti;
     }
+    if (key.startsWith('unsafe')) return { icon: '\u26A0', cls: 'jti-unsafe' }; // ⚠
     return _JT_KEY_ICONS[key] || null;
 }
 
