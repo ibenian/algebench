@@ -74,8 +74,11 @@ export function renderStepAdd(elements, sliderDefs) {
             el.id = '__auto_' + (autoIdCounter++) + '_' + Date.now();
         }
         // If this step reuses an element id, hide any previously visible instance first.
-        if (el.id && state.elementRegistry[el.id] && !state.elementRegistry[el.id].hidden) {
-            hideElementById(el.id);
+        // Save the old registry entry so removeStepTracker can restore it on backward nav.
+        if (el.id && state.elementRegistry[el.id]) {
+            if (!tracker.replacedElements) tracker.replacedElements = {};
+            tracker.replacedElements[el.id] = state.elementRegistry[el.id];
+            if (!state.elementRegistry[el.id].hidden) hideElementById(el.id);
         }
         const elBefore = el.id ? snapshotBefore() : null;
         const elGroup = el.id ? group.group() : group;
@@ -94,6 +97,7 @@ export function renderStepAdd(elements, sliderDefs) {
     const tracker = buildSubTracker(group, before);
     tracker.removedIds = [];
     tracker.removedSliders = {};
+    tracker.replacedElements = tracker.replacedElements || null;
     tracker.sliderIds = sliderIds;
     tracker.elementIds = addedElementIds;
     tracker.renderResults = renderResults;
@@ -265,6 +269,20 @@ function removeStepTracker(tracker) {
             if (r && r._animState) r._animState.stopped = true;
             if (r && r._animExprEntry) unregisterAnimExpr(r._animExprEntry.animState);
             if (r && r._animState) unregisterAnimUpdater(r._animState);
+        }
+    }
+
+    // Restore any elements that were replaced (same id reused) by this step.
+    // The replaced element's registry entry was saved in tracker.replacedElements;
+    // restore it if no remaining tracker still has the id in its removedIds.
+    if (tracker.replacedElements) {
+        const stillRemoved = new Set();
+        for (const t of state.stepTrackers) {
+            if (t.removedIds) for (const id of t.removedIds) stillRemoved.add(id);
+        }
+        for (const [id, savedReg] of Object.entries(tracker.replacedElements)) {
+            state.elementRegistry[id] = savedReg;
+            if (!stillRemoved.has(id)) showElementById(id);
         }
     }
 
