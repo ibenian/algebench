@@ -29,10 +29,11 @@ AlgeBench is an interactive 3D math visualization tool with an embedded AI tutor
 flowchart TD
     subgraph Browser
         A[index.html]
-        A --> B[app.js\nScene Renderer]
+        A --> B[main.js\nES module entry]
+        B --> B2[scene-loader camera\nsliders overlay etc]
         A --> C[chat.js\nAI Chat Panel]
-        B <-->|scene state / runtime context| C
-        B -->|GET /domains/name/index.js| D
+        B2 <-->|window globals / state| C
+        B2 -->|GET /domains/name/index.js| D
     end
 
     subgraph Python Server
@@ -133,23 +134,100 @@ Defines all Gemini tool declarations and the dynamic system prompt builder.
 
 ---
 
-## 5. Frontend — `app.js`
+## 5. Frontend — ES Modules
 
-The main renderer (~6000 lines). Loads scene JSON and renders it using MathBox + Three.js.
+The renderer is split into focused ES modules loaded via `<script type="module" src="/main.js">`. No build step — the browser resolves the import graph directly from the Python server.
+
+### Module Map
+
+| Module | Responsibility |
+|---|---|
+| `main.js` | Entry point; wires modules, exposes `window.*` globals for `chat.js` |
+| `state.js` | Single shared mutable state object |
+| `camera.js` | MathBox init, arcball, projection, follow-cam loop, animation scheduler |
+| `scene-loader.js` | `loadScene`, `navigateTo`, step tracker undo system |
+| `overlay.js` | Explanation panel, title bar, legend, info overlays, status bar |
+| `sliders.js` | Slider UI, loop animation, `runAnimUpdaters`, expression recompile |
+| `context-browser.js` | Scene/step JSON tree panel |
+| `json-browser.js` | Raw JSON viewer, issues panel |
+| `ui.js` | Drag-drop, file picker, built-in scenes dropdown, video export |
+| `follow-cam.js` | Follow-cam activation and per-frame tracking |
+| `labels.js` | `renderKaTeX`, `renderMarkdown`, 3D label positioning |
+| `coords.js` | Data ↔ world coordinate transforms |
+| `expr.js` | Expression sandbox (math.js + JS fallback), domain loading, virtual time |
+| `objects/` | One file per element type; `index.js` exports `renderElement(el, view)` |
 
 ### Key Subsystems
 
 #### Scene Loading & Navigation
 
 ```
-loadScene(json)
-  └── buildSceneTree()       # left-panel nav tree
+loadScene(json)         ← scene-loader.js
+  └── importDomains()   ← expr.js
+  └── buildSceneTree()  ← context-browser.js
   └── navigateTo(sceneIdx, stepIdx)
-        └── buildScene()     # reconstruct MathBox objects
-        └── buildSliders()   # create slider UI
-        └── buildLegend()    # color legend
-        └── buildInfoOverlays()
+        └── renderStepAdd()   # add elements, create StepTracker
+        └── processStepRemoves()  # hide elements, record in tracker
+        └── buildLegend()     ← overlay.js
+        └── applyStepInfoOverlays()  ← overlay.js
+        └── updateStepCaption()      ← overlay.js
 ```
+
+#### Step Navigation & Undo System
+
+Each step can **add** new elements and **remove** existing ones. Both operations are reversible so the user can navigate backward freely.
+
+**StepTracker** — one per visited step, pushed onto `state.stepTrackers`:
+
+```js
+{
+  group,            // MathBox group containing this step's 3D objects
+  elementIds,       // IDs of elements added by this step
+  removedIds,       // IDs of elements hidden by this step's remove list
+  removedSliders,   // { id: def } — slider defs hidden by this step
+  sliderIds,        // IDs of sliders added by this step
+  renderResults,    // animation registrations (for cleanup on destroy)
+  replacedElements, // { id: oldRegistryEntry } — registry entries saved before id-reuse
+}
+```
+
+**Element Registry** — `state.elementRegistry[id]` maps every named element to its current subtracker and visibility:
+
+```js
+{ tracker: subTracker, hidden: false, type: 'animated_polygon' }
+```
+
+**Forward navigation** (step N → step N+1):
+
+1. `renderStepAdd(step.add)` renders each element into a new MathBox group, registers it in `elementRegistry`.
+   — If an element id is **already registered**, the old entry is saved in `tracker.replacedElements[id]` before the registry is overwritten, and the old element is faded out.
+2. `processStepRemoves(step.remove, tracker)` hides any element not in the step's own `elementIds` and records its id in `tracker.removedIds`.
+
+**Backward navigation** (step N → step N−1):
+
+Pops trackers from `state.stepTrackers` until length equals `targetStep + 1`. For each popped tracker:
+
+1. **`undoStepRemoves(tracker)`** — restores elements that were hidden by this step's `remove` list, but only if no *earlier* tracker also removed the same id:
+   ```
+   stillRemoved = union(t.removedIds for t in stepTrackers before this one)
+   for id in tracker.removedIds:
+       if id not in stillRemoved: showElementById(id)
+   ```
+
+2. **`removeStepTracker(tracker)`** — destroys elements added by this step:
+   - **Restore replacedElements**: for each id saved in `tracker.replacedElements`, put the old registry entry back and call `showElementById(id)` (if not still removed by a remaining tracker). This is what restores the *previous version* of an element when a step reuses an id.
+   - Stops animation loops registered by this step (`renderResults`).
+   - Calls `fadeOutTracker` → removes the MathBox group and disposes Three.js geometry/materials.
+
+**Why `replacedElements` is needed:**
+
+Without it, the sequence *add "hl" (blue) → remove "hl", add "hl" (grey) → remove "hl", add "hl_l"+"hl_r"* breaks backward navigation:
+
+- Step 2 hides the blue "hl" via `hideElementById` (not via `removedIds`), then overwrites `elementRegistry["hl"]` with the grey entry.
+- Backward from step 3 → step 2 works (tracker3.removedIds = ["hl"]; undoStepRemoves restores the grey hl).
+- Backward from step 2 → step 1 fails without this fix: undoStepRemoves has nothing to do (tracker2.removedIds is empty because the id-reuse path skips it), and removeStepTracker destroys the grey hl without restoring the blue one. The original element is permanently orphaned.
+
+With `replacedElements`, `removeStepTracker(tracker2)` finds the saved blue-hl registry entry, puts it back, and calls `showElementById("hl")` to restore the original blue highlight.
 
 #### Element Rendering
 
@@ -230,7 +308,7 @@ Two common shapes:
 
 The `virtualTime` expression has access to both slider values **and** the raw wall-clock `t` (seconds since scene load). This means you can mix slider scrub with live animation — e.g. `"expr": "tau * T + 0.1 * sin(t)"` scrubs position via `tau` while adding a live wobble driven by real time.
 
-Resolution order: step-level `virtualTime` overrides scene-level; if neither is set, raw wall time is used. The `_resolveVirtualAnimTime(rawT)` function in `app.js` performs the mapping, calling `evalExpr` with `useVirtualTime: false` to avoid infinite recursion.
+Resolution order: step-level `virtualTime` overrides scene-level; if neither is set, raw wall time is used. The `resolveVirtualAnimTime(rawT)` function in `expr.js` performs the mapping, calling `evalExpr` with `useVirtualTime: false` to avoid infinite recursion.
 
 #### Camera System
 
@@ -325,7 +403,7 @@ User sees a **Trust Dialog** and must explicitly choose:
 
 Beyond standard math.js, the expression scope is extended by two mechanisms:
 
-**Built-in helpers** (always available, defined in `app.js`):
+**Built-in helpers** (always available, defined in `expr.js`):
 
 | Function | Description |
 |---|---|
@@ -419,7 +497,7 @@ static/domains/
    pointing to `/domains/<name>/index.js`.
 4. The script executes as an IIFE and calls
    `window.AlgeBenchDomains.register(name, { functionName: fn, ... })`.
-5. `app.js` merges all registered functions into `_activeDomainFunctions`, which is
+5. `expr.js` merges all registered functions into `state._activeDomainFunctions`, which is
    spread into the expression scope on every `_buildScope()` call.
 
 ### Registry API (`window.AlgeBenchDomains`)
@@ -630,15 +708,15 @@ server.py executes server-side tools (eval_math, mem_set, etc.)
 Response {text, toolCalls} returned to browser
         │
         ▼
-chat.js dispatches tool calls to app.js
-  ├── add_scene    → app.js builds new AlgeBench scene
-  ├── navigate_to  → app.js rebuilds scene at target step
-  ├── set_sliders  → app.js tweens slider values
-  └── set_camera   → app.js animates camera
+chat.js dispatches tool calls to scene-loader / camera / sliders
+  ├── add_scene    → scene-loader.js builds new AlgeBench scene
+  ├── navigate_to  → scene-loader.js rebuilds scene at target step
+  ├── set_sliders  → sliders.js tweens slider values
+  └── set_camera   → camera.js animates camera
         │
         ▼
-app.js render loop  (requestAnimationFrame)
-  ├── evaluate expressions (math.js sandbox or new Function)
+camera.js render loop  (requestAnimationFrame via MathBox)
+  ├── sliders.js runAnimUpdaters — evaluate expressions (math.js sandbox or new Function)
   ├── update animated element positions
   ├── update info overlay placeholders
   └── update follow cam
