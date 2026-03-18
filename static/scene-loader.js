@@ -69,6 +69,7 @@ export function renderStepAdd(elements, sliderDefs) {
     let autoIdCounter = 0;
     const renderResults = [];
     const addedElementIds = [];
+    let replacedElements = null;
     for (const el of elements) {
         if (!el.id && el.label) {
             el.id = '__auto_' + (autoIdCounter++) + '_' + Date.now();
@@ -76,8 +77,8 @@ export function renderStepAdd(elements, sliderDefs) {
         // If this step reuses an element id, hide any previously visible instance first.
         // Save the old registry entry so removeStepTracker can restore it on backward nav.
         if (el.id && state.elementRegistry[el.id]) {
-            if (!tracker.replacedElements) tracker.replacedElements = {};
-            tracker.replacedElements[el.id] = state.elementRegistry[el.id];
+            if (!replacedElements) replacedElements = {};
+            replacedElements[el.id] = state.elementRegistry[el.id];
             if (!state.elementRegistry[el.id].hidden) hideElementById(el.id);
         }
         const elBefore = el.id ? snapshotBefore() : null;
@@ -97,7 +98,7 @@ export function renderStepAdd(elements, sliderDefs) {
     const tracker = buildSubTracker(group, before);
     tracker.removedIds = [];
     tracker.removedSliders = {};
-    tracker.replacedElements = tracker.replacedElements || null;
+    tracker.replacedElements = replacedElements;
     tracker.sliderIds = sliderIds;
     tracker.elementIds = addedElementIds;
     tracker.renderResults = renderResults;
