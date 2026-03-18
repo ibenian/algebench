@@ -25,12 +25,23 @@ export function stripLatex(text) {
 
 export function renderKaTeX(text, displayMode) {
     if (!text) return '';
-    const segments = text.split(/(\$\$[\s\S]+?\$\$|\$[^$]+?\$)/g);
+    // Pre-pass: extract heading lines so LaTeX inside them isn't split apart.
+    // Each heading line is rendered independently and replaced with a sentinel.
+    const headings = [];
+    const prepped = text.replace(/^(#{1,3})\s+(.+)$/gm, (_, hashes, content) => {
+        const sz = ['1.05em', '0.95em', '0.88em'][hashes.length - 1];
+        headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${renderKaTeX(content, false)}</div>`);
+        return `\x01H${headings.length - 1}\x01`;
+    });
+    const segments = prepped.split(/(\$\$[\s\S]+?\$\$|\$[^$]+?\$)/g);
     return segments.map((seg, i) => {
         if (i % 2 === 0) {
             const lines = escapeHtml(seg).split(/\\n|\n/);
             return lines.map((line, li) => {
                 const t = line.trim();
+                // Restore heading (sentinel survives escapeHtml unchanged).
+                const hIdx = t.match(/^\x01H(\d+)\x01$/);
+                if (hIdx) return headings[+hIdx[1]];
                 const hm = t.match(/^(#{1,3})\s+(.*)/);
                 if (hm) {
                     const sz = ['1.05em', '0.95em', '0.88em'][hm[1].length - 1];
