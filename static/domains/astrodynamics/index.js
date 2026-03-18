@@ -5,9 +5,11 @@
  * Registers orbitX, orbitY, orbitR, orbitVr, orbitVt, orbitHit, orbitOutcome
  * into the AlgeBench expression sandbox.
  *
- * Depends on _sliderValueNum() from app.js being available in global scope.
+ * Slider values are injected via _init({ getSlider }) called by expr.js on import.
  */
 (function () {
+
+    let _getSlider = (id, fallback = 0) => fallback; // replaced by _init
 
     let _orbitalCache = { key: null, data: null };
 
@@ -28,33 +30,33 @@
         }
         const parts = [modeName];
         for (const id of ids) {
-            parts.push(`${id}:${_sliderValueNum(id, 0)}`);
+            parts.push(`${id}:${_getSlider(id, 0)}`);
         }
         return parts.join('|');
     }
 
     function _buildOrbitalCache(modeName) {
-        const Rp = Math.max(1, _sliderValueNum('Rp', 6371));
-        const Gs = _sliderValueNum('Gs', 6.6743);
-        const Mx = _sliderValueNum('Mx', 5.972);
+        const Rp = Math.max(1, _getSlider('Rp', 6371));
+        const Gs = _getSlider('Gs', 6.6743);
+        const Mx = _getSlider('Mx', 5.972);
         const mu = Math.max(1e-6, Gs * Mx * 10000);
-        const h = Math.max(0, _sliderValueNum('h', 1));
-        const phiDeg = _sliderValueNum('phi', 0);
+        const h = Math.max(0, _getSlider('h', 1));
+        const phiDeg = _getSlider('phi', 0);
         const phi = phiDeg * Math.PI / 180;
         const cosPhi = Math.cos(phi);
         const sinPhi = Math.sin(phi);
-        const T = Math.max(1, _sliderValueNum('T', 1800));
-        const vInit = modeName === 'powered' ? _sliderValueNum('v0', 0) : _sliderValueNum('vlaunch', 0);
-        const athrust = modeName === 'powered' ? Math.max(0, _sliderValueNum('athrust', 0)) : 0;
-        const tburn = modeName === 'powered' ? Math.max(0, _sliderValueNum('tburn', 0)) : 0;
-        const athrust1 = modeName === 'guided' ? Math.max(0, _sliderValueNum('athrust1', _sliderValueNum('athrust', 0))) : 0;
-        const athrust2 = modeName === 'guided' ? Math.max(0, _sliderValueNum('athrust2', athrust1)) : 0;
-        const tburn1 = modeName === 'guided' ? Math.max(0, _sliderValueNum('tburn1', 180)) : 0;
-        const tcoast = modeName === 'guided' ? Math.max(0, _sliderValueNum('tcoast', 420)) : 0;
-        const tburn2 = modeName === 'guided' ? Math.max(0, _sliderValueNum('tburn2', 120)) : 0;
-        const pitchStart = modeName === 'guided' ? _sliderValueNum('pitch_start', 85) : 0;
-        const pitchEnd = modeName === 'guided' ? _sliderValueNum('pitch_end', 0) : 0;
-        const tpitch = modeName === 'guided' ? Math.max(1, _sliderValueNum('tpitch', 220)) : 1;
+        const T = Math.max(1, _getSlider('T', 1800));
+        const vInit = modeName === 'powered' ? _getSlider('v0', 0) : _getSlider('vlaunch', 0);
+        const athrust = modeName === 'powered' ? Math.max(0, _getSlider('athrust', 0)) : 0;
+        const tburn = modeName === 'powered' ? Math.max(0, _getSlider('tburn', 0)) : 0;
+        const athrust1 = modeName === 'guided' ? Math.max(0, _getSlider('athrust1', _getSlider('athrust', 0))) : 0;
+        const athrust2 = modeName === 'guided' ? Math.max(0, _getSlider('athrust2', athrust1)) : 0;
+        const tburn1 = modeName === 'guided' ? Math.max(0, _getSlider('tburn1', 180)) : 0;
+        const tcoast = modeName === 'guided' ? Math.max(0, _getSlider('tcoast', 420)) : 0;
+        const tburn2 = modeName === 'guided' ? Math.max(0, _getSlider('tburn2', 120)) : 0;
+        const pitchStart = modeName === 'guided' ? _getSlider('pitch_start', 85) : 0;
+        const pitchEnd = modeName === 'guided' ? _getSlider('pitch_end', 0) : 0;
+        const tpitch = modeName === 'guided' ? Math.max(1, _getSlider('tpitch', 220)) : 1;
         const guidedPitchBiasDeg = modeName === 'guided' ? (phiDeg - 90) : 0;
         const burn2Start = tburn1 + tcoast;
         const burnEnd = modeName === 'guided' ? (burn2Start + tburn2) : (modeName === 'powered' ? tburn : 0);
@@ -125,7 +127,7 @@
                     ax += athrust1 * (s * erx + c * etx);
                     ay += athrust1 * (s * ery + c * ety);
                 } else if (tt >= burn2Start && tt <= burnEnd) {
-                    const rTarget = Rp + Math.max(0, _sliderValueNum('h_target', h));
+                    const rTarget = Rp + Math.max(0, _getSlider('h_target', h));
                     const vCircTarget = Math.sqrt(mu / Math.max(rTarget, Rp + 1e-6));
                     const vtErr = vCircTarget - Math.abs(vt);
                     const vrErr = -vr;
@@ -159,7 +161,7 @@
 
         return {
             modeName, mu, Rp, T,
-            hTarget: Math.max(0, _sliderValueNum('h_target', h)),
+            hTarget: Math.max(0, _getSlider('h_target', h)),
             tburn, tburn1, tcoast, tburn2, burnEnd,
             arrT, arrX, arrY, arrVx, arrVy, arrR, arrVr, arrVt, arrHit,
             hitTime, n, dt,
@@ -219,6 +221,7 @@
     }
 
     window.AlgeBenchDomains.register('astrodynamics', {
+        _init({ getSlider }) { _getSlider = getSlider; },
         orbitX, orbitY, orbitR, orbitVr, orbitVt, orbitHit, orbitOutcome,
     });
 
