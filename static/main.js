@@ -6,7 +6,6 @@
 
 import { state } from '/state.js';
 import { initMathBox, animateCamera, setupRollDrag, setupProjectionToggle, setupTrackpadPan } from '/camera.js';
-import { _sliderValueNum } from '/sliders.js';
 import { setupDragDrop, setupFilePicker, setupScenesDropdown, setupVideoExportControls,
          loadBuiltinScenesList, loadInitialSceneFromQuery } from '/ui.js';
 import { setupSettingsPanel, initLightControls, setupPanelResize, setupExplainToggle,
@@ -62,9 +61,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ============================================================
 
 // Navigation
-// Domain library compat — astrodynamics/index.js calls _sliderValueNum() as a global.
-window._sliderValueNum = _sliderValueNum;
-
 window.navigateTo = navigateTo;
 window.animateCamera = animateCamera;
 window.buildSceneTree = buildSceneTree;

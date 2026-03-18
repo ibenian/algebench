@@ -96,7 +96,20 @@ export async function importDomains(importList) {
             }
         }
         const fns = window.AlgeBenchDomains._registry[name];
-        if (fns) Object.assign(state._activeDomainFunctions, fns);
+        if (fns) {
+            if (typeof fns._init === 'function') {
+                fns._init({
+                    getSlider(id, fallback = 0) {
+                        const s = state.sceneSliders[id];
+                        if (!s) return fallback;
+                        const v = Number(s.value);
+                        return Number.isFinite(v) ? v : fallback;
+                    },
+                });
+            }
+            const { _init, ...publicFns } = fns;
+            Object.assign(state._activeDomainFunctions, publicFns);
+        }
     }
 }
 
