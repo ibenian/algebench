@@ -83,33 +83,19 @@ See [docs/feature-ideas.md](docs/feature-ideas.md) for a collection of technical
 
 ```
 algebench/
-├── algebench              Launcher (run this)
-├── server.py              Python server
-├── scenes/                Lesson JSON files (contribute here!)
-│   ├── eigenvalues.json
-│   ├── matrix-transformations.json
-│   ├── vector-operations.json
+├── algebench          Launcher (run this)
+├── server.py          Python server
+├── scenes/            Lesson JSON files (contribute here!)
 │   └── ...
 └── static/
-    ├── main.js            Entry point — wires all modules, exposes globals
-    ├── state.js           Shared mutable state (camera, scene, labels, …)
-    ├── camera.js          MathBox init, camera controls, projection toggle
-    ├── scene-loader.js    Scene/lesson loading, step navigation & undo
-    ├── overlay.js         Settings panel, status bar, captions, info overlays
-    ├── sliders.js         Slider UI and animation
-    ├── labels.js          KaTeX/markdown rendering, 3D labels, AI ask buttons
-    ├── expr.js            math.js expression sandbox
-    ├── trust.js           Expression trust verification
-    ├── coords.js          Coordinate transforms (data ↔ world ↔ screen)
-    ├── follow-cam.js      Follow-camera and angle-lock system
-    ├── context-browser.js Scene element tree builder
-    ├── json-browser.js    JSON tree viewer panel with search
-    ├── ui.js              Drag-drop, file picker, scenes dropdown, video export
-    ├── objects/           Element renderers (point, vector, polygon, sphere, …)
-    ├── chat.js            AI chat panel, TTS, voice picker
-    ├── domains/           Domain library plugins (e.g. astrodynamics)
+    ├── main.js        Entry point — wires all modules, exposes globals
+    ├── state.js       Shared mutable state
+    ├── scene-loader.js  Scene/lesson loading, step navigation & undo
+    ├── chat.js        AI chat panel, TTS, voice picker
+    ├── objects/       Element renderers (point, vector, polygon, …)
+    ├── domains/       Domain library plugins (e.g. astrodynamics)
     ├── index.html
-    └── style.css
+    └── ...
 ```
 
 ---
