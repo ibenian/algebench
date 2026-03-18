@@ -86,15 +86,19 @@ algebench/
 ├── algebench          Launcher (run this)
 ├── server.py          Python server
 ├── scenes/            Lesson JSON files (contribute here!)
-│   ├── eigenvalues.json
-│   ├── matrix-transformations.json
-│   ├── vector-operations.json
 │   └── ...
 └── static/
-    ├── app.js         3D scene rendering, sliders, camera
+    ├── main.js        Entry point — wires all modules, exposes globals
+    ├── state.js       Shared mutable state
+    ├── scene-loader.js  Scene/lesson loading, step navigation & undo
     ├── chat.js        AI chat panel, TTS, voice picker
+    ├── objects/       Element renderers
+    │   ├── point.js, vector.js, polygon.js, sphere.js, …
+    ├── domains/       Domain library plugins
+    │   ├── astrodynamics/
+    │   └── ...
     ├── index.html
-    └── style.css
+    └── ...
 ```
 
 ---
