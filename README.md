@@ -92,8 +92,11 @@ algebench/
     ├── state.js       Shared mutable state
     ├── scene-loader.js  Scene/lesson loading, step navigation & undo
     ├── chat.js        AI chat panel, TTS, voice picker
-    ├── objects/       Element renderers (point, vector, polygon, …)
-    ├── domains/       Domain library plugins (e.g. astrodynamics)
+    ├── objects/       Element renderers
+    │   ├── point.js, vector.js, polygon.js, sphere.js, …
+    ├── domains/       Domain library plugins
+    │   ├── astrodynamics/
+    │   └── ...
     ├── index.html
     └── ...
 ```
