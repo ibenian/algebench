@@ -704,7 +704,7 @@ export function navigateTo(sceneIdx, stepIdx) {
 
 // ----- Auto-play -----
 
-function updateDockVisibility() {
+export function updateDockVisibility() {
     const dock = document.getElementById('scene-dock');
     if (state.lessonSpec) {
         dock.classList.add('visible');

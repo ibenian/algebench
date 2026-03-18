@@ -6,15 +6,19 @@
 
 import { state } from '/state.js';
 import { initMathBox, animateCamera, setupRollDrag, setupProjectionToggle, setupTrackpadPan } from '/camera.js';
+import { animateSlider } from '/sliders.js';
 import { setupDragDrop, setupFilePicker, setupScenesDropdown, setupVideoExportControls,
          loadBuiltinScenesList, loadInitialSceneFromQuery } from '/ui.js';
 import { setupSettingsPanel, initLightControls, setupPanelResize, setupExplainToggle,
          setupDocSpeakButtons, setupCaptionDrag, setupSceneDescDrag, setupCamStatusPopup,
-         getAllElements, addInfoOverlay, setBuildSceneTreeFn } from '/overlay.js';
+         getAllElements, addInfoOverlay, removeAllInfoOverlays, updateInfoOverlays,
+         setBuildSceneTreeFn } from '/overlay.js';
 import { setupFollowAngleLockToggle } from '/follow-cam.js';
-import { navigateTo, setupSceneDock, loadScene, loadLesson, isLessonFormat } from '/scene-loader.js';
+import { navigateTo, setupSceneDock, loadScene, loadLesson, isLessonFormat,
+         updateDockVisibility } from '/scene-loader.js';
 import { buildSceneTree } from '/context-browser.js';
 import { setupJsonViewer, setupContextStatusPopup } from '/json-browser.js';
+import { renderMarkdown, renderKaTeX } from '/labels.js';
 
 // Domain library registry — scripts under static/domains/<name>/index.js self-register here.
 window.AlgeBenchDomains = window.AlgeBenchDomains || {
@@ -60,15 +64,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 // to the global scope. We assign them explicitly here.
 // ============================================================
 
+// Rendering helpers — chat.js uses these as bare globals
+window.renderMarkdown = renderMarkdown;
+window.renderKaTeX = renderKaTeX;
+
 // Navigation
 window.navigateTo = navigateTo;
 window.animateCamera = animateCamera;
 window.buildSceneTree = buildSceneTree;
 window.addInfoOverlay = addInfoOverlay;
+window.removeAllInfoOverlays = removeAllInfoOverlays;
+window.updateInfoOverlays = updateInfoOverlays;
 window.getAllElements = getAllElements;
 window.loadLesson = loadLesson;
 window.loadScene = loadScene;
 window.isLessonFormat = isLessonFormat;
+window.updateDockVisibility = updateDockVisibility;
+window.animateSlider = animateSlider;
 
 // State proxies — chat.js reads lessonSpec, currentSpec, currentSceneIndex,
 // currentStepIndex, sceneSliders, and CAMERA_VIEWS as bare globals.
@@ -102,6 +114,23 @@ Object.defineProperties(window, {
     CAMERA_VIEWS: {
         get() { return state.CAMERA_VIEWS; },
         set(v) { state.CAMERA_VIEWS = v; },
+        configurable: true,
+    },
+    camera: {
+        get() { return state.camera; },
+        configurable: true,
+    },
+    controls: {
+        get() { return state.controls; },
+        configurable: true,
+    },
+    currentProjection: {
+        get() { return state.currentProjection; },
+        set(v) { state.currentProjection = v; },
+        configurable: true,
+    },
+    elementRegistry: {
+        get() { return state.elementRegistry; },
         configurable: true,
     },
 });
