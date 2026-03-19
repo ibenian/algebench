@@ -1041,8 +1041,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
         sentences = _split_sentences(
             tts_text,
-            min_chars=tts_stream_kwargs.get('min_sentence_chars', 80),
-            growth=tts_stream_kwargs.get('min_sentence_chars_growth', 2.0),
+            min_chars=tts_stream_kwargs.get('min_sentence_chars', 100),
+            growth=tts_stream_kwargs.get('min_sentence_chars_growth', 1.2),
         )
         chunk_count = len(sentences)
 
@@ -1168,7 +1168,7 @@ Examples:
   algebench --tts-min-buffer 60.0                Seconds of audio buffered before playback (default: 30)
   algebench --tts-min-sentence-chars 150         Merge short sentences to this char count (default: 100)
   algebench --tts-min-sentence-chars-growth 1.5  Sentence char growth factor (default: 1.2)
-  algebench --tts-chunk-timeout 30               Seconds before chunk timeout (default: 15)
+  algebench --tts-chunk-timeout 30               Seconds before chunk timeout (default: 30)
   algebench --tts-max-retries 5                  Max retries per sentence (default: library default)
   algebench --tts-retry-delay 2.0                Seconds between retries (default: library default)
   algebench --tts-style "speak slowly"           Additional style guidance for TTS
@@ -1188,8 +1188,8 @@ Examples:
                         help='Merge short sentences up to this char count (default: 100)')
     parser.add_argument('--tts-min-sentence-chars-growth', type=float, default=1.2,
                         help='Sentence char limit growth factor for merging (default: 1.2)')
-    parser.add_argument('--tts-chunk-timeout', type=float, default=15.0,
-                        help='Seconds to wait for next chunk before timing out (default: 15.0)')
+    parser.add_argument('--tts-chunk-timeout', type=float, default=30.0,
+                        help='Seconds to wait for next chunk before timing out (default: 30.0)')
     parser.add_argument('--tts-max-retries', type=int, default=None,
                         help='Max retries per sentence on TTS failure (default: library default)')
     parser.add_argument('--tts-retry-delay', type=float, default=None,
