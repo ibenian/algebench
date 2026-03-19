@@ -808,6 +808,7 @@ export function setupSettingsPanel() {
                 }
             } else if (param === 'planeScale') {
                 for (const m of state.planeMeshes) {
+                    if (m._hiddenByRemove) continue;
                     if (m.userData.buildSlab) {
                         const newPositions = m.userData.buildSlab(m.userData.baseHalf * val);
                         m.geometry.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
@@ -817,6 +818,7 @@ export function setupSettingsPanel() {
                 }
             } else if (param === 'planeOpacity') {
                 for (const m of state.planeMeshes) {
+                    if (m._hiddenByRemove) continue;
                     const baseOp = (m.userData && typeof m.userData.targetOpacity === 'number')
                         ? m.userData.targetOpacity : 1;
                     const targetOp = Math.max(0, Math.min(1, baseOp * val));
