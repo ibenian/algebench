@@ -3426,8 +3426,7 @@
               "shader": {
                 "type": "standard",
                 "roughness": 0.82,
-                "metalness": 0.06,
-                "emissive": "#0d3318"
+                "metalness": 0.06
               }
             },
             {
@@ -3460,8 +3459,7 @@
               "shader": {
                 "type": "standard",
                 "roughness": 0.8,
-                "metalness": 0.06,
-                "emissive": "#331a00"
+                "metalness": 0.06
               }
             },
             {
@@ -3494,8 +3492,7 @@
               "shader": {
                 "type": "standard",
                 "roughness": 0.78,
-                "metalness": 0.1,
-                "emissive": "#0a1040"
+                "metalness": 0.1
               }
             },
             {
@@ -3528,8 +3525,7 @@
               "shader": {
                 "type": "standard",
                 "roughness": 0.8,
-                "metalness": 0.06,
-                "emissive": "#330808"
+                "metalness": 0.06
               }
             },
             {
@@ -3816,8 +3812,7 @@
               "shader": {
                 "type": "standard",
                 "roughness": 0.75,
-                "metalness": 0.06,
-                "emissive": "#0a2210"
+                "metalness": 0.06
               }
             },
             {
@@ -3850,8 +3845,7 @@
               "shader": {
                 "type": "standard",
                 "roughness": 0.75,
-                "metalness": 0.06,
-                "emissive": "#0a2e14"
+                "metalness": 0.06
               }
             },
             {
@@ -3884,8 +3878,7 @@
               "shader": {
                 "type": "standard",
                 "roughness": 0.75,
-                "metalness": 0.06,
-                "emissive": "#331a00"
+                "metalness": 0.06
               }
             },
             {
@@ -3918,8 +3911,7 @@
               "shader": {
                 "type": "standard",
                 "roughness": 0.75,
-                "metalness": 0.06,
-                "emissive": "#111a2a"
+                "metalness": 0.06
               }
             },
             {
@@ -3952,8 +3944,7 @@
               "shader": {
                 "type": "standard",
                 "roughness": 0.75,
-                "metalness": 0.06,
-                "emissive": "#2a2800"
+                "metalness": 0.06
               }
             },
             {
