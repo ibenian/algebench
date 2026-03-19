@@ -3424,8 +3424,9 @@
               "color": "#44ff66",
               "opacity": 0.85,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "shininess": 80,
+                "specular": "#aaffcc",
+                "emissive": "#0d3318"
               }
             },
             {
@@ -3456,8 +3457,9 @@
               "color": "#ff8800",
               "opacity": 0.7,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "shininess": 60,
+                "specular": "#ffddaa",
+                "emissive": "#331a00"
               }
             },
             {
@@ -3488,8 +3490,9 @@
               "color": "#2244aa",
               "opacity": 0.15,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "shininess": 100,
+                "specular": "#aaccff",
+                "emissive": "#0a1040"
               }
             },
             {
@@ -3520,8 +3523,9 @@
               "color": "#cc2222",
               "opacity": 0.12,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "shininess": 60,
+                "specular": "#ffaaaa",
+                "emissive": "#330808"
               }
             },
             {
@@ -3806,8 +3810,9 @@
               "color": "#44cc66",
               "opacity": 0.8,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "shininess": 60,
+                "specular": "#99ddaa",
+                "emissive": "#0a2210"
               }
             },
             {
@@ -3838,8 +3843,9 @@
               "color": "#44ff88",
               "opacity": 0.8,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "shininess": 60,
+                "specular": "#aaffbb",
+                "emissive": "#0a2e14"
               }
             },
             {
@@ -3870,8 +3876,9 @@
               "color": "#ff8800",
               "opacity": 0.8,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "shininess": 60,
+                "specular": "#ffddaa",
+                "emissive": "#331a00"
               }
             },
             {
@@ -3902,8 +3909,9 @@
               "color": "#aabbdd",
               "opacity": 0.8,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "shininess": 60,
+                "specular": "#ccd8ee",
+                "emissive": "#111a2a"
               }
             },
             {
@@ -3934,8 +3942,9 @@
               "color": "#ffff44",
               "opacity": 0.9,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "shininess": 80,
+                "specular": "#ffff99",
+                "emissive": "#2a2800"
               }
             },
             {
