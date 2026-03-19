@@ -2645,6 +2645,17 @@
               "content": "### Asymmetry\nSame intersection, different denominators:\n---\n$P(A \\cap B) = {{toFixed(pA*pBgA,3)}}$\n---\n$P(A \\mid B) = {{toFixed(pA*pBgA,3)}} / {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n\n$P(B \\mid A) = {{toFixed(pA*pBgA,3)}} / {{pA}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pBgA,3)}}$\n---\n{{abs(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)-pBgA)<0.01 ? 'Equal here — symmetric: P(A) \u2248 P(B)' : 'Unequal — this is the usual case'}}"
             }
           ]
+        },
+        {
+          "title": "Symmetry vs Independence",
+          "description": "Two special conditions can each make $P(A \\mid B)$ and $P(B \\mid A)$ behave in interesting ways — but they mean very different things.\n\n**Symmetry** ($P(A \\mid B) = P(B \\mid A)$): happens whenever $P(A) = P(B)$. The two events are equally common, so the same intersection divided by two equal denominators gives the same fraction. It says nothing about whether $A$ and $B$ are related.\n\n**Independence** ($P(A \\mid B) = P(A)$): knowing $B$ happened gives you no information about $A$. Equivalently $P(B \\mid A) = P(B)$ and $P(B \\mid A) = P(B \\mid \\overline{A})$ — the step line is horizontal.\n\nTry the sliders:\n- Set $P(A) = P(B)$ without making the step horizontal — you get symmetry but not independence\n- Set $P(B \\mid A) = P(B \\mid \\overline{A})$ — you get independence; $P(A \\mid B) = P(A)$ regardless of whether $P(A) = P(B)$",
+          "info": [
+            {
+              "id": "main_info",
+              "position": "top-right",
+              "content": "### Symmetry vs Independence\n---\n**Symmetry** — $P(A \\mid B) = P(B \\mid A)$?\n$P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n$P(B \\mid A) = {{toFixed(pBgA,3)}}$\n{{abs(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)-pBgA)<0.01 ? '\u2713 Symmetric (P(A) \u2248 P(B))' : '\u2717 Asymmetric'}}\n---\n**Independence** — $P(B \\mid A) = P(B \\mid \\overline{A})$?\n$P(B \\mid A) = {{pBgA}}$\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n{{abs(pBgA-pBgNA)<0.02 ? '\u2713 Independent \u2014 P(A|B) = P(A) = ' + pA : '\u2717 Dependent \u2014 P(A|B) = ' + toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3) + ' \u2260 P(A) = ' + pA}}"
+            }
+          ]
         }
       ],
       "prompt": "You are teaching conditional probability using the correct area-based rectangle model.\n\n## The Core Geometric Model (CRITICAL)\nThe rectangle divides into four cells:\n- **Columns** = values of X (A vs ¬A). Column WIDTH = P(X) — marginal probability.\n- **Rows within each column** = conditional distribution P(Y|X). Row HEIGHT in each column = P(Y|X).\n- **Cell area** = P(X) × P(Y|X) = P(X,Y) — joint probability.\n- The dividing line between rows is STEPPED (not horizontal) when dependent.\n- Independence means straight horizontal line: P(B|A) = P(B|¬A).\n\n## When Explaining Conditioning\n- Conditioning on B = zoom into the B-row (bottom strip)\n- After zooming: A-column occupies P(A|B) fraction, NOT P(A) fraction\n- This is why P(A|B) ≠ P(A) when dependent\n\n## Exploration Prompts\n- 'Set P(B|A) = P(B|¬A) and notice the step disappears — that is what independence looks like'\n- 'Can you find slider values where P(A|B) is actually less than P(A)?'"
