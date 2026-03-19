@@ -2653,7 +2653,7 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Symmetry vs Independence\n---\n**Symmetry** — $P(A \\mid B) = P(B \\mid A)$?\n$P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n$P(B \\mid A) = {{toFixed(pBgA,3)}}$\n{{abs(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)-pBgA)<0.01 ? '\u2713 Symmetric (P(A) \u2248 P(B))' : '\u2717 Asymmetric'}}\n---\n**Independence** — $P(B \\mid A) = P(B \\mid \\overline{A})$?\n$P(B \\mid A) = {{pBgA}}$\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n{{abs(pBgA-pBgNA)<0.02 ? '\u2713 Independent \u2014 P(A|B) = P(A) = ' + pA : '\u2717 Dependent \u2014 P(A|B) = ' + toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3) + ' \u2260 P(A) = ' + pA}}"
+              "content": "### Symmetry vs Independence\n---\n**Symmetry** — $P(A \\mid B) = P(B \\mid A)$?\n$P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n$P(B \\mid A) = {{toFixed(pBgA,3)}}$\n{{abs(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)-pBgA)<0.01 ? '\u2713 Symmetric (P(A) \u2248 P(B))' : '\u2717 Asymmetric'}}\n{{abs(pBgA-pBgNA)<0.02 ? '\u2713 Independent' : '\u2717 Dependent'}}\n---\n**Independence** — $P(B \\mid A) = P(B \\mid \\overline{A})$?\n$P(B \\mid A) = {{pBgA}}$\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n{{abs(pBgA-pBgNA)<0.02 ? '\u2713 Independent \u2014 P(A|B) = P(A) = ' + pA : '\u2717 Dependent \u2014 P(A|B) = ' + toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3) + ' \u2260 P(A) = ' + pA}}"
             }
           ]
         }
