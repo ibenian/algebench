@@ -3424,8 +3424,9 @@
               "color": "#44ff66",
               "opacity": 0.85,
               "shader": {
-                "shininess": 80,
-                "specular": "#aaffcc",
+                "type": "standard",
+                "roughness": 0.82,
+                "metalness": 0.06,
                 "emissive": "#0d3318"
               }
             },
@@ -3457,8 +3458,9 @@
               "color": "#ff8800",
               "opacity": 0.7,
               "shader": {
-                "shininess": 60,
-                "specular": "#ffddaa",
+                "type": "standard",
+                "roughness": 0.8,
+                "metalness": 0.06,
                 "emissive": "#331a00"
               }
             },
@@ -3490,8 +3492,9 @@
               "color": "#2244aa",
               "opacity": 0.15,
               "shader": {
-                "shininess": 100,
-                "specular": "#aaccff",
+                "type": "standard",
+                "roughness": 0.78,
+                "metalness": 0.1,
                 "emissive": "#0a1040"
               }
             },
@@ -3523,8 +3526,9 @@
               "color": "#cc2222",
               "opacity": 0.12,
               "shader": {
-                "shininess": 60,
-                "specular": "#ffaaaa",
+                "type": "standard",
+                "roughness": 0.8,
+                "metalness": 0.06,
                 "emissive": "#330808"
               }
             },
@@ -3810,8 +3814,9 @@
               "color": "#44cc66",
               "opacity": 0.8,
               "shader": {
-                "shininess": 60,
-                "specular": "#99ddaa",
+                "type": "standard",
+                "roughness": 0.75,
+                "metalness": 0.06,
                 "emissive": "#0a2210"
               }
             },
@@ -3843,8 +3848,9 @@
               "color": "#44ff88",
               "opacity": 0.8,
               "shader": {
-                "shininess": 60,
-                "specular": "#aaffbb",
+                "type": "standard",
+                "roughness": 0.75,
+                "metalness": 0.06,
                 "emissive": "#0a2e14"
               }
             },
@@ -3876,8 +3882,9 @@
               "color": "#ff8800",
               "opacity": 0.8,
               "shader": {
-                "shininess": 60,
-                "specular": "#ffddaa",
+                "type": "standard",
+                "roughness": 0.75,
+                "metalness": 0.06,
                 "emissive": "#331a00"
               }
             },
@@ -3909,8 +3916,9 @@
               "color": "#aabbdd",
               "opacity": 0.8,
               "shader": {
-                "shininess": 60,
-                "specular": "#ccd8ee",
+                "type": "standard",
+                "roughness": 0.75,
+                "metalness": 0.06,
                 "emissive": "#111a2a"
               }
             },
@@ -3942,8 +3950,9 @@
               "color": "#ffff44",
               "opacity": 0.9,
               "shader": {
-                "shininess": 80,
-                "specular": "#ffff99",
+                "type": "standard",
+                "roughness": 0.75,
+                "metalness": 0.06,
                 "emissive": "#2a2800"
               }
             },
