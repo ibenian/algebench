@@ -46,6 +46,7 @@ docs/              Architecture, sandbox model, feature ideas
 - **Branch protection** — `main` is protected. Always use a feature branch and open a PR; never push directly to `main`.
 - **Codex PR descriptions** — when Codex creates or updates a PR, replace any commit-list placeholder body with a concise writeup using `## Summary` and `## Testing` sections. Summaries should describe the user-visible behavior and key implementation points, not just restate commit subjects.
 - **Closing issues** — if a PR resolves a GitHub issue, include `Closes #<number>` in the PR body so GitHub auto-closes the issue on merge.
+- **PR labels** — always apply at least one label when creating a PR. Run `gh label list` to see available labels and pick the most appropriate one(s).
 - **Merging PRs** — always use `gh pr merge --squash --admin` to bypass branch protection checks.
 
 ## Scene Format
