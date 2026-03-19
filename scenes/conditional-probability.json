@@ -4021,7 +4021,7 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Medical Test\n$P(D) = {{toFixed(prev*100,2)}}\\%$ \\u2014 prior\n$P(+|D) = {{toFixed(sens*100,0)}}\\%$ \\u2014 sensitivity\n$P(+|\\\\overline{D}) = {{toFixed(fpr*100,2)}}\\%$ \\u2014 FPR\n$P(+) = {{toFixed((prev*sens+(1-prev)*fpr)*100,2)}}\\%$ \\u2014 evidence\n$P(D|+) = {{toFixed(prev*sens/(prev*sens+(1-prev)*fpr)*100,1)}}\\%$ \\u2014 **posterior**\n---\nPer 100,000: true+ = {{toFixed(prev*sens*100000,0)}} / false+ = {{toFixed((1-prev)*fpr*100000,0)}}\n---\n{{prev*sens/(prev*sens+(1-prev)*fpr) < 0.1 ? 'Surprise: most positives are FALSE alarms!' : prev*sens/(prev*sens+(1-prev)*fpr) < 0.5 ? 'Still mostly false positives' : 'Majority are true positives'}}"
+              "content": "### Medical Test\n$P(D) = {{toFixed(prev*100,2)}}\\%$ — prior\n$P(+|D) = {{toFixed(sens*100,0)}}\\%$ — sensitivity\n$P(+|\\overline{D}) = {{toFixed(fpr*100,2)}}\\%$ — FPR\n$P(+) = {{toFixed((prev*sens+(1-prev)*fpr)*100,2)}}\\%$ — evidence\n$P(D|+) = {{toFixed(prev*sens/(prev*sens+(1-prev)*fpr)*100,1)}}\\%$ — **posterior**\n---\nPer 100,000: true+ = {{toFixed(prev*sens*100000,0)}} / false+ = {{toFixed((1-prev)*fpr*100000,0)}}\n---\n{{prev*sens/(prev*sens+(1-prev)*fpr) < 0.1 ? 'Surprise: most positives are FALSE alarms!' : prev*sens/(prev*sens+(1-prev)*fpr) < 0.5 ? 'Still mostly false positives' : 'Majority are true positives'}}"
             }
           ]
         },
@@ -4820,7 +4820,7 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Spam Filter — \"lottery\"\n$P(\\\\text{spam}) = {{toFixed(pSpam*100,0)}}\\%$ \\u2014 prior\n$P(W|\\\\text{spam}) = {{toFixed(pWspam*100,0)}}\\%$ \\u2014 hit rate\n$P(W|\\\\text{legit}) = {{toFixed(pWleg*100,1)}}\\%$ \\u2014 false-hit rate\n$P(W) = {{toFixed((pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$ \\u2014 evidence\n$P(\\\\text{spam}|W) = {{toFixed(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$ \\u2014 **posterior**\n---\nPer 10,000: spam+word = {{toFixed(pSpam*pWspam*10000,0)}} / legit+word = {{toFixed((1-pSpam)*pWleg*10000,0)}}\n---\n{{pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.3 ? 'Mostly legit — word too common to filter' : pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.7 ? 'Mixed signal — filter with caution' : 'Strong signal: reliable spam indicator'}}"
+              "content": "### Spam Filter — \"lottery\"\n$P(\\text{spam}) = {{toFixed(pSpam*100,0)}}\\%$ — prior\n$P(W|\\text{spam}) = {{toFixed(pWspam*100,0)}}\\%$ — hit rate\n$P(W|\\text{legit}) = {{toFixed(pWleg*100,1)}}\\%$ — false-hit rate\n$P(W) = {{toFixed((pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$ — evidence\n$P(\\text{spam}|W) = {{toFixed(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$ — **posterior**\n---\nPer 10,000: spam+word = {{toFixed(pSpam*pWspam*10000,0)}} / legit+word = {{toFixed((1-pSpam)*pWleg*10000,0)}}\n---\n{{pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.3 ? 'Mostly legit — word too common to filter' : pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.7 ? 'Mixed signal — filter with caution' : 'Strong signal: reliable spam indicator'}}"
             }
           ]
         },
@@ -5619,7 +5619,7 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Tornado Warning\n$P(T) = {{toFixed(pTorn*100,1)}}\\%$ \\u2014 base rate\n$P(\\\\text{radar}|T) = {{toFixed(pDet*100,0)}}\\%$ \\u2014 detection\n$P(\\\\text{radar}|\\\\overline{T}) = {{toFixed(pFal*100,1)}}\\%$ \\u2014 false alarm\n$P(\\\\text{radar}) = {{toFixed((pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$ \\u2014 evidence\n$P(T|\\\\text{radar}) = {{toFixed(pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$ \\u2014 **posterior**\n---\nPer 5,000: true alarms = {{toFixed(pTorn*pDet*5000,0)}} / false alarms = {{toFixed((1-pTorn)*pFal*5000,0)}}\n---\n{{pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal) > 0.5 ? 'Issue warning (>50%)' : 'Mostly false alarms (<50%)'}}"
+              "content": "### Tornado Warning\n$P(T) = {{toFixed(pTorn*100,1)}}\\%$ — base rate\n$P(\\text{radar}|T) = {{toFixed(pDet*100,0)}}\\%$ — detection\n$P(\\text{radar}|\\overline{T}) = {{toFixed(pFal*100,1)}}\\%$ — false alarm\n$P(\\text{radar}) = {{toFixed((pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$ — evidence\n$P(T|\\text{radar}) = {{toFixed(pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$ — **posterior**\n---\nPer 5,000: true alarms = {{toFixed(pTorn*pDet*5000,0)}} / false alarms = {{toFixed((1-pTorn)*pFal*5000,0)}}\n---\n{{pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal) > 0.5 ? 'Issue warning (>50%)' : 'Mostly false alarms (<50%)'}}"
             }
           ]
         }
