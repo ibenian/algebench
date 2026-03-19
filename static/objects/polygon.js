@@ -155,8 +155,7 @@ export function renderPolygon(el, view) {
     mesh.userData.baseHalf = baseHalf;
     mesh.userData.wVerts = wVerts;
     mesh.userData.normal = normal.clone();
-    // Wrap so callers expecting a flat positions array (overlay.js planeScale) still work.
-    mesh.userData.buildSlab = (halfThick) => buildSlabGeometry(halfThick).positions;
+    mesh.userData.buildSlab = buildSlabGeometry;
     const _serial = el.renderOrder !== undefined ? el.renderOrder : state._planeMeshSerial++;
     mesh.renderOrder = _serial;
     mesh.position.z = el.depthZ !== undefined ? el.depthZ : _serial * 0.0002;
