@@ -15,6 +15,11 @@ const _mathjs = math.create(math.all);
 // (_EXPR_HELPERS), so both evaluators always stay consistent.
 const _MATHJS_EXTENSIONS = {
     toFixed: (val, decimals) => Number(val).toFixed(Number(decimals)),
+    // bar(value, width=20) — Unicode block progress bar, e.g. bar(0.4) → "████████░░░░░░░░░░░░"
+    bar: (val, w = 20) => {
+        const n = Math.round(Math.max(0, Math.min(1, Number(val))) * Number(w));
+        return '\u2588'.repeat(n) + '\u2591'.repeat(Number(w) - n);
+    },
 };
 
 _mathjs.import({
