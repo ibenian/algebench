@@ -1326,7 +1326,7 @@ async function speakText(text, { explicit = false } = {}) {
                 if (mediaDest) source.connect(mediaDest);
 
                 const now = ctx.currentTime;
-                const startAt = Math.max(ttsScheduleEndTime, now + 0.02);
+                const startAt = Math.max(ttsScheduleEndTime, now + 0.05);
                 source.start(startAt);
                 ttsScheduleEndTime = startAt + audioBuffer.duration;
 
@@ -1338,11 +1338,13 @@ async function speakText(text, { explicit = false } = {}) {
 
                 ttsChunksReceived++;
 
+                const chunkRequestId = myId;
                 ttsActiveSources.push(source);
                 source.onended = () => {
                     const i = ttsActiveSources.indexOf(source);
                     if (i >= 0) ttsActiveSources.splice(i, 1);
-                    ttsChunksPlayed++;
+                    // Only count played chunks for the request that scheduled this source
+                    if (ttsRequestId === chunkRequestId) ttsChunksPlayed++;
                 };
             }
         }

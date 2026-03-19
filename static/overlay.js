@@ -111,6 +111,9 @@ export function setupDocSpeakButtons() {
     const commentateBtn = document.getElementById('doc-commentate-btn');
     if (!speakBtn || !commentateBtn) return;
 
+    // Speak button is only shown in debug mode — feature is not yet user-ready
+    if (!window.DEBUG_MODE) speakBtn.style.display = 'none';
+
     function resetSpeakBtn() {
         speakBtn.textContent = '🔊 Speak';
         speakBtn.classList.remove('active');
