@@ -623,7 +623,110 @@ determines how the optimizer behaves.
 
 ---
 
-## 3. Physics Domain Libraries
+## 3. Language Models & NLP
+
+*Prerequisite: [Byte Pair Encoding & Tokenization](#byte-pair-encoding--tokenization--how-llms-read-text) in the Probability & Statistics section covers how text becomes tokens — the first step in any language model pipeline.*
+
+### N-grams — Predicting the Next Word by Counting
+The simplest language model. Scene 1: **Bigrams** — given a corpus of text,
+count how often each word follows each other word. Visualize as a transition
+matrix (heatmap): rows are current words, columns are next words, cell intensity
+= probability. Click any row to see the conditional distribution P(next|current).
+Scene 2: **Trigrams** — condition on two previous words. The matrix becomes a
+cube (3D tensor). Slice it: fix the first two words, see the distribution over
+the third. Slider for context length n: at n=1 (unigram) it's just word
+frequency; at n=2 (bigram) local structure appears; at n=3+ phrases emerge but
+data gets sparse. Scene 3: **The sparsity problem** — as n grows, most n-grams
+are never observed. Show the fraction of zero entries in the matrix growing
+exponentially. This motivates smoothing techniques and ultimately neural
+approaches.
+
+### Perplexity — How Surprised Is the Model?
+The standard metric for language models. Perplexity = 2^H where H is the
+cross-entropy of the model on test data. Scene 1: a language model assigns
+probabilities to each next word in a sequence. Show the probability bars at each
+position — confident predictions (tall bars) vs uncertain ones (flat bars).
+Perplexity is the geometric mean of 1/P(correct word). Slider for model quality:
+a good model has low perplexity (not surprised), a bad model has high perplexity
+(constantly surprised). Scene 2: connect to entropy — perplexity = 2^(entropy).
+A model with perplexity 100 is as uncertain as choosing uniformly among 100 words.
+Scene 3: compare models — n-gram vs neural LM perplexity on the same text.
+
+### Word2Vec — Learning Word Vectors from Context
+The idea that sparked modern NLP: words that appear in similar contexts have
+similar meanings. Scene 1: **Skip-gram** — given a center word, predict the
+surrounding context words. Visualize the input (one-hot vector), the embedding
+matrix (lookup), and the output probabilities over the vocabulary. The embedding
+matrix rows ARE the word vectors. Scene 2: **CBOW** — predict the center word
+from context (the reverse). Scene 3: **Trained embeddings in 3D** — project
+learned word vectors to 3D. Show analogies as vector arithmetic: king − man +
+woman ≈ queen. Show clusters: countries group together, verbs group together.
+Connect to the Embeddings lesson.
+
+### The Transformer Architecture — From Input to Output
+A complete walkthrough of one transformer forward pass, layer by layer.
+Scene 1: **Input processing** — text → tokens (BPE, connect to tokenization
+lesson) → token embeddings + positional embeddings → input vectors. Show the
+embedding lookup as a matrix slice. Scene 2: **Self-attention layer** — project
+inputs to Q, K, V matrices. Compute attention scores QKᵀ/√d as a heatmap.
+Apply softmax (connect to softmax lesson). Multiply by V to get weighted outputs.
+Scene 3: **Multi-head attention** — run several attention heads in parallel, each
+learning different patterns. Concatenate and project. Scene 4: **Feed-forward
+network** — two linear layers with ReLU, applied independently to each position.
+Scene 5: **Layer norm & residual connections** — show the skip connection adding
+the input back, then normalizing. Scene 6: **Stack it** — repeat N times. Show
+how representations evolve from surface features (early layers) to abstract
+meaning (deep layers).
+
+### Autoregressive Generation — One Token at a Time
+How LLMs actually generate text. Scene 1: the model sees a prompt, produces a
+probability distribution over the next token. Sample one token (connect to
+temperature/softmax). Append it to the input. Repeat. Animate the sequence
+growing token by token, showing the probability distribution at each step.
+Scene 2: **Sampling strategies** — greedy (always pick max), top-k (sample from
+the k most likely), top-p/nucleus (sample from the smallest set that covers
+probability p). Slider for k and p: show how the candidate set changes.
+Scene 3: **Beam search** — maintain multiple candidate sequences simultaneously.
+Visualize as a tree: branches are alternative continuations, width = beam size.
+Prune low-scoring branches at each step.
+
+### Positional Encoding — Teaching Order to Attention
+Attention is permutation-invariant — it doesn't know word order. Positional
+encodings inject position information. Scene 1: **Sinusoidal encoding** — each
+position gets a vector of sin/cos waves at different frequencies. Render the
+encoding matrix as a heatmap: rows are positions, columns are dimensions. The
+pattern is like a binary counter in continuous space. Scene 2: show why it
+works — the dot product between position encodings at positions i and j depends
+only on (i−j), giving the model relative position information. Scene 3:
+**Rotary Position Embeddings (RoPE)** — rotate the Q and K vectors by
+position-dependent angles. Show the rotation in 2D subspaces: nearby tokens
+have similar rotations, distant tokens have different ones.
+
+### Training an LLM — The Big Picture
+A conceptual overview tying everything together. Scene 1: **Pretraining** — next
+token prediction on massive text. Show the loss curve decreasing over billions of
+tokens. The model learns grammar, facts, reasoning patterns — all from
+prediction. Scene 2: **Fine-tuning / RLHF** — adjust the pretrained model on
+curated data with human preferences. Show the distribution shifting: some
+behaviors get upweighted, others suppressed. Scene 3: **Scaling laws** — plot
+loss vs model size, dataset size, and compute. The power law relationships that
+drive the race to larger models. Scene 4: **Emergent abilities** — capabilities
+that appear suddenly at scale (few-shot learning, chain-of-thought reasoning).
+Show the step function in capability vs model size.
+
+### Attention Patterns — What Heads Actually Learn
+Visualize real attention patterns from trained models. Scene 1: **Positional
+heads** — some heads attend to the previous token, or to a fixed relative offset.
+Show the attention matrix as diagonal stripes. Scene 2: **Syntactic heads** —
+some heads connect verbs to their subjects or adjectives to their nouns. Show
+attention lines overlaid on parsed sentences. Scene 3: **Induction heads** —
+the mechanism behind in-context learning. Head A copies a previous token to a
+later position; Head B uses it to predict the next token after a repeated pattern.
+Animate the two-step circuit.
+
+---
+
+## 4. Physics Domain Libraries
 
 ### Quantum Mechanics Domain
 
