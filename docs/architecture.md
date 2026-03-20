@@ -3,10 +3,12 @@
 > Technical documentation for contributors and maintainers.
 
 **Related docs:**
-- [README](../README.md) — Project overview and quick start
+- [../README.md](../README.md) — Project overview and quick start
+- [../CONTRIBUTING.md](../CONTRIBUTING.md) — How to contribute scenes, characters, and more
 - [sandbox-model.md](sandbox-model.md) — Expression evaluation, trust model, security boundary
 - [sandboxing-plan.md](sandboxing-plan.md) — Implementation status and backend sandboxing roadmap
 - [feature-ideas.md](feature-ideas.md) — Roadmap ideas and creative directions
+- [lesson-ideas.md](lesson-ideas.md) — Lesson concepts and content proposals
 
 ---
 

@@ -4,6 +4,12 @@ A living document of technical directions and creative ideas for making AlgeBenc
 distinctive AI-guided math exploration tool. Nothing here is committed to — these are
 seeds for discussion and experimentation.
 
+**See also:**
+- [lesson-ideas.md](lesson-ideas.md) — Lesson concepts and content proposals
+- [architecture.md](architecture.md) — System architecture and technical reference
+- [../CONTRIBUTING.md](../CONTRIBUTING.md) — How to contribute scenes, characters, and more
+- [../README.md](../README.md) — Project overview and quick start
+
 ---
 
 ## 1. AI Pedagogy
