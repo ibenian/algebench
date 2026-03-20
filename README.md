@@ -68,7 +68,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add scenes, voice characters, 
 
 ## Roadmap
 
-See [docs/feature-ideas.md](docs/feature-ideas.md) for a collection of technical directions and creative ideas under consideration.
+See [docs/feature-ideas.md](docs/feature-ideas.md) for technical directions and creative ideas under consideration, and [docs/lesson-ideas.md](docs/lesson-ideas.md) for lesson concepts and content proposals.
 
 ## Documentation
 
@@ -76,6 +76,7 @@ See [docs/feature-ideas.md](docs/feature-ideas.md) for a collection of technical
 - [docs/sandbox-model.md](docs/sandbox-model.md) — Expression evaluation, trust model, security boundary
 - [docs/sandboxing-plan.md](docs/sandboxing-plan.md) — Implementation status and backend sandboxing roadmap
 - [docs/feature-ideas.md](docs/feature-ideas.md) — Roadmap ideas and creative directions
+- [docs/lesson-ideas.md](docs/lesson-ideas.md) — Lesson concepts across probability, ML, calculus, physics, and more
 
 ---
 

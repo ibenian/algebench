@@ -203,9 +203,14 @@ Use the built-in scenes in `scenes/` as reference — `eigenvalues.json` and `ma
 
 ## Ideas and Roadmap
 
-If you are looking for inspiration, or want a sense of the technical directions the project is considering, see [`docs/feature-ideas.md`](docs/feature-ideas.md). It is a living document covering everything from AI pedagogy and new domain libraries to visualization element types, scene architecture, and longer-shot experimental ideas.
+If you are looking for inspiration, or want a sense of the directions the project is considering:
 
-Nothing in that document is committed to — it is a collection of seeds. If something there resonates with your interests or expertise, that is a good signal that a contribution in that area would be genuinely useful rather than speculative.
+- **[docs/feature-ideas.md](docs/feature-ideas.md)** — Platform and UX feature ideas: AI pedagogy, visualization element types, scene architecture, and longer-shot experimental ideas.
+- **[docs/lesson-ideas.md](docs/lesson-ideas.md)** — Lesson concepts and content proposals: probability & statistics, machine learning, calculus, linear algebra, physics, complex analysis, and more.
+
+Nothing in those documents is committed to — they are collections of seeds. If something there resonates with your interests or expertise, that is a good signal that a contribution in that area would be genuinely useful rather than speculative.
+
+For system architecture and technical reference, see [docs/architecture.md](docs/architecture.md).
 
 ---
 

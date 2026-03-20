@@ -4,7 +4,11 @@ A living document of lesson concepts and content ideas for AlgeBench. Each entry
 describes a potential multi-scene lesson or domain library — specific mathematical
 content rather than platform features.
 
-See also: [feature-ideas.md](feature-ideas.md) for platform and UX feature ideas.
+**See also:**
+- [feature-ideas.md](feature-ideas.md) — Platform and UX feature ideas
+- [architecture.md](architecture.md) — System architecture and technical reference
+- [../CONTRIBUTING.md](../CONTRIBUTING.md) — How to contribute scenes, characters, and more
+- [../README.md](../README.md) — Project overview and quick start
 
 ---
 
