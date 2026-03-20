@@ -255,6 +255,18 @@ Visualize random sampling for estimating probabilities and integrals. Scatter ra
 points in a region; color by hit/miss. Show convergence of the estimate as sample
 size increases. Connect to the law of large numbers.
 
+### Likelihood vs Probability — The Same Formula, Two Questions
+The most confusing distinction in statistics. Probability asks: "given a fixed
+model, how probable is this data?" Likelihood asks: "given fixed data, how
+plausible is this model?" Same formula P(data|θ), different variable.
+Scene 1: fix θ, sweep over possible data values — the curve is a probability
+distribution (integrates to 1). Scene 2: fix the observed data, sweep over θ —
+the curve is a likelihood function (does NOT integrate to 1, and doesn't need to).
+Show both views simultaneously: a 2D heatmap of P(x|θ) with a vertical slice
+(probability for fixed θ) and a horizontal slice (likelihood for fixed x).
+The MLE is the θ that maximizes the horizontal slice. Connect to Bayes:
+likelihood × prior ∝ posterior.
+
 ### Maximum Likelihood Estimation — Finding the Best Fit
 Given observed data points (shown as dots on a number line), slide the parameter θ
 of a distribution. For each θ value, compute the likelihood L(θ) = ∏P(xᵢ|θ) —
@@ -585,6 +597,21 @@ positional embeddings — show how position information is encoded as sinusoidal
 patterns added to token embeddings. Connect to the tokenization lesson: the
 journey from text → tokens → embeddings → attention.
 
+### Softmax, Logits & Temperature — From Scores to Probabilities
+The bridge from raw model outputs to decisions. Scene 1: **Logits** — a bar chart
+of raw unnormalized scores (one per class). They can be any real number — positive,
+negative, huge, tiny. These are what the last layer of a neural network produces.
+Scene 2: **Softmax** — apply softmax(zᵢ) = eᶻⁱ / Σeᶻʲ to convert logits to
+probabilities that sum to 1. Animate the transformation: bars rescale, the tallest
+logit gets the most probability but doesn't take all of it. Show how softmax
+preserves ranking but makes differences more extreme. Scene 3: **Temperature** —
+divide logits by T before softmax. Slider for T: at T→0 it becomes argmax (winner
+takes all, "greedy"). At T=1 it's standard softmax. At T→∞ it approaches uniform
+(maximum randomness). Animate the probability bars sharpening and flattening as T
+changes. Connect to: entropy (high T = high entropy = uncertain), Boltzmann
+distribution in physics (softmax IS the Boltzmann distribution), and LLM sampling
+(temperature controls creativity vs determinism).
+
 ### Loss Functions — What the Model Optimizes
 A gallery of loss functions as interactive surfaces. Scene 1: **MSE** — a smooth
 parabolic bowl, easy to optimize. Scene 2: **Cross-entropy** — steeper near wrong
@@ -702,3 +729,338 @@ A multi-scene lesson tracing the conceptual evolution from classical to quantum:
 
 This lesson explicitly bridges the classical (astrodynamics domain) and quantum (quantum
 domain) libraries, demonstrating how domain libraries can be combined in a single lesson.
+
+---
+
+## 4. Linear Algebra
+
+### Vectors — Direction, Magnitude & Operations
+Start with a single vector in 2D/3D. Show its components as projections onto axes.
+Add a second vector — animate addition (tip-to-tail), subtraction, and scalar
+multiplication. Sliders for each component. Show how the parallelogram law makes
+addition commutative. Scene 2: dot product as projection — one vector's shadow on
+another. The cosine formula falls out geometrically. Scene 3: cross product — the
+perpendicular vector whose magnitude equals the parallelogram area. Animate the
+right-hand rule.
+
+### Linear Transformations — Matrices as Motion
+The core visual insight: a 2×2 matrix IS a transformation of the plane. Start with
+the unit square and a grid of points. Apply a matrix — watch the grid deform.
+Sliders for each matrix entry. Categorize the zoo of transformations: rotation
+(orthogonal), scaling (diagonal), shear (triangular), reflection (det < 0),
+projection (singular). Scene 2: composition — apply two matrices sequentially,
+show that the result equals their product. Matrix multiplication is function
+composition.
+
+### Determinant — The Volume Scaling Factor
+The determinant measures how much a transformation scales area (2D) or volume (3D).
+Start with the unit square; apply a matrix; shade the transformed parallelogram.
+Its area = |det(A)|. Slider morphs the matrix: when det → 0 the parallelogram
+collapses to a line (singular). When det < 0 the orientation flips (the grid
+becomes a mirror image). Scene 2: 3D — the unit cube transforms to a parallelepiped.
+Volume = |det(A)|. Show how row operations change the determinant.
+
+### Eigenvalues & Eigenvectors — Vectors That Don't Turn
+Apply a matrix to many vectors — most change direction. But eigenvectors only
+stretch or shrink (scale by λ). Animate the transformation: all vectors rotate
+except the eigenvectors, which stay on their lines. Sliders for matrix entries;
+eigenvalues and eigenvectors update in real time. Scene 2: the characteristic
+polynomial det(A − λI) = 0 as a curve — eigenvalues are its roots. Scene 3:
+complex eigenvalues — the eigenvectors become spiral motions (rotation + scaling).
+
+### Singular Value Decomposition — Rotate, Stretch, Rotate
+Any matrix = UΣVᵀ. Animate the decomposition as three steps: first rotation (Vᵀ
+aligns the input), then scaling along axes (Σ stretches), then final rotation (U
+orients the output). Show the unit circle transforming through each step. Sliders
+for singular values. Scene 2: low-rank approximation — keep only the top k singular
+values, watch the transformation simplify. Apply to image compression: show a
+photo at rank 1, 5, 20, full rank.
+
+### Change of Basis — Same Vector, Different Coordinates
+A vector doesn't change — only its description changes when you switch basis.
+Show the same vector in the standard basis and a rotated basis simultaneously.
+Sliders rotate the new basis; the coordinates update while the arrow stays fixed.
+Scene 2: diagonalization — find the eigenvector basis where the transformation
+is just scaling. The complicated matrix becomes diagonal in the right coordinates.
+
+### Null Space, Column Space & Row Space
+Visualize the four fundamental subspaces of a matrix. Scene 1: column space —
+the set of all possible outputs Ax. For a 3×2 matrix, it's a plane through the
+origin in ℝ³. Scene 2: null space — the set of inputs x where Ax = 0. It's the
+"blind spot" of the transformation. Animate a vector sweeping through the null
+space — all map to zero. Scene 3: rank-nullity theorem — dim(col space) +
+dim(null space) = number of columns. Show the tradeoff: as the column space
+shrinks, the null space grows.
+
+### Systems of Linear Equations — Geometry of Solutions
+Ax = b as intersecting planes. Scene 1: two equations in 2D — two lines
+intersecting at a point (unique solution), parallel (no solution), or coincident
+(infinite solutions). Scene 2: three equations in 3D — three planes intersecting
+at a point, along a line, or not at all. Slider perturbs one equation: watch the
+solution point move, then disappear when the system becomes inconsistent.
+Scene 3: Gaussian elimination as geometric operations — each row operation tilts
+a plane until the system is in echelon form.
+
+### Orthogonality & Gram-Schmidt — Building Perpendicular Bases
+Start with two non-orthogonal vectors. Gram-Schmidt step 1: keep v₁. Step 2:
+subtract v₂'s projection onto v₁ — animate the projection being peeled off,
+leaving the perpendicular component. The result is an orthogonal basis. Extend to
+3 vectors in 3D: each step removes all components along previously orthogonalized
+vectors. Show the QR decomposition emerging: Q = orthogonal basis, R = the
+projection coefficients.
+
+### Least Squares — The Best Wrong Answer
+When Ax = b has no exact solution (overdetermined system), find the closest one.
+Scatter points that don't lie on any line. The least squares solution minimizes
+the sum of squared residuals. Visualize: the residual vector b − Ax̂ is
+perpendicular to the column space of A. Animate the projection: b projects onto
+the column space, and x̂ is the coordinates of that projection. Connect to linear
+regression.
+
+---
+
+## 5. Calculus
+
+### Limits & Continuity — Approaching a Value
+Scene 1: a function with a hole at x = a. Animate a point sliding along the curve
+toward a from both sides. The y-values converge to L even though f(a) may not
+exist. Slider for ε draws a horizontal band around L; the corresponding δ band
+on x appears — making the ε-δ definition visual. Scene 2: discontinuities —
+jump, removable, and essential. Show what goes wrong at each: the left and right
+limits disagree, or the limit doesn't exist at all.
+
+### Derivatives — The Slope of Now
+Scene 1: a curve f(x). Draw a secant line through two points. Slider brings the
+second point closer to the first — the secant rotates toward the tangent line.
+The difference quotient Δy/Δx converges to f'(x). Scene 2: show f(x) and f'(x)
+simultaneously — when f is increasing, f' > 0; at maxima/minima, f' = 0; at
+inflection points, f'' = 0. Slider moves x; both curves highlight the
+corresponding point. Scene 3: common derivative rules animated — power rule,
+chain rule as nested transformations.
+
+### Integrals — Accumulated Area
+Scene 1: Riemann sums. Rectangle bars approximate the area under f(x). Slider
+for n (number of rectangles): at n=4 it's rough, at n=100 it's smooth, at n→∞
+it's the integral. Show left, right, and midpoint sums converging. Scene 2: the
+Fundamental Theorem — the integral function F(x) = ∫f(t)dt is the antiderivative.
+Animate the area accumulating as x slides right; the height of F(x) tracks the
+accumulated area. Scene 3: signed area — when f < 0, the integral subtracts.
+Show cancellation between positive and negative regions.
+
+### Multivariable Calculus — Surfaces & Partial Derivatives
+Scene 1: a surface z = f(x, y) in 3D. Slice it with planes parallel to xz and yz
+to reveal partial derivatives — the slope in each direction independently.
+Scene 2: the gradient ∇f as a vector field on the surface pointing uphill.
+Drop a ball — it follows the negative gradient downhill (connect to gradient
+descent in ML). Scene 3: contour plots — level curves of the surface projected
+onto the xy-plane. The gradient is always perpendicular to contour lines.
+
+### Taylor Series — Polynomial Doppelgängers
+Approximate any smooth function with polynomials. Start with f(x) = eˣ at x = 0.
+Add terms one by one: constant (degree 0), linear (degree 1), quadratic (degree 2).
+Slider for degree n: watch the polynomial hug the function over a wider interval
+as n grows. Show the error region shrinking. Scene 2: functions with finite radius
+of convergence — 1/(1−x) diverges at x = 1; the polynomials approximate well
+inside the radius but go wild outside. Scene 3: Fourier series as the trig
+version — approximate a square wave with sines. The Gibbs phenomenon: the
+overshoot at discontinuities never goes away.
+
+### Vector Calculus — Div, Grad, Curl
+Scene 1: **Gradient** — a scalar field f(x,y) as a height surface. The gradient
+∇f at each point is an arrow pointing uphill. Scene 2: **Divergence** — a 2D
+vector field. Positive divergence = arrows spread out (source); negative = arrows
+converge (sink). Animate tiny circles expanding or contracting to show divergence.
+Scene 3: **Curl** — a 2D vector field with rotation. Place a tiny paddlewheel at
+each point — it spins where curl is nonzero. Scene 4: connect them — gradient
+feeds into divergence (Laplacian), curl of gradient is always zero.
+
+### Line & Surface Integrals — Adding Up Along Paths
+Scene 1: a vector field with a curve through it. The line integral ∫F·dr sums
+the component of F along the path. Animate a particle traveling the curve; at each
+point show the dot product of F and the tangent vector. Slider bends the path —
+the integral changes (path-dependent) unless the field is conservative.
+Scene 2: surface integrals — flux through a surface. Show vectors piercing a
+mesh; the integral counts the net flow through.
+
+---
+
+## 6. Differential Equations
+
+### First-Order ODEs — Slope Fields & Solution Curves
+The slope field shows y' = f(x, y) as tiny line segments at every point. Drop an
+initial condition (draggable point) — the solution curve threads through the
+segments. Multiple initial conditions show the family of solutions. Slider changes
+a parameter in f: the entire slope field and all solution curves update.
+Scene 2: Euler's method — step along the slope field with finite steps. Slider for
+step size h: large h → the numerical solution drifts from the true curve. Small h
+→ convergence. Show the error accumulating.
+
+### Phase Portraits — 2D Systems
+Two coupled ODEs dx/dt = f(x,y), dy/dt = g(x,y). The phase portrait shows
+trajectories in the (x, y) plane. Classify fixed points by eigenvalues of the
+Jacobian: stable node (spiraling in), unstable node (spiraling out), saddle point
+(attracts along one axis, repels along another), center (closed orbits). Sliders
+for system parameters: watch the fixed point bifurcate — a stable node splits
+into a saddle and an unstable node.
+
+### Numerical Methods — Euler, RK2, RK4
+Compare numerical ODE solvers side by side on the same initial value problem.
+Euler (1st order) takes tangent-line steps — visible error accumulates. RK2
+(midpoint method) corrects once — much better. RK4 (the workhorse) corrects four
+times per step — nearly exact. Animate all three simultaneously with the same
+step size. Slider for h: at large h only RK4 survives. Show order of convergence:
+halving h reduces Euler error by 2×, RK2 by 4×, RK4 by 16×.
+
+### Chaos & The Lorenz Attractor
+The most famous chaotic system. Render the Lorenz butterfly in 3D — a trajectory
+that never repeats, spiraling between two lobes. Two initial conditions starting
+ε apart: animate them together, then diverging exponentially (sensitive dependence).
+Sliders for σ, ρ, β: at ρ < 24.74 the system settles to fixed points; above it,
+chaos emerges. Show the bifurcation diagram: plot long-term behavior vs ρ.
+Connect to weather prediction: why forecasts degrade.
+
+### Harmonic Oscillators — Springs, Pendulums & Resonance
+Scene 1: **Simple harmonic motion** — a mass on a spring. Position x(t) = A cos(ωt).
+Show the phase portrait as an ellipse in (x, ẋ) space. Sliders for amplitude and
+frequency. Scene 2: **Damped oscillator** — add friction. The phase portrait spirals
+inward. Slider for damping coefficient: underdamped (oscillates and decays),
+critically damped (fastest return), overdamped (sluggish return). Scene 3:
+**Driven oscillator** — add a periodic forcing term. Slider for driving frequency:
+at resonance (driving = natural frequency) the amplitude explodes.
+Show the frequency response curve.
+
+### Bifurcations — When Systems Change Character
+A single parameter controls qualitative behavior. Scene 1: **Saddle-node** — two
+fixed points collide and annihilate as a parameter crosses a critical value.
+Animate the phase line: two equilibria merge into none. Scene 2: **Pitchfork** —
+one stable fixed point splits into two stable and one unstable (symmetry breaking).
+Scene 3: **Hopf** — a stable fixed point loses stability and births a limit cycle
+(steady state → oscillation). The logistic map bifurcation diagram: period
+doubling cascade into chaos.
+
+---
+
+## 7. Complex Analysis
+
+### Complex Numbers — Algebra Meets Geometry
+Scene 1: the complex plane. A complex number z = a + bi is a point (or arrow).
+Show addition as vector addition, multiplication as rotation + scaling. Slider for
+a multiplier w: multiplying by w rotates by arg(w) and scales by |w|. Scene 2:
+Euler's formula e^(iθ) = cos θ + i sin θ — a point traveling the unit circle.
+Show how eⁱᵖ = −1 falls out. Scene 3: roots of unity — the n-th roots of 1 are
+equally spaced on the unit circle. Slider for n.
+
+### Conformal Mappings — Grids That Bend
+Apply a complex function f(z) to a grid and watch it warp. Scene 1: f(z) = z² —
+the grid folds over itself; right angles are preserved (conformal) but areas are
+not. Scene 2: f(z) = eᶻ — horizontal lines become circles, vertical lines become
+rays. Scene 3: f(z) = 1/z — inversion; circles and lines interchange. Animate
+the deformation continuously: slider morphs from z to f(z). Show how conformal
+maps preserve angles at every point.
+
+### Riemann Surfaces — Multi-Valued Functions Made Single
+f(z) = √z is two-valued — but on a Riemann surface, it's single-valued on a
+double-sheeted surface. Render the two sheets in 3D, connected at the branch cut.
+A path circling the origin crosses from one sheet to the other. Scene 2: f(z) = log(z)
+— infinitely many sheets spiraling upward. Scene 3: analytic continuation —
+extend a function beyond its original domain by hopping between sheets.
+
+### Complex Integration & Residues
+Scene 1: integrate f(z) along a path in the complex plane. The integral is a
+complex number — show its real and imaginary parts accumulating along the path.
+Scene 2: Cauchy's theorem — if the path encloses no singularities, the integral
+is zero. Deform the path continuously; the integral stays constant. Scene 3:
+residues — a pole inside the contour contributes 2πi times its residue. Animate
+the contour shrinking around the pole.
+
+---
+
+## 8. Signal Processing
+
+### Fourier Transform — Decomposing Signals into Frequencies
+Scene 1: a compound wave (sum of sinusoids). Slider adds/removes frequency
+components. Show the time-domain waveform and frequency-domain spectrum
+simultaneously. Scene 2: the DFT as matrix multiplication — the Fourier matrix
+applied to a signal vector. Each row is a different frequency's sinusoid;
+the dot product measures how much of that frequency is present. Animate the
+decomposition: peel off one frequency at a time from the signal until only
+the residual remains.
+
+### Convolution — The Sliding Integral
+Scene 1: two functions f and g. Flip g, slide it across f, and at each position
+compute the overlap integral. The output (f * g)(t) builds up as g slides.
+Animate the sliding; shade the overlap area. Scene 2: convolution in the frequency
+domain — multiplication! Show both domains side by side: convolving in time =
+multiplying spectra. This is why FFT makes convolution fast. Scene 3: apply to
+audio — convolve a signal with an impulse response (reverb). Hear the result.
+
+### Filtering — Shaping the Spectrum
+Scene 1: a signal with noise (high-frequency components). Apply a low-pass filter:
+in the frequency domain, zero out high frequencies. Show the cleaned signal in
+time domain. Slider for cutoff frequency. Scene 2: high-pass filter (keep only
+high frequencies — edge detection). Scene 3: band-pass filter (keep a range).
+Show the filter's frequency response curve (gain vs frequency) alongside the
+signal's spectrum — the output spectrum is the product.
+
+### Sampling & Aliasing — The Nyquist Limit
+Scene 1: a continuous sinusoid sampled at discrete points. Slider for sampling
+rate. When the rate is above 2× the signal frequency (Nyquist rate), the samples
+faithfully represent the signal. Below it, aliasing: a completely different
+lower-frequency sinusoid fits the same samples. Animate both the true signal and
+the alias simultaneously. Scene 2: the sampling theorem in the frequency domain —
+sampling creates spectral copies; if they overlap, information is lost (aliasing).
+
+### Spectrogram — Time Meets Frequency
+A 2D heatmap with time on the x-axis, frequency on the y-axis, and intensity as
+color. Apply the Short-Time Fourier Transform (STFT) to a signal whose frequency
+changes over time (chirp, speech, music). Slider for window size: short window =
+good time resolution, poor frequency resolution. Long window = the opposite.
+This is the uncertainty principle of signal processing — you can't have both.
+Connect to Heisenberg's uncertainty principle in quantum mechanics.
+
+---
+
+## 9. Game Theory
+
+### Payoff Matrices & Dominant Strategies
+Scene 1: a 2×2 payoff matrix for two players. Each cell shows both players'
+payoffs as a pair. Highlight dominant strategies (if they exist): a strategy that's
+best regardless of what the opponent does. Scene 2: the prisoner's dilemma —
+both players have a dominant strategy (defect), but mutual cooperation pays more.
+The Nash equilibrium is inefficient. Sliders adjust payoffs: explore when
+cooperation becomes dominant.
+
+### Nash Equilibrium — Nobody Wants to Move
+Scene 1: mixed strategy equilibrium. Player 1 randomizes with probability p,
+Player 2 with probability q. Plot both players' expected payoffs as surfaces
+over (p, q) space. The Nash equilibrium is the saddle point where neither player
+can improve by changing strategy. Animate best-response dynamics: each player
+adjusts toward their best response; the system spirals toward equilibrium.
+Scene 2: multiple equilibria — a coordination game (Battle of the Sexes) with
+two pure and one mixed Nash equilibrium. Show all three as fixed points.
+
+### Iterated Prisoner's Dilemma — Strategy Evolution
+Simulate a population of strategies playing repeated rounds. Start with a mix:
+Always Cooperate, Always Defect, Tit-for-Tat, Random. Animate rounds: payoffs
+accumulate, strategies reproduce proportionally to fitness. Watch Tit-for-Tat
+dominate (Axelrod's tournament result). Slider for noise (probability of accidental
+defection): Tit-for-Tat degrades; forgiving strategies rise. Show the evolutionary
+dynamics as a flow on the strategy simplex.
+
+### Auction Theory — Bidding Strategies
+Scene 1: first-price sealed-bid auction. Each bidder has a private value (slider).
+The optimal bid is below your value — bid your value and you win but gain nothing.
+Animate the tradeoff: higher bid = more likely to win but lower surplus. Show the
+Nash equilibrium bidding function. Scene 2: second-price (Vickrey) auction —
+bidding your true value IS the dominant strategy. Show why: no matter what others
+bid, truthful bidding maximizes your expected payoff. Scene 3: compare revenue
+equivalence — both auctions yield the same expected revenue to the seller.
+
+### Evolutionary Game Theory — Population Dynamics
+Replicator dynamics on a 2D simplex (three strategies). Each vertex is a pure
+strategy; interior points are mixed populations. Arrows show population flow:
+strategies with above-average fitness grow, below-average shrink. Fixed points
+are Nash equilibria. Animate trajectories from different starting populations.
+Classic games: Rock-Paper-Scissors (cycling orbits, no stable equilibrium),
+Hawk-Dove (stable mixed equilibrium), Stag Hunt (two stable equilibria with
+basins of attraction).
