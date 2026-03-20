@@ -140,22 +140,83 @@ continuous case — the balance point of a density curve, with variance as the
 "width" of the distribution.
 
 ### The Distributions Zoo
-A gallery of the most important probability distributions, each as an interactive
-3D surface or curve with parameter sliders:
+A gallery of probability distributions, each as an interactive curve or surface
+with parameter sliders. Organized by family with animated transitions showing how
+distributions relate to each other.
 
-- **Binomial(n, p)** — bar chart of successes in n trials. Sliders for n and p.
-  Watch it approach normal as n grows (bridge to CLT).
+**Discrete distributions:**
+- **Bernoulli(p)** — a single coin flip. The atomic building block. Slider for p.
+  Just two bars: P(0) = 1−p, P(1) = p.
+- **Binomial(n, p)** — number of successes in n independent Bernoulli trials.
+  Sliders for n and p. Bar chart morphs as parameters change. Watch it approach
+  normal as n grows (bridge to CLT).
+- **Geometric(p)** — number of trials until first success. Slider for p. Show the
+  memoryless property (unique among discrete distributions). The bars decay
+  exponentially — connect to the exponential distribution as its continuous analog.
+- **Negative Binomial(r, p)** — trials until r-th success. Generalizes geometric
+  (r=1). Sliders for r and p. Show it approaching normal for large r.
 - **Poisson(λ)** — rare event counts. Slider for λ. Show it emerging from
-  binomial as n→∞, p→0, np→λ.
-- **Exponential(λ)** — waiting times. Slider for rate λ. Show the memoryless
-  property: P(X > s+t | X > s) = P(X > t) by slicing the curve.
-- **Normal(μ, σ)** — the bell curve. Sliders for μ and σ. Shade the 68-95-99.7
-  regions. Connect to sigma levels lesson.
-- **Uniform, Gamma, Beta** — show how they relate as special cases and
-  conjugate priors.
+  binomial as n→∞, p→0, np→λ. Animate the transition: start with Binomial(100, 0.05)
+  and increase n while decreasing p — the bars converge to Poisson(5).
+- **Hypergeometric(N, K, n)** — sampling without replacement. Compare side by side
+  with binomial (sampling with replacement): they diverge when n is large relative
+  to N. Sliders for population size N, successes K, and sample size n.
 
-Each distribution links to the others: animate the binomial morphing into normal,
-Poisson emerging from binomial, exponential as the gap between Poisson events.
+**Continuous distributions:**
+- **Uniform(a, b)** — the flat distribution. Sliders for a and b. Maximum entropy
+  among distributions with bounded support. Starting point for many simulations.
+- **Normal / Gaussian(μ, σ)** — the bell curve. Sliders for μ and σ. Shade the
+  68-95-99.7 regions. Connect to sigma levels lesson. Show the PDF and CDF side
+  by side.
+- **Log-Normal(μ, σ)** — when the logarithm is normal. Common in finance (stock
+  returns), biology (organism sizes), and income distributions. Show the rightward
+  skew and how it emerges from exponentiating a normal variable.
+- **Exponential(λ)** — waiting times between events. Slider for rate λ. Show the
+  memoryless property: P(X > s+t | X > s) = P(X > t) by slicing the curve.
+  Connect to Poisson: if events arrive as Poisson(λ), inter-arrival times are
+  Exponential(λ).
+- **Gamma(α, β)** — waiting time for the α-th event. Generalizes exponential
+  (α=1). Sliders for shape α and rate β. Show how it approaches normal for large α.
+  Special case: Chi-squared(k) = Gamma(k/2, 1/2).
+- **Beta(α, β)** — the distribution on [0, 1]. The conjugate prior for binomial
+  probability. Sliders for α and β produce an extraordinary range of shapes:
+  uniform (1,1), U-shaped (<1,<1), skewed, symmetric, peaked. Show how it updates
+  as a Bayesian prior: start with Beta(1,1), observe successes and failures, watch
+  the posterior sharpen. Connect to the Bayesian update lesson.
+- **Chi-Squared(k)** — sum of k squared standard normals. Slider for degrees of
+  freedom k. Skewed at small k, approaches normal at large k. Used in hypothesis
+  testing (goodness of fit, independence tests). Show it as a special case of Gamma.
+- **Student's t(ν)** — like normal but with heavier tails. Slider for degrees of
+  freedom ν. At ν=1 it's Cauchy (extremely heavy tails). At ν→∞ it converges to
+  normal. Show why it matters: when σ is unknown and estimated from small samples,
+  the test statistic follows t, not normal.
+- **F(d₁, d₂)** — ratio of two chi-squared variables. Sliders for both degrees
+  of freedom. Used in ANOVA and regression F-tests. Show it as a ratio: animate
+  two independent chi-squared draws and their ratio.
+- **Cauchy** — the pathological distribution. Looks like a normal but with tails
+  so heavy that the mean doesn't exist. The average of n Cauchy samples doesn't
+  converge — animate this failure of the LLN. A cautionary tale about assuming
+  normality.
+- **Weibull(k, λ)** — reliability and survival analysis. Shape parameter k controls
+  failure rate: k<1 = infant mortality (decreasing hazard), k=1 = exponential
+  (constant hazard), k>1 = wear-out (increasing hazard). Slider for k animates
+  the transition between failure modes.
+
+**Multivariate distributions:**
+- **Bivariate Normal(μ, Σ)** — a 3D bell surface. Sliders for means, variances,
+  and correlation ρ. Show the elliptical contours rotating as ρ changes. Project
+  onto each axis to see the marginals. Condition on one variable: slice the surface
+  and show the conditional distribution is also normal.
+- **Multinomial** — generalization of binomial to k categories. Visualize as a
+  simplex (triangle for k=3) with probability mass distributed over it.
+- **Dirichlet(α)** — the conjugate prior for multinomial, lives on the simplex.
+  Sliders for α parameters reshape the density over the triangle from uniform to
+  peaked at corners or center.
+
+**Distribution relationships map:** a visual graph connecting all distributions with
+labeled edges ("limit of", "special case", "conjugate prior of", "sum of"). Clicking
+any node loads that distribution's interactive scene. Animate transition paths:
+Bernoulli → Binomial → Normal, or Exponential → Gamma → Chi-Squared.
 
 ### Central Limit Theorem — Why Everything Becomes Normal
 The most surprising theorem in statistics. Start with any ugly distribution
