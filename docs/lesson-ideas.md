@@ -892,6 +892,59 @@ domain) libraries, demonstrating how domain libraries can be combined in a singl
 
 ---
 
+### Classical Mechanics — Lagrangian & Hamiltonian
+
+#### The Principle of Least Action
+The most beautiful idea in physics: nature chooses the path that minimizes (or
+extremizes) the action S = ∫L dt, where L = T − V (kinetic minus potential energy).
+Scene 1: a ball thrown in a gravitational field. Show the actual parabolic
+trajectory and several alternative paths. For each path, compute the action
+(shade the area under L(t)). The actual path has the smallest action. Slider
+perturbs the path: any deviation increases S. Scene 2: **Euler-Lagrange equation**
+— the condition δS = 0 yields the equation of motion. Show how the variational
+principle produces F = ma. Scene 3: **Fermat's principle of least time** — light
+takes the fastest path. Show refraction at an interface: Snell's law falls out from
+minimizing travel time. Animate light paths bending at different angles; the fastest
+one obeys Snell's law.
+
+#### Lagrangian Mechanics — Generalized Coordinates
+Scene 1: a simple pendulum. In Cartesian coordinates the constraint (fixed length)
+makes things messy. In the angle θ, the Lagrangian L = ½ml²θ̇² − mgl(1−cos θ) is
+simple. Derive the equation of motion from the Euler-Lagrange equation. Animate
+the pendulum; show L, T, and V as time-varying curves. Scene 2: **Double pendulum**
+— two coupled angles, chaotic motion. Show the Lagrangian with both generalized
+coordinates. Two initial conditions starting ε apart: animate the exponential
+divergence. Scene 3: **Noether's theorem** — every symmetry gives a conservation
+law. Time symmetry → energy conservation. Rotational symmetry → angular momentum
+conservation. Show the conserved quantity staying constant as the system evolves.
+
+#### Hamiltonian Mechanics — Phase Space
+Scene 1: convert from Lagrangian to Hamiltonian via the Legendre transform.
+H = T + V (total energy) for conservative systems. The equations of motion become
+first-order: q̇ = ∂H/∂p, ṗ = −∂H/∂q. Scene 2: **Phase space** — plot position
+vs momentum. A simple harmonic oscillator traces ellipses in phase space. Energy
+contours are level curves of H. Animate trajectories: they never cross (uniqueness
+of solutions). Scene 3: **Liouville's theorem** — phase space volume is conserved.
+Animate a cloud of initial conditions: the cloud deforms but its area stays
+constant. This is the classical root of quantum uncertainty and statistical
+mechanics.
+
+#### Path Integrals — Feynman's Sum Over Histories
+The quantum version of least action. Scene 1: in classical mechanics, a particle
+takes ONE path (the least action path). In quantum mechanics, it takes ALL paths
+simultaneously. Render many paths from A to B — each path contributes a phase
+e^(iS/ℏ). Animate the phases as rotating arrows (phasors). Scene 2: **Stationary
+phase** — paths near the classical path have similar phases and add constructively.
+Far-away paths have wildly different phases and cancel out. Show the cancellation:
+arrows point in random directions and sum to zero. The classical path emerges as
+the surviving contribution. Slider for ℏ: as ℏ → 0, only the classical path
+survives (classical limit). At finite ℏ, nearby paths contribute (quantum
+corrections). Scene 3: **Double slit revisited** — sum over two families of paths
+(through each slit). The interference pattern IS the path integral. Connect to
+the wave mechanics lesson in quantum.
+
+---
+
 ## 4. Linear Algebra
 
 ### Vectors — Direction, Magnitude & Operations
