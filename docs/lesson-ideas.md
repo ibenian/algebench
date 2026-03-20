@@ -10,6 +10,88 @@ See also: [feature-ideas.md](feature-ideas.md) for platform and UX feature ideas
 
 ## 1. Probability & Statistics
 
+### Sample Spaces & Events — The Language of Probability
+Scene 1: a sample space Ω as a rectangular region. Events A and B are subsets
+(colored regions). Show the basic set operations: A ∪ B (union = "or"), A ∩ B
+(intersection = "and"), Aᶜ (complement = "not A"). Slider resizes events; the
+set operations update. Scene 2: **Mutually exclusive events** — A ∩ B = ∅.
+The regions don't overlap. When events are mutually exclusive, P(A ∪ B) = P(A) +
+P(B) — no double-counting needed. Scene 3: **Exhaustive events** — a partition
+of Ω into non-overlapping events that cover everything. Every outcome belongs to
+exactly one event. Connect to the law of total probability.
+
+### The Axioms of Probability — Kolmogorov's Foundation
+Scene 1: the three axioms visualized on the probability rectangle. **Axiom 1:**
+P(A) ≥ 0 for all events (area is never negative). **Axiom 2:** P(Ω) = 1 (the
+whole rectangle has area 1). **Axiom 3:** for disjoint events, P(A ∪ B) = P(A) +
+P(B) (areas add when regions don't overlap). Scene 2: derive everything from the
+axioms — the complement rule P(Aᶜ) = 1 − P(A) falls out of axioms 2 and 3.
+The inclusion-exclusion rule P(A ∪ B) = P(A) + P(B) − P(A ∩ B) handles
+overlapping events. Animate: two overlapping regions — adding their areas
+double-counts the intersection. Scene 3: **Probability as area** — every
+probability rule corresponds to a geometric fact about areas in the rectangle.
+This is why the probability rectangle works.
+
+### Addition Rule & Inclusion-Exclusion
+Scene 1: **Two events** — P(A ∪ B) = P(A) + P(B) − P(A ∩ B). Visualize on the
+probability rectangle: adding A and B double-counts the overlap. Animate the
+double-counting: shade A, shade B, the intersection is shaded twice. Subtract it
+once to get the correct area. Slider changes overlap size: when overlap = 0
+(mutually exclusive), no correction needed. Scene 2: **Three events** —
+P(A ∪ B ∪ C) = Σ singles − Σ pairs + triple. Show the Venn diagram in 3D with
+each term as a colored layer. The alternating signs prevent over/under-counting.
+Scene 3: **General inclusion-exclusion** — for n events, the formula alternates
+adding and subtracting. Show the pattern and connect to combinatorics.
+
+### Multiplication Rule & Chain Rule of Probability
+Scene 1: **Joint probability** — P(A ∩ B) = P(A) · P(B|A). On the probability
+rectangle, the joint cell area = column width × row height within that column.
+Slider for P(A) stretches the column; slider for P(B|A) stretches the row.
+Scene 2: **Chain rule for three events** — P(A ∩ B ∩ C) = P(A) · P(B|A) ·
+P(C|A,B). Animate the successive conditioning: start with the full rectangle,
+slice to A, slice within A to B, slice within A∩B to C. Each conditioning
+narrows the focus. Scene 3: **Independence simplifies** — when A and B are
+independent, P(A ∩ B) = P(A) · P(B). No conditioning needed. The rectangle
+grid is perfectly aligned.
+
+### Complement Rule & De Morgan's Laws
+Scene 1: **Complement rule** — P(Aᶜ) = 1 − P(A). The easiest probability
+calculation: sometimes it's easier to find the probability something DOESN'T
+happen. Example: probability of at least one success in n trials = 1 − P(all
+failures). Animate: shade A, then shade everything else. Scene 2:
+**Product rule for complements** — probability that NONE of n independent events
+occur: P(A₁ᶜ ∩ A₂ᶜ ∩ ... ∩ Aₙᶜ) = ∏(1 − P(Aᵢ)). Visualize n independent
+events as nested slices of the rectangle; the complement is the surviving region.
+Slider for n: as n grows, the complement shrinks exponentially. Classic example:
+probability of at least one birthday match in a room of n people (the birthday
+problem). Scene 3: **De Morgan's laws** — (A ∪ B)ᶜ = Aᶜ ∩ Bᶜ and
+(A ∩ B)ᶜ = Aᶜ ∪ Bᶜ. Show on the Venn diagram: the complement of the union is
+the intersection of the complements and vice versa. These turn "at least one"
+problems into "none" problems (and back).
+
+### The Birthday Problem — Surprising Coincidences
+Scene 1: in a room of n people, what's the probability that at least two share a
+birthday? The complement approach: P(all different) = 365/365 · 364/365 · 363/365 ·
+... Animate: add people one by one. After each addition, show the probability of
+no match dropping. At n = 23, the probability exceeds 50%. At n = 57, it's 99%.
+Slider for n. Scene 2: **Why it's surprising** — we think about the probability
+of someone sharing MY birthday (1/365 per person). But the birthday problem asks
+about ANY pair. Show the number of pairs: C(n, 2) = n(n−1)/2. At n = 23
+there are 253 pairs — many chances for a match. Scene 3: **Generalization** —
+slider for the number of possible values (not just 365). See how the threshold
+changes.
+
+### Counting & Combinatorics — How Many Ways?
+Scene 1: **Permutations** — arrange n distinct objects in order. n! = n × (n−1) ×
+... × 1. Visualize as a decision tree: n choices for first position, (n−1) for
+second, etc. Slider for n: watch the tree explode. Scene 2: **Combinations** —
+choose k objects from n without regard to order. C(n,k) = n! / (k!(n−k)!).
+Show how each combination corresponds to k! permutations of the same set.
+Scene 3: **Pascal's triangle** — each entry C(n,k) = C(n−1,k−1) + C(n−1,k).
+Build the triangle row by row; highlight the symmetry, the row sums (powers of
+2), and the connection to the binomial theorem. Scene 4: **Multinomial
+coefficients** — distribute n objects into groups of sizes k₁, k₂, ..., kₘ.
+
 ### Conditional Probability & Bayes' Rule (exists)
 The current `conditional-probability.json` lesson — three scenes covering probability
 terms, conditional probability, and Bayes' rule using an interactive probability
@@ -21,11 +103,42 @@ events. Show how P(B) decomposes as a weighted sum across the partition. Animate
 the partition lines as sliders change marginals. Bridge naturally from the existing
 conditional probability lesson.
 
-### Independence vs Correlation
-Start from the probability rectangle: when the horizontal divider is a straight line,
-events are independent. Introduce correlation as a continuous measure of how far the
-divider deviates from straight. Show examples where correlation ≠ 0 but events are
-still conditionally independent given a third variable (Simpson's paradox territory).
+### Independence & Conditional Independence
+Scene 1: **Independence** — start from the probability rectangle: when the horizontal
+divider is a straight line, events are independent. P(B|A) = P(B) — knowing A
+tells you nothing about B. The joint probability factors: P(A ∩ B) = P(A) · P(B).
+Slider breaks independence: tilt the divider to create dependence. Scene 2:
+**Conditional independence** — A and B are dependent, but become independent when
+you condition on C. Slice the rectangle by C: within each slice, the divider is
+straight. Show how Simpson's paradox arises: a trend in each slice reverses in
+the aggregate. Scene 3: **Independence ≠ mutually exclusive** — a common
+confusion. Mutually exclusive events are maximally dependent (if one happens, the
+other can't). Independent events CAN co-occur.
+
+### Bernoulli Trials & The Binomial Theorem
+Scene 1: **Bernoulli trials** — n independent experiments, each with success
+probability p. Animate n coin flips as a sequence of colored dots (green = success,
+red = failure). Each sequence has probability p^k(1−p)^(n−k) where k = number of
+successes. Scene 2: **Counting sequences** — how many sequences have exactly k
+successes? C(n,k) ways to arrange k successes among n trials. The probability of
+exactly k successes: P(X=k) = C(n,k) p^k(1−p)^(n−k) — this IS the binomial
+distribution. Animate: show all C(n,k) sequences for small n, each with the same
+probability. Scene 3: **The binomial theorem** — (p + (1−p))ⁿ = Σ C(n,k) p^k(1−p)^(n−k)
+= 1. The probabilities sum to 1 because they're the terms of a binomial expansion.
+Show the algebraic identity and the probability interpretation side by side.
+Connect to Pascal's triangle: each entry IS a binomial coefficient.
+
+### Correlation & Covariance — Measuring Linear Association
+Scene 1: scatter plot of (X, Y) pairs. The covariance Cov(X,Y) = E[(X−μ_X)(Y−μ_Y)]
+measures how X and Y co-vary. Positive: when X is above its mean, Y tends to be
+too. Negative: they move in opposite directions. Visualize: color each point by
+the sign of (x−μ_X)(y−μ_Y) — positive quadrants vs negative quadrants. Cov > 0
+when positive quadrants dominate. Scene 2: **Correlation** ρ = Cov(X,Y)/(σ_X · σ_Y)
+normalizes to [−1, 1]. Slider morphs the scatter plot: at ρ = 1 all points fall
+on a line (positive slope), at ρ = −1 they fall on a line (negative slope), at
+ρ = 0 it's a circular cloud. Scene 3: **Correlation ≠ causation** — show Anscombe's
+quartet: four datasets with identical ρ but completely different scatter patterns.
+Correlation misses nonlinear relationships, outlier effects, and grouped structure.
 
 ### Bayesian Updating — Sequential Evidence
 Build on Bayes' rule with sequential evidence: start with a prior, observe one piece
