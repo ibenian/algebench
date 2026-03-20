@@ -47,11 +47,59 @@ prevalence (prior), then by test accuracy (likelihood). The posterior falls out 
 visible count — "of these 50 highlighted dots, only 9 actually have the disease."
 Sliders adjust prevalence and test sensitivity; the dot partition redraws in real time.
 
-### Hypothesis Testing Visualizer
-Interactive scene showing a null distribution with sliders for sample size, effect
-size, and significance level (α). Shaded rejection regions update live; a second curve
-shows the alternative distribution, making Type I / Type II errors and statistical
-power directly visible as overlapping areas.
+### Hypothesis Testing — The Geometry of Decisions
+Interactive scene showing null and alternative distributions as two overlapping bell
+curves in 3D. Sliders for sample size, effect size, and significance level (α).
+Shaded rejection regions update live, making Type I error (α), Type II error (β),
+and statistical power (1−β) directly visible as colored areas. A movable test
+statistic marker shows where a specific observation falls and whether it crosses
+the critical value. Walk through the logic: assume null → compute probability →
+decide.
+
+### p-Values — What They Actually Mean
+The most misunderstood concept in statistics. Visualize the p-value as the shaded
+tail area beyond the observed test statistic under the null distribution. Slider
+moves the test statistic along the x-axis; the shaded area (p-value) updates in
+real time. Contrast with common misinterpretations: the p-value is NOT the
+probability the null is true. Show side-by-side: the frequentist tail area vs
+the Bayesian posterior P(H₀|data) — they give different numbers. Connect back to
+base rate neglect.
+
+### Power Analysis — Designing Experiments
+Before collecting data, how large a sample do you need? Start from the hypothesis
+testing scene and add a third slider: sample size n. As n increases, both
+distributions narrow, the overlap shrinks, and power increases. Animate the
+tradeoff: more subjects → more power → more cost. Show the "power curve" as a
+2D plot of power vs effect size for a fixed n and α.
+
+### Confidence Intervals — The Interval That Covers
+Visualize 100 confidence intervals from repeated sampling. Each sample generates
+an interval; ~95 of 100 cover the true parameter (highlighted), ~5 miss (red).
+Sliders for sample size and confidence level. Makes the frequentist interpretation
+concrete: the interval is random, the parameter is fixed. Contrast with the
+Bayesian credible interval where the parameter has a distribution.
+
+### Multiple Testing & The False Discovery Problem
+Run 20 independent hypothesis tests where the null is true for all of them.
+At α=0.05, about 1 in 20 will be "significant" by chance. Visualize as a grid
+of 20 test statistic distributions, each with its own rejection region. Highlight
+the false positives in red. Then show corrections: Bonferroni (shrink α),
+Benjamini-Hochberg (control false discovery rate). Sliders for number of tests
+and α.
+
+### Effect Size vs Statistical Significance
+A large sample can make a tiny, meaningless effect "statistically significant."
+Show two overlapping distributions where the effect size d is tiny (slider) but
+the sample size is enormous — the p-value is small but the distributions are
+nearly identical. Contrast with a large effect size at small n — clearly different
+distributions but p-value is large. Drive home that significance ≠ importance.
+
+### Frequentist vs Bayesian — The Same Data, Two Frameworks
+Present a single dataset and analyze it both ways side by side. Left panel:
+null distribution, test statistic, p-value, reject/fail-to-reject decision.
+Right panel: prior distribution, likelihood from data, posterior distribution,
+credible interval. Sliders for prior strength and data. Show when they agree
+and when they diverge — especially with small samples and strong priors.
 
 ### Bayesian Update Visualizer — Continuous Distributions
 Show prior, likelihood, and posterior as three overlaid distribution curves that
