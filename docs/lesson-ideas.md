@@ -225,6 +225,56 @@ divergence value updates. Show key properties: KL ≥ 0, KL = 0 iff P = Q,
 asymmetric (D_KL(P‖Q) ≠ D_KL(Q‖P)). Connect to MLE: minimizing KL divergence
 from data to model is equivalent to maximizing likelihood.
 
+### Huffman Coding — Optimal Symbol-by-Symbol Compression
+Build a Huffman tree step by step. Start with a frequency table (e.g. letters in
+English text) shown as a bar chart. The algorithm greedily merges the two lowest-
+frequency nodes — animate each merge as the tree grows. The final tree assigns
+short codes to common symbols and long codes to rare ones. Show the resulting
+code table alongside Shannon entropy: Huffman's average bits/symbol approaches
+the entropy lower bound but can't beat it. Slider adjusts the frequency
+distribution — watch the tree restructure and the average code length track
+entropy. Second scene: encode a sample string character by character, showing
+the bit stream building up and the compression ratio updating.
+
+### Run-Length & Lempel-Ziv — Pattern-Based Compression
+Move beyond symbol-by-symbol coding to compression that exploits repeated patterns.
+Scene 1: **Run-Length Encoding (RLE)** — a sequence of colored blocks with runs of
+repeated values. Animate the encoder scanning left to right, replacing runs with
+(count, value) pairs. Show compression ratio for different pattern densities (slider).
+Works great for images with large flat regions, terrible for noisy data.
+Scene 2: **LZ77 / LZ78** — the foundation of gzip, PNG, and most modern compressors.
+Visualize the sliding window: the encoder finds the longest match in the recent
+history and emits a (distance, length) pointer instead of raw symbols. Animate the
+window sliding over a text string, highlighting matches as back-references. Show how
+repeated phrases get compressed to tiny pointers. Connect to entropy: LZ approaches
+the entropy rate for stationary sources as the window grows.
+
+### Byte Pair Encoding & Tokenization — How LLMs Read Text
+The bridge from compression to AI. Scene 1: **Byte Pair Encoding (BPE)** — start
+with character-level tokens. Find the most frequent adjacent pair, merge it into a
+new token, repeat. Animate each merge step: the vocabulary grows, the sequence
+shrinks. Show the token count dropping with each iteration. Slider controls number
+of merge steps — at 0 merges it's raw characters, at many merges common words become
+single tokens. Scene 2: **Tokenization in practice** — paste a sentence (or use
+presets) and show how GPT-style tokenizers split it. Common words ("the", "and")
+are single tokens. Rare words get split into subwords. Numbers and code get split
+character by character. Visualize the token boundaries with colored blocks.
+Scene 3: **Why tokenization matters for LLMs** — the model sees token IDs, not
+characters. Show the same sentence in different tokenizations (character, word, BPE)
+and count the sequence length. Shorter sequences = less computation = longer context.
+Connect back to entropy: BPE is a greedy approximation of the optimal encoding, and
+the vocabulary size/sequence length tradeoff mirrors the entropy/code-length tradeoff
+from Huffman.
+
+### Arithmetic Coding — Approaching the Entropy Limit
+The theoretically optimal compression method that Huffman can only approximate.
+Visualize the unit interval [0, 1) being recursively subdivided: each symbol narrows
+the interval proportionally to its probability. Animate encoding symbol by symbol —
+the interval shrinks and the output precision grows. Show how the final interval
+width equals the probability of the entire message: −log₂(width) = message length
+in bits ≈ entropy × message length. Contrast with Huffman: arithmetic coding
+achieves fractional bits per symbol where Huffman is stuck at whole bits.
+
 ### Random Walks — The Drunkard's Path
 Scene 1: 1D random walk — a point steps left or right with equal probability.
 Animate 50 simultaneous walkers from the origin. The cloud of positions spreads
