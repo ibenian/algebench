@@ -995,8 +995,123 @@ second point closer to the first — the secant rotates toward the tangent line.
 The difference quotient Δy/Δx converges to f'(x). Scene 2: show f(x) and f'(x)
 simultaneously — when f is increasing, f' > 0; at maxima/minima, f' = 0; at
 inflection points, f'' = 0. Slider moves x; both curves highlight the
-corresponding point. Scene 3: common derivative rules animated — power rule,
-chain rule as nested transformations.
+corresponding point.
+
+### Differentiation Rules — The Algebra of Derivatives
+Scene 1: **Power rule** — animate d/dx(xⁿ) = nxⁿ⁻¹. Slider for n: show the
+original curve and its derivative side by side. The derivative's degree drops by
+one. Scene 2: **Product rule** — visualize (fg)' = f'g + fg' as areas. f and g
+are the sides of a rectangle; the derivative is the rate of area change, which
+comes from stretching each side independently. Scene 3: **Quotient rule** —
+derive from the product rule visually. Scene 4: **Chain rule** — the key to
+deep learning. f(g(x)): first g maps x to an intermediate value, then f maps
+that to the output. The derivative multiplies the stretching at each stage.
+Animate zooming into each stage: the local slope of g times the local slope of f.
+Connect to backpropagation.
+
+### Higher-Order Derivatives — Curvature & Acceleration
+Scene 1: f(x), f'(x), and f''(x) displayed simultaneously. f' is velocity
+(slope), f'' is acceleration (how the slope changes). At inflection points f'' = 0
+— the curvature switches sign. Scene 2: **Curvature κ** — the osculating circle
+at each point. Its radius = 1/κ. Slider moves along the curve: where the curve
+bends sharply, the circle is small (high curvature). Where it's nearly straight,
+the circle is huge. Scene 3: **Taylor's theorem revisited** — f'' determines the
+quadratic correction to the linear approximation. Show the tangent line (1st
+order), parabola (2nd order), and cubic (3rd order) stacking up.
+
+### Implicit Differentiation — Curves Without y = f(x)
+Not every curve can be written as y = f(x). Scene 1: the unit circle
+x² + y² = 1. At any point, dy/dx = −x/y — differentiate both sides, solve for
+dy/dx. Animate a point traveling the circle; the tangent line rotates, and
+dy/dx blows up at the top and bottom (vertical tangents). Scene 2: more exotic
+implicit curves — the folium of Descartes x³ + y³ = 3xy, lemniscate, cardioid.
+Show how implicit differentiation finds the slope at every point, even where the
+curve crosses itself.
+
+### Related Rates — Everything Changes Together
+Scene 1: a ladder sliding down a wall. The bottom slides out at a constant rate
+— how fast does the top slide down? Show the triangle in real time: slider controls
+dx/dt, the ladder length is fixed (constraint), and dy/dt is computed via
+implicit differentiation of x² + y² = L². The top accelerates as it approaches
+the ground. Scene 2: expanding balloon — radius grows, surface area and volume
+grow faster. Show all three rates simultaneously. Scene 3: shadow problems — a
+person walks away from a lamppost; animate the shadow lengthening with
+similar triangles providing the constraint.
+
+### Parametric Derivatives — Curves in Disguise
+Scene 1: a parametric curve (x(t), y(t)). The parameter t is time — a point
+traces the curve as t increases. The velocity vector (x'(t), y'(t)) is tangent
+to the curve at every point. Show it as an arrow moving with the point.
+dy/dx = (dy/dt)/(dx/dt) — the slope is the ratio of vertical to horizontal
+speed. Scene 2: **Speed vs velocity** — speed |v| = √(x'² + y'²) is the
+magnitude. The point moves fast where the velocity arrow is long, slow where
+it's short. Scene 3: **Parametric acceleration** — the acceleration vector
+(x''(t), y''(t)) points toward the center of curvature. Decompose into tangential
+(speeding up/slowing down) and normal (turning) components. Scene 4: **Arc
+length** — integrate speed: L = ∫|v| dt. Animate the arc length accumulating as
+the point travels.
+
+### Polar Derivatives — Rates of Change in r and θ
+Scene 1: a polar curve r = f(θ). A point traces the curve as θ increases.
+dr/dθ measures how fast the distance from the origin changes per radian of sweep.
+Show dr/dθ as the radial component of the velocity. Scene 2: **Slope in polar
+coordinates** — dy/dx in terms of r and θ. Not simply dr/dθ! Convert to
+Cartesian: x = r cos θ, y = r sin θ, then differentiate parametrically. Show the
+tangent line at each point of a cardioid or rose curve. Scene 3: **Area in polar
+coordinates** — dA = ½r² dθ. Animate the area sweeping out sector by sector.
+Compare with Cartesian area (rectangles vs pie slices).
+
+### Partial Derivatives — Slopes in Multiple Directions
+Scene 1: a surface z = f(x, y) in 3D. Slice it with a plane parallel to xz
+(fixing y) — the cross-section is a curve, and its slope is ∂f/∂x. Slice with
+a plane parallel to yz — that slope is ∂f/∂y. Animate the slicing planes
+sweeping across the surface. Scene 2: **The gradient vector** ∇f = (∂f/∂x,
+∂f/∂y) points uphill on the surface. Show gradient arrows at every point on a
+contour plot — they're always perpendicular to level curves. Drop a ball — it
+follows the negative gradient downhill (connect to gradient descent in ML).
+
+### The Total Derivative — How Everything Changes at Once
+Scene 1: for f(x, y) along a path (x(t), y(t)), the total derivative
+df/dt = (∂f/∂x)(dx/dt) + (∂f/∂y)(dy/dt). Animate a point moving along a path
+on the surface; show the contributions from each partial derivative separately
+as colored arrows, then their sum as the actual rate of change. Scene 2: **The
+Jacobian matrix** — for a vector-valued function F: ℝ² → ℝ², the Jacobian is
+the matrix of all partial derivatives. Visualize as a local linear map: zoom
+into a small region, the Jacobian transforms tiny circles into ellipses. The
+determinant of the Jacobian = local area scaling (connect to the determinant
+lesson in linear algebra).
+
+### Directional Derivatives — Slopes in Any Direction
+Scene 1: at a point on a surface, pick any direction (angle slider θ). The
+directional derivative D_u f is the slope in that direction — a slice at angle θ.
+Rotate θ through 360°: the directional derivative varies sinusoidally. It's
+maximized in the gradient direction and zero perpendicular to it. Scene 2: show
+the "derivative in every direction" as a polar plot centered at the point. The
+shape is always an ellipse (for smooth functions) — its major axis points along
+the gradient.
+
+### The Hessian — Curvature of Surfaces
+Scene 1: the matrix of second partial derivatives. For f(x, y), the Hessian is
+2×2: [[f_xx, f_xy], [f_xy, f_yy]]. At a critical point (where ∇f = 0), the
+Hessian determines the shape: both eigenvalues positive → local minimum (bowl),
+both negative → local maximum (dome), opposite signs → saddle point. Animate
+a surface morphing through all three cases. Scene 2: **Second derivative test**
+— compute det(H) and f_xx to classify. Show the eigenvalues of the Hessian
+as the principal curvatures — the surface curves at different rates in different
+directions. Connect to optimization in ML: the Hessian determines whether a
+critical point is a minimum or a saddle.
+
+### Optimization — Finding Extrema
+Scene 1: **Single variable** — find maxima and minima of f(x). First derivative
+= 0 gives candidates. Second derivative classifies them. Animate: the tangent
+line sweeps along the curve, pausing where it's horizontal. Scene 2:
+**Multivariable unconstrained** — find the minimum of f(x, y). The gradient
+points uphill; follow it downhill. Show gradient descent on a 3D surface with
+contour lines. Scene 3: **Constrained optimization & Lagrange multipliers** —
+minimize f(x, y) subject to g(x, y) = 0. The constraint is a curve on the
+surface. The solution is where the constraint curve is tangent to a level curve
+of f — where ∇f = λ∇g. Animate ∇f and ∇g as arrows: at the optimum they're
+parallel.
 
 ### Integrals — Accumulated Area
 Scene 1: Riemann sums. Rectangle bars approximate the area under f(x). Slider
@@ -1007,13 +1122,25 @@ Animate the area accumulating as x slides right; the height of F(x) tracks the
 accumulated area. Scene 3: signed area — when f < 0, the integral subtracts.
 Show cancellation between positive and negative regions.
 
-### Multivariable Calculus — Surfaces & Partial Derivatives
-Scene 1: a surface z = f(x, y) in 3D. Slice it with planes parallel to xz and yz
-to reveal partial derivatives — the slope in each direction independently.
-Scene 2: the gradient ∇f as a vector field on the surface pointing uphill.
-Drop a ball — it follows the negative gradient downhill (connect to gradient
-descent in ML). Scene 3: contour plots — level curves of the surface projected
-onto the xy-plane. The gradient is always perpendicular to contour lines.
+### Integration Techniques — Tools of the Trade
+Scene 1: **Substitution (u-sub)** — change variables to simplify. Show the
+original integral as an area, apply the substitution as a coordinate stretch,
+show the transformed (simpler) integral has the same area. Scene 2:
+**Integration by parts** — ∫u dv = uv − ∫v du. Visualize as a rectangle:
+the area under one function relates to the area under another via the
+rectangle's geometry. Scene 3: **Partial fractions** — decompose a rational
+function into simpler pieces. Show the original curve as the sum of simpler
+curves, each easy to integrate.
+
+### Multiple Integrals — Volume & Beyond
+Scene 1: **Double integrals** — integrate f(x, y) over a region R. Visualize
+as the volume under the surface above R. Show the iterated integral: first
+integrate along x (stacking slices), then along y (stacking the slices).
+Animate the slicing. Scene 2: **Change of variables** — polar, cylindrical,
+spherical. Show how the integration region simplifies: a circle in Cartesian is
+ugly, but in polar it's just r ≤ R. The Jacobian determinant (r for polar,
+r² sin φ for spherical) scales the area element. Scene 3: **Triple integrals**
+— volume of a 3D region. Animate the integration as nested slicing.
 
 ### Taylor Series — Polynomial Doppelgängers
 Approximate any smooth function with polynomials. Start with f(x) = eˣ at x = 0.
@@ -1033,6 +1160,18 @@ converge (sink). Animate tiny circles expanding or contracting to show divergenc
 Scene 3: **Curl** — a 2D vector field with rotation. Place a tiny paddlewheel at
 each point — it spins where curl is nonzero. Scene 4: connect them — gradient
 feeds into divergence (Laplacian), curl of gradient is always zero.
+
+### Stokes' & Green's & Gauss's Theorems — The Big Unifiers
+The three theorems that connect local derivatives to global integrals. Scene 1:
+**Green's theorem** — the circulation of a vector field around a closed curve
+equals the double integral of curl over the enclosed region. Animate: show the
+tiny paddlewheels inside the region; their net spin = the total circulation
+around the boundary. Scene 2: **Stokes' theorem** — generalization to 3D
+surfaces. The circulation around the boundary curve of a surface = the flux of
+curl through the surface. Scene 3: **Gauss's divergence theorem** — the net flux
+out of a closed surface = the triple integral of divergence inside. Animate
+arrows piercing the surface; their net outflow equals the total source strength
+inside.
 
 ### Line & Surface Integrals — Adding Up Along Paths
 Scene 1: a vector field with a curve through it. The line integral ∫F·dr sums
