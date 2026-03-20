@@ -1398,3 +1398,97 @@ are Nash equilibria. Animate trajectories from different starting populations.
 Classic games: Rock-Paper-Scissors (cycling orbits, no stable equilibrium),
 Hawk-Dove (stable mixed equilibrium), Stag Hunt (two stable equilibria with
 basins of attraction).
+
+---
+
+## 10. Theory of Computation
+
+### Finite Automata — Machines That Read
+Scene 1: **Deterministic Finite Automaton (DFA)** — states as nodes, transitions
+as directed edges labeled with input symbols. Animate processing a string:
+a glowing token hops from state to state as each character is consumed. Accept
+state glows green; reject state glows red. Slider steps through the input
+character by character. Scene 2: **Nondeterministic Finite Automaton (NFA)** —
+the token splits at nondeterministic branches, exploring all paths simultaneously.
+If ANY path reaches an accept state, the string is accepted. Show the branching
+tree of states. Scene 3: **NFA → DFA conversion** (subset construction) —
+animate each DFA state as a set of NFA states. The DFA can be exponentially
+larger, but it always exists. Connect to regular expressions: every regex
+compiles to an NFA.
+
+### Regular Expressions — Pattern Matching as Machines
+Scene 1: a regex pattern and its equivalent NFA side by side. Type a test string
+— the NFA animates processing it. Highlight matching substrings. Scene 2: build
+up regex operations visually — **concatenation** (chain two automata),
+**alternation** (fork into two paths), **Kleene star** (add a loop-back edge).
+Each operation transforms the automaton graph. Scene 3: **The pumping lemma** —
+show why some languages aren't regular. Animate: if a string is long enough,
+it must loop through a state. That loop can be repeated (pumped) — if pumping
+breaks membership, the language isn't regular. Visualize with aⁿbⁿ: the
+automaton can't count.
+
+### Pushdown Automata — Machines with Memory
+Scene 1: a PDA — like a DFA but with a stack. Animate stack operations: push
+symbols on transitions, pop to match. Process a string like aⁿbⁿ: push a's,
+then pop for each b. If the stack empties exactly when the string ends → accept.
+Show the stack growing and shrinking alongside state transitions. Scene 2:
+**Context-free grammars** — parse trees for arithmetic expressions. The grammar
+generates the language; the PDA recognizes it. Show both representations for the
+same string. Scene 3: limitations — the pumping lemma for CFLs. aⁿbⁿcⁿ can't
+be parsed by any PDA.
+
+### Turing Machines — Universal Computation
+Scene 1: the classic Turing machine — an infinite tape, a head that reads/writes
+and moves left/right, a finite state controller. Animate processing: the head
+scans, writes, moves, changes state. Show a simple computation: binary increment
+or palindrome check. The tape contents and head position update at each step.
+Scene 2: **Universality** — a Turing machine that simulates other Turing machines.
+The input tape encodes both the program and the data. This is the foundation of
+stored-program computers. Scene 3: **Church-Turing thesis** — anything
+"computable" can be computed by a Turing machine. Show equivalent models: lambda
+calculus, register machines, cellular automata — all simulate each other.
+
+### The Halting Problem — The Limits of Computation
+Scene 1: pose the question — can a program analyze another program and decide
+whether it will halt or loop forever? Scene 2: **The diagonal argument** —
+assume a halting oracle H exists. Construct a program D that calls H on itself
+and does the opposite. If H says D halts, D loops. If H says D loops, D halts.
+Contradiction. Animate the self-referential paradox as a flowchart that folds
+back on itself. Scene 3: **Consequences** — undecidable problems are everywhere.
+Can a program determine if two programs produce the same output? (No — Rice's
+theorem.) Can a compiler determine if code has a bug? (Not in general.)
+
+### Computational Complexity — P, NP & Beyond
+Scene 1: **P** — problems solvable in polynomial time. Animate sorting (O(n log n))
+and searching (O(log n)) — fast algorithms, the time bar stays manageable as input
+grows. Scene 2: **NP** — problems where solutions are verifiable in polynomial time
+but (maybe) not findable. Show SAT: given a boolean formula, try assignments
+(exponential search) but verify a solution instantly. Scene 3: **NP-completeness**
+— show reductions as transformations. A graph coloring problem transforms into a
+SAT problem: if you can solve one, you can solve the other. Animate the reduction.
+Scene 4: **P vs NP** — the million-dollar question. Show the Venn diagram of
+complexity classes. If P = NP, every easily verifiable problem is easily solvable.
+Slider for input size: polynomial vs exponential growth rates diverge dramatically.
+
+### Lambda Calculus — Computation Without Machines
+Scene 1: **Lambda expressions** — functions as first-class objects.
+λx.x is identity, λx.λy.x selects the first argument. Animate β-reduction:
+(λx.body)(arg) replaces x with arg in body. Step through reductions one at a time.
+Scene 2: **Church numerals** — represent numbers as functions. 0 = λf.λx.x,
+1 = λf.λx.f(x), 2 = λf.λx.f(f(x)). Addition and multiplication are function
+compositions. Animate: applying the "3" function three times. Scene 3: **The
+Y-combinator** — recursion without naming. Show how a lambda expression can call
+itself through self-application. Animate the fixed-point unfolding: each step
+peels off one layer of recursion.
+
+### Cellular Automata — Simple Rules, Complex Behavior
+Scene 1: **1D elementary automata** — a row of cells, each black or white. A
+3-bit rule determines the next generation. Show all 256 rules; slider selects
+one. Rule 110 produces complex, seemingly random patterns from a single black
+cell — and it's Turing complete. Scene 2: **Conway's Game of Life** — 2D grid
+with birth/survival/death rules. Start from classic patterns: gliders, oscillators,
+glider guns. Animate generations. Show how simple local rules produce global
+structure — spaceships, logic gates, even universal computation. Scene 3:
+**Connection to computation** — a glider gun IS a clock signal. Glider collisions
+implement logic gates. Life can simulate a Turing machine — and therefore compute
+anything.
