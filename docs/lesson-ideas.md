@@ -1360,6 +1360,61 @@ is zero. Deform the path continuously; the integral stays constant. Scene 3:
 residues — a pole inside the contour contributes 2πi times its residue. Animate
 the contour shrinking around the pole.
 
+### Analytic Continuation — Extending Functions Beyond Their Domain
+Scene 1: start with a power series like ∑zⁿ = 1/(1−z), valid only inside the
+unit disk |z| < 1. Render the function as a surface over the complex plane — it
+blows up at z = 1. But 1/(1−z) makes sense everywhere except z = 1. The power
+series and the closed form AGREE inside the disk; the closed form extends the
+function outside. Animate: the domain grows from the small disk to the whole
+plane minus the pole. Scene 2: **Overlapping disks** — place a new power series
+centered at a different point. Its disk of convergence overlaps with the original.
+In the overlap region, both series agree. The new series extends the function
+further. Animate a chain of overlapping disks crawling across the complex plane,
+each extending the function a little further. Scene 3: **Monodromy** — continue
+log(z) around the origin. After one full loop you're on a different branch — the
+function doesn't return to its starting value. The Riemann surface resolves this
+by providing separate sheets.
+
+### The Riemann Zeta Function — Where Number Theory Meets Complex Analysis
+Scene 1: **The series** ζ(s) = ∑1/nˢ for real s > 1. Show the partial sums
+converging as a bar chart: each term 1/nˢ gets smaller. Slider for s: at s = 2
+it converges to π²/6. At s → 1⁺ it diverges (harmonic series). Scene 2: **Analytic
+continuation to the complex plane** — extend ζ(s) from real s > 1 to all complex
+s ≠ 1 using the functional equation ζ(s) = 2ˢπˢ⁻¹sin(πs/2)Γ(1−s)ζ(1−s). Render
+|ζ(s)| as a 3D surface over the complex plane. The pole at s = 1 is visible as a
+spike. The trivial zeros at s = −2, −4, −6, ... are visible as the surface
+touching zero. Scene 3: **The critical strip** — zoom into 0 < Re(s) < 1. The
+non-trivial zeros lie here. Show known zeros on the critical line Re(s) = 1/2 as
+points where the surface touches zero. The Riemann Hypothesis: ALL non-trivial
+zeros have Re(s) = 1/2. Scene 4: **Connection to primes** — the Euler product
+ζ(s) = ∏(1 − p⁻ˢ)⁻¹ over all primes. Show how each prime factor contributes a
+factor to the product. The distribution of primes is encoded in the zeros of ζ.
+
+### Möbius Transformations — The Geometry of f(z) = (az+b)/(cz+d)
+Scene 1: Möbius transformations map circles and lines to circles and lines. Start
+with a grid; apply f(z) = (az+b)/(cz+d) with sliders for a, b, c, d. Watch
+straight lines become circles and vice versa. Scene 2: **Fixed points** — most
+Möbius transformations have exactly two fixed points. Classify: elliptic (rotation
+around fixed points), hyperbolic (attraction/repulsion between fixed points),
+parabolic (one fixed point, translation-like). Animate flows. Scene 3:
+**Stereographic projection** — Möbius transformations on the complex plane
+correspond to rotations of the Riemann sphere. Show the sphere with the complex
+plane as its equatorial projection. Apply a Möbius transformation: the plane
+deformation corresponds to a rigid rotation of the sphere.
+
+### Laurent Series & Singularities — The Bad Points
+Scene 1: **Types of singularities.** A removable singularity (like sin(z)/z at
+z = 0) — the function has a "hole" that can be filled. A pole (like 1/z² at z = 0)
+— the function blows up. An essential singularity (like e^(1/z) at z = 0) — the
+function oscillates wildly. Render each as a surface; the visual character is
+dramatically different. Scene 2: **Laurent series** — like Taylor series but with
+negative powers. The principal part (negative powers) describes the singularity.
+No negative powers → removable. Finitely many → pole. Infinitely many → essential.
+Scene 3: **The Great Picard theorem** — near an essential singularity, the function
+takes EVERY complex value (with at most one exception) infinitely often. Animate
+e^(1/z) near z = 0: the function visits every color on the color wheel infinitely
+many times as you spiral inward.
+
 ---
 
 ## 8. Signal Processing
