@@ -174,6 +174,21 @@ independent sequences simultaneously — they all converge but at different rate
 Slider for p lets the student see convergence works for any probability. Connect
 to Monte Carlo: the running average IS a Monte Carlo estimate of p.
 
+### Sampling Theory — Sample vs Population
+The fundamental distinction in statistics. Scene 1: a large population of dots
+with a true mean μ and true variance σ². Draw a random sample of size n (slider)
+— highlight the sampled dots. Compute the sample mean x̄ and sample variance s².
+Repeat many times: the sample statistics scatter around the population values.
+Show the sampling distribution of x̄ as a histogram — it's narrower than the
+population (by √n). Scene 2: **sample vs population notation** side by side —
+μ vs x̄, σ² vs s², N vs n. Show why we divide by (n−1) for sample variance
+(Bessel's correction): animate n samples, compute variance with /n and /(n−1),
+show that /n is biased low while /(n−1) hits the true variance on average.
+Scene 3: **standard error** — the standard deviation of the sampling distribution.
+SE = σ/√n. Slider for n: as n grows, SE shrinks, the sampling distribution
+tightens. This is WHY larger samples give more precise estimates. Connect to
+confidence intervals: CI width ∝ SE ∝ 1/√n.
+
 ### Monte Carlo Estimation
 Visualize random sampling for estimating probabilities and integrals. Scatter random
 points in a region; color by hit/miss. Show convergence of the estimate as sample
@@ -217,7 +232,7 @@ event with probability p gives −log(p) bits of information. Rare events are mo
 informative. Bridge to Bayesian updating: evidence that updates your belief the most
 is the most informative.
 
-### KL Divergence — Distance Between Distributions
+### KL (Kullback-Leibler) Divergence — Distance Between Distributions
 How different are two distributions? Visualize P (true) and Q (approximation) as
 two overlaid curves. The KL divergence D_KL(P‖Q) = ∑P log(P/Q) is shown as the
 shaded area of the ratio curve. Slider morphs Q toward or away from P; the
@@ -332,7 +347,195 @@ by the structural equations.
 
 ---
 
-## 2. Physics Domain Libraries
+## 2. Machine Learning
+
+### Linear Regression — Fitting a Line
+The simplest ML model. Scatter data points in 3D (x, y, residual on z-axis).
+A plane (or line in 2D) slides through the cloud — sliders for slope and intercept.
+The residuals are visible as vertical bars from each point to the line. The sum of
+squared residuals updates live. Animate gradient descent: the line tilts and shifts
+step by step toward the least-squares solution. Show the loss surface as a bowl-shaped
+paraboloid in (slope, intercept, loss) space — gradient descent rolls downhill.
+
+### Gradient Descent — Walking Downhill
+The optimization engine behind all of ML. Scene 1: a 2D loss surface (contour plot
+or 3D terrain). Drop a ball at a random point — it follows the negative gradient
+downhill. Sliders for learning rate and starting position. Too large a learning rate
+→ the ball overshoots and oscillates. Too small → it crawls. Scene 2: compare
+variants side by side — vanilla GD, momentum (ball gains speed), Adam (adaptive
+per-parameter rates). Scene 3: saddle points and local minima — show the ball
+getting stuck, then escaping with momentum.
+
+### Logistic Regression — Drawing a Boundary
+Two classes of points in 2D. The decision boundary is a line (or curve in feature
+space). Slider for the threshold — the sigmoid function stretches and compresses,
+moving the boundary. Show the sigmoid curve alongside the scatter plot: each point's
+predicted probability updates as the boundary shifts. Animate gradient descent on
+the cross-entropy loss surface. Connect to probability: the sigmoid output IS a
+conditional probability P(y=1|x).
+
+### Bias-Variance Tradeoff — Underfitting vs Overfitting
+The central tension in ML. Scene 1: fit polynomials of increasing degree to noisy
+data. Degree slider: at degree 1 the line underfits (high bias). At degree 15 it
+wiggles through every point (high variance, overfitting). Show train error decreasing
+monotonically while test error forms a U-curve. Scene 2: visualize the decomposition
+— total error = bias² + variance + irreducible noise. Three stacked area charts
+that trade off as model complexity increases.
+
+### k-Nearest Neighbors — Voting by Proximity
+Scatter labeled points in 2D/3D. For a query point (draggable), highlight its k
+nearest neighbors and show the majority vote. Slider for k: at k=1 the boundary is
+jagged (overfitting). At k=n it's a single class everywhere (underfitting). Animate
+the decision boundary as k changes — a Voronoi-like tessellation that smooths out
+with larger k. Show how distance metric matters: toggle between Euclidean and
+Manhattan distance, watch the boundary reshape.
+
+### Decision Trees & Random Forests — Splitting the Space
+Scene 1: a 2D feature space with labeled points. The tree makes axis-aligned splits
+— animate each split as a line that partitions the space. Show the tree structure
+growing alongside the spatial partitions. Slider for max depth: shallow tree
+underfits, deep tree overfits. Scene 2: random forests — show 10 trees side by side,
+each trained on a bootstrap sample with random feature subsets. Each tree makes
+different splits; the ensemble vote smooths the boundary. Visualize the variance
+reduction.
+
+### Impurity Measures — Entropy vs Gini vs Misclassification
+How does a decision tree decide where to split? Compare the three impurity measures
+side by side as curves over class probability p ∈ [0, 1] for a binary classification:
+
+- **Entropy** H(p) = −p log₂p − (1−p) log₂(1−p) — from information theory
+- **Gini impurity** G(p) = 2p(1−p) — the probability of misclassifying a random
+  sample if labeled according to the class distribution
+- **Misclassification error** E(p) = 1 − max(p, 1−p) — the simplest measure
+
+All three peak at p=0.5 (maximum uncertainty) and hit zero at p=0 and p=1 (pure
+nodes). But their shapes differ: entropy is the most curved (most aggressive at
+penalizing impurity), Gini is a close approximation, misclassification error is
+a triangle (piecewise linear, insensitive to probability shifts away from 0.5).
+Slider moves a split point through data; show the information gain (parent impurity
+minus weighted child impurity) for all three measures simultaneously. Explain why
+Gini and entropy usually agree but misclassification error can miss good splits.
+
+### Classification Metrics — Precision, Recall, F1 & ROC
+Scene 1: **The confusion matrix as a probability rectangle.** Four quadrants:
+true positives, false positives, true negatives, false negatives. A threshold
+slider moves the decision boundary — watch the four regions resize in real time.
+Derive each metric geometrically from the rectangle areas:
+
+- **Precision** = TP / (TP + FP) — "of those I called positive, how many are?"
+- **Recall / Sensitivity** = TP / (TP + FN) — "of the actual positives, how many
+  did I catch?"
+- **Specificity** = TN / (TN + FP) — "of the actual negatives, how many did I
+  correctly exclude?"
+- **F1 Score** = 2 · (Precision · Recall) / (Precision + Recall) — harmonic mean,
+  penalizes imbalance between precision and recall
+
+Scene 2: **The precision-recall tradeoff.** As the threshold slider moves,
+precision and recall trade off — plot both as curves against threshold. Show the
+F1 score as a third curve peaking where the tradeoff is best balanced. Connect to
+base rate: with rare positives (low prevalence), high precision is hard even with
+high recall.
+
+Scene 3: **ROC curve.** Plot True Positive Rate (recall) vs False Positive Rate
+(1 − specificity) as the threshold sweeps. The diagonal is random guessing; a
+perfect classifier hugs the top-left corner. Shade the AUC (Area Under Curve) —
+the probability that the model ranks a random positive above a random negative.
+Slider for model quality: watch the ROC curve bow upward and AUC increase.
+
+### Support Vector Machines — The Widest Street
+Two classes of points in 2D. The SVM finds the hyperplane that maximizes the margin
+(the widest "street" between classes). Animate the margin as parallel lines that
+push apart until they hit the nearest points (support vectors). Highlight the support
+vectors — only they determine the boundary. Slider adds noise: some points cross
+the margin, introducing slack variables. Second scene: the kernel trick — data
+that's not linearly separable in 2D gets lifted to 3D where a plane separates it.
+Animate the lift and show the nonlinear boundary projected back to 2D.
+
+### Neural Networks — Layers of Functions
+Scene 1: a single neuron — inputs x₁, x₂ as arrows, weights as slider-controlled
+multipliers, summation, activation function (sigmoid/ReLU). Show the output surface
+as a 3D landscape over (x₁, x₂) — the activation function shapes it. Scene 2: a
+2-layer network with 2–4 hidden neurons. Each hidden neuron carves a linear boundary;
+the output neuron combines them into a nonlinear boundary. Animate training: watch
+the boundaries rotate and shift as weights update. Scene 3: the loss landscape of a
+small network — a complex terrain with multiple minima, saddle points, and ridges.
+
+### Backpropagation — The Chain Rule at Scale
+How gradients flow backward through a neural network. Visualize a computation graph:
+nodes are operations (multiply, add, ReLU), edges carry values forward and gradients
+backward. Animate forward pass (values propagate left to right) then backward pass
+(gradients flow right to left via the chain rule). Highlight how each node computes
+its local gradient and multiplies by the upstream gradient. Show vanishing gradients:
+in a deep sigmoid network, gradients shrink exponentially — color-code edge thickness
+by gradient magnitude.
+
+### Dimensionality Reduction — PCA & t-SNE
+Scene 1: **PCA** — a 3D point cloud with an elongated shape. The first principal
+component is the direction of maximum variance — show it as a vector through the
+cloud. Project all points onto this vector (animate the collapse). The second PC is
+perpendicular. Slider for number of components kept: at 1 it's a line, at 2 a plane,
+at 3 the full space. Show reconstruction error vs components. Scene 2: **t-SNE** —
+high-dimensional data (e.g. digit embeddings) mapped to 2D. Animate the optimization:
+points repel and attract until clusters form. Slider for perplexity — low values
+show local structure, high values show global structure.
+
+### Clustering — k-Means & Beyond
+Scene 1: **k-Means** — scatter points in 2D/3D. Place k centroids randomly.
+Animate the two-step loop: assign each point to nearest centroid (Voronoi coloring),
+then move centroids to cluster means. Repeat until convergence. Slider for k.
+Show how different initializations lead to different solutions. Scene 2:
+**Hierarchical clustering** — build a dendrogram by iteratively merging nearest
+clusters. Animate the merges as connections forming in 3D space.
+
+### Regularization — Keeping Models Honest
+Start from linear regression with many features (high-dimensional). Without
+regularization, weights grow large and the model overfits. Slider for regularization
+strength λ. L2 (Ridge): visualize the weight vector shrinking toward zero — the
+constraint is a sphere in weight space, the solution is where the loss ellipse
+touches the sphere. L1 (Lasso): the constraint is a diamond — solutions hit the
+corners, driving some weights exactly to zero (feature selection). Show the
+coefficient paths as λ increases: all weights shrink (Ridge) vs some hit zero (Lasso).
+
+### Cross-Validation — Honest Model Evaluation
+Why you can't test on training data. Scene 1: train a flexible model on all data —
+perfect fit, terrible generalization. Scene 2: k-fold cross-validation — animate
+the data being split into k colored folds. For each fold, highlight it as the test
+set while the rest trains. Show k different test scores and their average. Slider
+for k: at k=n it's leave-one-out. Show how the variance of the estimate decreases
+with more folds. Connect to the bias-variance tradeoff.
+
+### Attention & Transformers — What the Model Looks At
+Scene 1: **Self-attention** — a sequence of token embeddings as colored vectors in
+3D. For a selected query token, visualize attention weights as lines to all other
+tokens — line thickness proportional to attention score. Animate the Q, K, V
+projections: query and key vectors determine attention, value vectors get weighted
+and summed. Slider selects different query positions. Scene 2: **Multi-head
+attention** — show 4 heads simultaneously, each attending to different patterns
+(one head tracks position, another syntax, another semantics). Scene 3: the full
+transformer block — attention → add & norm → FFN → add & norm, as a flow diagram
+with data shapes annotated at each stage.
+
+### Embeddings — Meaning as Geometry
+Words (or tokens) as points in high-dimensional space, projected to 3D. Show
+classic relationships: king − man + woman ≈ queen as vector arithmetic in the
+embedding space. Slider morphs between different projections (PCA axes). Cluster
+by semantic similarity — colors reveal groupings the model learned. Scene 2:
+positional embeddings — show how position information is encoded as sinusoidal
+patterns added to token embeddings. Connect to the tokenization lesson: the
+journey from text → tokens → embeddings → attention.
+
+### Loss Functions — What the Model Optimizes
+A gallery of loss functions as interactive surfaces. Scene 1: **MSE** — a smooth
+parabolic bowl, easy to optimize. Scene 2: **Cross-entropy** — steeper near wrong
+predictions, flatter near correct ones (why it trains faster than MSE for
+classification). Scene 3: **Huber loss** — MSE near zero, linear in the tails
+(robust to outliers). Slider adds outliers to the data; watch MSE loss explode
+while Huber stays calm. Connect to gradient descent: the loss surface shape
+determines how the optimizer behaves.
+
+---
+
+## 3. Physics Domain Libraries
 
 ### Quantum Mechanics Domain
 
