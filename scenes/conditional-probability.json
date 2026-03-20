@@ -27,8 +27,9 @@
         "target": [
           5,
           5,
-          0
-        ]
+          -2
+        ],
+        "up": [0, 0, 1]
       },
       "views": [
         {
@@ -41,8 +42,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "Angled view"
         },
         {
@@ -55,8 +57,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "Face-on probability square"
         }
       ],
@@ -1262,8 +1265,9 @@
         "target": [
           5,
           5,
-          0
-        ]
+          -2
+        ],
+        "up": [0, 0, 1]
       },
       "views": [
         {
@@ -1276,8 +1280,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "Angled view showing Z-layers"
         },
         {
@@ -1290,8 +1295,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "Face-on probability square"
         },
         {
@@ -1304,8 +1310,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "See the Z-layers from the side"
         }
       ],
@@ -2686,8 +2693,9 @@
         "target": [
           5,
           5,
-          0
-        ]
+          -2
+        ],
+        "up": [0, 0, 1]
       },
       "views": [
         {
@@ -2700,8 +2708,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "Angled view showing Z-layers"
         },
         {
@@ -2714,8 +2723,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "Face-on probability square"
         },
         {
@@ -2728,8 +2738,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "See the Z-layers from the side"
         }
       ],
