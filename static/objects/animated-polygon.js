@@ -3,6 +3,53 @@ import { parseColor, addLabel3D } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { dataToWorld, dataLenToWorld } from '/coords.js';
 
+// ── Shared noise texture (generated once, reused across all standard-shaded polygons) ──
+let _noiseTexture = null;
+function _getNoiseTexture() {
+    if (_noiseTexture) return _noiseTexture;
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(size, size);
+    for (let i = 0; i < img.data.length; i += 4) {
+        const v = 205 + Math.floor(Math.random() * 50);
+        img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+        img.data[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    _noiseTexture = new THREE.CanvasTexture(canvas);
+    _noiseTexture.wrapS = _noiseTexture.wrapT = THREE.RepeatWrapping;
+    return _noiseTexture;
+}
+
+// Project polygon world-space vertices onto the polygon plane as normalised [0,1] UVs.
+function _computePlaneUVs(wVerts, normal) {
+    const n = normal.clone().normalize();
+    const v0 = new THREE.Vector3(wVerts[0][0], wVerts[0][1], wVerts[0][2]);
+    const tang = new THREE.Vector3(
+        wVerts[1][0] - wVerts[0][0],
+        wVerts[1][1] - wVerts[0][1],
+        wVerts[1][2] - wVerts[0][2],
+    );
+    tang.addScaledVector(n, -tang.dot(n));
+    if (tang.length() < 1e-9) return wVerts.map(() => [0, 0]);
+    tang.normalize();
+    const bitang = new THREE.Vector3().crossVectors(n, tang);
+
+    const proj = wVerts.map(v => {
+        const dx = v[0] - v0.x, dy = v[1] - v0.y, dz = v[2] - v0.z;
+        return [dx * tang.x + dy * tang.y + dz * tang.z,
+                dx * bitang.x + dy * bitang.y + dz * bitang.z];
+    });
+    const minU = Math.min(...proj.map(p => p[0]));
+    const minV = Math.min(...proj.map(p => p[1]));
+    const maxU = Math.max(...proj.map(p => p[0]));
+    const maxV = Math.max(...proj.map(p => p[1]));
+    const scale = Math.max(maxU - minU, maxV - minV) || 1;
+    return proj.map(([u, v]) => [(u - minU) / scale, (v - minV) / scale]);
+}
+
 export function renderAnimatedPolygon(el, view) {
     const color = parseColor(el.color || '#aa66ff');
     const opacityRaw = el.opacity !== undefined ? el.opacity : 0.3;
@@ -104,34 +151,83 @@ export function renderAnimatedPolygon(el, view) {
         return new Float32Array(positions);
     }
 
+    const isStandard = sh.type === 'standard';
+
     const FILL_MAX_FLOATS = 12 * 512 * 3;
+    const UV_MAX_FLOATS   = 12 * 512 * 2;
     const fillAttr = new THREE.Float32BufferAttribute(new Float32Array(FILL_MAX_FLOATS), 3);
     fillAttr.setUsage(THREE.DynamicDrawUsage);
+    const uvAttr = isStandard
+        ? new THREE.Float32BufferAttribute(new Float32Array(UV_MAX_FLOATS), 2)
+        : null;
+    if (uvAttr) uvAttr.setUsage(THREE.DynamicDrawUsage);
+
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', fillAttr);
+    if (uvAttr) geom.setAttribute('uv', uvAttr);
+
     function applyGeomVerts(dataVerts) {
         const arr = rebuildGeometry(dataVerts);
         fillAttr.array.set(arr);
         fillAttr.needsUpdate = true;
         geom.setDrawRange(0, arr.length / 3);
         geom.computeVertexNormals();
+
+        if (uvAttr) {
+            // Recompute planar UVs from current world vertices
+            const wV = dataVerts.map(v => dataToWorld(v));
+            const a2 = new THREE.Vector3(wV[1][0]-wV[0][0], wV[1][1]-wV[0][1], wV[1][2]-wV[0][2]);
+            const b2 = new THREE.Vector3(wV[2][0]-wV[0][0], wV[2][1]-wV[0][1], wV[2][2]-wV[0][2]);
+            const norm2 = a2.clone().cross(b2).normalize();
+            const planeUVs = _computePlaneUVs(wV, norm2);
+
+            const uvData = [];
+            // Top face
+            for (let i = 1; i < wV.length - 1; i++) {
+                uvData.push(...planeUVs[0], ...planeUVs[i], ...planeUVs[i+1]);
+            }
+            // Bottom face
+            for (let i = 1; i < wV.length - 1; i++) {
+                uvData.push(...planeUVs[0], ...planeUVs[i+1], ...planeUVs[i]);
+            }
+            // Sides (degenerate UVs)
+            for (let i = 0; i < wV.length; i++) {
+                uvData.push(0,0, 0,0, 0,0,  0,0, 0,0, 0,0);
+            }
+            uvAttr.array.set(uvData);
+            uvAttr.needsUpdate = true;
+        }
     }
     applyGeomVerts(currentDataVerts);
 
-    const matType = sh.type === 'basic' ? THREE.MeshBasicMaterial : THREE.MeshPhongMaterial;
-    const matOpts = {
+    const baseMatOpts = {
         color: new THREE.Color(...color),
         opacity: state.displayParams.planeOpacity * (opacity / 0.5),
         transparent: true,
         side: THREE.DoubleSide,
         depthWrite: false,
     };
-    if (matType === THREE.MeshPhongMaterial) {
-        matOpts.shininess = sh.shininess !== undefined ? sh.shininess : 30;
-        if (sh.emissive) matOpts.emissive = new THREE.Color(sh.emissive);
-        if (sh.specular) matOpts.specular = new THREE.Color(sh.specular);
+
+    let mat;
+    if (sh.type === 'basic') {
+        mat = new THREE.MeshBasicMaterial(baseMatOpts);
+    } else if (sh.type === 'standard') {
+        const repeat = sh.textureRepeat !== undefined ? sh.textureRepeat : 5;
+        const noiseTex = _getNoiseTexture();
+        noiseTex.repeat.set(repeat, repeat);
+        Object.assign(baseMatOpts, {
+            roughness: sh.roughness !== undefined ? sh.roughness : 0.85,
+            metalness: sh.metalness !== undefined ? sh.metalness : 0.08,
+            map: noiseTex,
+        });
+        if (sh.emissive) baseMatOpts.emissive = new THREE.Color(sh.emissive);
+        mat = new THREE.MeshStandardMaterial(baseMatOpts);
+    } else {
+        baseMatOpts.shininess = sh.shininess !== undefined ? sh.shininess : 30;
+        if (sh.emissive) baseMatOpts.emissive = new THREE.Color(sh.emissive);
+        if (sh.specular) baseMatOpts.specular = new THREE.Color(sh.specular);
+        mat = new THREE.MeshPhongMaterial(baseMatOpts);
     }
-    const mat = new matType(matOpts);
     const mesh = new THREE.Mesh(geom, mat);
     const _serialA = el.renderOrder !== undefined ? el.renderOrder : state._planeMeshSerial++;
     mesh.renderOrder = _serialA;

@@ -27,8 +27,9 @@
         "target": [
           5,
           5,
-          0
-        ]
+          -2
+        ],
+        "up": [0, 0, 1]
       },
       "views": [
         {
@@ -41,8 +42,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "Angled view"
         },
         {
@@ -55,8 +57,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "Face-on probability square"
         }
       ],
@@ -1262,8 +1265,9 @@
         "target": [
           5,
           5,
-          0
-        ]
+          -2
+        ],
+        "up": [0, 0, 1]
       },
       "views": [
         {
@@ -1276,8 +1280,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "Angled view showing Z-layers"
         },
         {
@@ -1290,8 +1295,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "Face-on probability square"
         },
         {
@@ -1304,8 +1310,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "See the Z-layers from the side"
         }
       ],
@@ -2642,12 +2649,23 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Asymmetry\nSame intersection, different denominators:\n---\n$P(A \\cap B) = {{toFixed(pA*pBgA,3)}}$\n---\n$P(A \\mid B) = {{toFixed(pA*pBgA,3)}} / {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n\n$P(B \\mid A) = {{toFixed(pA*pBgA,3)}} / {{pA}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pBgA,3)}}$\n---\n{{abs(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)-pBgA)<0.01 ? 'Equal here (independent)' : 'Unequal — this is the usual case'}}"
+              "content": "### Asymmetry\nSame intersection, different denominators:\n---\n$P(A \\cap B) = {{toFixed(pA*pBgA,3)}}$\n---\n$P(A \\mid B) = {{toFixed(pA*pBgA,3)}} / {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n\n$P(B \\mid A) = {{toFixed(pA*pBgA,3)}} / {{pA}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pBgA,3)}}$\n---\n{{abs(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)-pBgA)<0.01 ? 'Symmetric: P(A) ≈ P(B)' : 'Asymmetric: P(A) ≠ P(B)'}}\n{{abs(pBgA-pBgNA)<0.02 ? 'Independent: step line is horizontal' : 'Dependent: step line is off-horizontal'}}"
+            }
+          ]
+        },
+        {
+          "title": "Symmetry vs Independence",
+          "description": "Two special conditions can each make $P(A \\mid B)$ and $P(B \\mid A)$ behave in interesting ways — but they mean very different things.\n\n**Symmetry** ($P(A \\mid B) = P(B \\mid A)$): happens whenever $P(A) = P(B)$. The two events are equally common, so the same intersection divided by two equal denominators gives the same fraction. It says nothing about whether $A$ and $B$ are related.\n\n**Independence** ($P(A \\mid B) = P(A)$): knowing $B$ happened gives you no information about $A$. Equivalently $P(B \\mid A) = P(B)$ and $P(B \\mid A) = P(B \\mid \\overline{A})$ — the step line is horizontal.\n\nTry the sliders:\n- Set $P(A) = P(B)$ without making the step horizontal — you get symmetry but not independence\n- Set $P(B \\mid A) = P(B \\mid \\overline{A})$ — you get independence; $P(A \\mid B) = P(A)$ regardless of whether $P(A) = P(B)$",
+          "info": [
+            {
+              "id": "main_info",
+              "position": "top-right",
+              "content": "### Symmetry vs Independence\n---\n**Symmetry** — $P(A \\mid B) = P(B \\mid A)$?\n$P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n$P(B \\mid A) = {{toFixed(pBgA,3)}}$\n{{abs(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)-pBgA)<0.01 ? '✓ Symmetric (P(A) ≈ P(B))' : '✗ Asymmetric'}}\n{{abs(pBgA-pBgNA)<0.02 ? '✓ Independent' : '✗ Dependent'}}\n---\n**Independence** — $P(B \\mid A) = P(B \\mid \\overline{A})$?\n$P(B \\mid A) = {{pBgA}}$\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n{{abs(pBgA-pBgNA)<0.02 ? '✓ Independent — P(A|B) = P(A) = ' + pA : '✗ Dependent — P(A|B) = ' + toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3) + ' ≠ P(A) = ' + pA}}"
             }
           ]
         }
       ],
-      "prompt": "You are teaching conditional probability using the correct area-based rectangle model.\n\n## The Core Geometric Model (CRITICAL)\nThe rectangle divides into four cells:\n- **Columns** = values of X (A vs ¬A). Column WIDTH = P(X) — marginal probability.\n- **Rows within each column** = conditional distribution P(Y|X). Row HEIGHT in each column = P(Y|X).\n- **Cell area** = P(X) × P(Y|X) = P(X,Y) — joint probability.\n- The dividing line between rows is STEPPED (not horizontal) when dependent.\n- Independence means straight horizontal line: P(B|A) = P(B|¬A).\n\n## When Explaining Conditioning\n- Conditioning on B = zoom into the B-row (bottom strip)\n- After zooming: A-column occupies P(A|B) fraction, NOT P(A) fraction\n- This is why P(A|B) ≠ P(A) when dependent\n\n## Exploration Prompts\n- 'Set P(B|A) = P(B|¬A) and notice the step disappears — that is what independence looks like'\n- 'Can you find slider values where P(A|B) is actually less than P(A)?'"
+      "prompt": "You are teaching conditional probability using the correct area-based rectangle model.\n\n## The Core Geometric Model (CRITICAL)\nThe rectangle divides into four cells:\n- **Columns** = values of X (A vs ¬A). Column WIDTH = P(X) — marginal probability.\n- **Rows within each column** = conditional distribution P(Y|X). Row HEIGHT in each column = P(Y|X).\n- **Cell area** = P(X) × P(Y|X) = P(X,Y) — joint probability.\n- The dividing line between rows is STEPPED (not horizontal) when dependent.\n- Independence means straight horizontal line: P(B|A) = P(B|¬A).\n\n## When Explaining Conditioning\n- Conditioning on B = zoom into the B-row (bottom strip)\n- After zooming: A-column occupies P(A|B) fraction, NOT P(A) fraction\n- This is why P(A|B) ≠ P(A) when dependent\n\n## Summary of Geometric Rules\nUse this summary when asked, and proactively offer it on the Symmetry vs Independence step.\n\n**Independence** (P(A|B) = P(A))\n- Step line is horizontal: P(B|A) = P(B|¬A)\n- B gives no information about A\n- Geometrically: the B-row is a rectangle — same column proportions as the full square\n\n**Symmetry** (P(A|B) = P(B|A))\n- Holds when and only when P(A) = P(B) — equal column width and equal row area\n- Equivalently: P(A∩¬B) = P(¬A∩B) — the off-diagonal joints are equal\n- Same intersection P(A∩B), equal denominators P(A) = P(B)\n- Has nothing to do with whether A and B are related — you can have symmetry with strong dependence\n\n**Conditioning**\n- Zooming into a row or column changes the frame of reference\n- P(A|B) is the A-fraction of the B-row area\n- P(B|A) is the B-fraction of the A-column area\n- Same numerator P(A∩B), different denominators P(B) vs P(A)\n\n## Preset Prompts\nOn the 'Symmetry vs Independence' step, call set_preset_prompts with:\n- 'Show me the Summary of Geometric Rules'\n- 'Can you find slider values that are symmetric but dependent?'\n- 'Can you find slider values that are independent but asymmetric?'\n\n## Exploration Prompts\n- 'Set P(B|A) = P(B|¬A) and notice the step disappears — that is what independence looks like'\n- 'Can you find slider values where P(A|B) is actually less than P(A)?'"
     },
     {
       "title": "Bayes' Rule",
@@ -2675,8 +2693,9 @@
         "target": [
           5,
           5,
-          0
-        ]
+          -2
+        ],
+        "up": [0, 0, 1]
       },
       "views": [
         {
@@ -2689,8 +2708,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "Angled view showing Z-layers"
         },
         {
@@ -2703,8 +2723,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "Face-on probability square"
         },
         {
@@ -2717,8 +2738,9 @@
           "target": [
             5,
             5,
-            0
+            -2
           ],
+          "up": [0, 0, 1],
           "description": "See the Z-layers from the side"
         }
       ],
@@ -3413,8 +3435,10 @@
               "color": "#44ff66",
               "opacity": 0.85,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "type": "standard",
+                "roughness": 0.82,
+                "metalness": 0.06,
+                "emissive": "#0d3318"
               }
             },
             {
@@ -3445,8 +3469,10 @@
               "color": "#ff8800",
               "opacity": 0.7,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "type": "standard",
+                "roughness": 0.8,
+                "metalness": 0.06,
+                "emissive": "#331a00"
               }
             },
             {
@@ -3477,8 +3503,10 @@
               "color": "#2244aa",
               "opacity": 0.15,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "type": "standard",
+                "roughness": 0.78,
+                "metalness": 0.1,
+                "emissive": "#0a1040"
               }
             },
             {
@@ -3509,8 +3537,10 @@
               "color": "#cc2222",
               "opacity": 0.12,
               "shader": {
-                "type": "basic",
-                "depthWrite": false
+                "type": "standard",
+                "roughness": 0.8,
+                "metalness": 0.06,
+                "emissive": "#330808"
               }
             },
             {
@@ -3588,13 +3618,439 @@
               "radius": 0,
               "color": "#6688bb",
               "label": "test −"
+            },
+            {
+              "id": "med_bc_sep",
+              "type": "line",
+              "points": [
+                [
+                  11.0,
+                  -1,
+                  0.05
+                ],
+                [
+                  11.0,
+                  11,
+                  0.05
+                ]
+              ],
+              "color": "#ffffff22",
+              "width": 0.05
+            },
+            {
+              "id": "med_bc_bg_1",
+              "type": "polygon",
+              "vertices": [
+                [
+                  11.5,
+                  0,
+                  0.06
+                ],
+                [
+                  12.2,
+                  0,
+                  0.06
+                ],
+                [
+                  12.2,
+                  10,
+                  0.06
+                ],
+                [
+                  11.5,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "med_bc_bg_2",
+              "type": "polygon",
+              "vertices": [
+                [
+                  12.6,
+                  0,
+                  0.06
+                ],
+                [
+                  13.3,
+                  0,
+                  0.06
+                ],
+                [
+                  13.3,
+                  10,
+                  0.06
+                ],
+                [
+                  12.6,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "med_bc_bg_3",
+              "type": "polygon",
+              "vertices": [
+                [
+                  13.7,
+                  0,
+                  0.06
+                ],
+                [
+                  14.4,
+                  0,
+                  0.06
+                ],
+                [
+                  14.4,
+                  10,
+                  0.06
+                ],
+                [
+                  13.7,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "med_bc_bg_4",
+              "type": "polygon",
+              "vertices": [
+                [
+                  14.8,
+                  0,
+                  0.06
+                ],
+                [
+                  15.5,
+                  0,
+                  0.06
+                ],
+                [
+                  15.5,
+                  10,
+                  0.06
+                ],
+                [
+                  14.8,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "med_bc_bg_5",
+              "type": "polygon",
+              "vertices": [
+                [
+                  15.9,
+                  0,
+                  0.06
+                ],
+                [
+                  16.6,
+                  0,
+                  0.06
+                ],
+                [
+                  16.6,
+                  10,
+                  0.06
+                ],
+                [
+                  15.9,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "med_bc_bar_1",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "11.5",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "12.2",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "12.2",
+                  "(prev)*10",
+                  "0.1"
+                ],
+                [
+                  "11.5",
+                  "(prev)*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#44cc66",
+              "opacity": 0.8,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.75,
+                "metalness": 0.06,
+                "emissive": "#0a2210"
+              }
+            },
+            {
+              "id": "med_bc_bar_2",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "12.6",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "13.3",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "13.3",
+                  "(sens)*10",
+                  "0.1"
+                ],
+                [
+                  "12.6",
+                  "(sens)*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#44ff88",
+              "opacity": 0.8,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.75,
+                "metalness": 0.06,
+                "emissive": "#0a2e14"
+              }
+            },
+            {
+              "id": "med_bc_bar_3",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "13.7",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "14.4",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "14.4",
+                  "(fpr)*10",
+                  "0.1"
+                ],
+                [
+                  "13.7",
+                  "(fpr)*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#ff8800",
+              "opacity": 0.8,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.75,
+                "metalness": 0.06,
+                "emissive": "#331a00"
+              }
+            },
+            {
+              "id": "med_bc_bar_4",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "14.8",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "15.5",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "15.5",
+                  "(prev*sens+(1-prev)*fpr)*10",
+                  "0.1"
+                ],
+                [
+                  "14.8",
+                  "(prev*sens+(1-prev)*fpr)*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#aabbdd",
+              "opacity": 0.8,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.75,
+                "metalness": 0.06,
+                "emissive": "#111a2a"
+              }
+            },
+            {
+              "id": "med_bc_bar_5",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "15.9",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "16.6",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "16.6",
+                  "(prev*sens/(prev*sens+(1-prev)*fpr))*10",
+                  "0.1"
+                ],
+                [
+                  "15.9",
+                  "(prev*sens/(prev*sens+(1-prev)*fpr))*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#ffff44",
+              "opacity": 0.9,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.75,
+                "metalness": 0.06,
+                "emissive": "#2a2800"
+              }
+            },
+            {
+              "id": "med_bc_ref50",
+              "type": "line",
+              "points": [
+                [
+                  11.5,
+                  5,
+                  0.15
+                ],
+                [
+                  16.6,
+                  5,
+                  0.15
+                ]
+              ],
+              "color": "#ffffff44",
+              "width": 0.06
+            },
+            {
+              "id": "med_bc_lbl_1",
+              "type": "animated_point",
+              "expr": [
+                "11.85",
+                "-0.9",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(D)"
+            },
+            {
+              "id": "med_bc_lbl_2",
+              "type": "animated_point",
+              "expr": [
+                "12.95",
+                "-1.8",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(+|D)"
+            },
+            {
+              "id": "med_bc_lbl_3",
+              "type": "animated_point",
+              "expr": [
+                "14.05",
+                "-0.9",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(+|¬D)"
+            },
+            {
+              "id": "med_bc_lbl_4",
+              "type": "animated_point",
+              "expr": [
+                "15.15",
+                "-1.8",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(+)"
+            },
+            {
+              "id": "med_bc_lbl_5",
+              "type": "animated_point",
+              "expr": [
+                "16.25",
+                "-0.9",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(D|+)"
             }
           ],
           "info": [
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Medical Test\n$P(D) = {{prev}}$\n$P(+ \\mid D) = {{sens}}$\n$P(+ \\mid \\overline{D}) = {{fpr}}$\n---\n**Per 100,000 people:**\nWith disease: {{toFixed(prev*100000,0)}}\nTrue positives: {{toFixed(prev*sens*100000,1)}}\nFalse positives: {{toFixed((1-prev)*fpr*100000,1)}}\nTotal positives: {{toFixed((prev*sens+(1-prev)*fpr)*100000,1)}}\n---\n$P(D \\mid +) = {{toFixed(prev*sens/(prev*sens+(1-prev)*fpr)*100,1)}}\\%$\n---\n{{prev*sens/(prev*sens+(1-prev)*fpr) < 0.1 ? 'Surprise: most positives are FALSE alarms!' : prev*sens/(prev*sens+(1-prev)*fpr) < 0.5 ? 'Still mostly false positives' : 'Majority are true positives'}}"
+              "content": "### Medical Test\n$P(D) = {{toFixed(prev*100,2)}}\\%$ — prior\n$P(+|D) = {{toFixed(sens*100,0)}}\\%$ — sensitivity\n$P(+|\\overline{D}) = {{toFixed(fpr*100,2)}}\\%$ — FPR\n$P(+) = {{toFixed((prev*sens+(1-prev)*fpr)*100,2)}}\\%$ — evidence\n$P(D|+) = {{toFixed(prev*sens/(prev*sens+(1-prev)*fpr)*100,1)}}\\%$ — **posterior**\n---\nPer 100,000: true+ = {{toFixed(prev*sens*100000,0)}} / false+ = {{toFixed((1-prev)*fpr*100000,0)}}\n---\n{{prev*sens/(prev*sens+(1-prev)*fpr) < 0.1 ? 'Surprise: most positives are FALSE alarms!' : prev*sens/(prev*sens+(1-prev)*fpr) < 0.5 ? 'Still mostly false positives' : 'Majority are true positives'}}"
             }
           ]
         },
@@ -3663,6 +4119,57 @@
             },
             {
               "type": "slider"
+            },
+            {
+              "id": "med_bc_sep"
+            },
+            {
+              "id": "med_bc_bg_1"
+            },
+            {
+              "id": "med_bc_bg_2"
+            },
+            {
+              "id": "med_bc_bg_3"
+            },
+            {
+              "id": "med_bc_bg_4"
+            },
+            {
+              "id": "med_bc_bg_5"
+            },
+            {
+              "id": "med_bc_bar_1"
+            },
+            {
+              "id": "med_bc_bar_2"
+            },
+            {
+              "id": "med_bc_bar_3"
+            },
+            {
+              "id": "med_bc_bar_4"
+            },
+            {
+              "id": "med_bc_bar_5"
+            },
+            {
+              "id": "med_bc_ref50"
+            },
+            {
+              "id": "med_bc_lbl_1"
+            },
+            {
+              "id": "med_bc_lbl_2"
+            },
+            {
+              "id": "med_bc_lbl_3"
+            },
+            {
+              "id": "med_bc_lbl_4"
+            },
+            {
+              "id": "med_bc_lbl_5"
             }
           ],
           "add": [
@@ -3920,13 +4427,429 @@
               "radius": 0,
               "color": "#7799bb",
               "label": "word −"
+            },
+            {
+              "id": "spam_bc_sep",
+              "type": "line",
+              "points": [
+                [
+                  11.0,
+                  -1,
+                  0.05
+                ],
+                [
+                  11.0,
+                  11,
+                  0.05
+                ]
+              ],
+              "color": "#ffffff22",
+              "width": 0.05
+            },
+            {
+              "id": "spam_bc_bg_1",
+              "type": "polygon",
+              "vertices": [
+                [
+                  11.5,
+                  0,
+                  0.06
+                ],
+                [
+                  12.2,
+                  0,
+                  0.06
+                ],
+                [
+                  12.2,
+                  10,
+                  0.06
+                ],
+                [
+                  11.5,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "spam_bc_bg_2",
+              "type": "polygon",
+              "vertices": [
+                [
+                  12.6,
+                  0,
+                  0.06
+                ],
+                [
+                  13.3,
+                  0,
+                  0.06
+                ],
+                [
+                  13.3,
+                  10,
+                  0.06
+                ],
+                [
+                  12.6,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "spam_bc_bg_3",
+              "type": "polygon",
+              "vertices": [
+                [
+                  13.7,
+                  0,
+                  0.06
+                ],
+                [
+                  14.4,
+                  0,
+                  0.06
+                ],
+                [
+                  14.4,
+                  10,
+                  0.06
+                ],
+                [
+                  13.7,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "spam_bc_bg_4",
+              "type": "polygon",
+              "vertices": [
+                [
+                  14.8,
+                  0,
+                  0.06
+                ],
+                [
+                  15.5,
+                  0,
+                  0.06
+                ],
+                [
+                  15.5,
+                  10,
+                  0.06
+                ],
+                [
+                  14.8,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "spam_bc_bg_5",
+              "type": "polygon",
+              "vertices": [
+                [
+                  15.9,
+                  0,
+                  0.06
+                ],
+                [
+                  16.6,
+                  0,
+                  0.06
+                ],
+                [
+                  16.6,
+                  10,
+                  0.06
+                ],
+                [
+                  15.9,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "spam_bc_bar_1",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "11.5",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "12.2",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "12.2",
+                  "(pSpam)*10",
+                  "0.1"
+                ],
+                [
+                  "11.5",
+                  "(pSpam)*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#ff8844",
+              "opacity": 0.8,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "spam_bc_bar_2",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "12.6",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "13.3",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "13.3",
+                  "(pWspam)*10",
+                  "0.1"
+                ],
+                [
+                  "12.6",
+                  "(pWspam)*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#ff6622",
+              "opacity": 0.8,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "spam_bc_bar_3",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "13.7",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "14.4",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "14.4",
+                  "(pWleg)*10",
+                  "0.1"
+                ],
+                [
+                  "13.7",
+                  "(pWleg)*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#4488ff",
+              "opacity": 0.8,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "spam_bc_bar_4",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "14.8",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "15.5",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "15.5",
+                  "(pSpam*pWspam+(1-pSpam)*pWleg)*10",
+                  "0.1"
+                ],
+                [
+                  "14.8",
+                  "(pSpam*pWspam+(1-pSpam)*pWleg)*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#aabbdd",
+              "opacity": 0.8,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "spam_bc_bar_5",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "15.9",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "16.6",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "16.6",
+                  "(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg))*10",
+                  "0.1"
+                ],
+                [
+                  "15.9",
+                  "(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg))*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#ffff44",
+              "opacity": 0.9,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "spam_bc_ref50",
+              "type": "line",
+              "points": [
+                [
+                  11.5,
+                  5,
+                  0.15
+                ],
+                [
+                  16.6,
+                  5,
+                  0.15
+                ]
+              ],
+              "color": "#ffffff44",
+              "width": 0.06
+            },
+            {
+              "id": "spam_bc_lbl_1",
+              "type": "animated_point",
+              "expr": [
+                "11.85",
+                "-0.9",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(spam)"
+            },
+            {
+              "id": "spam_bc_lbl_2",
+              "type": "animated_point",
+              "expr": [
+                "12.95",
+                "-1.8",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(W|spam)"
+            },
+            {
+              "id": "spam_bc_lbl_3",
+              "type": "animated_point",
+              "expr": [
+                "14.05",
+                "-0.9",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(W|legit)"
+            },
+            {
+              "id": "spam_bc_lbl_4",
+              "type": "animated_point",
+              "expr": [
+                "15.15",
+                "-1.8",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(W)"
+            },
+            {
+              "id": "spam_bc_lbl_5",
+              "type": "animated_point",
+              "expr": [
+                "16.25",
+                "-0.9",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(spam|W)"
             }
           ],
           "info": [
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Spam Filter\nKeyword: \"lottery\"\n---\n$P(\\text{spam}) = {{pSpam}}$\n$P(W \\mid \\text{spam}) = {{pWspam}}$\n$P(W \\mid \\text{legit}) = {{pWleg}}$\n---\n**Per 10,000 emails:**\nSpam with word: {{toFixed(pSpam*pWspam*10000,0)}}\nLegit with word: {{toFixed((1-pSpam)*pWleg*10000,0)}}\nTotal with word: {{toFixed((pSpam*pWspam+(1-pSpam)*pWleg)*10000,0)}}\n---\n$P(\\text{spam} \\mid W) = {{toFixed(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$\n---\n{{pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.3 ? 'Mostly legit — word is too common to filter' : pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.7 ? 'Mixed signal — filter with caution' : 'Strong signal: word is a reliable spam indicator'}}"
+              "content": "### Spam Filter — \"lottery\"\n$P(\\text{spam}) = {{toFixed(pSpam*100,0)}}\\%$ — prior\n$P(W|\\text{spam}) = {{toFixed(pWspam*100,0)}}\\%$ — hit rate\n$P(W|\\text{legit}) = {{toFixed(pWleg*100,1)}}\\%$ — false-hit rate\n$P(W) = {{toFixed((pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$ — evidence\n$P(\\text{spam}|W) = {{toFixed(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$ — **posterior**\n---\nPer 10,000: spam+word = {{toFixed(pSpam*pWspam*10000,0)}} / legit+word = {{toFixed((1-pSpam)*pWleg*10000,0)}}\n---\n{{pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.3 ? 'Mostly legit — word too common to filter' : pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.7 ? 'Mixed signal — filter with caution' : 'Strong signal: reliable spam indicator'}}"
             }
           ]
         },
@@ -3995,6 +4918,57 @@
             },
             {
               "type": "slider"
+            },
+            {
+              "id": "spam_bc_sep"
+            },
+            {
+              "id": "spam_bc_bg_1"
+            },
+            {
+              "id": "spam_bc_bg_2"
+            },
+            {
+              "id": "spam_bc_bg_3"
+            },
+            {
+              "id": "spam_bc_bg_4"
+            },
+            {
+              "id": "spam_bc_bg_5"
+            },
+            {
+              "id": "spam_bc_bar_1"
+            },
+            {
+              "id": "spam_bc_bar_2"
+            },
+            {
+              "id": "spam_bc_bar_3"
+            },
+            {
+              "id": "spam_bc_bar_4"
+            },
+            {
+              "id": "spam_bc_bar_5"
+            },
+            {
+              "id": "spam_bc_ref50"
+            },
+            {
+              "id": "spam_bc_lbl_1"
+            },
+            {
+              "id": "spam_bc_lbl_2"
+            },
+            {
+              "id": "spam_bc_lbl_3"
+            },
+            {
+              "id": "spam_bc_lbl_4"
+            },
+            {
+              "id": "spam_bc_lbl_5"
             }
           ],
           "add": [
@@ -4252,13 +5226,429 @@
               "radius": 0,
               "color": "#778899",
               "label": "radar −"
+            },
+            {
+              "id": "torn_bc_sep",
+              "type": "line",
+              "points": [
+                [
+                  11.0,
+                  -1,
+                  0.05
+                ],
+                [
+                  11.0,
+                  11,
+                  0.05
+                ]
+              ],
+              "color": "#ffffff22",
+              "width": 0.05
+            },
+            {
+              "id": "torn_bc_bg_1",
+              "type": "polygon",
+              "vertices": [
+                [
+                  11.5,
+                  0,
+                  0.06
+                ],
+                [
+                  12.2,
+                  0,
+                  0.06
+                ],
+                [
+                  12.2,
+                  10,
+                  0.06
+                ],
+                [
+                  11.5,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "torn_bc_bg_2",
+              "type": "polygon",
+              "vertices": [
+                [
+                  12.6,
+                  0,
+                  0.06
+                ],
+                [
+                  13.3,
+                  0,
+                  0.06
+                ],
+                [
+                  13.3,
+                  10,
+                  0.06
+                ],
+                [
+                  12.6,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "torn_bc_bg_3",
+              "type": "polygon",
+              "vertices": [
+                [
+                  13.7,
+                  0,
+                  0.06
+                ],
+                [
+                  14.4,
+                  0,
+                  0.06
+                ],
+                [
+                  14.4,
+                  10,
+                  0.06
+                ],
+                [
+                  13.7,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "torn_bc_bg_4",
+              "type": "polygon",
+              "vertices": [
+                [
+                  14.8,
+                  0,
+                  0.06
+                ],
+                [
+                  15.5,
+                  0,
+                  0.06
+                ],
+                [
+                  15.5,
+                  10,
+                  0.06
+                ],
+                [
+                  14.8,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "torn_bc_bg_5",
+              "type": "polygon",
+              "vertices": [
+                [
+                  15.9,
+                  0,
+                  0.06
+                ],
+                [
+                  16.6,
+                  0,
+                  0.06
+                ],
+                [
+                  16.6,
+                  10,
+                  0.06
+                ],
+                [
+                  15.9,
+                  10,
+                  0.06
+                ]
+              ],
+              "color": "#1a1e2e",
+              "opacity": 0.7,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "torn_bc_bar_1",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "11.5",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "12.2",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "12.2",
+                  "(pTorn)*10",
+                  "0.1"
+                ],
+                [
+                  "11.5",
+                  "(pTorn)*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#ff4444",
+              "opacity": 0.8,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "torn_bc_bar_2",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "12.6",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "13.3",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "13.3",
+                  "(pDet)*10",
+                  "0.1"
+                ],
+                [
+                  "12.6",
+                  "(pDet)*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#ff8844",
+              "opacity": 0.8,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "torn_bc_bar_3",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "13.7",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "14.4",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "14.4",
+                  "(pFal)*10",
+                  "0.1"
+                ],
+                [
+                  "13.7",
+                  "(pFal)*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#ff6622",
+              "opacity": 0.8,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "torn_bc_bar_4",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "14.8",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "15.5",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "15.5",
+                  "(pTorn*pDet+(1-pTorn)*pFal)*10",
+                  "0.1"
+                ],
+                [
+                  "14.8",
+                  "(pTorn*pDet+(1-pTorn)*pFal)*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#aabbdd",
+              "opacity": 0.8,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "torn_bc_bar_5",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "15.9",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "16.6",
+                  "0",
+                  "0.1"
+                ],
+                [
+                  "16.6",
+                  "(pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal))*10",
+                  "0.1"
+                ],
+                [
+                  "15.9",
+                  "(pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal))*10",
+                  "0.1"
+                ]
+              ],
+              "color": "#ffff44",
+              "opacity": 0.9,
+              "shader": {
+                "type": "basic",
+                "depthWrite": false
+              }
+            },
+            {
+              "id": "torn_bc_ref50",
+              "type": "line",
+              "points": [
+                [
+                  11.5,
+                  5,
+                  0.15
+                ],
+                [
+                  16.6,
+                  5,
+                  0.15
+                ]
+              ],
+              "color": "#ffffff44",
+              "width": 0.06
+            },
+            {
+              "id": "torn_bc_lbl_1",
+              "type": "animated_point",
+              "expr": [
+                "11.85",
+                "-0.9",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(T)"
+            },
+            {
+              "id": "torn_bc_lbl_2",
+              "type": "animated_point",
+              "expr": [
+                "12.95",
+                "-1.8",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(rad|T)"
+            },
+            {
+              "id": "torn_bc_lbl_3",
+              "type": "animated_point",
+              "expr": [
+                "14.05",
+                "-0.9",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(rad|¬T)"
+            },
+            {
+              "id": "torn_bc_lbl_4",
+              "type": "animated_point",
+              "expr": [
+                "15.15",
+                "-1.8",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(rad)"
+            },
+            {
+              "id": "torn_bc_lbl_5",
+              "type": "animated_point",
+              "expr": [
+                "16.25",
+                "-0.9",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#ccddff",
+              "label": "P(T|rad)"
             }
           ],
           "info": [
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Tornado Warning\n$P(T) = {{pTorn}}$\n$P(\\text{radar} \\mid T) = {{pDet}}$\n$P(\\text{radar} \\mid \\overline{T}) = {{pFal}}$\n---\n**Per 5,000 storm alerts:**\nReal tornadoes: {{toFixed(pTorn*5000,1)}}\nTrue alarms: {{toFixed(pTorn*pDet*5000,1)}}\nFalse alarms: {{toFixed((1-pTorn)*pFal*5000,1)}}\nTotal radar signals: {{toFixed((pTorn*pDet+(1-pTorn)*pFal)*5000,1)}}\n---\n$P(T \\mid \\text{radar}) = {{toFixed(pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$\n---\n{{pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal) > 0.5 ? 'Issue warning (>50%)' : 'Mostly false alarms (<50%)'}}"
+              "content": "### Tornado Warning\n$P(T) = {{toFixed(pTorn*100,1)}}\\%$ — base rate\n$P(\\text{radar}|T) = {{toFixed(pDet*100,0)}}\\%$ — detection\n$P(\\text{radar}|\\overline{T}) = {{toFixed(pFal*100,1)}}\\%$ — false alarm\n$P(\\text{radar}) = {{toFixed((pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$ — evidence\n$P(T|\\text{radar}) = {{toFixed(pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$ — **posterior**\n---\nPer 5,000: true alarms = {{toFixed(pTorn*pDet*5000,0)}} / false alarms = {{toFixed((1-pTorn)*pFal*5000,0)}}\n---\n{{pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal) > 0.5 ? 'Issue warning (>50%)' : 'Mostly false alarms (<50%)'}}"
             }
           ]
         }
