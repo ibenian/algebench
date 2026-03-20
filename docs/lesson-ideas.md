@@ -129,10 +129,120 @@ animate as new evidence arrives. Sliders control the prior parameters and the ob
 data; the posterior updates live. Walk through each multiplication step of Bayes'
 theorem geometrically.
 
+### Expected Value & Variance — The Shape of Uncertainty
+Start with a discrete distribution as colored bars on the probability rectangle.
+The expected value E[X] is the "balance point" — show it as a fulcrum under the
+distribution that keeps it level. Variance is the average squared distance from
+that fulcrum — visualize as springs pulling each outcome toward the mean, with
+spring length proportional to deviation. Slider adds/removes probability mass
+from the tails; the fulcrum shifts and springs stretch in real time. Second scene:
+continuous case — the balance point of a density curve, with variance as the
+"width" of the distribution.
+
+### The Distributions Zoo
+A gallery of the most important probability distributions, each as an interactive
+3D surface or curve with parameter sliders:
+
+- **Binomial(n, p)** — bar chart of successes in n trials. Sliders for n and p.
+  Watch it approach normal as n grows (bridge to CLT).
+- **Poisson(λ)** — rare event counts. Slider for λ. Show it emerging from
+  binomial as n→∞, p→0, np→λ.
+- **Exponential(λ)** — waiting times. Slider for rate λ. Show the memoryless
+  property: P(X > s+t | X > s) = P(X > t) by slicing the curve.
+- **Normal(μ, σ)** — the bell curve. Sliders for μ and σ. Shade the 68-95-99.7
+  regions. Connect to sigma levels lesson.
+- **Uniform, Gamma, Beta** — show how they relate as special cases and
+  conjugate priors.
+
+Each distribution links to the others: animate the binomial morphing into normal,
+Poisson emerging from binomial, exponential as the gap between Poisson events.
+
+### Central Limit Theorem — Why Everything Becomes Normal
+The most surprising theorem in statistics. Start with any ugly distribution
+(uniform, exponential, bimodal — user picks). Draw samples of size n and plot the
+sample mean. Slider for n. At n=1 the distribution of means looks like the
+original. At n=5 it's smoother. At n=30 it's unmistakably normal. Animate the
+convergence: each frame draws a new batch of samples and updates the histogram of
+means. Overlay the theoretical normal curve √n(X̄ − μ)/σ ~ N(0,1). Second scene:
+show *why* it works — convolution of distributions, each convolution smoothing out
+the bumps.
+
+### Law of Large Numbers — Convergence of the Average
+Flip a biased coin (slider for p). Plot the running average of heads as n grows.
+At small n the average bounces wildly. At large n it settles toward p. Show 50
+independent sequences simultaneously — they all converge but at different rates.
+Slider for p lets the student see convergence works for any probability. Connect
+to Monte Carlo: the running average IS a Monte Carlo estimate of p.
+
 ### Monte Carlo Estimation
 Visualize random sampling for estimating probabilities and integrals. Scatter random
 points in a region; color by hit/miss. Show convergence of the estimate as sample
 size increases. Connect to the law of large numbers.
+
+### Maximum Likelihood Estimation — Finding the Best Fit
+Given observed data points (shown as dots on a number line), slide the parameter θ
+of a distribution. For each θ value, compute the likelihood L(θ) = ∏P(xᵢ|θ) —
+visualize as a curve over θ-space. The MLE is the peak. Animate: as θ slides,
+the distribution shifts and stretches to fit the data better or worse. The
+likelihood curve builds up in real time. Show the log-likelihood as a second
+curve (turns products into sums, easier to optimize). Second scene: 2D parameter
+space (μ, σ) for a normal — the likelihood becomes a surface with a single peak.
+
+### Regression to the Mean — Why Extreme Results Don't Last
+One of the most misunderstood statistical phenomena. Scene 1: scatter plot of
+"test 1" vs "test 2" scores with noise. Students who scored highest on test 1
+tend to score lower on test 2 — not because they got worse, but because extreme
+scores contain more luck. Highlight the top-10 performers on test 1 and show their
+test 2 scores regressing toward the mean. Slider for noise level: more noise →
+more regression. Scene 2: Galton's original quincunx (bean machine) — balls
+bouncing through pegs naturally produce a normal distribution. Extreme balls on
+one level are likely to be less extreme on the next.
+
+### Sampling Bias & Survivorship Bias
+Visualize what happens when you can only see part of the data. Scene 1: a full
+population of dots with a true trend. Apply a selection filter (slider for
+threshold) that removes dots below a cutoff — the visible trend changes direction
+or disappears. Classic survivorship bias: only seeing the planes that returned.
+Scene 2: selection bias in surveys — the responding population differs from the
+full population. Shade the "missing" region to show what conclusions change when
+you account for the unseen data.
+
+### Entropy & Information — Measuring Uncertainty
+Uncertainty as a number. Start with a discrete distribution (bars on the probability
+rectangle). Shannon entropy H = −∑p log p measures how "spread out" the distribution
+is. Slider redistributes probability mass; entropy updates in real time. A uniform
+distribution maximizes entropy (maximum uncertainty). A spike at one outcome has
+entropy zero (no uncertainty). Second scene: connect to information — observing an
+event with probability p gives −log(p) bits of information. Rare events are more
+informative. Bridge to Bayesian updating: evidence that updates your belief the most
+is the most informative.
+
+### KL Divergence — Distance Between Distributions
+How different are two distributions? Visualize P (true) and Q (approximation) as
+two overlaid curves. The KL divergence D_KL(P‖Q) = ∑P log(P/Q) is shown as the
+shaded area of the ratio curve. Slider morphs Q toward or away from P; the
+divergence value updates. Show key properties: KL ≥ 0, KL = 0 iff P = Q,
+asymmetric (D_KL(P‖Q) ≠ D_KL(Q‖P)). Connect to MLE: minimizing KL divergence
+from data to model is equivalent to maximizing likelihood.
+
+### Random Walks — The Drunkard's Path
+Scene 1: 1D random walk — a point steps left or right with equal probability.
+Animate 50 simultaneous walkers from the origin. The cloud of positions spreads
+as √t. Overlay the theoretical normal envelope. Slider for step bias (p ≠ 0.5)
+adds drift. Scene 2: 2D random walk — points wander on a plane, leaving fading
+trails. Show the diffusion pattern. Scene 3: 3D random walk in the viewport —
+a particle traces a path through space. Connect to Brownian motion, diffusion,
+and stock price models.
+
+### Markov Chains — Memory-Free Processes
+Render a state diagram as a directed graph with 3–5 nodes. Edge weights are
+transition probabilities (must sum to 1 from each node). Animate a "random walker"
+hopping between states according to the transition matrix. After many steps, show
+the stationary distribution emerging — the fraction of time spent in each state
+converges regardless of starting position. Sliders adjust transition probabilities;
+the stationary distribution updates. Second scene: the transition matrix as a
+heatmap, with eigenvalue decomposition revealing the convergence rate (second
+largest eigenvalue).
 
 ### Causality — Correlation vs Causation
 Start with two correlated variables shown as a joint distribution (reusing the
