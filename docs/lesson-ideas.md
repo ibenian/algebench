@@ -542,6 +542,63 @@ its local gradient and multiplies by the upstream gradient. Show vanishing gradi
 in a deep sigmoid network, gradients shrink exponentially — color-code edge thickness
 by gradient magnitude.
 
+### Convolutional Neural Networks — Filters That See
+Scene 1: **A single convolution filter** — a small 3×3 kernel slides across a 2D
+input (image or feature map). At each position, element-wise multiply and sum.
+Animate the kernel sliding; the output feature map builds up pixel by pixel. Show
+classic hand-crafted filters: edge detector (Sobel), blur (Gaussian), sharpen.
+Scene 2: **Learned filters** — in a trained CNN, filters learn to detect features.
+Show a hierarchy: layer 1 detects edges, layer 2 detects textures, layer 3 detects
+parts (eyes, wheels), deeper layers detect objects. Visualize the feature maps at
+each layer as tiled images. Scene 3: **Pooling** — max pooling and average pooling
+as downsampling. A 2×2 window slides across the feature map, keeping only the max
+(or average). The spatial resolution halves, but the important features survive.
+Scene 4: **Full architecture** — stack conv → ReLU → pool layers. Show the input
+image shrinking spatially but growing in depth (more channels). Connect to the
+signal processing convolution lesson: same math, different domain.
+
+### Diffusion Models — Learning to Denoise
+How DALL-E, Stable Diffusion, and Midjourney work. Scene 1: **The forward
+process** — start with a clean image (or 2D point cloud for simplicity). Add
+Gaussian noise step by step. Slider for timestep t: at t=0 the image is clean,
+at t=T it's pure noise. Show the image degrading and the pixel distribution
+converging to N(0,1). Scene 2: **The reverse process** — a neural network learns
+to predict and remove the noise at each step. Start from pure noise, denoise step
+by step, watch structure emerge from chaos. Animate the denoising: each step
+sharpens the image slightly. Scene 3: **The noise schedule** — how much noise to
+add at each step. Linear vs cosine schedule. Slider for schedule type: show how
+the schedule affects generation quality. Scene 4: **Latent diffusion** — diffuse
+in a compressed latent space instead of pixel space. Show the encoder compressing
+the image, diffusion in the small latent space, then decoder expanding back.
+Connect to: random walks (diffusion IS a random walk in pixel space), entropy
+(noise increases entropy, denoising decreases it), and the heat equation (forward
+process is literally heat diffusion).
+
+### Generative Adversarial Networks — The Counterfeiter and the Detective
+Scene 1: **The generator** — takes random noise z and produces a fake sample.
+Visualize in 2D: noise from a circle gets warped through the network into a
+distribution that tries to match real data. Scene 2: **The discriminator** — a
+classifier that tries to distinguish real from fake. Show the decision boundary
+in data space. Scene 3: **The adversarial game** — animate training alternation.
+Generator improves (fakes get better), discriminator adapts (boundary shifts),
+repeat. The generator's output distribution gradually converges toward the real
+data distribution. Scene 4: **Mode collapse** — when the generator only produces
+one type of output. Show the generated distribution collapsing to a single point
+while the real distribution is multimodal.
+
+### Autoencoders & Variational Autoencoders — Compress and Reconstruct
+Scene 1: **Autoencoder** — an input (2D point or image) passes through an encoder
+that compresses it to a low-dimensional bottleneck (latent code), then a decoder
+reconstructs it. Animate: the input goes in, squeezes through the bottleneck, comes
+out approximately reconstructed. Slider for bottleneck dimension: smaller = more
+compression = more reconstruction error. Scene 2: **Variational Autoencoder
+(VAE)** — the encoder outputs a mean and variance, not a single point. The latent
+space is forced to be a smooth Gaussian. Sample from it and decode: nearby latent
+points produce similar outputs. Animate interpolation: slide between two latent
+codes, watch the output morph smoothly. Connect to: KL divergence (the VAE loss
+includes KL between the encoder output and N(0,1)), and diffusion models (VAEs
+are a precursor).
+
 ### Dimensionality Reduction — PCA & t-SNE
 Scene 1: **PCA** — a 3D point cloud with an elongated shape. The first principal
 component is the direction of maximum variance — show it as a vector through the
@@ -1040,6 +1097,41 @@ one stable fixed point splits into two stable and one unstable (symmetry breakin
 Scene 3: **Hopf** — a stable fixed point loses stability and births a limit cycle
 (steady state → oscillation). The logistic map bifurcation diagram: period
 doubling cascade into chaos.
+
+### The Heat Equation — Diffusion in Action
+The prototypical PDE: ∂u/∂t = α ∂²u/∂x². Scene 1: start with a sharp temperature
+spike (delta-like initial condition) on a 1D rod. Animate the solution: the spike
+spreads out into a Gaussian that widens and flattens over time. Slider for
+diffusivity α: higher = faster spreading. Scene 2: **2D heat diffusion** — a hot
+spot on a plate. Render temperature as a 3D surface (height = temperature) or
+heatmap. Watch it smooth out radially. Scene 3: **Connection to random walks** —
+overlay a Monte Carlo simulation: release 1000 random walkers from the hot spot.
+Their density distribution converges to the heat equation solution. Diffusion IS
+random walks at scale. Scene 4: **Steady state** — when ∂u/∂t = 0, the heat
+equation becomes Laplace's equation ∇²u = 0. Show the solution as a minimal
+surface stretched between boundary conditions.
+
+### Wave Equation — Propagation & Interference
+∂²u/∂t² = c² ∂²u/∂x². Scene 1: pluck a string (initial displacement, zero
+velocity). Animate the wave splitting into two pulses traveling in opposite
+directions. Slider for wave speed c. Scene 2: **Standing waves** — fixed
+boundary conditions (string tied at both ends). Only certain frequencies fit —
+show the fundamental and first few harmonics. Connect to Fourier series: any
+initial shape decomposes into these modes. Scene 3: **2D wave equation** — a
+vibrating membrane. Render as a 3D surface. Drop a pebble (point impulse) and
+watch circular waves propagate and reflect off boundaries. Scene 4:
+**Interference** — two sources producing circular waves. Show constructive and
+destructive interference patterns. Connect to the double-slit experiment in
+quantum mechanics.
+
+### Reaction-Diffusion — Patterns from Math
+Turing patterns: two chemicals diffusing at different rates spontaneously form
+spots, stripes, and spirals. Scene 1: start with a uniform mixture plus tiny
+random perturbations. Animate the Gray-Scott or FitzHugh-Nagumo equations: watch
+patterns emerge from noise. Sliders for feed rate and kill rate — different
+parameter regimes produce spots, worms, or waves. Scene 2: connect to biology —
+these equations model animal coat patterns (leopard spots, zebra stripes), coral
+growth, and chemical oscillations. The math behind biological self-organization.
 
 ---
 
