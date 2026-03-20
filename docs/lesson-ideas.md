@@ -94,6 +94,28 @@ the sample size is enormous — the p-value is small but the distributions are
 nearly identical. Contrast with a large effect size at small n — clearly different
 distributions but p-value is large. Drive home that significance ≠ importance.
 
+### Sigma Levels — What "5σ" Means for Scientific Evidence
+Visualize the normal distribution with shaded regions at 1σ, 2σ, 3σ, 4σ, and 5σ.
+A slider sweeps the sigma level; the shaded tail area (p-value) and the "1 in N"
+odds update in real time. At 1σ the tail is ~16% (not impressive). At 3σ the tail
+is ~0.13% (evidence). At 5σ it's ~1 in 3.5 million (discovery).
+
+Connect to real scientific thresholds:
+- **2σ** (~95%) — social science convention, "statistically significant"
+- **3σ** (~99.7%) — evidence threshold in many fields
+- **5σ** (~99.99994%) — particle physics discovery threshold (Higgs boson, 2012)
+- **6σ** — manufacturing quality (Six Sigma = 3.4 defects per million)
+
+Show why physicists demand 5σ: with thousands of searches (the "look-elsewhere
+effect"), a 3σ result is expected by chance. Animate a grid of 1000 independent
+experiments under the null — show how many produce 2σ, 3σ, and 5σ flukes.
+
+Second scene: the **sigma as effect size** interpretation. Two distributions
+separated by dσ standard deviations. Slider for d. At d=1 the distributions
+overlap heavily. At d=3 they're clearly distinct. At d=5 the overlap is invisible.
+Makes the sigma notation tangible as "how many standard deviations away from
+what we'd expect if nothing is happening."
+
 ### Frequentist vs Bayesian — The Same Data, Two Frameworks
 Present a single dataset and analyze it both ways side by side. Left panel:
 null distribution, test statistic, p-value, reject/fail-to-reject decision.
