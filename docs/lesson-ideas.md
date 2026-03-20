@@ -64,6 +64,42 @@ Visualize random sampling for estimating probabilities and integrals. Scatter ra
 points in a region; color by hit/miss. Show convergence of the estimate as sample
 size increases. Connect to the law of large numbers.
 
+### Causality — Correlation vs Causation
+Start with two correlated variables shown as a joint distribution (reusing the
+probability rectangle). Introduce a hidden confounder as a third axis — show how
+the correlation disappears when you condition on (slice by) the confounder. Classic
+examples: ice cream sales and drowning (confounder: temperature), shoe size and
+reading ability (confounder: age). Sliders control confounder strength.
+
+### Causal Graphs (DAGs) & d-Separation
+Introduce directed acyclic graphs as the language of causality. Render 3–5 node
+causal DAGs in 3D with directed edges. Highlight the three elemental structures:
+chain (A → B → C), fork (A ← B → C), and collider (A → B ← C). Show how
+conditioning on the middle node blocks or opens information flow — animate
+"probability flow" along edges that dims when a path is d-separated.
+
+### Interventions — do(X) vs observe(X)
+The key insight from Pearl's do-calculus: observing X=x and *setting* X=x give
+different answers. Visualize with the probability rectangle: observing slices the
+distribution (conditional probability), while intervening *removes* incoming edges
+and rebuilds the distribution. Show the same DAG before and after an intervention,
+with the joint distribution updating to make the difference visceral. Connect back
+to the Bayes' rule lesson — P(Y|X) ≠ P(Y|do(X)) when confounders exist.
+
+### Simpson's Paradox
+A trend that appears in several groups reverses when the groups are combined.
+Visualize with stacked probability rectangles: each subgroup shows a positive
+association, but the aggregate shows negative. Sliders control group sizes and
+within-group rates. Reveal the confounder that explains the reversal. Bridge from
+the independence vs correlation lesson.
+
+### Counterfactuals — "What Would Have Happened?"
+The third rung of Pearl's causal ladder. Given a specific observed outcome, ask
+what *would* have happened under a different intervention. Visualize as two parallel
+probability rectangles: the factual world and the counterfactual world. Animate the
+transition between them to show which probabilities change and which are preserved
+by the structural equations.
+
 ---
 
 ## 2. Physics Domain Libraries
