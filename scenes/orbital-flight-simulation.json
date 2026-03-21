@@ -1097,8 +1097,7 @@
               "color": "#ff5d73",
               "width": 12.8,
               "arrowScale": 1.2,
-              "labelShowAltitude": true,
-              "labelAltitudePrecision": 1,
+              "labelExpr": "concat(\"h=\", toFixed(max(0, sqrt(orbitX(t,0)^2 + orbitY(t,0)^2 + 80^2) - Rp), 1), \" km\")",
               "label": "rocket"
             },
             {
@@ -1558,8 +1557,7 @@
               "color": "#ffd166",
               "width": 12.8,
               "arrowScale": 1.2,
-              "labelShowAltitude": true,
-              "labelAltitudePrecision": 1,
+              "labelExpr": "concat(\"h=\", toFixed(max(0, sqrt(orbitX(t,1)^2 + orbitY(t,1)^2 + 80^2) - Rp), 1), \" km\")",
               "label": "powered rocket"
             },
             {
@@ -2111,8 +2109,7 @@
               "color": "#ffd166",
               "width": 12,
               "arrowScale": 1.2,
-              "labelShowAltitude": true,
-              "labelAltitudePrecision": 1,
+              "labelExpr": "concat(\"h=\", toFixed(max(0, sqrt(orbitX(t,2)^2 + orbitY(t,2)^2 + 80^2) - Rp), 1), \" km\")",
               "label": "guided rocket"
             },
             {

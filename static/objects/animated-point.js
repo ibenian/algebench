@@ -1,5 +1,5 @@
 import { state } from '/state.js';
-import { parseColor, addLabel3D } from '/labels.js';
+import { parseColor, addLabel3D, renderKaTeX } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { dataToWorld, dataLenToWorld } from '/coords.js';
 
@@ -10,6 +10,7 @@ export function renderAnimatedPoint(el, view) {
     const exprStrings = el.expr || el.positionExpr || el.toExpr
         || (Array.isArray(el.position) && el.position.length === 3 ? el.position.map(v => String(v)) : null);
     const visibleExprString = (typeof el.visibleExpr === 'string' && el.visibleExpr.trim()) ? el.visibleExpr.trim() : null;
+    const labelExprString = (typeof el.labelExpr === 'string' && el.labelExpr.trim()) ? el.labelExpr.trim() : null;
 
     if (!Array.isArray(exprStrings) || exprStrings.length !== 3) return null;
 
@@ -40,9 +41,22 @@ export function renderAnimatedPoint(el, view) {
     state.three.scene.add(mesh);
     state.planeMeshes.push(mesh);
 
+    let labelExprFn = null;
+    if (labelExprString) {
+        try { labelExprFn = compileExpr(labelExprString); } catch (err) { console.warn('animated_point labelExpr compile error:', err); }
+    }
+
     let labelEl = null;
-    if (label) {
-        labelEl = addLabel3D(label, [initPos[0], initPos[1], initPos[2] + 0.3], color);
+    if (label || labelExprFn) {
+        const initText = label || '';
+        labelEl = addLabel3D(initText, [initPos[0], initPos[1], initPos[2] + 0.3], color);
+        if (labelExprFn) {
+            try {
+                const txt = String(evalExpr(labelExprFn, 0));
+                labelEl.el.innerHTML = renderKaTeX(txt, false);
+                labelEl._lastDynamicText = txt;
+            } catch (_e) {}
+        }
     }
 
     const animState = { stopped: false };
@@ -95,6 +109,15 @@ export function renderAnimatedPoint(el, view) {
                 labelEl.dataPos[1] = p[1];
                 labelEl.dataPos[2] = p[2] + 0.3;
                 labelEl.forceHidden = !isVisible;
+                if (labelExprFn) {
+                    try {
+                        const txt = String(evalExpr(labelExprFn, tSec));
+                        if (labelEl._lastDynamicText !== txt) {
+                            labelEl.el.innerHTML = renderKaTeX(txt, false);
+                            labelEl._lastDynamicText = txt;
+                        }
+                    } catch (_e) {}
+                }
             }
         },
     });

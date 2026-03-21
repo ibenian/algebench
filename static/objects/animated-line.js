@@ -1,5 +1,5 @@
 import { state } from '/state.js';
-import { parseColor, addLabel3D } from '/labels.js';
+import { parseColor, addLabel3D, renderKaTeX } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { resolveLineWidth, getAbstractWidthScale } from '/camera.js';
 
@@ -9,6 +9,7 @@ export function renderAnimatedLine(el, view) {
     const opacity = (el.opacity !== undefined) ? Number(el.opacity) : 1;
     const baseOpacity = Math.max(0, Math.min(1, Number.isFinite(opacity) ? opacity : 1));
     const label = el.label;
+    const labelExprString = (typeof el.labelExpr === 'string' && el.labelExpr.trim()) ? el.labelExpr.trim() : null;
     const pointExprs = el.points;
 
     if (!Array.isArray(pointExprs) || pointExprs.length < 2) return null;
@@ -41,10 +42,22 @@ export function renderAnimatedLine(el, view) {
     lineEntry.node = lineNode;
     state.lineNodes.push(lineEntry);
 
+    let labelExprFn = null;
+    if (labelExprString) {
+        try { labelExprFn = compileExpr(labelExprString); } catch (err) { console.warn('animated_line labelExpr compile error:', err); }
+    }
+
     let labelEl = null;
-    if (label) {
+    if (label || labelExprFn) {
         const mid = currentPoints[Math.floor(currentPoints.length / 2)];
-        labelEl = addLabel3D(label, mid, color);
+        labelEl = addLabel3D(label || '', mid, color);
+        if (labelExprFn) {
+            try {
+                const txt = String(evalExpr(labelExprFn, 0));
+                labelEl.el.innerHTML = renderKaTeX(txt, false);
+                labelEl._lastDynamicText = txt;
+            } catch (_e) {}
+        }
     }
 
     const animState = { stopped: false };
@@ -73,6 +86,15 @@ export function renderAnimatedLine(el, view) {
                     labelEl.dataPos[0] = mid[0];
                     labelEl.dataPos[1] = mid[1] + 0.3;
                     labelEl.dataPos[2] = mid[2];
+                    if (labelExprFn) {
+                        try {
+                            const txt = String(evalExpr(labelExprFn, tSec));
+                            if (labelEl._lastDynamicText !== txt) {
+                                labelEl.el.innerHTML = renderKaTeX(txt, false);
+                                labelEl._lastDynamicText = txt;
+                            }
+                        } catch (_e) {}
+                    }
                 }
             } catch(err) { /* keep last frame */ }
         },

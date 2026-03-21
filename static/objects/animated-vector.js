@@ -24,8 +24,7 @@ export function renderAnimatedVector(el, view) {
         || (Array.isArray(el.to) && el.to.length === 3 ? el.to.map(v => String(v)) : null);
     const fromExprStrings = el.fromExpr;
     const visibleExprString = (typeof el.visibleExpr === 'string' && el.visibleExpr.trim()) ? el.visibleExpr.trim() : null;
-    const labelShowAltitude = !!el.labelShowAltitude;
-    const labelAltitudePrecision = Number.isFinite(el.labelAltitudePrecision) ? Math.max(0, Math.floor(el.labelAltitudePrecision)) : 1;
+    const labelExprString = (typeof el.labelExpr === 'string' && el.labelExpr.trim()) ? el.labelExpr.trim() : null;
     const trailOpts = el.trail;
     const hasExplicitWidth = (typeof el.width === 'number' && isFinite(el.width));
     const widthScale = hasExplicitWidth ? Math.max(0.01, el.width) : 1.3;
@@ -235,14 +234,26 @@ export function renderAnimatedVector(el, view) {
     }
 
     // Label
+    let labelExprFn = null;
+    if (labelExprString) {
+        try { labelExprFn = compileExpr(labelExprString); } catch (err) { console.warn('animated_vector labelExpr compile error:', err); }
+    }
+
     let labelEl = null;
-    if (label) {
+    if (label || labelExprFn) {
         const labelPos = el.labelPosition || [
             (initFrom[0] + initTo[0]) / 2 + labelOffset[0],
             (initFrom[1] + initTo[1]) / 2 + labelOffset[1],
             (initFrom[2] + initTo[2]) / 2 + labelOffset[2]
         ];
-        labelEl = addLabel3D(label, labelPos, color);
+        labelEl = addLabel3D(label || '', labelPos, color);
+        if (labelExprFn) {
+            try {
+                const txt = String(evalExpr(labelExprFn, 0));
+                labelEl.el.innerHTML = renderKaTeX(txt, false);
+                labelEl._lastDynamicText = txt;
+            } catch (_e) {}
+        }
     }
 
     // Compiled expr functions
@@ -365,15 +376,14 @@ export function renderAnimatedVector(el, view) {
                 labelEl.dataPos[1] = (cf[1] + ct[1]) / 2 + labelOffset[1];
                 labelEl.dataPos[2] = (cf[2] + ct[2]) / 2 + labelOffset[2];
                 labelEl.forceHidden = false;
-                if (labelShowAltitude) {
-                    const rr = Math.sqrt(cf[0] * cf[0] + cf[1] * cf[1] + cf[2] * cf[2]);
-                    const RpVal = state.sceneSliders.Rp ? Number(state.sceneSliders.Rp.value) : 0;
-                    const alt = Math.max(0, rr - RpVal);
-                    const txt = `h=${alt.toFixed(labelAltitudePrecision)} km`;
-                    if (labelEl._lastDynamicText !== txt) {
-                        labelEl.el.innerHTML = renderKaTeX(txt, false);
-                        labelEl._lastDynamicText = txt;
-                    }
+                if (labelExprFn) {
+                    try {
+                        const txt = String(evalExpr(labelExprFn, tSec));
+                        if (labelEl._lastDynamicText !== txt) {
+                            labelEl.el.innerHTML = renderKaTeX(txt, false);
+                            labelEl._lastDynamicText = txt;
+                        }
+                    } catch (_e) {}
                 }
             }
 

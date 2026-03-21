@@ -1,5 +1,5 @@
 import { state } from '/state.js';
-import { parseColor } from '/labels.js';
+import { parseColor, addLabel3D, renderKaTeX } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { dataToWorld } from '/coords.js';
 import { resolveLineWidth } from '/camera.js';
@@ -10,6 +10,11 @@ export function renderAnimatedCurve(el, view) {
     const opacityRaw = el.opacity != null ? el.opacity : 1;
     const opacityExpr = typeof opacityRaw === 'string' ? compileExpr(opacityRaw) : null;
     const lineOpacity = opacityExpr ? evalExpr(opacityExpr, 0) : Number(opacityRaw);
+    const label = el.label;
+    const labelExprString = (typeof el.labelExpr === 'string' && el.labelExpr.trim()) ? el.labelExpr.trim() : null;
+    const labelOffset = (Array.isArray(el.labelOffset) && el.labelOffset.length === 3)
+        ? [Number(el.labelOffset[0]) || 0, Number(el.labelOffset[1]) || 0, Number(el.labelOffset[2]) || 0]
+        : [0, 0.3, 0];
     const samples = el.samples || 200;
 
     let rangeLExpr = null, rangeRExpr = null;
@@ -65,6 +70,25 @@ export function renderAnimatedCurve(el, view) {
     });
     curveEntry.node = curveNode;
     state.lineNodes.push(curveEntry);
+
+    // Label
+    let labelExprFn = null;
+    if (labelExprString) {
+        try { labelExprFn = compileExpr(labelExprString); } catch (err) { console.warn('animated_curve labelExpr compile error:', err); }
+    }
+
+    let labelEl = null;
+    if (label || labelExprFn) {
+        const mid = initPts[Math.floor(initPts.length / 2)] || [0, 0, 0];
+        labelEl = addLabel3D(label || '', [mid[0] + labelOffset[0], mid[1] + labelOffset[1], mid[2] + labelOffset[2]], color);
+        if (labelExprFn) {
+            try {
+                const txt = String(evalExpr(labelExprFn, 0));
+                labelEl.el.innerHTML = renderKaTeX(txt, false);
+                labelEl._lastDynamicText = txt;
+            } catch (_e) {}
+        }
+    }
 
     // Fill regions
     const fillRegions = Array.isArray(el.fill_regions) ? el.fill_regions : [];
@@ -254,6 +278,21 @@ export function renderAnimatedCurve(el, view) {
             try {
                 const pts = buildCurvePoints(tSec);
                 curveData.set('data', pts);
+                if (labelEl) {
+                    const mid = pts[Math.floor(pts.length / 2)] || [0, 0, 0];
+                    labelEl.dataPos[0] = mid[0] + labelOffset[0];
+                    labelEl.dataPos[1] = mid[1] + labelOffset[1];
+                    labelEl.dataPos[2] = mid[2] + labelOffset[2];
+                    if (labelExprFn) {
+                        try {
+                            const txt = String(evalExpr(labelExprFn, tSec));
+                            if (labelEl._lastDynamicText !== txt) {
+                                labelEl.el.innerHTML = renderKaTeX(txt, false);
+                                labelEl._lastDynamicText = txt;
+                            }
+                        } catch (_e) {}
+                    }
+                }
                 if (opacityExpr) {
                     curveNode.set('opacity', evalExpr(opacityExpr, tSec) * (state.displayParams.lineOpacity || 1));
                 }

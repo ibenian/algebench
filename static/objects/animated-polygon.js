@@ -1,5 +1,5 @@
 import { state } from '/state.js';
-import { parseColor, addLabel3D } from '/labels.js';
+import { parseColor, addLabel3D, renderKaTeX } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { dataToWorld, dataLenToWorld } from '/coords.js';
 
@@ -57,6 +57,7 @@ export function renderAnimatedPolygon(el, view) {
     const opacity = opacityExpr ? 0.3 : opacityRaw;
     const thickness = el.thickness || 0.02;
     const label = el.label;
+    const labelExprString = (typeof el.labelExpr === 'string' && el.labelExpr.trim()) ? el.labelExpr.trim() : null;
     const sh = el.shader || {};
 
     const animState = { stopped: false };
@@ -267,12 +268,24 @@ export function renderAnimatedPolygon(el, view) {
         });
     }
 
+    let labelExprFn = null;
+    if (labelExprString) {
+        try { labelExprFn = compileExpr(labelExprString); } catch (err) { console.warn('animated_polygon labelExpr compile error:', err); }
+    }
+
     let labelEl = null;
-    if (label) {
+    if (label || labelExprFn) {
         const cx = currentDataVerts.reduce((s, v) => s + v[0], 0) / currentDataVerts.length;
         const cy = currentDataVerts.reduce((s, v) => s + v[1], 0) / currentDataVerts.length;
         const cz = currentDataVerts.reduce((s, v) => s + v[2], 0) / currentDataVerts.length;
-        labelEl = addLabel3D(label, [cx, cy, cz], color);
+        labelEl = addLabel3D(label || '', [cx, cy, cz], color);
+        if (labelExprFn) {
+            try {
+                const txt = String(evalExpr(labelExprFn, 0));
+                labelEl.el.innerHTML = renderKaTeX(txt, false);
+                labelEl._lastDynamicText = txt;
+            } catch (_e) {}
+        }
     }
 
     state.activeAnimExprs.push(animExprEntry);
@@ -307,6 +320,15 @@ export function renderAnimatedPolygon(el, view) {
                     labelEl.dataPos[0] = verts.reduce((s, v) => s + v[0], 0) / verts.length;
                     labelEl.dataPos[1] = verts.reduce((s, v) => s + v[1], 0) / verts.length + 0.3;
                     labelEl.dataPos[2] = verts.reduce((s, v) => s + v[2], 0) / verts.length;
+                    if (labelExprFn) {
+                        try {
+                            const txt = String(evalExpr(labelExprFn, tSec));
+                            if (labelEl._lastDynamicText !== txt) {
+                                labelEl.el.innerHTML = renderKaTeX(txt, false);
+                                labelEl._lastDynamicText = txt;
+                            }
+                        } catch (_e) {}
+                    }
                 }
             } catch(err) { /* keep last frame */ }
         },
