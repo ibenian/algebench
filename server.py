@@ -337,10 +337,11 @@ def call_gemini_chat(message, history, context):
     contents.append(types.Content(role='user', parts=[types.Part.from_text(text=message)]))
 
     # Log history summary
-    for i, msg in enumerate(history or []):
-        preview = (msg.get('text', '') or '')[:80].replace('\n', ' ')
-        print(f"   💬 history[{i}] {msg.get('role','?')}: {preview}")
-    print(f"   💬 current: {message[:80]}")
+    if DEBUG_MODE:
+        for i, msg in enumerate(history or []):
+            preview = (msg.get('text', '') or '')[:80].replace('\n', ' ')
+            print(f"   💬 history[{i}] {msg.get('role','?')}: {preview}")
+        print(f"   💬 current: {message[:80]}")
 
     tool_calls = []
     added_scenes_count = 0
@@ -359,8 +360,9 @@ def call_gemini_chat(message, history, context):
     }
 
     # Log request summary
-    tool_names = [d.name for d in config.tools[0].function_declarations] if config.tools else []
-    print(f"   🤖 Gemini request: model={GEMINI_MODEL}, {len(contents)} messages, tools=[{', '.join(tool_names)}], system_prompt={len(system_prompt)} chars")
+    if DEBUG_MODE:
+        tool_names = [d.name for d in config.tools[0].function_declarations] if config.tools else []
+        print(f"   🤖 Gemini request: model={GEMINI_MODEL}, {len(contents)} messages, tools=[{', '.join(tool_names)}], system_prompt={len(system_prompt)} chars")
 
     if DEBUG_MODE:
         print(f"\n🤖 GEMINI REQUEST: {json.dumps({'model': GEMINI_MODEL, **debug_info})}\n")
@@ -382,7 +384,7 @@ def call_gemini_chat(message, history, context):
         if response.candidates:
             candidate = response.candidates[0]
             finish = getattr(candidate, 'finish_reason', None)
-            if finish:
+            if DEBUG_MODE and finish:
                 print(f"   Gemini finish_reason: {finish}")
             if str(finish) not in ('MAX_TOKENS', 'STOP', 'FinishReason.MAX_TOKENS', 'FinishReason.STOP'):
                 print(f"   ⚠️  Unexpected finish_reason: {finish}")
@@ -399,14 +401,15 @@ def call_gemini_chat(message, history, context):
             continue
 
         # Log all response parts for debugging
-        for i, p in enumerate(parts):
-            if p.text:
-                print(f"   📝 part[{i}].text: {p.text}")
-            if p.function_call:
-                fc = p.function_call
-                print(f"   🔧 part[{i}].function_call: {fc.name}({json.dumps(dict(fc.args) if fc.args else {}, default=str)[:300]})")
-            if not p.text and not p.function_call:
-                print(f"   ❓ part[{i}] unknown: {str(p)[:300]}")
+        if DEBUG_MODE:
+            for i, p in enumerate(parts):
+                if p.text:
+                    print(f"   📝 part[{i}].text: {p.text}")
+                if p.function_call:
+                    fc = p.function_call
+                    print(f"   🔧 part[{i}].function_call: {fc.name}({json.dumps(dict(fc.args) if fc.args else {}, default=str)[:300]})")
+                if not p.text and not p.function_call:
+                    print(f"   ❓ part[{i}] unknown: {str(p)[:300]}")
 
         # Handle malformed function call — retry
         if str(finish) in ('MALFORMED_FUNCTION_CALL', 'FinishReason.MALFORMED_FUNCTION_CALL'):
@@ -467,12 +470,13 @@ def call_gemini_chat(message, history, context):
                 raw_tc_args = json.loads(json.dumps(tc_args, default=str))
 
                 # Log the full tool call JSON
-                print(f"\n🔧 TOOL CALL: {tc_name}")
-                try:
-                    print(json.dumps(tc_args, indent=2, ensure_ascii=True, default=str))
-                except Exception as log_err:
-                    print(f"   (could not serialize args: {log_err})")
-                    print(f"   args keys: {list(tc_args.keys())}")
+                if DEBUG_MODE:
+                    print(f"\n🔧 TOOL CALL: {tc_name}")
+                    try:
+                        print(json.dumps(tc_args, indent=2, ensure_ascii=True, default=str))
+                    except Exception as log_err:
+                        print(f"   (could not serialize args: {log_err})")
+                        print(f"   args keys: {list(tc_args.keys())}")
 
                 # For add_scene: the scene properties are now top-level args (not nested under "scene")
                 if tc_name == 'add_scene':
@@ -515,8 +519,9 @@ def call_gemini_chat(message, history, context):
                     tc_args['parsedScene'] = scene_obj
                     if normalized_root_sliders:
                         tc_args['_normalizedRootSliders'] = True
-                    print(f"   ✅ scene object — {len(scene_obj.get('elements', []))} elements, "
-                          f"{len(scene_obj.get('steps', []))} steps, title: {scene_obj.get('title', '?')}")
+                    if DEBUG_MODE:
+                        print(f"   ✅ scene object — {len(scene_obj.get('elements', []))} elements, "
+                              f"{len(scene_obj.get('steps', []))} steps, title: {scene_obj.get('title', '?')}")
                 # Track add_scene calls so navigate_to validation accounts for newly added scenes
                 if tc_name == 'add_scene':
                     added_scenes_count = added_scenes_count + 1
@@ -627,23 +632,27 @@ def call_gemini_chat(message, history, context):
                         summary = _memory_summary(store_as, result)
                         tc_result = {"status": "success", "stored_as": store_as, "summary": summary,
                                      "hint": f"Stored. Reference as variable '{store_as}' in eval_math, or as '${store_as}' in add_scene fields."}
-                        print(f"   ✅ eval_math → memory['{store_as}']: {summary}")
+                        if DEBUG_MODE:
+                            print(f"   ✅ eval_math → memory['{store_as}']: {summary}")
                     else:
                         n = f"{len(result)}-point sweep" if isinstance(result, list) and sweep else result
                         tc_result = {"status": "success", "expression": expr, "result": result,
                                      "hint": "Tip: use store_as to save large arrays to memory instead of returning inline."}
-                        print(f"   ✅ eval_math: {expr} = {n}")
+                        if DEBUG_MODE:
+                            print(f"   ✅ eval_math: {expr} = {n}")
                 elif tc_name == 'mem_get':
                     key = tc_args.get('key', '')
                     if key == '?':
                         listing = {k: _memory_summary(k, v) for k, v in _agent_memory.items()}
                         tc_result = {"status": "success", "keys": listing if listing else "(empty)"}
-                        print(f"   🗂️  mem_get(?): {list(_agent_memory.keys())}")
+                        if DEBUG_MODE:
+                            print(f"   🗂️  mem_get(?): {list(_agent_memory.keys())}")
                     elif key in _agent_memory:
                         val = _agent_memory[key]
                         tc_result = {"status": "success", "key": key, "value": val,
                                      "summary": _memory_summary(key, val)}
-                        print(f"   🗂️  mem_get('{key}'): {_memory_summary(key, val)}")
+                        if DEBUG_MODE:
+                            print(f"   🗂️  mem_get('{key}'): {_memory_summary(key, val)}")
                     else:
                         tc_result = {"status": "error", "key": key,
                                      "error": f"Key '{key}' not found.",
@@ -659,7 +668,8 @@ def call_gemini_chat(message, history, context):
                         summary = _memory_summary(key, value)
                         tc_result = {"status": "success", "stored_as": key, "summary": summary,
                                      "hint": f"Stored. Reference as variable '{key}' in eval_math, or as '${key}' in add_scene fields."}
-                        print(f"   💾 mem_set['{key}']: {summary}")
+                        if DEBUG_MODE:
+                            print(f"   💾 mem_set['{key}']: {summary}")
                 elif tc_name == 'set_preset_prompts':
                     prompts = tc_args.get('prompts', [])
                     tc_result = {
@@ -667,11 +677,13 @@ def call_gemini_chat(message, history, context):
                         "count": len(prompts),
                         "message": f"{'Set' if prompts else 'Cleared'} {len(prompts)} preset prompt{'s' if len(prompts) != 1 else ''}.",
                     }
-                    print(f"   💬 set_preset_prompts: {prompts}")
+                    if DEBUG_MODE:
+                        print(f"   💬 set_preset_prompts: {prompts}")
                 elif tc_name == 'set_info_overlay':
                     if tc_args.get('clear'):
                         tc_result = {"status": "success", "message": "Cleared all info overlays."}
-                        print(f"   🖼️  set_info_overlay: cleared all")
+                        if DEBUG_MODE:
+                            print(f"   🖼️  set_info_overlay: cleared all")
                     else:
                         overlay_id = tc_args.get('id', '')
                         content = tc_args.get('content', '')
@@ -682,7 +694,8 @@ def call_gemini_chat(message, history, context):
                             "position": position,
                             "message": f"Overlay '{overlay_id}' set at {position}.",
                         }
-                        print(f"   🖼️  set_info_overlay['{overlay_id}'] @ {position}: {content[:60]}{'…' if len(content) > 60 else ''}")
+                        if DEBUG_MODE:
+                            print(f"   🖼️  set_info_overlay['{overlay_id}'] @ {position}: {content[:60]}{'…' if len(content) > 60 else ''}")
                 else:
                     tc_result = {"status": "success"}
                 tool_calls.append({
@@ -1007,7 +1020,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             response_text, tool_calls, debug_info = await loop.run_in_executor(
                 None, lambda: call_gemini_chat(req.message, req.history, req.context)
             )
-            print(f"   💬 Response ({len(response_text)} chars): {response_text}")
+            if DEBUG_MODE:
+                print(f"   💬 Response ({len(response_text)} chars): {response_text}")
             return JSONResponse({"response": response_text, "toolCalls": tool_calls,
                                  "debug": debug_info})
         except Exception as e:
@@ -1024,8 +1038,9 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             return JSONResponse({"error": "Empty text"}, status_code=400)
 
         import time as _time
-        print(f"\n🔊 TTS stream: character={req.character}, voice={req.voice}, "
-              f"mode={req.mode}, {len(text)} chars")
+        if DEBUG_MODE:
+            print(f"\n🔊 TTS stream: character={req.character}, voice={req.voice}, "
+                  f"mode={req.mode}, {len(text)} chars")
 
         api = GeminiLiveAPI(api_key=GEMINI_API_KEY, client=get_gemini_client())
 
@@ -1035,7 +1050,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             tts_text = await loop.run_in_executor(
                 None, lambda: api.prepare_text(text, character_name=req.character)
             )
-            print(f"🔊 TTS prepared ({_time.monotonic()-t0:.2f}s): {tts_text}")
+            if DEBUG_MODE:
+                print(f"🔊 TTS prepared ({_time.monotonic()-t0:.2f}s): {tts_text}")
         else:
             tts_text = text
 
