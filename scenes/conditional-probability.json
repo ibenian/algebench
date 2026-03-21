@@ -3,7 +3,7 @@
   "scenes": [
     {
       "title": "Probability Terms",
-      "description": "A guided tour of every probability term in the joint distribution — each one highlighted in the rectangle while the rest fade back.",
+      "description": "A guided tour of every probability term in the joint distribution \u2014 each one highlighted in the rectangle while the rest fade back.",
       "range": [
         [
           -1.5,
@@ -29,7 +29,11 @@
           5,
           -2
         ],
-        "up": [0, 0, 1]
+        "up": [
+          0,
+          0,
+          1
+        ]
       },
       "views": [
         {
@@ -44,7 +48,11 @@
             5,
             -2
           ],
-          "up": [0, 0, 1],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Angled view"
         },
         {
@@ -59,7 +67,11 @@
             5,
             -2
           ],
-          "up": [0, 0, 1],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Face-on probability square"
         }
       ],
@@ -331,7 +343,7 @@
               ],
               "radius": 0,
               "color": "#aaaacc",
-              "label": "¬A"
+              "label": "\u00acA"
             },
             {
               "id": "t_lbl_b",
@@ -355,7 +367,7 @@
               ],
               "radius": 0,
               "color": "#aabbcc",
-              "label": "¬B"
+              "label": "\u00acB"
             }
           ],
           "info": [
@@ -367,8 +379,8 @@
           ]
         },
         {
-          "title": "$P(A)$ — Prior",
-          "description": "**P(A)** is the marginal probability of event $A$ — the **width of the left column**.\n\nIt represents your prior belief about $A$ before observing anything about $B$.",
+          "title": "$P(A)$ \u2014 Prior",
+          "description": "**P(A)** is the marginal probability of event $A$ \u2014 the **width of the left column**.\n\nIt represents your prior belief about $A$ before observing anything about $B$.",
           "add": [
             {
               "id": "hl",
@@ -407,13 +419,13 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### $P(A)$ — Prior\n$P(A) = {{pA}}$\n---\nLeft column width.\nBelief in $A$ before\nobserving $B$.\n---\n$P(A) + P(\\overline{A}) = 1$"
+              "content": "### $P(A)$ \u2014 Prior\n$P(A) = {{pA}}$\n---\nLeft column width.\nBelief in $A$ before\nobserving $B$.\n---\n$P(A) + P(\\overline{A}) = 1$"
             }
           ]
         },
         {
           "title": "$P(\\overline{A})$",
-          "description": "**P(¬A)** is the probability of the complement — the **width of the right column**.\n\n$P(A) + P(\\overline{A}) = 1$",
+          "description": "**P(\u00acA)** is the probability of the complement \u2014 the **width of the right column**.\n\n$P(A) + P(\\overline{A}) = 1$",
           "remove": [
             {
               "id": "hl"
@@ -457,13 +469,13 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### $P(\\overline{A})$\n$P(\\overline{A}) = {{toFixed(1-pA,2)}}$\n---\nRight column width.\n$P(A) + P(\\overline{A}) = 1$\n${{pA}} + {{toFixed(1-pA,2)}} = 1$ ✓"
+              "content": "### $P(\\overline{A})$\n$P(\\overline{A}) = {{toFixed(1-pA,2)}}$\n---\nRight column width.\n$P(A) + P(\\overline{A}) = 1$\n${{pA}} + {{toFixed(1-pA,2)}} = 1$ \u2713"
             }
           ]
         },
         {
-          "title": "$P(B)$ — Marginal / Evidence",
-          "description": "**P(B)** is the total probability of event $B$ — the **area of the entire B-row**, summed across both columns.\n\n$$P(B) = P(B \\mid A)\\,P(A) + P(B \\mid \\overline{A})\\,P(\\overline{A})$$\n\nThis is the **law of total probability**. The B-row is L-shaped because $P(B \\mid A) \\neq P(B \\mid \\overline{A})$.",
+          "title": "$P(B)$ \u2014 Marginal / Evidence",
+          "description": "**P(B)** is the total probability of event $B$ \u2014 the **area of the entire B-row**, summed across both columns.\n\n$$P(B) = P(B \\mid A)\\,P(A) + P(B \\mid \\overline{A})\\,P(\\overline{A})$$\n\nThis is the **law of total probability**. The B-row is L-shaped because $P(B \\mid A) \\neq P(B \\mid \\overline{A})$.",
           "remove": [
             {
               "id": "hl"
@@ -539,13 +551,13 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### $P(B)$ — Evidence\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n---\nTotal area of the B-row.\n$= P(B|A)P(A)+P(B|\\overline{A})P(\\overline{A})$\n$= {{pBgA}}\\times{{pA}} + {{pBgNA}}\\times{{toFixed(1-pA,2)}}$\n$= {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$"
+              "content": "### $P(B)$ \u2014 Evidence\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n---\nTotal area of the B-row.\n$= P(B|A)P(A)+P(B|\\overline{A})P(\\overline{A})$\n$= {{pBgA}}\\times{{pA}} + {{pBgNA}}\\times{{toFixed(1-pA,2)}}$\n$= {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$"
             }
           ]
         },
         {
           "title": "$P(\\overline{B})$",
-          "description": "**P(¬B)** is the probability of $B$ not occurring — the **area of the ¬B region** (upper part of each column).\n\n$P(B) + P(\\overline{B}) = 1$",
+          "description": "**P(\u00acB)** is the probability of $B$ not occurring \u2014 the **area of the \u00acB region** (upper part of each column).\n\n$P(B) + P(\\overline{B}) = 1$",
           "remove": [
             {
               "id": "hl_l"
@@ -624,13 +636,13 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### $P(\\overline{B})$\n$P(\\overline{B}) = {{toFixed(1-(pA*pBgA+(1-pA)*pBgNA),3)}}$\n---\nUpper region area.\n$P(B)+P(\\overline{B})=1$\n${{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}+{{toFixed(1-(pA*pBgA+(1-pA)*pBgNA),3)}}=1$ ✓"
+              "content": "### $P(\\overline{B})$\n$P(\\overline{B}) = {{toFixed(1-(pA*pBgA+(1-pA)*pBgNA),3)}}$\n---\nUpper region area.\n$P(B)+P(\\overline{B})=1$\n${{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}+{{toFixed(1-(pA*pBgA+(1-pA)*pBgNA),3)}}=1$ \u2713"
             }
           ]
         },
         {
-          "title": "$P(A \\cap B)$ — Joint",
-          "description": "**P(A∩B)** is the joint probability of both $A$ and $B$ — the **area of the bottom-left cell**.\n\n$$P(A \\cap B) = P(A) \\cdot P(B \\mid A)$$",
+          "title": "$P(A \\cap B)$ \u2014 Joint",
+          "description": "**P(A\u2229B)** is the joint probability of both $A$ and $B$ \u2014 the **area of the bottom-left cell**.\n\n$$P(A \\cap B) = P(A) \\cdot P(B \\mid A)$$",
           "remove": [
             {
               "id": "hl_l"
@@ -682,8 +694,8 @@
           ]
         },
         {
-          "title": "$P(\\overline{A} \\cap B)$ — Joint",
-          "description": "**P(¬A∩B)** is the joint probability that $A$ does not occur but $B$ does — the **area of the bottom-right cell**.\n\n$$P(\\overline{A} \\cap B) = P(\\overline{A}) \\cdot P(B \\mid \\overline{A})$$",
+          "title": "$P(\\overline{A} \\cap B)$ \u2014 Joint",
+          "description": "**P(\u00acA\u2229B)** is the joint probability that $A$ does not occur but $B$ does \u2014 the **area of the bottom-right cell**.\n\n$$P(\\overline{A} \\cap B) = P(\\overline{A}) \\cdot P(B \\mid \\overline{A})$$",
           "remove": [
             {
               "id": "hl"
@@ -732,8 +744,8 @@
           ]
         },
         {
-          "title": "$P(A \\cap \\overline{B})$ — Joint",
-          "description": "**P(A∩¬B)** — $A$ occurs but $B$ does not — the **top-left cell**.\n\n$$P(A \\cap \\overline{B}) = P(A) \\cdot P(\\overline{B} \\mid A) = P(A) \\cdot (1 - P(B \\mid A))$$",
+          "title": "$P(A \\cap \\overline{B})$ \u2014 Joint",
+          "description": "**P(A\u2229\u00acB)** \u2014 $A$ occurs but $B$ does not \u2014 the **top-left cell**.\n\n$$P(A \\cap \\overline{B}) = P(A) \\cdot P(\\overline{B} \\mid A) = P(A) \\cdot (1 - P(B \\mid A))$$",
           "remove": [
             {
               "id": "hl"
@@ -782,8 +794,8 @@
           ]
         },
         {
-          "title": "$P(\\overline{A} \\cap \\overline{B})$ — Joint",
-          "description": "**P(¬A∩¬B)** — neither $A$ nor $B$ occurs — the **top-right cell**.\n\nThe four joints sum to 1:\n$$P(A\\cap B)+P(\\overline{A}\\cap B)+P(A\\cap\\overline{B})+P(\\overline{A}\\cap\\overline{B})=1$$",
+          "title": "$P(\\overline{A} \\cap \\overline{B})$ \u2014 Joint",
+          "description": "**P(\u00acA\u2229\u00acB)** \u2014 neither $A$ nor $B$ occurs \u2014 the **top-right cell**.\n\nThe four joints sum to 1:\n$$P(A\\cap B)+P(\\overline{A}\\cap B)+P(A\\cap\\overline{B})+P(\\overline{A}\\cap\\overline{B})=1$$",
           "remove": [
             {
               "id": "hl"
@@ -827,13 +839,13 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### $P(\\overline{A} \\cap \\overline{B})$\n$P(\\overline{A} \\cap \\overline{B}) = {{toFixed((1-pA)*(1-pBgNA),3)}}$\n---\nTop-right cell area.\n---\nAll four joints:\n${{toFixed(pA*pBgA,3)}} + {{toFixed((1-pA)*pBgNA,3)}}$\n$+ {{toFixed(pA*(1-pBgA),3)}} + {{toFixed((1-pA)*(1-pBgNA),3)}}$\n$= {{toFixed(pA*pBgA+(1-pA)*pBgNA+pA*(1-pBgA)+(1-pA)*(1-pBgNA),2)}}$ ✓"
+              "content": "### $P(\\overline{A} \\cap \\overline{B})$\n$P(\\overline{A} \\cap \\overline{B}) = {{toFixed((1-pA)*(1-pBgNA),3)}}$\n---\nTop-right cell area.\n---\nAll four joints:\n${{toFixed(pA*pBgA,3)}} + {{toFixed((1-pA)*pBgNA,3)}}$\n$+ {{toFixed(pA*(1-pBgA),3)}} + {{toFixed((1-pA)*(1-pBgNA),3)}}$\n$= {{toFixed(pA*pBgA+(1-pA)*pBgNA+pA*(1-pBgA)+(1-pA)*(1-pBgNA),2)}}$ \u2713"
             }
           ]
         },
         {
-          "title": "$P(B \\mid A)$ — Likelihood",
-          "description": "**P(B|A)** is the conditional probability of $B$ given $A$ — the **row height within the A column**.\n\n$$P(B \\mid A) = \\frac{P(A \\cap B)}{P(A)}$$\n\nGeometrically: zoom into the A-column (blue border). The B-portion occupies $P(B \\mid A)$ of its height.",
+          "title": "$P(B \\mid A)$ \u2014 Likelihood",
+          "description": "**P(B|A)** is the conditional probability of $B$ given $A$ \u2014 the **row height within the A column**.\n\n$$P(B \\mid A) = \\frac{P(A \\cap B)}{P(A)}$$\n\nGeometrically: zoom into the A-column (blue border). The B-portion occupies $P(B \\mid A)$ of its height.",
           "remove": [
             {
               "id": "hl"
@@ -909,13 +921,13 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### $P(B \\mid A)$ — Likelihood\n$P(B \\mid A) = {{pBgA}}$\n---\nRow height in A-column.\n$= \\dfrac{P(A \\cap B)}{P(A)}$\n$= {{toFixed(pA*pBgA,3)}} / {{pA}} = {{pBgA}}$\n---\n{{abs(pBgA-(pA*pBgA+(1-pA)*pBgNA))<0.02 ? 'Equal to P(B) — independent' : pBgA > pA*pBgA+(1-pA)*pBgNA ? 'B more likely when A occurs' : 'B less likely when A occurs'}}"
+              "content": "### $P(B \\mid A)$ \u2014 Likelihood\n$P(B \\mid A) = {{pBgA}}$\n---\nRow height in A-column.\n$= \\dfrac{P(A \\cap B)}{P(A)}$\n$= {{toFixed(pA*pBgA,3)}} / {{pA}} = {{pBgA}}$\n---\n{{abs(pBgA-(pA*pBgA+(1-pA)*pBgNA))<0.02 ? 'Equal to P(B) \u2014 independent' : pBgA > pA*pBgA+(1-pA)*pBgNA ? 'B more likely when A occurs' : 'B less likely when A occurs'}}"
             }
           ]
         },
         {
-          "title": "$P(B \\mid \\overline{A})$ — False positive rate",
-          "description": "**P(B|¬A)** is the row height within the ¬A column.\n\n$$P(B \\mid \\overline{A}) = \\frac{P(\\overline{A} \\cap B)}{P(\\overline{A})}$$\n\nWhen $P(B \\mid A) = P(B \\mid \\overline{A})$, $A$ and $B$ are **independent**.",
+          "title": "$P(B \\mid \\overline{A})$ \u2014 False positive rate",
+          "description": "**P(B|\u00acA)** is the row height within the \u00acA column.\n\n$$P(B \\mid \\overline{A}) = \\frac{P(\\overline{A} \\cap B)}{P(\\overline{A})}$$\n\nWhen $P(B \\mid A) = P(B \\mid \\overline{A})$, $A$ and $B$ are **independent**.",
           "remove": [
             {
               "id": "hl_d"
@@ -994,13 +1006,13 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### $P(B \\mid \\overline{A})$ — False positive rate\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n---\nRow height in $\\overline{A}$-column.\n$= \\dfrac{P(\\overline{A} \\cap B)}{P(\\overline{A})}$\n$= {{toFixed((1-pA)*pBgNA,3)}} / {{toFixed(1-pA,2)}} = {{pBgNA}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? 'Equal to P(B|A) — independent' : abs(pBgA-pBgNA)<0.1 ? 'Nearly independent' : 'Dependent — step is visible'}}"
+              "content": "### $P(B \\mid \\overline{A})$ \u2014 False positive rate\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n---\nRow height in $\\overline{A}$-column.\n$= \\dfrac{P(\\overline{A} \\cap B)}{P(\\overline{A})}$\n$= {{toFixed((1-pA)*pBgNA,3)}} / {{toFixed(1-pA,2)}} = {{pBgNA}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? 'Equal to P(B|A) \u2014 independent' : abs(pBgA-pBgNA)<0.1 ? 'Nearly independent' : 'Dependent \u2014 step is visible'}}"
             }
           ]
         },
         {
-          "title": "$P(A \\mid B)$ — Posterior",
-          "description": "**P(A|B)** is the posterior probability of $A$ given evidence $B$ — the **A-fraction of the B-row**.\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)} = \\frac{P(B \\mid A)\\,P(A)}{P(B)}$$\n\nThis is Bayes' rule. Geometrically: zoom into the B-row — the A-cell occupies $P(A \\mid B)$ of its width.",
+          "title": "$P(A \\mid B)$ \u2014 Posterior",
+          "description": "**P(A|B)** is the posterior probability of $A$ given evidence $B$ \u2014 the **A-fraction of the B-row**.\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)} = \\frac{P(B \\mid A)\\,P(A)}{P(B)}$$\n\nThis is Bayes' rule. Geometrically: zoom into the B-row \u2014 the A-cell occupies $P(A \\mid B)$ of its width.",
           "remove": [
             {
               "id": "hl_d"
@@ -1111,13 +1123,13 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### $P(A \\mid B)$ — Posterior\n$P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n---\nA-fraction of B-row.\n$= \\dfrac{P(A \\cap B)}{P(B)}$\n$= {{toFixed(pA*pBgA,3)}} / {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? 'Independent: P(A|B) = P(A)' : pA*pBgA/(pA*pBgA+(1-pA)*pBgNA) > pA ? 'B raised belief in A' : 'B lowered belief in A'}}"
+              "content": "### $P(A \\mid B)$ \u2014 Posterior\n$P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n---\nA-fraction of B-row.\n$= \\dfrac{P(A \\cap B)}{P(B)}$\n$= {{toFixed(pA*pBgA,3)}} / {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? 'Independent: P(A|B) = P(A)' : pA*pBgA/(pA*pBgA+(1-pA)*pBgNA) > pA ? 'B raised belief in A' : 'B lowered belief in A'}}"
             }
           ]
         },
         {
-          "title": "$P(A \\mid \\overline{B})$ — Posterior given $\\overline{B}$",
-          "description": "**P(A|¬B)** — how likely is $A$ given that $B$ did **not** occur?\n\n$$P(A \\mid \\overline{B}) = \\frac{P(A \\cap \\overline{B})}{P(\\overline{B})}$$\n\nIf $B$ is a positive test, this is the probability of the condition given a **negative** result.",
+          "title": "$P(A \\mid \\overline{B})$ \u2014 Posterior given $\\overline{B}$",
+          "description": "**P(A|\u00acB)** \u2014 how likely is $A$ given that $B$ did **not** occur?\n\n$$P(A \\mid \\overline{B}) = \\frac{P(A \\cap \\overline{B})}{P(\\overline{B})}$$\n\nIf $B$ is a positive test, this is the probability of the condition given a **negative** result.",
           "remove": [
             {
               "id": "hl_dl"
@@ -1231,17 +1243,17 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### $P(A \\mid \\overline{B})$ — Posterior given $\\overline{B}$\n$P(A \\mid \\overline{B}) = {{toFixed(pA*(1-pBgA)/(pA*(1-pBgA)+(1-pA)*(1-pBgNA)),3)}}$\n---\nA-fraction of $\\overline{B}$ region.\n$= \\dfrac{P(A \\cap \\overline{B})}{P(\\overline{B})}$\n$= {{toFixed(pA*(1-pBgA),3)}} / {{toFixed(pA*(1-pBgA)+(1-pA)*(1-pBgNA),3)}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? 'Independent: P(A|~B) = P(A)' : pA*(1-pBgA)/(pA*(1-pBgA)+(1-pA)*(1-pBgNA)) > pA ? '~B raised belief in A' : '~B lowered belief in A'}}"
+              "content": "### $P(A \\mid \\overline{B})$ \u2014 Posterior given $\\overline{B}$\n$P(A \\mid \\overline{B}) = {{toFixed(pA*(1-pBgA)/(pA*(1-pBgA)+(1-pA)*(1-pBgNA)),3)}}$\n---\nA-fraction of $\\overline{B}$ region.\n$= \\dfrac{P(A \\cap \\overline{B})}{P(\\overline{B})}$\n$= {{toFixed(pA*(1-pBgA),3)}} / {{toFixed(pA*(1-pBgA)+(1-pA)*(1-pBgNA),3)}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? 'Independent: P(A|~B) = P(A)' : pA*(1-pBgA)/(pA*(1-pBgA)+(1-pA)*(1-pBgNA)) > pA ? '~B raised belief in A' : '~B lowered belief in A'}}"
             }
           ]
         }
       ],
-      "markdown": "# Probability Terms\n\nEvery probability term you will ever encounter lives somewhere in this rectangle. Three sliders — $P(A)$, $P(B \\mid A)$, $P(B \\mid \\overline{A})$ — define the entire joint distribution of two binary events.\n\n## The Rectangle Geometry\n\n| Geometry | Term |\n|----------|------|\n| Left column width | $P(A)$ |\n| Right column width | $P(\\overline{A}) = 1 - P(A)$ |\n| Row height in A-column | $P(B \\mid A)$ |\n| Row height in ¬A-column | $P(B \\mid \\overline{A})$ |\n| Bottom-left cell area | $P(A \\cap B)$ |\n| Bottom-right cell area | $P(\\overline{A} \\cap B)$ |\n| Top-left cell area | $P(A \\cap \\overline{B})$ |\n| Top-right cell area | $P(\\overline{A} \\cap \\overline{B})$ |\n\n## Derived Terms\n\n**Marginals** (sum across rows or columns):\n$$P(B) = P(B \\mid A)\\,P(A) + P(B \\mid \\overline{A})\\,P(\\overline{A})$$\n\n**Conditionals** (fraction within a row or column):\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)} \\qquad P(B \\mid A) = \\frac{P(A \\cap B)}{P(A)}$$\n\n## Independence\n\nWhen $P(B \\mid A) = P(B \\mid \\overline{A})$, the step line is horizontal — $A$ and $B$ are **independent**. Every conditional collapses to the unconditional: $P(A \\mid B) = P(A)$, $P(B \\mid A) = P(B)$.\n\n## All 12 Terms from 3 Numbers\n\n$$P(A),\\; P(B \\mid A),\\; P(B \\mid \\overline{A}) \\;\\Rightarrow\\; \\text{all 12 terms}$$\n\n## Naming Conventions\n\n$P(B)$ goes by two names depending on context:\n\n- **Marginal probability** — the mathematical term. $P(B)$ is obtained by *marginalizing* the joint distribution over $A$: summing $P(A \\cap B)$ and $P(\\overline{A} \\cap B)$.\n- **Evidence** — the Bayesian term. When $B$ is an observation, $P(B)$ is the total probability of that evidence occurring, used as the normalizing denominator in Bayes' rule.\n\nSame quantity, two lenses. You will see both in the literature.",
-      "prompt": "You are a patient tutor helping a student explore every probability term in the joint distribution rectangle.\n\n## The 12 Terms and Their Geometry\nAll terms are determined by just three numbers: P(A), P(B|A), P(B|¬A).\n\n**Marginals** — widths or total row areas:\n- P(A) = left column width\n- P(¬A) = right column width = 1 - P(A)\n- P(B) = total B-row area = P(B|A)·P(A) + P(B|¬A)·P(¬A)\n- P(¬B) = 1 - P(B)\n\n**Joints** — individual cell areas:\n- P(A∩B) = bottom-left cell = P(A)·P(B|A)\n- P(¬A∩B) = bottom-right cell = P(¬A)·P(B|¬A)\n- P(A∩¬B) = top-left cell = P(A)·(1-P(B|A))\n- P(¬A∩¬B) = top-right cell = P(¬A)·(1-P(B|¬A))\n\n**Conditionals** — fraction within a column or row:\n- P(B|A) = row height in A-column (slider directly)\n- P(B|¬A) = row height in ¬A-column (slider directly)\n- P(A|B) = A-fraction of B-row = P(A∩B)/P(B) — Bayes posterior\n- P(A|¬B) = A-fraction of ¬B region = P(A∩¬B)/P(¬B)\n\n## Independence Special Case\nWhen P(B|A) = P(B|¬A): the step line is horizontal, P(B) = P(B|A), and all conditionals collapse: P(A|B) = P(A|¬B) = P(A), P(B|A) = P(B|¬A) = P(B).\n\n## Teaching Approach\n- Point to the highlighted region in the rectangle when explaining each term\n- Emphasize that all 12 terms come from just 3 slider values\n- Use the independence check to connect conditional and marginal probabilities\n- Encourage the student to predict how a term changes before moving the slider"
+      "markdown": "# Probability Terms\n\nEvery probability term you will ever encounter lives somewhere in this rectangle. Three sliders \u2014 $P(A)$, $P(B \\mid A)$, $P(B \\mid \\overline{A})$ \u2014 define the entire joint distribution of two binary events.\n\n## The Rectangle Geometry\n\n| Geometry | Term |\n|----------|------|\n| Left column width | $P(A)$ |\n| Right column width | $P(\\overline{A}) = 1 - P(A)$ |\n| Row height in A-column | $P(B \\mid A)$ |\n| Row height in \u00acA-column | $P(B \\mid \\overline{A})$ |\n| Bottom-left cell area | $P(A \\cap B)$ |\n| Bottom-right cell area | $P(\\overline{A} \\cap B)$ |\n| Top-left cell area | $P(A \\cap \\overline{B})$ |\n| Top-right cell area | $P(\\overline{A} \\cap \\overline{B})$ |\n\n## Derived Terms\n\n**Marginals** (sum across rows or columns):\n$$P(B) = P(B \\mid A)\\,P(A) + P(B \\mid \\overline{A})\\,P(\\overline{A})$$\n\n**Conditionals** (fraction within a row or column):\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)} \\qquad P(B \\mid A) = \\frac{P(A \\cap B)}{P(A)}$$\n\n## Independence\n\nWhen $P(B \\mid A) = P(B \\mid \\overline{A})$, the step line is horizontal \u2014 $A$ and $B$ are **independent**. Every conditional collapses to the unconditional: $P(A \\mid B) = P(A)$, $P(B \\mid A) = P(B)$.\n\n## All 12 Terms from 3 Numbers\n\n$$P(A),\\; P(B \\mid A),\\; P(B \\mid \\overline{A}) \\;\\Rightarrow\\; \\text{all 12 terms}$$\n\n## Naming Conventions\n\n$P(B)$ goes by two names depending on context:\n\n- **Marginal probability** \u2014 the mathematical term. $P(B)$ is obtained by *marginalizing* the joint distribution over $A$: summing $P(A \\cap B)$ and $P(\\overline{A} \\cap B)$.\n- **Evidence** \u2014 the Bayesian term. When $B$ is an observation, $P(B)$ is the total probability of that evidence occurring, used as the normalizing denominator in Bayes' rule.\n\nSame quantity, two lenses. You will see both in the literature.",
+      "prompt": "You are a patient tutor helping a student explore every probability term in the joint distribution rectangle.\n\n## The 12 Terms and Their Geometry\nAll terms are determined by just three numbers: P(A), P(B|A), P(B|\u00acA).\n\n**Marginals** \u2014 widths or total row areas:\n- P(A) = left column width\n- P(\u00acA) = right column width = 1 - P(A)\n- P(B) = total B-row area = P(B|A)\u00b7P(A) + P(B|\u00acA)\u00b7P(\u00acA)\n- P(\u00acB) = 1 - P(B)\n\n**Joints** \u2014 individual cell areas:\n- P(A\u2229B) = bottom-left cell = P(A)\u00b7P(B|A)\n- P(\u00acA\u2229B) = bottom-right cell = P(\u00acA)\u00b7P(B|\u00acA)\n- P(A\u2229\u00acB) = top-left cell = P(A)\u00b7(1-P(B|A))\n- P(\u00acA\u2229\u00acB) = top-right cell = P(\u00acA)\u00b7(1-P(B|\u00acA))\n\n**Conditionals** \u2014 fraction within a column or row:\n- P(B|A) = row height in A-column (slider directly)\n- P(B|\u00acA) = row height in \u00acA-column (slider directly)\n- P(A|B) = A-fraction of B-row = P(A\u2229B)/P(B) \u2014 Bayes posterior\n- P(A|\u00acB) = A-fraction of \u00acB region = P(A\u2229\u00acB)/P(\u00acB)\n\n## Independence Special Case\nWhen P(B|A) = P(B|\u00acA): the step line is horizontal, P(B) = P(B|A), and all conditionals collapse: P(A|B) = P(A|\u00acB) = P(A), P(B|A) = P(B|\u00acA) = P(B).\n\n## Teaching Approach\n- Point to the highlighted region in the rectangle when explaining each term\n- Emphasize that all 12 terms come from just 3 slider values\n- Use the independence check to connect conditional and marginal probabilities\n- Encourage the student to predict how a term changes before moving the slider"
     },
     {
       "title": "Conditional Probability",
-      "description": "Build intuition for conditional probability from joint distributions and areas — the probability rectangle.",
+      "description": "Build intuition for conditional probability from joint distributions and areas \u2014 the probability rectangle.",
       "range": [
         [
           -1.5,
@@ -1267,7 +1279,11 @@
           5,
           -2
         ],
-        "up": [0, 0, 1]
+        "up": [
+          0,
+          0,
+          1
+        ]
       },
       "views": [
         {
@@ -1282,7 +1298,11 @@
             5,
             -2
           ],
-          "up": [0, 0, 1],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Angled view showing Z-layers"
         },
         {
@@ -1297,7 +1317,11 @@
             5,
             -2
           ],
-          "up": [0, 0, 1],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Face-on probability square"
         },
         {
@@ -1312,11 +1336,15 @@
             5,
             -2
           ],
-          "up": [0, 0, 1],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "See the Z-layers from the side"
         }
       ],
-      "markdown": "# Conditional Probability\n\n## The Probability Rectangle\n\nRepresent the joint distribution of two binary events as a **unit square** (area = 1):\n\n- **Column width** = $P(X)$ — marginal probability of $X$\n- **Row height within each column** = $P(Y \\mid X)$ — conditional probability of $Y$ given $X$\n- **Cell area** = $P(X) \\times P(Y \\mid X) = P(X, Y)$\n\n## Independence Is a Straight Line\n\nWhen $X$ and $Y$ are **independent**, $P(Y \\mid X = 0) = P(Y \\mid X = 1) = P(Y)$. The horizontal divider is the **same height in every column** — a straight line.\n\nWhen **dependent**, the divider is **stepped**.\n\n## Conditional Probability\n\nConditioning on $B$ means focusing on just the $B$-row:\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)} = \\frac{P(A) \\cdot P(B \\mid A)}{P(B)}$$\n\nGeometrically: **zoom into the B-row**, stretching it to fill the full square.\n\n## Key Formulas\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)}$$\n\n$$P(B) = P(B \\mid A) \\cdot P(A) + P(B \\mid \\overline{A}) \\cdot P(\\overline{A})$$",
+      "markdown": "# Conditional Probability\n\n## The Probability Rectangle\n\nRepresent the joint distribution of two binary events as a **unit square** (area = 1):\n\n- **Column width** = $P(X)$ \u2014 marginal probability of $X$\n- **Row height within each column** = $P(Y \\mid X)$ \u2014 conditional probability of $Y$ given $X$\n- **Cell area** = $P(X) \\times P(Y \\mid X) = P(X, Y)$\n\n## Independence Is a Straight Line\n\nWhen $X$ and $Y$ are **independent**, $P(Y \\mid X = 0) = P(Y \\mid X = 1) = P(Y)$. The horizontal divider is the **same height in every column** \u2014 a straight line.\n\nWhen **dependent**, the divider is **stepped**.\n\n## Conditional Probability\n\nConditioning on $B$ means focusing on just the $B$-row:\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)} = \\frac{P(A) \\cdot P(B \\mid A)}{P(B)}$$\n\nGeometrically: **zoom into the B-row**, stretching it to fill the full square.\n\n## Key Formulas\n\n$$P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)}$$\n\n$$P(B) = P(B \\mid A) \\cdot P(A) + P(B \\mid \\overline{A}) \\cdot P(\\overline{A})$$",
       "elements": [
         {
           "type": "skybox",
@@ -1328,7 +1356,7 @@
       "steps": [
         {
           "title": "The Probability Rectangle",
-          "description": "The **unit square** represents all possible outcomes (total probability = 1). We split it into two **columns** — one for event $A$, one for $\\overline{A}$ — where the **column width equals the probability**.\n\nAdjust $P(A)$ to see the column split change. This is the first axis of the joint distribution.",
+          "description": "The **unit square** represents all possible outcomes (total probability = 1). We split it into two **columns** \u2014 one for event $A$, one for $\\overline{A}$ \u2014 where the **column width equals the probability**.\n\nAdjust $P(A)$ to see the column split change. This is the first axis of the joint distribution.",
           "sliders": [
             {
               "id": "pA",
@@ -1477,12 +1505,12 @@
               ],
               "radius": 0,
               "color": "#aaaacc",
-              "label": "¬A"
+              "label": "\u00acA"
             },
             {
               "id": "lbl_omega",
               "type": "text",
-              "text": "P(Ω) = 1",
+              "text": "P(\u03a9) = 1",
               "position": [
                 3.5,
                 5,
@@ -1501,11 +1529,11 @@
         },
         {
           "title": "The Joint Distribution",
-          "description": "Now add event $B$ as a **row split within each column**. The height of the $B$-row in each column is the **conditional probability** $P(B \\mid \\text{column})$.\n\nCrucially, $P(B \\mid A)$ and $P(B \\mid \\overline{A})$ can be **different** — that's dependence. Each cell's area equals the joint probability $P(X, Y)$.\n\n**Independence**: set both $P(B \\mid A)$ and $P(B \\mid \\overline{A})$ to the same value — the horizontal divider becomes a straight line.",
+          "description": "Now add event $B$ as a **row split within each column**. The height of the $B$-row in each column is the **conditional probability** $P(B \\mid \\text{column})$.\n\nCrucially, $P(B \\mid A)$ and $P(B \\mid \\overline{A})$ can be **different** \u2014 that's dependence. Each cell's area equals the joint probability $P(X, Y)$.\n\n**Independence**: set both $P(B \\mid A)$ and $P(B \\mid \\overline{A})$ to the same value \u2014 the horizontal divider becomes a straight line.",
           "sliders": [
             {
               "id": "pA",
-              "label": "$P(A)$ — column width split",
+              "label": "$P(A)$ \u2014 column width split",
               "min": 0.05,
               "max": 0.95,
               "step": 0.01,
@@ -1513,7 +1541,7 @@
             },
             {
               "id": "pBgA",
-              "label": "$P(B \\mid A)$ — row height in A column",
+              "label": "$P(B \\mid A)$ \u2014 row height in A column",
               "min": 0.01,
               "max": 0.99,
               "step": 0.01,
@@ -1521,7 +1549,7 @@
             },
             {
               "id": "pBgNA",
-              "label": "$P(B \\mid \\overline{A})$ — row height in $\\overline{A}$ column",
+              "label": "$P(B \\mid \\overline{A})$ \u2014 row height in $\\overline{A}$ column",
               "min": 0.01,
               "max": 0.99,
               "step": 0.01,
@@ -1700,7 +1728,7 @@
               ],
               "radius": 0,
               "color": "#44ff88",
-              "label": "A∩B"
+              "label": "A\u2229B"
             },
             {
               "id": "lbl_notab",
@@ -1712,7 +1740,7 @@
               ],
               "radius": 0,
               "color": "#ffaa55",
-              "label": "¬A∩B"
+              "label": "\u00acA\u2229B"
             },
             {
               "id": "lbl_b_row",
@@ -1736,20 +1764,20 @@
               ],
               "radius": 0,
               "color": "#aabbcc",
-              "label": "¬B"
+              "label": "\u00acB"
             }
           ],
           "info": [
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Joint Distribution\nCell area = $P(X,Y)$\n---\n$P(A \\cap B) = P(A) \\cdot P(B \\mid A)$\n$\\quad = {{pA}} \\times {{pBgA}} = {{toFixed(pA*pBgA,3)}}$\n$P(\\overline{A} \\cap B) = {{toFixed((1-pA)*pBgNA,3)}}$\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n---\n**Independent?**\n$P(B \\mid A) = {{pBgA}}$\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n{{abs(pBgA-pBgNA)<0.02 ? 'Yes — step line is horizontal' : 'No — step line is off-horizontal'}}"
+              "content": "### Joint Distribution\nCell area = $P(X,Y)$\n---\n$P(A \\cap B) = P(A) \\cdot P(B \\mid A)$\n$\\quad = {{pA}} \\times {{pBgA}} = {{toFixed(pA*pBgA,3)}}$\n$P(\\overline{A} \\cap B) = {{toFixed((1-pA)*pBgNA,3)}}$\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n---\n**Independent?**\n$P(B \\mid A) = {{pBgA}}$\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n{{abs(pBgA-pBgNA)<0.02 ? 'Yes \u2014 step line is horizontal' : 'No \u2014 step line is off-horizontal'}}"
             }
           ]
         },
         {
           "title": "Independence Is a Straight Line",
-          "description": "**Independence** means knowing $A$ tells you nothing about $B$: $P(B \\mid A) = P(B \\mid \\overline{A})$.\n\nThe **bar chart to the right** shows P(B|A) and P(B|¬A) side by side. When they match, the step line in the rectangle is a straight horizontal line — that is independence.\n\n**Dependence** creates mismatched bars and a step. Set both sliders to the same value to see the bars align and the step disappear.",
+          "description": "**Independence** means knowing $A$ tells you nothing about $B$: $P(B \\mid A) = P(B \\mid \\overline{A})$.\n\nThe **bar chart to the right** shows P(B|A) and P(B|\u00acA) side by side. When they match, the step line in the rectangle is a straight horizontal line \u2014 that is independence.\n\n**Dependence** creates mismatched bars and a step. Set both sliders to the same value to see the bars align and the step disappear.",
           "add": [
             {
               "id": "indep_bar_border_a",
@@ -1903,20 +1931,20 @@
               ],
               "radius": 0,
               "color": "#aaaacc",
-              "label": "P(B|¬A)"
+              "label": "P(B|\u00acA)"
             }
           ],
           "info": [
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Independence\n$P(B \\mid A) = {{pBgA}}$\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n---\nStep height:\n$|P(B \\mid A) - P(B \\mid \\overline{A})| = {{toFixed(abs(pBgA-pBgNA),3)}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? '✓ Independent — straight line' : pBgA>pBgNA ? 'B more likely when A occurs' : 'B less likely when A occurs'}}"
+              "content": "### Independence\n$P(B \\mid A) = {{pBgA}}$\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n---\nStep height:\n$|P(B \\mid A) - P(B \\mid \\overline{A})| = {{toFixed(abs(pBgA-pBgNA),3)}}$\n---\n{{abs(pBgA-pBgNA)<0.02 ? '\u2713 Independent \u2014 straight line' : pBgA>pBgNA ? 'B more likely when A occurs' : 'B less likely when A occurs'}}"
             }
           ]
         },
         {
           "title": "Conditioning on B: Zoom In",
-          "description": "**Conditioning on B** means restricting attention to just the $B$-row — the bottom strip. We zoom in on it, stretching it to fill the entire square.\n\nIn the zoomed view (elevated at z = 2.5), the $A$ column occupies exactly $P(A \\mid B)$ of the width. The **column widths change** when you zoom in, because the B-row has different heights in each column.\n\n$$P(A \\mid B) = \\frac{\\text{area of } A \\cap B}{\\text{area of } B\\text{-row}} = \\frac{P(A) \\cdot P(B \\mid A)}{P(B)}$$\n\nUse the **Side** camera view to see the 3D projection clearly.",
+          "description": "**Conditioning on B** means restricting attention to just the $B$-row \u2014 the bottom strip. We zoom in on it, stretching it to fill the entire square.\n\nIn the zoomed view (elevated at z = 2.5), the $A$ column occupies exactly $P(A \\mid B)$ of the width. The **column widths change** when you zoom in, because the B-row has different heights in each column.\n\n$$P(A \\mid B) = \\frac{\\text{area of } A \\cap B}{\\text{area of } B\\text{-row}} = \\frac{P(A) \\cdot P(B \\mid A)}{P(B)}$$\n\nUse the **Side** camera view to see the 3D projection clearly.",
           "remove": [
             {
               "id": "indep_bar_border_a"
@@ -2200,7 +2228,7 @@
             {
               "id": "lbl_zoomed_title",
               "type": "text",
-              "text": "Given B  —  zoomed",
+              "text": "Given B  \u2014  zoomed",
               "position": [
                 0,
                 11.3,
@@ -2230,20 +2258,20 @@
               ],
               "radius": 0,
               "color": "#ffaa55",
-              "label": "P(¬A|B)"
+              "label": "P(\u00acA|B)"
             }
           ],
           "info": [
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Conditioning on B\n$P(A \\mid B) = \\dfrac{P(A) \\cdot P(B \\mid A)}{P(B)}$\n---\n$P(A \\cap B) = {{toFixed(pA*pBgA,3)}}$\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n---\n$P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n$P(\\overline{A} \\mid B) = {{toFixed((1-pA)*pBgNA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n---\nNote: $P(A)={{pA}}$ but $P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n{{abs(pBgA-pBgNA)<0.02 ? 'Same! A and B are independent.' : 'Different — B shifts the belief about A.'}}"
+              "content": "### Conditioning on B\n$P(A \\mid B) = \\dfrac{P(A) \\cdot P(B \\mid A)}{P(B)}$\n---\n$P(A \\cap B) = {{toFixed(pA*pBgA,3)}}$\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n---\n$P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n$P(\\overline{A} \\mid B) = {{toFixed((1-pA)*pBgNA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n---\nNote: $P(A)={{pA}}$ but $P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n{{abs(pBgA-pBgNA)<0.02 ? 'Same! A and B are independent.' : 'Different \u2014 B shifts the belief about A.'}}"
             }
           ]
         },
         {
           "title": "Conditioning on A: Zoom In",
-          "description": "**Conditioning on A** means restricting attention to just the $A$-column — the left strip. We zoom it horizontally to fill the entire square.\n\nIn the zoomed view (elevated at z = 2.5), the $B$ row occupies exactly $P(B \\mid A)$ of the height. Compare this to the previous slide where we zoomed the B-row.\n\n$$P(B \\mid A) = \\frac{\\text{area of } A \\cap B}{\\text{area of } A\\text{-column}} = \\frac{P(A) \\cdot P(B \\mid A)}{P(A)}$$\n\nUse the **Side** camera view to see both zoom levels.",
+          "description": "**Conditioning on A** means restricting attention to just the $A$-column \u2014 the left strip. We zoom it horizontally to fill the entire square.\n\nIn the zoomed view (elevated at z = 2.5), the $B$ row occupies exactly $P(B \\mid A)$ of the height. Compare this to the previous slide where we zoomed the B-row.\n\n$$P(B \\mid A) = \\frac{\\text{area of } A \\cap B}{\\text{area of } A\\text{-column}} = \\frac{P(A) \\cdot P(B \\mid A)}{P(A)}$$\n\nUse the **Side** camera view to see both zoom levels.",
           "remove": [
             {
               "id": "b_row_left_border"
@@ -2554,7 +2582,7 @@
             {
               "id": "lbl_zoomed_a_title",
               "type": "text",
-              "text": "Given A  —  zoomed",
+              "text": "Given A  \u2014  zoomed",
               "position": [
                 0,
                 11.3,
@@ -2584,20 +2612,20 @@
               ],
               "radius": 0,
               "color": "#8899cc",
-              "label": "P(¬B|A)"
+              "label": "P(\u00acB|A)"
             }
           ],
           "info": [
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Conditioning on A\n$P(B \\mid A) = \\dfrac{P(A) \\cdot P(B \\mid A)}{P(A)}$\n---\n$P(A \\cap B) = {{toFixed(pA*pBgA,3)}}$\n$P(A) = {{pA}}$\n---\n$P(B \\mid A) = {{toFixed(pBgA,3)}}$\n$P(\\overline{B} \\mid A) = {{toFixed(1-pBgA,3)}}$\n---\nNote: $P(B)={{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$ but $P(B \\mid A)={{pBgA}}$\n{{abs(pBgA-(pA*pBgA+(1-pA)*pBgNA))<0.02 ? 'Same! A and B are independent.' : 'Different — A changes the probability of B.'}}"
+              "content": "### Conditioning on A\n$P(B \\mid A) = \\dfrac{P(A) \\cdot P(B \\mid A)}{P(A)}$\n---\n$P(A \\cap B) = {{toFixed(pA*pBgA,3)}}$\n$P(A) = {{pA}}$\n---\n$P(B \\mid A) = {{toFixed(pBgA,3)}}$\n$P(\\overline{B} \\mid A) = {{toFixed(1-pBgA,3)}}$\n---\nNote: $P(B)={{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$ but $P(B \\mid A)={{pBgA}}$\n{{abs(pBgA-(pA*pBgA+(1-pA)*pBgNA))<0.02 ? 'Same! A and B are independent.' : 'Different \u2014 A changes the probability of B.'}}"
             }
           ]
         },
         {
           "title": "Asymmetry: $P(A \\mid B) \\neq P(B \\mid A)$",
-          "description": "You have now seen both zoomed views — conditioning on B and conditioning on A.\n\nSame four cells, two different lenses. The intersection area $P(A \\cap B)$ is shared, but the denominators differ: $P(B)$ vs $P(A)$. That's why $P(A \\mid B) \\neq P(B \\mid A)$ in general — same intersection, different normalization.",
+          "description": "You have now seen both zoomed views \u2014 conditioning on B and conditioning on A.\n\nSame four cells, two different lenses. The intersection area $P(A \\cap B)$ is shared, but the denominators differ: $P(B)$ vs $P(A)$. That's why $P(A \\mid B) \\neq P(B \\mid A)$ in general \u2014 same intersection, different normalization.",
           "remove": [
             {
               "id": "a_col_left_border"
@@ -2649,27 +2677,27 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Asymmetry\nSame intersection, different denominators:\n---\n$P(A \\cap B) = {{toFixed(pA*pBgA,3)}}$\n---\n$P(A \\mid B) = {{toFixed(pA*pBgA,3)}} / {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n\n$P(B \\mid A) = {{toFixed(pA*pBgA,3)}} / {{pA}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pBgA,3)}}$\n---\n{{abs(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)-pBgA)<0.01 ? 'Symmetric: P(A) ≈ P(B)' : 'Asymmetric: P(A) ≠ P(B)'}}\n{{abs(pBgA-pBgNA)<0.02 ? 'Independent: step line is horizontal' : 'Dependent: step line is off-horizontal'}}"
+              "content": "### Asymmetry\nSame intersection, different denominators:\n---\n$P(A \\cap B) = {{toFixed(pA*pBgA,3)}}$\n---\n$P(A \\mid B) = {{toFixed(pA*pBgA,3)}} / {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n\n$P(B \\mid A) = {{toFixed(pA*pBgA,3)}} / {{pA}}$\n$\\quad\\quad\\quad\\; = {{toFixed(pBgA,3)}}$\n---\n{{abs(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)-pBgA)<0.01 ? 'Symmetric: P(A) \u2248 P(B)' : 'Asymmetric: P(A) \u2260 P(B)'}}\n{{abs(pBgA-pBgNA)<0.02 ? 'Independent: step line is horizontal' : 'Dependent: step line is off-horizontal'}}"
             }
           ]
         },
         {
           "title": "Symmetry vs Independence",
-          "description": "Two special conditions can each make $P(A \\mid B)$ and $P(B \\mid A)$ behave in interesting ways — but they mean very different things.\n\n**Symmetry** ($P(A \\mid B) = P(B \\mid A)$): happens whenever $P(A) = P(B)$. The two events are equally common, so the same intersection divided by two equal denominators gives the same fraction. It says nothing about whether $A$ and $B$ are related.\n\n**Independence** ($P(A \\mid B) = P(A)$): knowing $B$ happened gives you no information about $A$. Equivalently $P(B \\mid A) = P(B)$ and $P(B \\mid A) = P(B \\mid \\overline{A})$ — the step line is horizontal.\n\nTry the sliders:\n- Set $P(A) = P(B)$ without making the step horizontal — you get symmetry but not independence\n- Set $P(B \\mid A) = P(B \\mid \\overline{A})$ — you get independence; $P(A \\mid B) = P(A)$ regardless of whether $P(A) = P(B)$",
+          "description": "Two special conditions can each make $P(A \\mid B)$ and $P(B \\mid A)$ behave in interesting ways \u2014 but they mean very different things.\n\n**Symmetry** ($P(A \\mid B) = P(B \\mid A)$): happens whenever $P(A) = P(B)$. The two events are equally common, so the same intersection divided by two equal denominators gives the same fraction. It says nothing about whether $A$ and $B$ are related.\n\n**Independence** ($P(A \\mid B) = P(A)$): knowing $B$ happened gives you no information about $A$. Equivalently $P(B \\mid A) = P(B)$ and $P(B \\mid A) = P(B \\mid \\overline{A})$ \u2014 the step line is horizontal.\n\nTry the sliders:\n- Set $P(A) = P(B)$ without making the step horizontal \u2014 you get symmetry but not independence\n- Set $P(B \\mid A) = P(B \\mid \\overline{A})$ \u2014 you get independence; $P(A \\mid B) = P(A)$ regardless of whether $P(A) = P(B)$",
           "info": [
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Symmetry vs Independence\n---\n**Symmetry** — $P(A \\mid B) = P(B \\mid A)$?\n$P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n$P(B \\mid A) = {{toFixed(pBgA,3)}}$\n{{abs(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)-pBgA)<0.01 ? '✓ Symmetric (P(A) ≈ P(B))' : '✗ Asymmetric'}}\n{{abs(pBgA-pBgNA)<0.02 ? '✓ Independent' : '✗ Dependent'}}\n---\n**Independence** — $P(B \\mid A) = P(B \\mid \\overline{A})$?\n$P(B \\mid A) = {{pBgA}}$\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n{{abs(pBgA-pBgNA)<0.02 ? '✓ Independent — P(A|B) = P(A) = ' + pA : '✗ Dependent — P(A|B) = ' + toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3) + ' ≠ P(A) = ' + pA}}"
+              "content": "### Symmetry vs Independence\n---\n**Symmetry** \u2014 $P(A \\mid B) = P(B \\mid A)$?\n$P(A \\mid B) = {{toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3)}}$\n$P(B \\mid A) = {{toFixed(pBgA,3)}}$\n{{abs(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA)-pBgA)<0.01 ? '\u2713 Symmetric (P(A) \u2248 P(B))' : '\u2717 Asymmetric'}}\n{{abs(pBgA-pBgNA)<0.02 ? '\u2713 Independent' : '\u2717 Dependent'}}\n---\n**Independence** \u2014 $P(B \\mid A) = P(B \\mid \\overline{A})$?\n$P(B \\mid A) = {{pBgA}}$\n$P(B \\mid \\overline{A}) = {{pBgNA}}$\n$P(B) = {{toFixed(pA*pBgA+(1-pA)*pBgNA,3)}}$\n{{abs(pBgA-pBgNA)<0.02 ? '\u2713 Independent \u2014 P(A|B) = P(A) = ' + pA : '\u2717 Dependent \u2014 P(A|B) = ' + toFixed(pA*pBgA/(pA*pBgA+(1-pA)*pBgNA),3) + ' \u2260 P(A) = ' + pA}}"
             }
           ]
         }
       ],
-      "prompt": "You are teaching conditional probability using the correct area-based rectangle model.\n\n## The Core Geometric Model (CRITICAL)\nThe rectangle divides into four cells:\n- **Columns** = values of X (A vs ¬A). Column WIDTH = P(X) — marginal probability.\n- **Rows within each column** = conditional distribution P(Y|X). Row HEIGHT in each column = P(Y|X).\n- **Cell area** = P(X) × P(Y|X) = P(X,Y) — joint probability.\n- The dividing line between rows is STEPPED (not horizontal) when dependent.\n- Independence means straight horizontal line: P(B|A) = P(B|¬A).\n\n## When Explaining Conditioning\n- Conditioning on B = zoom into the B-row (bottom strip)\n- After zooming: A-column occupies P(A|B) fraction, NOT P(A) fraction\n- This is why P(A|B) ≠ P(A) when dependent\n\n## Summary of Geometric Rules\nUse this summary when asked, and proactively offer it on the Symmetry vs Independence step.\n\n**Independence** (P(A|B) = P(A))\n- Step line is horizontal: P(B|A) = P(B|¬A)\n- B gives no information about A\n- Geometrically: the B-row is a rectangle — same column proportions as the full square\n\n**Symmetry** (P(A|B) = P(B|A))\n- Holds when and only when P(A) = P(B) — equal column width and equal row area\n- Equivalently: P(A∩¬B) = P(¬A∩B) — the off-diagonal joints are equal\n- Same intersection P(A∩B), equal denominators P(A) = P(B)\n- Has nothing to do with whether A and B are related — you can have symmetry with strong dependence\n\n**Conditioning**\n- Zooming into a row or column changes the frame of reference\n- P(A|B) is the A-fraction of the B-row area\n- P(B|A) is the B-fraction of the A-column area\n- Same numerator P(A∩B), different denominators P(B) vs P(A)\n\n## Preset Prompts\nOn the 'Symmetry vs Independence' step, call set_preset_prompts with:\n- 'Show me the Summary of Geometric Rules'\n- 'Can you find slider values that are symmetric but dependent?'\n- 'Can you find slider values that are independent but asymmetric?'\n\n## Exploration Prompts\n- 'Set P(B|A) = P(B|¬A) and notice the step disappears — that is what independence looks like'\n- 'Can you find slider values where P(A|B) is actually less than P(A)?'"
+      "prompt": "You are teaching conditional probability using the correct area-based rectangle model.\n\n## The Core Geometric Model (CRITICAL)\nThe rectangle divides into four cells:\n- **Columns** = values of X (A vs \u00acA). Column WIDTH = P(X) \u2014 marginal probability.\n- **Rows within each column** = conditional distribution P(Y|X). Row HEIGHT in each column = P(Y|X).\n- **Cell area** = P(X) \u00d7 P(Y|X) = P(X,Y) \u2014 joint probability.\n- The dividing line between rows is STEPPED (not horizontal) when dependent.\n- Independence means straight horizontal line: P(B|A) = P(B|\u00acA).\n\n## When Explaining Conditioning\n- Conditioning on B = zoom into the B-row (bottom strip)\n- After zooming: A-column occupies P(A|B) fraction, NOT P(A) fraction\n- This is why P(A|B) \u2260 P(A) when dependent\n\n## Summary of Geometric Rules\nUse this summary when asked, and proactively offer it on the Symmetry vs Independence step.\n\n**Independence** (P(A|B) = P(A))\n- Step line is horizontal: P(B|A) = P(B|\u00acA)\n- B gives no information about A\n- Geometrically: the B-row is a rectangle \u2014 same column proportions as the full square\n\n**Symmetry** (P(A|B) = P(B|A))\n- Holds when and only when P(A) = P(B) \u2014 equal column width and equal row area\n- Equivalently: P(A\u2229\u00acB) = P(\u00acA\u2229B) \u2014 the off-diagonal joints are equal\n- Same intersection P(A\u2229B), equal denominators P(A) = P(B)\n- Has nothing to do with whether A and B are related \u2014 you can have symmetry with strong dependence\n\n**Conditioning**\n- Zooming into a row or column changes the frame of reference\n- P(A|B) is the A-fraction of the B-row area\n- P(B|A) is the B-fraction of the A-column area\n- Same numerator P(A\u2229B), different denominators P(B) vs P(A)\n\n## Preset Prompts\nOn the 'Symmetry vs Independence' step, call set_preset_prompts with:\n- 'Show me the Summary of Geometric Rules'\n- 'Can you find slider values that are symmetric but dependent?'\n- 'Can you find slider values that are independent but asymmetric?'\n\n## Exploration Prompts\n- 'Set P(B|A) = P(B|\u00acA) and notice the step disappears \u2014 that is what independence looks like'\n- 'Can you find slider values where P(A|B) is actually less than P(A)?'"
     },
     {
       "title": "Bayes' Rule",
-      "description": "Apply Bayes' rule to three real-world problems where intuition fails — medical testing, spam filtering, and tornado warnings.",
+      "description": "Apply Bayes' rule to three real-world problems where intuition fails \u2014 medical testing, spam filtering, and tornado warnings.",
       "range": [
         [
           -1.5,
@@ -2695,7 +2723,11 @@
           5,
           -2
         ],
-        "up": [0, 0, 1]
+        "up": [
+          0,
+          0,
+          1
+        ]
       },
       "views": [
         {
@@ -2710,7 +2742,11 @@
             5,
             -2
           ],
-          "up": [0, 0, 1],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Angled view showing Z-layers"
         },
         {
@@ -2725,7 +2761,11 @@
             5,
             -2
           ],
-          "up": [0, 0, 1],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Face-on probability square"
         },
         {
@@ -2740,7 +2780,11 @@
             5,
             -2
           ],
-          "up": [0, 0, 1],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "See the Z-layers from the side"
         }
       ],
@@ -2760,7 +2804,7 @@
           "sliders": [
             {
               "id": "pA",
-              "label": "$P(A)$ — Prior",
+              "label": "$P(A)$ \u2014 Prior",
               "min": 0.05,
               "max": 0.95,
               "step": 0.01,
@@ -2768,7 +2812,7 @@
             },
             {
               "id": "pBgA",
-              "label": "$P(B \\mid A)$ — Likelihood",
+              "label": "$P(B \\mid A)$ \u2014 Likelihood",
               "min": 0.01,
               "max": 0.99,
               "step": 0.01,
@@ -2776,7 +2820,7 @@
             },
             {
               "id": "pBgNA",
-              "label": "$P(B \\mid \\overline{A})$ — False positive rate",
+              "label": "$P(B \\mid \\overline{A})$ \u2014 False positive rate",
               "min": 0.01,
               "max": 0.99,
               "step": 0.01,
@@ -2921,7 +2965,7 @@
               ],
               "radius": 0,
               "color": "#aaaacc",
-              "label": "¬A"
+              "label": "\u00acA"
             },
             {
               "id": "cell_ab",
@@ -3089,7 +3133,7 @@
               ],
               "radius": 0,
               "color": "#44ff88",
-              "label": "A∩B"
+              "label": "A\u2229B"
             },
             {
               "id": "lbl_notab",
@@ -3101,7 +3145,7 @@
               ],
               "radius": 0,
               "color": "#ffaa55",
-              "label": "¬A∩B"
+              "label": "\u00acA\u2229B"
             },
             {
               "id": "lbl_b_row",
@@ -3125,7 +3169,7 @@
               ],
               "radius": 0,
               "color": "#aabbcc",
-              "label": "¬B"
+              "label": "\u00acB"
             },
             {
               "id": "bayes_highlight_ab",
@@ -3265,12 +3309,12 @@
           ]
         },
         {
-          "title": "Example 1 — Medical Testing",
-          "description": "A disease affects **1%** of people. A test is **99% sensitive** and has a **2% false positive rate**.\n\n**You test positive. What's the probability you actually have the disease?**\n\nMost people say ~99%. The real answer at 1% prevalence is ~**33%** — still a surprise.\n\n**Left column** (width = prevalence) = disease. **Right column** = no disease. The **bottom row** (below the step line) = tested positive. Green = true positive, orange = false positive. The posterior $P(D \\mid +)$ is the green fraction of that bottom row.\n\nSlide prevalence down to **0.1%** to see the famous 4.7% result.",
+          "title": "Example 1 \u2014 Medical Testing",
+          "description": "A disease affects **1%** of people. A test is **99% sensitive** and has a **2% false positive rate**.\n\n**You test positive. What's the probability you actually have the disease?**\n\nMost people say ~99%. The real answer at 1% prevalence is ~**33%** \u2014 still a surprise.\n\n**Left column** (width = prevalence) = disease. **Right column** = no disease. The **bottom row** (below the step line) = tested positive. Green = true positive, orange = false positive. The posterior $P(D \\mid +)$ is the green fraction of that bottom row.\n\nSlide prevalence down to **0.1%** to see the famous 4.7% result.",
           "sliders": [
             {
               "id": "prev",
-              "label": "$P(\\text{disease})$ — Prevalence",
+              "label": "$P(\\text{disease})$ \u2014 Prevalence",
               "min": 0.001,
               "max": 0.15,
               "step": 0.001,
@@ -3278,7 +3322,7 @@
             },
             {
               "id": "sens",
-              "label": "$P(+ \\mid D)$ — Sensitivity",
+              "label": "$P(+ \\mid D)$ \u2014 Sensitivity",
               "min": 0.5,
               "max": 1.0,
               "step": 0.01,
@@ -3286,7 +3330,7 @@
             },
             {
               "id": "fpr",
-              "label": "$P(+ \\mid \\overline{D})$ — False positive rate",
+              "label": "$P(+ \\mid \\overline{D})$ \u2014 False positive rate",
               "min": 0.001,
               "max": 0.3,
               "step": 0.001,
@@ -3617,7 +3661,7 @@
               ],
               "radius": 0,
               "color": "#6688bb",
-              "label": "test −"
+              "label": "test \u2212"
             },
             {
               "id": "med_bc_sep",
@@ -4019,7 +4063,7 @@
               ],
               "radius": 0,
               "color": "#ccddff",
-              "label": "P(+|¬D)"
+              "label": "P(+|\u00acD)"
             },
             {
               "id": "med_bc_lbl_4",
@@ -4050,13 +4094,13 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Medical Test\n$P(D) = {{toFixed(prev*100,2)}}\\%$ — prior\n$P(+|D) = {{toFixed(sens*100,0)}}\\%$ — sensitivity\n$P(+|\\overline{D}) = {{toFixed(fpr*100,2)}}\\%$ — FPR\n$P(+) = {{toFixed((prev*sens+(1-prev)*fpr)*100,2)}}\\%$ — evidence\n$P(D|+) = {{toFixed(prev*sens/(prev*sens+(1-prev)*fpr)*100,1)}}\\%$ — **posterior**\n---\nPer 100,000: true+ = {{toFixed(prev*sens*100000,0)}} / false+ = {{toFixed((1-prev)*fpr*100000,0)}}\n---\n{{prev*sens/(prev*sens+(1-prev)*fpr) < 0.1 ? 'Surprise: most positives are FALSE alarms!' : prev*sens/(prev*sens+(1-prev)*fpr) < 0.5 ? 'Still mostly false positives' : 'Majority are true positives'}}"
+              "content": "### Medical Test\n$P(D) = {{toFixed(prev*100,2)}}\\%$ \u2014 prior\n$P(+|D) = {{toFixed(sens*100,0)}}\\%$ \u2014 sensitivity\n$P(+|\\overline{D}) = {{toFixed(fpr*100,2)}}\\%$ \u2014 FPR\n$P(+) = {{toFixed((prev*sens+(1-prev)*fpr)*100,2)}}\\%$ \u2014 evidence\n$P(D|+) = {{toFixed(prev*sens/(prev*sens+(1-prev)*fpr)*100,1)}}\\%$ \u2014 **posterior**\n---\nPer 100,000: true+ = {{toFixed(prev*sens*100000,0)}} / false+ = {{toFixed((1-prev)*fpr*100000,0)}}\n---\n{{prev*sens/(prev*sens+(1-prev)*fpr) < 0.1 ? 'Surprise: most positives are FALSE alarms!' : prev*sens/(prev*sens+(1-prev)*fpr) < 0.5 ? 'Still mostly false positives' : 'Majority are true positives'}}"
             }
           ]
         },
         {
-          "title": "Example 2 — Spam Filtering",
-          "description": "**15%** of emails are spam. **80%** of spam contains \"lottery\". Only **5%** of legitimate emails contain it.\n\n**An email with \"lottery\" arrives — what's the probability it's spam?**\n\n**Left column** (width = 15%) = spam. **Right column** = legit. **Bottom row** = emails containing the keyword. Orange = spam∩word, blue = legit∩word. The posterior $P(\\text{spam} \\mid W) \\approx 73.8\\%$ is the orange fraction of the bottom row.",
+          "title": "Example 2 \u2014 Spam Filtering",
+          "description": "**15%** of emails are spam. **80%** of spam contains \"lottery\". Only **5%** of legitimate emails contain it.\n\n**An email with \"lottery\" arrives \u2014 what's the probability it's spam?**\n\n**Left column** (width = 15%) = spam. **Right column** = legit. **Bottom row** = emails containing the keyword. Orange = spam\u2229word, blue = legit\u2229word. The posterior $P(\\text{spam} \\mid W) \\approx 73.8\\%$ is the orange fraction of the bottom row.",
           "sliders": [
             {
               "id": "pSpam",
@@ -4426,7 +4470,7 @@
               ],
               "radius": 0,
               "color": "#7799bb",
-              "label": "word −"
+              "label": "word \u2212"
             },
             {
               "id": "spam_bc_sep",
@@ -4849,17 +4893,17 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Spam Filter — \"lottery\"\n$P(\\text{spam}) = {{toFixed(pSpam*100,0)}}\\%$ — prior\n$P(W|\\text{spam}) = {{toFixed(pWspam*100,0)}}\\%$ — hit rate\n$P(W|\\text{legit}) = {{toFixed(pWleg*100,1)}}\\%$ — false-hit rate\n$P(W) = {{toFixed((pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$ — evidence\n$P(\\text{spam}|W) = {{toFixed(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$ — **posterior**\n---\nPer 10,000: spam+word = {{toFixed(pSpam*pWspam*10000,0)}} / legit+word = {{toFixed((1-pSpam)*pWleg*10000,0)}}\n---\n{{pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.3 ? 'Mostly legit — word too common to filter' : pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.7 ? 'Mixed signal — filter with caution' : 'Strong signal: reliable spam indicator'}}"
+              "content": "### Spam Filter \u2014 \"lottery\"\n$P(\\text{spam}) = {{toFixed(pSpam*100,0)}}\\%$ \u2014 prior\n$P(W|\\text{spam}) = {{toFixed(pWspam*100,0)}}\\%$ \u2014 hit rate\n$P(W|\\text{legit}) = {{toFixed(pWleg*100,1)}}\\%$ \u2014 false-hit rate\n$P(W) = {{toFixed((pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$ \u2014 evidence\n$P(\\text{spam}|W) = {{toFixed(pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg)*100,1)}}\\%$ \u2014 **posterior**\n---\nPer 10,000: spam+word = {{toFixed(pSpam*pWspam*10000,0)}} / legit+word = {{toFixed((1-pSpam)*pWleg*10000,0)}}\n---\n{{pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.3 ? 'Mostly legit \u2014 word too common to filter' : pSpam*pWspam/(pSpam*pWspam+(1-pSpam)*pWleg) < 0.7 ? 'Mixed signal \u2014 filter with caution' : 'Strong signal: reliable spam indicator'}}"
             }
           ]
         },
         {
-          "title": "Example 3 — Tornado Warning",
+          "title": "Example 3 \u2014 Tornado Warning",
           "description": "Only **2%** of severe storm alerts are real tornadoes. Radar detects **95%** of actual tornadoes, but triggers for **3%** of non-tornado storms.\n\n**The radar fires. What's the probability of an actual tornado?** Answer: ~**39.3%**.\n\n**Left column** (width = 2%) = real tornadoes. **Right column** = non-tornado storms. **Bottom row** = radar fired. Red cell = true alarm, orange = false alarm. The posterior P(T|radar) is the red fraction of the bottom row.\n\n**Try increasing the base rate**: as tornadoes become more common, the posterior climbs rapidly.",
           "sliders": [
             {
               "id": "pTorn",
-              "label": "$P(\\text{tornado})$ — Base rate",
+              "label": "$P(\\text{tornado})$ \u2014 Base rate",
               "min": 0.001,
               "max": 0.2,
               "step": 0.001,
@@ -5225,7 +5269,7 @@
               ],
               "radius": 0,
               "color": "#778899",
-              "label": "radar −"
+              "label": "radar \u2212"
             },
             {
               "id": "torn_bc_sep",
@@ -5617,7 +5661,7 @@
               ],
               "radius": 0,
               "color": "#ccddff",
-              "label": "P(rad|¬T)"
+              "label": "P(rad|\u00acT)"
             },
             {
               "id": "torn_bc_lbl_4",
@@ -5648,12 +5692,756 @@
             {
               "id": "main_info",
               "position": "top-right",
-              "content": "### Tornado Warning\n$P(T) = {{toFixed(pTorn*100,1)}}\\%$ — base rate\n$P(\\text{radar}|T) = {{toFixed(pDet*100,0)}}\\%$ — detection\n$P(\\text{radar}|\\overline{T}) = {{toFixed(pFal*100,1)}}\\%$ — false alarm\n$P(\\text{radar}) = {{toFixed((pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$ — evidence\n$P(T|\\text{radar}) = {{toFixed(pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$ — **posterior**\n---\nPer 5,000: true alarms = {{toFixed(pTorn*pDet*5000,0)}} / false alarms = {{toFixed((1-pTorn)*pFal*5000,0)}}\n---\n{{pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal) > 0.5 ? 'Issue warning (>50%)' : 'Mostly false alarms (<50%)'}}"
+              "content": "### Tornado Warning\n$P(T) = {{toFixed(pTorn*100,1)}}\\%$ \u2014 base rate\n$P(\\text{radar}|T) = {{toFixed(pDet*100,0)}}\\%$ \u2014 detection\n$P(\\text{radar}|\\overline{T}) = {{toFixed(pFal*100,1)}}\\%$ \u2014 false alarm\n$P(\\text{radar}) = {{toFixed((pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$ \u2014 evidence\n$P(T|\\text{radar}) = {{toFixed(pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal)*100,1)}}\\%$ \u2014 **posterior**\n---\nPer 5,000: true alarms = {{toFixed(pTorn*pDet*5000,0)}} / false alarms = {{toFixed((1-pTorn)*pFal*5000,0)}}\n---\n{{pTorn*pDet/(pTorn*pDet+(1-pTorn)*pFal) > 0.5 ? 'Issue warning (>50%)' : 'Mostly false alarms (<50%)'}}"
             }
           ]
         }
       ],
-      "prompt": "You are teaching Bayes' rule using the correct area-based rectangle model.\n\n## The Core Geometric Model (CRITICAL)\nThe rectangle divides into four cells:\n- **Columns** = prior categories (disease/healthy, spam/legit, tornado/no tornado). Column WIDTH = prior probability.\n- **Rows within each column** = conditional distribution P(evidence|category). Row HEIGHT in each column = P(evidence|category).\n- **Cell area** = P(category) × P(evidence|category) = P(category, evidence) — joint probability.\n- The stepped dividing line separates positive evidence (bottom row) from negative (top row).\n\n## Independence Special Case\nWhen A and B are independent, P(B|A) = P(B|¬A) = P(B). Substituting into Bayes' rule:\n  P(A|B) = P(B|A)·P(A) / P(B) = P(B)·P(A) / P(B) = P(A)\nThe posterior equals the prior — observing B gives zero information about A. Geometrically: the step line is horizontal, so the B-row is a rectangle and conditioning on it doesn't change the column proportions.\n\n## For Real-World Examples\nAll three examples use the same column/row structure:\n- Column width = base rate (P(disease), P(spam), P(tornado))\n- Row height in each column = conditional test/signal probability\n- The stepped dividing line size = how informative the test is\n- Base rate neglect = the left column is tiny, so even a tall green cell has small area\n\n## Exploration Prompts\n- 'Set both likelihood sliders equal — the panel shows the independence collapse P(A|B) = P(A)'\n- 'In the medical example, try prevalence 10% vs 0.1% and see how the posterior swings'\n- 'What makes a test useful? Both low FPR and high base rate matter'\n- 'Compare all three examples: which has the most dramatic base rate effect?'"
+      "prompt": "You are teaching Bayes' rule using the correct area-based rectangle model.\n\n## The Core Geometric Model (CRITICAL)\nThe rectangle divides into four cells:\n- **Columns** = prior categories (disease/healthy, spam/legit, tornado/no tornado). Column WIDTH = prior probability.\n- **Rows within each column** = conditional distribution P(evidence|category). Row HEIGHT in each column = P(evidence|category).\n- **Cell area** = P(category) \u00d7 P(evidence|category) = P(category, evidence) \u2014 joint probability.\n- The stepped dividing line separates positive evidence (bottom row) from negative (top row).\n\n## Independence Special Case\nWhen A and B are independent, P(B|A) = P(B|\u00acA) = P(B). Substituting into Bayes' rule:\n  P(A|B) = P(B|A)\u00b7P(A) / P(B) = P(B)\u00b7P(A) / P(B) = P(A)\nThe posterior equals the prior \u2014 observing B gives zero information about A. Geometrically: the step line is horizontal, so the B-row is a rectangle and conditioning on it doesn't change the column proportions.\n\n## For Real-World Examples\nAll three examples use the same column/row structure:\n- Column width = base rate (P(disease), P(spam), P(tornado))\n- Row height in each column = conditional test/signal probability\n- The stepped dividing line size = how informative the test is\n- Base rate neglect = the left column is tiny, so even a tall green cell has small area\n\n## Exploration Prompts\n- 'Set both likelihood sliders equal \u2014 the panel shows the independence collapse P(A|B) = P(A)'\n- 'In the medical example, try prevalence 10% vs 0.1% and see how the posterior swings'\n- 'What makes a test useful? Both low FPR and high base rate matter'\n- 'Compare all three examples: which has the most dramatic base rate effect?'"
+    },
+    {
+      "title": "Story: The Test Result",
+      "description": "A medical test comes back positive. Walk through the story of how prior belief meets evidence \u2014 and why the result isn't what you'd expect.",
+      "range": [
+        [
+          -1.5,
+          12.5
+        ],
+        [
+          -2,
+          13.5
+        ],
+        [
+          -0.5,
+          4
+        ]
+      ],
+      "camera": {
+        "position": [
+          5,
+          -2,
+          17
+        ],
+        "target": [
+          5,
+          5,
+          -2
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "views": [
+        {
+          "name": "Overview",
+          "position": [
+            5,
+            -2,
+            17
+          ],
+          "target": [
+            5,
+            5,
+            -2
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            5,
+            5,
+            20
+          ],
+          "target": [
+            5,
+            5,
+            -2
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "type": "skybox",
+          "style": "gradient",
+          "topColor": "#080818",
+          "bottomColor": "#030310"
+        }
+      ],
+      "steps": [
+        {
+          "title": "The Population",
+          "description": "Imagine a city of **10,000 people**.\n\nA rare disease affects **1 in 100** \u2014 that's the **prior probability** $P(D) = 0.01$.\n\nThe entire rectangle represents everyone. The narrow green column on the left? That's the **1%** who carry the disease. The vast blue area is the **99%** who are healthy.\n\nNotice how thin that green column is. Hold that image.",
+          "sliders": [
+            {
+              "id": "prev",
+              "label": "Prevalence $P(D)$",
+              "min": 0.001,
+              "max": 0.15,
+              "step": 0.001,
+              "default": 0.01
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_border",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  10,
+                  0,
+                  0
+                ],
+                [
+                  10,
+                  10,
+                  0
+                ],
+                [
+                  0,
+                  10,
+                  0
+                ],
+                [
+                  0,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#667799",
+              "width": 0.1
+            },
+            {
+              "id": "s4_disease_col",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0.05"
+                ],
+                [
+                  "prev*10",
+                  "0",
+                  "0.05"
+                ],
+                [
+                  "prev*10",
+                  "10",
+                  "0.05"
+                ],
+                [
+                  "0",
+                  "10",
+                  "0.05"
+                ]
+              ],
+              "color": "#33cc55",
+              "opacity": 0.6,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.8,
+                "metalness": 0.05
+              }
+            },
+            {
+              "id": "s4_healthy_col",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "prev*10",
+                  "0",
+                  "0.05"
+                ],
+                [
+                  "10",
+                  "0",
+                  "0.05"
+                ],
+                [
+                  "10",
+                  "10",
+                  "0.05"
+                ],
+                [
+                  "prev*10",
+                  "10",
+                  "0.05"
+                ]
+              ],
+              "color": "#2244aa",
+              "opacity": 0.25,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.8,
+                "metalness": 0.05
+              }
+            },
+            {
+              "id": "s4_col_div",
+              "type": "animated_line",
+              "points": [
+                [
+                  "prev*10",
+                  "0",
+                  "0.08"
+                ],
+                [
+                  "prev*10",
+                  "10",
+                  "0.08"
+                ]
+              ],
+              "color": "#aabbdd",
+              "width": 0.08
+            },
+            {
+              "id": "s4_lbl_disease",
+              "type": "animated_point",
+              "expr": [
+                "prev*5",
+                "10.8",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#33cc55",
+              "label": "Disease"
+            },
+            {
+              "id": "s4_lbl_healthy",
+              "type": "animated_point",
+              "expr": [
+                "prev*10+(1-prev)*5",
+                "10.8",
+                "0.1"
+              ],
+              "radius": 0,
+              "color": "#6688bb",
+              "label": "Healthy"
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_info_pop",
+              "content": "**Prior:** $P(D) = {{toFixed(prev*100, 1)}}\\%$\n\n**Healthy:** $P(\\overline{D}) = {{toFixed((1-prev)*100, 1)}}\\%$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "The Test",
+          "description": "A new test is available. The lab says it's very reliable:\n\n- If you **have** the disease, the test catches it **99% of the time** \u2014 $P(+ \\mid D) = 0.99$\n- If you're **healthy**, the test wrongly says positive only **2% of the time** \u2014 $P(+ \\mid \\overline{D}) = 0.02$\n\nSounds nearly perfect. The test splits each column at different heights:\n- The **green column** is split high \u2014 99% tested positive (true catches)\n- The **blue column** is split low \u2014 only 2% false alarms\n\nThe white step-line shows where the test divides each group.",
+          "sliders": [
+            {
+              "id": "sens",
+              "label": "Test catch rate $P(+|D)$",
+              "min": 0.5,
+              "max": 1.0,
+              "step": 0.01,
+              "default": 0.99
+            },
+            {
+              "id": "fpr",
+              "label": "False alarm rate $P(+|\\overline{D})$",
+              "min": 0.001,
+              "max": 0.3,
+              "step": 0.001,
+              "default": 0.02
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_true_pos",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0.08"
+                ],
+                [
+                  "prev*10",
+                  "0",
+                  "0.08"
+                ],
+                [
+                  "prev*10",
+                  "sens*10",
+                  "0.08"
+                ],
+                [
+                  "0",
+                  "sens*10",
+                  "0.08"
+                ]
+              ],
+              "color": "#44ff66",
+              "opacity": 0.85,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.8,
+                "metalness": 0.06
+              }
+            },
+            {
+              "id": "s4_false_pos",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "prev*10",
+                  "0",
+                  "0.08"
+                ],
+                [
+                  "10",
+                  "0",
+                  "0.08"
+                ],
+                [
+                  "10",
+                  "fpr*10",
+                  "0.08"
+                ],
+                [
+                  "prev*10",
+                  "fpr*10",
+                  "0.08"
+                ]
+              ],
+              "color": "#ff8800",
+              "opacity": 0.7,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.8,
+                "metalness": 0.06
+              }
+            },
+            {
+              "id": "s4_step_line",
+              "type": "animated_line",
+              "points": [
+                [
+                  "0",
+                  "sens*10",
+                  "0.12"
+                ],
+                [
+                  "prev*10",
+                  "sens*10",
+                  "0.12"
+                ],
+                [
+                  "prev*10",
+                  "fpr*10",
+                  "0.12"
+                ],
+                [
+                  "10",
+                  "fpr*10",
+                  "0.12"
+                ]
+              ],
+              "color": "#ffffff",
+              "width": 0.14
+            },
+            {
+              "id": "s4_true_neg",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "prev*10",
+                  "fpr*10",
+                  "0.06"
+                ],
+                [
+                  "10",
+                  "fpr*10",
+                  "0.06"
+                ],
+                [
+                  "10",
+                  "10",
+                  "0.06"
+                ],
+                [
+                  "prev*10",
+                  "10",
+                  "0.06"
+                ]
+              ],
+              "color": "#2244aa",
+              "opacity": 0.1,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.8,
+                "metalness": 0.05
+              }
+            },
+            {
+              "id": "s4_false_neg",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "sens*10",
+                  "0.06"
+                ],
+                [
+                  "prev*10",
+                  "sens*10",
+                  "0.06"
+                ],
+                [
+                  "prev*10",
+                  "10",
+                  "0.06"
+                ],
+                [
+                  "0",
+                  "10",
+                  "0.06"
+                ]
+              ],
+              "color": "#cc2222",
+              "opacity": 0.08,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.8,
+                "metalness": 0.05
+              }
+            },
+            {
+              "id": "s4_lbl_pos",
+              "type": "point",
+              "position": [
+                -1.2,
+                1.5,
+                0.1
+              ],
+              "radius": 0,
+              "color": "#ffffff",
+              "label": "Tested +"
+            },
+            {
+              "id": "s4_lbl_neg",
+              "type": "point",
+              "position": [
+                -1.2,
+                8,
+                0.1
+              ],
+              "radius": 0,
+              "color": "#556677",
+              "label": "Tested \u2212"
+            },
+            {
+              "id": "s4_lbl_true_pos",
+              "type": "animated_point",
+              "expr": [
+                "prev*5",
+                "sens*5",
+                "0.15"
+              ],
+              "radius": 0,
+              "color": "#44ff66",
+              "label": "True Positive"
+            },
+            {
+              "id": "s4_lbl_false_pos",
+              "type": "animated_point",
+              "expr": [
+                "prev*10 + (1-prev)*5",
+                "fpr*5",
+                "0.15"
+              ],
+              "radius": 0,
+              "color": "#ff8800",
+              "label": "False Positive"
+            },
+            {
+              "id": "s4_lbl_true_neg",
+              "type": "animated_point",
+              "expr": [
+                "prev*10 + (1-prev)*5",
+                "fpr*10 + (1-fpr)*5",
+                "0.15"
+              ],
+              "radius": 0,
+              "color": "#4466aa",
+              "label": "True Negative"
+            },
+            {
+              "id": "s4_lbl_false_neg",
+              "type": "animated_point",
+              "expr": [
+                "prev*5",
+                "sens*10 + (1-sens)*5",
+                "0.15"
+              ],
+              "radius": 0,
+              "color": "#cc4444",
+              "label": "False Negative"
+            }
+          ],
+          "remove": [
+            {
+              "id": "s4_disease_col"
+            },
+            {
+              "id": "s4_healthy_col"
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_info_test",
+              "content": "**Prior:** $P(D) = {{toFixed(prev*100, 1)}}\\%$\n\n**Catch rate:** $P(+|D) = {{toFixed(sens*100, 0)}}\\%$\n\n**False alarm:** $P(+|\\overline{D}) = {{toFixed(fpr*100, 1)}}\\%$",
+              "position": "top-left"
+            },
+            {
+              "id": "s4_info_cells",
+              "content": "True +: ${{toFixed(prev*sens*100, 2)}}\\%$ \u00b7 False +: ${{toFixed((1-prev)*fpr*100, 2)}}\\%$\n\nTrue \u2212: ${{toFixed((1-prev)*(1-fpr)*100, 1)}}\\%$ \u00b7 False \u2212: ${{toFixed(prev*(1-sens)*100, 3)}}\\%$",
+              "position": "bottom-left"
+            }
+          ]
+        },
+        {
+          "title": "The Phone Call",
+          "description": "Your phone rings. The doctor says: **\"Your test came back positive.\"**\n\nYour stomach drops. The test is 99% accurate \u2014 so you must be 99% likely to have the disease, right?\n\nLook at the rectangle. Everything **below the white line** tested positive. That's your group now.\n\nThe bright **green** area = true positives (people with disease who tested positive)\nThe **orange** area = false positives (healthy people the test got wrong)\n\n**Your chance of actually having the disease = green \u00f7 (green + orange)**\n\nLook at how much orange there is compared to green...",
+          "add": [
+            {
+              "id": "s4_pos_highlight_left",
+              "type": "animated_line",
+              "points": [
+                [
+                  "0",
+                  "0",
+                  "0.15"
+                ],
+                [
+                  "0",
+                  "sens*10",
+                  "0.15"
+                ]
+              ],
+              "color": "#ffdd44",
+              "width": 0.12
+            },
+            {
+              "id": "s4_pos_highlight_bottom",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  0,
+                  0.15
+                ],
+                [
+                  10,
+                  0,
+                  0.15
+                ]
+              ],
+              "color": "#ffdd44",
+              "width": 0.12
+            },
+            {
+              "id": "s4_pos_highlight_right",
+              "type": "animated_line",
+              "points": [
+                [
+                  "10",
+                  "0",
+                  "0.15"
+                ],
+                [
+                  "10",
+                  "fpr*10",
+                  "0.15"
+                ]
+              ],
+              "color": "#ffdd44",
+              "width": 0.12
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_info_call",
+              "content": "**You tested positive.**\n\nTotal tested +: ${{toFixed((prev*sens + (1-prev)*fpr)*100, 2)}}\\%$\n\n$\\underbrace{ {{toFixed(prev*sens*100, 2)}}\\% }_{\\text{true +}}$ + $\\underbrace{ {{toFixed((1-prev)*fpr*100, 2)}}\\% }_{\\text{false +}}$",
+              "position": "top-left"
+            }
+          ],
+          "remove": [
+            {
+              "id": "s4_true_neg"
+            },
+            {
+              "id": "s4_false_neg"
+            },
+            {
+              "id": "s4_lbl_true_neg"
+            },
+            {
+              "id": "s4_lbl_false_neg"
+            },
+            {
+              "id": "s4_lbl_neg"
+            }
+          ]
+        },
+        {
+          "title": "The Surprise \u2014 Only 33%",
+          "description": "Watch the **area-preserving morph**: the green (true positive) and orange (false positive) regions slide from the probability rectangle into a stacked bar.\n\n**The areas don't change** \u2014 each region keeps exactly the same area throughout. What changes is the shape: wide and short on the rectangle, narrow and tall in the bar.\n\nIn the final bar, the **green fraction = $P(D \\mid +)$** \u2014 the posterior. You can see immediately that the orange (false positives) dominates. At 1% prevalence, $P(D \\mid +) \\approx 33\\%$.\n\n$$P(D \\mid +) = \\frac{P(+ \\mid D) \\cdot P(D)}{P(+ \\mid D) \\cdot P(D) + P(+ \\mid \\overline{D}) \\cdot P(\\overline{D})}$$\n\nDrag the **morph slider** back and forth to see the connection between the rectangle and the bar.",
+          "add": [
+            {
+              "id": "s4_lbl_posterior",
+              "type": "animated_point",
+              "expr": [
+                "morph*10.8 + ((1-morph)*prev*10 + morph*1.2)/2",
+                "prev*sens*100 / ((1-morph)*prev*10 + morph*1.2) + 0.5",
+                "0.15"
+              ],
+              "radius": 0,
+              "color": "#44ff66",
+              "label": "P(D|+)"
+            },
+            {
+              "id": "s4_morph_tp",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "morph*10.8",
+                  "0",
+                  "0.08"
+                ],
+                [
+                  "morph*10.8 + (1-morph)*prev*10 + morph*1.2",
+                  "0",
+                  "0.08"
+                ],
+                [
+                  "morph*10.8 + (1-morph)*prev*10 + morph*1.2",
+                  "prev*sens*100 / ((1-morph)*prev*10 + morph*1.2)",
+                  "0.08"
+                ],
+                [
+                  "morph*10.8",
+                  "prev*sens*100 / ((1-morph)*prev*10 + morph*1.2)",
+                  "0.08"
+                ]
+              ],
+              "color": "#44ff66",
+              "opacity": 0.85,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.8,
+                "metalness": 0.06
+              }
+            },
+            {
+              "id": "s4_morph_fp",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "(1-morph)*prev*10 + morph*10.8",
+                  "morph * prev*sens*100 / ((1-morph)*prev*10 + morph*1.2)",
+                  "0.08"
+                ],
+                [
+                  "(1-morph)*prev*10 + morph*10.8 + (1-morph)*(1-prev)*10 + morph*1.2",
+                  "morph * prev*sens*100 / ((1-morph)*prev*10 + morph*1.2)",
+                  "0.08"
+                ],
+                [
+                  "(1-morph)*prev*10 + morph*10.8 + (1-morph)*(1-prev)*10 + morph*1.2",
+                  "morph * prev*sens*100 / ((1-morph)*prev*10 + morph*1.2) + (1-prev)*fpr*100 / ((1-morph)*(1-prev)*10 + morph*1.2)",
+                  "0.08"
+                ],
+                [
+                  "(1-morph)*prev*10 + morph*10.8",
+                  "morph * prev*sens*100 / ((1-morph)*prev*10 + morph*1.2) + (1-prev)*fpr*100 / ((1-morph)*(1-prev)*10 + morph*1.2)",
+                  "0.08"
+                ]
+              ],
+              "color": "#ff8800",
+              "opacity": 0.7,
+              "shader": {
+                "type": "standard",
+                "roughness": 0.8,
+                "metalness": 0.06
+              }
+            }
+          ],
+          "remove": [
+            {
+              "id": "s4_pos_highlight_left"
+            },
+            {
+              "id": "s4_pos_highlight_bottom"
+            },
+            {
+              "id": "s4_pos_highlight_right"
+            },
+            {
+              "id": "s4_true_pos"
+            },
+            {
+              "id": "s4_false_pos"
+            },
+            {
+              "id": "s4_step_line"
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_info_posterior",
+              "content": "$$P(D|+) = \\frac{P(+|D) \\cdot P(D)}{P(+)} = \\frac{ {{toFixed(sens, 2)}} \\times {{toFixed(prev, 3)}} }{ {{toFixed(prev*sens + (1-prev)*fpr, 4)}} } = {{toFixed(prev*sens/(prev*sens+(1-prev)*fpr)*100, 1)}}\\%$$",
+              "position": "top-left"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "morph",
+              "label": "Morph to bar chart",
+              "min": 0,
+              "max": 1,
+              "step": 0.01,
+              "default": 0,
+              "animate": true,
+              "duration": 2000,
+              "animateMode": "once"
+            }
+          ]
+        },
+        {
+          "title": "Explore \u2014 What Changes the Odds?",
+          "description": "Now explore with the sliders. The morph bar updates live.\n\n**Prevalence** \u2014 Slide up to 10%: the green region grows and the posterior jumps to ~84%. Slide down to 0.1%: the green shrinks and the posterior drops to ~4.7%.\n\n**False alarm rate** \u2014 This is the real lever. At 2%, false positives flood the bar with orange. Drop it to 0.1% and the green dominates \u2014 posterior jumps to ~91%.\n\n**Catch rate** \u2014 Surprisingly, going from 99% to 100% barely matters. The bottleneck isn't how well the test detects disease \u2014 it's how many false alarms it produces.\n\n**The lesson**: area is truth. When the prior is low, even a tiny false alarm rate creates more orange than green.",
+          "add": [],
+          "info": [
+            {
+              "id": "s4_info_explore",
+              "content": "$$P(D|+) = {{toFixed(prev*sens/(prev*sens+(1-prev)*fpr)*100, 1)}}\\%$$\n\nPrevalence: ${{toFixed(prev*100, 1)}}\\%$ \u00b7 Catch: ${{toFixed(sens*100, 0)}}\\%$ \u00b7 False alarm: ${{toFixed(fpr*100, 1)}}\\%$",
+              "position": "top-left"
+            }
+          ]
+        }
+      ],
+      "markdown": "# Story: The Test Result\n\n## The Setup\n\nA rare disease affects **1 in 100** people. You take a test. It comes back **positive**.\n\nHow worried should you be?\n\n## The Numbers\n\n| Term | Meaning | Value |\n|------|---------|-------|\n| $P(D)$ | **Prior** \u2014 disease prevalence | 1% |\n| $P(+ \\mid D)$ | **Catch rate** \u2014 if sick, test says positive | 99% |\n| $P(+ \\mid \\overline{D})$ | **False alarm** \u2014 if healthy, test wrongly says positive | 2% |\n| $P(D \\mid +)$ | **Posterior** \u2014 actually sick given positive test | **???** |\n\n## The Intuition Trap\n\nMost people guess ~99%. The test is \"99% accurate,\" so a positive result must mean 99% chance of disease \u2014 right?\n\n**Wrong.** That 99% is $P(+ \\mid D)$, which answers: *\"If you're sick, will the test catch it?\"*\n\nBut the question you care about is the reverse: $P(D \\mid +)$ \u2014 *\"Given a positive test, am I actually sick?\"*\n\nThese are **not the same thing.** This is exactly why conditional probability matters.\n\n## The Calculation\n\nOut of 10,000 people:\n- **100** have the disease (1%). Of these, **99** test positive (99% catch rate).\n- **9,900** are healthy. Of these, **198** test positive (2% false alarm).\n\nTotal positive tests: $99 + 198 = 297$\n\nOf those 297 positive results, only 99 are truly sick:\n\n$$P(D \\mid +) = \\frac{99}{297} = \\frac{1}{3} \\approx 33\\%$$\n\n## Bayes' Rule\n\nThe same result, algebraically:\n\n$$P(D \\mid +) = \\frac{P(+ \\mid D) \\cdot P(D)}{P(+ \\mid D) \\cdot P(D) + P(+ \\mid \\overline{D}) \\cdot P(\\overline{D})}$$\n\n$$= \\frac{0.99 \\times 0.01}{0.99 \\times 0.01 + 0.02 \\times 0.99} = \\frac{0.0099}{0.0297} \\approx 0.333$$\n\n## Why Is It So Low?\n\nThe disease is **rare**. Even though the test is good, the 2% false alarm rate applied to 9,900 healthy people generates **twice as many** false positives as there are true cases.\n\n**The prior always matters.** A \"99% accurate\" test is only meaningful in context.\n\n## Key Insight\n\nThe false alarm rate is the real lever:\n- At 2% false alarm \u2192 33% posterior\n- At 0.1% false alarm \u2192 91% posterior\n- At 0% false alarm \u2192 100% posterior (no noise, pure signal)\n\nPrevalence matters just as much:\n- At 10% prevalence \u2192 84% posterior\n- At 1% prevalence \u2192 33% posterior\n- At 0.1% prevalence \u2192 4.7% posterior\n\nUse the sliders to explore these tradeoffs yourself.\n"
     }
   ]
 }
