@@ -1388,7 +1388,7 @@ function logContextIfChanged() {
         rt.sliders ? `${Object.keys(rt.sliders).length} sliders` : null,
         rt.activeTab || null,
     ].filter(Boolean).join(', ');
-    console.log('%c🤖 Chat context updated: %c' +
+    if (window.DEBUG_MODE) console.log('%c🤖 Chat context updated: %c' +
         `scene=[${sceneParts}] runtime=[${rtParts}] (${json.length} chars)`,
         'color: #8888ff; font-weight: bold', 'color: #ccc');
 }
@@ -1398,8 +1398,6 @@ let _contextPollId = null;
 function startContextPolling() {
     if (_contextPollId) return;
     _contextPollId = setInterval(logContextIfChanged, 1000);
-    // Also log immediately
-    setTimeout(logContextIfChanged, 500);
 }
 
 // ----- Welcome Message -----

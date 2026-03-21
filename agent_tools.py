@@ -448,6 +448,8 @@ def build_system_prompt(context, agent_memory=None):
     for s in sections:
         if f"## {s}" in prompt_text:
             included.append(s)
-    print(f"   📋 System prompt sections: {', '.join(included)} ({len(prompt_text)} chars)")
+    import server as _srv
+    if getattr(_srv, 'DEBUG_MODE', False):
+        print(f"   📋 System prompt sections: {', '.join(included)} ({len(prompt_text)} chars)")
 
     return prompt_text

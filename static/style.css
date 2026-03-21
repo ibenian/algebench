@@ -1376,6 +1376,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     align-items: center;
     gap: 8px;
 }
+#context-popup-refresh,
 #context-popup-toggle,
 #context-popup-copy {
     border: 1px solid rgba(170, 140, 255, 0.32);
