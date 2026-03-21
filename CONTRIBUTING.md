@@ -198,6 +198,7 @@ Use the built-in scenes in `scenes/` as reference — `eigenvalues.json` and `ma
 - Use `"remove": ["*"]` to clear all elements in a step
 - Sliders: add `"sliders": [{"id": "t", "label": "t", "min": 0, "max": 1, "value": 0.5}]`
 - Animated sliders: add `"animate": true, "duration": 2000` to a slider def
+- Dynamic labels: add `"labelExpr": "'Value: ' + toFixed(x*100, 1) + '%'"` to any animated element — the label text updates each frame based on slider values and time
 
 ---
 
