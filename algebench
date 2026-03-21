@@ -6,23 +6,24 @@ VENV="$DIR/.venv"
 
 if [ "$1" = "--update" ]; then
     shift
-    echo "Checking for latest gemini-live-tools..."
+    echo "🔍 Checking for latest gemini-live-tools..."
     LATEST=$(git ls-remote --tags https://github.com/ibenian/gemini-live-tools.git \
         | grep -v '\^{}' | awk '{print $2}' | sed 's|refs/tags/||' | sort -V | tail -1)
     if [ -n "$LATEST" ]; then
         CURRENT=$(grep 'gemini-live-tools' "$DIR/requirements.txt" | grep -o '@v[^#]*' | tr -d '@')
         if [ "$CURRENT" != "$LATEST" ]; then
-            echo "Updating gemini-live-tools $CURRENT → $LATEST"
+            echo "⬆️  Updating gemini-live-tools $CURRENT → $LATEST"
             sed -i '' "s|gemini-live-tools\.git@[^#]*|gemini-live-tools.git@$LATEST|" "$DIR/requirements.txt"
         else
-            echo "gemini-live-tools already at $LATEST"
+            echo "✅ gemini-live-tools already at $LATEST"
         fi
     else
-        echo "Warning: could not fetch latest gemini-live-tools tag, skipping version update"
+        echo "⚠️  Could not fetch latest gemini-live-tools tag, skipping version update"
     fi
-    echo "Updating dependencies..."
+    echo "📦 Updating dependencies..."
     "$VENV/bin/pip" install --upgrade -r "$DIR/requirements.txt"
     echo "✓ Update complete"
+    exit 0
 elif [ ! -d "$VENV" ]; then
     echo "Setting up virtual environment (first run only)..."
     python3 -m venv "$VENV"
