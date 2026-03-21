@@ -1174,6 +1174,7 @@ export function setupContextStatusPopup() {
             meta.textContent = 'Refreshing live prompt context…';
             try {
                 await loadPromptContext();
+                console.log(`%c📋 Prompt context refreshed%c (${currentPromptText.length} chars)`, 'color: #aa88ff; font-weight: bold', 'color: #ccc');
             } catch (err) {
                 body.innerHTML = '';
                 const empty = document.createElement('div');
@@ -1314,12 +1315,13 @@ export function setupContextStatusPopup() {
     }
 
     body.addEventListener('scroll', syncActiveSectionFromScroll);
-    window.addEventListener('algebench-context-changed', () => {
-        scheduleContextRefresh('context-changed');
-    });
     window.algebenchRefreshPromptContext = (reason = 'manual') => {
         scheduleContextRefresh(reason);
     };
+    const refreshBtn = document.getElementById('context-popup-refresh');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => scheduleContextRefresh('manual'));
+    }
 
     pill.classList.remove('hidden');
     {
@@ -1344,6 +1346,7 @@ export function setupContextStatusPopup() {
         meta.textContent = 'Fetching live prompt context…';
         try {
             await loadPromptContext();
+            console.log(`%c📋 Prompt context loaded%c (${currentPromptText.length} chars)`, 'color: #aa88ff; font-weight: bold', 'color: #ccc');
         } catch (err) {
             body.innerHTML = '';
             const empty = document.createElement('div');
