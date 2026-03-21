@@ -1292,33 +1292,100 @@ async function speakText(text, { explicit = false } = {}) {
         return;
     }
 
-    const chunkCount = parseInt(response.headers.get('X-TTS-Chunk-Count') || '0', 10);
     ttsHasOutputFile = response.headers.get('X-TTS-Has-Output-File') === '1';
-    _ttsResetChunkTracking(chunkCount);
+    const contentType = (response.headers.get('Content-Type') || '').split(';')[0].trim();
+    const isRealtime = contentType === 'audio/pcm';
 
-    const parser = new _WavStreamParser();
-    const reader = response.body.getReader();
+    if (isRealtime) {
+        // --- Realtime PCM streaming path ---
+        const sampleRate = parseInt(response.headers.get('X-Audio-Sample-Rate') || '24000', 10);
+        const estDuration = parseFloat(response.headers.get('X-TTS-Est-Duration') || '0');
+        // Use synthetic pip count based on estimated duration (1 pip per ~16 seconds)
+        const syntheticChunks = Math.max(1, Math.round(estDuration / 16));
+        _ttsResetChunkTracking(syntheticChunks);
 
-    try {
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done || ttsRequestId !== myId) break;
+        const reader = response.body.getReader();
+        let pcmAccum = new Uint8Array(0);
+        let totalPcmBytes = 0;
+        // Schedule PCM in ~200ms buffers for smooth playback with low latency
+        const scheduleBytes = sampleRate * 2 * 0.2; // 200ms of s16le mono
 
-            for (const wavBuf of parser.push(value)) {
-                if (ttsRequestId !== myId) break;
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done || ttsRequestId !== myId) break;
 
-                let audioBuffer;
-                try {
-                    audioBuffer = await ctx.decodeAudioData(wavBuf);
-                } catch (e) {
-                    console.warn('TTS: decodeAudioData failed', e);
-                    continue;
+                // Accumulate PCM data
+                const merged = new Uint8Array(pcmAccum.length + value.length);
+                merged.set(pcmAccum);
+                merged.set(value, pcmAccum.length);
+                pcmAccum = merged;
+
+                // Schedule audio buffers when we have enough data (~200ms)
+                while (pcmAccum.length >= scheduleBytes) {
+                    // Ensure even number of bytes (s16le = 2 bytes per sample)
+                    const byteLen = Math.floor(scheduleBytes / 2) * 2;
+                    if (byteLen === 0) break;
+
+                    const pcmSlice = pcmAccum.slice(0, byteLen);
+                    pcmAccum = pcmAccum.slice(byteLen);
+                    totalPcmBytes += byteLen;
+
+                    // Convert s16le PCM to Float32 AudioBuffer
+                    const samples = new Int16Array(pcmSlice.buffer, pcmSlice.byteOffset, byteLen / 2);
+                    const float32 = new Float32Array(samples.length);
+                    for (let i = 0; i < samples.length; i++) float32[i] = samples[i] / 32768;
+
+                    const audioBuffer = ctx.createBuffer(1, float32.length, sampleRate);
+                    audioBuffer.getChannelData(0).set(float32);
+
+                    if (ttsRequestId !== myId || ctx.state === 'closed') break;
+                    if (ttsLoading) ttsLoading = false;
+
+                    const source = ctx.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(ctx.destination);
+                    if (mediaDest) source.connect(mediaDest);
+
+                    const now = ctx.currentTime;
+                    const startAt = Math.max(ttsScheduleEndTime, now + 0.02);
+                    source.start(startAt);
+                    ttsScheduleEndTime = startAt + audioBuffer.duration;
+
+                    if (ttsPrevSources.length > 0) {
+                        for (const src of ttsPrevSources) { try { src.stop(startAt); } catch (_) {} }
+                        ttsPrevSources = [];
+                    }
+
+                    // Update progress based on audio seconds vs estimated duration
+                    const audioSec = totalPcmBytes / (sampleRate * 2);
+                    const pct = estDuration > 0 ? Math.min(0.99, audioSec / estDuration) : 0;
+                    ttsChunksReceived = Math.round(pct * syntheticChunks);
+
+                    const chunkRequestId = myId;
+                    const receivedAtSchedule = ttsChunksReceived;
+                    ttsActiveSources.push(source);
+                    source.onended = () => {
+                        const idx = ttsActiveSources.indexOf(source);
+                        if (idx >= 0) ttsActiveSources.splice(idx, 1);
+                        if (ttsRequestId === chunkRequestId) {
+                            ttsChunksPlayed = Math.max(ttsChunksPlayed, receivedAtSchedule);
+                        }
+                    };
+
+                    if (pcmAccum.length < scheduleBytes) break;
                 }
+            }
 
-                if (ttsRequestId !== myId || ctx.state === 'closed') break;
+            // Flush any remaining PCM data
+            if (pcmAccum.length >= 2 && ttsRequestId === myId) {
+                const byteLen = pcmAccum.length - (pcmAccum.length % 2);
+                const samples = new Int16Array(pcmAccum.buffer, pcmAccum.byteOffset, byteLen / 2);
+                const float32 = new Float32Array(samples.length);
+                for (let i = 0; i < samples.length; i++) float32[i] = samples[i] / 32768;
 
-                // First decoded chunk — schedule cut over precisely when new audio starts
-                if (ttsLoading) ttsLoading = false;
+                const audioBuffer = ctx.createBuffer(1, float32.length, sampleRate);
+                audioBuffer.getChannelData(0).set(float32);
 
                 const source = ctx.createBufferSource();
                 source.buffer = audioBuffer;
@@ -1326,37 +1393,100 @@ async function speakText(text, { explicit = false } = {}) {
                 if (mediaDest) source.connect(mediaDest);
 
                 const now = ctx.currentTime;
-                const startAt = Math.max(ttsScheduleEndTime, now + 0.05);
+                const startAt = Math.max(ttsScheduleEndTime, now + 0.02);
                 source.start(startAt);
                 ttsScheduleEndTime = startAt + audioBuffer.duration;
 
-                // Stop previous audio exactly when new audio begins
-                if (ttsPrevSources.length > 0) {
-                    for (const src of ttsPrevSources) { try { src.stop(startAt); } catch (_) {} }
-                    ttsPrevSources = [];
-                }
-
-                ttsChunksReceived++;
+                ttsChunksReceived = syntheticChunks;
 
                 const chunkRequestId = myId;
                 ttsActiveSources.push(source);
                 source.onended = () => {
-                    const i = ttsActiveSources.indexOf(source);
-                    if (i >= 0) ttsActiveSources.splice(i, 1);
-                    // Only count played chunks for the request that scheduled this source
-                    if (ttsRequestId === chunkRequestId) ttsChunksPlayed++;
+                    const idx = ttsActiveSources.indexOf(source);
+                    if (idx >= 0) ttsActiveSources.splice(idx, 1);
+                    if (ttsRequestId === chunkRequestId) ttsChunksPlayed = syntheticChunks;
                 };
             }
+        } catch (err) {
+            if (err.name !== 'AbortError') console.warn('TTS realtime stream error:', err);
+        } finally {
+            if (ttsRequestId === myId) {
+                ttsLoading = false;
+                ttsStreamDone = true;
+                ttsAbortController = null;
+                ttsChunksReceived = syntheticChunks;
+                if (ttsHasOutputFile && myDownloadBtn && totalPcmBytes > 0) {
+                    myDownloadBtn.style.display = 'flex';
+                }
+            }
         }
-    } catch (err) {
-        if (err.name !== 'AbortError') console.warn('TTS stream error:', err);
-    } finally {
-        if (ttsRequestId === myId) {
-            ttsLoading = false;
-            ttsStreamDone = true;
-            ttsAbortController = null;
-            if (ttsHasOutputFile && myDownloadBtn && ttsChunksReceived > 0) {
-                myDownloadBtn.style.display = 'flex';
+    } else {
+        // --- Standard WAV chunk streaming path ---
+        const chunkCount = parseInt(response.headers.get('X-TTS-Chunk-Count') || '0', 10);
+        _ttsResetChunkTracking(chunkCount);
+
+        const parser = new _WavStreamParser();
+        const reader = response.body.getReader();
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done || ttsRequestId !== myId) break;
+
+                for (const wavBuf of parser.push(value)) {
+                    if (ttsRequestId !== myId) break;
+
+                    let audioBuffer;
+                    try {
+                        audioBuffer = await ctx.decodeAudioData(wavBuf);
+                    } catch (e) {
+                        console.warn('TTS: decodeAudioData failed', e);
+                        continue;
+                    }
+
+                    if (ttsRequestId !== myId || ctx.state === 'closed') break;
+
+                    // First decoded chunk — schedule cut over precisely when new audio starts
+                    if (ttsLoading) ttsLoading = false;
+
+                    const source = ctx.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(ctx.destination);
+                    if (mediaDest) source.connect(mediaDest);
+
+                    const now = ctx.currentTime;
+                    const startAt = Math.max(ttsScheduleEndTime, now + 0.05);
+                    source.start(startAt);
+                    ttsScheduleEndTime = startAt + audioBuffer.duration;
+
+                    // Stop previous audio exactly when new audio begins
+                    if (ttsPrevSources.length > 0) {
+                        for (const src of ttsPrevSources) { try { src.stop(startAt); } catch (_) {} }
+                        ttsPrevSources = [];
+                    }
+
+                    ttsChunksReceived++;
+
+                    const chunkRequestId = myId;
+                    ttsActiveSources.push(source);
+                    source.onended = () => {
+                        const i = ttsActiveSources.indexOf(source);
+                        if (i >= 0) ttsActiveSources.splice(i, 1);
+                        // Only count played chunks for the request that scheduled this source
+                        if (ttsRequestId === chunkRequestId) ttsChunksPlayed++;
+                    };
+                }
+            }
+        } catch (err) {
+            if (err.name !== 'AbortError') console.warn('TTS stream error:', err);
+        } finally {
+            if (ttsRequestId === myId) {
+                ttsLoading = false;
+                ttsStreamDone = true;
+                ttsAbortController = null;
+                if (ttsHasOutputFile && myDownloadBtn && ttsChunksReceived > 0) {
+                    myDownloadBtn.style.display = 'flex';
+                }
             }
         }
     }
