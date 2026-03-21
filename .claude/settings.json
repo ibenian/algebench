@@ -1,0 +1,36 @@
+{
+  "env": {
+    "CLAUDE_CODE_USE_BEDROCK": "",
+    "ANTHROPIC_MODEL": "claude-opus-4-6",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6",
+    "ANTHROPIC_SMALL_FAST_MODEL": "claude-haiku-4-5-20251001"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git check-ignore:*)",
+      "Bash(git push:*)",
+      "Bash(git:*)",
+      "Bash(cp:*)",
+      "Bash(/Users/ibenian/dev/algebench/.venv/bin/python3:*)",
+      "Bash(/Users/ibenian/dev/algebench/.venv/bin/pip list:*)",
+      "Bash(rm:*)",
+      "Bash(.venv/bin/python3:*)",
+      "Bash(./algebench:*)",
+      "Bash(gh pr:*)",
+      "Bash(mkdir:*)",
+      "Bash(ln:*)",
+      "mcp__mcp-multi-server__gemini_stream_tts",
+      "Bash(node:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh api:*)",
+      "Bash(gh run:*)",
+      "Bash(gh label:*)",
+      "Bash(grep:*)",
+      "Bash(for f:*)",
+      "Bash(python scripts/audit_expressions.py; echo \"Exit: $?\")",
+      "Bash(ffmpeg:*)",
+      "Read(//Users/ibenian/dev/algebench/static/**)"
+    ]
+  }
+}

@@ -11,5 +11,6 @@ settings.local.json
 # Override global gitignore to include project-level agent skill definitions
 !.agents/
 !.claude/
+.claude/settings.local.json
 !AGENTS.md
 !CLAUDE.md
