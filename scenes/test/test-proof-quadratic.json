@@ -235,6 +235,212 @@
           }
         ]
       }
+    },
+    {
+      "title": "The Discriminant & Root Classification",
+      "description": "Explore how $\\Delta = b^2 - 4ac$ determines the nature of roots.",
+      "markdown": "# The Discriminant\n\nThe **discriminant** of a quadratic $ax^2 + bx + c = 0$ is:\n\n$$\\Delta = b^2 - 4ac$$\n\nIt tells us everything about the roots without solving:\n\n| $\\Delta$ | Roots | Geometry |\n|----------|-------|----------|\n| $> 0$ | Two distinct real roots | Parabola crosses x-axis twice |\n| $= 0$ | One repeated real root | Parabola touches x-axis at vertex |\n| $< 0$ | Two complex conjugate roots | Parabola doesn't reach x-axis |\n\n## Vieta's Formulas\n\nFor any quadratic with roots $x_1, x_2$:\n- **Sum**: $x_1 + x_2 = -\\frac{b}{a}$\n- **Product**: $x_1 \\cdot x_2 = \\frac{c}{a}$\n\nThese relate the roots directly to the coefficients — no square roots needed!",
+      "prompt": "Guide the student through understanding the discriminant. Use the sliders to show how changing coefficients affects the number and type of roots. When on the Vieta's lemma step, connect the sum and product formulas to the slider values.",
+      "range": [[-6, 6], [-8, 12], [-1, 1]],
+      "camera": { "position": [0, 2, 14], "target": [0, 2, 0] },
+      "elements": [
+        { "type": "axis", "axis": "x", "range": [-6, 6], "color": [0.5, 0.2, 0.2], "label": "x", "width": 2 },
+        { "type": "axis", "axis": "y", "range": [-8, 12], "color": [0.2, 0.5, 0.2], "label": "y", "width": 2 },
+        { "type": "grid", "plane": "xy", "color": [0.3, 0.3, 0.5], "opacity": 0.08, "divisions": 12 }
+      ],
+      "steps": [
+        {
+          "title": "The Discriminant Formula",
+          "description": "The discriminant $\\Delta = b^2 - 4ac$ is the key to classifying roots.",
+          "sliders": [
+            { "id": "a", "label": "a", "min": -3, "max": 3, "step": 0.1, "default": 1 },
+            { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": -2 },
+            { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": -3 }
+          ],
+          "add": [
+            {
+              "type": "animated_curve",
+              "id": "parabola2",
+              "label": "y = ax² + bx + c",
+              "expr": "a * x^2 + b * x + c",
+              "range": [-6, 6],
+              "samples": 200,
+              "color": [0.4, 0.7, 1.0],
+              "width": 3
+            }
+          ]
+        },
+        {
+          "title": "Two Real Roots (Δ > 0)",
+          "description": "When the discriminant is positive, the parabola crosses the x-axis twice.",
+          "add": [
+            {
+              "type": "animated_point",
+              "id": "root1b",
+              "label": "x₁",
+              "x": "(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+              "y": "0",
+              "z": "0",
+              "color": [0.3, 1.0, 0.5],
+              "size": 10
+            },
+            {
+              "type": "animated_point",
+              "id": "root2b",
+              "label": "x₂",
+              "x": "(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+              "y": "0",
+              "z": "0",
+              "color": [0.3, 1.0, 0.5],
+              "size": 10
+            }
+          ],
+          "proof": {
+            "id": "vieta-lemma",
+            "title": "Vieta's Formulas (Lemma)",
+            "goal": "Show that $x_1 + x_2 = -\\frac{b}{a}$ and $x_1 x_2 = \\frac{c}{a}$",
+            "prompt": "This is a short lemma about Vieta's formulas. Connect the sum and product of roots to the sliders.",
+            "steps": [
+              {
+                "id": "vieta-start",
+                "type": "given",
+                "label": "Roots from the quadratic formula",
+                "math": "x_{1,2} = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+                "explanation": "We start from the two roots given by the quadratic formula.",
+                "tags": ["given"]
+              },
+              {
+                "id": "vieta-sum",
+                "type": "step",
+                "label": "Sum of roots",
+                "math": "x_1 + x_2 = \\frac{-b + \\sqrt{\\Delta}}{2a} + \\frac{-b - \\sqrt{\\Delta}}{2a} = \\htmlClass{hl-sum}{\\frac{-2b}{2a} = -\\frac{b}{a}}",
+                "highlights": {
+                  "sum": { "color": "green", "label": "The √Δ terms cancel" }
+                },
+                "justification": "Add the two roots; the $\\pm\\sqrt{\\Delta}$ terms cancel",
+                "explanation": "The sum of roots equals $-b/a$, independent of the discriminant.",
+                "tags": ["algebra"]
+              },
+              {
+                "id": "vieta-product",
+                "type": "step",
+                "label": "Product of roots",
+                "math": "x_1 \\cdot x_2 = \\frac{(-b)^2 - (\\sqrt{\\Delta})^2}{(2a)^2} = \\htmlClass{hl-prod}{\\frac{b^2 - b^2 + 4ac}{4a^2} = \\frac{c}{a}}",
+                "highlights": {
+                  "prod": { "color": "yellow", "label": "Difference of squares simplifies" }
+                },
+                "justification": "$(p+q)(p-q) = p^2 - q^2$ with $p = -b/2a$, $q = \\sqrt{\\Delta}/2a$",
+                "explanation": "The product of roots equals $c/a$.",
+                "tags": ["algebra"]
+              },
+              {
+                "id": "vieta-qed",
+                "type": "conclusion",
+                "label": "Vieta's Formulas",
+                "math": "\\htmlClass{hl-vieta}{x_1 + x_2 = -\\frac{b}{a}, \\quad x_1 x_2 = \\frac{c}{a}}",
+                "highlights": {
+                  "vieta": { "color": "cyan", "label": "Vieta's formulas" }
+                },
+                "justification": "Combining the sum and product results",
+                "explanation": "These elegant relationships connect the roots directly to the coefficients without needing to solve the equation.",
+                "tags": ["result"]
+              }
+            ]
+          }
+        },
+        {
+          "title": "Repeated Root (Δ = 0)",
+          "description": "When the discriminant is zero, the parabola touches the x-axis at exactly one point.",
+          "add": [
+            {
+              "type": "animated_point",
+              "id": "vertex2",
+              "label": "Vertex (repeated root)",
+              "x": "-b / (2*a)",
+              "y": "0",
+              "z": "0",
+              "color": [1, 0.8, 0.2],
+              "size": 14
+            }
+          ]
+        },
+        {
+          "title": "No Real Roots (Δ < 0)",
+          "description": "When the discriminant is negative, the parabola doesn't cross the x-axis. The roots are complex conjugates.",
+          "add": []
+        }
+      ],
+      "proof": {
+        "id": "discriminant-proof",
+        "title": "Why the Discriminant Classifies Roots",
+        "goal": "Prove that $\\Delta = b^2 - 4ac$ determines the nature of roots of $ax^2 + bx + c = 0$",
+        "prompt": "Connect each case to the parabola visualization. Use sliders to show examples of each case.",
+        "steps": [
+          {
+            "id": "disc-start",
+            "type": "given",
+            "label": "Starting from the quadratic formula",
+            "math": "x = \\frac{-b \\pm \\htmlClass{hl-radical}{\\sqrt{b^2 - 4ac}}}{2a}",
+            "highlights": {
+              "radical": { "color": "magenta", "label": "The square root determines if roots are real" }
+            },
+            "explanation": "The nature of the roots depends entirely on what's under the square root.",
+            "scene_step": 0,
+            "tags": ["given"]
+          },
+          {
+            "id": "disc-positive",
+            "type": "step",
+            "label": "Case 1: Δ > 0 — Two distinct real roots",
+            "math": "\\Delta > 0 \\implies \\sqrt{\\Delta} \\in \\mathbb{R}^+ \\implies \\htmlClass{hl-two}{x_1 \\neq x_2}",
+            "highlights": {
+              "two": { "color": "green", "label": "Two distinct values from ±" }
+            },
+            "justification": "A positive number has a real square root, and $\\pm$ gives two different values",
+            "explanation": "The parabola crosses the x-axis at two distinct points.",
+            "scene_step": 1,
+            "tags": ["case-analysis"]
+          },
+          {
+            "id": "disc-zero",
+            "type": "step",
+            "label": "Case 2: Δ = 0 — One repeated root",
+            "math": "\\Delta = 0 \\implies \\sqrt{\\Delta} = 0 \\implies x_1 = x_2 = \\htmlClass{hl-one}{-\\frac{b}{2a}}",
+            "highlights": {
+              "one": { "color": "yellow", "label": "The vertex touches the x-axis" }
+            },
+            "justification": "$\\pm 0 = 0$, so both roots equal the vertex x-coordinate",
+            "explanation": "The parabola just touches the x-axis at its vertex.",
+            "scene_step": 2,
+            "tags": ["case-analysis"]
+          },
+          {
+            "id": "disc-negative",
+            "type": "step",
+            "label": "Case 3: Δ < 0 — No real roots",
+            "math": "\\Delta < 0 \\implies \\sqrt{\\Delta} = \\htmlClass{hl-imag}{i\\sqrt{|\\Delta|}} \\implies x \\notin \\mathbb{R}",
+            "highlights": {
+              "imag": { "color": "red", "label": "Imaginary unit appears" }
+            },
+            "justification": "Square root of a negative number is imaginary",
+            "explanation": "The parabola doesn't cross the x-axis at all. The roots are complex conjugates.",
+            "scene_step": 3,
+            "tags": ["case-analysis"]
+          },
+          {
+            "id": "disc-qed",
+            "type": "conclusion",
+            "label": "The Discriminant Classification",
+            "math": "\\htmlClass{hl-class}{\\Delta > 0: \\text{2 real} \\quad \\Delta = 0: \\text{1 real} \\quad \\Delta < 0: \\text{0 real}}",
+            "highlights": {
+              "class": { "color": "cyan", "label": "Complete classification by discriminant sign" }
+            },
+            "justification": "Exhaustive case analysis on the sign of $\\Delta$",
+            "explanation": "The discriminant completely determines the number and type of roots.",
+            "tags": ["result"]
+          }
+        ]
+      }
     }
   ]
 }
