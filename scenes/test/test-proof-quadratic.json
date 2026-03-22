@@ -461,7 +461,7 @@
                 "label": "Root span formula",
                 "math": "|x_1 - x_2| = \\frac{\\sqrt{\\Delta}}{|a|}",
                 "explanation": "From the previous step, we derived that the distance between roots is $\\frac{\\sqrt{\\Delta}}{|a|}$.",
-                "scene_step": 1,
+                "scene_step": 2,
                 "tags": ["given"]
               },
               {
@@ -474,7 +474,7 @@
                 },
                 "justification": "When $\\Delta = 0$, $\\sqrt{\\Delta} = 0$",
                 "explanation": "The two roots coincide at a single point.",
-                "scene_step": 1,
+                "scene_step": 2,
                 "tags": ["algebra"]
               },
               {

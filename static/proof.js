@@ -325,6 +325,39 @@ export function syncProofFromSceneStep(stepIdx) {
     }
 }
 
+// ---- Scroll helper ----
+
+/**
+ * Scroll the active proof step into full visibility within its scrollable
+ * ancestor (.proof-tab-content).  Priority: show the entire step; if the
+ * step is taller than the viewport, show its top edge instead.
+ */
+function _scrollActiveIntoView(container) {
+    const activeEl = container && container.querySelector('.proof-step.active');
+    if (!activeEl) return;
+
+    // Find the scrollable ancestor (.proof-tab-content)
+    let scrollParent = activeEl.parentElement;
+    while (scrollParent && !scrollParent.classList.contains('proof-tab-content')) {
+        scrollParent = scrollParent.parentElement;
+    }
+    if (!scrollParent) return;
+
+    const sRect = scrollParent.getBoundingClientRect();
+    const eRect = activeEl.getBoundingClientRect();
+
+    if (eRect.height > sRect.height) {
+        // Step taller than viewport — align top
+        scrollParent.scrollTop += eRect.top - sRect.top;
+    } else if (eRect.bottom > sRect.bottom) {
+        // Bottom cut off — scroll down so bottom is visible
+        scrollParent.scrollTop += eRect.bottom - sRect.bottom;
+    } else if (eRect.top < sRect.top) {
+        // Top cut off — scroll up so top is visible
+        scrollParent.scrollTop += eRect.top - sRect.top;
+    }
+}
+
 // ---- Render modes ----
 
 function _renderSlide() {
@@ -366,6 +399,8 @@ function _renderSlide() {
         const activeEl = container.querySelector('.proof-step.active');
         if (activeEl) activateHighlights(activeEl, proof.steps[idx]);
     }
+
+    _scrollActiveIntoView(container);
 }
 
 function _renderList() {
@@ -402,12 +437,12 @@ function _renderList() {
         container.appendChild(clone);
     });
 
-    // Scroll active into view
+    // Activate highlights and scroll active step into view
     const activeEl = container.querySelector('.proof-step.active');
     if (activeEl) {
-        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         activateHighlights(activeEl, proof.steps[idx]);
     }
+    _scrollActiveIntoView(container);
 }
 
 function _updateCounter() {
