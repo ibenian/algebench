@@ -3050,8 +3050,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     width: 22px;
     height: 22px;
 }
-.proof-step:hover .proof-ask-btn,
-.proof-step.active .proof-ask-btn {
+.proof-step-math-row:hover .proof-ask-btn {
     opacity: 1;
     pointer-events: auto;
 }

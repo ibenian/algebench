@@ -283,17 +283,20 @@ export function navigateProof(index) {
     }
 
     // Bidirectional sync: proof → scene
-    if (state.proofSyncEnabled && !state._proofSyncInProgress && index >= 0) {
-        const step = steps[index];
-        if (step && step.scene_step != null) {
+    if (state.proofSyncEnabled && !state._proofSyncInProgress) {
+        // At goal (index -1), use proof-level scene_step; otherwise use step-level
+        const sceneStep = index >= 0
+            ? (steps[index] && steps[index].scene_step)
+            : (proof.scene_step);
+        if (sceneStep != null) {
             state._proofSyncInProgress = true;
             try {
-                if (typeof step.scene_step === 'string' && step.scene_step.includes(':')) {
-                    const [si, sti] = step.scene_step.split(':').map(Number);
+                if (typeof sceneStep === 'string' && sceneStep.includes(':')) {
+                    const [si, sti] = sceneStep.split(':').map(Number);
                     if (typeof window.navigateTo === 'function') window.navigateTo(si, sti);
                 } else {
                     if (typeof window.navigateTo === 'function') {
-                        window.navigateTo(state.currentSceneIndex, Number(step.scene_step));
+                        window.navigateTo(state.currentSceneIndex, Number(sceneStep));
                     }
                 }
             } finally {

@@ -103,7 +103,7 @@
             {
               "type": "animated_line",
               "id": "root-span",
-              "label": "Root span",
+              "label": "Root span\n$|x_1-x_2|=\\frac{\\sqrt{\\Delta}}{|a|}$",
               "points": [["(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"], ["(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"]],
               "color": [0.3, 1.0, 0.5],
               "width": 2
@@ -323,7 +323,7 @@
             {
               "type": "animated_line",
               "id": "root-span2",
-              "label": "Root span",
+              "label": "Root span\n$|x_1-x_2|=\\frac{\\sqrt{\\Delta}}{|a|}$",
               "points": [["(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"], ["(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"]],
               "color": [0.3, 1.0, 0.5],
               "width": 2
@@ -333,6 +333,7 @@
             {
               "id": "vieta-lemma",
               "title": "Vieta's Formulas (Lemma)",
+              "scene_step": 1,
               "goal": "Show that $x_1 + x_2 = -\\frac{b}{a}$ and $x_1 x_2 = \\frac{c}{a}$",
               "prompt": "This is a short lemma about Vieta's formulas. Connect the sum and product of roots to the sliders.",
               "steps": [
@@ -385,6 +386,7 @@
             {
               "id": "root-span-derivation",
               "title": "Root Span",
+              "scene_step": 1,
               "goal": "Derive $|x_1 - x_2| = \\frac{\\sqrt{\\Delta}}{|a|}$",
               "prompt": "Show how the distance between the two roots relates to the discriminant and the leading coefficient.",
               "steps": [
@@ -449,6 +451,7 @@
           "proof": {
             "id": "root-span-zero",
             "title": "Root Span Collapses to Zero",
+            "scene_step": 2,
             "goal": "Show that when $\\Delta = 0$, the root span $|x_1 - x_2| = 0$",
             "prompt": "Connect the root span formula to the repeated root case.",
             "steps": [
@@ -512,6 +515,7 @@
           "proof": {
             "id": "vertex-derivation",
             "title": "Vertex by Completing the Square",
+            "scene_step": 3,
             "goal": "Derive the vertex $(h, k) = \\left(-\\frac{b}{2a},\\; c - \\frac{b^2}{4a}\\right)$",
             "prompt": "Show how completing the square reveals the vertex form and why the parabola floats above (or below) the x-axis when Δ < 0.",
             "steps": [
@@ -587,6 +591,7 @@
       "proof": {
         "id": "discriminant-proof",
         "title": "Why the Discriminant Classifies Roots",
+        "scene_step": 0,
         "goal": "Prove that $\\Delta = b^2 - 4ac$ determines the nature of roots of $ax^2 + bx + c = 0$",
         "prompt": "Connect each case to the parabola visualization. Use sliders to show examples of each case.",
         "steps": [
