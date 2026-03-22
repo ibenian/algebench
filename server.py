@@ -773,7 +773,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                    tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
                    tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
                    tts_max_retries=None, tts_retry_delay=None, tts_style=None,
-                   tts_live=True, tts_output_file=None):
+                   tts_live=True, tts_output_file=None, tts_realtime=False):
     """Serve the AlgeBench viewer and optionally open in browser."""
     global DEBUG_MODE
     DEBUG_MODE = debug
@@ -1040,7 +1040,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         import time as _time
         if DEBUG_MODE:
             print(f"\n🔊 TTS stream: character={req.character}, voice={req.voice}, "
-                  f"mode={req.mode}, {len(text)} chars")
+                  f"mode={req.mode}, realtime={tts_realtime}, {len(text)} chars")
+            print(f"🔊 TTS original text: {text}")
 
         api = GeminiLiveAPI(api_key=GEMINI_API_KEY, client=get_gemini_client())
 
@@ -1054,6 +1055,34 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                 print(f"🔊 TTS prepared ({_time.monotonic()-t0:.2f}s): {tts_text}")
         else:
             tts_text = text
+
+        if tts_realtime:
+            # Realtime mode: single Live API session, stream raw PCM chunks
+            est_duration = GeminiLiveAPI.estimate_audio_duration(tts_text)
+
+            async def generate_rt():
+                async for pcm_chunk in api.astream_realtime_pcm(
+                    text=tts_text,
+                    voice_name=req.voice,
+                    character_name=req.character,
+                    style=tts_stream_kwargs.get('style'),
+                ):
+                    if await request.is_disconnected():
+                        break
+                    yield pcm_chunk
+
+            headers = {
+                "Cache-Control": "no-cache",
+                "X-Content-Type-Options": "nosniff",
+                "X-Audio-Sample-Rate": "24000",
+                "X-Audio-Channels": "1",
+                "X-Audio-Format": "s16le",
+                "X-TTS-Est-Duration": f"{est_duration:.1f}",
+            }
+            if tts_output_file:
+                headers["X-TTS-Has-Output-File"] = "1"
+
+            return StreamingResponse(generate_rt(), media_type="audio/pcm", headers=headers)
 
         sentences = _split_sentences(
             tts_text,
@@ -1189,6 +1218,8 @@ Examples:
   algebench --tts-retry-delay 2.0                Seconds between retries (default: library default)
   algebench --tts-style "speak slowly"           Additional style guidance for TTS
   algebench --tts-output-file out.wav            Save TTS audio to WAV file
+  algebench --tts-realtime                       Low-latency realtime TTS streaming
+  algebench -rt scene.json                       Launch scene with realtime TTS
         '''
     )
     parser.add_argument('scene', nargs='?', help='Path to scene JSON file')
@@ -1219,6 +1250,8 @@ Examples:
     parser.add_argument('--tts-output-file', '--output-file', type=str, default=None,
                         dest='tts_output_file',
                         help='Save all TTS audio to this WAV file in addition to playing')
+    parser.add_argument('--tts-realtime', '-rt', action='store_true', default=False,
+                        help='Use realtime Live API streaming for lowest latency TTS')
 
     args = parser.parse_args()
 
@@ -1252,6 +1285,7 @@ Examples:
         tts_style=args.tts_style,
         tts_live=args.tts_live,
         tts_output_file=args.tts_output_file,
+        tts_realtime=args.tts_realtime,
     )
 
 
