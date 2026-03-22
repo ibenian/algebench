@@ -41,9 +41,7 @@
               "type": "animated_point",
               "id": "vertex",
               "label": "Vertex",
-              "x": "-b / (2*a)",
-              "y": "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c",
-              "z": "0",
+              "position": ["-b / (2*a)", "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c", "0"],
               "color": [1, 0.8, 0.2],
               "size": 12
             },
@@ -51,9 +49,7 @@
               "type": "animated_point",
               "id": "root1",
               "label": "x₁",
-              "x": "(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
-              "y": "0",
-              "z": "0",
+              "position": ["(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"],
               "color": [0.3, 1.0, 0.5],
               "size": 10
             },
@@ -61,9 +57,7 @@
               "type": "animated_point",
               "id": "root2",
               "label": "x₂",
-              "x": "(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
-              "y": "0",
-              "z": "0",
+              "position": ["(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"],
               "color": [0.3, 1.0, 0.5],
               "size": 10
             }
@@ -77,8 +71,7 @@
               "type": "animated_line",
               "id": "axis-of-symmetry",
               "label": "x = -b/2a",
-              "from_x": "-b/(2*a)", "from_y": "-8", "from_z": "0",
-              "to_x": "-b/(2*a)", "to_y": "12", "to_z": "0",
+              "points": [["-b/(2*a)", "-8", "0"], ["-b/(2*a)", "12", "0"]],
               "color": [1, 0.6, 0.2],
               "width": 1,
               "dash": true
@@ -105,10 +98,7 @@
               "type": "animated_line",
               "id": "root-span",
               "label": "Root span",
-              "from_x": "(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
-              "from_y": "0", "from_z": "0",
-              "to_x": "(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
-              "to_y": "0", "to_z": "0",
+              "points": [["(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"], ["(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"]],
               "color": [0.3, 1.0, 0.5],
               "width": 2
             }
@@ -267,6 +257,30 @@
               "samples": 200,
               "color": [0.4, 0.7, 1.0],
               "width": 3
+            },
+            {
+              "type": "animated_point",
+              "id": "vertex2a",
+              "label": "Vertex",
+              "position": ["-b / (2*a)", "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c", "0"],
+              "color": [1, 0.8, 0.2],
+              "size": 12
+            },
+            {
+              "type": "animated_point",
+              "id": "root1b",
+              "label": "x₁",
+              "position": ["(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"],
+              "color": [0.3, 1.0, 0.5],
+              "size": 10
+            },
+            {
+              "type": "animated_point",
+              "id": "root2b",
+              "label": "x₂",
+              "position": ["(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"],
+              "color": [0.3, 1.0, 0.5],
+              "size": 10
             }
           ]
         },
@@ -275,24 +289,12 @@
           "description": "When the discriminant is positive, the parabola crosses the x-axis twice.",
           "add": [
             {
-              "type": "animated_point",
-              "id": "root1b",
-              "label": "x₁",
-              "x": "(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
-              "y": "0",
-              "z": "0",
+              "type": "animated_line",
+              "id": "root-span2",
+              "label": "Root span",
+              "points": [["(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"], ["(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"]],
               "color": [0.3, 1.0, 0.5],
-              "size": 10
-            },
-            {
-              "type": "animated_point",
-              "id": "root2b",
-              "label": "x₂",
-              "x": "(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
-              "y": "0",
-              "z": "0",
-              "color": [0.3, 1.0, 0.5],
-              "size": 10
+              "width": 2
             }
           ],
           "proof": {
@@ -353,21 +355,30 @@
           "description": "When the discriminant is zero, the parabola touches the x-axis at exactly one point.",
           "add": [
             {
-              "type": "animated_point",
-              "id": "vertex2",
-              "label": "Vertex (repeated root)",
-              "x": "-b / (2*a)",
-              "y": "0",
-              "z": "0",
-              "color": [1, 0.8, 0.2],
-              "size": 14
+              "type": "animated_line",
+              "id": "axis-sym2",
+              "label": "x = -b/2a",
+              "points": [["-b/(2*a)", "-8", "0"], ["-b/(2*a)", "12", "0"]],
+              "color": [1, 0.6, 0.2],
+              "width": 1,
+              "dash": true
             }
           ]
         },
         {
           "title": "No Real Roots (Δ < 0)",
           "description": "When the discriminant is negative, the parabola doesn't cross the x-axis. The roots are complex conjugates.",
-          "add": []
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "vertex-gap",
+              "label": "Gap to x-axis",
+              "points": [["-b/(2*a)", "0", "0"], ["-b/(2*a)", "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c", "0"]],
+              "color": [1, 0.3, 0.3],
+              "width": 1,
+              "dash": true
+            }
+          ]
         }
       ],
       "proof": {
