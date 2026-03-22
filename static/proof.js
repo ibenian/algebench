@@ -273,8 +273,9 @@ export function navigateProof(index) {
         _renderSlide();
     }
 
-    // Update counter
+    // Update counter and nav buttons
     _updateCounter();
+    _updateNavButtons();
 
     // Activate highlights
     if (index >= 0 && state._proofPreRendered && state._proofPreRendered[index]) {
@@ -419,6 +420,23 @@ function _updateCounter() {
     }
 }
 
+function _updateNavButtons() {
+    const proof = _activeProof();
+    const idx = state.proofStepIndex;
+    const maxIdx = proof && proof.steps ? proof.steps.length - 1 : -1;
+    const hasProof = !!proof;
+
+    const firstBtn = document.getElementById('proof-first');
+    const prevBtn = document.getElementById('proof-prev');
+    const nextBtn = document.getElementById('proof-next');
+    const lastBtn = document.getElementById('proof-last');
+
+    if (firstBtn) firstBtn.disabled = !hasProof || idx <= -1;
+    if (prevBtn) prevBtn.disabled = !hasProof || idx <= -1;
+    if (nextBtn) nextBtn.disabled = !hasProof || idx >= maxIdx;
+    if (lastBtn) lastBtn.disabled = !hasProof || idx >= maxIdx;
+}
+
 // ---- Active proof helpers ----
 
 function _activeProof() {
@@ -515,6 +533,7 @@ function switchActiveProof(newIndex) {
     }
 
     _updateCounter();
+    _updateNavButtons();
     if (proof) navigateProof(state.proofStepIndex);
 }
 
@@ -582,8 +601,9 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
         toggleBtn.style.display = hasVisible ? '' : 'none';
     }
 
-    // Update counter
+    // Update counter and nav buttons
     _updateCounter();
+    _updateNavButtons();
 
     // Render active proof steps — but skip if we're already inside a proof→scene sync
     // (re-entrant call from navigateProof → navigateTo → loadProof)
@@ -844,10 +864,17 @@ export function setupProofPanel() {
     }
 
     // Nav buttons
+    const firstBtn = document.getElementById('proof-first');
     const prevBtn = document.getElementById('proof-prev');
     const nextBtn = document.getElementById('proof-next');
+    const lastBtn = document.getElementById('proof-last');
+    if (firstBtn) firstBtn.addEventListener('click', () => navigateProof(-1));
     if (prevBtn) prevBtn.addEventListener('click', () => navigateProof(state.proofStepIndex - 1));
     if (nextBtn) nextBtn.addEventListener('click', () => navigateProof(state.proofStepIndex + 1));
+    if (lastBtn) lastBtn.addEventListener('click', () => {
+        const proof = _activeProof();
+        if (proof && proof.steps) navigateProof(proof.steps.length - 1);
+    });
 
     // Mode toggle (slide / list) — restore saved preference
     const savedViewMode = localStorage.getItem('algebench-proof-view-mode');

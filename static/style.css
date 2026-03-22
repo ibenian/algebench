@@ -3106,6 +3106,11 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     height: 26px;
     font-size: 15px;
 }
+#proof-nav .nav-btn:disabled {
+    opacity: 0.25;
+    cursor: default;
+    pointer-events: none;
+}
 #proof-counter {
     font-size: 0.72em;
     color: rgba(150, 160, 210, 0.7);
