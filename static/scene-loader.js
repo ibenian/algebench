@@ -16,7 +16,7 @@ import { importDomains, setActiveSceneFunctions, setActiveVirtualTimeExpr } from
 import { clearWorldStarfield, clearWorldSkybox, configureWorldStarfield } from '/objects/skybox.js';
 import { updateFollowAngleLockButtonState } from '/follow-cam.js';
 import { updateTitle, updateExplanationPanel, buildLegend, addInfoOverlay,
-         applyStepInfoOverlays, removeInfoOverlay, removeAllInfoOverlays,
+         removeStepInfoOverlays, removeInfoOverlay, removeAllInfoOverlays,
          getAllElements, updateStatusBar, updateStepCaption } from '/overlay.js';
 import { buildSceneTree, updateTreeHighlight, setNavigateFn } from '/context-browser.js';
 import { loadProof, syncProofFromSceneStep } from '/proof.js';
@@ -107,6 +107,31 @@ export function renderStepAdd(elements, sliderDefs) {
     fadeInTracker(tracker);
 
     return tracker;
+}
+
+/**
+ * Apply info overlays for a step and track them on the tracker.
+ * Non-kept overlays from previous steps are removed first.
+ * Kept overlays persist until the tracker is popped (backward nav).
+ */
+function applyTrackerInfoOverlays(tracker, step) {
+    // Remove non-kept info overlays from previous steps
+    removeStepInfoOverlays();
+    tracker.infoIds = [];
+    const infoDefs = step.info;
+    if (!infoDefs || !infoDefs.length) return;
+    for (const def of infoDefs) {
+        addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false);
+        tracker.infoIds.push(def.id);
+    }
+}
+
+/** Remove info overlays that were added by this tracker (backward navigation). */
+function undoTrackerInfoOverlays(tracker) {
+    if (!tracker.infoIds) return;
+    for (const id of tracker.infoIds) {
+        removeInfoOverlay(id);
+    }
 }
 
 export function hideElementById(id) {
@@ -667,6 +692,7 @@ export function navigateTo(sceneIdx, stepIdx) {
                 const step = scene.steps[i];
                 const tracker = renderStepAdd(step.add || [], step.sliders);
                 processStepRemoves(step.remove, tracker);
+                applyTrackerInfoOverlays(tracker, step);
                 state.stepTrackers.push(tracker);
                 state.visitedSteps.add(sceneIdx + ':' + i);
             }
@@ -681,6 +707,7 @@ export function navigateTo(sceneIdx, stepIdx) {
                     const step = scene.steps[i];
                     const tracker = renderStepAdd(step.add || [], step.sliders);
                     processStepRemoves(step.remove, tracker);
+                    applyTrackerInfoOverlays(tracker, step);
                     state.stepTrackers.push(tracker);
                     state.visitedSteps.add(sceneIdx + ':' + i);
                 }
@@ -689,6 +716,7 @@ export function navigateTo(sceneIdx, stepIdx) {
             while (state.stepTrackers.length > stepIdx + 1) {
                 const tracker = state.stepTrackers.pop();
                 undoStepRemoves(tracker);
+                undoTrackerInfoOverlays(tracker);
                 removeStepTracker(tracker);
             }
         }
@@ -716,7 +744,6 @@ export function navigateTo(sceneIdx, stepIdx) {
     setActiveVirtualTimeExpr(scene, stepIdx);
 
     const activeStep = scene.steps && scene.steps[stepIdx];
-    applyStepInfoOverlays(activeStep ? activeStep.info : null);
 
     updateTreeHighlight();
     updateStepCaption(scene, stepIdx);
