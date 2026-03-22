@@ -188,11 +188,13 @@ function activateHighlights(stepEl, step) {
     for (const [name, spec] of Object.entries(highlights)) {
         const els = stepEl.querySelectorAll(`.hl-${name}`);
         els.forEach(el => {
-            // Apply color — match annotation label colors
+            // Apply color — background only, no box-shadow
             const colorName = spec.color || 'cyan';
             const [r, g, b] = _highlightColorRGB(colorName);
-            el.style.backgroundColor = _hlRGBA(colorName, 0.25);
-            el.style.borderRadius = '3px';
+            el.style.backgroundColor = _hlRGBA(colorName, 0.22);
+            el.style.borderRadius = '6px';
+            el.style.padding = '2px 1px';
+            el.style.margin = '0 -1px';
             el.style.setProperty('--hl-r', r);
             el.style.setProperty('--hl-g', g);
             el.style.setProperty('--hl-b', b);
