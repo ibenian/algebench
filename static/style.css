@@ -3131,11 +3131,12 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     filter: brightness(1.4);
 }
 [class^="hl-"].hl-active {
+    --hl-r: 0; --hl-g: 200; --hl-b: 255;
     animation: hlPulse 0.6s ease-out;
 }
 @keyframes hlPulse {
-    0% { background-color: rgba(100, 200, 255, 0.4); }
-    100% { background-color: rgba(100, 200, 255, 0.12); }
+    0% { background-color: rgba(var(--hl-r), var(--hl-g), var(--hl-b), 0.4); }
+    100% { background-color: rgba(var(--hl-r), var(--hl-g), var(--hl-b), 0.15); }
 }
 
 /* Proof step collapsed (in slide mode, previous steps) */

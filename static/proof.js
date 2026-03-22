@@ -188,11 +188,14 @@ function activateHighlights(stepEl, step) {
     for (const [name, spec] of Object.entries(highlights)) {
         const els = stepEl.querySelectorAll(`.hl-${name}`);
         els.forEach(el => {
-            // Apply color as CSS custom property
-            if (spec.color) {
-                const cssColor = _highlightColorToRGBA(spec.color);
-                el.style.backgroundColor = cssColor;
-            }
+            // Apply color — match annotation label colors
+            const colorName = spec.color || 'cyan';
+            const [r, g, b] = _highlightColorRGB(colorName);
+            el.style.backgroundColor = _hlRGBA(colorName, 0.25);
+            el.style.borderRadius = '3px';
+            el.style.setProperty('--hl-r', r);
+            el.style.setProperty('--hl-g', g);
+            el.style.setProperty('--hl-b', b);
             // Add tooltip
             if (spec.label) {
                 el.title = spec.label;
@@ -223,9 +226,10 @@ function _toggleHighlightAnnotation(stepEl, name, spec) {
     annotation.className = 'proof-hl-annotation';
     annotation.dataset.hl = name;
 
-    const color = _highlightColorToRGBA(spec.color || 'cyan');
-    annotation.style.borderLeftColor = color.replace('0.15)', '0.6)');
-    annotation.innerHTML = `<span class="proof-hl-annotation-dot" style="background:${color.replace('0.15)', '0.7)')}"></span>${escapeHtml(spec.label)}`;
+    const colorName = spec.color || 'cyan';
+    annotation.style.borderLeftColor = _hlRGBA(colorName, 0.6);
+    annotation.style.color = _hlRGBA(colorName, 0.9);
+    annotation.innerHTML = `<span class="proof-hl-annotation-dot" style="background:${_hlRGBA(colorName, 0.7)}"></span>${escapeHtml(spec.label)}`;
 
     // Click annotation to dismiss it
     annotation.addEventListener('click', (e) => {
@@ -244,20 +248,26 @@ function _toggleHighlightAnnotation(stepEl, name, spec) {
     }
 }
 
-/** Convert a highlight color name to an rgba background string. */
-function _highlightColorToRGBA(color) {
+/** Convert a highlight color name to RGB components (r, g, b). */
+function _highlightColorRGB(color) {
     const colors = {
-        cyan:    'rgba(0, 200, 255, 0.15)',
-        yellow:  'rgba(255, 220, 50, 0.15)',
-        green:   'rgba(80, 220, 120, 0.15)',
-        orange:  'rgba(255, 160, 50, 0.15)',
-        magenta: 'rgba(220, 80, 255, 0.15)',
-        red:     'rgba(255, 80, 80, 0.15)',
-        blue:    'rgba(80, 120, 255, 0.15)',
-        pink:    'rgba(255, 120, 180, 0.15)',
-        white:   'rgba(255, 255, 255, 0.12)',
+        cyan:    [0, 200, 255],
+        yellow:  [255, 220, 50],
+        green:   [80, 220, 120],
+        orange:  [255, 160, 50],
+        magenta: [220, 80, 255],
+        red:     [255, 80, 80],
+        blue:    [80, 120, 255],
+        pink:    [255, 120, 180],
+        white:   [255, 255, 255],
     };
     return colors[color] || colors.cyan;
+}
+
+/** Build rgba string from color name at a given opacity. */
+function _hlRGBA(color, opacity) {
+    const [r, g, b] = _highlightColorRGB(color);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
 // ---- Navigation ----
