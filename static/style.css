@@ -2767,3 +2767,386 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     flex-shrink: 0;
 }
 #chat-send:hover { background: rgba(80, 80, 200, 0.5); color: #fff; }
+
+/* ============================================================
+   Proof Panel (inside chat tab, split vertically)
+   ============================================================ */
+
+#proof-toggle-btn.active {
+    background: rgba(70, 70, 150, 0.85);
+    border-color: rgba(140, 160, 255, 0.6);
+    color: #c8d0ff;
+}
+
+#proof-panel {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid rgba(100, 100, 255, 0.15);
+    overflow: hidden;
+    flex-shrink: 0;
+    max-height: 60%;
+}
+#proof-panel.hidden { display: none; }
+
+#proof-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: rgba(10, 10, 28, 0.5);
+    border-bottom: 1px solid rgba(100, 100, 255, 0.1);
+    flex-shrink: 0;
+    gap: 6px;
+}
+
+#proof-panel-tabs {
+    display: flex;
+    gap: 4px;
+}
+.proof-tab {
+    padding: 3px 10px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: rgba(150, 150, 200, 0.7);
+    font-size: 0.72em;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.proof-tab:hover {
+    color: rgba(200, 200, 240, 0.9);
+    background: rgba(40, 40, 80, 0.4);
+}
+.proof-tab.active {
+    color: #c8d0ff;
+    background: rgba(50, 50, 110, 0.6);
+    border-color: rgba(100, 100, 255, 0.25);
+}
+
+#proof-panel-controls {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+.proof-ctrl-btn {
+    padding: 3px 8px;
+    background: rgba(30, 30, 65, 0.7);
+    border: 1px solid rgba(100, 100, 255, 0.2);
+    border-radius: 4px;
+    color: rgba(170, 170, 215, 0.85);
+    font-size: 0.72em;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.proof-ctrl-btn:hover {
+    background: rgba(50, 50, 100, 0.85);
+    color: #e0e0ff;
+    border-color: rgba(140, 140, 255, 0.4);
+}
+.proof-ctrl-btn.active {
+    background: rgba(70, 70, 150, 0.85);
+    border-color: rgba(140, 160, 255, 0.6);
+    color: #c8d0ff;
+}
+
+.proof-tab-content { display: none; overflow-y: auto; flex: 1; padding: 8px 10px; }
+.proof-tab-content.active { display: block; }
+
+/* Proof goal */
+.proof-goal {
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    border-left: 3px solid rgba(100, 180, 255, 0.5);
+    background: rgba(30, 40, 70, 0.4);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.88em;
+    color: rgba(200, 210, 240, 0.95);
+}
+.proof-goal-label {
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(140, 160, 220, 0.7);
+    margin-bottom: 4px;
+}
+.proof-goal-row {
+    display: flex;
+    align-items: center;
+}
+.proof-goal-math {
+    flex: 1;
+    min-width: 0;
+}
+.proof-goal-actions {
+    display: flex;
+    align-items: center;
+    padding: 0 2px 0 6px;
+    flex-shrink: 0;
+}
+.proof-goal:hover .proof-ask-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Proof section header (file / scene / step level) */
+.proof-section {
+    margin-bottom: 10px;
+}
+.proof-section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    cursor: pointer;
+    color: rgba(160, 170, 220, 0.8);
+    font-size: 0.76em;
+    font-weight: 600;
+    user-select: none;
+}
+.proof-section-header:hover { color: #c8d0ff; }
+.proof-section-header .proof-section-arrow {
+    font-size: 0.7em;
+    transition: transform 0.15s;
+}
+.proof-section.collapsed .proof-section-arrow { transform: rotate(-90deg); }
+.proof-section.collapsed .proof-section-body { display: none; }
+
+/* Proof step card */
+.proof-step {
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    border-left: 3px solid rgba(80, 80, 160, 0.4);
+    border-radius: 0 4px 4px 0;
+    background: rgba(20, 20, 45, 0.3);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.proof-step-math-row {
+    display: flex;
+    align-items: center;
+}
+.proof-step-math-row .proof-step-math {
+    flex: 1;
+    min-width: 0;
+}
+.proof-step-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 2px 0 6px;
+    flex-shrink: 0;
+}
+.proof-step:hover {
+    background: rgba(30, 30, 60, 0.5);
+    border-left-color: rgba(100, 100, 200, 0.6);
+}
+.proof-step.active {
+    background: rgba(35, 35, 75, 0.6);
+    border-left-color: rgba(100, 160, 255, 0.8);
+}
+.proof-step.dimmed {
+    opacity: 0.4;
+}
+.proof-step.visited .proof-step-status::after { content: '\2713'; color: rgba(100, 200, 140, 0.7); }
+.proof-step.active .proof-step-status::after { content: '\25B6'; color: rgba(100, 160, 255, 0.9); }
+
+.proof-step-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+.proof-step-number {
+    font-size: 0.68em;
+    color: rgba(140, 140, 200, 0.6);
+    min-width: 18px;
+}
+.proof-step-type {
+    font-size: 0.62em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(60, 60, 120, 0.4);
+    color: rgba(160, 170, 220, 0.8);
+}
+.proof-step-type.type-given { background: rgba(60, 100, 140, 0.4); color: rgba(130, 190, 230, 0.9); }
+.proof-step-type.type-conclusion { background: rgba(50, 120, 70, 0.4); color: rgba(120, 220, 150, 0.9); }
+.proof-step-type.type-remark { background: rgba(100, 80, 60, 0.4); color: rgba(220, 190, 140, 0.9); }
+.proof-step-status { min-width: 14px; font-size: 0.72em; }
+
+.proof-step-label {
+    font-size: 0.82em;
+    font-weight: 600;
+    color: rgba(200, 210, 240, 0.95);
+}
+
+.proof-step-math {
+    padding: 6px 8px;
+    margin: 6px 0;
+    background: rgba(15, 15, 35, 0.5);
+    border-radius: 4px;
+    overflow-x: auto;
+}
+.proof-step-math .katex { font-size: 1.05em; }
+
+.proof-step-justification {
+    font-size: 0.76em;
+    font-style: italic;
+    color: rgba(160, 170, 210, 0.7);
+    margin: 4px 0;
+}
+.proof-step-justification::before {
+    content: '\25B8 ';
+    color: rgba(120, 130, 180, 0.5);
+}
+
+.proof-step-explanation {
+    font-size: 0.78em;
+    color: rgba(180, 185, 220, 0.8);
+    margin: 4px 0;
+    line-height: 1.45;
+}
+
+/* Proof tags */
+.proof-step-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+.proof-tag {
+    font-size: 0.62em;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(60, 60, 120, 0.35);
+    color: rgba(150, 160, 210, 0.75);
+    border: 1px solid rgba(80, 80, 160, 0.25);
+}
+
+/* Proof AI ask buttons */
+.proof-ask-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px;
+    background: rgba(40, 60, 120, 0.5);
+    border: 1px solid rgba(80, 120, 220, 0.3);
+    border-radius: 4px;
+    color: rgba(140, 180, 255, 0.85);
+    font-size: 0.68em;
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 0;
+    pointer-events: none;
+    width: 22px;
+    height: 22px;
+}
+.proof-step:hover .proof-ask-btn,
+.proof-step.active .proof-ask-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+.proof-ask-btn:hover {
+    background: rgba(50, 70, 150, 0.7);
+    border-color: rgba(100, 140, 255, 0.5);
+    color: #c0d4ff;
+}
+
+/* Highlight annotation (shown on click) */
+.proof-hl-annotation {
+    font-size: 0.74em;
+    color: rgba(190, 200, 230, 0.85);
+    padding: 4px 8px 4px 10px;
+    margin: 3px 0;
+    border-left: 2px solid rgba(100, 200, 255, 0.5);
+    background: rgba(30, 40, 65, 0.4);
+    border-radius: 0 4px 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: hlAnnotationIn 0.2s ease;
+    cursor: pointer;
+}
+.proof-hl-annotation:hover {
+    background: rgba(40, 50, 80, 0.5);
+}
+.proof-hl-annotation-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+@keyframes hlAnnotationIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Proof nav bar */
+#proof-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 6px 10px;
+    border-top: 1px solid rgba(100, 100, 255, 0.1);
+    background: rgba(10, 10, 28, 0.4);
+    flex-shrink: 0;
+}
+#proof-nav .nav-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 15px;
+}
+#proof-counter {
+    font-size: 0.72em;
+    color: rgba(150, 160, 210, 0.7);
+    min-width: 80px;
+    text-align: center;
+}
+
+/* Proof resize handle (horizontal, between proof and chat) */
+#proof-resize-handle {
+    height: 5px;
+    cursor: ns-resize;
+    background: rgba(80, 80, 180, 0.15);
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+#proof-resize-handle:hover {
+    background: rgba(100, 100, 220, 0.35);
+}
+#proof-resize-handle.hidden { display: none; }
+
+/* Highlight animations for KaTeX \htmlClass regions */
+[class^="hl-"] {
+    border-radius: 2px;
+    transition: background-color 0.4s ease;
+    position: relative;
+    cursor: pointer;
+}
+[class^="hl-"]:hover {
+    filter: brightness(1.4);
+}
+[class^="hl-"].hl-active {
+    --hl-r: 0; --hl-g: 200; --hl-b: 255;
+    animation: hlPulse 0.6s ease-out;
+}
+@keyframes hlPulse {
+    0% { background-color: rgba(var(--hl-r), var(--hl-g), var(--hl-b), 0.4); }
+    100% { background-color: rgba(var(--hl-r), var(--hl-g), var(--hl-b), 0.15); }
+}
+
+/* Proof step collapsed (in slide mode, previous steps) */
+.proof-step.collapsed {
+    padding: 4px 10px;
+    margin-bottom: 2px;
+    opacity: 0.5;
+    cursor: pointer;
+}
+.proof-step.collapsed .proof-step-math-row,
+.proof-step.collapsed .proof-step-justification,
+.proof-step.collapsed .proof-step-explanation,
+.proof-step.collapsed .proof-step-tags { display: none; }

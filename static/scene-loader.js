@@ -19,6 +19,7 @@ import { updateTitle, updateExplanationPanel, buildLegend, addInfoOverlay,
          applyStepInfoOverlays, removeAllInfoOverlays, getAllElements,
          updateStatusBar, updateStepCaption } from '/overlay.js';
 import { buildSceneTree, updateTreeHighlight, setNavigateFn } from '/context-browser.js';
+import { loadProof, syncProofFromSceneStep } from '/proof.js';
 
 const AUTO_PLAY_DEFAULT_DURATION = 3000;
 
@@ -482,6 +483,7 @@ export async function loadScene(spec) {
     setActiveVirtualTimeExpr(spec, -1);
     updateTitle(spec);
     updateExplanationPanel(spec);
+    loadProof(state.lessonSpec || spec, state.currentSceneIndex, -1);
 
     // Show/hide empty state
     const emptyState = document.getElementById('empty-state');
@@ -715,6 +717,14 @@ export function navigateTo(sceneIdx, stepIdx) {
     updateTreeHighlight();
     updateStepCaption(scene, stepIdx);
     updateStatusBar();
+
+    // Update proof panel
+    if (sceneChanged) {
+        loadProof(state.lessonSpec || scene, sceneIdx, stepIdx);
+    } else if (state.proofSyncEnabled && state.proofSpec && state.proofSpec.length > 0) {
+        // Step changed within same scene — only sync, don't reload
+        syncProofFromSceneStep(stepIdx);
+    }
 
     if (sceneChanged) {
         setTimeout(() => window.dispatchEvent(new Event('resize')), 50);

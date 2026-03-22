@@ -177,6 +177,14 @@ function buildChatContext() {
         runtime.projection = currentProjection;
     }
 
+    // Proof context
+    if (typeof getProofContext === 'function') {
+        const proofCtx = getProofContext();
+        if (proofCtx) {
+            runtime.proof = proofCtx;
+        }
+    }
+
     ctx.runtime = runtime;
     return ctx;
 }
@@ -576,6 +584,10 @@ async function sendChatMessage(text, { silent = false } = {}) {
                         if (typeof addInfoOverlay === 'function')
                             addInfoOverlay(tc.args.id, tc.args.content || '', tc.args.position || 'top-left');
                     }
+                } else if (tc.name === 'navigate_proof') {
+                    const proofStep = parseInt(tc.result?.step ?? tc.args?.step ?? 0);
+                    // Agent uses 1-based, navigateProof uses 0-based (-1 = goal)
+                    if (typeof navigateProof === 'function') navigateProof(proofStep - 1);
                 }
             }
         }
@@ -901,6 +913,12 @@ function renderToolCallChip(tc) {
             const pos = tc.args.position || 'top-left';
             friendlyText = '🖼️ Info overlay "' + id + '" @ ' + pos;
         }
+    } else if (tc.name === 'navigate_proof') {
+        const step = tc.args.step || 0;
+        const reason = tc.args.reason || '';
+        friendlyText = step === 0
+            ? '📐 Proof: showing goal overview'
+            : '📐 Proof: step ' + step + (reason ? ' — ' + reason : '');
     }
 
     const header = document.createElement('div');
