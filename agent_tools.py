@@ -426,13 +426,13 @@ def build_system_prompt(context, agent_memory=None):
     # doesn't read ahead and explain future steps.
     if scene:
         step_num = runtime.get('stepNumber', 0)
-        scene_for_prompt = {k: v for k, v in scene.items() if k not in ('markdown', 'prompt', 'steps')}
+        scene_for_prompt = {k: v for k, v in scene.items() if k not in ('markdown', 'prompt', 'steps', 'proof')}
         if scene.get('steps'):
             # Only include steps up to and including the current step (1-based → slice [:step_num]).
             # Strip instructional fields here so raw scene JSON stays focused on render state.
             visible_steps = scene['steps'][:step_num] if step_num > 0 else []
             scene_for_prompt['steps'] = [
-                {k: v for k, v in step.items() if k not in ('prompt', 'markdown')}
+                {k: v for k, v in step.items() if k not in ('prompt', 'markdown', 'proof')}
                 for step in visible_steps
             ]
         parts.append(f"\n## Current Scene Definition\n```json\n{json.dumps(scene_for_prompt, indent=2)}\n```")
@@ -455,35 +455,44 @@ def build_system_prompt(context, agent_memory=None):
     if total_steps > 0 and step_num >= 1 and step_num <= total_steps:
         step = scene['steps'][step_num - 1]
         if step.get('prompt'):
-            parts.append(f"\n## Current Step Instructions\n{step['prompt']}")
+            parts.append(f"\n## Active Proof Step Instructions\n{step['prompt']}")
 
-    # Proof context
+    # Proof context — only include when the proof panel is expanded
     proof_ctx = runtime.get('proof')
-    if proof_ctx:
-        parts.append("\n## Active Proof")
-        if proof_ctx.get('title'):
-            parts.append(f"- Title: {proof_ctx['title']}")
-        if proof_ctx.get('goal'):
-            parts.append(f"- Goal: {proof_ctx['goal']}")
-        parts.append(f"- Steps: {proof_ctx.get('stepCount', 0)}")
+    if proof_ctx and proof_ctx.get('expanded'):
+        proof_title = proof_ctx.get('title', 'Untitled Proof')
+        step_count = proof_ctx.get('stepCount', 0)
         proof_step_idx = proof_ctx.get('currentStepIndex', -1)
-        if proof_step_idx < 0:
-            parts.append("- Current position: Goal overview (step 0)")
-        else:
-            parts.append(f"- Current position: Step {proof_step_idx + 1}")
-        if proof_ctx.get('proofPrompt'):
-            parts.append(f"\n**Proof guidance:** {proof_ctx['proofPrompt']}")
+
+        # Active Proof — goal + guidance
+        goal_str = f"\n{proof_ctx['goal']}" if proof_ctx.get('goal') else ""
+        guidance_str = f"\n\n*Guidance:* {proof_ctx['proofPrompt']}" if proof_ctx.get('proofPrompt') else ""
+        parts.append(f"\n## Active Proof: {proof_title}{goal_str}{guidance_str}")
+
+        # Completed steps — compact
+        prev_steps = proof_ctx.get('previousSteps')
+        if prev_steps:
+            lines = []
+            for s in prev_steps:
+                math_str = f": ${s['math']}$" if s.get('math') else ""
+                lines.append(f"{s['step']}. {s.get('label', '?')}{math_str}")
+            parts.append(f"\n## Completed Proof Steps\n" + "\n".join(lines))
+
+        # Current step — detailed
         current_step = proof_ctx.get('currentStep')
         if current_step:
-            parts.append(f"\n**Current proof step:**")
-            parts.append(f"- ID: {current_step.get('id', '?')}")
-            parts.append(f"- Label: {current_step.get('label', '?')}")
+            step_parts = []
             if current_step.get('math'):
-                parts.append(f"- Math: ${current_step['math']}$")
+                step_parts.append(f"- Math: ${current_step['math']}$")
             if current_step.get('justification'):
-                parts.append(f"- Justification: {current_step['justification']}")
+                step_parts.append(f"- Justification: {current_step['justification']}")
+            if current_step.get('explanation'):
+                step_parts.append(f"- Explanation: {current_step['explanation']}")
             if current_step.get('stepPrompt'):
-                parts.append(f"\n**Step guidance:** {current_step['stepPrompt']}")
+                step_parts.append(f"\n*Step guidance:* {current_step['stepPrompt']}")
+            parts.append(f"\n## Active Proof Step {current_step['step']} of {step_count}: {current_step.get('label', '?')}\n" + "\n".join(step_parts))
+        elif proof_step_idx < 0:
+            parts.append(f"\n## Active Proof Step\nGoal overview ({step_count} steps total)")
 
     # Agent tools reference (loaded from external file)
     if _AGENT_TOOLS_REFERENCE:

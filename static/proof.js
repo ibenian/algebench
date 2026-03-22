@@ -788,20 +788,58 @@ export function getProofContext() {
     const proof = _activeProof();
     if (!proof) return null;
 
+    const stripHlClass = (m) => {
+        if (!m) return null;
+        // Remove all \htmlClass{name}{...} wrappers, keeping inner content
+        let s = m;
+        while (s.includes('\\htmlClass{')) {
+            const start = s.indexOf('\\htmlClass{');
+            // Find the end of the class name: \htmlClass{name}
+            const nameEnd = s.indexOf('}', start + 11);
+            if (nameEnd < 0) break;
+            // Next char should be {, find matching }
+            if (s[nameEnd + 1] !== '{') break;
+            let depth = 1, i = nameEnd + 2;
+            while (i < s.length && depth > 0) {
+                if (s[i] === '{') depth++;
+                else if (s[i] === '}') depth--;
+                i++;
+            }
+            // Replace \htmlClass{name}{content} with content
+            const content = s.slice(nameEnd + 2, i - 1);
+            s = s.slice(0, start) + content + s.slice(i);
+        }
+        return s;
+    };
+    const steps = proof.steps || [];
+    const idx = state.proofStepIndex;
+
     const ctx = {
         title: proof.title || null,
         goal: proof.goal || null,
-        stepCount: proof.steps ? proof.steps.length : 0,
-        currentStepIndex: state.proofStepIndex,
+        stepCount: steps.length,
+        currentStepIndex: idx,
         proofPrompt: proof.prompt || null,
+        expanded: state.proofExpanded,
     };
 
-    if (state.proofStepIndex >= 0 && proof.steps && proof.steps[state.proofStepIndex]) {
-        const step = proof.steps[state.proofStepIndex];
+    // Previous steps — compact (label + math only)
+    if (idx > 0) {
+        ctx.previousSteps = steps.slice(0, idx).map((s, i) => ({
+            step: i + 1,
+            label: s.label,
+            math: stripHlClass(s.math),
+        }));
+    }
+
+    // Current step — full details
+    if (idx >= 0 && steps[idx]) {
+        const step = steps[idx];
         ctx.currentStep = {
+            step: idx + 1,
             id: step.id,
             label: step.label,
-            math: step.math ? step.math.replace(/\\htmlClass\{[^}]+\}\{/g, '').replace(/\}$/g, '') : null,
+            math: stripHlClass(step.math),
             justification: step.justification || null,
             explanation: step.explanation || null,
             stepPrompt: step.prompt || null,
