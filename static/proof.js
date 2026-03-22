@@ -333,8 +333,11 @@ function _renderSlide() {
     // Show previous steps collapsed, current step full
     nodes.forEach((node, i) => {
         const clone = node.cloneNode(true);
-        // Re-attach click handler on clone
+        // Re-attach event handlers lost during cloneNode
         clone.addEventListener('click', () => navigateProof(i));
+        // Remove dead button clones (no listeners), re-inject live ones
+        clone.querySelectorAll('.proof-ask-btn').forEach(b => b.remove());
+        _injectProofAskButtons(clone, proof.steps[i], proof);
 
         if (i < idx) {
             clone.classList.add('collapsed', 'visited');
@@ -371,6 +374,8 @@ function _renderList() {
     nodes.forEach((node, i) => {
         const clone = node.cloneNode(true);
         clone.addEventListener('click', () => navigateProof(i));
+        clone.querySelectorAll('.proof-ask-btn').forEach(b => b.remove());
+        _injectProofAskButtons(clone, proof.steps[i], proof);
 
         clone.classList.remove('collapsed');
         if (i <= idx) {
