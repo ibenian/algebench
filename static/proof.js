@@ -82,38 +82,41 @@ function preRenderProofSteps(proof) {
         const type = step.type || 'step';
         const typeClass = `type-${type}`;
 
-        let html = `<div class="proof-step-header">
+        let contentHtml = `<div class="proof-step-header">
             <span class="proof-step-number">${i + 1}</span>
             <span class="proof-step-type ${typeClass}">${type}</span>
             <span class="proof-step-label">${escapeHtml(step.label)}</span>
             <span class="proof-step-status"></span>
         </div>`;
 
-        // Math (KaTeX)
+        // Math (KaTeX) — wrapped in a row with AI action button on the right
         if (step.math) {
-            html += `<div class="proof-step-math">${renderKaTeX('$$' + step.math + '$$', true)}</div>`;
+            contentHtml += `<div class="proof-step-math-row">
+                <div class="proof-step-math">${renderKaTeX('$$' + step.math + '$$', true)}</div>
+                <div class="proof-step-actions"></div>
+            </div>`;
         }
 
-        // Justification with AI "Why?" button placeholder
+        // Justification
         if (step.justification) {
-            html += `<div class="proof-step-justification">
+            contentHtml += `<div class="proof-step-justification">
                 <span class="proof-justification-text">${renderKaTeX(step.justification, false)}</span>
             </div>`;
         }
 
         // Explanation
         if (step.explanation) {
-            html += `<div class="proof-step-explanation">${renderMarkdown(step.explanation)}</div>`;
+            contentHtml += `<div class="proof-step-explanation">${renderMarkdown(step.explanation)}</div>`;
         }
 
         // Tags
         if (step.tags && step.tags.length) {
-            html += `<div class="proof-step-tags">${step.tags.map(t => `<span class="proof-tag">${escapeHtml(t)}</span>`).join('')}</div>`;
+            contentHtml += `<div class="proof-step-tags">${step.tags.map(t => `<span class="proof-tag">${escapeHtml(t)}</span>`).join('')}</div>`;
         }
 
-        div.innerHTML = html;
+        div.innerHTML = contentHtml;
 
-        // Inject AI ask buttons
+        // Inject AI ask buttons into the actions strip next to math
         _injectProofAskButtons(div, step, proof);
 
         // Click handler — navigate directly to this step
@@ -123,23 +126,19 @@ function preRenderProofSteps(proof) {
     });
 }
 
-/** Inject AI ask buttons into a pre-rendered proof step. */
+/** Inject AI ask button into the actions strip of a proof step. */
 function _injectProofAskButtons(stepEl, step, proof) {
-    // "Why?" button next to justification
-    const justEl = stepEl.querySelector('.proof-step-justification');
-    if (justEl) {
-        const btn = makeAiAskButton('proof-ask-btn', 'Ask why this step works',
-            () => `Why does this step work? Step: "${step.label}". Justification: "${step.justification}"`);
-        justEl.appendChild(btn);
-    }
+    const actionsEl = stepEl.querySelector('.proof-step-actions');
+    if (!actionsEl) return;
 
-    // "Explain" button next to math
-    const mathEl = stepEl.querySelector('.proof-step-math');
-    if (mathEl) {
-        const btn = makeAiAskButton('proof-ask-btn', 'Explain this step',
-            () => `Explain this proof step: "${step.label}"`);
-        mathEl.appendChild(btn);
-    }
+    // Single "Explain" button for the step
+    const btn = makeAiAskButton('proof-ask-btn', 'Explain this step',
+        () => {
+            let msg = `Explain this proof step: "${step.label}"`;
+            if (step.justification) msg += `. Justification: "${step.justification}"`;
+            return msg;
+        });
+    actionsEl.appendChild(btn);
 }
 
 /** Render the goal block for a proof. */
@@ -221,12 +220,12 @@ function _toggleHighlightAnnotation(stepEl, name, spec) {
         annotation.remove();
     });
 
-    // Insert after the math block
-    const mathEl = stepEl.querySelector('.proof-step-math');
-    if (mathEl && mathEl.nextSibling) {
-        mathEl.parentNode.insertBefore(annotation, mathEl.nextSibling);
-    } else if (mathEl) {
-        mathEl.parentNode.appendChild(annotation);
+    // Insert after the math row (so it appears below math + AI button)
+    const mathRow = stepEl.querySelector('.proof-step-math-row');
+    if (mathRow && mathRow.nextSibling) {
+        mathRow.parentNode.insertBefore(annotation, mathRow.nextSibling);
+    } else if (mathRow) {
+        mathRow.parentNode.appendChild(annotation);
     } else {
         stepEl.appendChild(annotation);
     }
@@ -593,14 +592,15 @@ function _renderAllTab(allProofs) {
                 stepDiv.className = 'proof-step';
                 stepDiv.style.cursor = 'default';
                 const type = step.type || 'step';
-                stepDiv.innerHTML = `<div class="proof-step-header">
+                let stepHtml = `<div class="proof-step-header">
                     <span class="proof-step-number">${si + 1}</span>
                     <span class="proof-step-type type-${type}">${type}</span>
                     <span class="proof-step-label">${escapeHtml(step.label)}</span>
                 </div>`;
                 if (step.math) {
-                    stepDiv.innerHTML += `<div class="proof-step-math">${renderKaTeX('$$' + step.math + '$$', true)}</div>`;
+                    stepHtml += `<div class="proof-step-math">${renderKaTeX('$$' + step.math + '$$', true)}</div>`;
                 }
+                stepDiv.innerHTML = stepHtml;
                 body.appendChild(stepDiv);
             });
         }

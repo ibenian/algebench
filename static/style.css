@@ -2903,6 +2903,23 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     cursor: pointer;
     transition: all 0.15s;
 }
+.proof-step-math-row {
+    display: flex;
+    align-items: center;
+}
+.proof-step-math-row .proof-step-math {
+    flex: 1;
+    min-width: 0;
+}
+.proof-step-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 2px 0 6px;
+    flex-shrink: 0;
+}
 .proof-step:hover {
     background: rgba(30, 30, 60, 0.5);
     border-left-color: rgba(100, 100, 200, 0.6);
@@ -2993,9 +3010,10 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 
 /* Proof AI ask buttons */
 .proof-ask-btn {
-    display: inline-block;
-    padding: 2px 7px;
-    margin-left: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px;
     background: rgba(40, 60, 120, 0.5);
     border: 1px solid rgba(80, 120, 220, 0.3);
     border-radius: 4px;
@@ -3003,9 +3021,10 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     font-size: 0.68em;
     cursor: pointer;
     transition: all 0.2s;
-    vertical-align: middle;
     opacity: 0;
     pointer-events: none;
+    width: 22px;
+    height: 22px;
 }
 .proof-step:hover .proof-ask-btn,
 .proof-step.active .proof-ask-btn {
@@ -3108,8 +3127,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     opacity: 0.5;
     cursor: pointer;
 }
-.proof-step.collapsed .proof-step-math,
+.proof-step.collapsed .proof-step-math-row,
 .proof-step.collapsed .proof-step-justification,
 .proof-step.collapsed .proof-step-explanation,
-.proof-step.collapsed .proof-step-tags,
-.proof-step.collapsed .proof-ask-btn { display: none; }
+.proof-step.collapsed .proof-step-tags { display: none; }
