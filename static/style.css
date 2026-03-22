@@ -2904,6 +2904,12 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     user-select: none;
 }
 .proof-section-header:hover { color: #c8d0ff; }
+.proof-section-header.active { color: rgba(180, 200, 255, 0.95); }
+.proof-section-step-hint {
+    font-weight: 400;
+    font-size: 0.9em;
+    color: rgba(140, 150, 200, 0.5);
+}
 .proof-section-header .proof-section-arrow {
     font-size: 0.7em;
     transition: transform 0.15s;

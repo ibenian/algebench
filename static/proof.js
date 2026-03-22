@@ -41,32 +41,9 @@ function collectAllProofs(lessonSpec) {
     return all;
 }
 
-/** Collect proofs relevant to the current navigation context. */
+/** Collect all proofs in the lesson as context proofs. */
 function collectContextProofs(lessonSpec, sceneIndex, stepIndex) {
-    const ctx = [];
-    if (!lessonSpec) return ctx;
-
-    // Root-level
-    for (const p of normalizeProofs(lessonSpec.proof)) {
-        ctx.push({ level: 'file', proof: p });
-    }
-
-    // Current scene
-    const scenes = lessonSpec.scenes || (lessonSpec.elements ? [lessonSpec] : []);
-    const scene = scenes[sceneIndex];
-    if (!scene) return ctx;
-
-    for (const p of normalizeProofs(scene.proof)) {
-        ctx.push({ level: 'scene', proof: p });
-    }
-
-    // Current step
-    if (stepIndex >= 0 && scene.steps && scene.steps[stepIndex]) {
-        for (const p of normalizeProofs(scene.steps[stepIndex].proof)) {
-            ctx.push({ level: 'step', proof: p });
-        }
-    }
-    return ctx;
+    return collectAllProofs(lessonSpec);
 }
 
 // ---- Pre-rendering ----
@@ -283,6 +260,9 @@ export function navigateProof(index) {
     index = Math.max(-1, Math.min(index, steps.length - 1));
     state.proofStepIndex = index;
 
+    // Save to per-proof memory so switching away and back preserves position
+    _saveProofStepToMemory();
+
     // Render based on view mode
     if (state.proofViewMode === 'list') {
         _renderList();
@@ -457,23 +437,79 @@ function _activeContainer() {
 
 // ---- Load / update proofs ----
 
+/** Get a stable key for a proof entry (uses proof.id or falls back to index). */
+function _proofKey(entry, index) {
+    return entry?.proof?.id || `_idx_${index}`;
+}
+
+/** Save current proof step index to memory before switching away. */
+function _saveProofStepToMemory() {
+    const proof = _activeProof();
+    if (proof) {
+        const key = _proofKey(state.proofSpec[state.proofActiveIndex], state.proofActiveIndex);
+        state.proofStepMemory[key] = state.proofStepIndex;
+    }
+}
+
+/** Restore proof step index from memory when switching to a proof. */
+function _restoreProofStepFromMemory(entry, index) {
+    const key = _proofKey(entry, index);
+    return state.proofStepMemory[key] != null ? state.proofStepMemory[key] : -1;
+}
+
+/** Switch the active proof, preserving step state for both old and new. */
+function switchActiveProof(newIndex) {
+    if (newIndex === state.proofActiveIndex) return;
+    // Save current proof's step position
+    _saveProofStepToMemory();
+    // Switch
+    state.proofActiveIndex = newIndex;
+    // Restore new proof's step position
+    const entry = state.proofSpec[newIndex];
+    state.proofStepIndex = _restoreProofStepFromMemory(entry, newIndex);
+    // Update pre-rendered cache for active proof
+    const proof = _activeProof();
+    state._proofPreRendered = proof ? _getOrPreRender(entry, newIndex) : [];
+    // Re-render UI
+    _renderContextTab(state.proofSpec);
+    _updateCounter();
+    if (proof) navigateProof(state.proofStepIndex);
+}
+
+/** Get cached pre-rendered steps or create them. */
+function _getOrPreRender(entry, index) {
+    const key = _proofKey(entry, index);
+    if (!state._proofPreRenderedAll[key]) {
+        const proof = entry?.proof;
+        state._proofPreRenderedAll[key] = proof ? preRenderProofSteps(proof) : [];
+    }
+    return state._proofPreRenderedAll[key];
+}
+
 /** Load proofs for the current context. Called on scene/step change. */
 export function loadProof(lessonSpec, sceneIndex, stepIndex) {
     // Collect context proofs and all proofs
     const contextProofs = collectContextProofs(lessonSpec, sceneIndex, stepIndex);
     const allProofs = collectAllProofs(lessonSpec);
 
-    // Check if the active proof is the same — if so, don't reset navigation state
+    // Check if the active proof is still in the new context
     const prevProofId = state.proofSpec?.[state.proofActiveIndex]?.proof?.id;
-    const newProofId = contextProofs[0]?.proof?.id;
-    const sameProof = prevProofId && newProofId && prevProofId === newProofId;
+    let newActiveIndex = 0;
+    if (prevProofId) {
+        const match = contextProofs.findIndex(e => e.proof?.id === prevProofId);
+        if (match >= 0) newActiveIndex = match;
+    }
+
+    // Save step memory for outgoing proof before changing context
+    _saveProofStepToMemory();
 
     state.proofSpec = contextProofs;
     state.proofAllSpecs = allProofs;
-    if (!sameProof) {
-        state.proofActiveIndex = 0;
-        state.proofStepIndex = -1;
-    }
+    state.proofActiveIndex = newActiveIndex;
+
+    // Restore step index for the active proof
+    const activeEntry = contextProofs[newActiveIndex];
+    state.proofStepIndex = activeEntry ? _restoreProofStepFromMemory(activeEntry, newActiveIndex) : -1;
 
     // Show/hide the proof toggle button
     const toggleBtn = document.getElementById('proof-toggle-btn');
@@ -481,9 +517,14 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
         toggleBtn.style.display = contextProofs.length > 0 ? '' : 'none';
     }
 
-    // Pre-render steps for the active proof
+    // Pre-render steps for all context proofs (cache by id)
+    state._proofPreRenderedAll = {};
+    contextProofs.forEach((entry, i) => {
+        _getOrPreRender(entry, i);
+    });
+    // Set active pre-rendered
     const proof = _activeProof();
-    state._proofPreRendered = proof ? preRenderProofSteps(proof) : [];
+    state._proofPreRendered = proof ? _getOrPreRender(activeEntry, newActiveIndex) : [];
 
     // Render context tab
     _renderContextTab(contextProofs);
@@ -522,64 +563,53 @@ function _renderContextTab(contextProofs) {
         return;
     }
 
-    // Group by level
-    const groups = { file: [], scene: [], step: [] };
     contextProofs.forEach((entry, i) => {
-        groups[entry.level].push({ ...entry, globalIndex: i });
-    });
+        const section = document.createElement('div');
+        const isActive = i === state.proofActiveIndex;
+        section.className = 'proof-section' + (isActive ? '' : ' collapsed');
 
-    const levelLabels = { file: 'Lesson', scene: 'Scene', step: 'Step' };
+        const proof = entry.proof;
+        const title = proof.title || proof.goal || 'Untitled proof';
+        // Show remembered step position for inactive proofs
+        const memStep = _restoreProofStepFromMemory(entry, i);
+        const stepInfo = !isActive && memStep >= 0 && proof.steps
+            ? ` <span class="proof-section-step-hint">(step ${memStep + 1}/${proof.steps.length})</span>`
+            : '';
 
-    for (const [level, entries] of Object.entries(groups)) {
-        if (entries.length === 0) continue;
+        section.innerHTML = `<div class="proof-section-header${isActive ? ' active' : ''}" data-proof-index="${i}">
+            <span class="proof-section-arrow">&#9660;</span>
+            <span>Proof: ${escapeHtml(title)}${stepInfo}</span>
+        </div>`;
 
-        entries.forEach(entry => {
-            const section = document.createElement('div');
-            section.className = 'proof-section';
+        const body = document.createElement('div');
+        body.className = 'proof-section-body';
 
-            const proof = entry.proof;
-            const title = proof.title || proof.goal || 'Untitled proof';
+        // Goal with AI button
+        body.innerHTML = renderGoalHTML(proof);
+        _injectGoalAskButton(body, proof);
 
-            section.innerHTML = `<div class="proof-section-header" data-proof-index="${entry.globalIndex}">
-                <span class="proof-section-arrow">&#9660;</span>
-                <span>${levelLabels[level]}: ${escapeHtml(title)}</span>
-            </div>`;
+        // Add steps container for the active proof
+        if (isActive) {
+            const stepsContainer = document.createElement('div');
+            stepsContainer.id = 'proof-steps-container';
+            body.appendChild(stepsContainer);
+        }
 
-            const body = document.createElement('div');
-            body.className = 'proof-section-body';
+        section.appendChild(body);
 
-            // Goal with AI button
-            body.innerHTML = renderGoalHTML(proof);
-            _injectGoalAskButton(body, proof);
-
-            // If this is the active proof, add a container for step rendering
-            if (entry.globalIndex === state.proofActiveIndex) {
-                const stepsContainer = document.createElement('div');
-                stepsContainer.id = 'proof-steps-container';
-                body.appendChild(stepsContainer);
-            }
-
-            section.appendChild(body);
-
-            // Toggle collapse on header click
-            const header = section.querySelector('.proof-section-header');
-            header.addEventListener('click', () => {
+        // Click header to switch active proof (with state preservation)
+        const header = section.querySelector('.proof-section-header');
+        header.addEventListener('click', () => {
+            if (i !== state.proofActiveIndex) {
+                switchActiveProof(i);
+            } else {
+                // Toggle collapse on the already-active proof
                 section.classList.toggle('collapsed');
-                // Switch active proof
-                const newIdx = entry.globalIndex;
-                if (newIdx !== state.proofActiveIndex) {
-                    state.proofActiveIndex = newIdx;
-                    state.proofStepIndex = -1;
-                    const newProof = _activeProof();
-                    state._proofPreRendered = newProof ? preRenderProofSteps(newProof) : [];
-                    _renderContextTab(state.proofSpec);
-                    _updateCounter();
-                }
-            });
-
-            container.appendChild(section);
+            }
         });
-    }
+
+        container.appendChild(section);
+    });
 }
 
 /** Render the "All" tab with all proofs in the lesson. */
@@ -604,7 +634,7 @@ function _renderAllTab(allProofs) {
         section.className = 'proof-section collapsed';
         section.innerHTML = `<div class="proof-section-header">
             <span class="proof-section-arrow">&#9660;</span>
-            <span>${level}: ${escapeHtml(title)}</span>
+            <span>Proof: ${escapeHtml(title)}</span>
         </div>`;
 
         const body = document.createElement('div');
