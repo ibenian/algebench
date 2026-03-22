@@ -43,7 +43,7 @@
               "label": "Vertex",
               "position": ["-b / (2*a)", "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c", "0"],
               "color": [1, 0.8, 0.2],
-              "size": 12
+              "radius": 0.08
             },
             {
               "type": "animated_point",
@@ -51,7 +51,7 @@
               "label": "x₁",
               "position": ["(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"],
               "color": [0.3, 1.0, 0.5],
-              "size": 10
+              "radius": 0.06
             },
             {
               "type": "animated_point",
@@ -59,7 +59,7 @@
               "label": "x₂",
               "position": ["(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"],
               "color": [0.3, 1.0, 0.5],
-              "size": 10
+              "radius": 0.06
             }
           ]
         },
@@ -264,7 +264,7 @@
               "label": "Vertex",
               "position": ["-b / (2*a)", "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c", "0"],
               "color": [1, 0.8, 0.2],
-              "size": 12
+              "radius": 0.08
             },
             {
               "type": "animated_point",
@@ -272,7 +272,7 @@
               "label": "x₁",
               "position": ["(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"],
               "color": [0.3, 1.0, 0.5],
-              "size": 10
+              "radius": 0.06
             },
             {
               "type": "animated_point",
@@ -280,7 +280,7 @@
               "label": "x₂",
               "position": ["(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"],
               "color": [0.3, 1.0, 0.5],
-              "size": 10
+              "radius": 0.06
             }
           ]
         },
