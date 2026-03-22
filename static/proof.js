@@ -730,12 +730,18 @@ export function setupProofPanel() {
     if (prevBtn) prevBtn.addEventListener('click', () => navigateProof(state.proofStepIndex - 1));
     if (nextBtn) nextBtn.addEventListener('click', () => navigateProof(state.proofStepIndex + 1));
 
-    // Mode toggle (slide / list)
+    // Mode toggle (slide / list) — restore saved preference
+    const savedViewMode = localStorage.getItem('algebench-proof-view-mode');
+    if (savedViewMode === 'list' || savedViewMode === 'slide') {
+        state.proofViewMode = savedViewMode;
+    }
     const modeBtn = document.getElementById('proof-mode-toggle');
     if (modeBtn) {
+        modeBtn.textContent = state.proofViewMode === 'slide' ? 'Slide' : 'List';
         modeBtn.addEventListener('click', () => {
             state.proofViewMode = state.proofViewMode === 'slide' ? 'list' : 'slide';
             modeBtn.textContent = state.proofViewMode === 'slide' ? 'Slide' : 'List';
+            localStorage.setItem('algebench-proof-view-mode', state.proofViewMode);
             // Re-render current view
             navigateProof(state.proofStepIndex);
         });
