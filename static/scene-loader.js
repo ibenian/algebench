@@ -55,7 +55,7 @@ function buildSubTracker(group, before) {
 
 export function renderStepAdd(elements, sliderDefs) {
     // Register sliders first (so expressions can reference them during render)
-    const sliderIds = registerSliders(sliderDefs);
+    const { ids: sliderIds, prevStates: prevSliderStates } = registerSliders(sliderDefs);
     if (sliderIds.length > 0) {
         buildSliderOverlay();
         recompileActiveExprs();
@@ -101,6 +101,7 @@ export function renderStepAdd(elements, sliderDefs) {
     tracker.removedSliders = {};
     tracker.replacedElements = replacedElements;
     tracker.sliderIds = sliderIds;
+    tracker.prevSliderStates = prevSliderStates;
     tracker.elementIds = addedElementIds;
     tracker.renderResults = renderResults;
 
@@ -288,11 +289,21 @@ function removeStepTracker(tracker) {
     if (tracker.sliderIds && tracker.sliderIds.length > 0) {
         const stillNeeded = new Set(state.stepTrackers.flatMap(t => t.sliderIds || []));
         const toRemove = tracker.sliderIds.filter(id => !stillNeeded.has(id));
+        // Restore previous slider states for sliders that aren't being removed
+        // (i.e., sliders that existed before this step overrode their defaults).
+        if (tracker.prevSliderStates) {
+            for (const [id, prev] of Object.entries(tracker.prevSliderStates)) {
+                if (!toRemove.includes(id) && state.sceneSliders[id]) {
+                    Object.assign(state.sceneSliders[id], prev);
+                }
+            }
+        }
         if (toRemove.length > 0) {
             removeSliderIds(toRemove);
-            buildSliderOverlay();
-            recompileActiveExprs();
         }
+        buildSliderOverlay();
+        recompileActiveExprs();
+        syncSliderState();
     }
 
     if (tracker.renderResults) {

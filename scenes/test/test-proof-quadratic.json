@@ -315,9 +315,9 @@
           "title": "Two Real Roots (Δ > 0)",
           "description": "When the discriminant is positive, the parabola crosses the x-axis twice.",
           "sliders": [
-            { "id": "a", "label": "a", "min": -3, "max": 3, "step": 0.1, "default": 1 },
-            { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": -2 },
-            { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": -3 }
+            { "id": "a", "label": "a", "min": -3, "max": 3, "step": 0.1, "default": 1, "reset": true },
+            { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": -2, "reset": true },
+            { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": -3, "reset": true }
           ],
           "add": [
             {
@@ -386,9 +386,9 @@
           "title": "Repeated Root (Δ = 0)",
           "description": "When the discriminant is zero, the parabola touches the x-axis at exactly one point.",
           "sliders": [
-            { "id": "a", "label": "a", "min": -3, "max": 3, "step": 0.1, "default": 1 },
-            { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": -4 },
-            { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": 4 }
+            { "id": "a", "label": "a", "min": -3, "max": 3, "step": 0.1, "default": 1, "reset": true },
+            { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": -4, "reset": true },
+            { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": 4, "reset": true }
           ],
           "add": [
             {
@@ -406,9 +406,9 @@
           "title": "No Real Roots (Δ < 0)",
           "description": "When the discriminant is negative, the parabola doesn't cross the x-axis. The roots are complex conjugates.",
           "sliders": [
-            { "id": "a", "label": "a", "min": -3, "max": 3, "step": 0.1, "default": 1 },
-            { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": 0 },
-            { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": 2 }
+            { "id": "a", "label": "a", "min": -3, "max": 3, "step": 0.1, "default": 1, "reset": true },
+            { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": 0, "reset": true },
+            { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": 2, "reset": true }
           ],
           "add": [
             {
