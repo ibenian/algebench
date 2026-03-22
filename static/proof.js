@@ -330,11 +330,6 @@ function _renderSlide() {
 
     container.innerHTML = '';
 
-    // Goal
-    const goalDiv = document.createElement('div');
-    goalDiv.innerHTML = renderGoalHTML(proof);
-    container.appendChild(goalDiv);
-
     // Show previous steps collapsed, current step full
     nodes.forEach((node, i) => {
         const clone = node.cloneNode(true);
@@ -347,9 +342,6 @@ function _renderSlide() {
         } else if (i === idx) {
             clone.classList.add('active');
             clone.classList.remove('collapsed', 'dimmed');
-            // Re-inject ask buttons on clone
-            const step = proof.steps[i];
-            _injectProofAskButtons(clone, step, proof);
         } else {
             clone.classList.add('dimmed');
             clone.classList.remove('collapsed', 'active');
@@ -375,11 +367,6 @@ function _renderList() {
     const idx = state.proofStepIndex;
 
     container.innerHTML = '';
-
-    // Goal
-    const goalDiv = document.createElement('div');
-    goalDiv.innerHTML = renderGoalHTML(proof);
-    container.appendChild(goalDiv);
 
     nodes.forEach((node, i) => {
         const clone = node.cloneNode(true);
@@ -432,12 +419,11 @@ function _activeProof() {
 }
 
 function _activeContainer() {
-    // Return whichever proof tab content is active
-    const ctx = document.getElementById('proof-context-content');
-    const all = document.getElementById('proof-all-content');
-    const ctxTab = document.querySelector('[data-proof-tab="context"]');
-    if (ctxTab && ctxTab.classList.contains('active')) return ctx;
-    return all;
+    // Return the dedicated steps container inside the active proof section
+    const stepsContainer = document.getElementById('proof-steps-container');
+    if (stepsContainer) return stepsContainer;
+    // Fallback to the context tab content
+    return document.getElementById('proof-context-content');
 }
 
 // ---- Load / update proofs ----
@@ -478,6 +464,11 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
 
     // Update counter
     _updateCounter();
+
+    // Apply current view mode to render steps into the container
+    if (_activeProof()) {
+        navigateProof(state.proofStepIndex);
+    }
 
     // If expanded and no proofs, collapse
     if (contextProofs.length === 0 && state.proofExpanded) {
@@ -531,14 +522,11 @@ function _renderContextTab(contextProofs) {
             // Goal
             body.innerHTML = renderGoalHTML(proof);
 
-            // If this is the active proof, render its steps
+            // If this is the active proof, add a container for step rendering
             if (entry.globalIndex === state.proofActiveIndex) {
-                const nodes = state._proofPreRendered || [];
-                nodes.forEach((node, i) => {
-                    const clone = node.cloneNode(true);
-                    clone.addEventListener('click', () => navigateProof(i));
-                    body.appendChild(clone);
-                });
+                const stepsContainer = document.createElement('div');
+                stepsContainer.id = 'proof-steps-container';
+                body.appendChild(stepsContainer);
             }
 
             section.appendChild(body);
@@ -560,17 +548,6 @@ function _renderContextTab(contextProofs) {
             });
 
             container.appendChild(section);
-        });
-    }
-
-    // Re-render current step state
-    if (state.proofStepIndex >= 0) {
-        const idx = state.proofStepIndex;
-        const steps = container.querySelectorAll('.proof-step');
-        steps.forEach((el, i) => {
-            el.classList.toggle('active', i === idx);
-            el.classList.toggle('visited', i < idx);
-            el.classList.toggle('dimmed', i > idx);
         });
     }
 }
