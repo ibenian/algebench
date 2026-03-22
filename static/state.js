@@ -97,6 +97,17 @@ export const state = {
     currentSceneSourceLabel: '',
     currentSceneSourcePath: '',
 
+    // ----- Proof / derivation -----
+    proofSpec: null,              // normalized array of in-context proof objects (or empty array)
+    proofAllSpecs: null,          // all proofs in the lesson (for "All" tab)
+    proofActiveIndex: 0,          // which proof in proofSpec is currently selected
+    proofStepIndex: -1,           // current proof step (-1 = goal overview)
+    proofViewMode: 'slide',       // 'list' | 'slide'
+    proofSyncEnabled: true,       // bidirectional scene_step linking
+    proofExpanded: false,         // whether proof panel is expanded in chat tab
+    _proofSyncInProgress: false,  // guard against infinite sync loops
+    _proofPreRendered: null,      // cached pre-rendered step HTML nodes
+
     // ----- Slider drag (used within sliders.js) -----
     _sliderDrag: { active: false, startX: 0, startY: 0, startLeft: 0, startBottom: 0 },
 };

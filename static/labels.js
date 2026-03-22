@@ -56,11 +56,11 @@ export function renderKaTeX(text, displayMode) {
             }).join('');
         } else if (seg.startsWith('$$')) {
             const tex = seg.slice(2, -2);
-            try { return katex.renderToString(tex, { throwOnError: false, strict: false, displayMode: true }); }
+            try { return katex.renderToString(tex, { throwOnError: false, strict: false, displayMode: true, trust: true }); }
             catch(e) { return escapeHtml(seg); }
         } else {
             const tex = seg.slice(1, -1);
-            try { return katex.renderToString(tex, { throwOnError: false, strict: false, displayMode: false }); }
+            try { return katex.renderToString(tex, { throwOnError: false, strict: false, displayMode: false, trust: true }); }
             catch(e) { return escapeHtml(seg); }
         }
     }).join('');
@@ -85,7 +85,7 @@ export function renderMarkdown(md) {
     html = html.replace(/%%MATH_BLOCK_(\d+)%%/g, (m, idx) => {
         const block = mathBlocks[parseInt(idx)];
         try {
-            return katex.renderToString(block.tex, { throwOnError: false, strict: false, displayMode: block.display });
+            return katex.renderToString(block.tex, { throwOnError: false, strict: false, displayMode: block.display, trust: true });
         } catch(e) { return block.tex; }
     });
 

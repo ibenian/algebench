@@ -261,6 +261,25 @@ SET_INFO_OVERLAY_TOOL_DECL = types.FunctionDeclaration(
     ),
 )
 
+NAVIGATE_PROOF_TOOL_DECL = types.FunctionDeclaration(
+    name="navigate_proof",
+    description="Navigate to a specific step in the current mathematical proof or derivation. Use to walk through proofs step by step, jump to key steps, or return to the goal overview.",
+    parameters=types.Schema(
+        type="OBJECT",
+        properties={
+            "step": types.Schema(
+                type="INTEGER",
+                description="Proof step number (1-based). 0 = show goal overview. 1 = first step, etc.",
+            ),
+            "reason": types.Schema(
+                type="STRING",
+                description="Brief explanation of why navigating to this step (used for narration).",
+            ),
+        },
+        required=["step"],
+    ),
+)
+
 ALL_TOOL_DECLS = [
     NAVIGATE_TOOL_DECL,
     SET_CAMERA_TOOL_DECL,
@@ -271,6 +290,7 @@ ALL_TOOL_DECLS = [
     MEM_SET_TOOL_DECL,
     SET_PRESET_PROMPTS_TOOL_DECL,
     SET_INFO_OVERLAY_TOOL_DECL,
+    NAVIGATE_PROOF_TOOL_DECL,
 ]
 
 def _make_tools(*exclude_names):
@@ -436,6 +456,34 @@ def build_system_prompt(context, agent_memory=None):
         step = scene['steps'][step_num - 1]
         if step.get('prompt'):
             parts.append(f"\n## Current Step Instructions\n{step['prompt']}")
+
+    # Proof context
+    proof_ctx = runtime.get('proof')
+    if proof_ctx:
+        parts.append("\n## Active Proof")
+        if proof_ctx.get('title'):
+            parts.append(f"- Title: {proof_ctx['title']}")
+        if proof_ctx.get('goal'):
+            parts.append(f"- Goal: {proof_ctx['goal']}")
+        parts.append(f"- Steps: {proof_ctx.get('stepCount', 0)}")
+        proof_step_idx = proof_ctx.get('currentStepIndex', -1)
+        if proof_step_idx < 0:
+            parts.append("- Current position: Goal overview (step 0)")
+        else:
+            parts.append(f"- Current position: Step {proof_step_idx + 1}")
+        if proof_ctx.get('proofPrompt'):
+            parts.append(f"\n**Proof guidance:** {proof_ctx['proofPrompt']}")
+        current_step = proof_ctx.get('currentStep')
+        if current_step:
+            parts.append(f"\n**Current proof step:**")
+            parts.append(f"- ID: {current_step.get('id', '?')}")
+            parts.append(f"- Label: {current_step.get('label', '?')}")
+            if current_step.get('math'):
+                parts.append(f"- Math: ${current_step['math']}$")
+            if current_step.get('justification'):
+                parts.append(f"- Justification: {current_step['justification']}")
+            if current_step.get('stepPrompt'):
+                parts.append(f"\n**Step guidance:** {current_step['stepPrompt']}")
 
     # Agent tools reference (loaded from external file)
     if _AGENT_TOOLS_REFERENCE:

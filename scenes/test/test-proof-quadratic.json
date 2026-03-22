@@ -1,0 +1,241 @@
+{
+  "title": "Quadratic Formula — Proof & Visualization",
+  "scenes": [
+    {
+      "title": "Deriving the Quadratic Formula",
+      "description": "Step through the derivation of $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$ while watching the parabola respond to slider changes.",
+      "markdown": "# The Quadratic Formula\n\nEvery quadratic equation $ax^2 + bx + c = 0$ (with $a \\neq 0$) has solutions given by:\n\n$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\nUse the **Proof** panel to step through the derivation, and adjust the sliders to see how the parabola and its roots change.\n\n- The **discriminant** $\\Delta = b^2 - 4ac$ determines the nature of the roots.\n- $\\Delta > 0$: two distinct real roots\n- $\\Delta = 0$: one repeated root\n- $\\Delta < 0$: no real roots (complex)",
+      "prompt": "Help the student understand the quadratic formula derivation. Connect each algebraic step to the parabola visualization. When they adjust sliders, explain how the roots and vertex change.",
+      "range": [[-6, 6], [-8, 12], [-1, 1]],
+      "camera": { "position": [0, 2, 14], "target": [0, 2, 0] },
+      "views": [
+        { "name": "Front", "position": [0, 2, 14], "target": [0, 2, 0] },
+        { "name": "Top", "position": [0, 20, 0], "target": [0, 0, 0] }
+      ],
+      "elements": [
+        { "type": "axis", "axis": "x", "range": [-6, 6], "color": [0.5, 0.2, 0.2], "label": "x", "width": 2 },
+        { "type": "axis", "axis": "y", "range": [-8, 12], "color": [0.2, 0.5, 0.2], "label": "y", "width": 2 },
+        { "type": "grid", "plane": "xy", "color": [0.3, 0.3, 0.5], "opacity": 0.08, "divisions": 12 },
+        {
+          "type": "animated_curve",
+          "id": "parabola",
+          "label": "y = ax² + bx + c",
+          "expr_x": "t",
+          "expr_y": "a * t^2 + b * t + c",
+          "expr_z": "0",
+          "t_range": [-6, 6],
+          "samples": 200,
+          "color": [0.4, 0.7, 1.0],
+          "width": 3
+        },
+        {
+          "type": "animated_point",
+          "id": "vertex",
+          "label": "Vertex",
+          "x": "-b / (2*a)",
+          "y": "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c",
+          "z": "0",
+          "color": [1, 0.8, 0.2],
+          "size": 12
+        },
+        {
+          "type": "animated_point",
+          "id": "root1",
+          "label": "x₁",
+          "x": "(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+          "y": "0",
+          "z": "0",
+          "color": [0.3, 1.0, 0.5],
+          "size": 10
+        },
+        {
+          "type": "animated_point",
+          "id": "root2",
+          "label": "x₂",
+          "x": "(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+          "y": "0",
+          "z": "0",
+          "color": [0.3, 1.0, 0.5],
+          "size": 10
+        }
+      ],
+      "steps": [
+        {
+          "title": "The Parabola",
+          "description": "A general quadratic $y = ax^2 + bx + c$ with adjustable coefficients.",
+          "sliders": [
+            { "id": "a", "label": "a", "min": -3, "max": 3, "step": 0.1, "default": 1 },
+            { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": -2 },
+            { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": -3 }
+          ],
+          "add": []
+        },
+        {
+          "title": "Completing the Square — Geometric View",
+          "description": "The square area model shows why adding $(b/2a)^2$ creates a perfect square.",
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "axis-of-symmetry",
+              "label": "x = -b/2a",
+              "from_x": "-b/(2*a)", "from_y": "-8", "from_z": "0",
+              "to_x": "-b/(2*a)", "to_y": "12", "to_z": "0",
+              "color": [1, 0.6, 0.2],
+              "width": 1,
+              "dash": true
+            }
+          ]
+        },
+        {
+          "title": "The Discriminant",
+          "description": "The discriminant $\\Delta = b^2 - 4ac$ determines the number of real roots.",
+          "add": [
+            {
+              "type": "text",
+              "label": "Δ = b² − 4ac",
+              "position": [4, 10, 0],
+              "color": [1, 0.5, 0.8]
+            }
+          ]
+        },
+        {
+          "title": "Finding the Roots",
+          "description": "The roots are at $x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}$, symmetric about the vertex.",
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "root-span",
+              "label": "Root span",
+              "from_x": "(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+              "from_y": "0", "from_z": "0",
+              "to_x": "(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+              "to_y": "0", "to_z": "0",
+              "color": [0.3, 1.0, 0.5],
+              "width": 2
+            }
+          ]
+        },
+        {
+          "title": "The Complete Picture",
+          "description": "Vertex, roots, and axis of symmetry — the full anatomy of a parabola.",
+          "add": []
+        }
+      ],
+      "proof": {
+        "id": "quadratic-formula",
+        "title": "Deriving the Quadratic Formula",
+        "goal": "Derive $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$ from $ax^2 + bx + c = 0$",
+        "prompt": "Walk the student through completing the square. Emphasize why each algebraic move is valid. Connect to the parabola visualization when a scene_step link exists.",
+        "steps": [
+          {
+            "id": "start",
+            "type": "given",
+            "label": "General quadratic equation",
+            "math": "\\htmlClass{hl-eq}{ax^2 + bx + c} = 0",
+            "highlights": {
+              "eq": { "color": "cyan", "label": "Standard form quadratic expression" }
+            },
+            "explanation": "We start with the most general quadratic equation, where $a \\neq 0$.",
+            "prompt": "Point out the parabola in the 3D view. The roots are where it crosses the x-axis.",
+            "scene_step": 0,
+            "tags": ["given"]
+          },
+          {
+            "id": "move_c",
+            "type": "step",
+            "label": "Isolate quadratic and linear terms",
+            "math": "ax^2 + bx = \\htmlClass{hl-moved}{-c}",
+            "highlights": {
+              "moved": { "color": "yellow", "label": "Constant moved to right side" }
+            },
+            "justification": "Subtract $c$ from both sides",
+            "explanation": "Move the constant to the right to prepare for completing the square.",
+            "tags": ["algebra"]
+          },
+          {
+            "id": "div_a",
+            "type": "step",
+            "label": "Divide by the leading coefficient",
+            "math": "x^2 + \\htmlClass{hl-coeff}{\\frac{b}{a}}x = -\\frac{c}{a}",
+            "highlights": {
+              "coeff": { "color": "yellow", "label": "Coefficient normalized by a" }
+            },
+            "justification": "Divide both sides by $a$ (valid since $a \\neq 0$)",
+            "explanation": "Normalize the leading coefficient to 1. This is required before completing the square.",
+            "prompt": "If the student asks why we can divide by a, emphasize the $a \\neq 0$ precondition.",
+            "tags": ["algebra"]
+          },
+          {
+            "id": "complete",
+            "type": "step",
+            "label": "Complete the square",
+            "math": "x^2 + \\frac{b}{a}x + \\htmlClass{hl-added}{\\frac{b^2}{4a^2}} = -\\frac{c}{a} + \\htmlClass{hl-added2}{\\frac{b^2}{4a^2}}",
+            "highlights": {
+              "added": { "color": "green", "label": "Half the coefficient of x, squared" },
+              "added2": { "color": "green", "label": "Same term added to both sides" }
+            },
+            "justification": "Add $\\left(\\frac{b}{2a}\\right)^2$ to both sides",
+            "explanation": "The key insight: adding the square of half the linear coefficient creates a perfect square trinomial on the left side.",
+            "prompt": "This is the hardest step. Explain the geometric meaning: we are literally completing a square in area.",
+            "scene_step": 1,
+            "tags": ["completing-the-square"]
+          },
+          {
+            "id": "factor_left",
+            "type": "step",
+            "label": "Factor the perfect square",
+            "math": "\\htmlClass{hl-square}{\\left(x + \\frac{b}{2a}\\right)^2} = \\frac{b^2 - 4ac}{4a^2}",
+            "highlights": {
+              "square": { "color": "cyan", "label": "Perfect square trinomial factored" }
+            },
+            "justification": "Left: $(x+k)^2 = x^2+2kx+k^2$ with $k=\\frac{b}{2a}$. Right: common denominator.",
+            "explanation": "The left side is now a perfect square. The right side simplifies to reveal the **discriminant** $b^2 - 4ac$.",
+            "scene_step": 2,
+            "tags": ["factoring"]
+          },
+          {
+            "id": "sqrt",
+            "type": "step",
+            "label": "Take the square root",
+            "math": "x + \\frac{b}{2a} = \\htmlClass{hl-pm}{\\pm}\\frac{\\htmlClass{hl-disc}{\\sqrt{b^2 - 4ac}}}{2a}",
+            "highlights": {
+              "pm": { "color": "orange", "label": "Square root yields two solutions" },
+              "disc": { "color": "magenta", "label": "The discriminant — determines root type" }
+            },
+            "justification": "If $u^2 = v$ then $u = \\pm\\sqrt{v}$",
+            "explanation": "Taking the square root introduces $\\pm$, giving two solutions. The **discriminant** under the radical determines whether roots are real, repeated, or complex.",
+            "prompt": "Connect the discriminant to the 3D view: Δ>0 means two crossings, Δ=0 means one touch, Δ<0 means no real crossing.",
+            "scene_step": 3,
+            "tags": ["square-root"]
+          },
+          {
+            "id": "isolate_x",
+            "type": "step",
+            "label": "Isolate x",
+            "math": "x = \\htmlClass{hl-shift}{-\\frac{b}{2a}} \\pm \\frac{\\sqrt{b^2 - 4ac}}{2a}",
+            "highlights": {
+              "shift": { "color": "yellow", "label": "Vertex x-coordinate (axis of symmetry)" }
+            },
+            "justification": "Subtract $\\frac{b}{2a}$ from both sides",
+            "explanation": "The term $-\\frac{b}{2a}$ is the x-coordinate of the **vertex** — the axis of symmetry of the parabola.",
+            "tags": ["algebra"]
+          },
+          {
+            "id": "qed",
+            "type": "conclusion",
+            "label": "The Quadratic Formula",
+            "math": "\\htmlClass{hl-result}{x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}}",
+            "highlights": {
+              "result": { "color": "green", "label": "The quadratic formula" }
+            },
+            "justification": "Combine over common denominator $2a$",
+            "explanation": "Every quadratic $ax^2 + bx + c = 0$ has solutions given by this formula.",
+            "prompt": "Summarize: $-b/2a$ is the center, $\\pm\\sqrt{\\Delta}/2a$ is the spread from center, and $\\Delta$ tells us the nature of the roots.",
+            "scene_step": 4,
+            "tags": ["result"]
+          }
+        ]
+      }
+    }
+  ]
+}

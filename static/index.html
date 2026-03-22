@@ -134,7 +134,34 @@
                         <option value="perform">Perform</option>
                         <option value="silent">Silent</option>
                     </select>
+                    <button id="proof-toggle-btn" class="chat-control-btn" title="Toggle proof panel" style="display:none">&#x1F4D0; Proof</button>
                 </div>
+                <!-- Proof panel (inside chat tab, above chat messages) -->
+                <div id="proof-panel" class="hidden">
+                    <div id="proof-panel-header">
+                        <div id="proof-panel-tabs">
+                            <button class="proof-tab active" data-proof-tab="context">In Context</button>
+                            <button class="proof-tab" data-proof-tab="all">All</button>
+                        </div>
+                        <div id="proof-panel-controls">
+                            <button id="proof-mode-toggle" class="proof-ctrl-btn" title="Toggle list/slide view">Slide</button>
+                            <button id="proof-sync-btn" class="proof-ctrl-btn active" title="Sync with scene steps">&#x21C4;</button>
+                            <button id="proof-speak-btn" class="proof-ctrl-btn" title="Read current step aloud">&#x1F50A;</button>
+                        </div>
+                    </div>
+                    <div id="proof-tab-context" class="proof-tab-content active">
+                        <div id="proof-context-content"></div>
+                    </div>
+                    <div id="proof-tab-all" class="proof-tab-content">
+                        <div id="proof-all-content"></div>
+                    </div>
+                    <div id="proof-nav">
+                        <button id="proof-prev" class="nav-btn">&lsaquo;</button>
+                        <span id="proof-counter"></span>
+                        <button id="proof-next" class="nav-btn">&rsaquo;</button>
+                    </div>
+                </div>
+                <div id="proof-resize-handle" class="hidden"></div>
                 <div id="chat-unavailable-msg" class="hidden">
                     <p>AI chat requires a Gemini API key.</p>
                     <p>Set the <code>GEMINI_API_KEY</code> environment variable and restart the server to enable this feature.</p>
