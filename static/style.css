@@ -3018,6 +3018,35 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     color: #c0d4ff;
 }
 
+/* Highlight annotation (shown on click) */
+.proof-hl-annotation {
+    font-size: 0.74em;
+    color: rgba(190, 200, 230, 0.85);
+    padding: 4px 8px 4px 10px;
+    margin: 3px 0;
+    border-left: 2px solid rgba(100, 200, 255, 0.5);
+    background: rgba(30, 40, 65, 0.4);
+    border-radius: 0 4px 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: hlAnnotationIn 0.2s ease;
+    cursor: pointer;
+}
+.proof-hl-annotation:hover {
+    background: rgba(40, 50, 80, 0.5);
+}
+.proof-hl-annotation-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+@keyframes hlAnnotationIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
 /* Proof nav bar */
 #proof-nav {
     display: flex;
@@ -3059,6 +3088,10 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     border-radius: 2px;
     transition: background-color 0.4s ease;
     position: relative;
+    cursor: pointer;
+}
+[class^="hl-"]:hover {
+    filter: brightness(1.4);
 }
 [class^="hl-"].hl-active {
     animation: hlPulse 0.6s ease-out;

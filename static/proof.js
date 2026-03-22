@@ -169,6 +169,9 @@ function activateHighlights(stepEl, step) {
 
     if (!stepEl || !step || !step.highlights) return;
 
+    // Clear any previous highlight annotations
+    stepEl.querySelectorAll('.proof-hl-annotation').forEach(el => el.remove());
+
     const highlights = step.highlights;
     for (const [name, spec] of Object.entries(highlights)) {
         const els = stepEl.querySelectorAll(`.hl-${name}`);
@@ -182,9 +185,50 @@ function activateHighlights(stepEl, step) {
             if (spec.label) {
                 el.title = spec.label;
             }
+            // Make clickable — toggle annotation label below the math
+            if (spec.label) {
+                el.style.cursor = 'pointer';
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    _toggleHighlightAnnotation(stepEl, name, spec);
+                });
+            }
             // Trigger animation
             el.classList.add('hl-active');
         });
+    }
+}
+
+/** Toggle a highlight annotation label below the math block. */
+function _toggleHighlightAnnotation(stepEl, name, spec) {
+    const existing = stepEl.querySelector(`.proof-hl-annotation[data-hl="${name}"]`);
+    if (existing) {
+        existing.remove();
+        return;
+    }
+
+    const annotation = document.createElement('div');
+    annotation.className = 'proof-hl-annotation';
+    annotation.dataset.hl = name;
+
+    const color = _highlightColorToRGBA(spec.color || 'cyan');
+    annotation.style.borderLeftColor = color.replace('0.15)', '0.6)');
+    annotation.innerHTML = `<span class="proof-hl-annotation-dot" style="background:${color.replace('0.15)', '0.7)')}"></span>${escapeHtml(spec.label)}`;
+
+    // Click annotation to dismiss it
+    annotation.addEventListener('click', (e) => {
+        e.stopPropagation();
+        annotation.remove();
+    });
+
+    // Insert after the math block
+    const mathEl = stepEl.querySelector('.proof-step-math');
+    if (mathEl && mathEl.nextSibling) {
+        mathEl.parentNode.insertBefore(annotation, mathEl.nextSibling);
+    } else if (mathEl) {
+        mathEl.parentNode.appendChild(annotation);
+    } else {
+        stepEl.appendChild(annotation);
     }
 }
 
