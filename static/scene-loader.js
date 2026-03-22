@@ -119,6 +119,7 @@ function applyTrackerInfoOverlays(tracker, step) {
     // Remove non-kept info overlays from previous steps
     removeStepInfoOverlays();
     tracker.infoIds = [];
+    tracker.infoDefs = step.info || [];
     const infoDefs = step.info;
     if (!infoDefs || !infoDefs.length) return;
     for (const def of infoDefs) {
@@ -729,6 +730,16 @@ export function navigateTo(sceneIdx, stepIdx) {
                 undoStepRemoves(tracker);
                 undoTrackerInfoOverlays(tracker);
                 removeStepTracker(tracker);
+            }
+            // Re-apply info overlays from the step we landed on, since they
+            // were removed when a later step called removeStepInfoOverlays().
+            const landingTracker = state.stepTrackers[state.stepTrackers.length - 1];
+            if (landingTracker && landingTracker.infoDefs && landingTracker.infoDefs.length > 0) {
+                removeStepInfoOverlays();
+                for (const def of landingTracker.infoDefs) {
+                    addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false);
+                }
+                landingTracker.infoIds = landingTracker.infoDefs.map(d => d.id);
             }
         }
 
