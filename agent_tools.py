@@ -494,6 +494,12 @@ def build_system_prompt(context, agent_memory=None):
         elif proof_step_idx < 0:
             parts.append(f"\n## Active Proof Step\nGoal overview ({step_count} steps total)")
 
+        # Upcoming steps — labels only (roadmap)
+        upcoming = proof_ctx.get('upcomingSteps')
+        if upcoming:
+            lines = [f"{s['step']}. {s.get('label', '?')}" for s in upcoming]
+            parts.append(f"\n## Upcoming Proof Steps\n" + "\n".join(lines))
+
     # Agent tools reference (loaded from external file)
     if _AGENT_TOOLS_REFERENCE:
         parts.append(_AGENT_TOOLS_REFERENCE)

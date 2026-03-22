@@ -846,5 +846,13 @@ export function getProofContext() {
         };
     }
 
+    // Upcoming steps — labels only (roadmap without spoilers)
+    if (idx + 1 < steps.length) {
+        ctx.upcomingSteps = steps.slice(idx + 1).map((s, i) => ({
+            step: idx + 2 + i,
+            label: s.label,
+        }));
+    }
+
     return ctx;
 }

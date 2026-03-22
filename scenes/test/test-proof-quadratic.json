@@ -15,49 +15,7 @@
       "elements": [
         { "type": "axis", "axis": "x", "range": [-6, 6], "color": [0.5, 0.2, 0.2], "label": "x", "width": 2 },
         { "type": "axis", "axis": "y", "range": [-8, 12], "color": [0.2, 0.5, 0.2], "label": "y", "width": 2 },
-        { "type": "grid", "plane": "xy", "color": [0.3, 0.3, 0.5], "opacity": 0.08, "divisions": 12 },
-        {
-          "type": "animated_curve",
-          "id": "parabola",
-          "label": "y = ax² + bx + c",
-          "expr_x": "t",
-          "expr_y": "a * t^2 + b * t + c",
-          "expr_z": "0",
-          "t_range": [-6, 6],
-          "samples": 200,
-          "color": [0.4, 0.7, 1.0],
-          "width": 3
-        },
-        {
-          "type": "animated_point",
-          "id": "vertex",
-          "label": "Vertex",
-          "x": "-b / (2*a)",
-          "y": "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c",
-          "z": "0",
-          "color": [1, 0.8, 0.2],
-          "size": 12
-        },
-        {
-          "type": "animated_point",
-          "id": "root1",
-          "label": "x₁",
-          "x": "(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
-          "y": "0",
-          "z": "0",
-          "color": [0.3, 1.0, 0.5],
-          "size": 10
-        },
-        {
-          "type": "animated_point",
-          "id": "root2",
-          "label": "x₂",
-          "x": "(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
-          "y": "0",
-          "z": "0",
-          "color": [0.3, 1.0, 0.5],
-          "size": 10
-        }
+        { "type": "grid", "plane": "xy", "color": [0.3, 0.3, 0.5], "opacity": 0.08, "divisions": 12 }
       ],
       "steps": [
         {
@@ -68,7 +26,48 @@
             { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": -2 },
             { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": -3 }
           ],
-          "add": []
+          "add": [
+            {
+              "type": "animated_curve",
+              "id": "parabola",
+              "label": "y = ax² + bx + c",
+              "expr": "a * x^2 + b * x + c",
+              "range": [-6, 6],
+              "samples": 200,
+              "color": [0.4, 0.7, 1.0],
+              "width": 3
+            },
+            {
+              "type": "animated_point",
+              "id": "vertex",
+              "label": "Vertex",
+              "x": "-b / (2*a)",
+              "y": "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c",
+              "z": "0",
+              "color": [1, 0.8, 0.2],
+              "size": 12
+            },
+            {
+              "type": "animated_point",
+              "id": "root1",
+              "label": "x₁",
+              "x": "(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+              "y": "0",
+              "z": "0",
+              "color": [0.3, 1.0, 0.5],
+              "size": 10
+            },
+            {
+              "type": "animated_point",
+              "id": "root2",
+              "label": "x₂",
+              "x": "(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+              "y": "0",
+              "z": "0",
+              "color": [0.3, 1.0, 0.5],
+              "size": 10
+            }
+          ]
         },
         {
           "title": "Completing the Square — Geometric View",
