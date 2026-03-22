@@ -771,11 +771,9 @@ export function navigateTo(sceneIdx, stepIdx) {
     updateStepCaption(scene, stepIdx);
     updateStatusBar();
 
-    // Update proof panel
-    if (sceneChanged) {
-        loadProof(state.lessonSpec || scene, sceneIdx, stepIdx);
-    } else if (state.proofSyncEnabled && state.proofSpec && state.proofSpec.length > 0) {
-        // Step changed within same scene — only sync, don't reload
+    // Update proof panel (always update — visibility depends on current step)
+    loadProof(state.lessonSpec || scene, sceneIdx, stepIdx);
+    if (!sceneChanged && state.proofSyncEnabled && state.proofSpec && state.proofSpec.length > 0) {
         syncProofFromSceneStep(stepIdx);
     }
 

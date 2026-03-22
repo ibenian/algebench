@@ -329,58 +329,103 @@
               "width": 2
             }
           ],
-          "proof": {
-            "id": "vieta-lemma",
-            "title": "Vieta's Formulas (Lemma)",
-            "goal": "Show that $x_1 + x_2 = -\\frac{b}{a}$ and $x_1 x_2 = \\frac{c}{a}$",
-            "prompt": "This is a short lemma about Vieta's formulas. Connect the sum and product of roots to the sliders.",
-            "steps": [
-              {
-                "id": "vieta-start",
-                "type": "given",
-                "label": "Roots from the quadratic formula",
-                "math": "x_{1,2} = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
-                "explanation": "We start from the two roots given by the quadratic formula.",
-                "tags": ["given"]
-              },
-              {
-                "id": "vieta-sum",
-                "type": "step",
-                "label": "Sum of roots",
-                "math": "x_1 + x_2 = \\frac{-b + \\sqrt{\\Delta}}{2a} + \\frac{-b - \\sqrt{\\Delta}}{2a} = \\htmlClass{hl-sum}{\\frac{-2b}{2a} = -\\frac{b}{a}}",
-                "highlights": {
-                  "sum": { "color": "green", "label": "The √Δ terms cancel" }
+          "proof": [
+            {
+              "id": "vieta-lemma",
+              "title": "Vieta's Formulas (Lemma)",
+              "goal": "Show that $x_1 + x_2 = -\\frac{b}{a}$ and $x_1 x_2 = \\frac{c}{a}$",
+              "prompt": "This is a short lemma about Vieta's formulas. Connect the sum and product of roots to the sliders.",
+              "steps": [
+                {
+                  "id": "vieta-start",
+                  "type": "given",
+                  "label": "Roots from the quadratic formula",
+                  "math": "x_{1,2} = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+                  "explanation": "We start from the two roots given by the quadratic formula.",
+                  "tags": ["given"]
                 },
-                "justification": "Add the two roots; the $\\pm\\sqrt{\\Delta}$ terms cancel",
-                "explanation": "The sum of roots equals $-b/a$, independent of the discriminant.",
-                "tags": ["algebra"]
-              },
-              {
-                "id": "vieta-product",
-                "type": "step",
-                "label": "Product of roots",
-                "math": "x_1 \\cdot x_2 = \\frac{(-b)^2 - (\\sqrt{\\Delta})^2}{(2a)^2} = \\htmlClass{hl-prod}{\\frac{b^2 - b^2 + 4ac}{4a^2} = \\frac{c}{a}}",
-                "highlights": {
-                  "prod": { "color": "yellow", "label": "Difference of squares simplifies" }
+                {
+                  "id": "vieta-sum",
+                  "type": "step",
+                  "label": "Sum of roots",
+                  "math": "x_1 + x_2 = \\frac{-b + \\sqrt{\\Delta}}{2a} + \\frac{-b - \\sqrt{\\Delta}}{2a} = \\htmlClass{hl-sum}{\\frac{-2b}{2a} = -\\frac{b}{a}}",
+                  "highlights": {
+                    "sum": { "color": "green", "label": "The √Δ terms cancel" }
+                  },
+                  "justification": "Add the two roots; the $\\pm\\sqrt{\\Delta}$ terms cancel",
+                  "explanation": "The sum of roots equals $-b/a$, independent of the discriminant.",
+                  "tags": ["algebra"]
                 },
-                "justification": "$(p+q)(p-q) = p^2 - q^2$ with $p = -b/2a$, $q = \\sqrt{\\Delta}/2a$",
-                "explanation": "The product of roots equals $c/a$.",
-                "tags": ["algebra"]
-              },
-              {
-                "id": "vieta-qed",
-                "type": "conclusion",
-                "label": "Vieta's Formulas",
-                "math": "\\htmlClass{hl-vieta}{x_1 + x_2 = -\\frac{b}{a}, \\quad x_1 x_2 = \\frac{c}{a}}",
-                "highlights": {
-                  "vieta": { "color": "cyan", "label": "Vieta's formulas" }
+                {
+                  "id": "vieta-product",
+                  "type": "step",
+                  "label": "Product of roots",
+                  "math": "x_1 \\cdot x_2 = \\frac{(-b)^2 - (\\sqrt{\\Delta})^2}{(2a)^2} = \\htmlClass{hl-prod}{\\frac{b^2 - b^2 + 4ac}{4a^2} = \\frac{c}{a}}",
+                  "highlights": {
+                    "prod": { "color": "yellow", "label": "Difference of squares simplifies" }
+                  },
+                  "justification": "$(p+q)(p-q) = p^2 - q^2$ with $p = -b/2a$, $q = \\sqrt{\\Delta}/2a$",
+                  "explanation": "The product of roots equals $c/a$.",
+                  "tags": ["algebra"]
                 },
-                "justification": "Combining the sum and product results",
-                "explanation": "These elegant relationships connect the roots directly to the coefficients without needing to solve the equation.",
-                "tags": ["result"]
-              }
-            ]
-          }
+                {
+                  "id": "vieta-qed",
+                  "type": "conclusion",
+                  "label": "Vieta's Formulas",
+                  "math": "\\htmlClass{hl-vieta}{x_1 + x_2 = -\\frac{b}{a}, \\quad x_1 x_2 = \\frac{c}{a}}",
+                  "highlights": {
+                    "vieta": { "color": "cyan", "label": "Vieta's formulas" }
+                  },
+                  "justification": "Combining the sum and product results",
+                  "explanation": "These elegant relationships connect the roots directly to the coefficients without needing to solve the equation.",
+                  "tags": ["result"]
+                }
+              ]
+            },
+            {
+              "id": "root-span-derivation",
+              "title": "Root Span",
+              "goal": "Derive $|x_1 - x_2| = \\frac{\\sqrt{\\Delta}}{|a|}$",
+              "prompt": "Show how the distance between the two roots relates to the discriminant and the leading coefficient.",
+              "steps": [
+                {
+                  "id": "span-given",
+                  "type": "given",
+                  "label": "Two roots from the quadratic formula",
+                  "math": "x_1 = \\frac{-b + \\sqrt{\\Delta}}{2a}, \\quad x_2 = \\frac{-b - \\sqrt{\\Delta}}{2a}",
+                  "explanation": "We start with the two roots, where $\\Delta = b^2 - 4ac > 0$.",
+                  "scene_step": 1,
+                  "tags": ["given"]
+                },
+                {
+                  "id": "span-diff",
+                  "type": "step",
+                  "label": "Subtract the roots",
+                  "math": "x_1 - x_2 = \\frac{-b + \\sqrt{\\Delta}}{2a} - \\frac{-b - \\sqrt{\\Delta}}{2a} = \\htmlClass{hl-cancel}{\\frac{2\\sqrt{\\Delta}}{2a}} = \\frac{\\sqrt{\\Delta}}{a}",
+                  "highlights": {
+                    "cancel": { "color": "green", "label": "The −b terms cancel, the √Δ terms double" }
+                  },
+                  "justification": "Subtract: $(-b+\\sqrt{\\Delta}) - (-b-\\sqrt{\\Delta}) = 2\\sqrt{\\Delta}$",
+                  "explanation": "The constant terms $-b$ cancel, leaving twice the square root of the discriminant.",
+                  "scene_step": 1,
+                  "tags": ["algebra"]
+                },
+                {
+                  "id": "span-abs",
+                  "type": "conclusion",
+                  "label": "Root span formula",
+                  "math": "\\htmlClass{hl-span}{|x_1 - x_2| = \\frac{\\sqrt{\\Delta}}{|a|}}",
+                  "highlights": {
+                    "span": { "color": "cyan", "label": "The green line in the scene" }
+                  },
+                  "justification": "Take absolute value (since $a$ may be negative)",
+                  "explanation": "The distance between the roots depends only on $\\Delta$ and $|a|$. This is exactly the length of the green root span line in the scene.",
+                  "scene_step": 1,
+                  "tags": ["result"]
+                }
+              ]
+            }
+          ]
         },
         {
           "title": "Repeated Root (Δ = 0)",
@@ -400,7 +445,50 @@
               "width": 1,
               "dash": true
             }
-          ]
+          ],
+          "proof": {
+            "id": "root-span-zero",
+            "title": "Root Span Collapses to Zero",
+            "goal": "Show that when $\\Delta = 0$, the root span $|x_1 - x_2| = 0$",
+            "prompt": "Connect the root span formula to the repeated root case.",
+            "steps": [
+              {
+                "id": "span0-recall",
+                "type": "given",
+                "label": "Root span formula",
+                "math": "|x_1 - x_2| = \\frac{\\sqrt{\\Delta}}{|a|}",
+                "explanation": "From the previous step, we derived that the distance between roots is $\\frac{\\sqrt{\\Delta}}{|a|}$.",
+                "scene_step": 1,
+                "tags": ["given"]
+              },
+              {
+                "id": "span0-sub",
+                "type": "step",
+                "label": "Substitute Δ = 0",
+                "math": "|x_1 - x_2| = \\frac{\\sqrt{0}}{|a|} = \\htmlClass{hl-zero}{0}",
+                "highlights": {
+                  "zero": { "color": "yellow", "label": "The span collapses" }
+                },
+                "justification": "When $\\Delta = 0$, $\\sqrt{\\Delta} = 0$",
+                "explanation": "The two roots coincide at a single point.",
+                "scene_step": 1,
+                "tags": ["algebra"]
+              },
+              {
+                "id": "span0-qed",
+                "type": "conclusion",
+                "label": "Repeated root location",
+                "math": "\\htmlClass{hl-root}{x_1 = x_2 = -\\frac{b}{2a}}",
+                "highlights": {
+                  "root": { "color": "cyan", "label": "The tangent point on the x-axis" }
+                },
+                "justification": "Both roots reduce to $-b/2a$ when $\\Delta = 0$",
+                "explanation": "The parabola touches the x-axis at the vertex. The orange dashed line shows this axis of symmetry.",
+                "scene_step": 2,
+                "tags": ["result"]
+              }
+            ]
+          }
         },
         {
           "title": "No Real Roots (Δ < 0)",
@@ -420,7 +508,80 @@
               "width": 1,
               "dash": true
             }
-          ]
+          ],
+          "proof": {
+            "id": "vertex-derivation",
+            "title": "Vertex by Completing the Square",
+            "goal": "Derive the vertex $(h, k) = \\left(-\\frac{b}{2a},\\; c - \\frac{b^2}{4a}\\right)$",
+            "prompt": "Show how completing the square reveals the vertex form and why the parabola floats above (or below) the x-axis when Δ < 0.",
+            "steps": [
+              {
+                "id": "vertex-start",
+                "type": "given",
+                "label": "Standard form",
+                "math": "y = ax^2 + bx + c",
+                "explanation": "We begin with the general quadratic in standard form.",
+                "tags": ["given"]
+              },
+              {
+                "id": "vertex-factor",
+                "type": "step",
+                "label": "Factor out the leading coefficient",
+                "math": "y = a\\!\\left(x^2 + \\frac{b}{a}x\\right) + c",
+                "justification": "Factor $a$ from the first two terms",
+                "explanation": "Isolating the $x$ terms inside parentheses prepares us to complete the square.",
+                "tags": ["algebra"]
+              },
+              {
+                "id": "vertex-complete",
+                "type": "step",
+                "label": "Complete the square",
+                "math": "y = a\\!\\left(x^2 + \\frac{b}{a}x + \\htmlClass{hl-sq}{\\frac{b^2}{4a^2}}\\right) + c - \\htmlClass{hl-sq}{\\frac{b^2}{4a}}",
+                "highlights": {
+                  "sq": { "color": "yellow", "label": "Add and subtract (b/2a)²" }
+                },
+                "justification": "Add and subtract $\\left(\\frac{b}{2a}\\right)^2$ inside the parentheses",
+                "explanation": "We add $\\frac{b^2}{4a^2}$ inside (which is multiplied by $a$, contributing $\\frac{b^2}{4a}$) and subtract it outside to keep equality.",
+                "tags": ["algebra"]
+              },
+              {
+                "id": "vertex-form",
+                "type": "step",
+                "label": "Vertex form",
+                "math": "y = \\htmlClass{hl-vertex}{a\\!\\left(x + \\frac{b}{2a}\\right)^{\\!2}} + c - \\frac{b^2}{4a}",
+                "highlights": {
+                  "vertex": { "color": "green", "label": "Perfect square — zero at x = −b/2a" }
+                },
+                "justification": "Recognize $x^2 + \\frac{b}{a}x + \\frac{b^2}{4a^2} = \\left(x + \\frac{b}{2a}\\right)^2$",
+                "explanation": "The squared term is minimized (zero) when $x = -\\frac{b}{2a}$.",
+                "tags": ["algebra"]
+              },
+              {
+                "id": "vertex-coords",
+                "type": "step",
+                "label": "Read off the vertex",
+                "math": "h = -\\frac{b}{2a}, \\quad k = c - \\frac{b^2}{4a} = \\htmlClass{hl-k}{-\\frac{\\Delta}{4a}}",
+                "highlights": {
+                  "k": { "color": "orange", "label": "k = −Δ/4a — the red dashed gap in the scene" }
+                },
+                "justification": "$c - \\frac{b^2}{4a} = \\frac{4ac - b^2}{4a} = \\frac{-\\Delta}{4a}$",
+                "explanation": "The vertex height $k = -\\Delta/(4a)$. When $\\Delta < 0$ and $a > 0$, we get $k > 0$ — the vertex is above the x-axis.",
+                "tags": ["algebra"]
+              },
+              {
+                "id": "vertex-qed",
+                "type": "conclusion",
+                "label": "Vertex formula",
+                "math": "\\htmlClass{hl-result}{\\text{Vertex} = \\left(-\\frac{b}{2a},\\; c - \\frac{b^2}{4a}\\right)}",
+                "highlights": {
+                  "result": { "color": "cyan", "label": "The vertex coordinates" }
+                },
+                "justification": "From the vertex form $y = a(x - h)^2 + k$",
+                "explanation": "The red dashed line shows the gap $k$ from the x-axis to the vertex. When $\\Delta < 0$, this gap never closes — the parabola has no real roots.",
+                "tags": ["result"]
+              }
+            ]
+          }
         }
       ],
       "proof": {

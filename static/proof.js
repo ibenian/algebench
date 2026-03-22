@@ -41,9 +41,12 @@ function collectAllProofs(lessonSpec) {
     return all;
 }
 
-/** Collect all proofs in the lesson as context proofs. */
-function collectContextProofs(lessonSpec, sceneIndex, stepIndex) {
-    return collectAllProofs(lessonSpec);
+/** Check if a proof entry is visible in the current context. */
+function _isProofInContext(entry, sceneIndex, stepIndex) {
+    if (entry.level === 'file') return true;
+    if (entry.level === 'scene') return entry.sceneIndex === sceneIndex;
+    if (entry.level === 'step') return entry.sceneIndex === sceneIndex && entry.stepIndex <= stepIndex;
+    return false;
 }
 
 // ---- Pre-rendering ----
@@ -285,18 +288,15 @@ export function navigateProof(index) {
             state._proofSyncInProgress = true;
             try {
                 if (typeof step.scene_step === 'string' && step.scene_step.includes(':')) {
-                    // Root-level proof: "sceneIdx:stepIdx"
                     const [si, sti] = step.scene_step.split(':').map(Number);
                     if (typeof window.navigateTo === 'function') window.navigateTo(si, sti);
                 } else {
-                    // Scene-level: just step index
                     if (typeof window.navigateTo === 'function') {
                         window.navigateTo(state.currentSceneIndex, Number(step.scene_step));
                     }
                 }
             } finally {
-                // Clear guard after a tick to allow the scene nav to complete
-                setTimeout(() => { state._proofSyncInProgress = false; }, 50);
+                state._proofSyncInProgress = false;
             }
         }
     }
@@ -316,7 +316,7 @@ export function syncProofFromSceneStep(stepIdx) {
         try {
             navigateProof(matchIdx);
         } finally {
-            setTimeout(() => { state._proofSyncInProgress = false; }, 50);
+            state._proofSyncInProgress = false;
         }
     }
 }
@@ -462,16 +462,58 @@ function switchActiveProof(newIndex) {
     if (newIndex === state.proofActiveIndex) return;
     // Save current proof's step position
     _saveProofStepToMemory();
-    // Switch
+
+    const oldIndex = state.proofActiveIndex;
     state.proofActiveIndex = newIndex;
+
     // Restore new proof's step position
     const entry = state.proofSpec[newIndex];
     state.proofStepIndex = _restoreProofStepFromMemory(entry, newIndex);
-    // Update pre-rendered cache for active proof
     const proof = _activeProof();
     state._proofPreRendered = proof ? _getOrPreRender(entry, newIndex) : [];
-    // Re-render UI
-    _renderContextTab(state.proofSpec);
+
+    // Update DOM without full rebuild: move steps container, toggle active/collapsed classes
+    const container = document.getElementById('proof-context-content');
+    if (container) {
+        const sections = container.querySelectorAll('.proof-section[data-proof-idx]');
+        sections.forEach(section => {
+            const idx = parseInt(section.dataset.proofIdx);
+            const header = section.querySelector('.proof-section-header');
+
+            if (idx === oldIndex) {
+                // Collapse old active, remove steps container
+                section.classList.add('collapsed');
+                if (header) header.classList.remove('active');
+                const oldSteps = section.querySelector('#proof-steps-container');
+                if (oldSteps) oldSteps.remove();
+                // Update step hint
+                const hintEl = section.querySelector('.proof-section-step-hint');
+                if (hintEl) {
+                    const oldEntry = state.proofSpec[oldIndex];
+                    const memStep = _restoreProofStepFromMemory(oldEntry, oldIndex);
+                    const oldProof = oldEntry?.proof;
+                    hintEl.textContent = memStep >= 0 && oldProof?.steps
+                        ? `(step ${memStep + 1}/${oldProof.steps.length})` : '';
+                }
+            }
+
+            if (idx === newIndex) {
+                // Expand new active, add steps container
+                section.classList.remove('collapsed');
+                if (header) header.classList.add('active');
+                const body = section.querySelector('.proof-section-body');
+                if (body && !body.querySelector('#proof-steps-container')) {
+                    const stepsContainer = document.createElement('div');
+                    stepsContainer.id = 'proof-steps-container';
+                    body.appendChild(stepsContainer);
+                }
+                // Clear step hint
+                const hintEl = section.querySelector('.proof-section-step-hint');
+                if (hintEl) hintEl.textContent = '';
+            }
+        });
+    }
+
     _updateCounter();
     if (proof) navigateProof(state.proofStepIndex);
 }
@@ -488,97 +530,111 @@ function _getOrPreRender(entry, index) {
 
 /** Load proofs for the current context. Called on scene/step change. */
 export function loadProof(lessonSpec, sceneIndex, stepIndex) {
-    // Collect context proofs and all proofs
-    const contextProofs = collectContextProofs(lessonSpec, sceneIndex, stepIndex);
     const allProofs = collectAllProofs(lessonSpec);
+    const sceneChanged = state._proofLastScene !== sceneIndex ||
+        !state.proofAllSpecs ||
+        state.proofAllSpecs.length !== allProofs.length;
 
-    // Check if the active proof is still in the new context
-    const prevProofId = state.proofSpec?.[state.proofActiveIndex]?.proof?.id;
-    let newActiveIndex = 0;
-    if (prevProofId) {
-        const match = contextProofs.findIndex(e => e.proof?.id === prevProofId);
-        if (match >= 0) newActiveIndex = match;
+    if (sceneChanged) {
+        // Save step memory for outgoing proof
+        _saveProofStepToMemory();
+
+        state.proofAllSpecs = allProofs;
+        state.proofSpec = allProofs;
+        state._proofLastScene = sceneIndex;
+
+        // Pre-render steps for all proofs (cache by id)
+        state._proofPreRenderedAll = {};
+        allProofs.forEach((entry, i) => _getOrPreRender(entry, i));
+
+        // Try to keep the same active proof if it's still in context
+        const prevProofId = state.proofSpec?.[state.proofActiveIndex]?.proof?.id;
+        let newActiveIndex = -1;
+        if (prevProofId) {
+            const match = allProofs.findIndex(e =>
+                e.proof?.id === prevProofId && _isProofInContext(e, sceneIndex, stepIndex));
+            if (match >= 0) newActiveIndex = match;
+        }
+        // Fall back to first visible proof
+        if (newActiveIndex < 0) {
+            newActiveIndex = allProofs.findIndex(e => _isProofInContext(e, sceneIndex, stepIndex));
+            if (newActiveIndex < 0) newActiveIndex = 0;
+        }
+        state.proofActiveIndex = newActiveIndex;
+
+        // Restore step index for the active proof
+        const activeEntry = allProofs[newActiveIndex];
+        state.proofStepIndex = activeEntry ? _restoreProofStepFromMemory(activeEntry, newActiveIndex) : -1;
+        state._proofPreRendered = activeEntry ? _getOrPreRender(activeEntry, newActiveIndex) : [];
+
+        // Full rebuild of both tabs
+        _buildContextTab(allProofs);
+        _renderAllTab(allProofs);
     }
 
-    // Save step memory for outgoing proof before changing context
-    _saveProofStepToMemory();
+    // Update visibility based on current step (no DOM rebuild)
+    _updateContextVisibility(sceneIndex, stepIndex);
 
-    state.proofSpec = contextProofs;
-    state.proofAllSpecs = allProofs;
-    state.proofActiveIndex = newActiveIndex;
-
-    // Restore step index for the active proof
-    const activeEntry = contextProofs[newActiveIndex];
-    state.proofStepIndex = activeEntry ? _restoreProofStepFromMemory(activeEntry, newActiveIndex) : -1;
-
-    // Show/hide the proof toggle button
+    // Show/hide the proof toggle button based on visible proofs
+    const hasVisible = allProofs.some(e => _isProofInContext(e, sceneIndex, stepIndex));
     const toggleBtn = document.getElementById('proof-toggle-btn');
     if (toggleBtn) {
-        toggleBtn.style.display = contextProofs.length > 0 ? '' : 'none';
+        toggleBtn.style.display = hasVisible ? '' : 'none';
     }
-
-    // Pre-render steps for all context proofs (cache by id)
-    state._proofPreRenderedAll = {};
-    contextProofs.forEach((entry, i) => {
-        _getOrPreRender(entry, i);
-    });
-    // Set active pre-rendered
-    const proof = _activeProof();
-    state._proofPreRendered = proof ? _getOrPreRender(activeEntry, newActiveIndex) : [];
-
-    // Render context tab
-    _renderContextTab(contextProofs);
-
-    // Render all tab
-    _renderAllTab(allProofs);
 
     // Update counter
     _updateCounter();
 
-    // Apply current view mode to render steps into the container
-    if (_activeProof()) {
-        navigateProof(state.proofStepIndex);
+    // Render active proof steps — but skip if we're already inside a proof→scene sync
+    // (re-entrant call from navigateProof → navigateTo → loadProof)
+    if (_activeProof() && !state._proofSyncInProgress) {
+        state._proofSyncInProgress = true;
+        try {
+            navigateProof(state.proofStepIndex);
+        } finally {
+            state._proofSyncInProgress = false;
+        }
     }
 
-    // If expanded and no proofs, collapse
-    if (contextProofs.length === 0 && state.proofExpanded) {
+    // If expanded and no visible proofs, collapse
+    if (!hasVisible && state.proofExpanded) {
         _toggleProofPanel(false);
     }
 
     // Auto-expand if proofs exist and user had it expanded
     const savedExpanded = localStorage.getItem('algebench-proof-expanded');
-    if (contextProofs.length > 0 && savedExpanded === 'true' && !state.proofExpanded) {
+    if (hasVisible && savedExpanded === 'true' && !state.proofExpanded) {
         _toggleProofPanel(true);
     }
 }
 
-/** Render the "In Context" tab with sections by level. */
-function _renderContextTab(contextProofs) {
+/** Build the "In Context" tab DOM once with all proofs. Visibility is toggled by _updateContextVisibility. */
+function _buildContextTab(allProofs) {
     const container = document.getElementById('proof-context-content');
     if (!container) return;
     container.innerHTML = '';
 
-    if (contextProofs.length === 0) {
-        container.innerHTML = '<p style="color: rgba(150,150,200,0.5); font-style: italic; font-size: 0.8em; padding: 8px;">No proofs in current context.</p>';
+    if (allProofs.length === 0) {
+        container.innerHTML = '<p style="color: rgba(150,150,200,0.5); font-style: italic; font-size: 0.8em; padding: 8px;">No proofs in this lesson.</p>';
         return;
     }
 
-    contextProofs.forEach((entry, i) => {
+    allProofs.forEach((entry, i) => {
         const section = document.createElement('div');
         const isActive = i === state.proofActiveIndex;
         section.className = 'proof-section' + (isActive ? '' : ' collapsed');
+        section.dataset.proofIdx = i;
+        section.dataset.proofLevel = entry.level;
+        if (entry.sceneIndex != null) section.dataset.proofScene = entry.sceneIndex;
+        if (entry.stepIndex != null) section.dataset.proofStep = entry.stepIndex;
 
         const proof = entry.proof;
         const title = proof.title || proof.goal || 'Untitled proof';
-        // Show remembered step position for inactive proofs
-        const memStep = _restoreProofStepFromMemory(entry, i);
-        const stepInfo = !isActive && memStep >= 0 && proof.steps
-            ? ` <span class="proof-section-step-hint">(step ${memStep + 1}/${proof.steps.length})</span>`
-            : '';
 
         section.innerHTML = `<div class="proof-section-header${isActive ? ' active' : ''}" data-proof-index="${i}">
             <span class="proof-section-arrow">&#9660;</span>
-            <span>Proof: ${escapeHtml(title)}${stepInfo}</span>
+            <span class="proof-section-title">Proof: ${escapeHtml(title)}</span>
+            <span class="proof-section-step-hint"></span>
         </div>`;
 
         const body = document.createElement('div');
@@ -603,12 +659,45 @@ function _renderContextTab(contextProofs) {
             if (i !== state.proofActiveIndex) {
                 switchActiveProof(i);
             } else {
-                // Toggle collapse on the already-active proof
                 section.classList.toggle('collapsed');
             }
         });
 
         container.appendChild(section);
+    });
+}
+
+/** Update visibility of context proof sections based on current scene/step. No DOM rebuild. */
+function _updateContextVisibility(sceneIndex, stepIndex) {
+    const container = document.getElementById('proof-context-content');
+    if (!container) return;
+
+    const sections = container.querySelectorAll('.proof-section[data-proof-idx]');
+    sections.forEach(section => {
+        const idx = parseInt(section.dataset.proofIdx);
+        const entry = state.proofSpec[idx];
+        if (!entry) { section.style.display = 'none'; return; }
+
+        const isActive = idx === state.proofActiveIndex;
+        // Never hide the active proof — it may have synced to an earlier step
+        const visible = isActive || _isProofInContext(entry, sceneIndex, stepIndex);
+        section.style.display = visible ? '' : 'none';
+        const hintEl = section.querySelector('.proof-section-step-hint');
+        if (hintEl) {
+            if (!isActive) {
+                const memStep = _restoreProofStepFromMemory(entry, idx);
+                const proof = entry.proof;
+                if (memStep >= 0 && proof && proof.steps) {
+                    hintEl.textContent = `(step ${memStep + 1}/${proof.steps.length})`;
+                } else {
+                    hintEl.textContent = '';
+                }
+            } else {
+                hintEl.textContent = '';
+            }
+        }
+
+        // Note: active proof is never hidden, so no need to switch away.
     });
 }
 
