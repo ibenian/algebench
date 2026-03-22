@@ -40,10 +40,10 @@
             {
               "type": "animated_point",
               "id": "vertex",
-              "label": "Vertex",
+              "label": "$\\text{Vertex}=\\left(-\\frac{b}{2a},\\; c-\\frac{b^2}{4a}\\right)$",
               "position": ["-b / (2*a)", "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c", "0"],
               "color": [1, 0.8, 0.2],
-              "radius": 0.08
+              "radius": 0.04
             },
             {
               "type": "animated_point",
@@ -51,7 +51,7 @@
               "label": "x₁",
               "position": ["(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"],
               "color": [0.3, 1.0, 0.5],
-              "radius": 0.06
+              "radius": 0.03
             },
             {
               "type": "animated_point",
@@ -59,7 +59,7 @@
               "label": "x₂",
               "position": ["(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"],
               "color": [0.3, 1.0, 0.5],
-              "radius": 0.06
+              "radius": 0.03
             }
           ]
         },
@@ -269,7 +269,7 @@
           "info": [
             {
               "id": "disc-case-info",
-              "content": "$$\\Delta = b^2 - 4ac = {{toFixed(b^2 - 4*a*c, 2)}}$$\n\n$\\Delta > 0$: two real roots\n$\\Delta = 0$: repeated root\n$\\Delta < 0$: no real roots",
+              "content": "$$\\Delta = b^2 - 4ac = {{toFixed(b^2 - 4*a*c, 2)}}$$\n\nRoots: {{(b^2 - 4*a*c) > 0 ? 2 : (b^2 - 4*a*c) == 0 ? 1 : 0}} real\n\nVertex $\\left(-\\frac{b}{2a},\\; c - \\frac{b^2}{4a}\\right) = ({{toFixed(-b/(2*a), 2)}},\\; {{toFixed(c - b^2/(4*a), 2)}})$\n$x_1 = {{toFixed((b^2-4*a*c) >= 0 ? (-b+sqrt(b^2-4*a*c))/(2*a) : 0, 3)}}$, $x_2 = {{toFixed((b^2-4*a*c) >= 0 ? (-b-sqrt(b^2-4*a*c))/(2*a) : 0, 3)}}$\n$x_1 + x_2 = {{toFixed(-b/a, 3)}}$, $x_1 \\cdot x_2 = {{toFixed(c/a, 3)}}$",
               "position": "top-right",
               "keep": true
             }
@@ -288,10 +288,10 @@
             {
               "type": "animated_point",
               "id": "vertex2a",
-              "label": "Vertex",
+              "label": "$\\text{Vertex}=\\left(-\\frac{b}{2a},\\; c-\\frac{b^2}{4a}\\right)$",
               "position": ["-b / (2*a)", "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c", "0"],
               "color": [1, 0.8, 0.2],
-              "radius": 0.08
+              "radius": 0.04
             },
             {
               "type": "animated_point",
@@ -299,7 +299,7 @@
               "label": "x₁",
               "position": ["(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"],
               "color": [0.3, 1.0, 0.5],
-              "radius": 0.06
+              "radius": 0.03
             },
             {
               "type": "animated_point",
@@ -307,7 +307,7 @@
               "label": "x₂",
               "position": ["(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)", "0", "0"],
               "color": [0.3, 1.0, 0.5],
-              "radius": 0.06
+              "radius": 0.03
             }
           ]
         },
