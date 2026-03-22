@@ -2869,6 +2869,24 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     color: rgba(140, 160, 220, 0.7);
     margin-bottom: 4px;
 }
+.proof-goal-row {
+    display: flex;
+    align-items: center;
+}
+.proof-goal-math {
+    flex: 1;
+    min-width: 0;
+}
+.proof-goal-actions {
+    display: flex;
+    align-items: center;
+    padding: 0 2px 0 6px;
+    flex-shrink: 0;
+}
+.proof-goal:hover .proof-ask-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
 
 /* Proof section header (file / scene / step level) */
 .proof-section {

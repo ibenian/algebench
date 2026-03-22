@@ -146,8 +146,21 @@ function renderGoalHTML(proof) {
     if (!proof || !proof.goal) return '';
     return `<div class="proof-goal">
         <div class="proof-goal-label">Goal</div>
-        ${renderKaTeX(proof.goal, false)}
+        <div class="proof-goal-row">
+            <div class="proof-goal-math">${renderKaTeX(proof.goal, false)}</div>
+            <div class="proof-goal-actions"></div>
+        </div>
     </div>`;
+}
+
+/** Inject AI ask button into the goal block. */
+function _injectGoalAskButton(container, proof) {
+    if (!proof || !proof.goal) return;
+    const actionsEl = container.querySelector('.proof-goal-actions');
+    if (!actionsEl) return;
+    const btn = makeAiAskButton('proof-ask-btn', 'Explain this proof goal',
+        () => `Explain the goal of this proof: "${proof.title || ''}". Goal: ${proof.goal}`);
+    actionsEl.appendChild(btn);
 }
 
 /** Simple HTML escaper. */
@@ -523,8 +536,9 @@ function _renderContextTab(contextProofs) {
             const body = document.createElement('div');
             body.className = 'proof-section-body';
 
-            // Goal
+            // Goal with AI button
             body.innerHTML = renderGoalHTML(proof);
+            _injectGoalAskButton(body, proof);
 
             // If this is the active proof, add a container for step rendering
             if (entry.globalIndex === state.proofActiveIndex) {
