@@ -16,8 +16,8 @@ import { importDomains, setActiveSceneFunctions, setActiveVirtualTimeExpr } from
 import { clearWorldStarfield, clearWorldSkybox, configureWorldStarfield } from '/objects/skybox.js';
 import { updateFollowAngleLockButtonState } from '/follow-cam.js';
 import { updateTitle, updateExplanationPanel, buildLegend, addInfoOverlay,
-         applyStepInfoOverlays, removeAllInfoOverlays, getAllElements,
-         updateStatusBar, updateStepCaption } from '/overlay.js';
+         applyStepInfoOverlays, removeInfoOverlay, removeAllInfoOverlays,
+         getAllElements, updateStatusBar, updateStepCaption } from '/overlay.js';
 import { buildSceneTree, updateTreeHighlight, setNavigateFn } from '/context-browser.js';
 import { loadProof, syncProofFromSceneStep } from '/proof.js';
 
@@ -200,6 +200,10 @@ function processStepRemoves(removeList, tracker) {
                 tracker.removedIds.push(item.id);
             }
             if (removeTrackSliderById(item.id, tracker)) slidersChanged = true;
+            continue;
+        }
+        if (item.type === 'info') {
+            if (item.id) removeInfoOverlay(item.id);
             continue;
         }
         if (item.type === 'slider') {

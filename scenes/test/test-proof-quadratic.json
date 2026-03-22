@@ -76,17 +76,23 @@
               "width": 1,
               "dash": true
             }
+          ],
+          "info": [
+            {
+              "id": "sym-info",
+              "content": "Axis of symmetry: $x = -\\frac{b}{2a} = {{toFixed(-b/(2*a), 2)}}$\n\nThe parabola is symmetric about this vertical line.",
+              "position": "top-right"
+            }
           ]
         },
         {
           "title": "The Discriminant",
           "description": "The discriminant $\\Delta = b^2 - 4ac$ determines the number of real roots.",
-          "add": [
+          "info": [
             {
-              "type": "text",
-              "label": "Δ = b² − 4ac",
-              "position": [4, 10, 0],
-              "color": [1, 0.5, 0.8]
+              "id": "disc-info",
+              "content": "$$\\Delta = b^2 - 4ac = {{toFixed(b^2 - 4*a*c, 2)}}$$\n\n$\\Delta > 0$: Two distinct real roots\n$\\Delta = 0$: One repeated root\n$\\Delta < 0$: No real roots (complex)",
+              "position": "top-right"
             }
           ]
         },
@@ -102,12 +108,25 @@
               "color": [0.3, 1.0, 0.5],
               "width": 2
             }
+          ],
+          "info": [
+            {
+              "id": "roots-info",
+              "content": "$$x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}$$\n\n$x_1 = {{toFixed((b^2-4*a*c) >= 0 ? (-b+sqrt(b^2-4*a*c))/(2*a) : 0, 3)}}$, $x_2 = {{toFixed((b^2-4*a*c) >= 0 ? (-b-sqrt(b^2-4*a*c))/(2*a) : 0, 3)}}$\n\nRoots are symmetric about the vertex $x = {{toFixed(-b/(2*a), 3)}}$",
+              "position": "top-right"
+            }
           ]
         },
         {
           "title": "The Complete Picture",
           "description": "Vertex, roots, and axis of symmetry — the full anatomy of a parabola.",
-          "add": []
+          "info": [
+            {
+              "id": "summary-info",
+              "content": "Vertex form: $y = a(x - h)^2 + k$\n\n$h = -\\frac{b}{2a} = {{toFixed(-b/(2*a), 3)}}$\n\n$k = c - \\frac{b^2}{4a} = {{toFixed(c - b^2/(4*a), 3)}}$\n\n$\\Delta = {{toFixed(b^2 - 4*a*c, 2)}}$",
+              "position": "top-right"
+            }
+          ]
         }
       ],
       "proof": {
@@ -247,6 +266,14 @@
             { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": -2 },
             { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": -3 }
           ],
+          "info": [
+            {
+              "id": "disc-case-info",
+              "content": "$$\\Delta = b^2 - 4ac = {{toFixed(b^2 - 4*a*c, 2)}}$$\n\n$\\Delta > 0$: two real roots\n$\\Delta = 0$: repeated root\n$\\Delta < 0$: no real roots",
+              "position": "top-right",
+              "keep": true
+            }
+          ],
           "add": [
             {
               "type": "animated_curve",
@@ -287,6 +314,11 @@
         {
           "title": "Two Real Roots (Δ > 0)",
           "description": "When the discriminant is positive, the parabola crosses the x-axis twice.",
+          "sliders": [
+            { "id": "a", "label": "a", "min": -3, "max": 3, "step": 0.1, "default": 1 },
+            { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": -2 },
+            { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": -3 }
+          ],
           "add": [
             {
               "type": "animated_line",
@@ -353,6 +385,11 @@
         {
           "title": "Repeated Root (Δ = 0)",
           "description": "When the discriminant is zero, the parabola touches the x-axis at exactly one point.",
+          "sliders": [
+            { "id": "a", "label": "a", "min": -3, "max": 3, "step": 0.1, "default": 1 },
+            { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": -4 },
+            { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": 4 }
+          ],
           "add": [
             {
               "type": "animated_line",
@@ -368,6 +405,11 @@
         {
           "title": "No Real Roots (Δ < 0)",
           "description": "When the discriminant is negative, the parabola doesn't cross the x-axis. The roots are complex conjugates.",
+          "sliders": [
+            { "id": "a", "label": "a", "min": -3, "max": 3, "step": 0.1, "default": 1 },
+            { "id": "b", "label": "b", "min": -6, "max": 6, "step": 0.1, "default": 0 },
+            { "id": "c", "label": "c", "min": -8, "max": 8, "step": 0.1, "default": 2 }
+          ],
           "add": [
             {
               "type": "animated_line",
