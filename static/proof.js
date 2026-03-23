@@ -601,6 +601,7 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
         state.proofAllSpecs = allProofs;
         state.proofSpec = allProofs;
         state._proofLastScene = sceneIndex;
+        state._proofLastStep = stepIndex;
 
         // Pre-render steps for all proofs (cache by id)
         state._proofPreRenderedAll = {};
@@ -626,10 +627,12 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
         state.proofStepIndex = activeEntry ? _restoreProofStepFromMemory(activeEntry, newActiveIndex) : -1;
         state._proofPreRendered = activeEntry ? _getOrPreRender(activeEntry, newActiveIndex) : [];
 
-        // Full rebuild of both tabs
+        // Full rebuild
         _buildContextTab(allProofs);
-        _renderAllTab(allProofs);
     }
+
+    // Track last step for tab switching
+    state._proofLastStep = stepIndex;
 
     // Update visibility based on current step (no DOM rebuild)
     _updateContextVisibility(sceneIndex, stepIndex);
@@ -732,6 +735,7 @@ function _updateContextVisibility(sceneIndex, stepIndex) {
     const container = document.getElementById('proof-context-content');
     if (!container) return;
 
+    const showAll = state._proofTabMode === 'all';
     const sections = container.querySelectorAll('.proof-section[data-proof-idx]');
     sections.forEach(section => {
         const idx = parseInt(section.dataset.proofIdx);
@@ -739,8 +743,8 @@ function _updateContextVisibility(sceneIndex, stepIndex) {
         if (!entry) { section.style.display = 'none'; return; }
 
         const isActive = idx === state.proofActiveIndex;
-        // Never hide the active proof — it may have synced to an earlier step
-        const visible = isActive || _isProofInContext(entry, sceneIndex, stepIndex);
+        // In "all" mode show everything; in "context" mode filter by hierarchy
+        const visible = showAll || isActive || _isProofInContext(entry, sceneIndex, stepIndex);
         section.style.display = visible ? '' : 'none';
         const hintEl = section.querySelector('.proof-section-step-hint');
         if (hintEl) {
@@ -761,63 +765,6 @@ function _updateContextVisibility(sceneIndex, stepIndex) {
     });
 }
 
-/** Render the "All" tab with all proofs in the lesson. */
-function _renderAllTab(allProofs) {
-    const container = document.getElementById('proof-all-content');
-    if (!container) return;
-    container.innerHTML = '';
-
-    if (allProofs.length === 0) {
-        container.innerHTML = '<p style="color: rgba(150,150,200,0.5); font-style: italic; font-size: 0.8em; padding: 8px;">No proofs in this lesson.</p>';
-        return;
-    }
-
-    const levelLabels = { file: 'Lesson', scene: 'Scene', step: 'Step' };
-
-    allProofs.forEach((entry, i) => {
-        const proof = entry.proof;
-        const title = proof.title || proof.goal || 'Untitled proof';
-        const level = levelLabels[entry.level] || entry.level;
-
-        const section = document.createElement('div');
-        section.className = 'proof-section collapsed';
-        section.innerHTML = `<div class="proof-section-header">
-            <span class="proof-section-arrow">&#9660;</span>
-            <span>Proof: ${escapeHtml(title)}</span>
-        </div>`;
-
-        const body = document.createElement('div');
-        body.className = 'proof-section-body';
-        body.innerHTML = renderGoalHTML(proof);
-
-        // Steps as labels only (lightweight for browse)
-        if (proof.steps) {
-            proof.steps.forEach((step, si) => {
-                const stepDiv = document.createElement('div');
-                stepDiv.className = 'proof-step';
-                stepDiv.style.cursor = 'default';
-                const type = step.type || 'step';
-                let stepHtml = `<div class="proof-step-header">
-                    <span class="proof-step-number">${si + 1}</span>
-                    <span class="proof-step-type type-${type}">${type}</span>
-                    <span class="proof-step-label">${escapeHtml(step.label)}</span>
-                </div>`;
-                if (step.math) {
-                    stepHtml += `<div class="proof-step-math">${renderKaTeX('$$' + step.math + '$$', true)}</div>`;
-                }
-                stepDiv.innerHTML = stepHtml;
-                body.appendChild(stepDiv);
-            });
-        }
-
-        section.appendChild(body);
-
-        const header = section.querySelector('.proof-section-header');
-        header.addEventListener('click', () => section.classList.toggle('collapsed'));
-
-        container.appendChild(section);
-    });
-}
 
 // ---- Panel toggle ----
 
@@ -879,15 +826,14 @@ function _setupProofResize() {
     });
 }
 
-// ---- Proof tab switching (In Context / All) ----
+// ---- Proof tab switching (Proofs in Context / All Proofs) ----
 
 function _setupProofTabs() {
     document.querySelectorAll('.proof-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.proof-tab').forEach(t => t.classList.toggle('active', t === tab));
-            document.querySelectorAll('.proof-tab-content').forEach(el => {
-                el.classList.toggle('active', el.id === 'proof-tab-' + tab.dataset.proofTab);
-            });
+            state._proofTabMode = tab.dataset.proofTab || 'context'; // 'context' or 'all'
+            _updateContextVisibility(state._proofLastScene ?? 0, state._proofLastStep ?? 0);
         });
     });
 }
@@ -923,10 +869,10 @@ export function setupProofPanel() {
     }
     const modeBtn = document.getElementById('proof-mode-toggle');
     if (modeBtn) {
-        modeBtn.textContent = state.proofViewMode === 'slide' ? 'Slide' : 'List';
+        modeBtn.textContent = state.proofViewMode === 'slide' ? 'Progressive' : 'Verbose';
         modeBtn.addEventListener('click', () => {
             state.proofViewMode = state.proofViewMode === 'slide' ? 'list' : 'slide';
-            modeBtn.textContent = state.proofViewMode === 'slide' ? 'Slide' : 'List';
+            modeBtn.textContent = state.proofViewMode === 'slide' ? 'Progressive' : 'Verbose';
             localStorage.setItem('algebench-proof-view-mode', state.proofViewMode);
             // Re-render current view
             navigateProof(state.proofStepIndex);
@@ -939,6 +885,10 @@ export function setupProofPanel() {
         syncBtn.addEventListener('click', () => {
             state.proofSyncEnabled = !state.proofSyncEnabled;
             syncBtn.classList.toggle('active', state.proofSyncEnabled);
+            // Sync immediately when enabled
+            if (state.proofSyncEnabled) {
+                navigateProof(state.proofStepIndex);
+            }
         });
     }
 

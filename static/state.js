@@ -107,6 +107,7 @@ export const state = {
     proofSyncEnabled: true,       // bidirectional scene_step linking
     proofExpanded: false,         // whether proof panel is expanded in chat tab
     _proofSyncInProgress: false,  // guard against infinite sync loops
+    _proofTabMode: 'context',    // 'context' | 'all' — which proof tab is active
     _proofPreRendered: null,      // cached pre-rendered step HTML nodes (per active proof)
     _proofPreRenderedAll: {},     // cached pre-rendered step HTML nodes keyed by proof id
 
