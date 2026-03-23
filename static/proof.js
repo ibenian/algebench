@@ -99,6 +99,7 @@ function preRenderProofSteps(proof) {
         // Inject AI ask buttons into the actions strip next to math
         _injectProofAskButtons(div, step, proof);
 
+
         // Click handler — navigate directly to this step
         div.addEventListener('click', () => navigateProof(i));
 
@@ -120,6 +121,7 @@ function _injectProofAskButtons(stepEl, step, proof) {
         });
     actionsEl.appendChild(btn);
 }
+
 
 /** Render the goal block for a proof. */
 function renderGoalHTML(proof) {
@@ -698,7 +700,7 @@ function _buildContextTab(allProofs) {
         const body = document.createElement('div');
         body.className = 'proof-section-body';
 
-        // Goal with AI button
+        // Goal with AI + speak buttons
         body.innerHTML = renderGoalHTML(proof);
         _injectGoalAskButton(body, proof);
 
@@ -937,27 +939,6 @@ export function setupProofPanel() {
         syncBtn.addEventListener('click', () => {
             state.proofSyncEnabled = !state.proofSyncEnabled;
             syncBtn.classList.toggle('active', state.proofSyncEnabled);
-        });
-    }
-
-    // Speak button
-    const speakBtn = document.getElementById('proof-speak-btn');
-    if (speakBtn) {
-        speakBtn.addEventListener('click', () => {
-            const proof = _activeProof();
-            if (!proof) return;
-            const idx = state.proofStepIndex;
-            let text = '';
-            if (idx < 0) {
-                text = `Proof goal: ${proof.goal || ''}`;
-            } else {
-                const step = proof.steps[idx];
-                text = `Step ${idx + 1}: ${step.label || ''}. ${step.explanation || ''}`;
-                if (step.justification) text += ` Justification: ${step.justification}.`;
-            }
-            if (typeof window.algebenchSpeakText === 'function') {
-                window.algebenchSpeakText(text);
-            }
         });
     }
 

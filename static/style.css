@@ -2854,6 +2854,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 
 /* Proof goal */
 .proof-goal {
+    position: relative;
     padding: 8px 10px;
     margin-bottom: 8px;
     border-left: 3px solid rgba(100, 180, 255, 0.5);
@@ -2919,6 +2920,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 
 /* Proof step card */
 .proof-step {
+    position: relative;
     padding: 8px 10px;
     margin-bottom: 6px;
     border-left: 3px solid rgba(80, 80, 160, 0.4);
