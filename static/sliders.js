@@ -163,11 +163,17 @@ export function setupSliderDrag(e, overlay) {
 // ----- Slider registration -----
 
 export function registerSliders(sliderDefs) {
-    if (!sliderDefs || !Array.isArray(sliderDefs)) return [];
+    if (!sliderDefs || !Array.isArray(sliderDefs)) return { ids: [], prevStates: {} };
     const ids = [];
+    const prevStates = {};
     for (const def of sliderDefs) {
-        // Stop any existing loop for this id before overwriting the slider state.
-        if (state.sceneSliders[def.id]) stopSliderLoop(def.id);
+        // Snapshot previous state for undo on backward navigation (only when reset flag is set).
+        if (state.sceneSliders[def.id]) {
+            stopSliderLoop(def.id);
+            if (def.reset) {
+                prevStates[def.id] = { ...state.sceneSliders[def.id] };
+            }
+        }
         state.sceneSliders[def.id] = {
             value: def.default !== undefined ? def.default : (def.min + def.max) / 2,
             min: def.min !== undefined ? def.min : 0,
@@ -189,7 +195,7 @@ export function registerSliders(sliderDefs) {
         const s = state.sceneSliders[id];
         if (s && s.animate && s.autoplay) startSliderLoop(id);
     }
-    return ids;
+    return { ids, prevStates };
 }
 
 export function removeSliderIds(ids) {

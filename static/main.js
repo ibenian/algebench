@@ -19,6 +19,7 @@ import { navigateTo, setupSceneDock, loadScene, loadLesson, isLessonFormat,
 import { buildSceneTree } from '/context-browser.js';
 import { setupJsonViewer, setupContextStatusPopup } from '/json-browser.js';
 import { renderMarkdown, renderKaTeX } from '/labels.js';
+import { setupProofPanel, navigateProof, loadProof, getProofContext } from '/proof.js';
 
 // Domain library registry — scripts under static/domains/<name>/index.js self-register here.
 window.AlgeBenchDomains = window.AlgeBenchDomains || {
@@ -47,6 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupExplainToggle();
     setupFollowAngleLockToggle();
     setupDocSpeakButtons();
+    setupProofPanel();
     setupSceneDock();
     setupCaptionDrag();
     setupSceneDescDrag();
@@ -81,6 +83,11 @@ window.loadScene = loadScene;
 window.isLessonFormat = isLessonFormat;
 window.updateDockVisibility = updateDockVisibility;
 window.animateSlider = animateSlider;
+
+// Proof system
+window.navigateProof = navigateProof;
+window.loadProof = loadProof;
+window.getProofContext = getProofContext;
 
 // State proxies — chat.js reads lessonSpec, currentSpec, currentSceneIndex,
 // currentStepIndex, sceneSliders, and CAMERA_VIEWS as bare globals.
@@ -131,6 +138,11 @@ Object.defineProperties(window, {
     },
     elementRegistry: {
         get() { return state.elementRegistry; },
+        configurable: true,
+    },
+    proofStepIndex: {
+        get() { return state.proofStepIndex; },
+        set(v) { state.proofStepIndex = v; },
         configurable: true,
     },
 });

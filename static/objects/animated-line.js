@@ -49,7 +49,14 @@ export function renderAnimatedLine(el, view) {
 
     let labelEl = null;
     if (label || labelExprFn) {
-        const mid = currentPoints[Math.floor(currentPoints.length / 2)];
+        // Compute true midpoint between first and last points
+        const p0 = currentPoints[0];
+        const pN = currentPoints[currentPoints.length - 1];
+        const mid = [
+            (p0[0] + pN[0]) / 2,
+            (p0[1] + pN[1]) / 2,
+            (p0[2] + pN[2]) / 2
+        ];
         labelEl = addLabel3D(label || '', mid, color);
         if (labelExprFn) {
             try {
@@ -82,10 +89,11 @@ export function renderAnimatedLine(el, view) {
                 lineData.set('data', pts);
 
                 if (labelEl) {
-                    const mid = pts[Math.floor(pts.length / 2)];
-                    labelEl.dataPos[0] = mid[0];
-                    labelEl.dataPos[1] = mid[1] + 0.3;
-                    labelEl.dataPos[2] = mid[2];
+                    const lp0 = pts[0];
+                    const lpN = pts[pts.length - 1];
+                    labelEl.dataPos[0] = (lp0[0] + lpN[0]) / 2;
+                    labelEl.dataPos[1] = (lp0[1] + lpN[1]) / 2 + 0.3;
+                    labelEl.dataPos[2] = (lp0[2] + lpN[2]) / 2;
                     if (labelExprFn) {
                         try {
                             const txt = String(evalExpr(labelExprFn, tSec));

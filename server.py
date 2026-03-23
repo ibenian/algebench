@@ -696,6 +696,16 @@ def call_gemini_chat(message, history, context):
                         }
                         if DEBUG_MODE:
                             print(f"   🖼️  set_info_overlay['{overlay_id}'] @ {position}: {content[:60]}{'…' if len(content) > 60 else ''}")
+                elif tc_name == 'navigate_proof':
+                    proof_step = int(tc_args.get('step', 0))
+                    reason = tc_args.get('reason', '')
+                    tc_result = {
+                        "action": "navigate_proof",
+                        "step": proof_step,
+                        "reason": reason,
+                    }
+                    if DEBUG_MODE:
+                        print(f"   📐 navigate_proof: step={proof_step} reason={reason}")
                 else:
                     tc_result = {"status": "success"}
                 tool_calls.append({
@@ -877,7 +887,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     _TOP_LEVEL_MODULES = {
         'state', 'expr', 'trust', 'coords', 'labels', 'follow-cam', 'camera',
         'sliders', 'overlay', 'context-browser', 'scene-loader', 'ui',
-        'json-browser', 'main',
+        'json-browser', 'main', 'proof',
     }
 
     @fastapp.get("/{name}.js")

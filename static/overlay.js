@@ -415,6 +415,8 @@ export function resolveInfoContent(template) {
 export function updateInfoOverlays() {
     for (const ov of Object.values(activeInfoOverlays)) {
         const resolved = resolveInfoContent(ov.content);
+        // Use renderKaTeX (not renderMarkdown) — markdown rendering breaks
+        // the info overlay layout; KaTeX-only keeps it clean and compact.
         ov.contentEl.innerHTML = renderKaTeX(resolved, false);
     }
 }
@@ -425,7 +427,8 @@ window._algebenchUpdateInfoOverlays = updateInfoOverlays;
 
 export function removeStepInfoOverlays() {
     for (const id of Object.keys(activeInfoOverlays)) {
-        if (activeInfoOverlays[id].stepDefined) removeInfoOverlay(id);
+        const ov = activeInfoOverlays[id];
+        if (ov.stepDefined && !ov.keep) removeInfoOverlay(id);
     }
 }
 
@@ -433,11 +436,11 @@ export function applyStepInfoOverlays(infoDefs) {
     removeStepInfoOverlays();
     if (!infoDefs || !infoDefs.length) return;
     for (const def of infoDefs) {
-        addInfoOverlay(def.id, def.content, def.position || 'top-left', true);
+        addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false);
     }
 }
 
-export function addInfoOverlay(id, content, position, stepDefined = false) {
+export function addInfoOverlay(id, content, position, stepDefined = false, keep = false) {
     const container = document.getElementById('info-overlays');
     if (!container) return;
     const pos = position || 'top-left';
@@ -584,7 +587,7 @@ export function addInfoOverlay(id, content, position, stepDefined = false) {
     if (wasDragged) el.classList.remove(...[...el.classList].filter(c => c.startsWith('pos-')));
 
     el.style.opacity = state.displayParams.overlayOpacity;
-    activeInfoOverlays[id] = { content, el, contentEl, collapsed, stepDefined, pos };
+    activeInfoOverlays[id] = { content, el, contentEl, collapsed, stepDefined, keep, pos };
     updateInfoOverlays();
 }
 

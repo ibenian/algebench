@@ -16,9 +16,10 @@ import { importDomains, setActiveSceneFunctions, setActiveVirtualTimeExpr } from
 import { clearWorldStarfield, clearWorldSkybox, configureWorldStarfield } from '/objects/skybox.js';
 import { updateFollowAngleLockButtonState } from '/follow-cam.js';
 import { updateTitle, updateExplanationPanel, buildLegend, addInfoOverlay,
-         applyStepInfoOverlays, removeAllInfoOverlays, getAllElements,
-         updateStatusBar, updateStepCaption } from '/overlay.js';
+         removeStepInfoOverlays, removeInfoOverlay, removeAllInfoOverlays,
+         getAllElements, updateStatusBar, updateStepCaption } from '/overlay.js';
 import { buildSceneTree, updateTreeHighlight, setNavigateFn } from '/context-browser.js';
+import { loadProof, syncProofFromSceneStep } from '/proof.js';
 
 const AUTO_PLAY_DEFAULT_DURATION = 3000;
 
@@ -54,7 +55,7 @@ function buildSubTracker(group, before) {
 
 export function renderStepAdd(elements, sliderDefs) {
     // Register sliders first (so expressions can reference them during render)
-    const sliderIds = registerSliders(sliderDefs);
+    const { ids: sliderIds, prevStates: prevSliderStates } = registerSliders(sliderDefs);
     if (sliderIds.length > 0) {
         buildSliderOverlay();
         recompileActiveExprs();
@@ -100,12 +101,39 @@ export function renderStepAdd(elements, sliderDefs) {
     tracker.removedSliders = {};
     tracker.replacedElements = replacedElements;
     tracker.sliderIds = sliderIds;
+    tracker.prevSliderStates = prevSliderStates;
     tracker.elementIds = addedElementIds;
     tracker.renderResults = renderResults;
 
     fadeInTracker(tracker);
 
     return tracker;
+}
+
+/**
+ * Apply info overlays for a step and track them on the tracker.
+ * Non-kept overlays from previous steps are removed first.
+ * Kept overlays persist until the tracker is popped (backward nav).
+ */
+function applyTrackerInfoOverlays(tracker, step) {
+    // Remove non-kept info overlays from previous steps
+    removeStepInfoOverlays();
+    tracker.infoIds = [];
+    tracker.infoDefs = step.info || [];
+    const infoDefs = step.info;
+    if (!infoDefs || !infoDefs.length) return;
+    for (const def of infoDefs) {
+        addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false);
+        tracker.infoIds.push(def.id);
+    }
+}
+
+/** Remove info overlays that were added by this tracker (backward navigation). */
+function undoTrackerInfoOverlays(tracker) {
+    if (!tracker.infoIds) return;
+    for (const id of tracker.infoIds) {
+        removeInfoOverlay(id);
+    }
 }
 
 export function hideElementById(id) {
@@ -201,6 +229,10 @@ function processStepRemoves(removeList, tracker) {
             if (removeTrackSliderById(item.id, tracker)) slidersChanged = true;
             continue;
         }
+        if (item.type === 'info') {
+            if (item.id) removeInfoOverlay(item.id);
+            continue;
+        }
         if (item.type === 'slider') {
             removeTrackSliders(tracker);
             continue;
@@ -258,11 +290,21 @@ function removeStepTracker(tracker) {
     if (tracker.sliderIds && tracker.sliderIds.length > 0) {
         const stillNeeded = new Set(state.stepTrackers.flatMap(t => t.sliderIds || []));
         const toRemove = tracker.sliderIds.filter(id => !stillNeeded.has(id));
+        // Restore previous slider states for sliders that aren't being removed
+        // (i.e., sliders that existed before this step overrode their defaults).
+        if (tracker.prevSliderStates) {
+            for (const [id, prev] of Object.entries(tracker.prevSliderStates)) {
+                if (!toRemove.includes(id) && state.sceneSliders[id]) {
+                    Object.assign(state.sceneSliders[id], prev);
+                }
+            }
+        }
         if (toRemove.length > 0) {
             removeSliderIds(toRemove);
-            buildSliderOverlay();
-            recompileActiveExprs();
         }
+        buildSliderOverlay();
+        recompileActiveExprs();
+        syncSliderState();
     }
 
     if (tracker.renderResults) {
@@ -482,6 +524,7 @@ export async function loadScene(spec) {
     setActiveVirtualTimeExpr(spec, -1);
     updateTitle(spec);
     updateExplanationPanel(spec);
+    loadProof(state.lessonSpec || spec, state.currentSceneIndex, -1);
 
     // Show/hide empty state
     const emptyState = document.getElementById('empty-state');
@@ -661,6 +704,7 @@ export function navigateTo(sceneIdx, stepIdx) {
                 const step = scene.steps[i];
                 const tracker = renderStepAdd(step.add || [], step.sliders);
                 processStepRemoves(step.remove, tracker);
+                applyTrackerInfoOverlays(tracker, step);
                 state.stepTrackers.push(tracker);
                 state.visitedSteps.add(sceneIdx + ':' + i);
             }
@@ -675,6 +719,7 @@ export function navigateTo(sceneIdx, stepIdx) {
                     const step = scene.steps[i];
                     const tracker = renderStepAdd(step.add || [], step.sliders);
                     processStepRemoves(step.remove, tracker);
+                    applyTrackerInfoOverlays(tracker, step);
                     state.stepTrackers.push(tracker);
                     state.visitedSteps.add(sceneIdx + ':' + i);
                 }
@@ -683,7 +728,18 @@ export function navigateTo(sceneIdx, stepIdx) {
             while (state.stepTrackers.length > stepIdx + 1) {
                 const tracker = state.stepTrackers.pop();
                 undoStepRemoves(tracker);
+                undoTrackerInfoOverlays(tracker);
                 removeStepTracker(tracker);
+            }
+            // Re-apply info overlays from the step we landed on, since they
+            // were removed when a later step called removeStepInfoOverlays().
+            const landingTracker = state.stepTrackers[state.stepTrackers.length - 1];
+            if (landingTracker && landingTracker.infoDefs && landingTracker.infoDefs.length > 0) {
+                removeStepInfoOverlays();
+                for (const def of landingTracker.infoDefs) {
+                    addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false);
+                }
+                landingTracker.infoIds = landingTracker.infoDefs.map(d => d.id);
             }
         }
 
@@ -710,11 +766,16 @@ export function navigateTo(sceneIdx, stepIdx) {
     setActiveVirtualTimeExpr(scene, stepIdx);
 
     const activeStep = scene.steps && scene.steps[stepIdx];
-    applyStepInfoOverlays(activeStep ? activeStep.info : null);
 
     updateTreeHighlight();
     updateStepCaption(scene, stepIdx);
     updateStatusBar();
+
+    // Update proof panel (always update — visibility depends on current step)
+    loadProof(state.lessonSpec || scene, sceneIdx, stepIdx);
+    if (!sceneChanged && state.proofSyncEnabled && state.proofSpec && state.proofSpec.length > 0) {
+        syncProofFromSceneStep(stepIdx);
+    }
 
     if (sceneChanged) {
         setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
