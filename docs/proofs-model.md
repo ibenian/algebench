@@ -3,6 +3,7 @@
 > Design document for the step-by-step mathematical proof system (Issue #51).
 
 **Related docs:**
+
 - [architecture.md](architecture.md) — Overall project architecture
 - [sandbox-model.md](sandbox-model.md) — Expression evaluation and trust model
 - [../CONTRIBUTING.md](../CONTRIBUTING.md) — Scene format reference
@@ -21,11 +22,13 @@ The proof system adds first-class support for mathematical proofs and derivation
 
 A proof can appear at three levels in the scene JSON hierarchy:
 
-| Level | Scope | `scene_step` meaning |
-|-------|-------|---------------------|
-| **Root** | Spans the entire lesson | `"sceneIdx:stepIdx"` (cross-scene) |
-| **Scene** | Tied to one scene | `stepIdx` (integer, relative to containing scene) |
-| **Step** | Mini-derivation for a specific step | Not applicable |
+
+| Level     | Scope                               | `scene_step` meaning                              |
+| --------- | ----------------------------------- | ------------------------------------------------- |
+| **Root**  | Spans the entire lesson             | `"sceneIdx:stepIdx"` (cross-scene)                |
+| **Scene** | Tied to one scene                   | `stepIdx` (integer, relative to containing scene) |
+| **Step**  | Mini-derivation for a specific step | `stepIdx` (integer, relative to containing scene) |
+
 
 ```json
 {
@@ -61,37 +64,44 @@ const proofs = spec.proof == null ? []
 
 ### 3.1 Proof Object
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | yes | Unique identifier for agent references |
-| `title` | string | yes | Display name (shown in selector when multiple proofs) |
-| `goal` | string | yes | What the proof aims to show (LaTeX) |
-| `prompt` | string | no | Overall agent guidance for this proof |
-| `steps` | array | yes | Ordered array of proof steps |
+
+| Field        | Type             | Required | Description                                            |
+| ------------ | ---------------- | -------- | ------------------------------------------------------ |
+| `id`         | string           | yes      | Unique identifier for agent references and step memory |
+| `title`      | string           | yes      | Display name (shown in proof section header)           |
+| `goal`       | string           | yes      | What the proof aims to show (LaTeX)                    |
+| `prompt`     | string           | no       | Overall agent guidance for this proof                  |
+| `scene_step` | number or string | no       | Scene step to sync to when viewing the goal (index -1) |
+| `steps`      | array            | yes      | Ordered array of proof steps                           |
+
 
 ### 3.2 Proof Step
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | yes | Unique step identifier for agent references and linking |
-| `type` | string | no | `"given"`, `"step"`, `"conclusion"`, `"remark"` (defaults to `"step"`) |
-| `label` | string | yes | Short human-readable heading |
-| `math` | string | yes | LaTeX expression, may include `\htmlClass{hl-name}{...}` regions |
-| `highlights` | object | no | Map of region name → `{ color, label }` |
-| `justification` | string | no | Rule or theorem licensing this step (supports inline LaTeX) |
-| `explanation` | string | no | Prose explanation (rendered as markdown) |
-| `prompt` | string | no | Agent hint for when this step is active |
-| `scene_step` | number or string | no | Scene step to sync to (integer for scene-level proofs, `"sceneIdx:stepIdx"` for root-level) |
-| `tags` | string[] | no | Semantic tags for styling and filtering |
+
+| Field           | Type             | Required | Description                                                                                      |
+| --------------- | ---------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `id`            | string           | yes      | Unique step identifier for agent references and linking                                          |
+| `type`          | string           | no       | `"given"`, `"step"`, `"conclusion"`, `"remark"` (defaults to `"step"`)                           |
+| `label`         | string           | yes      | Short human-readable heading                                                                     |
+| `math`          | string           | yes      | LaTeX expression, may include `\htmlClass{hl-name}{...}` regions                                 |
+| `highlights`    | object           | no       | Map of region name → `{ color, label }`                                                          |
+| `justification` | string           | no       | Rule or theorem licensing this step (supports inline LaTeX)                                      |
+| `explanation`   | string           | no       | Prose explanation (rendered as markdown)                                                         |
+| `prompt`        | string           | no       | Agent hint for when this step is active                                                          |
+| `scene_step`    | number or string | no       | Scene step to sync to (integer for scene/step-level proofs, `"sceneIdx:stepIdx"` for root-level) |
+| `tags`          | string[]         | no       | Semantic tags for styling and filtering                                                          |
+
 
 ### 3.3 Step Types
 
-| Type | Rendering | Use |
-|------|-----------|-----|
-| `given` | Distinct style (e.g., border color) | Starting assumptions, definitions |
-| `step` | Default style | A transformation or deduction |
-| `conclusion` | Emphasized (e.g., box, green accent) | QED / final result |
-| `remark` | De-emphasized (italic, no border) | Aside that isn't part of the logical chain |
+
+| Type         | Rendering                            | Use                                        |
+| ------------ | ------------------------------------ | ------------------------------------------ |
+| `given`      | Distinct style (e.g., border color)  | Starting assumptions, definitions          |
+| `step`       | Default style                        | A transformation or deduction              |
+| `conclusion` | Emphasized (e.g., box, green accent) | QED / final result                         |
+| `remark`     | De-emphasized (italic, no border)    | Aside that isn't part of the logical chain |
+
 
 ---
 
@@ -124,7 +134,8 @@ KaTeX renders normally but wraps the content in `<span class="hl-new">`. The `hi
 ### 4.3 Highlight Label
 
 The `label` string serves two purposes:
-- **Tooltip on hover** — mouse over the highlighted region to see the explanation
+
+- **Clickable annotation** — click the highlighted region to reveal an inline label below the math
 - **Agent context** — fed to the AI so it can reference the region by name
 
 ### 4.4 Capabilities
@@ -154,6 +165,7 @@ Deriving the quadratic formula (8 steps):
     "title": "Deriving the Quadratic Formula",
     "goal": "Derive $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$ from $ax^2 + bx + c = 0$",
     "prompt": "Walk the student through completing the square. Emphasize why each move is valid and connect to the parabola visualization.",
+    "scene_step": 0,
     "steps": [
       {
         "id": "start",
@@ -274,28 +286,38 @@ Deriving the quadratic formula (8 steps):
 ### 6.1 Proof → Scene
 
 When navigating to a proof step that has `scene_step`:
+
 1. Proof panel renders the new step
 2. `navigateTo(currentSceneIndex, sceneStep)` is called
 3. 3D scene updates to the corresponding visualization
 
+At the goal level (index -1), the proof-level `scene_step` is used for sync.
+
 For root-level proofs, `scene_step` uses string format `"sceneIdx:stepIdx"`:
+
 1. Parse the string into scene index and step index
 2. `navigateTo(sceneIdx, stepIdx)` navigates across scenes
 
 ### 6.2 Scene → Proof
 
 When the user advances the scene step to index N:
+
 1. Search active proof steps for `scene_step === N`
 2. If found, scroll to / navigate to that proof step
 3. Proof counter updates
 
 ### 6.3 Loop Prevention
 
-A `_proofSyncInProgress` flag prevents infinite loops (proof nav → scene nav → proof nav).
+A `_proofSyncInProgress` flag prevents infinite loops (proof nav → scene nav → proof nav). The guard is cleared synchronously in a `finally` block — no `setTimeout` delay.
 
-### 6.4 Independent Mode
+### 6.4 Immediate Sync on Enable
+
+When the user enables the sync toggle, the current proof step's `scene_step` is applied immediately (calls `navigateProof` with current index).
+
+### 6.5 Independent Mode
 
 With sync disabled, proof and scene navigate independently. Useful when:
+
 - Re-reading a proof step without changing the 3D view
 - The proof has more steps than the scene
 - Exploring the visualization freely while reviewing the proof
@@ -309,6 +331,7 @@ With sync disabled, proof and scene navigate independently. Useful when:
 Proof context is injected into the agent's **system prompt** (not just the user message), so the AI always has full awareness. This context is also visible in the **CTX browser** for debugging.
 
 The system prompt includes:
+
 - All in-context proof titles, goals, and step counts
 - The active proof's full step list (id, label, math, justification)
 - The current proof step index and its content
@@ -319,19 +342,16 @@ This is built in `build_system_prompt()` (Python) and `buildChatContext()` (JS),
 
 ### 7.2 AI Ask Buttons
 
-Proof steps have **inline AI buttons** at strategic points to enable quick questions without typing:
+Proof steps have an **inline AI button** that appears on hover over the math row:
 
-| Location | Button | Sends to chat |
-|----------|--------|---------------|
-| Next to `justification` | **"Why?"** | "Why does [justification] apply here?" |
-| Next to `math` | **"Explain"** | "Explain this step: [label]" |
-| Next to highlighted region | **"What's this?"** | "What is [highlight label] and why is it highlighted?" |
-| Proof goal | **"How do we start?"** | "How should we approach proving [goal]?" |
-| Conclusion step | **"Summarize"** | "Summarize the key ideas in this proof" |
+
+| Location         | Button        | Sends to chat                                                      |
+| ---------------- | ------------- | ------------------------------------------------------------------ |
+| Math row (hover) | **"Explain"** | "Explain this proof step: [label]. Justification: [justification]" |
+| Proof goal       | **"Explain"** | "Explain the goal of this proof: [title]. Goal: [goal]"            |
+
 
 Each button pre-fills a chat message with the proof and step `prompt` context already in the system prompt. The AI sees both the question and the author's pedagogical hints, so it can give targeted answers.
-
-These buttons use the same `injectAskButtons()` pattern from `labels.js` (already used in the Doc tab for interactive elements).
 
 ### 7.3 Tool: `navigate_proof`
 
@@ -346,6 +366,7 @@ navigate_proof(proof_id: string, step: int, reason?: string)
 ### 7.4 Capabilities
 
 With proof context, the agent can:
+
 - **Narrate** — walk through each step with explanation and TTS
 - **Answer questions** — "Why can we swap the order?" → references justification
 - **Relate to geometry** — "Where is this term in the visualization?" → syncs scene
@@ -370,17 +391,16 @@ The proof panel lives **inside the Chat tab**, splitting it vertically with a dr
 │ [Character] [Voice ▾] [Read ▾]  [📐 Proof ▾]             │ ← proof toggle button
 ├───────────────────────────────────────────────────────────┤
 │ Proof: Deriving the Quadratic Formula                     │
-│ [In Context] [All]        [Slide/List] [Sync] [🔊 Speak] │
+│ [Proofs in Context] [All Proofs]   [Progressive] [⇄ Sync]│
 │                                                           │
 │ Goal: Derive x = (-b ± √(b²-4ac)) / 2a                  │
 │                                                           │
-│ ┌─ ② Step: Complete the square ──────────────────────┐    │
-│ │ x² + (b/a)x + b²/4a² = -c/a + b²/4a²             │    │
-│ │ ▸ Add (b/2a)² to both sides                        │    │
-│ │ [Why?]  [Explain]                                   │    │
-│ └────────────────────────────────────────────────────┘    │
+│ ┌─ ② Step: Complete the square ──────────── [✨ Explain]─┐│
+│ │ x² + (b/a)x + b²/4a² = -c/a + b²/4a²                 ││
+│ │ ▸ Add (b/2a)² to both sides                           ││
+│ └────────────────────────────────────────────────────────┘│
 │                                                           │
-│            ‹   Step 3 of 8   ›                            │
+│          |‹   ‹   Step 3 of 8   ›   ›|                   │
 ├─── drag to resize ───────────────────────────────────────┤
 │ Chat                                                      │
 │                                                           │
@@ -395,11 +415,13 @@ The proof panel lives **inside the Chat tab**, splitting it vertically with a dr
 
 The proof button in the chat controls bar:
 
-| State | Appearance |
-|-------|------------|
-| No proofs in context | **Hidden** — button not rendered |
-| Proofs available, collapsed | **Visible** — `📐 Proof` button, click to expand |
-| Proofs available, expanded | **Active** — `📐 Proof ▴` button, click to collapse |
+
+| State                       | Appearance                                          |
+| --------------------------- | --------------------------------------------------- |
+| No proofs in context        | **Hidden** — button not rendered                    |
+| Proofs available, collapsed | **Visible** — `📐 Proof` button, click to expand    |
+| Proofs available, expanded  | **Active** — `📐 Proof ▴` button, click to collapse |
+
 
 Expand/collapse state is saved to `localStorage['algebench-proof-expanded']`.
 
@@ -407,65 +429,87 @@ Expand/collapse state is saved to `localStorage['algebench-proof-expanded']`.
 
 When expanded, the proof/chat split has a **draggable horizontal divider**. The split ratio is saved to `localStorage['algebench-proof-split']`. Default: 50/50. The divider follows the same implementation pattern as the existing right-panel vertical resize handle.
 
-### 8.4 Proof Panel Tabs
+### 8.4 Auto-Expand
 
-The proof panel has two tabs:
+When `navigateProof` is called (by user click, sync, or agent tool), the proof panel automatically expands if collapsed, and the active proof section is uncollapsed. This ensures the student always sees the step being navigated to.
 
-| Tab | Content |
-|-----|---------|
-| **In Context** | Proofs relevant to the current navigation state — automatically updates as you move through the lesson |
-| **All** | Browse every proof in the entire lesson, regardless of current position |
+### 8.5 Proof Panel Tabs
 
-**In Context** shows proofs from all applicable levels simultaneously, each as a collapsible section:
+The proof panel has two tabs that share a **single DOM list** of proof sections. The tab selection controls visibility:
+
+
+| Tab                   | Visibility Rule                                                                                                                                                                                                 |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Proofs in Context** | Shows proofs relevant to the current navigation state — file-level (always), scene-level (when in that scene), step-level (when on or past that step). The active proof is never hidden even if out of context. |
+| **All Proofs**        | Shows every proof in the lesson, regardless of current position.                                                                                                                                                |
+
+
+Both tabs use the same underlying DOM and interaction model — clicking a proof header, navigating steps, and all toolbar controls work identically in both modes. This is implemented by toggling a `_proofTabMode` state flag and re-running the visibility filter.
+
+**Proofs in Context** shows proofs from all applicable levels simultaneously, each as a collapsible section:
 
 - **File-level proofs** — always shown (lesson-wide proofs)
 - **Scene-level proofs** — shown when in that scene
-- **Step-level proofs** — shown when on that step
+- **Step-level proofs** — shown when on or past that step
 
 Multiple proofs at the same level are all listed. The student can expand/collapse each independently.
 
-### 8.5 Proof Step Display
+### 8.6 Per-Proof Step Memory
+
+Each proof remembers its step position independently, keyed by `proof.id`. When the user switches to a different proof and later returns, their previous position is restored. This is stored in `state.proofStepMemory` (in-memory, not persisted to localStorage).
+
+### 8.7 Proof Step Display
 
 Each proof step in the list shows:
-- Step number and type icon (given / step / conclusion / remark)
+
+- Step number and type badge (given / step / conclusion / remark)
 - Label text
 - Rendered math (KaTeX with highlights)
-- Justification (collapsed by default, expand on click)
-- Explanation (collapsed by default, expand on click)
-- AI ask buttons at strategic points (see §7.2)
-- Status: checkmark for visited, arrow for active, dot for unvisited
+- Justification (inline, prefixed with ▸)
+- Explanation (rendered as markdown)
+- AI ask button (appears on hover over the math row)
+- Tags as pill badges
 
-### 8.6 View Modes
+### 8.8 View Modes
 
-- **Slide** (default) — one step at a time with full detail, previous steps collapsed to label only
-- **List** — all steps visible, current highlighted (`.active`), future dimmed
+- **Progressive** (default) — one step at a time with full detail, previous steps collapsed to label only, future steps hidden
+- **Verbose** — all steps visible, current highlighted (`.active`), future dimmed
 
-### 8.7 Toolbar
+### 8.9 Toolbar
 
 Inline in the proof panel header, right-aligned:
 
-| Button | Action |
-|--------|--------|
-| Slide / List | Toggle view mode |
-| Sync | Toggle bidirectional scene linking |
-| Speak | TTS for current step |
 
-### 8.8 Navigation
+| Button                | Action                                                              |
+| --------------------- | ------------------------------------------------------------------- |
+| Progressive / Verbose | Toggle view mode                                                    |
+| ⇄ Sync                | Toggle bidirectional scene linking (syncs immediately when enabled) |
 
-- Prev/next buttons in the proof nav bar
+
+### 8.10 Navigation
+
+- **First/prev/next/last** buttons (`|‹`, `‹`, `›`, `›|`) in the proof nav bar, with disabled state when at boundaries
 - Left/right arrow keys when proof panel is focused (does not conflict with scene nav which uses up/down)
-- Step counter: "Step 3 of 8"
+- Step counter: "Step 3 of 8" or "Goal · 8 steps"
 - Clicking any proof step navigates directly to it
+- Clicking a proof section header switches the active proof (with step memory)
 
-### 8.9 Performance
+### 8.11 Smart Scroll-Into-View
+
+When a proof step becomes active, the scrollable container adjusts to show the step fully:
+
+- If the step fits in the viewport, scroll so the entire step is visible (prioritizing the bottom edge)
+- If the step is taller than the viewport, align the top edge
+
+### 8.12 Performance
 
 Stepping through proof steps must be **instantaneous** — no perceptible delay. Key principles:
 
-- **Pre-render all steps** on proof load. KaTeX rendering happens once when the proof is loaded, not on each navigation. All step HTML is cached in memory.
-- **Show/hide, don't rebuild**. Navigation toggles visibility and CSS classes on pre-rendered DOM nodes. No innerHTML replacement on step change.
-- **Highlight animations are CSS-only**. Adding/removing `.active` class triggers CSS transitions — no JS animation loops.
-- **Scroll position is computed, not searched**. Each step's DOM offset is known from the pre-render pass; scrolling to a step is a single `scrollTo()` call.
-- **Scene sync is async**. If a proof step triggers `navigateTo()` for scene sync, the proof panel updates immediately and the 3D scene catches up — the proof never waits for the scene.
+- **Pre-render all steps** on proof load. KaTeX rendering happens once when the proof is loaded, not on each navigation. All step HTML is cached in `_proofPreRenderedAll` keyed by proof id.
+- **Clone and configure**. Navigation clones pre-rendered nodes, toggles CSS classes, and re-injects event listeners. No full innerHTML replacement on step change.
+- **Highlight animations are CSS-only**. Adding/removing `.hl-active` class triggers CSS transitions — no JS animation loops.
+- **Build once, toggle visibility**. The proof section list is built once per scene change. Step navigation only updates CSS visibility — no DOM rebuild.
+- **Scene sync is guarded**. If a proof step triggers `navigateTo()` for scene sync, a `_proofSyncInProgress` flag prevents re-entry. The proof panel updates immediately.
 
 ---
 
@@ -478,3 +522,5 @@ Deferred from initial implementation:
 - **Proof templates** — reusable patterns (induction, contradiction) with fill-in-the-blank
 - **Cross-proof references** — linking between proofs across scenes
 - **Annotation lines** — visual arrows/labels drawn over highlighted regions (beyond tooltips)
+- **Persistent step memory** — save per-proof step positions to localStorage
+
