@@ -356,12 +356,14 @@ Each button pre-fills a chat message with the proof and step `prompt` context al
 ### 7.3 Tool: `navigate_proof`
 
 ```
-navigate_proof(proof_id: string, step: int, reason?: string)
+navigate_proof(step: int, reason?: string)
 ```
 
 - `step = 0` → show goal overview
 - `step = 1..N` → navigate to proof step (1-based for agent ergonomics)
-- `proof_id` → which proof to navigate (required when multiple proofs exist)
+- `reason` → brief explanation of why navigating (used for narration)
+
+Navigates within the **currently active proof**. A `proof_id` parameter to switch between proofs is planned but not yet implemented.
 
 ### 7.4 Capabilities
 
