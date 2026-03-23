@@ -47,7 +47,7 @@ docs/              Architecture, sandbox model, feature ideas
 - **PR workflow** — the standard flow is: create branch → commit → push → create PR → **stop and wait for the user to review**. Never merge a PR unless the user explicitly asks (e.g., "merge it", "ok merge"). Creating a PR without a review step defeats its purpose.
 - **Codex PR descriptions** — when Codex creates or updates a PR, replace any commit-list placeholder body with a concise writeup using `## Summary` and `## Testing` sections. Summaries should describe the user-visible behavior and key implementation points, not just restate commit subjects.
 - **Closing issues** — if a PR resolves a GitHub issue, include `Closes #<number>` in the PR body so GitHub auto-closes the issue on merge.
-- **PR labels** — always apply at least one label when creating a PR. Run `gh label list` to see available labels and pick the most appropriate one(s).
+- **PR labels** — always apply at least one label when creating a PR. If you notice existing unlabeled PRs, label them too. Run `gh label list` to see available labels and pick the most appropriate one(s).
 - **Merging PRs** — only merge when the user explicitly asks. Use `gh pr merge --merge`. If it fails due to branch protection, retry with `--admin` (available to repo admins only).
 
 ## Scene Format
@@ -58,7 +58,7 @@ For building scenes interactively, use the **`algebench-scene-builder`** skill f
 
 ## GitHub Issues
 
-When creating a GitHub issue, always apply a label. Run `gh label list` to see available labels and pick the most appropriate one. Common choices:
+When creating a GitHub issue, always apply a label. If you notice existing unlabeled issues, label them too. Run `gh label list` to see available labels and pick the most appropriate one. Common choices:
 
 - `enhancement` — new feature or improvement request
 - `bug` — something broken or incorrect
