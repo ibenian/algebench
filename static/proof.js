@@ -321,9 +321,23 @@ export function syncProofFromSceneStep(stepIdx) {
     const proof = _activeProof();
     if (!proof || !proof.steps) return;
 
-    const matchIdx = proof.steps.findIndex(s =>
-        s.scene_step != null && Number(s.scene_step) === stepIdx
-    );
+    const matchIdx = proof.steps.findIndex(s => {
+        if (s.scene_step == null) return false;
+        const sceneStep = s.scene_step;
+
+        // Support "sceneIdx:stepIdx" string format as well as plain numeric indices
+        if (typeof sceneStep === 'string' && sceneStep.includes(':')) {
+            const [siStr, stiStr] = sceneStep.split(':');
+            const si = Number(siStr);
+            const sti = Number(stiStr);
+            if (Number.isNaN(si) || Number.isNaN(sti)) return false;
+            return si === state.currentSceneIndex && sti === stepIdx;
+        }
+
+        const n = Number(sceneStep);
+        if (Number.isNaN(n)) return false;
+        return n === stepIdx;
+    });
     if (matchIdx >= 0 && matchIdx !== state.proofStepIndex) {
         state._proofSyncInProgress = true;
         try {
