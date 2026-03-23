@@ -265,6 +265,13 @@ export function navigateProof(index) {
     index = Math.max(-1, Math.min(index, steps.length - 1));
     state.proofStepIndex = index;
 
+    // Ensure proof panel is expanded and active section is visible
+    if (!state.proofExpanded) _toggleProofPanel(true);
+    const activeSection = document.querySelector(`.proof-section[data-proof-idx="${state.proofActiveIndex}"]`);
+    if (activeSection && activeSection.classList.contains('collapsed')) {
+        activeSection.classList.remove('collapsed');
+    }
+
     // Save to per-proof memory so switching away and back preserves position
     _saveProofStepToMemory();
 
