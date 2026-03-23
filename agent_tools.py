@@ -455,7 +455,7 @@ def build_system_prompt(context, agent_memory=None):
     if total_steps > 0 and step_num >= 1 and step_num <= total_steps:
         step = scene['steps'][step_num - 1]
         if step.get('prompt'):
-            parts.append(f"\n## Active Proof Step Instructions\n{step['prompt']}")
+            parts.append(f"\n## Active Scene Step Instructions\n{step['prompt']}")
 
     # Proof context — only include when the proof panel is expanded
     proof_ctx = runtime.get('proof')
