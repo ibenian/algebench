@@ -605,6 +605,9 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
         // Save step memory for outgoing proof
         _saveProofStepToMemory();
 
+        // Capture previous active proof id before overwriting state
+        const prevProofId = state.proofSpec?.[state.proofActiveIndex]?.proof?.id;
+
         state.proofAllSpecs = allProofs;
         state.proofSpec = allProofs;
         state._proofLastScene = sceneIndex;
@@ -615,7 +618,6 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
         allProofs.forEach((entry, i) => _getOrPreRender(entry, i));
 
         // Try to keep the same active proof if it's still in context
-        const prevProofId = state.proofSpec?.[state.proofActiveIndex]?.proof?.id;
         let newActiveIndex = -1;
         if (prevProofId) {
             const match = allProofs.findIndex(e =>
