@@ -170,10 +170,12 @@ Proofs build on each other. Add a `ref` field:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `proof_id` | string | ID of the referenced proof |
+| `proof_id` | string | ID of the referenced proof or definition (required unless `external` is present) |
 | `step_id` | string? | Specific step within that proof (optional) |
 | `label` | string | Display label (e.g., "Theorem 4.1") |
-| `external` | string? | URL or book reference for external results |
+| `external` | string? | URL or reference for results outside this proof system (required when `proof_id` is omitted) |
+
+**Invariants:** Internal references must include `proof_id` (and may optionally include `step_id`). Purely external references may omit `proof_id` but must set `external`. If both are present, `proof_id` / `step_id` is the primary navigation target and `external` is supplementary.
 
 The UI renders references as clickable links that can open the referenced proof in a popover or navigate to it.
 
@@ -475,10 +477,10 @@ All new fields are optional additions to the existing proof object.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `proof_id` | string? | ID of the referenced proof or definition |
+| `proof_id` | string | ID of the referenced proof or definition (required unless `external` is present) |
 | `step_id` | string? | Specific step within that proof (optional) |
 | `label` | string | Display label (e.g. "Theorem 4.1") |
-| `external` | string? | Optional external URL or reference |
+| `external` | string? | URL or reference for external results (required when `proof_id` is omitted) |
 
 ---
 
