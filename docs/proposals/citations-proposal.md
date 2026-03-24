@@ -93,6 +93,7 @@ Any scene, step, proof, or proof step can include a `cite` array. Each entry ref
 
 ```json
 {
+  "id": "intro-proofs",
   "type": "book",
   "title": "Introduction to Mathematical Proofs",
   "author": "J. Smith",
@@ -101,6 +102,8 @@ Any scene, step, proof, or proof step can include a `cite` array. Each entry ref
   "page": 142
 }
 ```
+
+The resolved citation retains the `id` for traceability.
 
 The same source can be cited from different locations with different chapter/page overrides — no duplication of the base citation data.
 
@@ -135,7 +138,7 @@ The `cite` array can appear on:
 | `journal` | string | no | Journal name (papers) |
 | `year` | number | no | Publication year (papers) |
 | `doi` | string | no | Digital Object Identifier (papers) |
-| `url` | string | no | Web URL (urls, lectures) |
+| `url` | string | conditional | Web URL; **required** when `type` is `"url"` or `"lecture"`, optional otherwise |
 
 ### Cite Reference Object (point-of-use `cite` arrays)
 

@@ -129,7 +129,7 @@ Mathematical proofs constantly introduce, discharge, and reference assumptions. 
   "type": "assumption",
   "label": "Assume for contradiction",
   "math": "\\text{Suppose } \\sqrt{2} = \\frac{a}{b} \\text{ where } \\gcd(a,b) = 1",
-  "scope": "until:contradiction-found",
+  "scope": "until:contradiction",
   "status": "active"
 }
 ```
@@ -150,7 +150,7 @@ The `scope` field tells the UI when the assumption is active:
 
 ### 2.4 Cross-Proof References
 
-Proofs build on each other. Add a `references` field:
+Proofs build on each other. Add a `ref` field:
 
 ```json
 {
@@ -160,7 +160,6 @@ Proofs build on each other. Add a `references` field:
   "math": "a^2 = 2b^2 \\implies 2 \\mid a",
   "ref": {
     "proof_id": "fundamental-theorem-arithmetic",
-    "step_id": null,
     "label": "FTA (Theorem 10.1)"
   },
   "explanation": "Every integer > 1 has a unique prime factorization."
@@ -398,7 +397,7 @@ Proofs are built on precise definitions. Definitions deserve their own first-cla
 }
 ```
 
-Definitions can appear as proof steps (type `"definition"`) or as standalone objects in a `definitions` array at the scene/file level. Proofs reference them via `ref.proof_id`.
+Definitions can appear as proof steps (type `"definition"`) or as standalone objects in a `definitions` array at the scene/file level. Proofs reference them via `ref` objects — use the definition's `id` as the `proof_id` value.
 
 ### 2.11 Citations
 
@@ -476,10 +475,10 @@ All new fields are optional additions to the existing proof object.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `proof_id` | string | ID of the referenced proof |
-| `step_id` | string | Specific step within that proof (optional) |
+| `proof_id` | string? | ID of the referenced proof or definition |
+| `step_id` | string? | Specific step within that proof (optional) |
 | `label` | string | Display label (e.g. "Theorem 4.1") |
-| `external` | string | URL or external reference |
+| `external` | string? | Optional external URL or reference |
 
 ---
 
