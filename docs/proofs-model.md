@@ -7,6 +7,8 @@
 - [architecture.md](architecture.md) — Overall project architecture
 - [sandbox-model.md](sandbox-model.md) — Expression evaluation and trust model
 - [../CONTRIBUTING.md](../CONTRIBUTING.md) — Scene format reference
+- [proposals/proof-structure-v2-proposal.md](proposals/proof-structure-v2-proposal.md) — v2 proposal: branching, proof techniques, assumptions, cross-references
+- [proposals/citations-proposal.md](proposals/citations-proposal.md) — Citations system: file-level source definitions with per-use overrides
 
 ---
 
@@ -517,12 +519,18 @@ Stepping through proof steps must be **instantaneous** — no perceptible delay.
 
 ## 9. Future Extensions
 
-Deferred from initial implementation:
+Deferred from initial implementation. See the [Proof Structure v2 Proposal](proposals/proof-structure-v2-proposal.md) for detailed designs covering these and more:
 
-- **Branching proofs** — `branch` field for alternate paths (proof by contradiction vs. direct proof)
+- **Branching proofs** — `branches` field for case analysis, biconditional, induction (v2 §2.2)
+- **Proof technique metadata** — `technique` field classifying the proof strategy (v2 §2.1)
+- **Assumption tracking** — `assumption`, `contradiction`, `recall` step types with scoping (v2 §2.3)
+- **Cross-proof references** — `ref` links between proofs and to external results (v2 §2.4)
+- **Logical structure annotations** — `logical_form` metadata for quantifiers and connectives (v2 §2.5)
+- **Disproof & counterexamples** — `counterexample` step type and technique (v2 §2.6)
+- **Induction templates** — first-class `induction` metadata with base/step structure (v2 §2.7)
+- **Proof skeletons** — `is_template` + `placeholder` steps for guided proof writing (v2 §2.8)
+- **Difficulty & prerequisites** — learning path sequencing metadata (v2 §2.9)
 - **Student-constructed proofs** — editable steps validated by the agent
-- **Proof templates** — reusable patterns (induction, contradiction) with fill-in-the-blank
-- **Cross-proof references** — linking between proofs across scenes
 - **Annotation lines** — visual arrows/labels drawn over highlighted regions (beyond tooltips)
 - **Persistent step memory** — save per-proof step positions to localStorage
 
