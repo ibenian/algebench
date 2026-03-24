@@ -1267,6 +1267,16 @@ Examples:
 
     args = parser.parse_args()
 
+    # Warn if buffered-only flags are used without --tts-buffered
+    if not args.tts_buffered:
+        buffered_only = ['--tts-parallelism', '--tts-min-buffer',
+                         '--tts-min-sentence-chars', '--tts-min-sentence-chars-growth',
+                         '--tts-chunk-timeout', '--tts-max-retries', '--tts-retry-delay']
+        used = [f for f in buffered_only if f in sys.argv]
+        if used:
+            print(f"⚠️  Warning: {', '.join(used)} only apply in buffered mode (--tts-buffered). "
+                  f"Ignoring in realtime mode.", file=sys.stderr)
+
     if not args.json:
         print(f"Checking port {args.port}...")
     kill_server_on_port(args.port)
