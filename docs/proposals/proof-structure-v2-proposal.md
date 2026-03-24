@@ -93,16 +93,16 @@ The current model is a flat `steps[]` array. Real proofs branch. Add a `branches
   "branches": [
     {
       "label": "Case 1: n is even",
-      "assumption": "n = 2k \\text{ for some } k \\in \\mathbb{Z}",
       "steps": [
+        { "id": "case1-assume", "type": "assumption", "label": "Assume n is even", "math": "n = 2k \\text{ for some } k \\in \\mathbb{Z}", "scope": "branch" },
         { "id": "case1-s1", "type": "step", "label": "...", "math": "..." },
         { "id": "case1-qed", "type": "conclusion", "label": "...", "math": "..." }
       ]
     },
     {
       "label": "Case 2: n is odd",
-      "assumption": "n = 2k + 1 \\text{ for some } k \\in \\mathbb{Z}",
       "steps": [
+        { "id": "case2-assume", "type": "assumption", "label": "Assume n is odd", "math": "n = 2k + 1 \\text{ for some } k \\in \\mathbb{Z}", "scope": "branch" },
         { "id": "case2-s1", "type": "step", "label": "...", "math": "..." },
         { "id": "case2-qed", "type": "conclusion", "label": "...", "math": "..." }
       ]
@@ -443,7 +443,7 @@ All new fields are optional additions to the existing proof object.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `branches` | object[] | Sub-branches for case analysis, induction, etc. Each has `label`, optional `assumption`, and `steps` array |
+| `branches` | object[] | Sub-branches for case analysis, induction, etc. Each has `label` and `steps` array (use an `assumption` step as the first step to introduce the branch hypothesis) |
 | `ref` | object | Reference to another proof (`proof_id`, `step_id`, `label`, `external`) |
 | `scope` | string | When an assumption is active: `"until:step-id"`, `"global"`, or `"branch"` |
 | `placeholder` | boolean | Marks a template step for students to fill in |
@@ -661,7 +661,6 @@ The renderer checks for new fields and enhances display when present.
         },
         {
           "label": "Inductive Step: P(k) → P(k+1)",
-          "assumption": "P(k): 1 + 2 + \\cdots + k = \\frac{k(k+1)}{2}",
           "steps": [
             {
               "id": "ih",
