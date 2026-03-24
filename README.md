@@ -85,13 +85,15 @@ AlgeBench supports three TTS configurations, each with different trade-offs:
 | `--tts-parallelism` | 3 | Max concurrent sentence synthesis (1–4) |
 | `--tts-min-buffer` | 30.0 | Seconds of audio to buffer before playback |
 | `--tts-min-sentence-chars` | 100 | Merge short sentences up to this char count |
+| `--tts-output-file out.wav` | — | Save audio to WAV file (auto-enables buffered mode) |
 
 **Common options** (all modes):
 
 | Flag | Description |
 |------|-------------|
 | `--tts-style "..."` | Additional style guidance (e.g. "speak slowly") |
-| `--tts-output-file out.wav` | Save audio to WAV file |
+
+`--no-tts-live` and `--tts-output-file` automatically enable buffered mode when used without `--tts-buffered`.
 
 ---
 
