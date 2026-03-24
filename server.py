@@ -1228,8 +1228,8 @@ Examples:
   algebench --tts-retry-delay 2.0                Seconds between retries (default: library default)
   algebench --tts-style "speak slowly"           Additional style guidance for TTS
   algebench --tts-output-file out.wav            Save TTS audio to WAV file
-  algebench --tts-realtime                       Low-latency realtime TTS streaming
-  algebench -rt scene.json                       Launch scene with realtime TTS
+  algebench --tts-buffered                       Buffer sentences before playback (legacy TTS mode)
+  algebench -rt scene.json                       Launch scene (realtime TTS is default)
         '''
     )
     parser.add_argument('scene', nargs='?', help='Path to scene JSON file')
@@ -1260,10 +1260,37 @@ Examples:
     parser.add_argument('--tts-output-file', '--output-file', type=str, default=None,
                         dest='tts_output_file',
                         help='Save all TTS audio to this WAV file in addition to playing')
+    parser.add_argument('--tts-buffered', action='store_true', default=False,
+                        help='Buffer full sentences before playback instead of realtime streaming')
     parser.add_argument('--tts-realtime', '-rt', action='store_true', default=False,
-                        help='Use realtime Live API streaming for lowest latency TTS')
+                        help='(deprecated, no-op) Realtime streaming is now the default; this flag will be removed in a future release')
 
     args = parser.parse_args()
+
+    # Auto-enable buffered mode when flags require it
+    if not args.tts_buffered:
+        if not args.tts_live:
+            args.tts_buffered = True
+            print("ℹ️  --no-tts-live requires buffered mode; enabling --tts-buffered automatically.",
+                  file=sys.stderr)
+        elif args.tts_output_file:
+            args.tts_buffered = True
+            print("ℹ️  --tts-output-file requires buffered mode; enabling --tts-buffered automatically.",
+                  file=sys.stderr)
+
+    # Warn if buffered-only tuning flags are used without --tts-buffered
+    if not args.tts_buffered:
+        buffered_only = ['--tts-parallelism', '--tts-min-buffer',
+                         '--tts-min-sentence-chars', '--tts-min-sentence-chars-growth',
+                         '--tts-chunk-timeout', '--tts-max-retries', '--tts-retry-delay']
+        used = [
+            f
+            for f in buffered_only
+            if any(arg == f or arg.startswith(f + '=') for arg in sys.argv)
+        ]
+        if used:
+            print(f"⚠️  Warning: {', '.join(used)} only apply in buffered mode (--tts-buffered). "
+                  f"Ignoring in realtime mode.", file=sys.stderr)
 
     if not args.json:
         print(f"Checking port {args.port}...")
@@ -1295,7 +1322,7 @@ Examples:
         tts_style=args.tts_style,
         tts_live=args.tts_live,
         tts_output_file=args.tts_output_file,
-        tts_realtime=args.tts_realtime,
+        tts_realtime=not args.tts_buffered,
     )
 
 

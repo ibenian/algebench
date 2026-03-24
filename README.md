@@ -60,6 +60,41 @@ For all available CLI options including TTS settings:
 ./algebench --help
 ```
 
+### TTS Modes
+
+AlgeBench supports three TTS configurations, each with different trade-offs:
+
+| Flags | API | Quality | Latency | Cost | Best for |
+|-------|-----|---------|---------|------|----------|
+| *(default)* | Gemini Live streaming | Good | Low (~200ms) | Single API call | Interactive use, narration |
+| `--tts-buffered` | Gemini Live, falls back to Gemini TTS | Mixed | Varying (2–5s+) | Multiple parallel calls | Long-form, saving to file |
+| `--tts-buffered --no-tts-live` | Gemini TTS | High | Higher (3–10s+) | One call per sentence | Highest quality output |
+
+**Examples:**
+
+```bash
+./algebench                                    # realtime streaming (default)
+./algebench --tts-buffered                     # buffered with Live API + TTS fallback
+./algebench --tts-buffered --no-tts-live       # buffered with standard Gemini TTS only
+```
+
+**Buffered mode options** (only apply with `--tts-buffered`):
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--tts-parallelism` | 3 | Max concurrent sentence synthesis (1–4) |
+| `--tts-min-buffer` | 30.0 | Seconds of audio to buffer before playback |
+| `--tts-min-sentence-chars` | 100 | Merge short sentences up to this char count |
+| `--tts-output-file out.wav` | — | Save audio to WAV file (auto-enables buffered mode) |
+
+**Common options** (all modes):
+
+| Flag | Description |
+|------|-------------|
+| `--tts-style "..."` | Additional style guidance (e.g. "speak slowly") |
+
+`--no-tts-live` and `--tts-output-file` automatically enable buffered mode when used without `--tts-buffered`.
+
 ---
 
 ## Contributing
