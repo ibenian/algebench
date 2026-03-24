@@ -1228,7 +1228,7 @@ Examples:
   algebench --tts-retry-delay 2.0                Seconds between retries (default: library default)
   algebench --tts-style "speak slowly"           Additional style guidance for TTS
   algebench --tts-output-file out.wav            Save TTS audio to WAV file
-  algebench --tts-chunked                        Use legacy chunked WAV TTS mode
+  algebench --tts-buffered                       Buffer sentences before playback (legacy TTS mode)
   algebench -rt scene.json                       Launch scene (realtime TTS is default)
         '''
     )
@@ -1260,8 +1260,8 @@ Examples:
     parser.add_argument('--tts-output-file', '--output-file', type=str, default=None,
                         dest='tts_output_file',
                         help='Save all TTS audio to this WAV file in addition to playing')
-    parser.add_argument('--tts-chunked', action='store_true', default=False,
-                        help='Use chunked WAV TTS instead of realtime streaming (legacy mode)')
+    parser.add_argument('--tts-buffered', action='store_true', default=False,
+                        help='Buffer full sentences before playback instead of realtime streaming')
     parser.add_argument('--tts-realtime', '-rt', action='store_true', default=True,
                         help='(default) Use realtime Live API streaming for lowest latency TTS')
 
@@ -1297,7 +1297,7 @@ Examples:
         tts_style=args.tts_style,
         tts_live=args.tts_live,
         tts_output_file=args.tts_output_file,
-        tts_realtime=not args.tts_chunked,
+        tts_realtime=not args.tts_buffered,
     )
 
 
