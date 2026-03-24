@@ -62,22 +62,20 @@ For all available CLI options including TTS settings:
 
 ### TTS Modes
 
-AlgeBench uses the Gemini Live API for text-to-speech. There are two streaming modes:
+AlgeBench supports three TTS configurations, each with different trade-offs:
 
-| | Realtime (default) | Buffered (`--tts-buffered`) |
-|---|---|---|
-| **How it works** | Streams raw PCM audio as it's generated — playback starts almost immediately | Splits text into sentences, synthesizes each as a complete WAV chunk, buffers before playback |
-| **Latency** | ~200ms to first audio | 2–5s+ depending on sentence count and `--tts-min-buffer` |
-| **Cost** | Single API call per request | Multiple parallel API calls (one per sentence) |
-| **Quality** | Continuous, natural pacing | May have slight gaps between sentence chunks |
-| **Best for** | Interactive use, narration, real-time chat | Long-form synthesis, saving to file |
+| Flags | API | Quality | Latency | Cost | Best for |
+|-------|-----|---------|---------|------|----------|
+| *(default)* | Gemini Live streaming | Good | Low (~200ms) | Single API call | Interactive use, narration |
+| `--tts-buffered` | Gemini Live, falls back to Gemini TTS | Mixed | Varying (2–5s+) | Multiple parallel calls | Long-form, saving to file |
+| `--tts-buffered --no-tts-live` | Gemini TTS | High | Higher (3–10s+) | One call per sentence | Highest quality output |
 
 **Examples:**
 
 ```bash
-./algebench                          # realtime TTS (default)
-./algebench --tts-buffered           # buffered sentence mode
-./algebench -rt scene.json           # explicit realtime (same as default)
+./algebench                                    # realtime streaming (default)
+./algebench --tts-buffered                     # buffered with Live API + TTS fallback
+./algebench --tts-buffered --no-tts-live       # buffered with standard Gemini TTS only
 ```
 
 **Buffered mode options** (only apply with `--tts-buffered`):
@@ -88,13 +86,12 @@ AlgeBench uses the Gemini Live API for text-to-speech. There are two streaming m
 | `--tts-min-buffer` | 30.0 | Seconds of audio to buffer before playback |
 | `--tts-min-sentence-chars` | 100 | Merge short sentences up to this char count |
 
-**Common options** (both modes):
+**Common options** (all modes):
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--no-tts-live` | — | Fall back to standard (non-Live) Gemini TTS |
-| `--tts-style "..."` | — | Additional style guidance (e.g. "speak slowly") |
-| `--tts-output-file out.wav` | — | Save audio to WAV file |
+| Flag | Description |
+|------|-------------|
+| `--tts-style "..."` | Additional style guidance (e.g. "speak slowly") |
+| `--tts-output-file out.wav` | Save audio to WAV file |
 
 ---
 
