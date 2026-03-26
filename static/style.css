@@ -3133,16 +3133,19 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 #proof-resize-handle.hidden { display: none; }
 
 /* Highlight animations for KaTeX \htmlClass regions */
-[class^="hl-"] {
-    border-radius: 2px;
+[class*=" hl-"], [class^="hl-"] {
+    border-radius: 4px;
     transition: background-color 0.4s ease;
     position: relative;
     cursor: pointer;
+    display: inline-block;
+    padding: 4px 4px 6px;
+    margin: 0 -4px;
 }
-[class^="hl-"]:hover {
+[class*=" hl-"]:hover, [class^="hl-"]:hover {
     filter: brightness(1.4);
 }
-[class^="hl-"].hl-active {
+[class*=" hl-"].hl-active, [class^="hl-"].hl-active {
     --hl-r: 0; --hl-g: 200; --hl-b: 255;
     animation: hlPulse 0.6s ease-out;
 }
