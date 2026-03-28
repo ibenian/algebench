@@ -40,14 +40,21 @@ const proofTechniques = {
     uniqueness: 'Uniqueness Proof',
 };
 
+/** Sanitize a string for use as a CSS class name token. */
+function sanitizeClassName(s) {
+    if (typeof s !== 'string') return '';
+    return s.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
 /** Return an HTML badge string for a proof technique, or '' if none. */
 function techniqueBadgeHTML(proof) {
     const t = proof && proof.technique;
-    if (!t || t === 'derivation') return '';
-    const label = proofTechniques[t] || t.charAt(0).toUpperCase() + t.slice(1);
+    if (typeof t !== 'string' || !t || t === 'derivation') return '';
+    const safeClass = sanitizeClassName(t);
+    const label = proofTechniques[t] || escapeHtml(t.charAt(0).toUpperCase() + t.slice(1));
     const hint = proof.technique_hint;
     const titleAttr = hint ? ` title="${escapeHtml(hint)}"` : '';
-    return `<span class="proof-technique-badge technique-${t}"${titleAttr}>${escapeHtml(label)}</span>`;
+    return `<span class="proof-technique-badge technique-${safeClass}"${titleAttr}>${label}</span>`;
 }
 
 // ---- Helpers ----
