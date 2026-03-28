@@ -464,10 +464,12 @@ def build_system_prompt(context, agent_memory=None):
         step_count = proof_ctx.get('stepCount', 0)
         proof_step_idx = proof_ctx.get('currentStepIndex', -1)
 
-        # Active Proof — goal + guidance
+        # Active Proof — technique + goal + guidance
+        technique_str = f" ({proof_ctx['technique']})" if proof_ctx.get('technique') else ""
         goal_str = f"\n{proof_ctx['goal']}" if proof_ctx.get('goal') else ""
+        hint_str = f"\n\n*Technique hint:* {proof_ctx['techniqueHint']}" if proof_ctx.get('techniqueHint') else ""
         guidance_str = f"\n\n*Guidance:* {proof_ctx['proofPrompt']}" if proof_ctx.get('proofPrompt') else ""
-        parts.append(f"\n## Active Proof: {proof_title}{goal_str}{guidance_str}")
+        parts.append(f"\n## Active Proof: {proof_title}{technique_str}{goal_str}{hint_str}{guidance_str}")
 
         # Completed steps — compact
         prev_steps = proof_ctx.get('previousSteps')

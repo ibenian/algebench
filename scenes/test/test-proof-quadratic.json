@@ -132,6 +132,8 @@
       "proof": {
         "id": "quadratic-formula",
         "title": "Deriving the Quadratic Formula",
+        "technique": "direct",
+        "technique_hint": "This is a direct algebraic derivation — each step transforms the equation toward the closed-form solution by completing the square.",
         "goal": "Derive $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$ from $ax^2 + bx + c = 0$",
         "prompt": "Walk the student through completing the square. Emphasize why each algebraic move is valid. Connect to the parabola visualization when a scene_step link exists.",
         "steps": [
@@ -333,6 +335,7 @@
             {
               "id": "vieta-lemma",
               "title": "Vieta's Formulas (Lemma)",
+              "technique": "direct",
               "scene_step": 1,
               "goal": "Show that $x_1 + x_2 = -\\frac{b}{a}$ and $x_1 x_2 = \\frac{c}{a}$",
               "prompt": "This is a short lemma about Vieta's formulas. Connect the sum and product of roots to the sliders.",
@@ -451,6 +454,7 @@
           "proof": {
             "id": "root-span-zero",
             "title": "Root Span Collapses to Zero",
+            "technique": "direct",
             "scene_step": 2,
             "goal": "Show that when $\\Delta = 0$, the root span $|x_1 - x_2| = 0$",
             "prompt": "Connect the root span formula to the repeated root case.",
@@ -515,6 +519,7 @@
           "proof": {
             "id": "vertex-derivation",
             "title": "Vertex by Completing the Square",
+            "technique": "direct",
             "scene_step": 3,
             "goal": "Derive the vertex $(h, k) = \\left(-\\frac{b}{2a},\\; c - \\frac{b^2}{4a}\\right)$",
             "prompt": "Show how completing the square reveals the vertex form and why the parabola floats above (or below) the x-axis when Δ < 0.",
@@ -591,6 +596,8 @@
       "proof": {
         "id": "discriminant-proof",
         "title": "Why the Discriminant Classifies Roots",
+        "technique": "cases",
+        "technique_hint": "This proof analyses three cases based on the sign of the discriminant Δ = b² − 4ac, showing each case produces a different root configuration.",
         "scene_step": 0,
         "goal": "Prove that $\\Delta = b^2 - 4ac$ determines the nature of roots of $ax^2 + bx + c = 0$",
         "prompt": "Connect each case to the parabola visualization. Use sliders to show examples of each case.",

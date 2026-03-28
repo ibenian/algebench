@@ -67,17 +67,45 @@ const proofs = spec.proof == null ? []
 ### 3.1 Proof Object
 
 
-| Field        | Type             | Required | Description                                            |
-| ------------ | ---------------- | -------- | ------------------------------------------------------ |
-| `id`         | string           | yes      | Unique identifier for agent references and step memory |
-| `title`      | string           | yes      | Display name (shown in proof section header)           |
-| `goal`       | string           | yes      | What the proof aims to show (LaTeX)                    |
-| `prompt`     | string           | no       | Overall agent guidance for this proof                  |
-| `scene_step` | number or string | no       | Scene step to sync to when viewing the goal (index -1) |
-| `steps`      | array            | yes      | Ordered array of proof steps                           |
+| Field            | Type             | Required | Description                                            |
+| ---------------- | ---------------- | -------- | ------------------------------------------------------ |
+| `id`             | string           | yes      | Unique identifier for agent references and step memory |
+| `title`          | string           | yes      | Display name (shown in proof section header)           |
+| `technique`      | string           | no       | Proof technique key (see §3.2). Displayed as a badge in the header. Omit or use `"derivation"` for plain algebraic derivations (no badge shown) |
+| `technique_hint` | string           | no       | Human-readable hint about the proof strategy, available to the AI agent |
+| `goal`           | string           | yes      | What the proof aims to show (LaTeX)                    |
+| `prompt`         | string           | no       | Overall agent guidance for this proof                  |
+| `scene_step`     | number or string | no       | Scene step to sync to when viewing the goal (index -1) |
+| `steps`          | array            | yes      | Ordered array of proof steps                           |
 
 
-### 3.2 Proof Step
+### 3.2 Proof Techniques
+
+The `technique` field classifies the proof strategy. The UI displays a color-coded badge in the section header; the AI agent receives the technique and hint in its context.
+
+| Key                | Display Label               | Color   |
+| ------------------ | --------------------------- | ------- |
+| `direct`           | Direct Proof                | Purple  |
+| `contradiction`    | Proof by Contradiction      | Red     |
+| `contrapositive`   | Proof by Contrapositive     | Orange  |
+| `cases`            | Proof by Cases              | Amber   |
+| `induction`        | Mathematical Induction      | Green   |
+| `strongInduction`  | Strong Induction            | Green   |
+| `wellOrdering`     | Well-Ordering Principle     | Purple  |
+| `construction`     | Proof by Construction       | Blue    |
+| `nonConstructive`  | Non-constructive Proof      | Purple  |
+| `counterexample`   | Counterexample (Disproof)   | Red     |
+| `exhaustion`       | Proof by Exhaustion         | Purple  |
+| `equivalence`      | Proof by Equivalence (↔)    | Yellow  |
+| `invariant`        | Proof by Invariant          | Purple  |
+| `probabilistic`    | Probabilistic Method        | Purple  |
+| `existence`        | Existence Proof             | Purple  |
+| `uniqueness`       | Uniqueness Proof            | Purple  |
+
+Omitting `technique` or setting it to `"derivation"` suppresses the badge (backward-compatible default).
+
+
+### 3.3 Proof Step
 
 
 | Field           | Type             | Required | Description                                                                                      |
@@ -94,7 +122,7 @@ const proofs = spec.proof == null ? []
 | `tags`          | string[]         | no       | Semantic tags for styling and filtering                                                          |
 
 
-### 3.3 Step Types
+### 3.4 Step Types
 
 
 | Type         | Rendering                            | Use                                        |
@@ -522,7 +550,7 @@ Stepping through proof steps must be **instantaneous** — no perceptible delay.
 Deferred from initial implementation. See the [Proof Structure v2 Proposal](proposals/proof-structure-v2-proposal.md) for detailed designs covering these and more:
 
 - **Branching proofs** — `branches` field for case analysis, biconditional, induction (v2 §2.2)
-- **Proof technique metadata** — `technique` field classifying the proof strategy (v2 §2.1)
+- ~~**Proof technique metadata**~~ — ✅ implemented: `technique` + `technique_hint` fields with UI badge (v2 §2.1)
 - **Assumption tracking** — `assumption`, `contradiction`, `recall` step types with scoping (v2 §2.3)
 - **Cross-proof references** — `ref` links between proofs and to external results (v2 §2.4)
 - **Logical structure annotations** — `logical_form` metadata for quantifiers and connectives (v2 §2.5)
