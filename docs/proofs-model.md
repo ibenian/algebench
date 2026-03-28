@@ -71,7 +71,7 @@ const proofs = spec.proof == null ? []
 | ---------------- | ---------------- | -------- | ------------------------------------------------------ |
 | `id`             | string           | yes      | Unique identifier for agent references and step memory |
 | `title`          | string           | yes      | Display name (shown in proof section header)           |
-| `technique`      | string           | no       | Proof technique key (see §3.4). Displayed as a badge in the header. Omit or use `"derivation"` for plain algebraic derivations (no badge shown) |
+| `technique`      | string           | no       | Proof technique key (see §3.2). Displayed as a badge in the header. Omit or use `"derivation"` for plain algebraic derivations (no badge shown) |
 | `technique_hint` | string           | no       | Human-readable hint about the proof strategy, available to the AI agent |
 | `goal`           | string           | yes      | What the proof aims to show (LaTeX)                    |
 | `prompt`         | string           | no       | Overall agent guidance for this proof                  |
