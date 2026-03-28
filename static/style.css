@@ -2918,6 +2918,27 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 .proof-section.collapsed .proof-section-arrow { transform: rotate(-90deg); }
 .proof-section.collapsed .proof-section-body { display: none; }
 
+/* Proof technique badge */
+.proof-technique-badge {
+    font-size: 0.8em;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: rgba(100, 80, 160, 0.35);
+    color: rgba(180, 160, 240, 0.9);
+    white-space: nowrap;
+}
+.proof-technique-badge.technique-contradiction { background: rgba(160, 60, 60, 0.35); color: rgba(240, 150, 150, 0.9); }
+.proof-technique-badge.technique-induction,
+.proof-technique-badge.technique-strongInduction { background: rgba(50, 120, 80, 0.35); color: rgba(130, 220, 160, 0.9); }
+.proof-technique-badge.technique-cases { background: rgba(140, 100, 40, 0.35); color: rgba(230, 200, 130, 0.9); }
+.proof-technique-badge.technique-counterexample { background: rgba(160, 50, 50, 0.35); color: rgba(240, 130, 130, 0.9); }
+.proof-technique-badge.technique-contrapositive { background: rgba(140, 80, 50, 0.35); color: rgba(230, 170, 130, 0.9); }
+.proof-technique-badge.technique-construction { background: rgba(50, 100, 140, 0.35); color: rgba(130, 190, 230, 0.9); }
+.proof-technique-badge.technique-equivalence { background: rgba(100, 100, 50, 0.35); color: rgba(210, 210, 140, 0.9); }
+
 /* Proof step card */
 .proof-step {
     position: relative;

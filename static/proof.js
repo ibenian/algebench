@@ -6,6 +6,50 @@
 import { state } from '/state.js';
 import { renderKaTeX, renderMarkdown, makeAiAskButton, openChatPanel } from '/labels.js';
 
+// ---- Technique metadata ----
+
+const proofTechniques = {
+    // Core logical strategies
+    direct: 'Direct Proof',
+    contradiction: 'Proof by Contradiction',
+    contrapositive: 'Proof by Contrapositive',
+    cases: 'Proof by Cases',
+
+    // Inductive / structural
+    induction: 'Mathematical Induction',
+    strongInduction: 'Strong Induction',
+    wellOrdering: 'Well-Ordering Principle',
+
+    // Constructive vs non-constructive
+    construction: 'Proof by Construction',
+    nonConstructive: 'Non-constructive Proof',
+    counterexample: 'Counterexample (Disproof)',
+
+    // Exhaustive / brute-force
+    exhaustion: 'Proof by Exhaustion',
+
+    // Logical relationships
+    equivalence: 'Proof by Equivalence (↔)',
+
+    // Advanced / specialized
+    invariant: 'Proof by Invariant',
+    probabilistic: 'Probabilistic Method',
+
+    // Structural proof patterns
+    existence: 'Existence Proof',
+    uniqueness: 'Uniqueness Proof',
+};
+
+/** Return an HTML badge string for a proof technique, or '' if none. */
+function techniqueBadgeHTML(proof) {
+    const t = proof && proof.technique;
+    if (!t || t === 'derivation') return '';
+    const label = proofTechniques[t] || t.charAt(0).toUpperCase() + t.slice(1);
+    const hint = proof.technique_hint;
+    const titleAttr = hint ? ` title="${escapeHtml(hint)}"` : '';
+    return `<span class="proof-technique-badge technique-${t}"${titleAttr}>${escapeHtml(label)}</span>`;
+}
+
 // ---- Helpers ----
 
 /** Normalize a proof field (single object or array) into an array. */
@@ -713,9 +757,11 @@ function _buildContextTab(allProofs) {
         const proof = entry.proof;
         const title = proof.title || proof.goal || 'Untitled proof';
 
+        const badge = techniqueBadgeHTML(proof);
         section.innerHTML = `<div class="proof-section-header${isActive ? ' active' : ''}" data-proof-index="${i}">
             <span class="proof-section-arrow">&#9660;</span>
             <span class="proof-section-title">Proof: ${escapeHtml(title)}</span>
+            ${badge}
             <span class="proof-section-step-hint"></span>
         </div>`;
 
@@ -968,6 +1014,8 @@ export function getProofContext() {
 
     const ctx = {
         title: proof.title || null,
+        technique: proof.technique || null,
+        techniqueHint: proof.technique_hint || null,
         goal: proof.goal || null,
         stepCount: steps.length,
         currentStepIndex: idx,
