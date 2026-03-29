@@ -1072,14 +1072,21 @@ window.algebenchSpeakText = function(text, onEnd) {
 
     const startTime = Date.now();
     let hasStarted = false;
+    let sawNonIdle = false;
     const poll = setInterval(() => {
         if (ttsRequestId !== expectedId) {
             clearInterval(poll); onEnd(); return;
         }
         const p = _ensureTTSPlayer();
+        if (p && p._state !== 'idle') sawNonIdle = true;
         if (p && p.isPlaying()) hasStarted = true;
         // Only trigger onEnd after playback has actually started then stopped
         if (hasStarted && p && !p.isPlaying()) {
+            clearInterval(poll); onEnd(); return;
+        }
+        // Abort/error path: request became active, but the player returned to idle
+        // before any audio started, so the button should reset immediately.
+        if (!hasStarted && sawNonIdle && p && p._state === 'idle') {
             clearInterval(poll); onEnd(); return;
         }
         if (Date.now() - startTime > 60000) {
