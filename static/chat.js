@@ -657,25 +657,21 @@ function addChatMessage(role, content, toolCalls) {
         speakBtn.innerHTML = SVG_SPEAKER;
 
         const setBtnState = (state) => {
-            speakBtn.classList.remove('active', 'paused', 'loading', 'idle');
+            speakBtn.classList.remove('active', 'loading', 'idle');
             if (state) speakBtn.classList.add(state);
             else speakBtn.classList.add('idle');
-            msgDiv.classList.remove('tts-speaking', 'tts-loading', 'tts-paused');
+            msgDiv.classList.remove('tts-speaking', 'tts-loading');
             if (state === 'active') msgDiv.classList.add('tts-speaking');
             if (state === 'loading') msgDiv.classList.add('tts-loading');
-            if (state === 'paused') msgDiv.classList.add('tts-paused');
             if (state === 'loading') {
                 speakBtn.textContent = '...';
                 speakBtn.title = 'Loading audio (click to cancel)';
             } else if (state === 'active') {
                 speakBtn.innerHTML = SVG_SPEAKER;
-                speakBtn.title = 'Playing (click to pause, double-click to restart)';
-            } else if (state === 'paused') {
-                speakBtn.innerHTML = SVG_SPEAKER;
-                speakBtn.title = 'Paused (click to resume, double-click to restart)';
+                speakBtn.title = 'Playing (click to stop, double-click to restart)';
             } else {
                 speakBtn.innerHTML = SVG_SPEAKER;
-                speakBtn.title = 'Read aloud (click to play, double-click to restart)';
+                speakBtn.title = 'Read aloud (click to play)';
             }
         };
 

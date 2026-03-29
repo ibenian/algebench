@@ -13,6 +13,7 @@ import json
 import os
 import asyncio
 import webbrowser
+import builtins
 from pathlib import Path
 import threading
 import time
@@ -56,6 +57,18 @@ style_css_path  = static_dir / "style.css"
 # Cleared on server start; agents control what's stored via store_as param.
 # ---------------------------------------------------------------------------
 _agent_memory: dict = {}
+
+
+def print(*args, **kwargs):
+    """Best-effort logging: detached stdout/stderr should not break request handling."""
+    try:
+        return builtins.print(*args, **kwargs)
+    except BrokenPipeError:
+        return None
+    except OSError as e:
+        if getattr(e, "errno", None) == 32:
+            return None
+        raise
 
 
 def _memory_summary(key: str, value) -> str:
