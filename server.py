@@ -865,6 +865,16 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             print("⚠ voice-character-selector.js not found in gemini-live-tools package")
             return Response(status_code=404)
 
+    @fastapp.get("/gemini-live-tools/js/tts-audio-player.js")
+    async def get_tts_audio_player():
+        try:
+            js = _glt_static('tts-audio-player.js')
+            return Response(content=js.encode('utf-8'), media_type="application/javascript",
+                            headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+        except Exception:
+            print("⚠ tts-audio-player.js not found in gemini-live-tools package")
+            return Response(status_code=404)
+
     @fastapp.get("/style.css")
     async def get_style_css():
         with open(style_css_path, 'r') as f:

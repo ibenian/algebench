@@ -72,6 +72,18 @@ When creating a GitHub issue, always apply a label. Run `gh label list` to see a
 
 Apply the label as part of the create command or immediately after with `gh issue edit <n> --add-label "<label>"`.
 
+## Skills (Claude Code)
+
+Skills live in `.agents/skills/` (checked into the repo) and are symlinked from `.claude/skills/`. To add a new skill: create `.agents/skills/<name>/SKILL.md`, then `ln -s ../../.agents/skills/<name> .claude/skills/<name>`.
+
+| Skill | When to use |
+|---|---|
+| `algebench-release` | Tag a new release on main |
+| `algebench-scene-builder` | Build or edit scene JSON files interactively |
+| `audit-expressions` | Audit expression sandbox coverage before merging scene changes |
+| `update-glt` | Update gemini-live-tools — install from a PR branch, version tag, or latest release |
+| `version-bump` | Bump the version number |
+
 ## In-App Agent Tools
 
 See [`agent-tools-reference.md`](agent-tools-reference.md) for the full reference on tools available to the in-app Gemini agent (`add_scene`, `eval_math`, `set_sliders`, `navigate_to`, `set_camera`, `set_info_overlay`, `mem_get`/`mem_set`, `set_preset_prompts`).
