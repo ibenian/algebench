@@ -783,7 +783,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                    tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
                    tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
                    tts_max_retries=None, tts_retry_delay=None, tts_style=None,
-                   tts_live=True, tts_output_file=None, tts_realtime=False):
+                   tts_live=True, tts_output_file=None, tts_realtime=False,
+                   server_only=False):
     """Serve the AlgeBench viewer and optionally open in browser."""
     global DEBUG_MODE
     DEBUG_MODE = debug
@@ -1175,6 +1176,9 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         }
         print(json.dumps(result, indent=2))
         sys.stdout.flush()
+    elif server_only:
+        print(f"AlgeBench server running at {url}")
+        print(f"\nPress 'q' or Ctrl+C to stop the server")
     else:
         webbrowser.open(url)
         print(f"Opened AlgeBench in browser")
@@ -1274,6 +1278,8 @@ Examples:
                         help='Buffer full sentences before playback instead of realtime streaming')
     parser.add_argument('--tts-realtime', '-rt', action='store_true', default=False,
                         help='(deprecated, no-op) Realtime streaming is now the default; this flag will be removed in a future release')
+    parser.add_argument('--server-only', action='store_true', default=False,
+                        help='Start the server without opening a browser window')
 
     args = parser.parse_args()
 
@@ -1333,6 +1339,7 @@ Examples:
         tts_live=args.tts_live,
         tts_output_file=args.tts_output_file,
         tts_realtime=not args.tts_buffered,
+        server_only=args.server_only,
     )
 
 

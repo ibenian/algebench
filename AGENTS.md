@@ -85,6 +85,7 @@ Skills live in `.agents/skills/` (checked into the repo) and are symlinked from 
 | `algebench-release` | Tag a new release on main |
 | `algebench-scene-builder` | Build or edit scene JSON files interactively |
 | `audit-expressions` | Audit expression sandbox coverage before merging scene changes |
+| `debug-chrome` | Launch AlgeBench and debug the UI in Chrome |
 | `update-glt` | Update gemini-live-tools — install from a PR branch, version tag, or latest release |
 | `version-bump` | Bump the version number |
 
