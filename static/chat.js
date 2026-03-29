@@ -685,100 +685,68 @@ function addChatMessage(role, content, toolCalls) {
                 if (activeSpeakBtn._ttsLoadPoll) { clearInterval(activeSpeakBtn._ttsLoadPoll); activeSpeakBtn._ttsLoadPoll = null; }
                 if (activeSpeakBtn._ttsStatePoll) { clearInterval(activeSpeakBtn._ttsStatePoll); activeSpeakBtn._ttsStatePoll = null; }
                 if (typeof activeSpeakBtn._setBtnState === 'function') activeSpeakBtn._setBtnState(null);
-                if (activeSpeakBtn._chunkBar) activeSpeakBtn._chunkBar.style.display = 'none';
                 if (activeSpeakBtn._downloadBtn) activeSpeakBtn._downloadBtn.style.display = 'none';
                 activeSpeakBtn = null;
             }
         };
 
+        const stopAndReset = () => {
+            if (typeof window.algebenchStopTTS === 'function') window.algebenchStopTTS();
+            if (speakBtn._ttsStatePoll) { clearInterval(speakBtn._ttsStatePoll); speakBtn._ttsStatePoll = null; }
+            setBtnState(null);
+            if (activeSpeakBtn === speakBtn) activeSpeakBtn = null;
+        };
+
         const startPlay = () => {
             stopOtherBtn();
             if (typeof window.algebenchSpeakText !== 'function') return;
-            if (speakBtn._ttsLoadPoll) { clearInterval(speakBtn._ttsLoadPoll); speakBtn._ttsLoadPoll = null; }
             if (speakBtn._ttsStatePoll) { clearInterval(speakBtn._ttsStatePoll); speakBtn._ttsStatePoll = null; }
             setBtnState('loading');
             activeSpeakBtn = speakBtn;
             window.algebenchSpeakText(body.dataset.markdown || content, () => {
-                if (speakBtn._ttsLoadPoll) { clearInterval(speakBtn._ttsLoadPoll); speakBtn._ttsLoadPoll = null; }
                 if (speakBtn._ttsStatePoll) { clearInterval(speakBtn._ttsStatePoll); speakBtn._ttsStatePoll = null; }
                 setBtnState(null);
                 if (activeSpeakBtn === speakBtn) activeSpeakBtn = null;
             });
-            // Poll: transition loading → active once TTS fetch completes
-            speakBtn._ttsLoadPoll = setInterval(() => {
-                if (!speakBtn.classList.contains('loading') || activeSpeakBtn !== speakBtn) {
-                    clearInterval(speakBtn._ttsLoadPoll); speakBtn._ttsLoadPoll = null; return;
-                }
-                if (window.algebenchIsTTSLoading && !window.algebenchIsTTSLoading()) {
-                    setBtnState('active');
-                    clearInterval(speakBtn._ttsLoadPoll); speakBtn._ttsLoadPoll = null;
-                }
-            }, 80);
-            // Keep UI synced to real TTS state.
+            // Poll to keep button state synced with player state
             speakBtn._ttsStatePoll = setInterval(() => {
                 if (activeSpeakBtn !== speakBtn) {
                     clearInterval(speakBtn._ttsStatePoll); speakBtn._ttsStatePoll = null; return;
                 }
-                if (window.algebenchIsTTSLoading && window.algebenchIsTTSLoading()) {
+                const p = typeof _ensureTTSPlayer === 'function' ? _ensureTTSPlayer() : null;
+                if (!p) return;
+                const playerState = p._state; // 'idle' | 'loading' | 'playing'
+                if (playerState === 'loading') {
                     if (!speakBtn.classList.contains('loading')) setBtnState('loading');
-                    return;
-                }
-                if (window.algebenchIsTTSSpeaking && window.algebenchIsTTSSpeaking()) {
+                } else if (playerState === 'playing') {
                     if (!speakBtn.classList.contains('active')) setBtnState('active');
-                    return;
-                }
-                if (window.algebenchIsTTSPaused && window.algebenchIsTTSPaused()) {
-                    if (!speakBtn.classList.contains('paused')) setBtnState('paused');
-                    return;
                 }
             }, 80);
         };
         speakBtn._setBtnState = setBtnState;
         msgDiv._startSpeak = startPlay;
 
-        // Single click: play/pause/resume
+        // Single click: play or stop (toggle)
         speakBtn.addEventListener('click', () => {
             if (speakBtn._ignoreNextClick) {
                 speakBtn._ignoreNextClick = false;
                 return;
             }
-            if (speakBtn.classList.contains('loading')) {
-                if (typeof window.algebenchStopTTS === 'function') window.algebenchStopTTS();
-                if (speakBtn._ttsLoadPoll) { clearInterval(speakBtn._ttsLoadPoll); speakBtn._ttsLoadPoll = null; }
-                if (speakBtn._ttsStatePoll) { clearInterval(speakBtn._ttsStatePoll); speakBtn._ttsStatePoll = null; }
-                setBtnState(null);
-                if (activeSpeakBtn === speakBtn) activeSpeakBtn = null;
-                return;
-            }
-            if (activeSpeakBtn === speakBtn && ((window.algebenchIsTTSSpeaking && window.algebenchIsTTSSpeaking()) || speakBtn.classList.contains('active'))) {
-                if (typeof window.algebenchPauseTTS === 'function') window.algebenchPauseTTS();
-                setBtnState('paused');
-                return;
-            }
-            if (activeSpeakBtn === speakBtn && ((window.algebenchIsTTSPaused && window.algebenchIsTTSPaused()) || speakBtn.classList.contains('paused'))) {
-                if (typeof window.algebenchResumeTTS === 'function') window.algebenchResumeTTS();
-                setBtnState('active');
+            // If currently active (loading or playing), stop
+            if (activeSpeakBtn === speakBtn) {
+                stopAndReset();
                 return;
             }
             startPlay();
         });
 
-        // Double click: restart from beginning.
+        // Double click: restart from beginning
         speakBtn.addEventListener('dblclick', (e) => {
             e.preventDefault();
             speakBtn._ignoreNextClick = true;
-            if (typeof window.algebenchStopTTS === 'function') window.algebenchStopTTS();
-            if (speakBtn._ttsLoadPoll) { clearInterval(speakBtn._ttsLoadPoll); speakBtn._ttsLoadPoll = null; }
-            if (speakBtn._ttsStatePoll) { clearInterval(speakBtn._ttsStatePoll); speakBtn._ttsStatePoll = null; }
-            setBtnState(null);
-            if (activeSpeakBtn === speakBtn) activeSpeakBtn = null;
+            stopAndReset();
             startPlay();
         });
-        // Chunk progress bar (hidden until TTS starts)
-        const chunkBar = document.createElement('div');
-        chunkBar.className = 'tts-chunk-bar';
-        chunkBar.style.display = 'none';
-        speakBtn._chunkBar = chunkBar;
         const downloadBtn = document.createElement('a');
         downloadBtn.className = 'tts-download-btn';
         downloadBtn.href = '/api/tts/download';
@@ -791,7 +759,6 @@ function addChatMessage(role, content, toolCalls) {
         const speakCol = document.createElement('div');
         speakCol.className = 'tts-speak-col';
         speakCol.appendChild(speakBtn);
-        speakCol.appendChild(chunkBar);
         speakCol.appendChild(downloadBtn);
         msgDiv.appendChild(speakCol);
     }
@@ -1012,163 +979,86 @@ function renderToolCallChip(tc) {
     return chip;
 }
 
-// ----- TTS Playback (streaming Web Audio API) -----
+// ----- TTS Playback (via TTSAudioPlayer from gemini-live-tools) -----
+const _SVG_UNMUTED = '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1.3L4.63 4H2.5A1.5 1.5 0 001 5.5v5A1.5 1.5 0 002.5 12h2.13L8 14.7V1.3zm3.74 2.04a4.5 4.5 0 010 9.32l-.55-.96a3.5 3.5 0 000-7.4l.55-.96zm-.93 2.17a2.5 2.5 0 010 4.98l-.55-.96a1.5 1.5 0 000-3.06l.55-.96z"/></svg>';
+const _SVG_MUTED = '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1.3L4.63 4H2.5A1.5 1.5 0 001 5.5v5A1.5 1.5 0 002.5 12h2.13L8 14.7V1.3zm3 4.2l1.5 1.5L14 5.5l.7.7L13.2 7.7l1.5 1.5-.7.7L12.5 8.4 11 9.9l-.7-.7 1.5-1.5L10.3 6.2l.7-.7z"/></svg>';
 let ttsRequestId = 0;         // Monotonic counter — invalidates stale streams on new request
-let ttsLoading = false;        // true while fetch is open but no audio scheduled yet
 let ttsPausedByUser = false;
-let ttsAbortController = null; // AbortController for the active fetch stream
-let ttsActiveSources = [];     // AudioBufferSourceNodes currently scheduled/playing
-let ttsPrevSources = [];       // Sources from previous TTS kept playing until new audio starts
-let ttsScheduleEndTime = 0;    // ctx.currentTime when the last scheduled buffer ends
-let ttsStreamDone = false;     // true once all chunks have been received and scheduled
-let ttsAudioContext = null;    // Shared AudioContext (also used for video-export recording)
-let ttsMediaDestination = null;
+let ttsPlayer = null;         // TTSAudioPlayer instance (lazy-init)
+let ttsHasOutputFile = false;
 
-// ----- TTS Chunk Progress Tracking -----
-let ttsChunkTotal = 0;      // Total chunks expected (from X-TTS-Chunk-Count header)
-let ttsChunksReceived = 0;  // Chunks decoded and scheduled
-let ttsChunksPlayed = 0;    // Chunks that have finished playing
-let ttsHasOutputFile = false; // Server is saving audio to file (X-TTS-Has-Output-File header)
-let _ttsRafId = null;       // requestAnimationFrame handle for pip UI loop
-
-function _ttsResetChunkTracking(total) {
-    ttsChunkTotal = total;
-    ttsChunksReceived = 0;
-    ttsChunksPlayed = 0;
-    _ttsStartChunkRaf();
-}
-
-function _ttsStartChunkRaf() {
-    if (_ttsRafId !== null) return; // already running
-    function loop() {
-        _ttsUpdateChunkUI();
-        if (ttsChunkTotal > 0) {
-            _ttsRafId = requestAnimationFrame(loop);
-        } else {
-            _ttsRafId = null;
+function _ensureTTSPlayer() {
+    if (!ttsPlayer && window.GeminiTTSPlayer) {
+        ttsPlayer = new window.GeminiTTSPlayer.TTSAudioPlayer({
+            volume: 0.5,
+            persistKey: 'algebenchTTS',
+            onVolumeChange(vol, muted) {
+                const slider = document.getElementById('ttsVolumeSlider');
+                const icon = document.getElementById('ttsVolumeIcon');
+                if (slider) slider.value = muted ? 0 : vol;
+                if (icon) icon.innerHTML = muted ? _SVG_MUTED : _SVG_UNMUTED;
+            },
+        });
+        // Sync slider/icon to persisted volume on init
+        const slider = document.getElementById('ttsVolumeSlider');
+        const icon = document.getElementById('ttsVolumeIcon');
+        if (slider) {
+            slider.value = ttsPlayer.isMuted() ? 0 : ttsPlayer.getVolume();
+            slider.addEventListener('input', () => ttsPlayer.setVolume(parseFloat(slider.value)));
+        }
+        if (icon) {
+            icon.innerHTML = ttsPlayer.isMuted() ? _SVG_MUTED : _SVG_UNMUTED;
+            icon.addEventListener('click', () => ttsPlayer.toggleMute());
         }
     }
-    _ttsRafId = requestAnimationFrame(loop);
-}
-
-function _ttsStopChunkRaf() {
-    if (_ttsRafId !== null) {
-        cancelAnimationFrame(_ttsRafId);
-        _ttsRafId = null;
-    }
-}
-
-function _ttsUpdateChunkUI() {
-    if (!activeSpeakBtn) return;
-    const bar = activeSpeakBtn._chunkBar;
-    if (!bar) return;
-    const n = ttsChunkTotal;
-    if (n === 0) { bar.style.display = 'none'; return; }
-    bar.style.display = 'flex';
-    // Rebuild pips if count changed
-    if (bar.children.length !== n) {
-        bar.innerHTML = '';
-        for (let i = 0; i < n; i++) {
-            const pip = document.createElement('span');
-            pip.className = 'tts-pip';
-            bar.appendChild(pip);
-        }
-    }
-    const pips = bar.children;
-    for (let i = 0; i < n; i++) {
-        const pip = pips[i];
-        let state;
-        if (i < ttsChunksPlayed) {
-            state = 'done';
-        } else if (i === ttsChunksPlayed && ttsChunksReceived > ttsChunksPlayed) {
-            state = 'playing';
-        } else if (i < ttsChunksReceived) {
-            state = 'buffered';
-        } else {
-            state = 'pending';
-        }
-        if (pip.dataset.state !== state) pip.dataset.state = state;
-    }
-}
-
-// Lazy-init the shared AudioContext and recording destination.
-function ensureTTSRecordingBus() {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return null;
-    if (!ttsAudioContext) ttsAudioContext = new Ctx();
-    if (!ttsMediaDestination) ttsMediaDestination = ttsAudioContext.createMediaStreamDestination();
-    return { ctx: ttsAudioContext, dest: ttsMediaDestination };
+    return ttsPlayer;
 }
 
 window.algebenchGetTTSAudioStream = function() {
-    const bus = ensureTTSRecordingBus();
-    if (!bus) return null;
-    if (bus.ctx.state === 'suspended') bus.ctx.resume().catch(() => {});
-    return bus.dest.stream;
+    const p = _ensureTTSPlayer();
+    return p ? p.getMediaStream() : null;
 };
 
-// ---- State queries (same public API as before) ----
+// ---- State queries ----
 
 window.algebenchIsTTSSpeaking = function() {
-    if (ttsLoading || ttsPausedByUser) return false;
-    if (!ttsAudioContext) return false;
-    // Playing if the context is running and there are scheduled or active sources
-    return ttsAudioContext.state === 'running' &&
-           (ttsActiveSources.length > 0 || ttsScheduleEndTime > ttsAudioContext.currentTime);
+    if (ttsPausedByUser) return false;
+    const p = _ensureTTSPlayer();
+    return p ? p._state === 'playing' : false;
 };
 
 window.algebenchIsTTSPaused = function() {
     return ttsPausedByUser;
 };
 
-window.algebenchIsTTSLoading = function() { return ttsLoading; };
+window.algebenchIsTTSLoading = function() {
+    const p = _ensureTTSPlayer();
+    return p ? p._state === 'loading' : false;
+};
 
 // ---- Controls ----
 
 window.algebenchPauseTTS = function() {
-    if (!ttsAudioContext) return;
+    const p = _ensureTTSPlayer();
+    if (!p || !p._ctx) return;
     ttsPausedByUser = true;
-    ttsAudioContext.suspend().catch(() => {});
+    p._ctx.suspend().catch(() => {});
 };
 
 window.algebenchResumeTTS = function() {
-    if (!ttsAudioContext) return;
+    const p = _ensureTTSPlayer();
+    if (!p || !p._ctx) return;
     ttsPausedByUser = false;
-    ttsAudioContext.resume().catch(() => {});
+    p._ctx.resume().catch(() => {});
 };
 
 window.algebenchStopTTS = function() {
-    ++ttsRequestId;  // invalidate any in-flight stream
-    _ttsStopActiveAudio();
-};
-
-function _ttsStopActiveAudio() {
-    if (ttsAbortController) {
-        ttsAbortController.abort();
-        ttsAbortController = null;
-    }
-    for (const src of [...ttsPrevSources, ...ttsActiveSources]) {
-        try { src.stop(); } catch (_) {}
-    }
-    ttsPrevSources = [];
-    ttsActiveSources = [];
-    ttsScheduleEndTime = 0;
-    ttsStreamDone = false;
-    ttsLoading = false;
+    ++ttsRequestId;
     ttsPausedByUser = false;
-    ttsChunkTotal = 0;
-    ttsChunksReceived = 0;
-    ttsChunksPlayed = 0;
     ttsHasOutputFile = false;
-    _ttsStopChunkRaf();
-    if (activeSpeakBtn && activeSpeakBtn._chunkBar) {
-        activeSpeakBtn._chunkBar.style.display = 'none';
-    }
-    // Resume the AudioContext so it's ready for the next request
-    if (ttsAudioContext && ttsAudioContext.state === 'suspended') {
-        ttsAudioContext.resume().catch(() => {});
-    }
-}
+    const p = _ensureTTSPlayer();
+    if (p) p.stop();
+};
 
 // ---- algebenchSpeakText with completion callback ----
 
@@ -1183,55 +1073,15 @@ window.algebenchSpeakText = function(text, onEnd) {
         if (ttsRequestId !== expectedId) {
             clearInterval(poll); onEnd(); return;
         }
-        // Done: stream finished and all scheduled audio has played out
-        if (!ttsLoading && ttsStreamDone && ttsActiveSources.length === 0) {
+        const p = _ensureTTSPlayer();
+        if (p && !p.isPlaying()) {
             clearInterval(poll); onEnd(); return;
         }
-        // Timeout fallback (e.g. TTS unavailable)
         if (Date.now() - startTime > 60000) {
             clearInterval(poll); onEnd();
         }
     }, 80);
 };
-
-// ---- WAV chunk parser ----
-// The server yields self-contained WAV files. The fetch reader delivers raw bytes
-// that may span chunk boundaries, so we accumulate and split on RIFF headers.
-
-class _WavStreamParser {
-    constructor() { this._buf = new Uint8Array(0); }
-
-    push(data) {
-        const merged = new Uint8Array(this._buf.length + data.length);
-        merged.set(this._buf);
-        merged.set(data, this._buf.length);
-        this._buf = merged;
-
-        const wavs = [];
-        let pos = 0;
-        while (pos + 8 <= this._buf.length) {
-            // Verify RIFF magic
-            if (this._buf[pos]   !== 0x52 || this._buf[pos+1] !== 0x49 ||
-                this._buf[pos+2] !== 0x46 || this._buf[pos+3] !== 0x46) {
-                pos++; continue;  // resync
-            }
-            const riffPayload = new DataView(
-                this._buf.buffer, this._buf.byteOffset + pos + 4, 4
-            ).getUint32(0, true);
-            const total = riffPayload + 8;
-            if (pos + total > this._buf.length) break; // incomplete — wait for more
-            wavs.push(
-                this._buf.buffer.slice(
-                    this._buf.byteOffset + pos,
-                    this._buf.byteOffset + pos + total
-                )
-            );
-            pos += total;
-        }
-        this._buf = this._buf.slice(pos);
-        return wavs;
-    }
-}
 
 // ---- Core streaming speakText ----
 
@@ -1247,40 +1097,16 @@ async function speakText(text, { explicit = false } = {}) {
 
     if (!clean) return;
 
-    // Claim a new request ID, abort previous fetch, but keep previous audio playing
-    // until the first new chunk is ready — then cut over.
     const myId = ++ttsRequestId;
-    if (ttsAbortController) { ttsAbortController.abort(); ttsAbortController = null; }
-    // Stop any lingering handoff sources from an even earlier request
-    for (const src of ttsPrevSources) { try { src.stop(); } catch (_) {} }
-    // If previous was paused, stop it immediately (no point resuming it briefly)
-    if (ttsPausedByUser) {
-        for (const src of ttsActiveSources) { try { src.stop(); } catch (_) {} }
-        ttsActiveSources = [];
-    }
-    ttsPrevSources = ttsActiveSources;
-    ttsActiveSources = [];
-    ttsScheduleEndTime = 0;
-    ttsStreamDone = false;
-    ttsLoading = true;
     ttsPausedByUser = false;
     ttsHasOutputFile = false;
-    ttsChunkTotal = 0; ttsChunksReceived = 0; ttsChunksPlayed = 0;
-    _ttsStopChunkRaf();
-    if (activeSpeakBtn && activeSpeakBtn._chunkBar) activeSpeakBtn._chunkBar.style.display = 'none';
     if (activeSpeakBtn && activeSpeakBtn._downloadBtn) activeSpeakBtn._downloadBtn.style.display = 'none';
     const myDownloadBtn = activeSpeakBtn ? activeSpeakBtn._downloadBtn : null;
 
-    // Ensure AudioContext exists and is running
-    const bus = ensureTTSRecordingBus();
-    if (!bus) { ttsLoading = false; ttsPrevSources = []; return; }
-    const ctx = bus.ctx;
-    const mediaDest = bus.dest;
-    if (ctx.state === 'suspended') await ctx.resume();
+    const player = _ensureTTSPlayer();
+    if (!player) return;
 
     const abort = new AbortController();
-    ttsAbortController = abort;
-
     let response;
     try {
         response = await fetch('/api/tts/stream', {
@@ -1295,218 +1121,19 @@ async function speakText(text, { explicit = false } = {}) {
             }),
         });
     } catch (err) {
-        if (ttsRequestId === myId) {
-            ttsLoading = false; ttsStreamDone = true;
-            for (const src of ttsPrevSources) { try { src.stop(); } catch (_) {} }
-            ttsPrevSources = [];
-        }
         return;
     }
 
-    if (!response.ok || ttsRequestId !== myId) {
-        ttsLoading = false; ttsStreamDone = true;
-        for (const src of ttsPrevSources) { try { src.stop(); } catch (_) {} }
-        ttsPrevSources = [];
-        return;
-    }
+    if (!response.ok || ttsRequestId !== myId) return;
 
     ttsHasOutputFile = response.headers.get('X-TTS-Has-Output-File') === '1';
-    const contentType = (response.headers.get('Content-Type') || '').split(';')[0].trim();
-    const isRealtime = contentType === 'audio/pcm';
 
-    if (isRealtime) {
-        // --- Realtime PCM streaming path ---
-        const sampleRate = parseInt(response.headers.get('X-Audio-Sample-Rate') || '24000', 10);
-        const estDuration = parseFloat(response.headers.get('X-TTS-Est-Duration') || '0');
-        // Use synthetic pip count based on estimated duration (1 pip per ~16 seconds)
-        const syntheticChunks = Math.max(1, Math.round(estDuration / 16));
-        _ttsResetChunkTracking(syntheticChunks);
+    // Delegate all audio decoding and playback to TTSAudioPlayer
+    await player.playStreamWithAbort(response, abort);
 
-        const reader = response.body.getReader();
-        let pcmAccum = new Uint8Array(0);
-        let totalPcmBytes = 0;
-        // Schedule PCM in ~200ms buffers for smooth playback with low latency
-        const scheduleBytes = sampleRate * 2 * 0.2; // 200ms of s16le mono
-
-        try {
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done || ttsRequestId !== myId) break;
-
-                // Accumulate PCM data
-                const merged = new Uint8Array(pcmAccum.length + value.length);
-                merged.set(pcmAccum);
-                merged.set(value, pcmAccum.length);
-                pcmAccum = merged;
-
-                // Schedule audio buffers when we have enough data (~200ms)
-                while (pcmAccum.length >= scheduleBytes) {
-                    // Ensure even number of bytes (s16le = 2 bytes per sample)
-                    const byteLen = Math.floor(scheduleBytes / 2) * 2;
-                    if (byteLen === 0) break;
-
-                    const pcmSlice = pcmAccum.slice(0, byteLen);
-                    pcmAccum = pcmAccum.slice(byteLen);
-                    totalPcmBytes += byteLen;
-
-                    // Convert s16le PCM to Float32 AudioBuffer
-                    const samples = new Int16Array(pcmSlice.buffer, pcmSlice.byteOffset, byteLen / 2);
-                    const float32 = new Float32Array(samples.length);
-                    for (let i = 0; i < samples.length; i++) float32[i] = samples[i] / 32768;
-
-                    const audioBuffer = ctx.createBuffer(1, float32.length, sampleRate);
-                    audioBuffer.getChannelData(0).set(float32);
-
-                    if (ttsRequestId !== myId || ctx.state === 'closed') break;
-                    if (ttsLoading) ttsLoading = false;
-
-                    const source = ctx.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(ctx.destination);
-                    if (mediaDest) source.connect(mediaDest);
-
-                    const now = ctx.currentTime;
-                    const startAt = Math.max(ttsScheduleEndTime, now + 0.02);
-                    source.start(startAt);
-                    ttsScheduleEndTime = startAt + audioBuffer.duration;
-
-                    if (ttsPrevSources.length > 0) {
-                        for (const src of ttsPrevSources) { try { src.stop(startAt); } catch (_) {} }
-                        ttsPrevSources = [];
-                    }
-
-                    // Update progress based on audio seconds vs estimated duration
-                    const audioSec = totalPcmBytes / (sampleRate * 2);
-                    const pct = estDuration > 0 ? Math.min(0.99, audioSec / estDuration) : 0;
-                    ttsChunksReceived = Math.round(pct * syntheticChunks);
-
-                    const chunkRequestId = myId;
-                    const receivedAtSchedule = ttsChunksReceived;
-                    ttsActiveSources.push(source);
-                    source.onended = () => {
-                        const idx = ttsActiveSources.indexOf(source);
-                        if (idx >= 0) ttsActiveSources.splice(idx, 1);
-                        if (ttsRequestId === chunkRequestId) {
-                            ttsChunksPlayed = Math.max(ttsChunksPlayed, receivedAtSchedule);
-                        }
-                    };
-
-                    if (pcmAccum.length < scheduleBytes) break;
-                }
-            }
-
-            // Flush any remaining PCM data
-            if (pcmAccum.length >= 2 && ttsRequestId === myId) {
-                const byteLen = pcmAccum.length - (pcmAccum.length % 2);
-                const samples = new Int16Array(pcmAccum.buffer, pcmAccum.byteOffset, byteLen / 2);
-                const float32 = new Float32Array(samples.length);
-                for (let i = 0; i < samples.length; i++) float32[i] = samples[i] / 32768;
-
-                const audioBuffer = ctx.createBuffer(1, float32.length, sampleRate);
-                audioBuffer.getChannelData(0).set(float32);
-
-                const source = ctx.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(ctx.destination);
-                if (mediaDest) source.connect(mediaDest);
-
-                const now = ctx.currentTime;
-                const startAt = Math.max(ttsScheduleEndTime, now + 0.02);
-                source.start(startAt);
-                ttsScheduleEndTime = startAt + audioBuffer.duration;
-
-                ttsChunksReceived = syntheticChunks;
-
-                const chunkRequestId = myId;
-                ttsActiveSources.push(source);
-                source.onended = () => {
-                    const idx = ttsActiveSources.indexOf(source);
-                    if (idx >= 0) ttsActiveSources.splice(idx, 1);
-                    if (ttsRequestId === chunkRequestId) ttsChunksPlayed = syntheticChunks;
-                };
-            }
-        } catch (err) {
-            if (err.name !== 'AbortError') console.warn('TTS realtime stream error:', err);
-        } finally {
-            if (ttsRequestId === myId) {
-                ttsLoading = false;
-                ttsStreamDone = true;
-                ttsAbortController = null;
-                ttsChunksReceived = syntheticChunks;
-                if (ttsHasOutputFile && myDownloadBtn && totalPcmBytes > 0) {
-                    myDownloadBtn.style.display = 'flex';
-                }
-            }
-        }
-    } else {
-        // --- Standard WAV chunk streaming path ---
-        const chunkCount = parseInt(response.headers.get('X-TTS-Chunk-Count') || '0', 10);
-        _ttsResetChunkTracking(chunkCount);
-
-        const parser = new _WavStreamParser();
-        const reader = response.body.getReader();
-
-        try {
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done || ttsRequestId !== myId) break;
-
-                for (const wavBuf of parser.push(value)) {
-                    if (ttsRequestId !== myId) break;
-
-                    let audioBuffer;
-                    try {
-                        audioBuffer = await ctx.decodeAudioData(wavBuf);
-                    } catch (e) {
-                        console.warn('TTS: decodeAudioData failed', e);
-                        continue;
-                    }
-
-                    if (ttsRequestId !== myId || ctx.state === 'closed') break;
-
-                    // First decoded chunk — schedule cut over precisely when new audio starts
-                    if (ttsLoading) ttsLoading = false;
-
-                    const source = ctx.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(ctx.destination);
-                    if (mediaDest) source.connect(mediaDest);
-
-                    const now = ctx.currentTime;
-                    const startAt = Math.max(ttsScheduleEndTime, now + 0.05);
-                    source.start(startAt);
-                    ttsScheduleEndTime = startAt + audioBuffer.duration;
-
-                    // Stop previous audio exactly when new audio begins
-                    if (ttsPrevSources.length > 0) {
-                        for (const src of ttsPrevSources) { try { src.stop(startAt); } catch (_) {} }
-                        ttsPrevSources = [];
-                    }
-
-                    ttsChunksReceived++;
-
-                    const chunkRequestId = myId;
-                    ttsActiveSources.push(source);
-                    source.onended = () => {
-                        const i = ttsActiveSources.indexOf(source);
-                        if (i >= 0) ttsActiveSources.splice(i, 1);
-                        // Only count played chunks for the request that scheduled this source
-                        if (ttsRequestId === chunkRequestId) ttsChunksPlayed++;
-                    };
-                }
-            }
-        } catch (err) {
-            if (err.name !== 'AbortError') console.warn('TTS stream error:', err);
-        } finally {
-            if (ttsRequestId === myId) {
-                ttsLoading = false;
-                ttsStreamDone = true;
-                ttsAbortController = null;
-                if (ttsHasOutputFile && myDownloadBtn && ttsChunksReceived > 0) {
-                    myDownloadBtn.style.display = 'flex';
-                }
-            }
-        }
+    // Show download button if server saved audio to file
+    if (ttsRequestId === myId && ttsHasOutputFile && myDownloadBtn) {
+        myDownloadBtn.style.display = 'flex';
     }
 }
 

@@ -134,6 +134,8 @@
                         <option value="perform">Perform</option>
                         <option value="silent">Silent</option>
                     </select>
+                    <span id="ttsVolumeIcon" class="tts-volume-icon" title="Mute/Unmute"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1.3L4.63 4H2.5A1.5 1.5 0 001 5.5v5A1.5 1.5 0 002.5 12h2.13L8 14.7V1.3zm3.74 2.04a4.5 4.5 0 010 9.32l-.55-.96a3.5 3.5 0 000-7.4l.55-.96zm-.93 2.17a2.5 2.5 0 010 4.98l-.55-.96a1.5 1.5 0 000-3.06l.55-.96z"/></svg></span>
+                    <input type="range" id="ttsVolumeSlider" min="0" max="1" step="0.05" value="0.5" title="TTS Volume">
                     <button id="proof-toggle-btn" class="chat-control-btn" title="Toggle proof panel" style="display:none">&#x1F4D0; Proof</button>
                 </div>
                 <!-- Proof panel (inside chat tab, above chat messages) -->
@@ -253,6 +255,7 @@
 <script>const DEBUG_MODE = __DEBUG_MODE__;</script>
 <script type="module" src="/main.js"></script>
 <script src="/gemini-live-tools/js/voice-character-selector.js"></script>
+<script src="/gemini-live-tools/js/tts-audio-player.js"></script>
 <script src="/chat.js"></script>
 <div id="json-viewer-overlay" class="hidden">
     <div id="json-viewer-header">
