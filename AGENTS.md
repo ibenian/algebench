@@ -14,6 +14,10 @@ AlgeBench is an interactive 3D math visualizer built on MathBox / Three.js, with
 
 The server runs at `http://localhost:8785`.
 
+### Browser Testing
+
+When you need to test the UI in a browser (e.g. debugging TTS, buttons, styles), navigate to `http://localhost:8785` using the Chrome browser tools. Switch to the **Chat** tab to interact with the AI chat and TTS controls. If the page doesn't load, find the actual port with `grep DEFAULT_PORT server.py`.
+
 ## Project Structure
 
 ```
@@ -48,11 +52,11 @@ docs/              Architecture, sandbox model, feature ideas
 - **Security** — path traversal and XSS vulnerabilities were previously fixed. Be careful with user-supplied paths in the server and anything that renders untrusted expressions.
 - **Branch protection** — `main` is protected. Always use a feature branch and open a PR; never push directly to `main`. Committing directly to `main` is a last resort (e.g., force-push recovery only).
 - **PR base branch** — PRs must target `main` unless the user explicitly requests a different base. Merging into a feature branch that has already been merged to `main` will orphan the changes.
-- **PR workflow** — the standard flow is: create branch → commit → push → create PR → **stop and wait for the user to review**. Never merge a PR unless the user explicitly asks (e.g., "merge it", "ok merge"). Creating a PR without a review step defeats its purpose.
+- **⚠️ PR workflow** — the standard flow is: create branch → commit → push → create PR → **STOP**. Never merge a PR immediately after creating it. PRs must go through review first. Only merge when the user explicitly says "merge it" or "ok merge" as a **separate instruction** after reviewing. "Commit and merge" means commit + create the PR, not merge it.
 - **Codex PR descriptions** — when Codex creates or updates a PR, replace any commit-list placeholder body with a concise writeup using `## Summary` and `## Testing` sections. Summaries should describe the user-visible behavior and key implementation points, not just restate commit subjects.
 - **Closing issues** — if a PR resolves a GitHub issue, include `Closes #<number>` in the PR body so GitHub auto-closes the issue on merge.
 - **PR labels** — always apply at least one label when creating a PR. Run `gh label list` to see available labels and pick the most appropriate one(s).
-- **Merging PRs** — only merge when the user explicitly asks. Use `gh pr merge --merge`. If it fails due to branch protection, retry with `--admin` (available to repo admins only).
+- **Merging PRs** — **NEVER merge a PR unless the user explicitly asks as a separate step after review.** Use `gh pr merge --squash`. If it fails due to branch protection, retry with `--admin` (available to repo admins only).
 
 ## Scene Format
 
