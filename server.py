@@ -1188,7 +1188,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             "pid": os.getpid()
         }
         print(json.dumps(result, indent=2))
-        sys.stdout.flush()
+        try:
+            sys.stdout.flush()
+        except (BrokenPipeError, OSError):
+            pass
     elif server_only:
         print(f"AlgeBench server running at {url}")
         print(f"\nPress 'q' or Ctrl+C to stop the server")

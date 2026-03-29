@@ -1130,21 +1130,21 @@ async function speakText(text, { explicit = false } = {}) {
                 mode: (selectedTtsMode === 'silent') ? 'perform' : (selectedTtsMode || 'read'),
             }),
         });
+        if (!response.ok || ttsRequestId !== myId) return;
+
+        ttsHasOutputFile = response.headers.get('X-TTS-Has-Output-File') === '1';
+
+        // Delegate all audio decoding and playback to TTSAudioPlayer
+        await player.playStreamWithAbort(response, abort);
+
+        // Show download button if server saved audio to file
+        if (ttsRequestId === myId && ttsHasOutputFile && myDownloadBtn) {
+            myDownloadBtn.style.display = 'flex';
+        }
     } catch (err) {
         return;
-    }
-
-    if (!response.ok || ttsRequestId !== myId) return;
-
-    ttsHasOutputFile = response.headers.get('X-TTS-Has-Output-File') === '1';
-
-    // Delegate all audio decoding and playback to TTSAudioPlayer
-    await player.playStreamWithAbort(response, abort);
-    if (ttsAbortController === abort) ttsAbortController = null;
-
-    // Show download button if server saved audio to file
-    if (ttsRequestId === myId && ttsHasOutputFile && myDownloadBtn) {
-        myDownloadBtn.style.display = 'flex';
+    } finally {
+        if (ttsAbortController === abort) ttsAbortController = null;
     }
 }
 
