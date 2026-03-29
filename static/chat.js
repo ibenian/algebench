@@ -986,6 +986,7 @@ let ttsRequestId = 0;         // Monotonic counter — invalidates stale streams
 let ttsPausedByUser = false;
 let ttsPlayer = null;         // TTSAudioPlayer instance (lazy-init)
 let ttsHasOutputFile = false;
+let ttsAbortController = null; // AbortController for the active fetch stream
 
 function _ensureTTSPlayer() {
     if (!ttsPlayer && window.GeminiTTSPlayer) {
@@ -1056,6 +1057,7 @@ window.algebenchStopTTS = function() {
     ++ttsRequestId;
     ttsPausedByUser = false;
     ttsHasOutputFile = false;
+    if (ttsAbortController) { ttsAbortController.abort(); ttsAbortController = null; }
     const p = _ensureTTSPlayer();
     if (p) p.stop();
 };
@@ -1069,12 +1071,15 @@ window.algebenchSpeakText = function(text, onEnd) {
     if (typeof onEnd !== 'function') return;
 
     const startTime = Date.now();
+    let hasStarted = false;
     const poll = setInterval(() => {
         if (ttsRequestId !== expectedId) {
             clearInterval(poll); onEnd(); return;
         }
         const p = _ensureTTSPlayer();
-        if (p && !p.isPlaying()) {
+        if (p && p.isPlaying()) hasStarted = true;
+        // Only trigger onEnd after playback has actually started then stopped
+        if (hasStarted && p && !p.isPlaying()) {
             clearInterval(poll); onEnd(); return;
         }
         if (Date.now() - startTime > 60000) {
@@ -1106,7 +1111,9 @@ async function speakText(text, { explicit = false } = {}) {
     const player = _ensureTTSPlayer();
     if (!player) return;
 
+    if (ttsAbortController) { ttsAbortController.abort(); ttsAbortController = null; }
     const abort = new AbortController();
+    ttsAbortController = abort;
     let response;
     try {
         response = await fetch('/api/tts/stream', {
@@ -1130,6 +1137,7 @@ async function speakText(text, { explicit = false } = {}) {
 
     // Delegate all audio decoding and playback to TTSAudioPlayer
     await player.playStreamWithAbort(response, abort);
+    if (ttsAbortController === abort) ttsAbortController = null;
 
     // Show download button if server saved audio to file
     if (ttsRequestId === myId && ttsHasOutputFile && myDownloadBtn) {
