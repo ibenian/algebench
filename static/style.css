@@ -1952,7 +1952,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     width: 56px;
     height: 3px;
     border-radius: 2px;
-    background: rgba(100, 100, 255, 0.15);
+    background: rgba(140, 140, 255, 0.35);
     cursor: pointer;
     opacity: 0.7;
     transition: opacity 0.2s;
@@ -1985,7 +1985,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 #ttsVolumeSlider::-moz-range-track {
     height: 3px;
     border-radius: 2px;
-    background: rgba(100, 100, 255, 0.15);
+    background: rgba(140, 140, 255, 0.35);
 }
 .style-picker { position: relative; }
 .style-btn { max-width: 185px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
