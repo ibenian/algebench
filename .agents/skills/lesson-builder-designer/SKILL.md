@@ -104,7 +104,7 @@ A single structured JSON object (as text in your response) — the **lesson blue
 - **Each scene is self-contained** — a Scene Builder must be able to build it with just the scene outline + prior scene summaries
 - **Step outlines must be concrete** — don't say "show the matrix", say "show a 2×2 matrix A = [[2,1],[1,3]] using a text label at position [3,2,0]"
 - **Compute key values** — provide exact coordinates, ranges, and values. The Scene Builder shouldn't have to solve math.
-- **Element types must be specific** — use actual AlgeBench element types: `vector`, `point`, `line`, `plane`, `surface`, `curve`, `text`, `label`, `grid`, `axis`, `sphere`, `parametricCurve`, `animatedCurve`, etc.
+- **Element types must be specific** — use actual AlgeBench element types: `vector`, `point`, `line`, `plane`, `surface`, `text`, `grid`, `axis`, `sphere`, `ellipsoid`, `parametric_curve`, `parametric_surface`, `vectors`, `vector_field`, `polygon`, `cylinder`, `animated_vector`, `animated_line`, `animated_point`, `animated_cylinder`, `animated_polygon`, `animated_curve`, etc.
 
 ### Step Design
 - **Steps are cumulative** — each step adds to or modifies the existing scene state
