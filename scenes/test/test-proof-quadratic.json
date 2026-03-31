@@ -133,9 +133,9 @@
         "id": "quadratic-formula",
         "title": "Deriving the Quadratic Formula",
         "technique": "direct",
-        "technique_hint": "This is a direct algebraic derivation — each step transforms the equation toward the closed-form solution by completing the square.",
+        "techniqueHint": "This is a direct algebraic derivation — each step transforms the equation toward the closed-form solution by completing the square.",
         "goal": "Derive $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$ from $ax^2 + bx + c = 0$",
-        "prompt": "Walk the student through completing the square. Emphasize why each algebraic move is valid. Connect to the parabola visualization when a scene_step link exists.",
+        "prompt": "Walk the student through completing the square. Emphasize why each algebraic move is valid. Connect to the parabola visualization when a sceneStep link exists.",
         "steps": [
           {
             "id": "start",
@@ -147,7 +147,7 @@
             },
             "explanation": "We start with the most general quadratic equation, where $a \\neq 0$.",
             "prompt": "Point out the parabola in the 3D view. The roots are where it crosses the x-axis.",
-            "scene_step": 0,
+            "sceneStep": 0,
             "tags": ["given"]
           },
           {
@@ -187,7 +187,7 @@
             "justification": "Add $\\left(\\frac{b}{2a}\\right)^2$ to both sides",
             "explanation": "The key insight: adding the square of half the linear coefficient creates a perfect square trinomial on the left side.",
             "prompt": "This is the hardest step. Explain the geometric meaning: we are literally completing a square in area.",
-            "scene_step": 1,
+            "sceneStep": 1,
             "tags": ["completing-the-square"]
           },
           {
@@ -200,7 +200,7 @@
             },
             "justification": "Left: $(x+k)^2 = x^2+2kx+k^2$ with $k=\\frac{b}{2a}$. Right: common denominator.",
             "explanation": "The left side is now a perfect square. The right side simplifies to reveal the **discriminant** $b^2 - 4ac$.",
-            "scene_step": 2,
+            "sceneStep": 2,
             "tags": ["factoring"]
           },
           {
@@ -215,7 +215,7 @@
             "justification": "If $u^2 = v$ then $u = \\pm\\sqrt{v}$",
             "explanation": "Taking the square root introduces $\\pm$, giving two solutions. The **discriminant** under the radical determines whether roots are real, repeated, or complex.",
             "prompt": "Connect the discriminant to the 3D view: Δ>0 means two crossings, Δ=0 means one touch, Δ<0 means no real crossing.",
-            "scene_step": 3,
+            "sceneStep": 3,
             "tags": ["square-root"]
           },
           {
@@ -241,7 +241,7 @@
             "justification": "Combine over common denominator $2a$",
             "explanation": "Every quadratic $ax^2 + bx + c = 0$ has solutions given by this formula.",
             "prompt": "Summarize: $-b/2a$ is the center, $\\pm\\sqrt{\\Delta}/2a$ is the spread from center, and $\\Delta$ tells us the nature of the roots.",
-            "scene_step": 4,
+            "sceneStep": 4,
             "tags": ["result"]
           }
         ]
@@ -336,7 +336,7 @@
               "id": "vieta-lemma",
               "title": "Vieta's Formulas (Lemma)",
               "technique": "direct",
-              "scene_step": 1,
+              "sceneStep": 1,
               "goal": "Show that $x_1 + x_2 = -\\frac{b}{a}$ and $x_1 x_2 = \\frac{c}{a}$",
               "prompt": "This is a short lemma about Vieta's formulas. Connect the sum and product of roots to the sliders.",
               "steps": [
@@ -389,7 +389,7 @@
             {
               "id": "root-span-derivation",
               "title": "Root Span",
-              "scene_step": 1,
+              "sceneStep": 1,
               "goal": "Derive $|x_1 - x_2| = \\frac{\\sqrt{\\Delta}}{|a|}$",
               "prompt": "Show how the distance between the two roots relates to the discriminant and the leading coefficient.",
               "steps": [
@@ -399,7 +399,7 @@
                   "label": "Two roots from the quadratic formula",
                   "math": "x_1 = \\frac{-b + \\sqrt{\\Delta}}{2a}, \\quad x_2 = \\frac{-b - \\sqrt{\\Delta}}{2a}",
                   "explanation": "We start with the two roots, where $\\Delta = b^2 - 4ac > 0$.",
-                  "scene_step": 1,
+                  "sceneStep": 1,
                   "tags": ["given"]
                 },
                 {
@@ -412,7 +412,7 @@
                   },
                   "justification": "Subtract: $(-b+\\sqrt{\\Delta}) - (-b-\\sqrt{\\Delta}) = 2\\sqrt{\\Delta}$",
                   "explanation": "The constant terms $-b$ cancel, leaving twice the square root of the discriminant.",
-                  "scene_step": 1,
+                  "sceneStep": 1,
                   "tags": ["algebra"]
                 },
                 {
@@ -425,7 +425,7 @@
                   },
                   "justification": "Take absolute value (since $a$ may be negative)",
                   "explanation": "The distance between the roots depends only on $\\Delta$ and $|a|$. This is exactly the length of the green root span line in the scene.",
-                  "scene_step": 1,
+                  "sceneStep": 1,
                   "tags": ["result"]
                 }
               ]
@@ -455,7 +455,7 @@
             "id": "root-span-zero",
             "title": "Root Span Collapses to Zero",
             "technique": "direct",
-            "scene_step": 2,
+            "sceneStep": 2,
             "goal": "Show that when $\\Delta = 0$, the root span $|x_1 - x_2| = 0$",
             "prompt": "Connect the root span formula to the repeated root case.",
             "steps": [
@@ -465,7 +465,7 @@
                 "label": "Root span formula",
                 "math": "|x_1 - x_2| = \\frac{\\sqrt{\\Delta}}{|a|}",
                 "explanation": "From the previous step, we derived that the distance between roots is $\\frac{\\sqrt{\\Delta}}{|a|}$.",
-                "scene_step": 2,
+                "sceneStep": 2,
                 "tags": ["given"]
               },
               {
@@ -478,7 +478,7 @@
                 },
                 "justification": "When $\\Delta = 0$, $\\sqrt{\\Delta} = 0$",
                 "explanation": "The two roots coincide at a single point.",
-                "scene_step": 2,
+                "sceneStep": 2,
                 "tags": ["algebra"]
               },
               {
@@ -491,7 +491,7 @@
                 },
                 "justification": "Both roots reduce to $-b/2a$ when $\\Delta = 0$",
                 "explanation": "The parabola touches the x-axis at the vertex. The orange dashed line shows this axis of symmetry.",
-                "scene_step": 2,
+                "sceneStep": 2,
                 "tags": ["result"]
               }
             ]
@@ -520,7 +520,7 @@
             "id": "vertex-derivation",
             "title": "Vertex by Completing the Square",
             "technique": "direct",
-            "scene_step": 3,
+            "sceneStep": 3,
             "goal": "Derive the vertex $(h, k) = \\left(-\\frac{b}{2a},\\; c - \\frac{b^2}{4a}\\right)$",
             "prompt": "Show how completing the square reveals the vertex form and why the parabola floats above (or below) the x-axis when Δ < 0.",
             "steps": [
@@ -597,8 +597,8 @@
         "id": "discriminant-proof",
         "title": "Why the Discriminant Classifies Roots",
         "technique": "cases",
-        "technique_hint": "This proof analyses three cases based on the sign of the discriminant Δ = b² − 4ac, showing each case produces a different root configuration.",
-        "scene_step": 0,
+        "techniqueHint": "This proof analyses three cases based on the sign of the discriminant Δ = b² − 4ac, showing each case produces a different root configuration.",
+        "sceneStep": 0,
         "goal": "Prove that $\\Delta = b^2 - 4ac$ determines the nature of roots of $ax^2 + bx + c = 0$",
         "prompt": "Connect each case to the parabola visualization. Use sliders to show examples of each case.",
         "steps": [
@@ -611,7 +611,7 @@
               "radical": { "color": "magenta", "label": "The square root determines if roots are real" }
             },
             "explanation": "The nature of the roots depends entirely on what's under the square root.",
-            "scene_step": 0,
+            "sceneStep": 0,
             "tags": ["given"]
           },
           {
@@ -624,7 +624,7 @@
             },
             "justification": "A positive number has a real square root, and $\\pm$ gives two different values",
             "explanation": "The parabola crosses the x-axis at two distinct points.",
-            "scene_step": 1,
+            "sceneStep": 1,
             "tags": ["case-analysis"]
           },
           {
@@ -637,7 +637,7 @@
             },
             "justification": "$\\pm 0 = 0$, so both roots equal the vertex x-coordinate",
             "explanation": "The parabola just touches the x-axis at its vertex.",
-            "scene_step": 2,
+            "sceneStep": 2,
             "tags": ["case-analysis"]
           },
           {
@@ -650,7 +650,7 @@
             },
             "justification": "Square root of a negative number is imaginary",
             "explanation": "The parabola doesn't cross the x-axis at all. The roots are complex conjugates.",
-            "scene_step": 3,
+            "sceneStep": 3,
             "tags": ["case-analysis"]
           },
           {

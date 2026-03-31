@@ -104,7 +104,7 @@ export const state = {
     proofStepIndex: -1,           // current proof step (-1 = goal overview)
     proofStepMemory: {},          // per-proof step index memory keyed by proof id
     proofViewMode: 'slide',       // 'list' | 'slide'
-    proofSyncEnabled: true,       // bidirectional scene_step linking
+    proofSyncEnabled: true,       // bidirectional sceneStep linking
     proofExpanded: false,         // whether proof panel is expanded in chat tab
     _proofSyncInProgress: false,  // guard against infinite sync loops
     _proofTabMode: 'context',    // 'context' | 'all' — which proof tab is active

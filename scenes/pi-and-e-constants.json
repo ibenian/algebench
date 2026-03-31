@@ -1,7 +1,7 @@
 {
   "title": "π and e — The Two Great Constants",
   "unsafe": true,
-  "unsafe_explanation": "Scene functions use IIFE loops to compute partial sums for Leibniz series, Basel problem, and Taylor approximation of e^x.",
+  "unsafeExplanation": "Scene functions use IIFE loops to compute partial sums for Leibniz series, Basel problem, and Taylor approximation of e^x.",
   "scenes": [
     {
       "title": "Scene 1 — The Circle Constant π",
@@ -339,7 +339,7 @@
               "range": ["1", "max(1.001, b)"],
               "samples": 120,
               "showCurve": false,
-              "fill_regions": [
+              "fillRegions": [
                 {
                   "id": "under-recip",
                   "color": "#4da6ff",
@@ -627,7 +627,7 @@
               "range": ["-5", "5"],
               "samples": 200,
               "showCurve": false,
-              "fill_regions": [
+              "fillRegions": [
                 {
                   "id": "s3",
                   "color": "#4466ff",
@@ -645,7 +645,7 @@
               "range": ["-5", "5"],
               "samples": 200,
               "showCurve": false,
-              "fill_regions": [
+              "fillRegions": [
                 {
                   "id": "s2",
                   "color": "#4488ff",
@@ -663,7 +663,7 @@
               "range": ["-5", "5"],
               "samples": 200,
               "showCurve": false,
-              "fill_regions": [
+              "fillRegions": [
                 {
                   "id": "s1",
                   "color": "#44aaff",

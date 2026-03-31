@@ -1,7 +1,7 @@
 {
   "title": "Gradient Descent on a 3D Objective Terrain",
   "unsafe": true,
-  "unsafe_explanation": "The Himmelblau animated descent scene uses iterative JavaScript loops to compute gradient descent paths step-by-step. No closed-form solution exists for this non-convex function, so native JS iteration is required. Scenes 1 and 2 (elliptic bowl) run entirely in the math.js sandbox.",
+  "unsafeExplanation": "The Himmelblau animated descent scene uses iterative JavaScript loops to compute gradient descent paths step-by-step. No closed-form solution exists for this non-convex function, so native JS iteration is required. Scenes 1 and 2 (elliptic bowl) run entirely in the math.js sandbox.",
   "scenes": [
     {
       "title": "Gradient Descent on an Elliptic Bowl",

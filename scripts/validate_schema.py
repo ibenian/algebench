@@ -3,16 +3,16 @@
 
 Usage:
     # Validate a single file
-    ./run.sh schemas/validate.py scenes/eigenvalues.json
+    ./run.sh scripts/validate_schema.py scenes/eigenvalues.json
 
     # Validate all scenes
-    ./run.sh schemas/validate.py scenes/*.json
+    ./run.sh scripts/validate_schema.py scenes/*.json
 
     # Validate with verbose output
-    ./run.sh schemas/validate.py -v scenes/eigenvalues.json
+    ./run.sh scripts/validate_schema.py -v scenes/eigenvalues.json
 
     # Just check the schema itself is valid
-    ./run.sh schemas/validate.py --check-schema
+    ./run.sh scripts/validate_schema.py --check-schema
 
 Exit codes:
     0  All files valid
@@ -30,10 +30,10 @@ try:
     from jsonschema import Draft202012Validator, ValidationError
 except ImportError:
     print("❌ Missing dependency: pip install jsonschema", file=sys.stderr)
-    print("   Or run: ./run.sh schemas/validate.py (handles venv automatically)", file=sys.stderr)
+    print("   Or run: ./run.sh scripts/validate_schema.py (handles venv automatically)", file=sys.stderr)
     sys.exit(2)
 
-SCHEMA_PATH = Path(__file__).parent / "lesson.schema.json"
+SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "lesson.schema.json"
 
 
 def load_schema() -> dict:

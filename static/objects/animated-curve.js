@@ -19,7 +19,7 @@ export function renderAnimatedCurve(el, view) {
 
     let rangeLExpr = null, rangeRExpr = null;
     let rangeL = -1, rangeR = 1;
-    const rangeSpec = el.range_expr || el.range || [-1, 1];
+    const rangeSpec = el.rangeExpr || el.range || [-1, 1];
     const rSpec0 = rangeSpec[0], rSpec1 = rangeSpec[1];
     if (typeof rSpec0 === 'string') { rangeLExpr = compileExpr(rSpec0); rangeL = evalExpr(rangeLExpr, 0); }
     else { rangeL = Number(rSpec0) || 0; }
@@ -91,7 +91,7 @@ export function renderAnimatedCurve(el, view) {
     }
 
     // Fill regions
-    const fillRegions = Array.isArray(el.fill_regions) ? el.fill_regions : [];
+    const fillRegions = Array.isArray(el.fillRegions) ? el.fillRegions : [];
     const FILL_MAX_FLOATS = 1024 * 18;
 
     const fillEntries = fillRegions.map(fr => {

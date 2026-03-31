@@ -28,7 +28,7 @@
           "description": "When true, marks the lesson as containing native JavaScript expressions (IIFEs, loops) that require user trust approval before execution. Default: false.",
           "default": false
         },
-        "unsafe_explanation": {
+        "unsafeExplanation": {
           "type": "string",
           "description": "Human-readable explanation of why this lesson uses unsafe JS, shown in the trust dialog. Example: \"This lesson uses scene-level reusable functions with IIFE loops.\""
         },
@@ -56,7 +56,7 @@
         "prompt": { "type": "string", "description": "System prompt for the AI chat tutor in this scene." },
         "import": { "type": "array", "items": { "type": "string" }, "description": "Domain library names to import." },
         "unsafe": { "type": "boolean", "default": false, "description": "Marks scene as containing native JS." },
-        "unsafe_explanation": { "type": "string", "description": "Explanation for unsafe JS trust dialog." },
+        "unsafeExplanation": { "type": "string", "description": "Explanation for unsafe JS trust dialog." },
         "range": { "$ref": "#/$defs/range3D", "description": "Axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]]. Default: [[-5,5],[-5,5],[-5,5]]." },
         "scale": { "$ref": "#/$defs/vec3Number", "description": "Axis scale factors as [sx,sy,sz]. Default: [1,1,1]." },
         "camera": { "$ref": "#/$defs/camera", "description": "Initial camera position and target." },
@@ -202,6 +202,10 @@
           "type": "integer",
           "description": "Auto-play duration in milliseconds for this step. Default: 3000.",
           "default": 3000
+        },
+        "caption": {
+          "type": "string",
+          "description": "Short caption text displayed in the step caption bar. Overrides auto-generated caption from title."
         }
       },
       "additionalProperties": false
@@ -468,7 +472,7 @@
           ],
           "description": "Outline width for polygons. Can be an expression string. Default: 0 (no outline) or 1.5 for regular polygons."
         },
-        "fill_regions": {
+        "fillRegions": {
           "type": "array",
           "items": { "$ref": "#/$defs/fillRegion" },
           "description": "Filled regions for animated_curve. Define areas above/below/between curves."
@@ -478,12 +482,114 @@
           "description": "Whether to show the curve line for animated_curve. Default: true.",
           "default": true
         },
-        "range_expr": {
+        "rangeExpr": {
           "type": "array",
           "items": { "type": "string" },
           "minItems": 2,
           "maxItems": 2,
           "description": "Dynamic range [minExpr, maxExpr] for animated_curve parameter."
+        },
+        "expression": {
+          "type": "string",
+          "description": "Alias for 'expr' (single string form). Math.js expression for surface z = f(x,y). Example: \"x + y\"."
+        },
+        "at": {
+          "$ref": "#/$defs/vec3",
+          "description": "Alias for 'position'. Point/text position [x,y,z]."
+        },
+        "data": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/vec3OrExpr" },
+          "description": "Alias for 'points'. Array of [x,y,z] points for line elements."
+        },
+        "positionExpr": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Alias for 'expr' on animated_point. Math.js expression array [x,y,z] for dynamic position."
+        },
+        "toExpr": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Alias for 'expr' on animated_vector/animated_cylinder. Math.js expression array [x,y,z] for dynamic endpoint."
+        },
+        "centerExpr": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Math.js expression array [x,y,z] for dynamic center position of sphere/ellipsoid."
+        },
+        "fx": {
+          "type": "string",
+          "description": "Math.js expression for vector field X component. Example: \"y\". Use math.js syntax."
+        },
+        "fy": {
+          "type": "string",
+          "description": "Math.js expression for vector field Y component. Example: \"-x\"."
+        },
+        "fz": {
+          "type": "string",
+          "description": "Math.js expression for vector field Z component. Example: \"0\"."
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Whether animated_vector keyframe animation loops. Default: true.",
+          "default": true
+        },
+        "arrow": {
+          "type": "boolean",
+          "description": "Whether animated_vector renders an arrowhead. Default: true.",
+          "default": true
+        },
+        "arrowScale": {
+          "type": "number",
+          "description": "Scale factor for animated_vector arrowhead size. Default: 1."
+        },
+        "shaftScale": {
+          "type": "number",
+          "description": "Scale factor for animated_vector shaft thickness. Default: 1."
+        },
+        "keyframes": {
+          "type": "array",
+          "description": "Keyframe array for animated_vector. Each keyframe defines a target position over time."
+        },
+        "thickness": {
+          "type": "number",
+          "description": "Polygon extrusion thickness. Default: 0.02.",
+          "default": 0.02
+        },
+        "density": {
+          "type": "number",
+          "description": "Vector field sample density per axis. Default: 3.",
+          "default": 3
+        },
+        "normal": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Normal vector [x,y,z] for plane element. Default: [0,1,0]."
+        },
+        "point": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Point on the plane [x,y,z] for plane element positioning. Default: [0,0,0]."
+        },
+        "height": {
+          "type": "number",
+          "description": "Height for cylinder element when using center+axis specification. Default: 1."
+        },
+        "value": {
+          "type": "string",
+          "description": "Alias for 'text'. Text content for text elements."
+        },
+        "depthZ": {
+          "type": "number",
+          "description": "Manual depth offset for polygon/animated_curve render ordering. Auto-assigned if omitted."
+        },
+        "renderOrder": {
+          "type": "number",
+          "description": "Manual render order for polygon depth sorting. Auto-assigned if omitted."
         }
       },
       "additionalProperties": true
@@ -948,16 +1054,20 @@
           ],
           "description": "Proof technique shown as a colored badge. 'derivation' is hidden (no badge shown)."
         },
-        "technique_hint": {
+        "techniqueHint": {
           "type": "string",
           "description": "Tooltip text explaining why this technique was chosen. Shown on hover over the technique badge."
         },
-        "scene_step": {
+        "sceneStep": {
           "oneOf": [
             { "type": "integer" },
             { "type": "string" }
           ],
           "description": "Scene step to navigate to when viewing the proof goal. Integer for step index, or 'sceneIdx:stepIdx' string. Enables bidirectional sync between proof and scene navigation."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "System prompt for the AI when discussing this proof. Provides context about the proof for the chat tutor."
         },
         "steps": {
           "type": "array",
@@ -1004,7 +1114,7 @@
           "additionalProperties": { "$ref": "#/$defs/proofHighlight" },
           "description": "Named highlight regions in the math expression. Keys match \\\\htmlClass{hl-<name>}{...} spans in the math field."
         },
-        "scene_step": {
+        "sceneStep": {
           "oneOf": [
             { "type": "integer" },
             { "type": "string" }

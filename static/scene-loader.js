@@ -614,11 +614,11 @@ export async function loadLesson(spec) {
     state._sceneUnsafeExplanation = '';
     if (spec) {
         state._sceneIsUnsafe = spec.unsafe === true;
-        state._sceneUnsafeExplanation = spec.unsafe_explanation || '';
+        state._sceneUnsafeExplanation = spec.unsafeExplanation || '';
         const scanned = scanSpecForUnsafeJs(spec);
         const needsDialog = state._sceneIsUnsafe || scanned;
         if (needsDialog) {
-            const explanation = spec.unsafe_explanation ||
+            const explanation = spec.unsafeExplanation ||
                 'This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.';
             const imports = Array.isArray(spec.import) ? spec.import : [];
             const trusted = await showTrustDialog(explanation, imports);
