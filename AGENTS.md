@@ -82,10 +82,19 @@ Skills live in `.agents/skills/` (checked into the repo) and are symlinked from 
 
 | Skill | When to use |
 |---|---|
+| `algebench-lesson-builder` | Build a complete multi-scene lesson end-to-end (orchestrator) |
 | `algebench-release` | Tag a new release on main |
 | `algebench-scene-builder` | Build or edit scene JSON files interactively |
+| `algebench-schema-generator` | Generate or update `schemas/lesson.schema.json` from code and scenes |
+| `algebench-validate-lesson` | Validate scene/lesson JSON against the schema + content checks |
 | `audit-expressions` | Audit expression sandbox coverage before merging scene changes |
 | `debug-chrome` | Launch AlgeBench and debug the UI in Chrome |
+| `lesson-builder-research` | Research Agent — gather math facts, theorems, proofs, citations for a topic |
+| `lesson-builder-pedagogy` | Pedagogy Expert — design learning arc, scaffolding, proof placement |
+| `lesson-builder-designer` | Lesson Designer — synthesize research + pedagogy into scene-by-scene blueprint |
+| `lesson-builder-scene-builder` | Scene Builder — produce complete scene JSON from an outline |
+| `lesson-builder-validator` | Syntax Validator — validate and auto-fix assembled lesson JSON |
+| `lesson-builder-evaluator` | Pedagogical Evaluator — review lesson quality, flow, and completeness |
 | `update-glt` | Update gemini-live-tools — install from a PR branch, version tag, or latest release |
 | `version-bump` | Bump the version number |
 
