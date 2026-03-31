@@ -77,6 +77,7 @@ def main():
     parser = argparse.ArgumentParser(description="Validate scene JSON against AlgeBench schema")
     parser.add_argument("files", nargs="*", type=Path, help="Scene JSON files to validate")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show sub-errors for oneOf/anyOf")
+    parser.add_argument("-e", "--errors-only", action="store_true", help="Only show files with errors (suppress passing files)")
     parser.add_argument("--check-schema", action="store_true", help="Only validate the schema itself")
     args = parser.parse_args()
 
@@ -110,13 +111,13 @@ def main():
             for e in errors:
                 print(e)
             failed += 1
-        else:
+        elif not args.errors_only:
             print(f"✅ {path}")
 
     if failed:
         print(f"\n❌ {failed} file(s) failed validation.")
         sys.exit(1)
-    else:
+    elif not args.errors_only:
         print(f"\n✅ All {len(args.files)} file(s) valid.")
         sys.exit(0)
 

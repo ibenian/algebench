@@ -14,6 +14,16 @@ AlgeBench is an interactive 3D math visualizer built on MathBox / Three.js, with
 
 The server runs at `http://localhost:8785`.
 
+### Running Scripts
+
+**Always use `./run.sh` to run project Python scripts** — never call `.venv/bin/python` or `python3` directly. `run.sh` handles venv creation and dependency installation automatically.
+
+```bash
+./run.sh scripts/validate_schema.py -v scenes/*.json
+./run.sh scripts/validate_content.py scenes/*.json
+./run.sh scripts/extract_structure.py --catalog scenes/*.json
+```
+
 ### Browser Testing
 
 When you need to test the UI in a browser (e.g. debugging TTS, buttons, styles), navigate to `http://localhost:8785` using the Chrome browser tools. Switch to the **Chat** tab to interact with the AI chat and TTS controls. If the page doesn't load, find the actual port with `grep DEFAULT_PORT server.py`.

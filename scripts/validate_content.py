@@ -411,7 +411,7 @@ def validate_file(path, fix=False):
     return errors, warnings, fixes, stats
 
 
-def print_report(path, errors, warnings, fixes, stats):
+def print_report(path, errors, warnings, fixes, stats, errors_only=False):
     """Print a formatted validation report."""
     ec, ee, ef = stats.get('expressions', (0, 0, 0))
     rc, re_ = stats.get('remove_targets', (0, 0))
@@ -427,6 +427,13 @@ def print_report(path, errors, warnings, fixes, stats):
             return f'WARN ({warns} warning{"s" if warns != 1 else ""})'
         return 'PASS'
 
+    total_errors = len(errors)
+    total_warnings = len(warnings)
+
+    # In errors-only mode, skip files that pass cleanly
+    if errors_only and total_errors == 0 and not fixes:
+        return True
+
     print(f'\nValidated: {path}')
     print(f'  Expressions: {status(ee)} ({ec} checked, {ef} auto-fixable)')
     print(f'  Remove IDs:  {status(re_)} ({rc} checked)')
@@ -437,9 +444,6 @@ def print_report(path, errors, warnings, fixes, stats):
         print(f'  Proofs:      N/A')
     print(f'  Camera:      {status(0, cw)}')
     print(f'  Overlays:    {status(0, ow)} ({oc} checked)')
-
-    total_errors = len(errors)
-    total_warnings = len(warnings)
 
     if fixes:
         print(f'\n  Auto-fixable ({len(fixes)}):')
@@ -472,6 +476,7 @@ def main():
     parser = argparse.ArgumentParser(description='Deep content validation for AlgeBench scene files')
     parser.add_argument('files', nargs='*', type=Path, help='Scene JSON files to validate')
     parser.add_argument('--fix', action='store_true', help='Auto-fix expression issues in place')
+    parser.add_argument('-e', '--errors-only', action='store_true', help='Only show files with errors (suppress passing files)')
     args = parser.parse_args()
 
     if not args.files:
@@ -485,7 +490,7 @@ def main():
             continue
 
         errors, warnings, fixes, stats = validate_file(path, fix=args.fix)
-        passed = print_report(path, errors, warnings, fixes, stats)
+        passed = print_report(path, errors, warnings, fixes, stats, errors_only=args.errors_only)
         if not passed:
             failed += 1
 
@@ -493,7 +498,7 @@ def main():
     if failed:
         print(f'❌ {failed} file(s) have errors.')
         sys.exit(1)
-    else:
+    elif not args.errors_only:
         print(f'✅ All {len(args.files)} file(s) pass content checks.')
         sys.exit(0)
 
