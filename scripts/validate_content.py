@@ -5,9 +5,9 @@ Goes beyond JSON Schema to check expression safety, slider references,
 remove target validity, proof consistency, and camera sanity.
 
 Usage:
-    ./run.sh schemas/validate_content.py scenes/eigenvalues.json
-    ./run.sh schemas/validate_content.py scenes/*.json
-    ./run.sh schemas/validate_content.py --fix scenes/eigenvalues.json
+    ./run.sh scripts/validate_content.py scenes/eigenvalues.json
+    ./run.sh scripts/validate_content.py scenes/*.json
+    ./run.sh scripts/validate_content.py --fix scenes/eigenvalues.json
 
 Exit codes:
     0  All files pass (may have warnings)

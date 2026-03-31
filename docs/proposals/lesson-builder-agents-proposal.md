@@ -332,7 +332,7 @@ This proposal introduces a **hierarchical multi-agent system** where specialized
 12. **Proof step validity** — each step has `id`, `label`, `math`; valid `type` values (`given`/`step`/`conclusion`/`remark`)
 13. **Proof technique** — `technique` value is a recognized key (see proofs-model.md §3.2) or omitted
 14. **Proof highlights** — every `\htmlClass{hl-NAME}` in `math` has a corresponding entry in `highlights` map, and vice versa
-15. **Proof scene_step refs** — `scene_step` values point to valid scene step indices; root-level proofs use `"sceneIdx:stepIdx"` format correctly
+15. **Proof sceneStep refs** — `sceneStep` values point to valid scene step indices; root-level proofs use `"sceneIdx:stepIdx"` format correctly
 16. **Proof conclusion** — the last step (or a step with `type: "conclusion"`) exists in proofs that derive a result
 
 **Output**: Validated JSON (with fixes applied) + validation report.
@@ -665,7 +665,7 @@ Each scene is self-contained enough to build independently, and the JSON generat
 Diminishing returns: the first feedback round catches structural issues. A second round would primarily catch stylistic preferences, which aren't worth the latency. The evaluator should be calibrated to flag only genuinely important issues.
 
 ### Why skills instead of hardcoded prompts?
-Skills are versioned with the repo, discoverable, and individually testable. A user can invoke `/lesson-builder-step-builder` directly to rebuild one scene. Skills also benefit from Claude Code's skill loading mechanism.
+Skills are versioned with the repo, discoverable, and individually testable. A user can invoke `/lesson-builder-scene-builder` directly to rebuild one scene. Skills also benefit from Claude Code's skill loading mechanism.
 
 ---
 
@@ -680,19 +680,19 @@ Mathematical proofs and derivations are central to effective math lessons. AlgeB
 | 1 | **Research Agent** | Identifies key theorems, derivations, and proof techniques relevant to the topic. Outputs proof candidates with their type (direct, contradiction, induction, etc.) and prerequisite chain. |
 | 1 | **Pedagogy Expert** | Decides *which* proofs to include, *when* in the lesson arc, and *how* to scaffold them (progressive reveal vs. full). Specifies proof placement level (root, scene, or step). |
 | 2 | **Lesson Designer** | For each scene outline, specifies which proofs belong where: which embedding level (root/scene/step), which proof technique, which scene steps they sync to, and the proof step skeleton (labels + justifications). |
-| 3 | **Scene Builder** | Produces the full `proof` JSON alongside elements and steps. Computes exact LaTeX, `\htmlClass` highlight regions, `scene_step` sync links, justifications, explanations, and `prompt` hints for each proof step. Ensures cumulative scene state matches the proof's `scene_step` references. |
-| 4 | **Syntax Validator** | Validates proof structure: required fields (`id`, `title`, `goal`, `steps`), step types (`given`/`step`/`conclusion`/`remark`), valid `technique` keys, LaTeX escaping in `math` fields, `\htmlClass` region names matching `highlights` keys, and `scene_step` references pointing to existing scene steps. |
+| 3 | **Scene Builder** | Produces the full `proof` JSON alongside elements and steps. Computes exact LaTeX, `\htmlClass` highlight regions, `sceneStep` sync links, justifications, explanations, and `prompt` hints for each proof step. Ensures cumulative scene state matches the proof's `sceneStep` references. |
+| 4 | **Syntax Validator** | Validates proof structure: required fields (`id`, `title`, `goal`, `steps`), step types (`given`/`step`/`conclusion`/`remark`), valid `technique` keys, LaTeX escaping in `math` fields, `\htmlClass` region names matching `highlights` keys, and `sceneStep` references pointing to existing scene steps. |
 | 5 | **Pedagogical Evaluator** | Evaluates proof quality: Are justifications clear? Are highlight regions meaningful? Does the scene sync enhance understanding? Is the proof scaffolded appropriately for the audience? Are `prompt` hints useful for the AI agent? |
 
 ### Proof-Specific Knowledge in the Scene Builder
 
 The Scene Builder agent prompt must embed full knowledge of the proof schema (from `docs/proofs-model.md`):
 
-- **Proof object structure**: `id`, `title`, `technique`, `technique_hint`, `goal`, `prompt`, `scene_step`, `steps`
-- **Proof step structure**: `id`, `type`, `label`, `math`, `highlights`, `justification`, `explanation`, `prompt`, `scene_step`, `tags`
+- **Proof object structure**: `id`, `title`, `technique`, `techniqueHint`, `goal`, `prompt`, `sceneStep`, `steps`
+- **Proof step structure**: `id`, `type`, `label`, `math`, `highlights`, `justification`, `explanation`, `prompt`, `sceneStep`, `tags`
 - **Highlight mechanism**: `\htmlClass{hl-name}{...}` in LaTeX with corresponding `highlights` map entries
 - **Embedding levels**: Root (lesson-wide), scene-level, step-level — and when to use each
-- **Scene sync**: Bidirectional linking via `scene_step` (integer for scene-level, `"sceneIdx:stepIdx"` for root-level)
+- **Scene sync**: Bidirectional linking via `sceneStep` (integer for scene-level, `"sceneIdx:stepIdx"` for root-level)
 - **Proof techniques**: All 16 technique keys and when to use them
 - **Agent integration**: `prompt` fields at proof and step level for AI teaching hints
 
@@ -702,9 +702,9 @@ The Lesson Designer should follow these patterns when placing proofs:
 
 | Pattern | When to Use | Embedding Level |
 |---------|-------------|-----------------|
-| **Scene-spanning derivation** | A proof that unfolds across multiple scene steps (e.g., quadratic formula derivation synced to geometric visualization) | Scene-level proof with `scene_step` links |
+| **Scene-spanning derivation** | A proof that unfolds across multiple scene steps (e.g., quadratic formula derivation synced to geometric visualization) | Scene-level proof with `sceneStep` links |
 | **Step-local mini-proof** | A quick justification within one step (e.g., "why is det(A-λI) = 0?") | Step-level proof |
-| **Lesson-wide theorem** | A foundational result referenced throughout (e.g., spectral theorem in an eigenvalue lesson) | Root-level proof with cross-scene `scene_step` links |
+| **Lesson-wide theorem** | A foundational result referenced throughout (e.g., spectral theorem in an eigenvalue lesson) | Root-level proof with cross-scene `sceneStep` links |
 | **Proof by exploration** | Interactive proof where sliders let students verify each step geometrically | Scene-level proof synced to slider steps |
 
 ### Proof Quality Checklist (for Evaluator)
@@ -713,7 +713,7 @@ The Lesson Designer should follow these patterns when placing proofs:
 - [ ] Proof `technique` matches the actual reasoning strategy used
 - [ ] Every step has both `math` and `justification` (except `remark` type)
 - [ ] Highlights mark pedagogically meaningful regions, not arbitrary subexpressions
-- [ ] `scene_step` links point to scene steps where the relevant visualization is visible
+- [ ] `sceneStep` links point to scene steps where the relevant visualization is visible
 - [ ] Proof steps follow a logical chain — each step follows from previous steps and the justification
 - [ ] `conclusion` step's `math` matches the proof's `goal`
 - [ ] `prompt` hints guide the AI to explain the *why*, not just restate the *what*
