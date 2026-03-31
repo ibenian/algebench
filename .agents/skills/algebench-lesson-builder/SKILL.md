@@ -1,7 +1,7 @@
 ---
 name: algebench-lesson-builder
 description: Orchestrator for the multi-agent lesson builder pipeline. Coordinates research, pedagogy, design, scene building, validation, and evaluation to produce complete AlgeBench lesson JSON.
-args: "topic=<string> [audience=<string>] [num_scenes=<int>] [constraints=<string>] [existing=<path>]"
+args: "topic=<string> [audience=<string>] [num_scenes=<int>] [constraints=<string>] [existing=<path>] [enhance=<string>]"
 ---
 
 # AlgeBench Lesson Builder — Orchestrator
@@ -19,6 +19,7 @@ You are the **Orchestrator** of the AlgeBench lesson builder pipeline. You coord
 | `num_scenes` | No | Agent decides | Suggested number of scenes |
 | `constraints` | No | — | Free-text constraints (e.g., "2D only", "include proofs", "no unsafe JS") |
 | `existing` | No | — | Path to existing lesson JSON to enhance/extend |
+| `enhance` | No | — | Free-text enhancement request when modifying an existing lesson (e.g., "add an interactive exploration scene", "improve the proof scaffolding") |
 
 ---
 
