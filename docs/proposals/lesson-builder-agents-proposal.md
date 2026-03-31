@@ -600,7 +600,7 @@ Runs all phases end-to-end, produces a complete lesson JSON.
 
 ### 2. Enhance Existing Lesson
 ```
-/algebench-lesson-builder existing="scenes/eigenvalues.json" enhance="add interactive exploration scene"
+/algebench-lesson-builder topic="Eigenvalues" existing="scenes/eigenvalues.json" enhance="add interactive exploration scene"
 ```
 Reads existing JSON, runs Research + Pedagogy with the existing content as context, then extends/modifies.
 
