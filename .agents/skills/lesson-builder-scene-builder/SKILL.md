@@ -79,7 +79,7 @@ For each step in the outline, IN ORDER:
 1. **Track state** — what elements currently exist? (base elements + all adds from prior steps - all removes)
 2. **Write `add`** — new elements for this step. Every element needs a unique `id`.
 3. **Write `remove`** — element IDs to remove (must exist in current state)
-4. **Write sliders** — if the outline specifies slider changes at this step, add `addSliders` or `removeSliders`
+4. **Write sliders** — if the outline specifies slider changes at this step, add sliders via `sliders` and remove them via `remove` directives such as `{ "type": "slider" }`
 5. **Write `info`** — info overlay content if specified (supports `{{slider_id}}` placeholders)
 6. **Write `title`** and `description`** — step title for navigation tree, description for narration
 7. **Update state** — add new IDs, remove removed IDs, for the next step's tracking
