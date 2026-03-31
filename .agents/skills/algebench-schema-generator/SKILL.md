@@ -12,12 +12,12 @@ Generate or update the **JSON Schema** for AlgeBench lesson files by analyzing t
 
 | Param | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `--scan-json <glob>` | No | *(none — no scan)* | Glob pattern for JSON files to scan for structure extraction. When omitted, **skip Step 1 entirely** — work only from application code analysis and the existing schema. When provided, run the extraction script against the given glob. Examples: `--scan-json "scenes/*.json"`, `--scan-json "tests/fixtures/*.json"`. |
+| `--scan-json <glob>` | No | *(none — no scan)* | Glob pattern for JSON files to scan for structure extraction. When omitted, **skip Step 1 entirely** — work only from application code analysis and the existing schema. When provided, run the extraction script against the given glob. Prefer recursive globs so nested fixtures are included. Examples: `--scan-json "scenes/**/*.json"`, `--scan-json "tests/fixtures/**/*.json"`. |
 
 ### Caller guidance
 
 Before invoking this skill, check whether `schemas/lesson.schema.json` exists and ask the user:
-- **Schema does NOT exist** → tell the user no schema exists yet and recommend `--scan-json "scenes/*.json"` to bootstrap from existing scene files. Ask for confirmation or an alternative glob before proceeding.
+- **Schema does NOT exist** → tell the user no schema exists yet and recommend `--scan-json "scenes/**/*.json"` to bootstrap from existing scene files, including nested test/proof fixtures. Ask for confirmation or an alternative glob before proceeding.
 - **Schema exists** → tell the user a schema already exists and recommend updating from code only (no `--scan-json`). Ask if they want to re-scan scene files anyway.
 
 ---
@@ -36,20 +36,20 @@ The schema is derived from **two authoritative sources**: scene files and applic
 
 ### 1. Existing scene files (what actually exists)
 ```
-scenes/*.json
+scenes/**/*.json
 ```
 
 **Do NOT read scene files directly** — they can be large and will waste context. Instead, use the structure extraction script:
 
 ```bash
 # Merged field catalog across all scenes (recommended first step)
-./run.sh scripts/extract_structure.py --catalog scenes/*.json
+./run.sh scripts/extract_structure.py --catalog scenes/**/*.json
 
 # Per-file skeleton with truncated strings
-./run.sh scripts/extract_structure.py scenes/*.json
+./run.sh scripts/extract_structure.py scenes/**/*.json
 
 # JSON output for programmatic use
-./run.sh scripts/extract_structure.py --json scenes/*.json
+./run.sh scripts/extract_structure.py --json scenes/**/*.json
 ```
 
 The `--catalog` mode merges all scenes into a unified field inventory showing path, types, occurrence count, and sample values. This gives you everything needed for schema discovery without loading full file contents.
@@ -62,8 +62,11 @@ These are the **authoritative sources** — the code defines what fields exist, 
 
 ```
 static/app.js       — 3D renderer, scene loader, element dispatch, sliders, steps, camera
-static/chat.js      — AI chat, proof panel, TTS, agent context building
+static/objects/     — element renderer implementations, per-type field consumption, defaults, aliases
+static/chat.js      — AI chat, TTS, UI tool responses
+static/proof.js     — proof panel rendering, proof-step fields, highlights, scene sync, proof chat context
 server.py           — scene file loading, WebSocket handler, agent tools
+agent_tools.py      — system prompt assembly, scene/step/proof prompt context exposed to the AI
 ```
 
 Search for:
@@ -79,7 +82,7 @@ Search for:
 
 The schema structure must be **discovered from scene files and code**. Documentation may be stale — do not depend on it. The two authoritative sources are:
 1. **Scene files** (via `extract_structure.py`) — what actually exists
-2. **Application code** (`app.js`, `chat.js`, `server.py`) — what the app actually consumes, with defaults and types
+2. **Application code** (`app.js`, `chat.js`, `proof.js`, `server.py`, `agent_tools.py`) — what the app actually consumes, with defaults and types
 
 The only hard constraints on the schema itself:
 - **JSON Schema draft-2020-12** format
@@ -118,6 +121,7 @@ For expression fields, always note:
 ### Step 1: Extract structure from JSON files (only if `--scan-json` provided)
 
 **Skip this step entirely if `--scan-json` was not provided.** Proceed directly to Step 2.
+When scanning scenes, prefer recursive globs such as `scenes/**/*.json` so nested directories like `scenes/test/` are not missed.
 
 When `--scan-json <glob>` is provided, run the extraction script to get a complete field inventory without reading raw JSON:
 
@@ -134,9 +138,10 @@ If a field in the catalog looks ambiguous (e.g., appears as both `integer` and `
 
 ### Step 2: Analyze application code
 
-Read `static/app.js`, `static/chat.js`, and `server.py`. These are the **authoritative sources** for what fields the app consumes, their types, and defaults. Search for:
+Read `static/app.js`, `static/objects/index.js`, the `static/objects/*.js` renderers, `static/chat.js`, `static/proof.js`, `server.py`, and `agent_tools.py`. These are the **authoritative sources** for what fields the app consumes, their types, and defaults. Search for:
 - Property access on scene/element/step/proof objects
-- Element type dispatch (switch/if on `type`) — discovers all supported types
+- Element type dispatch (switch/if on `type`) — discover this in `static/objects/index.js`
+- Per-element renderer field access in `static/objects/*.js` — this is where most element-specific properties, aliases, and defaults are defined
 - Default values applied when fields are missing (e.g., `el.width || 3`)
 - Proof rendering, highlight, and navigation logic
 - Slider evaluation and expression sandbox setup
@@ -169,7 +174,7 @@ Using code as the authority and catalog for additional context:
 
 ### Step 6: Validate
 
-Use the `algebench-validate-lesson` skill to validate all `scenes/*.json` files. If any valid scene fails, the schema is too strict — fix the schema and re-validate until all scenes pass.
+Use the `algebench-validate-lesson` skill to validate all `scenes/**/*.json` files. If any valid scene fails, the schema is too strict — fix the schema and re-validate until all scenes pass.
 
 ### Step 7: Report
 
@@ -190,7 +195,7 @@ If `schemas/lesson.schema.json` already exists:
 3. Diff the catalog against the existing schema — identify new fields, removed fields, changed types
 4. Read docs/code only for fields that changed or were added
 5. Update the schema in place
-6. Use the `algebench-validate-lesson` skill to validate all `scenes/*.json` — if any scene fails, fix the schema and re-validate
+6. Use the `algebench-validate-lesson` skill to validate all `scenes/**/*.json` — if any scene fails, fix the schema and re-validate
 7. Report what changed (added N fields, updated M descriptions, removed K deprecated fields, validation results)
 
 ---
@@ -206,4 +211,4 @@ If `schemas/lesson.schema.json` already exists:
 - [ ] Default values documented where applicable
 - [ ] Cross-referenced against all scenes — no false rejections
 - [ ] Written to `schemas/lesson.schema.json`
-- [ ] `algebench-validate-lesson` skill passes for ALL existing `scenes/*.json`
+- [ ] `algebench-validate-lesson` skill passes for ALL existing `scenes/**/*.json`

@@ -1104,6 +1104,10 @@
           "type": "string",
           "description": "Longer explanation rendered as markdown below the justification. For additional context."
         },
+        "prompt": {
+          "type": "string",
+          "description": "System prompt hint for the AI when this proof step is active. Provides step-specific teaching guidance for the chat tutor."
+        },
         "tags": {
           "type": "array",
           "items": { "type": "string" },
