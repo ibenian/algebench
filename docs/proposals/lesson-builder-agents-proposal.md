@@ -317,32 +317,36 @@ This proposal introduces a **hierarchical multi-agent system** where specialized
 **Inputs**:
 - Complete assembled lesson JSON
 
-**Checks**:
-1. **JSON structure** — valid JSON, required fields present, correct nesting
-2. **Element validity** — all element types recognized, required fields present
-3. **Expression safety** — all expressions use math.js syntax (no `Math.`, no `.toFixed()`, no JS keywords)
-4. **Slider consistency** — slider IDs referenced in expressions actually exist in the step's slider list
-5. **ID uniqueness** — no duplicate element IDs within a scene
-6. **Remove targets** — all `remove` targets reference existing IDs
-7. **Range consistency** — axis ranges match scene ranges; slider extents fit within axis ranges
-8. **Camera validity** — positions are within reasonable bounds of the data range
-9. **LaTeX escaping** — backslashes properly doubled in JSON strings
-10. **Info overlay placeholders** — `{{id}}` references match active slider IDs
-11. **Proof structure** — required fields (`id`, `title`, `goal`, `steps`), unique proof `id`s
-12. **Proof step validity** — each step has `id`, `label`, `math`; valid `type` values (`given`/`step`/`conclusion`/`remark`)
-13. **Proof technique** — `technique` value is a recognized key (see proofs-model.md §3.2) or omitted
-14. **Proof highlights** — every `\htmlClass{hl-NAME}` in `math` has a corresponding entry in `highlights` map, and vice versa
-15. **Proof sceneStep refs** — `sceneStep` values point to valid scene step indices; root-level proofs use `"sceneIdx:stepIdx"` format correctly
-16. **Proof conclusion** — the last step (or a step with `type: "conclusion"`) exists in proofs that derive a result
+**Current checks**:
+1. **JSON structure** — valid JSON, required fields present, correct nesting via `scripts/validate_schema.py`
+2. **Element validity** — schema-level field/type validation for recognized element structures
+3. **Expression safety** — flags JavaScript-style expressions such as `Math.*`, `.toFixed()`, arrow functions, and JS keywords
+4. **Slider consistency** — warns on likely undefined slider references in expressions
+5. **Remove targets** — checks that `remove` targets reference active IDs
+6. **Range consistency** — warns when ranges and slider-driven values appear inconsistent
+7. **Camera validity** — warns when camera positions are far outside scene bounds
+8. **LaTeX escaping** — catches common escaping mistakes during content validation
+9. **Info overlay placeholders** — checks `{{id}}` references against active sliders / valid expressions
+10. **Proof highlights** — checks that `\\htmlClass{hl-NAME}` usage matches the `highlights` map
+11. **Basic proof structure** — requires proof titles and non-empty step arrays; warns on unlabeled proof steps
+
+**Required validator extensions before relying on this phase as a hard gate**:
+1. **ID uniqueness** — detect duplicate element IDs within a scene
+2. **Proof field completeness** — explicitly validate proof `id`, `goal`, and other required semantics beyond the schema pass
+3. **Proof step validity** — validate proof-step `type` values and stronger per-step invariants
+4. **Proof technique validation** — verify `technique` values against the supported proof-technique set
+5. **Proof sceneStep refs** — validate that `sceneStep` references point to real scene steps and that root-level `"sceneIdx:stepIdx"` refs are well-formed
+6. **Proof conclusion checks** — enforce conclusion-step expectations for derivations that claim a final result
+7. **Expanded self-repair** — implement the broader auto-fix behavior assumed elsewhere in this proposal
 
 **Output**: Validated JSON (with fixes applied) + validation report.
 
-**Self-repair**: On error, the validator fixes the issue directly (e.g., replaces `Math.sin` with `sin`, adds missing IDs). For complex issues, it calls back to the relevant Scene Builder.
+**Self-repair**: Today the validator can auto-fix a limited set of content issues (for example `Math.sin` → `sin`, common LaTeX escaping mistakes, and orphan proof highlights). For structural or semantic issues outside that set, it should call back to the relevant Scene Builder. Broader self-repair is future work.
 
 **Tooling**: Uses the `algebench-validate-lesson` skill which provides:
 1. `scripts/validate_schema.py` — JSON Schema validation (structural checks)
 2. `scripts/validate_content.py` — deep content checks (expressions, slider refs, proofs, camera, overlays)
-3. Auto-fix table for common errors (Math.sin→sin, bad LaTeX escaping, orphan highlights)
+3. A limited auto-fix table for common errors (Math.sin→sin, bad LaTeX escaping, orphan highlights)
 
 **Note**: The validation skill checks JSON against the schema and content rules only. It does NOT investigate whether fields are implemented in code — that's the schema generator's job.
 
@@ -645,7 +649,7 @@ Phase 5 ✓  Evaluation: score 0.92, 0 critical, 1 minor (logged)
 | Research agent returns sparse results | Orchestrator proceeds; Pedagogy Expert + Designer compensate with built-in knowledge |
 | Scene Builder produces invalid JSON | Syntax Validator auto-repairs; if unfixable, re-runs that Scene Builder once |
 | Evaluator returns `needs_revision` | Orchestrator sends targeted fixes to affected Scene Builders (max 1 round) |
-| Second evaluation still fails | Orchestrator logs warnings, writes JSON with known issues noted in comments |
+| Second evaluation still fails | Orchestrator logs warnings, writes the best-effort JSON output, and emits a sidecar validation/report artifact plus conversation/TTS warnings describing the remaining issues |
 | Agent timeout | Orchestrator retries once, then proceeds with available results |
 
 ---
