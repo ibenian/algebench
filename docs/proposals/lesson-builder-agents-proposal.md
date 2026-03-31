@@ -509,56 +509,80 @@ scripts/
 
 ---
 
-## Implementation via Claude Code Agent Tool
+## Implementation Model
 
-Each agent maps to a **Claude Code `Agent` tool call** with `subagent_type: "general-purpose"`. The orchestrator skill prompt instructs the top-level Claude Code instance to spawn subagents.
+### Skill files = prompt libraries + standalone tools
 
-### Orchestrator Pattern (in SKILL.md)
+Each agent in the pipeline is defined by a **SKILL.md file** that serves two purposes:
 
-```markdown
-## Execution Instructions
+1. **Prompt library** — the orchestrator reads the skill file and passes its content as the `prompt` parameter to a Claude Code `Agent` tool call, along with phase-specific inputs (topic, research brief, scene outline, etc.)
+2. **Standalone invocation** — users can invoke any skill directly (e.g., `/lesson-builder-scene-builder`) to run that agent independently without the full pipeline
 
-You are the lesson builder orchestrator. Follow these phases exactly:
+There are **no separate agent files or runtime configurations** — just SKILL.md files under `.agents/skills/`. The Agent tool in Claude Code spawns real subprocesses with their own context windows.
 
-### Phase 1 — Research & Pedagogy (parallel)
-Spawn TWO agents in a SINGLE message (parallel execution):
+### How the orchestrator spawns agents
 
-Agent 1 — Research:
-- prompt: <research agent skill content + topic + audience>
-- description: "Research: {topic}"
+The orchestrator SKILL.md instructs Claude Code to use the `Agent` tool at each phase. The pattern:
 
-Agent 2 — Pedagogy:
-- prompt: <pedagogy skill content + topic + audience>
-- description: "Pedagogy: {topic}"
-
-### Phase 2 — Lesson Design (sequential)
-Wait for Phase 1 results, then spawn ONE agent:
-- prompt: <designer skill content + research brief + pedagogical framework>
-- description: "Design: {topic} lesson"
-
-### Phase 3 — Build Scenes (parallel)
-Spawn N agents in a SINGLE message (one per scene):
-- prompt: <scene builder skill content + full scene outline with all steps + prior scene summary>
-- description: "Build: Scene {i} - {title}"
-
-...and so on for Phases 4-6.
+```
+Phase 1 (parallel):
+┌──────────────────────────────────────────────────────────────┐
+│ Claude reads orchestrator SKILL.md                           │
+│ → Agent tool call #1:                                        │
+│     prompt = [lesson-builder-research/SKILL.md] + topic      │
+│     description = "Research: {topic}"                        │
+│     model = sonnet                                           │
+│ → Agent tool call #2 (same message = parallel):              │
+│     prompt = [lesson-builder-pedagogy/SKILL.md] + topic      │
+│     description = "Pedagogy: {topic}"                        │
+│     model = opus                                             │
+└──────────────────────────────────────────────────────────────┘
+                         ↓ both return
+Phase 2 (sequential):
+┌──────────────────────────────────────────────────────────────┐
+│ → Agent tool call:                                           │
+│     prompt = [lesson-builder-designer/SKILL.md]              │
+│           + research brief (from Phase 1 agent #1)           │
+│           + pedagogical framework (from Phase 1 agent #2)    │
+│     description = "Design: {topic} lesson"                   │
+│     model = opus                                             │
+└──────────────────────────────────────────────────────────────┘
+                         ↓ returns scene outlines
+Phase 3 (parallel, one per scene):
+┌──────────────────────────────────────────────────────────────┐
+│ → Agent tool call per scene (all in one message = parallel): │
+│     prompt = [lesson-builder-scene-builder/SKILL.md]         │
+│           + scene outline + prior scene summaries             │
+│           + schemas/lesson.schema.json                       │
+│     description = "Build: Scene {i} - {title}"               │
+│     model = opus                                             │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-### Context Passing Between Phases
+The orchestrator **reads each skill file** at execution time and embeds its content in the Agent prompt. This means skill files can be updated independently and the orchestrator always uses the latest version.
 
-Each agent receives its inputs as part of the prompt text. The orchestrator extracts the relevant output from each agent's result and includes it in the next agent's prompt. This is the standard Claude Code subagent pattern — no shared state, pure message passing.
+### Context passing between phases
 
-### Model Selection
+Each agent receives its inputs as part of the prompt text. The orchestrator extracts the relevant output from each agent's result and includes it in the next agent's prompt. Pure message passing — no shared state, no files (until the final write).
 
-| Agent | Recommended Model | Rationale |
-|-------|-------------------|-----------|
-| Orchestrator | `opus` | Needs best reasoning for coordination |
-| Research Agent | `sonnet` | Factual retrieval, doesn't need deep reasoning |
-| Pedagogy Expert | `opus` | Creative pedagogical design needs strong reasoning |
-| Lesson Designer | `opus` | Structural decisions need deep reasoning |
-| Scene Builder | `opus` | Complex JSON generation with math accuracy, cumulative step state |
-| Syntax Validator | `sonnet` | Rule-based checking, fast execution |
+### Model selection
+
+| Agent | Model | Rationale |
+|-------|-------|-----------|
+| Orchestrator | `opus` | Coordination, context management |
+| Research Agent | `sonnet` | Factual retrieval, fast |
+| Pedagogy Expert | `opus` | Creative pedagogical design |
+| Lesson Designer | `opus` | Structural decisions |
+| Scene Builder | `opus` | Complex JSON + math accuracy |
+| Syntax Validator | `sonnet` | Rule-based, uses scripts |
 | Pedagogical Evaluator | `opus` | Nuanced quality assessment |
+
+### Schema as agent input
+
+The Scene Builder and Syntax Validator agents receive `schemas/lesson.schema.json` as part of their prompt context. This means:
+- Scene Builder knows exactly what fields to produce and their constraints
+- Syntax Validator can check against the schema programmatically via `scripts/validate_schema.py`
+- When the schema is updated (via `/algebench-schema-generator`), all agents automatically use the new version on next run
 
 ---
 
@@ -577,11 +601,13 @@ Runs all phases end-to-end, produces a complete lesson JSON.
 Reads existing JSON, runs Research + Pedagogy with the existing content as context, then extends/modifies.
 
 ### 3. Individual Agent Invocation
-Each agent can be called directly for targeted work:
+Each skill can be called directly for targeted work:
 ```
 /lesson-builder-scene-builder scene_outline=<full scene outline with steps> context=<prior scenes>
+/lesson-builder-research topic="Cross Product"
+/lesson-builder-evaluator lesson="scenes/cross-product.json"
 ```
-Useful for rebuilding a single scene (all its steps) without re-running the full pipeline.
+Useful for rebuilding a single scene, re-running research, or evaluating an existing lesson without the full pipeline.
 
 ---
 
