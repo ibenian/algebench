@@ -223,7 +223,13 @@ export function injectAskButtons(contentEl) {
         }
         const lastEl = el.lastElementChild;
         if (lastEl && lastEl.classList && lastEl.classList.contains('katex-display')) {
-            btn.classList.add('ai-ask-btn--after-block');
+            const mathRow = document.createElement('span');
+            mathRow.className = 'doc-ai-math-row';
+            btn.classList.add('ai-ask-btn--math-side');
+            lastEl.replaceWith(mathRow);
+            mathRow.appendChild(lastEl);
+            mathRow.appendChild(btn);
+            return;
         }
         el.appendChild(btn);
     });

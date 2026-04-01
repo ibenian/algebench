@@ -16,12 +16,14 @@ export function buildSceneTree(spec) {
     if (!spec || !spec.scenes) return;
 
     spec.scenes.forEach((scene, i) => {
+        const sceneTitle = scene.title || ('Scene ' + (i + 1));
         const sceneDiv = document.createElement('div');
         sceneDiv.className = 'tree-scene';
         sceneDiv.dataset.sceneIdx = i;
 
         const header = document.createElement('div');
         header.className = 'tree-scene-header';
+        header.title = sceneTitle;
 
         const arrow = document.createElement('span');
         arrow.className = 'tree-scene-arrow';
@@ -29,7 +31,8 @@ export function buildSceneTree(spec) {
         header.appendChild(arrow);
 
         const title = document.createElement('span');
-        title.innerHTML = renderKaTeX(scene.title || ('Scene ' + (i + 1)), false);
+        title.innerHTML = renderKaTeX(sceneTitle, false);
+        title.title = sceneTitle;
         header.appendChild(title);
 
         header.addEventListener('click', (e) => {
@@ -49,11 +52,13 @@ export function buildSceneTree(spec) {
             stepsDiv.className = 'tree-steps';
 
             scene.steps.forEach((step, j) => {
+                const stepTitle = step.title || ('Step ' + (j + 1));
                 const stepDiv = document.createElement('div');
                 stepDiv.className = 'tree-step';
                 stepDiv.dataset.sceneIdx = i;
                 stepDiv.dataset.stepIdx = j;
-                stepDiv.innerHTML = renderKaTeX(step.title || ('Step ' + (j + 1)), false);
+                stepDiv.title = stepTitle;
+                stepDiv.innerHTML = renderKaTeX(stepTitle, false);
                 stepDiv.addEventListener('click', () => { if (_navigateFn) _navigateFn(i, j); });
                 stepsDiv.appendChild(stepDiv);
             });
