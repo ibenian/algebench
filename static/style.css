@@ -1924,12 +1924,13 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     display: flex;
     gap: 8px;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     padding: 10px 14px 12px;
     border-bottom: 1px solid rgba(116, 132, 255, 0.08);
     background:
         linear-gradient(180deg, rgba(23, 25, 49, 0.96), rgba(16, 18, 39, 0.88));
     flex-shrink: 0;
+    overflow-x: auto;
 }
 .chat-control-btn {
     min-height: 34px;
@@ -1943,6 +1944,30 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     cursor: pointer;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
     transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+}
+.style-picker {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+}
+.style-btn {
+    width: 100%;
+    max-width: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#chatVoiceSelect {
+    flex: 0 1 82px;
+    min-width: 82px;
+}
+#chatTtsModeSelect {
+    flex: 0 1 92px;
+    min-width: 92px;
+}
+#proof-toggle-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 .chat-control-btn:hover {
     background: rgba(57, 61, 102, 0.92);
@@ -1999,8 +2024,6 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     border-radius: 2px;
     background: rgba(137, 150, 255, 0.3);
 }
-.style-picker { position: relative; }
-.style-btn { max-width: 185px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .style-palette {
     position: fixed;
     top: 0;
