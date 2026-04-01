@@ -1657,71 +1657,104 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 #scene-dock {
     display: none;
     flex-shrink: 0;
+    position: relative;
 }
 #scene-dock.visible {
     display: flex;
 }
 #scene-dock-toggle {
-    width: 36px;
-    background: rgba(15, 15, 35, 0.95);
-    border-right: 1px solid rgba(100, 100, 255, 0.15);
+    width: 42px;
+    background:
+        linear-gradient(180deg, rgba(20, 22, 42, 0.96), rgba(13, 15, 31, 0.98));
+    border-right: 1px solid rgba(112, 124, 214, 0.12);
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding-top: 12px;
+    padding-top: 14px;
     cursor: pointer;
-    color: rgba(180, 180, 220, 0.8);
-    font-size: 18px;
+    color: rgba(192, 199, 235, 0.82);
+    font-size: 17px;
     user-select: none;
-    transition: color 0.2s, background 0.2s;
+    transition: color 0.2s, background 0.2s, border-color 0.2s;
     flex-shrink: 0;
 }
 #scene-dock-toggle:hover {
-    color: rgba(200, 200, 255, 1);
-    background: rgba(25, 25, 50, 0.95);
+    color: rgba(242, 245, 255, 1);
+    background:
+        linear-gradient(180deg, rgba(28, 31, 58, 0.98), rgba(18, 21, 41, 0.99));
+    border-right-color: rgba(140, 156, 248, 0.2);
 }
 #scene-dock-toggle.active {
-    color: rgba(140, 160, 255, 1);
+    color: rgba(163, 177, 255, 0.98);
 }
 #scene-dock-panel {
     width: 0;
     overflow: hidden;
-    background: rgba(15, 15, 35, 0.95);
-    border-right: 1px solid rgba(100, 100, 255, 0.15);
+    background:
+        linear-gradient(180deg, rgba(19, 21, 41, 0.98), rgba(13, 15, 29, 0.99));
+    border-right: 1px solid rgba(112, 124, 214, 0.12);
     display: flex;
     flex-direction: column;
     transition: width 0.2s ease;
     flex-shrink: 0;
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.02);
 }
 #scene-dock-panel.open {
-    width: 220px;
+    width: 260px;
+}
+#scene-dock-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid rgba(112, 124, 214, 0.08);
+    flex-shrink: 0;
+}
+#scene-dock-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(176, 186, 229, 0.72);
 }
 #scene-tree {
     flex: 1;
     overflow-y: auto;
-    padding: 8px 0;
+    padding: 10px 10px 14px;
 }
 .tree-scene {
     cursor: pointer;
     user-select: none;
+    margin-bottom: 8px;
 }
 .tree-scene-header {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 6px 10px;
+    gap: 8px;
+    padding: 10px 12px;
     font-size: 0.82em;
     font-weight: 600;
-    color: #c0c0e0;
-    transition: background 0.15s, color 0.15s;
+    color: rgba(208, 214, 241, 0.86);
+    border: 1px solid rgba(108, 121, 198, 0.08);
+    border-radius: 14px;
+    background: rgba(29, 33, 60, 0.54);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+    transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
 }
 .tree-scene-header:hover {
-    background: rgba(80, 80, 200, 0.2);
+    background: rgba(39, 44, 78, 0.78);
     color: #fff;
+    border-color: rgba(130, 145, 233, 0.14);
+    transform: translateY(-1px);
 }
 .tree-scene.active > .tree-scene-header {
     color: #fff;
-    background: rgba(80, 80, 200, 0.3);
+    background:
+        linear-gradient(180deg, rgba(58, 66, 120, 0.88), rgba(43, 49, 98, 0.88));
+    border-color: rgba(149, 164, 255, 0.2);
+    box-shadow:
+        0 10px 22px rgba(7, 10, 26, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .tree-scene-arrow {
     font-size: 10px;
@@ -1729,44 +1762,49 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     text-align: center;
     transition: transform 0.15s;
     flex-shrink: 0;
-    color: rgba(160, 160, 220, 0.6);
+    color: rgba(163, 172, 220, 0.64);
 }
 .tree-scene.expanded > .tree-scene-header > .tree-scene-arrow {
     transform: rotate(90deg);
 }
 .tree-steps {
     display: none;
-    padding-left: 18px;
+    margin-top: 6px;
+    padding: 4px 0 2px 16px;
+    border-left: 1px solid rgba(96, 108, 183, 0.16);
+    margin-left: 14px;
 }
 .tree-scene.expanded > .tree-steps {
     display: block;
 }
 .tree-step {
-    padding: 4px 10px 4px 12px;
+    padding: 7px 10px 7px 12px;
     font-size: 0.78em;
-    color: #a0a0c0;
+    color: rgba(176, 183, 216, 0.82);
     cursor: pointer;
     border-left: 2px solid transparent;
+    border-radius: 0 10px 10px 0;
     transition: all 0.15s;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .tree-step:hover {
-    background: rgba(80, 80, 200, 0.15);
-    color: #d0d0ff;
+    background: rgba(54, 60, 107, 0.44);
+    color: rgba(228, 232, 255, 0.96);
 }
 .tree-step.active {
     color: #fff;
-    border-left-color: rgba(140, 160, 255, 0.8);
-    background: rgba(80, 80, 200, 0.25);
+    border-left-color: rgba(150, 173, 255, 0.84);
+    background:
+        linear-gradient(180deg, rgba(53, 62, 121, 0.72), rgba(42, 49, 96, 0.68));
 }
 .tree-step.visited {
-    color: #b0b0d0;
+    color: rgba(190, 196, 223, 0.86);
 }
 .tree-step.visited::before {
     content: '\2713 ';
-    color: rgba(100, 200, 100, 0.6);
+    color: rgba(111, 214, 146, 0.7);
     font-size: 0.85em;
 }
 .tree-scene-header .katex,
