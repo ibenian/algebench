@@ -2213,6 +2213,55 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     padding-left: 24px;
 }
 #explanation-content li { margin-bottom: 7px; }
+#explanation-content table {
+    width: 100%;
+    max-width: 42rem;
+    margin: 0 auto 22px;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: rgba(21, 24, 46, 0.82);
+    border: 1px solid rgba(112, 126, 211, 0.14);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow:
+        0 12px 26px rgba(6, 9, 24, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+#explanation-content thead th {
+    padding: 14px 16px 12px;
+    text-align: left;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: rgba(241, 245, 255, 0.96);
+    background: rgba(34, 39, 74, 0.92);
+    border-bottom: 1px solid rgba(122, 137, 224, 0.16);
+}
+#explanation-content tbody td {
+    padding: 14px 16px;
+    vertical-align: top;
+    font-size: 0.98rem;
+    line-height: 1.65;
+    color: rgba(218, 223, 242, 0.92);
+    border-bottom: 1px solid rgba(112, 126, 211, 0.1);
+}
+#explanation-content tbody tr:last-child td {
+    border-bottom: none;
+}
+#explanation-content tbody tr:nth-child(even) td {
+    background: rgba(29, 33, 61, 0.38);
+}
+#explanation-content th:first-child,
+#explanation-content td:first-child {
+    width: 22%;
+    white-space: nowrap;
+}
+#explanation-content th:nth-child(2),
+#explanation-content td:nth-child(2) {
+    width: 30%;
+}
+#explanation-content table .katex {
+    font-size: 0.9em;
+}
 #explanation-content strong { color: #f5f7ff; }
 #explanation-content em { color: rgba(206, 211, 235, 0.9); }
 #explanation-content code {
