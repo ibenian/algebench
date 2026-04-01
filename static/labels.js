@@ -223,7 +223,7 @@ export function injectAskButtons(contentEl) {
         }
         const lastEl = el.lastElementChild;
         if (lastEl && lastEl.classList && lastEl.classList.contains('katex-display')) {
-            const mathRow = document.createElement('div');
+            const mathRow = document.createElement('span');
             mathRow.className = 'doc-ai-math-row';
             btn.classList.add('ai-ask-btn--math-side');
             lastEl.replaceWith(mathRow);

@@ -2058,7 +2058,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     cursor: pointer;
 }
 #ttsVolumeSlider::-moz-range-track {
-    height: 3px;
+    height: 4px;
     border-radius: 2px;
     background: rgba(137, 150, 255, 0.3);
 }
