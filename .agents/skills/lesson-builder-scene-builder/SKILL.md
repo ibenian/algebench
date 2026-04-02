@@ -82,7 +82,8 @@ For each step in the outline, IN ORDER:
 4. **Write sliders** — if the outline specifies slider changes at this step, add sliders via `sliders` and remove them via `remove` directives such as `{ "type": "slider" }`
 5. **Write `info`** — info overlay content if specified (supports `{{slider_id}}` placeholders)
 6. **Write `title`** and `description`** — step title for navigation tree, description for narration
-7. **Update state** — add new IDs, remove removed IDs, for the next step's tracking
+7. **Write `prompt`** — per-step system prompt for the AI chat tutor. Tell the AI what to emphasize at this step, what follow-up questions to suggest, and how to explain the new elements. This is never shown to users — it guides the in-app AI tutor.
+8. **Update state** — add new IDs, remove removed IDs, for the next step's tracking
 
 ### Phase 4: Build Proofs
 
@@ -121,6 +122,11 @@ Expressions can reference:
 - The time variable `t` (for animations)
 - Math constants: `pi`, `e`, `i`
 - Math functions: `sin`, `cos`, `tan`, `sqrt`, `abs`, `exp`, `log`, `pow`, `min`, `max`, `floor`, `ceil`, `round`
+
+**If you absolutely need native JS** (loops, iterative algorithms with no closed-form):
+- Add `"_unsafe_reason": "<why JS is needed>"` to the scene object (e.g., `"_unsafe_reason": "Iterative Newton's method has no closed-form expression"`)
+- This is a signal field for the orchestrator — it will be stripped during assembly and combined into a lesson-level `unsafe` flag
+- Only use JS when there is genuinely no math.js equivalent
 
 ---
 

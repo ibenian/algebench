@@ -6,7 +6,7 @@ Interactive 3D math visualizer built on [MathBox](https://github.com/unconed/mat
 algebench eigenvalues.json
 ```
 
-![AlgeBench screenshot](docs/orbital-flight-simulation-scene2-root.png)
+AlgeBench screenshot
 
 ---
 
@@ -14,9 +14,11 @@ algebench eigenvalues.json
 
 **YouTube Channel:** [youtube.com/@AlgeBench](https://www.youtube.com/@AlgeBench)
 
-| Scene | Video |
-|-------|-------|
+
+| Scene                             | Video                                                |
+| --------------------------------- | ---------------------------------------------------- |
 | Rotating Space Habitat Simulation | [Watch](https://www.youtube.com/watch?v=HoZgrAxKKGA) |
+
 
 ---
 
@@ -46,7 +48,7 @@ To launch directly into a scene:
 ./algebench scenes/eigenvalues.json
 ```
 
-To update to the latest version of [`gemini-live-tools`](https://github.com/ibenian/gemini-live-tools) (which includes new voice characters and the voice picker UI):
+To update to the latest version of `[gemini-live-tools](https://github.com/ibenian/gemini-live-tools)` (which includes new voice characters and the voice picker UI):
 
 ```bash
 ./algebench --update
@@ -64,11 +66,13 @@ For all available CLI options including TTS settings:
 
 AlgeBench supports three TTS configurations, each with different trade-offs:
 
-| Flags | API | Quality | Latency | Cost | Best for |
-|-------|-----|---------|---------|------|----------|
-| *(default)* | Gemini Live streaming | Good | Low (~200ms) | Single API call | Interactive use, narration |
-| `--tts-buffered` | Gemini Live, falls back to Gemini TTS | Mixed | Varying (2–5s+) | Multiple parallel calls | Long-form, saving to file |
-| `--tts-buffered --no-tts-live` | Gemini TTS | High | Higher (3–10s+) | One call per sentence | Highest quality output |
+
+| Flags                          | API                                   | Quality | Latency         | Cost                    | Best for                   |
+| ------------------------------ | ------------------------------------- | ------- | --------------- | ----------------------- | -------------------------- |
+| *(default)*                    | Gemini Live streaming                 | Good    | Low (~200ms)    | Single API call         | Interactive use, narration |
+| `--tts-buffered`               | Gemini Live, falls back to Gemini TTS | Mixed   | Varying (2–5s+) | Multiple parallel calls | Long-form, saving to file  |
+| `--tts-buffered --no-tts-live` | Gemini TTS                            | High    | Higher (3–10s+) | One call per sentence   | Highest quality output     |
+
 
 **Examples:**
 
@@ -80,18 +84,22 @@ AlgeBench supports three TTS configurations, each with different trade-offs:
 
 **Buffered mode options** (only apply with `--tts-buffered`):
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--tts-parallelism` | 3 | Max concurrent sentence synthesis (1–4) |
-| `--tts-min-buffer` | 30.0 | Seconds of audio to buffer before playback |
-| `--tts-min-sentence-chars` | 100 | Merge short sentences up to this char count |
-| `--tts-output-file out.wav` | — | Save audio to WAV file (auto-enables buffered mode) |
+
+| Flag                        | Default | Description                                         |
+| --------------------------- | ------- | --------------------------------------------------- |
+| `--tts-parallelism`         | 3       | Max concurrent sentence synthesis (1–4)             |
+| `--tts-min-buffer`          | 30.0    | Seconds of audio to buffer before playback          |
+| `--tts-min-sentence-chars`  | 100     | Merge short sentences up to this char count         |
+| `--tts-output-file out.wav` | —       | Save audio to WAV file (auto-enables buffered mode) |
+
 
 **Common options** (all modes):
 
-| Flag | Description |
-|------|-------------|
+
+| Flag                | Description                                     |
+| ------------------- | ----------------------------------------------- |
 | `--tts-style "..."` | Additional style guidance (e.g. "speak slowly") |
+
 
 `--no-tts-live` and `--tts-output-file` automatically enable buffered mode when used without `--tts-buffered`.
 

@@ -22,6 +22,13 @@ The server runs at `http://localhost:8785`.
 ./run.sh scripts/validate_schema.py -v scenes/*.json
 ./run.sh scripts/validate_content.py scenes/*.json
 ./run.sh scripts/extract_structure.py --catalog scenes/*.json
+./run.sh scripts/assemble_scene.py lesson.json --add scene.json       # append scene
+./run.sh scripts/assemble_scene.py lesson.json --add scene.json --at 3 # insert at index
+./run.sh scripts/assemble_scene.py lesson.json --replace 2 scene.json  # replace scene
+./run.sh scripts/assemble_scene.py lesson.json --remove 4              # remove scene
+./run.sh scripts/assemble_scene.py lesson.json --list                  # list scenes
+./run.sh scripts/lint_scene.py scene.json                              # lint a scene
+./run.sh scripts/lint_scene.py --fix scene.json                        # lint + auto-fix
 ```
 
 ### Browser Testing

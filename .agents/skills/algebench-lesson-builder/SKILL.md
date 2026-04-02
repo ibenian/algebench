@@ -148,16 +148,36 @@ Produce a complete scene JSON object as described in your instructions.
 Output ONLY the JSON — no surrounding text.
 ```
 
-After all return:
-- **Assemble the lesson JSON**:
-  ```json
-  {
-    "title": "{lesson_title from blueprint}",
-    "scenes": [scene_0, scene_1, ..., scene_N]
-  }
+After each scene builder returns:
+- **Check if the scene uses unsafe JS**: If the scene has `"unsafe": true`, note it — the orchestrator must propagate this to the lesson root later.
+- **Write the output** to a temporary file (e.g., `scenes/{topic-slug}/scene-{i}.json`)
+- **Lint the scene** using the lint script:
+  ```bash
+  ./run.sh scripts/lint_scene.py --fix scenes/{topic-slug}/scene-{i}.json
   ```
-  If the blueprint includes root-level proofs, add them at the root.
-- **Write to a temporary file** for validation (e.g., `scenes/{topic-slug}.json`)
+  This checks and auto-fixes: nested props (flattens), Math.sin→sin, invalid element types, missing fields.
+  Scenes with `"unsafe": true` skip expression checks (JS is intentional).
+  If lint fails after --fix (unfixable errors remain), fix manually or retry the scene builder once.
+
+After all scenes pass review:
+- **If ANY scene has `"unsafe": true`**: Add `"unsafe": true` and `"unsafeExplanation"` to the lesson root. The explanation should list which scenes use JS and why (collected from scene builders). Move `"unsafe"` off individual scenes — it belongs at the lesson root in multi-scene format.
+- **Assemble using the assembly script**:
+  ```bash
+  # For new lessons: create the lesson shell first, then add scenes
+  echo '{"title": "{lesson_title}", "scenes": []}' > scenes/{topic-slug}.json
+  ./run.sh scripts/assemble_scene.py scenes/{topic-slug}.json --add scenes/{topic-slug}/scene-0.json
+  ./run.sh scripts/assemble_scene.py scenes/{topic-slug}.json --add scenes/{topic-slug}/scene-1.json
+  # ... for each scene
+
+  # For enhance mode: add/replace scenes in the existing lesson
+  ./run.sh scripts/assemble_scene.py {existing} --add scenes/{topic-slug}/scene-N.json
+  ./run.sh scripts/assemble_scene.py {existing} --replace {index} scenes/{topic-slug}/scene-N.json
+
+  # List scenes in a lesson
+  ./run.sh scripts/assemble_scene.py {existing} --list
+  ```
+  Validate separately in Phase 4 using `./run.sh scripts/validate_content.py`.
+  If the blueprint includes root-level proofs, add them manually to the lesson root before assembly.
 - **Print status**: `Phase 3 ✓  Scene JSON: {N}/{N} built ({lines} lines total)`
 - **Announce via TTS**: "All {N} scenes built. Running syntax validation."
 
@@ -248,11 +268,14 @@ After it returns:
 
 When `existing` is provided:
 
-1. Read the existing lesson JSON
+1. Read the existing lesson JSON (use `--list` to inspect: `./run.sh scripts/assemble_scene.py {existing} --list`)
 2. Pass it to both Phase 1 agents as context
 3. The Lesson Designer receives the existing structure and the `enhance` instructions
 4. Scene Builders receive existing scenes they're modifying (instead of building from scratch)
-5. Only modified/new scenes go through validation and evaluation
+5. Use the assembly script to add/replace scenes:
+   - New scenes: `./run.sh scripts/assemble_scene.py {existing} --add scene.json [--at N]`
+   - Modified scenes: `./run.sh scripts/assemble_scene.py {existing} --replace N scene.json`
+6. Only modified/new scenes go through validation and evaluation
 
 ---
 
