@@ -3031,6 +3031,502 @@
           }
         ]
       }
+    },
+    {
+      "title": "The Saddle Beneath the Parabola",
+      "description": "Discover that the familiar parabola is a single slice of a saddle-shaped surface $\\text{Re}(f(z))$ over the complex input plane — and see where complex roots live on the saddle.",
+      "markdown": "# The Saddle Beneath the Parabola\n\nEvery quadratic $f(z) = az^2 + bz + c$ extends naturally to complex inputs $z = u + iv$. The **real part** of $f(z)$ is:\n\n$$\\text{Re}(f(u+iv)) = a(u^2 - v^2) + bu + c$$\n\nThis is a **hyperbolic paraboloid** — a saddle surface.\n\n## Why a Saddle?\n\n$\\text{Re}(f)$ is a **harmonic function**: $\\nabla^2 \\text{Re}(f) = 2a + (-2a) = 0$. Harmonic functions cannot have local minima or maxima — only saddle points. This is the geometric reason the quadratic formula *always* produces two roots.\n\n## The Parabola Is a Slice\n\nSetting $v = 0$ (restricting to real inputs):\n$$\\text{Re}(f(u + 0i)) = au^2 + bu + c$$\n\nThis is the parabola you know from Scenes 0–1. It lives along the $v = 0$ ridge of the saddle.\n\n## Where Are the Roots?\n\n$f(z) = 0$ requires **both** $\\text{Re}(f) = 0$ and $\\text{Im}(f) = 0$.\n\n$\\text{Im}(f(u+iv)) = v(2au + b)$, which vanishes when $v = 0$ (real axis) or $u = -b/(2a)$.\n\n- **$\\Delta > 0$**: Saddle crosses zero on the real axis → two green real roots\n- **$\\Delta = 0$**: Saddle is tangent to the zero-plane → one repeated root\n- **$\\Delta < 0$**: Saddle crosses zero off the real axis → two magenta complex conjugate roots at $u = -b/(2a)$, $v = \\pm\\sqrt{|\\Delta|}/(2|a|)$\n\n## The Saddle Point\n\nThe saddle point sits at $(u, v) = (-b/(2a),\\, 0)$ with height $c - b^2/(4a) = -\\Delta/(4a)$. This is the vertex of the parabola, reinterpreted as the apex of the saddle.\n\n## Try It\n\nAdjust sliders to deform the saddle. Watch roots transition between real and complex as the discriminant changes sign.",
+      "prompt": "Help the student understand the saddle surface Re(f(z)). Key teaching points: (1) the parabola is the v=0 slice of this larger surface, (2) the saddle shape is mandatory because Re(f) is harmonic, (3) complex roots sit where the saddle crosses zero off the real axis. Color conventions: blue surface/parabola (#4488ff), green real roots (#44cc44), magenta complex roots (#ff44ff), orange saddle point (#ffaa00).",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -6,
+          12
+        ],
+        [
+          -4,
+          4
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          2,
+          14
+        ],
+        "target": [
+          0,
+          2,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Parabola View",
+          "position": [
+            0,
+            2,
+            14
+          ],
+          "target": [
+            0,
+            2,
+            0
+          ],
+          "description": "Standard 2D front view showing only the familiar parabola"
+        },
+        {
+          "name": "Saddle View",
+          "position": [
+            8,
+            6,
+            10
+          ],
+          "target": [
+            0,
+            2,
+            0
+          ],
+          "description": "3D perspective revealing the full saddle surface"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            18,
+            0.01
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Bird's-eye view of the complex input plane showing root positions"
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -5,
+            5
+          ],
+          "color": [
+            0.5,
+            0.2,
+            0.2
+          ],
+          "width": 2,
+          "label": "x"
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -6,
+            12
+          ],
+          "color": [
+            0.2,
+            0.5,
+            0.2
+          ],
+          "width": 2,
+          "label": "f(x)"
+        },
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -5,
+            5
+          ],
+          "color": [
+            0.3,
+            0.3,
+            0.5
+          ],
+          "opacity": 0.1,
+          "divisions": 10
+        }
+      ],
+      "steps": [
+        {
+          "title": "The Parabola You Know",
+          "description": "We begin with the familiar parabola $f(x) = x^2 + 1$. It sits entirely above the $x$-axis — no real roots. But the Fundamental Theorem of Algebra promises two roots. Where are they hiding?",
+          "add": [
+            {
+              "id": "static-parabola",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "t^2 + 1",
+              "z": "0",
+              "range": [
+                -4,
+                4
+              ],
+              "samples": 200,
+              "color": "#4488ff",
+              "width": 3
+            }
+          ],
+          "camera": {
+            "position": [
+              0,
+              2,
+              14
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        },
+        {
+          "title": "Extending to Complex Inputs",
+          "description": "What if the input could be a complex number $z = u + iv$? The $u$-axis is the real axis you know. A new $v$-axis extends into the imaginary direction. The parabola lives along the $v = 0$ line.",
+          "add": [
+            {
+              "id": "complex-input-grid",
+              "type": "grid",
+              "plane": "xz",
+              "range": [
+                -4,
+                4
+              ],
+              "color": [
+                0.5,
+                0.5,
+                0.5
+              ],
+              "opacity": 0.12,
+              "divisions": 8
+            },
+            {
+              "id": "v-axis",
+              "type": "axis",
+              "axis": "z",
+              "range": [
+                -4,
+                4
+              ],
+              "color": [
+                0.2,
+                0.2,
+                0.5
+              ],
+              "width": 2,
+              "label": "v = Im(z)"
+            },
+            {
+              "id": "u-label",
+              "type": "text",
+              "text": "$u = \\text{Re}(z)$",
+              "position": [
+                5.3,
+                0,
+                0
+              ],
+              "color": "#884444"
+            },
+            {
+              "id": "refz-label",
+              "type": "text",
+              "text": "$\\text{Re}(f(z))$",
+              "position": [
+                0,
+                12.5,
+                0
+              ],
+              "color": "#448844"
+            }
+          ],
+          "camera": {
+            "position": [
+              0,
+              2,
+              14
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        },
+        {
+          "title": "The Saddle Reveals Itself",
+          "description": "The surface $\\text{Re}(f(z)) = a(u^2 - v^2) + bu + c$ is a **saddle** — it curves up along $u$ (like the parabola) but down along $v$. The blue parabola is just the $v = 0$ slice of this surface.",
+          "remove": [
+            {
+              "id": "static-parabola"
+            }
+          ],
+          "add": [
+            {
+              "id": "saddle-surface",
+              "type": "parametric_surface",
+              "x": "u",
+              "y": "a * (u^2 - v^2) + b * u + c",
+              "z": "v",
+              "uRange": [
+                -4,
+                4
+              ],
+              "vRange": [
+                -3,
+                3
+              ],
+              "uSamples": 64,
+              "vSamples": 64,
+              "color": "#4488ff",
+              "opacity": 0.3
+            },
+            {
+              "id": "dynamic-parabola",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "a * t^2 + b * t + c",
+              "z": "0",
+              "range": [
+                -4,
+                4
+              ],
+              "samples": 200,
+              "color": "#4488ff",
+              "width": 4
+            },
+            {
+              "id": "saddle-point",
+              "type": "animated_point",
+              "expr": [
+                "-b / (2 * a)",
+                "c - b^2 / (4 * a)",
+                "0"
+              ],
+              "color": "#ffaa00",
+              "size": 8,
+              "label": "$\\text{Saddle point}$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": 0.2,
+              "max": 3,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -5,
+              "max": 5,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            }
+          ],
+          "info": [
+            {
+              "id": "saddle-info",
+              "content": "$$\\text{Re}(f(z)) = a(u^2 - v^2) + bu + c$$\n\nSaddle height: ${{toFixed(c - b^2 / (4*a), 2)}}$\n\n$\\Delta = {{toFixed(b^2 - 4*a*c, 2)}}$"
+            }
+          ],
+          "camera": {
+            "position": [
+              8,
+              6,
+              10
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        },
+        {
+          "title": "The Zero-Plane",
+          "description": "A translucent gray plane appears at $\\text{Re}(f) = 0$. Where the saddle surface passes through this plane, the real part vanishes — but a true root requires **both** real and imaginary parts to be zero.",
+          "add": [
+            {
+              "id": "zero-plane",
+              "type": "grid",
+              "plane": "xz",
+              "range": [
+                -4,
+                4
+              ],
+              "color": [
+                0.6,
+                0.6,
+                0.6
+              ],
+              "opacity": 0.15,
+              "divisions": 8
+            },
+            {
+              "id": "zero-plane-label",
+              "type": "text",
+              "text": "$\\text{Re}(f) = 0$",
+              "position": [
+                4.5,
+                0.3,
+                3
+              ],
+              "color": "#999999"
+            }
+          ],
+          "camera": {
+            "position": [
+              8,
+              6,
+              10
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        },
+        {
+          "title": "Roots on the Saddle",
+          "description": "The roots of $f(z) = 0$ sit where $\\text{Re}(f) = 0$ **and** $\\text{Im}(f) = 0$ simultaneously. With $\\Delta < 0$, the magenta complex conjugate roots sit symmetrically above and below the real axis on the saddle.",
+          "add": [
+            {
+              "id": "complex-root-1",
+              "type": "animated_point",
+              "expr": [
+                "-b / (2 * a)",
+                "0",
+                "sqrt(abs(b^2 - 4 * a * c)) / (2 * abs(a))"
+              ],
+              "color": "#ff44ff",
+              "size": 10,
+              "label": "$z_1$",
+              "visibleExpr": "(b^2 - 4 * a * c) < 0"
+            },
+            {
+              "id": "complex-root-2",
+              "type": "animated_point",
+              "expr": [
+                "-b / (2 * a)",
+                "0",
+                "-sqrt(abs(b^2 - 4 * a * c)) / (2 * abs(a))"
+              ],
+              "color": "#ff44ff",
+              "size": 10,
+              "label": "$\\bar{z}_1$",
+              "visibleExpr": "(b^2 - 4 * a * c) < 0"
+            },
+            {
+              "id": "real-root-1",
+              "type": "animated_point",
+              "expr": [
+                "(-b + sqrt(abs(b^2 - 4 * a * c))) / (2 * a)",
+                "0",
+                "0"
+              ],
+              "color": "#44cc44",
+              "size": 10,
+              "label": "$x_1$",
+              "visibleExpr": "(b^2 - 4 * a * c) >= 0"
+            },
+            {
+              "id": "real-root-2",
+              "type": "animated_point",
+              "expr": [
+                "(-b - sqrt(abs(b^2 - 4 * a * c))) / (2 * a)",
+                "0",
+                "0"
+              ],
+              "color": "#44cc44",
+              "size": 10,
+              "label": "$x_2$",
+              "visibleExpr": "(b^2 - 4 * a * c) > 0"
+            },
+            {
+              "id": "conjugate-link",
+              "type": "animated_line",
+              "points": [
+                [
+                  "-b / (2 * a)",
+                  "0",
+                  "sqrt(abs(b^2 - 4 * a * c)) / (2 * abs(a))"
+                ],
+                [
+                  "-b / (2 * a)",
+                  "0",
+                  "-sqrt(abs(b^2 - 4 * a * c)) / (2 * abs(a))"
+                ]
+              ],
+              "color": "#ff44ff",
+              "width": 1,
+              "opacity": 0.5,
+              "visibleExpr": "(b^2 - 4 * a * c) < 0"
+            }
+          ],
+          "info": [
+            {
+              "id": "delta-info",
+              "content": "$\\Delta = b^2 - 4ac = {{toFixed(b^2 - 4*a*c, 2)}}$\n\n${{(b^2 - 4*a*c) >= 0 ? \"Real roots (green)\" : \"Complex roots (magenta)\"}}$"
+            }
+          ],
+          "camera": {
+            "position": [
+              8,
+              6,
+              10
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        },
+        {
+          "title": "Explore the Saddle",
+          "description": "Drag the sliders to reshape the saddle. Try $c = -1$ to pull roots onto the real axis, or change $b$ to shift the saddle sideways. The roots are **always** there — the saddle guarantees it.",
+          "add": [],
+          "info": [
+            {
+              "id": "explore-info",
+              "content": "**Experiments:**\n\n$c = -1$: roots become real\n\n$b = 4$: shift saddle sideways\n\n$a=1, b=2, c=1$: $\\Delta=0$, repeated root\n\n$a=3$: steeper saddle"
+            }
+          ],
+          "camera": {
+            "position": [
+              8,
+              6,
+              10
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        }
+      ]
     }
   ]
 }
