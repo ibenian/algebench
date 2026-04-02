@@ -6,7 +6,7 @@ Interactive 3D math visualizer built on [MathBox](https://github.com/unconed/mat
 algebench eigenvalues.json
 ```
 
-AlgeBench screenshot
+![AlgeBench screenshot](docs/rotating-space-habitat.png)
 
 ---
 
