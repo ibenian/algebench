@@ -238,7 +238,11 @@ After it returns:
 ### Finalization
 
 1. **Write final JSON** to `scenes/{topic-slug}.json` (if not already there from Phase 3)
-2. **Print final status table**:
+2. **Clean up temp files** — delete the `scenes/{topic-slug}/` directory containing the individual `scene-{i}.json` files used during assembly:
+   ```bash
+   rm -rf scenes/{topic-slug}/
+   ```
+3. **Print final status table**:
    ```
    Phase 1 ✓  Research (12 definitions, 5 theorems) + Pedagogy (4 objectives, 3 scene arc)
    Phase 2 ✓  Lesson Design: 4 scenes, 16 steps total
@@ -246,7 +250,7 @@ After it returns:
    Phase 4 ✓  Validation: 2 auto-fixed (Math.sin→sin), 0 errors remaining
    Phase 5 ✓  Evaluation: score 0.92, 0 critical, 1 minor (logged)
    ```
-3. **Announce via TTS**: "Lesson builder finished. {topic} lesson ready with {N} scenes and {M} total steps."
+4. **Announce via TTS**: "Lesson builder finished. {topic} lesson ready with {N} scenes and {M} total steps."
 
 ---
 
