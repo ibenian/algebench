@@ -549,7 +549,8 @@ function _updateNavButtons() {
 
 function _activeProof() {
     if (!state.proofSpec || state.proofSpec.length === 0) return null;
-    const idx = Math.max(0, Math.min(state.proofActiveIndex, state.proofSpec.length - 1));
+    if (state.proofActiveIndex < 0) return null;
+    const idx = Math.min(state.proofActiveIndex, state.proofSpec.length - 1);
     return state.proofSpec[idx]?.proof || null;
 }
 
@@ -688,7 +689,6 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
         // Fall back to first visible proof
         if (newActiveIndex < 0) {
             newActiveIndex = allProofs.findIndex(e => _isProofInContext(e, sceneIndex, stepIndex));
-            if (newActiveIndex < 0) newActiveIndex = 0;
         }
         state.proofActiveIndex = newActiveIndex;
 
@@ -816,7 +816,8 @@ function _updateContextVisibility(sceneIndex, stepIndex) {
 
         const isActive = idx === state.proofActiveIndex;
         // In "all" mode show everything; in "context" mode filter by hierarchy
-        const visible = showAll || isActive || _isProofInContext(entry, sceneIndex, stepIndex);
+        const inContext = _isProofInContext(entry, sceneIndex, stepIndex);
+        const visible = showAll || inContext;
         section.style.display = visible ? '' : 'none';
         const hintEl = section.querySelector('.proof-section-step-hint');
         if (hintEl) {
