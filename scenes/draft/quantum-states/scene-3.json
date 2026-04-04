@@ -1,0 +1,317 @@
+{
+  "title": "Relative Phase Changes Other Measurements",
+  "description": "Equator states all look identical to a z-basis measurement, but their relative phase changes what other bases can see.",
+  "markdown": "# Relative Phase Changes Other Measurements\n\nOn the equator of the Bloch sphere, $\\theta=\\pi/2$, so the state takes the form\n\n$$|\\psi(\\phi)\\rangle = \\frac{|0\\rangle + e^{i\\phi}|1\\rangle}{\\sqrt{2}}.$$\n\nEvery such state has\n\n$$p_z(0)=p_z(1)=\\frac{1}{2},$$\n\nso a computational-basis measurement cannot distinguish them.\n\nBut other bases can. For the x basis,\n\n$$p(+x)=\\frac{1+\\cos\\phi}{2},\\qquad p(-x)=\\frac{1-\\cos\\phi}{2},$$\n\nand for the y basis,\n\n$$p(+y)=\\frac{1+\\sin\\phi}{2},\\qquad p(-y)=\\frac{1-\\sin\\phi}{2}.$$\n\nThis is why **relative phase matters**. By contrast, multiplying the entire ket by $e^{i\\gamma}$ leaves the Bloch point unchanged, so **global phase is physically invisible** for a single qubit.",
+  "prompt": "Teach this scene as the payoff for relative phase. The z-basis probabilities stay flat at one half, while x and y measurements change with phi. Keep the distinction between relative phase and global phase crisp and explicit.",
+  "range": [
+    [
+      -1.35,
+      1.35
+    ],
+    [
+      -1.35,
+      1.35
+    ],
+    [
+      -1.35,
+      1.35
+    ]
+  ],
+  "camera": {
+    "position": [
+      2.8,
+      -2.4,
+      1.8
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "up": [
+      0,
+      0,
+      1
+    ]
+  },
+  "views": [
+    {
+      "name": "Iso",
+      "position": [
+        2.8,
+        -2.4,
+        1.8
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "description": "See the equator and the x, y, z axes together"
+    },
+    {
+      "name": "Top Down",
+      "position": [
+        0,
+        0,
+        4
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ],
+      "description": "Watch $\\phi$ sweep the equator from above"
+    }
+  ],
+  "elements": [
+    {
+      "id": "s4_sphere",
+      "type": "sphere",
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "radius": 1,
+      "color": "#5c7cfa",
+      "opacity": 0.12
+    },
+    {
+      "id": "s4_axis_x",
+      "type": "axis",
+      "axis": "x",
+      "range": [
+        -1.2,
+        1.2
+      ],
+      "color": "#ff4444",
+      "width": 1.2,
+      "label": "$x$"
+    },
+    {
+      "id": "s4_axis_y",
+      "type": "axis",
+      "axis": "y",
+      "range": [
+        -1.2,
+        1.2
+      ],
+      "color": "#44cc44",
+      "width": 1.2,
+      "label": "$y$"
+    },
+    {
+      "id": "s4_axis_z",
+      "type": "axis",
+      "axis": "z",
+      "range": [
+        -1.2,
+        1.2
+      ],
+      "color": "#4488ff",
+      "width": 1.2,
+      "label": "$z$"
+    },
+    {
+      "id": "s4_grid_xy",
+      "type": "grid",
+      "plane": "xy",
+      "range": [
+        -1.2,
+        1.2
+      ],
+      "color": [
+        0.28,
+        0.28,
+        0.45
+      ],
+      "opacity": 0.12,
+      "divisions": 8
+    }
+  ],
+  "steps": [
+    {
+      "title": "Walk the equator",
+      "description": "Set $\\theta=\\pi/2$ and change only $\\phi$. The state moves around the equator, but its z-coordinate stays at zero, so a z-basis measurement always gives 50%-50%.",
+      "prompt": "Say explicitly that the equator means z equals zero. Use that to justify the flat z-basis probabilities before discussing any other basis.",
+      "sliders": [
+        {
+          "id": "q4_phi",
+          "label": "$\\phi$",
+          "min": 0,
+          "max": 6.283185307179586,
+          "step": 0.01,
+          "default": 0,
+          "animate": true,
+          "duration": 5000
+        }
+      ],
+      "add": [
+        {
+          "id": "s4_equator",
+          "type": "parametric_curve",
+          "x": "cos(t)",
+          "y": "sin(t)",
+          "z": "0",
+          "range": [
+            0,
+            6.283185307179586
+          ],
+          "samples": 180,
+          "color": "#c77dff",
+          "width": 2,
+          "opacity": 0.6
+        },
+        {
+          "id": "s4_state_vec",
+          "type": "animated_vector",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "expr": [
+            "cos(q4_phi)",
+            "sin(q4_phi)",
+            "0"
+          ],
+          "color": "#ffd166",
+          "width": 2.0,
+          "label": "$|\\psi(\\phi)\\rangle$"
+        },
+        {
+          "id": "s4_state_pt",
+          "type": "animated_point",
+          "expr": [
+            "cos(q4_phi)",
+            "sin(q4_phi)",
+            "0"
+          ],
+          "color": "#ffd166",
+          "size": 1.0
+        }
+      ],
+      "info": [
+        {
+          "id": "s4_zflat",
+          "position": "top-right",
+          "content": "$$|\\psi(\\phi)\\rangle = \\frac{|0\\rangle + e^{i\\phi}|1\\rangle}{\\sqrt{2}}$$\n$$p_z(0)=p_z(1)=0.5$$"
+        }
+      ]
+    },
+    {
+      "title": "Measure in the x basis",
+      "description": "Now ask a different question: is the state aligned with $|+x\\rangle$ or $|-x\\rangle$? As $\\phi$ changes, those probabilities change even though the z-basis probabilities do not.",
+      "prompt": "Use this step to make basis dependence vivid. Relative phase becomes visible when we rotate the measurement basis.",
+      "remove": [
+        {
+          "type": "info"
+        }
+      ],
+      "add": [
+        {
+          "id": "s4_plusx",
+          "type": "point",
+          "position": [
+            1,
+            0,
+            0
+          ],
+          "color": "#66d9ff",
+          "size": 10,
+          "label": "$|+x\\rangle$"
+        },
+        {
+          "id": "s4_minusx",
+          "type": "point",
+          "position": [
+            -1,
+            0,
+            0
+          ],
+          "color": "#ff7b72",
+          "size": 10,
+          "label": "$|-x\\rangle$"
+        }
+      ],
+      "info": [
+        {
+          "id": "s4_xbasis",
+          "position": "top-right",
+          "content": "$$p(+x)=\\frac{1+\\cos\\phi}{2}={{toFixed((1+cos(q4_phi))/2,3)}}$$\n$$p(-x)=\\frac{1-\\cos\\phi}{2}={{toFixed((1-cos(q4_phi))/2,3)}}$$"
+        }
+      ]
+    },
+    {
+      "title": "Measure in the y basis",
+      "description": "The y basis sees a different slice of the same circle. As the state moves around the equator, the y-basis probabilities rise and fall with $\\sin\\phi$.",
+      "prompt": "Show that x and y measurements are complementary ways of reading the azimuth. This cements the idea that relative phase is geometric information on the Bloch sphere.",
+      "remove": [
+        {
+          "type": "info"
+        }
+      ],
+      "add": [
+        {
+          "id": "s4_plusy",
+          "type": "point",
+          "position": [
+            0,
+            1,
+            0
+          ],
+          "color": "#7bd389",
+          "size": 10,
+          "label": "$|+y\\rangle$"
+        },
+        {
+          "id": "s4_minusy",
+          "type": "point",
+          "position": [
+            0,
+            -1,
+            0
+          ],
+          "color": "#c77dff",
+          "size": 10,
+          "label": "$|-y\\rangle$"
+        }
+      ],
+      "info": [
+        {
+          "id": "s4_ybasis",
+          "position": "top-right",
+          "content": "$$p(+y)=\\frac{1+\\sin\\phi}{2}={{toFixed((1+sin(q4_phi))/2,3)}}$$\n$$p(-y)=\\frac{1-\\sin\\phi}{2}={{toFixed((1-sin(q4_phi))/2,3)}}$$"
+        }
+      ]
+    },
+    {
+      "title": "Global phase is invisible",
+      "description": "Multiplying the entire ket by $e^{i\\gamma}$ does not move the Bloch point or change any measurement probability. Only the relative phase between the basis amplitudes changes the state geometry.",
+      "prompt": "Students often confuse relative phase with global phase. State the distinction plainly: relative phase moves the Bloch point; global phase does not.",
+      "remove": [
+        {
+          "type": "info"
+        }
+      ],
+      "info": [
+        {
+          "id": "s4_global_phase",
+          "position": "top-right",
+          "content": "$$e^{i\\gamma}|\\psi\\rangle\\ \\text{and}\\ |\\psi\\rangle\\ \\text{represent the same physical state}$$\n$$\\text{Only the relative phase }\\phi\\text{ changes the Bloch point.}$$"
+        }
+      ]
+    }
+  ]
+}

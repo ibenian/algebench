@@ -1,0 +1,340 @@
+{
+  "title": "Angles Encode Amplitudes",
+  "description": "Two angles, $\\theta$ and $\\phi$, locate a pure qubit on the Bloch sphere and encode its amplitudes.",
+  "markdown": "# Angles Encode Amplitudes\n\nFor a pure one-qubit state, the Bloch sphere coordinates are usually written as\n\n$$|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle.$$\n\nThe Bloch point has coordinates\n\n$$r=(x,y,z)=\\bigl(\\sin\\theta\\cos\\phi,\\;\\sin\\theta\\sin\\phi,\\;\\cos\\theta\\bigr).$$\n\nSo:\n\n- $\\theta$ controls the **latitude** and therefore the balance between $|0\\rangle$ and $|1\\rangle$.\n- $\\phi$ controls the **azimuth** and therefore the **relative phase** between those basis states.\n\nThis is the standard pure-state parameterization for qubits; it is the geometric version of the normalized state-vector description. References: Nielsen & Chuang; Sakurai.",
+  "prompt": "Teach this scene as the algebra-geometry bridge. Keep gold for the active state, cyan for |0>, coral for |1>, green for the meridian, and magenta for azimuth/equator cues. Emphasize that theta controls amplitude magnitudes while phi controls relative phase.",
+  "range": [
+    [
+      -1.35,
+      1.35
+    ],
+    [
+      -1.35,
+      1.35
+    ],
+    [
+      -1.35,
+      1.35
+    ]
+  ],
+  "camera": {
+    "position": [
+      2.9,
+      -2.4,
+      1.7
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "up": [
+      0,
+      0,
+      1
+    ]
+  },
+  "views": [
+    {
+      "name": "Iso",
+      "position": [
+        2.9,
+        -2.4,
+        1.7
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "description": "See both latitude and azimuth"
+    },
+    {
+      "name": "Meridian",
+      "position": [
+        0,
+        -4,
+        0
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "description": "Best view for changing $\\theta$ at fixed $\\phi=0$"
+    },
+    {
+      "name": "Top Down",
+      "position": [
+        0,
+        0,
+        4
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ],
+      "description": "Look straight down to see the azimuth angle $\\phi$"
+    }
+  ],
+  "elements": [
+    {
+      "id": "s2_sphere",
+      "type": "sphere",
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "radius": 1,
+      "color": "#5c7cfa",
+      "opacity": 0.12
+    },
+    {
+      "id": "s2_axis_x",
+      "type": "axis",
+      "axis": "x",
+      "range": [
+        -1.2,
+        1.2
+      ],
+      "color": "#ff4444",
+      "width": 1.2,
+      "label": "$x$"
+    },
+    {
+      "id": "s2_axis_y",
+      "type": "axis",
+      "axis": "y",
+      "range": [
+        -1.2,
+        1.2
+      ],
+      "color": "#44cc44",
+      "width": 1.2,
+      "label": "$y$"
+    },
+    {
+      "id": "s2_axis_z",
+      "type": "axis",
+      "axis": "z",
+      "range": [
+        -1.2,
+        1.2
+      ],
+      "color": "#4488ff",
+      "width": 1.2,
+      "label": "$z$"
+    },
+    {
+      "id": "s2_grid_xy",
+      "type": "grid",
+      "plane": "xy",
+      "range": [
+        -1.2,
+        1.2
+      ],
+      "color": [
+        0.28,
+        0.28,
+        0.45
+      ],
+      "opacity": 0.12,
+      "divisions": 8
+    },
+    {
+      "id": "s2_ket0",
+      "type": "point",
+      "position": [
+        0,
+        0,
+        1
+      ],
+      "color": "#66d9ff",
+      "size": 10,
+      "label": "$|0\\rangle$"
+    },
+    {
+      "id": "s2_ket1",
+      "type": "point",
+      "position": [
+        0,
+        0,
+        -1
+      ],
+      "color": "#ff7b72",
+      "size": 10,
+      "label": "$|1\\rangle$"
+    }
+  ],
+  "steps": [
+    {
+      "title": "Polar angle $\\theta$",
+      "description": "Start on a single meridian with $\\phi=0$. As $\\theta$ increases from 0 to $\\pi$, the state slides from $|0\\rangle$ down to $|1\\rangle$.",
+      "prompt": "Connect theta to north-versus-south balance. Point out that theta alone already tells the student how much of |0> and |1> appears in the amplitudes.",
+      "sliders": [
+        {
+          "id": "q2_theta",
+          "label": "$\\theta$",
+          "min": 0,
+          "max": 3.141592653589793,
+          "step": 0.01,
+          "default": 1.05
+        }
+      ],
+      "add": [
+        {
+          "id": "s2_meridian",
+          "type": "parametric_curve",
+          "x": "sin(t)",
+          "y": "0",
+          "z": "cos(t)",
+          "range": [
+            0,
+            3.141592653589793
+          ],
+          "samples": 120,
+          "color": "#7bd389",
+          "width": 2,
+          "opacity": 0.65
+        },
+        {
+          "id": "s2_theta_vec",
+          "type": "animated_vector",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "expr": [
+            "sin(q2_theta)",
+            "0",
+            "cos(q2_theta)"
+          ],
+          "color": "#ffd166",
+          "width": 2.0,
+          "label": "$|\\psi(\\theta)\\rangle$"
+        },
+        {
+          "id": "s2_theta_pt",
+          "type": "animated_point",
+          "expr": [
+            "sin(q2_theta)",
+            "0",
+            "cos(q2_theta)"
+          ],
+          "color": "#ffd166",
+          "size": 1.0
+        }
+      ],
+      "info": [
+        {
+          "id": "s2_theta_info",
+          "position": "top-right",
+          "content": "$$|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + \\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle$$\n$$\\theta={{toFixed(q2_theta,2)}}\\ \\text{rad},\\quad z=\\cos\\theta={{toFixed(cos(q2_theta),2)}}$$"
+        }
+      ]
+    },
+    {
+      "title": "Azimuth $\\phi$",
+      "description": "Now let the state swing around the sphere. Changing $\\phi$ rotates the state around the z-axis while keeping the latitude fixed.",
+      "prompt": "Name phi as the azimuth angle and the source of relative phase. Do not claim that phi changes z-basis probabilities; save that comparison for later.",
+      "remove": [
+        {
+          "id": "s2_theta_vec"
+        },
+        {
+          "id": "s2_theta_pt"
+        },
+        {
+          "type": "info"
+        }
+      ],
+      "sliders": [
+        {
+          "id": "q2_phi",
+          "label": "$\\phi$",
+          "min": 0,
+          "max": 6.283185307179586,
+          "step": 0.01,
+          "default": 0.79
+        }
+      ],
+      "add": [
+        {
+          "id": "s2_full_vec",
+          "type": "animated_vector",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "expr": [
+            "sin(q2_theta)*cos(q2_phi)",
+            "sin(q2_theta)*sin(q2_phi)",
+            "cos(q2_theta)"
+          ],
+          "color": "#ffd166",
+          "width": 2.0,
+          "label": "$|\\psi(\\theta,\\phi)\\rangle$"
+        },
+        {
+          "id": "s2_full_pt",
+          "type": "animated_point",
+          "expr": [
+            "sin(q2_theta)*cos(q2_phi)",
+            "sin(q2_theta)*sin(q2_phi)",
+            "cos(q2_theta)"
+          ],
+          "color": "#ffd166",
+          "size": 1.0
+        }
+      ]
+    },
+    {
+      "title": "Read off amplitudes",
+      "description": "The latitude controls the magnitudes of the amplitudes, while the azimuth controls their relative phase. The Bloch point packages both into one geometric picture.",
+      "prompt": "Connect the geometry to the ket formula explicitly. Mention that the magnitudes come from theta over 2 and the relative phase from phi.",
+      "add": [
+        {
+          "id": "s2_equator",
+          "type": "parametric_curve",
+          "x": "cos(t)",
+          "y": "sin(t)",
+          "z": "0",
+          "range": [
+            0,
+            6.283185307179586
+          ],
+          "samples": 180,
+          "color": "#c77dff",
+          "width": 2,
+          "opacity": 0.55
+        }
+      ],
+      "info": [
+        {
+          "id": "s2_formula",
+          "position": "top-right",
+          "content": "$$|\\psi\\rangle = \\alpha|0\\rangle + \\beta|1\\rangle,\\qquad \\alpha=\\cos\\left(\\frac{\\theta}{2}\\right),\\ \\beta=e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)$$\n$$|\\alpha|^2={{toFixed(cos(q2_theta/2)^2,3)}},\\qquad |\\beta|^2={{toFixed(sin(q2_theta/2)^2,3)}}$$"
+        }
+      ]
+    }
+  ]
+}

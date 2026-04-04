@@ -1,0 +1,329 @@
+{
+  "title": "From Bit to Bloch Sphere",
+  "description": "A qubit is not just 0 or 1. Pure one-qubit states fill the Bloch sphere, with $|0\\rangle$ and $|1\\rangle$ at the poles.",
+  "markdown": "# From Bit to Bloch Sphere\n\nA classical bit has two pure states: $0$ and $1$. A **qubit** has basis states $|0\\rangle$ and $|1\\rangle$, but any normalized superposition\n\n$$|\\psi\\rangle = \\alpha |0\\rangle + \\beta |1\\rangle, \\qquad |\\alpha|^2 + |\\beta|^2 = 1$$\n\nis also a valid pure state.\n\nFor a single qubit, global phase does not affect measurements, so every pure state can be represented by a point on the **Bloch sphere**. The north pole is $|0\\rangle$, the south pole is $|1\\rangle$, and intermediate points represent superpositions.\n\nThis draft lesson focuses on **pure one-qubit states** because they admit a clean 3D picture. Mixed states live inside the sphere rather than on its surface.\n\nReferences: Nielsen & Chuang, *Quantum Computation and Quantum Information*; Griffiths & Schroeter, *Introduction to Quantum Mechanics*; Sakurai & Napolitano, *Modern Quantum Mechanics*.",
+  "prompt": "Teach this scene as the jump from classical states to pure qubit states. Gold is always the current state, cyan is |0>, coral is |1>, and magenta is reserved for phase-related circles. Emphasize that the Bloch sphere visualizes pure states of a two-level system, not all quantum states in full generality.",
+  "range": [
+    [
+      -1.35,
+      1.35
+    ],
+    [
+      -1.35,
+      1.35
+    ],
+    [
+      -1.35,
+      1.35
+    ]
+  ],
+  "camera": {
+    "position": [
+      2.7,
+      -2.7,
+      1.8
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "up": [
+      0,
+      0,
+      1
+    ]
+  },
+  "views": [
+    {
+      "name": "Iso",
+      "position": [
+        2.7,
+        -2.7,
+        1.8
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "description": "Three-dimensional view of the Bloch sphere"
+    },
+    {
+      "name": "Face On",
+      "position": [
+        0,
+        -4,
+        0
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "description": "Look directly at the x-z cross-section"
+    },
+    {
+      "name": "North Pole",
+      "position": [
+        0.7,
+        -0.7,
+        3.2
+      ],
+      "target": [
+        0,
+        0,
+        0.8
+      ],
+      "up": [
+        0,
+        1,
+        0
+      ],
+      "description": "Focus on the $|0\\rangle$ pole"
+    },
+    {
+      "name": "Equator",
+      "position": [
+        3.2,
+        0,
+        0
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "description": "Side view of equatorial superpositions"
+    }
+  ],
+  "elements": [
+    {
+      "id": "s1_sphere",
+      "type": "sphere",
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "radius": 1,
+      "color": "#5c7cfa",
+      "opacity": 0.12
+    },
+    {
+      "id": "s1_axis_x",
+      "type": "axis",
+      "axis": "x",
+      "range": [
+        -1.2,
+        1.2
+      ],
+      "color": "#ff4444",
+      "width": 1.2,
+      "label": "$x$"
+    },
+    {
+      "id": "s1_axis_y",
+      "type": "axis",
+      "axis": "y",
+      "range": [
+        -1.2,
+        1.2
+      ],
+      "color": "#44cc44",
+      "width": 1.2,
+      "label": "$y$"
+    },
+    {
+      "id": "s1_axis_z",
+      "type": "axis",
+      "axis": "z",
+      "range": [
+        -1.2,
+        1.2
+      ],
+      "color": "#4488ff",
+      "width": 1.2,
+      "label": "$z$"
+    },
+    {
+      "id": "s1_grid_xy",
+      "type": "grid",
+      "plane": "xy",
+      "range": [
+        -1.2,
+        1.2
+      ],
+      "color": [
+        0.28,
+        0.28,
+        0.45
+      ],
+      "opacity": 0.12,
+      "divisions": 8
+    }
+  ],
+  "steps": [
+    {
+      "title": "Classical endpoints",
+      "description": "Start with the computational basis states. In this basis, $|0\\rangle$ is certainly 0 and $|1\\rangle$ is certainly 1, just like the two pure states of a classical bit.",
+      "prompt": "Anchor the scene in the two poles first. Connect them to definite computational-basis outcomes and to the classical idea of two pure alternatives.",
+      "add": [
+        {
+          "id": "s1_ket0",
+          "type": "point",
+          "position": [
+            0,
+            0,
+            1
+          ],
+          "color": "#66d9ff",
+          "size": 10,
+          "label": "$|0\\rangle$"
+        },
+        {
+          "id": "s1_ket1",
+          "type": "point",
+          "position": [
+            0,
+            0,
+            -1
+          ],
+          "color": "#ff7b72",
+          "size": 10,
+          "label": "$|1\\rangle$"
+        }
+      ]
+    },
+    {
+      "title": "A superposition appears",
+      "description": "Now move to the equator. This state is neither pole, so it is not 'just 0' or 'just 1'; it is a balanced superposition.",
+      "prompt": "Use the equator state to break the classical analogy. Stress that equal amplitudes do not mean a classical halfway state.",
+      "add": [
+        {
+          "id": "s1_plusx_vec",
+          "type": "vector",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            1,
+            0,
+            0
+          ],
+          "color": "#ffd166",
+          "width": 4,
+          "label": "$|+x\\rangle$"
+        },
+        {
+          "id": "s1_plusx_pt",
+          "type": "point",
+          "position": [
+            1,
+            0,
+            0
+          ],
+          "color": "#ffd166",
+          "size": 8
+        }
+      ]
+    },
+    {
+      "title": "Generic pure state",
+      "description": "A general pure qubit can point anywhere on the sphere. This sample state has both a latitude and an azimuth, so it needs more than a single 'probability of 1' number to describe it.",
+      "prompt": "Introduce the idea that one angle sets the balance between |0> and |1>, while another controls relative phase. Keep it qualitative here and save formulas for the next scene.",
+      "remove": [
+        {
+          "id": "s1_plusx_vec"
+        },
+        {
+          "id": "s1_plusx_pt"
+        }
+      ],
+      "add": [
+        {
+          "id": "s1_generic_vec",
+          "type": "vector",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0.612,
+            0.612,
+            0.5
+          ],
+          "color": "#ffd166",
+          "width": 4,
+          "label": "$|\\psi\\rangle$"
+        },
+        {
+          "id": "s1_generic_pt",
+          "type": "point",
+          "position": [
+            0.612,
+            0.612,
+            0.5
+          ],
+          "color": "#ffd166",
+          "size": 8
+        }
+      ]
+    },
+    {
+      "title": "The whole sphere matters",
+      "description": "The equator and the meridian show that there is a continuous family of pure states. Quantum state space is richer than a two-point classical menu.",
+      "prompt": "Close by naming the key visual fact: the poles are special cases, but pure states occupy the full surface. Prepare the student for angle coordinates next.",
+      "add": [
+        {
+          "id": "s1_equator",
+          "type": "parametric_curve",
+          "x": "cos(t)",
+          "y": "sin(t)",
+          "z": "0",
+          "range": [
+            0,
+            6.283185307179586
+          ],
+          "samples": 180,
+          "color": "#c77dff",
+          "width": 2,
+          "opacity": 0.65
+        },
+        {
+          "id": "s1_meridian",
+          "type": "parametric_curve",
+          "x": "sin(t)",
+          "y": "0",
+          "z": "cos(t)",
+          "range": [
+            0,
+            3.141592653589793
+          ],
+          "samples": 120,
+          "color": "#7bd389",
+          "width": 2,
+          "opacity": 0.65
+        }
+      ]
+    }
+  ]
+}
