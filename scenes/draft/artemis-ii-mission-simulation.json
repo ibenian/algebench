@@ -531,14 +531,14 @@
       ],
       "camera": {
         "position": [
-          -18,
-          4,
-          20
+          3.92,
+          1.99,
+          2.96
         ],
         "target": [
-          -18,
-          2,
-          0
+          -38.18,
+          -0.01,
+          -3.07
         ],
         "up": [
           0,
@@ -552,9 +552,28 @@
           "description": "Moon-centered flyby view",
           "follow": "s3_moon",
           "offset": [
-            -18,
-            4,
-            20
+            -4,
+            1,
+            5
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "Blackout View",
+          "description": "View Earth hidden behind the Moon during blackout",
+          "position": [
+            1.72770706788452,
+            -0.1794360264324702,
+            0
+          ],
+          "target": [
+            -38.23434639578639,
+            3.970938892380054,
+            0
           ],
           "up": [
             0,
@@ -566,14 +585,14 @@
           "name": "Far Side",
           "description": "Focus on the blackout side of the Moon",
           "position": [
-            1.72770706788452,
-            -0.1794360264324702,
-            0
+            3.73,
+            -2.85,
+            4.0
           ],
           "target": [
-            -38.23434639578639,
-            3.970938892380054,
-            0
+            -38.09,
+            7.13,
+            -1.01
           ],
           "up": [
             0,
@@ -635,8 +654,8 @@
           "id": "s3_earth",
           "type": "sphere",
           "centerExpr": [
-            "-moonX(flyDay)",
-            "-moonY(flyDay)",
+            "-moonX(day)",
+            "-moonY(day)",
             "0"
           ],
           "radius": 0.6371,
@@ -673,13 +692,13 @@
               "id": "s3_orion",
               "type": "animated_vector",
               "fromExpr": [
-                "missionX(flyDay) - moonX(flyDay) - 0.08 * missionVx(flyDay) / max(0.001, sqrt(missionVx(flyDay)^2 + missionVy(flyDay)^2))",
-                "missionY(flyDay) - moonY(flyDay) - 0.08 * missionVy(flyDay) / max(0.001, sqrt(missionVx(flyDay)^2 + missionVy(flyDay)^2))",
+                "missionX(day) - moonX(day) - 0.08 * missionVx(day) / max(0.001, sqrt(missionVx(day)^2 + missionVy(day)^2))",
+                "missionY(day) - moonY(day) - 0.08 * missionVy(day) / max(0.001, sqrt(missionVx(day)^2 + missionVy(day)^2))",
                 "0"
               ],
               "expr": [
-                "missionX(flyDay) - moonX(flyDay)",
-                "missionY(flyDay) - moonY(flyDay)",
+                "missionX(day) - moonX(day)",
+                "missionY(day) - moonY(day)",
                 "0"
               ],
               "color": "#ffffff",
@@ -711,24 +730,25 @@
               "id": "s3_los",
               "type": "animated_vector",
               "fromExpr": [
-                "-moonX(flyDay)",
-                "-moonY(flyDay)",
+                "-moonX(day)",
+                "-moonY(day)",
                 "0"
               ],
               "expr": [
-                "missionX(flyDay) - moonX(flyDay)",
-                "missionY(flyDay) - moonY(flyDay)",
+                "missionX(day) - moonX(day)",
+                "missionY(day) - moonY(day)",
                 "0"
               ],
               "color": "#7dd3fc",
               "opacity": 0.5,
               "width": 0.11,
+              "arrowScale": 0.33,
               "label": "Earth line of sight"
             }
           ],
           "sliders": [
             {
-              "id": "flyDay",
+              "id": "day",
               "label": "Mission Day",
               "min": 4.6,
               "max": 5.2,
@@ -750,7 +770,7 @@
           "info": [
             {
               "id": "s3_info",
-              "content": "**Mission day:** {{toFixed(flyDay, 3)}}\n\n**Flyby altitude setting:** {{toFixed(flyAlt, 0)}} mi\n\n**Earth direction angle:** {{toFixed(180 * moonTheta(flyDay) / pi, 1)}} deg\n\n**Comms status:** {{missionBlackout(flyDay) > 0.5 ? \"Blackout: Moon blocks Earth line of sight\" : \"Line of sight to Earth available\"}}\n\n**Closest-approach window:** about 4,000 to 6,000 mi above the lunar surface",
+              "content": "**Mission day:** {{toFixed(day, 3)}}\n\n**Flyby altitude setting:** {{toFixed(flyAlt, 0)}} mi\n\n**Earth direction angle:** {{toFixed(180 * moonTheta(day) / pi, 1)}} deg\n\n**Comms status:** {{missionBlackout(day) > 0.5 ? \"Blackout: Moon blocks Earth line of sight\" : \"Line of sight to Earth available\"}}\n\n**Closest-approach window:** about 4,000 to 6,000 mi above the lunar surface",
               "position": "top-left"
             }
           ]
@@ -858,12 +878,12 @@
         },
         {
           "name": "Follow Moon",
-          "description": "Stationed at the flyby rendezvous — watch Moon and Orion approach with Earth in the background",
+          "description": "Follow the moving Moon with a helper anchor near the flyby",
           "follow": "s4_flyby_anchor",
           "offset": [
-            -2,
-            1.5,
-            3.5
+            2.1,
+            1.2,
+            3.1
           ],
           "up": [
             0,
@@ -963,6 +983,7 @@
             6.2832
           ],
           "color": "#8ecae6",
+          "label": "Moon trajectory",
           "width": 2.0,
           "opacity": 0.85,
           "samples": 360
@@ -1026,8 +1047,8 @@
           "id": "s4_tli_label",
           "type": "text",
           "positionExpr": [
-            "missionX(1.07) + 1.0",
-            "missionY(1.07) + 0.8",
+            "missionX(1.0673611111111112) + 1.1 * missionX(1.0673611111111112) / max(0.001, sqrt(missionX(1.0673611111111112)^2 + missionY(1.0673611111111112)^2))",
+            "missionY(1.0673611111111112) + 1.1 * missionY(1.0673611111111112) / max(0.001, sqrt(missionX(1.0673611111111112)^2 + missionY(1.0673611111111112)^2))",
             "0.2"
           ],
           "text": "Translunar Injection",
@@ -1206,8 +1227,13 @@
           "info": [
             {
               "id": "s4_info",
-              "content": "**Phase:** {{missionPhase(day)}}\n\n**Mission day:** {{toFixed(day, 2)}}\n\n**Distance from Earth center:** {{toFixed(distEarthKm(day), 0)}} km\n\n**Distance from Moon center:** {{toFixed(distMoonKm(day), 0)}} km\n\n**Moon angle:** {{toFixed(180 * moonTheta(day) / pi, 1)}} deg\n\n**Milestone bucket:** {{missionMilestone(day)}}\n\n**Comms blackout:** {{missionBlackout(day) > 0.5 ? \"Yes\" : \"No\"}}\n\n**Playback:** looping nominal mission; use **Moon Flyby** view to inspect closest approach",
+              "content": "**Phase:** {{missionPhase(day)}}\n\n**Mission day:** {{toFixed(day, 2)}}\n\n**Distance from Earth center:** {{toFixed(distEarthKm(day), 0)}} km\n\n**Distance from Moon center:** {{toFixed(distMoonKm(day), 0)}} km\n\n**Moon angle:** {{toFixed(180 * moonTheta(day) / pi, 1)}} deg\n\n**Playback:** looping nominal mission; use **Moon Flyby** view to inspect closest approach",
               "position": "top-left"
+            },
+            {
+              "id": "s4_status_info",
+              "content": "**Milestone bucket:** {{missionMilestone(day)}}\n\n**Comms blackout:** {{missionBlackout(day) > 0.5 ? \"Yes\" : \"No\"}}",
+              "position": "top-right"
             },
             {
               "id": "s4_return_info",

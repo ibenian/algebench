@@ -707,9 +707,23 @@
           "$ref": "#/$defs/vec3Number",
           "description": "Camera position [x,y,z] for this view."
         },
+        "positionExpr": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Dynamic camera position as expression triplet [xExpr,yExpr,zExpr]. Evaluated each frame in data space."
+        },
         "target": {
           "$ref": "#/$defs/vec3Number",
           "description": "Camera target [x,y,z] for this view."
+        },
+        "targetExpr": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Dynamic camera target as expression triplet [xExpr,yExpr,zExpr]. Evaluated each frame in data space."
         },
         "up": {
           "$ref": "#/$defs/vec3Number",

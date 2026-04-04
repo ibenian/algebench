@@ -314,12 +314,46 @@ Resolution order: step-level `virtualTime` overrides scene-level; if neither is 
 
 #### Camera System
 
-Three modes:
+Three main camera modes:
 1. **Free camera** — OrbitControls / TrackballControls, user-driven
 2. **Step camera override** — `step.camera` animates camera when navigating
 3. **Follow cam** — tracks an animated element; activates via preset views with `"follow": [...]`
+4. **Expression camera** — computes camera pose directly from math expressions via view-level `positionExpr` / `targetExpr`
 
 Follow cam computes target position from `animatedElementPos` (updated every frame) and supports angle-lock to maintain orientation relative to a direction vector.
+
+`follow` and `positionExpr`/`targetExpr` solve different problems:
+
+- **`follow`** is for object-centric cameras. It follows a live animated anchor such as an `animated_point` or `animated_vector`.
+- **`positionExpr` / `targetExpr`** are for geometry-driven cameras. They recompute the camera position and look-at target every frame from expressions, without depending on follow-cam state.
+
+Important constraint: the current `follow` path does **not** follow `sphere.centerExpr` directly. If you want to follow a moving sphere such as the Moon, the stable pattern is to add a tiny hidden `animated_point` at the same position and follow that point.
+
+Example:
+
+```json
+{
+  "views": [
+    {
+      "name": "Ride Along",
+      "follow": "orion_anchor",
+      "offset": [0, 2.5, 6],
+      "up": [0, 0, 1]
+    },
+    {
+      "name": "Plan View",
+      "positionExpr": ["moonX() + 2", "moonY() + 1", "3"],
+      "targetExpr": ["moonX()", "moonY()", "0"],
+      "up": [0, 0, 1]
+    }
+  ]
+}
+```
+
+In the runtime, `camera.js` dispatches these separately:
+
+- views with `follow` go through `follow-cam.js`
+- views with `positionExpr` + `targetExpr` go through the expression-camera path in `camera.js`
 
 #### Coordinate Systems
 
@@ -599,7 +633,11 @@ Scenes are standalone JSON files loaded at startup or dropped into the browser.
   "range": [[-15000,15000],[-15000,15000],[-15000,15000]],
   "camera": { "position": [x,y,z], "target": [x,y,z] },
   "cameraUp": [0,0,1],
-  "views": [ { "name": "Iso", "position": [...], "target": [...] } ],
+  "views": [
+    { "name": "Iso", "position": [...], "target": [...] },
+    { "name": "Follow Moon", "follow": "moon_anchor", "offset": [2,1,3] },
+    { "name": "Moon Plan", "positionExpr": ["moonX()", "moonY()+2", "4"], "targetExpr": ["moonX()", "moonY()", "0"] }
+  ],
   "elements": [ { element }, ... ],
   "steps": [ { step }, ... ]
 }
