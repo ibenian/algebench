@@ -574,9 +574,7 @@ export function resolveEffectiveStepCamera(scene, stepIdx) {
 
     const baseUp = (scene.camera && Array.isArray(scene.camera.up) && scene.camera.up.length === 3)
         ? scene.camera.up.slice(0, 3)
-        : (Array.isArray(scene.cameraUp) && scene.cameraUp.length === 3)
-            ? scene.cameraUp.slice(0, 3)
-            : [0, 1, 0];
+        : [0, 1, 0];
 
     const effective = {
         position: (scene.camera && Array.isArray(scene.camera.position) && scene.camera.position.length === 3)
@@ -677,9 +675,7 @@ export function buildCameraButtons(spec) {
     state.CAMERA_VIEWS = {};
     state.sceneUp = (spec && spec.camera && Array.isArray(spec.camera.up) && spec.camera.up.length === 3)
         ? spec.camera.up.slice(0, 3)
-        : (spec && Array.isArray(spec.cameraUp) && spec.cameraUp.length === 3)
-            ? spec.cameraUp.slice(0, 3)
-            : [0, 1, 0];
+        : [0, 1, 0];
 
     const views = (spec && spec.views) ? spec.views : DEFAULT_VIEWS;
 

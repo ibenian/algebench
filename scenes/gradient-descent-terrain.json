@@ -36,13 +36,13 @@
           0,
           0,
           0.5
+        ],
+        "up": [
+          0,
+          0,
+          1
         ]
       },
-      "cameraUp": [
-        0,
-        0,
-        1
-      ],
       "views": [
         {
           "name": "Iso",
@@ -56,7 +56,7 @@
             0,
             0.7
           ],
-          "description": "Isometric overview — see the terrain surface in 3D perspective"
+          "description": "Isometric overview \u2014 see the terrain surface in 3D perspective"
         },
         {
           "name": "Descent View",
@@ -70,7 +70,7 @@
             0,
             1.5
           ],
-          "description": "Looking into the bowl from an elevated angle — follow the descent path"
+          "description": "Looking into the bowl from an elevated angle \u2014 follow the descent path"
         },
         {
           "name": "Front (XZ)",
@@ -84,7 +84,7 @@
             0,
             2.5
           ],
-          "description": "Front view along Y — see how the loss changes along X"
+          "description": "Front view along Y \u2014 see how the loss changes along X"
         },
         {
           "name": "Side (YZ)",
@@ -98,7 +98,7 @@
             0,
             2.5
           ],
-          "description": "Side view along X — see how the loss changes along Y"
+          "description": "Side view along X \u2014 see how the loss changes along Y"
         },
         {
           "name": "Top Down",
@@ -112,7 +112,7 @@
             0,
             0
           ],
-          "description": "Looking straight down — see the loss landscape as a 2D contour map"
+          "description": "Looking straight down \u2014 see the loss landscape as a 2D contour map"
         }
       ],
       "elements": [
@@ -447,13 +447,13 @@
           0,
           0,
           2.5
+        ],
+        "up": [
+          0,
+          0,
+          1
         ]
       },
-      "cameraUp": [
-        0,
-        0,
-        1
-      ],
       "views": [
         {
           "name": "Iso",
@@ -467,7 +467,7 @@
             0,
             2.5
           ],
-          "description": "Isometric overview — see the terrain surface in 3D perspective"
+          "description": "Isometric overview \u2014 see the terrain surface in 3D perspective"
         },
         {
           "name": "Gradient View",
@@ -481,7 +481,7 @@
             0,
             2
           ],
-          "description": "View aligned with the gradient step — clearly see the descent direction"
+          "description": "View aligned with the gradient step \u2014 clearly see the descent direction"
         },
         {
           "name": "Front (XZ)",
@@ -495,7 +495,7 @@
             0,
             5
           ],
-          "description": "Front view along Y — see how the loss changes along X"
+          "description": "Front view along Y \u2014 see how the loss changes along X"
         },
         {
           "name": "Side (YZ)",
@@ -509,7 +509,7 @@
             0,
             5
           ],
-          "description": "Side view along X — see how the loss changes along Y"
+          "description": "Side view along X \u2014 see how the loss changes along Y"
         },
         {
           "name": "Top Down",
@@ -523,7 +523,7 @@
             0,
             0
           ],
-          "description": "Looking straight down — see the loss landscape as a 2D contour map"
+          "description": "Looking straight down \u2014 see the loss landscape as a 2D contour map"
         }
       ],
       "elements": [
@@ -862,13 +862,13 @@
           0,
           0,
           2
+        ],
+        "up": [
+          0,
+          0,
+          1
         ]
       },
-      "cameraUp": [
-        0,
-        0,
-        1
-      ],
       "views": [
         {
           "name": "Iso",
@@ -882,7 +882,7 @@
             0,
             2
           ],
-          "description": "Isometric overview — see the terrain surface in 3D perspective"
+          "description": "Isometric overview \u2014 see the terrain surface in 3D perspective"
         },
         {
           "name": "Basin Overview",
@@ -910,7 +910,7 @@
             0,
             5
           ],
-          "description": "Front view along Y — see how the loss changes along X"
+          "description": "Front view along Y \u2014 see how the loss changes along X"
         },
         {
           "name": "Side (YZ)",
@@ -924,7 +924,7 @@
             0,
             5
           ],
-          "description": "Side view along X — see how the loss changes along Y"
+          "description": "Side view along X \u2014 see how the loss changes along Y"
         },
         {
           "name": "Top Down",
@@ -938,7 +938,7 @@
             0,
             0
           ],
-          "description": "Looking straight down — see the loss landscape as a 2D contour map"
+          "description": "Looking straight down \u2014 see the loss landscape as a 2D contour map"
         }
       ],
       "elements": [
@@ -1164,7 +1164,7 @@
         },
         {
           "title": "Animated descent probe",
-          "description": "Animate full gradient-descent iterations over Himmelblau from the current start point. The cyan path shows the entire descent trajectory toward a basin minimum.\n\n**Try it:** Move $x_p$, $y_p$ to start near different basins. Then **increase $\\eta$** — watch what happens when the learning rate is too large: the path overshoots the minimum and climbs back up. This divergence is why choosing the right learning rate matters.",
+          "description": "Animate full gradient-descent iterations over Himmelblau from the current start point. The cyan path shows the entire descent trajectory toward a basin minimum.\n\n**Try it:** Move $x_p$, $y_p$ to start near different basins. Then **increase $\\eta$** \u2014 watch what happens when the learning rate is too large: the path overshoots the minimum and climbs back up. This divergence is why choosing the right learning rate matters.",
           "remove": [
             {
               "id": "probe-step"

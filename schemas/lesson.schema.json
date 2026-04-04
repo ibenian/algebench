@@ -60,7 +60,6 @@
         "range": { "$ref": "#/$defs/range3D", "description": "Axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]]. Default: [[-5,5],[-5,5],[-5,5]]." },
         "scale": { "$ref": "#/$defs/vec3Number", "description": "Axis scale factors as [sx,sy,sz]. Default: [1,1,1]." },
         "camera": { "$ref": "#/$defs/camera", "description": "Initial camera position and target." },
-        "cameraUp": { "$ref": "#/$defs/vec3Number", "description": "Camera up vector [x,y,z]. Default: [0,1,0]. Alias for camera.up." },
         "views": { "type": "array", "items": { "$ref": "#/$defs/view" }, "description": "Named camera presets shown as buttons." },
         "functions": { "type": "array", "items": { "$ref": "#/$defs/sceneFunction" }, "description": "Reusable math functions available in expressions." },
         "starfield": { "$ref": "#/$defs/starfield", "description": "Background starfield configuration." },
@@ -102,10 +101,6 @@
         "camera": {
           "$ref": "#/$defs/camera",
           "description": "Initial camera position and target for this scene."
-        },
-        "cameraUp": {
-          "$ref": "#/$defs/vec3Number",
-          "description": "Camera up vector [x,y,z]. Default: [0,1,0]. Alternative to camera.up."
         },
         "views": {
           "type": "array",

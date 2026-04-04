@@ -631,8 +631,7 @@ Scenes are standalone JSON files loaded at startup or dropped into the browser.
   "markdown": "LaTeX-enabled explanation...",
   "prompt": "Agent instructions for this scene",
   "range": [[-15000,15000],[-15000,15000],[-15000,15000]],
-  "camera": { "position": [x,y,z], "target": [x,y,z] },
-  "cameraUp": [0,0,1],
+  "camera": { "position": [x,y,z], "target": [x,y,z], "up": [0,0,1] },
   "views": [
     { "name": "Iso", "position": [...], "target": [...] },
     { "name": "Follow Moon", "follow": "moon_anchor", "offset": [2,1,3] },

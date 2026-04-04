@@ -581,9 +581,7 @@ export async function loadScene(spec) {
     if (spec.camera) {
         const up = (spec.camera && Array.isArray(spec.camera.up) && spec.camera.up.length === 3)
             ? spec.camera.up
-            : ((spec.cameraUp && Array.isArray(spec.cameraUp) && spec.cameraUp.length === 3)
-                ? spec.cameraUp
-                : [0, 1, 0]);
+            : [0, 1, 0];
         state.camera.up.set(up[0], up[1], up[2]);
         const pos = dataCameraToWorld(spec.camera.position || DEFAULT_CAMERA.position);
         const tgt = dataCameraToWorld(spec.camera.target || DEFAULT_CAMERA.target);
@@ -700,7 +698,6 @@ export function navigateTo(sceneIdx, stepIdx) {
             markdown: scene.markdown,
             range: scene.range,
             scale: scene.scale,
-            cameraUp: scene.cameraUp,
             camera: scene.camera,
             views: scene.views,
             functions: scene.functions,

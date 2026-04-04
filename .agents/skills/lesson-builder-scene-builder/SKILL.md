@@ -152,7 +152,6 @@ If the scene outline includes a `proof_plan`:
   "markdown": "# Full explanation with $LaTeX$",
   "range": [[-5,5],[-5,5],[-5,5]],
   "camera": {"position":[5,3,5],"target":[0,0,0]},
-  "cameraUp": [0,1,0],
   "views": [...],
   "elements": [...],
   "steps": [...]
@@ -188,7 +187,6 @@ If the scene outline includes a `proof_plan`:
 | `prompt` | string | no | **Agent-only** — injected into the AI system prompt for this scene. Never shown to the user |
 | `range` | `[[xmin,xmax],[ymin,ymax],[zmin,zmax]]` | no | Data coordinate range. Default `[[-5,5],[-5,5],[-5,5]]` |
 | `camera` | object | no | Initial camera: `{"position":[x,y,z],"target":[x,y,z]}` — in **data space** |
-| `cameraUp` | `[x,y,z]` | no | Up vector. Default `[0,1,0]`. Use `[0,0,1]` for top-down conventions |
 | `views` | array | no | Custom camera preset buttons. Omit to get 4 defaults (Iso, Front, Top, Right) |
 | `unsafe` | boolean | no | Set `true` if scene uses native JS expressions |
 | `unsafe_explanation` | string | no | Shown in the trust dialog. Required when `unsafe: true` |
