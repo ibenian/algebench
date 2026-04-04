@@ -91,7 +91,10 @@ export function activateFollowCam(viewSpec) {
         ? viewSpec.angleLockVector.slice()
         : (typeof viewSpec.angleLockVector === 'string' && viewSpec.angleLockVector.trim())
             ? [viewSpec.angleLockVector.trim()] : null;
-    const resolvedAngleLockVectorTargets = angleLockVectorTargets || angleLockDirectionVectorTargets;
+    let resolvedAngleLockVectorTargets = angleLockVectorTargets || angleLockDirectionVectorTargets;
+    if (!resolvedAngleLockVectorTargets && el && (el.type === 'animated_vector' || el.type === 'vector')) {
+        resolvedAngleLockVectorTargets = [el.id];
+    }
 
     let initDataPos;
     const freshEntry = _getFreshAnimEntry(followTargets);

@@ -624,9 +624,11 @@ export function buildCameraButtons(spec) {
     const container = document.getElementById('camera-buttons');
     container.innerHTML = '';
     state.CAMERA_VIEWS = {};
-    state.sceneUp = (spec && Array.isArray(spec.cameraUp) && spec.cameraUp.length === 3)
-        ? spec.cameraUp.slice(0, 3)
-        : [0, 1, 0];
+    state.sceneUp = (spec && spec.camera && Array.isArray(spec.camera.up) && spec.camera.up.length === 3)
+        ? spec.camera.up.slice(0, 3)
+        : (spec && Array.isArray(spec.cameraUp) && spec.cameraUp.length === 3)
+            ? spec.cameraUp.slice(0, 3)
+            : [0, 1, 0];
 
     const views = (spec && spec.views) ? spec.views : DEFAULT_VIEWS;
 

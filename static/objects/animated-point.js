@@ -5,7 +5,12 @@ import { dataToWorld, dataLenToWorld } from '/coords.js';
 
 export function renderAnimatedPoint(el, view) {
     const color = parseColor(el.color || '#ffdd00');
-    const radius = el.radius !== undefined ? el.radius : 0.25;
+    const shader = el.shader || {};
+    const size = Number(el.size);
+    const opacity = Number.isFinite(Number(el.opacity)) ? Math.max(0, Math.min(1, Number(el.opacity))) : 1;
+    const radius = el.radius !== undefined
+        ? el.radius
+        : (Number.isFinite(size) ? Math.max(size, 0) / 50 : 0.25);
     const label = el.label;
     const exprStrings = el.expr || el.positionExpr || el.toExpr
         || (Array.isArray(el.position) && el.position.length === 3 ? el.position.map(v => String(v)) : null);
@@ -28,16 +33,30 @@ export function renderAnimatedPoint(el, view) {
 
     const initWorld = dataToWorld(initPos);
     const geom = new THREE.SphereGeometry(1, 20, 16);
-    const mat = new THREE.MeshPhongMaterial({
+    const matOpts = {
         color: new THREE.Color(...color),
-        shininess: 50,
-        transparent: true,
-        opacity: 1,
-    });
+        transparent: opacity < 0.999,
+        opacity,
+    };
+    if (shader.depthWrite !== undefined) matOpts.depthWrite = !!shader.depthWrite;
+    if (shader.depthTest !== undefined) matOpts.depthTest = !!shader.depthTest;
+
+    let mat;
+    if (shader.type === 'basic') {
+        mat = new THREE.MeshBasicMaterial(matOpts);
+    } else {
+        matOpts.shininess = shader.shininess !== undefined ? shader.shininess : 50;
+        if (shader.emissive) matOpts.emissive = new THREE.Color(shader.emissive);
+        if (shader.specular) matOpts.specular = new THREE.Color(shader.specular);
+        if (shader.flatShading) matOpts.flatShading = true;
+        mat = new THREE.MeshPhongMaterial(matOpts);
+    }
     const mesh = new THREE.Mesh(geom, mat);
     mesh.position.set(initWorld[0], initWorld[1], initWorld[2]);
     const initWorldRadius = Math.max(dataLenToWorld(radius), 0.0005);
     mesh.scale.setScalar(initWorldRadius);
+    mesh.userData.targetOpacity = opacity;
+    mesh.userData.ignorePlaneOpacity = !!shader.ignorePlaneOpacity;
     state.three.scene.add(mesh);
     state.planeMeshes.push(mesh);
 

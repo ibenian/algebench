@@ -276,6 +276,7 @@ export function buildSliderOverlay() {
         row.appendChild(valSpan);
 
         input.addEventListener('input', () => {
+            if (s._loopPlaying) stopSliderLoop(id);
             s.value = parseFloat(input.value);
             valSpan.textContent = Number(s.value).toFixed(1);
             recompileActiveExprs();

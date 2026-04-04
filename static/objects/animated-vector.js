@@ -10,10 +10,21 @@ import { resolveLineWidth,
 
 export function renderAnimatedVector(el, view) {
     const color = parseColor(el.color || '#ff8844');
+    const shader = el.shader || {};
+    const emissive = parseColor(shader.emissive || '#000000');
+    const specular = parseColor(shader.specular || '#111111');
+    const shininess = (typeof shader.shininess === 'number' && isFinite(shader.shininess))
+        ? shader.shininess
+        : 60;
     const label = el.label;
     const elementOpacity = (typeof el.opacity === 'number' && isFinite(el.opacity))
         ? Math.max(0, Math.min(1, el.opacity))
         : 1;
+    const depthWrite = shader.depthWrite !== undefined ? !!shader.depthWrite : elementOpacity >= 0.999;
+    const depthTest = shader.depthTest !== undefined ? !!shader.depthTest : true;
+    const renderOrder = (typeof el.renderOrder === 'number' && isFinite(el.renderOrder))
+        ? el.renderOrder
+        : null;
     const labelOffset = (Array.isArray(el.labelOffset) && el.labelOffset.length === 3)
         ? [Number(el.labelOffset[0]) || 0, Number(el.labelOffset[1]) || 0, Number(el.labelOffset[2]) || 0]
         : [0, 0.3, 0];
@@ -26,6 +37,7 @@ export function renderAnimatedVector(el, view) {
     const visibleExprString = (typeof el.visibleExpr === 'string' && el.visibleExpr.trim()) ? el.visibleExpr.trim() : null;
     const labelExprString = (typeof el.labelExpr === 'string' && el.labelExpr.trim()) ? el.labelExpr.trim() : null;
     const trailOpts = el.trail;
+    const panelOpts = (el.panels && typeof el.panels === 'object') ? el.panels : null;
     const hasExplicitWidth = (typeof el.width === 'number' && isFinite(el.width));
     const widthScale = hasExplicitWidth ? Math.max(0.01, el.width) : 1.3;
     const widthHeadScale = Math.max(0.4, Math.sqrt(widthScale));
@@ -96,13 +108,18 @@ export function renderAnimatedVector(el, view) {
         const geom = new THREE.ConeGeometry(1, 1, 16);
         const mat = new THREE.MeshPhongMaterial({
             color: new THREE.Color(...color),
-            shininess: 60,
+            emissive: new THREE.Color(...emissive),
+            specular: new THREE.Color(...specular),
+            shininess,
             transparent: elementOpacity < 0.999,
             opacity: elementOpacity,
+            depthWrite,
+            depthTest,
         });
         const cone = new THREE.Mesh(geom, mat);
         cone.userData.baseOpacity = elementOpacity;
         cone.userData.dynamicVector = true;
+        if (renderOrder !== null) cone.renderOrder = renderOrder;
         cone.scale.set(wHeadRadius, wHeadLen, wHeadRadius);
 
         cone.position.set(
@@ -125,13 +142,18 @@ export function renderAnimatedVector(el, view) {
         const geom = new THREE.CylinderGeometry(1, 1, 1, 16);
         const mat = new THREE.MeshPhongMaterial({
             color: new THREE.Color(...color),
-            shininess: 60,
+            emissive: new THREE.Color(...emissive),
+            specular: new THREE.Color(...specular),
+            shininess,
             transparent: elementOpacity < 0.999,
             opacity: elementOpacity,
+            depthWrite,
+            depthTest,
         });
         const shaft = new THREE.Mesh(geom, mat);
         shaft.userData.baseOpacity = elementOpacity;
         shaft.userData.dynamicVector = true;
+        if (renderOrder !== null) shaft.renderOrder = renderOrder;
 
         shaft.position.set(
             fromWorld[0] + dir.x * shaftLen / 2,
@@ -149,6 +171,74 @@ export function renderAnimatedVector(el, view) {
         state.three.scene.add(shaft);
         state.arrowMeshes.push({ mesh: shaft, tipWorld: new THREE.Vector3(fromWorld[0] + dir.x*shaftLen, fromWorld[1] + dir.y*shaftLen, fromWorld[2] + dir.z*shaftLen), dir: dir.clone(), wLen: shaftLen, isShaft: true });
         return shaft;
+    }
+
+    function computePanelLayout(from, to) {
+        const { fromWorld, wLen, dir } = computeArrowParams(from, to);
+        if (wLen < 0.0001) return null;
+        const panelLength = Math.max(0.01, Number(panelOpts && panelOpts.length) || 0.12);
+        const panelWidth = Math.max(0.005, Number(panelOpts && panelOpts.width) || 0.028);
+        const panelThickness = Math.max(0.001, Number(panelOpts && panelOpts.thickness) || 0.01);
+        const panelGap = Math.max(0, Number(panelOpts && panelOpts.gap) || 0.012);
+        const segments = Math.max(1, Math.min(2, Math.round(Number(panelOpts && panelOpts.segments) || 2)));
+        const panelNormal = new THREE.Vector3(-dir.y, dir.x, 0);
+        if (panelNormal.lengthSq() < 1e-8) panelNormal.set(0, 1, 0);
+        panelNormal.normalize();
+        const angle = Math.atan2(dir.y, dir.x) + Math.PI / 2;
+        return {
+            fromWorld,
+            panelLength,
+            panelWidth,
+            panelThickness,
+            panelGap,
+            segments,
+            panelNormal,
+            angle,
+        };
+    }
+
+    function createPanels(from, to) {
+        if (!panelOpts) return [];
+        const layout = computePanelLayout(from, to);
+        if (!layout) return [];
+        const colorPanels = parseColor(panelOpts.color || '#7dd3fc');
+        const opacityPanels = Number.isFinite(Number(panelOpts.opacity))
+            ? Math.max(0, Math.min(1, Number(panelOpts.opacity)))
+            : elementOpacity;
+        const panelRenderOrder = (typeof panelOpts.renderOrder === 'number' && isFinite(panelOpts.renderOrder))
+            ? panelOpts.renderOrder
+            : renderOrder;
+        const meshes = [];
+        for (const side of [-1, 1]) {
+            for (let seg = 0; seg < layout.segments; seg++) {
+                const geom = new THREE.BoxGeometry(1, 1, 1);
+                const mat = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color(...colorPanels),
+                    transparent: opacityPanels < 0.999,
+                    opacity: opacityPanels,
+                    depthWrite,
+                    depthTest,
+                });
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.userData.baseOpacity = opacityPanels;
+                mesh.userData.dynamicVector = true;
+                if (panelRenderOrder !== null) mesh.renderOrder = panelRenderOrder;
+                const centerDist = layout.panelGap + (seg + 0.5) * layout.panelLength;
+                mesh.position.copy(layout.fromWorld).addScaledVector(layout.panelNormal, side * centerDist);
+                mesh.rotation.z = layout.angle;
+                mesh.scale.set(layout.panelLength, layout.panelWidth, layout.panelThickness);
+                state.three.scene.add(mesh);
+                state.arrowMeshes.push({
+                    mesh,
+                    tipWorld: mesh.position.clone(),
+                    dir: layout.panelNormal.clone(),
+                    wLen: layout.panelLength,
+                    isShaft: true,
+                });
+                meshes.push(mesh);
+            }
+        }
+        return meshes;
     }
 
     function updateArrow(cone, shaft, from, to) {
@@ -197,8 +287,34 @@ export function renderAnimatedVector(el, view) {
         }
     }
 
+    function updatePanels(meshes, from, to) {
+        if (!Array.isArray(meshes) || meshes.length === 0) return;
+        const layout = computePanelLayout(from, to);
+        const visible = !!layout;
+        let idx = 0;
+        for (const side of [-1, 1]) {
+            for (let seg = 0; seg < (layout ? layout.segments : 2); seg++) {
+                const mesh = meshes[idx++];
+                if (!mesh) continue;
+                mesh.visible = visible;
+                if (!visible) continue;
+                const centerDist = layout.panelGap + (seg + 0.5) * layout.panelLength;
+                mesh.position.copy(layout.fromWorld).addScaledVector(layout.panelNormal, side * centerDist);
+                mesh.rotation.z = layout.angle;
+                mesh.scale.set(layout.panelLength, layout.panelWidth, layout.panelThickness);
+                const entry = state.arrowMeshes.find(e => e.mesh === mesh);
+                if (entry) {
+                    entry.tipWorld.copy(mesh.position);
+                    entry.dir.copy(layout.panelNormal);
+                    entry.wLen = layout.panelLength;
+                }
+            }
+        }
+    }
+
     let arrowCone = null;
     let arrowShaft = createShaft(initFrom, initTo);
+    let panelMeshes = createPanels(initFrom, initTo);
     if (el.arrow !== false) {
         arrowCone = createCone(initFrom, initTo);
     }
@@ -358,9 +474,11 @@ export function renderAnimatedVector(el, view) {
             }
 
             if (!arrowShaft) arrowShaft = createShaft(cf, ct);
+            if ((!panelMeshes || panelMeshes.length === 0) && panelOpts) panelMeshes = createPanels(cf, ct);
             if (el.arrow !== false && !arrowCone) arrowCone = createCone(cf, ct);
 
             updateArrow(arrowCone, arrowShaft, cf, ct);
+            updatePanels(panelMeshes, cf, ct);
 
             if (trailOpts && trailData) {
                 trailBuffer.push(ct.slice());

@@ -537,6 +537,7 @@ export async function loadScene(spec) {
             range: state.currentRange,
             scale: state.currentScale,
         });
+        state.sceneView = view;
         // Import inline renderers for the default grid/axes
         const { renderGrid, renderAxis } = await _importDefaultRenderers();
         renderGrid({ plane: 'xz', color: [0.3, 0.3, 0.5], opacity: 0.1, divisions: 10 }, view);
@@ -557,10 +558,17 @@ export async function loadScene(spec) {
         range: state.currentRange,
         scale: state.currentScale,
     });
+    state.sceneView = view;
 
     for (const el of spec.elements) {
+        const elBefore = el.id ? snapshotBefore() : null;
+        const elGroup = el.id ? view.group() : view;
         try {
-            renderElement(el, view);
+            renderElement(el, elGroup);
+            if (el.id) {
+                const subTracker = buildSubTracker(elGroup, elBefore);
+                state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type };
+            }
         } catch (e) {
             console.error('Error rendering element:', el, e);
         }
@@ -675,6 +683,14 @@ export function navigateTo(sceneIdx, stepIdx) {
     const sceneChanged = sceneIdx !== state.currentSceneIndex;
 
     if (sceneChanged) {
+        state.stepTrackers = [];
+        state.elementRegistry = {};
+        state.legendToggledOff = new Set();
+        stopAllSliderLoops();
+        state.sceneSliders = {};
+        removeAllInfoOverlays();
+        buildSliderOverlay();
+
         // Full re-render: load base scene elements
         const baseSpec = {
             title: scene.title,
@@ -689,15 +705,6 @@ export function navigateTo(sceneIdx, stepIdx) {
             elements: scene.elements || [],
         };
         loadScene(baseSpec);
-
-        state.sceneView = state.mathbox.select('cartesian');
-        state.stepTrackers = [];
-        state.elementRegistry = {};
-        state.legendToggledOff = new Set();
-        stopAllSliderLoops();
-        state.sceneSliders = {};
-        removeAllInfoOverlays();
-        buildSliderOverlay();
 
         for (let i = 0; i <= stepIdx; i++) {
             if (scene.steps && scene.steps[i]) {

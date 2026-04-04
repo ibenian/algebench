@@ -450,6 +450,10 @@
           "$ref": "#/$defs/trail",
           "description": "Trail effect configuration for animated_vector. Shows a fading trail behind the moving tip."
         },
+        "panels": {
+          "$ref": "#/$defs/vectorPanels",
+          "description": "Optional attached rectangular panels for animated_vector, useful for stylized spacecraft solar arrays."
+        },
         "regular": {
           "$ref": "#/$defs/regularPolygon",
           "description": "Regular polygon configuration. When present, generates vertices automatically instead of using explicit vertices array."
@@ -878,6 +882,10 @@
           "type": "boolean",
           "description": "Whether the material tests against the depth buffer."
         },
+        "ignorePlaneOpacity": {
+          "type": "boolean",
+          "description": "When true, this mesh keeps its own material opacity instead of being scaled by the global planeOpacity display control."
+        },
         "flatShading": {
           "type": "boolean",
           "description": "Use flat shading instead of smooth. Gives a faceted look."
@@ -916,6 +924,49 @@
         "length": {
           "type": "integer",
           "description": "Maximum number of trail points stored. Default: 200."
+        }
+      },
+      "additionalProperties": false
+    },
+    "vectorPanels": {
+      "type": "object",
+      "description": "Attached panel rectangles rendered at the base of an animated_vector.",
+      "properties": {
+        "color": {
+          "type": "string",
+          "description": "Panel color as hex string."
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Panel opacity."
+        },
+        "length": {
+          "type": "number",
+          "description": "Panel length measured outward from the vector base."
+        },
+        "width": {
+          "type": "number",
+          "description": "Panel width measured along the vector direction."
+        },
+        "thickness": {
+          "type": "number",
+          "description": "Panel thickness."
+        },
+        "gap": {
+          "type": "number",
+          "description": "Gap between the vector body and the first panel segment."
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2,
+          "description": "Number of rectangular panel segments per side. Use 2 for four total panels."
+        },
+        "renderOrder": {
+          "type": "number",
+          "description": "Optional render order override for the panel meshes."
         }
       },
       "additionalProperties": false

@@ -1,0 +1,390 @@
+{
+  "topic": "Artemis II mission to the Moon",
+  "audience": "high school",
+  "prerequisites": [
+    "reading distances and times on scientific scales",
+    "basic idea of gravity and orbits",
+    "difference between altitude and distance from Earth's center",
+    "interpreting mission timelines and stages"
+  ],
+  "core_definitions": [
+    {
+      "term": "cislunar space",
+      "definition": "The region of space extending from Earth orbit out to and around the Moon, including the Earth-Moon system used for transfer trajectories.",
+      "intuition": "It is the neighborhood between Earth and the Moon where Artemis II travels."
+    },
+    {
+      "term": "free-return trajectory",
+      "definition": "A trajectory shaped by the Earth-Moon gravity field so that a spacecraft loops around the Moon and naturally returns toward Earth without needing a large return burn at the Moon.",
+      "intuition": "It is a built-in safety arc: if the major burn back home were unavailable, gravity still points Orion back toward Earth."
+    },
+    {
+      "term": "perigee raise burn",
+      "definition": "An engine burn used to increase the spacecraft's low point in Earth orbit so the geometry is set correctly for the later translunar injection burn.",
+      "intuition": "Before heading to the Moon, Orion first reshapes its parking orbit into the right launch lane."
+    },
+    {
+      "term": "translunar injection",
+      "definition": "The major outbound burn that places Orion onto its Earth-to-Moon transfer path.",
+      "intuition": "This is the push that turns an Earth-orbiting spacecraft into a Moon-bound spacecraft."
+    },
+    {
+      "term": "lunar sphere of influence",
+      "definition": "The region where the Moon's gravity becomes more dominant for the spacecraft's local motion than Earth's gravity.",
+      "intuition": "This marks the handoff from 'mostly Earth-controlled' motion to 'mostly Moon-guided' motion."
+    },
+    {
+      "term": "closest approach",
+      "definition": "The point of minimum altitude above the lunar surface during the flyby.",
+      "intuition": "This is the most dramatic point of the mission, when Orion is nearest the Moon and moving fastest around it."
+    },
+    {
+      "term": "entry interface",
+      "definition": "The point where the returning crew module first begins to significantly encounter Earth's atmosphere during reentry.",
+      "intuition": "This is where the trip home changes from spaceflight to atmospheric flight."
+    }
+  ],
+  "key_theorems": [
+    {
+      "name": "Inverse-square gravity as mission-shaping principle",
+      "statement": "Gravitational attraction decreases approximately as 1/r^2, so the relative influence of Earth and Moon changes along the trajectory and allows a free-return path to be shaped by both bodies.",
+      "importance": "essential",
+      "prerequisites": [
+        "gravity",
+        "distance from a body"
+      ]
+    },
+    {
+      "name": "Orbital energy changes through short engine burns",
+      "statement": "Short propulsion burns change a spacecraft's velocity vector and therefore its orbital energy and path, allowing safe orbit insertion, perigee raising, translunar injection, and trajectory correction.",
+      "importance": "essential",
+      "prerequisites": [
+        "speed",
+        "direction",
+        "orbit"
+      ]
+    },
+    {
+      "name": "Scale-model proportionality",
+      "statement": "If one visualization unit represents a fixed physical distance, then all radii, altitudes, and path lengths must be converted by the same scale factor to preserve geometric relationships.",
+      "importance": "essential",
+      "prerequisites": [
+        "ratios",
+        "unit conversion"
+      ]
+    }
+  ],
+  "proofs_and_derivations": [
+    {
+      "name": "Distance-scale conversion for the Earth-Moon system",
+      "technique": "derivation",
+      "importance": "essential",
+      "steps_summary": "Choose a visualization scale such as 1 unit = 10000 km, then convert Earth radius, Moon radius, Earth-Moon distance, high-Earth orbit size, and lunar flyby altitude by dividing each physical distance by the scale factor.",
+      "prerequisite_concepts": [
+        "ratios",
+        "unit conversion"
+      ],
+      "visualizable": true,
+      "visualization_hint": "Show the actual distances as labels, then slide between km values and model-unit values."
+    },
+    {
+      "name": "Why a free-return path comes back without a large return burn",
+      "technique": "derivation",
+      "importance": "essential",
+      "steps_summary": "Explain qualitatively how translunar injection places Orion on a Moon-crossing trajectory, the Moon bends the path on the far side, and the outbound geometry is chosen so Earth's gravity captures the return leg.",
+      "prerequisite_concepts": [
+        "gravity",
+        "trajectory curvature"
+      ],
+      "visualizable": true,
+      "visualization_hint": "Animate the same curve in Earth-fixed and Moon-fixed views while highlighting where control shifts from Earth-dominated to Moon-shaped motion."
+    },
+    {
+      "name": "Mission timeline segmentation",
+      "technique": "derivation",
+      "importance": "essential",
+      "steps_summary": "Break the mission into ascent, checkout orbit, high-Earth orbit, translunar cruise, lunar flyby, trans-Earth return, and entry; map NASA's elapsed times to spatial milestones.",
+      "prerequisite_concepts": [
+        "elapsed time",
+        "ordered stages"
+      ],
+      "visualizable": true,
+      "visualization_hint": "Use a mission-phase slider that moves a spacecraft icon through labeled trajectory checkpoints."
+    }
+  ],
+  "worked_examples": [
+    {
+      "description": "Earth-Moon scale model for the lesson",
+      "setup": "Use 1 visualization unit = 10000 km.",
+      "key_values": {
+        "earth_radius_km": "6371",
+        "moon_radius_km": "1737",
+        "earth_moon_distance_km": "384400",
+        "earth_radius_units": "0.6371",
+        "moon_radius_units": "0.1737",
+        "earth_moon_distance_units": "38.44"
+      },
+      "visualization_hint": "Place Earth at the origin and the Moon near x = 38.44 units, then overlay orbit and flyby markers."
+    },
+    {
+      "description": "High-Earth orbit used before translunar injection",
+      "setup": "NASA states Orion's safe high Earth orbit is approximately 44525 x 115 statute miles.",
+      "key_values": {
+        "apogee_mi": "44525",
+        "perigee_mi": "115",
+        "apogee_km": "71645",
+        "perigee_km": "185",
+        "apogee_units_at_10000km": "7.1645",
+        "perigee_units_at_10000km": "0.0185"
+      },
+      "visualization_hint": "Draw an elongated Earth orbit around the scaled Earth and show how the orbit changes after the apogee raise burn."
+    },
+    {
+      "description": "Nominal lunar flyby geometry",
+      "setup": "NASA's press kit says the exact closest approach depends on launch date and ranges from 4000 to 6000 miles above the lunar surface.",
+      "key_values": {
+        "closest_approach_range_mi": "4000-6000",
+        "closest_approach_range_km": "6437-9656",
+        "nominal_far_side_beyond_moon_mi": "4600",
+        "nominal_far_side_beyond_moon_km": "7403"
+      },
+      "visualization_hint": "Provide a slider for flyby altitude within the NASA range and show how the arc curvature changes modestly while the free-return logic stays intact."
+    },
+    {
+      "description": "Return entry conditions",
+      "setup": "Use Orion return values for a deep-space crewed mission.",
+      "key_values": {
+        "entry_speed_mph": "25000",
+        "entry_speed_km_s": "11.18",
+        "entry_interface_altitude_ft": "400000",
+        "entry_interface_altitude_km": "121.92",
+        "heat_shield_diameter_ft": "16.5",
+        "peak_exterior_temperature_f": "5000"
+      },
+      "visualization_hint": "Show an entry corridor and a heat bar or color ramp during the final phase scene."
+    }
+  ],
+  "geometric_intuitions": [
+    {
+      "concept": "Earth-Moon distance versus planet size",
+      "intuition": "The Moon is far away relative to the size of Earth, so even a shallow-looking line on the diagram hides a journey of several days.",
+      "visualization_suggestion": "Let users switch between Earth-close, Moon-close, and full-system views at the same underlying scale."
+    },
+    {
+      "concept": "Why the mission traces a figure-eight-like path",
+      "intuition": "In an Earth-centered frame, the outbound leg, Moon loop, and return leg together make a stretched figure-eight shape because the Moon bends the path instead of capturing Orion into orbit.",
+      "visualization_suggestion": "Render the full nominal path with a progress marker and ghost trail."
+    },
+    {
+      "concept": "Burns change the path at a few critical moments",
+      "intuition": "Most of the mission is coasting; a handful of carefully timed burns do the orbital steering.",
+      "visualization_suggestion": "Use phase markers and pulse effects only at burn events, not continuously."
+    },
+    {
+      "concept": "Communication blackout near the far side",
+      "intuition": "The Moon physically blocks the radio line of sight to Earth for tens of minutes when Orion passes behind it.",
+      "visualization_suggestion": "Draw a line-of-sight segment from Earth to Orion that disappears behind the Moon during closest approach."
+    }
+  ],
+  "real_world_applications": [
+    {
+      "domain": "human spaceflight operations",
+      "description": "Artemis II is the first crewed integrated test of SLS, Orion life support, deep-space communications, and recovery operations for later lunar missions.",
+      "example": "The crew practices manual piloting near the ICPS to prepare for future rendezvous and docking tasks."
+    },
+    {
+      "domain": "mission design",
+      "description": "Free-return trajectories are a classic example of designing with gravity rather than fighting it with propellant.",
+      "example": "Artemis II uses the Earth-Moon gravity field so the return path does not require a major burn at the Moon."
+    },
+    {
+      "domain": "entry systems engineering",
+      "description": "Deep-space return requires stronger thermal protection and parachute sequencing than low-Earth-orbit missions.",
+      "example": "Orion's 16.5-foot heat shield must manage about 25000 mph reentry speeds and nearly 5000 F exterior temperatures."
+    }
+  ],
+  "common_misconceptions": [
+    {
+      "misconception": "Artemis II will land on the Moon.",
+      "correction": "Artemis II is a crewed lunar flyby mission, not a landing mission.",
+      "teaching_strategy": "Contrast Artemis II's free-return loop with a hypothetical lunar-orbit insertion or landing profile."
+    },
+    {
+      "misconception": "The spacecraft continuously fires engines all the way to the Moon.",
+      "correction": "Most of the mission is coast flight with only a few major burns and several small trajectory correction burns.",
+      "teaching_strategy": "Add timeline markers for burns and leave the rest of the trajectory visually unpowered."
+    },
+    {
+      "misconception": "Closest approach is fixed at a single exact altitude.",
+      "correction": "NASA states the flyby altitude depends on launch date and falls in a range of roughly 4000 to 6000 miles above the lunar surface.",
+      "teaching_strategy": "Use a slider over the allowed range and explain why launch timing changes geometry."
+    },
+    {
+      "misconception": "Free return means no navigation or corrections are required.",
+      "correction": "The overall path is free-return, but Orion still performs trajectory correction burns to stay on target and ensure a safe entry setup.",
+      "teaching_strategy": "Show small correction markers on both outbound and inbound legs."
+    }
+  ],
+  "related_topics": [
+    "Apollo 8",
+    "patched-conic approximation",
+    "Earth-Moon system scale modeling",
+    "deep-space communication geometry",
+    "crew reentry physics"
+  ],
+  "mission_parameters": {
+    "crew": [
+      "Reid Wiseman",
+      "Victor Glover",
+      "Christina Koch",
+      "Jeremy Hansen"
+    ],
+    "mission_type": "crewed lunar flyby",
+    "planned_duration_days": 10,
+    "earth_moon_distance_km": 384400,
+    "outbound_time_days_approx": 4,
+    "maximum_distance_from_earth_miles": 230000,
+    "closest_approach_range_above_moon_miles": [
+      4000,
+      6000
+    ],
+    "communications_blackout_minutes_range": [
+      30,
+      50
+    ],
+    "entry_interface_altitude_ft": 400000,
+    "vehicle_stack": {
+      "sls_block": "Block 1",
+      "sls_height_ft": 322,
+      "sls_fueled_mass_lb": 5750000,
+      "sls_launch_thrust_lb": 8800000,
+      "core_stage_height_ft": 212,
+      "core_stage_propellant_gal": 733000,
+      "booster_thrust_each_lb": 3600000,
+      "icps_height_ft": 43,
+      "icps_thrust_lb": 24750,
+      "orion_full_stack_height_ft": 67,
+      "orion_gross_liftoff_mass_lb": 78000,
+      "orion_crew_capacity": 4,
+      "orion_mission_duration_capability_days": 21,
+      "heat_shield_diameter_ft": 16.5,
+      "reentry_speed_mph": 25000
+    },
+    "timeline_checkpoints": [
+      {
+        "label": "liftoff",
+        "elapsed": "+00:00"
+      },
+      {
+        "label": "solid rocket booster separation",
+        "elapsed": "+02:08"
+      },
+      {
+        "label": "core stage main engine cutoff",
+        "elapsed": "+08:06"
+      },
+      {
+        "label": "perigee raise maneuver",
+        "elapsed": "+49:00"
+      },
+      {
+        "label": "apogee raise burn to high Earth orbit",
+        "elapsed": "+01:47:57"
+      },
+      {
+        "label": "orion separates from ICPS",
+        "elapsed": "+03:24:15"
+      },
+      {
+        "label": "perigee raise burn for translunar setup",
+        "elapsed": "+0/13:44"
+      },
+      {
+        "label": "translunar injection burn",
+        "elapsed": "+1/01:37"
+      },
+      {
+        "label": "enter lunar sphere of influence",
+        "elapsed": "+4/06:59"
+      },
+      {
+        "label": "lunar flyby begins",
+        "elapsed": "+4/22:00"
+      },
+      {
+        "label": "closest approach to the Moon",
+        "elapsed": "+5/01:23"
+      },
+      {
+        "label": "maximum distance from Earth",
+        "elapsed": "+5/01:26"
+      },
+      {
+        "label": "exit lunar sphere of influence",
+        "elapsed": "+5/19:47"
+      },
+      {
+        "label": "return trajectory correction burn #3",
+        "elapsed": "+8/20:33"
+      },
+      {
+        "label": "crew and service module separation",
+        "elapsed": "+9/01:13"
+      },
+      {
+        "label": "entry interface",
+        "elapsed": "+9/01:33"
+      }
+    ]
+  },
+  "citations": [
+    {
+      "key": "nasa-artemis2-presskit-2026",
+      "type": "online",
+      "text": "NASA. \"Artemis II Press Kit.\" Updated February 10, 2026. https://www.nasa.gov/artemis-ii-press-kit/",
+      "relevance": "Primary source for mission overview, high-Earth orbit, trajectory checkpoints, flyby altitude range, blackout duration, and mission priorities."
+    },
+    {
+      "key": "nasa-artemis2-mission-page-2026",
+      "type": "online",
+      "text": "NASA. \"Artemis II.\" Accessed April 2, 2026. https://www.nasa.gov/mission/artemis-ii/",
+      "relevance": "Current mission summary page for crew size, mission type, and planned duration."
+    },
+    {
+      "key": "nasa-sls-reference-2026",
+      "type": "online",
+      "text": "NASA. \"Space Launch System.\" Updated January 26, 2026. https://www.nasa.gov/reference/space-launch-system/",
+      "relevance": "Primary source for SLS Block 1 dimensions, thrust, booster specifications, and core stage parameters."
+    },
+    {
+      "key": "nasa-icps-reference-2026",
+      "type": "online",
+      "text": "NASA. \"SLS Interim Cryogenic Propulsion Stage.\" Updated February 10, 2026. https://www.nasa.gov/reference/icps/",
+      "relevance": "Primary source for ICPS role on Artemis II, stage dimensions, and RL10 thrust."
+    },
+    {
+      "key": "nasa-orion-overview-2026",
+      "type": "online",
+      "text": "NASA. \"Orion Overview.\" Updated March 4, 2026. https://www.nasa.gov/humans-in-space/orion-spacecraft/orion-overview/",
+      "relevance": "Primary source for Orion crew capacity, mission duration capability, size, and service-module functions."
+    },
+    {
+      "key": "nasa-spacecraft-components-2026",
+      "type": "online",
+      "text": "NASA. \"Spacecraft Components.\" Updated February 2026. https://www.nasa.gov/reference/spacecraft-components/",
+      "relevance": "Primary source for heat shield size, reentry speed, and thermal loads."
+    },
+    {
+      "key": "nasa-svs-artemis2-trajectory-2026",
+      "type": "online",
+      "text": "NASA Scientific Visualization Studio. \"Nominal (reference) Artemis II mission trajectory.\" Released January 27, 2026. https://svs.gsfc.nasa.gov/5610",
+      "relevance": "Reference visualization for the overall Earth-Moon-Earth path and Moon-fixed flyby geometry."
+    },
+    {
+      "key": "nasa-svs-artemis2-api-2026",
+      "type": "online",
+      "text": "NASA Scientific Visualization Studio API. \"Nominal (reference) Artemis II mission trajectory\" record 5610. Accessed April 2, 2026. https://svs.gsfc.nasa.gov/api/5610",
+      "relevance": "Machine-readable source confirming that the displayed trajectory is a nominal reference path, includes Moon-fixed flyby media assets, and may vary with final launch timing."
+    }
+  ]
+}

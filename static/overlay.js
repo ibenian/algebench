@@ -201,21 +201,26 @@ export function updateTitle(spec) {
 
 export function buildLegend(elements) {
     const legend = document.getElementById('legend');
-    const items = [];
+    const grouped = new Map();
     for (const el of elements) {
-        if (el.label && el.color && el.type !== 'axis' && el.type !== 'grid' && el.type !== 'text') {
-            items.push({ label: el.label, color: el.color, id: el.id || null });
+        if (!el.label || !el.color || el.type === 'axis' || el.type === 'grid') continue;
+        const key = `${el.label}__${colorToCSS(el.color)}`;
+        if (!grouped.has(key)) {
+            grouped.set(key, { label: el.label, color: el.color, ids: [] });
         }
+        if (el.id) grouped.get(key).ids.push(el.id);
     }
+    const items = [...grouped.values()];
     if (items.length === 0) {
         legend.classList.add('hidden');
         return;
     }
     legend.classList.remove('hidden');
     legend.innerHTML = items.map(it => {
-        const hidden = it.id && state.legendToggledOff.has(it.id);
-        const cls = 'legend-item' + (it.id ? ' legend-clickable' : '') + (hidden ? ' legend-hidden' : '');
-        const dataAttr = it.id ? ` data-element-id="${it.id}"` : '';
+        const clickableIds = (it.ids || []).filter(id => state.elementRegistry[id]);
+        const hidden = clickableIds.length > 0 && clickableIds.every(id => state.legendToggledOff.has(id));
+        const cls = 'legend-item' + (clickableIds.length ? ' legend-clickable' : '') + (hidden ? ' legend-hidden' : '');
+        const dataAttr = clickableIds.length ? ` data-element-ids="${clickableIds.join(',')}"` : '';
         const swatchStyle = hidden
             ? `background:${colorToCSS(it.color)}; opacity:0.3`
             : `background:${colorToCSS(it.color)}`;
@@ -229,17 +234,26 @@ export function buildLegend(elements) {
     // Attach click handlers (only for elements currently in the registry)
     for (const div of legend.querySelectorAll('.legend-clickable')) {
         div.addEventListener('click', () => {
-            const elId = div.dataset.elementId;
-            if (!elId || !state.elementRegistry[elId]) return;
+            const elIds = (div.dataset.elementIds || '')
+                .split(',')
+                .map(s => s.trim())
+                .filter(Boolean)
+                .filter(id => state.elementRegistry[id]);
+            if (elIds.length === 0) return;
             // hideElementById / showElementById are injected at runtime via window shims
-            if (state.legendToggledOff.has(elId)) {
-                state.legendToggledOff.delete(elId);
-                if (typeof window._algebenchShowElementById === 'function') window._algebenchShowElementById(elId);
+            const allHidden = elIds.every(id => state.legendToggledOff.has(id));
+            if (allHidden) {
+                for (const elId of elIds) {
+                    state.legendToggledOff.delete(elId);
+                    if (typeof window._algebenchShowElementById === 'function') window._algebenchShowElementById(elId);
+                }
                 div.classList.remove('legend-hidden');
                 div.querySelector('.legend-swatch').style.opacity = '';
             } else {
-                state.legendToggledOff.add(elId);
-                if (typeof window._algebenchHideElementById === 'function') window._algebenchHideElementById(elId);
+                for (const elId of elIds) {
+                    state.legendToggledOff.add(elId);
+                    if (typeof window._algebenchHideElementById === 'function') window._algebenchHideElementById(elId);
+                }
                 div.classList.add('legend-hidden');
                 div.querySelector('.legend-swatch').style.opacity = '0.3';
             }
@@ -822,6 +836,14 @@ export function setupSettingsPanel() {
             } else if (param === 'planeOpacity') {
                 for (const m of state.planeMeshes) {
                     if (m._hiddenByRemove) continue;
+                    if (m.userData && m.userData.ignorePlaneOpacity) {
+                        const baseOp = (typeof m.userData.targetOpacity === 'number') ? m.userData.targetOpacity : 1;
+                        m.visible = baseOp > 0.001;
+                        m.material.opacity = baseOp;
+                        m.material.transparent = baseOp < 1;
+                        m.material.needsUpdate = true;
+                        continue;
+                    }
                     const baseOp = (m.userData && typeof m.userData.targetOpacity === 'number')
                         ? m.userData.targetOpacity : 1;
                     const targetOp = Math.max(0, Math.min(1, baseOp * val));
