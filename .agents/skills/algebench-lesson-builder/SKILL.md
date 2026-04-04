@@ -43,16 +43,9 @@ Phase 5b (optional) → Targeted Scene Builder fixes + re-validation
 1. **Announce via TTS**: "Starting lesson builder for {topic}. Running research and pedagogy analysis."
 2. **Check prerequisites**:
    - Verify `schemas/lesson.schema.json` exists. If not, tell the user to run `/algebench-schema-generator` first and stop.
-3. **Read skill files** — you will embed these in Agent prompts:
-   - `.agents/skills/lesson-builder-research/SKILL.md`
-   - `.agents/skills/lesson-builder-pedagogy/SKILL.md`
-   - `.agents/skills/lesson-builder-designer/SKILL.md`
-   - `.agents/skills/lesson-builder-scene-builder/SKILL.md`
-   - `.agents/skills/lesson-builder-validator/SKILL.md`
-   - `.agents/skills/lesson-builder-evaluator/SKILL.md`
+3. **Do NOT read skill files upfront** — each sub-agent reads its own skill file. You only need to tell them the path.
 4. **Read supporting files**:
    - `schemas/lesson.schema.json` — the schema (pass to Scene Builder and Validator)
-   - `.agents/skills/algebench-scene-builder/SKILL.md` — scene format reference (pass to Scene Builder)
 
 ### Phase 1: Research + Pedagogy (parallel)
 
@@ -62,28 +55,26 @@ Spawn **two agents in the same message** (parallel execution):
 ```
 description: "Research: {topic}"
 model: sonnet
-prompt: [contents of lesson-builder-research/SKILL.md]
-
-Your task:
+prompt:
+Read your skill file at .agents/skills/lesson-builder-research/SKILL.md, then execute it with:
 - topic: {topic}
 - audience: {audience}
 - constraints: {constraints}
 
-Produce the research brief JSON as described in your instructions.
+Produce the research brief JSON as described in your skill instructions.
 ```
 
 **Agent 2 — Pedagogy**:
 ```
 description: "Pedagogy: {topic}"
 model: opus
-prompt: [contents of lesson-builder-pedagogy/SKILL.md]
-
-Your task:
+prompt:
+Read your skill file at .agents/skills/lesson-builder-pedagogy/SKILL.md, then execute it with:
 - topic: {topic}
 - audience: {audience}
 - existing_json: {existing, if provided}
 
-Produce the pedagogical framework JSON as described in your instructions.
+Produce the pedagogical framework JSON as described in your skill instructions.
 ```
 
 After both return:
@@ -97,15 +88,14 @@ Spawn **one agent**:
 ```
 description: "Design: {topic} lesson"
 model: opus
-prompt: [contents of lesson-builder-designer/SKILL.md]
-
-Your task:
+prompt:
+Read your skill file at .agents/skills/lesson-builder-designer/SKILL.md, then execute it with:
 - research_brief: {Phase 1 research output}
 - pedagogical_framework: {Phase 1 pedagogy output}
 - constraints: {constraints}
 - existing_json: {existing, if provided}
 
-Produce the lesson blueprint JSON as described in your instructions.
+Produce the lesson blueprint JSON as described in your skill instructions.
 ```
 
 After it returns:
@@ -121,13 +111,12 @@ For each scene `i` in the blueprint:
 ```
 description: "Build: Scene {i} - {title}"
 model: opus
-prompt: [contents of lesson-builder-scene-builder/SKILL.md]
+prompt:
+Read your skill file at .agents/skills/lesson-builder-scene-builder/SKILL.md
+Read the JSON schema at schemas/lesson.schema.json
+Load element type references from .agents/skills/lesson-builder-scene-builder/reference/objects/ for the types used in the outline below.
 
-=== SCENE BUILDER REFERENCE ===
-[contents of algebench-scene-builder/SKILL.md]
-
-=== JSON SCHEMA ===
-[contents of schemas/lesson.schema.json]
+Then build a complete scene JSON with:
 
 === YOUR SCENE OUTLINE ===
 {scene outline for scene i from the blueprint}
@@ -144,7 +133,7 @@ prompt: [contents of lesson-builder-scene-builder/SKILL.md]
 === NAMING CONVENTIONS ===
 {naming_conventions from the blueprint}
 
-Produce a complete scene JSON object as described in your instructions.
+Produce a complete scene JSON object as described in your skill instructions.
 Output ONLY the JSON — no surrounding text.
 ```
 
@@ -188,9 +177,8 @@ Spawn **one agent**:
 ```
 description: "Validate: {topic} lesson"
 model: sonnet
-prompt: [contents of lesson-builder-validator/SKILL.md]
-
-Your task:
+prompt:
+Read your skill file at .agents/skills/lesson-builder-validator/SKILL.md, then execute it with:
 - lesson: {path to the assembled JSON file}
 
 Run full validation (schema + content). Auto-fix what you can. Report remaining errors.
@@ -214,9 +202,8 @@ Spawn **one agent**:
 ```
 description: "Evaluate: {topic} lesson"
 model: opus
-prompt: [contents of lesson-builder-evaluator/SKILL.md]
-
-Your task:
+prompt:
+Read your skill file at .agents/skills/lesson-builder-evaluator/SKILL.md, then execute it with:
 - lesson: {path to the validated JSON file}
 - pedagogical_framework: {Phase 1 pedagogy output}
 - research_brief: {Phase 1 research output}
@@ -285,12 +272,12 @@ When `existing` is provided:
 
 ## Context Passing Rules
 
-- **Each agent gets ONLY what it needs** — don't dump the entire pipeline state into every prompt
+- **Each agent reads its own skill file** — the orchestrator does NOT inline skill contents into prompts
+- **Each agent reads only the references it needs** — Scene Builders load element type docs selectively
 - **Research brief** → Designer, Scene Builders (excerpt), Evaluator
 - **Pedagogy framework** → Designer, Evaluator
 - **Blueprint** → Scene Builders (their scene only), Evaluator (for reference)
-- **Schema** → Scene Builders, Validator
-- **Scene builder knowledge** → Scene Builders only
+- **Schema** → Scene Builders read it themselves, Validator reads it themselves
 - **Prior scene summaries** → each Scene Builder gets a summary of earlier scenes, NOT the full JSON
 
 ---

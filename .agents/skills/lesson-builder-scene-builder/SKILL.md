@@ -20,7 +20,6 @@ You build ALL steps in a single pass, tracking cumulative element state as you g
 | `prior_scenes_summary` | No | Summary of what earlier scenes established (concepts, colors, naming conventions) — for continuity |
 | `research_excerpt` | No | Relevant portion of the research brief for this scene's topic |
 | `schema` | Provided by orchestrator | The full `schemas/lesson.schema.json` — your reference for what fields to produce |
-| `scene_builder_knowledge` | Provided by orchestrator | The `algebench-scene-builder` SKILL.md — your complete reference for the scene format |
 
 ---
 
@@ -35,7 +34,6 @@ A single JSON object — one complete scene — ready to be placed in the `scene
   "markdown": "...",
   "prompt": "...",
   "range": [[-5,5],[-5,5],[-5,5]],
-  "scale": [1,1,1],
   "camera": {"position":[...],"target":[...]},
   "views": [...],
   "elements": [...],
@@ -56,8 +54,8 @@ Before writing any JSON:
 
 1. **Read the scene outline** — understand the purpose, learning objective, visual strategy
 2. **Read the schema** — know every field, type, and constraint available
-3. **Read the scene builder knowledge** — understand all element types, expression syntax, step mechanics
-4. **Compute coordinates** — work out exact positions, ranges, and camera placement. Do the math first.
+3. **Load element type references** — read `reference/objects/<type>.md` for each element type used in the outline
+4. **Compute coordinates** ��� work out exact positions, ranges, and camera placement. Do the math first.
 5. **Plan element IDs** — assign unique, descriptive IDs to every element you'll create
 6. **Plan cumulative state** — sketch which elements exist at each step (what's added, what's removed)
 
@@ -67,8 +65,8 @@ Produce the root scene object:
 - `title`, `description` from the outline
 - `markdown` — full documentation panel content with LaTeX, covering the scene's mathematical concepts. Include citations from the research excerpt where relevant.
 - `prompt` — AI agent teaching hints (never shown to users). Include color conventions, what to emphasize, follow-up questions to suggest.
-- `range` — choose based on the coordinate values you computed
-- `camera` — position for the best initial view of the scene content
+- `range` — choose based on the coordinate values you computed. **Use equal spans on all three axes** for 3D space simulations so spheres and other geometry render undistorted.
+- `camera` — position for the best initial view of the scene content (in **data space**)
 - `views` — meaningful camera presets for this scene (at minimum: a default view and a face-on/2D view if applicable)
 - `elements` — base elements visible at step 0 (before any step is activated). Always include `axes` and `grid` unless the outline says otherwise.
 
@@ -81,7 +79,7 @@ For each step in the outline, IN ORDER:
 3. **Write `remove`** — element IDs to remove (must exist in current state)
 4. **Write sliders** — if the outline specifies slider changes at this step, add sliders via `sliders` and remove them via `remove` directives such as `{ "type": "slider" }`
 5. **Write `info`** — info overlay content if specified (supports `{{slider_id}}` placeholders)
-6. **Write `title`** and `description`** — step title for navigation tree, description for narration
+6. **Write `title`** and `description` — step title for navigation tree, description for narration
 7. **Write `prompt`** — per-step system prompt for the AI chat tutor. Tell the AI what to emphasize at this step, what follow-up questions to suggest, and how to explain the new elements. This is never shown to users — it guides the in-app AI tutor.
 8. **Update state** — add new IDs, remove removed IDs, for the next step's tracking
 
@@ -92,7 +90,7 @@ If the scene outline includes a `proof_plan`:
 1. **Create the proof object** with `id`, `title`, `technique`, `goal`, `prompt`
 2. **Build each proof step** from the skeleton:
    - `id` — unique identifier
-   - `type` — `given`, `step`, `conclusion`, or `remark`
+   - `type` ��� `given`, `step`, `conclusion`, or `remark`
    - `label` — concise heading
    - `math` — full LaTeX expression with `\htmlClass{hl-name}{...}` highlight regions
    - `highlights` — map of region names to `{color, label}` objects
@@ -104,88 +102,274 @@ If the scene outline includes a `proof_plan`:
 
 ---
 
-## Expression Rules
+## Element Types
 
-All expressions MUST use **math.js syntax**, never JavaScript:
+`elements` is the **base layer** shown on load. Always start with axes and a grid:
 
-| Correct (math.js) | Wrong (JavaScript) |
+```json
+"elements": [
+  {"type":"axis","axis":"x","range":[-5,5],"color":"#ff4444","width":1.5,"label":"x"},
+  {"type":"axis","axis":"y","range":[-5,5],"color":"#44cc44","width":1.5,"label":"y"},
+  {"type":"axis","axis":"z","range":[-5,5],"color":"#4488ff","width":1.5,"label":"z"},
+  {"type":"grid","plane":"xy","range":[-5,5],"color":[0.3,0.3,0.5],"opacity":0.15,"divisions":10}
+]
+```
+
+### Available types
+
+| Type | Category | Description |
+|------|----------|-------------|
+| `axis` | structure | Coordinate axis line with label |
+| `grid` | structure | Background grid on a plane |
+| `vector` | static | Arrow from tail to tip |
+| `point` | static | Labeled point |
+| `line` | static | Segment or polyline |
+| `polygon` | static | Filled convex polygon |
+| `plane` | static | Infinite clipped plane |
+| `sphere` | static/dynamic | 3D sphere (`center` or `centerExpr`) |
+| `text` | static | 2D text anchored to 3D position |
+| `surface` | static | z = f(x,y) surface |
+| `parametric_curve` | static | x(t), y(t), z(t) curve |
+| `parametric_surface` | static | x(u,v), y(u,v), z(u,v) surface |
+| `vectors` | static | Batch of arrows |
+| `vector_field` | static | Auto-sampled field from expressions |
+| `animated_vector` | animated | Slider/time-driven arrow |
+| `animated_point` | animated | Slider/time-driven point |
+| `animated_line` | animated | Slider/time-driven polyline |
+| `animated_polygon` | animated | Slider/time-driven filled polygon |
+
+**Detailed field reference for each type**: Read from `reference/objects/<type>.md` in this skill directory. Load only the types needed for the scene you're building.
+
+---
+
+## Scene File Format
+
+### Single Scene
+```json
+{
+  "title": "My Scene",
+  "description": "Short caption shown below the viewport on load",
+  "markdown": "# Full explanation with $LaTeX$",
+  "range": [[-5,5],[-5,5],[-5,5]],
+  "camera": {"position":[5,3,5],"target":[0,0,0]},
+  "cameraUp": [0,1,0],
+  "views": [...],
+  "elements": [...],
+  "steps": [...]
+}
+```
+
+### Lesson (multi-scene)
+```json
+{
+  "title": "Lesson Title",
+  "scenes": [
+    {
+      "title": "Scene 1",
+      "description": "...",
+      "markdown": "...",
+      "range": [...],
+      "camera": {...},
+      "views": [...],
+      "elements": [...],
+      "steps": [...]
+    }
+  ]
+}
+```
+
+### Top-Level Field Reference
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | yes | Display title. Supports LaTeX: `"$\\vec{a} \\times \\vec{b}$"` |
+| `description` | string | no | Short subtitle shown below viewport on first load |
+| `markdown` | string | no | Full explanation for the Doc panel. Supports `$...$` and `$$...$$` LaTeX, bold, lists, code blocks |
+| `prompt` | string | no | **Agent-only** — injected into the AI system prompt for this scene. Never shown to the user |
+| `range` | `[[xmin,xmax],[ymin,ymax],[zmin,zmax]]` | no | Data coordinate range. Default `[[-5,5],[-5,5],[-5,5]]` |
+| `camera` | object | no | Initial camera: `{"position":[x,y,z],"target":[x,y,z]}` — in **data space** |
+| `cameraUp` | `[x,y,z]` | no | Up vector. Default `[0,1,0]`. Use `[0,0,1]` for top-down conventions |
+| `views` | array | no | Custom camera preset buttons. Omit to get 4 defaults (Iso, Front, Top, Right) |
+| `unsafe` | boolean | no | Set `true` if scene uses native JS expressions |
+| `unsafe_explanation` | string | no | Shown in the trust dialog. Required when `unsafe: true` |
+
+---
+
+## Camera Views
+
+```json
+"views": [
+  {"name":"Face On","position":[0,0,10],"target":[0,0,0],"description":"Face-on 2D view"},
+  {"name":"Iso","position":[4,3,4],"target":[0,0,0],"description":"Isometric 3D view"}
+]
+```
+
+All positions are in **data space**. If `views` is omitted, four defaults are provided.
+
+### Follow Camera Views
+
+Track an animated element in real time:
+
+```json
+{
+  "name": "Ride Along",
+  "follow": "my_animated_point",
+  "offset": [0, 0, 20],
+  "up": [0, 1, 0]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `follow` | Element `id` to track (or array of ids) |
+| `offset` | Data-space `[x, y, z]` offset. Default `[0, 0, 30]` |
+| `up` | Camera up vector |
+| `angleLockAxis` | `[x,y,z]` — rotation axis for orientation tracking |
+| `angleLockVector` | Element `id` whose direction drives camera orientation |
+
+**Supported follow targets:** `animated_vector`, `animated_point`, `animated_line`, `sphere`.
+
+---
+
+## Steps: Progressive Reveal
+
+Steps are **cumulative** — elements persist until explicitly removed.
+
+### Step Structure
+```json
+{
+  "title": "Step Title — shown in scene tree",
+  "description": "Narration shown below viewport",
+  "add": [...elements to add...],
+  "remove": [...removal targets...],
+  "camera": {"position":[x,y,z],"target":[x,y,z]},
+  "sliders": [...slider definitions...],
+  "info": [...info overlay definitions...]
+}
+```
+
+### Remove Patterns
+```json
+{"id": "vec-a"}     // remove one element by id
+{"id": "*"}         // remove ALL elements (clean slate)
+{"type": "slider"}  // remove all active sliders
+```
+
+---
+
+## Sliders
+
+```json
+{"id":"k","label":"$k$","min":-3,"max":3,"step":0.1,"default":1}
+```
+
+| Field | Description |
+|-------|-------------|
+| `id` | Variable name used in expressions |
+| `label` | Display label, supports LaTeX |
+| `min` / `max` | Range |
+| `step` | Drag resolution |
+| `default` | Initial value |
+
+### Auto-Play Slider
+```json
+{"id":"t","label":"$t$","min":0,"max":1,"step":0.01,"default":1,"animate":true,"duration":2500}
+```
+
+### Slider Tips
+- Put sliders in the final step after static steps build understanding
+- Expand axis ranges to accommodate the full slider range
+- Show a ghost — static dimmer copy of the original alongside the animated one
+- Matrix sliders: always add an `info` overlay showing the live matrix
+
+---
+
+## Morph / Interpolation Pattern
+
+Use a `t` slider (`0→1`) and lerp between identity and target. See the morph example in the steps reference for a complete working pattern with `animated_vector`, `animated_polygon`, and info overlay.
+
+---
+
+## Info Overlays
+
+Floating LaTeX panels that update live with sliders.
+
+| Field | Description |
+|-------|-------------|
+| `id` | Unique identifier |
+| `content` | LaTeX/markdown with `{{expr}}` placeholders |
+| `position` | `top-left` (default), `top-right`, `top-center`, `bottom-left`, `bottom-right` |
+
+### Live Placeholders
+- `{{a}}` — slider value
+- `{{toFixed(sqrt(a^2+b^2), 2)}}` — formatted expression
+- `{{v > 0 ? "stable" : "unstable"}}` — conditional
+
+---
+
+## Expression Sandbox
+
+### Always use math.js syntax (Tier 1 — safe, default)
+
+| Wrong (JavaScript) | Correct (math.js) |
 |---|---|
-| `sin(t)` | `Math.sin(t)` |
-| `cos(t)` | `Math.cos(t)` |
-| `pi` | `Math.PI` |
-| `sqrt(x)` | `Math.sqrt(x)` |
-| `t^2` | `t**2` |
-| `abs(x)` | `Math.abs(x)` |
+| `Math.sin(t)` | `sin(t)` |
+| `Math.PI` | `pi` |
+| `x.toFixed(n)` | `toFixed(x, n)` |
+| `t**2` | `t^2` |
 
-Expressions can reference:
-- Slider IDs (e.g., `k`, `theta`, `lambda`)
-- The time variable `t` (for animations)
-- Math constants: `pi`, `e`, `i`
-- Math functions: `sin`, `cos`, `tan`, `sqrt`, `abs`, `exp`, `log`, `pow`, `min`, `max`, `floor`, `ceil`, `round`
+**Available:** `sin cos tan asin acos atan atan2` · `pow sqrt cbrt exp log log2 log10` · `floor ceil round abs sign min max hypot` · `pi e` · ternary `cond ? a : b`
 
-**If you absolutely need native JS** (loops, iterative algorithms with no closed-form):
-- Add `"_unsafe_reason": "<why JS is needed>"` to the scene object (e.g., `"_unsafe_reason": "Iterative Newton's method has no closed-form expression"`)
-- This is a signal field for the orchestrator — it will be stripped during assembly and combined into a lesson-level `unsafe` flag
-- Only use JS when there is genuinely no math.js equivalent
+**AlgeBench extension:** `toFixed(val, n)` — format to n decimal places.
+
+### Tier 2 — native JS (requires trust)
+Triggered by `Math.`, `let`, `const`, `return`, `for(`, `while(`, `=>`, `function`, `.toFixed(`. Use only when no closed-form math.js equivalent exists. Set `"_unsafe_reason"` on the scene object.
+
+---
+
+## Domain Libraries
+
+Extend the expression sandbox with pre-built simulation functions.
+
+```
+GET /api/domains        — list all domains
+GET /api/domains/<name> — full docs with sliderContracts and functions
+```
+
+Add `"import": ["domain_name"]` at the lesson root level. Slider IDs must match the domain's `sliderContracts`. Importing a domain does **not** require `"unsafe": true`.
 
 ---
 
 ## LaTeX in JSON
 
-All LaTeX strings must be **double-escaped** in JSON:
-- `\\vec{v}` not `\vec{v}`
-- `\\frac{a}{b}` not `\frac{a}{b}`
-- `\\lambda` not `\lambda`
-- `\\htmlClass{hl-x}{...}` not `\htmlClass{hl-x}{...}`
+Double-escape all backslashes: `\\vec{v}`, `\\frac{a}{b}`, `\\lambda`, `\\htmlClass{hl-x}{...}`
 
 ---
 
-## Quality Standards
+## Quality Checklist
 
-### Element Accuracy
-- Coordinates must be mathematically correct — compute before writing
-- Vectors should point in the correct direction with correct magnitude
-- Labels should be positioned to avoid overlapping elements
-- Colors should follow the conventions from the outline
-
-### Step Flow
-- Steps must be self-consistent — a `remove` can only target an existing element
-- Element IDs must be unique within the scene
-- Slider references in expressions must reference active sliders at that step
-- Info overlay `{{id}}` placeholders must reference active slider IDs
-
-### Proof Quality
-- Every proof step must have `math` and `justification` (except `remark` type)
-- Highlight regions must be pedagogically meaningful, not arbitrary
-- `sceneStep` must point to actual step indices in this scene
-- The `conclusion` step's `math` should match or derive from the proof's `goal`
-- `prompt` fields should guide the AI to explain reasoning, not just restate the math
-
-### Markdown Quality
-- Include the scene's mathematical context with proper LaTeX
-- Reference relevant citations from the research excerpt (as plain markdown links/footnotes)
-- Don't duplicate step descriptions — the markdown provides deeper explanation
-- Structure with headers, lists, and LaTeX display equations
-
----
-
-## Output Checklist
-
-Before returning your scene JSON, verify:
-
-- [ ] Valid JSON (parseable, properly nested)
-- [ ] `title`, `description`, `markdown`, `prompt` all populated
-- [ ] `range` fits all element coordinates with some margin
-- [ ] `camera` provides a good initial view
-- [ ] `elements` includes `axes` and `grid` (unless outline says otherwise)
+- [ ] Valid JSON, `title`/`description`/`markdown`/`prompt` populated
+- [ ] `range` fits all coordinates; equal spans for 3D simulations
+- [ ] Axis `range` matches scene `range`
+- [ ] `camera` in data space; custom `views` with descriptions
+- [ ] Base `elements` includes axes + grid (unless outline says otherwise)
 - [ ] Every element has a unique `id`
-- [ ] Steps are cumulative — each step's state is consistent
-- [ ] All expressions use math.js syntax (no `Math.*`, no `**`)
-- [ ] All LaTeX is double-escaped in JSON strings
-- [ ] Slider IDs in expressions reference active sliders
-- [ ] `remove` targets exist in the current state
-- [ ] Proof `\htmlClass` regions match `highlights` keys
-- [ ] Proof `sceneStep` values are valid step indices
-- [ ] Proof has a `conclusion` step (for proofs, not required for derivations)
-- [ ] Step descriptions read naturally as narration
-- [ ] Colors follow the conventions from the outline
+- [ ] Steps cumulative and consistent; each has `title` + `description`
+- [ ] All expressions use math.js syntax
+- [ ] All LaTeX double-escaped
+- [ ] Slider IDs referenced correctly; axis range covers slider extent
+- [ ] Info overlays use `{{expr}}` syntax
+- [ ] `remove` targets exist in current state
+- [ ] Proof highlights match `\htmlClass` regions; `sceneStep` values valid
+- [ ] Colors follow outline conventions
+
+## Common Mistakes
+
+| Wrong | Right |
+|-------|-------|
+| `Math.sin(t)` | `sin(t)` |
+| `x.toFixed(2)` | `toFixed(x, 2)` |
+| `t**2` | `t^2` |
+| `{a}` in overlay | `{{a}}` |
+| Mismatched axis/scene range | Match them |
+| Non-uniform range spans | Equal spans on all axes |
