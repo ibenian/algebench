@@ -53,6 +53,8 @@ export const state = {
     followCamStartTime: 0,
     followCamAngleLock: false,
     followCamSavedControls: null,
+    cameraExprState: null,
+    cameraExprStartTime: 0,
     CAMERA_VIEWS: {},
     camPopupPinned: false,
 

@@ -503,6 +503,8 @@ export async function loadScene(spec) {
 
     clearLabels();
     state.followCamState = null;
+    state.cameraExprState = null;
+    state.cameraExprStartTime = 0;
     if (state.controls && state.followCamSavedControls) {
         if (Object.prototype.hasOwnProperty.call(state.controls, 'enableDamping')) {
             state.controls.enableDamping = state.followCamSavedControls.enableDamping;
@@ -754,7 +756,7 @@ export function navigateTo(sceneIdx, stepIdx) {
     }
 
     // Animate camera using effective step camera
-    if (!state.followCamState && stepIdx >= 0 && scene.steps) {
+    if (!state.followCamState && !state.cameraExprState && stepIdx >= 0 && scene.steps) {
         const cam = resolveEffectiveStepCamera(scene, stepIdx);
         if (cam) {
             const pos = dataCameraToWorld(cam.position || DEFAULT_CAMERA.position);

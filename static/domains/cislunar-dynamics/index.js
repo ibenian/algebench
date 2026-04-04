@@ -107,6 +107,13 @@
         return _getSlider('flyAlt', 4600);
     }
 
+    function _resolveMissionDay(day) {
+        if (Number.isFinite(day)) return day;
+        const stepDay = _getSlider('day', NaN);
+        if (Number.isFinite(stepDay)) return stepDay;
+        return 0;
+    }
+
     function _solveKeplerE(meanAnomaly, e) {
         let E = meanAnomaly;
         for (let i = 0; i < 8; i++) {
@@ -130,6 +137,7 @@
     }
 
     function _moonStateDay(day, flyMi) {
+        day = _resolveMissionDay(day);
         const resolvedFlyMi = _resolveFlyMi(flyMi);
         const data = _getData(resolvedFlyMi);
         return _moonStateFromPhase(day, data.params.phaseDay);
@@ -424,7 +432,7 @@
     }
 
     function _missionState(day, flyMi) {
-        const dd = _clamp(Number.isFinite(day) ? day : 0, 0, CFG.missionDays);
+        const dd = _clamp(_resolveMissionDay(day), 0, CFG.missionDays);
         const resolvedFlyMi = _resolveFlyMi(flyMi);
         const data = _getData(resolvedFlyMi);
         return _interpTrajectory(data, dd);
