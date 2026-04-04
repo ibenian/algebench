@@ -52,7 +52,7 @@ function techniqueBadgeHTML(proof) {
     if (typeof t !== 'string' || !t || t === 'derivation') return '';
     const safeClass = sanitizeClassName(t);
     const label = proofTechniques[t] || escapeHtml(t.charAt(0).toUpperCase() + t.slice(1));
-    const hint = proof.technique_hint;
+    const hint = proof.techniqueHint;
     const titleAttr = hint ? ` title="${escapeHtml(hint)}"` : '';
     return `<span class="proof-technique-badge technique-${safeClass}"${titleAttr}>${label}</span>`;
 }
@@ -340,10 +340,10 @@ export function navigateProof(index) {
 
     // Bidirectional sync: proof → scene
     if (state.proofSyncEnabled && !state._proofSyncInProgress) {
-        // At goal (index -1), use proof-level scene_step; otherwise use step-level
+        // At goal (index -1), use proof-level sceneStep; otherwise use step-level
         const sceneStep = index >= 0
-            ? (steps[index] && steps[index].scene_step)
-            : (proof.scene_step);
+            ? (steps[index] && steps[index].sceneStep)
+            : (proof.sceneStep);
         if (sceneStep != null) {
             state._proofSyncInProgress = true;
             try {
@@ -369,8 +369,8 @@ export function syncProofFromSceneStep(stepIdx) {
     if (!proof || !proof.steps) return;
 
     const matchIdx = proof.steps.findIndex(s => {
-        if (s.scene_step == null) return false;
-        const sceneStep = s.scene_step;
+        if (s.sceneStep == null) return false;
+        const sceneStep = s.sceneStep;
 
         // Support "sceneIdx:stepIdx" string format as well as plain numeric indices
         if (typeof sceneStep === 'string' && sceneStep.includes(':')) {
@@ -549,7 +549,8 @@ function _updateNavButtons() {
 
 function _activeProof() {
     if (!state.proofSpec || state.proofSpec.length === 0) return null;
-    const idx = Math.max(0, Math.min(state.proofActiveIndex, state.proofSpec.length - 1));
+    if (state.proofActiveIndex < 0) return null;
+    const idx = Math.min(state.proofActiveIndex, state.proofSpec.length - 1);
     return state.proofSpec[idx]?.proof || null;
 }
 
@@ -688,7 +689,6 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
         // Fall back to first visible proof
         if (newActiveIndex < 0) {
             newActiveIndex = allProofs.findIndex(e => _isProofInContext(e, sceneIndex, stepIndex));
-            if (newActiveIndex < 0) newActiveIndex = 0;
         }
         state.proofActiveIndex = newActiveIndex;
 
@@ -816,7 +816,8 @@ function _updateContextVisibility(sceneIndex, stepIndex) {
 
         const isActive = idx === state.proofActiveIndex;
         // In "all" mode show everything; in "context" mode filter by hierarchy
-        const visible = showAll || isActive || _isProofInContext(entry, sceneIndex, stepIndex);
+        const inContext = _isProofInContext(entry, sceneIndex, stepIndex);
+        const visible = showAll || inContext;
         section.style.display = visible ? '' : 'none';
         const hintEl = section.querySelector('.proof-section-step-hint');
         if (hintEl) {
@@ -1022,7 +1023,7 @@ export function getProofContext() {
     const ctx = {
         title: proof.title || null,
         technique: proof.technique || null,
-        techniqueHint: proof.technique_hint || null,
+        techniqueHint: proof.techniqueHint || null,
         goal: proof.goal || null,
         stepCount: steps.length,
         currentStepIndex: idx,

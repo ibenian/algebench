@@ -1,0 +1,3211 @@
+{
+  "title": "Artemis II: Humanity Returns to the Moon",
+  "scenes": [
+    {
+      "title": "The Earth-Moon Stage",
+      "description": "Establish the vast scale of cislunar space so students can contextualize the Artemis II mission.",
+      "markdown": "# The Earth-Moon System\n\n## Scale of the System\n\nIn this scene, **1 unit = 10,000 km**. The key distances are:\n\n$$d_{\\text{Earth-Moon}} = 384{,}400 \\text{ km} \\approx 38.4 \\text{ units}$$\n\n$$R_{\\oplus} = 6{,}371 \\text{ km} \\approx 0.64 \\text{ units}$$\n\n$$R_{\\Moon} = 1{,}737 \\text{ km} \\approx 0.17 \\text{ units}$$\n\n## Size Comparison\n\nThe Moon is only about **27%** of Earth's radius — and at the correct scale of 384,400 km separation, the Moon appears tiny.\n\n$$\\frac{R_{\\Moon}}{R_{\\oplus}} = \\frac{1{,}737}{6{,}371} \\approx 0.273$$\n\n## How Far Is the Moon?\n\nThe Earth-Moon distance is approximately **30 Earth diameters**:\n\n$$\\frac{d_{\\text{Earth-Moon}}}{2R_{\\oplus}} = \\frac{384{,}400}{12{,}742} \\approx 30.2$$\n\nFor comparison, familiar orbital altitudes:\n\n| Orbit | Altitude | Model distance from Earth center |\n|---|---|---|\n| ISS | 400 km | 0.04 units above surface |\n| GPS | 20,200 km | 2.02 + 0.64 = 2.66 units |\n| Geostationary | 35,786 km | 3.58 + 0.64 = 4.22 units |\n| Moon | 384,400 km | 38.4 units |\n\n## Travel Time\n\nAt typical spacecraft speeds (~1 km/s average over coast phase), the journey takes:\n\n$$t = \\frac{384{,}400 \\text{ km}}{1 \\text{ km/s}} \\approx 384{,}400 \\text{ s} \\approx 4.4 \\text{ days}$$\n\nArtemis II is planned as a **~10-day mission** — fly out, loop around the Moon on a free-return trajectory, and return to Earth.\n\n## The Free-Return Trajectory\n\nA free-return trajectory is a figure-eight path that uses the Moon's gravity to redirect the spacecraft back toward Earth — no engine burn required at the Moon. It was used by Apollo and is the safety backbone of Artemis II.\n\n## Citations\n\n- NASA Moon Fact Sheet: https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html\n- NASA Earth Fact Sheet: https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html\n- Wikipedia: Earth-Moon system — https://en.wikipedia.org/wiki/Moon\n- Artemis II mission overview: https://www.nasa.gov/artemis-ii/",
+      "prompt": "Guide students to appreciate the vastness of cislunar space. Use the scale model to build intuition: the ISS orbit is barely a hair's width above Earth's surface at this scale, while the Moon is 38 units away. Encourage exploration: What if the Moon were closer — how would that change orbital mechanics and travel time? Compare the Earth-Moon distance to everyday experiences — it's like traveling around Earth's equator about 9.5 times. Ask students to estimate how long it would take to drive to the Moon at highway speed (~100 km/h): about 160 days!",
+      "range": [
+        [
+          -5,
+          45
+        ],
+        [
+          -25,
+          25
+        ],
+        [
+          -25,
+          25
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "starfield": {
+        "enabled": true,
+        "count": 1200,
+        "size": 1.8,
+        "opacity": 0.85,
+        "twinkle": 0.3
+      },
+      "views": [
+        {
+          "name": "Overview",
+          "description": "See both Earth and Moon together at full scale",
+          "position": [
+            19,
+            8,
+            30
+          ],
+          "target": [
+            19,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Earth Close",
+          "description": "Close-up of Earth and nearby orbital shells",
+          "position": [
+            0,
+            1,
+            3
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Moon Close",
+          "description": "Close-up of the Moon at scale",
+          "position": [
+            38.4,
+            0.5,
+            2
+          ],
+          "target": [
+            38.4,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Top Down",
+          "description": "Top-down view of the entire Earth-Moon system",
+          "position": [
+            19,
+            30,
+            0.1
+          ],
+          "target": [
+            19,
+            0,
+            0
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "id": "deep_space_bg",
+          "type": "skybox",
+          "style": "gradient",
+          "topColor": "#080818",
+          "bottomColor": "#030310",
+          "starCount": 2000
+        }
+      ],
+      "steps": [
+        {
+          "title": "Earth in Space",
+          "description": "This is Earth — our home planet with a radius of 6,371 km. In our model, 1 unit = 10,000 km.",
+          "camera": {
+            "position": [
+              0,
+              0,
+              3
+            ],
+            "target": [
+              0,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "earth",
+              "type": "sphere",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radius": 0.64,
+              "color": "#3a7bd5",
+              "emissive": "#112244",
+              "opacity": 1.0
+            },
+            {
+              "id": "earth_label",
+              "type": "text",
+              "text": "Earth",
+              "position": [
+                0,
+                1.2,
+                0
+              ],
+              "color": "#ffffff"
+            }
+          ],
+          "remove": []
+        },
+        {
+          "title": "How Far Is the Moon?",
+          "description": "The Moon is 384,400 km away — about 30 Earth diameters. Let's see it.",
+          "camera": {
+            "position": [
+              19,
+              5,
+              25
+            ],
+            "target": [
+              19,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "distance_line",
+              "type": "line",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                38.4,
+                0,
+                0
+              ],
+              "color": "#555555",
+              "opacity": 0.7,
+              "width": 1
+            },
+            {
+              "id": "distance_label",
+              "type": "text",
+              "text": "384,400 km",
+              "position": [
+                19,
+                1,
+                0
+              ],
+              "color": "#aaaaaa"
+            }
+          ],
+          "remove": []
+        },
+        {
+          "title": "The Moon",
+          "description": "The Moon has a radius of just 1,737 km — about 27% of Earth's size. Notice how small it appears at this scale.",
+          "camera": {
+            "position": [
+              19,
+              3,
+              20
+            ],
+            "target": [
+              19,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "moon",
+              "type": "sphere",
+              "center": [
+                38.4,
+                0,
+                0
+              ],
+              "radius": 0.17,
+              "color": "#aaaaaa",
+              "emissive": "#444444",
+              "opacity": 1.0
+            },
+            {
+              "id": "moon_label",
+              "type": "text",
+              "text": "Moon",
+              "position": [
+                38.4,
+                0.6,
+                0
+              ],
+              "color": "#dddddd"
+            }
+          ],
+          "remove": []
+        },
+        {
+          "title": "Scale Comparisons",
+          "description": "For comparison: the ISS orbits just 400 km up — barely a speck at this scale. GPS satellites orbit at 20,200 km, and geostationary orbit is at 35,786 km.",
+          "camera": {
+            "position": [
+              8,
+              4,
+              15
+            ],
+            "target": [
+              4,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "iss_pt",
+              "type": "point",
+              "position": [
+                0.68,
+                0,
+                0
+              ],
+              "color": "#88ff88",
+              "size": 5
+            },
+            {
+              "id": "iss_label",
+              "type": "text",
+              "text": "ISS orbit: 400 km",
+              "position": [
+                0.5,
+                -1,
+                0
+              ],
+              "color": "#88ff88"
+            },
+            {
+              "id": "gps_pt",
+              "type": "point",
+              "position": [
+                2.66,
+                0,
+                0
+              ],
+              "color": "#ffdd44",
+              "size": 5
+            },
+            {
+              "id": "gps_label",
+              "type": "text",
+              "text": "GPS: 20,200 km",
+              "position": [
+                2,
+                -2,
+                0
+              ],
+              "color": "#ffdd44"
+            },
+            {
+              "id": "geo_pt",
+              "type": "point",
+              "position": [
+                4.22,
+                0,
+                0
+              ],
+              "color": "#ff8844",
+              "size": 5
+            },
+            {
+              "id": "geo_label",
+              "type": "text",
+              "text": "Geostationary: 35,786 km",
+              "position": [
+                3.6,
+                -3,
+                0
+              ],
+              "color": "#ff8844"
+            }
+          ],
+          "remove": []
+        },
+        {
+          "title": "The Journey Preview",
+          "description": "Artemis II will follow a free-return trajectory — a figure-eight path that uses the Moon's gravity to swing back toward Earth.",
+          "camera": {
+            "position": [
+              19,
+              10,
+              28
+            ],
+            "target": [
+              19,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "trajectory",
+              "type": "parametric_curve",
+              "x": "38.4 * (1 - cos(t)) / 2",
+              "y": "12 * sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 256,
+              "color": "#ff6644",
+              "opacity": 0.5,
+              "width": 2
+            }
+          ],
+          "remove": []
+        },
+        {
+          "title": "Explore the Scale",
+          "description": "The entire Artemis II mission takes about 10 days. Orbit the view to explore the scale of this incredible journey.",
+          "camera": {
+            "position": [
+              19,
+              8,
+              30
+            ],
+            "target": [
+              19,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "you_are_here_pt",
+              "type": "point",
+              "position": [
+                0.68,
+                0.2,
+                0
+              ],
+              "color": "#ffffff",
+              "size": 7,
+              "label": "You Are Here"
+            },
+            {
+              "id": "travel_time_label",
+              "type": "text",
+              "text": "~4 days to reach the Moon",
+              "position": [
+                10,
+                4,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "id": "mission_time_label",
+              "type": "text",
+              "text": "~10 day total mission",
+              "position": [
+                10,
+                3,
+                0
+              ],
+              "color": "#aaaaaa"
+            }
+          ],
+          "remove": []
+        }
+      ]
+    },
+    {
+      "title": "The SLS Rocket & Orion Spacecraft",
+      "description": "SLS Block 1 and Orion — stages, mass ratios, and why staging is necessary",
+      "prompt": "You are teaching about the SLS rocket and staging concept. The key insight: rockets must carry their own fuel, and fuel has mass, which requires more fuel — the tyranny of the rocket equation. Staging solves this by dropping empty tanks. Compare the 98m SLS to familiar structures (taller than the Statue of Liberty). Each stage has a specific job: SRBs for raw power at liftoff, core stage for sustained acceleration to orbit, ICPS for precision orbit adjustment. The crew of four sits at the very top in Orion — the only part that comes home.",
+      "range": [
+        [
+          -6.5,
+          6.5
+        ],
+        [
+          -1,
+          12
+        ],
+        [
+          -6.5,
+          6.5
+        ]
+      ],
+      "camera": {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "target": [
+          0,
+          5,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Full Rocket",
+          "position": [
+            8,
+            5,
+            8
+          ],
+          "target": [
+            0,
+            5,
+            0
+          ],
+          "description": "Full stack isometric view"
+        },
+        {
+          "name": "Close-up Top",
+          "position": [
+            2,
+            9,
+            3
+          ],
+          "target": [
+            0,
+            9,
+            0
+          ],
+          "description": "Orion and ICPS detail"
+        },
+        {
+          "name": "Close-up Base",
+          "position": [
+            3,
+            0.5,
+            3
+          ],
+          "target": [
+            0,
+            0.5,
+            0
+          ],
+          "description": "Launch pad and booster base"
+        },
+        {
+          "name": "Side View",
+          "position": [
+            10,
+            5,
+            0
+          ],
+          "target": [
+            0,
+            5,
+            0
+          ],
+          "description": "Profile view from the right"
+        }
+      ],
+      "elements": [],
+      "steps": [
+        {
+          "title": "The Full Stack",
+          "description": "The Space Launch System is the most powerful rocket ever flown. Standing 98 meters tall — taller than the Statue of Liberty — it generates 39 meganewtons of thrust at liftoff.",
+          "camera": {
+            "position": [
+              8,
+              5,
+              8
+            ],
+            "target": [
+              0,
+              5,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "skybox",
+              "type": "skybox",
+              "topColor": "#1a1a3a",
+              "bottomColor": "#2a1a0a"
+            },
+            {
+              "id": "srb_left",
+              "type": "cylinder",
+              "from": [
+                -0.6,
+                0,
+                0
+              ],
+              "to": [
+                -0.6,
+                5.4,
+                0
+              ],
+              "radius": 0.185,
+              "color": "#ff4444"
+            },
+            {
+              "id": "srb_right",
+              "type": "cylinder",
+              "from": [
+                0.6,
+                0,
+                0
+              ],
+              "to": [
+                0.6,
+                5.4,
+                0
+              ],
+              "radius": 0.185,
+              "color": "#ff4444"
+            },
+            {
+              "id": "core_stage",
+              "type": "cylinder",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                6.46,
+                0
+              ],
+              "radius": 0.42,
+              "color": "#ff8844"
+            },
+            {
+              "id": "icps",
+              "type": "cylinder",
+              "from": [
+                0,
+                6.46,
+                0
+              ],
+              "to": [
+                0,
+                7.86,
+                0
+              ],
+              "radius": 0.26,
+              "color": "#44aaff"
+            },
+            {
+              "id": "orion",
+              "type": "cylinder",
+              "from": [
+                0,
+                7.86,
+                0
+              ],
+              "to": [
+                0,
+                9.86,
+                0
+              ],
+              "radius": 0.25,
+              "color": "#ffffff"
+            },
+            {
+              "id": "label_sls",
+              "type": "text",
+              "text": "SLS Block 1",
+              "position": [
+                2,
+                5,
+                0
+              ],
+              "color": "#ffffff"
+            },
+            {
+              "id": "label_height",
+              "type": "text",
+              "text": "98 meters tall",
+              "position": [
+                2,
+                4,
+                0
+              ],
+              "color": "#cccccc"
+            }
+          ]
+        },
+        {
+          "title": "Solid Rocket Boosters",
+          "description": "Two massive solid rocket boosters provide most of the thrust at liftoff — 32 MN combined. They burn for just 126 seconds before separating at 48 km altitude.",
+          "add": [
+            {
+              "id": "label_srb",
+              "type": "text",
+              "text": "2× SRBs",
+              "position": [
+                -1.5,
+                2.7,
+                0
+              ],
+              "color": "#ff6666"
+            },
+            {
+              "id": "label_srb_thrust",
+              "type": "text",
+              "text": "16 MN thrust each",
+              "position": [
+                -1.5,
+                2.0,
+                0
+              ],
+              "color": "#ffaaaa"
+            },
+            {
+              "id": "label_srb_burn",
+              "type": "text",
+              "text": "126 seconds burn",
+              "position": [
+                -1.5,
+                1.3,
+                0
+              ],
+              "color": "#ffaaaa"
+            }
+          ]
+        },
+        {
+          "title": "Core Stage",
+          "description": "The orange core stage carries liquid hydrogen and liquid oxygen, feeding four RS-25 engines — the same engine design that powered the Space Shuttle. It burns for 8 minutes.",
+          "add": [
+            {
+              "id": "label_core",
+              "type": "text",
+              "text": "Core Stage",
+              "position": [
+                1.5,
+                3.2,
+                0
+              ],
+              "color": "#ffaa66"
+            },
+            {
+              "id": "label_core_engines",
+              "type": "text",
+              "text": "4× RS-25 engines",
+              "position": [
+                1.5,
+                0.5,
+                0
+              ],
+              "color": "#ffcc99"
+            },
+            {
+              "id": "label_core_prop",
+              "type": "text",
+              "text": "Liquid H₂ + O₂",
+              "position": [
+                1.5,
+                1.5,
+                0
+              ],
+              "color": "#ffcc99"
+            }
+          ]
+        },
+        {
+          "title": "ICPS Upper Stage",
+          "description": "The Interim Cryogenic Propulsion Stage uses a single RL10 engine. It performs two burns to place Orion into a high Earth orbit before TLI.",
+          "add": [
+            {
+              "id": "label_icps",
+              "type": "text",
+              "text": "ICPS",
+              "position": [
+                1.5,
+                7.2,
+                0
+              ],
+              "color": "#88ccff"
+            },
+            {
+              "id": "label_icps_engine",
+              "type": "text",
+              "text": "RL10 engine",
+              "position": [
+                1.5,
+                6.6,
+                0
+              ],
+              "color": "#aaddff"
+            }
+          ]
+        },
+        {
+          "title": "Orion Spacecraft",
+          "description": "At the top sits Orion — carrying four astronauts: Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen. Its European Service Module provides propulsion for the lunar journey.",
+          "camera": {
+            "position": [
+              2,
+              9,
+              3
+            ],
+            "target": [
+              0,
+              9,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "label_orion",
+              "type": "text",
+              "text": "Orion",
+              "position": [
+                1.5,
+                9.0,
+                0
+              ],
+              "color": "#ffffff"
+            },
+            {
+              "id": "label_orion_crew",
+              "type": "text",
+              "text": "4 crew",
+              "position": [
+                1.5,
+                8.4,
+                0
+              ],
+              "color": "#dddddd"
+            }
+          ]
+        },
+        {
+          "title": "Why Staging?",
+          "description": "About 85% of the rocket's 2.6 million kg liftoff mass is propellant. Staging works by discarding empty tanks — each stage falls away once its fuel is spent, leaving less mass for the next stage to push.",
+          "camera": {
+            "position": [
+              8,
+              5,
+              8
+            ],
+            "target": [
+              0,
+              5,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "label_mass_pct",
+              "type": "text",
+              "text": "~85% of launch mass is fuel",
+              "position": [
+                0,
+                -0.5,
+                0
+              ],
+              "color": "#ffdd88"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "massRatio",
+              "label": "Propellant fraction",
+              "min": 0,
+              "max": 1,
+              "step": 0.01,
+              "default": 0.85
+            }
+          ],
+          "info": [
+            {
+              "id": "massInfo",
+              "content": "**Mass Budget**\n\nPropellant: {{toFixed(massRatio * 2610000, 0)}} kg\n\nDry mass: {{toFixed((1 - massRatio) * 2610000, 0)}} kg\n\nTotal: 2,610,000 kg",
+              "position": "top-left"
+            }
+          ]
+        }
+      ],
+      "markdown": "# SLS Block 1 & Orion Spacecraft\n\nThe **Space Launch System (SLS) Block 1** is NASA's new super heavy-lift launch vehicle, designed to send the Orion spacecraft and crew to the Moon for the first time since Apollo 17 in 1972.\n\n---\n\n## SLS Block 1 Specifications\n\n| Parameter | Value |\n|-----------|-------|\n| Total height | 98 m (322 ft) |\n| Gross liftoff mass | ~2,608,000 kg |\n| Liftoff thrust | ~39.1 MN |\n| Payload to TLI | ~27,000 kg |\n| First flight | November 16, 2022 (Artemis I) |\n\n---\n\n## Stage-by-Stage Breakdown\n\n### Solid Rocket Boosters (×2)\n- **Manufacturer**: Northrop Grumman\n- **Height**: 54 m each\n- **Diameter**: 3.71 m\n- **Thrust**: ~16 MN each (32 MN combined)\n- **Burn time**: ~126 seconds\n- **Propellant**: PBAN solid fuel\n- **Separation altitude**: ~48 km\n- **Note**: Derived from Space Shuttle SRBs, but with 5 segments instead of 4\n\n### Core Stage\n- **Manufacturer**: Boeing\n- **Height**: 64.6 m\n- **Diameter**: 8.4 m\n- **Engines**: 4× Aerojet Rocketdyne RS-25\n- **Thrust**: ~7.44 MN (combined)\n- **Burn time**: ~8 minutes\n- **Propellant**: Liquid hydrogen (LH₂) + Liquid oxygen (LOX)\n- **Note**: RS-25 engines are heritage Space Shuttle Main Engines\n\n### Interim Cryogenic Propulsion Stage (ICPS)\n- **Manufacturer**: United Launch Alliance (based on Delta Cryogenic Second Stage)\n- **Height**: ~13.7 m\n- **Diameter**: 5.05 m\n- **Engine**: 1× RL10 (11.2 kN vacuum thrust)\n- **Propellant**: LH₂ + LOX\n- **Mission role**: Two burns — one for circular parking orbit, one for Trans-Lunar Injection (TLI)\n\n---\n\n## Orion Spacecraft\n\nOrion consists of three main elements:\n\n### Crew Module (CM)\n- Pressurized cabin for up to 4 astronauts\n- Diameter: 5.03 m\n- Manufacturer: Lockheed Martin\n- Reusable for up to 10 flights\n\n### European Service Module (ESM)\n- Provides propulsion, power, thermal control, life support consumables\n- Manufacturer: Airbus Defence and Space (ESA contribution)\n- Main engine: AJ10 (26.7 kN)\n- 33× attitude-control thrusters\n\n### Launch Abort System (LAS)\n- Solid-fuel abort motor atop the CM\n- Can pull the CM away from a failing rocket in 0.3 seconds\n- Jettisoned after max-Q when no longer needed\n\n### Heat Shield\n- Avcoat ablative thermal protection\n- Must survive 2,760 °C re-entry from lunar return\n- Diameter: 5.03 m — largest heat shield ever flown\n\n---\n\n## Artemis II Crew\n\n| Astronaut | Role | Agency |\n|-----------|------|--------|\n| Reid Wiseman | Commander | NASA |\n| Victor Glover | Pilot | NASA |\n| Christina Koch | Mission Specialist | NASA |\n| Jeremy Hansen | Mission Specialist | CSA |\n\nArtemis II is a **crewed lunar flyby** — the first humans to travel to the Moon since Apollo 17. The mission will not land; it validates Orion's life-support systems with crew aboard on a free-return trajectory around the Moon.\n\n---\n\n## Why Staging Is Necessary\n\nThe **Tsiolkovsky Rocket Equation** governs all rocketry:\n\n$$\\Delta v = v_e \\ln\\!\\left(\\frac{m_0}{m_f}\\right)$$\n\nwhere $v_e$ is exhaust velocity, $m_0$ is initial mass, and $m_f$ is final (dry) mass.\n\nThe key insight: **propellant makes up roughly 85% of liftoff mass**. To reach the Moon, you need $\\Delta v \\approx 12{,}000$ m/s. With a single stage, you would need to carry all the tank structure and engines for the entire journey — an enormous mass penalty.\n\n**Staging solves this** by discarding empty tanks and engines at each phase:\n1. SRBs burn out at 48 km → jettisoned (save ~180,000 kg)\n2. Core Stage burns out → jettisoned (save ~850,000 kg)\n3. ICPS fires twice for orbit insertion and TLI → jettisoned\n4. Only Orion continues to the Moon\n\nEach stage shed is dead weight removed — so the remaining propellant pushes a much lighter vehicle, dramatically improving efficiency.\n\n---\n\n## Citations\n\n- [NASA SLS Overview](https://www.nasa.gov/space-launch-system/)\n- [Wikipedia — Space Launch System](https://en.wikipedia.org/wiki/Space_Launch_System)\n- [Wikipedia — Orion spacecraft](https://en.wikipedia.org/wiki/Orion_(spacecraft))\n- [NASA Artemis II Mission Page](https://www.nasa.gov/artemis/artemis-ii/)\n- [Tsiolkovsky rocket equation — Wikipedia](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation)"
+    },
+    {
+      "title": "Launch & Parking Orbit",
+      "description": "From liftoff to orbit — why spacecraft don't fly directly to the Moon.",
+      "markdown": "# Launch & Parking Orbit\n\n## The Launch Sequence\n\nArtemis II launches from **Kennedy Space Center, Launch Complex 39B** — the same pad complex used by Apollo.\n\n### Timeline\n| Event | Time | Altitude | Speed |\n|---|---|---|---|\n| Liftoff | T+0 | 0 km | 0 km/s |\n| Max-Q | T+60s | ~12 km | ~0.5 km/s |\n| SRB separation | T+126s | 48 km | ~1.4 km/s |\n| Core stage cutoff | T+8 min | 185 km | ~7.8 km/s |\n| Parking orbit | T+12 min | 185 km | 7.79 km/s |\n\n## Why a Parking Orbit?\n\nThe Moon is a **moving target** — it orbits Earth at about 1 km/s. A parking orbit gives the crew time to:\n\n1. **Check spacecraft systems** before committing to the Moon\n2. **Wait for the right alignment** between the spacecraft's position and the Moon\n3. **Plan the precise TLI burn** timing\n\n## Orbital Speed\n\nFor a circular orbit, speed depends only on altitude:\n\n$$v = \\sqrt{\\frac{GM}{r}}$$\n\nwhere $GM_{\\oplus} = 398{,}600 \\text{ km}^3/\\text{s}^2$ and $r$ is the distance from Earth's center.\n\nAt 185 km altitude ($r = 6{,}556$ km):\n$$v = \\sqrt{\\frac{398{,}600}{6{,}556}} \\approx 7.79 \\text{ km/s}$$\n\nThat's about **28,000 km/h** — fast enough to circle Earth in 88 minutes!\n\n## The High Earth Orbit\n\nThe ICPS performs two burns:\n1. **First burn** (T+50 min): raises orbit to 185 × 2,222 km\n2. **Second burn** (T+1h 48m): stretches to 185 × 70,376 km — a 24-hour orbit\n\nThis High Earth Orbit (HEO) is the staging point for TLI.\n\n## Citations\n\n- NASA Artemis II Overview: https://www.nasa.gov/mission/artemis-ii/\n- Wikipedia: Space Launch System — https://en.wikipedia.org/wiki/Space_Launch_System\n- Wikipedia: Trans-lunar injection — https://en.wikipedia.org/wiki/Trans-lunar_injection",
+      "prompt": "You are teaching about launch mechanics and parking orbits. Emphasize that going to orbit is the hardest part — it takes enormous energy just to reach 7.8 km/s. The parking orbit is a staging area, like stopping at a gas station before a highway trip. Ask students: why does orbital speed decrease with altitude? (Because gravitational potential energy increases, leaving less kinetic energy.) Suggest exploring: what if we launched from a higher altitude — would it be easier?",
+      "range": [
+        [
+          -12,
+          85
+        ],
+        [
+          -48.5,
+          48.5
+        ],
+        [
+          -48.5,
+          48.5
+        ]
+      ],
+      "camera": {
+        "position": [
+          7,
+          1,
+          5
+        ],
+        "target": [
+          6.5,
+          0,
+          0
+        ]
+      },
+      "starfield": {
+        "enabled": true,
+        "count": 1000,
+        "size": 1.5,
+        "opacity": 0.85
+      },
+      "views": [
+        {
+          "name": "Launch View",
+          "description": "Close to Earth's surface at launch",
+          "position": [
+            7,
+            1,
+            5
+          ],
+          "target": [
+            6.5,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Near Earth",
+          "description": "See the parking orbit around Earth",
+          "position": [
+            0,
+            0,
+            20
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Full HEO",
+          "description": "See the full High Earth Orbit ellipse",
+          "position": [
+            -20,
+            10,
+            90
+          ],
+          "target": [
+            -15,
+            0,
+            0
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "id": "s2_skybox",
+          "type": "skybox",
+          "style": "gradient",
+          "topColor": "#080818",
+          "bottomColor": "#030310",
+          "starCount": 2000
+        },
+        {
+          "id": "s2_earth",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 6.371,
+          "color": "#3a7bd5",
+          "opacity": 0.95,
+          "shader": {
+            "type": "phong",
+            "emissive": "#112244",
+            "shininess": 30
+          }
+        }
+      ],
+      "steps": [
+        {
+          "title": "Liftoff!",
+          "description": "T-0: Liftoff from Kennedy Space Center! SLS generates 39 meganewtons of thrust — 15% more than the Saturn V. The rocket rises on twin pillars of fire from its solid boosters.",
+          "camera": {
+            "position": [
+              7,
+              1,
+              5
+            ],
+            "target": [
+              6.5,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "s2_launch_point",
+              "type": "point",
+              "position": [
+                6.4,
+                0,
+                0
+              ],
+              "color": "#ffcc00",
+              "size": 12,
+              "label": "SLS Launch"
+            },
+            {
+              "id": "s2_launch_text",
+              "type": "text",
+              "text": "T-0: LIFTOFF",
+              "position": [
+                7,
+                0.8,
+                0
+              ],
+              "color": "#ff8844"
+            }
+          ]
+        },
+        {
+          "title": "SRB Separation — T+126s",
+          "description": "At T+126 seconds and 48 km altitude, the two solid rocket boosters separate after burning 1.26 million kg of propellant. The core stage RS-25 engines continue pushing toward orbit.",
+          "camera": {
+            "position": [
+              7.5,
+              1.5,
+              6
+            ],
+            "target": [
+              6.5,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "s2_srb_sep",
+              "type": "text",
+              "text": "SRB Sep: 48 km, T+126s",
+              "position": [
+                7.5,
+                1.2,
+                0
+              ],
+              "color": "#ff4444"
+            },
+            {
+              "id": "s2_srb_point",
+              "type": "point",
+              "position": [
+                6.419,
+                0.1,
+                0
+              ],
+              "color": "#ff4444",
+              "size": 8,
+              "label": "48 km"
+            }
+          ]
+        },
+        {
+          "title": "Parking Orbit — 185 km",
+          "description": "After 8 minutes of core stage burn, Orion reaches a circular parking orbit at 185 km altitude, traveling at 7.79 km/s. One full orbit takes just 88 minutes — but Orion won't stay long.",
+          "camera": {
+            "position": [
+              0,
+              0,
+              20
+            ],
+            "target": [
+              0,
+              0,
+              0
+            ]
+          },
+          "remove": [
+            {
+              "id": "s2_launch_point"
+            },
+            {
+              "id": "s2_launch_text"
+            },
+            {
+              "id": "s2_srb_sep"
+            },
+            {
+              "id": "s2_srb_point"
+            }
+          ],
+          "add": [
+            {
+              "id": "s2_leo_orbit",
+              "type": "parametric_curve",
+              "x": "6.556 * cos(t)",
+              "y": "6.556 * sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "color": "#44ff44",
+              "width": 2,
+              "samples": 128
+            },
+            {
+              "id": "s2_leo_label",
+              "type": "text",
+              "text": "LEO: 185 km — 7.79 km/s",
+              "position": [
+                0,
+                7.5,
+                0
+              ],
+              "color": "#44ff44"
+            },
+            {
+              "id": "s2_orion_leo",
+              "type": "animated_point",
+              "expr": [
+                "6.556 * cos(t)",
+                "6.556 * sin(t)",
+                "0"
+              ],
+              "color": "#ffcc00",
+              "size": 10,
+              "label": "Orion"
+            }
+          ]
+        },
+        {
+          "title": "Why Not Fly Straight?",
+          "description": "Why not aim directly at the Moon? Because the Moon is a moving target — orbiting Earth at 1 km/s. A parking orbit lets the crew check systems and wait for the perfect alignment between their position and the Moon's.",
+          "add": [
+            {
+              "id": "s2_moon_direction",
+              "type": "vector",
+              "from": [
+                6.556,
+                0,
+                0
+              ],
+              "to": [
+                15,
+                0,
+                0
+              ],
+              "color": "#aaaaaa",
+              "width": 2,
+              "label": "Moon is this way →"
+            },
+            {
+              "id": "s2_why_text",
+              "type": "text",
+              "text": "Wait for alignment...",
+              "position": [
+                0,
+                -8,
+                0
+              ],
+              "color": "#888888"
+            }
+          ]
+        },
+        {
+          "title": "High Earth Orbit",
+          "description": "The ICPS fires twice to place Orion in a High Earth Orbit: 185 × 70,376 km with a 24-hour period. This elliptical orbit reaches partway to the Moon — the staging point for Trans-Lunar Injection.",
+          "camera": {
+            "position": [
+              -20,
+              10,
+              90
+            ],
+            "target": [
+              -15,
+              0,
+              0
+            ]
+          },
+          "remove": [
+            {
+              "id": "s2_leo_orbit"
+            },
+            {
+              "id": "s2_leo_label"
+            },
+            {
+              "id": "s2_orion_leo"
+            },
+            {
+              "id": "s2_moon_direction"
+            },
+            {
+              "id": "s2_why_text"
+            }
+          ],
+          "add": [
+            {
+              "id": "s2_heo_orbit",
+              "type": "parametric_curve",
+              "x": "-35.1 + 41.65 * cos(t)",
+              "y": "22.42 * sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "color": "#ffaa00",
+              "width": 2,
+              "samples": 128
+            },
+            {
+              "id": "s2_heo_label",
+              "type": "text",
+              "text": "HEO: 185 × 70,376 km",
+              "position": [
+                0,
+                25,
+                0
+              ],
+              "color": "#ffaa00"
+            },
+            {
+              "id": "s2_perigee_pt",
+              "type": "point",
+              "position": [
+                6.556,
+                0,
+                0
+              ],
+              "color": "#44ff44",
+              "size": 8,
+              "label": "Perigee: 185 km"
+            },
+            {
+              "id": "s2_apogee_pt",
+              "type": "point",
+              "position": [
+                -76.75,
+                0,
+                0
+              ],
+              "color": "#ffaa00",
+              "size": 8,
+              "label": "Apogee: 70,376 km"
+            }
+          ]
+        },
+        {
+          "title": "Explore Orbital Speed",
+          "description": "Drag the slider to see how orbital speed changes with altitude. Higher orbits mean slower speeds — this is Kepler's insight. At 185 km, Orion moves at 7.8 km/s. At the Moon's distance, only ~1 km/s.",
+          "camera": {
+            "position": [
+              0,
+              0,
+              25
+            ],
+            "target": [
+              0,
+              0,
+              0
+            ]
+          },
+          "remove": [
+            {
+              "id": "s2_heo_orbit"
+            },
+            {
+              "id": "s2_heo_label"
+            },
+            {
+              "id": "s2_perigee_pt"
+            },
+            {
+              "id": "s2_apogee_pt"
+            }
+          ],
+          "add": [
+            {
+              "id": "s2_orbit_vis",
+              "type": "parametric_curve",
+              "x": "6.556 * cos(t)",
+              "y": "6.556 * sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "color": "#44ff44",
+              "width": 2,
+              "samples": 128
+            },
+            {
+              "id": "s2_speed_craft",
+              "type": "animated_point",
+              "expr": [
+                "orbitR * cos(t * 0.5)",
+                "orbitR * sin(t * 0.5)",
+                "0"
+              ],
+              "color": "#ffcc00",
+              "size": 10,
+              "label": "Spacecraft"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "orbitR",
+              "label": "Orbit radius (×1000 km)",
+              "min": 6.6,
+              "max": 42,
+              "step": 0.1,
+              "default": 6.6
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_speed_info",
+              "content": "**Orbit radius:** {{toFixed(orbitR * 1000, 0)}} km from center\n\n**Altitude:** {{toFixed((orbitR - 6.371) * 1000, 0)}} km\n\n**Speed:** {{toFixed(sqrt(398.6 / orbitR), 2)}} km/s\n\n$$v = \\sqrt{\\frac{GM}{r}}$$",
+              "position": "top-left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Trans-Lunar Injection — The Big Burn",
+      "description": "The critical engine burn that commits Orion to a lunar trajectory.",
+      "markdown": "# Trans-Lunar Injection (TLI)\n\n## What is TLI?\n\nTrans-Lunar Injection is the propulsive maneuver that accelerates Orion from its parking orbit onto a trajectory toward the Moon. It's the point of no return — after this burn, Orion is committed to the lunar flyby.\n\n## The Burn\n\nThe European Service Module's **AJ10-190** engine fires for approximately **6 minutes**, adding **3.1 km/s** (Δv) to Orion's velocity.\n\n| Parameter | Value |\n|---|---|\n| Engine | AJ10-190 (refurbished Shuttle OMS) |\n| Thrust | 26.6 kN |\n| Burn duration | ~6.1 minutes |\n| Δv | ~3.1 km/s |\n| Propellant burned | ~8,600 kg |\n\n## The Vis-Viva Equation\n\nThe speed at any point in an orbit is given by:\n\n$$v^2 = GM\\left(\\frac{2}{r} - \\frac{1}{a}\\right)$$\n\nwhere:\n- $GM_{\\oplus} = 398{,}600 \\text{ km}^3/\\text{s}^2$\n- $r$ = current distance from Earth's center\n- $a$ = semi-major axis of the orbit\n\n### Before TLI (HEO at perigee)\n$$v = \\sqrt{398{,}600 \\left(\\frac{2}{6{,}556} - \\frac{1}{41{,}651}\\right)} \\approx 10.4 \\text{ km/s}$$\n\n### After TLI — the orbit's apogee reaches the Moon!\n\nBy adding just 3.1 km/s, the orbit stretches from 70,376 km apogee to **384,400 km** — the Moon's distance.\n\n## Energy Conservation During Coast\n\nAfter the engine shuts down, Orion coasts for 4 days. No thrust. Speed decreases as Orion climbs out of Earth's gravity well:\n\n$$\\frac{1}{2}v^2 - \\frac{GM}{r} = \\text{constant}$$\n\n- Near Earth: **~10 km/s** (kinetic energy dominates)\n- Near Moon: **~0.8 km/s** (potential energy dominates)\n\n## Citations\n\n- NASA Artemis II Mission: https://www.nasa.gov/mission/artemis-ii/\n- Wikipedia: Trans-lunar injection — https://en.wikipedia.org/wiki/Trans-lunar_injection\n- Wikipedia: Vis-viva equation — https://en.wikipedia.org/wiki/Vis-viva_equation\n- Wikipedia: European Service Module — https://en.wikipedia.org/wiki/European_Service_Module",
+      "prompt": "You are teaching TLI as the orbit-reshaping maneuver. The key insight: adding velocity at the right point changes the shape of the orbit. A small Δv at perigee has a huge effect on apogee — this is the Oberth effect. Ask students: what happens if the burn is too short? Too long? Connect to the vis-viva equation: v depends on both current position r and orbit size a. When a increases, the orbit reaches further.",
+      "range": [
+        [
+          -5,
+          45
+        ],
+        [
+          -25,
+          25
+        ],
+        [
+          -25,
+          25
+        ]
+      ],
+      "camera": {
+        "position": [
+          5,
+          3,
+          15
+        ],
+        "target": [
+          5,
+          0,
+          0
+        ]
+      },
+      "starfield": {
+        "enabled": true,
+        "count": 1200,
+        "size": 1.8,
+        "opacity": 0.85
+      },
+      "views": [
+        {
+          "name": "Overview",
+          "description": "See the full trajectory from Earth to Moon",
+          "position": [
+            19,
+            8,
+            35
+          ],
+          "target": [
+            19,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Near Earth",
+          "description": "Focus on the TLI burn region",
+          "position": [
+            2,
+            2,
+            10
+          ],
+          "target": [
+            2,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Moon Approach",
+          "description": "View from near the Moon",
+          "position": [
+            35,
+            2,
+            8
+          ],
+          "target": [
+            38.4,
+            0,
+            0
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "id": "s3_skybox",
+          "type": "skybox",
+          "style": "gradient",
+          "topColor": "#080818",
+          "bottomColor": "#030310",
+          "starCount": 2000
+        },
+        {
+          "id": "s3_earth",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.637,
+          "color": "#3a7bd5",
+          "shader": {
+            "type": "phong",
+            "emissive": "#112244"
+          }
+        },
+        {
+          "id": "s3_moon",
+          "type": "sphere",
+          "center": [
+            38.4,
+            0,
+            0
+          ],
+          "radius": 0.174,
+          "color": "#aaaaaa",
+          "shader": {
+            "type": "phong",
+            "emissive": "#444444"
+          }
+        },
+        {
+          "id": "s3_moon_label",
+          "type": "text",
+          "text": "Moon",
+          "position": [
+            38.4,
+            0.5,
+            0
+          ],
+          "color": "#aaaaaa"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Starting Position — HEO",
+          "description": "Orion orbits Earth in a high elliptical orbit: 185 × 70,376 km. The crew has completed systems checks over the past 24 hours. It's time for the critical maneuver.",
+          "camera": {
+            "position": [
+              2,
+              2,
+              10
+            ],
+            "target": [
+              0,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "s3_heo",
+              "type": "parametric_curve",
+              "x": "-3.51 + 4.165 * cos(t)",
+              "y": "2.245 * sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "color": "#ffaa00",
+              "width": 2,
+              "samples": 128
+            },
+            {
+              "id": "s3_heo_label",
+              "type": "text",
+              "text": "HEO: 185 × 70,376 km",
+              "position": [
+                0,
+                3,
+                0
+              ],
+              "color": "#ffaa00"
+            },
+            {
+              "id": "s3_orion_heo",
+              "type": "animated_point",
+              "expr": [
+                "-3.51 + 4.165 * cos(t * 0.3)",
+                "2.245 * sin(t * 0.3)",
+                "0"
+              ],
+              "color": "#ffcc00",
+              "size": 10,
+              "label": "Orion"
+            }
+          ]
+        },
+        {
+          "title": "The TLI Burn",
+          "description": "The ESM's AJ10-190 engine ignites for 6 minutes, adding 3.1 km/s. This single burn — using a refurbished Space Shuttle OMS engine — commits the crew to the Moon.",
+          "add": [
+            {
+              "id": "s3_burn_vector",
+              "type": "vector",
+              "from": [
+                0.65,
+                0,
+                0
+              ],
+              "to": [
+                2.5,
+                0,
+                0
+              ],
+              "color": "#ff4444",
+              "width": 4,
+              "label": "Δv = 3.1 km/s"
+            },
+            {
+              "id": "s3_engine_text",
+              "type": "text",
+              "text": "AJ10-190: 26.6 kN for 6 min",
+              "position": [
+                1,
+                -1,
+                0
+              ],
+              "color": "#ff8844"
+            }
+          ]
+        },
+        {
+          "title": "The Orbit Stretches",
+          "description": "The burn stretches the orbit dramatically — what was an ellipse reaching 70,000 km now extends all the way to the Moon at 384,400 km. Orion is on its way!",
+          "camera": {
+            "position": [
+              19,
+              8,
+              35
+            ],
+            "target": [
+              19,
+              0,
+              0
+            ]
+          },
+          "remove": [
+            {
+              "id": "s3_heo"
+            },
+            {
+              "id": "s3_heo_label"
+            },
+            {
+              "id": "s3_orion_heo"
+            },
+            {
+              "id": "s3_burn_vector"
+            },
+            {
+              "id": "s3_engine_text"
+            }
+          ],
+          "add": [
+            {
+              "id": "s3_transfer_out",
+              "type": "parametric_curve",
+              "x": "38.4 * (1 - cos(t)) / 2",
+              "y": "12 * sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                3.1416
+              ],
+              "color": "#ff6644",
+              "width": 3,
+              "samples": 128
+            },
+            {
+              "id": "s3_transfer_return",
+              "type": "parametric_curve",
+              "x": "38.4 * (1 + cos(t)) / 2",
+              "y": "-10 * sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                3.1416
+              ],
+              "color": "#ff6644",
+              "width": 2,
+              "opacity": 0.4,
+              "samples": 128
+            },
+            {
+              "id": "s3_trajectory_label",
+              "type": "text",
+              "text": "Free-return trajectory",
+              "position": [
+                19,
+                14,
+                0
+              ],
+              "color": "#ff6644"
+            }
+          ]
+        },
+        {
+          "title": "Coasting to the Moon",
+          "description": "After TLI, engines shut down. Orion coasts for 4 days, trading speed for altitude. Near Earth: ~10 km/s. Near the Moon: ~0.8 km/s. Watch the energy exchange!",
+          "add": [
+            {
+              "id": "s3_coast_orion",
+              "type": "animated_point",
+              "expr": [
+                "38.4 * (1 - cos(coastT * pi)) / 2",
+                "12 * sin(coastT * pi)",
+                "0"
+              ],
+              "color": "#ffcc00",
+              "size": 12,
+              "label": "Orion"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "coastT",
+              "label": "Coast progress",
+              "min": 0,
+              "max": 1,
+              "step": 0.005,
+              "default": 0,
+              "animate": true,
+              "duration": 10000
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_coast_info",
+              "content": "**Day:** {{toFixed(coastT * 4 + 2, 1)}} of 10\n\n**Distance from Earth:** {{toFixed(coastT * 384, 0)}} × 1000 km\n\n**Speed:** {{toFixed(10 - coastT * 9.2, 1)}} km/s\n\n*Speed decreases as altitude increases — energy is conserved!*",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "The Energy Exchange",
+          "description": "As Orion climbs out of Earth's gravity well, kinetic energy converts to gravitational potential energy. The total energy stays constant — this is the vis-viva equation in action. No fuel needed for the coast!",
+          "add": [
+            {
+              "id": "s3_energy_text",
+              "type": "text",
+              "text": "KE + PE = constant",
+              "position": [
+                19,
+                -5,
+                0
+              ],
+              "color": "#88ccff"
+            }
+          ]
+        }
+      ],
+      "proof": {
+        "id": "vis-viva-derivation",
+        "title": "The Vis-Viva Equation",
+        "technique": "derivation",
+        "goal": "v^2 = GM\\left(\\frac{2}{r} - \\frac{1}{a}\\right)",
+        "prompt": "Guide students through this derivation step by step. Emphasize that this single equation tells you the speed at ANY point in ANY orbit — it's the Swiss Army knife of orbital mechanics.",
+        "steps": [
+          {
+            "type": "given",
+            "label": "Conservation of Energy",
+            "math": "E = \\frac{1}{2}mv^2 - \\frac{GMm}{r} = \\text{constant along the orbit}",
+            "justification": "In free flight (no thrust), gravity is the only force, and it conserves total mechanical energy.",
+            "sceneStep": 0
+          },
+          {
+            "type": "step",
+            "label": "Total energy of an ellipse",
+            "math": "E = -\\frac{GMm}{2a}",
+            "justification": "For an elliptical orbit with semi-major axis $a$, the total energy depends only on $a$, not on eccentricity.",
+            "sceneStep": 0
+          },
+          {
+            "type": "step",
+            "label": "Set expressions equal",
+            "math": "\\frac{1}{2}v^2 - \\frac{GM}{r} = -\\frac{GM}{2a}",
+            "justification": "Divide both sides by $m$ and equate the two energy expressions.",
+            "sceneStep": 2
+          },
+          {
+            "type": "step",
+            "label": "Solve for v²",
+            "math": "\\htmlClass{hl-v}{v}^2 = GM\\left(\\frac{2}{\\htmlClass{hl-r}{r}} - \\frac{1}{\\htmlClass{hl-a}{a}}\\right)",
+            "justification": "Rearrange: move $-GM/r$ to the right side and combine terms.",
+            "highlights": {
+              "v": {
+                "color": "cyan",
+                "label": "Speed at current position"
+              },
+              "r": {
+                "color": "yellow",
+                "label": "Current distance from Earth center"
+              },
+              "a": {
+                "color": "green",
+                "label": "Semi-major axis (orbit size)"
+              }
+            },
+            "sceneStep": 3
+          },
+          {
+            "type": "conclusion",
+            "label": "At LEO: r = 6,556 km, a = 6,556 km",
+            "math": "v = \\sqrt{\\frac{398{,}600}{6{,}556}} \\approx 7.79 \\text{ km/s}",
+            "justification": "For a circular orbit, $r = a$, so $v = \\sqrt{GM/r}$. This gives Orion's parking orbit speed.",
+            "sceneStep": 3
+          }
+        ]
+      }
+    },
+    {
+      "title": "Lunar Flyby & Free-Return Trajectory",
+      "description": "Artemis II swings around the Moon's far side — gravity provides a free ride home.",
+      "markdown": "# Lunar Flyby & Free-Return Trajectory\n\n## The Free-Return Concept\n\nA **free-return trajectory** uses the Moon's gravity to redirect the spacecraft back toward Earth — **no engine burn required**. After TLI, if all propulsion fails, the crew comes home automatically.\n\nThis is the same safety principle that saved the Apollo 13 crew in 1970.\n\n## The Flyby\n\nArtemis II does **not** enter lunar orbit. Instead, it performs a **hyperbolic flyby**:\n\n| Parameter | Value |\n|---|---|\n| Closest approach | 6,513 km from surface |\n| Location | Lunar far side |\n| Time in lunar vicinity | ~3 hours |\n| Communications blackout | 30–50 minutes |\n| Max distance from Earth | ~400,000 km |\n\n## Gravity Assist\n\nAs Orion passes behind the Moon, lunar gravity bends its trajectory:\n\n$$\\Delta\\theta = 2 \\arcsin\\left(\\frac{1}{1 + \\frac{r_p v_\\infty^2}{GM_{\\text{Moon}}}}\\right)$$\n\nThe Moon's gravity provides a free \"turn\" without propellant — redirecting Orion back toward Earth.\n\n## Historical Significance\n\nAt closest approach, the Artemis II crew will be approximately **400,000 km from Earth** — potentially breaking the record set by Apollo 13 (400,171 km). Jeremy Hansen becomes the **first non-American** to travel beyond low Earth orbit.\n\n## What the Crew Sees\n\nDuring the far-side flyby, the crew sees:\n- The **lunar far side** — never visible from Earth\n- **Earthrise** as they swing around the Moon\n- Complete radio silence during the blackout period\n\n## Citations\n\n- NASA Artemis II Mission: https://www.nasa.gov/mission/artemis-ii/\n- Wikipedia: Free-return trajectory — https://en.wikipedia.org/wiki/Free-return_trajectory\n- Wikipedia: Gravity assist — https://en.wikipedia.org/wiki/Gravity_assist\n- Apollo 13 free-return: https://en.wikipedia.org/wiki/Apollo_13",
+      "prompt": "Emphasize the free-return trajectory as both a scientific achievement and a safety feature. The key insight: lunar gravity provides a free turn. Compare to Apollo 13 — same principle saved lives. Ask: why does the flyby happen on the far side? (Because the trajectory geometry requires passing behind the Moon to get the right deflection angle for Earth return.) Note the communications blackout — 30-50 minutes of silence as the Moon blocks radio signals.",
+      "range": [
+        [
+          -15,
+          15
+        ],
+        [
+          -15,
+          15
+        ],
+        [
+          -15,
+          15
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          5,
+          20
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "starfield": {
+        "enabled": true,
+        "count": 1200,
+        "size": 1.8,
+        "opacity": 0.9
+      },
+      "views": [
+        {
+          "name": "Overview",
+          "description": "See the full flyby trajectory",
+          "position": [
+            0,
+            5,
+            25
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Closest Approach",
+          "description": "View from closest approach point",
+          "position": [
+            -4,
+            0,
+            5
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Moon Surface",
+          "description": "Looking up from the Moon",
+          "position": [
+            0,
+            0.5,
+            0.5
+          ],
+          "target": [
+            0,
+            3,
+            0
+          ]
+        },
+        {
+          "name": "Far Side View",
+          "description": "See the far side pass",
+          "position": [
+            -8,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "id": "s4_skybox",
+          "type": "skybox",
+          "style": "gradient",
+          "topColor": "#080818",
+          "bottomColor": "#030310",
+          "starCount": 2000
+        },
+        {
+          "id": "s4_moon",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 1.737,
+          "color": "#aaaaaa",
+          "shader": {
+            "type": "phong",
+            "emissive": "#333333",
+            "shininess": 15
+          }
+        },
+        {
+          "id": "s4_moon_label",
+          "type": "text",
+          "text": "Moon",
+          "position": [
+            0,
+            2.2,
+            0
+          ],
+          "color": "#cccccc"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Approaching the Moon",
+          "description": "After 4 days of coasting, Orion enters the Moon's sphere of influence — about 66,100 km out. The Moon's gravity begins to dominate over Earth's, pulling Orion inward.",
+          "camera": {
+            "position": [
+              10,
+              5,
+              15
+            ],
+            "target": [
+              0,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "s4_soi_circle",
+              "type": "parametric_curve",
+              "x": "6.61 * cos(t)",
+              "y": "6.61 * sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "color": "#555555",
+              "width": 1,
+              "opacity": 0.4,
+              "samples": 64
+            },
+            {
+              "id": "s4_soi_label",
+              "type": "text",
+              "text": "Sphere of Influence: 66,100 km",
+              "position": [
+                5,
+                5,
+                0
+              ],
+              "color": "#666666"
+            },
+            {
+              "id": "s4_approach_line",
+              "type": "line",
+              "points": [
+                [
+                  12,
+                  4,
+                  0
+                ],
+                [
+                  6,
+                  2,
+                  0
+                ]
+              ],
+              "color": "#ff6644",
+              "width": 2
+            },
+            {
+              "id": "s4_earth_direction",
+              "type": "text",
+              "text": "← Earth (384,400 km)",
+              "position": [
+                12,
+                5,
+                0
+              ],
+              "color": "#3a7bd5"
+            }
+          ]
+        },
+        {
+          "title": "The Flyby Arc",
+          "description": "Orion sweeps around the Moon's far side in a hyperbolic arc. At closest approach: just 6,513 km from the surface. Lunar gravity bends the trajectory, redirecting Orion back toward Earth — for free.",
+          "camera": {
+            "position": [
+              0,
+              5,
+              20
+            ],
+            "target": [
+              0,
+              0,
+              0
+            ]
+          },
+          "remove": [
+            {
+              "id": "s4_approach_line"
+            },
+            {
+              "id": "s4_soi_label"
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_flyby_arc",
+              "type": "parametric_curve",
+              "x": "8.25 * cos(t) - 3",
+              "y": "10 * sin(t)",
+              "z": "0",
+              "range": [
+                -1.2,
+                1.2
+              ],
+              "color": "#ff6644",
+              "width": 3,
+              "samples": 128
+            },
+            {
+              "id": "s4_closest_pt",
+              "type": "point",
+              "position": [
+                -8.25,
+                0,
+                0
+              ],
+              "color": "#ff2200",
+              "size": 10,
+              "label": "Closest: 6,513 km"
+            },
+            {
+              "id": "s4_gravity_vec1",
+              "type": "vector",
+              "from": [
+                -7,
+                4,
+                0
+              ],
+              "to": [
+                -4,
+                2,
+                0
+              ],
+              "color": "#ffaa00",
+              "width": 2,
+              "label": "Gravity pull"
+            },
+            {
+              "id": "s4_gravity_vec2",
+              "type": "vector",
+              "from": [
+                -7,
+                -4,
+                0
+              ],
+              "to": [
+                -4,
+                -2,
+                0
+              ],
+              "color": "#ffaa00",
+              "width": 2
+            }
+          ]
+        },
+        {
+          "title": "Comms Blackout",
+          "description": "As Orion passes behind the Moon, radio signals can't reach Earth. For 30-50 tense minutes, Mission Control has no contact with the crew. The astronauts are completely on their own — farther from home than any human since 1972.",
+          "add": [
+            {
+              "id": "s4_blackout_zone",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -1.737,
+                  -3,
+                  0
+                ],
+                [
+                  -8,
+                  -2,
+                  0
+                ],
+                [
+                  -8,
+                  2,
+                  0
+                ],
+                [
+                  -1.737,
+                  3,
+                  0
+                ]
+              ],
+              "color": "#ff2200",
+              "opacity": 0.1
+            },
+            {
+              "id": "s4_blackout_text",
+              "type": "text",
+              "text": "COMMS BLACKOUT",
+              "position": [
+                -6,
+                0,
+                0.5
+              ],
+              "color": "#ff4444"
+            },
+            {
+              "id": "s4_record_text",
+              "type": "text",
+              "text": "~400,000 km from Earth — record distance!",
+              "position": [
+                0,
+                -8,
+                0
+              ],
+              "color": "#ffcc00"
+            }
+          ]
+        },
+        {
+          "title": "Animate the Flyby",
+          "description": "Watch Orion swing around the Moon. The spacecraft speeds up as it falls toward the Moon, reaches peak speed at closest approach, then slows as it climbs away — heading home.",
+          "remove": [
+            {
+              "id": "s4_blackout_zone"
+            },
+            {
+              "id": "s4_blackout_text"
+            },
+            {
+              "id": "s4_gravity_vec1"
+            },
+            {
+              "id": "s4_gravity_vec2"
+            },
+            {
+              "id": "s4_closest_pt"
+            },
+            {
+              "id": "s4_record_text"
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_orion_flyby",
+              "type": "animated_point",
+              "expr": [
+                "8.25 * cos(-1.2 + flybyT * 2.4) - 3",
+                "10 * sin(-1.2 + flybyT * 2.4)",
+                "0"
+              ],
+              "color": "#ffcc00",
+              "size": 12,
+              "label": "Orion",
+              "trail": {
+                "color": "#ff6644",
+                "width": 1.5,
+                "opacity": 0.6,
+                "length": 100
+              }
+            }
+          ],
+          "sliders": [
+            {
+              "id": "flybyT",
+              "label": "Flyby progress",
+              "min": 0,
+              "max": 1,
+              "step": 0.005,
+              "default": 0,
+              "animate": true,
+              "duration": 6000
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_flyby_info",
+              "content": "**Flyby Phase**\n\nProgress: {{toFixed(flybyT * 100, 0)}}%\n\n*Gravity provides the turn — no fuel required!*",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Heading Home",
+          "description": "The Moon's gravity has bent Orion's path by about 180°. Without firing a single engine, the spacecraft is now aimed back at Earth. This is the beauty of the free-return trajectory — physics provides the return ticket.",
+          "remove": [
+            {
+              "type": "slider"
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_return_arc",
+              "type": "line",
+              "points": [
+                [
+                  5.25,
+                  -10,
+                  0
+                ],
+                [
+                  10,
+                  -8,
+                  0
+                ],
+                [
+                  12,
+                  -4,
+                  0
+                ]
+              ],
+              "color": "#ff6644",
+              "width": 2
+            },
+            {
+              "id": "s4_return_label",
+              "type": "text",
+              "text": "→ Back to Earth (4 days)",
+              "position": [
+                12,
+                -3,
+                0
+              ],
+              "color": "#3a7bd5"
+            },
+            {
+              "id": "s4_apollo13_text",
+              "type": "text",
+              "text": "Same principle saved Apollo 13 crew in 1970",
+              "position": [
+                0,
+                -12,
+                0
+              ],
+              "color": "#888888"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Reentry — Threading the Needle",
+      "description": "Returning at 11 km/s — the narrow corridor between burning up and bouncing off.",
+      "markdown": "# Reentry — Threading the Needle\n\n## The Challenge\n\nOrion returns from the Moon at **11.1 km/s** (40,000 km/h) — about **40% faster** than returning from low Earth orbit (7.8 km/s). This means:\n\n$$KE = \\frac{1}{2}mv^2$$\n\nThe kinetic energy per kilogram at 11.1 km/s vs 7.8 km/s:\n\n$$\\frac{KE_{\\text{lunar}}}{KE_{\\text{LEO}}} = \\frac{11.1^2}{7.8^2} = \\frac{123.2}{60.8} \\approx 2\\times$$\n\n**Twice the energy** must be dissipated as heat!\n\n## The Reentry Corridor\n\nThe spacecraft must hit a narrow band of entry angles:\n\n| Angle | Result |\n|---|---|\n| Too steep (> 7.5°) | Excessive heating and g-forces — crew danger |\n| Too shallow (< 5.3°) | Skip off atmosphere into space — no return |\n| Just right (5.3° – 7.5°) | Controlled deceleration |\n\nAt lunar return speeds, this corridor is only about **±1°** wide!\n\n## Skip Reentry\n\nOrion uses a **skip reentry** technique:\n1. **First dip**: Enter atmosphere, slow down, heat shield absorbs energy\n2. **Skip back up**: Rise back above the atmosphere briefly\n3. **Final descent**: Reenter for the second time at lower speed\n\nThis spreads the heating over two passes, reducing peak temperatures and g-forces.\n\n## Heat Shield\n\nOrion's **Avcoat** ablative heat shield (5.02 m diameter):\n- Peak temperature: **2,760°C** (5,000°F)\n- The ablator chars and erodes, carrying heat away\n- 186 individual Avcoat blocks form the shield\n\n## Parachute Sequence\n\n1. Drogue chutes deploy at ~7.6 km altitude\n2. Three main parachutes open at ~3 km\n3. Splashdown in the Pacific Ocean at ~33 km/h\n\n## Citations\n\n- NASA Orion Spacecraft: https://www.nasa.gov/exploration/systems/orion/\n- Wikipedia: Atmospheric entry — https://en.wikipedia.org/wiki/Atmospheric_entry\n- Wikipedia: Orion spacecraft — https://en.wikipedia.org/wiki/Orion_(spacecraft)\n- NASA Artemis II: https://www.nasa.gov/mission/artemis-ii/",
+      "prompt": "Frame reentry as the most dangerous phase of the mission. The corridor is incredibly narrow — like threading a needle at Mach 33. The skip reentry technique is clever engineering: instead of one brutal deceleration, spread it over two gentler passes. Ask students: why is lunar return harder than ISS return? (2× the kinetic energy because v is 40% higher and KE goes as v².) Compare the heat shield temperature to familiar references: 2,760°C is hotter than lava (~1,200°C) and close to the melting point of steel (~1,500°C).",
+      "range": [
+        [
+          -10,
+          40
+        ],
+        [
+          -25,
+          25
+        ],
+        [
+          -25,
+          25
+        ]
+      ],
+      "camera": {
+        "position": [
+          15,
+          5,
+          20
+        ],
+        "target": [
+          15,
+          0,
+          0
+        ]
+      },
+      "starfield": {
+        "enabled": true,
+        "count": 800,
+        "size": 1.5,
+        "opacity": 0.7
+      },
+      "views": [
+        {
+          "name": "Overview",
+          "description": "Full reentry trajectory",
+          "position": [
+            15,
+            5,
+            25
+          ],
+          "target": [
+            15,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Atmosphere Entry",
+          "description": "Close to the entry point",
+          "position": [
+            2,
+            2,
+            8
+          ],
+          "target": [
+            5,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Splashdown",
+          "description": "Final descent view",
+          "position": [
+            35,
+            2,
+            5
+          ],
+          "target": [
+            35,
+            0,
+            0
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "id": "s5_skybox",
+          "type": "skybox",
+          "style": "gradient",
+          "topColor": "#0a0a1a",
+          "bottomColor": "#1a2a3a"
+        },
+        {
+          "id": "s5_earth_slice",
+          "type": "parametric_curve",
+          "x": "6.371 * cos(t)",
+          "y": "6.371 * sin(t)",
+          "z": "0",
+          "range": [
+            -0.3,
+            0.3
+          ],
+          "color": "#3a7bd5",
+          "width": 6,
+          "samples": 64
+        },
+        {
+          "id": "s5_atmosphere",
+          "type": "parametric_curve",
+          "x": "6.492 * cos(t)",
+          "y": "6.492 * sin(t)",
+          "z": "0",
+          "range": [
+            -0.3,
+            0.3
+          ],
+          "color": "#4488cc",
+          "width": 2,
+          "opacity": 0.5,
+          "samples": 64
+        },
+        {
+          "id": "s5_atmo_label",
+          "type": "text",
+          "text": "Atmosphere (~121 km)",
+          "position": [
+            6.5,
+            0.6,
+            0
+          ],
+          "color": "#4488cc"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Incoming at 11 km/s",
+          "description": "Day 10: Orion approaches Earth at 11.1 km/s — that's 40,000 km/h or about Mach 33. This is 40% faster than spacecraft returning from low Earth orbit, carrying twice the kinetic energy.",
+          "camera": {
+            "position": [
+              10,
+              3,
+              12
+            ],
+            "target": [
+              7,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "s5_orion_approach",
+              "type": "vector",
+              "from": [
+                12,
+                2,
+                0
+              ],
+              "to": [
+                7,
+                0.5,
+                0
+              ],
+              "color": "#ffcc00",
+              "width": 4,
+              "label": "Orion at 11.1 km/s"
+            },
+            {
+              "id": "s5_speed_compare",
+              "type": "text",
+              "text": "LEO return: 7.8 km/s | Lunar return: 11.1 km/s",
+              "position": [
+                10,
+                -2,
+                0
+              ],
+              "color": "#ff8844"
+            },
+            {
+              "id": "s5_energy_text",
+              "type": "text",
+              "text": "2× the kinetic energy!",
+              "position": [
+                10,
+                -3,
+                0
+              ],
+              "color": "#ff4444"
+            }
+          ]
+        },
+        {
+          "title": "The Reentry Corridor",
+          "description": "Orion must hit a narrow reentry corridor — between 5.3° and 7.5°. Too steep and the crew faces lethal g-forces and heating. Too shallow and the capsule skips off the atmosphere like a stone on water.",
+          "remove": [
+            {
+              "id": "s5_orion_approach"
+            },
+            {
+              "id": "s5_speed_compare"
+            },
+            {
+              "id": "s5_energy_text"
+            }
+          ],
+          "add": [
+            {
+              "id": "s5_corridor_steep",
+              "type": "line",
+              "points": [
+                [
+                  12,
+                  2.5,
+                  0
+                ],
+                [
+                  6.5,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#ff2200",
+              "width": 1,
+              "opacity": 0.5
+            },
+            {
+              "id": "s5_corridor_shallow",
+              "type": "line",
+              "points": [
+                [
+                  12,
+                  1.5,
+                  0
+                ],
+                [
+                  6.5,
+                  0.3,
+                  0
+                ]
+              ],
+              "color": "#ff2200",
+              "width": 1,
+              "opacity": 0.5
+            },
+            {
+              "id": "s5_corridor_fill",
+              "type": "polygon",
+              "vertices": [
+                [
+                  12,
+                  2.5,
+                  0
+                ],
+                [
+                  6.5,
+                  0,
+                  0
+                ],
+                [
+                  6.5,
+                  0.3,
+                  0
+                ],
+                [
+                  12,
+                  1.5,
+                  0
+                ]
+              ],
+              "color": "#44ff44",
+              "opacity": 0.15
+            },
+            {
+              "id": "s5_corridor_label",
+              "type": "text",
+              "text": "Reentry corridor: ±1°",
+              "position": [
+                9,
+                3.5,
+                0
+              ],
+              "color": "#44ff44"
+            },
+            {
+              "id": "s5_too_steep",
+              "type": "text",
+              "text": "Too steep → extreme heating",
+              "position": [
+                9,
+                -0.5,
+                0
+              ],
+              "color": "#ff2200"
+            },
+            {
+              "id": "s5_too_shallow",
+              "type": "text",
+              "text": "Too shallow → skip into space",
+              "position": [
+                9,
+                4.5,
+                0
+              ],
+              "color": "#ff8844"
+            }
+          ]
+        },
+        {
+          "title": "Skip Reentry",
+          "description": "Orion uses a clever skip reentry: dip into the atmosphere to slow down, skip back up briefly, then reenter for final descent. This spreads the heating over two passes — reducing peak temperature and g-forces on the crew.",
+          "remove": [
+            {
+              "id": "s5_corridor_steep"
+            },
+            {
+              "id": "s5_corridor_shallow"
+            },
+            {
+              "id": "s5_corridor_fill"
+            },
+            {
+              "id": "s5_corridor_label"
+            },
+            {
+              "id": "s5_too_steep"
+            },
+            {
+              "id": "s5_too_shallow"
+            }
+          ],
+          "camera": {
+            "position": [
+              15,
+              5,
+              20
+            ],
+            "target": [
+              15,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "s5_skip_path",
+              "type": "line",
+              "points": [
+                [
+                  5,
+                  2,
+                  0
+                ],
+                [
+                  8,
+                  0.2,
+                  0
+                ],
+                [
+                  12,
+                  0.5,
+                  0
+                ],
+                [
+                  18,
+                  1.5,
+                  0
+                ],
+                [
+                  22,
+                  0.2,
+                  0
+                ],
+                [
+                  28,
+                  0,
+                  0
+                ],
+                [
+                  32,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#ff6644",
+              "width": 3
+            },
+            {
+              "id": "s5_skip_label1",
+              "type": "text",
+              "text": "1st entry: slow down",
+              "position": [
+                8,
+                -1.5,
+                0
+              ],
+              "color": "#ff6644"
+            },
+            {
+              "id": "s5_skip_label2",
+              "type": "text",
+              "text": "Skip up",
+              "position": [
+                15,
+                2.5,
+                0
+              ],
+              "color": "#ffaa00"
+            },
+            {
+              "id": "s5_skip_label3",
+              "type": "text",
+              "text": "2nd entry: final descent",
+              "position": [
+                25,
+                -1.5,
+                0
+              ],
+              "color": "#ff6644"
+            },
+            {
+              "id": "s5_heat_text",
+              "type": "text",
+              "text": "Peak: 2,760°C — hotter than lava!",
+              "position": [
+                8,
+                -3,
+                0
+              ],
+              "color": "#ff2200"
+            }
+          ]
+        },
+        {
+          "title": "Interactive Reentry Angle",
+          "description": "Try adjusting the reentry angle! Too steep means dangerous g-forces. Too shallow means bouncing off into space. Find the safe corridor between 5.3° and 7.5°.",
+          "remove": [
+            {
+              "id": "s5_skip_path"
+            },
+            {
+              "id": "s5_skip_label1"
+            },
+            {
+              "id": "s5_skip_label2"
+            },
+            {
+              "id": "s5_skip_label3"
+            },
+            {
+              "id": "s5_heat_text"
+            }
+          ],
+          "camera": {
+            "position": [
+              10,
+              3,
+              15
+            ],
+            "target": [
+              8,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "s5_entry_vec",
+              "type": "animated_vector",
+              "from": [
+                12,
+                3,
+                0
+              ],
+              "expr": [
+                "12 - 5 * cos(reentryAngle * pi / 180)",
+                "3 - 5 * sin(reentryAngle * pi / 180)",
+                "0"
+              ],
+              "color": "#ffcc00",
+              "width": 4,
+              "label": "Entry path"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "reentryAngle",
+              "label": "Entry angle (degrees)",
+              "min": 2,
+              "max": 12,
+              "step": 0.1,
+              "default": 6.4
+            }
+          ],
+          "info": [
+            {
+              "id": "s5_angle_info",
+              "content": "**Entry angle:** {{toFixed(reentryAngle, 1)}}°\n\n**Status:** {{reentryAngle < 5.3 ? \"⚠ TOO SHALLOW — skip out!\" : (reentryAngle > 7.5 ? \"⚠ TOO STEEP — extreme heating!\" : \"✓ SAFE CORRIDOR\")}}\n\n**Peak g-force:** {{toFixed(3 + (reentryAngle - 5.3) * 2.5, 1)}}g\n\nSafe range: 5.3° – 7.5°",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Splashdown!",
+          "description": "Parachutes deploy: drogues at 7.6 km, three main chutes at 3 km. Orion splashes down in the Pacific Ocean off San Diego at about 33 km/h. After 10 days and 400,000 km, the crew is safely home.",
+          "remove": [
+            {
+              "id": "s5_entry_vec"
+            },
+            {
+              "type": "slider"
+            }
+          ],
+          "camera": {
+            "position": [
+              35,
+              2,
+              5
+            ],
+            "target": [
+              35,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "s5_chutes",
+              "type": "line",
+              "points": [
+                [
+                  33,
+                  1.5,
+                  0
+                ],
+                [
+                  34,
+                  0.8,
+                  0
+                ],
+                [
+                  35,
+                  0.2,
+                  0
+                ]
+              ],
+              "color": "#ffffff",
+              "width": 2
+            },
+            {
+              "id": "s5_chute_label",
+              "type": "text",
+              "text": "3 main parachutes",
+              "position": [
+                33,
+                2.2,
+                0
+              ],
+              "color": "#ffffff"
+            },
+            {
+              "id": "s5_splash_pt",
+              "type": "point",
+              "position": [
+                35,
+                0,
+                0
+              ],
+              "color": "#3a7bd5",
+              "size": 14,
+              "label": "SPLASHDOWN"
+            },
+            {
+              "id": "s5_splash_text",
+              "type": "text",
+              "text": "Pacific Ocean, off San Diego",
+              "position": [
+                35,
+                -1.5,
+                0
+              ],
+              "color": "#4488cc"
+            },
+            {
+              "id": "s5_mission_text",
+              "type": "text",
+              "text": "Mission complete: ~10 days, ~400,000 km",
+              "position": [
+                25,
+                -4,
+                0
+              ],
+              "color": "#ffcc00"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Full Mission Simulation",
+      "description": "The complete Artemis II journey — launch to splashdown — with interactive time control.",
+      "markdown": "# Artemis II: Full Mission Simulation\n\n## Mission Profile\n\nYou are now in control of the complete Artemis II mission timeline. Use the **Mission Time** slider to scrub through all 10 days of the mission.\n\n### Mission Timeline\n| Day | Event |\n|---|---|\n| 0 | Launch from KSC, reach HEO |\n| 1 | Coast in HEO, systems checks |\n| 2 | **TLI burn** — 6 min, 3.1 km/s Δv |\n| 2–5 | Coast to Moon (speed decreasing) |\n| 5 | Enter Moon's sphere of influence |\n| 6 | **Lunar flyby** — 6,513 km closest approach |\n| 7–9 | Return coast |\n| 10 | **Reentry** at 11.1 km/s, **splashdown** |\n\n## Crew\n\n| Astronaut | Role | Note |\n|---|---|---|\n| Reid Wiseman | Commander | Navy pilot, ISS veteran |\n| Victor Glover | Pilot | First Black astronaut on a lunar mission |\n| Christina Koch | Mission Specialist 1 | Holds record for longest single spaceflight by a woman |\n| Jeremy Hansen | Mission Specialist 2 | First non-American beyond low Earth orbit |\n\n## Key Numbers\n\n| Parameter | Value |\n|---|---|\n| Launch mass | 2,610,000 kg |\n| Liftoff thrust | 39 MN |\n| TLI Δv | 3.1 km/s |\n| Earth-Moon distance | 384,400 km |\n| Lunar closest approach | 6,513 km |\n| Max distance from Earth | ~400,000 km |\n| Reentry speed | 11.1 km/s |\n| Total mission | ~10 days |\n\n## The Free-Return Trajectory\n\nThe figure-eight path ensures that if all propulsion fails after TLI, lunar gravity alone returns the crew safely to Earth. This was proven by Apollo 13 in 1970.\n\n## Data Sources\n\n- **NASA Artemis II Mission Overview**: https://www.nasa.gov/mission/artemis-ii/\n- **NASA SLS Fact Sheet**: https://www.nasa.gov/exploration/systems/sls/\n- **Wikipedia: Artemis II**: https://en.wikipedia.org/wiki/Artemis_II\n- **Wikipedia: Space Launch System**: https://en.wikipedia.org/wiki/Space_Launch_System\n- **Wikipedia: Orion (spacecraft)**: https://en.wikipedia.org/wiki/Orion_(spacecraft)\n- **Wikipedia: European Service Module**: https://en.wikipedia.org/wiki/European_Service_Module\n- **Wikipedia: Free-return trajectory**: https://en.wikipedia.org/wiki/Free-return_trajectory\n- **Wikipedia: Trans-lunar injection**: https://en.wikipedia.org/wiki/Trans-lunar_injection\n- **NASA Moon Fact Sheet**: https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html\n- **Live Science Artemis II Timeline**: https://www.livescience.com/\n- **SpaceNews Artemis 2 Flight Plan**: https://spacenews.com/",
+      "prompt": "This is the capstone scene. The student has learned about every phase individually — now they see it all together. Encourage exploration: try scrubbing through the timeline slowly and notice how speed changes. Ask: at what point is the spacecraft moving fastest? (Near Earth, right after TLI.) At what point is it moving slowest? (Near the Moon, before the flyby.) Why does the return trip take the same time as the outbound? (The trajectory is symmetric in energy terms.) Discuss what the crew experiences at each phase. Highlight Jeremy Hansen's historic role.",
+      "range": [
+        [
+          -5,
+          45
+        ],
+        [
+          -25,
+          25
+        ],
+        [
+          -25,
+          25
+        ]
+      ],
+      "camera": {
+        "position": [
+          19,
+          10,
+          35
+        ],
+        "target": [
+          19,
+          0,
+          0
+        ]
+      },
+      "starfield": {
+        "enabled": true,
+        "count": 1500,
+        "size": 2.0,
+        "opacity": 0.9,
+        "twinkle": 0.3
+      },
+      "views": [
+        {
+          "name": "Mission Overview",
+          "description": "Full trajectory from Earth to Moon",
+          "position": [
+            19,
+            10,
+            35
+          ],
+          "target": [
+            19,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Earth Departure",
+          "description": "Close view of Earth and TLI",
+          "position": [
+            2,
+            2,
+            8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Lunar Flyby",
+          "description": "Close view of the Moon encounter",
+          "position": [
+            36,
+            2,
+            8
+          ],
+          "target": [
+            38.4,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Top Down",
+          "description": "Bird's eye view of the full trajectory",
+          "position": [
+            19,
+            35,
+            0.1
+          ],
+          "target": [
+            19,
+            0,
+            0
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "id": "s6_skybox",
+          "type": "skybox",
+          "style": "gradient",
+          "topColor": "#050510",
+          "bottomColor": "#020208",
+          "starCount": 2500
+        },
+        {
+          "id": "s6_earth",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.637,
+          "color": "#3a7bd5",
+          "shader": {
+            "type": "phong",
+            "emissive": "#112244",
+            "shininess": 30
+          }
+        },
+        {
+          "id": "s6_earth_label",
+          "type": "text",
+          "text": "Earth",
+          "position": [
+            0,
+            1.0,
+            0
+          ],
+          "color": "#6699cc"
+        },
+        {
+          "id": "s6_moon",
+          "type": "sphere",
+          "center": [
+            38.4,
+            0,
+            0
+          ],
+          "radius": 0.174,
+          "color": "#aaaaaa",
+          "shader": {
+            "type": "phong",
+            "emissive": "#444444",
+            "shininess": 15
+          }
+        },
+        {
+          "id": "s6_moon_label",
+          "type": "text",
+          "text": "Moon",
+          "position": [
+            38.4,
+            0.5,
+            0
+          ],
+          "color": "#cccccc"
+        }
+      ],
+      "steps": [
+        {
+          "title": "The Full Trajectory",
+          "description": "Here is the complete Artemis II free-return trajectory — a figure-eight path from Earth, around the Moon, and back. This elegant curve is shaped entirely by gravity after a single 6-minute engine burn.",
+          "camera": {
+            "position": [
+              19,
+              10,
+              35
+            ],
+            "target": [
+              19,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "s6_outbound_path",
+              "type": "parametric_curve",
+              "x": "38.4 * (1 - cos(t)) / 2",
+              "y": "12 * sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                3.1416
+              ],
+              "color": "#ff6644",
+              "width": 2,
+              "opacity": 0.6,
+              "samples": 200
+            },
+            {
+              "id": "s6_return_path",
+              "type": "parametric_curve",
+              "x": "38.4 * (1 + cos(t)) / 2",
+              "y": "-10 * sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                3.1416
+              ],
+              "color": "#ff6644",
+              "width": 2,
+              "opacity": 0.4,
+              "samples": 200
+            }
+          ]
+        },
+        {
+          "title": "Mission Events",
+          "description": "Key events are marked along the trajectory. Each represents a critical moment in the 10-day journey — from liftoff to splashdown.",
+          "add": [
+            {
+              "id": "s6_evt_launch",
+              "type": "point",
+              "position": [
+                0.637,
+                0,
+                0
+              ],
+              "color": "#ff8844",
+              "size": 8,
+              "label": "Day 0: Launch"
+            },
+            {
+              "id": "s6_evt_tli",
+              "type": "point",
+              "position": [
+                1.5,
+                2,
+                0
+              ],
+              "color": "#ff4444",
+              "size": 8,
+              "label": "Day 2: TLI Burn"
+            },
+            {
+              "id": "s6_evt_coast",
+              "type": "point",
+              "position": [
+                15,
+                11,
+                0
+              ],
+              "color": "#ffaa00",
+              "size": 6,
+              "label": "Days 2-5: Coast"
+            },
+            {
+              "id": "s6_evt_flyby",
+              "type": "point",
+              "position": [
+                38.4,
+                0,
+                0
+              ],
+              "color": "#ff2200",
+              "size": 10,
+              "label": "Day 6: Lunar Flyby"
+            },
+            {
+              "id": "s6_evt_return",
+              "type": "point",
+              "position": [
+                20,
+                -9,
+                0
+              ],
+              "color": "#ffaa00",
+              "size": 6,
+              "label": "Days 7-9: Return"
+            },
+            {
+              "id": "s6_evt_splash",
+              "type": "point",
+              "position": [
+                0.637,
+                -0.3,
+                0
+              ],
+              "color": "#44ff44",
+              "size": 8,
+              "label": "Day 10: Splashdown"
+            }
+          ]
+        },
+        {
+          "title": "Launch the Mission",
+          "description": "Use the Mission Time slider to fly the complete Artemis II trajectory. Watch Orion depart Earth, coast to the Moon, swing around the far side, and return home. The info panel shows real-time mission data.",
+          "remove": [
+            {
+              "id": "s6_evt_launch"
+            },
+            {
+              "id": "s6_evt_tli"
+            },
+            {
+              "id": "s6_evt_coast"
+            },
+            {
+              "id": "s6_evt_flyby"
+            },
+            {
+              "id": "s6_evt_return"
+            },
+            {
+              "id": "s6_evt_splash"
+            }
+          ],
+          "add": [
+            {
+              "id": "s6_orion",
+              "type": "animated_point",
+              "expr": [
+                "mTime < 0.5 ? 38.4 * (1 - cos(mTime * 2 * pi)) / 2 : 38.4 * (1 + cos((mTime - 0.5) * 2 * pi)) / 2",
+                "mTime < 0.5 ? 12 * sin(mTime * 2 * pi) : -10 * sin((mTime - 0.5) * 2 * pi)",
+                "0"
+              ],
+              "color": "#ffcc00",
+              "size": 14,
+              "label": "Orion",
+              "trail": {
+                "color": "#ffcc00",
+                "width": 1.5,
+                "opacity": 0.5,
+                "length": 200
+              }
+            }
+          ],
+          "sliders": [
+            {
+              "id": "mTime",
+              "label": "Mission Time",
+              "min": 0,
+              "max": 1,
+              "step": 0.002,
+              "default": 0,
+              "animate": true,
+              "duration": 30000,
+              "animateMode": "once"
+            }
+          ],
+          "info": [
+            {
+              "id": "s6_mission_info",
+              "content": "### Artemis II Mission\n\n**Day:** {{toFixed(mTime * 10, 1)}} / 10\n\n**Phase:** {{mTime < 0.05 ? \"Launch & HEO\" : (mTime < 0.2 ? \"TLI & Departure\" : (mTime < 0.45 ? \"Cislunar Coast\" : (mTime < 0.55 ? \"LUNAR FLYBY\" : (mTime < 0.9 ? \"Return Coast\" : \"Reentry & Splashdown\"))))}}\n\n**Dist. from Earth:** {{toFixed(mTime < 0.5 ? mTime * 2 * 384 : (1 - mTime) * 2 * 384, 0)}} × 1000 km\n\n**Speed:** {{toFixed(mTime < 0.5 ? 10 - mTime * 18 : 1 + (mTime - 0.5) * 20, 1)}} km/s",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Earth Departure View",
+          "description": "Zoom in on Earth to watch the TLI departure. The engine fires for just 6 minutes — then Orion coasts away, getting smaller and smaller against the vastness of space.",
+          "camera": {
+            "position": [
+              2,
+              2,
+              8
+            ],
+            "target": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "title": "Lunar Encounter View",
+          "description": "Watch the lunar flyby up close. Orion passes just 6,513 km from the Moon's far side — the crew will see terrain never visible from Earth. For about 40 minutes, they're completely out of contact.",
+          "camera": {
+            "position": [
+              36,
+              2,
+              8
+            ],
+            "target": [
+              38.4,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "title": "The Crew's Journey",
+          "description": "Four astronauts making history. Commander Reid Wiseman, Pilot Victor Glover (first Black astronaut on a lunar mission), Christina Koch (holds the record for longest single spaceflight by a woman), and Jeremy Hansen (first non-American beyond LEO). After 53 years, humanity returns to deep space.",
+          "add": [
+            {
+              "id": "s6_crew_text",
+              "type": "text",
+              "text": "Crew: Wiseman · Glover · Koch · Hansen",
+              "position": [
+                19,
+                -15,
+                0
+              ],
+              "color": "#ffcc00"
+            },
+            {
+              "id": "s6_history_text",
+              "type": "text",
+              "text": "First humans beyond LEO since Apollo 17 (Dec 1972)",
+              "position": [
+                19,
+                -16.5,
+                0
+              ],
+              "color": "#888888"
+            }
+          ]
+        },
+        {
+          "title": "Mission Complete",
+          "description": "After 10 days, ~1.4 million km traveled, and a closest approach of 6,513 km to the Moon, Orion splashes down in the Pacific Ocean. Artemis II proves that the SLS-Orion system can safely carry humans to the Moon and back — paving the way for Artemis III's lunar landing.",
+          "camera": {
+            "position": [
+              19,
+              10,
+              35
+            ],
+            "target": [
+              19,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "s6_summary_text",
+              "type": "text",
+              "text": "MISSION COMPLETE",
+              "position": [
+                19,
+                14,
+                0
+              ],
+              "color": "#44ff44"
+            },
+            {
+              "id": "s6_next_text",
+              "type": "text",
+              "text": "Next: Artemis III — humans walk on the Moon again",
+              "position": [
+                19,
+                -14,
+                0
+              ],
+              "color": "#6699cc"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -139,13 +139,13 @@ function _computeAgenticScore(spec) {
             if (el.label) raw += 2;
         }
 
-        if (scene.unsafe && scene.unsafe_explanation) raw += 4;
+        if (scene.unsafe && scene.unsafeExplanation) raw += 4;
     }
 
     const imports = Array.isArray(spec.import) ? spec.import : [];
     raw += imports.length * 10;
 
-    if (spec.unsafe && spec.unsafe_explanation) raw += 4;
+    if (spec.unsafe && spec.unsafeExplanation) raw += 4;
 
     const score = Math.floor(100 * (1 - Math.exp(-raw / 80)));
 

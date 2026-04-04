@@ -12,7 +12,7 @@ export function _makeSurfaceMaterial(el, color, opacity, defaults = {}) {
         side: THREE.DoubleSide,
     };
     const sh = el.shader || {};
-    if (sh.depthWrite !== undefined) matOpts.depthWrite = !!sh.depthWrite;
+    matOpts.depthWrite = sh.depthWrite !== undefined ? !!sh.depthWrite : !(opacity < 1);
     if (sh.depthTest !== undefined) matOpts.depthTest = !!sh.depthTest;
     if (matType === THREE.MeshPhongMaterial) {
         matOpts.shininess = sh.shininess !== undefined ? sh.shininess : (defaults.shininess !== undefined ? defaults.shininess : 40);

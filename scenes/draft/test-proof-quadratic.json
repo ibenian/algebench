@@ -1,0 +1,3532 @@
+{
+  "title": "Quadratic Formula — Proof & Visualization",
+  "scenes": [
+    {
+      "title": "Deriving the Quadratic Formula",
+      "description": "Step through the derivation of $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$ while watching the parabola respond to slider changes.",
+      "markdown": "# The Quadratic Formula\n\nEvery quadratic equation $ax^2 + bx + c = 0$ (with $a \\neq 0$) has solutions given by:\n\n$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n\n## What You'll Learn\n\nIn this scene, you'll **derive the quadratic formula from scratch** by completing the square — the same technique that was used over 1,000 years ago by al-Khwarizmi.\n\n## The Key Idea: Completing the Square\n\nThe derivation transforms $ax^2 + bx + c = 0$ into a **perfect square** on one side:\n\n$$\\left(x + \\frac{b}{2a}\\right)^2 = \\frac{b^2 - 4ac}{4a^2}$$\n\nTaking the square root of both sides reveals the formula. The expression under the radical — the **discriminant** $\\Delta = b^2 - 4ac$ — determines everything about the roots.\n\n## Reading the Formula\n\nThe quadratic formula has two parts:\n- **Center**: $-\\frac{b}{2a}$ — the axis of symmetry (orange dashed line)\n- **Spread**: $\\pm\\frac{\\sqrt{\\Delta}}{2a}$ — how far the roots sit from the center\n\n## The Discriminant at a Glance\n\n| $\\Delta$ | Roots | What You See |\n|----------|-------|--------------|\n| $> 0$ | Two distinct real roots | Parabola crosses x-axis at two points |\n| $= 0$ | One repeated root | Parabola touches x-axis at vertex |\n| $< 0$ | No real roots | Parabola floats above (or below) x-axis |\n\n## Try It\n\nAdjust the sliders $a$, $b$, $c$ and watch how the parabola, roots, and vertex respond. Open the **Proof** panel to step through the derivation interactively.",
+      "prompt": "Help the student understand the quadratic formula derivation. Connect each algebraic step to the parabola visualization. When they adjust sliders, explain how the roots and vertex change.",
+      "range": [
+        [
+          -6,
+          6
+        ],
+        [
+          -8,
+          12
+        ],
+        [
+          -1,
+          1
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          2,
+          14
+        ],
+        "target": [
+          0,
+          2,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Front",
+          "position": [
+            0,
+            2,
+            14
+          ],
+          "target": [
+            0,
+            2,
+            0
+          ]
+        },
+        {
+          "name": "Top",
+          "position": [
+            0,
+            20,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -6,
+            6
+          ],
+          "color": [
+            0.5,
+            0.2,
+            0.2
+          ],
+          "label": "x",
+          "width": 2
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -8,
+            12
+          ],
+          "color": [
+            0.2,
+            0.5,
+            0.2
+          ],
+          "label": "y",
+          "width": 2
+        },
+        {
+          "type": "grid",
+          "plane": "xy",
+          "color": [
+            0.3,
+            0.3,
+            0.5
+          ],
+          "opacity": 0.08,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "The Parabola",
+          "description": "A general quadratic $y = ax^2 + bx + c$ with adjustable coefficients.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "a",
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": 1
+            },
+            {
+              "id": "b",
+              "label": "b",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -2
+            },
+            {
+              "id": "c",
+              "label": "c",
+              "min": -8,
+              "max": 8,
+              "step": 0.1,
+              "default": -3
+            }
+          ],
+          "add": [
+            {
+              "type": "animated_curve",
+              "id": "parabola",
+              "label": "y = ax² + bx + c",
+              "expr": "a * x^2 + b * x + c",
+              "range": [
+                -6,
+                6
+              ],
+              "samples": 200,
+              "color": [
+                0.4,
+                0.7,
+                1
+              ],
+              "width": 3
+            },
+            {
+              "type": "animated_point",
+              "id": "vertex",
+              "label": "$\\text{Vertex}=\\left(-\\frac{b}{2a},\\; c-\\frac{b^2}{4a}\\right)$",
+              "position": [
+                "-b / (2*a)",
+                "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c",
+                "0"
+              ],
+              "color": [
+                1,
+                0.8,
+                0.2
+              ],
+              "radius": 0.04
+            },
+            {
+              "type": "animated_point",
+              "id": "root1",
+              "label": "x₁",
+              "position": [
+                "(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+                "0",
+                "0"
+              ],
+              "color": [
+                0.3,
+                1,
+                0.5
+              ],
+              "radius": 0.03
+            },
+            {
+              "type": "animated_point",
+              "id": "root2",
+              "label": "x₂",
+              "position": [
+                "(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+                "0",
+                "0"
+              ],
+              "color": [
+                0.3,
+                1,
+                0.5
+              ],
+              "radius": 0.03
+            }
+          ]
+        },
+        {
+          "title": "Completing the Square — Geometric View",
+          "description": "The square area model shows why adding $(b/2a)^2$ creates a perfect square.",
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "axis-of-symmetry",
+              "label": "x = -b/2a",
+              "points": [
+                [
+                  "-b/(2*a)",
+                  "-8",
+                  "0"
+                ],
+                [
+                  "-b/(2*a)",
+                  "12",
+                  "0"
+                ]
+              ],
+              "color": [
+                1,
+                0.6,
+                0.2
+              ],
+              "width": 1,
+              "dash": true
+            }
+          ],
+          "info": [
+            {
+              "id": "sym-info",
+              "content": "Axis of symmetry: $x = -\\frac{b}{2a} = {{toFixed(-b/(2*a), 2)}}$\n\nThe parabola is symmetric about this vertical line.",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "The Discriminant",
+          "description": "The discriminant $\\Delta = b^2 - 4ac$ determines the number of real roots.",
+          "info": [
+            {
+              "id": "disc-info",
+              "content": "$$\\Delta = b^2 - 4ac = {{toFixed(b^2 - 4*a*c, 2)}}$$\n\n$\\Delta > 0$: Two distinct real roots\n$\\Delta = 0$: One repeated root\n$\\Delta < 0$: No real roots (complex)",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "Finding the Roots",
+          "description": "The roots are at $x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}$, symmetric about the vertex.",
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "root-span",
+              "label": "Root span\n$|x_1-x_2|=\\frac{\\sqrt{\\Delta}}{|a|}$",
+              "points": [
+                [
+                  "(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+                  "0",
+                  "0"
+                ],
+                [
+                  "(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+                  "0",
+                  "0"
+                ]
+              ],
+              "color": [
+                0.3,
+                1,
+                0.5
+              ],
+              "width": 2
+            }
+          ],
+          "info": [
+            {
+              "id": "roots-info",
+              "content": "$$x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}$$\n\n$x_1 = {{toFixed((b^2-4*a*c) >= 0 ? (-b+sqrt(b^2-4*a*c))/(2*a) : 0, 3)}}$, $x_2 = {{toFixed((b^2-4*a*c) >= 0 ? (-b-sqrt(b^2-4*a*c))/(2*a) : 0, 3)}}$\n\nRoots are symmetric about the vertex $x = {{toFixed(-b/(2*a), 3)}}$",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "The Complete Picture",
+          "description": "Vertex, roots, and axis of symmetry — the full anatomy of a parabola.",
+          "info": [
+            {
+              "id": "summary-info",
+              "content": "Vertex form: $y = a(x - h)^2 + k$\n\n$h = -\\frac{b}{2a} = {{toFixed(-b/(2*a), 3)}}$\n\n$k = c - \\frac{b^2}{4a} = {{toFixed(c - b^2/(4*a), 3)}}$\n\n$\\Delta = {{toFixed(b^2 - 4*a*c, 2)}}$",
+              "position": "top-right"
+            }
+          ]
+        }
+      ],
+      "proof": {
+        "id": "quadratic-formula",
+        "title": "Deriving the Quadratic Formula",
+        "technique": "direct",
+        "techniqueHint": "This is a direct algebraic derivation — each step transforms the equation toward the closed-form solution by completing the square.",
+        "goal": "Derive $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$ from $ax^2 + bx + c = 0$",
+        "prompt": "Walk the student through completing the square. Emphasize why each algebraic move is valid. Connect to the parabola visualization when a sceneStep link exists.",
+        "steps": [
+          {
+            "id": "start",
+            "type": "given",
+            "label": "General quadratic equation",
+            "math": "\\htmlClass{hl-eq}{ax^2 + bx + c} = 0",
+            "highlights": {
+              "eq": {
+                "color": "cyan",
+                "label": "Standard form quadratic expression"
+              }
+            },
+            "explanation": "We start with the most general quadratic equation, where $a \\neq 0$.",
+            "prompt": "Point out the parabola in the 3D view. The roots are where it crosses the x-axis.",
+            "sceneStep": 0,
+            "tags": [
+              "given"
+            ]
+          },
+          {
+            "id": "move_c",
+            "type": "step",
+            "label": "Isolate quadratic and linear terms",
+            "math": "ax^2 + bx = \\htmlClass{hl-moved}{-c}",
+            "highlights": {
+              "moved": {
+                "color": "yellow",
+                "label": "Constant moved to right side"
+              }
+            },
+            "justification": "Subtract $c$ from both sides",
+            "explanation": "Move the constant to the right to prepare for completing the square.",
+            "tags": [
+              "algebra"
+            ]
+          },
+          {
+            "id": "div_a",
+            "type": "step",
+            "label": "Divide by the leading coefficient",
+            "math": "x^2 + \\htmlClass{hl-coeff}{\\frac{b}{a}}x = -\\frac{c}{a}",
+            "highlights": {
+              "coeff": {
+                "color": "yellow",
+                "label": "Coefficient normalized by a"
+              }
+            },
+            "justification": "Divide both sides by $a$ (valid since $a \\neq 0$)",
+            "explanation": "Normalize the leading coefficient to 1. This is required before completing the square.",
+            "prompt": "If the student asks why we can divide by a, emphasize the $a \\neq 0$ precondition.",
+            "tags": [
+              "algebra"
+            ]
+          },
+          {
+            "id": "complete",
+            "type": "step",
+            "label": "Complete the square",
+            "math": "x^2 + \\frac{b}{a}x + \\htmlClass{hl-added}{\\frac{b^2}{4a^2}} = -\\frac{c}{a} + \\htmlClass{hl-added2}{\\frac{b^2}{4a^2}}",
+            "highlights": {
+              "added": {
+                "color": "green",
+                "label": "Half the coefficient of x, squared"
+              },
+              "added2": {
+                "color": "green",
+                "label": "Same term added to both sides"
+              }
+            },
+            "justification": "Add $\\left(\\frac{b}{2a}\\right)^2$ to both sides",
+            "explanation": "The key insight: adding the square of half the linear coefficient creates a perfect square trinomial on the left side.",
+            "prompt": "This is the hardest step. Explain the geometric meaning: we are literally completing a square in area.",
+            "sceneStep": 1,
+            "tags": [
+              "completing-the-square"
+            ]
+          },
+          {
+            "id": "factor_left",
+            "type": "step",
+            "label": "Factor the perfect square",
+            "math": "\\htmlClass{hl-square}{\\left(x + \\frac{b}{2a}\\right)^2} = \\frac{b^2 - 4ac}{4a^2}",
+            "highlights": {
+              "square": {
+                "color": "cyan",
+                "label": "Perfect square trinomial factored"
+              }
+            },
+            "justification": "Left: $(x+k)^2 = x^2+2kx+k^2$ with $k=\\frac{b}{2a}$. Right: common denominator.",
+            "explanation": "The left side is now a perfect square. The right side simplifies to reveal the **discriminant** $b^2 - 4ac$.",
+            "sceneStep": 2,
+            "tags": [
+              "factoring"
+            ]
+          },
+          {
+            "id": "sqrt",
+            "type": "step",
+            "label": "Take the square root",
+            "math": "x + \\frac{b}{2a} = \\htmlClass{hl-pm}{\\pm}\\frac{\\htmlClass{hl-disc}{\\sqrt{b^2 - 4ac}}}{2a}",
+            "highlights": {
+              "pm": {
+                "color": "orange",
+                "label": "Square root yields two solutions"
+              },
+              "disc": {
+                "color": "magenta",
+                "label": "The discriminant — determines root type"
+              }
+            },
+            "justification": "If $u^2 = v$ then $u = \\pm\\sqrt{v}$",
+            "explanation": "Taking the square root introduces $\\pm$, giving two solutions. The **discriminant** under the radical determines whether roots are real, repeated, or complex.",
+            "prompt": "Connect the discriminant to the 3D view: Δ>0 means two crossings, Δ=0 means one touch, Δ<0 means no real crossing.",
+            "sceneStep": 3,
+            "tags": [
+              "square-root"
+            ]
+          },
+          {
+            "id": "isolate_x",
+            "type": "step",
+            "label": "Isolate x",
+            "math": "x = \\htmlClass{hl-shift}{-\\frac{b}{2a}} \\pm \\frac{\\sqrt{b^2 - 4ac}}{2a}",
+            "highlights": {
+              "shift": {
+                "color": "yellow",
+                "label": "Vertex x-coordinate (axis of symmetry)"
+              }
+            },
+            "justification": "Subtract $\\frac{b}{2a}$ from both sides",
+            "explanation": "The term $-\\frac{b}{2a}$ is the x-coordinate of the **vertex** — the axis of symmetry of the parabola.",
+            "tags": [
+              "algebra"
+            ]
+          },
+          {
+            "id": "qed",
+            "type": "conclusion",
+            "label": "The Quadratic Formula",
+            "math": "\\htmlClass{hl-result}{x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}}",
+            "highlights": {
+              "result": {
+                "color": "green",
+                "label": "The quadratic formula"
+              }
+            },
+            "justification": "Combine over common denominator $2a$",
+            "explanation": "Every quadratic $ax^2 + bx + c = 0$ has solutions given by this formula.",
+            "prompt": "Summarize: $-b/2a$ is the center, $\\pm\\sqrt{\\Delta}/2a$ is the spread from center, and $\\Delta$ tells us the nature of the roots.",
+            "sceneStep": 4,
+            "tags": [
+              "result"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "The Discriminant & Root Classification",
+      "description": "Explore how $\\Delta = b^2 - 4ac$ determines the nature of roots.",
+      "markdown": "# The Discriminant & Root Classification\n\nThe **discriminant** of $ax^2 + bx + c = 0$ is the expression under the square root in the quadratic formula:\n\n$$\\Delta = b^2 - 4ac$$\n\nIt tells us everything about the roots **without solving the equation**.\n\n## Three Cases\n\n### Case 1: $\\Delta > 0$ — Two Real Roots\n\nThe parabola crosses the x-axis at **two distinct points**. The green line shows the **root span** — the distance between roots:\n\n$$|x_1 - x_2| = \\frac{\\sqrt{\\Delta}}{|a|}$$\n\nAs $\\Delta$ grows, the roots spread farther apart.\n\n### Case 2: $\\Delta = 0$ — Repeated Root\n\nThe two roots **collapse into one**: $x_1 = x_2 = -\\frac{b}{2a}$. The parabola just touches the x-axis at its vertex. The root span shrinks to zero.\n\n### Case 3: $\\Delta < 0$ — No Real Roots\n\nThe parabola **never reaches the x-axis**. The vertex floats above (when $a > 0$) or below (when $a < 0$) the axis. The roots become complex conjugates: $x = \\frac{-b \\pm i\\sqrt{|\\Delta|}}{2a}$.\n\n## Vieta's Formulas\n\nFor any quadratic with roots $x_1, x_2$:\n\n$$x_1 + x_2 = -\\frac{b}{a} \\qquad x_1 \\cdot x_2 = \\frac{c}{a}$$\n\nThese connect the roots directly to the coefficients — no square roots needed! The sum equals the negative ratio of the linear to leading coefficient, and the product equals the ratio of the constant to the leading coefficient.\n\n## Key Relationships\n\n| Quantity | Formula | Visual Element |\n|----------|---------|----------------|\n| Axis of symmetry | $x = -\\frac{b}{2a}$ | Orange dashed line |\n| Root span | $\\frac{\\sqrt{\\Delta}}{\\|a\\|}$ | Green line between roots |\n| Vertex height | $c - \\frac{b^2}{4a}$ | Red dashed line (gap to x-axis) |\n\n## Try It\n\nUse the sliders to move between the three cases. Watch how the root span (green) shrinks to zero at $\\Delta = 0$, and how the vertex gap (red) appears when $\\Delta < 0$. Open the **Proof** panel to see the formal derivations.",
+      "prompt": "Guide the student through understanding the discriminant. Use the sliders to show how changing coefficients affects the number and type of roots. When on the Vieta's lemma step, connect the sum and product formulas to the slider values.",
+      "range": [
+        [
+          -6,
+          6
+        ],
+        [
+          -8,
+          12
+        ],
+        [
+          -1,
+          1
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          2,
+          14
+        ],
+        "target": [
+          0,
+          2,
+          0
+        ]
+      },
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -6,
+            6
+          ],
+          "color": [
+            0.5,
+            0.2,
+            0.2
+          ],
+          "label": "x",
+          "width": 2
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -8,
+            12
+          ],
+          "color": [
+            0.2,
+            0.5,
+            0.2
+          ],
+          "label": "y",
+          "width": 2
+        },
+        {
+          "type": "grid",
+          "plane": "xy",
+          "color": [
+            0.3,
+            0.3,
+            0.5
+          ],
+          "opacity": 0.08,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "The Discriminant Formula",
+          "description": "The discriminant $\\Delta = b^2 - 4ac$ is the key to classifying roots.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "a",
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": 1
+            },
+            {
+              "id": "b",
+              "label": "b",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -2
+            },
+            {
+              "id": "c",
+              "label": "c",
+              "min": -8,
+              "max": 8,
+              "step": 0.1,
+              "default": -3
+            }
+          ],
+          "info": [
+            {
+              "id": "disc-case-info",
+              "content": "$$\\Delta = b^2 - 4ac = {{toFixed(b^2 - 4*a*c, 2)}}$$\n\nRoots: {{(b^2 - 4*a*c) > 0 ? 2 : (b^2 - 4*a*c) == 0 ? 1 : 0}} real\n\nVertex $\\left(-\\frac{b}{2a},\\; c - \\frac{b^2}{4a}\\right) = ({{toFixed(-b/(2*a), 2)}},\\; {{toFixed(c - b^2/(4*a), 2)}})$\n$x_1 = {{toFixed((b^2-4*a*c) >= 0 ? (-b+sqrt(b^2-4*a*c))/(2*a) : 0, 3)}}$, $x_2 = {{toFixed((b^2-4*a*c) >= 0 ? (-b-sqrt(b^2-4*a*c))/(2*a) : 0, 3)}}$\n$x_1 + x_2 = {{toFixed(-b/a, 3)}}$, $x_1 \\cdot x_2 = {{toFixed(c/a, 3)}}$",
+              "position": "top-right",
+              "keep": true
+            }
+          ],
+          "add": [
+            {
+              "type": "animated_curve",
+              "id": "parabola2",
+              "label": "y = ax² + bx + c",
+              "expr": "a * x^2 + b * x + c",
+              "range": [
+                -6,
+                6
+              ],
+              "samples": 200,
+              "color": [
+                0.4,
+                0.7,
+                1
+              ],
+              "width": 3
+            },
+            {
+              "type": "animated_point",
+              "id": "vertex2a",
+              "label": "$\\text{Vertex}=\\left(-\\frac{b}{2a},\\; c-\\frac{b^2}{4a}\\right)$",
+              "position": [
+                "-b / (2*a)",
+                "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c",
+                "0"
+              ],
+              "color": [
+                1,
+                0.8,
+                0.2
+              ],
+              "radius": 0.04
+            },
+            {
+              "type": "animated_point",
+              "id": "root1b",
+              "label": "x₁",
+              "position": [
+                "(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+                "0",
+                "0"
+              ],
+              "color": [
+                0.3,
+                1,
+                0.5
+              ],
+              "radius": 0.03
+            },
+            {
+              "type": "animated_point",
+              "id": "root2b",
+              "label": "x₂",
+              "position": [
+                "(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+                "0",
+                "0"
+              ],
+              "color": [
+                0.3,
+                1,
+                0.5
+              ],
+              "radius": 0.03
+            }
+          ]
+        },
+        {
+          "title": "Two Real Roots (Δ > 0)",
+          "description": "When the discriminant is positive, the parabola crosses the x-axis twice.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "a",
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "b",
+              "label": "b",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -2,
+              "reset": true
+            },
+            {
+              "id": "c",
+              "label": "c",
+              "min": -8,
+              "max": 8,
+              "step": 0.1,
+              "default": -3,
+              "reset": true
+            }
+          ],
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "root-span2",
+              "label": "Root span\n$|x_1-x_2|=\\frac{\\sqrt{\\Delta}}{|a|}$",
+              "points": [
+                [
+                  "(b^2 - 4*a*c) >= 0 ? (-b - sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+                  "0",
+                  "0"
+                ],
+                [
+                  "(b^2 - 4*a*c) >= 0 ? (-b + sqrt(b^2 - 4*a*c)) / (2*a) : -b/(2*a)",
+                  "0",
+                  "0"
+                ]
+              ],
+              "color": [
+                0.3,
+                1,
+                0.5
+              ],
+              "width": 2
+            }
+          ],
+          "proof": [
+            {
+              "id": "vieta-lemma",
+              "title": "Vieta's Formulas (Lemma)",
+              "technique": "direct",
+              "sceneStep": 1,
+              "goal": "Show that $x_1 + x_2 = -\\frac{b}{a}$ and $x_1 x_2 = \\frac{c}{a}$",
+              "prompt": "This is a short lemma about Vieta's formulas. Connect the sum and product of roots to the sliders.",
+              "steps": [
+                {
+                  "id": "vieta-start",
+                  "type": "given",
+                  "label": "Roots from the quadratic formula",
+                  "math": "x_{1,2} = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+                  "explanation": "We start from the two roots given by the quadratic formula.",
+                  "tags": [
+                    "given"
+                  ]
+                },
+                {
+                  "id": "vieta-sum",
+                  "type": "step",
+                  "label": "Sum of roots",
+                  "math": "x_1 + x_2 = \\frac{-b + \\sqrt{\\Delta}}{2a} + \\frac{-b - \\sqrt{\\Delta}}{2a} = \\htmlClass{hl-sum}{\\frac{-2b}{2a} = -\\frac{b}{a}}",
+                  "highlights": {
+                    "sum": {
+                      "color": "green",
+                      "label": "The √Δ terms cancel"
+                    }
+                  },
+                  "justification": "Add the two roots; the $\\pm\\sqrt{\\Delta}$ terms cancel",
+                  "explanation": "The sum of roots equals $-b/a$, independent of the discriminant.",
+                  "tags": [
+                    "algebra"
+                  ]
+                },
+                {
+                  "id": "vieta-product",
+                  "type": "step",
+                  "label": "Product of roots",
+                  "math": "x_1 \\cdot x_2 = \\frac{(-b)^2 - (\\sqrt{\\Delta})^2}{(2a)^2} = \\htmlClass{hl-prod}{\\frac{b^2 - b^2 + 4ac}{4a^2} = \\frac{c}{a}}",
+                  "highlights": {
+                    "prod": {
+                      "color": "yellow",
+                      "label": "Difference of squares simplifies"
+                    }
+                  },
+                  "justification": "$(p+q)(p-q) = p^2 - q^2$ with $p = -b/2a$, $q = \\sqrt{\\Delta}/2a$",
+                  "explanation": "The product of roots equals $c/a$.",
+                  "tags": [
+                    "algebra"
+                  ]
+                },
+                {
+                  "id": "vieta-qed",
+                  "type": "conclusion",
+                  "label": "Vieta's Formulas",
+                  "math": "\\htmlClass{hl-vieta}{x_1 + x_2 = -\\frac{b}{a}, \\quad x_1 x_2 = \\frac{c}{a}}",
+                  "highlights": {
+                    "vieta": {
+                      "color": "cyan",
+                      "label": "Vieta's formulas"
+                    }
+                  },
+                  "justification": "Combining the sum and product results",
+                  "explanation": "These elegant relationships connect the roots directly to the coefficients without needing to solve the equation.",
+                  "tags": [
+                    "result"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "root-span-derivation",
+              "title": "Root Span",
+              "sceneStep": 1,
+              "goal": "Derive $|x_1 - x_2| = \\frac{\\sqrt{\\Delta}}{|a|}$",
+              "prompt": "Show how the distance between the two roots relates to the discriminant and the leading coefficient.",
+              "steps": [
+                {
+                  "id": "span-given",
+                  "type": "given",
+                  "label": "Two roots from the quadratic formula",
+                  "math": "x_1 = \\frac{-b + \\sqrt{\\Delta}}{2a}, \\quad x_2 = \\frac{-b - \\sqrt{\\Delta}}{2a}",
+                  "explanation": "We start with the two roots, where $\\Delta = b^2 - 4ac > 0$.",
+                  "sceneStep": 1,
+                  "tags": [
+                    "given"
+                  ]
+                },
+                {
+                  "id": "span-diff",
+                  "type": "step",
+                  "label": "Subtract the roots",
+                  "math": "x_1 - x_2 = \\frac{-b + \\sqrt{\\Delta}}{2a} - \\frac{-b - \\sqrt{\\Delta}}{2a} = \\htmlClass{hl-cancel}{\\frac{2\\sqrt{\\Delta}}{2a}} = \\frac{\\sqrt{\\Delta}}{a}",
+                  "highlights": {
+                    "cancel": {
+                      "color": "green",
+                      "label": "The −b terms cancel, the √Δ terms double"
+                    }
+                  },
+                  "justification": "Subtract: $(-b+\\sqrt{\\Delta}) - (-b-\\sqrt{\\Delta}) = 2\\sqrt{\\Delta}$",
+                  "explanation": "The constant terms $-b$ cancel, leaving twice the square root of the discriminant.",
+                  "sceneStep": 1,
+                  "tags": [
+                    "algebra"
+                  ]
+                },
+                {
+                  "id": "span-abs",
+                  "type": "conclusion",
+                  "label": "Root span formula",
+                  "math": "\\htmlClass{hl-span}{|x_1 - x_2| = \\frac{\\sqrt{\\Delta}}{|a|}}",
+                  "highlights": {
+                    "span": {
+                      "color": "cyan",
+                      "label": "The green line in the scene"
+                    }
+                  },
+                  "justification": "Take absolute value (since $a$ may be negative)",
+                  "explanation": "The distance between the roots depends only on $\\Delta$ and $|a|$. This is exactly the length of the green root span line in the scene.",
+                  "sceneStep": 1,
+                  "tags": [
+                    "result"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Repeated Root (Δ = 0)",
+          "description": "When the discriminant is zero, the parabola touches the x-axis at exactly one point.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "a",
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "b",
+              "label": "b",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -4,
+              "reset": true
+            },
+            {
+              "id": "c",
+              "label": "c",
+              "min": -8,
+              "max": 8,
+              "step": 0.1,
+              "default": 4,
+              "reset": true
+            }
+          ],
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "axis-sym2",
+              "label": "x = -b/2a",
+              "points": [
+                [
+                  "-b/(2*a)",
+                  "-8",
+                  "0"
+                ],
+                [
+                  "-b/(2*a)",
+                  "12",
+                  "0"
+                ]
+              ],
+              "color": [
+                1,
+                0.6,
+                0.2
+              ],
+              "width": 1,
+              "dash": true
+            }
+          ],
+          "proof": {
+            "id": "root-span-zero",
+            "title": "Root Span Collapses to Zero",
+            "technique": "direct",
+            "sceneStep": 2,
+            "goal": "Show that when $\\Delta = 0$, the root span $|x_1 - x_2| = 0$",
+            "prompt": "Connect the root span formula to the repeated root case.",
+            "steps": [
+              {
+                "id": "span0-recall",
+                "type": "given",
+                "label": "Root span formula",
+                "math": "|x_1 - x_2| = \\frac{\\sqrt{\\Delta}}{|a|}",
+                "explanation": "From the previous step, we derived that the distance between roots is $\\frac{\\sqrt{\\Delta}}{|a|}$.",
+                "sceneStep": 2,
+                "tags": [
+                  "given"
+                ]
+              },
+              {
+                "id": "span0-sub",
+                "type": "step",
+                "label": "Substitute Δ = 0",
+                "math": "|x_1 - x_2| = \\frac{\\sqrt{0}}{|a|} = \\htmlClass{hl-zero}{0}",
+                "highlights": {
+                  "zero": {
+                    "color": "yellow",
+                    "label": "The span collapses"
+                  }
+                },
+                "justification": "When $\\Delta = 0$, $\\sqrt{\\Delta} = 0$",
+                "explanation": "The two roots coincide at a single point.",
+                "sceneStep": 2,
+                "tags": [
+                  "algebra"
+                ]
+              },
+              {
+                "id": "span0-qed",
+                "type": "conclusion",
+                "label": "Repeated root location",
+                "math": "\\htmlClass{hl-root}{x_1 = x_2 = -\\frac{b}{2a}}",
+                "highlights": {
+                  "root": {
+                    "color": "cyan",
+                    "label": "The tangent point on the x-axis"
+                  }
+                },
+                "justification": "Both roots reduce to $-b/2a$ when $\\Delta = 0$",
+                "explanation": "The parabola touches the x-axis at the vertex. The orange dashed line shows this axis of symmetry.",
+                "sceneStep": 2,
+                "tags": [
+                  "result"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "title": "No Real Roots (Δ < 0)",
+          "description": "When the discriminant is negative, the parabola doesn't cross the x-axis. The roots are complex conjugates.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "a",
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "b",
+              "label": "b",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "c",
+              "label": "c",
+              "min": -8,
+              "max": 8,
+              "step": 0.1,
+              "default": 2,
+              "reset": true
+            }
+          ],
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "vertex-gap",
+              "label": "Gap to x-axis",
+              "points": [
+                [
+                  "-b/(2*a)",
+                  "0",
+                  "0"
+                ],
+                [
+                  "-b/(2*a)",
+                  "a * (-b/(2*a))^2 + b * (-b/(2*a)) + c",
+                  "0"
+                ]
+              ],
+              "color": [
+                1,
+                0.3,
+                0.3
+              ],
+              "width": 1,
+              "dash": true
+            }
+          ],
+          "proof": {
+            "id": "vertex-derivation",
+            "title": "Vertex by Completing the Square",
+            "technique": "direct",
+            "sceneStep": 3,
+            "goal": "Derive the vertex $(h, k) = \\left(-\\frac{b}{2a},\\; c - \\frac{b^2}{4a}\\right)$",
+            "prompt": "Show how completing the square reveals the vertex form and why the parabola floats above (or below) the x-axis when Δ < 0.",
+            "steps": [
+              {
+                "id": "vertex-start",
+                "type": "given",
+                "label": "Standard form",
+                "math": "y = ax^2 + bx + c",
+                "explanation": "We begin with the general quadratic in standard form.",
+                "tags": [
+                  "given"
+                ]
+              },
+              {
+                "id": "vertex-factor",
+                "type": "step",
+                "label": "Factor out the leading coefficient",
+                "math": "y = a\\!\\left(x^2 + \\frac{b}{a}x\\right) + c",
+                "justification": "Factor $a$ from the first two terms",
+                "explanation": "Isolating the $x$ terms inside parentheses prepares us to complete the square.",
+                "tags": [
+                  "algebra"
+                ]
+              },
+              {
+                "id": "vertex-complete",
+                "type": "step",
+                "label": "Complete the square",
+                "math": "y = a\\!\\left(x^2 + \\frac{b}{a}x + \\htmlClass{hl-sq}{\\frac{b^2}{4a^2}}\\right) + c - \\htmlClass{hl-sq}{\\frac{b^2}{4a}}",
+                "highlights": {
+                  "sq": {
+                    "color": "yellow",
+                    "label": "Add and subtract (b/2a)²"
+                  }
+                },
+                "justification": "Add and subtract $\\left(\\frac{b}{2a}\\right)^2$ inside the parentheses",
+                "explanation": "We add $\\frac{b^2}{4a^2}$ inside (which is multiplied by $a$, contributing $\\frac{b^2}{4a}$) and subtract it outside to keep equality.",
+                "tags": [
+                  "algebra"
+                ]
+              },
+              {
+                "id": "vertex-form",
+                "type": "step",
+                "label": "Vertex form",
+                "math": "y = \\htmlClass{hl-vertex}{a\\!\\left(x + \\frac{b}{2a}\\right)^{\\!2}} + c - \\frac{b^2}{4a}",
+                "highlights": {
+                  "vertex": {
+                    "color": "green",
+                    "label": "Perfect square — zero at x = −b/2a"
+                  }
+                },
+                "justification": "Recognize $x^2 + \\frac{b}{a}x + \\frac{b^2}{4a^2} = \\left(x + \\frac{b}{2a}\\right)^2$",
+                "explanation": "The squared term is minimized (zero) when $x = -\\frac{b}{2a}$.",
+                "tags": [
+                  "algebra"
+                ]
+              },
+              {
+                "id": "vertex-coords",
+                "type": "step",
+                "label": "Read off the vertex",
+                "math": "h = -\\frac{b}{2a}, \\quad k = c - \\frac{b^2}{4a} = \\htmlClass{hl-k}{-\\frac{\\Delta}{4a}}",
+                "highlights": {
+                  "k": {
+                    "color": "orange",
+                    "label": "k = −Δ/4a — the red dashed gap in the scene"
+                  }
+                },
+                "justification": "$c - \\frac{b^2}{4a} = \\frac{4ac - b^2}{4a} = \\frac{-\\Delta}{4a}$",
+                "explanation": "The vertex height $k = -\\Delta/(4a)$. When $\\Delta < 0$ and $a > 0$, we get $k > 0$ — the vertex is above the x-axis.",
+                "tags": [
+                  "algebra"
+                ]
+              },
+              {
+                "id": "vertex-qed",
+                "type": "conclusion",
+                "label": "Vertex formula",
+                "math": "\\htmlClass{hl-result}{\\text{Vertex} = \\left(-\\frac{b}{2a},\\; c - \\frac{b^2}{4a}\\right)}",
+                "highlights": {
+                  "result": {
+                    "color": "cyan",
+                    "label": "The vertex coordinates"
+                  }
+                },
+                "justification": "From the vertex form $y = a(x - h)^2 + k$",
+                "explanation": "The red dashed line shows the gap $k$ from the x-axis to the vertex. When $\\Delta < 0$, this gap never closes — the parabola has no real roots.",
+                "tags": [
+                  "result"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "proof": {
+        "id": "discriminant-proof",
+        "title": "Why the Discriminant Classifies Roots",
+        "technique": "cases",
+        "techniqueHint": "This proof analyses three cases based on the sign of the discriminant Δ = b² − 4ac, showing each case produces a different root configuration.",
+        "sceneStep": 0,
+        "goal": "Prove that $\\Delta = b^2 - 4ac$ determines the nature of roots of $ax^2 + bx + c = 0$",
+        "prompt": "Connect each case to the parabola visualization. Use sliders to show examples of each case.",
+        "steps": [
+          {
+            "id": "disc-start",
+            "type": "given",
+            "label": "Starting from the quadratic formula",
+            "math": "x = \\frac{-b \\pm \\htmlClass{hl-radical}{\\sqrt{b^2 - 4ac}}}{2a}",
+            "highlights": {
+              "radical": {
+                "color": "magenta",
+                "label": "The square root determines if roots are real"
+              }
+            },
+            "explanation": "The nature of the roots depends entirely on what's under the square root.",
+            "sceneStep": 0,
+            "tags": [
+              "given"
+            ]
+          },
+          {
+            "id": "disc-positive",
+            "type": "step",
+            "label": "Case 1: Δ > 0 — Two distinct real roots",
+            "math": "\\Delta > 0 \\implies \\sqrt{\\Delta} \\in \\mathbb{R}^+ \\implies \\htmlClass{hl-two}{x_1 \\neq x_2}",
+            "highlights": {
+              "two": {
+                "color": "green",
+                "label": "Two distinct values from ±"
+              }
+            },
+            "justification": "A positive number has a real square root, and $\\pm$ gives two different values",
+            "explanation": "The parabola crosses the x-axis at two distinct points.",
+            "sceneStep": 1,
+            "tags": [
+              "case-analysis"
+            ]
+          },
+          {
+            "id": "disc-zero",
+            "type": "step",
+            "label": "Case 2: Δ = 0 — One repeated root",
+            "math": "\\Delta = 0 \\implies \\sqrt{\\Delta} = 0 \\implies x_1 = x_2 = \\htmlClass{hl-one}{-\\frac{b}{2a}}",
+            "highlights": {
+              "one": {
+                "color": "yellow",
+                "label": "The vertex touches the x-axis"
+              }
+            },
+            "justification": "$\\pm 0 = 0$, so both roots equal the vertex x-coordinate",
+            "explanation": "The parabola just touches the x-axis at its vertex.",
+            "sceneStep": 2,
+            "tags": [
+              "case-analysis"
+            ]
+          },
+          {
+            "id": "disc-negative",
+            "type": "step",
+            "label": "Case 3: Δ < 0 — No real roots",
+            "math": "\\Delta < 0 \\implies \\sqrt{\\Delta} = \\htmlClass{hl-imag}{i\\sqrt{|\\Delta|}} \\implies x \\notin \\mathbb{R}",
+            "highlights": {
+              "imag": {
+                "color": "red",
+                "label": "Imaginary unit appears"
+              }
+            },
+            "justification": "Square root of a negative number is imaginary",
+            "explanation": "The parabola doesn't cross the x-axis at all. The roots are complex conjugates.",
+            "sceneStep": 3,
+            "tags": [
+              "case-analysis"
+            ]
+          },
+          {
+            "id": "disc-qed",
+            "type": "conclusion",
+            "label": "The Discriminant Classification",
+            "math": "\\htmlClass{hl-class}{\\Delta > 0: \\text{2 real} \\quad \\Delta = 0: \\text{1 real} \\quad \\Delta < 0: \\text{0 real}}",
+            "highlights": {
+              "class": {
+                "color": "cyan",
+                "label": "Complete classification by discriminant sign"
+              }
+            },
+            "justification": "Exhaustive case analysis on the sign of $\\Delta$",
+            "explanation": "The discriminant completely determines the number and type of roots.",
+            "tags": [
+              "result"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "Roots Leave the Real Line — The Complex Plane in 3D",
+      "description": "The imaginary axis rises from the real plane, revealing where complex roots live when the discriminant turns negative.",
+      "markdown": "# Roots Leave the Real Line\n\nIn this scene we extend the familiar real-number picture of a parabola into **three dimensions** by adding the imaginary axis.\n\n## The Setup\n\nThe $x$-axis and $y$-axis work exactly as before — $y = ax^2 + bx + c$ is the parabola.\n\nThe new $z$-axis represents the **imaginary part** of $x$. When the discriminant $\\Delta = b^2 - 4ac$ is negative, the quadratic formula gives complex roots:\n\n$$x = \\frac{-b}{2a} \\pm \\frac{\\sqrt{|\\Delta|}}{2a}\\,i$$\n\nThese roots have the same real part $\\alpha = -\\frac{b}{2a}$ (the axis of symmetry) but opposite imaginary parts $\\pm\\beta$ where $\\beta = \\frac{\\sqrt{|\\Delta|}}{2a}$.\n\n## What You'll See\n\n1. **$\\Delta > 0$** — Two real roots on the $x$-axis (green dots)\n2. **$\\Delta = 0$** — Roots merge at the vertex\n3. **$\\Delta < 0$** — Roots **lift off** the real line into the complex plane (magenta dots connected by a dashed conjugate link)\n\nThe further the vertex rises above the $x$-axis, the further apart the conjugate roots spread along the imaginary axis.\n\n## The Formula\n\nWhen $\\Delta < 0$, we write $\\sqrt{\\Delta} = i\\sqrt{|\\Delta|}$, so:\n\n$$x = \\underbrace{-\\frac{b}{2a}}_{\\alpha} \\pm \\underbrace{\\frac{\\sqrt{|\\Delta|}}{2a}}_{\\beta}\\,i$$\n\nThe roots are $\\alpha + \\beta i$ and $\\alpha - \\beta i$ — **complex conjugates**.",
+      "prompt": "Help the student understand how complex roots relate to the parabola and the discriminant. When sliders change, explain how the roots move between the real line and the complex plane. Emphasize that complex roots always come in conjugate pairs.",
+      "range": [
+        [
+          -6,
+          6
+        ],
+        [
+          -8,
+          12
+        ],
+        [
+          -4,
+          4
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          2,
+          14
+        ],
+        "target": [
+          0,
+          2,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Front",
+          "position": [
+            0,
+            2,
+            14
+          ],
+          "target": [
+            0,
+            2,
+            0
+          ]
+        },
+        {
+          "name": "3D View",
+          "position": [
+            8,
+            6,
+            10
+          ],
+          "target": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "name": "Top",
+          "position": [
+            0,
+            20,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -6,
+            6
+          ],
+          "color": [
+            0.5,
+            0.2,
+            0.2
+          ],
+          "label": "Re(x)",
+          "width": 2
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -8,
+            12
+          ],
+          "color": [
+            0.2,
+            0.5,
+            0.2
+          ],
+          "label": "y",
+          "width": 2
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -4,
+            4
+          ],
+          "color": [
+            0.6,
+            0.4,
+            0.9
+          ],
+          "label": "Im(x)",
+          "width": 2
+        },
+        {
+          "type": "grid",
+          "plane": "xy",
+          "color": [
+            0.3,
+            0.3,
+            0.5
+          ],
+          "opacity": 0.08,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "Familiar Ground in 3D",
+          "description": "The parabola $y = x^2 - 4x + 3$ with $\\Delta = 4 > 0$ has two real roots at $x = 1$ and $x = 3$. The imaginary axis (purple) extends into the third dimension — but for now, everything stays in the real plane.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": 0.2,
+              "max": 3,
+              "step": 0.1,
+              "default": 1
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -4
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -4,
+              "max": 10,
+              "step": 0.1,
+              "default": 3
+            }
+          ],
+          "add": [
+            {
+              "type": "animated_curve",
+              "id": "parabola",
+              "expr": "a * x^2 + b * x + c",
+              "range": [
+                -6,
+                6
+              ],
+              "samples": 200,
+              "color": [
+                0.4,
+                0.7,
+                1
+              ],
+              "width": 3
+            },
+            {
+              "type": "animated_point",
+              "id": "vertex",
+              "label": "Vertex",
+              "position": [
+                "-b / (2*a)",
+                "c - b^2 / (4*a)",
+                "0"
+              ],
+              "color": [
+                1,
+                0.8,
+                0.2
+              ],
+              "radius": 0.04
+            },
+            {
+              "type": "animated_point",
+              "id": "root1",
+              "label": "$x_1$",
+              "position": [
+                "(-b + sqrt(b^2 - 4*a*c)) / (2*a)",
+                "0",
+                "0"
+              ],
+              "color": [
+                0.3,
+                1,
+                0.5
+              ],
+              "radius": 0.035,
+              "visibleExpr": "(b^2 - 4*a*c) >= 0"
+            },
+            {
+              "type": "animated_point",
+              "id": "root2",
+              "label": "$x_2$",
+              "position": [
+                "(-b - sqrt(b^2 - 4*a*c)) / (2*a)",
+                "0",
+                "0"
+              ],
+              "color": [
+                0.3,
+                1,
+                0.5
+              ],
+              "radius": 0.035,
+              "visibleExpr": "(b^2 - 4*a*c) >= 0"
+            },
+            {
+              "type": "animated_point",
+              "id": "complex-root-plus",
+              "label": "$\\alpha + \\beta i$",
+              "position": [
+                "-b / (2*a)",
+                "0",
+                "sqrt(abs(b^2 - 4*a*c)) / (2*abs(a))"
+              ],
+              "color": [
+                0.8,
+                0.3,
+                1
+              ],
+              "radius": 0.04,
+              "visibleExpr": "(b^2 - 4*a*c) < 0"
+            },
+            {
+              "type": "animated_point",
+              "id": "complex-root-minus",
+              "label": "$\\alpha - \\beta i$",
+              "position": [
+                "-b / (2*a)",
+                "0",
+                "-sqrt(abs(b^2 - 4*a*c)) / (2*abs(a))"
+              ],
+              "color": [
+                0.8,
+                0.3,
+                1
+              ],
+              "radius": 0.04,
+              "visibleExpr": "(b^2 - 4*a*c) < 0"
+            },
+            {
+              "type": "animated_line",
+              "id": "conjugate-link",
+              "points": [
+                [
+                  "-b / (2*a)",
+                  "0",
+                  "sqrt(abs(b^2 - 4*a*c)) / (2*abs(a))"
+                ],
+                [
+                  "-b / (2*a)",
+                  "0",
+                  "-sqrt(abs(b^2 - 4*a*c)) / (2*abs(a))"
+                ]
+              ],
+              "color": [
+                0.8,
+                0.3,
+                1
+              ],
+              "width": 2,
+              "dash": true,
+              "visibleExpr": "(b^2 - 4*a*c) < 0"
+            }
+          ],
+          "info": [
+            {
+              "id": "disc-info",
+              "content": "$$\\Delta = b^2 - 4ac = {{toFixed(b^2 - 4*a*c, 2)}}$$",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "The Transition — Roots Merge",
+          "description": "Set $c = 4$ so $\\Delta = 0$. The two real roots merge at the vertex — the parabola just touches the $x$-axis. This is the boundary between real and complex roots.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": 0.2,
+              "max": 3,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -4,
+              "reset": true
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -4,
+              "max": 10,
+              "step": 0.1,
+              "default": 4,
+              "reset": true
+            }
+          ],
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "axis-of-symmetry",
+              "label": "$x = -b/2a$",
+              "points": [
+                [
+                  "-b/(2*a)",
+                  "-8",
+                  "0"
+                ],
+                [
+                  "-b/(2*a)",
+                  "12",
+                  "0"
+                ]
+              ],
+              "color": [
+                1,
+                0.6,
+                0.2
+              ],
+              "width": 1,
+              "dash": true
+            }
+          ],
+          "info": [
+            {
+              "id": "disc-info",
+              "content": "$$\\Delta = b^2 - 4ac = {{toFixed(b^2 - 4*a*c, 2)}}$$\n\n$\\Delta = 0$: roots merge at vertex $x = {{toFixed(-b/(2*a), 2)}}$",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "Roots Lift Off — Complex Roots Appear",
+          "description": "With $c = 5$, the discriminant becomes $\\Delta = -4 < 0$. The parabola no longer crosses the $x$-axis. The roots have **left the real line** — they now live at $(2, 0, \\pm 1)$ in the complex plane. Rotate the camera to see them.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": 0.2,
+              "max": 3,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -4,
+              "reset": true
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -4,
+              "max": 10,
+              "step": 0.1,
+              "default": 5,
+              "reset": true
+            }
+          ],
+          "camera": {
+            "position": [
+              8,
+              6,
+              10
+            ],
+            "target": [
+              0,
+              1,
+              0
+            ]
+          },
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "vertex-gap",
+              "points": [
+                [
+                  "-b/(2*a)",
+                  "0",
+                  "0"
+                ],
+                [
+                  "-b/(2*a)",
+                  "c - b^2/(4*a)",
+                  "0"
+                ]
+              ],
+              "color": [
+                1,
+                0.3,
+                0.3
+              ],
+              "width": 2,
+              "dash": true,
+              "visibleExpr": "(b^2 - 4*a*c) < 0"
+            }
+          ],
+          "info": [
+            {
+              "id": "complex-info",
+              "content": "$$\\Delta = {{toFixed(b^2 - 4*a*c, 2)}} < 0$$\n\nRoots: ${{toFixed(-b/(2*a), 2)}} \\pm {{toFixed(sqrt(abs(b^2-4*a*c))/(2*abs(a)), 2)}}\\,i$",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "Deeper into the Complex Plane",
+          "description": "Increase $c$ to $6$ — the discriminant drops to $\\Delta = -8$. The vertex gap grows, and the complex roots spread further apart to $(2, 0, \\pm\\sqrt{2})$. The larger the gap between the vertex and the $x$-axis, the further the roots extend into the imaginary dimension.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": 0.2,
+              "max": 3,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -4,
+              "reset": true
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -4,
+              "max": 10,
+              "step": 0.1,
+              "default": 6,
+              "reset": true
+            }
+          ],
+          "info": [
+            {
+              "id": "complex-info",
+              "content": "$$\\Delta = {{toFixed(b^2 - 4*a*c, 2)}}$$\n\nRoots: ${{toFixed(-b/(2*a), 2)}} \\pm {{toFixed(sqrt(abs(b^2-4*a*c))/(2*abs(a)), 2)}}\\,i$\n\nVertex gap: ${{toFixed(c - b^2/(4*a), 2)}}$",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "The Formula Behind It All",
+          "description": "Return to $c = 5$. The quadratic formula with $\\Delta < 0$ yields $x = \\alpha \\pm \\beta i$ where $\\alpha = -b/2a$ and $\\beta = \\sqrt{|\\Delta|}/2a$. Open the **Proof** panel to step through the derivation.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": 0.2,
+              "max": 3,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -4,
+              "reset": true
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -4,
+              "max": 10,
+              "step": 0.1,
+              "default": 5,
+              "reset": true
+            }
+          ],
+          "info": [
+            {
+              "id": "formula-info",
+              "content": "$$x = \\frac{-b}{2a} \\pm \\frac{\\sqrt{|\\Delta|}}{2a}\\,i$$\n\n$\\alpha = {{toFixed(-b/(2*a), 2)}}$, $\\beta = {{toFixed(sqrt(abs(b^2-4*a*c))/(2*abs(a)), 2)}}$\n\nRoots: ${{toFixed(-b/(2*a), 2)}} + {{toFixed(sqrt(abs(b^2-4*a*c))/(2*abs(a)), 2)}}i$ and ${{toFixed(-b/(2*a), 2)}} - {{toFixed(sqrt(abs(b^2-4*a*c))/(2*abs(a)), 2)}}i$",
+              "position": "top-right"
+            }
+          ],
+          "proof": {
+            "id": "complex-roots-derivation",
+            "title": "Complex Roots from the Quadratic Formula",
+            "technique": "direct",
+            "techniqueHint": "This is a direct derivation showing how complex conjugate roots emerge when the discriminant is negative.",
+            "goal": "Derive $x = \\frac{-b}{2a} \\pm \\frac{\\sqrt{|\\Delta|}}{2a}\\,i$ when $\\Delta < 0$",
+            "prompt": "Walk the student through how a negative discriminant produces complex roots. Emphasize that the roots are always conjugate pairs sharing the same real part.",
+            "steps": [
+              {
+                "id": "cr-given",
+                "type": "given",
+                "label": "Quadratic formula with negative discriminant",
+                "math": "x = \\frac{-b \\pm \\sqrt{\\htmlClass{hl-disc}{\\Delta}}}{2a}, \\quad \\htmlClass{hl-neg}{\\Delta = b^2 - 4ac < 0}",
+                "highlights": {
+                  "disc": {
+                    "color": "magenta",
+                    "label": "The discriminant"
+                  },
+                  "neg": {
+                    "color": "red",
+                    "label": "Discriminant is negative"
+                  }
+                },
+                "explanation": "We start from the quadratic formula derived in Scene 1. The key condition is that $\\Delta < 0$, meaning $b^2 - 4ac$ is a negative number.",
+                "sceneStep": 0,
+                "tags": [
+                  "given"
+                ]
+              },
+              {
+                "id": "cr-sqrt-negative",
+                "type": "step",
+                "label": "Square root of a negative number",
+                "math": "\\sqrt{\\Delta} = \\sqrt{-|\\Delta|} = \\htmlClass{hl-imag}{i\\sqrt{|\\Delta|}}",
+                "highlights": {
+                  "imag": {
+                    "color": "cyan",
+                    "label": "Imaginary unit i = √(−1)"
+                  }
+                },
+                "justification": "By definition, $\\sqrt{-k} = i\\sqrt{k}$ for $k > 0$",
+                "explanation": "Since $\\Delta < 0$, we write $\\Delta = -|\\Delta|$ and factor out $\\sqrt{-1} = i$. This is the moment the roots leave the real number line.",
+                "sceneStep": 2,
+                "tags": [
+                  "complex-numbers"
+                ]
+              },
+              {
+                "id": "cr-conclusion",
+                "type": "conclusion",
+                "label": "Complex conjugate roots",
+                "math": "x = \\htmlClass{hl-alpha}{\\underbrace{-\\frac{b}{2a}}_{\\alpha}} \\pm \\htmlClass{hl-beta}{\\underbrace{\\frac{\\sqrt{|\\Delta|}}{2a}}_{\\beta}}\\,i",
+                "highlights": {
+                  "alpha": {
+                    "color": "orange",
+                    "label": "Real part (axis of symmetry)"
+                  },
+                  "beta": {
+                    "color": "magenta",
+                    "label": "Imaginary part magnitude"
+                  }
+                },
+                "justification": "Substitute $i\\sqrt{|\\Delta|}$ for $\\sqrt{\\Delta}$ in the quadratic formula",
+                "explanation": "The two roots are $\\alpha + \\beta i$ and $\\alpha - \\beta i$ — complex conjugates. They share the same real part $\\alpha = -b/2a$ (the axis of symmetry) and have opposite imaginary parts $\\pm\\beta$.",
+                "sceneStep": 4,
+                "tags": [
+                  "result",
+                  "complex-conjugates"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "title": "Conjugate Symmetry & the Vertex Connection",
+      "description": "Prove the Conjugate Root Theorem, explore Vieta's formulas for complex roots, the modulus circle, and the vertex gap connection.",
+      "markdown": "# Conjugate Symmetry & the Vertex Connection\n\nWhen a quadratic $ax^2 + bx + c = 0$ has **no real roots** ($\\Delta < 0$), its roots are a **conjugate pair** of complex numbers:\n\n$$z = \\frac{-b}{2a} \\pm \\frac{\\sqrt{|\\Delta|}}{2a}\\,i$$\n\nThese roots share the same real part $\\alpha = -\\frac{b}{2a}$ and have equal-and-opposite imaginary parts $\\pm\\beta$.\n\n## What You'll Learn\n\n1. **Conjugate Root Theorem** — why complex roots of real polynomials always come in conjugate pairs\n2. **Vieta's Formulas** — $z_1 + z_2 = -\\frac{b}{a}$ and $z_1 \\cdot z_2 = \\frac{c}{a}$ still hold\n3. **The Modulus Circle** — both roots lie on a circle of radius $\\sqrt{c/a}$ centered at the origin\n4. **Vertex Gap Connection** — the imaginary part $\\beta = \\sqrt{g/a}$ where $g$ is the vertex gap above the x-axis\n\n## The 3D View\n\nThe xz-plane is the **complex plane**: the x-axis is the real axis and the z-axis is the imaginary axis. The y-axis remains the function value axis. Complex roots appear as magenta points at $(\\alpha, 0, \\pm\\beta)$, connected by a dashed conjugate link.\n\n## Key Relationships\n\n| Quantity | Formula | Default Value |\n|----------|---------|---------------|\n| Real part $\\alpha$ | $-b/(2a)$ | $2$ |\n| Imaginary part $\\beta$ | $\\sqrt{|\\Delta|}/(2a)$ | $1$ |\n| Modulus $|z|$ | $\\sqrt{c/a}$ | $\\sqrt{5} \\approx 2.236$ |\n| Vertex gap $g$ | $c - b^2/(4a)$ | $1$ |\n| Sum of roots | $-b/a$ | $4$ |\n| Product of roots | $c/a$ | $5$ |\n\n## Try It\n\nAdjust $a$, $b$, $c$ to see how the conjugate pair, modulus circle, and vertex gap all respond together. Keep $\\Delta < 0$ to stay in the complex regime.",
+      "prompt": "Help the student understand the deep connections between conjugate complex roots, Vieta's formulas, the modulus circle, and the vertex gap. When they adjust sliders, explain how all these relationships update simultaneously. Emphasize that the Conjugate Root Theorem is a consequence of real coefficients.",
+      "range": [
+        [
+          -6,
+          6
+        ],
+        [
+          -8,
+          12
+        ],
+        [
+          -4,
+          4
+        ]
+      ],
+      "camera": {
+        "position": [
+          8,
+          6,
+          10
+        ],
+        "target": [
+          0,
+          1,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "3D Overview",
+          "position": [
+            8,
+            6,
+            10
+          ],
+          "target": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "name": "Complex Plane (xz)",
+          "position": [
+            0,
+            12,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Parabola Side (xy)",
+          "position": [
+            0,
+            2,
+            14
+          ],
+          "target": [
+            0,
+            2,
+            0
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -6,
+            6
+          ],
+          "color": [
+            0.5,
+            0.2,
+            0.2
+          ],
+          "label": "Re (x)",
+          "width": 2
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -8,
+            12
+          ],
+          "color": [
+            0.2,
+            0.5,
+            0.2
+          ],
+          "label": "y",
+          "width": 2
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -4,
+            4
+          ],
+          "color": [
+            0.6,
+            0.4,
+            0.9
+          ],
+          "label": "Im (z)",
+          "width": 2
+        },
+        {
+          "type": "grid",
+          "plane": "xy",
+          "color": [
+            0.3,
+            0.3,
+            0.5
+          ],
+          "opacity": 0.06,
+          "divisions": 12
+        },
+        {
+          "type": "grid",
+          "plane": "xz",
+          "color": [
+            0.4,
+            0.3,
+            0.6
+          ],
+          "opacity": 0.06,
+          "divisions": 8
+        }
+      ],
+      "steps": [
+        {
+          "title": "Conjugate Pair Visualization",
+          "description": "The parabola $y = ax^2 + bx + c$ with its vertex and complex conjugate roots in the xz-plane.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "a",
+              "min": 0.2,
+              "max": 3,
+              "step": 0.1,
+              "default": 1
+            },
+            {
+              "id": "b",
+              "label": "b",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -4
+            },
+            {
+              "id": "c",
+              "label": "c",
+              "min": 0.5,
+              "max": 10,
+              "step": 0.1,
+              "default": 5
+            }
+          ],
+          "add": [
+            {
+              "type": "animated_curve",
+              "id": "parabola",
+              "label": "y = ax² + bx + c",
+              "expr": "a * x^2 + b * x + c",
+              "range": [
+                -6,
+                6
+              ],
+              "samples": 200,
+              "color": [
+                0.4,
+                0.7,
+                1
+              ],
+              "width": 3
+            },
+            {
+              "type": "animated_point",
+              "id": "vertex",
+              "label": "Vertex",
+              "position": [
+                "-b / (2*a)",
+                "c - b^2/(4*a)",
+                "0"
+              ],
+              "color": [
+                1,
+                0.8,
+                0.2
+              ],
+              "radius": 0.05
+            },
+            {
+              "type": "animated_point",
+              "id": "complex-root-plus",
+              "label": "z₁ = α + βi",
+              "position": [
+                "-b/(2*a)",
+                "0",
+                "sqrt(abs(b^2 - 4*a*c))/(2*abs(a))"
+              ],
+              "color": [
+                0.8,
+                0.3,
+                1
+              ],
+              "radius": 0.05,
+              "visibleExpr": "(b^2 - 4*a*c) < 0"
+            },
+            {
+              "type": "animated_point",
+              "id": "complex-root-minus",
+              "label": "z₂ = α − βi",
+              "position": [
+                "-b/(2*a)",
+                "0",
+                "-sqrt(abs(b^2 - 4*a*c))/(2*abs(a))"
+              ],
+              "color": [
+                0.8,
+                0.3,
+                1
+              ],
+              "radius": 0.05,
+              "visibleExpr": "(b^2 - 4*a*c) < 0"
+            },
+            {
+              "type": "animated_line",
+              "id": "conjugate-link",
+              "label": "Conjugate pair",
+              "points": [
+                [
+                  "-b/(2*a)",
+                  "0",
+                  "sqrt(abs(b^2 - 4*a*c))/(2*abs(a))"
+                ],
+                [
+                  "-b/(2*a)",
+                  "0",
+                  "-sqrt(abs(b^2 - 4*a*c))/(2*abs(a))"
+                ]
+              ],
+              "color": [
+                0.8,
+                0.3,
+                1
+              ],
+              "width": 2,
+              "dash": true
+            },
+            {
+              "type": "animated_line",
+              "id": "axis-of-symmetry",
+              "label": "x = −b/(2a)",
+              "points": [
+                [
+                  "-b/(2*a)",
+                  "-8",
+                  "0"
+                ],
+                [
+                  "-b/(2*a)",
+                  "12",
+                  "0"
+                ]
+              ],
+              "color": [
+                1,
+                0.6,
+                0.2
+              ],
+              "width": 1,
+              "dash": true
+            }
+          ],
+          "info": [
+            {
+              "id": "roots-info",
+              "content": "**Complex Roots** ($\\Delta < 0$)\n\n$z_1 = {{toFixed(-b/(2*a), 2)}} + {{toFixed(sqrt(abs(b^2 - 4*a*c))/(2*abs(a)), 2)}}\\,i$\n\n$z_2 = {{toFixed(-b/(2*a), 2)}} - {{toFixed(sqrt(abs(b^2 - 4*a*c))/(2*abs(a)), 2)}}\\,i$\n\n$\\Delta = {{toFixed(b^2 - 4*a*c, 2)}}$",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "Vieta's in the Complex Case",
+          "description": "The sum and product of complex conjugate roots still satisfy Vieta's formulas: $z_1 + z_2 = -b/a$ and $z_1 z_2 = c/a$.",
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "origin-to-root-plus",
+              "label": "z₁",
+              "points": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "-b/(2*a)",
+                  "0",
+                  "sqrt(abs(b^2 - 4*a*c))/(2*abs(a))"
+                ]
+              ],
+              "color": [
+                0.6,
+                0.4,
+                0.9
+              ],
+              "width": 2
+            },
+            {
+              "type": "animated_line",
+              "id": "origin-to-root-minus",
+              "label": "z₂",
+              "points": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "-b/(2*a)",
+                  "0",
+                  "-sqrt(abs(b^2 - 4*a*c))/(2*abs(a))"
+                ]
+              ],
+              "color": [
+                0.6,
+                0.4,
+                0.9
+              ],
+              "width": 2
+            },
+            {
+              "type": "animated_point",
+              "id": "origin-marker",
+              "label": "Origin",
+              "position": [
+                "0",
+                "0",
+                "0"
+              ],
+              "color": [
+                1,
+                1,
+                1
+              ],
+              "radius": 0.03
+            }
+          ],
+          "info": [
+            {
+              "id": "vieta-info",
+              "content": "**Vieta's Formulas** (complex case)\n\n$z_1 + z_2 = 2\\alpha = -\\frac{b}{a} = {{toFixed(-b/a, 2)}}$\n\n$z_1 \\cdot z_2 = \\alpha^2 + \\beta^2 = \\frac{c}{a} = {{toFixed(c/a, 2)}}$\n\nThe imaginary parts cancel in the sum, and the product equals the modulus squared.",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "The Modulus Circle",
+          "description": "Both conjugate roots lie on a circle of radius $\\sqrt{c/a}$ centered at the origin in the complex plane.",
+          "add": [
+            {
+              "type": "parametric_curve",
+              "id": "modulus-circle",
+              "x": "sqrt(abs(c/a)) * cos(t)",
+              "y": "0",
+              "z": "sqrt(abs(c/a)) * sin(t)",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 128,
+              "color": "#9966ff",
+              "width": 2,
+              "opacity": 0.7
+            },
+            {
+              "type": "animated_vector",
+              "id": "modulus-vec-plus",
+              "label": "|z| = √(c/a)",
+              "fromExpr": [
+                "0",
+                "0",
+                "0"
+              ],
+              "expr": [
+                "-b/(2*a)",
+                "0",
+                "sqrt(abs(b^2 - 4*a*c))/(2*abs(a))"
+              ],
+              "color": [
+                0.6,
+                0.4,
+                0.9
+              ],
+              "width": 1,
+              "visibleExpr": "(b^2 - 4*a*c) < 0"
+            }
+          ],
+          "info": [
+            {
+              "id": "modulus-info",
+              "content": "**Modulus Circle**\n\n$|z_1| = |z_2| = \\sqrt{\\frac{c}{a}} = {{toFixed(sqrt(abs(c/a)), 3)}}$\n\nBoth roots have the same modulus because $|z \\cdot \\bar{z}| = |z|^2 = \\frac{c}{a}$.\n\n$\\arg(z_1) = \\arctan\\!\\left(\\frac{\\beta}{\\alpha}\\right) = {{toFixed(atan2(sqrt(abs(b^2-4*a*c))/(2*abs(a)), -b/(2*a)) * 180 / pi, 1)}}°$",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "The Vertex Gap Connection",
+          "description": "The vertex gap $g = c - b^2/(4a)$ connects to the imaginary part: $\\beta = \\sqrt{g/a}$.",
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "vertex-gap-line",
+              "label": "Vertex gap g",
+              "points": [
+                [
+                  "-b/(2*a)",
+                  "0",
+                  "0"
+                ],
+                [
+                  "-b/(2*a)",
+                  "c - b^2/(4*a)",
+                  "0"
+                ]
+              ],
+              "color": [
+                1,
+                0.3,
+                0.3
+              ],
+              "width": 2,
+              "dash": true
+            },
+            {
+              "type": "animated_point",
+              "id": "vertex-base",
+              "label": "x-axis at α",
+              "position": [
+                "-b/(2*a)",
+                "0",
+                "0"
+              ],
+              "color": [
+                1,
+                0.3,
+                0.3
+              ],
+              "radius": 0.03
+            }
+          ],
+          "info": [
+            {
+              "id": "gap-info",
+              "content": "**Vertex Gap Connection**\n\nVertex gap: $g = c - \\frac{b^2}{4a} = {{toFixed(c - b^2/(4*a), 3)}}$\n\nImaginary part: $\\beta = \\frac{\\sqrt{4ac - b^2}}{2a} = \\sqrt{\\frac{g}{a}} = {{toFixed(sqrt(abs((c - b^2/(4*a))/a)), 3)}}$\n\nThe height of the vertex above the x-axis directly determines how far the complex roots extend into the imaginary dimension.",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "Proof: Conjugate Root Theorem",
+          "description": "Why complex roots of polynomials with real coefficients always come in conjugate pairs.",
+          "add": [],
+          "info": [
+            {
+              "id": "proof-info",
+              "content": "**Conjugate Root Theorem**\n\nOpen the **Proof** panel to step through the formal proof.\n\nKey insight: conjugation distributes over addition and multiplication, and real numbers are their own conjugates.",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "Free Exploration",
+          "description": "Explore the connections between conjugate roots, the modulus circle, and the vertex gap.",
+          "add": [],
+          "info": [
+            {
+              "id": "explore-info",
+              "content": "**Exploration Suggestions**\n\n1. Increase $c$ while keeping $a$ and $b$ fixed — watch the vertex rise and the conjugate roots spread apart\n2. Try $a = 1, b = 0, c = 4$ — pure imaginary roots at $\\pm 2i$, modulus circle radius $= 2$\n3. Try $a = 1, b = -6, c = 13$ — roots at $3 \\pm 2i$, modulus $= \\sqrt{13}$\n4. Decrease $c$ toward $b^2/(4a)$ — watch the roots approach the real axis as $\\Delta \\to 0$\n5. Notice: the modulus circle always passes through both roots regardless of $b$",
+              "position": "top-right"
+            }
+          ]
+        }
+      ],
+      "proof": {
+        "id": "conjugate-root-theorem",
+        "title": "Conjugate Root Theorem",
+        "technique": "direct",
+        "techniqueHint": "This is a direct proof using the properties of complex conjugation and the fact that real numbers equal their own conjugates.",
+        "goal": "Prove that if $f(z) = 0$ for polynomial $f$ with real coefficients, then $f(\\bar{z}) = 0$",
+        "prompt": "Walk the student through the proof of the Conjugate Root Theorem. Emphasize why having real coefficients is essential — the proof breaks down if coefficients are complex. Connect each step to the visualization: the conjugate pair in the xz-plane.",
+        "steps": [
+          {
+            "id": "crt-given",
+            "type": "given",
+            "label": "Quadratic with real coefficients",
+            "math": "f(z) = \\htmlClass{hl-real}{a}z^2 + \\htmlClass{hl-real}{b}z + \\htmlClass{hl-real}{c} = 0, \\quad a,b,c \\in \\mathbb{R}",
+            "highlights": {
+              "real": {
+                "color": "green",
+                "label": "Real coefficients"
+              }
+            },
+            "explanation": "We begin with a quadratic equation whose coefficients $a$, $b$, $c$ are all real numbers, and $z$ is a complex root satisfying $f(z) = 0$.",
+            "prompt": "Point out the parabola — its shape is determined entirely by real coefficients a, b, c. The complex roots live in the xz-plane.",
+            "sceneStep": 0,
+            "tags": [
+              "given",
+              "real-coefficients"
+            ]
+          },
+          {
+            "id": "crt-conjugate-both-sides",
+            "type": "step",
+            "label": "Conjugate both sides",
+            "math": "\\htmlClass{hl-conj}{\\overline{f(z)}} = \\overline{az^2 + bz + c} = \\htmlClass{hl-conj}{\\overline{0}} = 0",
+            "highlights": {
+              "conj": {
+                "color": "magenta",
+                "label": "Complex conjugation applied"
+              }
+            },
+            "justification": "Apply complex conjugation to both sides of $f(z) = 0$; the conjugate of $0$ is $0$",
+            "explanation": "Since $f(z) = 0$, taking the conjugate of both sides preserves the equality. The right side remains $0$ because $\\bar{0} = 0$.",
+            "sceneStep": 0,
+            "tags": [
+              "conjugation"
+            ]
+          },
+          {
+            "id": "crt-distribute",
+            "type": "step",
+            "label": "Distribute conjugation",
+            "math": "\\htmlClass{hl-conj}{\\overline{a}\\cdot\\overline{z}^2} + \\htmlClass{hl-conj}{\\overline{b}\\cdot\\overline{z}} + \\htmlClass{hl-conj}{\\overline{c}} = 0",
+            "highlights": {
+              "conj": {
+                "color": "magenta",
+                "label": "Conjugation distributes over +, \\times"
+              }
+            },
+            "justification": "Conjugation distributes over addition and multiplication: $\\overline{\\alpha + \\beta} = \\bar{\\alpha} + \\bar{\\beta}$ and $\\overline{\\alpha\\beta} = \\bar{\\alpha}\\bar{\\beta}$",
+            "explanation": "The key algebraic property: complex conjugation is a ring homomorphism. It distributes over sums and products, giving us $\\bar{a}\\bar{z}^2 + \\bar{b}\\bar{z} + \\bar{c} = 0$.",
+            "sceneStep": 0,
+            "tags": [
+              "conjugation",
+              "distributive"
+            ]
+          },
+          {
+            "id": "crt-real-identity",
+            "type": "step",
+            "label": "Apply real coefficient identity",
+            "math": "\\htmlClass{hl-id}{\\bar{a} = a}, \\; \\htmlClass{hl-id}{\\bar{b} = b}, \\; \\htmlClass{hl-id}{\\bar{c} = c} \\;\\Rightarrow\\; a\\bar{z}^2 + b\\bar{z} + c = 0",
+            "highlights": {
+              "id": {
+                "color": "green",
+                "label": "Real numbers equal their own conjugate"
+              }
+            },
+            "justification": "For any real number $r$, $\\bar{r} = r$ since the imaginary part is zero",
+            "explanation": "This is where the real coefficients assumption is crucial. Because $a$, $b$, $c$ are real, they survive conjugation unchanged. The conjugate bars disappear from the coefficients but remain on $z$.",
+            "prompt": "Emphasize that this step fails if coefficients are complex — that's why the theorem requires real coefficients.",
+            "sceneStep": 4,
+            "tags": [
+              "real-coefficients",
+              "key-step"
+            ]
+          },
+          {
+            "id": "crt-conclusion",
+            "type": "conclusion",
+            "label": "Conjugate is also a root",
+            "math": "f(\\htmlClass{hl-result}{\\bar{z}}) = a\\bar{z}^2 + b\\bar{z} + c = 0 \\;\\Rightarrow\\; \\htmlClass{hl-result}{\\bar{z} \\text{ is a root}}",
+            "highlights": {
+              "result": {
+                "color": "cyan",
+                "label": "Conjugate root established"
+              }
+            },
+            "justification": "The expression $a\\bar{z}^2 + b\\bar{z} + c$ is exactly $f(\\bar{z})$, which equals $0$",
+            "explanation": "The left side is precisely $f(\\bar{z})$, which means $\\bar{z}$ satisfies the same equation. Therefore, whenever $z$ is a root of a polynomial with real coefficients, so is $\\bar{z}$. In the visualization, this is why complex roots always appear as mirror-image pairs across the real axis.",
+            "sceneStep": 4,
+            "tags": [
+              "conclusion",
+              "conjugate-root-theorem"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "The Fundamental Theorem — Every Quadratic Has Two Roots",
+      "description": "The complete root locus: watch roots move continuously from real through repeated to complex conjugate as the discriminant sweeps through all regimes.",
+      "markdown": "# The Fundamental Theorem of Algebra\n\nThe **Fundamental Theorem of Algebra** guarantees that every polynomial of degree $n$ has exactly $n$ roots in $\\mathbb{C}$ (counted with multiplicity).\n\nFor our quadratic $ax^2 + bx + c = 0$, this means: **always exactly two roots**.\n\n## Three Regimes, One Continuous Story\n\n| $\\Delta$ | Regime | Roots | Factoring over $\\mathbb{C}$ |\n|----------|--------|-------|----------------------------|\n| $> 0$ | Two real | $r_1, r_2 \\in \\mathbb{R}$ | $a(x - r_1)(x - r_2)$ |\n| $= 0$ | Repeated | $r \\in \\mathbb{R}$ | $a(x - r)^2$ |\n| $< 0$ | Complex conjugate | $\\alpha \\pm \\beta i$ | $a(x - (\\alpha+\\beta i))(x - (\\alpha-\\beta i))$ |\n\nIn all three cases, the quadratic factors completely over $\\mathbb{C}$.\n\n## The Root Locus\n\nFix $a = 1$, $b = -4$ and sweep $c$ from $-3$ to $8$:\n\n- **$c < 4$** ($\\Delta > 0$): Two real roots at $2 \\pm \\sqrt{4-c}$ slide toward each other along the real axis\n- **$c = 4$** ($\\Delta = 0$): Roots merge at $x = 2$ (the vertex)\n- **$c > 4$** ($\\Delta < 0$): Roots split into the complex plane at $2 \\pm i\\sqrt{c-4}$\n\nThe transition is **continuous** — roots never appear or disappear, they just change character.\n\n## Factoring over $\\mathbb{R}$ vs $\\mathbb{C}$\n\nOver $\\mathbb{R}$: $x^2 - 4x + 5$ is **irreducible** — it cannot be factored with real coefficients.\n\nOver $\\mathbb{C}$: $x^2 - 4x + 5 = (x - (2+i))(x - (2-i))$ — it factors completely!\n\nThe Fundamental Theorem says this always works over $\\mathbb{C}$.",
+      "prompt": "This is the synthesis scene. Keep the tone confirmatory — students have seen all the pieces in Scenes 0-3. During the root locus animation, narrate the continuous transition. Emphasize that roots never vanish — they change character. In free exploration, suggest specific slider values.",
+      "range": [
+        [
+          -6,
+          6
+        ],
+        [
+          -8,
+          12
+        ],
+        [
+          -4,
+          4
+        ]
+      ],
+      "camera": {
+        "position": [
+          8,
+          6,
+          10
+        ],
+        "target": [
+          0,
+          1,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "3D View",
+          "position": [
+            8,
+            6,
+            10
+          ],
+          "target": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "name": "Top (Root Locus)",
+          "position": [
+            0,
+            20,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Front",
+          "position": [
+            0,
+            2,
+            14
+          ],
+          "target": [
+            0,
+            2,
+            0
+          ]
+        },
+        {
+          "name": "Side (Im axis)",
+          "position": [
+            14,
+            2,
+            0
+          ],
+          "target": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -6,
+            6
+          ],
+          "color": [
+            0.5,
+            0.2,
+            0.2
+          ],
+          "label": "Re(x)",
+          "width": 2
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -8,
+            12
+          ],
+          "color": [
+            0.2,
+            0.5,
+            0.2
+          ],
+          "label": "y",
+          "width": 2
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -4,
+            4
+          ],
+          "color": [
+            0.6,
+            0.4,
+            0.9
+          ],
+          "label": "Im(x)",
+          "width": 2
+        },
+        {
+          "type": "grid",
+          "plane": "xy",
+          "color": [
+            0.3,
+            0.3,
+            0.5
+          ],
+          "opacity": 0.08,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "Setting Up the Sweep",
+          "description": "Fix $a = 1$, $b = -4$ and vary $c$. At each value, $x^2 - 4x + c = 0$ has exactly two roots — sometimes real, sometimes complex. The green dots are real roots; the magenta dots are complex roots.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": 0.2,
+              "max": 3,
+              "step": 0.1,
+              "default": 1
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -4
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -3,
+              "max": 8,
+              "step": 0.1,
+              "default": 3
+            }
+          ],
+          "add": [
+            {
+              "type": "animated_curve",
+              "id": "parabola",
+              "expr": "a * x^2 + b * x + c",
+              "range": [
+                -6,
+                6
+              ],
+              "samples": 200,
+              "color": [
+                0.4,
+                0.7,
+                1
+              ],
+              "width": 3
+            },
+            {
+              "type": "animated_point",
+              "id": "vertex",
+              "label": "Vertex",
+              "position": [
+                "-b / (2*a)",
+                "c - b^2/(4*a)",
+                "0"
+              ],
+              "color": [
+                1,
+                0.8,
+                0.2
+              ],
+              "radius": 0.04
+            },
+            {
+              "type": "animated_point",
+              "id": "real-root1",
+              "label": "$x_1$",
+              "position": [
+                "(-b + sqrt(b^2 - 4*a*c)) / (2*a)",
+                "0",
+                "0"
+              ],
+              "color": [
+                0.3,
+                1,
+                0.5
+              ],
+              "radius": 0.04,
+              "visibleExpr": "(b^2 - 4*a*c) >= 0"
+            },
+            {
+              "type": "animated_point",
+              "id": "real-root2",
+              "label": "$x_2$",
+              "position": [
+                "(-b - sqrt(b^2 - 4*a*c)) / (2*a)",
+                "0",
+                "0"
+              ],
+              "color": [
+                0.3,
+                1,
+                0.5
+              ],
+              "radius": 0.04,
+              "visibleExpr": "(b^2 - 4*a*c) >= 0"
+            },
+            {
+              "type": "animated_point",
+              "id": "complex-root-plus",
+              "label": "$\\alpha + \\beta i$",
+              "position": [
+                "-b/(2*a)",
+                "0",
+                "sqrt(abs(b^2 - 4*a*c))/(2*abs(a))"
+              ],
+              "color": [
+                0.8,
+                0.3,
+                1
+              ],
+              "radius": 0.04,
+              "visibleExpr": "(b^2 - 4*a*c) < 0"
+            },
+            {
+              "type": "animated_point",
+              "id": "complex-root-minus",
+              "label": "$\\alpha - \\beta i$",
+              "position": [
+                "-b/(2*a)",
+                "0",
+                "-sqrt(abs(b^2 - 4*a*c))/(2*abs(a))"
+              ],
+              "color": [
+                0.8,
+                0.3,
+                1
+              ],
+              "radius": 0.04,
+              "visibleExpr": "(b^2 - 4*a*c) < 0"
+            },
+            {
+              "type": "animated_line",
+              "id": "conjugate-link",
+              "points": [
+                [
+                  "-b/(2*a)",
+                  "0",
+                  "sqrt(abs(b^2 - 4*a*c))/(2*abs(a))"
+                ],
+                [
+                  "-b/(2*a)",
+                  "0",
+                  "-sqrt(abs(b^2 - 4*a*c))/(2*abs(a))"
+                ]
+              ],
+              "color": [
+                0.8,
+                0.3,
+                1
+              ],
+              "width": 2,
+              "dash": true,
+              "visibleExpr": "(b^2 - 4*a*c) < 0"
+            }
+          ],
+          "info": [
+            {
+              "id": "sweep-info",
+              "content": "$$\\Delta = b^2 - 4ac = {{toFixed(b^2 - 4*a*c, 2)}}$$\n\nRoots: {{(b^2-4*a*c) >= 0 ? 2 : 0}} real, {{(b^2-4*a*c) < 0 ? 2 : 0}} complex\n\nDrag $c$ to sweep through all regimes.",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "The Root Locus in Motion",
+          "description": "Watch the roots trace their paths as $c$ sweeps. When $c < 4$, two green roots slide along the $x$-axis toward each other. At $c = 4$ they meet at $x = 2$. When $c > 4$, they split vertically into conjugate pairs. The roots **never vanish** — they just change character.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": 0.2,
+              "max": 3,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -4,
+              "reset": true
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -3,
+              "max": 8,
+              "step": 0.1,
+              "default": -3,
+              "reset": true,
+              "animate": true,
+              "duration": 8000
+            }
+          ],
+          "add": [
+            {
+              "type": "parametric_curve",
+              "id": "locus-real-1",
+              "x": "2 + sqrt(max(0, 4 - t))",
+              "y": "0",
+              "z": "0",
+              "range": [
+                -3,
+                4
+              ],
+              "steps": 200,
+              "color": [
+                0.3,
+                1,
+                0.5
+              ],
+              "width": 2,
+              "opacity": 0.5
+            },
+            {
+              "type": "parametric_curve",
+              "id": "locus-real-2",
+              "x": "2 - sqrt(max(0, 4 - t))",
+              "y": "0",
+              "z": "0",
+              "range": [
+                -3,
+                4
+              ],
+              "steps": 200,
+              "color": [
+                0.3,
+                1,
+                0.5
+              ],
+              "width": 2,
+              "opacity": 0.5
+            },
+            {
+              "type": "parametric_curve",
+              "id": "locus-complex-plus",
+              "x": "2",
+              "y": "0",
+              "z": "sqrt(max(0, t - 4))",
+              "range": [
+                4,
+                8
+              ],
+              "steps": 200,
+              "color": [
+                0.8,
+                0.3,
+                1
+              ],
+              "width": 2,
+              "opacity": 0.5
+            },
+            {
+              "type": "parametric_curve",
+              "id": "locus-complex-minus",
+              "x": "2",
+              "y": "0",
+              "z": "-sqrt(max(0, t - 4))",
+              "range": [
+                4,
+                8
+              ],
+              "steps": 200,
+              "color": [
+                0.8,
+                0.3,
+                1
+              ],
+              "width": 2,
+              "opacity": 0.5
+            },
+            {
+              "type": "point",
+              "id": "junction-point",
+              "label": "Junction ($\\Delta = 0$)",
+              "position": [
+                2,
+                0,
+                0
+              ],
+              "color": [
+                1,
+                1,
+                0.3
+              ],
+              "size": 10
+            }
+          ],
+          "info": [
+            {
+              "id": "locus-info",
+              "content": "**Root Locus** ($a=1$, $b=-4$, $c$ sweeping)\n\nGreen: real root paths $2 \\pm \\sqrt{4-c}$\nMagenta: complex root paths $2 \\pm i\\sqrt{c-4}$\nYellow: junction at $c = 4$ ($\\Delta = 0$)\n\n$c = {{toFixed(c, 1)}}$, $\\Delta = {{toFixed(b^2-4*a*c, 1)}}$",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "Always Two Roots — The Factored Form",
+          "description": "Over $\\mathbb{R}$, $x^2 - 4x + 5$ is irreducible. Over $\\mathbb{C}$, it factors as $(x - (2+i))(x - (2-i))$. The Fundamental Theorem guarantees this factoring always works.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": 0.2,
+              "max": 3,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -4,
+              "reset": true
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -3,
+              "max": 8,
+              "step": 0.1,
+              "default": 5,
+              "reset": true
+            }
+          ],
+          "info": [
+            {
+              "id": "factored-info",
+              "content": "**Factoring over $\\mathbb{C}$**\n\n$$ax^2 + bx + c = a(x - z_1)(x - z_2)$$\n\n$z_1 = {{toFixed(-b/(2*a), 2)}} + {{toFixed((b^2-4*a*c) >= 0 ? sqrt(b^2-4*a*c)/(2*a) : sqrt(abs(b^2-4*a*c))/(2*abs(a)), 2)}}{{(b^2-4*a*c) >= 0 ? \"\" : \"i\"}}$\n\n$z_2 = {{toFixed(-b/(2*a), 2)}} - {{toFixed((b^2-4*a*c) >= 0 ? sqrt(b^2-4*a*c)/(2*a) : sqrt(abs(b^2-4*a*c))/(2*abs(a)), 2)}}{{(b^2-4*a*c) >= 0 ? \"\" : \"i\"}}$\n\nVieta: $z_1 + z_2 = {{toFixed(-b/a, 2)}}$, $z_1 z_2 = {{toFixed(c/a, 2)}}$",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "Proof: FTA for Degree 2",
+          "description": "The Fundamental Theorem of Algebra (degree 2): every quadratic $ax^2 + bx + c$ with $a \\neq 0$ factors completely over $\\mathbb{C}$ as $a(x - z_1)(x - z_2)$. Open the **Proof** panel for the constructive proof.",
+          "info": [
+            {
+              "id": "fta-info",
+              "content": "**Fundamental Theorem of Algebra** (degree 2)\n\nEvery quadratic has exactly 2 roots in $\\mathbb{C}$.\n\nOpen the Proof panel for the constructive proof.",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "The Complete Picture — Free Exploration",
+          "description": "You've seen the full story: the quadratic formula always gives two roots in $\\mathbb{C}$. Adjust all three sliders and explore freely. Try $a = -1$ to flip the parabola. Try $b = 0$ for symmetric roots. Watch the root locus reshape.",
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": -4,
+              "reset": true
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -8,
+              "max": 8,
+              "step": 0.1,
+              "default": 5,
+              "reset": true
+            }
+          ],
+          "info": [
+            {
+              "id": "explore-info",
+              "content": "**Exploration Suggestions**\n\n1. Try $a = -1$, $b = -4$, $c = -5$ — inverted parabola with complex roots\n2. Try $b = 0$, $c = 4$ — roots at $\\pm 2i$, symmetric about origin\n3. Try $c = -8$ — large $\\Delta$, roots spread far on the real axis\n4. Try $a = 2$ — how does doubling $a$ affect the root positions?\n5. Sweep $c$ slowly and watch the continuous transition",
+              "position": "top-right"
+            }
+          ]
+        }
+      ],
+      "proof": {
+        "id": "fta-degree-2",
+        "title": "Fundamental Theorem of Algebra (Degree 2)",
+        "technique": "construction",
+        "techniqueHint": "This is a constructive proof — we explicitly build the two roots using the quadratic formula and verify the factoring using Vieta's formulas.",
+        "goal": "Prove that every quadratic $ax^2+bx+c$ (with $a \\neq 0$) has exactly two roots in $\\mathbb{C}$ and factors as $a(x-z_1)(x-z_2)$",
+        "prompt": "This is the synthesis proof. The student has seen all the pieces — the quadratic formula, complex roots, Vieta's formulas. Frame this as a confirmation, not a new discovery. Emphasize that the construction works in all three cases.",
+        "steps": [
+          {
+            "id": "fta-given",
+            "type": "given",
+            "label": "General quadratic",
+            "math": "f(x) = \\htmlClass{hl-poly}{ax^2 + bx + c}, \\quad \\htmlClass{hl-cond}{a \\neq 0}",
+            "highlights": {
+              "poly": {
+                "color": "cyan",
+                "label": "Quadratic polynomial"
+              },
+              "cond": {
+                "color": "yellow",
+                "label": "Leading coefficient nonzero"
+              }
+            },
+            "explanation": "We start with any quadratic polynomial with $a \\neq 0$. The coefficients $a, b, c$ can be any real (or complex) numbers.",
+            "sceneStep": 0,
+            "tags": [
+              "given"
+            ]
+          },
+          {
+            "id": "fta-construct",
+            "type": "step",
+            "label": "Construct roots via the quadratic formula",
+            "math": "z_{1,2} = \\frac{-b \\pm \\htmlClass{hl-sqrt}{\\sqrt{b^2 - 4ac}}}{2a} \\in \\htmlClass{hl-complex}{\\mathbb{C}}",
+            "highlights": {
+              "sqrt": {
+                "color": "magenta",
+                "label": "Square root always exists in ℂ"
+              },
+              "complex": {
+                "color": "green",
+                "label": "Roots guaranteed to be in ℂ"
+              }
+            },
+            "justification": "The quadratic formula produces values in $\\mathbb{C}$ for any discriminant: $\\sqrt{\\Delta} \\in \\mathbb{R}$ if $\\Delta \\geq 0$, $\\sqrt{\\Delta} = i\\sqrt{|\\Delta|}$ if $\\Delta < 0$",
+            "explanation": "The key insight: the square root of any complex number always exists in $\\mathbb{C}$. Whether $\\Delta$ is positive, zero, or negative, we can always compute $z_1$ and $z_2$.",
+            "sceneStep": 0,
+            "tags": [
+              "construction",
+              "quadratic-formula"
+            ]
+          },
+          {
+            "id": "fta-verify",
+            "type": "step",
+            "label": "Verify the factoring via Vieta's",
+            "math": "a(x - z_1)(x - z_2) = a\\!\\left[x^2 - \\htmlClass{hl-sum}{(z_1+z_2)}x + \\htmlClass{hl-prod}{z_1 z_2}\\right] = ax^2 + bx + c",
+            "highlights": {
+              "sum": {
+                "color": "green",
+                "label": "z₁+z₂ = −b/a (Vieta's sum)"
+              },
+              "prod": {
+                "color": "green",
+                "label": "z₁z₂ = c/a (Vieta's product)"
+              }
+            },
+            "justification": "By Vieta's formulas: $z_1 + z_2 = -b/a$ and $z_1 z_2 = c/a$, so $a[x^2 + (b/a)x + c/a] = ax^2 + bx + c$",
+            "explanation": "Expanding $a(x - z_1)(x - z_2)$ and using Vieta's formulas confirms that we recover the original polynomial exactly. This works in all three cases: two real roots, one repeated root, or complex conjugate pair.",
+            "sceneStep": 2,
+            "tags": [
+              "verification",
+              "vieta"
+            ]
+          },
+          {
+            "id": "fta-conclusion",
+            "type": "conclusion",
+            "label": "Every quadratic factors completely over ℂ",
+            "math": "\\htmlClass{hl-result}{ax^2 + bx + c = a(x - z_1)(x - z_2)}, \\quad z_1, z_2 \\in \\mathbb{C}",
+            "highlights": {
+              "result": {
+                "color": "cyan",
+                "label": "Complete factoring over ℂ — the FTA for degree 2"
+              }
+            },
+            "justification": "The quadratic formula constructs roots and Vieta's formulas verify the factoring",
+            "explanation": "Every quadratic polynomial factors completely over $\\mathbb{C}$. There are always exactly two roots (counted with multiplicity). This is the Fundamental Theorem of Algebra for degree 2 — and the same principle extends to polynomials of any degree.",
+            "sceneStep": 3,
+            "tags": [
+              "result",
+              "fundamental-theorem"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "title": "The Saddle Beneath the Parabola",
+      "description": "Discover that the familiar parabola is a single slice of a saddle-shaped surface $\\text{Re}(f(z))$ over the complex input plane — and see where complex roots live on the saddle.",
+      "markdown": "# The Saddle Beneath the Parabola\n\nEvery quadratic $f(z) = az^2 + bz + c$ extends naturally to complex inputs $z = u + iv$. The **real part** of $f(z)$ is:\n\n$$\\text{Re}(f(u+iv)) = a(u^2 - v^2) + bu + c$$\n\nThis is a **hyperbolic paraboloid** — a saddle surface.\n\n## Why a Saddle?\n\n$\\text{Re}(f)$ is a **harmonic function**: $\\nabla^2 \\text{Re}(f) = 2a + (-2a) = 0$. Harmonic functions cannot have local minima or maxima — only saddle points. This is the geometric reason the quadratic formula *always* produces two roots.\n\n## The Parabola Is a Slice\n\nSetting $v = 0$ (restricting to real inputs):\n$$\\text{Re}(f(u + 0i)) = au^2 + bu + c$$\n\nThis is the parabola you know from Scenes 0–1. It lives along the $v = 0$ ridge of the saddle.\n\n## Where Are the Roots?\n\n$f(z) = 0$ requires **both** $\\text{Re}(f) = 0$ and $\\text{Im}(f) = 0$.\n\n$\\text{Im}(f(u+iv)) = v(2au + b)$, which vanishes when $v = 0$ (real axis) or $u = -b/(2a)$.\n\n- **$\\Delta > 0$**: Saddle crosses zero on the real axis → two green real roots\n- **$\\Delta = 0$**: Saddle is tangent to the zero-plane → one repeated root\n- **$\\Delta < 0$**: Saddle crosses zero off the real axis → two magenta complex conjugate roots at $u = -b/(2a)$, $v = \\pm\\sqrt{|\\Delta|}/(2|a|)$\n\n## The Saddle Point\n\nThe saddle point sits at $(u, v) = (-b/(2a),\\, 0)$ with height $c - b^2/(4a) = -\\Delta/(4a)$. This is the vertex of the parabola, reinterpreted as the apex of the saddle.\n\n## Try It\n\nAdjust sliders to deform the saddle. Watch roots transition between real and complex as the discriminant changes sign.",
+      "prompt": "Help the student understand the saddle surface Re(f(z)). Key teaching points: (1) the parabola is the v=0 slice of this larger surface, (2) the saddle shape is mandatory because Re(f) is harmonic, (3) complex roots sit where the saddle crosses zero off the real axis. Color conventions: blue surface/parabola (#4488ff), green real roots (#44cc44), magenta complex roots (#ff44ff), orange saddle point (#ffaa00).",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -6,
+          12
+        ],
+        [
+          -4,
+          4
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          2,
+          14
+        ],
+        "target": [
+          0,
+          2,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Parabola View",
+          "position": [
+            0,
+            2,
+            14
+          ],
+          "target": [
+            0,
+            2,
+            0
+          ],
+          "description": "Standard 2D front view showing only the familiar parabola"
+        },
+        {
+          "name": "Saddle View",
+          "position": [
+            8,
+            6,
+            10
+          ],
+          "target": [
+            0,
+            2,
+            0
+          ],
+          "description": "3D perspective revealing the full saddle surface"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            18,
+            0.01
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Bird's-eye view of the complex input plane showing root positions"
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -5,
+            5
+          ],
+          "color": [
+            0.5,
+            0.2,
+            0.2
+          ],
+          "width": 2,
+          "label": "x"
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -6,
+            12
+          ],
+          "color": [
+            0.2,
+            0.5,
+            0.2
+          ],
+          "width": 2,
+          "label": "f(x)"
+        },
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -5,
+            5
+          ],
+          "color": [
+            0.3,
+            0.3,
+            0.5
+          ],
+          "opacity": 0.1,
+          "divisions": 10
+        }
+      ],
+      "steps": [
+        {
+          "title": "The Parabola You Know",
+          "description": "We begin with the familiar parabola $f(x) = x^2 + 1$. It sits entirely above the $x$-axis — no real roots. But the Fundamental Theorem of Algebra promises two roots. Where are they hiding?",
+          "add": [
+            {
+              "id": "static-parabola",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "t^2 + 1",
+              "z": "0",
+              "range": [
+                -4,
+                4
+              ],
+              "samples": 200,
+              "color": "#4488ff",
+              "width": 3
+            }
+          ],
+          "camera": {
+            "position": [
+              0,
+              2,
+              14
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        },
+        {
+          "title": "Extending to Complex Inputs",
+          "description": "What if the input could be a complex number $z = u + iv$? The $u$-axis is the real axis you know. A new $v$-axis extends into the imaginary direction. The parabola lives along the $v = 0$ line.",
+          "add": [
+            {
+              "id": "complex-input-grid",
+              "type": "grid",
+              "plane": "xz",
+              "range": [
+                -4,
+                4
+              ],
+              "color": [
+                0.5,
+                0.5,
+                0.5
+              ],
+              "opacity": 0.12,
+              "divisions": 8
+            },
+            {
+              "id": "v-axis",
+              "type": "axis",
+              "axis": "z",
+              "range": [
+                -4,
+                4
+              ],
+              "color": [
+                0.2,
+                0.2,
+                0.5
+              ],
+              "width": 2,
+              "label": "v = Im(z)"
+            },
+            {
+              "id": "u-label",
+              "type": "text",
+              "text": "$u = \\text{Re}(z)$",
+              "position": [
+                5.3,
+                0,
+                0
+              ],
+              "color": "#884444"
+            },
+            {
+              "id": "refz-label",
+              "type": "text",
+              "text": "$\\text{Re}(f(z))$",
+              "position": [
+                0,
+                12.5,
+                0
+              ],
+              "color": "#448844"
+            }
+          ],
+          "camera": {
+            "position": [
+              0,
+              2,
+              14
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        },
+        {
+          "title": "The Saddle Reveals Itself",
+          "description": "The surface $\\text{Re}(f(z)) = a(u^2 - v^2) + bu + c$ is a **saddle** — it curves up along $u$ (like the parabola) but down along $v$. The blue parabola is just the $v = 0$ slice of this surface.",
+          "remove": [
+            {
+              "id": "static-parabola"
+            }
+          ],
+          "add": [
+            {
+              "id": "saddle-surface",
+              "type": "parametric_surface",
+              "x": "u",
+              "y": "a * (u^2 - v^2) + b * u + c",
+              "z": "v",
+              "uRange": [
+                -4,
+                4
+              ],
+              "vRange": [
+                -3,
+                3
+              ],
+              "uSamples": 64,
+              "vSamples": 64,
+              "color": "#4488ff",
+              "opacity": 0.3
+            },
+            {
+              "id": "dynamic-parabola",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "a * t^2 + b * t + c",
+              "z": "0",
+              "range": [
+                -4,
+                4
+              ],
+              "samples": 200,
+              "color": "#4488ff",
+              "width": 4
+            },
+            {
+              "id": "saddle-point",
+              "type": "animated_point",
+              "expr": [
+                "-b / (2 * a)",
+                "c - b^2 / (4 * a)",
+                "0"
+              ],
+              "color": "#ffaa00",
+              "size": 8,
+              "label": "$\\text{Saddle point}$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": 0.2,
+              "max": 3,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -6,
+              "max": 6,
+              "step": 0.1,
+              "default": 0,
+              "reset": true
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -5,
+              "max": 5,
+              "step": 0.1,
+              "default": 1,
+              "reset": true
+            }
+          ],
+          "info": [
+            {
+              "id": "saddle-info",
+              "content": "$$\\text{Re}(f(z)) = a(u^2 - v^2) + bu + c$$\n\nSaddle height: ${{toFixed(c - b^2 / (4*a), 2)}}$\n\n$\\Delta = {{toFixed(b^2 - 4*a*c, 2)}}$"
+            }
+          ],
+          "camera": {
+            "position": [
+              8,
+              6,
+              10
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        },
+        {
+          "title": "The Zero-Plane",
+          "description": "A translucent gray plane appears at $\\text{Re}(f) = 0$. Where the saddle surface passes through this plane, the real part vanishes — but a true root requires **both** real and imaginary parts to be zero.",
+          "add": [
+            {
+              "id": "zero-plane",
+              "type": "grid",
+              "plane": "xz",
+              "range": [
+                -4,
+                4
+              ],
+              "color": [
+                0.6,
+                0.6,
+                0.6
+              ],
+              "opacity": 0.15,
+              "divisions": 8
+            },
+            {
+              "id": "zero-plane-label",
+              "type": "text",
+              "text": "$\\text{Re}(f) = 0$",
+              "position": [
+                4.5,
+                0.3,
+                3
+              ],
+              "color": "#999999"
+            }
+          ],
+          "camera": {
+            "position": [
+              8,
+              6,
+              10
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        },
+        {
+          "title": "Roots on the Saddle",
+          "description": "The roots of $f(z) = 0$ sit where $\\text{Re}(f) = 0$ **and** $\\text{Im}(f) = 0$ simultaneously. With $\\Delta < 0$, the magenta complex conjugate roots sit symmetrically above and below the real axis on the saddle.",
+          "add": [
+            {
+              "id": "complex-root-1",
+              "type": "animated_point",
+              "expr": [
+                "-b / (2 * a)",
+                "0",
+                "sqrt(abs(b^2 - 4 * a * c)) / (2 * abs(a))"
+              ],
+              "color": "#ff44ff",
+              "size": 10,
+              "label": "$z_1$",
+              "visibleExpr": "(b^2 - 4 * a * c) < 0"
+            },
+            {
+              "id": "complex-root-2",
+              "type": "animated_point",
+              "expr": [
+                "-b / (2 * a)",
+                "0",
+                "-sqrt(abs(b^2 - 4 * a * c)) / (2 * abs(a))"
+              ],
+              "color": "#ff44ff",
+              "size": 10,
+              "label": "$\\bar{z}_1$",
+              "visibleExpr": "(b^2 - 4 * a * c) < 0"
+            },
+            {
+              "id": "real-root-1",
+              "type": "animated_point",
+              "expr": [
+                "(-b + sqrt(abs(b^2 - 4 * a * c))) / (2 * a)",
+                "0",
+                "0"
+              ],
+              "color": "#44cc44",
+              "size": 10,
+              "label": "$x_1$",
+              "visibleExpr": "(b^2 - 4 * a * c) >= 0"
+            },
+            {
+              "id": "real-root-2",
+              "type": "animated_point",
+              "expr": [
+                "(-b - sqrt(abs(b^2 - 4 * a * c))) / (2 * a)",
+                "0",
+                "0"
+              ],
+              "color": "#44cc44",
+              "size": 10,
+              "label": "$x_2$",
+              "visibleExpr": "(b^2 - 4 * a * c) > 0"
+            },
+            {
+              "id": "conjugate-link",
+              "type": "animated_line",
+              "points": [
+                [
+                  "-b / (2 * a)",
+                  "0",
+                  "sqrt(abs(b^2 - 4 * a * c)) / (2 * abs(a))"
+                ],
+                [
+                  "-b / (2 * a)",
+                  "0",
+                  "-sqrt(abs(b^2 - 4 * a * c)) / (2 * abs(a))"
+                ]
+              ],
+              "color": "#ff44ff",
+              "width": 1,
+              "opacity": 0.5,
+              "visibleExpr": "(b^2 - 4 * a * c) < 0"
+            }
+          ],
+          "info": [
+            {
+              "id": "delta-info",
+              "content": "$\\Delta = b^2 - 4ac = {{toFixed(b^2 - 4*a*c, 2)}}$\n\n${{(b^2 - 4*a*c) >= 0 ? \"Real roots (green)\" : \"Complex roots (magenta)\"}}$"
+            }
+          ],
+          "camera": {
+            "position": [
+              8,
+              6,
+              10
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        },
+        {
+          "title": "Explore the Saddle",
+          "description": "Drag the sliders to reshape the saddle. Try $c = -1$ to pull roots onto the real axis, or change $b$ to shift the saddle sideways. The roots are **always** there — the saddle guarantees it.",
+          "add": [],
+          "info": [
+            {
+              "id": "explore-info",
+              "content": "**Experiments:**\n\n$c = -1$: roots become real\n\n$b = 4$: shift saddle sideways\n\n$a=1, b=2, c=1$: $\\Delta=0$, repeated root\n\n$a=3$: steeper saddle"
+            }
+          ],
+          "camera": {
+            "position": [
+              8,
+              6,
+              10
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

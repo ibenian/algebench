@@ -1,0 +1,1354 @@
+{
+  "title": "Quantum States on the Bloch Sphere",
+  "scenes": [
+    {
+      "title": "From Bit to Bloch Sphere",
+      "description": "A qubit is not just 0 or 1. Pure one-qubit states fill the Bloch sphere, with $|0\\rangle$ and $|1\\rangle$ at the poles.",
+      "markdown": "# From Bit to Bloch Sphere\n\nA classical bit has two pure states: $0$ and $1$. A **qubit** has basis states $|0\\rangle$ and $|1\\rangle$, but any normalized superposition\n\n$$|\\psi\\rangle = \\alpha |0\\rangle + \\beta |1\\rangle, \\qquad |\\alpha|^2 + |\\beta|^2 = 1$$\n\nis also a valid pure state.\n\nFor a single qubit, global phase does not affect measurements, so every pure state can be represented by a point on the **Bloch sphere**. The north pole is $|0\\rangle$, the south pole is $|1\\rangle$, and intermediate points represent superpositions.\n\nThis draft lesson focuses on **pure one-qubit states** because they admit a clean 3D picture. Mixed states live inside the sphere rather than on its surface.\n\nReferences: Nielsen & Chuang, *Quantum Computation and Quantum Information*; Griffiths & Schroeter, *Introduction to Quantum Mechanics*; Sakurai & Napolitano, *Modern Quantum Mechanics*.",
+      "prompt": "Teach this scene as the jump from classical states to pure qubit states. Gold is always the current state, cyan is |0>, coral is |1>, and magenta is reserved for phase-related circles. Emphasize that the Bloch sphere visualizes pure states of a two-level system, not all quantum states in full generality.",
+      "range": [
+        [
+          -1.35,
+          1.35
+        ],
+        [
+          -1.35,
+          1.35
+        ],
+        [
+          -1.35,
+          1.35
+        ]
+      ],
+      "camera": {
+        "position": [
+          2.7,
+          -2.7,
+          1.8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            2.7,
+            -2.7,
+            1.8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
+          "description": "Three-dimensional view of the Bloch sphere"
+        },
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            -4,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
+          "description": "Look directly at the x-z cross-section"
+        },
+        {
+          "name": "North Pole",
+          "position": [
+            0.7,
+            -0.7,
+            3.2
+          ],
+          "target": [
+            0,
+            0,
+            0.8
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ],
+          "description": "Focus on the $|0\\rangle$ pole"
+        },
+        {
+          "name": "Equator",
+          "position": [
+            3.2,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
+          "description": "Side view of equatorial superpositions"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s1_sphere",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 1,
+          "color": "#5c7cfa",
+          "opacity": 0.12
+        },
+        {
+          "id": "s1_axis_x",
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": "#ff4444",
+          "width": 1.2,
+          "label": "$x$"
+        },
+        {
+          "id": "s1_axis_y",
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": "#44cc44",
+          "width": 1.2,
+          "label": "$y$"
+        },
+        {
+          "id": "s1_axis_z",
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": "#4488ff",
+          "width": 1.2,
+          "label": "$z$"
+        },
+        {
+          "id": "s1_grid_xy",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": [
+            0.28,
+            0.28,
+            0.45
+          ],
+          "opacity": 0.12,
+          "divisions": 8
+        }
+      ],
+      "steps": [
+        {
+          "title": "Classical endpoints",
+          "description": "Start with the computational basis states. In this basis, $|0\\rangle$ is certainly 0 and $|1\\rangle$ is certainly 1, just like the two pure states of a classical bit.",
+          "prompt": "Anchor the scene in the two poles first. Connect them to definite computational-basis outcomes and to the classical idea of two pure alternatives.",
+          "add": [
+            {
+              "id": "s1_ket0",
+              "type": "point",
+              "position": [
+                0,
+                0,
+                1
+              ],
+              "color": "#66d9ff",
+              "size": 10,
+              "label": "$|0\\rangle$"
+            },
+            {
+              "id": "s1_ket1",
+              "type": "point",
+              "position": [
+                0,
+                0,
+                -1
+              ],
+              "color": "#ff7b72",
+              "size": 10,
+              "label": "$|1\\rangle$"
+            }
+          ]
+        },
+        {
+          "title": "A superposition appears",
+          "description": "Now move to the equator. This state is neither pole, so it is not 'just 0' or 'just 1'; it is a balanced superposition.",
+          "prompt": "Use the equator state to break the classical analogy. Stress that equal amplitudes do not mean a classical halfway state.",
+          "add": [
+            {
+              "id": "s1_plusx_vec",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ffd166",
+              "width": 4,
+              "label": "$|+x\\rangle$"
+            },
+            {
+              "id": "s1_plusx_pt",
+              "type": "point",
+              "position": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ffd166",
+              "size": 8
+            }
+          ]
+        },
+        {
+          "title": "Generic pure state",
+          "description": "A general pure qubit can point anywhere on the sphere. This sample state has both a latitude and an azimuth, so it needs more than a single 'probability of 1' number to describe it.",
+          "prompt": "Introduce the idea that one angle sets the balance between |0> and |1>, while another controls relative phase. Keep it qualitative here and save formulas for the next scene.",
+          "remove": [
+            {
+              "id": "s1_plusx_vec"
+            },
+            {
+              "id": "s1_plusx_pt"
+            }
+          ],
+          "add": [
+            {
+              "id": "s1_generic_vec",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0.612,
+                0.612,
+                0.5
+              ],
+              "color": "#ffd166",
+              "width": 4,
+              "label": "$|\\psi\\rangle$"
+            },
+            {
+              "id": "s1_generic_pt",
+              "type": "point",
+              "position": [
+                0.612,
+                0.612,
+                0.5
+              ],
+              "color": "#ffd166",
+              "size": 8
+            }
+          ]
+        },
+        {
+          "title": "The whole sphere matters",
+          "description": "The equator and the meridian show that there is a continuous family of pure states. Quantum state space is richer than a two-point classical menu.",
+          "prompt": "Close by naming the key visual fact: the poles are special cases, but pure states occupy the full surface. Prepare the student for angle coordinates next.",
+          "add": [
+            {
+              "id": "s1_equator",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 180,
+              "color": "#c77dff",
+              "width": 2,
+              "opacity": 0.65
+            },
+            {
+              "id": "s1_meridian",
+              "type": "parametric_curve",
+              "x": "sin(t)",
+              "y": "0",
+              "z": "cos(t)",
+              "range": [
+                0,
+                3.141592653589793
+              ],
+              "samples": 120,
+              "color": "#7bd389",
+              "width": 2,
+              "opacity": 0.65
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Angles Encode Amplitudes",
+      "description": "Two angles, $\\theta$ and $\\phi$, locate a pure qubit on the Bloch sphere and encode its amplitudes.",
+      "markdown": "# Angles Encode Amplitudes\n\nFor a pure one-qubit state, the Bloch sphere coordinates are usually written as\n\n$$|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle.$$\n\nThe Bloch point has coordinates\n\n$$r=(x,y,z)=\\bigl(\\sin\\theta\\cos\\phi,\\;\\sin\\theta\\sin\\phi,\\;\\cos\\theta\\bigr).$$\n\nSo:\n\n- $\\theta$ controls the **latitude** and therefore the balance between $|0\\rangle$ and $|1\\rangle$.\n- $\\phi$ controls the **azimuth** and therefore the **relative phase** between those basis states.\n\nThis is the standard pure-state parameterization for qubits; it is the geometric version of the normalized state-vector description. References: Nielsen & Chuang; Sakurai.",
+      "prompt": "Teach this scene as the algebra-geometry bridge. Keep gold for the active state, cyan for |0>, coral for |1>, green for the meridian, and magenta for azimuth/equator cues. Emphasize that theta controls amplitude magnitudes while phi controls relative phase.",
+      "range": [
+        [
+          -1.35,
+          1.35
+        ],
+        [
+          -1.35,
+          1.35
+        ],
+        [
+          -1.35,
+          1.35
+        ]
+      ],
+      "camera": {
+        "position": [
+          2.9,
+          -2.4,
+          1.7
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            2.9,
+            -2.4,
+            1.7
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
+          "description": "See both latitude and azimuth"
+        },
+        {
+          "name": "Meridian",
+          "position": [
+            0,
+            -4,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
+          "description": "Best view for changing $\\theta$ at fixed $\\phi=0$"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            0,
+            4
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ],
+          "description": "Look straight down to see the azimuth angle $\\phi$"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s2_sphere",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 1,
+          "color": "#5c7cfa",
+          "opacity": 0.12
+        },
+        {
+          "id": "s2_axis_x",
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": "#ff4444",
+          "width": 1.2,
+          "label": "$x$"
+        },
+        {
+          "id": "s2_axis_y",
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": "#44cc44",
+          "width": 1.2,
+          "label": "$y$"
+        },
+        {
+          "id": "s2_axis_z",
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": "#4488ff",
+          "width": 1.2,
+          "label": "$z$"
+        },
+        {
+          "id": "s2_grid_xy",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": [
+            0.28,
+            0.28,
+            0.45
+          ],
+          "opacity": 0.12,
+          "divisions": 8
+        },
+        {
+          "id": "s2_ket0",
+          "type": "point",
+          "position": [
+            0,
+            0,
+            1
+          ],
+          "color": "#66d9ff",
+          "size": 10,
+          "label": "$|0\\rangle$"
+        },
+        {
+          "id": "s2_ket1",
+          "type": "point",
+          "position": [
+            0,
+            0,
+            -1
+          ],
+          "color": "#ff7b72",
+          "size": 10,
+          "label": "$|1\\rangle$"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Polar angle $\\theta$",
+          "description": "Start on a single meridian with $\\phi=0$. As $\\theta$ increases from 0 to $\\pi$, the state slides from $|0\\rangle$ down to $|1\\rangle$.",
+          "prompt": "Connect theta to north-versus-south balance. Point out that theta alone already tells the student how much of |0> and |1> appears in the amplitudes.",
+          "sliders": [
+            {
+              "id": "q2_theta",
+              "label": "$\\theta$",
+              "min": 0,
+              "max": 3.141592653589793,
+              "step": 0.01,
+              "default": 1.05
+            }
+          ],
+          "add": [
+            {
+              "id": "s2_meridian",
+              "type": "parametric_curve",
+              "x": "sin(t)",
+              "y": "0",
+              "z": "cos(t)",
+              "range": [
+                0,
+                3.141592653589793
+              ],
+              "samples": 120,
+              "color": "#7bd389",
+              "width": 2,
+              "opacity": 0.65
+            },
+            {
+              "id": "s2_theta_vec",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "sin(q2_theta)",
+                "0",
+                "cos(q2_theta)"
+              ],
+              "color": "#ffd166",
+              "width": 2.0,
+              "label": "$|\\psi(\\theta)\\rangle$"
+            },
+            {
+              "id": "s2_theta_pt",
+              "type": "animated_point",
+              "expr": [
+                "sin(q2_theta)",
+                "0",
+                "cos(q2_theta)"
+              ],
+              "color": "#ffd166",
+              "size": 1.0
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_theta_info",
+              "position": "top-right",
+              "content": "$$|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + \\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle$$\n$$\\theta={{toFixed(q2_theta,2)}}\\ \\text{rad},\\quad z=\\cos\\theta={{toFixed(cos(q2_theta),2)}}$$"
+            }
+          ]
+        },
+        {
+          "title": "Azimuth $\\phi$",
+          "description": "Now let the state swing around the sphere. Changing $\\phi$ rotates the state around the z-axis while keeping the latitude fixed.",
+          "prompt": "Name phi as the azimuth angle and the source of relative phase. Do not claim that phi changes z-basis probabilities; save that comparison for later.",
+          "remove": [
+            {
+              "id": "s2_theta_vec"
+            },
+            {
+              "id": "s2_theta_pt"
+            },
+            {
+              "type": "info"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "q2_phi",
+              "label": "$\\phi$",
+              "min": 0,
+              "max": 6.283185307179586,
+              "step": 0.01,
+              "default": 0.79
+            }
+          ],
+          "add": [
+            {
+              "id": "s2_full_vec",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "sin(q2_theta)*cos(q2_phi)",
+                "sin(q2_theta)*sin(q2_phi)",
+                "cos(q2_theta)"
+              ],
+              "color": "#ffd166",
+              "width": 2.0,
+              "label": "$|\\psi(\\theta,\\phi)\\rangle$"
+            },
+            {
+              "id": "s2_full_pt",
+              "type": "animated_point",
+              "expr": [
+                "sin(q2_theta)*cos(q2_phi)",
+                "sin(q2_theta)*sin(q2_phi)",
+                "cos(q2_theta)"
+              ],
+              "color": "#ffd166",
+              "size": 1.0
+            }
+          ]
+        },
+        {
+          "title": "Read off amplitudes",
+          "description": "The latitude controls the magnitudes of the amplitudes, while the azimuth controls their relative phase. The Bloch point packages both into one geometric picture.",
+          "prompt": "Connect the geometry to the ket formula explicitly. Mention that the magnitudes come from theta over 2 and the relative phase from phi.",
+          "add": [
+            {
+              "id": "s2_equator",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 180,
+              "color": "#c77dff",
+              "width": 2,
+              "opacity": 0.55
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_formula",
+              "position": "top-right",
+              "content": "$$|\\psi\\rangle = \\alpha|0\\rangle + \\beta|1\\rangle,\\qquad \\alpha=\\cos\\left(\\frac{\\theta}{2}\\right),\\ \\beta=e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)$$\n$$|\\alpha|^2={{toFixed(cos(q2_theta/2)^2,3)}},\\qquad |\\beta|^2={{toFixed(sin(q2_theta/2)^2,3)}}$$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Measurement Reads Latitude",
+      "description": "In the computational basis, measurement probabilities depend only on how far up or down the Bloch sphere the state sits.",
+      "markdown": "# Measurement Reads Latitude\n\nFor the Bloch-sphere parameterization\n\n$$|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle,$$\n\nBorn's rule gives\n\n$$p(0)=|\\langle 0|\\psi\\rangle|^2 = \\cos^2\\left(\\frac{\\theta}{2}\\right),\\qquad p(1)=|\\langle 1|\\psi\\rangle|^2 = \\sin^2\\left(\\frac{\\theta}{2}\\right).$$\n\nBecause the Bloch z-coordinate is $z=\\cos\\theta$, the half-angle identities turn those into\n\n$$p(0)=\\frac{1+z}{2},\\qquad p(1)=\\frac{1-z}{2}.$$\n\nSo a computational-basis measurement only reads the state's **height** on the sphere. The azimuth $\\phi$ matters for other measurement bases, but not for this one. References: Griffiths & Schroeter; Nielsen & Chuang.",
+      "prompt": "Teach this scene as the first real predictive payoff of the Bloch sphere. Green is the z projection, gold is the state, and magenta is the horizontal gap between the state and its projection. Emphasize that phi is irrelevant for computational-basis measurement.",
+      "range": [
+        [
+          -1.35,
+          1.35
+        ],
+        [
+          -1.35,
+          1.35
+        ],
+        [
+          -1.35,
+          1.35
+        ]
+      ],
+      "camera": {
+        "position": [
+          2.8,
+          -2.4,
+          1.8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            2.8,
+            -2.4,
+            1.8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
+          "description": "See the full state and its projection"
+        },
+        {
+          "name": "Meridian",
+          "position": [
+            0,
+            -4,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
+          "description": "Look directly at the x-z plane"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s3_sphere",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 1,
+          "color": "#5c7cfa",
+          "opacity": 0.12
+        },
+        {
+          "id": "s3_axis_x",
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": "#ff4444",
+          "width": 1.2,
+          "label": "$x$"
+        },
+        {
+          "id": "s3_axis_y",
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": "#44cc44",
+          "width": 1.2,
+          "label": "$y$"
+        },
+        {
+          "id": "s3_axis_z",
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": "#4488ff",
+          "width": 1.2,
+          "label": "$z$"
+        },
+        {
+          "id": "s3_grid_xy",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": [
+            0.28,
+            0.28,
+            0.45
+          ],
+          "opacity": 0.12,
+          "divisions": 8
+        },
+        {
+          "id": "s3_ket0",
+          "type": "point",
+          "position": [
+            0,
+            0,
+            1
+          ],
+          "color": "#66d9ff",
+          "size": 10,
+          "label": "$|0\\rangle$"
+        },
+        {
+          "id": "s3_ket1",
+          "type": "point",
+          "position": [
+            0,
+            0,
+            -1
+          ],
+          "color": "#ff7b72",
+          "size": 10,
+          "label": "$|1\\rangle$"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Set the latitude",
+          "description": "Choose a state on the x-z meridian. Sliding $\\theta$ changes the state's height and therefore its computational-basis bias.",
+          "prompt": "Make the student track height first. Explain that we are freezing phi because computational-basis measurement only cares about the z coordinate.",
+          "sliders": [
+            {
+              "id": "q3_theta",
+              "label": "$\\theta$",
+              "min": 0,
+              "max": 3.141592653589793,
+              "step": 0.01,
+              "default": 1.2
+            }
+          ],
+          "add": [
+            {
+              "id": "s3_state_vec",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "sin(q3_theta)",
+                "0",
+                "cos(q3_theta)"
+              ],
+              "color": "#ffd166",
+              "width": 2.0,
+              "label": "$|\\psi\\rangle$"
+            },
+            {
+              "id": "s3_state_pt",
+              "type": "animated_point",
+              "expr": [
+                "sin(q3_theta)",
+                "0",
+                "cos(q3_theta)"
+              ],
+              "color": "#ffd166",
+              "size": 1.0
+            }
+          ]
+        },
+        {
+          "title": "Project onto $z$",
+          "description": "The green projection on the z-axis is the quantity that matters. At the north pole $z=1$, at the south pole $z=-1$, and on the equator $z=0$.",
+          "prompt": "Explain why the green segment captures everything needed for computational-basis measurement. Tie z equals cosine theta to the student's slider intuition.",
+          "add": [
+            {
+              "id": "s3_zproj_vec",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "0",
+                "0",
+                "cos(q3_theta)"
+              ],
+              "color": "#7bd389",
+              "width": 2.0,
+              "label": "$z$"
+            },
+            {
+              "id": "s3_gap_vec",
+              "type": "animated_vector",
+              "fromExpr": [
+                "0",
+                "0",
+                "cos(q3_theta)"
+              ],
+              "expr": [
+                "sin(q3_theta)",
+                "0",
+                "cos(q3_theta)"
+              ],
+              "color": "#c77dff",
+              "width": 1.0,
+              "opacity": 0.5,
+              "arrow": false
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_probs",
+              "position": "top-right",
+              "content": "$$z=\\cos\\theta={{toFixed(cos(q3_theta),3)}}$$\n$$p(0)=\\cos^2\\left(\\frac{\\theta}{2}\\right)={{toFixed(cos(q3_theta/2)^2,3)}}$$\n$$p(1)=\\sin^2\\left(\\frac{\\theta}{2}\\right)={{toFixed(sin(q3_theta/2)^2,3)}}$$"
+            }
+          ]
+        },
+        {
+          "title": "Rewrite with $z$",
+          "description": "Using the half-angle identities, the probabilities become linear in the Bloch z-coordinate. That is why a computational-basis measurement can be read directly from the state's height.",
+          "prompt": "Tie the algebra back to the picture. The goal is not just to manipulate identities, but to see why latitude predicts measurement.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_linear",
+              "position": "top-right",
+              "content": "$$p(0)=\\frac{1+z}{2}={{toFixed((1+cos(q3_theta))/2,3)}},\\qquad p(1)=\\frac{1-z}{2}={{toFixed((1-cos(q3_theta))/2,3)}}$$"
+            }
+          ]
+        }
+      ],
+      "proof": {
+        "id": "s3_z_measurement_derivation",
+        "title": "Why the z-coordinate determines computational-basis probabilities",
+        "technique": "derivation",
+        "techniqueHint": "This is a short derivation: apply Born's rule to the Bloch-sphere parameterization and then use the half-angle identities.",
+        "goal": "Show that $p(0)=\\frac{1+z}{2}$ and $p(1)=\\frac{1-z}{2}$ when $z=\\cos\\theta$.",
+        "sceneStep": 0,
+        "prompt": "Walk the student from the ket formula to the probability formula. Keep the visual link explicit: z is the state's height on the sphere.",
+        "steps": [
+          {
+            "type": "given",
+            "label": "Start from the Bloch parameterization",
+            "math": "\\htmlClass{hl-state}{|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle}",
+            "highlights": {
+              "state": {
+                "color": "cyan",
+                "label": "A general pure qubit state"
+              }
+            },
+            "justification": "Use the standard parameterization of a pure qubit on the Bloch sphere.",
+            "explanation": "The coefficients already tell us the amplitudes for the computational basis states.",
+            "prompt": "Remind the student that the north and south poles correspond to pure |0> and |1>.",
+            "sceneStep": 0
+          },
+          {
+            "type": "step",
+            "label": "Apply Born's rule",
+            "math": "p(0)=|\\langle 0|\\psi\\rangle|^2=\\htmlClass{hl-p0}{\\cos^2\\left(\\frac{\\theta}{2}\\right)},\\qquad p(1)=|\\langle 1|\\psi\\rangle|^2=\\htmlClass{hl-p1}{\\sin^2\\left(\\frac{\\theta}{2}\\right)}",
+            "highlights": {
+              "p0": {
+                "color": "green",
+                "label": "$|0\\rangle$ probability"
+              },
+              "p1": {
+                "color": "orange",
+                "label": "$|1\\rangle$ probability"
+              }
+            },
+            "justification": "Project the state onto each basis vector and square the magnitude of the amplitude.",
+            "explanation": "The phase factor $e^{i\\phi}$ disappears from the magnitude, so $\\phi$ does not affect this measurement basis.",
+            "prompt": "Point out explicitly that the global magnitude of the complex phase is 1, so it drops out of the probabilities.",
+            "sceneStep": 1
+          },
+          {
+            "type": "step",
+            "label": "Use the half-angle identities",
+            "math": "\\cos^2\\left(\\frac{\\theta}{2}\\right)=\\frac{1+\\htmlClass{hl-z}{\\cos\\theta}}{2},\\qquad \\sin^2\\left(\\frac{\\theta}{2}\\right)=\\frac{1-\\htmlClass{hl-z2}{\\cos\\theta}}{2}",
+            "highlights": {
+              "z": {
+                "color": "blue",
+                "label": "$\\cos\\theta$ becomes the Bloch z-coordinate"
+              },
+              "z2": {
+                "color": "blue",
+                "label": "Same z-coordinate in the second probability"
+              }
+            },
+            "justification": "Use $\\cos^2(\\theta/2)=(1+\\cos\\theta)/2$ and $\\sin^2(\\theta/2)=(1-\\cos\\theta)/2$.",
+            "explanation": "This is the algebraic bridge from amplitudes to geometry.",
+            "prompt": "Make the phrase 'height on the sphere' explicit when you replace cos theta by z.",
+            "sceneStep": 2
+          },
+          {
+            "type": "conclusion",
+            "label": "Read height as probability",
+            "math": "z=\\cos\\theta\\ \\Longrightarrow\\ p(0)=\\frac{1+\\htmlClass{hl-zfinal}{z}}{2},\\qquad p(1)=\\frac{1-\\htmlClass{hl-zfinal2}{z}}{2}",
+            "highlights": {
+              "zfinal": {
+                "color": "green",
+                "label": "Positive z favors $|0\\rangle$"
+              },
+              "zfinal2": {
+                "color": "orange",
+                "label": "Negative z favors $|1\\rangle$"
+              }
+            },
+            "justification": "Substitute the Bloch coordinate $z$ for $\\cos\\theta$.",
+            "explanation": "A computational-basis measurement only needs the state's z-coordinate, so latitude alone predicts the outcome probabilities.",
+            "prompt": "End by tying the final formula directly to the green projection in the scene.",
+            "sceneStep": 2
+          }
+        ]
+      }
+    },
+    {
+      "title": "Relative Phase Changes Other Measurements",
+      "description": "Equator states all look identical to a z-basis measurement, but their relative phase changes what other bases can see.",
+      "markdown": "# Relative Phase Changes Other Measurements\n\nOn the equator of the Bloch sphere, $\\theta=\\pi/2$, so the state takes the form\n\n$$|\\psi(\\phi)\\rangle = \\frac{|0\\rangle + e^{i\\phi}|1\\rangle}{\\sqrt{2}}.$$\n\nEvery such state has\n\n$$p_z(0)=p_z(1)=\\frac{1}{2},$$\n\nso a computational-basis measurement cannot distinguish them.\n\nBut other bases can. For the x basis,\n\n$$p(+x)=\\frac{1+\\cos\\phi}{2},\\qquad p(-x)=\\frac{1-\\cos\\phi}{2},$$\n\nand for the y basis,\n\n$$p(+y)=\\frac{1+\\sin\\phi}{2},\\qquad p(-y)=\\frac{1-\\sin\\phi}{2}.$$\n\nThis is why **relative phase matters**. By contrast, multiplying the entire ket by $e^{i\\gamma}$ leaves the Bloch point unchanged, so **global phase is physically invisible** for a single qubit.",
+      "prompt": "Teach this scene as the payoff for relative phase. The z-basis probabilities stay flat at one half, while x and y measurements change with phi. Keep the distinction between relative phase and global phase crisp and explicit.",
+      "range": [
+        [
+          -1.35,
+          1.35
+        ],
+        [
+          -1.35,
+          1.35
+        ],
+        [
+          -1.35,
+          1.35
+        ]
+      ],
+      "camera": {
+        "position": [
+          2.8,
+          -2.4,
+          1.8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            2.8,
+            -2.4,
+            1.8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
+          "description": "See the equator and the x, y, z axes together"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            0,
+            4
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ],
+          "description": "Watch $\\phi$ sweep the equator from above"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s4_sphere",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 1,
+          "color": "#5c7cfa",
+          "opacity": 0.12
+        },
+        {
+          "id": "s4_axis_x",
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": "#ff4444",
+          "width": 1.2,
+          "label": "$x$"
+        },
+        {
+          "id": "s4_axis_y",
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": "#44cc44",
+          "width": 1.2,
+          "label": "$y$"
+        },
+        {
+          "id": "s4_axis_z",
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": "#4488ff",
+          "width": 1.2,
+          "label": "$z$"
+        },
+        {
+          "id": "s4_grid_xy",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": [
+            0.28,
+            0.28,
+            0.45
+          ],
+          "opacity": 0.12,
+          "divisions": 8
+        }
+      ],
+      "steps": [
+        {
+          "title": "Walk the equator",
+          "description": "Set $\\theta=\\pi/2$ and change only $\\phi$. The state moves around the equator, but its z-coordinate stays at zero, so a z-basis measurement always gives 50%-50%.",
+          "prompt": "Say explicitly that the equator means z equals zero. Use that to justify the flat z-basis probabilities before discussing any other basis.",
+          "sliders": [
+            {
+              "id": "q4_phi",
+              "label": "$\\phi$",
+              "min": 0,
+              "max": 6.283185307179586,
+              "step": 0.01,
+              "default": 0,
+              "animate": true,
+              "duration": 5000
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_equator",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 180,
+              "color": "#c77dff",
+              "width": 2,
+              "opacity": 0.6
+            },
+            {
+              "id": "s4_state_vec",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "cos(q4_phi)",
+                "sin(q4_phi)",
+                "0"
+              ],
+              "color": "#ffd166",
+              "width": 2.0,
+              "label": "$|\\psi(\\phi)\\rangle$"
+            },
+            {
+              "id": "s4_state_pt",
+              "type": "animated_point",
+              "expr": [
+                "cos(q4_phi)",
+                "sin(q4_phi)",
+                "0"
+              ],
+              "color": "#ffd166",
+              "size": 1.0
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_zflat",
+              "position": "top-right",
+              "content": "$$|\\psi(\\phi)\\rangle = \\frac{|0\\rangle + e^{i\\phi}|1\\rangle}{\\sqrt{2}}$$\n$$p_z(0)=p_z(1)=0.5$$"
+            }
+          ]
+        },
+        {
+          "title": "Measure in the x basis",
+          "description": "Now ask a different question: is the state aligned with $|+x\\rangle$ or $|-x\\rangle$? As $\\phi$ changes, those probabilities change even though the z-basis probabilities do not.",
+          "prompt": "Use this step to make basis dependence vivid. Relative phase becomes visible when we rotate the measurement basis.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_plusx",
+              "type": "point",
+              "position": [
+                1,
+                0,
+                0
+              ],
+              "color": "#66d9ff",
+              "size": 10,
+              "label": "$|+x\\rangle$"
+            },
+            {
+              "id": "s4_minusx",
+              "type": "point",
+              "position": [
+                -1,
+                0,
+                0
+              ],
+              "color": "#ff7b72",
+              "size": 10,
+              "label": "$|-x\\rangle$"
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_xbasis",
+              "position": "top-right",
+              "content": "$$p(+x)=\\frac{1+\\cos\\phi}{2}={{toFixed((1+cos(q4_phi))/2,3)}}$$\n$$p(-x)=\\frac{1-\\cos\\phi}{2}={{toFixed((1-cos(q4_phi))/2,3)}}$$"
+            }
+          ]
+        },
+        {
+          "title": "Measure in the y basis",
+          "description": "The y basis sees a different slice of the same circle. As the state moves around the equator, the y-basis probabilities rise and fall with $\\sin\\phi$.",
+          "prompt": "Show that x and y measurements are complementary ways of reading the azimuth. This cements the idea that relative phase is geometric information on the Bloch sphere.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_plusy",
+              "type": "point",
+              "position": [
+                0,
+                1,
+                0
+              ],
+              "color": "#7bd389",
+              "size": 10,
+              "label": "$|+y\\rangle$"
+            },
+            {
+              "id": "s4_minusy",
+              "type": "point",
+              "position": [
+                0,
+                -1,
+                0
+              ],
+              "color": "#c77dff",
+              "size": 10,
+              "label": "$|-y\\rangle$"
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_ybasis",
+              "position": "top-right",
+              "content": "$$p(+y)=\\frac{1+\\sin\\phi}{2}={{toFixed((1+sin(q4_phi))/2,3)}}$$\n$$p(-y)=\\frac{1-\\sin\\phi}{2}={{toFixed((1-sin(q4_phi))/2,3)}}$$"
+            }
+          ]
+        },
+        {
+          "title": "Global phase is invisible",
+          "description": "Multiplying the entire ket by $e^{i\\gamma}$ does not move the Bloch point or change any measurement probability. Only the relative phase between the basis amplitudes changes the state geometry.",
+          "prompt": "Students often confuse relative phase with global phase. State the distinction plainly: relative phase moves the Bloch point; global phase does not.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_global_phase",
+              "position": "top-right",
+              "content": "$$e^{i\\gamma}|\\psi\\rangle\\ \\text{and}\\ |\\psi\\rangle\\ \\text{represent the same physical state}$$\n$$\\text{Only the relative phase }\\phi\\text{ changes the Bloch point.}$$"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

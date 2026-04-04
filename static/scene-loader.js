@@ -503,6 +503,8 @@ export async function loadScene(spec) {
 
     clearLabels();
     state.followCamState = null;
+    state.cameraExprState = null;
+    state.cameraExprStartTime = 0;
     if (state.controls && state.followCamSavedControls) {
         if (Object.prototype.hasOwnProperty.call(state.controls, 'enableDamping')) {
             state.controls.enableDamping = state.followCamSavedControls.enableDamping;
@@ -537,6 +539,7 @@ export async function loadScene(spec) {
             range: state.currentRange,
             scale: state.currentScale,
         });
+        state.sceneView = view;
         // Import inline renderers for the default grid/axes
         const { renderGrid, renderAxis } = await _importDefaultRenderers();
         renderGrid({ plane: 'xz', color: [0.3, 0.3, 0.5], opacity: 0.1, divisions: 10 }, view);
@@ -557,10 +560,17 @@ export async function loadScene(spec) {
         range: state.currentRange,
         scale: state.currentScale,
     });
+    state.sceneView = view;
 
     for (const el of spec.elements) {
+        const elBefore = el.id ? snapshotBefore() : null;
+        const elGroup = el.id ? view.group() : view;
         try {
-            renderElement(el, view);
+            renderElement(el, elGroup);
+            if (el.id) {
+                const subTracker = buildSubTracker(elGroup, elBefore);
+                state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type };
+            }
         } catch (e) {
             console.error('Error rendering element:', el, e);
         }
@@ -571,9 +581,7 @@ export async function loadScene(spec) {
     if (spec.camera) {
         const up = (spec.camera && Array.isArray(spec.camera.up) && spec.camera.up.length === 3)
             ? spec.camera.up
-            : ((spec.cameraUp && Array.isArray(spec.cameraUp) && spec.cameraUp.length === 3)
-                ? spec.cameraUp
-                : [0, 1, 0]);
+            : [0, 1, 0];
         state.camera.up.set(up[0], up[1], up[2]);
         const pos = dataCameraToWorld(spec.camera.position || DEFAULT_CAMERA.position);
         const tgt = dataCameraToWorld(spec.camera.target || DEFAULT_CAMERA.target);
@@ -614,11 +622,11 @@ export async function loadLesson(spec) {
     state._sceneUnsafeExplanation = '';
     if (spec) {
         state._sceneIsUnsafe = spec.unsafe === true;
-        state._sceneUnsafeExplanation = spec.unsafe_explanation || '';
+        state._sceneUnsafeExplanation = spec.unsafeExplanation || '';
         const scanned = scanSpecForUnsafeJs(spec);
         const needsDialog = state._sceneIsUnsafe || scanned;
         if (needsDialog) {
-            const explanation = spec.unsafe_explanation ||
+            const explanation = spec.unsafeExplanation ||
                 'This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.';
             const imports = Array.isArray(spec.import) ? spec.import : [];
             const trusted = await showTrustDialog(explanation, imports);
@@ -675,22 +683,6 @@ export function navigateTo(sceneIdx, stepIdx) {
     const sceneChanged = sceneIdx !== state.currentSceneIndex;
 
     if (sceneChanged) {
-        // Full re-render: load base scene elements
-        const baseSpec = {
-            title: scene.title,
-            description: scene.description,
-            markdown: scene.markdown,
-            range: scene.range,
-            scale: scene.scale,
-            cameraUp: scene.cameraUp,
-            camera: scene.camera,
-            views: scene.views,
-            functions: scene.functions,
-            elements: scene.elements || [],
-        };
-        loadScene(baseSpec);
-
-        state.sceneView = state.mathbox.select('cartesian');
         state.stepTrackers = [];
         state.elementRegistry = {};
         state.legendToggledOff = new Set();
@@ -698,6 +690,20 @@ export function navigateTo(sceneIdx, stepIdx) {
         state.sceneSliders = {};
         removeAllInfoOverlays();
         buildSliderOverlay();
+
+        // Full re-render: load base scene elements
+        const baseSpec = {
+            title: scene.title,
+            description: scene.description,
+            markdown: scene.markdown,
+            range: scene.range,
+            scale: scene.scale,
+            camera: scene.camera,
+            views: scene.views,
+            functions: scene.functions,
+            elements: scene.elements || [],
+        };
+        loadScene(baseSpec);
 
         for (let i = 0; i <= stepIdx; i++) {
             if (scene.steps && scene.steps[i]) {
@@ -747,7 +753,7 @@ export function navigateTo(sceneIdx, stepIdx) {
     }
 
     // Animate camera using effective step camera
-    if (!state.followCamState && stepIdx >= 0 && scene.steps) {
+    if (!state.followCamState && !state.cameraExprState && stepIdx >= 0 && scene.steps) {
         const cam = resolveEffectiveStepCamera(scene, stepIdx);
         if (cam) {
             const pos = dataCameraToWorld(cam.position || DEFAULT_CAMERA.position);

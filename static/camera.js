@@ -7,6 +7,7 @@
 import { state } from '/state.js';
 import { dataToWorld, dataCameraToWorld } from '/coords.js';
 import { activateFollowCam, deactivateFollowCam, updateFollowCam, updateFollowAngleLockButtonState } from '/follow-cam.js';
+import { compileExpr, evalExpr } from '/expr.js';
 import { renderKaTeX, updateLabels } from '/labels.js';
 // sliders.js and overlay.js are created later in the refactor;
 // these imports will resolve once all modules are in place.
@@ -349,6 +350,50 @@ export function setupRollDrag(container) {
     }, { capture: true });
 }
 
+function activateExprCamera(viewSpec, key) {
+    const posExpr = Array.isArray(viewSpec.positionExpr) && viewSpec.positionExpr.length === 3 ? viewSpec.positionExpr : null;
+    const tgtExpr = Array.isArray(viewSpec.targetExpr) && viewSpec.targetExpr.length === 3 ? viewSpec.targetExpr : null;
+    if (!posExpr || !tgtExpr || !state.camera || !state.controls) return;
+    let posFns, tgtFns;
+    try {
+        posFns = posExpr.map(e => compileExpr(typeof e === 'number' ? String(e) : e));
+        tgtFns = tgtExpr.map(e => compileExpr(typeof e === 'number' ? String(e) : e));
+    } catch (err) {
+        console.warn('expr-camera compile error:', err);
+        return;
+    }
+    state.cameraExprState = {
+        posFns,
+        tgtFns,
+        up: Array.isArray(viewSpec.up) ? viewSpec.up.slice(0, 3) : state.sceneUp.slice(0, 3),
+        viewKey: key || null,
+    };
+    state.cameraExprStartTime = performance.now();
+    updateExprCamera();
+}
+
+function deactivateExprCamera() {
+    state.cameraExprState = null;
+}
+
+function updateExprCamera() {
+    if (!state.cameraExprState || !state.camera || !state.controls) return;
+    const tSec = (performance.now() - state.cameraExprStartTime) / 1000;
+    let posData, tgtData;
+    try {
+        posData = state.cameraExprState.posFns.map(fn => evalExpr(fn, tSec));
+        tgtData = state.cameraExprState.tgtFns.map(fn => evalExpr(fn, tSec));
+    } catch (err) {
+        return;
+    }
+    const posWorld = dataCameraToWorld(posData);
+    const tgtWorld = dataCameraToWorld(tgtData);
+    state.camera.position.set(posWorld[0], posWorld[1], posWorld[2]);
+    state.controls.target.set(tgtWorld[0], tgtWorld[1], tgtWorld[2]);
+    state.camera.up.copy(normalizeUpVector(state.cameraExprState.up));
+    state.camera.lookAt(state.controls.target);
+}
+
 // ----- MathBox Initialization -----
 
 export function initMathBox() {
@@ -413,8 +458,13 @@ export function initMathBox() {
         state.animationFrameId = requestAnimationFrame(updateLoop);
         const nowMs = performance.now();
         runAnimUpdaters(nowMs);
-        if (state.controls && typeof state.controls.update === 'function') state.controls.update();
-        updateFollowCam();
+        if (state.cameraExprState) {
+            updateExprCamera();
+        } else if (state.followCamState) {
+            updateFollowCam();
+        } else if (state.controls && typeof state.controls.update === 'function') {
+            state.controls.update();
+        }
         updateAdaptiveLineWidths();
         updateLabels();
         if (++_statusFrameTick % 6 === 0) updateStatusBar();
@@ -524,9 +574,7 @@ export function resolveEffectiveStepCamera(scene, stepIdx) {
 
     const baseUp = (scene.camera && Array.isArray(scene.camera.up) && scene.camera.up.length === 3)
         ? scene.camera.up.slice(0, 3)
-        : (Array.isArray(scene.cameraUp) && scene.cameraUp.length === 3)
-            ? scene.cameraUp.slice(0, 3)
-            : [0, 1, 0];
+        : [0, 1, 0];
 
     const effective = {
         position: (scene.camera && Array.isArray(scene.camera.position) && scene.camera.position.length === 3)
@@ -556,6 +604,7 @@ export function resolveEffectiveStepCamera(scene, stepIdx) {
 export function animateCamera(view, duration) {
     duration = (duration == null) ? 800 : duration;
     deactivateFollowCam();
+    deactivateExprCamera();
     const targetView = state.CAMERA_VIEWS[view];
     if (!targetView || !state.camera || !state.controls) return;
 
@@ -624,8 +673,8 @@ export function buildCameraButtons(spec) {
     const container = document.getElementById('camera-buttons');
     container.innerHTML = '';
     state.CAMERA_VIEWS = {};
-    state.sceneUp = (spec && Array.isArray(spec.cameraUp) && spec.cameraUp.length === 3)
-        ? spec.cameraUp.slice(0, 3)
+    state.sceneUp = (spec && spec.camera && Array.isArray(spec.camera.up) && spec.camera.up.length === 3)
+        ? spec.camera.up.slice(0, 3)
         : [0, 1, 0];
 
     const views = (spec && spec.views) ? spec.views : DEFAULT_VIEWS;
@@ -641,6 +690,7 @@ export function buildCameraButtons(spec) {
         if (v.follow) {
             btn.classList.add('cam-btn-follow');
             btn.addEventListener('click', () => {
+                deactivateExprCamera();
                 if (state.followCamState && state.followCamState.viewKey === key) {
                     deactivateFollowCam();
                     document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
@@ -650,6 +700,19 @@ export function buildCameraButtons(spec) {
                 btn.classList.add('active');
                 activateFollowCam({ ...v, _viewKey: key });
             });
+        } else if (Array.isArray(v.positionExpr) && Array.isArray(v.targetExpr)) {
+            btn.classList.add('cam-btn-follow');
+            btn.addEventListener('click', () => {
+                deactivateFollowCam();
+                if (state.cameraExprState && state.cameraExprState.viewKey === key) {
+                    deactivateExprCamera();
+                    document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
+                    return;
+                }
+                document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activateExprCamera(v, key);
+            });
         } else {
             state.CAMERA_VIEWS[key] = {
                 position: dataCameraToWorld(v.position),
@@ -658,6 +721,7 @@ export function buildCameraButtons(spec) {
             };
             btn.addEventListener('click', (e) => {
                 deactivateFollowCam();
+                deactivateExprCamera();
                 if (e.shiftKey)     animateCamera(key, 0);
                 else if (e.altKey)  animateCamera(key, 200);
                 else                animateCamera(key, 800);
@@ -673,6 +737,7 @@ export function buildCameraButtons(spec) {
     resetBtn.textContent = 'Reset';
     resetBtn.addEventListener('click', (e) => {
         deactivateFollowCam();
+        deactivateExprCamera();
         const activeScene = (state.lessonSpec && state.currentSceneIndex >= 0 && state.lessonSpec.scenes)
             ? state.lessonSpec.scenes[state.currentSceneIndex]
             : state.currentSpec;

@@ -1,0 +1,1269 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://algebench.dev/schemas/lesson.schema.json",
+  "title": "AlgeBench Lesson",
+  "description": "Schema for AlgeBench lesson and scene JSON files. Supports both single-scene format (with top-level 'elements') and multi-scene lesson format (with 'scenes' array).",
+  "type": "object",
+  "anyOf": [
+    { "$ref": "#/$defs/lessonFormat" },
+    { "$ref": "#/$defs/singleSceneFormat" }
+  ],
+  "$defs": {
+    "lessonFormat": {
+      "type": "object",
+      "description": "Multi-scene lesson format with a 'scenes' array.",
+      "required": ["title", "scenes"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Lesson title displayed in the UI header. Example: \"Eigenvalues & Eigenvectors\"."
+        },
+        "import": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Domain library names to import from static/domains/<name>/index.js. These register additional math functions available in expressions. Example: [\"astrodynamics\"]."
+        },
+        "unsafe": {
+          "type": "boolean",
+          "description": "When true, marks the lesson as containing native JavaScript expressions (IIFEs, loops) that require user trust approval before execution. Default: false.",
+          "default": false
+        },
+        "unsafeExplanation": {
+          "type": "string",
+          "description": "Human-readable explanation of why this lesson uses unsafe JS, shown in the trust dialog. Example: \"This lesson uses scene-level reusable functions with IIFE loops.\""
+        },
+        "proof": {
+          "$ref": "#/$defs/proofOrProofArray",
+          "description": "Root-level proof(s) visible across all scenes. Can be a single proof object or an array of proofs."
+        },
+        "scenes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/scene" },
+          "minItems": 1,
+          "description": "Array of scenes in the lesson. Each scene has its own 3D elements, steps, camera, and optional proof."
+        }
+      },
+      "additionalProperties": false
+    },
+    "singleSceneFormat": {
+      "type": "object",
+      "description": "Single-scene format with top-level 'elements' (no 'scenes' array).",
+      "required": ["title", "elements"],
+      "properties": {
+        "title": { "type": "string", "description": "Scene title." },
+        "description": { "type": "string", "description": "Short description of the scene shown below the title." },
+        "markdown": { "type": "string", "description": "Markdown content for the explanation panel (supports KaTeX via $...$ and $$...$$)." },
+        "prompt": { "type": "string", "description": "System prompt for the AI chat tutor in this scene." },
+        "import": { "type": "array", "items": { "type": "string" }, "description": "Domain library names to import." },
+        "unsafe": { "type": "boolean", "default": false, "description": "Marks scene as containing native JS." },
+        "unsafeExplanation": { "type": "string", "description": "Explanation for unsafe JS trust dialog." },
+        "range": { "$ref": "#/$defs/range3D", "description": "Axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]]. Default: [[-5,5],[-5,5],[-5,5]]." },
+        "scale": { "$ref": "#/$defs/vec3Number", "description": "Axis scale factors as [sx,sy,sz]. Default: [1,1,1]." },
+        "camera": { "$ref": "#/$defs/camera", "description": "Initial camera position and target." },
+        "views": { "type": "array", "items": { "$ref": "#/$defs/view" }, "description": "Named camera presets shown as buttons." },
+        "functions": { "type": "array", "items": { "$ref": "#/$defs/sceneFunction" }, "description": "Reusable math functions available in expressions." },
+        "starfield": { "$ref": "#/$defs/starfield", "description": "Background starfield configuration." },
+        "elements": { "type": "array", "items": { "$ref": "#/$defs/element" }, "description": "Base scene elements rendered on load." },
+        "steps": { "type": "array", "items": { "$ref": "#/$defs/step" }, "description": "Incremental steps that add/remove elements." },
+        "proof": { "$ref": "#/$defs/proofOrProofArray", "description": "Proof(s) associated with this scene." }
+      },
+      "additionalProperties": false
+    },
+    "scene": {
+      "type": "object",
+      "description": "A single scene within a lesson, containing 3D elements and optional steps.",
+      "required": ["title"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Scene title displayed in the navigation dock. Example: \"$P(A)$ — Prior\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Short description of the scene shown below the title. Supports markdown."
+        },
+        "markdown": {
+          "type": "string",
+          "description": "Markdown content for the explanation/documentation panel. Supports KaTeX math via $inline$ and $$display$$ delimiters."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "System prompt for the AI chat tutor in this scene. Tells the AI what/how to teach. Example: \"You are a patient tutor helping a student understand Bayes' theorem...\""
+        },
+        "range": {
+          "$ref": "#/$defs/range3D",
+          "description": "Axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]]. Default: [[-5,5],[-5,5],[-5,5]]."
+        },
+        "scale": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Axis scale factors as [sx,sy,sz]. Default: [1,1,1]. Use to stretch/compress axes."
+        },
+        "camera": {
+          "$ref": "#/$defs/camera",
+          "description": "Initial camera position and target for this scene."
+        },
+        "views": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/view" },
+          "description": "Named camera presets rendered as clickable buttons. Example: Overview, Face On, Iso."
+        },
+        "functions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sceneFunction" },
+          "description": "Reusable scene-level functions callable from expressions. Registered in the math.js sandbox."
+        },
+        "starfield": {
+          "$ref": "#/$defs/starfield",
+          "description": "Background starfield configuration for space-themed scenes."
+        },
+        "elements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/element" },
+          "description": "Base scene elements rendered when the scene loads (before any steps).",
+          "default": []
+        },
+        "steps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/step" },
+          "description": "Incremental steps that add/remove elements and sliders. Navigated with Next/Prev."
+        },
+        "proof": {
+          "$ref": "#/$defs/proofOrProofArray",
+          "description": "Proof(s) associated with this scene. Displayed in the proof panel."
+        },
+        "duration": {
+          "type": "integer",
+          "description": "Auto-play duration in milliseconds for the base scene (before step 0). Default: 3000.",
+          "default": 3000
+        }
+      },
+      "additionalProperties": false
+    },
+    "step": {
+      "type": "object",
+      "description": "An incremental step that adds/removes elements and configures sliders.",
+      "required": ["title"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Step title shown in the dock and caption bar. Supports KaTeX. Example: \"$P(A)$ — Prior\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Step description shown in the caption overlay. Supports markdown and KaTeX."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Per-step system prompt override for the AI chat tutor."
+        },
+        "add": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/element" },
+          "description": "Elements to add in this step. Each element must have a 'type' field.",
+          "default": []
+        },
+        "remove": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/removeDirective" },
+          "description": "Directives to hide elements or sliders from previous steps."
+        },
+        "sliders": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/slider" },
+          "description": "Slider definitions added in this step. Sliders create interactive parameters for expressions."
+        },
+        "camera": {
+          "$ref": "#/$defs/camera",
+          "description": "Camera override for this step. Animates to this position when navigating to the step."
+        },
+        "info": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/infoOverlay" },
+          "description": "Info overlay panels displayed during this step."
+        },
+        "range": {
+          "$ref": "#/$defs/range3D",
+          "description": "Override axis ranges for this step."
+        },
+        "virtualTime": {
+          "$ref": "#/$defs/virtualTime",
+          "description": "Virtual time expression that replaces the default wall-clock 't' variable."
+        },
+        "proof": {
+          "$ref": "#/$defs/proofOrProofArray",
+          "description": "Proof(s) introduced at this step."
+        },
+        "duration": {
+          "type": "integer",
+          "description": "Auto-play duration in milliseconds for this step. Default: 3000.",
+          "default": 3000
+        },
+        "caption": {
+          "type": "string",
+          "description": "Short caption text displayed in the step caption bar. Overrides auto-generated caption from title."
+        }
+      },
+      "additionalProperties": false
+    },
+    "element": {
+      "type": "object",
+      "description": "A 3D visual element. The 'type' field determines which renderer is used and which properties are valid.",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "skybox", "axis", "grid", "vector", "point", "line", "surface",
+            "parametric_curve", "parametric_surface", "sphere", "ellipsoid",
+            "vectors", "vector_field", "plane", "polygon", "cylinder", "text",
+            "animated_vector", "animated_line", "animated_point",
+            "animated_cylinder", "animated_polygon", "animated_curve"
+          ],
+          "description": "Element type determining the renderer. Must be one of the supported types."
+        },
+        "id": {
+          "type": "string",
+          "description": "Unique element ID for referencing in remove directives, legend toggle, and element registry. Auto-generated from label if omitted."
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label rendered near the element. Supports KaTeX via $...$. Example: \"$\\mathbf{v} = (1,0)$\"."
+        },
+        "color": {
+          "$ref": "#/$defs/color",
+          "description": "Element color as hex string '#rrggbb' or RGB array [r,g,b] with values 0-1. Default varies by type."
+        },
+        "opacity": {
+          "oneOf": [
+            { "type": "number", "minimum": 0, "maximum": 1 },
+            { "type": "string" }
+          ],
+          "description": "Element opacity 0-1. Can be a math.js expression string for animated elements. Default varies by type."
+        },
+        "width": {
+          "type": "number",
+          "description": "Line/stroke width in pixels. Default varies by type (axis: 2, line: 3, parametric_curve: 3)."
+        },
+        "size": {
+          "type": "integer",
+          "description": "Point size in pixels (for 'point' type). Default: 12."
+        },
+        "position": {
+          "$ref": "#/$defs/vec3",
+          "description": "Position in data space as [x,y,z]. Used by point, sphere, cylinder, text."
+        },
+        "center": {
+          "$ref": "#/$defs/vec3",
+          "description": "Center position [x,y,z]. Used by sphere, ellipsoid, cylinder. Alias for position."
+        },
+        "from": {
+          "$ref": "#/$defs/vec3",
+          "description": "Start point [x,y,z] for vectors, lines, cylinders."
+        },
+        "to": {
+          "$ref": "#/$defs/vec3",
+          "description": "End point [x,y,z] for vectors, lines, cylinders."
+        },
+        "origin": {
+          "$ref": "#/$defs/vec3",
+          "description": "Origin point [x,y,z] for vectors. Alias for 'from'. Default: [0,0,0]."
+        },
+        "points": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/vec3OrExpr" },
+          "description": "Array of points for lines, polygons, animated_line. Each point is [x,y,z] (numbers or expression strings)."
+        },
+        "vertices": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/vec3OrExpr" },
+          "description": "Array of vertex positions for polygon/animated_polygon. Each is [x,y,z] (numbers or expression strings)."
+        },
+        "range": {
+          "oneOf": [
+            { "type": "array", "items": { "oneOf": [{ "type": "number" }, { "type": "string" }] }, "minItems": 2, "maxItems": 2 },
+            { "$ref": "#/$defs/range3D" }
+          ],
+          "description": "Range for parametric types [tMin,tMax] or axis range [-5,5]. Components can be numbers or math.js expression strings. For vector_field: [[xMin,xMax],[yMin,yMax],[zMin,zMax]]."
+        },
+        "samples": {
+          "type": "integer",
+          "description": "Number of sample points for curves/surfaces. Default: 128 (parametric_curve), 200 (animated_curve)."
+        },
+        "divisions": {
+          "type": "integer",
+          "description": "Number of grid divisions. Default: 10.",
+          "default": 10
+        },
+        "axis": {
+          "type": "string",
+          "enum": ["x", "y", "z"],
+          "description": "Which axis this element represents (for 'axis' type) or cylinder axis direction."
+        },
+        "plane": {
+          "type": "string",
+          "enum": ["xy", "xz", "yz"],
+          "description": "Grid plane. Default: 'xy'.",
+          "default": "xy"
+        },
+        "radius": {
+          "type": "number",
+          "description": "Radius for sphere, cylinder, animated_point. Default: 1 (sphere/cylinder), 0.25 (animated_point)."
+        },
+        "radiusExpr": {
+          "type": "string",
+          "description": "Math.js expression string for dynamic radius. Use slider IDs and 't'. Example: \"Rp\"."
+        },
+        "x": {
+          "type": "string",
+          "description": "Math.js expression for X component. Used by parametric types and surfaces. Example: \"cos(t)\". Use math.js syntax (sin, cos, pi) NOT JavaScript (Math.sin)."
+        },
+        "y": {
+          "type": "string",
+          "description": "Math.js expression for Y component. Example: \"sin(t)\"."
+        },
+        "z": {
+          "type": "string",
+          "description": "Math.js expression for Z component. Example: \"0\"."
+        },
+        "expr": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            { "type": "string" }
+          ],
+          "description": "Expression(s) for animated elements. Array of 3 math.js strings [x,y,z] for animated_vector/point, or single string for animated_curve/surface. Example: [\"k*2\", \"k*1\", \"0\"]."
+        },
+        "fromExpr": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Math.js expression array [x,y,z] for dynamic start point of animated vectors/cylinders."
+        },
+        "visibleExpr": {
+          "type": "string",
+          "description": "Math.js boolean expression controlling visibility. Element is visible when expression evaluates to truthy. Example: \"orbitImpactT(1) >= 0\"."
+        },
+        "labelExpr": {
+          "type": "string",
+          "description": "Math.js expression for dynamic label text. Result is displayed as the element's label."
+        },
+        "labelOffset": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Offset [dx,dy,dz] for label positioning relative to the element. Default: [0,0.3,0]."
+        },
+        "labelPosition": {
+          "$ref": "#/$defs/vec3",
+          "description": "Explicit position [x,y,z] for the label instead of auto-computed."
+        },
+        "uRange": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "U parameter range [min,max] for parametric surfaces. Default: [0, 2π]."
+        },
+        "vRange": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "V parameter range [min,max] for parametric surfaces. Default: [0, 2π]."
+        },
+        "uSamples": {
+          "type": "integer",
+          "description": "Resolution in U direction for parametric surfaces. Default: 32."
+        },
+        "vSamples": {
+          "type": "integer",
+          "description": "Resolution in V direction for parametric surfaces. Default: 32."
+        },
+        "widthSegments": {
+          "type": "integer",
+          "description": "Number of width segments for sphere/ellipsoid/cylinder geometry. Default: 32."
+        },
+        "heightSegments": {
+          "type": "integer",
+          "description": "Number of height segments for sphere/ellipsoid geometry. Default: 20."
+        },
+        "radialSegments": {
+          "type": "integer",
+          "description": "Number of radial segments for cylinder. Default: 32."
+        },
+        "openEnded": {
+          "type": "boolean",
+          "description": "Whether cylinder caps are open. Default: false.",
+          "default": false
+        },
+        "style": {
+          "type": "string",
+          "enum": ["solid", "gradient"],
+          "description": "Skybox style. 'solid' uses a single color, 'gradient' blends topColor to bottomColor."
+        },
+        "topColor": {
+          "type": "string",
+          "description": "Top color for gradient skybox. Example: \"#080818\"."
+        },
+        "bottomColor": {
+          "type": "string",
+          "description": "Bottom color for gradient skybox. Example: \"#030310\"."
+        },
+        "starCount": {
+          "type": "integer",
+          "description": "Number of stars in the skybox. Default: 0 (no stars).",
+          "default": 0
+        },
+        "starColor": {
+          "type": "string",
+          "description": "Star color as hex string. Default: '#e6efff'."
+        },
+        "starMinSize": {
+          "type": "number",
+          "description": "Minimum star size. Default: 0.5."
+        },
+        "starMaxSize": {
+          "type": "number",
+          "description": "Maximum star size. Default: 2.0."
+        },
+        "tickStep": {
+          "type": "integer",
+          "description": "Step between axis tick marks. Auto-calculated from range span if omitted."
+        },
+        "shader": {
+          "$ref": "#/$defs/shader",
+          "description": "Material shader configuration for 3D objects (sphere, cylinder, polygon, parametric_surface)."
+        },
+        "text": {
+          "type": "string",
+          "description": "Text content for 'text' type elements. Example: \"Direction changed!\"."
+        },
+        "trail": {
+          "$ref": "#/$defs/trail",
+          "description": "Trail effect configuration for animated_vector. Shows a fading trail behind the moving tip."
+        },
+        "panels": {
+          "$ref": "#/$defs/vectorPanels",
+          "description": "Optional attached rectangular panels for animated_vector, useful for stylized spacecraft solar arrays."
+        },
+        "regular": {
+          "$ref": "#/$defs/regularPolygon",
+          "description": "Regular polygon configuration. When present, generates vertices automatically instead of using explicit vertices array."
+        },
+        "outlineColor": {
+          "$ref": "#/$defs/color",
+          "description": "Outline color for polygons. Defaults to the element color."
+        },
+        "outlineOpacity": {
+          "oneOf": [
+            { "type": "number" },
+            { "type": "string" }
+          ],
+          "description": "Outline opacity for polygons. Can be an expression string. Default: min(1, opacity * 2)."
+        },
+        "outlineWidth": {
+          "oneOf": [
+            { "type": "number" },
+            { "type": "string" }
+          ],
+          "description": "Outline width for polygons. Can be an expression string. Default: 0 (no outline) or 1.5 for regular polygons."
+        },
+        "fillRegions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/fillRegion" },
+          "description": "Filled regions for animated_curve. Define areas above/below/between curves."
+        },
+        "showCurve": {
+          "type": "boolean",
+          "description": "Whether to show the curve line for animated_curve. Default: true.",
+          "default": true
+        },
+        "rangeExpr": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Dynamic range [minExpr, maxExpr] for animated_curve parameter."
+        },
+        "expression": {
+          "type": "string",
+          "description": "Alias for 'expr' (single string form). Math.js expression for surface z = f(x,y). Example: \"x + y\"."
+        },
+        "at": {
+          "$ref": "#/$defs/vec3",
+          "description": "Alias for 'position'. Point/text position [x,y,z]."
+        },
+        "data": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/vec3OrExpr" },
+          "description": "Alias for 'points'. Array of [x,y,z] points for line elements."
+        },
+        "positionExpr": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Alias for 'expr' on animated_point. Math.js expression array [x,y,z] for dynamic position."
+        },
+        "toExpr": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Alias for 'expr' on animated_vector/animated_cylinder. Math.js expression array [x,y,z] for dynamic endpoint."
+        },
+        "centerExpr": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Math.js expression array [x,y,z] for dynamic center position of sphere/ellipsoid."
+        },
+        "fx": {
+          "type": "string",
+          "description": "Math.js expression for vector field X component. Example: \"y\". Use math.js syntax."
+        },
+        "fy": {
+          "type": "string",
+          "description": "Math.js expression for vector field Y component. Example: \"-x\"."
+        },
+        "fz": {
+          "type": "string",
+          "description": "Math.js expression for vector field Z component. Example: \"0\"."
+        },
+        "loop": {
+          "type": "boolean",
+          "description": "Whether animated_vector keyframe animation loops. Default: true.",
+          "default": true
+        },
+        "arrow": {
+          "type": "boolean",
+          "description": "Whether animated_vector renders an arrowhead. Default: true.",
+          "default": true
+        },
+        "arrowScale": {
+          "type": "number",
+          "description": "Scale factor for animated_vector arrowhead size. Default: 1."
+        },
+        "shaftScale": {
+          "type": "number",
+          "description": "Scale factor for animated_vector shaft thickness. Default: 1."
+        },
+        "keyframes": {
+          "type": "array",
+          "description": "Keyframe array for animated_vector. Each keyframe defines a target position over time."
+        },
+        "thickness": {
+          "type": "number",
+          "description": "Polygon extrusion thickness. Default: 0.02.",
+          "default": 0.02
+        },
+        "density": {
+          "type": "number",
+          "description": "Vector field sample density per axis. Default: 3.",
+          "default": 3
+        },
+        "normal": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Normal vector [x,y,z] for plane element. Default: [0,1,0]."
+        },
+        "point": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Point on the plane [x,y,z] for plane element positioning. Default: [0,0,0]."
+        },
+        "height": {
+          "type": "number",
+          "description": "Height for cylinder element when using center+axis specification. Default: 1."
+        },
+        "value": {
+          "type": "string",
+          "description": "Alias for 'text'. Text content for text elements."
+        },
+        "depthZ": {
+          "type": "number",
+          "description": "Manual depth offset for polygon/animated_curve render ordering. Auto-assigned if omitted."
+        },
+        "renderOrder": {
+          "type": "number",
+          "description": "Manual render order for polygon depth sorting. Auto-assigned if omitted."
+        }
+      },
+      "additionalProperties": true
+    },
+    "removeDirective": {
+      "type": "object",
+      "description": "Directive to hide elements or sliders. Use {id: '*'} to hide all elements, {type: 'slider'} to remove all sliders, or {id: 'some_id'} to hide a specific element.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Element ID to hide, or '*' to hide all elements."
+        },
+        "type": {
+          "type": "string",
+          "description": "Remove by type. Use 'slider' to remove all sliders, 'info' to remove info overlays, or an element type name."
+        }
+      },
+      "additionalProperties": false
+    },
+    "slider": {
+      "type": "object",
+      "description": "Interactive slider that creates a named parameter usable in math.js expressions.",
+      "required": ["id", "min", "max"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Slider ID used as variable name in expressions. Example: 'pA' creates a variable pA. Must be a valid math.js identifier."
+        },
+        "label": {
+          "type": "string",
+          "description": "Display label for the slider. Supports KaTeX. Example: \"$P(A)$\". Defaults to the id."
+        },
+        "min": {
+          "type": "number",
+          "description": "Minimum slider value."
+        },
+        "max": {
+          "type": "number",
+          "description": "Maximum slider value."
+        },
+        "step": {
+          "type": "number",
+          "description": "Step increment for the slider. Default: 0.1.",
+          "default": 0.1
+        },
+        "default": {
+          "type": "number",
+          "description": "Initial slider value. Default: midpoint of min and max."
+        },
+        "animate": {
+          "type": "boolean",
+          "description": "Whether the slider auto-animates (shows play/pause button). Default: false.",
+          "default": false
+        },
+        "animateMode": {
+          "type": "string",
+          "enum": ["loop", "once", "bounce"],
+          "description": "Animation mode. 'loop': repeats 0→1→0→1; 'once': plays 0→1 then stops; 'bounce': triangle wave 0→1→0. Default: 'loop'.",
+          "default": "loop"
+        },
+        "autoplay": {
+          "type": "boolean",
+          "description": "Whether animated slider starts playing automatically. Default: true.",
+          "default": true
+        },
+        "duration": {
+          "type": "integer",
+          "description": "Animation cycle duration in milliseconds. Default: 3000.",
+          "default": 3000
+        },
+        "reset": {
+          "type": "boolean",
+          "description": "If true, previous slider state is snapshotted for undo on backward navigation."
+        }
+      },
+      "additionalProperties": false
+    },
+    "camera": {
+      "type": "object",
+      "description": "Camera configuration with position, target, and optional up vector.",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Camera position in data space [x,y,z]. Default: [6,4,6]."
+        },
+        "target": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Camera look-at target in data space [x,y,z]. Default: [0,0,0]."
+        },
+        "up": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Camera up vector [x,y,z]. Default: [0,1,0]."
+        }
+      },
+      "additionalProperties": false
+    },
+    "view": {
+      "type": "object",
+      "description": "Named camera preset shown as a clickable button.",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Button label. Example: \"Overview\", \"Face On\"."
+        },
+        "description": {
+          "type": "string",
+          "description": "Tooltip text describing this view."
+        },
+        "position": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Camera position [x,y,z] for this view."
+        },
+        "positionExpr": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Dynamic camera position as expression triplet [xExpr,yExpr,zExpr]. Evaluated each frame in data space."
+        },
+        "target": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Camera target [x,y,z] for this view."
+        },
+        "targetExpr": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Dynamic camera target as expression triplet [xExpr,yExpr,zExpr]. Evaluated each frame in data space."
+        },
+        "up": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Camera up vector [x,y,z]. Default: [0,1,0]."
+        },
+        "follow": {
+          "type": "string",
+          "description": "Element ID to follow with the camera. The camera tracks this element's animated position."
+        },
+        "offset": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Offset [x,y,z] from the followed element's position."
+        },
+        "angleLockAxis": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "description": "Axis indices for angle-lock camera mode."
+        },
+        "angleLockDirection": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Element IDs defining the angle-lock direction vector."
+        },
+        "angleLockVector": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Element IDs defining the angle-lock reference vector."
+        }
+      },
+      "additionalProperties": false
+    },
+    "sceneFunction": {
+      "type": "object",
+      "description": "Reusable function registered in the math.js sandbox. Can be called from any expression in the scene.",
+      "required": ["name", "expr"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Function name usable in expressions. Example: \"hx\" allows calling hx() in expressions."
+        },
+        "args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Function argument names. Example: [\"mode\"] for a function that takes one argument."
+        },
+        "expr": {
+          "type": "string",
+          "description": "Function body as a math.js expression or IIFE JavaScript string. For complex logic, use an IIFE: \"(()=>{...})()\". Requires 'unsafe: true' at lesson level."
+        }
+      },
+      "additionalProperties": false
+    },
+    "starfield": {
+      "type": "object",
+      "description": "Background starfield rendered as point sprites in a spherical shell.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether starfield is visible. Default: true.",
+          "default": true
+        },
+        "count": {
+          "type": "integer",
+          "description": "Number of star particles. Default: 900.",
+          "default": 900
+        },
+        "radiusMin": {
+          "type": "integer",
+          "description": "Inner radius of the star shell. Default: auto-calculated from scene range."
+        },
+        "radiusMax": {
+          "type": "integer",
+          "description": "Outer radius of the star shell. Default: auto-calculated from scene range."
+        },
+        "size": {
+          "type": "number",
+          "description": "Star particle size. Default: 2.1.",
+          "default": 2.1
+        },
+        "opacity": {
+          "type": "number",
+          "description": "Star opacity. Default: 0.9.",
+          "default": 0.9
+        },
+        "twinkle": {
+          "type": "number",
+          "description": "Twinkle intensity 0-1. Default: 0.25.",
+          "default": 0.25
+        },
+        "color": {
+          "type": "string",
+          "description": "Star color as hex string. Default: '#d9e6ff'.",
+          "default": "#d9e6ff"
+        }
+      },
+      "additionalProperties": false
+    },
+    "infoOverlay": {
+      "type": "object",
+      "description": "Info panel overlay displayed during a step.",
+      "required": ["id", "content"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique overlay ID for removal. Example: \"main_info\"."
+        },
+        "content": {
+          "type": "string",
+          "description": "Markdown content with KaTeX support. Slider values can be interpolated with {{sliderId}}. Example: \"### $P(A)$\\n$P(A) = {{pA}}$\"."
+        },
+        "position": {
+          "type": "string",
+          "enum": ["top-left", "top-right", "bottom-left", "bottom-right", "top-center", "bottom-center"],
+          "description": "Screen position for the overlay. Default: 'top-left'.",
+          "default": "top-left"
+        },
+        "pos": {
+          "type": "string",
+          "enum": ["top-left", "top-right", "bottom-left", "bottom-right", "top-center", "bottom-center"],
+          "description": "Alias for 'position'. Prefer 'position' in new scenes."
+        },
+        "keep": {
+          "type": "boolean",
+          "description": "If true, overlay persists across steps until explicitly removed. Default: false.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "virtualTime": {
+      "type": "object",
+      "description": "Virtual time expression that replaces the default wall-clock 't' variable. Allows slider-controlled time for scrubbing.",
+      "required": ["expr"],
+      "properties": {
+        "expr": {
+          "type": "string",
+          "description": "Math.js expression producing the virtual time value. Use slider IDs. Example: \"tau*T\" where tau is a slider."
+        }
+      },
+      "additionalProperties": false
+    },
+    "shader": {
+      "type": "object",
+      "description": "Material shader configuration for 3D objects.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["basic", "phong", "standard"],
+          "description": "Three.js material type. 'basic': no lighting; 'phong': Phong shading (default); 'standard': PBR material.",
+          "default": "phong"
+        },
+        "shininess": {
+          "type": "integer",
+          "description": "Phong shininess exponent. Higher = sharper specular. Default: 40.",
+          "default": 40
+        },
+        "emissive": {
+          "type": "string",
+          "description": "Emissive (self-glow) color as hex string. Example: \"#112344\"."
+        },
+        "specular": {
+          "type": "string",
+          "description": "Specular highlight color as hex string. Example: \"#99b5eb\"."
+        },
+        "depthWrite": {
+          "type": "boolean",
+          "description": "Whether the material writes to the depth buffer. Set false for transparent overlapping objects."
+        },
+        "depthTest": {
+          "type": "boolean",
+          "description": "Whether the material tests against the depth buffer."
+        },
+        "ignorePlaneOpacity": {
+          "type": "boolean",
+          "description": "When true, this mesh keeps its own material opacity instead of being scaled by the global planeOpacity display control."
+        },
+        "flatShading": {
+          "type": "boolean",
+          "description": "Use flat shading instead of smooth. Gives a faceted look."
+        },
+        "roughness": {
+          "type": "number",
+          "description": "PBR roughness 0-1 (standard material only). Default: 0.85.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "metalness": {
+          "type": "number",
+          "description": "PBR metalness 0-1 (standard material only). Default: 0.08.",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "trail": {
+      "type": "object",
+      "description": "Trail effect for animated_vector showing a fading path behind the moving tip.",
+      "properties": {
+        "color": {
+          "type": "string",
+          "description": "Trail color as hex string. Defaults to the element color."
+        },
+        "opacity": {
+          "type": "number",
+          "description": "Trail opacity. Default: 1."
+        },
+        "width": {
+          "type": "number",
+          "description": "Trail line width. Default: 1."
+        },
+        "length": {
+          "type": "integer",
+          "description": "Maximum number of trail points stored. Default: 200."
+        }
+      },
+      "additionalProperties": false
+    },
+    "vectorPanels": {
+      "type": "object",
+      "description": "Attached panel rectangles rendered at the base of an animated_vector.",
+      "properties": {
+        "color": {
+          "type": "string",
+          "description": "Panel color as hex string."
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Panel opacity."
+        },
+        "length": {
+          "type": "number",
+          "description": "Panel length measured outward from the vector base."
+        },
+        "width": {
+          "type": "number",
+          "description": "Panel width measured along the vector direction."
+        },
+        "thickness": {
+          "type": "number",
+          "description": "Panel thickness."
+        },
+        "gap": {
+          "type": "number",
+          "description": "Gap between the vector body and the first panel segment."
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2,
+          "description": "Number of rectangular panel segments per side. Use 2 for four total panels."
+        },
+        "renderOrder": {
+          "type": "number",
+          "description": "Optional render order override for the panel meshes."
+        }
+      },
+      "additionalProperties": false
+    },
+    "regularPolygon": {
+      "type": "object",
+      "description": "Regular polygon generator. Creates N equidistant vertices in a circle.",
+      "properties": {
+        "n": {
+          "oneOf": [
+            { "type": "integer", "minimum": 3 },
+            { "type": "string" }
+          ],
+          "description": "Number of sides. Can be an expression string for animated polygons. Example: \"N\" (slider-driven)."
+        },
+        "radius": {
+          "oneOf": [
+            { "type": "number" },
+            { "type": "string" }
+          ],
+          "description": "Circumradius. Can be an expression string. Default: 1."
+        },
+        "center": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "type": "number" },
+              { "type": "string" }
+            ]
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Center position [x,y,z]. Components can be expression strings. Default: [0,0,0]."
+        },
+        "rotation": {
+          "oneOf": [
+            { "type": "number" },
+            { "type": "string" }
+          ],
+          "description": "Rotation angle in radians. Can be an expression string. Default: 0."
+        }
+      },
+      "additionalProperties": false
+    },
+    "fillRegion": {
+      "type": "object",
+      "description": "Filled region between curves for animated_curve elements.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional ID for the fill region, used for referencing in remove directives."
+        },
+        "color": {
+          "$ref": "#/$defs/color",
+          "description": "Fill color. Defaults to the parent curve's color."
+        },
+        "opacity": {
+          "oneOf": [
+            { "type": "number" },
+            { "type": "string" }
+          ],
+          "description": "Fill opacity. Can be expression string. Default: 0.35."
+        },
+        "above": {
+          "type": "string",
+          "description": "Math.js expression for upper boundary curve."
+        },
+        "below": {
+          "type": "string",
+          "description": "Math.js expression for lower boundary curve."
+        },
+        "rightOf": {
+          "type": "string",
+          "description": "Math.js expression for right boundary."
+        },
+        "leftOf": {
+          "type": "string",
+          "description": "Math.js expression for left boundary."
+        },
+        "outlineWidth": {
+          "oneOf": [
+            { "type": "number" },
+            { "type": "string" }
+          ],
+          "description": "Outline width for the fill region."
+        },
+        "outlineColor": {
+          "$ref": "#/$defs/color",
+          "description": "Outline color. Defaults to the fill color."
+        },
+        "outlineOpacity": {
+          "oneOf": [
+            { "type": "number" },
+            { "type": "string" }
+          ],
+          "description": "Outline opacity."
+        }
+      },
+      "additionalProperties": false
+    },
+    "proofOrProofArray": {
+      "oneOf": [
+        { "$ref": "#/$defs/proof" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/proof" }
+        }
+      ],
+      "description": "A single proof or array of proofs."
+    },
+    "proof": {
+      "type": "object",
+      "description": "A step-by-step mathematical proof or derivation displayed in the proof panel.",
+      "required": ["title", "steps"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique proof ID for stable navigation state persistence across scene switches."
+        },
+        "title": {
+          "type": "string",
+          "description": "Proof title displayed in the panel header. Example: \"Bayes' Theorem Derivation\"."
+        },
+        "goal": {
+          "type": "string",
+          "description": "Goal statement rendered with KaTeX. Shown at the top of the proof panel. Example: \"P(A|B) = \\\\frac{P(B|A)P(A)}{P(B)}\"."
+        },
+        "technique": {
+          "type": "string",
+          "enum": [
+            "direct", "contradiction", "contrapositive", "cases",
+            "induction", "strongInduction", "wellOrdering",
+            "construction", "nonConstructive", "counterexample",
+            "exhaustion", "equivalence", "invariant", "probabilistic",
+            "existence", "uniqueness", "derivation"
+          ],
+          "description": "Proof technique shown as a colored badge. 'derivation' is hidden (no badge shown)."
+        },
+        "techniqueHint": {
+          "type": "string",
+          "description": "Tooltip text explaining why this technique was chosen. Shown on hover over the technique badge."
+        },
+        "sceneStep": {
+          "oneOf": [
+            { "type": "integer" },
+            { "type": "string" }
+          ],
+          "description": "Scene step to navigate to when viewing the proof goal. Integer for step index, or 'sceneIdx:stepIdx' string. Enables bidirectional sync between proof and scene navigation."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "System prompt for the AI when discussing this proof. Provides context about the proof for the chat tutor."
+        },
+        "steps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/proofStep" },
+          "minItems": 1,
+          "description": "Array of proof steps rendered sequentially."
+        }
+      },
+      "additionalProperties": false
+    },
+    "proofStep": {
+      "type": "object",
+      "description": "A single step in a mathematical proof.",
+      "required": ["label"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Step type displayed as a badge. Common values: 'step', 'definition', 'axiom', 'theorem', 'lemma', 'assumption', 'substitution', 'simplification', 'conclusion'. Default: 'step'.",
+          "default": "step"
+        },
+        "label": {
+          "type": "string",
+          "description": "Step label/title. Example: \"Apply definition of conditional probability\"."
+        },
+        "math": {
+          "type": "string",
+          "description": "LaTeX math expression rendered via KaTeX in display mode. Example: \"P(A|B) = \\\\frac{P(A \\\\cap B)}{P(B)}\". Can include highlight spans via \\\\htmlClass{hl-name}{content}."
+        },
+        "justification": {
+          "type": "string",
+          "description": "Short justification text rendered below the math. Supports inline KaTeX. Example: \"By the multiplication rule\"."
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Longer explanation rendered as markdown below the justification. For additional context."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "System prompt hint for the AI when this proof step is active. Provides step-specific teaching guidance for the chat tutor."
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Tags displayed as small badges on the step. Example: [\"algebra\", \"key-insight\"]."
+        },
+        "highlights": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/proofHighlight" },
+          "description": "Named highlight regions in the math expression. Keys match \\\\htmlClass{hl-<name>}{...} spans in the math field."
+        },
+        "sceneStep": {
+          "oneOf": [
+            { "type": "integer" },
+            { "type": "string" }
+          ],
+          "description": "Scene step to sync to when this proof step is active. Integer for step index in current scene, or 'sceneIdx:stepIdx' for cross-scene."
+        }
+      },
+      "additionalProperties": false
+    },
+    "proofHighlight": {
+      "type": "object",
+      "description": "Highlight configuration for a named region in proof math expressions.",
+      "properties": {
+        "color": {
+          "type": "string",
+          "enum": ["cyan", "yellow", "green", "orange", "magenta", "red", "blue", "pink", "white"],
+          "description": "Highlight color. Default: 'cyan'.",
+          "default": "cyan"
+        },
+        "label": {
+          "type": "string",
+          "description": "Tooltip and annotation text for the highlight. Shown on hover and click."
+        }
+      },
+      "additionalProperties": false
+    },
+    "color": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6,8}$",
+          "description": "Hex color string '#rrggbb' or '#rrggbbaa' with optional alpha. Example: '#ff6644' or '#ff664488'."
+        },
+        {
+          "type": "array",
+          "items": { "type": "number", "minimum": 0, "maximum": 1 },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "RGB array with values 0-1. Example: [0.5, 0.2, 0.8]."
+        }
+      ],
+      "description": "Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1."
+    },
+    "vec3Number": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "3D vector as [x,y,z] numeric array."
+    },
+    "vec3": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "number" },
+          { "type": "string" }
+        ]
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "3D vector as [x,y,z]. Components can be numbers or math.js expression strings."
+    },
+    "vec3OrExpr": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "number" },
+          { "type": "string" }
+        ]
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "3D point [x,y,z] where each component can be a number or math.js expression string."
+    },
+    "range3D": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": { "type": "number" },
+        "minItems": 2,
+        "maxItems": 2
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "3D axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]]."
+    }
+  }
+}

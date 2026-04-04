@@ -1,0 +1,122 @@
+{
+  "name": "cislunar-dynamics",
+  "description": "Restricted Earth-Moon mission model for Artemis II style cislunar flyby lessons. The domain reconstructs one nominal mission family from launch through high Earth orbit, translunar injection, lunar flyby, free-return coast, entry interface, and splashdown. Public trajectory functions come from one continuous launch-to-splashdown state integration and are cached by flyby-altitude family.",
+  "implementation": {
+    "model": "Single cached mission formulation. A continuous ODE integrates spacecraft position and velocity from launch through splashdown under Earth gravity, moving Moon gravity, and smooth tracking acceleration toward a NASA-timed nominal Artemis II reference family. The reference family preserves launch, Earth-orbit setup, translunar injection, lunar flyby, free return, entry interface, and splashdown timing anchors without switching the public trajectory between separate segment solvers.",
+    "integrator": "Fourth-order Runge-Kutta (RK4) for the full launch-to-splashdown mission state.",
+    "stepSize": "dt = 90 s for the cached mission solve. Public function lookup uses linear interpolation between cached samples.",
+    "storage": "Per-flyby family trajectory arrays store day, position, and velocity samples for the full mission from day 0 through splashdown. Derived scalar functions reuse the same cached mission solve.",
+    "cache": "Cache key is the rounded flyby-altitude family in statute miles, rounded to the nearest 50 mi. All public functions share the same cache for a given family.",
+    "coordinateSystem": "Earth-centered 2D cislunar plane in kilometers. Public position functions return scene units where 1 unit = 10,000 km. Earth is centered at (0,0). The Moon position is time-dependent and uses a mean orbital period of 27.321661 days.",
+    "missionAnchors": {
+      "launchToOrbit": "Launch, initial insertion orbit, safe orbit, high Earth orbit, Orion separation, proximity ops, and departure setup are timed to the NASA Artemis II press kit.",
+      "tli": "Translunar injection occurs at mission day 1.067.",
+      "flyby": "Lunar SOI entry, closest approach, and SOI exit are aligned to the published Artemis II nominal timeline. Flyby altitude family is controlled by the flyAlt slider or explicit function argument.",
+      "return": "Return correction windows, service module separation, entry interface, and splashdown are modeled on the NASA nominal mission timeline."
+    }
+  },
+  "note": "This domain supports both explicit function arguments and slider injection. If flyAlt is omitted when calling a public function, the domain reads the current scene slider with id `flyAlt` via `_init({ getSlider })`.",
+  "sliderContracts": {
+    "flyAlt": {
+      "description": "Target lunar flyby altitude family in statute miles. Rounded to the nearest 50 mi for cache reuse and nominal family selection.",
+      "default": 4600,
+      "usedBy": [
+        "missionX",
+        "missionY",
+        "missionVx",
+        "missionVy",
+        "moonX",
+        "moonY",
+        "moonTheta",
+        "distEarthKm",
+        "distMoonKm",
+        "missionSpeedKmS",
+        "missionBlackout",
+        "missionPhase",
+        "missionMilestone"
+      ]
+    }
+  },
+  "functions": {
+    "missionX": {
+      "signature": "missionX(day, flyAlt?)",
+      "description": "Orion x-coordinate in scene units at mission day `day`.",
+      "returns": "number — x-position in scene units where 1 unit = 10,000 km.",
+      "params": [
+        { "name": "day", "type": "number", "description": "Mission day from launch. Clamped to [0, 9.1]." },
+        { "name": "flyAlt", "type": "number", "description": "Optional flyby altitude family in statute miles. Defaults to slider `flyAlt` if omitted." }
+      ],
+      "example": "missionX(day, flyAlt)"
+    },
+    "missionY": {
+      "signature": "missionY(day, flyAlt?)",
+      "description": "Orion y-coordinate in scene units at mission day `day`.",
+      "returns": "number — y-position in scene units where 1 unit = 10,000 km.",
+      "params": [
+        { "name": "day", "type": "number", "description": "Mission day from launch." },
+        { "name": "flyAlt", "type": "number", "description": "Optional flyby altitude family in statute miles." }
+      ],
+      "example": "missionY(day)"
+    },
+    "missionVx": {
+      "signature": "missionVx(day, flyAlt?)",
+      "description": "Approximate x-velocity in km/s from the mission solve.",
+      "returns": "number — x-velocity in km/s."
+    },
+    "missionVy": {
+      "signature": "missionVy(day, flyAlt?)",
+      "description": "Approximate y-velocity in km/s from the mission solve.",
+      "returns": "number — y-velocity in km/s."
+    },
+    "moonX": {
+      "signature": "moonX(day, flyAlt?)",
+      "description": "Moon x-coordinate in scene units at mission day `day`.",
+      "returns": "number — x-position in scene units."
+    },
+    "moonY": {
+      "signature": "moonY(day, flyAlt?)",
+      "description": "Moon y-coordinate in scene units at mission day `day`.",
+      "returns": "number — y-position in scene units."
+    },
+    "moonTheta": {
+      "signature": "moonTheta(day, flyAlt?)",
+      "description": "Moon orbital phase angle in radians for the active mission family.",
+      "returns": "number — phase angle in radians."
+    },
+    "distEarthKm": {
+      "signature": "distEarthKm(day, flyAlt?)",
+      "description": "Distance from Orion to Earth center.",
+      "returns": "number — distance in kilometers."
+    },
+    "distMoonKm": {
+      "signature": "distMoonKm(day, flyAlt?)",
+      "description": "Distance from Orion to Moon center.",
+      "returns": "number — distance in kilometers."
+    },
+    "missionSpeedKmS": {
+      "signature": "missionSpeedKmS(day, flyAlt?)",
+      "description": "Magnitude of Orion velocity from the cached mission state.",
+      "returns": "number — speed in km/s."
+    },
+    "missionBlackout": {
+      "signature": "missionBlackout(day, flyAlt?)",
+      "description": "Line-of-sight blackout test between Orion and Earth with the Moon as occluder.",
+      "returns": "number — 1 if the Moon blocks line of sight to Earth, else 0."
+    },
+    "missionPhase": {
+      "signature": "missionPhase(day, flyAlt?)",
+      "description": "Human-readable high-level mission phase for the given mission day.",
+      "returns": "string"
+    },
+    "missionMilestone": {
+      "signature": "missionMilestone(day, flyAlt?)",
+      "description": "Human-readable mission milestone bucket aligned to the NASA Artemis II nominal sequence.",
+      "returns": "string"
+    }
+  },
+  "sources": [
+    "https://www.nasa.gov/artemis-ii-press-kit/",
+    "https://www.nasa.gov/mission/artemis-ii/",
+    "https://svs.gsfc.nasa.gov/api/5610"
+  ]
+}
