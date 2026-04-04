@@ -35,6 +35,19 @@ function _normalizeExprTriplet(triplet) {
     return triplet.map(v => (typeof v === 'number' ? String(v) : v));
 }
 
+function _getElementPosExprTriplet(el) {
+    if (!el) return null;
+    return _normalizeExprTriplet(el.expr || el.toExpr || el.centerExpr)
+        || (Array.isArray(el.center) && el.center.length === 3 ? _normalizeExprTriplet(el.center) : null)
+        || (Array.isArray(el.points) && el.points.length > 0 ? _normalizeExprTriplet(el.points[0]) : null);
+}
+
+function _getElementFromExprTriplet(el) {
+    if (!el) return null;
+    return _normalizeExprTriplet(el.fromExpr)
+        || (Array.isArray(el.points) && el.points.length > 1 ? _normalizeExprTriplet(el.points[1]) : null);
+}
+
 export function activateFollowCam(viewSpec) {
     const followTargets = Array.isArray(viewSpec.follow) ? viewSpec.follow : [viewSpec.follow];
     const offset = viewSpec.offset || [0, 0, 30];
@@ -43,8 +56,7 @@ export function activateFollowCam(viewSpec) {
     for (const tid of followTargets) {
         const candidate = findElementSpecById(tid);
         if (!candidate) continue;
-        const hasExpr = _normalizeExprTriplet(candidate.expr || candidate.toExpr) !== null
-            || (Array.isArray(candidate.points) && candidate.points.length > 0);
+        const hasExpr = _getElementPosExprTriplet(candidate) !== null;
         if (hasExpr) { el = candidate; break; }
     }
     if (!el) {
@@ -52,12 +64,8 @@ export function activateFollowCam(viewSpec) {
         return;
     }
 
-    let exprStrings = _normalizeExprTriplet(el.expr || el.toExpr);
-    let fromExprStrings = _normalizeExprTriplet(el.fromExpr);
-    if (!exprStrings && Array.isArray(el.points) && el.points.length > 0) {
-        exprStrings = _normalizeExprTriplet(el.points[0]);
-        if (el.points.length > 1) fromExprStrings = _normalizeExprTriplet(el.points[1]);
-    }
+    let exprStrings = _getElementPosExprTriplet(el);
+    let fromExprStrings = _getElementFromExprTriplet(el);
     if (!exprStrings) {
         console.warn('follow-cam: element has no expr:', el.id);
         return;
@@ -128,10 +136,8 @@ export function activateFollowCam(viewSpec) {
         for (const vid of resolvedAngleLockVectorTargets) {
             const vel = findElementSpecById(vid);
             if (!vel) continue;
-            const toStr = _normalizeExprTriplet(vel.expr || vel.toExpr)
-                || (Array.isArray(vel.points) && vel.points.length > 0 ? _normalizeExprTriplet(vel.points[0]) : null);
-            const fromStr = _normalizeExprTriplet(vel.fromExpr)
-                || (Array.isArray(vel.points) && vel.points.length > 1 ? _normalizeExprTriplet(vel.points[1]) : null)
+            const toStr = _getElementPosExprTriplet(vel);
+            const fromStr = _getElementFromExprTriplet(vel)
                 || ['0', '0', '0'];
             if (!toStr) continue;
             try {
@@ -153,10 +159,8 @@ export function activateFollowCam(viewSpec) {
     if (!directionEval && angleLockDirectionTargets) {
         const aEl = findElementSpecById(angleLockDirectionTargets[0]);
         const bEl = findElementSpecById(angleLockDirectionTargets[1]);
-        const aStr = aEl ? (_normalizeExprTriplet(aEl.expr || aEl.toExpr)
-            || (Array.isArray(aEl.points) && aEl.points.length > 0 ? _normalizeExprTriplet(aEl.points[0]) : null)) : null;
-        const bStr = bEl ? (_normalizeExprTriplet(bEl.expr || bEl.toExpr)
-            || (Array.isArray(bEl.points) && bEl.points.length > 0 ? _normalizeExprTriplet(bEl.points[0]) : null)) : null;
+        const aStr = aEl ? _getElementPosExprTriplet(aEl) : null;
+        const bStr = bEl ? _getElementPosExprTriplet(bEl) : null;
         if (aStr && bStr) {
             try {
                 const aFns = aStr.map(e => compileExpr(e));
