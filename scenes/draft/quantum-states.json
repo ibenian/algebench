@@ -1091,6 +1091,363 @@
       ]
     },
     {
+      "title": "From Amplitudes to Probabilities",
+      "description": "Hilbert-space amplitudes are not themselves probabilities; Born's rule says to square their magnitudes.",
+      "markdown": "# From Amplitudes to Probabilities\n\nA pure qubit written in Hilbert space has the form\n\n$$\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle.$$\n\nThe numbers $\\alpha$ and $\\beta$ are **probability amplitudes**, not probabilities themselves. The actual measurement probabilities are given by **Born's rule**:\n\n$$p(0)=|\\alpha|^2, \\qquad p(1)=|\\beta|^2.$$\n\nFor the Bloch-sphere parameterization,\n\n$$\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right), \\qquad \\beta = e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right),$$\n\nso the probabilities become\n\n$$p(0)=\\cos^2\\!\\left(\\frac{\\theta}{2}\\right), \\qquad p(1)=\\sin^2\\!\\left(\\frac{\\theta}{2}\\right).$$\n\nThe phase $\\phi$ changes interference in other bases, but it does **not** affect these computational-basis probabilities.\n\nReferences: Griffiths & Schroeter; Nielsen & Chuang.",
+      "prompt": "Teach this as the Born's-rule bridge. Left panel: amplitudes in Hilbert space. Right panel: actual measurement probabilities. Be explicit that amplitudes are not probabilities; magnitudes squared are. Use cyan for alpha / p(0), coral for beta / p(1), and magenta only to show that phi does not change the computational-basis probabilities.",
+      "range": [[-5.2, 5.2], [-5.2, 5.2], [-5.2, 5.2]],
+      "camera": {
+        "position": [0, -8, 0.8],
+        "target": [0, 0, 0],
+        "up": [0, 0, 1]
+      },
+      "views": [
+        {
+          "name": "Side By Side",
+          "position": [0, -8, 0.8],
+          "target": [0, 0, 0],
+          "up": [0, 0, 1],
+          "description": "Compare amplitudes and probabilities"
+        },
+        {
+          "name": "Amplitudes",
+          "position": [-2.6, -5.6, 0.7],
+          "target": [-2.6, 0, 0],
+          "up": [0, 0, 1],
+          "description": "Focus on the Hilbert amplitudes"
+        },
+        {
+          "name": "Probabilities",
+          "position": [2.6, -5.6, 0.7],
+          "target": [2.6, 0, 0],
+          "up": [0, 0, 1],
+          "description": "Focus on the measurable probabilities"
+        }
+      ],
+      "elements": [
+        {
+          "id": "ap_divider",
+          "type": "line",
+          "from": [0, 0, -2.0],
+          "to": [0, 0, 2.0],
+          "color": "#5c667a",
+          "width": 1.2,
+          "opacity": 0.6
+        },
+        {
+          "id": "ap_left_title",
+          "type": "text",
+          "position": [-2.6, 0, 1.95],
+          "text": "Hilbert amplitudes",
+          "color": "#a6c8ff",
+          "size": 13
+        },
+        {
+          "id": "ap_right_title",
+          "type": "text",
+          "position": [2.6, 0, 1.95],
+          "text": "Measurement probabilities",
+          "color": "#ffd166",
+          "size": 13
+        }
+      ],
+      "steps": [
+        {
+          "title": "Amplitudes are not probabilities",
+          "description": "The Hilbert-space coordinates $\\alpha$ and $\\beta$ tell us the state, but the actual probabilities are their squared magnitudes.",
+          "prompt": "Start by contrasting the two panels. Left: amplitudes. Right: probabilities. Say explicitly that the right panel comes from Born's rule, not by renaming alpha and beta.",
+          "add": [
+            {
+              "id": "ap_amp_top_slot",
+              "type": "line",
+              "from": [-3.8, 0, 0.8],
+              "to": [-1.7, 0, 0.8],
+              "color": "#66d9ff44",
+              "width": 3
+            },
+            {
+              "id": "ap_amp_bottom_slot",
+              "type": "line",
+              "from": [-3.8, 0, -0.8],
+              "to": [-1.7, 0, -0.8],
+              "color": "#ff7b7244",
+              "width": 3
+            },
+            {
+              "id": "ap_prob_top_slot",
+              "type": "line",
+              "from": [1.5, 0, 0.8],
+              "to": [3.6, 0, 0.8],
+              "color": "#66d9ff44",
+              "width": 3
+            },
+            {
+              "id": "ap_prob_bottom_slot",
+              "type": "line",
+              "from": [1.5, 0, -0.8],
+              "to": [3.6, 0, -0.8],
+              "color": "#ff7b7244",
+              "width": 3
+            },
+            {
+              "id": "ap_amp_top_text",
+              "type": "text",
+              "position": [-4.9, 0, 0.92],
+              "text": "$|0\\rangle$ amplitude",
+              "color": "#66d9ff",
+              "size": 11
+            },
+            {
+              "id": "ap_amp_bottom_text",
+              "type": "text",
+              "position": [-4.9, 0, -0.68],
+              "text": "$|1\\rangle$ amplitude",
+              "color": "#ff7b72",
+              "size": 11
+            },
+            {
+              "id": "ap_prob_top_text",
+              "type": "text",
+              "position": [0.55, 0, 0.92],
+              "text": "$p(0)$",
+              "color": "#66d9ff",
+              "size": 11
+            },
+            {
+              "id": "ap_prob_bottom_text",
+              "type": "text",
+              "position": [0.55, 0, -0.68],
+              "text": "$p(1)$",
+              "color": "#ff7b72",
+              "size": 11
+            },
+            {
+              "id": "ap_alpha_fixed",
+              "type": "vector",
+              "from": [-3.8, 0, 0.8],
+              "to": [-1.98, 0, 0.8],
+              "color": "#66d9ff",
+              "width": 1.5
+            },
+            {
+              "id": "ap_alpha_fixed_label",
+              "type": "text",
+              "position": [-2.95, 0, 1.03],
+              "text": "$|\\alpha|$",
+              "color": "#66d9ff",
+              "size": 12
+            },
+            {
+              "id": "ap_beta_fixed",
+              "type": "vector",
+              "from": [-3.8, 0, -0.8],
+              "to": [-2.75, 0, -0.8],
+              "color": "#ff7b72",
+              "width": 1.5
+            },
+            {
+              "id": "ap_beta_fixed_label",
+              "type": "text",
+              "position": [-3.38, 0, -0.58],
+              "text": "$|\\beta|$",
+              "color": "#ff7b72",
+              "size": 12
+            },
+            {
+              "id": "ap_p0_fixed",
+              "type": "vector",
+              "from": [1.5, 0, 0.8],
+              "to": [3.075, 0, 0.8],
+              "color": "#66d9ff",
+              "width": 1.5
+            },
+            {
+              "id": "ap_p0_fixed_label",
+              "type": "text",
+              "position": [2.18, 0, 1.03],
+              "text": "$|\\alpha|^2$",
+              "color": "#66d9ff",
+              "size": 12
+            },
+            {
+              "id": "ap_p1_fixed",
+              "type": "vector",
+              "from": [1.5, 0, -0.8],
+              "to": [2.025, 0, -0.8],
+              "color": "#ff7b72",
+              "width": 1.5
+            },
+            {
+              "id": "ap_p1_fixed_label",
+              "type": "text",
+              "position": [1.72, 0, -0.58],
+              "text": "$|\\beta|^2$",
+              "color": "#ff7b72",
+              "size": 12
+            }
+          ],
+          "info": [
+            {
+              "id": "ap_intro_info",
+              "position": "top-right",
+              "content": "$$\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle$$\n$$p(0)=|\\alpha|^2, \\qquad p(1)=|\\beta|^2$$"
+            }
+          ]
+        },
+        {
+          "title": "$\\theta$ controls both panels",
+          "description": "As $\\theta$ changes, the amplitudes change on the left and the probabilities change on the right. The right panel always shows the squared magnitudes of the left panel.",
+          "prompt": "Make the squaring relationship visible. Students should see that shortening an amplitude bar by a little can shorten the corresponding probability bar by more.",
+          "remove": [
+            {"id": "ap_alpha_fixed"},
+            {"id": "ap_alpha_fixed_label"},
+            {"id": "ap_beta_fixed"},
+            {"id": "ap_beta_fixed_label"},
+            {"id": "ap_p0_fixed"},
+            {"id": "ap_p0_fixed_label"},
+            {"id": "ap_p1_fixed"},
+            {"id": "ap_p1_fixed_label"},
+            {"type": "info"}
+          ],
+          "sliders": [
+            {
+              "id": "ap_theta",
+              "label": "$\\theta$",
+              "min": 0,
+              "max": 3.141592653589793,
+              "step": 0.01,
+              "default": 1.05
+            }
+          ],
+          "add": [
+            {
+              "id": "ap_alpha_bar",
+              "type": "animated_vector",
+              "from": [-3.8, 0, 0.8],
+              "expr": ["-3.8 + 2.1*cos(ap_theta/2)", "0", "0.8"],
+              "color": "#66d9ff",
+              "width": 1.5
+            },
+            {
+              "id": "ap_alpha_bar_label",
+              "type": "text",
+              "positionExpr": ["-3.55 + 1.0*cos(ap_theta/2)", "0", "1.03"],
+              "text": "$|\\alpha|$",
+              "color": "#66d9ff",
+              "size": 12
+            },
+            {
+              "id": "ap_beta_bar",
+              "type": "animated_vector",
+              "from": [-3.8, 0, -0.8],
+              "expr": ["-3.8 + 2.1*sin(ap_theta/2)", "0", "-0.8"],
+              "color": "#ff7b72",
+              "width": 1.5
+            },
+            {
+              "id": "ap_beta_bar_label",
+              "type": "text",
+              "positionExpr": ["-3.55 + 1.0*sin(ap_theta/2)", "0", "-0.58"],
+              "text": "$|\\beta|$",
+              "color": "#ff7b72",
+              "size": 12
+            },
+            {
+              "id": "ap_p0_bar",
+              "type": "animated_vector",
+              "from": [1.5, 0, 0.8],
+              "expr": ["1.5 + 2.1*cos(ap_theta/2)^2", "0", "0.8"],
+              "color": "#66d9ff",
+              "width": 1.5
+            },
+            {
+              "id": "ap_p0_bar_label",
+              "type": "text",
+              "positionExpr": ["1.78 + 1.0*cos(ap_theta/2)^2", "0", "1.03"],
+              "text": "$p(0)$",
+              "color": "#66d9ff",
+              "size": 12
+            },
+            {
+              "id": "ap_p1_bar",
+              "type": "animated_vector",
+              "from": [1.5, 0, -0.8],
+              "expr": ["1.5 + 2.1*sin(ap_theta/2)^2", "0", "-0.8"],
+              "color": "#ff7b72",
+              "width": 1.5
+            },
+            {
+              "id": "ap_p1_bar_label",
+              "type": "text",
+              "positionExpr": ["1.78 + 1.0*sin(ap_theta/2)^2", "0", "-0.58"],
+              "text": "$p(1)$",
+              "color": "#ff7b72",
+              "size": 12
+            }
+          ],
+          "info": [
+            {
+              "id": "ap_theta_info",
+              "position": "top-right",
+              "content": "$$|\\alpha| = \\cos\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(cos(ap_theta/2),3)}}$$\n$$|\\beta| = \\sin\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(sin(ap_theta/2),3)}}$$\n$$p(0)=|\\alpha|^2={{toFixed(cos(ap_theta/2)^2,3)}},\\quad p(1)=|\\beta|^2={{toFixed(sin(ap_theta/2)^2,3)}}$$"
+            }
+          ]
+        },
+        {
+          "title": "$\\phi$ does not change these probabilities",
+          "description": "Now add relative phase. The lower amplitude can rotate in Hilbert space, but the computational-basis probabilities stay fixed because only the magnitudes matter.",
+          "prompt": "Use this step to separate amplitude phase from measurement probability. The left panel gains a phase wheel; the right panel does not move.",
+          "sliders": [
+            {
+              "id": "ap_phi",
+              "label": "$\\phi$",
+              "min": 0,
+              "max": 6.283185307179586,
+              "step": 0.01,
+              "default": 0.9
+            }
+          ],
+          "add": [
+            {
+              "id": "ap_phase_disk",
+              "type": "parametric_curve",
+              "x": "-3.8 + 2.1*sin(ap_theta/2)",
+              "y": "0.32*cos(t)",
+              "z": "-0.8 + 0.32*sin(t)",
+              "range": [0, 6.283185307179586],
+              "samples": 80,
+              "color": "#c77dff",
+              "width": 1.5,
+              "opacity": 0.4
+            },
+            {
+              "id": "ap_beta_phase",
+              "type": "animated_vector",
+              "fromExpr": ["-3.8 + 2.1*sin(ap_theta/2)", "0", "-0.8"],
+              "expr": ["-3.8 + 2.1*sin(ap_theta/2)", "0.32*cos(ap_phi)", "-0.8 + 0.32*sin(ap_phi)"],
+              "color": "#c77dff",
+              "width": 2
+            },
+            {
+              "id": "ap_beta_phase_label",
+              "type": "text",
+              "positionExpr": ["-3.8 + 2.1*sin(ap_theta/2)", "0.32*cos(ap_phi)", "-0.8 + 0.32*sin(ap_phi)"],
+              "text": "$\\phi$",
+              "color": "#c77dff",
+              "size": 12
+            }
+          ],
+          "info": [
+            {
+              "id": "ap_phase_info",
+              "position": "top-right",
+              "content": "$$\\beta = e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)$$\n$$|\\beta| = \\sin\\!\\left(\\frac{\\theta}{2}\\right),\\qquad |\\beta|^2 = {{toFixed(sin(ap_theta/2)^2,3)}}$$\n$$\\text{Changing } \\phi \\text{ leaves } p(0),p(1) \\text{ unchanged.}$$"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "title": "From Amplitudes to a Sphere",
       "description": "After the side-by-side bridge, this scene zooms in on the Bloch sphere itself and lets the student explore its geometry directly.",
       "markdown": "# From Amplitudes to a Sphere\n\nIn the previous scene we matched the Hilbert-space amplitudes to their Bloch-sphere image. Now we zoom in on the sphere itself.\n\nFor a pure qubit,\n\n$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle$$\n\nmaps to the **Bloch vector**\n\n$$\\vec{r} = (\\sin\\theta\\cos\\phi,\\; \\sin\\theta\\sin\\phi,\\; \\cos\\theta).$$\n\nThis is a unit vector in $\\mathbb{R}^3$ — a point on a sphere.\n\n- **$\\theta$** is the polar angle from the north pole. It controls the balance between $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$.\n- **$\\phi$** is the azimuthal angle around the equator. It controls the relative phase.\n- **$z = \\cos\\theta$** directly gives the measurement probabilities: $p(0) = (1+z)/2$.\n\nReferences: Nielsen & Chuang; Sakurai & Napolitano.",
