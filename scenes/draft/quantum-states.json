@@ -620,7 +620,7 @@
             {
               "id": "hs_phase_disk",
               "type": "parametric_curve",
-              "x": "3.25",
+              "x": "1.8 + 2.1*sin(hs_theta/2)",
               "y": "0.32*cos(t)",
               "z": "-0.8 + 0.32*sin(t)",
               "range": [0, 6.283185307179586],
@@ -632,11 +632,22 @@
             {
               "id": "hs_beta_phase",
               "type": "animated_vector",
-              "from": [3.25, 0, -0.8],
-              "expr": ["3.25", "0.32*cos(hs_phi)", "-0.8 + 0.32*sin(hs_phi)"],
+              "fromExpr": ["1.8 + 2.1*sin(hs_theta/2)", "0", "-0.8"],
+              "expr": ["1.8 + 2.1*sin(hs_theta/2)", "0.32*cos(hs_phi)", "-0.8 + 0.32*sin(hs_phi)"],
               "color": "#c77dff",
-              "width": 2,
-              "label": "$\\phi$"
+              "width": 2
+            },
+            {
+              "id": "hs_beta_phase_label",
+              "type": "text",
+              "positionExpr": [
+                "1.8 + 2.1*sin(hs_theta/2)",
+                "0.32*cos(hs_phi)",
+                "-0.8 + 0.32*sin(hs_phi)"
+              ],
+              "text": "$\\phi$",
+              "color": "#c77dff",
+              "size": 12
             }
           ],
           "info": [
@@ -650,10 +661,440 @@
       ]
     },
     {
+      "title": "From Hilbert Space to the Bloch Sphere",
+      "description": "The amplitudes on the left and the Bloch vector on the right are two pictures of the same pure qubit state.",
+      "markdown": "# From Hilbert Space to the Bloch Sphere\n\nOn the left, a pure qubit is written in Hilbert space as\n\n$$\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle.$$\n\nOn the right, the **same state** is represented by a Bloch vector\n\n$$\\vec r = (\\sin\\theta\\cos\\phi,\\; \\sin\\theta\\sin\\phi,\\; \\cos\\theta).$$\n\nThis is not a change of physics; it is a change of coordinates.\n\n- In the Hilbert-space picture, $\\alpha$ and $\\beta$ are complex amplitudes.\n- In the Bloch-sphere picture, the same information is compressed into a point on the unit sphere.\n- $\\theta$ controls the balance between $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$.\n- $\\phi$ controls the relative phase.\n\nSo the Bloch sphere is a geometric summary of the pure-state Hilbert-space data for one qubit.\n\nReferences: Nielsen & Chuang; Sakurai & Napolitano.",
+      "prompt": "Teach this as a true coordinate-change scene. Left panel: Hilbert-space amplitudes. Right panel: Bloch-sphere geometry. Keep saying 'same state, different representation.' Use cyan for the |0>/alpha channel, coral for the |1>/beta channel, gold for the state, green for latitude/z information, and magenta for phase/azimuth.",
+      "range": [[-5.2, 5.2], [-5.2, 5.2], [-5.2, 5.2]],
+      "camera": {
+        "position": [0, -8, 0.8],
+        "target": [0, 0, 0],
+        "up": [0, 0, 1]
+      },
+      "views": [
+        {
+          "name": "Side By Side",
+          "position": [0, -8, 0.8],
+          "target": [0, 0, 0],
+          "up": [0, 0, 1],
+          "description": "Compare Hilbert amplitudes and the Bloch vector"
+        },
+        {
+          "name": "Hilbert",
+          "position": [-2.6, -5.5, 0.6],
+          "target": [-2.6, 0, 0],
+          "up": [0, 0, 1],
+          "description": "Focus on the amplitude picture"
+        },
+        {
+          "name": "Bloch",
+          "position": [2.6, -5.5, 0.6],
+          "target": [2.6, 0, 0],
+          "up": [0, 0, 1],
+          "description": "Focus on the sphere picture"
+        },
+        {
+          "name": "Top",
+          "position": [2.6, 0, 6],
+          "target": [2.6, 0, 0],
+          "up": [0, 1, 0],
+          "description": "Look down the Bloch z-axis to see azimuth"
+        }
+      ],
+      "elements": [
+        {
+          "id": "hb_divider",
+          "type": "line",
+          "from": [0, 0, -2.0],
+          "to": [0, 0, 2.0],
+          "color": "#5c667a",
+          "width": 1.2,
+          "opacity": 0.6
+        },
+        {
+          "id": "hb_left_title",
+          "type": "text",
+          "position": [-2.6, 0, 1.95],
+          "text": "Hilbert-space coordinates",
+          "color": "#a6c8ff",
+          "size": 13
+        },
+        {
+          "id": "hb_right_title",
+          "type": "text",
+          "position": [2.6, 0, 1.95],
+          "text": "Bloch-sphere picture",
+          "color": "#ffd166",
+          "size": 13
+        }
+      ],
+      "steps": [
+        {
+          "title": "The ket already has the needed data",
+          "description": "Hilbert space stores the state in two complex amplitudes. Those amplitudes already contain everything the Bloch sphere will show geometrically.",
+          "prompt": "Start from the left panel. The key idea is that we are not adding information when we go to the Bloch sphere; we are reorganizing it.",
+          "add": [
+            {
+              "id": "hb_top_slot",
+              "type": "line",
+              "from": [-3.8, 0, 0.8],
+              "to": [-1.7, 0, 0.8],
+              "color": "#66d9ff44",
+              "width": 3
+            },
+            {
+              "id": "hb_bottom_slot",
+              "type": "line",
+              "from": [-3.8, 0, -0.8],
+              "to": [-1.7, 0, -0.8],
+              "color": "#ff7b7244",
+              "width": 3
+            },
+            {
+              "id": "hb_top_basis",
+              "type": "text",
+              "position": [-4.9, 0, 0.92],
+              "text": "|0> channel",
+              "color": "#66d9ff",
+              "size": 11
+            },
+            {
+              "id": "hb_bottom_basis",
+              "type": "text",
+              "position": [-4.95, 0, -0.68],
+              "text": "|1> channel",
+              "color": "#ff7b72",
+              "size": 11
+            },
+            {
+              "id": "hb_alpha_fixed",
+              "type": "vector",
+              "from": [-3.8, 0, 0.8],
+              "to": [-1.98, 0, 0.8],
+              "color": "#66d9ff",
+              "width": 1.5
+            },
+            {
+              "id": "hb_alpha_fixed_label",
+              "type": "text",
+              "position": [-2.95, 0, 1.03],
+              "text": "$\\alpha$",
+              "color": "#66d9ff",
+              "size": 12
+            },
+            {
+              "id": "hb_beta_fixed",
+              "type": "vector",
+              "from": [-3.8, 0, -0.8],
+              "to": [-2.75, 0, -0.8],
+              "color": "#ff7b72",
+              "width": 1.5
+            },
+            {
+              "id": "hb_beta_fixed_label",
+              "type": "text",
+              "position": [-3.38, 0, -0.58],
+              "text": "$\\beta$",
+              "color": "#ff7b72",
+              "size": 12
+            },
+            {
+              "id": "hb_bloch_axis",
+              "type": "line",
+              "from": [2.6, 0, -1.2],
+              "to": [2.6, 0, 1.2],
+              "color": "#4488ff",
+              "width": 1.4
+            },
+            {
+              "id": "hb_ket0",
+              "type": "point",
+              "position": [2.6, 0, 1.0],
+              "color": "#66d9ff",
+              "size": 8
+            },
+            {
+              "id": "hb_ket0_label",
+              "type": "text",
+              "position": [2.95, 0, 1.0],
+              "text": "$|0\\rangle$",
+              "color": "#66d9ff",
+              "size": 11
+            },
+            {
+              "id": "hb_ket1",
+              "type": "point",
+              "position": [2.6, 0, -1.0],
+              "color": "#ff7b72",
+              "size": 8
+            },
+            {
+              "id": "hb_ket1_label",
+              "type": "text",
+              "position": [2.95, 0, -1.0],
+              "text": "$|1\\rangle$",
+              "color": "#ff7b72",
+              "size": 11
+            },
+            {
+              "id": "hb_state_fixed",
+              "type": "vector",
+              "from": [2.6, 0, 0],
+              "to": [3.47, 0, 0.5],
+              "color": "#ffd166",
+              "width": 1.2
+            },
+            {
+              "id": "hb_state_fixed_label",
+              "type": "text",
+              "position": [3.05, 0, 0.18],
+              "text": "same state",
+              "color": "#ffd166",
+              "size": 11
+            }
+          ],
+          "info": [
+            {
+              "id": "hb_intro_info",
+              "position": "top-right",
+              "content": "$$\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle$$\n$$\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right), \\qquad \\beta = e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)$$"
+            }
+          ]
+        },
+        {
+          "title": "$\\theta$ becomes latitude",
+          "description": "The magnitudes of $\\alpha$ and $\\beta$ determine how far up or down the Bloch vector sits. As $\\theta$ changes, the Hilbert-space bars and the Bloch latitude move together.",
+          "prompt": "Make theta the first visible bridge. On the left, alpha shrinks while beta grows. On the right, the Bloch vector slides from north pole to south pole.",
+          "remove": [
+            {"id": "hb_alpha_fixed"},
+            {"id": "hb_alpha_fixed_label"},
+            {"id": "hb_beta_fixed"},
+            {"id": "hb_beta_fixed_label"},
+            {"id": "hb_state_fixed"},
+            {"id": "hb_state_fixed_label"},
+            {"type": "info"}
+          ],
+          "sliders": [
+            {
+              "id": "hb_theta",
+              "label": "$\\theta$",
+              "min": 0,
+              "max": 3.141592653589793,
+              "step": 0.01,
+              "default": 1.05
+            }
+          ],
+          "add": [
+            {
+              "id": "hb_alpha_bar",
+              "type": "animated_vector",
+              "from": [-3.8, 0, 0.8],
+              "expr": ["-3.8 + 2.1*cos(hb_theta/2)", "0", "0.8"],
+              "color": "#66d9ff",
+              "width": 1.5
+            },
+            {
+              "id": "hb_alpha_bar_label",
+              "type": "text",
+              "positionExpr": ["-3.55 + 1.0*cos(hb_theta/2)", "0", "1.03"],
+              "text": "$\\alpha$",
+              "color": "#66d9ff",
+              "size": 12
+            },
+            {
+              "id": "hb_beta_bar",
+              "type": "animated_vector",
+              "from": [-3.8, 0, -0.8],
+              "expr": ["-3.8 + 2.1*sin(hb_theta/2)", "0", "-0.8"],
+              "color": "#ff7b72",
+              "width": 1.5
+            },
+            {
+              "id": "hb_beta_bar_label",
+              "type": "text",
+              "positionExpr": ["-3.55 + 1.0*sin(hb_theta/2)", "0", "-0.58"],
+              "text": "$|\\beta|$",
+              "color": "#ff7b72",
+              "size": 12
+            },
+            {
+              "id": "hb_sphere",
+              "type": "sphere",
+              "center": [2.6, 0, 0],
+              "radius": 1,
+              "color": "#334466",
+              "opacity": 0.15,
+              "segments": 64,
+              "rings": 48,
+              "shader": {"depthWrite": false}
+            },
+            {
+              "id": "hb_meridian",
+              "type": "parametric_curve",
+              "x": "2.6 + sin(t)",
+              "y": "0",
+              "z": "cos(t)",
+              "range": [0, 3.141592653589793],
+              "samples": 80,
+              "color": "#7bd389",
+              "width": 2,
+              "opacity": 0.6
+            },
+            {
+              "id": "hb_state_theta",
+              "type": "animated_vector",
+              "from": [2.6, 0, 0],
+              "expr": ["2.6 + sin(hb_theta)", "0", "cos(hb_theta)"],
+              "color": "#ffd166",
+              "width": 1.2
+            },
+            {
+              "id": "hb_state_theta_label",
+              "type": "text",
+              "positionExpr": ["3.0 + 0.45*sin(hb_theta)", "0", "0.18 + 0.25*cos(hb_theta)"],
+              "text": "same state",
+              "color": "#ffd166",
+              "size": 11
+            },
+            {
+              "id": "hb_zproj",
+              "type": "animated_vector",
+              "from": [2.6, 0, 0],
+              "expr": ["2.6", "0", "cos(hb_theta)"],
+              "color": "#7bd389",
+              "width": 1.5,
+              "opacity": 0.5
+            }
+          ],
+          "info": [
+            {
+              "id": "hb_theta_info",
+              "position": "top-right",
+              "content": "$$\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(cos(hb_theta/2), 3)}}$$\n$$|\\beta| = \\sin\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(sin(hb_theta/2), 3)}}$$\n$$z = \\cos\\theta = {{toFixed(cos(hb_theta), 3)}}$$"
+            }
+          ]
+        },
+        {
+          "title": "$\\phi$ becomes azimuth",
+          "description": "The relative phase rotates the state around the Bloch z-axis. On the left it is the phase of the lower amplitude; on the right it is the azimuthal angle of the Bloch vector.",
+          "prompt": "Add phi as the second bridge. Left panel: beta carries phase around a small phase circle. Right panel: the Bloch vector sweeps around the sphere at fixed latitude.",
+          "remove": [
+            {"id": "hb_state_theta"},
+            {"id": "hb_state_theta_label"},
+            {"id": "hb_zproj"},
+            {"type": "info"}
+          ],
+          "sliders": [
+            {
+              "id": "hb_phi",
+              "label": "$\\phi$",
+              "min": 0,
+              "max": 6.283185307179586,
+              "step": 0.01,
+              "default": 0.9
+            }
+          ],
+          "add": [
+            {
+              "id": "hb_phase_disk",
+              "type": "parametric_curve",
+              "x": "-3.8 + 2.1*sin(hb_theta/2)",
+              "y": "0.32*cos(t)",
+              "z": "-0.8 + 0.32*sin(t)",
+              "range": [0, 6.283185307179586],
+              "samples": 80,
+              "color": "#c77dff",
+              "width": 1.5,
+              "opacity": 0.4
+            },
+            {
+              "id": "hb_beta_phase",
+              "type": "animated_vector",
+              "fromExpr": ["-3.8 + 2.1*sin(hb_theta/2)", "0", "-0.8"],
+              "expr": ["-3.8 + 2.1*sin(hb_theta/2)", "0.32*cos(hb_phi)", "-0.8 + 0.32*sin(hb_phi)"],
+              "color": "#c77dff",
+              "width": 2
+            },
+            {
+              "id": "hb_beta_phase_label",
+              "type": "text",
+              "positionExpr": [
+                "-3.8 + 2.1*sin(hb_theta/2)",
+                "0.32*cos(hb_phi)",
+                "-0.8 + 0.32*sin(hb_phi)"
+              ],
+              "text": "$\\phi$",
+              "color": "#c77dff",
+              "size": 12
+            },
+            {
+              "id": "hb_equator",
+              "type": "parametric_curve",
+              "x": "2.6 + cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [0, 6.283185307179586],
+              "samples": 120,
+              "color": "#c77dff",
+              "width": 2,
+              "opacity": 0.4
+            },
+            {
+              "id": "hb_state_full",
+              "type": "animated_vector",
+              "from": [2.6, 0, 0],
+              "expr": ["2.6 + sin(hb_theta)*cos(hb_phi)", "sin(hb_theta)*sin(hb_phi)", "cos(hb_theta)"],
+              "color": "#ffd166",
+              "width": 1.2
+            },
+            {
+              "id": "hb_state_full_label",
+              "type": "text",
+              "positionExpr": ["3.0 + 0.42*sin(hb_theta)*cos(hb_phi)", "0", "0.18 + 0.25*cos(hb_theta)"],
+              "text": "same state",
+              "color": "#ffd166",
+              "size": 11
+            },
+            {
+              "id": "hb_phi_arc",
+              "type": "parametric_curve",
+              "x": "2.6 + sin(hb_theta)*cos(t)",
+              "y": "sin(hb_theta)*sin(t)",
+              "z": "cos(hb_theta)",
+              "range": [0, 6.283185307179586],
+              "samples": 80,
+              "color": "#c77dff",
+              "width": 1.5,
+              "opacity": 0.35
+            }
+          ],
+          "info": [
+            {
+              "id": "hb_phi_info",
+              "position": "top-right",
+              "content": "$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle$$\n$$\\vec r = (\\sin\\theta\\cos\\phi,\\; \\sin\\theta\\sin\\phi,\\; \\cos\\theta)$$\n$$\\phi = {{toFixed(hb_phi, 2)}}\\ \\text{is phase on the left and azimuth on the right}$$"
+            }
+          ]
+        },
+        {
+          "title": "One state, two coordinate systems",
+          "description": "For a pure qubit, the Hilbert-space amplitudes and the Bloch vector contain exactly the same physical information. The next scene will zoom in on the Bloch sphere alone.",
+          "prompt": "Close the bridge clearly: Hilbert space and the Bloch sphere are two coordinate systems for the same pure state. The next scene can now focus purely on the sphere geometry.",
+          "info": [
+            {
+              "id": "hb_summary",
+              "position": "top-right",
+              "content": "**Same pure qubit state**\n$$\\alpha,\\beta \\quad \\Longleftrightarrow \\quad (\\theta,\\phi) \\quad \\Longleftrightarrow \\quad \\vec r \\in S^2$$\n$$\\text{Hilbert-space data} \\longleftrightarrow \\text{Bloch-sphere geometry}$$"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "title": "From Amplitudes to a Sphere",
-      "description": "After writing the spin state in Hilbert-space coordinates, the same two real parameters $\\theta$ and $\\phi$ map directly to the polar and azimuthal angles of the Bloch sphere.",
-      "markdown": "# From Amplitudes to a Sphere\n\nIn the previous scene we wrote the electron's state in Hilbert space as\n\n$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle.$$\n\nNow we give those same parameters a **geometric home**. Define the **Bloch vector**:\n\n$$\\vec{r} = (\\sin\\theta\\cos\\phi,\\; \\sin\\theta\\sin\\phi,\\; \\cos\\theta).$$\n\nThis is a unit vector in $\\mathbb{R}^3$ — a point on a sphere.\n\n- **$\\theta$** is the polar angle from the north pole. It controls the balance between $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$.\n- **$\\phi$** is the azimuthal angle around the equator. It controls the relative phase.\n- **$z = \\cos\\theta$** directly gives the measurement probabilities: $p(0) = (1+z)/2$.\n\nSo the Bloch sphere is not a different state. It is a compressed geometric picture of the same pure-state Hilbert-space data.\n\nReferences: Nielsen & Chuang; Sakurai & Napolitano.",
-      "prompt": "This scene bridges the Hilbert-space picture and the Bloch sphere. Start from the ket the student just saw next to the physical electron, then grow the sphere around that description. Keep colors consistent: cyan for |0>/alpha, coral for |1>/beta, gold for the state vector, green for z-projection/meridian, magenta for equator/phase.",
+      "description": "After the side-by-side bridge, this scene zooms in on the Bloch sphere itself and lets the student explore its geometry directly.",
+      "markdown": "# From Amplitudes to a Sphere\n\nIn the previous scene we matched the Hilbert-space amplitudes to their Bloch-sphere image. Now we zoom in on the sphere itself.\n\nFor a pure qubit,\n\n$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle$$\n\nmaps to the **Bloch vector**\n\n$$\\vec{r} = (\\sin\\theta\\cos\\phi,\\; \\sin\\theta\\sin\\phi,\\; \\cos\\theta).$$\n\nThis is a unit vector in $\\mathbb{R}^3$ — a point on a sphere.\n\n- **$\\theta$** is the polar angle from the north pole. It controls the balance between $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$.\n- **$\\phi$** is the azimuthal angle around the equator. It controls the relative phase.\n- **$z = \\cos\\theta$** directly gives the measurement probabilities: $p(0) = (1+z)/2$.\n\nReferences: Nielsen & Chuang; Sakurai & Napolitano.",
+      "prompt": "This scene is now a zoom-in on the Bloch sphere after the side-by-side bridge. Focus on the sphere geometry itself rather than re-explaining the full coordinate change. Keep colors consistent: cyan for |0>/alpha, coral for |1>/beta, gold for the state vector, green for z-projection/meridian, magenta for equator/phase.",
       "range": [[-1.35, 1.35], [-1.35, 1.35], [-1.35, 1.35]],
       "camera": {
         "position": [2.8, -2.4, 1.8],
