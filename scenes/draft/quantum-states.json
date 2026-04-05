@@ -2,6 +2,250 @@
   "title": "Quantum States on the Bloch Sphere",
   "scenes": [
     {
+      "title": "A Qubit Lives in $\\mathbb{C}^2$",
+      "description": "Every two-level quantum system — an electron spin, a photon polarization, a superconducting circuit — is described by two complex amplitudes.",
+      "markdown": "# A Qubit Lives in $\\mathbb{C}^2$\n\nConsider an electron passing through a Stern–Gerlach magnet. The beam splits into exactly **two** spots: spin-up and spin-down. Before measurement, the electron is in a superposition\n\n$$|\\psi\\rangle = \\alpha|{\\uparrow}\\rangle + \\beta|{\\downarrow}\\rangle$$\n\nwhere $\\alpha$ and $\\beta$ are **complex numbers** satisfying $|\\alpha|^2+|\\beta|^2=1$.\n\nThe same math describes photon polarization ($|H\\rangle, |V\\rangle$), superconducting qubits ($|0\\rangle, |1\\rangle$), and any other two-level quantum system.\n\n## From four real numbers to two\n\nTwo complex numbers have **four** real parameters. But:\n1. **Normalization** ($|\\alpha|^2+|\\beta|^2=1$) removes one.\n2. **Global phase** ($e^{i\\gamma}|\\psi\\rangle$ is the same state as $|\\psi\\rangle$) removes another.\n\nTwo real parameters remain — just enough to specify a point on a **sphere**.\n\nReferences: Sakurai & Napolitano, *Modern Quantum Mechanics*; Griffiths & Schroeter, *Introduction to Quantum Mechanics*.",
+      "prompt": "Start from a physical example (electron spin in Stern-Gerlach). Build the connection: physical system → two complex amplitudes → normalization constraint → global phase invariance → two real parameters → sphere. Keep the colors consistent: cyan for alpha/|0>, coral for beta/|1>, gold for the state, green for the normalization circle.",
+      "range": [[-1.3, 1.3], [-1.3, 1.3], [-1.3, 1.3]],
+      "camera": {
+        "position": [0, 0, 5],
+        "target": [0, 0, 0]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [0, 0, 5],
+          "target": [0, 0, 0],
+          "description": "Complex plane view"
+        },
+        {
+          "name": "Iso",
+          "position": [3, 2, 3],
+          "target": [0, 0, 0],
+          "description": "Three-dimensional perspective"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s0_axis_re",
+          "type": "axis",
+          "axis": "x",
+          "range": [-1.2, 1.2],
+          "color": "#ff4444",
+          "width": 1.2,
+          "label": "$\\text{Re}$"
+        },
+        {
+          "id": "s0_axis_im",
+          "type": "axis",
+          "axis": "y",
+          "range": [-1.2, 1.2],
+          "color": "#4488ff",
+          "width": 1.2,
+          "label": "$\\text{Im}$"
+        },
+        {
+          "id": "s0_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [-1.2, 1.2],
+          "color": [0.28, 0.28, 0.45],
+          "opacity": 0.15,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "Two outcomes",
+          "description": "An electron in a magnetic field can only be measured spin-up or spin-down. Before measurement, the state is a superposition $|\\psi\\rangle = \\alpha|{\\uparrow}\\rangle + \\beta|{\\downarrow}\\rangle$.",
+          "prompt": "Introduce the Stern-Gerlach experiment. Two spots on the screen → two basis states. But before measurement, the electron doesn't have a definite spin.",
+          "add": [
+            {
+              "id": "s0_alpha_vec",
+              "type": "vector",
+              "from": [0, 0, 0],
+              "to": [1, 0, 0],
+              "color": "#66d9ff",
+              "width": 4,
+              "label": "$\\alpha$"
+            },
+            {
+              "id": "s0_beta_vec",
+              "type": "vector",
+              "from": [0, 0, 0],
+              "to": [0, 0.4, 0],
+              "color": "#ff7b72",
+              "width": 4,
+              "label": "$\\beta$"
+            }
+          ],
+          "info": [
+            {
+              "id": "s0_state_info",
+              "position": "top-right",
+              "content": "$$\\lvert\\psi\\rangle = \\alpha\\lvert{\\uparrow}\\rangle + \\beta\\lvert{\\downarrow}\\rangle$$\n$$\\alpha, \\beta \\in \\mathbb{C}$$"
+            }
+          ]
+        },
+        {
+          "title": "Same math, different physics",
+          "description": "A photon passing through a polarizer also has two outcomes: horizontal $|H\\rangle$ or vertical $|V\\rangle$. Before measurement, $|\\psi\\rangle = \\alpha|H\\rangle + \\beta|V\\rangle$ — the same two complex amplitudes.",
+          "prompt": "Show that photon polarization is exactly the same math. The cyan vector is the H amplitude, the coral vector is the V amplitude. Mention that diagonal polarization is an equal superposition, and circular polarization is when beta has a phase of pi/2.",
+          "remove": [
+            {"id": "s0_state_info"}
+          ],
+          "info": [
+            {
+              "id": "s0_photon_info",
+              "position": "top-right",
+              "content": "**Photon polarization**\n$$\\lvert\\psi\\rangle = \\alpha\\lvert H\\rangle + \\beta\\lvert V\\rangle$$\n$\\alpha = 1, \\beta = 0$ → horizontal\n$\\alpha = 0, \\beta = 1$ → vertical\n$\\alpha = \\beta = 1/\\sqrt{2}$ → diagonal"
+            }
+          ]
+        },
+        {
+          "title": "One framework, many systems",
+          "description": "Superconducting circuits, trapped ions, nitrogen-vacancy centers — every two-level quantum system maps to the same $\\alpha|0\\rangle + \\beta|1\\rangle$.",
+          "prompt": "Drive home the universality: electron spin, photon polarization, superconducting transmon, trapped ion, NV center — all are the same two-complex-number problem. This is why the qubit abstraction is so powerful. Use the standard |0>, |1> labels from here on.",
+          "remove": [
+            {"id": "s0_photon_info"}
+          ],
+          "info": [
+            {
+              "id": "s0_universal_info",
+              "position": "top-right",
+              "content": "**The qubit abstraction**\n$$\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle$$\n\n| System | $\\lvert 0\\rangle$ | $\\lvert 1\\rangle$ |\n|--------|-----------|----------|\n| Electron spin | $\\lvert{\\uparrow}\\rangle$ | $\\lvert{\\downarrow}\\rangle$ |\n| Photon | $\\lvert H\\rangle$ | $\\lvert V\\rangle$ |\n| Transmon | ground | excited |\n| Trapped ion | $S_{1/2}$ | $D_{5/2}$ |"
+            }
+          ]
+        },
+        {
+          "title": "Normalization",
+          "description": "The total probability must be 1, so $|\\alpha|^2 + |\\beta|^2 = 1$. The amplitude vectors are constrained to a circle.",
+          "prompt": "Show the normalization constraint geometrically. The tip of alpha traces part of the circle, and beta gets whatever is left. Four real numbers minus one constraint = three real parameters.",
+          "add": [
+            {
+              "id": "s0_norm_circle",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [0, 6.283185307179586],
+              "samples": 120,
+              "color": "#7bd389",
+              "width": 2,
+              "opacity": 0.5
+            }
+          ],
+          "remove": [
+            {"id": "s0_alpha_vec"},
+            {"id": "s0_beta_vec"},
+            {"id": "s0_state_info"}
+          ],
+          "sliders": [
+            {
+              "id": "s0_theta",
+              "label": "$\\theta$",
+              "min": 0,
+              "max": 3.141592653589793,
+              "step": 0.01,
+              "default": 0.8
+            }
+          ],
+          "info": [
+            {
+              "id": "s0_norm_info",
+              "position": "top-right",
+              "content": "$$\\lvert\\alpha\\rvert^2 + \\lvert\\beta\\rvert^2 = 1$$\n$$\\lvert\\alpha\\rvert = \\cos\\left(\\frac{\\theta}{2}\\right) = {{toFixed(cos(s0_theta/2),3)}}$$\n$$\\lvert\\beta\\rvert = \\sin\\left(\\frac{\\theta}{2}\\right) = {{toFixed(sin(s0_theta/2),3)}}$$"
+            }
+          ]
+        },
+        {
+          "title": "Explore amplitudes",
+          "description": "Slide $\\theta$ to trade amplitude between $\\alpha$ and $\\beta$. At $\\theta=0$ the state is pure spin-up; at $\\theta=\\pi$ it is pure spin-down.",
+          "prompt": "Let the student play with the slider. Point out theta=0 → all alpha, theta=pi → all beta, theta=pi/2 → equal superposition. The cyan vector shrinks as the coral one grows.",
+          "add": [
+            {
+              "id": "s0_alpha_anim",
+              "type": "animated_vector",
+              "from": [0, 0, 0],
+              "expr": ["cos(s0_theta/2)", "0", "0"],
+              "color": "#66d9ff",
+              "width": 2,
+              "label": "$\\alpha = \\cos(\\theta/2)$"
+            },
+            {
+              "id": "s0_beta_anim",
+              "type": "animated_vector",
+              "from": [0, 0, 0],
+              "expr": ["0", "sin(s0_theta/2)", "0"],
+              "color": "#ff7b72",
+              "width": 2,
+              "label": "$\\beta = \\sin(\\theta/2)$"
+            }
+          ]
+        },
+        {
+          "title": "Relative phase",
+          "description": "Now let $\\beta$ become complex: $\\beta = e^{i\\phi}\\sin(\\theta/2)$. The phase $\\phi$ rotates $\\beta$ in the complex plane without changing its magnitude.",
+          "prompt": "Add the phi slider. Show that phi rotates the beta vector around the origin without changing its length. The normalization circle stays the same. This is the second real parameter — the relative phase.",
+          "remove": [
+            {"id": "s0_beta_anim"}
+          ],
+          "sliders": [
+            {
+              "id": "s0_phi",
+              "label": "$\\phi$",
+              "min": 0,
+              "max": 6.283185307179586,
+              "step": 0.01,
+              "default": 0.7
+            }
+          ],
+          "add": [
+            {
+              "id": "s0_beta_phase",
+              "type": "animated_vector",
+              "from": [0, 0, 0],
+              "expr": ["sin(s0_theta/2)*cos(s0_phi)", "sin(s0_theta/2)*sin(s0_phi)", "0"],
+              "color": "#ff7b72",
+              "width": 2,
+              "label": "$\\beta = e^{i\\phi}\\sin(\\theta/2)$"
+            },
+            {
+              "id": "s0_phase_arc",
+              "type": "parametric_curve",
+              "x": "sin(s0_theta/2)*cos(t)",
+              "y": "sin(s0_theta/2)*sin(t)",
+              "z": "0",
+              "range": [0, 6.283185307179586],
+              "samples": 80,
+              "color": "#c77dff",
+              "width": 1.5,
+              "opacity": 0.35
+            }
+          ],
+          "info": [
+            {
+              "id": "s0_phase_info",
+              "position": "top-right",
+              "content": "$$\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(cos(s0_theta/2),3)}}$$\n$$\\beta = e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)$$\n$$\\lvert\\beta\\rvert = {{toFixed(sin(s0_theta/2),3)}}, \\quad \\phi = {{toFixed(s0_phi,2)}}$$"
+            }
+          ]
+        },
+        {
+          "title": "Two parameters, one sphere",
+          "description": "Two real numbers $\\theta \\in [0,\\pi]$ and $\\phi \\in [0,2\\pi)$ specify every pure qubit state. These are exactly the polar and azimuthal angles of a sphere — the **Bloch sphere**.",
+          "prompt": "This is the bridge to the next scene. Summarize: we started with 4 real parameters, removed 2 (normalization + global phase), and arrived at theta and phi — spherical coordinates. The next scene shows the sphere itself.",
+          "info": [
+            {
+              "id": "s0_summary",
+              "position": "top-right",
+              "content": "$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle$$\n$$\\theta = {{toFixed(s0_theta,2)}}, \\quad \\phi = {{toFixed(s0_phi,2)}}$$\n$$\\text{Two angles} \\longrightarrow \\text{one sphere}$$"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "title": "From Bit to Bloch Sphere",
       "description": "A qubit is not just 0 or 1. Pure one-qubit states fill the Bloch sphere, with $|0\\rangle$ and $|1\\rangle$ at the poles.",
       "markdown": "# From Bit to Bloch Sphere\n\nA classical bit has two pure states: $0$ and $1$. A **qubit** has basis states $|0\\rangle$ and $|1\\rangle$, but any normalized superposition\n\n$$|\\psi\\rangle = \\alpha |0\\rangle + \\beta |1\\rangle, \\qquad |\\alpha|^2 + |\\beta|^2 = 1$$\n\nis also a valid pure state.\n\nFor a single qubit, global phase does not affect measurements, so every pure state can be represented by a point on the **Bloch sphere**. The north pole is $|0\\rangle$, the south pole is $|1\\rangle$, and intermediate points represent superpositions.\n\nThis draft lesson focuses on **pure one-qubit states** because they admit a clean 3D picture. Mixed states live inside the sphere rather than on its surface.\n\nReferences: Nielsen & Chuang, *Quantum Computation and Quantum Information*; Griffiths & Schroeter, *Introduction to Quantum Mechanics*; Sakurai & Napolitano, *Modern Quantum Mechanics*.",
