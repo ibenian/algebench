@@ -4,7 +4,7 @@
     {
       "title": "A Qubit Lives in $\\mathbb{C}^2$",
       "description": "Every two-level quantum system — an electron spin, a photon polarization, a superconducting circuit — is described by two complex amplitudes.",
-      "markdown": "# A Qubit Lives in $\\mathbb{C}^2$\n\nConsider an electron passing through a Stern–Gerlach magnet. The beam splits into exactly **two** spots: spin-up and spin-down. Before measurement, the electron is in a superposition\n\n$$|\\psi\\rangle = \\alpha|{\\uparrow}\\rangle + \\beta|{\\downarrow}\\rangle$$\n\nwhere $\\alpha$ and $\\beta$ are **complex numbers** satisfying $|\\alpha|^2+|\\beta|^2=1$.\n\nThe same math describes photon polarization ($|H\\rangle, |V\\rangle$), superconducting qubits ($|0\\rangle, |1\\rangle$), and any other two-level quantum system.\n\n## From four real numbers to two\n\nTwo complex numbers have **four** real parameters. But:\n1. **Normalization** ($|\\alpha|^2+|\\beta|^2=1$) removes one.\n2. **Global phase** ($e^{i\\gamma}|\\psi\\rangle$ is the same state as $|\\psi\\rangle$) removes another.\n\nTwo real parameters remain — just enough to specify a point on a **sphere**.\n\nReferences: Sakurai & Napolitano, *Modern Quantum Mechanics*; Griffiths & Schroeter, *Introduction to Quantum Mechanics*.",
+      "markdown": "# A Qubit Lives in $\\mathbb{C}^2$\n\nConsider an electron passing through a Stern–Gerlach magnet. The beam splits into exactly **two** spots: spin-up and spin-down. Before measurement, the electron is in a superposition\n\n$$|\\psi\\rangle = \\alpha|{\\uparrow}\\rangle + \\beta|{\\downarrow}\\rangle$$\n\nwhere $\\alpha$ and $\\beta$ are **complex numbers** satisfying $|\\alpha|^2+|\\beta|^2=1$.\n\nThe same math describes photon polarization ($|H\\rangle, |V\\rangle$), superconducting qubits ($|0\\rangle, |1\\rangle$), and any other two-level quantum system.\n\n## Same qubit, different hardware\n\nOnce a basis is chosen, the symbols mean the same mathematical thing in every platform, but their physical interpretation changes:\n\n| System | Basis states | $\\alpha, \\beta$ encode | $\\theta$ encodes | $\\phi$ encodes |\n|--------|--------------|-------------------------|-------------------|-----------------|\n| Electron spin | $|\\uparrow_z\\rangle, |\\downarrow_z\\rangle$ | Spin-up / spin-down amplitudes in the $z$ basis | Tilt away from the $+z$ axis, which sets the spin-up vs spin-down population balance | Azimuth of the spin direction; affects $x$- and $y$-basis measurements |\n| Photon polarization | $|H\\rangle, |V\\rangle$ | Horizontal / vertical field amplitudes | How much of the state is in $H$ versus $V$ | Phase delay between $H$ and $V$, setting linear vs elliptical/circular polarization |\n| Two-level atom | $|g\\rangle, |e\\rangle$ | Ground / excited-state amplitudes | Population balance between $|g\\rangle$ and $|e\\rangle$ | Phase of the atomic coherence (dipole oscillation) |\n| Superconducting qubit | $|0\\rangle, |1\\rangle$ | Amplitudes of the two logical energy eigenstates | Ground-versus-excited occupation | Relative phase seen in coherent control and Ramsey interference |\n| Interferometer path qubit | $|A\\rangle, |B\\rangle$ | Probability amplitudes for the two paths | How strongly the state favors path $A$ or path $B$ | Optical phase difference accumulated between the paths |\n\nAcross all of these examples, $\\alpha$ and $\\beta$ are the raw complex amplitudes in the chosen basis. After imposing normalization and discarding global phase, the same state can always be written with two real angles:\n\n$$|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle.$$\n\nHere $\\theta$ determines the population balance in the chosen basis, while $\\phi$ determines the relative phase that shows up in interference and in measurements away from that basis.\n\n## From four real numbers to two\n\nTwo complex numbers have **four** real parameters. But:\n1. **Normalization** ($|\\alpha|^2+|\\beta|^2=1$) removes one.\n2. **Global phase** ($e^{i\\gamma}|\\psi\\rangle$ is the same state as $|\\psi\\rangle$) removes another.\n\nTwo real parameters remain — just enough to specify a point on a **sphere**.\n\nReferences: Sakurai & Napolitano, *Modern Quantum Mechanics*; Griffiths & Schroeter, *Introduction to Quantum Mechanics*.",
       "prompt": "Start from a physical example (electron spin in Stern-Gerlach). Build the connection: physical system → two complex amplitudes → normalization constraint → global phase invariance → two real parameters → sphere. Keep the colors consistent: cyan for alpha/|0>, coral for beta/|1>, gold for the state, green for the normalization circle.",
       "range": [[-1.3, 1.3], [-1.3, 1.3], [-1.3, 1.3]],
       "camera": {
@@ -234,12 +234,675 @@
         {
           "title": "Two parameters, one sphere",
           "description": "Two real numbers $\\theta \\in [0,\\pi]$ and $\\phi \\in [0,2\\pi)$ specify every pure qubit state. These are exactly the polar and azimuthal angles of a sphere — the **Bloch sphere**.",
-          "prompt": "This is the bridge to the next scene. Summarize: we started with 4 real parameters, removed 2 (normalization + global phase), and arrived at theta and phi — spherical coordinates. The next scene shows the sphere itself.",
+          "prompt": "This is the first bridge. Summarize: we started with 4 real parameters, removed 2 (normalization + global phase), and arrived at theta and phi. The next scene puts the physical electron beside its Hilbert-space description; the scene after that turns those same parameters into the Bloch sphere.",
           "info": [
             {
               "id": "s0_summary",
               "position": "top-right",
               "content": "$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle$$\n$$\\theta = {{toFixed(s0_theta,2)}}, \\quad \\phi = {{toFixed(s0_phi,2)}}$$\n$$\\text{Two angles} \\longrightarrow \\text{one sphere}$$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "From Electron Spin to Hilbert Space",
+      "description": "The electron on the left is the physical system; the ket on the right is the abstract Hilbert-space description used to predict what a spin measurement can return.",
+      "markdown": "# From Electron Spin to Hilbert Space\n\nA Stern-Gerlach experiment asks a concrete physical question: if we measure spin along the $z$ axis, do we get **up** or **down**?\n\nThat laboratory question defines a basis:\n\n$$\\lvert\\uparrow_z\\rangle, \\qquad \\lvert\\downarrow_z\\rangle.$$\n\nOnce that basis is chosen, we represent the **same physical electron** by a vector in a two-dimensional complex Hilbert space:\n\n$$\\lvert\\psi\\rangle = \\alpha\\lvert\\uparrow_z\\rangle + \\beta\\lvert\\downarrow_z\\rangle.$$\n\nThe left panel shows the laboratory picture. The right panel shows the Hilbert-space coordinates. Those coordinates are **not** a position in ordinary space; they are amplitudes that encode measurement probabilities and relative phase.\n\nFor a pure qubit, normalization and the irrelevance of global phase reduce the description to two real parameters. That reduction is what makes the Bloch-sphere picture possible in the next scene.\n\nReferences: Sakurai & Napolitano; Nielsen & Chuang.",
+      "prompt": "Teach this as the conceptual bridge the lesson needs. Left panel: real laboratory system and the chosen z-basis measurement. Right panel: the same state written in Hilbert-space coordinates. Be explicit that Hilbert space is not physical space; it is the abstract state space used to predict outcomes. Use cyan for the up basis component, coral for the down basis component, gold for the state, and magenta for relative phase.",
+      "range": [[-5.2, 5.2], [-5.2, 5.2], [-5.2, 5.2]],
+      "camera": {
+        "position": [0, -8, 0.8],
+        "target": [0, 0, 0],
+        "up": [0, 0, 1]
+      },
+      "views": [
+        {
+          "name": "Side By Side",
+          "position": [0, -8, 0.8],
+          "target": [0, 0, 0],
+          "up": [0, 0, 1],
+          "description": "Compare the physical system and the Hilbert-space picture"
+        },
+        {
+          "name": "Physical",
+          "position": [-3.2, -5.2, 0.8],
+          "target": [-3.2, 0, 0],
+          "up": [0, 0, 1],
+          "description": "Focus on the electron and the measurement axis"
+        },
+        {
+          "name": "Hilbert",
+          "position": [2.6, -5.2, 0.6],
+          "target": [2.6, 0, 0],
+          "up": [0, 0, 1],
+          "description": "Focus on the ket and its amplitudes"
+        },
+        {
+          "name": "Top",
+          "position": [0, 0, 6],
+          "target": [0, 0, 0],
+          "up": [0, 1, 0],
+          "description": "See the azimuthal phase rotation in the Hilbert-space panel"
+        }
+      ],
+      "elements": [
+        {
+          "id": "hs_divider",
+          "type": "line",
+          "from": [0, 0, -1.9],
+          "to": [0, 0, 1.9],
+          "color": "#5c667a",
+          "width": 1.2,
+          "opacity": 0.6
+        },
+        {
+          "id": "hs_left_title",
+          "type": "text",
+          "position": [-3.2, 0, 1.95],
+          "text": "Physical system",
+          "color": "#ffd166",
+          "size": 13
+        },
+        {
+          "id": "hs_right_title",
+          "type": "text",
+          "position": [2.6, 0, 1.95],
+          "text": "Hilbert-space state",
+          "color": "#a6c8ff",
+          "size": 13
+        }
+      ],
+      "steps": [
+        {
+          "title": "A real experiment gives two outcomes",
+          "description": "On the left is the physical electron. A Stern-Gerlach measurement along $z$ can only return spin-up or spin-down, so the laboratory setup defines a two-state basis.",
+          "prompt": "Start with the laboratory picture only. Say explicitly that the apparatus asks a yes-no question about spin along z, and that the two answers become the basis states.",
+          "add": [
+            {
+              "id": "hs_lab_axis",
+              "type": "line",
+              "from": [-3.2, 0, -1.35],
+              "to": [-3.2, 0, 1.35],
+              "color": "#4488ff",
+              "width": 1.6
+            },
+            {
+              "id": "hs_up_state",
+              "type": "point",
+              "position": [-3.2, 0, 1.2],
+              "color": "#66d9ff",
+              "size": 9
+            },
+            {
+              "id": "hs_up_label",
+              "type": "text",
+              "position": [-3.55, 0, 1.05],
+              "text": "$\\lvert\\uparrow_z\\rangle$",
+              "color": "#66d9ff",
+              "size": 11
+            },
+            {
+              "id": "hs_down_state",
+              "type": "point",
+              "position": [-3.2, 0, -1.2],
+              "color": "#ff7b72",
+              "size": 9
+            },
+            {
+              "id": "hs_down_label",
+              "type": "text",
+              "position": [-3.62, 0, -1.05],
+              "text": "$\\lvert\\downarrow_z\\rangle$",
+              "color": "#ff7b72",
+              "size": 11
+            },
+            {
+              "id": "hs_electron",
+              "type": "point",
+              "position": [-3.2, 0, 0],
+              "color": "#ffd166",
+              "size": 10
+            },
+            {
+              "id": "hs_spin_fixed",
+              "type": "vector",
+              "from": [-3.2, 0, 0],
+              "to": [-2.35, 0, 0.92],
+              "color": "#ffd166",
+              "width": 1
+            },
+            {
+              "id": "hs_spin_fixed_label",
+              "type": "text",
+              "position": [-2.35, 0, 0.18],
+              "text": "spin state",
+              "color": "#ffd166",
+              "size": 11
+            }
+          ],
+          "info": [
+            {
+              "id": "hs_lab_info",
+              "position": "top-right",
+              "content": "**Laboratory question**\n$$\\text{Measure spin along } z$$\n$$\\text{Possible outcomes: } \\lvert\\uparrow_z\\rangle,\\ \\lvert\\downarrow_z\\rangle$$"
+            }
+          ]
+        },
+        {
+          "title": "Write the same state as a ket",
+          "description": "Now place the Hilbert-space description next to the laboratory picture. The electron is still the same system, but on the right we encode it by amplitudes in the chosen basis.",
+          "prompt": "Introduce the right panel as an abstract coordinate system, not as a second physical object. The student should understand that the ket is the mathematical representation of the same electron.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [
+            {
+              "id": "hs_top_slot",
+              "type": "line",
+              "from": [1.8, 0, 0.8],
+              "to": [3.9, 0, 0.8],
+              "color": "#66d9ff44",
+              "width": 3
+            },
+            {
+              "id": "hs_bottom_slot",
+              "type": "line",
+              "from": [1.8, 0, -0.8],
+              "to": [3.9, 0, -0.8],
+              "color": "#ff7b7244",
+              "width": 3
+            },
+            {
+              "id": "hs_top_basis",
+              "type": "text",
+              "position": [0.7, 0, 0.92],
+              "text": "up basis",
+              "color": "#66d9ff",
+              "size": 11
+            },
+            {
+              "id": "hs_bottom_basis",
+              "type": "text",
+              "position": [0.7, 0, -0.68],
+              "text": "down basis",
+              "color": "#ff7b72",
+              "size": 11
+            },
+            {
+              "id": "hs_alpha_fixed",
+              "type": "vector",
+              "from": [1.8, 0, 0.8],
+              "to": [3.6165, 0, 0.8],
+              "color": "#66d9ff",
+              "width": 1.5
+            },
+            {
+              "id": "hs_alpha_fixed_label",
+              "type": "text",
+              "position": [2.62, 0, 1.02],
+              "text": "$\\alpha$",
+              "color": "#66d9ff",
+              "size": 12
+            },
+            {
+              "id": "hs_beta_fixed",
+              "type": "vector",
+              "from": [1.8, 0, -0.8],
+              "to": [2.852, 0, -0.8],
+              "color": "#ff7b72",
+              "width": 1.5
+            },
+            {
+              "id": "hs_beta_fixed_label",
+              "type": "text",
+              "position": [2.18, 0, -0.58],
+              "text": "$\\beta$",
+              "color": "#ff7b72",
+              "size": 12
+            }
+          ],
+          "info": [
+            {
+              "id": "hs_ket_info",
+              "position": "top-right",
+              "content": "$$\\lvert\\psi\\rangle = \\alpha\\lvert\\uparrow_z\\rangle + \\beta\\lvert\\downarrow_z\\rangle$$\n$$\\alpha,\\beta\\in\\mathbb{C}, \\qquad |\\alpha|^2 + |\\beta|^2 = 1$$\n$$\\text{Right panel = abstract Hilbert-space coordinates}$$"
+            }
+          ]
+        },
+        {
+          "title": "One physical state, two amplitudes",
+          "description": "Changing the state on the left changes the amplitudes on the right. The physical electron and the Hilbert-space ket are two views of the same state, not two different systems.",
+          "prompt": "Add theta as the bridge parameter. As the physical spin tilts, the Hilbert-space amplitudes change in lockstep. Emphasize that theta sets the population balance in the chosen z basis.",
+          "remove": [
+            {
+              "id": "hs_spin_fixed"
+            },
+            {
+              "id": "hs_spin_fixed_label"
+            },
+            {
+              "id": "hs_alpha_fixed"
+            },
+            {
+              "id": "hs_alpha_fixed_label"
+            },
+            {
+              "id": "hs_beta_fixed"
+            },
+            {
+              "id": "hs_beta_fixed_label"
+            },
+            {
+              "type": "info"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "hs_theta",
+              "label": "$\\theta$",
+              "min": 0,
+              "max": 3.141592653589793,
+              "step": 0.01,
+              "default": 1.05
+            }
+          ],
+          "add": [
+            {
+              "id": "hs_spin_theta",
+              "type": "animated_vector",
+              "from": [-3.2, 0, 0],
+              "expr": ["-3.2 + 1.05*sin(hs_theta)", "0", "1.05*cos(hs_theta)"],
+              "color": "#ffd166",
+              "width": 1
+            },
+            {
+              "id": "hs_spin_theta_label",
+              "type": "text",
+              "positionExpr": ["-2.3 + 0.55*sin(hs_theta)", "0", "0.18 + 0.25*cos(hs_theta)"],
+              "text": "same state",
+              "color": "#ffd166",
+              "size": 11
+            },
+            {
+              "id": "hs_alpha_bar",
+              "type": "animated_vector",
+              "from": [1.8, 0, 0.8],
+              "expr": ["1.8 + 2.1*cos(hs_theta/2)", "0", "0.8"],
+              "color": "#66d9ff",
+              "width": 1.5
+            },
+            {
+              "id": "hs_alpha_bar_label",
+              "type": "text",
+              "positionExpr": ["2.05 + 1.0*cos(hs_theta/2)", "0", "1.02"],
+              "text": "$\\alpha$",
+              "color": "#66d9ff",
+              "size": 12
+            },
+            {
+              "id": "hs_beta_bar",
+              "type": "animated_vector",
+              "from": [1.8, 0, -0.8],
+              "expr": ["1.8 + 2.1*sin(hs_theta/2)", "0", "-0.8"],
+              "color": "#ff7b72",
+              "width": 1.5
+            },
+            {
+              "id": "hs_beta_bar_label",
+              "type": "text",
+              "positionExpr": ["2.05 + 1.0*sin(hs_theta/2)", "0", "-0.58"],
+              "text": "$|\\beta|$",
+              "color": "#ff7b72",
+              "size": 12
+            }
+          ],
+          "info": [
+            {
+              "id": "hs_theta_info",
+              "position": "top-right",
+              "content": "$$\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(cos(hs_theta/2), 3)}}$$\n$$|\\beta| = \\sin\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(sin(hs_theta/2), 3)}}$$\n$$\\theta = {{toFixed(hs_theta, 2)}}\\ \\text{controls the up/down balance}$$"
+            }
+          ]
+        },
+        {
+          "title": "Relative phase completes the ket",
+          "description": "The amplitudes are complex, so magnitude is not the whole story. The relative phase $\\phi$ lives naturally in Hilbert space and, for electron spin, also changes the spin direction in a physically meaningful way.",
+          "prompt": "Add phi carefully. The right panel should make clear that beta is complex, not just a positive length. Since this is electron spin, you can also let the left arrow rotate with phi and point out that this direct geometric reading is special to some systems.",
+          "remove": [
+            {
+              "id": "hs_spin_theta"
+            },
+            {
+              "id": "hs_spin_theta_label"
+            },
+            {
+              "type": "info"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "hs_phi",
+              "label": "$\\phi$",
+              "min": 0,
+              "max": 6.283185307179586,
+              "step": 0.01,
+              "default": 0.9
+            }
+          ],
+          "add": [
+            {
+              "id": "hs_spin_full",
+              "type": "animated_vector",
+              "from": [-3.2, 0, 0],
+              "expr": [
+                "-3.2 + 1.05*sin(hs_theta)*cos(hs_phi)",
+                "1.05*sin(hs_theta)*sin(hs_phi)",
+                "1.05*cos(hs_theta)"
+              ],
+              "color": "#ffd166",
+              "width": 1
+            },
+            {
+              "id": "hs_spin_full_label",
+              "type": "text",
+              "positionExpr": [
+                "-2.3 + 0.55*sin(hs_theta)*cos(hs_phi)",
+                "0",
+                "0.18 + 0.25*cos(hs_theta)"
+              ],
+              "text": "spin direction",
+              "color": "#ffd166",
+              "size": 11
+            },
+            {
+              "id": "hs_phase_disk",
+              "type": "parametric_curve",
+              "x": "3.25",
+              "y": "0.32*cos(t)",
+              "z": "-0.8 + 0.32*sin(t)",
+              "range": [0, 6.283185307179586],
+              "samples": 80,
+              "color": "#c77dff",
+              "width": 1.5,
+              "opacity": 0.4
+            },
+            {
+              "id": "hs_beta_phase",
+              "type": "animated_vector",
+              "from": [3.25, 0, -0.8],
+              "expr": ["3.25", "0.32*cos(hs_phi)", "-0.8 + 0.32*sin(hs_phi)"],
+              "color": "#c77dff",
+              "width": 2,
+              "label": "$\\phi$"
+            }
+          ],
+          "info": [
+            {
+              "id": "hs_phase_info",
+              "position": "top-right",
+              "content": "$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert\\uparrow_z\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert\\downarrow_z\\rangle$$\n$$\\theta = {{toFixed(hs_theta, 2)}},\\qquad \\phi = {{toFixed(hs_phi, 2)}}$$\n$$\\text{Hilbert space keeps track of both population balance and relative phase}$$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "From Amplitudes to a Sphere",
+      "description": "After writing the spin state in Hilbert-space coordinates, the same two real parameters $\\theta$ and $\\phi$ map directly to the polar and azimuthal angles of the Bloch sphere.",
+      "markdown": "# From Amplitudes to a Sphere\n\nIn the previous scene we wrote the electron's state in Hilbert space as\n\n$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle.$$\n\nNow we give those same parameters a **geometric home**. Define the **Bloch vector**:\n\n$$\\vec{r} = (\\sin\\theta\\cos\\phi,\\; \\sin\\theta\\sin\\phi,\\; \\cos\\theta).$$\n\nThis is a unit vector in $\\mathbb{R}^3$ — a point on a sphere.\n\n- **$\\theta$** is the polar angle from the north pole. It controls the balance between $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$.\n- **$\\phi$** is the azimuthal angle around the equator. It controls the relative phase.\n- **$z = \\cos\\theta$** directly gives the measurement probabilities: $p(0) = (1+z)/2$.\n\nSo the Bloch sphere is not a different state. It is a compressed geometric picture of the same pure-state Hilbert-space data.\n\nReferences: Nielsen & Chuang; Sakurai & Napolitano.",
+      "prompt": "This scene bridges the Hilbert-space picture and the Bloch sphere. Start from the ket the student just saw next to the physical electron, then grow the sphere around that description. Keep colors consistent: cyan for |0>/alpha, coral for |1>/beta, gold for the state vector, green for z-projection/meridian, magenta for equator/phase.",
+      "range": [[-1.35, 1.35], [-1.35, 1.35], [-1.35, 1.35]],
+      "camera": {
+        "position": [2.8, -2.4, 1.8],
+        "target": [0, 0, 0],
+        "up": [0, 0, 1]
+      },
+      "views": [
+        {
+          "name": "Iso",
+          "position": [2.8, -2.4, 1.8],
+          "target": [0, 0, 0],
+          "up": [0, 0, 1],
+          "description": "See the full sphere and the state vector"
+        },
+        {
+          "name": "North Pole",
+          "position": [0, 0, 4],
+          "target": [0, 0, 0],
+          "up": [0, 1, 0],
+          "description": "Top-down view — see the azimuthal angle $\\phi$"
+        },
+        {
+          "name": "Equator",
+          "position": [3.2, 0, 0],
+          "target": [0, 0, 0],
+          "up": [0, 0, 1],
+          "description": "Side view — see the polar angle $\\theta$"
+        }
+      ],
+      "elements": [
+        {
+          "id": "sb_axis_x",
+          "type": "axis",
+          "axis": "x",
+          "range": [-1.2, 1.2],
+          "color": "#ff4444",
+          "width": 1.2,
+          "label": "$x$"
+        },
+        {
+          "id": "sb_axis_y",
+          "type": "axis",
+          "axis": "y",
+          "range": [-1.2, 1.2],
+          "color": "#44cc44",
+          "width": 1.2,
+          "label": "$y$"
+        },
+        {
+          "id": "sb_axis_z",
+          "type": "axis",
+          "axis": "z",
+          "range": [-1.2, 1.2],
+          "color": "#4488ff",
+          "width": 1.2,
+          "label": "$z$"
+        },
+        {
+          "id": "sb_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [-1.2, 1.2],
+          "color": [0.28, 0.28, 0.45],
+          "opacity": 0.15,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "Recall the amplitudes",
+          "description": "From the previous scene: $\\alpha = \\cos(\\theta/2)$ lives on the real axis, and $\\beta = e^{i\\phi}\\sin(\\theta/2)$ carries the phase. Two real numbers — where do they live geometrically?",
+          "prompt": "Recap the amplitude result. Show alpha along the z-axis (it controls the height) and tease that we're about to reveal the geometric picture.",
+          "add": [
+            {
+              "id": "sb_ket0",
+              "type": "point",
+              "position": [0, 0, 1],
+              "color": "#66d9ff",
+              "size": 10,
+              "label": "$\\lvert 0\\rangle$"
+            },
+            {
+              "id": "sb_ket1",
+              "type": "point",
+              "position": [0, 0, -1],
+              "color": "#ff7b72",
+              "size": 10,
+              "label": "$\\lvert 1\\rangle$"
+            }
+          ],
+          "info": [
+            {
+              "id": "sb_recap_info",
+              "position": "top-right",
+              "content": "$$\\lvert\\psi\\rangle = \\underbrace{\\cos\\!\\left(\\frac{\\theta}{2}\\right)}_{\\alpha}\\lvert 0\\rangle + \\underbrace{e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)}_{\\beta}\\lvert 1\\rangle$$\n$$\\text{Two real parameters: } \\theta, \\phi$$"
+            }
+          ]
+        },
+        {
+          "title": "$\\theta$ sets the latitude",
+          "description": "The polar angle $\\theta$ sweeps from $\\lvert 0\\rangle$ at the north pole ($\\theta = 0$) to $\\lvert 1\\rangle$ at the south pole ($\\theta = \\pi$). Halfway ($\\theta = \\pi/2$) is an equal superposition.",
+          "prompt": "Show the meridian and let the student sweep theta. Connect it explicitly: theta=0 means alpha=1 beta=0, theta=pi means alpha=0 beta=1. The z-coordinate is cos(theta).",
+          "sliders": [
+            {
+              "id": "sb_theta",
+              "label": "$\\theta$",
+              "min": 0,
+              "max": 3.141592653589793,
+              "step": 0.01,
+              "default": 1.05
+            }
+          ],
+          "add": [
+            {
+              "id": "sb_meridian",
+              "type": "parametric_curve",
+              "x": "sin(t)",
+              "y": "0",
+              "z": "cos(t)",
+              "range": [0, 3.141592653589793],
+              "samples": 80,
+              "color": "#7bd389",
+              "width": 2,
+              "opacity": 0.6
+            },
+            {
+              "id": "sb_state_vec",
+              "type": "animated_vector",
+              "from": [0, 0, 0],
+              "expr": ["sin(sb_theta)", "0", "cos(sb_theta)"],
+              "color": "#ffd166",
+              "width": 2,
+              "label": "$\\lvert\\psi\\rangle$"
+            },
+            {
+              "id": "sb_zproj",
+              "type": "animated_vector",
+              "from": [0, 0, 0],
+              "expr": ["0", "0", "cos(sb_theta)"],
+              "color": "#7bd389",
+              "width": 2,
+              "opacity": 0.6
+            }
+          ],
+          "info": [
+            {
+              "id": "sb_theta_info",
+              "position": "top-right",
+              "content": "$$\\theta = {{toFixed(sb_theta, 2)}}$$\n$$\\alpha = \\cos(\\theta/2) = {{toFixed(cos(sb_theta/2), 3)}}$$\n$$\\lvert\\beta\\rvert = \\sin(\\theta/2) = {{toFixed(sin(sb_theta/2), 3)}}$$\n$$z = \\cos\\theta = {{toFixed(cos(sb_theta), 3)}}$$"
+            }
+          ]
+        },
+        {
+          "title": "The sphere appears",
+          "description": "All possible $\\theta$ values trace a meridian. Now reveal the full sphere — every point on this surface is a valid pure qubit state.",
+          "prompt": "Add the sphere. Emphasize that the meridian we've been sliding along is just one slice of the full picture. The sphere has room for the second parameter phi.",
+          "add": [
+            {
+              "id": "sb_sphere",
+              "type": "sphere",
+              "center": [0, 0, 0],
+              "radius": 1,
+              "color": "#334466",
+              "opacity": 0.15,
+              "segments": 64,
+              "rings": 48,
+              "shader": {"depthWrite": false}
+            },
+            {
+              "id": "sb_equator",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [0, 6.283185307179586],
+              "samples": 120,
+              "color": "#c77dff",
+              "width": 2,
+              "opacity": 0.5
+            }
+          ]
+        },
+        {
+          "title": "$\\phi$ sets the azimuth",
+          "description": "The relative phase $\\phi$ rotates the state around the z-axis. It sweeps out the equator and every latitude circle — this is the Bloch sphere.",
+          "prompt": "Add the phi slider. Now the state can reach any point on the sphere. Connect back to the amplitude picture: theta controlled |alpha| vs |beta|, phi controls the complex phase of beta. Together they cover every pure state.",
+          "remove": [
+            {"id": "sb_state_vec"},
+            {"id": "sb_zproj"}
+          ],
+          "sliders": [
+            {
+              "id": "sb_phi",
+              "label": "$\\phi$",
+              "min": 0,
+              "max": 6.283185307179586,
+              "step": 0.01,
+              "default": 0.7
+            }
+          ],
+          "add": [
+            {
+              "id": "sb_state_full",
+              "type": "animated_vector",
+              "from": [0, 0, 0],
+              "expr": ["sin(sb_theta)*cos(sb_phi)", "sin(sb_theta)*sin(sb_phi)", "cos(sb_theta)"],
+              "color": "#ffd166",
+              "width": 2,
+              "label": "$\\lvert\\psi\\rangle$"
+            },
+            {
+              "id": "sb_zproj_full",
+              "type": "animated_vector",
+              "from": [0, 0, 0],
+              "expr": ["0", "0", "cos(sb_theta)"],
+              "color": "#7bd389",
+              "width": 2,
+              "opacity": 0.5
+            },
+            {
+              "id": "sb_phi_arc",
+              "type": "parametric_curve",
+              "x": "sin(sb_theta)*cos(t)",
+              "y": "sin(sb_theta)*sin(t)",
+              "z": "cos(sb_theta)",
+              "range": [0, 6.283185307179586],
+              "samples": 80,
+              "color": "#c77dff",
+              "width": 1.5,
+              "opacity": 0.35
+            }
+          ],
+          "info": [
+            {
+              "id": "sb_full_info",
+              "position": "top-right",
+              "content": "$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle$$\n$$\\theta = {{toFixed(sb_theta, 2)}}, \\quad \\phi = {{toFixed(sb_phi, 2)}}$$\n$$\\vec{r} = ({{toFixed(sin(sb_theta)*cos(sb_phi),2)}},\\; {{toFixed(sin(sb_theta)*sin(sb_phi),2)}},\\; {{toFixed(cos(sb_theta),2)}})$$"
+            }
+          ]
+        },
+        {
+          "title": "The complete Bloch sphere",
+          "description": "Every pure qubit state is a point on this sphere. The amplitudes $\\alpha$ and $\\beta$ from the Hilbert space map one-to-one to the angles $\\theta$ and $\\phi$ on the Bloch sphere.",
+          "prompt": "Wrap up the bridge. The student now knows: ℂ² amplitudes → two angles → Bloch sphere. Every subsequent scene will work directly on the sphere. Mention that mixed states (statistical mixtures) live inside the sphere, but this lesson stays on the surface.",
+          "info": [
+            {
+              "id": "sb_summary",
+              "position": "top-right",
+              "content": "**The Bloch sphere map**\n$$\\mathbb{C}^2 \\longrightarrow S^2$$\n$\\alpha, \\beta$ (complex amplitudes)\n$\\quad\\downarrow$ normalization + global phase\n$\\theta, \\phi$ (two real angles)\n$\\quad\\downarrow$ spherical coordinates\nOne point on the Bloch sphere"
             }
           ]
         }
