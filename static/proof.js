@@ -768,7 +768,7 @@ function _buildContextTab(allProofs) {
         const badge = techniqueBadgeHTML(proof);
         section.innerHTML = `<div class="proof-section-header${isActive ? ' active' : ''}" data-proof-index="${i}">
             <span class="proof-section-arrow">&#9660;</span>
-            <span class="proof-section-title">Proof: ${escapeHtml(title)}</span>
+            <span class="proof-section-title">Proof: ${renderKaTeX(title)}</span>
             ${badge}
             <span class="proof-section-step-hint"></span>
         </div>`;

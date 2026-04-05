@@ -672,7 +672,191 @@
             }
           ]
         }
-      ]
+      ],
+      "proof": [
+        {
+          "id": "s2_bloch_parameterization",
+          "title": "Deriving the Bloch parameterization",
+          "technique": "derivation",
+          "techniqueHint": "Start from a general normalized state and absorb the global phase to arrive at the standard Bloch parameterization.",
+          "goal": "Show that every pure qubit state can be written as $\\cos(\\theta/2)\\lvert 0\\rangle + e^{i\\phi}\\sin(\\theta/2)\\lvert 1\\rangle$.",
+          "sceneStep": 0,
+          "prompt": "Guide the student through the algebraic steps that reduce a general complex 2-vector to two real angles. Emphasize why global phase is unphysical.",
+          "steps": [
+            {
+              "type": "given",
+              "label": "Start with a general qubit",
+              "math": "\\htmlClass{hl-gen}{\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle}, \\quad \\alpha,\\beta\\in\\mathbb{C}, \\quad \\lvert\\alpha\\rvert^2 + \\lvert\\beta\\rvert^2 = 1",
+              "highlights": {
+                "gen": {
+                  "color": "cyan",
+                  "label": "Any normalized two-component complex vector"
+                }
+              },
+              "justification": "A qubit lives in $\\mathbb{C}^2$ with unit norm.",
+              "explanation": "Two complex numbers give four real parameters, but normalization removes one.",
+              "prompt": "Emphasize the count: 4 real parameters minus 1 normalization = 3, but we will lose one more to global phase.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Write amplitudes in polar form",
+              "math": "\\alpha = \\htmlClass{hl-ra}{r_\\alpha\\, e^{i\\gamma_\\alpha}}, \\quad \\beta = \\htmlClass{hl-rb}{r_\\beta\\, e^{i\\gamma_\\beta}}, \\quad r_\\alpha^2 + r_\\beta^2 = 1",
+              "highlights": {
+                "ra": {
+                  "color": "green",
+                  "label": "Magnitude and phase of $\\alpha$"
+                },
+                "rb": {
+                  "color": "orange",
+                  "label": "Magnitude and phase of $\\beta$"
+                }
+              },
+              "justification": "Every complex number $z$ can be written as $|z|e^{i\\arg z}$.",
+              "explanation": "Now we have two magnitudes ($r_\\alpha, r_\\beta$) and two phases ($\\gamma_\\alpha, \\gamma_\\beta$). Normalization constrains the magnitudes.",
+              "prompt": "Point out that the magnitudes are non-negative and live on a unit circle in the $(r_\\alpha, r_\\beta)$ plane.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Factor out the global phase",
+              "math": "\\lvert\\psi\\rangle = \\htmlClass{hl-global}{e^{i\\gamma_\\alpha}} \\bigl( r_\\alpha\\lvert 0\\rangle + r_\\beta\\, e^{i(\\gamma_\\beta - \\gamma_\\alpha)}\\lvert 1\\rangle \\bigr)",
+              "highlights": {
+                "global": {
+                  "color": "gray",
+                  "label": "Global phase — physically unobservable"
+                }
+              },
+              "justification": "Pull $e^{i\\gamma_\\alpha}$ out of both terms.",
+              "explanation": "Global phase has no effect on any measurement outcome, so we drop it. Only the relative phase $\\phi = \\gamma_\\beta - \\gamma_\\alpha$ matters.",
+              "prompt": "This is the key physical insight: two states that differ only by a global phase are the same state. That removes one more parameter: 3 → 2.",
+              "sceneStep": 1
+            },
+            {
+              "type": "step",
+              "label": "Parameterize the magnitudes",
+              "math": "r_\\alpha^2 + r_\\beta^2 = 1 \\;\\Longrightarrow\\; r_\\alpha = \\htmlClass{hl-cosH}{\\cos\\!\\left(\\frac{\\theta}{2}\\right)}, \\; r_\\beta = \\htmlClass{hl-sinH}{\\sin\\!\\left(\\frac{\\theta}{2}\\right)}",
+              "highlights": {
+                "cosH": {
+                  "color": "green",
+                  "label": "$r_\\alpha$ as cosine of half-angle"
+                },
+                "sinH": {
+                  "color": "orange",
+                  "label": "$r_\\beta$ as sine of half-angle"
+                }
+              },
+              "justification": "Any point on the unit circle $(r_\\alpha, r_\\beta)$ with $r_\\alpha, r_\\beta \\geq 0$ can be written as $(\\cos\\eta, \\sin\\eta)$ for $\\eta \\in [0, \\pi/2]$. Set $\\eta = \\theta/2$ so $\\theta$ ranges over $[0, \\pi]$.",
+              "explanation": "The half-angle $\\theta/2$ is chosen so that $\\theta$ spans the full polar range of the sphere.",
+              "prompt": "Explain why we use theta/2 instead of theta: we want theta in [0, pi] to cover north pole to south pole, so the half-angle lives in [0, pi/2] where both cos and sin are non-negative.",
+              "sceneStep": 1
+            },
+            {
+              "type": "conclusion",
+              "label": "The Bloch parameterization",
+              "math": "\\htmlClass{hl-final}{\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle}",
+              "highlights": {
+                "final": {
+                  "color": "gold",
+                  "label": "Two real angles parameterize all pure qubit states"
+                }
+              },
+              "justification": "Substitute $r_\\alpha$, $r_\\beta$, and $\\phi = \\gamma_\\beta - \\gamma_\\alpha$ into the state.",
+              "explanation": "Every pure qubit maps to a unique point $(\\theta, \\phi)$ on the unit sphere. The half-angle ensures the north pole ($\\theta=0$) is $\\lvert 0\\rangle$ and the south pole ($\\theta=\\pi$) is $\\lvert 1\\rangle$.",
+              "prompt": "Tie back to the visualization: theta is the gold vector's polar angle, phi is its azimuth. Two angles, one sphere, all pure states.",
+              "sceneStep": 2
+            }
+          ]
+        },
+        {
+        "title": "Deriving the Bloch z-component from the state vector",
+        "technique": "derivation",
+        "techniqueHint": "Compute the expectation value of the Pauli Z operator to extract the z-coordinate from the ket.",
+        "goal": "Show that $z = \\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\cos\\theta$ for the Bloch parameterization.",
+        "sceneStep": 0,
+        "prompt": "Walk the student through the density-matrix / expectation-value route. Emphasize that z is not arbitrary — it is a measurable quantity tied to the Pauli Z operator.",
+        "steps": [
+          {
+            "type": "given",
+            "label": "Bloch parameterization",
+            "math": "\\htmlClass{hl-ket}{\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle}",
+            "highlights": {
+              "ket": {
+                "color": "cyan",
+                "label": "General pure qubit state"
+              }
+            },
+            "justification": "Standard parameterization of a normalized single-qubit state.",
+            "explanation": "This is the state whose Bloch coordinates we want to derive.",
+            "prompt": "Remind the student that theta and phi are the polar and azimuthal angles on the sphere.",
+            "sceneStep": 0
+          },
+          {
+            "type": "step",
+            "label": "Recall the Pauli Z operator",
+            "math": "\\htmlClass{hl-Z}{Z} = \\begin{pmatrix} 1 & 0 \\\\ 0 & -1 \\end{pmatrix}, \\quad Z\\lvert 0\\rangle = \\lvert 0\\rangle,\\; Z\\lvert 1\\rangle = -\\lvert 1\\rangle",
+            "highlights": {
+              "Z": {
+                "color": "blue",
+                "label": "Pauli Z matrix"
+              }
+            },
+            "justification": "Z is diagonal in the computational basis with eigenvalues +1 and −1.",
+            "explanation": "The eigenstates of Z are exactly the north and south poles of the Bloch sphere.",
+            "prompt": "Connect the eigenvalues +1 and -1 to the poles at z=+1 and z=-1.",
+            "sceneStep": 0
+          },
+          {
+            "type": "step",
+            "label": "Compute the expectation value",
+            "math": "\\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\htmlClass{hl-cos2}{\\cos^2\\!\\left(\\frac{\\theta}{2}\\right)} \\cdot(+1) + \\htmlClass{hl-sin2}{\\sin^2\\!\\left(\\frac{\\theta}{2}\\right)} \\cdot(-1)",
+            "highlights": {
+              "cos2": {
+                "color": "green",
+                "label": "Probability of $\\lvert 0\\rangle$ (eigenvalue +1)"
+              },
+              "sin2": {
+                "color": "orange",
+                "label": "Probability of $\\lvert 1\\rangle$ (eigenvalue −1)"
+              }
+            },
+            "justification": "The expectation value of Z is the weighted sum of its eigenvalues, weighted by the Born-rule probabilities.",
+            "explanation": "The phase $e^{i\\phi}$ drops out because $\\lvert e^{i\\phi}\\rvert^2 = 1$.",
+            "prompt": "Point out that this is the same Born's rule calculation as in the next scene, but framed as an expectation value.",
+            "sceneStep": 1
+          },
+          {
+            "type": "step",
+            "label": "Apply the double-angle identity",
+            "math": "\\cos^2\\!\\left(\\frac{\\theta}{2}\\right) - \\sin^2\\!\\left(\\frac{\\theta}{2}\\right) = \\htmlClass{hl-costheta}{\\cos\\theta}",
+            "highlights": {
+              "costheta": {
+                "color": "blue",
+                "label": "The familiar cosine double-angle formula"
+              }
+            },
+            "justification": "Use $\\cos^2(\\alpha) - \\sin^2(\\alpha) = \\cos(2\\alpha)$ with $\\alpha = \\theta/2$.",
+            "explanation": "This collapses two terms into a single trigonometric function of the polar angle.",
+            "prompt": "Emphasize that this is why the parameterization uses theta/2 — so that the Bloch z-coordinate comes out as simply cos(theta).",
+            "sceneStep": 1
+          },
+          {
+            "type": "conclusion",
+            "label": "The z-coordinate is an expectation value",
+            "math": "\\htmlClass{hl-result}{z = \\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\cos\\theta}",
+            "highlights": {
+              "result": {
+                "color": "green",
+                "label": "Height on the Bloch sphere = expectation of Pauli Z"
+              }
+            },
+            "justification": "Combining the previous steps.",
+            "explanation": "The Bloch z-coordinate is not an arbitrary label — it is the physical expectation value of the Z measurement. The same logic gives $x = \\langle X\\rangle$ and $y = \\langle Y\\rangle$.",
+            "prompt": "Close by noting that all three Bloch coordinates come from Pauli expectation values: x from X, y from Y, z from Z. This is why the Bloch sphere is physically meaningful.",
+            "sceneStep": 2
+          }
+        ]
+      }]
     },
     {
       "title": "Measurement Reads Latitude",
@@ -957,7 +1141,7 @@
       ],
       "proof": {
         "id": "s3_z_measurement_derivation",
-        "title": "Why the z-coordinate determines computational-basis probabilities",
+        "title": "Deriving basis probabilities from the Bloch z-component",
         "technique": "derivation",
         "techniqueHint": "This is a short derivation: apply Born's rule to the Bloch-sphere parameterization and then use the half-angle identities.",
         "goal": "Show that $p(0)=\\frac{1+z}{2}$ and $p(1)=\\frac{1-z}{2}$ when $z=\\cos\\theta$.",
