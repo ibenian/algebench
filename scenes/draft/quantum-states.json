@@ -79,14 +79,14 @@
         {
           "name": "North Pole",
           "position": [
-            0.7,
-            -0.7,
-            3.2
+            0,
+            0,
+            4
           ],
           "target": [
             0,
             0,
-            0.8
+            0
           ],
           "up": [
             0,
@@ -126,7 +126,9 @@
           ],
           "radius": 1,
           "color": "#5c7cfa",
-          "opacity": 0.12
+          "opacity": 0.12,
+          "segments": 64,
+          "rings": 48
         },
         {
           "id": "s1_axis_x",
@@ -436,7 +438,9 @@
           ],
           "radius": 1,
           "color": "#5c7cfa",
-          "opacity": 0.12
+          "opacity": 0.12,
+          "segments": 64,
+          "rings": 48
         },
         {
           "id": "s2_axis_x",
@@ -579,7 +583,7 @@
             {
               "id": "s2_theta_info",
               "position": "top-right",
-              "content": "$$|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + \\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle$$\n$$\\theta={{toFixed(q2_theta,2)}}\\ \\text{rad},\\quad z=\\cos\\theta={{toFixed(cos(q2_theta),2)}}$$"
+              "content": "$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + \\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle$$\n$$\\theta={{toFixed(q2_theta,2)}}\\ \\text{rad},\\quad z=\\cos\\theta={{toFixed(cos(q2_theta),2)}}$$"
             }
           ]
         },
@@ -664,7 +668,7 @@
             {
               "id": "s2_formula",
               "position": "top-right",
-              "content": "$$|\\psi\\rangle = \\alpha|0\\rangle + \\beta|1\\rangle,\\qquad \\alpha=\\cos\\left(\\frac{\\theta}{2}\\right),\\ \\beta=e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)$$\n$$|\\alpha|^2={{toFixed(cos(q2_theta/2)^2,3)}},\\qquad |\\beta|^2={{toFixed(sin(q2_theta/2)^2,3)}}$$"
+              "content": "$$\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle,\\qquad \\alpha=\\cos\\!\\left(\\frac{\\theta}{2}\\right),\\ \\beta=e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)$$\n$$\\lvert\\alpha\\rvert^2={{toFixed(cos(q2_theta/2)^2,3)}},\\qquad \\lvert\\beta\\rvert^2={{toFixed(sin(q2_theta/2)^2,3)}}$$"
             }
           ]
         }
@@ -757,7 +761,9 @@
           ],
           "radius": 1,
           "color": "#5c7cfa",
-          "opacity": 0.12
+          "opacity": 0.12,
+          "segments": 64,
+          "rings": 48
         },
         {
           "id": "s3_axis_x",
@@ -961,7 +967,7 @@
           {
             "type": "given",
             "label": "Start from the Bloch parameterization",
-            "math": "\\htmlClass{hl-state}{|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle}",
+            "math": "\\htmlClass{hl-state}{\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle}",
             "highlights": {
               "state": {
                 "color": "cyan",
@@ -976,7 +982,7 @@
           {
             "type": "step",
             "label": "Apply Born's rule",
-            "math": "p(0)=|\\langle 0|\\psi\\rangle|^2=\\htmlClass{hl-p0}{\\cos^2\\left(\\frac{\\theta}{2}\\right)},\\qquad p(1)=|\\langle 1|\\psi\\rangle|^2=\\htmlClass{hl-p1}{\\sin^2\\left(\\frac{\\theta}{2}\\right)}",
+            "math": "p(0)=\\lvert\\langle 0\\vert\\psi\\rangle\\rvert^2=\\htmlClass{hl-p0}{\\cos^2\\!\\left(\\frac{\\theta}{2}\\right)} \\\\ p(1)=\\lvert\\langle 1\\vert\\psi\\rangle\\rvert^2=\\htmlClass{hl-p1}{\\sin^2\\!\\left(\\frac{\\theta}{2}\\right)}",
             "highlights": {
               "p0": {
                 "color": "green",
@@ -1120,7 +1126,9 @@
           ],
           "radius": 1,
           "color": "#5c7cfa",
-          "opacity": 0.12
+          "opacity": 0.12,
+          "segments": 64,
+          "rings": 48
         },
         {
           "id": "s4_axis_x",
@@ -1241,7 +1249,7 @@
             {
               "id": "s4_zflat",
               "position": "top-right",
-              "content": "$$|\\psi(\\phi)\\rangle = \\frac{|0\\rangle + e^{i\\phi}|1\\rangle}{\\sqrt{2}}$$\n$$p_z(0)=p_z(1)=0.5$$"
+              "content": "$$\\lvert\\psi(\\phi)\\rangle = \\frac{\\lvert 0\\rangle + e^{i\\phi}\\lvert 1\\rangle}{\\sqrt{2}}$$\n$$p_z(0)=p_z(1)=0.5$$"
             }
           ]
         },
@@ -1344,7 +1352,7 @@
             {
               "id": "s4_global_phase",
               "position": "top-right",
-              "content": "$$e^{i\\gamma}|\\psi\\rangle\\ \\text{and}\\ |\\psi\\rangle\\ \\text{represent the same physical state}$$\n$$\\text{Only the relative phase }\\phi\\text{ changes the Bloch point.}$$"
+              "content": "$$e^{i\\gamma}\\lvert\\psi\\rangle\\ \\text{and}\\ \\lvert\\psi\\rangle\\ \\text{represent the same physical state}$$\n$$\\text{Only the relative phase }\\phi\\text{ changes the Bloch point.}$$"
             }
           ]
         }

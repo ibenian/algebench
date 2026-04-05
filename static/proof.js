@@ -260,7 +260,8 @@ function _toggleHighlightAnnotation(stepEl, name, spec) {
     const colorName = spec.color || 'cyan';
     annotation.style.borderLeftColor = _hlRGBA(colorName, 0.6);
     annotation.style.color = _hlRGBA(colorName, 0.9);
-    annotation.innerHTML = `<span class="proof-hl-annotation-dot" style="background:${_hlRGBA(colorName, 0.7)}"></span>${escapeHtml(spec.label)}`;
+    const labelHtml = renderKaTeX(spec.label);
+    annotation.innerHTML = `<span class="proof-hl-annotation-dot" style="background:${_hlRGBA(colorName, 0.7)}"></span>${labelHtml}`;
 
     // Click annotation to dismiss it
     annotation.addEventListener('click', (e) => {
