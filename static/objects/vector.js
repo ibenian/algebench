@@ -103,7 +103,7 @@ export function renderVector(el, view) {
 
     if (label) {
         const lo = (Array.isArray(el.labelOffset) && el.labelOffset.length === 3)
-            ? el.labelOffset : null;
+            ? [Number(el.labelOffset[0]) || 0, Number(el.labelOffset[1]) || 0, Number(el.labelOffset[2]) || 0] : null;
         if (el.labelPosition) {
             addLabel3D(label, el.labelPosition, color);
         } else {

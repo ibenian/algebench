@@ -31,7 +31,25 @@ export function renderKaTeX(text, displayMode) {
     const withTables = text.replace(
         /^(\|.+\|)\n(\|[\s:?-]+(?:\|[\s:?-]+)+\|)\n((?:\|.+\|\n?)+)/gm,
         (match, headerLine, sepLine, bodyBlock) => {
-            const parseRow = (row) => row.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+            const parseRow = (row) => {
+                const content = row.replace(/^\|/, '').replace(/\|$/, '');
+                const cells = [];
+                let current = '';
+                let inMath = false, inDisplayMath = false;
+                for (let ci = 0; ci < content.length; ci++) {
+                    const ch = content[ci], next = content[ci + 1];
+                    if (ch === '\\' && ci + 1 < content.length) { current += ch + content[++ci]; continue; }
+                    if (ch === '$') {
+                        if (next === '$') { inDisplayMath = !inDisplayMath; current += '$$'; ci++; continue; }
+                        if (!inDisplayMath) inMath = !inMath;
+                        current += ch; continue;
+                    }
+                    if (ch === '|' && !inMath && !inDisplayMath) { cells.push(current.trim()); current = ''; continue; }
+                    current += ch;
+                }
+                cells.push(current.trim());
+                return cells;
+            };
             const headers = parseRow(headerLine);
             const rows = bodyBlock.trim().split('\n').map(r => parseRow(r));
             const tableStyle = 'border-collapse:collapse;margin:6px 0;font-size:0.9em';
