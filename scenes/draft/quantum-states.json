@@ -142,7 +142,12 @@
               ],
               "color": "#ff7b72",
               "width": 4,
-              "label": "$\\beta$"
+              "label": "$\\beta$",
+              "labelOffset": [
+                -0.25,
+                0.05,
+                0
+              ]
             }
           ],
           "info": [

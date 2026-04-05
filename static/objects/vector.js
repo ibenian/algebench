@@ -102,13 +102,15 @@ export function renderVector(el, view) {
     makeArrowMesh(from, to, color, state.displayParams.arrowScale, shaftBaseScale, elementOpacity);
 
     if (label) {
+        const lo = (Array.isArray(el.labelOffset) && el.labelOffset.length === 3)
+            ? el.labelOffset : null;
         if (el.labelPosition) {
             addLabel3D(label, el.labelPosition, color);
         } else {
             const mid = [
-                (from[0] + to[0]) / 2,
-                (from[1] + to[1]) / 2 + 0.15,
-                (from[2] + to[2]) / 2
+                (from[0] + to[0]) / 2 + (lo ? lo[0] : 0),
+                (from[1] + to[1]) / 2 + 0.15 + (lo ? lo[1] : 0),
+                (from[2] + to[2]) / 2 + (lo ? lo[2] : 0)
             ];
             addLabel3D(label, mid, color);
         }
