@@ -6,22 +6,59 @@
       "description": "Every two-level quantum system — an electron spin, a photon polarization, a superconducting circuit — is described by two complex amplitudes.",
       "markdown": "# A Qubit Lives in $\\mathbb{C}^2$\n\nConsider an electron passing through a Stern–Gerlach magnet. The beam splits into exactly **two** spots: spin-up and spin-down. Before measurement, the electron is in a superposition\n\n$$|\\psi\\rangle = \\alpha|{\\uparrow}\\rangle + \\beta|{\\downarrow}\\rangle$$\n\nwhere $\\alpha$ and $\\beta$ are **complex numbers** satisfying $|\\alpha|^2+|\\beta|^2=1$.\n\nThe same math describes photon polarization ($|H\\rangle, |V\\rangle$), superconducting qubits ($|0\\rangle, |1\\rangle$), and any other two-level quantum system.\n\n## Same qubit, different hardware\n\nOnce a basis is chosen, the symbols mean the same mathematical thing in every platform, but their physical interpretation changes:\n\n| System | Basis states | $\\alpha, \\beta$ encode | $\\theta$ encodes | $\\phi$ encodes |\n|--------|--------------|-------------------------|-------------------|-----------------|\n| Electron spin | $|\\uparrow_z\\rangle, |\\downarrow_z\\rangle$ | Spin-up / spin-down amplitudes in the $z$ basis | Tilt away from the $+z$ axis, which sets the spin-up vs spin-down population balance | Azimuth of the spin direction; affects $x$- and $y$-basis measurements |\n| Photon polarization | $|H\\rangle, |V\\rangle$ | Horizontal / vertical field amplitudes | How much of the state is in $H$ versus $V$ | Phase delay between $H$ and $V$, setting linear vs elliptical/circular polarization |\n| Two-level atom | $|g\\rangle, |e\\rangle$ | Ground / excited-state amplitudes | Population balance between $|g\\rangle$ and $|e\\rangle$ | Phase of the atomic coherence (dipole oscillation) |\n| Superconducting qubit | $|0\\rangle, |1\\rangle$ | Amplitudes of the two logical energy eigenstates | Ground-versus-excited occupation | Relative phase seen in coherent control and Ramsey interference |\n| Interferometer path qubit | $|A\\rangle, |B\\rangle$ | Probability amplitudes for the two paths | How strongly the state favors path $A$ or path $B$ | Optical phase difference accumulated between the paths |\n\nAcross all of these examples, $\\alpha$ and $\\beta$ are the raw complex amplitudes in the chosen basis. After imposing normalization and discarding global phase, the same state can always be written with two real angles:\n\n$$|\\psi\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right)|0\\rangle + e^{i\\phi}\\sin\\left(\\frac{\\theta}{2}\\right)|1\\rangle.$$\n\nHere $\\theta$ determines the population balance in the chosen basis, while $\\phi$ determines the relative phase that shows up in interference and in measurements away from that basis.\n\n## From four real numbers to two\n\nTwo complex numbers have **four** real parameters. But:\n1. **Normalization** ($|\\alpha|^2+|\\beta|^2=1$) removes one.\n2. **Global phase** ($e^{i\\gamma}|\\psi\\rangle$ is the same state as $|\\psi\\rangle$) removes another.\n\nTwo real parameters remain — just enough to specify a point on a **sphere**.\n\nReferences: Sakurai & Napolitano, *Modern Quantum Mechanics*; Griffiths & Schroeter, *Introduction to Quantum Mechanics*.",
       "prompt": "Start from a physical example (electron spin in Stern-Gerlach). Build the connection: physical system → two complex amplitudes → normalization constraint → global phase invariance → two real parameters → sphere. Keep the colors consistent: cyan for alpha/|0>, coral for beta/|1>, gold for the state, green for the normalization circle.",
-      "range": [[-1.3, 1.3], [-1.3, 1.3], [-1.3, 1.3]],
+      "range": [
+        [
+          -1.3,
+          1.3
+        ],
+        [
+          -1.3,
+          1.3
+        ],
+        [
+          -1.3,
+          1.3
+        ]
+      ],
       "camera": {
-        "position": [0, 0, 5],
-        "target": [0, 0, 0]
+        "position": [
+          0,
+          0,
+          5
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
       },
       "views": [
         {
           "name": "Face On",
-          "position": [0, 0, 5],
-          "target": [0, 0, 0],
+          "position": [
+            0,
+            0,
+            5
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
           "description": "Complex plane view"
         },
         {
           "name": "Iso",
-          "position": [3, 2, 3],
-          "target": [0, 0, 0],
+          "position": [
+            3,
+            2,
+            3
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
           "description": "Three-dimensional perspective"
         }
       ],
@@ -30,7 +67,10 @@
           "id": "s0_axis_re",
           "type": "axis",
           "axis": "x",
-          "range": [-1.2, 1.2],
+          "range": [
+            -1.2,
+            1.2
+          ],
           "color": "#ff4444",
           "width": 1.2,
           "label": "$\\text{Re}$"
@@ -39,7 +79,10 @@
           "id": "s0_axis_im",
           "type": "axis",
           "axis": "y",
-          "range": [-1.2, 1.2],
+          "range": [
+            -1.2,
+            1.2
+          ],
           "color": "#4488ff",
           "width": 1.2,
           "label": "$\\text{Im}$"
@@ -48,8 +91,15 @@
           "id": "s0_grid",
           "type": "grid",
           "plane": "xy",
-          "range": [-1.2, 1.2],
-          "color": [0.28, 0.28, 0.45],
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": [
+            0.28,
+            0.28,
+            0.45
+          ],
           "opacity": 0.15,
           "divisions": 12
         }
@@ -63,8 +113,16 @@
             {
               "id": "s0_alpha_vec",
               "type": "vector",
-              "from": [0, 0, 0],
-              "to": [1, 0, 0],
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
               "color": "#66d9ff",
               "width": 4,
               "label": "$\\alpha$"
@@ -72,8 +130,16 @@
             {
               "id": "s0_beta_vec",
               "type": "vector",
-              "from": [0, 0, 0],
-              "to": [0, 0.4, 0],
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                0.4,
+                0
+              ],
               "color": "#ff7b72",
               "width": 4,
               "label": "$\\beta$"
@@ -92,7 +158,9 @@
           "description": "A photon passing through a polarizer also has two outcomes: horizontal $|H\\rangle$ or vertical $|V\\rangle$. Before measurement, $|\\psi\\rangle = \\alpha|H\\rangle + \\beta|V\\rangle$ — the same two complex amplitudes.",
           "prompt": "Show that photon polarization is exactly the same math. The cyan vector is the H amplitude, the coral vector is the V amplitude. Mention that diagonal polarization is an equal superposition, and circular polarization is when beta has a phase of pi/2.",
           "remove": [
-            {"id": "s0_state_info"}
+            {
+              "id": "s0_state_info"
+            }
           ],
           "info": [
             {
@@ -107,7 +175,9 @@
           "description": "Superconducting circuits, trapped ions, nitrogen-vacancy centers — every two-level quantum system maps to the same $\\alpha|0\\rangle + \\beta|1\\rangle$.",
           "prompt": "Drive home the universality: electron spin, photon polarization, superconducting transmon, trapped ion, NV center — all are the same two-complex-number problem. This is why the qubit abstraction is so powerful. Use the standard |0>, |1> labels from here on.",
           "remove": [
-            {"id": "s0_photon_info"}
+            {
+              "id": "s0_photon_info"
+            }
           ],
           "info": [
             {
@@ -128,7 +198,10 @@
               "x": "cos(t)",
               "y": "sin(t)",
               "z": "0",
-              "range": [0, 6.283185307179586],
+              "range": [
+                0,
+                6.283185307179586
+              ],
               "samples": 120,
               "color": "#7bd389",
               "width": 2,
@@ -136,9 +209,15 @@
             }
           ],
           "remove": [
-            {"id": "s0_alpha_vec"},
-            {"id": "s0_beta_vec"},
-            {"id": "s0_state_info"}
+            {
+              "id": "s0_alpha_vec"
+            },
+            {
+              "id": "s0_beta_vec"
+            },
+            {
+              "id": "s0_state_info"
+            }
           ],
           "sliders": [
             {
@@ -154,7 +233,7 @@
             {
               "id": "s0_norm_info",
               "position": "top-right",
-              "content": "$$\\lvert\\alpha\\rvert^2 + \\lvert\\beta\\rvert^2 = 1$$\n$$\\lvert\\alpha\\rvert = \\cos\\left(\\frac{\\theta}{2}\\right) = {{toFixed(cos(s0_theta/2),3)}}$$\n$$\\lvert\\beta\\rvert = \\sin\\left(\\frac{\\theta}{2}\\right) = {{toFixed(sin(s0_theta/2),3)}}$$"
+              "content": "$$\\lvert\\alpha\\rvert^2 + \\lvert\\beta\\rvert^2 = 1$$\n$$\\lvert\\alpha\\rvert = \\cos\\left(\\frac{\\theta}{2}\\right) = {{toFixed(cos(s0_theta/2),3)}}$$\n$$\\lvert\\beta\\rvert = \\sin\\left(\\frac{\\theta}{2}\\right) = {{toFixed(sin(s0_theta/2),3)}}$$\n$$p(0) = \\cos^2(\\theta/2) = {{toFixed(cos(s0_theta/2)^2,3)}},\\; p(1) = \\sin^2(\\theta/2) = {{toFixed(sin(s0_theta/2)^2,3)}}$$"
             }
           ]
         },
@@ -166,8 +245,16 @@
             {
               "id": "s0_alpha_anim",
               "type": "animated_vector",
-              "from": [0, 0, 0],
-              "expr": ["cos(s0_theta/2)", "0", "0"],
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "cos(s0_theta/2)",
+                "0",
+                "0"
+              ],
               "color": "#66d9ff",
               "width": 2,
               "label": "$\\alpha = \\cos(\\theta/2)$"
@@ -175,8 +262,16 @@
             {
               "id": "s0_beta_anim",
               "type": "animated_vector",
-              "from": [0, 0, 0],
-              "expr": ["0", "sin(s0_theta/2)", "0"],
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "0",
+                "sin(s0_theta/2)",
+                "0"
+              ],
               "color": "#ff7b72",
               "width": 2,
               "label": "$\\beta = \\sin(\\theta/2)$"
@@ -188,7 +283,9 @@
           "description": "Now let $\\beta$ become complex: $\\beta = e^{i\\phi}\\sin(\\theta/2)$. The phase $\\phi$ rotates $\\beta$ in the complex plane without changing its magnitude.",
           "prompt": "Add the phi slider. Show that phi rotates the beta vector around the origin without changing its length. The normalization circle stays the same. This is the second real parameter — the relative phase.",
           "remove": [
-            {"id": "s0_beta_anim"}
+            {
+              "id": "s0_beta_anim"
+            }
           ],
           "sliders": [
             {
@@ -204,8 +301,16 @@
             {
               "id": "s0_beta_phase",
               "type": "animated_vector",
-              "from": [0, 0, 0],
-              "expr": ["sin(s0_theta/2)*cos(s0_phi)", "sin(s0_theta/2)*sin(s0_phi)", "0"],
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "sin(s0_theta/2)*cos(s0_phi)",
+                "sin(s0_theta/2)*sin(s0_phi)",
+                "0"
+              ],
               "color": "#ff7b72",
               "width": 2,
               "label": "$\\beta = e^{i\\phi}\\sin(\\theta/2)$"
@@ -216,7 +321,10 @@
               "x": "sin(s0_theta/2)*cos(t)",
               "y": "sin(s0_theta/2)*sin(t)",
               "z": "0",
-              "range": [0, 6.283185307179586],
+              "range": [
+                0,
+                6.283185307179586
+              ],
               "samples": 80,
               "color": "#c77dff",
               "width": 1.5,
@@ -250,39 +358,112 @@
       "description": "The electron on the left is the physical system; the ket on the right is the abstract Hilbert-space description used to predict what a spin measurement can return.",
       "markdown": "# From Electron Spin to Hilbert Space\n\nA Stern-Gerlach experiment asks a concrete physical question: if we measure spin along the $z$ axis, do we get **up** or **down**?\n\nThat laboratory question defines a basis:\n\n$$\\lvert\\uparrow_z\\rangle, \\qquad \\lvert\\downarrow_z\\rangle.$$\n\nOnce that basis is chosen, we represent the **same physical electron** by a vector in a two-dimensional complex Hilbert space:\n\n$$\\lvert\\psi\\rangle = \\alpha\\lvert\\uparrow_z\\rangle + \\beta\\lvert\\downarrow_z\\rangle.$$\n\nThe left panel shows the laboratory picture. The right panel shows the Hilbert-space coordinates. Those coordinates are **not** a position in ordinary space; they are amplitudes that encode measurement probabilities and relative phase.\n\nFor a pure qubit, normalization and the irrelevance of global phase reduce the description to two real parameters. That reduction is what makes the Bloch-sphere picture possible in the next scene.\n\nReferences: Sakurai & Napolitano; Nielsen & Chuang.",
       "prompt": "Teach this as the conceptual bridge the lesson needs. Left panel: real laboratory system and the chosen z-basis measurement. Right panel: the same state written in Hilbert-space coordinates. Be explicit that Hilbert space is not physical space; it is the abstract state space used to predict outcomes. Use cyan for the up basis component, coral for the down basis component, gold for the state, and magenta for relative phase.",
-      "range": [[-5.2, 5.2], [-5.2, 5.2], [-5.2, 5.2]],
+      "range": [
+        [
+          -5.2,
+          5.2
+        ],
+        [
+          -5.2,
+          5.2
+        ],
+        [
+          -5.2,
+          5.2
+        ]
+      ],
       "camera": {
-        "position": [0, -8, 0.8],
-        "target": [0, 0, 0],
-        "up": [0, 0, 1]
+        "position": [
+          0,
+          -8,
+          0.8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
       },
       "views": [
         {
           "name": "Side By Side",
-          "position": [0, -8, 0.8],
-          "target": [0, 0, 0],
-          "up": [0, 0, 1],
+          "position": [
+            0,
+            -8,
+            0.8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Compare the physical system and the Hilbert-space picture"
         },
         {
           "name": "Physical",
-          "position": [-3.2, -5.2, 0.8],
-          "target": [-3.2, 0, 0],
-          "up": [0, 0, 1],
+          "position": [
+            -3.2,
+            -5.2,
+            0.8
+          ],
+          "target": [
+            -3.2,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Focus on the electron and the measurement axis"
         },
         {
           "name": "Hilbert",
-          "position": [2.6, -5.2, 0.6],
-          "target": [2.6, 0, 0],
-          "up": [0, 0, 1],
+          "position": [
+            2.6,
+            -5.2,
+            0.6
+          ],
+          "target": [
+            2.6,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Focus on the ket and its amplitudes"
         },
         {
           "name": "Top",
-          "position": [0, 0, 6],
-          "target": [0, 0, 0],
-          "up": [0, 1, 0],
+          "position": [
+            0,
+            0,
+            6
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ],
           "description": "See the azimuthal phase rotation in the Hilbert-space panel"
         }
       ],
@@ -290,8 +471,16 @@
         {
           "id": "hs_divider",
           "type": "line",
-          "from": [0, 0, -1.9],
-          "to": [0, 0, 1.9],
+          "from": [
+            0,
+            0,
+            -1.9
+          ],
+          "to": [
+            0,
+            0,
+            1.9
+          ],
           "color": "#5c667a",
           "width": 1.2,
           "opacity": 0.6
@@ -299,7 +488,11 @@
         {
           "id": "hs_left_title",
           "type": "text",
-          "position": [-3.2, 0, 1.95],
+          "position": [
+            -3.2,
+            0,
+            1.95
+          ],
           "text": "Physical system",
           "color": "#ffd166",
           "size": 13
@@ -307,7 +500,11 @@
         {
           "id": "hs_right_title",
           "type": "text",
-          "position": [2.6, 0, 1.95],
+          "position": [
+            2.6,
+            0,
+            1.95
+          ],
           "text": "Hilbert-space state",
           "color": "#a6c8ff",
           "size": 13
@@ -322,22 +519,38 @@
             {
               "id": "hs_lab_axis",
               "type": "line",
-              "from": [-3.2, 0, -1.35],
-              "to": [-3.2, 0, 1.35],
+              "from": [
+                -3.2,
+                0,
+                -1.35
+              ],
+              "to": [
+                -3.2,
+                0,
+                1.35
+              ],
               "color": "#4488ff",
               "width": 1.6
             },
             {
               "id": "hs_up_state",
               "type": "point",
-              "position": [-3.2, 0, 1.2],
+              "position": [
+                -3.2,
+                0,
+                1.2
+              ],
               "color": "#66d9ff",
               "size": 9
             },
             {
               "id": "hs_up_label",
               "type": "text",
-              "position": [-3.55, 0, 1.05],
+              "position": [
+                -3.55,
+                0,
+                1.05
+              ],
               "text": "$\\lvert\\uparrow_z\\rangle$",
               "color": "#66d9ff",
               "size": 11
@@ -345,14 +558,22 @@
             {
               "id": "hs_down_state",
               "type": "point",
-              "position": [-3.2, 0, -1.2],
+              "position": [
+                -3.2,
+                0,
+                -1.2
+              ],
               "color": "#ff7b72",
               "size": 9
             },
             {
               "id": "hs_down_label",
               "type": "text",
-              "position": [-3.62, 0, -1.05],
+              "position": [
+                -3.62,
+                0,
+                -1.05
+              ],
               "text": "$\\lvert\\downarrow_z\\rangle$",
               "color": "#ff7b72",
               "size": 11
@@ -360,22 +581,38 @@
             {
               "id": "hs_electron",
               "type": "point",
-              "position": [-3.2, 0, 0],
+              "position": [
+                -3.2,
+                0,
+                0
+              ],
               "color": "#ffd166",
               "size": 10
             },
             {
               "id": "hs_spin_fixed",
               "type": "vector",
-              "from": [-3.2, 0, 0],
-              "to": [-2.35, 0, 0.92],
+              "from": [
+                -3.2,
+                0,
+                0
+              ],
+              "to": [
+                -2.35,
+                0,
+                0.92
+              ],
               "color": "#ffd166",
               "width": 1
             },
             {
               "id": "hs_spin_fixed_label",
               "type": "text",
-              "position": [-2.35, 0, 0.18],
+              "position": [
+                -2.35,
+                0,
+                0.18
+              ],
               "text": "spin state",
               "color": "#ffd166",
               "size": 11
@@ -402,23 +639,43 @@
             {
               "id": "hs_top_slot",
               "type": "line",
-              "from": [1.8, 0, 0.8],
-              "to": [3.9, 0, 0.8],
+              "from": [
+                1.8,
+                0,
+                0.8
+              ],
+              "to": [
+                3.9,
+                0,
+                0.8
+              ],
               "color": "#66d9ff44",
               "width": 3
             },
             {
               "id": "hs_bottom_slot",
               "type": "line",
-              "from": [1.8, 0, -0.8],
-              "to": [3.9, 0, -0.8],
+              "from": [
+                1.8,
+                0,
+                -0.8
+              ],
+              "to": [
+                3.9,
+                0,
+                -0.8
+              ],
               "color": "#ff7b7244",
               "width": 3
             },
             {
               "id": "hs_top_basis",
               "type": "text",
-              "position": [0.7, 0, 0.92],
+              "position": [
+                0.7,
+                0,
+                0.92
+              ],
               "text": "up basis",
               "color": "#66d9ff",
               "size": 11
@@ -426,7 +683,11 @@
             {
               "id": "hs_bottom_basis",
               "type": "text",
-              "position": [0.7, 0, -0.68],
+              "position": [
+                0.7,
+                0,
+                -0.68
+              ],
               "text": "down basis",
               "color": "#ff7b72",
               "size": 11
@@ -434,15 +695,27 @@
             {
               "id": "hs_alpha_fixed",
               "type": "vector",
-              "from": [1.8, 0, 0.8],
-              "to": [3.6165, 0, 0.8],
+              "from": [
+                1.8,
+                0,
+                0.8
+              ],
+              "to": [
+                3.6165,
+                0,
+                0.8
+              ],
               "color": "#66d9ff",
               "width": 1.5
             },
             {
               "id": "hs_alpha_fixed_label",
               "type": "text",
-              "position": [2.62, 0, 1.02],
+              "position": [
+                2.62,
+                0,
+                1.02
+              ],
               "text": "$\\alpha$",
               "color": "#66d9ff",
               "size": 12
@@ -450,15 +723,27 @@
             {
               "id": "hs_beta_fixed",
               "type": "vector",
-              "from": [1.8, 0, -0.8],
-              "to": [2.852, 0, -0.8],
+              "from": [
+                1.8,
+                0,
+                -0.8
+              ],
+              "to": [
+                2.852,
+                0,
+                -0.8
+              ],
               "color": "#ff7b72",
               "width": 1.5
             },
             {
               "id": "hs_beta_fixed_label",
               "type": "text",
-              "position": [2.18, 0, -0.58],
+              "position": [
+                2.18,
+                0,
+                -0.58
+              ],
               "text": "$\\beta$",
               "color": "#ff7b72",
               "size": 12
@@ -513,15 +798,27 @@
             {
               "id": "hs_spin_theta",
               "type": "animated_vector",
-              "from": [-3.2, 0, 0],
-              "expr": ["-3.2 + 1.05*sin(hs_theta)", "0", "1.05*cos(hs_theta)"],
+              "from": [
+                -3.2,
+                0,
+                0
+              ],
+              "expr": [
+                "-3.2 + 1.05*sin(hs_theta)",
+                "0",
+                "1.05*cos(hs_theta)"
+              ],
               "color": "#ffd166",
               "width": 1
             },
             {
               "id": "hs_spin_theta_label",
               "type": "text",
-              "positionExpr": ["-2.3 + 0.55*sin(hs_theta)", "0", "0.18 + 0.25*cos(hs_theta)"],
+              "positionExpr": [
+                "-2.3 + 0.55*sin(hs_theta)",
+                "0",
+                "0.18 + 0.25*cos(hs_theta)"
+              ],
               "text": "same state",
               "color": "#ffd166",
               "size": 11
@@ -529,15 +826,27 @@
             {
               "id": "hs_alpha_bar",
               "type": "animated_vector",
-              "from": [1.8, 0, 0.8],
-              "expr": ["1.8 + 2.1*cos(hs_theta/2)", "0", "0.8"],
+              "from": [
+                1.8,
+                0,
+                0.8
+              ],
+              "expr": [
+                "1.8 + 2.1*cos(hs_theta/2)",
+                "0",
+                "0.8"
+              ],
               "color": "#66d9ff",
               "width": 1.5
             },
             {
               "id": "hs_alpha_bar_label",
               "type": "text",
-              "positionExpr": ["2.05 + 1.0*cos(hs_theta/2)", "0", "1.02"],
+              "positionExpr": [
+                "2.05 + 1.0*cos(hs_theta/2)",
+                "0",
+                "1.02"
+              ],
               "text": "$\\alpha$",
               "color": "#66d9ff",
               "size": 12
@@ -545,15 +854,27 @@
             {
               "id": "hs_beta_bar",
               "type": "animated_vector",
-              "from": [1.8, 0, -0.8],
-              "expr": ["1.8 + 2.1*sin(hs_theta/2)", "0", "-0.8"],
+              "from": [
+                1.8,
+                0,
+                -0.8
+              ],
+              "expr": [
+                "1.8 + 2.1*sin(hs_theta/2)",
+                "0",
+                "-0.8"
+              ],
               "color": "#ff7b72",
               "width": 1.5
             },
             {
               "id": "hs_beta_bar_label",
               "type": "text",
-              "positionExpr": ["2.05 + 1.0*sin(hs_theta/2)", "0", "-0.58"],
+              "positionExpr": [
+                "2.05 + 1.0*sin(hs_theta/2)",
+                "0",
+                "-0.58"
+              ],
               "text": "$|\\beta|$",
               "color": "#ff7b72",
               "size": 12
@@ -563,7 +884,7 @@
             {
               "id": "hs_theta_info",
               "position": "top-right",
-              "content": "$$\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(cos(hs_theta/2), 3)}}$$\n$$|\\beta| = \\sin\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(sin(hs_theta/2), 3)}}$$\n$$\\theta = {{toFixed(hs_theta, 2)}}\\ \\text{controls the up/down balance}$$"
+              "content": "$$\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(cos(hs_theta/2), 3)}}$$\n$$|\\beta| = \\sin\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(sin(hs_theta/2), 3)}}$$\n$$\\theta = {{toFixed(hs_theta, 2)}}\\ \\text{controls the up/down balance}$$\n$$p(0) = \\cos^2(\\theta/2) = {{toFixed(cos(hs_theta/2)^2,3)}},\\; p(1) = \\sin^2(\\theta/2) = {{toFixed(sin(hs_theta/2)^2,3)}}$$"
             }
           ]
         },
@@ -596,7 +917,11 @@
             {
               "id": "hs_spin_full",
               "type": "animated_vector",
-              "from": [-3.2, 0, 0],
+              "from": [
+                -3.2,
+                0,
+                0
+              ],
               "expr": [
                 "-3.2 + 1.05*sin(hs_theta)*cos(hs_phi)",
                 "1.05*sin(hs_theta)*sin(hs_phi)",
@@ -623,7 +948,10 @@
               "x": "1.8 + 2.1*sin(hs_theta/2)",
               "y": "0.32*cos(t)",
               "z": "-0.8 + 0.32*sin(t)",
-              "range": [0, 6.283185307179586],
+              "range": [
+                0,
+                6.283185307179586
+              ],
               "samples": 80,
               "color": "#c77dff",
               "width": 1.5,
@@ -632,8 +960,16 @@
             {
               "id": "hs_beta_phase",
               "type": "animated_vector",
-              "fromExpr": ["1.8 + 2.1*sin(hs_theta/2)", "0", "-0.8"],
-              "expr": ["1.8 + 2.1*sin(hs_theta/2)", "0.32*cos(hs_phi)", "-0.8 + 0.32*sin(hs_phi)"],
+              "fromExpr": [
+                "1.8 + 2.1*sin(hs_theta/2)",
+                "0",
+                "-0.8"
+              ],
+              "expr": [
+                "1.8 + 2.1*sin(hs_theta/2)",
+                "0.32*cos(hs_phi)",
+                "-0.8 + 0.32*sin(hs_phi)"
+              ],
               "color": "#c77dff",
               "width": 2
             },
@@ -665,39 +1001,112 @@
       "description": "The amplitudes on the left and the Bloch vector on the right are two pictures of the same pure qubit state.",
       "markdown": "# From Hilbert Space to the Bloch Sphere\n\nOn the left, a pure qubit is written in Hilbert space as\n\n$$\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle.$$\n\nOn the right, the **same state** is represented by a Bloch vector\n\n$$\\vec r = (\\sin\\theta\\cos\\phi,\\; \\sin\\theta\\sin\\phi,\\; \\cos\\theta).$$\n\nThis is not a change of physics; it is a change of coordinates.\n\n- In the Hilbert-space picture, $\\alpha$ and $\\beta$ are complex amplitudes.\n- In the Bloch-sphere picture, the same information is compressed into a point on the unit sphere.\n- $\\theta$ controls the balance between $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$.\n- $\\phi$ controls the relative phase.\n\nSo the Bloch sphere is a geometric summary of the pure-state Hilbert-space data for one qubit.\n\nReferences: Nielsen & Chuang; Sakurai & Napolitano.",
       "prompt": "Teach this as a true coordinate-change scene. Left panel: Hilbert-space amplitudes. Right panel: Bloch-sphere geometry. Keep saying 'same state, different representation.' Use cyan for the |0>/alpha channel, coral for the |1>/beta channel, gold for the state, green for latitude/z information, and magenta for phase/azimuth.",
-      "range": [[-5.2, 5.2], [-5.2, 5.2], [-5.2, 5.2]],
+      "range": [
+        [
+          -5.2,
+          5.2
+        ],
+        [
+          -5.2,
+          5.2
+        ],
+        [
+          -5.2,
+          5.2
+        ]
+      ],
       "camera": {
-        "position": [0, -8, 0.8],
-        "target": [0, 0, 0],
-        "up": [0, 0, 1]
+        "position": [
+          0,
+          -8,
+          0.8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
       },
       "views": [
         {
           "name": "Side By Side",
-          "position": [0, -8, 0.8],
-          "target": [0, 0, 0],
-          "up": [0, 0, 1],
+          "position": [
+            0,
+            -8,
+            0.8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Compare Hilbert amplitudes and the Bloch vector"
         },
         {
           "name": "Hilbert",
-          "position": [-2.6, -5.5, 0.6],
-          "target": [-2.6, 0, 0],
-          "up": [0, 0, 1],
+          "position": [
+            -2.6,
+            -5.5,
+            0.6
+          ],
+          "target": [
+            -2.6,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Focus on the amplitude picture"
         },
         {
           "name": "Bloch",
-          "position": [2.6, -5.5, 0.6],
-          "target": [2.6, 0, 0],
-          "up": [0, 0, 1],
+          "position": [
+            2.6,
+            -5.5,
+            0.6
+          ],
+          "target": [
+            2.6,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Focus on the sphere picture"
         },
         {
           "name": "Top",
-          "position": [2.6, 0, 6],
-          "target": [2.6, 0, 0],
-          "up": [0, 1, 0],
+          "position": [
+            2.6,
+            0,
+            6
+          ],
+          "target": [
+            2.6,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ],
           "description": "Look down the Bloch z-axis to see azimuth"
         }
       ],
@@ -705,8 +1114,16 @@
         {
           "id": "hb_divider",
           "type": "line",
-          "from": [0, 0, -2.0],
-          "to": [0, 0, 2.0],
+          "from": [
+            0,
+            0,
+            -2.0
+          ],
+          "to": [
+            0,
+            0,
+            2.0
+          ],
           "color": "#5c667a",
           "width": 1.2,
           "opacity": 0.6
@@ -714,7 +1131,11 @@
         {
           "id": "hb_left_title",
           "type": "text",
-          "position": [-2.6, 0, 1.95],
+          "position": [
+            -2.6,
+            0,
+            1.95
+          ],
           "text": "Hilbert-space coordinates",
           "color": "#a6c8ff",
           "size": 13
@@ -722,7 +1143,11 @@
         {
           "id": "hb_right_title",
           "type": "text",
-          "position": [2.6, 0, 1.95],
+          "position": [
+            2.6,
+            0,
+            1.95
+          ],
           "text": "Bloch-sphere picture",
           "color": "#ffd166",
           "size": 13
@@ -737,23 +1162,43 @@
             {
               "id": "hb_top_slot",
               "type": "line",
-              "from": [-3.8, 0, 0.8],
-              "to": [-1.7, 0, 0.8],
+              "from": [
+                -3.8,
+                0,
+                0.8
+              ],
+              "to": [
+                -1.7,
+                0,
+                0.8
+              ],
               "color": "#66d9ff44",
               "width": 3
             },
             {
               "id": "hb_bottom_slot",
               "type": "line",
-              "from": [-3.8, 0, -0.8],
-              "to": [-1.7, 0, -0.8],
+              "from": [
+                -3.8,
+                0,
+                -0.8
+              ],
+              "to": [
+                -1.7,
+                0,
+                -0.8
+              ],
               "color": "#ff7b7244",
               "width": 3
             },
             {
               "id": "hb_top_basis",
               "type": "text",
-              "position": [-4.9, 0, 0.92],
+              "position": [
+                -4.9,
+                0,
+                0.92
+              ],
               "text": "|0> channel",
               "color": "#66d9ff",
               "size": 11
@@ -761,7 +1206,11 @@
             {
               "id": "hb_bottom_basis",
               "type": "text",
-              "position": [-4.95, 0, -0.68],
+              "position": [
+                -4.95,
+                0,
+                -0.68
+              ],
               "text": "|1> channel",
               "color": "#ff7b72",
               "size": 11
@@ -769,15 +1218,27 @@
             {
               "id": "hb_alpha_fixed",
               "type": "vector",
-              "from": [-3.8, 0, 0.8],
-              "to": [-1.98, 0, 0.8],
+              "from": [
+                -3.8,
+                0,
+                0.8
+              ],
+              "to": [
+                -1.98,
+                0,
+                0.8
+              ],
               "color": "#66d9ff",
               "width": 1.5
             },
             {
               "id": "hb_alpha_fixed_label",
               "type": "text",
-              "position": [-2.95, 0, 1.03],
+              "position": [
+                -2.95,
+                0,
+                1.03
+              ],
               "text": "$\\alpha$",
               "color": "#66d9ff",
               "size": 12
@@ -785,15 +1246,27 @@
             {
               "id": "hb_beta_fixed",
               "type": "vector",
-              "from": [-3.8, 0, -0.8],
-              "to": [-2.75, 0, -0.8],
+              "from": [
+                -3.8,
+                0,
+                -0.8
+              ],
+              "to": [
+                -2.75,
+                0,
+                -0.8
+              ],
               "color": "#ff7b72",
               "width": 1.5
             },
             {
               "id": "hb_beta_fixed_label",
               "type": "text",
-              "position": [-3.38, 0, -0.58],
+              "position": [
+                -3.38,
+                0,
+                -0.58
+              ],
               "text": "$\\beta$",
               "color": "#ff7b72",
               "size": 12
@@ -801,22 +1274,38 @@
             {
               "id": "hb_bloch_axis",
               "type": "line",
-              "from": [2.6, 0, -1.2],
-              "to": [2.6, 0, 1.2],
+              "from": [
+                2.6,
+                0,
+                -1.2
+              ],
+              "to": [
+                2.6,
+                0,
+                1.2
+              ],
               "color": "#4488ff",
               "width": 1.4
             },
             {
               "id": "hb_ket0",
               "type": "point",
-              "position": [2.6, 0, 1.0],
+              "position": [
+                2.6,
+                0,
+                1.0
+              ],
               "color": "#66d9ff",
               "size": 8
             },
             {
               "id": "hb_ket0_label",
               "type": "text",
-              "position": [2.95, 0, 1.0],
+              "position": [
+                2.95,
+                0,
+                1.0
+              ],
               "text": "$|0\\rangle$",
               "color": "#66d9ff",
               "size": 11
@@ -824,14 +1313,22 @@
             {
               "id": "hb_ket1",
               "type": "point",
-              "position": [2.6, 0, -1.0],
+              "position": [
+                2.6,
+                0,
+                -1.0
+              ],
               "color": "#ff7b72",
               "size": 8
             },
             {
               "id": "hb_ket1_label",
               "type": "text",
-              "position": [2.95, 0, -1.0],
+              "position": [
+                2.95,
+                0,
+                -1.0
+              ],
               "text": "$|1\\rangle$",
               "color": "#ff7b72",
               "size": 11
@@ -839,15 +1336,27 @@
             {
               "id": "hb_state_fixed",
               "type": "vector",
-              "from": [2.6, 0, 0],
-              "to": [3.47, 0, 0.5],
+              "from": [
+                2.6,
+                0,
+                0
+              ],
+              "to": [
+                3.47,
+                0,
+                0.5
+              ],
               "color": "#ffd166",
               "width": 1.2
             },
             {
               "id": "hb_state_fixed_label",
               "type": "text",
-              "position": [3.05, 0, 0.18],
+              "position": [
+                3.05,
+                0,
+                0.18
+              ],
               "text": "same state",
               "color": "#ffd166",
               "size": 11
@@ -866,13 +1375,27 @@
           "description": "The magnitudes of $\\alpha$ and $\\beta$ determine how far up or down the Bloch vector sits. As $\\theta$ changes, the Hilbert-space bars and the Bloch latitude move together.",
           "prompt": "Make theta the first visible bridge. On the left, alpha shrinks while beta grows. On the right, the Bloch vector slides from north pole to south pole.",
           "remove": [
-            {"id": "hb_alpha_fixed"},
-            {"id": "hb_alpha_fixed_label"},
-            {"id": "hb_beta_fixed"},
-            {"id": "hb_beta_fixed_label"},
-            {"id": "hb_state_fixed"},
-            {"id": "hb_state_fixed_label"},
-            {"type": "info"}
+            {
+              "id": "hb_alpha_fixed"
+            },
+            {
+              "id": "hb_alpha_fixed_label"
+            },
+            {
+              "id": "hb_beta_fixed"
+            },
+            {
+              "id": "hb_beta_fixed_label"
+            },
+            {
+              "id": "hb_state_fixed"
+            },
+            {
+              "id": "hb_state_fixed_label"
+            },
+            {
+              "type": "info"
+            }
           ],
           "sliders": [
             {
@@ -888,15 +1411,27 @@
             {
               "id": "hb_alpha_bar",
               "type": "animated_vector",
-              "from": [-3.8, 0, 0.8],
-              "expr": ["-3.8 + 2.1*cos(hb_theta/2)", "0", "0.8"],
+              "from": [
+                -3.8,
+                0,
+                0.8
+              ],
+              "expr": [
+                "-3.8 + 2.1*cos(hb_theta/2)",
+                "0",
+                "0.8"
+              ],
               "color": "#66d9ff",
               "width": 1.5
             },
             {
               "id": "hb_alpha_bar_label",
               "type": "text",
-              "positionExpr": ["-3.55 + 1.0*cos(hb_theta/2)", "0", "1.03"],
+              "positionExpr": [
+                "-3.55 + 1.0*cos(hb_theta/2)",
+                "0",
+                "1.03"
+              ],
               "text": "$\\alpha$",
               "color": "#66d9ff",
               "size": 12
@@ -904,15 +1439,27 @@
             {
               "id": "hb_beta_bar",
               "type": "animated_vector",
-              "from": [-3.8, 0, -0.8],
-              "expr": ["-3.8 + 2.1*sin(hb_theta/2)", "0", "-0.8"],
+              "from": [
+                -3.8,
+                0,
+                -0.8
+              ],
+              "expr": [
+                "-3.8 + 2.1*sin(hb_theta/2)",
+                "0",
+                "-0.8"
+              ],
               "color": "#ff7b72",
               "width": 1.5
             },
             {
               "id": "hb_beta_bar_label",
               "type": "text",
-              "positionExpr": ["-3.55 + 1.0*sin(hb_theta/2)", "0", "-0.58"],
+              "positionExpr": [
+                "-3.55 + 1.0*sin(hb_theta/2)",
+                "0",
+                "-0.58"
+              ],
               "text": "$|\\beta|$",
               "color": "#ff7b72",
               "size": 12
@@ -920,13 +1467,19 @@
             {
               "id": "hb_sphere",
               "type": "sphere",
-              "center": [2.6, 0, 0],
+              "center": [
+                2.6,
+                0,
+                0
+              ],
               "radius": 1,
               "color": "#334466",
               "opacity": 0.15,
               "segments": 64,
               "rings": 48,
-              "shader": {"depthWrite": false}
+              "shader": {
+                "depthWrite": false
+              }
             },
             {
               "id": "hb_meridian",
@@ -934,7 +1487,10 @@
               "x": "2.6 + sin(t)",
               "y": "0",
               "z": "cos(t)",
-              "range": [0, 3.141592653589793],
+              "range": [
+                0,
+                3.141592653589793
+              ],
               "samples": 80,
               "color": "#7bd389",
               "width": 2,
@@ -943,15 +1499,27 @@
             {
               "id": "hb_state_theta",
               "type": "animated_vector",
-              "from": [2.6, 0, 0],
-              "expr": ["2.6 + sin(hb_theta)", "0", "cos(hb_theta)"],
+              "from": [
+                2.6,
+                0,
+                0
+              ],
+              "expr": [
+                "2.6 + sin(hb_theta)",
+                "0",
+                "cos(hb_theta)"
+              ],
               "color": "#ffd166",
               "width": 1.2
             },
             {
               "id": "hb_state_theta_label",
               "type": "text",
-              "positionExpr": ["3.0 + 0.45*sin(hb_theta)", "0", "0.18 + 0.25*cos(hb_theta)"],
+              "positionExpr": [
+                "3.0 + 0.45*sin(hb_theta)",
+                "0",
+                "0.18 + 0.25*cos(hb_theta)"
+              ],
               "text": "same state",
               "color": "#ffd166",
               "size": 11
@@ -959,8 +1527,16 @@
             {
               "id": "hb_zproj",
               "type": "animated_vector",
-              "from": [2.6, 0, 0],
-              "expr": ["2.6", "0", "cos(hb_theta)"],
+              "from": [
+                2.6,
+                0,
+                0
+              ],
+              "expr": [
+                "2.6",
+                "0",
+                "cos(hb_theta)"
+              ],
               "color": "#7bd389",
               "width": 1.5,
               "opacity": 0.5
@@ -970,7 +1546,7 @@
             {
               "id": "hb_theta_info",
               "position": "top-right",
-              "content": "$$\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(cos(hb_theta/2), 3)}}$$\n$$|\\beta| = \\sin\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(sin(hb_theta/2), 3)}}$$\n$$z = \\cos\\theta = {{toFixed(cos(hb_theta), 3)}}$$"
+              "content": "$$\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(cos(hb_theta/2), 3)}}$$\n$$|\\beta| = \\sin\\!\\left(\\frac{\\theta}{2}\\right) = {{toFixed(sin(hb_theta/2), 3)}}$$\n$$z = \\cos\\theta = {{toFixed(cos(hb_theta), 3)}}$$\n$$p(0) = \\cos^2(\\theta/2) = {{toFixed(cos(hb_theta/2)^2,3)}},\\; p(1) = \\sin^2(\\theta/2) = {{toFixed(sin(hb_theta/2)^2,3)}}$$"
             }
           ]
         },
@@ -979,10 +1555,18 @@
           "description": "The relative phase rotates the state around the Bloch z-axis. On the left it is the phase of the lower amplitude; on the right it is the azimuthal angle of the Bloch vector.",
           "prompt": "Add phi as the second bridge. Left panel: beta carries phase around a small phase circle. Right panel: the Bloch vector sweeps around the sphere at fixed latitude.",
           "remove": [
-            {"id": "hb_state_theta"},
-            {"id": "hb_state_theta_label"},
-            {"id": "hb_zproj"},
-            {"type": "info"}
+            {
+              "id": "hb_state_theta"
+            },
+            {
+              "id": "hb_state_theta_label"
+            },
+            {
+              "id": "hb_zproj"
+            },
+            {
+              "type": "info"
+            }
           ],
           "sliders": [
             {
@@ -1001,7 +1585,10 @@
               "x": "-3.8 + 2.1*sin(hb_theta/2)",
               "y": "0.32*cos(t)",
               "z": "-0.8 + 0.32*sin(t)",
-              "range": [0, 6.283185307179586],
+              "range": [
+                0,
+                6.283185307179586
+              ],
               "samples": 80,
               "color": "#c77dff",
               "width": 1.5,
@@ -1010,8 +1597,16 @@
             {
               "id": "hb_beta_phase",
               "type": "animated_vector",
-              "fromExpr": ["-3.8 + 2.1*sin(hb_theta/2)", "0", "-0.8"],
-              "expr": ["-3.8 + 2.1*sin(hb_theta/2)", "0.32*cos(hb_phi)", "-0.8 + 0.32*sin(hb_phi)"],
+              "fromExpr": [
+                "-3.8 + 2.1*sin(hb_theta/2)",
+                "0",
+                "-0.8"
+              ],
+              "expr": [
+                "-3.8 + 2.1*sin(hb_theta/2)",
+                "0.32*cos(hb_phi)",
+                "-0.8 + 0.32*sin(hb_phi)"
+              ],
               "color": "#c77dff",
               "width": 2
             },
@@ -1033,7 +1628,10 @@
               "x": "2.6 + cos(t)",
               "y": "sin(t)",
               "z": "0",
-              "range": [0, 6.283185307179586],
+              "range": [
+                0,
+                6.283185307179586
+              ],
               "samples": 120,
               "color": "#c77dff",
               "width": 2,
@@ -1042,15 +1640,27 @@
             {
               "id": "hb_state_full",
               "type": "animated_vector",
-              "from": [2.6, 0, 0],
-              "expr": ["2.6 + sin(hb_theta)*cos(hb_phi)", "sin(hb_theta)*sin(hb_phi)", "cos(hb_theta)"],
+              "from": [
+                2.6,
+                0,
+                0
+              ],
+              "expr": [
+                "2.6 + sin(hb_theta)*cos(hb_phi)",
+                "sin(hb_theta)*sin(hb_phi)",
+                "cos(hb_theta)"
+              ],
               "color": "#ffd166",
               "width": 1.2
             },
             {
               "id": "hb_state_full_label",
               "type": "text",
-              "positionExpr": ["3.0 + 0.42*sin(hb_theta)*cos(hb_phi)", "0", "0.18 + 0.25*cos(hb_theta)"],
+              "positionExpr": [
+                "3.0 + 0.42*sin(hb_theta)*cos(hb_phi)",
+                "0",
+                "0.18 + 0.25*cos(hb_theta)"
+              ],
               "text": "same state",
               "color": "#ffd166",
               "size": 11
@@ -1061,7 +1671,10 @@
               "x": "2.6 + sin(hb_theta)*cos(t)",
               "y": "sin(hb_theta)*sin(t)",
               "z": "cos(hb_theta)",
-              "range": [0, 6.283185307179586],
+              "range": [
+                0,
+                6.283185307179586
+              ],
               "samples": 80,
               "color": "#c77dff",
               "width": 1.5,
@@ -1095,32 +1708,93 @@
       "description": "Hilbert-space amplitudes are not themselves probabilities; Born's rule says to square their magnitudes.",
       "markdown": "# From Amplitudes to Probabilities\n\nA pure qubit written in Hilbert space has the form\n\n$$\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle.$$\n\nThe numbers $\\alpha$ and $\\beta$ are **probability amplitudes**, not probabilities themselves. The actual measurement probabilities are given by **Born's rule**:\n\n$$p(0)=|\\alpha|^2, \\qquad p(1)=|\\beta|^2.$$\n\nFor the Bloch-sphere parameterization,\n\n$$\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right), \\qquad \\beta = e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right),$$\n\nso the probabilities become\n\n$$p(0)=\\cos^2\\!\\left(\\frac{\\theta}{2}\\right), \\qquad p(1)=\\sin^2\\!\\left(\\frac{\\theta}{2}\\right).$$\n\nThe phase $\\phi$ changes interference in other bases, but it does **not** affect these computational-basis probabilities.\n\nReferences: Griffiths & Schroeter; Nielsen & Chuang.",
       "prompt": "Teach this as the Born's-rule bridge. Left panel: amplitudes in Hilbert space. Right panel: actual measurement probabilities. Be explicit that amplitudes are not probabilities; magnitudes squared are. Use cyan for alpha / p(0), coral for beta / p(1), and magenta only to show that phi does not change the computational-basis probabilities.",
-      "range": [[-5.2, 5.2], [-5.2, 5.2], [-5.2, 5.2]],
+      "range": [
+        [
+          -5.2,
+          5.2
+        ],
+        [
+          -5.2,
+          5.2
+        ],
+        [
+          -5.2,
+          5.2
+        ]
+      ],
       "camera": {
-        "position": [0, -8, 0.8],
-        "target": [0, 0, 0],
-        "up": [0, 0, 1]
+        "position": [
+          0,
+          -8,
+          0.8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
       },
       "views": [
         {
           "name": "Side By Side",
-          "position": [0, -8, 0.8],
-          "target": [0, 0, 0],
-          "up": [0, 0, 1],
+          "position": [
+            0,
+            -8,
+            0.8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Compare amplitudes and probabilities"
         },
         {
           "name": "Amplitudes",
-          "position": [-2.6, -5.6, 0.7],
-          "target": [-2.6, 0, 0],
-          "up": [0, 0, 1],
+          "position": [
+            -2.6,
+            -5.6,
+            0.7
+          ],
+          "target": [
+            -2.6,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Focus on the Hilbert amplitudes"
         },
         {
           "name": "Probabilities",
-          "position": [2.6, -5.6, 0.7],
-          "target": [2.6, 0, 0],
-          "up": [0, 0, 1],
+          "position": [
+            2.6,
+            -5.6,
+            0.7
+          ],
+          "target": [
+            2.6,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Focus on the measurable probabilities"
         }
       ],
@@ -1128,8 +1802,16 @@
         {
           "id": "ap_divider",
           "type": "line",
-          "from": [0, 0, -2.0],
-          "to": [0, 0, 2.0],
+          "from": [
+            0,
+            0,
+            -2.0
+          ],
+          "to": [
+            0,
+            0,
+            2.0
+          ],
           "color": "#5c667a",
           "width": 1.2,
           "opacity": 0.6
@@ -1137,7 +1819,11 @@
         {
           "id": "ap_left_title",
           "type": "text",
-          "position": [-2.6, 0, 1.95],
+          "position": [
+            -2.6,
+            0,
+            1.95
+          ],
           "text": "Hilbert amplitudes",
           "color": "#a6c8ff",
           "size": 13
@@ -1145,7 +1831,11 @@
         {
           "id": "ap_right_title",
           "type": "text",
-          "position": [2.6, 0, 1.95],
+          "position": [
+            2.6,
+            0,
+            1.95
+          ],
           "text": "Measurement probabilities",
           "color": "#ffd166",
           "size": 13
@@ -1160,39 +1850,75 @@
             {
               "id": "ap_amp_top_slot",
               "type": "line",
-              "from": [-3.8, 0, 0.8],
-              "to": [-1.7, 0, 0.8],
+              "from": [
+                -3.8,
+                0,
+                0.8
+              ],
+              "to": [
+                -1.7,
+                0,
+                0.8
+              ],
               "color": "#66d9ff44",
               "width": 3
             },
             {
               "id": "ap_amp_bottom_slot",
               "type": "line",
-              "from": [-3.8, 0, -0.8],
-              "to": [-1.7, 0, -0.8],
+              "from": [
+                -3.8,
+                0,
+                -0.8
+              ],
+              "to": [
+                -1.7,
+                0,
+                -0.8
+              ],
               "color": "#ff7b7244",
               "width": 3
             },
             {
               "id": "ap_prob_top_slot",
               "type": "line",
-              "from": [1.5, 0, 0.8],
-              "to": [3.6, 0, 0.8],
+              "from": [
+                1.5,
+                0,
+                0.8
+              ],
+              "to": [
+                3.6,
+                0,
+                0.8
+              ],
               "color": "#66d9ff44",
               "width": 3
             },
             {
               "id": "ap_prob_bottom_slot",
               "type": "line",
-              "from": [1.5, 0, -0.8],
-              "to": [3.6, 0, -0.8],
+              "from": [
+                1.5,
+                0,
+                -0.8
+              ],
+              "to": [
+                3.6,
+                0,
+                -0.8
+              ],
               "color": "#ff7b7244",
               "width": 3
             },
             {
               "id": "ap_amp_top_text",
               "type": "text",
-              "position": [-4.9, 0, 0.92],
+              "position": [
+                -4.9,
+                0,
+                0.92
+              ],
               "text": "$|0\\rangle$ amplitude",
               "color": "#66d9ff",
               "size": 11
@@ -1200,7 +1926,11 @@
             {
               "id": "ap_amp_bottom_text",
               "type": "text",
-              "position": [-4.9, 0, -0.68],
+              "position": [
+                -4.9,
+                0,
+                -0.68
+              ],
               "text": "$|1\\rangle$ amplitude",
               "color": "#ff7b72",
               "size": 11
@@ -1208,7 +1938,11 @@
             {
               "id": "ap_prob_top_text",
               "type": "text",
-              "position": [0.55, 0, 0.92],
+              "position": [
+                0.55,
+                0,
+                0.92
+              ],
               "text": "$p(0)$",
               "color": "#66d9ff",
               "size": 11
@@ -1216,7 +1950,11 @@
             {
               "id": "ap_prob_bottom_text",
               "type": "text",
-              "position": [0.55, 0, -0.68],
+              "position": [
+                0.55,
+                0,
+                -0.68
+              ],
               "text": "$p(1)$",
               "color": "#ff7b72",
               "size": 11
@@ -1224,15 +1962,27 @@
             {
               "id": "ap_alpha_fixed",
               "type": "vector",
-              "from": [-3.8, 0, 0.8],
-              "to": [-1.98, 0, 0.8],
+              "from": [
+                -3.8,
+                0,
+                0.8
+              ],
+              "to": [
+                -1.98,
+                0,
+                0.8
+              ],
               "color": "#66d9ff",
               "width": 1.5
             },
             {
               "id": "ap_alpha_fixed_label",
               "type": "text",
-              "position": [-2.95, 0, 1.03],
+              "position": [
+                -2.95,
+                0,
+                1.03
+              ],
               "text": "$|\\alpha|$",
               "color": "#66d9ff",
               "size": 12
@@ -1240,15 +1990,27 @@
             {
               "id": "ap_beta_fixed",
               "type": "vector",
-              "from": [-3.8, 0, -0.8],
-              "to": [-2.75, 0, -0.8],
+              "from": [
+                -3.8,
+                0,
+                -0.8
+              ],
+              "to": [
+                -2.75,
+                0,
+                -0.8
+              ],
               "color": "#ff7b72",
               "width": 1.5
             },
             {
               "id": "ap_beta_fixed_label",
               "type": "text",
-              "position": [-3.38, 0, -0.58],
+              "position": [
+                -3.38,
+                0,
+                -0.58
+              ],
               "text": "$|\\beta|$",
               "color": "#ff7b72",
               "size": 12
@@ -1256,15 +2018,27 @@
             {
               "id": "ap_p0_fixed",
               "type": "vector",
-              "from": [1.5, 0, 0.8],
-              "to": [3.075, 0, 0.8],
+              "from": [
+                1.5,
+                0,
+                0.8
+              ],
+              "to": [
+                3.075,
+                0,
+                0.8
+              ],
               "color": "#66d9ff",
               "width": 1.5
             },
             {
               "id": "ap_p0_fixed_label",
               "type": "text",
-              "position": [2.18, 0, 1.03],
+              "position": [
+                2.18,
+                0,
+                1.03
+              ],
               "text": "$|\\alpha|^2$",
               "color": "#66d9ff",
               "size": 12
@@ -1272,15 +2046,27 @@
             {
               "id": "ap_p1_fixed",
               "type": "vector",
-              "from": [1.5, 0, -0.8],
-              "to": [2.025, 0, -0.8],
+              "from": [
+                1.5,
+                0,
+                -0.8
+              ],
+              "to": [
+                2.025,
+                0,
+                -0.8
+              ],
               "color": "#ff7b72",
               "width": 1.5
             },
             {
               "id": "ap_p1_fixed_label",
               "type": "text",
-              "position": [1.72, 0, -0.58],
+              "position": [
+                1.72,
+                0,
+                -0.58
+              ],
               "text": "$|\\beta|^2$",
               "color": "#ff7b72",
               "size": 12
@@ -1299,15 +2085,33 @@
           "description": "As $\\theta$ changes, the amplitudes change on the left and the probabilities change on the right. The right panel always shows the squared magnitudes of the left panel.",
           "prompt": "Make the squaring relationship visible. Students should see that shortening an amplitude bar by a little can shorten the corresponding probability bar by more.",
           "remove": [
-            {"id": "ap_alpha_fixed"},
-            {"id": "ap_alpha_fixed_label"},
-            {"id": "ap_beta_fixed"},
-            {"id": "ap_beta_fixed_label"},
-            {"id": "ap_p0_fixed"},
-            {"id": "ap_p0_fixed_label"},
-            {"id": "ap_p1_fixed"},
-            {"id": "ap_p1_fixed_label"},
-            {"type": "info"}
+            {
+              "id": "ap_alpha_fixed"
+            },
+            {
+              "id": "ap_alpha_fixed_label"
+            },
+            {
+              "id": "ap_beta_fixed"
+            },
+            {
+              "id": "ap_beta_fixed_label"
+            },
+            {
+              "id": "ap_p0_fixed"
+            },
+            {
+              "id": "ap_p0_fixed_label"
+            },
+            {
+              "id": "ap_p1_fixed"
+            },
+            {
+              "id": "ap_p1_fixed_label"
+            },
+            {
+              "type": "info"
+            }
           ],
           "sliders": [
             {
@@ -1321,17 +2125,175 @@
           ],
           "add": [
             {
+              "id": "ap_plot_x_axis",
+              "type": "line",
+              "from": [
+                -0.8,
+                0,
+                -0.8
+              ],
+              "to": [
+                0.8,
+                0,
+                -0.8
+              ],
+              "color": "#5c667a",
+              "width": 1.0,
+              "opacity": 0.7
+            },
+            {
+              "id": "ap_plot_z_axis",
+              "type": "line",
+              "from": [
+                -0.8,
+                0,
+                -0.8
+              ],
+              "to": [
+                -0.8,
+                0,
+                0.8
+              ],
+              "color": "#5c667a",
+              "width": 1.0,
+              "opacity": 0.7
+            },
+            {
+              "id": "ap_plot_x_label",
+              "type": "text",
+              "position": [
+                0.0,
+                0,
+                -1.1
+              ],
+              "text": "$m$",
+              "color": "#8899aa",
+              "size": 11
+            },
+            {
+              "id": "ap_plot_z_label",
+              "type": "text",
+              "position": [
+                -1.15,
+                0,
+                0.0
+              ],
+              "text": "$p$",
+              "color": "#8899aa",
+              "size": 11
+            },
+            {
+              "id": "ap_plot_tick_m1",
+              "type": "text",
+              "position": [
+                0.8,
+                0,
+                -1.0
+              ],
+              "text": "1",
+              "color": "#5c667a",
+              "size": 9
+            },
+            {
+              "id": "ap_plot_tick_p1",
+              "type": "text",
+              "position": [
+                -1.0,
+                0,
+                0.8
+              ],
+              "text": "1",
+              "color": "#5c667a",
+              "size": 9
+            },
+            {
+              "id": "ap_linear_line",
+              "type": "line",
+              "from": [
+                -0.8,
+                0,
+                -0.8
+              ],
+              "to": [
+                0.8,
+                0,
+                0.8
+              ],
+              "color": "#5c667a44",
+              "width": 1.0
+            },
+            {
+              "id": "ap_squaring_curve",
+              "type": "parametric_curve",
+              "range": [
+                0,
+                1
+              ],
+              "color": "#ffd166",
+              "width": 2.5,
+              "samples": 64,
+              "x": "-0.8 + 1.6*t",
+              "y": "0",
+              "z": "-0.8 + 1.6*t*t"
+            },
+            {
+              "id": "ap_track_alpha",
+              "type": "animated_point",
+              "expr": [
+                "-0.8 + 1.6*cos(ap_theta/2)",
+                "0",
+                "-0.8 + 1.6*cos(ap_theta/2)^2"
+              ],
+              "color": "#66d9ff",
+              "size": 6
+            },
+            {
+              "id": "ap_track_beta",
+              "type": "animated_point",
+              "expr": [
+                "-0.8 + 1.6*sin(ap_theta/2)",
+                "0",
+                "-0.8 + 1.6*sin(ap_theta/2)^2"
+              ],
+              "color": "#ff7b72",
+              "size": 6
+            },
+            {
+              "id": "ap_plot_title",
+              "type": "text",
+              "position": [
+                0.0,
+                0,
+                1.1
+              ],
+              "text": "$p = m^2$",
+              "color": "#ffd166",
+              "size": 12
+            },
+            {
               "id": "ap_alpha_bar",
               "type": "animated_vector",
-              "from": [-3.8, 0, 0.8],
-              "expr": ["-3.8 + 2.1*cos(ap_theta/2)", "0", "0.8"],
+              "from": [
+                -3.8,
+                0,
+                0.8
+              ],
+              "expr": [
+                "-3.8 + 2.1*cos(ap_theta/2)",
+                "0",
+                "0.8"
+              ],
               "color": "#66d9ff",
               "width": 1.5
             },
             {
               "id": "ap_alpha_bar_label",
               "type": "text",
-              "positionExpr": ["-3.55 + 1.0*cos(ap_theta/2)", "0", "1.03"],
+              "positionExpr": [
+                "-3.55 + 1.0*cos(ap_theta/2)",
+                "0",
+                "1.03"
+              ],
               "text": "$|\\alpha|$",
               "color": "#66d9ff",
               "size": 12
@@ -1339,15 +2301,27 @@
             {
               "id": "ap_beta_bar",
               "type": "animated_vector",
-              "from": [-3.8, 0, -0.8],
-              "expr": ["-3.8 + 2.1*sin(ap_theta/2)", "0", "-0.8"],
+              "from": [
+                -3.8,
+                0,
+                -0.8
+              ],
+              "expr": [
+                "-3.8 + 2.1*sin(ap_theta/2)",
+                "0",
+                "-0.8"
+              ],
               "color": "#ff7b72",
               "width": 1.5
             },
             {
               "id": "ap_beta_bar_label",
               "type": "text",
-              "positionExpr": ["-3.55 + 1.0*sin(ap_theta/2)", "0", "-0.58"],
+              "positionExpr": [
+                "-3.55 + 1.0*sin(ap_theta/2)",
+                "0",
+                "-0.58"
+              ],
               "text": "$|\\beta|$",
               "color": "#ff7b72",
               "size": 12
@@ -1355,15 +2329,27 @@
             {
               "id": "ap_p0_bar",
               "type": "animated_vector",
-              "from": [1.5, 0, 0.8],
-              "expr": ["1.5 + 2.1*cos(ap_theta/2)^2", "0", "0.8"],
+              "from": [
+                1.5,
+                0,
+                0.8
+              ],
+              "expr": [
+                "1.5 + 2.1*cos(ap_theta/2)^2",
+                "0",
+                "0.8"
+              ],
               "color": "#66d9ff",
               "width": 1.5
             },
             {
               "id": "ap_p0_bar_label",
               "type": "text",
-              "positionExpr": ["1.78 + 1.0*cos(ap_theta/2)^2", "0", "1.03"],
+              "positionExpr": [
+                "1.78 + 1.0*cos(ap_theta/2)^2",
+                "0",
+                "1.03"
+              ],
               "text": "$p(0)$",
               "color": "#66d9ff",
               "size": 12
@@ -1371,15 +2357,27 @@
             {
               "id": "ap_p1_bar",
               "type": "animated_vector",
-              "from": [1.5, 0, -0.8],
-              "expr": ["1.5 + 2.1*sin(ap_theta/2)^2", "0", "-0.8"],
+              "from": [
+                1.5,
+                0,
+                -0.8
+              ],
+              "expr": [
+                "1.5 + 2.1*sin(ap_theta/2)^2",
+                "0",
+                "-0.8"
+              ],
               "color": "#ff7b72",
               "width": 1.5
             },
             {
               "id": "ap_p1_bar_label",
               "type": "text",
-              "positionExpr": ["1.78 + 1.0*sin(ap_theta/2)^2", "0", "-0.58"],
+              "positionExpr": [
+                "1.78 + 1.0*sin(ap_theta/2)^2",
+                "0",
+                "-0.58"
+              ],
               "text": "$p(1)$",
               "color": "#ff7b72",
               "size": 12
@@ -1414,7 +2412,10 @@
               "x": "-3.8 + 2.1*sin(ap_theta/2)",
               "y": "0.32*cos(t)",
               "z": "-0.8 + 0.32*sin(t)",
-              "range": [0, 6.283185307179586],
+              "range": [
+                0,
+                6.283185307179586
+              ],
               "samples": 80,
               "color": "#c77dff",
               "width": 1.5,
@@ -1423,15 +2424,27 @@
             {
               "id": "ap_beta_phase",
               "type": "animated_vector",
-              "fromExpr": ["-3.8 + 2.1*sin(ap_theta/2)", "0", "-0.8"],
-              "expr": ["-3.8 + 2.1*sin(ap_theta/2)", "0.32*cos(ap_phi)", "-0.8 + 0.32*sin(ap_phi)"],
+              "fromExpr": [
+                "-3.8 + 2.1*sin(ap_theta/2)",
+                "0",
+                "-0.8"
+              ],
+              "expr": [
+                "-3.8 + 2.1*sin(ap_theta/2)",
+                "0.32*cos(ap_phi)",
+                "-0.8 + 0.32*sin(ap_phi)"
+              ],
               "color": "#c77dff",
               "width": 2
             },
             {
               "id": "ap_beta_phase_label",
               "type": "text",
-              "positionExpr": ["-3.8 + 2.1*sin(ap_theta/2)", "0.32*cos(ap_phi)", "-0.8 + 0.32*sin(ap_phi)"],
+              "positionExpr": [
+                "-3.8 + 2.1*sin(ap_theta/2)",
+                "0.32*cos(ap_phi)",
+                "-0.8 + 0.32*sin(ap_phi)"
+              ],
               "text": "$\\phi$",
               "color": "#c77dff",
               "size": 12
@@ -1452,32 +2465,93 @@
       "description": "After the side-by-side bridge, this scene zooms in on the Bloch sphere itself and lets the student explore its geometry directly.",
       "markdown": "# From Amplitudes to a Sphere\n\nIn the previous scene we matched the Hilbert-space amplitudes to their Bloch-sphere image. Now we zoom in on the sphere itself.\n\nFor a pure qubit,\n\n$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle$$\n\nmaps to the **Bloch vector**\n\n$$\\vec{r} = (\\sin\\theta\\cos\\phi,\\; \\sin\\theta\\sin\\phi,\\; \\cos\\theta).$$\n\nThis is a unit vector in $\\mathbb{R}^3$ — a point on a sphere.\n\n- **$\\theta$** is the polar angle from the north pole. It controls the balance between $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$.\n- **$\\phi$** is the azimuthal angle around the equator. It controls the relative phase.\n- **$z = \\cos\\theta$** directly gives the measurement probabilities: $p(0) = (1+z)/2$.\n\nReferences: Nielsen & Chuang; Sakurai & Napolitano.",
       "prompt": "This scene is now a zoom-in on the Bloch sphere after the side-by-side bridge. Focus on the sphere geometry itself rather than re-explaining the full coordinate change. Keep colors consistent: cyan for |0>/alpha, coral for |1>/beta, gold for the state vector, green for z-projection/meridian, magenta for equator/phase.",
-      "range": [[-1.35, 1.35], [-1.35, 1.35], [-1.35, 1.35]],
+      "range": [
+        [
+          -1.35,
+          1.35
+        ],
+        [
+          -1.35,
+          1.35
+        ],
+        [
+          -1.35,
+          1.35
+        ]
+      ],
       "camera": {
-        "position": [2.8, -2.4, 1.8],
-        "target": [0, 0, 0],
-        "up": [0, 0, 1]
+        "position": [
+          2.8,
+          -2.4,
+          1.8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
       },
       "views": [
         {
           "name": "Iso",
-          "position": [2.8, -2.4, 1.8],
-          "target": [0, 0, 0],
-          "up": [0, 0, 1],
+          "position": [
+            2.8,
+            -2.4,
+            1.8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "See the full sphere and the state vector"
         },
         {
           "name": "North Pole",
-          "position": [0, 0, 4],
-          "target": [0, 0, 0],
-          "up": [0, 1, 0],
+          "position": [
+            0,
+            0,
+            4
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ],
           "description": "Top-down view — see the azimuthal angle $\\phi$"
         },
         {
           "name": "Equator",
-          "position": [3.2, 0, 0],
-          "target": [0, 0, 0],
-          "up": [0, 0, 1],
+          "position": [
+            3.2,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
           "description": "Side view — see the polar angle $\\theta$"
         }
       ],
@@ -1486,7 +2560,10 @@
           "id": "sb_axis_x",
           "type": "axis",
           "axis": "x",
-          "range": [-1.2, 1.2],
+          "range": [
+            -1.2,
+            1.2
+          ],
           "color": "#ff4444",
           "width": 1.2,
           "label": "$x$"
@@ -1495,7 +2572,10 @@
           "id": "sb_axis_y",
           "type": "axis",
           "axis": "y",
-          "range": [-1.2, 1.2],
+          "range": [
+            -1.2,
+            1.2
+          ],
           "color": "#44cc44",
           "width": 1.2,
           "label": "$y$"
@@ -1504,7 +2584,10 @@
           "id": "sb_axis_z",
           "type": "axis",
           "axis": "z",
-          "range": [-1.2, 1.2],
+          "range": [
+            -1.2,
+            1.2
+          ],
           "color": "#4488ff",
           "width": 1.2,
           "label": "$z$"
@@ -1513,8 +2596,15 @@
           "id": "sb_grid",
           "type": "grid",
           "plane": "xy",
-          "range": [-1.2, 1.2],
-          "color": [0.28, 0.28, 0.45],
+          "range": [
+            -1.2,
+            1.2
+          ],
+          "color": [
+            0.28,
+            0.28,
+            0.45
+          ],
           "opacity": 0.15,
           "divisions": 12
         }
@@ -1528,7 +2618,11 @@
             {
               "id": "sb_ket0",
               "type": "point",
-              "position": [0, 0, 1],
+              "position": [
+                0,
+                0,
+                1
+              ],
               "color": "#66d9ff",
               "size": 10,
               "label": "$\\lvert 0\\rangle$"
@@ -1536,7 +2630,11 @@
             {
               "id": "sb_ket1",
               "type": "point",
-              "position": [0, 0, -1],
+              "position": [
+                0,
+                0,
+                -1
+              ],
               "color": "#ff7b72",
               "size": 10,
               "label": "$\\lvert 1\\rangle$"
@@ -1571,7 +2669,10 @@
               "x": "sin(t)",
               "y": "0",
               "z": "cos(t)",
-              "range": [0, 3.141592653589793],
+              "range": [
+                0,
+                3.141592653589793
+              ],
               "samples": 80,
               "color": "#7bd389",
               "width": 2,
@@ -1580,8 +2681,16 @@
             {
               "id": "sb_state_vec",
               "type": "animated_vector",
-              "from": [0, 0, 0],
-              "expr": ["sin(sb_theta)", "0", "cos(sb_theta)"],
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "sin(sb_theta)",
+                "0",
+                "cos(sb_theta)"
+              ],
               "color": "#ffd166",
               "width": 2,
               "label": "$\\lvert\\psi\\rangle$"
@@ -1589,8 +2698,16 @@
             {
               "id": "sb_zproj",
               "type": "animated_vector",
-              "from": [0, 0, 0],
-              "expr": ["0", "0", "cos(sb_theta)"],
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "0",
+                "0",
+                "cos(sb_theta)"
+              ],
               "color": "#7bd389",
               "width": 2,
               "opacity": 0.6
@@ -1600,7 +2717,7 @@
             {
               "id": "sb_theta_info",
               "position": "top-right",
-              "content": "$$\\theta = {{toFixed(sb_theta, 2)}}$$\n$$\\alpha = \\cos(\\theta/2) = {{toFixed(cos(sb_theta/2), 3)}}$$\n$$\\lvert\\beta\\rvert = \\sin(\\theta/2) = {{toFixed(sin(sb_theta/2), 3)}}$$\n$$z = \\cos\\theta = {{toFixed(cos(sb_theta), 3)}}$$"
+              "content": "$$\\theta = {{toFixed(sb_theta, 2)}}$$\n$$\\alpha = \\cos(\\theta/2) = {{toFixed(cos(sb_theta/2), 3)}}$$\n$$\\lvert\\beta\\rvert = \\sin(\\theta/2) = {{toFixed(sin(sb_theta/2), 3)}}$$\n$$z = \\cos\\theta = {{toFixed(cos(sb_theta), 3)}}$$\n$$p(0) = \\cos^2(\\theta/2) = {{toFixed(cos(sb_theta/2)^2,3)}},\\; p(1) = \\sin^2(\\theta/2) = {{toFixed(sin(sb_theta/2)^2,3)}}$$"
             }
           ]
         },
@@ -1612,13 +2729,19 @@
             {
               "id": "sb_sphere",
               "type": "sphere",
-              "center": [0, 0, 0],
+              "center": [
+                0,
+                0,
+                0
+              ],
               "radius": 1,
               "color": "#334466",
               "opacity": 0.15,
               "segments": 64,
               "rings": 48,
-              "shader": {"depthWrite": false}
+              "shader": {
+                "depthWrite": false
+              }
             },
             {
               "id": "sb_equator",
@@ -1626,7 +2749,10 @@
               "x": "cos(t)",
               "y": "sin(t)",
               "z": "0",
-              "range": [0, 6.283185307179586],
+              "range": [
+                0,
+                6.283185307179586
+              ],
               "samples": 120,
               "color": "#c77dff",
               "width": 2,
@@ -1639,8 +2765,12 @@
           "description": "The relative phase $\\phi$ rotates the state around the z-axis. It sweeps out the equator and every latitude circle — this is the Bloch sphere.",
           "prompt": "Add the phi slider. Now the state can reach any point on the sphere. Connect back to the amplitude picture: theta controlled |alpha| vs |beta|, phi controls the complex phase of beta. Together they cover every pure state.",
           "remove": [
-            {"id": "sb_state_vec"},
-            {"id": "sb_zproj"}
+            {
+              "id": "sb_state_vec"
+            },
+            {
+              "id": "sb_zproj"
+            }
           ],
           "sliders": [
             {
@@ -1656,8 +2786,16 @@
             {
               "id": "sb_state_full",
               "type": "animated_vector",
-              "from": [0, 0, 0],
-              "expr": ["sin(sb_theta)*cos(sb_phi)", "sin(sb_theta)*sin(sb_phi)", "cos(sb_theta)"],
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "sin(sb_theta)*cos(sb_phi)",
+                "sin(sb_theta)*sin(sb_phi)",
+                "cos(sb_theta)"
+              ],
               "color": "#ffd166",
               "width": 2,
               "label": "$\\lvert\\psi\\rangle$"
@@ -1665,8 +2803,16 @@
             {
               "id": "sb_zproj_full",
               "type": "animated_vector",
-              "from": [0, 0, 0],
-              "expr": ["0", "0", "cos(sb_theta)"],
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "0",
+                "0",
+                "cos(sb_theta)"
+              ],
               "color": "#7bd389",
               "width": 2,
               "opacity": 0.5
@@ -1677,7 +2823,10 @@
               "x": "sin(sb_theta)*cos(t)",
               "y": "sin(sb_theta)*sin(t)",
               "z": "cos(sb_theta)",
-              "range": [0, 6.283185307179586],
+              "range": [
+                0,
+                6.283185307179586
+              ],
               "samples": 80,
               "color": "#c77dff",
               "width": 1.5,
@@ -2288,7 +3437,7 @@
             {
               "id": "s2_theta_info",
               "position": "top-right",
-              "content": "$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + \\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle$$\n$$\\theta={{toFixed(q2_theta,2)}}\\ \\text{rad},\\quad z=\\cos\\theta={{toFixed(cos(q2_theta),2)}}$$"
+              "content": "$$\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + \\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle$$\n$$\\theta={{toFixed(q2_theta,2)}}\\ \\text{rad},\\quad z=\\cos\\theta={{toFixed(cos(q2_theta),2)}}$$\n$$p(0) = \\cos^2(\\theta/2) = {{toFixed(cos(q2_theta/2)^2,3)}},\\; p(1) = \\sin^2(\\theta/2) = {{toFixed(sin(q2_theta/2)^2,3)}}$$"
             }
           ]
         },
@@ -2474,94 +3623,95 @@
           ]
         },
         {
-        "title": "Deriving the Bloch z-component from the state vector",
-        "technique": "derivation",
-        "techniqueHint": "Compute the expectation value of the Pauli Z operator to extract the z-coordinate from the ket.",
-        "goal": "Show that $z = \\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\cos\\theta$ for the Bloch parameterization.",
-        "sceneStep": 0,
-        "prompt": "Walk the student through the density-matrix / expectation-value route. Emphasize that z is not arbitrary — it is a measurable quantity tied to the Pauli Z operator.",
-        "steps": [
-          {
-            "type": "given",
-            "label": "Bloch parameterization",
-            "math": "\\htmlClass{hl-ket}{\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle}",
-            "highlights": {
-              "ket": {
-                "color": "cyan",
-                "label": "General pure qubit state"
-              }
-            },
-            "justification": "Standard parameterization of a normalized single-qubit state.",
-            "explanation": "This is the state whose Bloch coordinates we want to derive.",
-            "prompt": "Remind the student that theta and phi are the polar and azimuthal angles on the sphere.",
-            "sceneStep": 0
-          },
-          {
-            "type": "step",
-            "label": "Recall the Pauli Z operator",
-            "math": "\\htmlClass{hl-Z}{Z} = \\begin{pmatrix} 1 & 0 \\\\ 0 & -1 \\end{pmatrix}, \\quad Z\\lvert 0\\rangle = \\lvert 0\\rangle,\\; Z\\lvert 1\\rangle = -\\lvert 1\\rangle",
-            "highlights": {
-              "Z": {
-                "color": "blue",
-                "label": "Pauli Z matrix"
-              }
-            },
-            "justification": "Z is diagonal in the computational basis with eigenvalues +1 and −1.",
-            "explanation": "The eigenstates of Z are exactly the north and south poles of the Bloch sphere.",
-            "prompt": "Connect the eigenvalues +1 and -1 to the poles at z=+1 and z=-1.",
-            "sceneStep": 0
-          },
-          {
-            "type": "step",
-            "label": "Compute the expectation value",
-            "math": "\\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\htmlClass{hl-cos2}{\\cos^2\\!\\left(\\frac{\\theta}{2}\\right)} \\cdot(+1) + \\htmlClass{hl-sin2}{\\sin^2\\!\\left(\\frac{\\theta}{2}\\right)} \\cdot(-1)",
-            "highlights": {
-              "cos2": {
-                "color": "green",
-                "label": "Probability of $\\lvert 0\\rangle$ (eigenvalue +1)"
+          "title": "Deriving the Bloch z-component from the state vector",
+          "technique": "derivation",
+          "techniqueHint": "Compute the expectation value of the Pauli Z operator to extract the z-coordinate from the ket.",
+          "goal": "Show that $z = \\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\cos\\theta$ for the Bloch parameterization.",
+          "sceneStep": 0,
+          "prompt": "Walk the student through the density-matrix / expectation-value route. Emphasize that z is not arbitrary — it is a measurable quantity tied to the Pauli Z operator.",
+          "steps": [
+            {
+              "type": "given",
+              "label": "Bloch parameterization",
+              "math": "\\htmlClass{hl-ket}{\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle}",
+              "highlights": {
+                "ket": {
+                  "color": "cyan",
+                  "label": "General pure qubit state"
+                }
               },
-              "sin2": {
-                "color": "orange",
-                "label": "Probability of $\\lvert 1\\rangle$ (eigenvalue −1)"
-              }
+              "justification": "Standard parameterization of a normalized single-qubit state.",
+              "explanation": "This is the state whose Bloch coordinates we want to derive.",
+              "prompt": "Remind the student that theta and phi are the polar and azimuthal angles on the sphere.",
+              "sceneStep": 0
             },
-            "justification": "The expectation value of Z is the weighted sum of its eigenvalues, weighted by the Born-rule probabilities.",
-            "explanation": "The phase $e^{i\\phi}$ drops out because $\\lvert e^{i\\phi}\\rvert^2 = 1$.",
-            "prompt": "Point out that this is the same Born's rule calculation as in the next scene, but framed as an expectation value.",
-            "sceneStep": 1
-          },
-          {
-            "type": "step",
-            "label": "Apply the double-angle identity",
-            "math": "\\cos^2\\!\\left(\\frac{\\theta}{2}\\right) - \\sin^2\\!\\left(\\frac{\\theta}{2}\\right) = \\htmlClass{hl-costheta}{\\cos\\theta}",
-            "highlights": {
-              "costheta": {
-                "color": "blue",
-                "label": "The familiar cosine double-angle formula"
-              }
+            {
+              "type": "step",
+              "label": "Recall the Pauli Z operator",
+              "math": "\\htmlClass{hl-Z}{Z} = \\begin{pmatrix} 1 & 0 \\\\ 0 & -1 \\end{pmatrix}, \\quad Z\\lvert 0\\rangle = \\lvert 0\\rangle,\\; Z\\lvert 1\\rangle = -\\lvert 1\\rangle",
+              "highlights": {
+                "Z": {
+                  "color": "blue",
+                  "label": "Pauli Z matrix"
+                }
+              },
+              "justification": "Z is diagonal in the computational basis with eigenvalues +1 and −1.",
+              "explanation": "The eigenstates of Z are exactly the north and south poles of the Bloch sphere.",
+              "prompt": "Connect the eigenvalues +1 and -1 to the poles at z=+1 and z=-1.",
+              "sceneStep": 0
             },
-            "justification": "Use $\\cos^2(\\alpha) - \\sin^2(\\alpha) = \\cos(2\\alpha)$ with $\\alpha = \\theta/2$.",
-            "explanation": "This collapses two terms into a single trigonometric function of the polar angle.",
-            "prompt": "Emphasize that this is why the parameterization uses theta/2 — so that the Bloch z-coordinate comes out as simply cos(theta).",
-            "sceneStep": 1
-          },
-          {
-            "type": "conclusion",
-            "label": "The z-coordinate is an expectation value",
-            "math": "\\htmlClass{hl-result}{z = \\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\cos\\theta}",
-            "highlights": {
-              "result": {
-                "color": "green",
-                "label": "Height on the Bloch sphere = expectation of Pauli Z"
-              }
+            {
+              "type": "step",
+              "label": "Compute the expectation value",
+              "math": "\\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\htmlClass{hl-cos2}{\\cos^2\\!\\left(\\frac{\\theta}{2}\\right)} \\cdot(+1) + \\htmlClass{hl-sin2}{\\sin^2\\!\\left(\\frac{\\theta}{2}\\right)} \\cdot(-1)",
+              "highlights": {
+                "cos2": {
+                  "color": "green",
+                  "label": "Probability of $\\lvert 0\\rangle$ (eigenvalue +1)"
+                },
+                "sin2": {
+                  "color": "orange",
+                  "label": "Probability of $\\lvert 1\\rangle$ (eigenvalue −1)"
+                }
+              },
+              "justification": "The expectation value of Z is the weighted sum of its eigenvalues, weighted by the Born-rule probabilities.",
+              "explanation": "The phase $e^{i\\phi}$ drops out because $\\lvert e^{i\\phi}\\rvert^2 = 1$.",
+              "prompt": "Point out that this is the same Born's rule calculation as in the next scene, but framed as an expectation value.",
+              "sceneStep": 1
             },
-            "justification": "Combining the previous steps.",
-            "explanation": "The Bloch z-coordinate is not an arbitrary label — it is the physical expectation value of the Z measurement. The same logic gives $x = \\langle X\\rangle$ and $y = \\langle Y\\rangle$.",
-            "prompt": "Close by noting that all three Bloch coordinates come from Pauli expectation values: x from X, y from Y, z from Z. This is why the Bloch sphere is physically meaningful.",
-            "sceneStep": 2
-          }
-        ]
-      }]
+            {
+              "type": "step",
+              "label": "Apply the double-angle identity",
+              "math": "\\cos^2\\!\\left(\\frac{\\theta}{2}\\right) - \\sin^2\\!\\left(\\frac{\\theta}{2}\\right) = \\htmlClass{hl-costheta}{\\cos\\theta}",
+              "highlights": {
+                "costheta": {
+                  "color": "blue",
+                  "label": "The familiar cosine double-angle formula"
+                }
+              },
+              "justification": "Use $\\cos^2(\\alpha) - \\sin^2(\\alpha) = \\cos(2\\alpha)$ with $\\alpha = \\theta/2$.",
+              "explanation": "This collapses two terms into a single trigonometric function of the polar angle.",
+              "prompt": "Emphasize that this is why the parameterization uses theta/2 — so that the Bloch z-coordinate comes out as simply cos(theta).",
+              "sceneStep": 1
+            },
+            {
+              "type": "conclusion",
+              "label": "The z-coordinate is an expectation value",
+              "math": "\\htmlClass{hl-result}{z = \\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\cos\\theta}",
+              "highlights": {
+                "result": {
+                  "color": "green",
+                  "label": "Height on the Bloch sphere = expectation of Pauli Z"
+                }
+              },
+              "justification": "Combining the previous steps.",
+              "explanation": "The Bloch z-coordinate is not an arbitrary label — it is the physical expectation value of the Z measurement. The same logic gives $x = \\langle X\\rangle$ and $y = \\langle Y\\rangle$.",
+              "prompt": "Close by noting that all three Bloch coordinates come from Pauli expectation values: x from X, y from Y, z from Z. This is why the Bloch sphere is physically meaningful.",
+              "sceneStep": 2
+            }
+          ]
+        }
+      ]
     },
     {
       "title": "Measurement Reads Latitude",
