@@ -260,7 +260,8 @@ function _toggleHighlightAnnotation(stepEl, name, spec) {
     const colorName = spec.color || 'cyan';
     annotation.style.borderLeftColor = _hlRGBA(colorName, 0.6);
     annotation.style.color = _hlRGBA(colorName, 0.9);
-    annotation.innerHTML = `<span class="proof-hl-annotation-dot" style="background:${_hlRGBA(colorName, 0.7)}"></span>${escapeHtml(spec.label)}`;
+    const labelHtml = renderKaTeX(spec.label);
+    annotation.innerHTML = `<span class="proof-hl-annotation-dot" style="background:${_hlRGBA(colorName, 0.7)}"></span>${labelHtml}`;
 
     // Click annotation to dismiss it
     annotation.addEventListener('click', (e) => {
@@ -291,6 +292,8 @@ function _highlightColorRGB(color) {
         blue:    [80, 120, 255],
         pink:    [255, 120, 180],
         white:   [255, 255, 255],
+        gray:    [160, 170, 185],
+        gold:    [255, 200, 50],
     };
     return colors[color] || colors.cyan;
 }
@@ -767,7 +770,7 @@ function _buildContextTab(allProofs) {
         const badge = techniqueBadgeHTML(proof);
         section.innerHTML = `<div class="proof-section-header${isActive ? ' active' : ''}" data-proof-index="${i}">
             <span class="proof-section-arrow">&#9660;</span>
-            <span class="proof-section-title">Proof: ${escapeHtml(title)}</span>
+            <span class="proof-section-title">Proof: ${renderKaTeX(title)}</span>
             ${badge}
             <span class="proof-section-step-hint"></span>
         </div>`;

@@ -25,10 +25,50 @@ export function stripLatex(text) {
 
 export function renderKaTeX(text, displayMode) {
     if (!text) return '';
-    // Pre-pass: extract heading lines so LaTeX inside them isn't split apart.
-    // Each heading line is rendered independently and replaced with a sentinel.
+    // Pre-pass 1: extract markdown tables (before $ splitting, since cells contain LaTeX).
+    // Each table is rendered independently (cells get renderKaTeX) and replaced with a sentinel.
+    const tables = [];
+    const withTables = text.replace(
+        /^(\|.+\|)\n(\|[\s:?-]+(?:\|[\s:?-]+)+\|)\n((?:\|.+\|\n?)+)/gm,
+        (match, headerLine, sepLine, bodyBlock) => {
+            const parseRow = (row) => {
+                const content = row.replace(/^\|/, '').replace(/\|$/, '');
+                const cells = [];
+                let current = '';
+                let inMath = false, inDisplayMath = false;
+                for (let ci = 0; ci < content.length; ci++) {
+                    const ch = content[ci], next = content[ci + 1];
+                    if (ch === '\\' && ci + 1 < content.length) { current += ch + content[++ci]; continue; }
+                    if (ch === '$') {
+                        if (next === '$') { inDisplayMath = !inDisplayMath; current += '$$'; ci++; continue; }
+                        if (!inDisplayMath) inMath = !inMath;
+                        current += ch; continue;
+                    }
+                    if (ch === '|' && !inMath && !inDisplayMath) { cells.push(current.trim()); current = ''; continue; }
+                    current += ch;
+                }
+                cells.push(current.trim());
+                return cells;
+            };
+            const headers = parseRow(headerLine);
+            const rows = bodyBlock.trim().split('\n').map(r => parseRow(r));
+            const tableStyle = 'border-collapse:collapse;margin:6px 0;font-size:0.9em';
+            const cellStyle = 'padding:3px 8px;border:1px solid rgba(255,255,255,0.15)';
+            const thStyle = cellStyle + ';font-weight:bold;background:rgba(255,255,255,0.06)';
+            let html = `<table style="${tableStyle}"><thead><tr>`;
+            html += headers.map(h => `<th style="${thStyle}">${renderKaTeX(h, false)}</th>`).join('');
+            html += '</tr></thead><tbody>';
+            for (const row of rows) {
+                html += '<tr>' + row.map(c => `<td style="${cellStyle}">${renderKaTeX(c, false)}</td>`).join('') + '</tr>';
+            }
+            html += '</tbody></table>';
+            tables.push(html);
+            return `\x01T${tables.length - 1}\x01`;
+        }
+    );
+    // Pre-pass 2: extract heading lines so LaTeX inside them isn't split apart.
     const headings = [];
-    const prepped = text.replace(/^(#{1,3})\s+(.+)$/gm, (_, hashes, content) => {
+    const prepped = withTables.replace(/^(#{1,3})\s+(.+)$/gm, (_, hashes, content) => {
         const sz = ['1.05em', '0.95em', '0.88em'][hashes.length - 1];
         headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${renderKaTeX(content, false)}</div>`);
         return `\x01H${headings.length - 1}\x01`;
@@ -39,9 +79,12 @@ export function renderKaTeX(text, displayMode) {
             const lines = escapeHtml(seg).split(/\\n|\n/);
             return lines.map((line, li) => {
                 const t = line.trim();
-                // Restore heading (sentinel survives escapeHtml unchanged).
+                // Restore heading sentinel
                 const hIdx = t.match(/^\x01H(\d+)\x01$/);
                 if (hIdx) return headings[+hIdx[1]];
+                // Restore table sentinel
+                const tIdx = t.match(/^\x01T(\d+)\x01$/);
+                if (tIdx) return tables[+tIdx[1]];
                 const hm = t.match(/^(#{1,3})\s+(.*)/);
                 if (hm) {
                     const sz = ['1.05em', '0.95em', '0.88em'][hm[1].length - 1];

@@ -15,9 +15,13 @@ algebench eigenvalues.json
 **YouTube Channel:** [youtube.com/@AlgeBench](https://www.youtube.com/@AlgeBench)
 
 
-| Scene                             | Video                                                |
-| --------------------------------- | ---------------------------------------------------- |
-| Rotating Space Habitat Simulation | [Watch](https://www.youtube.com/watch?v=HoZgrAxKKGA) |
+| Scene                             | Video                                                        |
+| --------------------------------- | ------------------------------------------------------------ |
+| Measurement Reads Latitude — Bloch Sphere Intuition | [Watch](https://youtu.be/Euj3QB_F9Qs) |
+| From Hilbert Space to the Bloch Sphere — Interactive Quantum Visualization | [Watch](https://youtu.be/mDEJHRxrtro) |
+| Orbital Flight Simulation         | [Watch](https://youtu.be/3m1NtT3EKH4)                       |
+| Pi and e — The Mathematical Duo   | [Watch](https://youtu.be/ebIaeCPCkx4)                        |
+| Rotating Space Habitat Simulation | [Watch](https://www.youtube.com/watch?v=HoZgrAxKKGA)         |
 
 
 ---
