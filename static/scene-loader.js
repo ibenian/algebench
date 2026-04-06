@@ -231,6 +231,7 @@ function processStepRemoves(removeList, tracker) {
         }
         if (item.type === 'info') {
             if (item.id) removeInfoOverlay(item.id);
+            else removeAllInfoOverlays();
             continue;
         }
         if (item.type === 'slider') {
