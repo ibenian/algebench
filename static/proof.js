@@ -292,6 +292,8 @@ function _highlightColorRGB(color) {
         blue:    [80, 120, 255],
         pink:    [255, 120, 180],
         white:   [255, 255, 255],
+        gray:    [160, 170, 185],
+        gold:    [255, 200, 50],
     };
     return colors[color] || colors.cyan;
 }

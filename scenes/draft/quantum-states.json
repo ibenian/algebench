@@ -635,11 +635,6 @@
           "title": "Write the same state as a ket",
           "description": "Now place the Hilbert-space description next to the laboratory picture. The electron is still the same system, but on the right we encode it by amplitudes in the chosen basis.",
           "prompt": "Introduce the right panel as an abstract coordinate system, not as a second physical object. The student should understand that the ket is the mathematical representation of the same electron.",
-          "remove": [
-            {
-              "type": "info"
-            }
-          ],
           "add": [
             {
               "id": "hs_top_slot",
@@ -784,9 +779,6 @@
             },
             {
               "id": "hs_beta_fixed_label"
-            },
-            {
-              "type": "info"
             }
           ],
           "sliders": [
@@ -903,9 +895,6 @@
             },
             {
               "id": "hs_spin_theta_label"
-            },
-            {
-              "type": "info"
             }
           ],
           "sliders": [
@@ -1397,9 +1386,6 @@
             },
             {
               "id": "hb_state_fixed_label"
-            },
-            {
-              "type": "info"
             }
           ],
           "sliders": [
@@ -1568,9 +1554,6 @@
             },
             {
               "id": "hb_zproj"
-            },
-            {
-              "type": "info"
             }
           ],
           "sliders": [
@@ -2113,9 +2096,6 @@
             },
             {
               "id": "ap_p1_fixed_label"
-            },
-            {
-              "type": "info"
             }
           ],
           "sliders": [
@@ -3456,9 +3436,6 @@
             },
             {
               "id": "s2_theta_pt"
-            },
-            {
-              "type": "info"
             }
           ],
           "sliders": [
@@ -3985,11 +3962,6 @@
           "title": "Rewrite with $z$",
           "description": "Using the half-angle identities, the probabilities become linear in the Bloch z-coordinate. That is why a computational-basis measurement can be read directly from the state's height.",
           "prompt": "Tie the algebra back to the picture. The goal is not just to manipulate identities, but to see why latitude predicts measurement.",
-          "remove": [
-            {
-              "type": "info"
-            }
-          ],
           "info": [
             {
               "id": "s3_linear",
@@ -4301,11 +4273,6 @@
           "title": "Measure in the x basis",
           "description": "Now ask a different question: is the state aligned with $|+x\\rangle$ or $|-x\\rangle$? As $\\phi$ changes, those probabilities change even though the z-basis probabilities do not.",
           "prompt": "Use this step to make basis dependence vivid. Relative phase becomes visible when we rotate the measurement basis.",
-          "remove": [
-            {
-              "type": "info"
-            }
-          ],
           "add": [
             {
               "id": "s4_plusx",
@@ -4344,11 +4311,6 @@
           "title": "Measure in the y basis",
           "description": "The y basis sees a different slice of the same circle. As the state moves around the equator, the y-basis probabilities rise and fall with $\\sin\\phi$.",
           "prompt": "Show that x and y measurements are complementary ways of reading the azimuth. This cements the idea that relative phase is geometric information on the Bloch sphere.",
-          "remove": [
-            {
-              "type": "info"
-            }
-          ],
           "add": [
             {
               "id": "s4_plusy",
@@ -4387,11 +4349,6 @@
           "title": "Global phase is invisible",
           "description": "Multiplying the entire ket by $e^{i\\gamma}$ does not move the Bloch point or change any measurement probability. Only the relative phase between the basis amplitudes changes the state geometry.",
           "prompt": "Students often confuse relative phase with global phase. State the distinction plainly: relative phase moves the Bloch point; global phase does not.",
-          "remove": [
-            {
-              "type": "info"
-            }
-          ],
           "info": [
             {
               "id": "s4_global_phase",
