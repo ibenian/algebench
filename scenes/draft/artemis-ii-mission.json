@@ -22,12 +22,12 @@
       ],
       "camera": {
         "position": [
-          0,
-          0,
-          3
+          19,
+          5,
+          25
         ],
         "target": [
-          0,
+          19,
           0,
           0
         ]
@@ -99,58 +99,70 @@
       ],
       "elements": [
         {
+          "id": "_mathbox_init_0",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
+        {
           "id": "deep_space_bg",
           "type": "skybox",
           "style": "gradient",
           "topColor": "#080818",
           "bottomColor": "#030310",
           "starCount": 2000
+        },
+        {
+          "id": "earth",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.637,
+          "color": "#3a7bd5",
+          "emissive": "#112244",
+          "opacity": 1.0
+        },
+        {
+          "id": "earth_label",
+          "type": "text",
+          "text": "Earth",
+          "position": [
+            0,
+            1.2,
+            0
+          ],
+          "color": "#ffffff"
+        },
+        {
+          "id": "moon",
+          "type": "sphere",
+          "center": [
+            38.4,
+            0,
+            0
+          ],
+          "radius": 0.17,
+          "color": "#aaaaaa",
+          "emissive": "#444444",
+          "opacity": 1.0
+        },
+        {
+          "id": "moon_label",
+          "type": "text",
+          "text": "Moon",
+          "position": [
+            38.4,
+            0.6,
+            0
+          ],
+          "color": "#dddddd"
         }
       ],
       "steps": [
-        {
-          "title": "Earth in Space",
-          "description": "This is Earth — our home planet with a radius of 6,371 km. In our model, 1 unit = 10,000 km.",
-          "camera": {
-            "position": [
-              0,
-              0,
-              3
-            ],
-            "target": [
-              0,
-              0,
-              0
-            ]
-          },
-          "add": [
-            {
-              "id": "earth",
-              "type": "sphere",
-              "center": [
-                0,
-                0,
-                0
-              ],
-              "radius": 0.64,
-              "color": "#3a7bd5",
-              "emissive": "#112244",
-              "opacity": 1.0
-            },
-            {
-              "id": "earth_label",
-              "type": "text",
-              "text": "Earth",
-              "position": [
-                0,
-                1.2,
-                0
-              ],
-              "color": "#ffffff"
-            }
-          ],
-          "remove": []
-        },
         {
           "title": "How Far Is the Moon?",
           "description": "The Moon is 384,400 km away — about 30 Earth diameters. Let's see it.",
@@ -194,49 +206,6 @@
                 0
               ],
               "color": "#aaaaaa"
-            }
-          ],
-          "remove": []
-        },
-        {
-          "title": "The Moon",
-          "description": "The Moon has a radius of just 1,737 km — about 27% of Earth's size. Notice how small it appears at this scale.",
-          "camera": {
-            "position": [
-              19,
-              3,
-              20
-            ],
-            "target": [
-              19,
-              0,
-              0
-            ]
-          },
-          "add": [
-            {
-              "id": "moon",
-              "type": "sphere",
-              "center": [
-                38.4,
-                0,
-                0
-              ],
-              "radius": 0.17,
-              "color": "#aaaaaa",
-              "emissive": "#444444",
-              "opacity": 1.0
-            },
-            {
-              "id": "moon_label",
-              "type": "text",
-              "text": "Moon",
-              "position": [
-                38.4,
-                0.6,
-                0
-              ],
-              "color": "#dddddd"
             }
           ],
           "remove": []
@@ -503,7 +472,15 @@
           "description": "Profile view from the right"
         }
       ],
-      "elements": [],
+      "elements": [
+        {
+          "id": "_mathbox_init_1",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        }
+      ],
       "steps": [
         {
           "title": "The Full Stack",
@@ -908,6 +885,13 @@
         }
       ],
       "elements": [
+        {
+          "id": "_mathbox_init_2",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
         {
           "id": "s2_skybox",
           "type": "skybox",
@@ -1364,6 +1348,13 @@
       ],
       "elements": [
         {
+          "id": "_mathbox_init_3",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
+        {
           "id": "s3_skybox",
           "type": "skybox",
           "style": "gradient",
@@ -1789,6 +1780,13 @@
       ],
       "elements": [
         {
+          "id": "_mathbox_init_4",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
+        {
           "id": "s4_skybox",
           "type": "skybox",
           "style": "gradient",
@@ -2167,8 +2165,8 @@
       "prompt": "Frame reentry as the most dangerous phase of the mission. The corridor is incredibly narrow — like threading a needle at Mach 33. The skip reentry technique is clever engineering: instead of one brutal deceleration, spread it over two gentler passes. Ask students: why is lunar return harder than ISS return? (2× the kinetic energy because v is 40% higher and KE goes as v².) Compare the heat shield temperature to familiar references: 2,760°C is hotter than lava (~1,200°C) and close to the melting point of steel (~1,500°C).",
       "range": [
         [
-          -10,
-          40
+          -5,
+          45
         ],
         [
           -25,
@@ -2242,6 +2240,13 @@
         }
       ],
       "elements": [
+        {
+          "id": "_mathbox_init_5",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
         {
           "id": "s5_skybox",
           "type": "skybox",
@@ -2851,6 +2856,13 @@
         }
       ],
       "elements": [
+        {
+          "id": "_mathbox_init_6",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
         {
           "id": "s6_skybox",
           "type": "skybox",
