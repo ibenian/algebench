@@ -1,5 +1,8 @@
 {
   "title": "Artemis II: Humanity Returns to the Moon",
+  "import": [
+    "cislunar-dynamics"
+  ],
   "scenes": [
     {
       "title": "The Earth-Moon Stage",
@@ -242,8 +245,8 @@
               "type": "text",
               "text": "ISS orbit: 400 km",
               "position": [
-                0.5,
-                -1,
+                0.42,
+                -0.7,
                 0
               ],
               "color": "#88ff88"
@@ -264,8 +267,8 @@
               "type": "text",
               "text": "GPS: 20,200 km",
               "position": [
-                2,
-                -2,
+                1.85,
+                -0.8,
                 0
               ],
               "color": "#ffdd44"
@@ -286,8 +289,8 @@
               "type": "text",
               "text": "Geostationary: 35,786 km",
               "position": [
-                3.6,
-                -3,
+                3.0,
+                -1.15,
                 0
               ],
               "color": "#ff8844"
@@ -297,7 +300,7 @@
         },
         {
           "title": "The Journey Preview",
-          "description": "Artemis II will follow a free-return trajectory — a figure-eight path that uses the Moon's gravity to swing back toward Earth.",
+          "description": "This preview now uses the same mission construction as the simulation lesson: two Earth setup orbits from the departure sequence, then the nominal translunar coast, far-side flyby, and free-return leg. The path is frozen at the modeled closest-approach geometry so the flyby stays aligned with the fixed Moon marker in this scale view. Moon SOI entry marks where Orion enters the Moon's sphere of influence — the region where lunar gravity starts to dominate the flyby geometry.",
           "camera": {
             "position": [
               19,
@@ -312,18 +315,147 @@
           },
           "add": [
             {
-              "id": "trajectory",
+              "id": "moon_trajectory_arc",
               "type": "parametric_curve",
-              "x": "38.4 * (1 - cos(t)) / 2",
-              "y": "12 * sin(t)",
+              "x": "38.44 * cos(t)",
+              "y": "38.44 * sin(t)",
+              "z": "0",
+              "range": [
+                -0.2618,
+                0.2618
+              ],
+              "samples": 120,
+              "color": "#9aa4b2",
+              "opacity": 0.35,
+              "width": 1.2
+            },
+            {
+              "id": "marker_earth_apogee",
+              "type": "point",
+              "position": [
+                7.719,
+                0.814,
+                0
+              ],
+              "color": "#ffd166",
+              "size": 4
+            },
+            {
+              "id": "label_earth_apogee",
+              "type": "text",
+              "text": "Earth apogee",
+              "position": [
+                8.1,
+                1.15,
+                0
+              ],
+              "color": "#ffd166"
+            },
+            {
+              "id": "marker_tli",
+              "type": "point",
+              "position": [
+                0.275,
+                -1.394,
+                0
+              ],
+              "color": "#ff6b3d",
+              "size": 4
+            },
+            {
+              "id": "label_tli",
+              "type": "text",
+              "text": "TLI burn",
+              "position": [
+                -1.15,
+                -2.15,
+                0
+              ],
+              "color": "#ff6b3d"
+            },
+            {
+              "id": "marker_moon_soi_entry",
+              "type": "point",
+              "position": [
+                36.951,
+                -0.043,
+                0
+              ],
+              "color": "#a0c4ff",
+              "size": 4
+            },
+            {
+              "id": "label_moon_soi_entry",
+              "type": "text",
+              "text": "Moon SOI entry",
+              "position": [
+                34.9,
+                -0.95,
+                0
+              ],
+              "color": "#a0c4ff"
+            },
+            {
+              "id": "label_four_days_to_moon",
+              "type": "text",
+              "text": "4 days to Moon",
+              "position": [
+                31.9,
+                -1.95,
+                0
+              ],
+              "color": "#cbd5e1"
+            },
+            {
+              "id": "marker_closest_lunar_approach",
+              "type": "point",
+              "position": [
+                38.367,
+                0.259,
+                0
+              ],
+              "color": "#ff9f1c",
+              "size": 4
+            },
+            {
+              "id": "label_closest_lunar_approach",
+              "type": "text",
+              "text": "Closest lunar approach",
+              "position": [
+                40.15,
+                0.95,
+                0
+              ],
+              "color": "#ff9f1c"
+            },
+            {
+              "id": "trajectory_orbit_setup",
+              "type": "parametric_curve",
+              "x": "missionX(t, 4050) * cos(moonTheta(4.945395, 4050)) + missionY(t, 4050) * sin(moonTheta(4.945395, 4050)) - 0.04",
+              "y": "-missionX(t, 4050) * sin(moonTheta(4.945395, 4050)) + missionY(t, 4050) * cos(moonTheta(4.945395, 4050))",
               "z": "0",
               "range": [
                 0,
-                6.2832
+                1.0673611111111112
               ],
-              "samples": 256,
+              "samples": 1200,
               "color": "#ff6644",
-              "opacity": 0.5,
+              "opacity": 0.3,
+              "width": 1.5
+            },
+            {
+              "id": "trajectory_free_return",
+              "type": "parametric_curve",
+              "x": "missionX(t, 4050) * cos(moonTheta(4.945395, 4050)) + missionY(t, 4050) * sin(moonTheta(4.945395, 4050)) - 0.04",
+              "y": "-missionX(t, 4050) * sin(moonTheta(4.945395, 4050)) + missionY(t, 4050) * cos(moonTheta(4.945395, 4050))",
+              "z": "0",
+              "range": [
+                1.0673611111111112,
+                9
+              ],
+              "samples": 3600,
+              "color": "#ff6644",
+              "opacity": 0.6,
               "width": 2
             }
           ],
@@ -358,20 +490,9 @@
               "label": "You Are Here"
             },
             {
-              "id": "travel_time_label",
-              "type": "text",
-              "text": "~4 days to reach the Moon",
-              "position": [
-                10,
-                4,
-                0
-              ],
-              "color": "#cccccc"
-            },
-            {
               "id": "mission_time_label",
               "type": "text",
-              "text": "~10 day total mission",
+              "text": "~4 days to return",
               "position": [
                 10,
                 3,
