@@ -40,7 +40,7 @@
         "count": 1200,
         "size": 1.8,
         "opacity": 0.85,
-        "twinkle": 0.3
+        "twinkle": 0
       },
       "views": [
         {
@@ -107,14 +107,6 @@
           "plane": "xz",
           "opacity": 0,
           "divisions": 1
-        },
-        {
-          "id": "deep_space_bg",
-          "type": "skybox",
-          "style": "gradient",
-          "topColor": "#080818",
-          "bottomColor": "#030310",
-          "starCount": 2000
         },
         {
           "id": "earth",
@@ -620,12 +612,6 @@
           },
           "add": [
             {
-              "id": "skybox",
-              "type": "skybox",
-              "topColor": "#1a1a3a",
-              "bottomColor": "#2a1a0a"
-            },
-            {
               "id": "srb_left",
               "type": "cylinder",
               "from": [
@@ -922,7 +908,100 @@
           ]
         }
       ],
-      "markdown": "# SLS Block 1 & Orion Spacecraft\n\nThe **Space Launch System (SLS) Block 1** is NASA's new super heavy-lift launch vehicle, designed to send the Orion spacecraft and crew to the Moon for the first time since Apollo 17 in 1972.\n\n---\n\n## SLS Block 1 Specifications\n\n| Parameter | Value |\n|-----------|-------|\n| Total height | 98 m (322 ft) |\n| Gross liftoff mass | ~2,608,000 kg |\n| Liftoff thrust | ~39.1 MN |\n| Payload to TLI | ~27,000 kg |\n| First flight | November 16, 2022 (Artemis I) |\n\n---\n\n## Stage-by-Stage Breakdown\n\n### Solid Rocket Boosters (×2)\n- **Manufacturer**: Northrop Grumman\n- **Height**: 54 m each\n- **Diameter**: 3.71 m\n- **Thrust**: ~16 MN each (32 MN combined)\n- **Burn time**: ~126 seconds = **2 min 6 s** = **2.1 min**\n- **Propellant**: PBAN solid fuel\n- **Separation altitude**: ~48 km\n- **Note**: Burn time means the boosters are actively producing thrust for 126 seconds before burnout and separation. Derived from Space Shuttle SRBs, but with 5 segments instead of 4\n\n### Core Stage\n- **Manufacturer**: Boeing\n- **Height**: 64.6 m\n- **Diameter**: 8.4 m\n- **Engines**: 4× Aerojet Rocketdyne RS-25\n- **Thrust**: ~7.44 MN (combined)\n- **Burn time**: ~8 minutes\n- **Propellant**: Liquid hydrogen (LH₂) + Liquid oxygen (LOX)\n- **Note**: RS-25 engines are heritage Space Shuttle Main Engines\n\n### Interim Cryogenic Propulsion Stage (ICPS)\n- **Manufacturer**: United Launch Alliance (based on Delta Cryogenic Second Stage)\n- **Height**: ~13.7 m\n- **Diameter**: 5.05 m\n- **Engine**: 1× RL10 (11.2 kN vacuum thrust)\n- **Propellant**: LH₂ + LOX\n- **Mission role**: Two burns — one for circular parking orbit, one for Trans-Lunar Injection (TLI)\n\n---\n\n## Orion Spacecraft\n\nOrion consists of three main elements:\n\n### Crew Module (CM)\n- Pressurized cabin for up to 4 astronauts\n- Diameter: 5.03 m\n- Manufacturer: Lockheed Martin\n- Reusable for up to 10 flights\n\n### European Service Module (ESM)\n- Provides propulsion, power, thermal control, life support consumables\n- Manufacturer: Airbus Defence and Space (ESA contribution)\n- Main engine: AJ10 (26.7 kN)\n- 33× attitude-control thrusters\n\n### Launch Abort System (LAS)\n- Solid-fuel abort motor atop the CM\n- Can pull the CM away from a failing rocket in 0.3 seconds\n- Jettisoned after max-Q when no longer needed\n\n### Heat Shield\n- Avcoat ablative thermal protection\n- Must survive 2,760 °C re-entry from lunar return\n- Diameter: 5.03 m — largest heat shield ever flown\n\n---\n\n## Artemis II Crew\n\n| Astronaut | Role | Agency |\n|-----------|------|--------|\n| Reid Wiseman | Commander | NASA |\n| Victor Glover | Pilot | NASA |\n| Christina Koch | Mission Specialist | NASA |\n| Jeremy Hansen | Mission Specialist | CSA |\n\nArtemis II is a **crewed lunar flyby** — the first humans to travel to the Moon since Apollo 17. The mission will not land; it validates Orion's life-support systems with crew aboard on a free-return trajectory around the Moon.\n\n---\n\n## Why Staging Is Necessary\n\nThe **Tsiolkovsky Rocket Equation** governs all rocketry:\n\n$$\\Delta v = v_e \\ln\\!\\left(\\frac{m_0}{m_f}\\right)$$\n\nwhere $v_e$ is exhaust velocity, $m_0$ is initial mass, and $m_f$ is final (dry) mass.\n\nThe key insight: **propellant makes up roughly 85% of liftoff mass**. To reach the Moon, you need $\\Delta v \\approx 12{,}000$ m/s. With a single stage, you would need to carry all the tank structure and engines for the entire journey — an enormous mass penalty.\n\n**Staging solves this** by discarding empty tanks and engines at each phase:\n1. SRBs burn out at 48 km → jettisoned (save ~180,000 kg)\n2. Core Stage burns out → jettisoned (save ~850,000 kg)\n3. ICPS fires twice for orbit insertion and TLI → jettisoned\n4. Only Orion continues to the Moon\n\nEach stage shed is dead weight removed — so the remaining propellant pushes a much lighter vehicle, dramatically improving efficiency.\n\n---\n\n## Citations\n\n- [NASA SLS Overview](https://www.nasa.gov/space-launch-system/)\n- [Wikipedia — Space Launch System](https://en.wikipedia.org/wiki/Space_Launch_System)\n- [Wikipedia — Orion spacecraft](https://en.wikipedia.org/wiki/Orion_(spacecraft))\n- [NASA Artemis II Mission Page](https://www.nasa.gov/artemis/artemis-ii/)\n- [Tsiolkovsky rocket equation — Wikipedia](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation)"
+      "markdown": "# SLS Block 1 & Orion Spacecraft\n\nThe **Space Launch System (SLS) Block 1** is NASA's new super heavy-lift launch vehicle, designed to send the Orion spacecraft and crew to the Moon for the first time since Apollo 17 in 1972.\n\n---\n\n## SLS Block 1 Specifications\n\n| Parameter | Value |\n|-----------|-------|\n| Total height | 98 m (322 ft) |\n| Gross liftoff mass | ~2,608,000 kg |\n| Liftoff thrust | ~39.1 MN |\n| Payload to TLI | ~27,000 kg |\n| First flight | November 16, 2022 (Artemis I) |\n\n---\n\n## Stage-by-Stage Breakdown\n\n### Solid Rocket Boosters (×2)\n- **Manufacturer**: Northrop Grumman\n- **Height**: 54 m each\n- **Diameter**: 3.71 m\n- **Thrust**: ~16 MN each (32 MN combined)\n- **Burn time**: ~126 seconds = **2 min 6 s** = **2.1 min**\n- **Propellant**: PBAN solid fuel\n- **Separation altitude**: ~48 km\n- **Note**: Burn time means the boosters are actively producing thrust for 126 seconds before burnout and separation. Derived from Space Shuttle SRBs, but with 5 segments instead of 4\n\n### Core Stage\n- **Manufacturer**: Boeing\n- **Height**: 64.6 m\n- **Diameter**: 8.4 m\n- **Engines**: 4× Aerojet Rocketdyne RS-25\n- **Thrust**: ~7.44 MN (combined)\n- **Burn time**: ~8 minutes\n- **Propellant**: Liquid hydrogen (LH₂) + Liquid oxygen (LOX)\n- **Note**: RS-25 engines are heritage Space Shuttle Main Engines\n\n### Interim Cryogenic Propulsion Stage (ICPS)\n- **Manufacturer**: United Launch Alliance (based on Delta Cryogenic Second Stage)\n- **Height**: ~13.7 m\n- **Diameter**: 5.05 m\n- **Engine**: 1× RL10 (11.2 kN vacuum thrust)\n- **Propellant**: LH₂ + LOX\n- **Mission role**: Two burns — one for circular parking orbit, one for Trans-Lunar Injection (TLI)\n\n---\n\n## Orion Spacecraft\n\nOrion consists of three main elements:\n\n### Crew Module (CM)\n- Pressurized cabin for up to 4 astronauts\n- Diameter: 5.03 m\n- Manufacturer: Lockheed Martin\n- Reusable for up to 10 flights\n\n### European Service Module (ESM)\n- Provides propulsion, power, thermal control, life support consumables\n- Manufacturer: Airbus Defence and Space (ESA contribution)\n- Main engine: AJ10 (26.7 kN)\n- 33× attitude-control thrusters\n\n### Launch Abort System (LAS)\n- Solid-fuel abort motor atop the CM\n- Can pull the CM away from a failing rocket in 0.3 seconds\n- Jettisoned after max-Q when no longer needed\n\n### Heat Shield\n- Avcoat ablative thermal protection\n- Must survive 2,760 °C re-entry from lunar return\n- Diameter: 5.03 m — largest heat shield ever flown\n\n---\n\n## Artemis II Crew\n\n| Astronaut | Role | Agency |\n|-----------|------|--------|\n| Reid Wiseman | Commander | NASA |\n| Victor Glover | Pilot | NASA |\n| Christina Koch | Mission Specialist | NASA |\n| Jeremy Hansen | Mission Specialist | CSA |\n\nArtemis II is a **crewed lunar flyby** — the first humans to travel to the Moon since Apollo 17. The mission will not land; it validates Orion's life-support systems with crew aboard on a free-return trajectory around the Moon.\n\n---\n\n## Why Staging Is Necessary\n\nThe **Tsiolkovsky Rocket Equation** governs all rocketry:\n\n$$\\Delta v = v_e \\ln\\!\\left(\\frac{m_0}{m_f}\\right)$$\n\nwhere $v_e$ is exhaust velocity, $m_0$ is initial mass, and $m_f$ is final (dry) mass.\n\nThe key insight: **propellant makes up roughly 85% of liftoff mass**. To reach the Moon, you need $\\Delta v \\approx 12{,}000$ m/s. With a single stage, you would need to carry all the tank structure and engines for the entire journey — an enormous mass penalty.\n\n**Staging solves this** by discarding empty tanks and engines at each phase:\n1. SRBs burn out at 48 km → jettisoned (save ~180,000 kg)\n2. Core Stage burns out → jettisoned (save ~850,000 kg)\n3. ICPS fires twice for orbit insertion and TLI → jettisoned\n4. Only Orion continues to the Moon\n\nEach stage shed is dead weight removed — so the remaining propellant pushes a much lighter vehicle, dramatically improving efficiency.\n\n---\n\n## Citations\n\n- [NASA SLS Overview](https://www.nasa.gov/space-launch-system/)\n- [Wikipedia — Space Launch System](https://en.wikipedia.org/wiki/Space_Launch_System)\n- [Wikipedia — Orion spacecraft](https://en.wikipedia.org/wiki/Orion_(spacecraft))\n- [NASA Artemis II Mission Page](https://www.nasa.gov/artemis/artemis-ii/)\n- [Tsiolkovsky rocket equation — Wikipedia](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation)",
+      "proof": {
+        "id": "thrust-and-isp",
+        "title": "Rocket Thrust & Specific Impulse",
+        "technique": "derivation",
+        "goal": "Derive rocket thrust from Newton's laws and show that specific impulse $I_{sp} = \\frac{v_e}{g_0}$ measures engine fuel efficiency.",
+        "prompt": "Walk students from Newton's laws to rocket thrust, then to specific impulse. Emphasize that Isp is the rocket engine equivalent of fuel efficiency — higher Isp means more velocity change per kilogram of propellant. Compare the SRB Isp (~269 s) to the RS-25 Isp (~452 s) and explain why the RS-25 is more efficient but produces less raw thrust.",
+        "steps": [
+          {
+            "type": "given",
+            "label": "Newton's Third Law",
+            "math": "\\vec{F}_{\\text{action}} = -\\vec{F}_{\\text{reaction}}",
+            "justification": "Every force has an equal and opposite reaction. The rocket pushes exhaust backward; the exhaust pushes the rocket forward.",
+            "explanation": "A rocket engine works by expelling mass (hot gas) at high speed out the nozzle. By Newton's third law, the exhaust pushing backward creates an equal forward force on the rocket.",
+            "sceneStep": 0
+          },
+          {
+            "type": "given",
+            "label": "Newton's Second Law (momentum form)",
+            "math": "\\vec{F} = \\frac{d\\vec{p}}{dt} = \\frac{d(m\\vec{v})}{dt}",
+            "justification": "Force equals the rate of change of momentum — the most general form of Newton's second law.",
+            "explanation": "For a rocket, both mass and velocity are changing: the rocket gets lighter as it burns fuel, and it accelerates. We need the momentum form, not just $F = ma$.",
+            "sceneStep": 0
+          },
+          {
+            "type": "step",
+            "label": "Exhaust momentum rate",
+            "math": "\\htmlClass{hl-thrust}{T} = \\htmlClass{hl-mdot}{\\dot{m}} \\cdot \\htmlClass{hl-ve}{v_e}",
+            "justification": "The thrust $T$ equals the mass flow rate $\\dot{m}$ (kg/s of propellant expelled) times the exhaust velocity $v_e$ (speed of the gas leaving the nozzle).",
+            "explanation": "Each second, $\\dot{m}$ kilograms of propellant leave the nozzle at speed $v_e$. The momentum carried away per second is $\\dot{m} v_e$, which by Newton's third law equals the thrust force on the rocket.",
+            "highlights": {
+              "hl-thrust": {
+                "color": "cyan",
+                "label": "Thrust force (N)"
+              },
+              "hl-mdot": {
+                "color": "yellow",
+                "label": "Mass flow rate (kg/s)"
+              },
+              "hl-ve": {
+                "color": "green",
+                "label": "Exhaust velocity (m/s)"
+              }
+            },
+            "sceneStep": 1
+          },
+          {
+            "type": "step",
+            "label": "Define specific impulse",
+            "math": "\\htmlClass{hl-isp}{I_{sp}} = \\frac{\\htmlClass{hl-ve}{v_e}}{\\htmlClass{hl-g0}{g_0}}",
+            "justification": "Specific impulse is defined as exhaust velocity divided by standard gravity ($g_0 = 9.81$ m/s²). It has units of seconds.",
+            "explanation": "Specific impulse tells you how many seconds a kilogram of propellant can produce one newton of thrust. Higher $I_{sp}$ means the engine extracts more impulse from each kilogram of fuel — it's the rocket equivalent of fuel efficiency.",
+            "highlights": {
+              "hl-isp": {
+                "color": "orange",
+                "label": "Specific impulse (s)"
+              },
+              "hl-ve": {
+                "color": "green",
+                "label": "Exhaust velocity (m/s)"
+              },
+              "hl-g0": {
+                "color": "gray",
+                "label": "Standard gravity (9.81 m/s²)"
+              }
+            },
+            "sceneStep": 2
+          },
+          {
+            "type": "step",
+            "label": "Thrust in terms of Isp",
+            "math": "T = \\dot{m} \\cdot I_{sp} \\cdot g_0",
+            "justification": "Substituting $v_e = I_{sp} \\cdot g_0$ back into the thrust equation.",
+            "explanation": "This form is useful because $I_{sp}$ is how engines are rated. The SRBs have $I_{sp} \\approx 269$ s but enormous mass flow rate, giving 16 MN each. The RS-25 has $I_{sp} \\approx 452$ s — much more efficient — but lower mass flow, giving about 2 MN each.",
+            "sceneStep": 3
+          },
+          {
+            "type": "step",
+            "label": "SLS total thrust at liftoff",
+            "math": "T_{\\text{total}} = \\underbrace{2 \\times 16\\text{ MN}}_{\\text{SRBs}} + \\underbrace{4 \\times 2\\text{ MN}}_{\\text{RS-25s}} \\approx 39.1\\text{ MN}",
+            "justification": "Sum the contributions: two SRBs at 16 MN each plus four RS-25 core engines at ~2 MN each.",
+            "explanation": "The SRBs provide about 82% of the liftoff thrust despite being less efficient. Their job is raw power to get the heavy stack moving. The more efficient RS-25 engines take over after SRB separation at 48 km altitude.",
+            "sceneStep": 1
+          },
+          {
+            "type": "conclusion",
+            "label": "The efficiency trade-off",
+            "math": "\\frac{I_{sp}^{\\text{RS-25}}}{I_{sp}^{\\text{SRB}}} = \\frac{452}{269} \\approx 1.68",
+            "justification": "The RS-25 is 68% more fuel-efficient than the SRBs, extracting significantly more velocity change per kilogram of propellant.",
+            "explanation": "This is why staging matters: the SRBs provide the brute force needed at liftoff (when the rocket is heaviest), then are discarded. The efficient RS-25 engines then accelerate the now-lighter vehicle. Each stage is optimized for its role — raw thrust vs. fuel efficiency.",
+            "sceneStep": 5
+          }
+        ]
+      }
     },
     {
       "title": "Cislunar Scale and Nominal Route",
@@ -1037,17 +1116,9 @@
         "count": 1400,
         "size": 1.7,
         "opacity": 0.86,
-        "twinkle": 0.22
+        "twinkle": 0
       },
       "elements": [
-        {
-          "id": "s1_space",
-          "type": "skybox",
-          "style": "gradient",
-          "topColor": "#050510",
-          "bottomColor": "#010106",
-          "starCount": 2200
-        },
         {
           "id": "s1_earth",
           "type": "sphere",
@@ -1200,7 +1271,8 @@
               "content": "**Phase:** {{missionPhase(day)}}\n\n**Distance from Earth center:** {{toFixed(distEarthKm(day), 0)}} km\n\n**Distance from Moon center:** {{toFixed(distMoonKm(day), 0)}} km\n\n**Moon angle:** {{toFixed(180 * moonTheta(day) / pi, 1)}} deg\n\n**Uniform scale:** 1 unit = 10,000 km",
               "position": "top-left"
             }
-          ]
+          ],
+          "add": []
         }
       ]
     },
@@ -1296,14 +1368,6 @@
         "opacity": 0.82
       },
       "elements": [
-        {
-          "id": "s2_space",
-          "type": "skybox",
-          "style": "gradient",
-          "topColor": "#060612",
-          "bottomColor": "#020208",
-          "starCount": 1600
-        },
         {
           "id": "s2_earth",
           "type": "sphere",
@@ -1546,14 +1610,6 @@
         "opacity": 0.88
       },
       "elements": [
-        {
-          "id": "s3_space",
-          "type": "skybox",
-          "style": "gradient",
-          "topColor": "#060612",
-          "bottomColor": "#020208",
-          "starCount": 1800
-        },
         {
           "id": "s3_moon",
           "type": "sphere",
@@ -1856,14 +1912,6 @@
         "opacity": 0.88
       },
       "elements": [
-        {
-          "id": "s4_space",
-          "type": "skybox",
-          "style": "gradient",
-          "topColor": "#050510",
-          "bottomColor": "#010106",
-          "starCount": 2400
-        },
         {
           "id": "s4_earth",
           "type": "sphere",

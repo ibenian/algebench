@@ -88,11 +88,12 @@ For each step in the outline, IN ORDER:
 If the scene outline includes a `proof_plan`:
 
 1. **Create the proof object** with `id`, `title`, `technique`, `goal`, `prompt`
+   - `goal` — rendered with `renderKaTeX`, so use `$...$` for inline math and `$$...$$` for display math. Can be pure math (e.g. `"$$I_{sp} = \\frac{v_e}{g_0}$$"`) or prose with inline math (e.g. `"Show that $P(A|B) = \\frac{P(B|A)P(A)}{P(B)}$"`). **Always include `$` delimiters** — bare LaTeX without `$` will render as plain text.
 2. **Build each proof step** from the skeleton:
    - `id` — unique identifier
    - `type` ��� `given`, `step`, `conclusion`, or `remark`
    - `label` — concise heading
-   - `math` — full LaTeX expression with `\htmlClass{hl-name}{...}` highlight regions
+   - `math` — pure LaTeX expression, NO `$` delimiters (the renderer wraps it in `$$` automatically). Use `\htmlClass{hl-name}{...}` for highlight regions.
    - `highlights` — map of region names to `{color, label}` objects
    - `justification` — the mathematical reasoning (supports inline LaTeX)
    - `explanation` — prose explanation in markdown
