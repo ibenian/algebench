@@ -143,9 +143,9 @@
         return _moonStateFromPhase(day, data.params.phaseDay);
     }
 
-    function _ellipsePos(day, startDay, endDay, orbit) {
+    function _ellipsePos(day, startDay, endDay, orbit, startMeanAnomaly = 0, endMeanAnomaly = PI2) {
         const u = _clamp((day - startDay) / Math.max(endDay - startDay, 1e-6), 0, 1);
-        const M = PI2 * u;
+        const M = _lerp(startMeanAnomaly, endMeanAnomaly, u);
         const E = _solveKeplerE(M, orbit.e);
         return {
             xKm: -orbit.a * (Math.cos(E) - orbit.e),
@@ -164,10 +164,16 @@
 
     function _preTliPos(day) {
         if (day <= CFG.coreSepDay) return _ascentPos(day);
-        if (day <= CFG.parkingRaiseDay) return _ellipsePos(day, CFG.coreSepDay, CFG.parkingRaiseDay, EARLY_ORBITS.initial);
-        if (day <= CFG.apogeeRaiseDay) return _ellipsePos(day, CFG.parkingRaiseDay, CFG.apogeeRaiseDay, EARLY_ORBITS.safe);
-        if (day <= CFG.day0PerigeeRaiseDay) return _ellipsePos(day, CFG.apogeeRaiseDay, CFG.day0PerigeeRaiseDay, HEO);
-        return _ellipsePos(day, CFG.day0PerigeeRaiseDay, CFG.tliDay, HEO);
+        if (day <= CFG.parkingRaiseDay) {
+            return _ellipsePos(day, CFG.coreSepDay, CFG.parkingRaiseDay, EARLY_ORBITS.initial, 0, Math.PI);
+        }
+        if (day <= CFG.apogeeRaiseDay) {
+            return _ellipsePos(day, CFG.parkingRaiseDay, CFG.apogeeRaiseDay, EARLY_ORBITS.safe, Math.PI, PI2);
+        }
+        if (day <= CFG.day0PerigeeRaiseDay) {
+            return _ellipsePos(day, CFG.apogeeRaiseDay, CFG.day0PerigeeRaiseDay, HEO, 0, Math.PI);
+        }
+        return _ellipsePos(day, CFG.day0PerigeeRaiseDay, CFG.tliDay, HEO, Math.PI, PI2);
     }
 
     function _preTliState(day) {
