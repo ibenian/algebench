@@ -55,7 +55,7 @@ Before writing any JSON:
 1. **Read the scene outline** — understand the purpose, learning objective, visual strategy
 2. **Read the schema** — know every field, type, and constraint available
 3. **Load element type references** — read `reference/objects/<type>.md` for each element type used in the outline
-4. **Compute coordinates** ��� work out exact positions, ranges, and camera placement. Do the math first.
+4. **Compute coordinates** — work out exact positions, ranges, and camera placement. Do the math first.
 5. **Plan element IDs** — assign unique, descriptive IDs to every element you'll create
 6. **Plan cumulative state** — sketch which elements exist at each step (what's added, what's removed)
 
@@ -91,7 +91,7 @@ If the scene outline includes a `proof_plan`:
    - `goal` — rendered with `renderKaTeX`, so use `$...$` for inline math and `$$...$$` for display math. Can be pure math (e.g. `"$$I_{sp} = \\frac{v_e}{g_0}$$"`) or prose with inline math (e.g. `"Show that $P(A|B) = \\frac{P(B|A)P(A)}{P(B)}$"`). **Always include `$` delimiters** — bare LaTeX without `$` will render as plain text.
 2. **Build each proof step** from the skeleton:
    - `id` — unique identifier
-   - `type` ��� `given`, `step`, `conclusion`, or `remark`
+   - `type` — `given`, `step`, `conclusion`, or `remark`
    - `label` — concise heading
    - `math` — pure LaTeX expression, NO `$` delimiters (the renderer wraps it in `$$` automatically). Use `\htmlClass{hl-name}{...}` for highlight regions.
    - `highlights` — map of region names to `{color, label}` objects
@@ -99,7 +99,7 @@ If the scene outline includes a `proof_plan`:
    - `explanation` — prose explanation in markdown
    - `prompt` — AI agent hint for this proof step
    - `sceneStep` — integer index linking to the scene step where this proof step's visualization is shown
-3. **Verify highlight consistency** — every `\htmlClass{hl-X}` in `math` has a matching `highlights.hl-X` entry, and vice versa
+3. **Verify highlight consistency** — every `\htmlClass{hl-X}` in `math` has a matching `highlights.X` entry, and vice versa
 
 ---
 
