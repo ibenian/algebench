@@ -1749,7 +1749,7 @@
         "id": "vis-viva-derivation",
         "title": "The Vis-Viva Equation",
         "technique": "derivation",
-        "goal": "v^2 = GM\\left(\\frac{2}{r} - \\frac{1}{a}\\right)",
+        "goal": "$$v^2 = GM\\left(\\frac{2}{r} - \\frac{1}{a}\\right)$$",
         "prompt": "Guide students through this derivation step by step. Emphasize that this single equation tells you the speed at ANY point in ANY orbit — it's the Swiss Army knife of orbital mechanics.",
         "steps": [
           {
