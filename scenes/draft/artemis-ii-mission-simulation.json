@@ -914,23 +914,61 @@
         "title": "Rocket Thrust & Specific Impulse",
         "technique": "derivation",
         "goal": "Derive rocket thrust from Newton's laws and show that specific impulse $I_{sp} = \\frac{v_e}{g_0}$ measures engine fuel efficiency.",
-        "prompt": "Walk students from Newton's laws to rocket thrust, then to specific impulse. Emphasize that Isp is the rocket engine equivalent of fuel efficiency — higher Isp means more velocity change per kilogram of propellant. Compare the SRB Isp (~269 s) to the RS-25 Isp (~452 s) and explain why the RS-25 is more efficient but produces less raw thrust.",
+        "prompt": "Walk students from Newton's laws to rocket thrust, then to specific impulse. Emphasize that Isp is the rocket engine equivalent of fuel efficiency — higher Isp means more velocity change per kilogram of propellant. Keep the proof focused on the general derivation rather than vehicle-specific comparisons.",
         "steps": [
           {
             "type": "given",
             "label": "Newton's Third Law",
-            "math": "\\vec{F}_{\\text{action}} = -\\vec{F}_{\\text{reaction}}",
+            "math": "\\htmlClass{hl-action}{\\vec{F}_{\\text{action}}} = -\\htmlClass{hl-reaction}{\\vec{F}_{\\text{reaction}}}",
             "justification": "Every force has an equal and opposite reaction. The rocket pushes exhaust backward; the exhaust pushes the rocket forward.",
             "explanation": "A rocket engine works by expelling mass (hot gas) at high speed out the nozzle. By Newton's third law, the exhaust pushing backward creates an equal forward force on the rocket.",
-            "sceneStep": 0
+            "sceneStep": 0,
+            "highlights": {
+              "action": {
+                "color": "cyan",
+                "label": "Force on exhaust (backward)"
+              },
+              "reaction": {
+                "color": "orange",
+                "label": "Force on rocket (forward)"
+              }
+            }
           },
           {
             "type": "given",
             "label": "Newton's Second Law (momentum form)",
-            "math": "\\vec{F} = \\frac{d\\vec{p}}{dt} = \\frac{d(m\\vec{v})}{dt}",
+            "math": "\\htmlClass{hl-force}{\\vec{F}} = \\frac{d\\htmlClass{hl-momentum}{\\vec{p}}}{dt} = \\frac{d(m\\vec{v})}{dt}",
             "justification": "Force equals the rate of change of momentum — the most general form of Newton's second law.",
             "explanation": "For a rocket, both mass and velocity are changing: the rocket gets lighter as it burns fuel, and it accelerates. We need the momentum form, not just $F = ma$.",
-            "sceneStep": 0
+            "sceneStep": 0,
+            "highlights": {
+              "force": {
+                "color": "cyan",
+                "label": "Net force"
+              },
+              "momentum": {
+                "color": "yellow",
+                "label": "Momentum"
+              }
+            }
+          },
+          {
+            "type": "step",
+            "label": "Apply to rocket exhaust",
+            "math": "F_{\\text{exhaust}} = \\frac{dp}{dt} = \\htmlClass{hl-mdot}{\\frac{dm_{\\text{exhaust}}}{dt}} \\cdot \\htmlClass{hl-ve}{v_e} = \\htmlClass{hl-mdot}{\\dot{m}} \\cdot \\htmlClass{hl-ve}{v_e} \\quad (v_e \\text{ constant})",
+            "justification": "In a small time $dt$, the rocket expels mass $dm$ at a constant exhaust velocity $v_e$ (set by the nozzle design and combustion temperature). The momentum carried away is $dp = dm \\cdot v_e$, so the rate of momentum change is $\\dot{m} \\cdot v_e$.",
+            "explanation": "A key assumption: the exhaust velocity $v_e$ is approximately constant for a given engine — it depends on the propellant chemistry and nozzle geometry, not on the rocket's speed. This is what makes the equation simple: only the mass flow rate $\\dot{m}$ varies during a burn.",
+            "sceneStep": 1,
+            "highlights": {
+              "mdot": {
+                "color": "yellow",
+                "label": "Mass flow rate (kg/s)"
+              },
+              "ve": {
+                "color": "green",
+                "label": "Exhaust velocity (constant)"
+              }
+            }
           },
           {
             "type": "step",
@@ -939,15 +977,15 @@
             "justification": "The thrust $T$ equals the mass flow rate $\\dot{m}$ (kg/s of propellant expelled) times the exhaust velocity $v_e$ (speed of the gas leaving the nozzle).",
             "explanation": "Each second, $\\dot{m}$ kilograms of propellant leave the nozzle at speed $v_e$. The momentum carried away per second is $\\dot{m} v_e$, which by Newton's third law equals the thrust force on the rocket.",
             "highlights": {
-              "hl-thrust": {
+              "thrust": {
                 "color": "cyan",
                 "label": "Thrust force (N)"
               },
-              "hl-mdot": {
+              "mdot": {
                 "color": "yellow",
                 "label": "Mass flow rate (kg/s)"
               },
-              "hl-ve": {
+              "ve": {
                 "color": "green",
                 "label": "Exhaust velocity (m/s)"
               }
@@ -956,49 +994,77 @@
           },
           {
             "type": "step",
-            "label": "Define specific impulse",
-            "math": "\\htmlClass{hl-isp}{I_{sp}} = \\frac{\\htmlClass{hl-ve}{v_e}}{\\htmlClass{hl-g0}{g_0}}",
-            "justification": "Specific impulse is defined as exhaust velocity divided by standard gravity ($g_0 = 9.81$ m/s²). It has units of seconds.",
-            "explanation": "Specific impulse tells you how many seconds a kilogram of propellant can produce one newton of thrust. Higher $I_{sp}$ means the engine extracts more impulse from each kilogram of fuel — it's the rocket equivalent of fuel efficiency.",
+            "label": "Total impulse from propellant",
+            "math": "\\htmlClass{hl-impulse}{J} = T \\cdot t = \\dot{m} \\cdot \\htmlClass{hl-ve}{v_e} \\cdot t = \\htmlClass{hl-mprop}{m_{\\text{prop}}} \\cdot \\htmlClass{hl-ve}{v_e}",
+            "justification": "Impulse is force times time. Since $\\dot{m} \\cdot t = m_{\\text{prop}}$ (total propellant mass burned), the total impulse equals propellant mass times exhaust velocity.",
+            "explanation": "Impulse measures the total \"push\" delivered over a burn. A longer burn or higher thrust both increase impulse. This tells us how much momentum the rocket gains from burning all its fuel.",
+            "sceneStep": 1,
             "highlights": {
-              "hl-isp": {
+              "impulse": {
+                "color": "cyan",
+                "label": "Total impulse (N·s)"
+              },
+              "mprop": {
+                "color": "yellow",
+                "label": "Total propellant mass (kg)"
+              },
+              "ve": {
+                "color": "green",
+                "label": "Exhaust velocity (m/s)"
+              }
+            }
+          },
+          {
+            "type": "step",
+            "label": "Impulse per unit weight of propellant",
+            "math": "\\htmlClass{hl-isp}{I_{sp}} = \\frac{J}{\\htmlClass{hl-mprop}{m_{\\text{prop}}} \\cdot \\htmlClass{hl-g0}{g_0}} = \\frac{\\htmlClass{hl-mprop}{m_{\\text{prop}}} \\cdot \\htmlClass{hl-ve}{v_e}}{\\htmlClass{hl-mprop}{m_{\\text{prop}}} \\cdot \\htmlClass{hl-g0}{g_0}} = \\frac{\\htmlClass{hl-ve}{v_e}}{\\htmlClass{hl-g0}{g_0}}",
+            "justification": "Dividing total impulse by propellant weight ($m_{\\text{prop}} \\cdot g_0$) gives specific impulse — impulse per unit weight. The propellant mass cancels, leaving $v_e / g_0$.",
+            "explanation": "The word \"specific\" means \"per unit weight.\" We divide by weight (not mass) for historical reasons — it gives $I_{sp}$ units of seconds, which is the same in both metric and imperial systems. An $I_{sp}$ of 452 s means one kilogram of propellant produces 452 seconds of 9.81 N thrust.",
+            "sceneStep": 2,
+            "highlights": {
+              "isp": {
                 "color": "orange",
                 "label": "Specific impulse (s)"
               },
-              "hl-ve": {
+              "mprop": {
+                "color": "yellow",
+                "label": "Propellant mass (cancels)"
+              },
+              "ve": {
                 "color": "green",
                 "label": "Exhaust velocity (m/s)"
               },
-              "hl-g0": {
-                "color": "gray",
+              "g0": {
+                "color": "blue",
                 "label": "Standard gravity (9.81 m/s²)"
               }
-            },
-            "sceneStep": 2
+            }
           },
           {
             "type": "step",
             "label": "Thrust in terms of Isp",
-            "math": "T = \\dot{m} \\cdot I_{sp} \\cdot g_0",
+            "math": "\\htmlClass{hl-thrust}{T} = \\htmlClass{hl-mdot}{\\dot{m}} \\cdot \\htmlClass{hl-isp}{I_{sp}} \\cdot \\htmlClass{hl-g0}{g_0}",
             "justification": "Substituting $v_e = I_{sp} \\cdot g_0$ back into the thrust equation.",
-            "explanation": "This form is useful because $I_{sp}$ is how engines are rated. The SRBs have $I_{sp} \\approx 269$ s but enormous mass flow rate, giving 16 MN each. The RS-25 has $I_{sp} \\approx 452$ s — much more efficient — but lower mass flow, giving about 2 MN each.",
-            "sceneStep": 3
-          },
-          {
-            "type": "step",
-            "label": "SLS total thrust at liftoff",
-            "math": "T_{\\text{total}} = \\underbrace{2 \\times 16\\text{ MN}}_{\\text{SRBs}} + \\underbrace{4 \\times 2\\text{ MN}}_{\\text{RS-25s}} \\approx 39.1\\text{ MN}",
-            "justification": "Sum the contributions: two SRBs at 16 MN each plus four RS-25 core engines at ~2 MN each.",
-            "explanation": "The SRBs provide about 82% of the liftoff thrust despite being less efficient. Their job is raw power to get the heavy stack moving. The more efficient RS-25 engines take over after SRB separation at 48 km altitude.",
-            "sceneStep": 1
-          },
-          {
-            "type": "conclusion",
-            "label": "The efficiency trade-off",
-            "math": "\\frac{I_{sp}^{\\text{RS-25}}}{I_{sp}^{\\text{SRB}}} = \\frac{452}{269} \\approx 1.68",
-            "justification": "The RS-25 is 68% more fuel-efficient than the SRBs, extracting significantly more velocity change per kilogram of propellant.",
-            "explanation": "This is why staging matters: the SRBs provide the brute force needed at liftoff (when the rocket is heaviest), then are discarded. The efficient RS-25 engines then accelerate the now-lighter vehicle. Each stage is optimized for its role — raw thrust vs. fuel efficiency.",
-            "sceneStep": 5
+            "explanation": "This form is useful because $I_{sp}$ is how engines are rated. It separates thrust into three factors: how much propellant leaves each second, how efficiently the engine converts propellant into exhaust speed, and the standard-gravity conversion factor built into the historical definition of specific impulse.",
+            "sceneStep": 3,
+            "highlights": {
+              "thrust": {
+                "color": "cyan",
+                "label": "Thrust force (N)"
+              },
+              "mdot": {
+                "color": "yellow",
+                "label": "Mass flow rate (kg/s)"
+              },
+              "isp": {
+                "color": "orange",
+                "label": "Specific impulse (s)"
+              },
+              "g0": {
+                "color": "blue",
+                "label": "Standard gravity (9.81 m/s²)"
+              }
+            }
           }
         ]
       }
