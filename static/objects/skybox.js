@@ -55,7 +55,6 @@ function _makeGradientSkyboxTexture(topHex, bottomHex, starCount = 0, starColor 
 export function configureWorldStarfield(spec) {
     clearWorldStarfield();
     const cfg = spec && spec.starfield;
-    console.log('[starfield] cfg:', cfg, 'spec keys:', spec ? Object.keys(spec) : 'null');
     if (!cfg || cfg.enabled === false) return;
 
     const currentRange = state.currentRange;
@@ -170,7 +169,6 @@ export function configureWorldStarfield(spec) {
         state._starfieldAnimId = requestAnimationFrame(animateStarfield);
     }
     animateStarfield();
-    console.log('[starfield]', count, 'stars, radius', radiusMin.toFixed(1), '-', radiusMax.toFixed(1), 'size', size, 'opacity', opacity, 'camera.far', state.camera?.far);
 }
 
 export function renderSkybox(el) {

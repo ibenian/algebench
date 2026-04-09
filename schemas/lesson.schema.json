@@ -1194,7 +1194,7 @@
       "properties": {
         "color": {
           "type": "string",
-          "enum": ["cyan", "yellow", "green", "orange", "magenta", "red", "blue", "pink", "white"],
+          "enum": ["cyan", "yellow", "green", "orange", "magenta", "red", "blue", "pink", "white", "gray"],
           "description": "Highlight color. Default: 'cyan'.",
           "default": "cyan"
         },
