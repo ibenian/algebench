@@ -162,9 +162,10 @@ export function configureWorldStarfield(spec) {
 
     // Animate twinkle
     state._starfieldAnimId = null;
+    const thisStarfield = state.worldStarfield;
     const startTime = performance.now();
     function animateStarfield() {
-        if (!state.worldStarfield || state.worldStarfield !== state.worldStarfield) return;
+        if (!state.worldStarfield || state.worldStarfield !== thisStarfield) return;
         mat.uniforms.uTime.value = (performance.now() - startTime) / 1000;
         state._starfieldAnimId = requestAnimationFrame(animateStarfield);
     }
