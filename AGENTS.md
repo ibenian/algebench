@@ -56,16 +56,15 @@ docs/              Architecture, sandbox model, feature ideas
 - **Always announce who is committing before running `git commit`** — print a line in the format:
   `Committing on behalf of <name> (<email>)`
   using the output of `git config user.name` and `git config user.email`.
-- **Codex-only co-author trailer** — when Codex creates a commit in this repo, append
-  `Co-authored-by: Codex <codex@openai.com>`
+- **Codex-only co-author trailer** — when Codex creates a commit in this repo, or posts a review, append
+  `🤖 Co-authored-by: Codex <codex@openai.com>`
   to the commit message so the commit clearly shows Codex participation in GitHub. Do not add Claude/Anthropic co-author trailers unless the user explicitly asks for that.
-- **Gemini-only co-author trailer** — when Gemini creates a commit in this repo, append
-  `Co-authored-by: gemini-cli <218195315+gemini-cli@users.noreply.github.com>`
+- **Gemini-only co-author trailer** — when Gemini creates a commit in this repo, or posts a review append
+  `🤖 Co-authored-by: gemini-cli <218195315+gemini-cli@users.noreply.github.com>`
   to the commit message so the commit clearly shows Gemini participation in GitHub.
-- **Claude Code co-author trailer** — when Claude Code creates a commit in this repo, append
-  `Co-Authored-By: Claude <noreply@anthropic.com>`
-  to the commit message. When Claude Code submits a PR review, append a signature line:
-  `🤖 Generated with [Claude Code](https://claude.com/claude-code) — Co-Authored-By: Claude <noreply@anthropic.com>`
+- **Claude Code co-author trailer** — when Claude Code creates a commit in this repo, or posts a review append
+  `🤖 Co-Authored-By: Claude <noreply@anthropic.com>`
+  to the commit message.
 - **Scene files are JSON** in `scenes/` — no Python or JS changes needed for new lessons.
 - **Pinned dependencies** — `requirements.txt` pins `gemini-live-tools` to a specific tag. Update the tag intentionally, don't switch back to `HEAD`.
 - **JS from package** — `voice-character-selector.js` is served at runtime from the installed `gemini_live_tools` package via `get_static_content()`. Do not copy it into `static/`.
