@@ -97,6 +97,11 @@
         return t * t * (3 - 2 * t);
     }
 
+    function _smoothstepDerivative(u) {
+        const t = _clamp(u, 0, 1);
+        return 6 * t * (1 - t);
+    }
+
     function _roundFlyMi(flyMi) {
         const raw = Number.isFinite(flyMi) ? flyMi : 4600;
         return 50 * Math.round(raw / 50);
@@ -382,6 +387,69 @@
         return _cache.get(rounded);
     }
 
+    function _entryHoldState(data) {
+        const hold = _interpRawTrajectory(data.trajectory, data.metrics.bestEarthDay);
+        const rHold = Math.hypot(hold.xKm, hold.yKm);
+        const entryRadiusKm = CFG.earthRadiusKm + CFG.entryAltKm;
+        if (rHold > 1) {
+            const scale = entryRadiusKm / rHold;
+            hold.xKm *= scale;
+            hold.yKm *= scale;
+        }
+        hold.vxKmS = 0;
+        hold.vyKmS = 0;
+        return hold;
+    }
+
+    function _entryWindowStartDay() {
+        return Math.max(CFG.rtc1Day, CFG.entryInterfaceDay - 0.18);
+    }
+
+    function _entryArcState(data, day) {
+        const startDay = _entryWindowStartDay();
+        const start = data.metrics.bestEarthDay <= startDay
+            ? _entryHoldState(data)
+            : _interpRawTrajectory(data.trajectory, startDay);
+        const angle0 = Math.atan2(start.yKm, start.xKm);
+        const radius0 = Math.hypot(start.xKm, start.yKm);
+        const sampleDay = Math.max(CFG.serviceModuleSepDay, Math.min(data.metrics.bestEarthDay, CFG.entryInterfaceDay) - 0.08);
+        const approach = _interpRawTrajectory(data.trajectory, sampleDay);
+        const turnSign = ((approach.xKm * approach.vyKmS) - (approach.yKm * approach.vxKmS)) >= 0 ? 1 : -1;
+        const entryRadiusKm = CFG.earthRadiusKm + CFG.entryAltKm;
+        const entryAngle = angle0 + turnSign * 0.18;
+        const splashAngle = entryAngle + turnSign * 0.10;
+        let radiusKm;
+        let drDt;
+        let theta;
+        let dThetaDt;
+
+        if (day < CFG.entryInterfaceDay) {
+            const totalDay = Math.max(CFG.entryInterfaceDay - startDay, 1e-6);
+            const u = _clamp((day - startDay) / totalDay, 0, 1);
+            const s = _smoothstep(u);
+            const ds = _smoothstepDerivative(u) / (totalDay * DAY_SEC);
+            radiusKm = _lerp(radius0, entryRadiusKm, s);
+            drDt = (entryRadiusKm - radius0) * ds;
+            theta = _lerp(angle0, entryAngle, s);
+            dThetaDt = (entryAngle - angle0) * ds;
+        } else {
+            const totalDay = Math.max(CFG.splashdownDay - CFG.entryInterfaceDay, 1e-6);
+            const u = _clamp((day - CFG.entryInterfaceDay) / totalDay, 0, 1);
+            const s = _smoothstep(u);
+            const ds = _smoothstepDerivative(u) / (totalDay * DAY_SEC);
+            radiusKm = _lerp(entryRadiusKm, CFG.earthRadiusKm, s);
+            drDt = (CFG.earthRadiusKm - entryRadiusKm) * ds;
+            theta = _lerp(entryAngle, splashAngle, s);
+            dThetaDt = (splashAngle - entryAngle) * ds;
+        }
+        return {
+            xKm: radiusKm * Math.cos(theta),
+            yKm: radiusKm * Math.sin(theta),
+            vxKmS: (drDt * Math.cos(theta)) - (radiusKm * Math.sin(theta) * dThetaDt),
+            vyKmS: (drDt * Math.sin(theta)) + (radiusKm * Math.cos(theta) * dThetaDt),
+        };
+    }
+
     function _interpTrajectory(data, day) {
         const dd = _clamp(day, 0, CFG.missionDays);
         if (dd <= CFG.tliDay - 0.03) return _preTliState(dd);
@@ -397,17 +465,12 @@
                 vyKmS: _lerp(pre.vyKmS, post.vyKmS, uBlend),
             };
         }
+        const entryWindowStartDay = _entryWindowStartDay();
+        if (dd >= entryWindowStartDay) {
+            return { day: dd, ..._entryArcState(data, dd) };
+        }
+        const hold = _entryHoldState(data);
         if (dd >= data.metrics.bestEarthDay) {
-            const hold = _interpRawTrajectory(data.trajectory, data.metrics.bestEarthDay);
-            const rHold = Math.hypot(hold.xKm, hold.yKm);
-            const entryRadiusKm = CFG.earthRadiusKm + CFG.entryAltKm;
-            if (rHold > 1) {
-                const scale = entryRadiusKm / rHold;
-                hold.xKm *= scale;
-                hold.yKm *= scale;
-            }
-            hold.vxKmS = 0;
-            hold.vyKmS = 0;
             return { day: dd, ...hold };
         }
         const u = (dd - CFG.tliDay) / data.trajectory.dtDay;
