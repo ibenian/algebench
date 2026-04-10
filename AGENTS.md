@@ -63,7 +63,7 @@ docs/              Architecture, sandbox model, feature ideas
   `🤖 Co-authored-by: gemini-cli <218195315+gemini-cli@users.noreply.github.com>`
   to the commit message so the commit clearly shows Gemini participation in GitHub.
 - **Claude Code co-author trailer** — when Claude Code creates a commit in this repo, or posts a review append
-  `🤖 Co-Authored-By: Claude <noreply@anthropic.com>`
+  `Co-Authored-By: claude[bot] <209825114+claude[bot]@users.noreply.github.com>`
   to the commit message.
 - **Scene files are JSON** in `scenes/` — no Python or JS changes needed for new lessons.
 - **Pinned dependencies** — `requirements.txt` pins `gemini-live-tools` to a specific tag. Update the tag intentionally, don't switch back to `HEAD`.
