@@ -469,9 +469,8 @@
         if (dd >= entryWindowStartDay) {
             return { day: dd, ..._entryArcState(data, dd) };
         }
-        const hold = _entryHoldState(data);
         if (dd >= data.metrics.bestEarthDay) {
-            return { day: dd, ...hold };
+            return { day: dd, ..._entryHoldState(data) };
         }
         const u = (dd - CFG.tliDay) / data.trajectory.dtDay;
         const i0 = _clamp(Math.floor(u), 0, data.trajectory.arrDay.length - 2);

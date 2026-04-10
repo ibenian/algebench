@@ -73,7 +73,14 @@ export function renderKaTeX(text, displayMode) {
         headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${renderKaTeX(content, false)}</div>`);
         return `\x01H${headings.length - 1}\x01`;
     });
-    // Pre-pass 3: extract $$ and $ math blocks so asterisks inside them
+    // Pre-pass 3: extract `code` spans so asterisks inside them
+    // (e.g. `*args`) aren't consumed by the bold/italic pass.
+    const codeSpans = [];
+    prepped = prepped.replace(/`(.+?)`/g, (match, inner) => {
+        codeSpans.push(inner);
+        return `\x01C${codeSpans.length - 1}\x01`;
+    });
+    // Pre-pass 4: extract $$ and $ math blocks so asterisks inside them
     // (e.g. $T^*$, $A*B$) aren't consumed by the bold/italic pass.
     const mathSpans = [];
     prepped = prepped.replace(/(\$\$[\s\S]+?\$\$|\$[^$]+?\$)/g, (match) => {
@@ -118,6 +125,7 @@ export function renderKaTeX(text, displayMode) {
                 const inline = line
                     .replace(/\x01B(\d+)\x01/g, (m, idx) => `<strong>${renderKaTeX(boldSpans[+idx], false)}</strong>`)
                     .replace(/\x01I(\d+)\x01/g, (m, idx) => `<em>${renderKaTeX(italicSpans[+idx], false)}</em>`)
+                    .replace(/\x01C(\d+)\x01/g, (m, idx) => `<code>${codeSpans[+idx]}</code>`)
                     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\*(.+?)\*/g, '<em>$1</em>')
                     .replace(/`(.+?)`/g, '<code>$1</code>');
