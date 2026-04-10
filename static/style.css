@@ -743,7 +743,7 @@ html, body {
     min-width: 200px;
     max-height: 300px;
     overflow-y: auto;
-    z-index: 200;
+    z-index: 1000;
     box-shadow: 0 8px 32px rgba(0,0,0,0.6);
 }
 
@@ -767,6 +767,8 @@ html, body {
     display: flex;
     flex: 1;
     overflow: hidden;
+    position: relative;
+    z-index: 0;
 }
 
 /* Viewport */
