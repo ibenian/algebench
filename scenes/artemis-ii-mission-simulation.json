@@ -1,0 +1,2283 @@
+{
+  "title": "Artemis II Mission Simulation",
+  "import": [
+    "cislunar-dynamics"
+  ],
+  "scenes": [
+    {
+      "title": "The Earth-Moon Stage",
+      "description": "Establish the vast scale of cislunar space so students can contextualize the Artemis II mission.",
+      "markdown": "# The Earth-Moon System\n\n## Scale of the System\n\nIn this scene, **1 unit = 10,000 km**. The key distances are:\n\n$$d_{\\text{Earth-Moon}} = 384{,}400 \\text{ km} \\approx 38.4 \\text{ units}$$\n\n$$R_{\\oplus} = 6{,}371 \\text{ km} \\approx 0.64 \\text{ units}$$\n\n$$R_{\\text{Moon}} = 1{,}737 \\text{ km} \\approx 0.17 \\text{ units}$$\n\n## Size Comparison\n\nThe Moon is only about **27%** of Earth's radius — and at the correct scale of 384,400 km separation, the Moon appears tiny.\n\n$$\\frac{R_{\\text{Moon}}}{R_{\\oplus}} = \\frac{1{,}737}{6{,}371} \\approx 0.273$$\n\n## How Far Is the Moon?\n\nThe Earth-Moon distance is approximately **30 Earth diameters**:\n\n$$\\frac{d_{\\text{Earth-Moon}}}{2R_{\\oplus}} = \\frac{384{,}400}{12{,}742} \\approx 30.2$$\n\nFor comparison, familiar orbital altitudes:\n\n| Orbit | Altitude | Model distance from Earth center |\n|---|---|---|\n| ISS | 400 km | 0.04 units above surface |\n| GPS | 20,200 km | 2.02 + 0.64 = 2.66 units |\n| Geostationary | 35,786 km | 3.58 + 0.64 = 4.22 units |\n| Moon | 384,400 km | 38.4 units |\n\n## Travel Time\n\nAt typical spacecraft speeds (~1 km/s average over coast phase), the journey takes:\n\n$$t = \\frac{384{,}400 \\text{ km}}{1 \\text{ km/s}} \\approx 384{,}400 \\text{ s} \\approx 4.4 \\text{ days}$$\n\nArtemis II is planned as a **~10-day mission** — fly out, loop around the Moon on a free-return trajectory, and return to Earth.\n\n## The Free-Return Trajectory\n\nA free-return trajectory is a figure-eight path that uses the Moon's gravity to redirect the spacecraft back toward Earth — no engine burn required at the Moon. It was used by Apollo and is the safety backbone of Artemis II.\n\n## Citations\n\n- NASA Moon Fact Sheet: https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html\n- NASA Earth Fact Sheet: https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html\n- Wikipedia: Earth-Moon system — https://en.wikipedia.org/wiki/Moon\n- Artemis II mission overview: https://www.nasa.gov/artemis-ii/",
+      "prompt": "Guide students to appreciate the vastness of cislunar space. Use the scale model to build intuition: the ISS orbit is barely a hair's width above Earth's surface at this scale, while the Moon is 38 units away. Encourage exploration: What if the Moon were closer — how would that change orbital mechanics and travel time? Compare the Earth-Moon distance to everyday experiences — it's like traveling around Earth's equator about 9.5 times. Ask students to estimate how long it would take to drive to the Moon at highway speed (~100 km/h): about 160 days!",
+      "range": [
+        [
+          -5,
+          45
+        ],
+        [
+          -25,
+          25
+        ],
+        [
+          -25,
+          25
+        ]
+      ],
+      "camera": {
+        "position": [
+          19,
+          5,
+          25
+        ],
+        "target": [
+          19,
+          0,
+          0
+        ]
+      },
+      "starfield": {
+        "enabled": true,
+        "count": 1200,
+        "size": 1.8,
+        "opacity": 0.85,
+        "twinkle": 0
+      },
+      "views": [
+        {
+          "name": "Overview",
+          "description": "See both Earth and Moon together at full scale",
+          "position": [
+            19,
+            8,
+            30
+          ],
+          "target": [
+            19,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Earth Close",
+          "description": "Close-up of Earth and nearby orbital shells",
+          "position": [
+            0,
+            1,
+            3
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Moon Close",
+          "description": "Close-up of the Moon at scale",
+          "position": [
+            38.4,
+            0.5,
+            2
+          ],
+          "target": [
+            38.4,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Top Down",
+          "description": "Top-down view of the entire Earth-Moon system",
+          "position": [
+            19,
+            30,
+            0.1
+          ],
+          "target": [
+            19,
+            0,
+            0
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "id": "_mathbox_init_0",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
+        {
+          "id": "earth",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.637,
+          "color": "#3a7bd5",
+          "emissive": "#112244",
+          "opacity": 1
+        },
+        {
+          "id": "earth_label",
+          "type": "text",
+          "text": "Earth",
+          "position": [
+            0,
+            1.2,
+            0
+          ],
+          "color": "#ffffff"
+        },
+        {
+          "id": "moon",
+          "type": "sphere",
+          "center": [
+            38.4,
+            0,
+            0
+          ],
+          "radius": 0.17,
+          "color": "#aaaaaa",
+          "emissive": "#444444",
+          "opacity": 1
+        },
+        {
+          "id": "moon_label",
+          "type": "text",
+          "text": "Moon",
+          "position": [
+            38.4,
+            0.6,
+            0
+          ],
+          "color": "#dddddd"
+        }
+      ],
+      "steps": [
+        {
+          "title": "How Far Is the Moon?",
+          "description": "The Moon is 384,400 km away — about 30 Earth diameters. Let's see it.",
+          "camera": {
+            "position": [
+              19,
+              5,
+              25
+            ],
+            "target": [
+              19,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "distance_line",
+              "type": "line",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                38.4,
+                0,
+                0
+              ],
+              "color": "#555555",
+              "opacity": 0.7,
+              "width": 1
+            },
+            {
+              "id": "distance_label",
+              "type": "text",
+              "text": "384,400 km",
+              "position": [
+                19,
+                1,
+                0
+              ],
+              "color": "#aaaaaa"
+            }
+          ],
+          "remove": []
+        },
+        {
+          "title": "Scale Comparisons",
+          "description": "For comparison: the ISS orbits just 400 km up — barely a speck at this scale. GPS satellites orbit at 20,200 km, and geostationary orbit is at 35,786 km.",
+          "camera": {
+            "position": [
+              8,
+              4,
+              15
+            ],
+            "target": [
+              4,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "iss_pt",
+              "type": "point",
+              "position": [
+                0.68,
+                0,
+                0
+              ],
+              "color": "#88ff88",
+              "size": 5
+            },
+            {
+              "id": "iss_label",
+              "type": "text",
+              "text": "ISS orbit: 400 km",
+              "position": [
+                0.42,
+                -0.7,
+                0
+              ],
+              "color": "#88ff88"
+            },
+            {
+              "id": "gps_pt",
+              "type": "point",
+              "position": [
+                2.66,
+                0,
+                0
+              ],
+              "color": "#ffdd44",
+              "size": 5
+            },
+            {
+              "id": "gps_label",
+              "type": "text",
+              "text": "GPS: 20,200 km",
+              "position": [
+                1.85,
+                -0.8,
+                0
+              ],
+              "color": "#ffdd44"
+            },
+            {
+              "id": "geo_pt",
+              "type": "point",
+              "position": [
+                4.22,
+                0,
+                0
+              ],
+              "color": "#ff8844",
+              "size": 5
+            },
+            {
+              "id": "geo_label",
+              "type": "text",
+              "text": "Geostationary: 35,786 km",
+              "position": [
+                3,
+                -1.15,
+                0
+              ],
+              "color": "#ff8844"
+            }
+          ],
+          "remove": []
+        },
+        {
+          "title": "The Journey Preview",
+          "description": "This preview now uses the same mission construction as the simulation lesson: two Earth setup orbits from the departure sequence, then the nominal translunar coast, far-side flyby, and free-return leg. The path is frozen at the modeled closest-approach geometry so the flyby stays aligned with the fixed Moon marker in this scale view. Moon SOI entry marks where Orion enters the Moon's sphere of influence — the region where lunar gravity starts to dominate the flyby geometry.",
+          "camera": {
+            "position": [
+              19,
+              10,
+              28
+            ],
+            "target": [
+              19,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "moon_trajectory_arc",
+              "type": "parametric_curve",
+              "x": "38.44 * cos(t)",
+              "y": "38.44 * sin(t)",
+              "z": "0",
+              "range": [
+                -0.2618,
+                0.2618
+              ],
+              "samples": 120,
+              "color": "#9aa4b2",
+              "opacity": 0.35,
+              "width": 1.2
+            },
+            {
+              "id": "marker_earth_apogee",
+              "type": "point",
+              "position": [
+                7.719,
+                0.814,
+                0
+              ],
+              "color": "#ffd166",
+              "size": 4
+            },
+            {
+              "id": "label_earth_apogee",
+              "type": "text",
+              "text": "Earth apogee",
+              "position": [
+                8.1,
+                1.15,
+                0
+              ],
+              "color": "#ffd166"
+            },
+            {
+              "id": "marker_tli",
+              "type": "point",
+              "position": [
+                0.275,
+                -1.394,
+                0
+              ],
+              "color": "#ff6b3d",
+              "size": 4
+            },
+            {
+              "id": "label_tli",
+              "type": "text",
+              "text": "TLI burn",
+              "position": [
+                -1.15,
+                -2.15,
+                0
+              ],
+              "color": "#ff6b3d"
+            },
+            {
+              "id": "marker_moon_soi_entry",
+              "type": "point",
+              "position": [
+                36.951,
+                -0.043,
+                0
+              ],
+              "color": "#a0c4ff",
+              "size": 4
+            },
+            {
+              "id": "label_moon_soi_entry",
+              "type": "text",
+              "text": "Moon SOI entry",
+              "position": [
+                34.9,
+                -0.95,
+                0
+              ],
+              "color": "#a0c4ff"
+            },
+            {
+              "id": "label_four_days_to_moon",
+              "type": "text",
+              "text": "4 days to Moon",
+              "position": [
+                31.9,
+                -1.95,
+                0
+              ],
+              "color": "#cbd5e1"
+            },
+            {
+              "id": "marker_closest_lunar_approach",
+              "type": "point",
+              "position": [
+                38.367,
+                0.259,
+                0
+              ],
+              "color": "#ff9f1c",
+              "size": 4
+            },
+            {
+              "id": "label_closest_lunar_approach",
+              "type": "text",
+              "text": "Closest lunar approach",
+              "position": [
+                40.15,
+                0.95,
+                0
+              ],
+              "color": "#ff9f1c"
+            },
+            {
+              "id": "trajectory_orbit_setup",
+              "type": "parametric_curve",
+              "x": "missionX(t, 4050) * cos(moonTheta(4.945395, 4050)) + missionY(t, 4050) * sin(moonTheta(4.945395, 4050)) - 0.04",
+              "y": "-missionX(t, 4050) * sin(moonTheta(4.945395, 4050)) + missionY(t, 4050) * cos(moonTheta(4.945395, 4050))",
+              "z": "0",
+              "range": [
+                0,
+                1.0673611111111112
+              ],
+              "samples": 1200,
+              "color": "#ff6644",
+              "opacity": 0.3,
+              "width": 1.5
+            },
+            {
+              "id": "trajectory_free_return",
+              "type": "parametric_curve",
+              "x": "missionX(t, 4050) * cos(moonTheta(4.945395, 4050)) + missionY(t, 4050) * sin(moonTheta(4.945395, 4050)) - 0.04",
+              "y": "-missionX(t, 4050) * sin(moonTheta(4.945395, 4050)) + missionY(t, 4050) * cos(moonTheta(4.945395, 4050))",
+              "z": "0",
+              "range": [
+                1.0673611111111112,
+                9
+              ],
+              "samples": 3600,
+              "color": "#ff6644",
+              "opacity": 0.6,
+              "width": 2
+            }
+          ],
+          "remove": []
+        },
+        {
+          "title": "Explore the Scale",
+          "description": "The entire Artemis II mission takes about 10 days. Orbit the view to explore the scale of this incredible journey.",
+          "camera": {
+            "position": [
+              19,
+              8,
+              30
+            ],
+            "target": [
+              19,
+              0,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "you_are_here_pt",
+              "type": "point",
+              "position": [
+                0.68,
+                0.2,
+                0
+              ],
+              "color": "#ffffff",
+              "size": 7,
+              "label": "You Are Here"
+            },
+            {
+              "id": "mission_time_label",
+              "type": "text",
+              "text": "~4 days to return",
+              "position": [
+                10,
+                3,
+                0
+              ],
+              "color": "#aaaaaa"
+            }
+          ],
+          "remove": []
+        }
+      ]
+    },
+    {
+      "title": "The SLS Rocket & Orion Spacecraft",
+      "description": "SLS Block 1 and Orion — stages, mass ratios, and why staging is necessary",
+      "prompt": "You are teaching about the SLS rocket and staging concept. The key insight: rockets must carry their own fuel, and fuel has mass, which requires more fuel — the tyranny of the rocket equation. Staging solves this by dropping empty tanks. Compare the 98m SLS to familiar structures (taller than the Statue of Liberty). Each stage has a specific job: SRBs for raw power at liftoff, core stage for sustained acceleration to orbit, ICPS for precision orbit adjustment. The crew of four sits at the very top in Orion — the only part that comes home.",
+      "range": [
+        [
+          -6.5,
+          6.5
+        ],
+        [
+          -1,
+          12
+        ],
+        [
+          -6.5,
+          6.5
+        ]
+      ],
+      "camera": {
+        "position": [
+          8,
+          5,
+          8
+        ],
+        "target": [
+          0,
+          5,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Full Rocket",
+          "position": [
+            8,
+            5,
+            8
+          ],
+          "target": [
+            0,
+            5,
+            0
+          ],
+          "description": "Full stack isometric view"
+        },
+        {
+          "name": "Close-up Top",
+          "position": [
+            2,
+            9,
+            3
+          ],
+          "target": [
+            0,
+            9,
+            0
+          ],
+          "description": "Orion and ICPS detail"
+        },
+        {
+          "name": "Close-up Base",
+          "position": [
+            3,
+            0.5,
+            3
+          ],
+          "target": [
+            0,
+            0.5,
+            0
+          ],
+          "description": "Launch pad and booster base"
+        },
+        {
+          "name": "Side View",
+          "position": [
+            10,
+            5,
+            0
+          ],
+          "target": [
+            0,
+            5,
+            0
+          ],
+          "description": "Profile view from the right"
+        }
+      ],
+      "elements": [
+        {
+          "id": "_mathbox_init_1",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "The Full Stack",
+          "description": "The Space Launch System is the most powerful rocket ever flown. Standing 98 meters tall — taller than the Statue of Liberty — it generates 39 meganewtons of thrust at liftoff.",
+          "camera": {
+            "position": [
+              8,
+              5,
+              8
+            ],
+            "target": [
+              0,
+              5,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "srb_left",
+              "type": "cylinder",
+              "from": [
+                -0.6,
+                0,
+                0
+              ],
+              "to": [
+                -0.6,
+                5.4,
+                0
+              ],
+              "radius": 0.185,
+              "color": "#ff4444"
+            },
+            {
+              "id": "srb_right",
+              "type": "cylinder",
+              "from": [
+                0.6,
+                0,
+                0
+              ],
+              "to": [
+                0.6,
+                5.4,
+                0
+              ],
+              "radius": 0.185,
+              "color": "#ff4444"
+            },
+            {
+              "id": "core_stage",
+              "type": "cylinder",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                6.46,
+                0
+              ],
+              "radius": 0.42,
+              "color": "#ff8844"
+            },
+            {
+              "id": "icps",
+              "type": "cylinder",
+              "from": [
+                0,
+                6.46,
+                0
+              ],
+              "to": [
+                0,
+                7.86,
+                0
+              ],
+              "radius": 0.26,
+              "color": "#44aaff"
+            },
+            {
+              "id": "orion",
+              "type": "cylinder",
+              "from": [
+                0,
+                7.86,
+                0
+              ],
+              "to": [
+                0,
+                9.86,
+                0
+              ],
+              "radius": 0.25,
+              "color": "#ffffff"
+            },
+            {
+              "id": "label_sls",
+              "type": "text",
+              "text": "SLS Block 1",
+              "position": [
+                2,
+                5,
+                0
+              ],
+              "color": "#ffffff"
+            },
+            {
+              "id": "label_height",
+              "type": "text",
+              "text": "98 meters tall",
+              "position": [
+                2,
+                4,
+                0
+              ],
+              "color": "#cccccc"
+            }
+          ]
+        },
+        {
+          "title": "Solid Rocket Boosters",
+          "description": "Two massive solid rocket boosters provide most of the thrust at liftoff — 32 MN combined. They burn for just 126 seconds before separating at 48 km altitude.",
+          "add": [
+            {
+              "id": "label_srb",
+              "type": "text",
+              "text": "2× SRBs",
+              "position": [
+                -1.5,
+                2.7,
+                0
+              ],
+              "color": "#ff6666"
+            },
+            {
+              "id": "label_srb_thrust",
+              "type": "text",
+              "text": "16 MN thrust each",
+              "position": [
+                -1.5,
+                2,
+                0
+              ],
+              "color": "#ffaaaa"
+            },
+            {
+              "id": "label_srb_burn",
+              "type": "text",
+              "text": "126 seconds burn",
+              "position": [
+                -1.5,
+                1.3,
+                0
+              ],
+              "color": "#ffaaaa"
+            }
+          ]
+        },
+        {
+          "title": "Core Stage",
+          "description": "The orange core stage carries liquid hydrogen and liquid oxygen, feeding four RS-25 engines — the same engine design that powered the Space Shuttle. It burns for 8 minutes.",
+          "add": [
+            {
+              "id": "label_core",
+              "type": "text",
+              "text": "Core Stage",
+              "position": [
+                1.5,
+                3.2,
+                0
+              ],
+              "color": "#ffaa66"
+            },
+            {
+              "id": "label_core_engines",
+              "type": "text",
+              "text": "4× RS-25 engines",
+              "position": [
+                1.5,
+                0.5,
+                0
+              ],
+              "color": "#ffcc99"
+            },
+            {
+              "id": "label_core_prop",
+              "type": "text",
+              "text": "Liquid H₂ + O₂",
+              "position": [
+                1.5,
+                1.5,
+                0
+              ],
+              "color": "#ffcc99"
+            }
+          ]
+        },
+        {
+          "title": "ICPS Upper Stage",
+          "description": "The Interim Cryogenic Propulsion Stage uses a single RL10 engine. It performs two burns to place Orion into a high Earth orbit before TLI.",
+          "add": [
+            {
+              "id": "label_icps",
+              "type": "text",
+              "text": "ICPS",
+              "position": [
+                1.5,
+                7.2,
+                0
+              ],
+              "color": "#88ccff"
+            },
+            {
+              "id": "label_icps_engine",
+              "type": "text",
+              "text": "RL10 engine",
+              "position": [
+                1.5,
+                6.6,
+                0
+              ],
+              "color": "#aaddff"
+            }
+          ]
+        },
+        {
+          "title": "Orion Spacecraft",
+          "description": "At the top sits Orion — carrying four astronauts: Reid Wiseman, Victor Glover, Christina Koch, and Jeremy Hansen. Its European Service Module provides propulsion for the lunar journey.",
+          "camera": {
+            "position": [
+              2,
+              9,
+              3
+            ],
+            "target": [
+              0,
+              9,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "label_orion",
+              "type": "text",
+              "text": "Orion",
+              "position": [
+                1.5,
+                9,
+                0
+              ],
+              "color": "#ffffff"
+            },
+            {
+              "id": "label_orion_crew",
+              "type": "text",
+              "text": "4 crew",
+              "position": [
+                1.5,
+                8.4,
+                0
+              ],
+              "color": "#dddddd"
+            }
+          ]
+        },
+        {
+          "title": "Why Staging?",
+          "description": "About 85% of the rocket's 2.6 million kg liftoff mass is propellant. Staging works by discarding empty tanks — each stage falls away once its fuel is spent, leaving less mass for the next stage to push.",
+          "camera": {
+            "position": [
+              8,
+              5,
+              8
+            ],
+            "target": [
+              0,
+              5,
+              0
+            ]
+          },
+          "add": [
+            {
+              "id": "label_mass_pct",
+              "type": "text",
+              "text": "~85% of launch mass is fuel",
+              "position": [
+                0,
+                -0.5,
+                0
+              ],
+              "color": "#ffdd88"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "massRatio",
+              "label": "Propellant fraction",
+              "min": 0,
+              "max": 1,
+              "step": 0.01,
+              "default": 0.85
+            }
+          ],
+          "info": [
+            {
+              "id": "massInfo",
+              "content": "**Mass Budget**\n\nPropellant: {{toFixed(massRatio * 2610000, 0)}} kg\n\nDry mass: {{toFixed((1 - massRatio) * 2610000, 0)}} kg\n\nTotal: 2,610,000 kg",
+              "position": "top-left"
+            }
+          ]
+        }
+      ],
+      "markdown": "# SLS Block 1 & Orion Spacecraft\n\nThe **Space Launch System (SLS) Block 1** is NASA's new super heavy-lift launch vehicle, designed to send the Orion spacecraft and crew to the Moon for the first time since Apollo 17 in 1972.\n\n---\n\n## SLS Block 1 Specifications\n\n| Parameter | Value |\n|-----------|-------|\n| Total height | 98 m (322 ft) |\n| Gross liftoff mass | ~2,608,000 kg |\n| Liftoff thrust | ~39.1 MN |\n| Payload to TLI | ~27,000 kg |\n| First flight | November 16, 2022 (Artemis I) |\n\n---\n\n## Stage-by-Stage Breakdown\n\n### Solid Rocket Boosters (×2)\n- **Manufacturer**: Northrop Grumman\n- **Height**: 54 m each\n- **Diameter**: 3.71 m\n- **Thrust**: ~16 MN each (32 MN combined)\n- **Burn time**: ~126 seconds = **2 min 6 s** = **2.1 min**\n- **Propellant**: PBAN solid fuel\n- **Separation altitude**: ~48 km\n- **Note**: Burn time means the boosters are actively producing thrust for 126 seconds before burnout and separation. Derived from Space Shuttle SRBs, but with 5 segments instead of 4\n\n### Core Stage\n- **Manufacturer**: Boeing\n- **Height**: 64.6 m\n- **Diameter**: 8.4 m\n- **Engines**: 4× Aerojet Rocketdyne RS-25\n- **Thrust**: ~7.44 MN (combined)\n- **Burn time**: ~8 minutes\n- **Propellant**: Liquid hydrogen (LH₂) + Liquid oxygen (LOX)\n- **Note**: RS-25 engines are heritage Space Shuttle Main Engines\n\n### Interim Cryogenic Propulsion Stage (ICPS)\n- **Manufacturer**: United Launch Alliance (based on Delta Cryogenic Second Stage)\n- **Height**: ~13.7 m\n- **Diameter**: 5.05 m\n- **Engine**: 1× RL10 (11.2 kN vacuum thrust)\n- **Propellant**: LH₂ + LOX\n- **Mission role**: Two burns — one for circular parking orbit, one for Trans-Lunar Injection (TLI)\n\n---\n\n## Orion Spacecraft\n\nOrion consists of three main elements:\n\n### Crew Module (CM)\n- Pressurized cabin for up to 4 astronauts\n- Diameter: 5.03 m\n- Manufacturer: Lockheed Martin\n- Reusable for up to 10 flights\n\n### European Service Module (ESM)\n- Provides propulsion, power, thermal control, life support consumables\n- Manufacturer: Airbus Defence and Space (ESA contribution)\n- Main engine: AJ10 (26.7 kN)\n- 33× attitude-control thrusters\n\n### Launch Abort System (LAS)\n- Solid-fuel abort motor atop the CM\n- Can pull the CM away from a failing rocket in 0.3 seconds\n- Jettisoned after max-Q when no longer needed\n\n### Heat Shield\n- Avcoat ablative thermal protection\n- Must survive 2,760 °C re-entry from lunar return\n- Diameter: 5.03 m — largest heat shield ever flown\n\n---\n\n## Artemis II Crew\n\n| Astronaut | Role | Agency |\n|-----------|------|--------|\n| Reid Wiseman | Commander | NASA |\n| Victor Glover | Pilot | NASA |\n| Christina Koch | Mission Specialist | NASA |\n| Jeremy Hansen | Mission Specialist | CSA |\n\nArtemis II is a **crewed lunar flyby** — the first humans to travel to the Moon since Apollo 17. The mission will not land; it validates Orion's life-support systems with crew aboard on a free-return trajectory around the Moon.\n\n---\n\n## Why Staging Is Necessary\n\nThe **Tsiolkovsky Rocket Equation** governs all rocketry:\n\n$$\\Delta v = v_e \\ln\\!\\left(\\frac{m_0}{m_f}\\right)$$\n\nwhere $v_e$ is exhaust velocity, $m_0$ is initial mass, and $m_f$ is final (dry) mass.\n\nThe key insight: **propellant makes up roughly 85% of liftoff mass**. To reach the Moon, you need $\\Delta v \\approx 12{,}000$ m/s. With a single stage, you would need to carry all the tank structure and engines for the entire journey — an enormous mass penalty.\n\n**Staging solves this** by discarding empty tanks and engines at each phase:\n1. SRBs burn out at 48 km → jettisoned (save ~180,000 kg)\n2. Core Stage burns out → jettisoned (save ~850,000 kg)\n3. ICPS fires twice for orbit insertion and TLI → jettisoned\n4. Only Orion continues to the Moon\n\nEach stage shed is dead weight removed — so the remaining propellant pushes a much lighter vehicle, dramatically improving efficiency.\n\n---\n\n## Citations\n\n- [NASA SLS Overview](https://www.nasa.gov/space-launch-system/)\n- [Wikipedia — Space Launch System](https://en.wikipedia.org/wiki/Space_Launch_System)\n- [Wikipedia — Orion spacecraft](https://en.wikipedia.org/wiki/Orion_(spacecraft))\n- [NASA Artemis II Mission Page](https://www.nasa.gov/artemis/artemis-ii/)\n- [Tsiolkovsky rocket equation — Wikipedia](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation)",
+      "proof": {
+        "id": "thrust-and-isp",
+        "title": "Rocket Thrust & Specific Impulse",
+        "technique": "derivation",
+        "goal": "Derive rocket thrust from Newton's laws and show that specific impulse $I_{sp} = \\frac{v_e}{g_0}$ measures engine fuel efficiency.",
+        "prompt": "Walk students from Newton's laws to rocket thrust, then to specific impulse. Emphasize that Isp is the rocket engine equivalent of fuel efficiency — higher Isp means more velocity change per kilogram of propellant. Keep the proof focused on the general derivation rather than vehicle-specific comparisons.",
+        "steps": [
+          {
+            "type": "given",
+            "label": "Newton's Third Law",
+            "math": "\\htmlClass{hl-action}{\\vec{F}_{\\text{action}}} = -\\htmlClass{hl-reaction}{\\vec{F}_{\\text{reaction}}}",
+            "justification": "Every force has an equal and opposite reaction. The rocket pushes exhaust backward; the exhaust pushes the rocket forward.",
+            "explanation": "A rocket engine works by expelling mass (hot gas) at high speed out the nozzle. By Newton's third law, the exhaust pushing backward creates an equal forward force on the rocket.",
+            "sceneStep": 0,
+            "highlights": {
+              "action": {
+                "color": "cyan",
+                "label": "Force on exhaust (backward)"
+              },
+              "reaction": {
+                "color": "orange",
+                "label": "Force on rocket (forward)"
+              }
+            }
+          },
+          {
+            "type": "given",
+            "label": "Newton's Second Law (momentum form)",
+            "math": "\\htmlClass{hl-force}{\\vec{F}} = \\frac{d\\htmlClass{hl-momentum}{\\vec{p}}}{dt} = \\frac{d(m\\vec{v})}{dt}",
+            "justification": "Force equals the rate of change of momentum — the most general form of Newton's second law.",
+            "explanation": "For a rocket, both mass and velocity are changing: the rocket gets lighter as it burns fuel, and it accelerates. We need the momentum form, not just $F = ma$.",
+            "sceneStep": 0,
+            "highlights": {
+              "force": {
+                "color": "cyan",
+                "label": "Net force"
+              },
+              "momentum": {
+                "color": "yellow",
+                "label": "Momentum"
+              }
+            }
+          },
+          {
+            "type": "step",
+            "label": "Apply to rocket exhaust",
+            "math": "F_{\\text{exhaust}} = \\frac{dp}{dt} = \\htmlClass{hl-mdot}{\\frac{dm_{\\text{exhaust}}}{dt}} \\cdot \\htmlClass{hl-ve}{v_e} = \\htmlClass{hl-mdot}{\\dot{m}} \\cdot \\htmlClass{hl-ve}{v_e} \\quad (v_e \\text{ constant})",
+            "justification": "In a small time $dt$, the rocket expels mass $dm$ at a constant exhaust velocity $v_e$ (set by the nozzle design and combustion temperature). The momentum carried away is $dp = dm \\cdot v_e$, so the rate of momentum change is $\\dot{m} \\cdot v_e$.",
+            "explanation": "A key assumption: the exhaust velocity $v_e$ is approximately constant for a given engine — it depends on the propellant chemistry and nozzle geometry, not on the rocket's speed. This is what makes the equation simple: only the mass flow rate $\\dot{m}$ varies during a burn.",
+            "sceneStep": 1,
+            "highlights": {
+              "mdot": {
+                "color": "yellow",
+                "label": "Mass flow rate (kg/s)"
+              },
+              "ve": {
+                "color": "green",
+                "label": "Exhaust velocity (constant)"
+              }
+            }
+          },
+          {
+            "type": "step",
+            "label": "Exhaust momentum rate",
+            "math": "\\htmlClass{hl-thrust}{T} = \\htmlClass{hl-mdot}{\\dot{m}} \\cdot \\htmlClass{hl-ve}{v_e}",
+            "justification": "The thrust $T$ equals the mass flow rate $\\dot{m}$ (kg/s of propellant expelled) times the exhaust velocity $v_e$ (speed of the gas leaving the nozzle).",
+            "explanation": "Each second, $\\dot{m}$ kilograms of propellant leave the nozzle at speed $v_e$. The momentum carried away per second is $\\dot{m} v_e$, which by Newton's third law equals the thrust force on the rocket.",
+            "highlights": {
+              "thrust": {
+                "color": "cyan",
+                "label": "Thrust force (N)"
+              },
+              "mdot": {
+                "color": "yellow",
+                "label": "Mass flow rate (kg/s)"
+              },
+              "ve": {
+                "color": "green",
+                "label": "Exhaust velocity (m/s)"
+              }
+            },
+            "sceneStep": 1
+          },
+          {
+            "type": "step",
+            "label": "Total impulse from propellant",
+            "math": "\\htmlClass{hl-impulse}{J} = T \\cdot t = \\dot{m} \\cdot \\htmlClass{hl-ve}{v_e} \\cdot t = \\htmlClass{hl-mprop}{m_{\\text{prop}}} \\cdot \\htmlClass{hl-ve}{v_e}",
+            "justification": "Impulse is force times time. Since $\\dot{m} \\cdot t = m_{\\text{prop}}$ (total propellant mass burned), the total impulse equals propellant mass times exhaust velocity.",
+            "explanation": "Impulse measures the total \"push\" delivered over a burn. A longer burn or higher thrust both increase impulse. This tells us how much momentum the rocket gains from burning all its fuel.",
+            "sceneStep": 1,
+            "highlights": {
+              "impulse": {
+                "color": "cyan",
+                "label": "Total impulse (N·s)"
+              },
+              "mprop": {
+                "color": "yellow",
+                "label": "Total propellant mass (kg)"
+              },
+              "ve": {
+                "color": "green",
+                "label": "Exhaust velocity (m/s)"
+              }
+            }
+          },
+          {
+            "type": "step",
+            "label": "Impulse per unit weight of propellant",
+            "math": "\\htmlClass{hl-isp}{I_{sp}} = \\frac{J}{\\htmlClass{hl-mprop}{m_{\\text{prop}}} \\cdot \\htmlClass{hl-g0}{g_0}} = \\frac{\\htmlClass{hl-mprop}{m_{\\text{prop}}} \\cdot \\htmlClass{hl-ve}{v_e}}{\\htmlClass{hl-mprop}{m_{\\text{prop}}} \\cdot \\htmlClass{hl-g0}{g_0}} = \\frac{\\htmlClass{hl-ve}{v_e}}{\\htmlClass{hl-g0}{g_0}}",
+            "justification": "Dividing total impulse by propellant weight ($m_{\\text{prop}} \\cdot g_0$) gives specific impulse — impulse per unit weight. The propellant mass cancels, leaving $v_e / g_0$.",
+            "explanation": "The word \"specific\" means \"per unit weight.\" We divide by weight (not mass) for historical reasons — it gives $I_{sp}$ units of seconds, which is the same in both metric and imperial systems. An $I_{sp}$ of 452 s means one kilogram of propellant produces 452 seconds of 9.81 N thrust.",
+            "sceneStep": 2,
+            "highlights": {
+              "isp": {
+                "color": "orange",
+                "label": "Specific impulse (s)"
+              },
+              "mprop": {
+                "color": "yellow",
+                "label": "Propellant mass (cancels)"
+              },
+              "ve": {
+                "color": "green",
+                "label": "Exhaust velocity (m/s)"
+              },
+              "g0": {
+                "color": "blue",
+                "label": "Standard gravity (9.81 m/s²)"
+              }
+            }
+          },
+          {
+            "type": "step",
+            "label": "Thrust in terms of Isp",
+            "math": "\\htmlClass{hl-thrust}{T} = \\htmlClass{hl-mdot}{\\dot{m}} \\cdot \\htmlClass{hl-isp}{I_{sp}} \\cdot \\htmlClass{hl-g0}{g_0}",
+            "justification": "Substituting $v_e = I_{sp} \\cdot g_0$ back into the thrust equation.",
+            "explanation": "This form is useful because $I_{sp}$ is how engines are rated. It separates thrust into three factors: how much propellant leaves each second, how efficiently the engine converts propellant into exhaust speed, and the standard-gravity conversion factor built into the historical definition of specific impulse.",
+            "sceneStep": 3,
+            "highlights": {
+              "thrust": {
+                "color": "cyan",
+                "label": "Thrust force (N)"
+              },
+              "mdot": {
+                "color": "yellow",
+                "label": "Mass flow rate (kg/s)"
+              },
+              "isp": {
+                "color": "orange",
+                "label": "Specific impulse (s)"
+              },
+              "g0": {
+                "color": "blue",
+                "label": "Standard gravity (9.81 m/s²)"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "title": "Cislunar Scale and Nominal Route",
+      "description": "A uniform-scale Earth-Moon map with a time-controlled nominal Artemis II route and a dynamically moving Moon.",
+      "markdown": "# Cislunar Scale and Nominal Route\n\nThis lesson uses a **uniform distance scale** in every direction:\n\n$$1\\text{ unit} = 10{,}000\\text{ km}$$\n\nSo the key mission distances become:\n\n$$R_{\\oplus} = 6371\\text{ km} \\approx 0.6371\\text{ units}$$\n$$R_{\\text{Moon}} = 1737\\text{ km} \\approx 0.1737\\text{ units}$$\n$$d_{\\oplus\\text{-Moon}} = 384{,}400\\text{ km} \\approx 38.44\\text{ units}$$\n\nThe route shown here is a **nominal reference trajectory** based on NASA SVS record **5610** and the Artemis II press kit. NASA explicitly notes that the actual trajectory may vary with final launch timing.\n\nThe Moon is also **dynamically simulated** rather than pinned in place. In this lesson, the Moon moves on a circular cislunar orbit with mean angular rate\n\n$$\\omega_{\\text{Moon}} = \\frac{2\\pi}{27.321661\\text{ days}} \\approx 0.23\\text{ rad/day}$$\n\nand the Artemis II path is timed so the flyby occurs when Orion reaches the moving Moon near mission day 5.\n\nA key mission fact is that Artemis II does **two Earth orbits before translunar injection**. So the route near Earth is not an accidental loop: it represents the planned Earth-orbit setup before Orion heads for the Moon.\n\nThat departure is **not** an Earth gravity assist. Orion must execute a real **translunar injection burn** with the service module after the Earth-orbit setup. The gravity-assist style turn happens later at the Moon during the free-return flyby.\n\n## Mission anchors used in this scene\n\n- mission duration: about **10 days**\n- closest approach above the Moon: about **4,000 to 6,000 miles**\n- communications blackout: about **30 to 50 minutes**\n- two Earth orbits before translunar injection\n- a thrust-driven translunar injection burn\n- free-return path back to Earth\n\n## Sources\n\n- NASA Artemis II press kit: https://www.nasa.gov/artemis-ii-press-kit/\n- NASA Artemis II mission page: https://www.nasa.gov/mission/artemis-ii/\n- NASA SVS API record 5610: https://svs.gsfc.nasa.gov/api/5610",
+      "prompt": "Start with scale honesty. The student should immediately see that the Moon is far away, the high-Earth orbit is still close to Earth compared with lunar distance, and that Artemis II intentionally makes two Earth orbits before translunar injection. Make clear that Earth departure requires a real translunar injection burn, while the gravity-assist style turn belongs to the lunar flyby. The route is a nominal NASA-guided free-return model rather than a hand-drawn sketch.",
+      "scale": [
+        25,
+        12,
+        4
+      ],
+      "range": [
+        [
+          -5,
+          45
+        ],
+        [
+          -12,
+          12
+        ],
+        [
+          -4,
+          4
+        ]
+      ],
+      "camera": {
+        "position": [
+          19,
+          8,
+          30
+        ],
+        "target": [
+          19,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "views": [
+        {
+          "name": "Overview",
+          "description": "See Earth, Moon, and the whole nominal route",
+          "position": [
+            19,
+            8,
+            30
+          ],
+          "target": [
+            19,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Earth Close",
+          "description": "Focus on Earth and the high-Earth orbit region",
+          "position": [
+            0,
+            1.5,
+            7
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "Moon Close",
+          "description": "Focus on the far-side flyby region",
+          "position": [
+            38.44,
+            1.5,
+            7
+          ],
+          "target": [
+            38.44,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Ride Along",
+          "description": "Camera follows Orion along the route",
+          "follow": "s1_orion",
+          "angleLockVector": [
+            "s1_orion"
+          ],
+          "offset": [
+            0,
+            2.5,
+            6
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "starfield": {
+        "enabled": true,
+        "count": 1400,
+        "size": 1.7,
+        "opacity": 0.86,
+        "twinkle": 0
+      },
+      "elements": [
+        {
+          "id": "s1_earth",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.6371,
+          "color": "#3a7bd5",
+          "label": "Earth",
+          "shader": {
+            "type": "phong",
+            "emissive": "#112244",
+            "shininess": 30
+          }
+        },
+        {
+          "id": "s1_moon_orbit",
+          "type": "parametric_curve",
+          "x": "38.44 * cos(t)",
+          "y": "38.44 * sin(t)",
+          "z": "0",
+          "range": [
+            0,
+            6.2832
+          ],
+          "color": "#6c7a89",
+          "width": 1.1,
+          "opacity": 0.32,
+          "samples": 220
+        },
+        {
+          "id": "s1_moon",
+          "type": "sphere",
+          "centerExpr": [
+            "moonX(day)",
+            "moonY(day)",
+            "0"
+          ],
+          "radius": 0.1737,
+          "color": "#b0b0b0",
+          "shader": {
+            "type": "phong",
+            "emissive": "#404040",
+            "shininess": 10
+          }
+        },
+        {
+          "id": "s1_em_vec",
+          "type": "animated_vector",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "expr": [
+            "moonX(day)",
+            "moonY(day)",
+            "0"
+          ],
+          "color": "#e2e8f0",
+          "opacity": 0.4,
+          "width": 0.09,
+          "label": "Moon position"
+        },
+        {
+          "id": "s1_route",
+          "type": "parametric_curve",
+          "x": "missionX(t)",
+          "y": "missionY(t)",
+          "z": "0",
+          "range": [
+            0,
+            9.1
+          ],
+          "color": "#ff6b3d",
+          "label": "Nominal trajectory",
+          "width": 2.4,
+          "samples": 6000
+        },
+        {
+          "id": "s1_orion",
+          "type": "animated_vector",
+          "fromExpr": [
+            "missionX(day) - 0.18 * missionVx(day) / max(0.001, sqrt(missionVx(day)^2 + missionVy(day)^2))",
+            "missionY(day) - 0.18 * missionVy(day) / max(0.001, sqrt(missionVx(day)^2 + missionVy(day)^2))",
+            "0"
+          ],
+          "expr": [
+            "missionX(day)",
+            "missionY(day)",
+            "0"
+          ],
+          "color": "#ffffff",
+          "label": "Orion",
+          "opacity": 1,
+          "shader": {
+            "emissive": "#cfd8e3",
+            "specular": "#ffffff",
+            "shininess": 140
+          },
+          "panels": {
+            "color": "#7dd3fc",
+            "opacity": 0.95,
+            "length": 0.11,
+            "width": 0.026,
+            "thickness": 0.008,
+            "gap": 0.014,
+            "segments": 2
+          },
+          "width": 1.4,
+          "arrowScale": 3.6,
+          "shaftScale": 20.7,
+          "labelOffset": [
+            0.16,
+            0.12,
+            0
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "title": "Nominal Route",
+          "description": "Move through the mission on a uniform-scale Earth-Moon map. The route is driven by mission day and flyby altitude.",
+          "sliders": [
+            {
+              "id": "day",
+              "label": "Mission Day",
+              "min": 0,
+              "max": 9.1,
+              "default": 0.2,
+              "step": 0.001,
+              "animate": true,
+              "animateMode": "loop",
+              "duration": 24000
+            },
+            {
+              "id": "flyAlt",
+              "label": "Flyby Altitude (mi)",
+              "min": 4000,
+              "max": 6000,
+              "default": 4600,
+              "step": 50
+            }
+          ],
+          "info": [
+            {
+              "id": "s1_info",
+              "content": "**Phase:** {{missionPhase(day)}}\n\n**Distance from Earth center:** {{toFixed(distEarthKm(day), 0)}} km\n\n**Distance from Moon center:** {{toFixed(distMoonKm(day), 0)}} km\n\n**Moon angle:** {{toFixed(180 * moonTheta(day) / pi, 1)}} deg\n\n**Uniform scale:** 1 unit = 10,000 km",
+              "position": "top-left"
+            }
+          ],
+          "add": []
+        }
+      ]
+    },
+    {
+      "title": "Earth-Orbit Setup and Departure Burns",
+      "description": "A closer look at the physically scaled high-Earth orbit and the departure phase.",
+      "markdown": "# Earth-Orbit Setup and Departure Burns\n\nNASA's Artemis II profile keeps Orion close to Earth first. The stack enters early Earth orbit, the ICPS shapes the mission into a safe orbit and then a high Earth orbit, Orion separates, and only then does Orion perform the departure sequence.\n\nThe mission plan calls for **two Earth orbits before translunar injection**. In this scene, those loops are shown on purpose: they represent the real orbit-raising and departure setup sequence rather than wasted motion.\n\nThis part of the mission is **burn-driven**, not a gravity assist. The departure to the Moon happens because Orion performs a **translunar injection burn** after the Earth-orbit setup. In other words, Earth gravity holds the spacecraft in orbit until the burn program changes the orbit enough to send Orion onto the cislunar transfer.\n\n## What does the TLI burn look like?\n\nNASA's prelaunch press kit identified translunar injection as Orion's last major engine firing. Then, on **April 2, 2026**, NASA's Flight Day 2 update reported the actual TLI burn began at **7:49 p.m. EDT** and lasted **5 minutes 49 seconds** using Orion's main engine.\n\nThat makes the departure sequence easier to interpret pedagogically:\n\n- the long visible arcs near Earth are coast/orbit-setup phases\n- the decisive change in trajectory comes from a relatively short engine burn\n- after that burn, Orion enters the outbound coast toward the Moon\n\n## Scaled high-Earth orbit\n\nUsing the research brief values:\n\n- perigee radius from Earth center: \n$$r_p = \\frac{6371 + 185}{10{,}000} = 0.6556$$\n- apogee radius from Earth center:\n$$r_a = \\frac{6371 + 71{,}645}{10{,}000} = 7.8016$$\n\nThat gives a focus-centered ellipse with:\n$$a = \\frac{r_p + r_a}{2} = 4.2286, \\qquad c = a - r_p = 3.5730$$\n$$b = \\sqrt{a^2 - c^2} \\approx 2.2616$$\n\nThose are the numbers used directly in the orbit geometry below.\n\n## Mission stages highlighted here\n\n- ascent\n- first Earth orbit and safe-orbit shaping with ICPS\n- second Earth orbit and high-Earth-orbit departure setup\n- Orion separation from ICPS\n- Orion perigee raise burn\n- translunar injection burn\n\n## Sources\n\n- NASA Artemis II press kit: https://www.nasa.gov/artemis-ii-press-kit/\n- NASA Flight Day 2 update, April 2, 2026: https://www.nasa.gov/blogs/missions/2026/04/02/artemis-ii-flight-day-2-crew-houston-poll-go-for-translunar-injection-burn/",
+      "prompt": "Use this scene to show that the route is not guessed. The high-Earth orbit is built from the actual perigee and apogee values in the research brief, and the departure sequence is a small number of discrete mission events. Make clear that translunar injection is a thrust-driven burn program, not an Earth gravity assist.",
+      "scale": [
+        10.5,
+        5,
+        3
+      ],
+      "range": [
+        [
+          -9,
+          12
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -3,
+          3
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          3,
+          12
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "views": [
+        {
+          "name": "Orbit View",
+          "description": "Earth-centered high-Earth orbit geometry",
+          "position": [
+            0,
+            3,
+            12
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Perigee Close",
+          "description": "Focus on the low point where departure burns matter most",
+          "position": [
+            1.5,
+            1.2,
+            6
+          ],
+          "target": [
+            0.7,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Departure View",
+          "description": "See the route leaving Earth orbit",
+          "position": [
+            6,
+            4,
+            14
+          ],
+          "target": [
+            5,
+            0,
+            0
+          ]
+        }
+      ],
+      "starfield": {
+        "enabled": true,
+        "count": 900,
+        "size": 1.5,
+        "opacity": 0.82
+      },
+      "elements": [
+        {
+          "id": "s2_earth",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.6371,
+          "color": "#3a7bd5",
+          "shader": {
+            "type": "phong",
+            "emissive": "#112244"
+          }
+        },
+        {
+          "id": "s2_route",
+          "type": "parametric_curve",
+          "x": "missionX(t, 4600)",
+          "y": "missionY(t, 4600)",
+          "z": "0",
+          "range": [
+            0,
+            1.25
+          ],
+          "color": "#ff6b3d",
+          "width": 2.3,
+          "samples": 500
+        },
+        {
+          "id": "s2_perigee",
+          "type": "point",
+          "position": [
+            0.6556,
+            0,
+            0
+          ],
+          "color": "#ffd166",
+          "size": 8,
+          "label": "Perigee"
+        },
+        {
+          "id": "s2_apogee",
+          "type": "point",
+          "position": [
+            -7.8016,
+            0,
+            0
+          ],
+          "color": "#f5b041",
+          "size": 8,
+          "label": "Apogee"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Setup and Departure",
+          "description": "Scrub the early mission from Earth-orbit setup into the departure sequence.",
+          "add": [
+            {
+              "id": "s2_orion",
+              "type": "animated_vector",
+              "fromExpr": [
+                "missionX(1.25 * tau, 4600) - 0.22 * missionVx(1.25 * tau, 4600) / max(0.001, sqrt(missionVx(1.25 * tau, 4600)^2 + missionVy(1.25 * tau, 4600)^2))",
+                "missionY(1.25 * tau, 4600) - 0.22 * missionVy(1.25 * tau, 4600) / max(0.001, sqrt(missionVx(1.25 * tau, 4600)^2 + missionVy(1.25 * tau, 4600)^2))",
+                "0.12"
+              ],
+              "expr": [
+                "missionX(1.25 * tau, 4600)",
+                "missionY(1.25 * tau, 4600)",
+                "0.12"
+              ],
+              "color": "#ffffff",
+              "label": "Orion",
+              "opacity": 1,
+              "shader": {
+                "emissive": "#cfd8e3",
+                "specular": "#ffffff",
+                "shininess": 140,
+                "depthTest": false,
+                "depthWrite": false
+              },
+              "panels": {
+                "color": "#7dd3fc",
+                "opacity": 0.95,
+                "length": 0.11,
+                "width": 0.026,
+                "thickness": 0.008,
+                "gap": 0.014,
+                "segments": 2,
+                "renderOrder": 49
+              },
+              "renderOrder": 50,
+              "width": 1.6,
+              "arrowScale": 3.8,
+              "shaftScale": 24
+            }
+          ],
+          "sliders": [
+            {
+              "id": "tau",
+              "label": "Early Mission Progress",
+              "min": 0,
+              "max": 1,
+              "default": 0.2,
+              "step": 0.001,
+              "animate": true,
+              "animateMode": "loop",
+              "duration": 9000
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_info",
+              "content": "**Stage:** {{missionPhase(1.25 * tau, 4600)}}\n\n**Distance from Earth center:** {{toFixed(distEarthKm(1.25 * tau, 4600), 0)}} km\n\n**Milestone bucket:** {{missionMilestone(1.25 * tau)}}",
+              "position": "top-left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Moon Flyby and Blackout Geometry",
+      "description": "A Moon-centered simulation of the far-side pass and the Earth line-of-sight blackout.",
+      "markdown": "# Moon Flyby and Blackout Geometry\n\nThis scene is centered on the Moon. Orion's route is shown in **Moon-centered coordinates** so the flyby and blackout geometry are easier to inspect.\n\n## What is modeled here?\n\n- launch-date-dependent closest approach between **4,000 and 6,000 miles** above the lunar surface\n- a far-side pass rather than lunar orbit insertion\n- the Earth-to-Orion line-of-sight test\n- a return route bent back toward Earth\n- a moving Earth direction in the Moon-centered frame because the Moon itself is orbiting Earth\n\n## Blackout physics\n\nThe blackout is geometric. If the straight line from Earth to Orion passes through the Moon, communications are blocked.\n\n## Sources\n\n- NASA Artemis II press kit: https://www.nasa.gov/artemis-ii-press-kit/\n- NASA SVS API record 5610: https://svs.gsfc.nasa.gov/api/5610",
+      "prompt": "Teach the blackout as a line-of-sight problem and the free return as a flyby-geometry problem. Do not present the route as arbitrary or decorative.",
+      "scale": [
+        24,
+        12,
+        4
+      ],
+      "range": [
+        [
+          -40,
+          8
+        ],
+        [
+          -12,
+          12
+        ],
+        [
+          -4,
+          4
+        ]
+      ],
+      "camera": {
+        "position": [
+          3.92,
+          1.99,
+          2.96
+        ],
+        "target": [
+          -38.18,
+          -0.01,
+          -3.07
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "views": [
+        {
+          "name": "Moon Centered",
+          "description": "Moon-centered flyby view",
+          "follow": "s3_moon",
+          "offset": [
+            -4,
+            1,
+            5
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "Blackout View",
+          "description": "View Earth hidden behind the Moon during blackout",
+          "position": [
+            1.72770706788452,
+            -0.1794360264324702,
+            0
+          ],
+          "target": [
+            -38.23434639578639,
+            3.970938892380054,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "Far Side",
+          "description": "Focus on the blackout side of the Moon",
+          "position": [
+            3.73,
+            -2.85,
+            4
+          ],
+          "target": [
+            -38.09,
+            7.13,
+            -1.01
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "Ride Along",
+          "description": "Camera follows Orion through the flyby",
+          "follow": "s3_orion",
+          "angleLockVector": [
+            "s3_orion"
+          ],
+          "offset": [
+            0,
+            2,
+            6
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "starfield": {
+        "enabled": true,
+        "count": 1200,
+        "size": 1.6,
+        "opacity": 0.88
+      },
+      "elements": [
+        {
+          "id": "s3_moon",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.1737,
+          "color": "#b0b0b0",
+          "label": "Moon",
+          "shader": {
+            "type": "phong",
+            "emissive": "#404040"
+          }
+        },
+        {
+          "id": "s3_earth",
+          "type": "sphere",
+          "centerExpr": [
+            "-moonX(day)",
+            "-moonY(day)",
+            "0"
+          ],
+          "radius": 0.6371,
+          "color": "#3a7bd5",
+          "label": "Earth",
+          "shader": {
+            "type": "phong",
+            "emissive": "#112244"
+          }
+        },
+        {
+          "id": "s3_flyby_path",
+          "type": "parametric_curve",
+          "x": "missionX(t) - moonX(t)",
+          "y": "missionY(t) - moonY(t)",
+          "z": "0",
+          "range": [
+            4.6,
+            5.2
+          ],
+          "color": "#ff6b3d",
+          "label": "Flyby trajectory",
+          "width": 1.2,
+          "opacity": 0.72,
+          "samples": 1200
+        }
+      ],
+      "steps": [
+        {
+          "title": "Far-Side Flyby",
+          "description": "Inspect the lunar pass in Moon-centered coordinates and watch the line of sight to Earth switch on and off.",
+          "add": [
+            {
+              "id": "s3_orion",
+              "type": "animated_vector",
+              "fromExpr": [
+                "missionX(day) - moonX(day) - 0.08 * missionVx(day) / max(0.001, sqrt(missionVx(day)^2 + missionVy(day)^2))",
+                "missionY(day) - moonY(day) - 0.08 * missionVy(day) / max(0.001, sqrt(missionVx(day)^2 + missionVy(day)^2))",
+                "0"
+              ],
+              "expr": [
+                "missionX(day) - moonX(day)",
+                "missionY(day) - moonY(day)",
+                "0"
+              ],
+              "color": "#ffffff",
+              "label": "Orion",
+              "opacity": 1,
+              "shader": {
+                "emissive": "#cfd8e3",
+                "specular": "#ffffff",
+                "shininess": 140,
+                "depthTest": false,
+                "depthWrite": false
+              },
+              "panels": {
+                "color": "#7dd3fc",
+                "opacity": 0.95,
+                "length": 0.11,
+                "width": 0.026,
+                "thickness": 0.008,
+                "gap": 0.014,
+                "segments": 2,
+                "renderOrder": 49
+              },
+              "renderOrder": 50,
+              "width": 1.2,
+              "arrowScale": 3.15,
+              "shaftScale": 19.8
+            },
+            {
+              "id": "s3_los",
+              "type": "animated_vector",
+              "fromExpr": [
+                "-moonX(day)",
+                "-moonY(day)",
+                "0"
+              ],
+              "expr": [
+                "missionX(day) - moonX(day)",
+                "missionY(day) - moonY(day)",
+                "0"
+              ],
+              "color": "#7dd3fc",
+              "opacity": 0.5,
+              "width": 0.11,
+              "arrowScale": 0.33,
+              "label": "Earth line of sight"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "day",
+              "label": "Mission Day",
+              "min": 4.6,
+              "max": 5.2,
+              "default": 4.95,
+              "step": 0.0005,
+              "animate": true,
+              "animateMode": "once",
+              "duration": 9000
+            },
+            {
+              "id": "flyAlt",
+              "label": "Flyby Altitude (mi)",
+              "min": 4000,
+              "max": 6000,
+              "default": 4600,
+              "step": 50
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_info",
+              "content": "**Mission day:** {{toFixed(day, 3)}}\n\n**Flyby altitude setting:** {{toFixed(flyAlt, 0)}} mi\n\n**Earth direction angle:** {{toFixed(180 * moonTheta(day) / pi, 1)}} deg\n\n**Comms status:** {{missionBlackout(day) > 0.5 ? \"Blackout: Moon blocks Earth line of sight\" : \"Line of sight to Earth available\"}}\n\n**Closest-approach window:** about 4,000 to 6,000 mi above the lunar surface",
+              "position": "top-left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Full Mission Physics Simulator",
+      "description": "A full nominal mission simulation with live route, moving Moon, phase labels, and return conditions.",
+      "markdown": "# Full Mission Physics Simulator\n\nThis capstone scene runs the nominal reference route as one continuous simulation on the same **uniform 10,000 km scale** used in the rest of the lesson.\n\nThe Moon is not frozen in place. Its Earth-centered position is updated through the mission using a mean orbital angular rate, so the Earth-Moon geometry and the blackout condition evolve with mission time.\n\n## Mission phases represented\n\n1. ascent\n2. Earth-orbit setup\n3. outbound cislunar coast\n4. far-side lunar flyby\n5. return coast\n6. entry interface and splashdown\n\n## Burns versus gravity assist\n\nBefore leaving Earth, Artemis II performs **two Earth orbits** and then a real **translunar injection burn**. That means the Earth-departure leg is created by thrust, not by a slingshot around Earth.\n\nNASA's Flight Day 2 update on **April 2, 2026** reported the TLI burn lasted **5 minutes 49 seconds**, which is a useful teaching point: a short burn can reshape the entire large-scale route when it is applied at the right orbital point.\n\nLater, at the Moon, the trajectory bends through a **lunar flyby / gravity-assist style turn** that sends Orion onto the free-return path back toward Earth.\n\n## Mission facts shown in the overlays\n\n- mission day and current phase\n- distance from Earth and Moon\n- flyby-altitude setting\n- Moon orbital angle\n- blackout condition from line-of-sight geometry\n- reentry anchors: **25,000 mph** and **400,000 ft** entry interface\n\n## Source basis\n\n- NASA Artemis II press kit: https://www.nasa.gov/artemis-ii-press-kit/\n- NASA Artemis II mission page: https://www.nasa.gov/mission/artemis-ii/\n- NASA SVS API record 5610: https://svs.gsfc.nasa.gov/api/5610\n- NASA Flight Day 2 update, April 2, 2026: https://www.nasa.gov/blogs/missions/2026/04/02/artemis-ii-flight-day-2-crew-houston-poll-go-for-translunar-injection-burn/",
+      "prompt": "This is the main simulation scene. Keep the emphasis on actual mission phases, the uniform scale, the fact that Artemis II intentionally performs two Earth orbits before translunar injection, and the difference between short burns and long coast intervals. Make clear that Earth departure is created by a thrust-driven translunar injection burn, while the gravity-assist style turn belongs to the lunar flyby.",
+      "scale": [
+        25,
+        12,
+        4
+      ],
+      "range": [
+        [
+          -5,
+          45
+        ],
+        [
+          -12,
+          12
+        ],
+        [
+          -4,
+          4
+        ]
+      ],
+      "camera": {
+        "position": [
+          -2.303000000000001,
+          22.19375,
+          71.38125
+        ],
+        "target": [
+          11.209,
+          -2.39375,
+          2.54375
+        ],
+        "up": [
+          -0.35,
+          0.126,
+          0.928
+        ]
+      },
+      "views": [
+        {
+          "name": "Overview",
+          "description": "Whole mission route",
+          "position": [
+            -2.303000000000001,
+            22.19375,
+            71.38125
+          ],
+          "target": [
+            11.209,
+            -2.39375,
+            2.54375
+          ],
+          "up": [
+            -0.35,
+            0.126,
+            0.928
+          ]
+        },
+        {
+          "name": "Moon Flyby",
+          "description": "Focus on the lunar encounter",
+          "position": [
+            40.067,
+            -5.81,
+            2.956
+          ],
+          "target": [
+            38.717,
+            -7.138,
+            -0.006
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "Gravity Assist Plan View",
+          "description": "Plan-view camera for inspecting the lunar gravity assist geometry",
+          "position": [
+            38.134,
+            -3.1333333333333333,
+            37.5
+          ],
+          "target": [
+            38.134,
+            -8.341666666666667,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "Follow Moon",
+          "description": "Follow the moving Moon with a helper anchor near the flyby",
+          "follow": "s4_flyby_anchor",
+          "offset": [
+            2.1,
+            1.2,
+            3.1
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "Earth Return",
+          "description": "Focus on Earth entry and splashdown",
+          "position": [
+            -1.7420000000000009,
+            2.2375,
+            4.41875
+          ],
+          "target": [
+            0.13899999999999935,
+            0.5833333333333334,
+            0.7125
+          ],
+          "up": [
+            -0.345,
+            0.099,
+            0.933
+          ]
+        },
+        {
+          "name": "Ride Along",
+          "description": "Follow Orion through the mission",
+          "follow": "s4_orion",
+          "angleLockVector": [
+            "s4_orion"
+          ],
+          "offset": [
+            0,
+            2.5,
+            6
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "starfield": {
+        "enabled": true,
+        "count": 1500,
+        "size": 1.7,
+        "opacity": 0.88
+      },
+      "elements": [
+        {
+          "id": "s4_earth",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.6371,
+          "color": "#3a7bd5",
+          "label": "Earth",
+          "shader": {
+            "type": "phong",
+            "emissive": "#112244"
+          }
+        },
+        {
+          "id": "s4_atmo",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.6493,
+          "color": "#66b3ff",
+          "opacity": 0.08
+        },
+        {
+          "id": "s4_moon_orbit",
+          "type": "parametric_curve",
+          "x": "38.44 * cos(t)",
+          "y": "38.44 * sin(t)",
+          "z": "0",
+          "range": [
+            0,
+            6.2832
+          ],
+          "color": "#8ecae6",
+          "label": "Moon trajectory",
+          "width": 2,
+          "opacity": 0.85,
+          "samples": 360
+        },
+        {
+          "id": "s4_moon",
+          "type": "sphere",
+          "centerExpr": [
+            "moonX(day)",
+            "moonY(day)",
+            "0"
+          ],
+          "radius": 0.1737,
+          "color": "#b0b0b0",
+          "label": "Moon",
+          "shader": {
+            "type": "phong",
+            "emissive": "#404040"
+          }
+        },
+        {
+          "id": "s4_flyby_anchor",
+          "type": "animated_point",
+          "expr": [
+            "moonX(day)",
+            "moonY(day)",
+            "0"
+          ],
+          "visibleExpr": "0",
+          "opacity": 0,
+          "size": 1
+        },
+        {
+          "id": "s4_route",
+          "type": "parametric_curve",
+          "x": "missionX(t)",
+          "y": "missionY(t)",
+          "z": "0",
+          "range": [
+            0,
+            9.1
+          ],
+          "color": "#ff6b3d",
+          "label": "Mission trajectory",
+          "width": 2.4,
+          "opacity": 0.9,
+          "samples": 7000
+        },
+        {
+          "id": "s4_free_return_label",
+          "type": "text",
+          "label": "Free Return Trajectory",
+          "positionExpr": [
+            "missionX(6.2) + 1.2",
+            "missionY(6.2) - 0.7",
+            "0.2"
+          ],
+          "text": "Free Return Trajectory",
+          "color": "#ff8a65"
+        },
+        {
+          "id": "s4_tli_label",
+          "type": "text",
+          "positionExpr": [
+            "missionX(1.0673611111111112) + 1.1 * missionX(1.0673611111111112) / max(0.001, sqrt(missionX(1.0673611111111112)^2 + missionY(1.0673611111111112)^2))",
+            "missionY(1.0673611111111112) + 1.1 * missionY(1.0673611111111112) / max(0.001, sqrt(missionX(1.0673611111111112)^2 + missionY(1.0673611111111112)^2))",
+            "0.2"
+          ],
+          "text": "Translunar Injection",
+          "color": "#ffb38a"
+        },
+        {
+          "id": "s4_day1_label",
+          "type": "text",
+          "label": "Mission day markers",
+          "positionExpr": [
+            "missionX(1)",
+            "missionY(1)",
+            "0.2"
+          ],
+          "text": "Day 1",
+          "color": "#ffd7cc"
+        },
+        {
+          "id": "s4_day2_label",
+          "type": "text",
+          "label": "Mission day markers",
+          "positionExpr": [
+            "missionX(2)",
+            "missionY(2)",
+            "0.2"
+          ],
+          "text": "Day 2",
+          "color": "#ffd7cc"
+        },
+        {
+          "id": "s4_day3_label",
+          "type": "text",
+          "label": "Mission day markers",
+          "positionExpr": [
+            "missionX(3)",
+            "missionY(3)",
+            "0.2"
+          ],
+          "text": "Day 3",
+          "color": "#ffd7cc"
+        },
+        {
+          "id": "s4_day4_label",
+          "type": "text",
+          "label": "Mission day markers",
+          "positionExpr": [
+            "missionX(4)",
+            "missionY(4)",
+            "0.2"
+          ],
+          "text": "Day 4",
+          "color": "#ffd7cc"
+        },
+        {
+          "id": "s4_day5_label",
+          "type": "text",
+          "label": "Mission day markers",
+          "positionExpr": [
+            "missionX(5)",
+            "missionY(5)",
+            "0.2"
+          ],
+          "text": "Day 5",
+          "color": "#ffd7cc"
+        },
+        {
+          "id": "s4_day6_label",
+          "type": "text",
+          "label": "Mission day markers",
+          "positionExpr": [
+            "missionX(6)",
+            "missionY(6)",
+            "0.2"
+          ],
+          "text": "Day 6",
+          "color": "#ffd7cc"
+        },
+        {
+          "id": "s4_day7_label",
+          "type": "text",
+          "label": "Mission day markers",
+          "positionExpr": [
+            "missionX(7)",
+            "missionY(7)",
+            "0.2"
+          ],
+          "text": "Day 7",
+          "color": "#ffd7cc"
+        },
+        {
+          "id": "s4_day8_label",
+          "type": "text",
+          "label": "Mission day markers",
+          "positionExpr": [
+            "missionX(8)",
+            "missionY(8)",
+            "0.2"
+          ],
+          "text": "Day 8",
+          "color": "#ffd7cc"
+        },
+        {
+          "id": "s4_day9_label",
+          "type": "text",
+          "label": "Mission day markers",
+          "positionExpr": [
+            "missionX(8.85)",
+            "missionY(8.85)",
+            "0.2"
+          ],
+          "text": "Day 9",
+          "color": "#ffd7cc"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Run the Mission",
+          "description": "Drive the nominal mission with real mission-day timing and a uniform distance scale.",
+          "add": [
+            {
+              "id": "s4_orion",
+              "type": "animated_vector",
+              "fromExpr": [
+                "missionX(day) - 0.078 * missionVx(day) / max(0.001, sqrt(missionVx(day)^2 + missionVy(day)^2))",
+                "missionY(day) - 0.078 * missionVy(day) / max(0.001, sqrt(missionVx(day)^2 + missionVy(day)^2))",
+                "0"
+              ],
+              "expr": [
+                "missionX(day)",
+                "missionY(day)",
+                "0"
+              ],
+              "color": "#88bbff",
+              "label": "Orion",
+              "opacity": 1,
+              "shader": {
+                "emissive": "#224466",
+                "specular": "#aaddff",
+                "shininess": 120
+              },
+              "panels": {
+                "color": "#7dd3fc",
+                "opacity": 0.95,
+                "length": 0.11,
+                "width": 0.026,
+                "thickness": 0.008,
+                "gap": 0.014,
+                "segments": 2
+              },
+              "width": 0.8,
+              "arrowScale": 0.4,
+              "shaftScale": 12
+            }
+          ],
+          "sliders": [
+            {
+              "id": "day",
+              "label": "Mission Day",
+              "min": 0,
+              "max": 9.1,
+              "default": 0,
+              "step": 0.001,
+              "animate": true,
+              "animateMode": "loop",
+              "duration": 36000
+            },
+            {
+              "id": "flyAlt",
+              "label": "Flyby Altitude (mi)",
+              "min": 4000,
+              "max": 6000,
+              "default": 4600,
+              "step": 50
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_info",
+              "content": "**Phase:** {{missionPhase(day)}}\n\n**Mission day:** {{toFixed(day, 2)}}\n\n**Distance from Earth center:** {{toFixed(distEarthKm(day), 0)}} km\n\n**Distance from Moon center:** {{toFixed(distMoonKm(day), 0)}} km\n\n**Moon angle:** {{toFixed(180 * moonTheta(day) / pi, 1)}} deg\n\n**Playback:** looping nominal mission; use **Moon Flyby** view to inspect closest approach",
+              "position": "top-left"
+            },
+            {
+              "id": "s4_status_info",
+              "content": "**Milestone bucket:** {{missionMilestone(day)}}\n\n**Comms blackout:** {{missionBlackout(day) > 0.5 ? \"Yes\" : \"No\"}}",
+              "position": "top-right"
+            },
+            {
+              "id": "s4_return_info",
+              "content": "**Return anchors:** about 25,000 mph at entry interface, about 400,000 ft altitude at atmospheric entry",
+              "position": "bottom-right"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

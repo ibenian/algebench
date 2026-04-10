@@ -68,11 +68,42 @@ export function renderKaTeX(text, displayMode) {
     );
     // Pre-pass 2: extract heading lines so LaTeX inside them isn't split apart.
     const headings = [];
-    const prepped = withTables.replace(/^(#{1,3})\s+(.+)$/gm, (_, hashes, content) => {
+    let prepped = withTables.replace(/^(#{1,3})\s+(.+)$/gm, (_, hashes, content) => {
         const sz = ['1.05em', '0.95em', '0.88em'][hashes.length - 1];
         headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${renderKaTeX(content, false)}</div>`);
         return `\x01H${headings.length - 1}\x01`;
     });
+    // Pre-pass 3: extract `code` spans so asterisks inside them
+    // (e.g. `*args`) aren't consumed by the bold/italic pass.
+    const codeSpans = [];
+    prepped = prepped.replace(/`(.+?)`/g, (match, inner) => {
+        codeSpans.push(inner);
+        return `\x01C${codeSpans.length - 1}\x01`;
+    });
+    // Pre-pass 4: extract $$ and $ math blocks so asterisks inside them
+    // (e.g. $T^*$, $A*B$) aren't consumed by the bold/italic pass.
+    const mathSpans = [];
+    prepped = prepped.replace(/(\$\$[\s\S]+?\$\$|\$[^$]+?\$)/g, (match) => {
+        mathSpans.push(match);
+        return `\x01M${mathSpans.length - 1}\x01`;
+    });
+    // Pre-pass 4: extract **bold** and *italic* spans that may contain $math$ inside,
+    // so the $ split doesn't break the markers apart.
+    const boldSpans = [];
+    prepped = prepped.replace(/\*\*(.+?)\*\*/g, (match, inner) => {
+        boldSpans.push(inner);
+        return `\x01B${boldSpans.length - 1}\x01`;
+    });
+    const italicSpans = [];
+    prepped = prepped.replace(/\*(.+?)\*/g, (match, inner) => {
+        italicSpans.push(inner);
+        return `\x01I${italicSpans.length - 1}\x01`;
+    });
+    // Restore math sentinels everywhere before the $ split
+    const restoreMath = s => s.replace(/\x01M(\d+)\x01/g, (m, idx) => mathSpans[+idx]);
+    prepped = restoreMath(prepped);
+    for (let i = 0; i < boldSpans.length; i++) boldSpans[i] = restoreMath(boldSpans[i]);
+    for (let i = 0; i < italicSpans.length; i++) italicSpans[i] = restoreMath(italicSpans[i]);
     const segments = prepped.split(/(\$\$[\s\S]+?\$\$|\$[^$]+?\$)/g);
     return segments.map((seg, i) => {
         if (i % 2 === 0) {
@@ -92,6 +123,9 @@ export function renderKaTeX(text, displayMode) {
                 }
                 if (t === '---') return '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.2);margin:4px 0">';
                 const inline = line
+                    .replace(/\x01B(\d+)\x01/g, (m, idx) => `<strong>${renderKaTeX(boldSpans[+idx], false)}</strong>`)
+                    .replace(/\x01I(\d+)\x01/g, (m, idx) => `<em>${renderKaTeX(italicSpans[+idx], false)}</em>`)
+                    .replace(/\x01C(\d+)\x01/g, (m, idx) => `<code>${codeSpans[+idx]}</code>`)
                     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\*(.+?)\*/g, '<em>$1</em>')
                     .replace(/`(.+?)`/g, '<code>$1</code>');

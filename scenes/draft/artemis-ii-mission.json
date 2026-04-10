@@ -1,10 +1,13 @@
 {
   "title": "Artemis II: Humanity Returns to the Moon",
+  "import": [
+    "cislunar-dynamics"
+  ],
   "scenes": [
     {
       "title": "The Earth-Moon Stage",
       "description": "Establish the vast scale of cislunar space so students can contextualize the Artemis II mission.",
-      "markdown": "# The Earth-Moon System\n\n## Scale of the System\n\nIn this scene, **1 unit = 10,000 km**. The key distances are:\n\n$$d_{\\text{Earth-Moon}} = 384{,}400 \\text{ km} \\approx 38.4 \\text{ units}$$\n\n$$R_{\\oplus} = 6{,}371 \\text{ km} \\approx 0.64 \\text{ units}$$\n\n$$R_{\\Moon} = 1{,}737 \\text{ km} \\approx 0.17 \\text{ units}$$\n\n## Size Comparison\n\nThe Moon is only about **27%** of Earth's radius — and at the correct scale of 384,400 km separation, the Moon appears tiny.\n\n$$\\frac{R_{\\Moon}}{R_{\\oplus}} = \\frac{1{,}737}{6{,}371} \\approx 0.273$$\n\n## How Far Is the Moon?\n\nThe Earth-Moon distance is approximately **30 Earth diameters**:\n\n$$\\frac{d_{\\text{Earth-Moon}}}{2R_{\\oplus}} = \\frac{384{,}400}{12{,}742} \\approx 30.2$$\n\nFor comparison, familiar orbital altitudes:\n\n| Orbit | Altitude | Model distance from Earth center |\n|---|---|---|\n| ISS | 400 km | 0.04 units above surface |\n| GPS | 20,200 km | 2.02 + 0.64 = 2.66 units |\n| Geostationary | 35,786 km | 3.58 + 0.64 = 4.22 units |\n| Moon | 384,400 km | 38.4 units |\n\n## Travel Time\n\nAt typical spacecraft speeds (~1 km/s average over coast phase), the journey takes:\n\n$$t = \\frac{384{,}400 \\text{ km}}{1 \\text{ km/s}} \\approx 384{,}400 \\text{ s} \\approx 4.4 \\text{ days}$$\n\nArtemis II is planned as a **~10-day mission** — fly out, loop around the Moon on a free-return trajectory, and return to Earth.\n\n## The Free-Return Trajectory\n\nA free-return trajectory is a figure-eight path that uses the Moon's gravity to redirect the spacecraft back toward Earth — no engine burn required at the Moon. It was used by Apollo and is the safety backbone of Artemis II.\n\n## Citations\n\n- NASA Moon Fact Sheet: https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html\n- NASA Earth Fact Sheet: https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html\n- Wikipedia: Earth-Moon system — https://en.wikipedia.org/wiki/Moon\n- Artemis II mission overview: https://www.nasa.gov/artemis-ii/",
+      "markdown": "# The Earth-Moon System\n\n## Scale of the System\n\nIn this scene, **1 unit = 10,000 km**. The key distances are:\n\n$$d_{\\text{Earth-Moon}} = 384{,}400 \\text{ km} \\approx 38.4 \\text{ units}$$\n\n$$R_{\\oplus} = 6{,}371 \\text{ km} \\approx 0.64 \\text{ units}$$\n\n$$R_{\\text{Moon}} = 1{,}737 \\text{ km} \\approx 0.17 \\text{ units}$$\n\n## Size Comparison\n\nThe Moon is only about **27%** of Earth's radius — and at the correct scale of 384,400 km separation, the Moon appears tiny.\n\n$$\\frac{R_{\\text{Moon}}}{R_{\\oplus}} = \\frac{1{,}737}{6{,}371} \\approx 0.273$$\n\n## How Far Is the Moon?\n\nThe Earth-Moon distance is approximately **30 Earth diameters**:\n\n$$\\frac{d_{\\text{Earth-Moon}}}{2R_{\\oplus}} = \\frac{384{,}400}{12{,}742} \\approx 30.2$$\n\nFor comparison, familiar orbital altitudes:\n\n| Orbit | Altitude | Model distance from Earth center |\n|---|---|---|\n| ISS | 400 km | 0.04 units above surface |\n| GPS | 20,200 km | 2.02 + 0.64 = 2.66 units |\n| Geostationary | 35,786 km | 3.58 + 0.64 = 4.22 units |\n| Moon | 384,400 km | 38.4 units |\n\n## Travel Time\n\nAt typical spacecraft speeds (~1 km/s average over coast phase), the journey takes:\n\n$$t = \\frac{384{,}400 \\text{ km}}{1 \\text{ km/s}} \\approx 384{,}400 \\text{ s} \\approx 4.4 \\text{ days}$$\n\nArtemis II is planned as a **~10-day mission** — fly out, loop around the Moon on a free-return trajectory, and return to Earth.\n\n## The Free-Return Trajectory\n\nA free-return trajectory is a figure-eight path that uses the Moon's gravity to redirect the spacecraft back toward Earth — no engine burn required at the Moon. It was used by Apollo and is the safety backbone of Artemis II.\n\n## Citations\n\n- NASA Moon Fact Sheet: https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html\n- NASA Earth Fact Sheet: https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html\n- Wikipedia: Earth-Moon system — https://en.wikipedia.org/wiki/Moon\n- Artemis II mission overview: https://www.nasa.gov/artemis-ii/",
       "prompt": "Guide students to appreciate the vastness of cislunar space. Use the scale model to build intuition: the ISS orbit is barely a hair's width above Earth's surface at this scale, while the Moon is 38 units away. Encourage exploration: What if the Moon were closer — how would that change orbital mechanics and travel time? Compare the Earth-Moon distance to everyday experiences — it's like traveling around Earth's equator about 9.5 times. Ask students to estimate how long it would take to drive to the Moon at highway speed (~100 km/h): about 160 days!",
       "range": [
         [
@@ -22,12 +25,12 @@
       ],
       "camera": {
         "position": [
-          0,
-          0,
-          3
+          19,
+          5,
+          25
         ],
         "target": [
-          0,
+          19,
           0,
           0
         ]
@@ -99,58 +102,70 @@
       ],
       "elements": [
         {
+          "id": "_mathbox_init_0",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
+        {
           "id": "deep_space_bg",
           "type": "skybox",
           "style": "gradient",
           "topColor": "#080818",
           "bottomColor": "#030310",
           "starCount": 2000
+        },
+        {
+          "id": "earth",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 0.637,
+          "color": "#3a7bd5",
+          "emissive": "#112244",
+          "opacity": 1.0
+        },
+        {
+          "id": "earth_label",
+          "type": "text",
+          "text": "Earth",
+          "position": [
+            0,
+            1.2,
+            0
+          ],
+          "color": "#ffffff"
+        },
+        {
+          "id": "moon",
+          "type": "sphere",
+          "center": [
+            38.4,
+            0,
+            0
+          ],
+          "radius": 0.17,
+          "color": "#aaaaaa",
+          "emissive": "#444444",
+          "opacity": 1.0
+        },
+        {
+          "id": "moon_label",
+          "type": "text",
+          "text": "Moon",
+          "position": [
+            38.4,
+            0.6,
+            0
+          ],
+          "color": "#dddddd"
         }
       ],
       "steps": [
-        {
-          "title": "Earth in Space",
-          "description": "This is Earth — our home planet with a radius of 6,371 km. In our model, 1 unit = 10,000 km.",
-          "camera": {
-            "position": [
-              0,
-              0,
-              3
-            ],
-            "target": [
-              0,
-              0,
-              0
-            ]
-          },
-          "add": [
-            {
-              "id": "earth",
-              "type": "sphere",
-              "center": [
-                0,
-                0,
-                0
-              ],
-              "radius": 0.64,
-              "color": "#3a7bd5",
-              "emissive": "#112244",
-              "opacity": 1.0
-            },
-            {
-              "id": "earth_label",
-              "type": "text",
-              "text": "Earth",
-              "position": [
-                0,
-                1.2,
-                0
-              ],
-              "color": "#ffffff"
-            }
-          ],
-          "remove": []
-        },
         {
           "title": "How Far Is the Moon?",
           "description": "The Moon is 384,400 km away — about 30 Earth diameters. Let's see it.",
@@ -199,49 +214,6 @@
           "remove": []
         },
         {
-          "title": "The Moon",
-          "description": "The Moon has a radius of just 1,737 km — about 27% of Earth's size. Notice how small it appears at this scale.",
-          "camera": {
-            "position": [
-              19,
-              3,
-              20
-            ],
-            "target": [
-              19,
-              0,
-              0
-            ]
-          },
-          "add": [
-            {
-              "id": "moon",
-              "type": "sphere",
-              "center": [
-                38.4,
-                0,
-                0
-              ],
-              "radius": 0.17,
-              "color": "#aaaaaa",
-              "emissive": "#444444",
-              "opacity": 1.0
-            },
-            {
-              "id": "moon_label",
-              "type": "text",
-              "text": "Moon",
-              "position": [
-                38.4,
-                0.6,
-                0
-              ],
-              "color": "#dddddd"
-            }
-          ],
-          "remove": []
-        },
-        {
           "title": "Scale Comparisons",
           "description": "For comparison: the ISS orbits just 400 km up — barely a speck at this scale. GPS satellites orbit at 20,200 km, and geostationary orbit is at 35,786 km.",
           "camera": {
@@ -273,8 +245,8 @@
               "type": "text",
               "text": "ISS orbit: 400 km",
               "position": [
-                0.5,
-                -1,
+                0.42,
+                -0.7,
                 0
               ],
               "color": "#88ff88"
@@ -295,8 +267,8 @@
               "type": "text",
               "text": "GPS: 20,200 km",
               "position": [
-                2,
-                -2,
+                1.85,
+                -0.8,
                 0
               ],
               "color": "#ffdd44"
@@ -317,8 +289,8 @@
               "type": "text",
               "text": "Geostationary: 35,786 km",
               "position": [
-                3.6,
-                -3,
+                3.0,
+                -1.15,
                 0
               ],
               "color": "#ff8844"
@@ -328,7 +300,7 @@
         },
         {
           "title": "The Journey Preview",
-          "description": "Artemis II will follow a free-return trajectory — a figure-eight path that uses the Moon's gravity to swing back toward Earth.",
+          "description": "This preview now uses the same mission construction as the simulation lesson: two Earth setup orbits from the departure sequence, then the nominal translunar coast, far-side flyby, and free-return leg. The path is frozen at the modeled closest-approach geometry so the flyby stays aligned with the fixed Moon marker in this scale view. Moon SOI entry marks where Orion enters the Moon's sphere of influence — the region where lunar gravity starts to dominate the flyby geometry.",
           "camera": {
             "position": [
               19,
@@ -343,18 +315,147 @@
           },
           "add": [
             {
-              "id": "trajectory",
+              "id": "moon_trajectory_arc",
               "type": "parametric_curve",
-              "x": "38.4 * (1 - cos(t)) / 2",
-              "y": "12 * sin(t)",
+              "x": "38.44 * cos(t)",
+              "y": "38.44 * sin(t)",
+              "z": "0",
+              "range": [
+                -0.2618,
+                0.2618
+              ],
+              "samples": 120,
+              "color": "#9aa4b2",
+              "opacity": 0.35,
+              "width": 1.2
+            },
+            {
+              "id": "marker_earth_apogee",
+              "type": "point",
+              "position": [
+                7.719,
+                0.814,
+                0
+              ],
+              "color": "#ffd166",
+              "size": 4
+            },
+            {
+              "id": "label_earth_apogee",
+              "type": "text",
+              "text": "Earth apogee",
+              "position": [
+                8.1,
+                1.15,
+                0
+              ],
+              "color": "#ffd166"
+            },
+            {
+              "id": "marker_tli",
+              "type": "point",
+              "position": [
+                0.275,
+                -1.394,
+                0
+              ],
+              "color": "#ff6b3d",
+              "size": 4
+            },
+            {
+              "id": "label_tli",
+              "type": "text",
+              "text": "TLI burn",
+              "position": [
+                -1.15,
+                -2.15,
+                0
+              ],
+              "color": "#ff6b3d"
+            },
+            {
+              "id": "marker_moon_soi_entry",
+              "type": "point",
+              "position": [
+                36.951,
+                -0.043,
+                0
+              ],
+              "color": "#a0c4ff",
+              "size": 4
+            },
+            {
+              "id": "label_moon_soi_entry",
+              "type": "text",
+              "text": "Moon SOI entry",
+              "position": [
+                34.9,
+                -0.95,
+                0
+              ],
+              "color": "#a0c4ff"
+            },
+            {
+              "id": "label_four_days_to_moon",
+              "type": "text",
+              "text": "4 days to Moon",
+              "position": [
+                31.9,
+                -1.95,
+                0
+              ],
+              "color": "#cbd5e1"
+            },
+            {
+              "id": "marker_closest_lunar_approach",
+              "type": "point",
+              "position": [
+                38.367,
+                0.259,
+                0
+              ],
+              "color": "#ff9f1c",
+              "size": 4
+            },
+            {
+              "id": "label_closest_lunar_approach",
+              "type": "text",
+              "text": "Closest lunar approach",
+              "position": [
+                40.15,
+                0.95,
+                0
+              ],
+              "color": "#ff9f1c"
+            },
+            {
+              "id": "trajectory_orbit_setup",
+              "type": "parametric_curve",
+              "x": "missionX(t, 4050) * cos(moonTheta(4.945395, 4050)) + missionY(t, 4050) * sin(moonTheta(4.945395, 4050)) - 0.04",
+              "y": "-missionX(t, 4050) * sin(moonTheta(4.945395, 4050)) + missionY(t, 4050) * cos(moonTheta(4.945395, 4050))",
               "z": "0",
               "range": [
                 0,
-                6.2832
+                1.0673611111111112
               ],
-              "samples": 256,
+              "samples": 1200,
               "color": "#ff6644",
-              "opacity": 0.5,
+              "opacity": 0.3,
+              "width": 1.5
+            },
+            {
+              "id": "trajectory_free_return",
+              "type": "parametric_curve",
+              "x": "missionX(t, 4050) * cos(moonTheta(4.945395, 4050)) + missionY(t, 4050) * sin(moonTheta(4.945395, 4050)) - 0.04",
+              "y": "-missionX(t, 4050) * sin(moonTheta(4.945395, 4050)) + missionY(t, 4050) * cos(moonTheta(4.945395, 4050))",
+              "z": "0",
+              "range": [
+                1.0673611111111112,
+                9
+              ],
+              "samples": 3600,
+              "color": "#ff6644",
+              "opacity": 0.6,
               "width": 2
             }
           ],
@@ -389,20 +490,9 @@
               "label": "You Are Here"
             },
             {
-              "id": "travel_time_label",
-              "type": "text",
-              "text": "~4 days to reach the Moon",
-              "position": [
-                10,
-                4,
-                0
-              ],
-              "color": "#cccccc"
-            },
-            {
               "id": "mission_time_label",
               "type": "text",
-              "text": "~10 day total mission",
+              "text": "~4 days to return",
               "position": [
                 10,
                 3,
@@ -503,7 +593,15 @@
           "description": "Profile view from the right"
         }
       ],
-      "elements": [],
+      "elements": [
+        {
+          "id": "_mathbox_init_1",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        }
+      ],
       "steps": [
         {
           "title": "The Full Stack",
@@ -824,12 +922,12 @@
           ]
         }
       ],
-      "markdown": "# SLS Block 1 & Orion Spacecraft\n\nThe **Space Launch System (SLS) Block 1** is NASA's new super heavy-lift launch vehicle, designed to send the Orion spacecraft and crew to the Moon for the first time since Apollo 17 in 1972.\n\n---\n\n## SLS Block 1 Specifications\n\n| Parameter | Value |\n|-----------|-------|\n| Total height | 98 m (322 ft) |\n| Gross liftoff mass | ~2,608,000 kg |\n| Liftoff thrust | ~39.1 MN |\n| Payload to TLI | ~27,000 kg |\n| First flight | November 16, 2022 (Artemis I) |\n\n---\n\n## Stage-by-Stage Breakdown\n\n### Solid Rocket Boosters (×2)\n- **Manufacturer**: Northrop Grumman\n- **Height**: 54 m each\n- **Diameter**: 3.71 m\n- **Thrust**: ~16 MN each (32 MN combined)\n- **Burn time**: ~126 seconds\n- **Propellant**: PBAN solid fuel\n- **Separation altitude**: ~48 km\n- **Note**: Derived from Space Shuttle SRBs, but with 5 segments instead of 4\n\n### Core Stage\n- **Manufacturer**: Boeing\n- **Height**: 64.6 m\n- **Diameter**: 8.4 m\n- **Engines**: 4× Aerojet Rocketdyne RS-25\n- **Thrust**: ~7.44 MN (combined)\n- **Burn time**: ~8 minutes\n- **Propellant**: Liquid hydrogen (LH₂) + Liquid oxygen (LOX)\n- **Note**: RS-25 engines are heritage Space Shuttle Main Engines\n\n### Interim Cryogenic Propulsion Stage (ICPS)\n- **Manufacturer**: United Launch Alliance (based on Delta Cryogenic Second Stage)\n- **Height**: ~13.7 m\n- **Diameter**: 5.05 m\n- **Engine**: 1× RL10 (11.2 kN vacuum thrust)\n- **Propellant**: LH₂ + LOX\n- **Mission role**: Two burns — one for circular parking orbit, one for Trans-Lunar Injection (TLI)\n\n---\n\n## Orion Spacecraft\n\nOrion consists of three main elements:\n\n### Crew Module (CM)\n- Pressurized cabin for up to 4 astronauts\n- Diameter: 5.03 m\n- Manufacturer: Lockheed Martin\n- Reusable for up to 10 flights\n\n### European Service Module (ESM)\n- Provides propulsion, power, thermal control, life support consumables\n- Manufacturer: Airbus Defence and Space (ESA contribution)\n- Main engine: AJ10 (26.7 kN)\n- 33× attitude-control thrusters\n\n### Launch Abort System (LAS)\n- Solid-fuel abort motor atop the CM\n- Can pull the CM away from a failing rocket in 0.3 seconds\n- Jettisoned after max-Q when no longer needed\n\n### Heat Shield\n- Avcoat ablative thermal protection\n- Must survive 2,760 °C re-entry from lunar return\n- Diameter: 5.03 m — largest heat shield ever flown\n\n---\n\n## Artemis II Crew\n\n| Astronaut | Role | Agency |\n|-----------|------|--------|\n| Reid Wiseman | Commander | NASA |\n| Victor Glover | Pilot | NASA |\n| Christina Koch | Mission Specialist | NASA |\n| Jeremy Hansen | Mission Specialist | CSA |\n\nArtemis II is a **crewed lunar flyby** — the first humans to travel to the Moon since Apollo 17. The mission will not land; it validates Orion's life-support systems with crew aboard on a free-return trajectory around the Moon.\n\n---\n\n## Why Staging Is Necessary\n\nThe **Tsiolkovsky Rocket Equation** governs all rocketry:\n\n$$\\Delta v = v_e \\ln\\!\\left(\\frac{m_0}{m_f}\\right)$$\n\nwhere $v_e$ is exhaust velocity, $m_0$ is initial mass, and $m_f$ is final (dry) mass.\n\nThe key insight: **propellant makes up roughly 85% of liftoff mass**. To reach the Moon, you need $\\Delta v \\approx 12{,}000$ m/s. With a single stage, you would need to carry all the tank structure and engines for the entire journey — an enormous mass penalty.\n\n**Staging solves this** by discarding empty tanks and engines at each phase:\n1. SRBs burn out at 48 km → jettisoned (save ~180,000 kg)\n2. Core Stage burns out → jettisoned (save ~850,000 kg)\n3. ICPS fires twice for orbit insertion and TLI → jettisoned\n4. Only Orion continues to the Moon\n\nEach stage shed is dead weight removed — so the remaining propellant pushes a much lighter vehicle, dramatically improving efficiency.\n\n---\n\n## Citations\n\n- [NASA SLS Overview](https://www.nasa.gov/space-launch-system/)\n- [Wikipedia — Space Launch System](https://en.wikipedia.org/wiki/Space_Launch_System)\n- [Wikipedia — Orion spacecraft](https://en.wikipedia.org/wiki/Orion_(spacecraft))\n- [NASA Artemis II Mission Page](https://www.nasa.gov/artemis/artemis-ii/)\n- [Tsiolkovsky rocket equation — Wikipedia](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation)"
+      "markdown": "# SLS Block 1 & Orion Spacecraft\n\nThe **Space Launch System (SLS) Block 1** is NASA's new super heavy-lift launch vehicle, designed to send the Orion spacecraft and crew to the Moon for the first time since Apollo 17 in 1972.\n\n---\n\n## SLS Block 1 Specifications\n\n| Parameter | Value |\n|-----------|-------|\n| Total height | 98 m (322 ft) |\n| Gross liftoff mass | ~2,608,000 kg |\n| Liftoff thrust | ~39.1 MN |\n| Payload to TLI | ~27,000 kg |\n| First flight | November 16, 2022 (Artemis I) |\n\n---\n\n## Stage-by-Stage Breakdown\n\n### Solid Rocket Boosters (×2)\n- **Manufacturer**: Northrop Grumman\n- **Height**: 54 m each\n- **Diameter**: 3.71 m\n- **Thrust**: ~16 MN each (32 MN combined)\n- **Burn time**: ~126 seconds = **2 min 6 s** = **2.1 min**\n- **Propellant**: PBAN solid fuel\n- **Separation altitude**: ~48 km\n- **Note**: Burn time means the boosters are actively producing thrust for 126 seconds before burnout and separation. Derived from Space Shuttle SRBs, but with 5 segments instead of 4\n\n### Core Stage\n- **Manufacturer**: Boeing\n- **Height**: 64.6 m\n- **Diameter**: 8.4 m\n- **Engines**: 4× Aerojet Rocketdyne RS-25\n- **Thrust**: ~7.44 MN (combined)\n- **Burn time**: ~8 minutes\n- **Propellant**: Liquid hydrogen (LH₂) + Liquid oxygen (LOX)\n- **Note**: RS-25 engines are heritage Space Shuttle Main Engines\n\n### Interim Cryogenic Propulsion Stage (ICPS)\n- **Manufacturer**: United Launch Alliance (based on Delta Cryogenic Second Stage)\n- **Height**: ~13.7 m\n- **Diameter**: 5.05 m\n- **Engine**: 1× RL10 (11.2 kN vacuum thrust)\n- **Propellant**: LH₂ + LOX\n- **Mission role**: Two burns — one for circular parking orbit, one for Trans-Lunar Injection (TLI)\n\n---\n\n## Orion Spacecraft\n\nOrion consists of three main elements:\n\n### Crew Module (CM)\n- Pressurized cabin for up to 4 astronauts\n- Diameter: 5.03 m\n- Manufacturer: Lockheed Martin\n- Reusable for up to 10 flights\n\n### European Service Module (ESM)\n- Provides propulsion, power, thermal control, life support consumables\n- Manufacturer: Airbus Defence and Space (ESA contribution)\n- Main engine: AJ10 (26.7 kN)\n- 33× attitude-control thrusters\n\n### Launch Abort System (LAS)\n- Solid-fuel abort motor atop the CM\n- Can pull the CM away from a failing rocket in 0.3 seconds\n- Jettisoned after max-Q when no longer needed\n\n### Heat Shield\n- Avcoat ablative thermal protection\n- Must survive 2,760 °C re-entry from lunar return\n- Diameter: 5.03 m — largest heat shield ever flown\n\n---\n\n## Artemis II Crew\n\n| Astronaut | Role | Agency |\n|-----------|------|--------|\n| Reid Wiseman | Commander | NASA |\n| Victor Glover | Pilot | NASA |\n| Christina Koch | Mission Specialist | NASA |\n| Jeremy Hansen | Mission Specialist | CSA |\n\nArtemis II is a **crewed lunar flyby** — the first humans to travel to the Moon since Apollo 17. The mission will not land; it validates Orion's life-support systems with crew aboard on a free-return trajectory around the Moon.\n\n---\n\n## Why Staging Is Necessary\n\nThe **Tsiolkovsky Rocket Equation** governs all rocketry:\n\n$$\\Delta v = v_e \\ln\\!\\left(\\frac{m_0}{m_f}\\right)$$\n\nwhere $v_e$ is exhaust velocity, $m_0$ is initial mass, and $m_f$ is final (dry) mass.\n\nThe key insight: **propellant makes up roughly 85% of liftoff mass**. To reach the Moon, you need $\\Delta v \\approx 12{,}000$ m/s. With a single stage, you would need to carry all the tank structure and engines for the entire journey — an enormous mass penalty.\n\n**Staging solves this** by discarding empty tanks and engines at each phase:\n1. SRBs burn out at 48 km → jettisoned (save ~180,000 kg)\n2. Core Stage burns out → jettisoned (save ~850,000 kg)\n3. ICPS fires twice for orbit insertion and TLI → jettisoned\n4. Only Orion continues to the Moon\n\nEach stage shed is dead weight removed — so the remaining propellant pushes a much lighter vehicle, dramatically improving efficiency.\n\n---\n\n## Citations\n\n- [NASA SLS Overview](https://www.nasa.gov/space-launch-system/)\n- [Wikipedia — Space Launch System](https://en.wikipedia.org/wiki/Space_Launch_System)\n- [Wikipedia — Orion spacecraft](https://en.wikipedia.org/wiki/Orion_(spacecraft))\n- [NASA Artemis II Mission Page](https://www.nasa.gov/artemis/artemis-ii/)\n- [Tsiolkovsky rocket equation — Wikipedia](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation)"
     },
     {
       "title": "Launch & Parking Orbit",
       "description": "From liftoff to orbit — why spacecraft don't fly directly to the Moon.",
-      "markdown": "# Launch & Parking Orbit\n\n## The Launch Sequence\n\nArtemis II launches from **Kennedy Space Center, Launch Complex 39B** — the same pad complex used by Apollo.\n\n### Timeline\n| Event | Time | Altitude | Speed |\n|---|---|---|---|\n| Liftoff | T+0 | 0 km | 0 km/s |\n| Max-Q | T+60s | ~12 km | ~0.5 km/s |\n| SRB separation | T+126s | 48 km | ~1.4 km/s |\n| Core stage cutoff | T+8 min | 185 km | ~7.8 km/s |\n| Parking orbit | T+12 min | 185 km | 7.79 km/s |\n\n## Why a Parking Orbit?\n\nThe Moon is a **moving target** — it orbits Earth at about 1 km/s. A parking orbit gives the crew time to:\n\n1. **Check spacecraft systems** before committing to the Moon\n2. **Wait for the right alignment** between the spacecraft's position and the Moon\n3. **Plan the precise TLI burn** timing\n\n## Orbital Speed\n\nFor a circular orbit, speed depends only on altitude:\n\n$$v = \\sqrt{\\frac{GM}{r}}$$\n\nwhere $GM_{\\oplus} = 398{,}600 \\text{ km}^3/\\text{s}^2$ and $r$ is the distance from Earth's center.\n\nAt 185 km altitude ($r = 6{,}556$ km):\n$$v = \\sqrt{\\frac{398{,}600}{6{,}556}} \\approx 7.79 \\text{ km/s}$$\n\nThat's about **28,000 km/h** — fast enough to circle Earth in 88 minutes!\n\n## The High Earth Orbit\n\nThe ICPS performs two burns:\n1. **First burn** (T+50 min): raises orbit to 185 × 2,222 km\n2. **Second burn** (T+1h 48m): stretches to 185 × 70,376 km — a 24-hour orbit\n\nThis High Earth Orbit (HEO) is the staging point for TLI.\n\n## Citations\n\n- NASA Artemis II Overview: https://www.nasa.gov/mission/artemis-ii/\n- Wikipedia: Space Launch System — https://en.wikipedia.org/wiki/Space_Launch_System\n- Wikipedia: Trans-lunar injection — https://en.wikipedia.org/wiki/Trans-lunar_injection",
+      "markdown": "# Launch & Parking Orbit\n\n## The Launch Sequence\n\nArtemis II launches from **Kennedy Space Center, Launch Complex 39B** — the same pad complex used by Apollo.\n\n### Timeline\n| Event | Time | Altitude | Speed |\n|---|---|---|---|\n| Liftoff | T+0 | 0 km | 0 km/s |\n| Max-Q | T+60s | ~12 km | ~0.5 km/s |\n| SRB separation | T+126s | 48 km | ~1.4 km/s |\n| Core stage cutoff | T+8 min | 185 km | ~7.8 km/s |\n| Parking orbit | T+12 min | 185 km | 7.79 km/s |\n\n`T+126s` means **126 seconds after liftoff**, which is **2 min 6 s** or **2.1 min**. For the SRBs, burn time means the boosters are actively producing thrust up to burnout; separation follows right after.\n\n## Why a Parking Orbit?\n\nThe Moon is a **moving target** — it orbits Earth at about 1 km/s. A parking orbit gives the crew time to:\n\n1. **Check spacecraft systems** before committing to the Moon\n2. **Wait for the right alignment** between the spacecraft's position and the Moon\n3. **Plan the precise TLI burn** timing\n\n## Orbital Speed\n\nFor a circular orbit, speed depends only on altitude:\n\n$$v = \\sqrt{\\frac{GM}{r}}$$\n\nwhere $GM_{\\oplus} = 398{,}600 \\text{ km}^3/\\text{s}^2$ and $r$ is the distance from Earth's center.\n\nAt 185 km altitude ($r = 6{,}556$ km):\n$$v = \\sqrt{\\frac{398{,}600}{6{,}556}} \\approx 7.79 \\text{ km/s}$$\n\nThat's about **28,000 km/h** — fast enough to circle Earth in 88 minutes!\n\n## The High Earth Orbit\n\nThe ICPS performs two burns:\n1. **First burn** (T+50 min): raises orbit to 185 × 2,222 km\n2. **Second burn** (T+1h 48m): stretches to 185 × 70,376 km — a 24-hour orbit\n\nThis High Earth Orbit (HEO) is the staging point for TLI.\n\n## Citations\n\n- NASA Artemis II Overview: https://www.nasa.gov/artemis-ii/\n- Wikipedia: Space Launch System — https://en.wikipedia.org/wiki/Space_Launch_System\n- Wikipedia: Trans-lunar injection — https://en.wikipedia.org/wiki/Trans-lunar_injection",
       "prompt": "You are teaching about launch mechanics and parking orbits. Emphasize that going to orbit is the hardest part — it takes enormous energy just to reach 7.8 km/s. The parking orbit is a staging area, like stopping at a gas station before a highway trip. Ask students: why does orbital speed decrease with altitude? (Because gravitational potential energy increases, leaving less kinetic energy.) Suggest exploring: what if we launched from a higher altitude — would it be easier?",
       "range": [
         [
@@ -908,6 +1006,13 @@
         }
       ],
       "elements": [
+        {
+          "id": "_mathbox_init_2",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
         {
           "id": "s2_skybox",
           "type": "skybox",
@@ -1284,7 +1389,7 @@
     {
       "title": "Trans-Lunar Injection — The Big Burn",
       "description": "The critical engine burn that commits Orion to a lunar trajectory.",
-      "markdown": "# Trans-Lunar Injection (TLI)\n\n## What is TLI?\n\nTrans-Lunar Injection is the propulsive maneuver that accelerates Orion from its parking orbit onto a trajectory toward the Moon. It's the point of no return — after this burn, Orion is committed to the lunar flyby.\n\n## The Burn\n\nThe European Service Module's **AJ10-190** engine fires for approximately **6 minutes**, adding **3.1 km/s** (Δv) to Orion's velocity.\n\n| Parameter | Value |\n|---|---|\n| Engine | AJ10-190 (refurbished Shuttle OMS) |\n| Thrust | 26.6 kN |\n| Burn duration | ~6.1 minutes |\n| Δv | ~3.1 km/s |\n| Propellant burned | ~8,600 kg |\n\n## The Vis-Viva Equation\n\nThe speed at any point in an orbit is given by:\n\n$$v^2 = GM\\left(\\frac{2}{r} - \\frac{1}{a}\\right)$$\n\nwhere:\n- $GM_{\\oplus} = 398{,}600 \\text{ km}^3/\\text{s}^2$\n- $r$ = current distance from Earth's center\n- $a$ = semi-major axis of the orbit\n\n### Before TLI (HEO at perigee)\n$$v = \\sqrt{398{,}600 \\left(\\frac{2}{6{,}556} - \\frac{1}{41{,}651}\\right)} \\approx 10.4 \\text{ km/s}$$\n\n### After TLI — the orbit's apogee reaches the Moon!\n\nBy adding just 3.1 km/s, the orbit stretches from 70,376 km apogee to **384,400 km** — the Moon's distance.\n\n## Energy Conservation During Coast\n\nAfter the engine shuts down, Orion coasts for 4 days. No thrust. Speed decreases as Orion climbs out of Earth's gravity well:\n\n$$\\frac{1}{2}v^2 - \\frac{GM}{r} = \\text{constant}$$\n\n- Near Earth: **~10 km/s** (kinetic energy dominates)\n- Near Moon: **~0.8 km/s** (potential energy dominates)\n\n## Citations\n\n- NASA Artemis II Mission: https://www.nasa.gov/mission/artemis-ii/\n- Wikipedia: Trans-lunar injection — https://en.wikipedia.org/wiki/Trans-lunar_injection\n- Wikipedia: Vis-viva equation — https://en.wikipedia.org/wiki/Vis-viva_equation\n- Wikipedia: European Service Module — https://en.wikipedia.org/wiki/European_Service_Module",
+      "markdown": "# Trans-Lunar Injection (TLI)\n\n## What is TLI?\n\nTrans-Lunar Injection is the propulsive maneuver that accelerates Orion from its parking orbit onto a trajectory toward the Moon. It's the point of no return — after this burn, Orion is committed to the lunar flyby.\n\n## The Burn\n\nThe European Service Module's **AJ10-190** engine fires for approximately **6 minutes**, adding **3.1 km/s** (Δv) to Orion's velocity.\n\n| Parameter | Value |\n|---|---|\n| Engine | AJ10-190 (refurbished Shuttle OMS) |\n| Thrust | 26.6 kN |\n| Burn duration | ~6.1 minutes |\n| Δv | ~3.1 km/s |\n| Propellant burned | ~8,600 kg |\n\n## The Vis-Viva Equation\n\nThe speed at any point in an orbit is given by:\n\n$$v^2 = GM\\left(\\frac{2}{r} - \\frac{1}{a}\\right)$$\n\nwhere:\n- $GM_{\\oplus} = 398{,}600 \\text{ km}^3/\\text{s}^2$\n- $r$ = current distance from Earth's center\n- $a$ = semi-major axis of the orbit\n\n### Before TLI (HEO at perigee)\n$$v = \\sqrt{398{,}600 \\left(\\frac{2}{6{,}556} - \\frac{1}{41{,}651}\\right)} \\approx 10.4 \\text{ km/s}$$\n\n### After TLI — the orbit's apogee reaches the Moon!\n\nBy adding just 3.1 km/s, the orbit stretches from 70,376 km apogee to **384,400 km** — the Moon's distance.\n\n## Energy Conservation During Coast\n\nAfter the engine shuts down, Orion coasts for 4 days. No thrust. Speed decreases as Orion climbs out of Earth's gravity well:\n\n$$\\frac{1}{2}v^2 - \\frac{GM}{r} = \\text{constant}$$\n\n- Near Earth: **~10 km/s** (kinetic energy dominates)\n- Near Moon: **~0.8 km/s** (potential energy dominates)\n\n## Citations\n\n- NASA Artemis II Mission: https://www.nasa.gov/artemis-ii/\n- Wikipedia: Trans-lunar injection — https://en.wikipedia.org/wiki/Trans-lunar_injection\n- Wikipedia: Vis-viva equation — https://en.wikipedia.org/wiki/Vis-viva_equation\n- Wikipedia: European Service Module — https://en.wikipedia.org/wiki/European_Service_Module",
       "prompt": "You are teaching TLI as the orbit-reshaping maneuver. The key insight: adding velocity at the right point changes the shape of the orbit. A small Δv at perigee has a huge effect on apogee — this is the Oberth effect. Ask students: what happens if the burn is too short? Too long? Connect to the vis-viva equation: v depends on both current position r and orbit size a. When a increases, the orbit reaches further.",
       "range": [
         [
@@ -1363,6 +1468,13 @@
         }
       ],
       "elements": [
+        {
+          "id": "_mathbox_init_3",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
         {
           "id": "s3_skybox",
           "type": "skybox",
@@ -1637,7 +1749,7 @@
         "id": "vis-viva-derivation",
         "title": "The Vis-Viva Equation",
         "technique": "derivation",
-        "goal": "v^2 = GM\\left(\\frac{2}{r} - \\frac{1}{a}\\right)",
+        "goal": "$$v^2 = GM\\left(\\frac{2}{r} - \\frac{1}{a}\\right)$$",
         "prompt": "Guide students through this derivation step by step. Emphasize that this single equation tells you the speed at ANY point in ANY orbit — it's the Swiss Army knife of orbital mechanics.",
         "steps": [
           {
@@ -1695,7 +1807,7 @@
     {
       "title": "Lunar Flyby & Free-Return Trajectory",
       "description": "Artemis II swings around the Moon's far side — gravity provides a free ride home.",
-      "markdown": "# Lunar Flyby & Free-Return Trajectory\n\n## The Free-Return Concept\n\nA **free-return trajectory** uses the Moon's gravity to redirect the spacecraft back toward Earth — **no engine burn required**. After TLI, if all propulsion fails, the crew comes home automatically.\n\nThis is the same safety principle that saved the Apollo 13 crew in 1970.\n\n## The Flyby\n\nArtemis II does **not** enter lunar orbit. Instead, it performs a **hyperbolic flyby**:\n\n| Parameter | Value |\n|---|---|\n| Closest approach | 6,513 km from surface |\n| Location | Lunar far side |\n| Time in lunar vicinity | ~3 hours |\n| Communications blackout | 30–50 minutes |\n| Max distance from Earth | ~400,000 km |\n\n## Gravity Assist\n\nAs Orion passes behind the Moon, lunar gravity bends its trajectory:\n\n$$\\Delta\\theta = 2 \\arcsin\\left(\\frac{1}{1 + \\frac{r_p v_\\infty^2}{GM_{\\text{Moon}}}}\\right)$$\n\nThe Moon's gravity provides a free \"turn\" without propellant — redirecting Orion back toward Earth.\n\n## Historical Significance\n\nAt closest approach, the Artemis II crew will be approximately **400,000 km from Earth** — potentially breaking the record set by Apollo 13 (400,171 km). Jeremy Hansen becomes the **first non-American** to travel beyond low Earth orbit.\n\n## What the Crew Sees\n\nDuring the far-side flyby, the crew sees:\n- The **lunar far side** — never visible from Earth\n- **Earthrise** as they swing around the Moon\n- Complete radio silence during the blackout period\n\n## Citations\n\n- NASA Artemis II Mission: https://www.nasa.gov/mission/artemis-ii/\n- Wikipedia: Free-return trajectory — https://en.wikipedia.org/wiki/Free-return_trajectory\n- Wikipedia: Gravity assist — https://en.wikipedia.org/wiki/Gravity_assist\n- Apollo 13 free-return: https://en.wikipedia.org/wiki/Apollo_13",
+      "markdown": "# Lunar Flyby & Free-Return Trajectory\n\n## The Free-Return Concept\n\nA **free-return trajectory** uses the Moon's gravity to redirect the spacecraft back toward Earth — **no engine burn required**. After TLI, if all propulsion fails, the crew comes home automatically.\n\nThis is the same safety principle that saved the Apollo 13 crew in 1970.\n\n## The Flyby\n\nArtemis II does **not** enter lunar orbit. Instead, it performs a **hyperbolic flyby**:\n\n| Parameter | Value |\n|---|---|\n| Closest approach | 6,513 km from surface |\n| Location | Lunar far side |\n| Time in lunar vicinity | ~3 hours |\n| Communications blackout | 30–50 minutes |\n| Max distance from Earth | ~400,000 km |\n\n## Gravity Assist\n\nAs Orion passes behind the Moon, lunar gravity bends its trajectory:\n\n$$\\Delta\\theta = 2 \\arcsin\\left(\\frac{1}{1 + \\frac{r_p v_\\infty^2}{GM_{\\text{Moon}}}}\\right)$$\n\nThe Moon's gravity provides a free \"turn\" without propellant — redirecting Orion back toward Earth.\n\n## Historical Significance\n\nAt closest approach, the Artemis II crew will be approximately **400,000 km from Earth** — potentially breaking the record set by Apollo 13 (400,171 km). Jeremy Hansen becomes the **first non-American** to travel beyond low Earth orbit.\n\n## What the Crew Sees\n\nDuring the far-side flyby, the crew sees:\n- The **lunar far side** — never visible from Earth\n- **Earthrise** as they swing around the Moon\n- Complete radio silence during the blackout period\n\n## Citations\n\n- NASA Artemis II Mission: https://www.nasa.gov/artemis-ii/\n- Wikipedia: Free-return trajectory — https://en.wikipedia.org/wiki/Free-return_trajectory\n- Wikipedia: Gravity assist — https://en.wikipedia.org/wiki/Gravity_assist\n- Apollo 13 free-return: https://en.wikipedia.org/wiki/Apollo_13",
       "prompt": "Emphasize the free-return trajectory as both a scientific achievement and a safety feature. The key insight: lunar gravity provides a free turn. Compare to Apollo 13 — same principle saved lives. Ask: why does the flyby happen on the far side? (Because the trajectory geometry requires passing behind the Moon to get the right deflection angle for Earth return.) Note the communications blackout — 30-50 minutes of silence as the Moon blocks radio signals.",
       "range": [
         [
@@ -1788,6 +1900,13 @@
         }
       ],
       "elements": [
+        {
+          "id": "_mathbox_init_4",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
         {
           "id": "s4_skybox",
           "type": "skybox",
@@ -2163,12 +2282,12 @@
     {
       "title": "Reentry — Threading the Needle",
       "description": "Returning at 11 km/s — the narrow corridor between burning up and bouncing off.",
-      "markdown": "# Reentry — Threading the Needle\n\n## The Challenge\n\nOrion returns from the Moon at **11.1 km/s** (40,000 km/h) — about **40% faster** than returning from low Earth orbit (7.8 km/s). This means:\n\n$$KE = \\frac{1}{2}mv^2$$\n\nThe kinetic energy per kilogram at 11.1 km/s vs 7.8 km/s:\n\n$$\\frac{KE_{\\text{lunar}}}{KE_{\\text{LEO}}} = \\frac{11.1^2}{7.8^2} = \\frac{123.2}{60.8} \\approx 2\\times$$\n\n**Twice the energy** must be dissipated as heat!\n\n## The Reentry Corridor\n\nThe spacecraft must hit a narrow band of entry angles:\n\n| Angle | Result |\n|---|---|\n| Too steep (> 7.5°) | Excessive heating and g-forces — crew danger |\n| Too shallow (< 5.3°) | Skip off atmosphere into space — no return |\n| Just right (5.3° – 7.5°) | Controlled deceleration |\n\nAt lunar return speeds, this corridor is only about **±1°** wide!\n\n## Skip Reentry\n\nOrion uses a **skip reentry** technique:\n1. **First dip**: Enter atmosphere, slow down, heat shield absorbs energy\n2. **Skip back up**: Rise back above the atmosphere briefly\n3. **Final descent**: Reenter for the second time at lower speed\n\nThis spreads the heating over two passes, reducing peak temperatures and g-forces.\n\n## Heat Shield\n\nOrion's **Avcoat** ablative heat shield (5.02 m diameter):\n- Peak temperature: **2,760°C** (5,000°F)\n- The ablator chars and erodes, carrying heat away\n- 186 individual Avcoat blocks form the shield\n\n## Parachute Sequence\n\n1. Drogue chutes deploy at ~7.6 km altitude\n2. Three main parachutes open at ~3 km\n3. Splashdown in the Pacific Ocean at ~33 km/h\n\n## Citations\n\n- NASA Orion Spacecraft: https://www.nasa.gov/exploration/systems/orion/\n- Wikipedia: Atmospheric entry — https://en.wikipedia.org/wiki/Atmospheric_entry\n- Wikipedia: Orion spacecraft — https://en.wikipedia.org/wiki/Orion_(spacecraft)\n- NASA Artemis II: https://www.nasa.gov/mission/artemis-ii/",
+      "markdown": "# Reentry — Threading the Needle\n\n## The Challenge\n\nOrion returns from the Moon at **11.1 km/s** (40,000 km/h) — about **40% faster** than returning from low Earth orbit (7.8 km/s). This means:\n\n$$KE = \\frac{1}{2}mv^2$$\n\nThe kinetic energy per kilogram at 11.1 km/s vs 7.8 km/s:\n\n$$\\frac{KE_{\\text{lunar}}}{KE_{\\text{LEO}}} = \\frac{11.1^2}{7.8^2} = \\frac{123.2}{60.8} \\approx 2\\times$$\n\n**Twice the energy** must be dissipated as heat!\n\n## The Reentry Corridor\n\nThe spacecraft must hit a narrow band of entry angles:\n\n| Angle | Result |\n|---|---|\n| Too steep (> 7.5°) | Excessive heating and g-forces — crew danger |\n| Too shallow (< 5.3°) | Skip off atmosphere into space — no return |\n| Just right (5.3° – 7.5°) | Controlled deceleration |\n\nAt lunar return speeds, this corridor is only about **±1°** wide!\n\n## Skip Reentry\n\nOrion uses a **skip reentry** technique:\n1. **First dip**: Enter atmosphere, slow down, heat shield absorbs energy\n2. **Skip back up**: Rise back above the atmosphere briefly\n3. **Final descent**: Reenter for the second time at lower speed\n\nThis spreads the heating over two passes, reducing peak temperatures and g-forces.\n\n## Heat Shield\n\nOrion's **Avcoat** ablative heat shield (5.02 m diameter):\n- Peak temperature: **2,760°C** (5,000°F)\n- The ablator chars and erodes, carrying heat away\n- 186 individual Avcoat blocks form the shield\n\n## Parachute Sequence\n\n1. Drogue chutes deploy at ~7.6 km altitude\n2. Three main parachutes open at ~3 km\n3. Splashdown in the Pacific Ocean at ~33 km/h\n\n## Citations\n\n- NASA Orion Spacecraft: https://www.nasa.gov/exploration/systems/orion/\n- Wikipedia: Atmospheric entry — https://en.wikipedia.org/wiki/Atmospheric_entry\n- Wikipedia: Orion spacecraft — https://en.wikipedia.org/wiki/Orion_(spacecraft)\n- NASA Artemis II: https://www.nasa.gov/artemis-ii/",
       "prompt": "Frame reentry as the most dangerous phase of the mission. The corridor is incredibly narrow — like threading a needle at Mach 33. The skip reentry technique is clever engineering: instead of one brutal deceleration, spread it over two gentler passes. Ask students: why is lunar return harder than ISS return? (2× the kinetic energy because v is 40% higher and KE goes as v².) Compare the heat shield temperature to familiar references: 2,760°C is hotter than lava (~1,200°C) and close to the melting point of steel (~1,500°C).",
       "range": [
         [
-          -10,
-          40
+          -5,
+          45
         ],
         [
           -25,
@@ -2242,6 +2361,13 @@
         }
       ],
       "elements": [
+        {
+          "id": "_mathbox_init_5",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
         {
           "id": "s5_skybox",
           "type": "skybox",
@@ -2757,7 +2883,7 @@
     {
       "title": "Full Mission Simulation",
       "description": "The complete Artemis II journey — launch to splashdown — with interactive time control.",
-      "markdown": "# Artemis II: Full Mission Simulation\n\n## Mission Profile\n\nYou are now in control of the complete Artemis II mission timeline. Use the **Mission Time** slider to scrub through all 10 days of the mission.\n\n### Mission Timeline\n| Day | Event |\n|---|---|\n| 0 | Launch from KSC, reach HEO |\n| 1 | Coast in HEO, systems checks |\n| 2 | **TLI burn** — 6 min, 3.1 km/s Δv |\n| 2–5 | Coast to Moon (speed decreasing) |\n| 5 | Enter Moon's sphere of influence |\n| 6 | **Lunar flyby** — 6,513 km closest approach |\n| 7–9 | Return coast |\n| 10 | **Reentry** at 11.1 km/s, **splashdown** |\n\n## Crew\n\n| Astronaut | Role | Note |\n|---|---|---|\n| Reid Wiseman | Commander | Navy pilot, ISS veteran |\n| Victor Glover | Pilot | First Black astronaut on a lunar mission |\n| Christina Koch | Mission Specialist 1 | Holds record for longest single spaceflight by a woman |\n| Jeremy Hansen | Mission Specialist 2 | First non-American beyond low Earth orbit |\n\n## Key Numbers\n\n| Parameter | Value |\n|---|---|\n| Launch mass | 2,610,000 kg |\n| Liftoff thrust | 39 MN |\n| TLI Δv | 3.1 km/s |\n| Earth-Moon distance | 384,400 km |\n| Lunar closest approach | 6,513 km |\n| Max distance from Earth | ~400,000 km |\n| Reentry speed | 11.1 km/s |\n| Total mission | ~10 days |\n\n## The Free-Return Trajectory\n\nThe figure-eight path ensures that if all propulsion fails after TLI, lunar gravity alone returns the crew safely to Earth. This was proven by Apollo 13 in 1970.\n\n## Data Sources\n\n- **NASA Artemis II Mission Overview**: https://www.nasa.gov/mission/artemis-ii/\n- **NASA SLS Fact Sheet**: https://www.nasa.gov/exploration/systems/sls/\n- **Wikipedia: Artemis II**: https://en.wikipedia.org/wiki/Artemis_II\n- **Wikipedia: Space Launch System**: https://en.wikipedia.org/wiki/Space_Launch_System\n- **Wikipedia: Orion (spacecraft)**: https://en.wikipedia.org/wiki/Orion_(spacecraft)\n- **Wikipedia: European Service Module**: https://en.wikipedia.org/wiki/European_Service_Module\n- **Wikipedia: Free-return trajectory**: https://en.wikipedia.org/wiki/Free-return_trajectory\n- **Wikipedia: Trans-lunar injection**: https://en.wikipedia.org/wiki/Trans-lunar_injection\n- **NASA Moon Fact Sheet**: https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html\n- **Live Science Artemis II Timeline**: https://www.livescience.com/\n- **SpaceNews Artemis 2 Flight Plan**: https://spacenews.com/",
+      "markdown": "# Artemis II: Full Mission Simulation\n\n## Mission Profile\n\nYou are now in control of the complete Artemis II mission timeline. Use the **Mission Time** slider to scrub through all 10 days of the mission.\n\n### Mission Timeline\n| Day | Event |\n|---|---|\n| 0 | Launch from KSC, reach HEO |\n| 1 | Coast in HEO, systems checks |\n| 2 | **TLI burn** — 6 min, 3.1 km/s Δv |\n| 2–5 | Coast to Moon (speed decreasing) |\n| 5 | Enter Moon's sphere of influence |\n| 6 | **Lunar flyby** — 6,513 km closest approach |\n| 7–9 | Return coast |\n| 10 | **Reentry** at 11.1 km/s, **splashdown** |\n\n## Crew\n\n| Astronaut | Role | Note |\n|---|---|---|\n| Reid Wiseman | Commander | Navy pilot, ISS veteran |\n| Victor Glover | Pilot | First Black astronaut on a lunar mission |\n| Christina Koch | Mission Specialist 1 | Holds record for longest single spaceflight by a woman |\n| Jeremy Hansen | Mission Specialist 2 | First non-American beyond low Earth orbit |\n\n## Key Numbers\n\n| Parameter | Value |\n|---|---|\n| Launch mass | 2,610,000 kg |\n| Liftoff thrust | 39 MN |\n| TLI Δv | 3.1 km/s |\n| Earth-Moon distance | 384,400 km |\n| Lunar closest approach | 6,513 km |\n| Max distance from Earth | ~400,000 km |\n| Reentry speed | 11.1 km/s |\n| Total mission | ~10 days |\n\n## The Free-Return Trajectory\n\nThe figure-eight path ensures that if all propulsion fails after TLI, lunar gravity alone returns the crew safely to Earth. This was proven by Apollo 13 in 1970.\n\n## Data Sources\n\n- **NASA Artemis II Mission Overview**: https://www.nasa.gov/artemis-ii/\n- **NASA SLS Fact Sheet**: https://www.nasa.gov/exploration/systems/sls/\n- **Wikipedia: Artemis II**: https://en.wikipedia.org/wiki/Artemis_II\n- **Wikipedia: Space Launch System**: https://en.wikipedia.org/wiki/Space_Launch_System\n- **Wikipedia: Orion (spacecraft)**: https://en.wikipedia.org/wiki/Orion_(spacecraft)\n- **Wikipedia: European Service Module**: https://en.wikipedia.org/wiki/European_Service_Module\n- **Wikipedia: Free-return trajectory**: https://en.wikipedia.org/wiki/Free-return_trajectory\n- **Wikipedia: Trans-lunar injection**: https://en.wikipedia.org/wiki/Trans-lunar_injection\n- **NASA Moon Fact Sheet**: https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html\n- **Live Science Artemis II Timeline**: https://www.livescience.com/\n- **SpaceNews Artemis 2 Flight Plan**: https://spacenews.com/",
       "prompt": "This is the capstone scene. The student has learned about every phase individually — now they see it all together. Encourage exploration: try scrubbing through the timeline slowly and notice how speed changes. Ask: at what point is the spacecraft moving fastest? (Near Earth, right after TLI.) At what point is it moving slowest? (Near the Moon, before the flyby.) Why does the return trip take the same time as the outbound? (The trajectory is symmetric in energy terms.) Discuss what the crew experiences at each phase. Highlight Jeremy Hansen's historic role.",
       "range": [
         [
@@ -2851,6 +2977,13 @@
         }
       ],
       "elements": [
+        {
+          "id": "_mathbox_init_6",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
         {
           "id": "s6_skybox",
           "type": "skybox",

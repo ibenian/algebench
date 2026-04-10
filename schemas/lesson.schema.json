@@ -1101,7 +1101,7 @@
         },
         "goal": {
           "type": "string",
-          "description": "Goal statement rendered with KaTeX. Shown at the top of the proof panel. Example: \"P(A|B) = \\\\frac{P(B|A)P(A)}{P(B)}\"."
+          "description": "Goal statement rendered with renderKaTeX. Use $...$ or $$...$$ delimiters for math — bare LaTeX renders as plain text. Example (display math): \"$$P(A|B) = \\\\frac{P(B|A)P(A)}{P(B)}$$\". Example (prose): \"Show that $P(A|B) = \\\\frac{P(B|A)P(A)}{P(B)}$\"."
         },
         "technique": {
           "type": "string",
@@ -1194,7 +1194,7 @@
       "properties": {
         "color": {
           "type": "string",
-          "enum": ["cyan", "yellow", "green", "orange", "magenta", "red", "blue", "pink", "white"],
+          "enum": ["cyan", "yellow", "green", "orange", "magenta", "red", "blue", "pink", "white", "gray"],
           "description": "Highlight color. Default: 'cyan'.",
           "default": "cyan"
         },

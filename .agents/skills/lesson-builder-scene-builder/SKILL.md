@@ -55,7 +55,7 @@ Before writing any JSON:
 1. **Read the scene outline** — understand the purpose, learning objective, visual strategy
 2. **Read the schema** — know every field, type, and constraint available
 3. **Load element type references** — read `reference/objects/<type>.md` for each element type used in the outline
-4. **Compute coordinates** ��� work out exact positions, ranges, and camera placement. Do the math first.
+4. **Compute coordinates** — work out exact positions, ranges, and camera placement. Do the math first.
 5. **Plan element IDs** — assign unique, descriptive IDs to every element you'll create
 6. **Plan cumulative state** — sketch which elements exist at each step (what's added, what's removed)
 
@@ -68,7 +68,7 @@ Produce the root scene object:
 - `range` — choose based on the coordinate values you computed. **Use equal spans on all three axes** for 3D space simulations so spheres and other geometry render undistorted.
 - `camera` — position for the best initial view of the scene content (in **data space**)
 - `views` — meaningful camera presets for this scene (at minimum: a default view and a face-on/2D view if applicable)
-- `elements` — base elements visible at step 0 (before any step is activated). Always include `axes` and `grid` unless the outline says otherwise.
+- `elements` — base elements visible at step 0 (before any step is activated). Always include `axes` and `grid` unless the outline says otherwise. **Every scene MUST include at least one `grid` element** — this is required for MathBox to initialize its render cycle and dismiss the loading splash screen. If the scene design doesn't call for a visible grid (e.g. space simulations with skybox), add an invisible grid: `{"id": "_mathbox_init", "type": "grid", "plane": "xz", "opacity": 0, "divisions": 1}`.
 
 ### Phase 3: Build Steps Sequentially
 
@@ -88,17 +88,18 @@ For each step in the outline, IN ORDER:
 If the scene outline includes a `proof_plan`:
 
 1. **Create the proof object** with `id`, `title`, `technique`, `goal`, `prompt`
+   - `goal` — rendered with `renderKaTeX`, so use `$...$` for inline math and `$$...$$` for display math. Can be pure math (e.g. `"$$I_{sp} = \\frac{v_e}{g_0}$$"`) or prose with inline math (e.g. `"Show that $P(A|B) = \\frac{P(B|A)P(A)}{P(B)}$"`). **Always include `$` delimiters** — bare LaTeX without `$` will render as plain text.
 2. **Build each proof step** from the skeleton:
    - `id` — unique identifier
-   - `type` ��� `given`, `step`, `conclusion`, or `remark`
+   - `type` — `given`, `step`, `conclusion`, or `remark`
    - `label` — concise heading
-   - `math` — full LaTeX expression with `\htmlClass{hl-name}{...}` highlight regions
+   - `math` — pure LaTeX expression, NO `$` delimiters (the renderer wraps it in `$$` automatically). Use `\htmlClass{hl-name}{...}` for highlight regions.
    - `highlights` — map of region names to `{color, label}` objects
    - `justification` — the mathematical reasoning (supports inline LaTeX)
    - `explanation` — prose explanation in markdown
    - `prompt` — AI agent hint for this proof step
    - `sceneStep` — integer index linking to the scene step where this proof step's visualization is shown
-3. **Verify highlight consistency** — every `\htmlClass{hl-X}` in `math` has a matching `highlights.hl-X` entry, and vice versa
+3. **Verify highlight consistency** — every `\htmlClass{hl-X}` in `math` has a matching `highlights.X` entry, and vice versa
 
 ---
 
@@ -113,6 +114,12 @@ If the scene outline includes a `proof_plan`:
   {"type":"axis","axis":"z","range":[-5,5],"color":"#4488ff","width":1.5,"label":"z"},
   {"type":"grid","plane":"xy","range":[-5,5],"color":[0.3,0.3,0.5],"opacity":0.15,"divisions":10}
 ]
+```
+
+**IMPORTANT — MathBox initialization:** Every scene MUST have at least one `grid` element in its base `elements`. MathBox requires a native element (grid, axis, point, or surface) to complete its render cycle and dismiss the loading splash screen. Scenes that use only Three.js elements (sphere, skybox, text, cylinder) without any MathBox element will show a stuck loading spinner. If no visible grid is desired, add an invisible one:
+
+```json
+{"id": "_mathbox_init", "type": "grid", "plane": "xz", "opacity": 0, "divisions": 1}
 ```
 
 ### Available types
@@ -350,7 +357,7 @@ Double-escape all backslashes: `\\vec{v}`, `\\frac{a}{b}`, `\\lambda`, `\\htmlCl
 - [ ] `range` fits all coordinates; equal spans for 3D simulations
 - [ ] Axis `range` matches scene `range`
 - [ ] `camera` in data space; custom `views` with descriptions
-- [ ] Base `elements` includes axes + grid (unless outline says otherwise)
+- [ ] Base `elements` includes axes + grid (unless outline says otherwise). **At minimum, an invisible grid must always be present.**
 - [ ] Every element has a unique `id`
 - [ ] Steps cumulative and consistent; each has `title` + `description`
 - [ ] All expressions use math.js syntax
@@ -371,3 +378,4 @@ Double-escape all backslashes: `\\vec{v}`, `\\frac{a}{b}`, `\\lambda`, `\\htmlCl
 | `{a}` in overlay | `{{a}}` |
 | Mismatched axis/scene range | Match them |
 | Non-uniform range spans | Equal spans on all axes |
+| No grid in scene elements | Always include at least an invisible grid (`opacity: 0`) — MathBox won't initialize without one |

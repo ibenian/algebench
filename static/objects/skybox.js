@@ -2,6 +2,7 @@ import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
 
 export function clearWorldStarfield() {
+    if (state._starfieldAnimId) { cancelAnimationFrame(state._starfieldAnimId); state._starfieldAnimId = null; }
     if (!state.worldStarfield || !state.three || !state.three.scene) return;
     state.three.scene.remove(state.worldStarfield);
     if (state.worldStarfield.geometry) state.worldStarfield.geometry.dispose();
@@ -74,6 +75,8 @@ export function configureWorldStarfield(spec) {
 
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const phases = new Float32Array(count);  // random phase offset for twinkle
 
     for (let i = 0; i < count; i++) {
         const z = Math.random() * 2 - 1;
@@ -93,6 +96,15 @@ export function configureWorldStarfield(spec) {
         positions[pi + 1] = w[1];
         positions[pi + 2] = w[2];
 
+        // Size variation: most stars small-medium, some bright, a few very bright
+        const r = Math.random();
+        sizes[i] = r < 0.6 ? size * (0.8 + Math.random() * 0.6)
+                 : r < 0.85 ? size * (1.5 + Math.random() * 1.0)
+                 : r < 0.95 ? size * (2.5 + Math.random() * 1.5)
+                 : size * (4.0 + Math.random() * 2.0);  // ~5% very bright stars
+
+        phases[i] = Math.random() * Math.PI * 2;
+
         const f = 1 - twinkle * Math.random();
         colors[pi] = baseColor.r * f;
         colors[pi + 1] = baseColor.g * f;
@@ -102,20 +114,66 @@ export function configureWorldStarfield(spec) {
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geom.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    geom.setAttribute('phase', new THREE.BufferAttribute(phases, 1));
 
-    const mat = new THREE.PointsMaterial({
-        size: size,
+    // Custom shader for per-star sizes and twinkle animation
+    const mat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0 },
+            uOpacity: { value: opacity },
+            uTwinkle: { value: twinkle },
+        },
+        vertexShader: `
+            attribute float size;
+            attribute float phase;
+            varying vec3 vColor;
+            varying float vPhase;
+            uniform float uTime;
+            uniform float uTwinkle;
+            void main() {
+                vColor = color;
+                vPhase = phase;
+                float flicker = 1.0 - uTwinkle * (0.5 + 0.5 * sin(uTime * (1.0 + fract(vPhase) * 3.0) + vPhase));
+                gl_PointSize = size * max(flicker, 0.1);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float uOpacity;
+            varying vec3 vColor;
+            varying float vPhase;
+            uniform float uTime;
+            uniform float uTwinkle;
+            void main() {
+                float d = length(gl_PointCoord - 0.5) * 2.0;
+                float flicker = 1.0 - uTwinkle * (0.5 + 0.5 * sin(uTime * (1.0 + fract(vPhase) * 3.0) + vPhase));
+                float alpha = smoothstep(1.0, 0.3, d) * uOpacity * max(flicker, 0.1);
+                gl_FragColor = vec4(vColor, alpha);
+            }
+        `,
         transparent: true,
-        opacity: opacity,
-        sizeAttenuation: true,
-        vertexColors: true,
         depthWrite: false,
+        vertexColors: true,
     });
 
     state.worldStarfield = new THREE.Points(geom, mat);
     state.worldStarfield.renderOrder = -1000;
     state.worldStarfield.frustumCulled = false;
     state.three.scene.add(state.worldStarfield);
+
+    // Animate twinkle (skip entirely when twinkle is off)
+    state._starfieldAnimId = null;
+    if (twinkle > 0) {
+        const thisStarfield = state.worldStarfield;
+        const startTime = performance.now();
+        function animateStarfield() {
+            if (!state.worldStarfield || state.worldStarfield !== thisStarfield) return;
+            mat.uniforms.uTime.value = (performance.now() - startTime) / 1000;
+            state._starfieldAnimId = requestAnimationFrame(animateStarfield);
+        }
+        animateStarfield();
+    }
 }
 
 export function renderSkybox(el) {

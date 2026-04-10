@@ -703,6 +703,7 @@ export function navigateTo(sceneIdx, stepIdx) {
             views: scene.views,
             functions: scene.functions,
             elements: scene.elements || [],
+            starfield: scene.starfield,
         };
         loadScene(baseSpec);
 
