@@ -152,7 +152,7 @@
               ],
               "color": "#3498db",
               "width": 4,
-              "label": "\\vec{v}"
+              "label": "$\\vec{v}$"
             }
           ],
           "remove": [],
@@ -188,12 +188,12 @@
               ],
               "color": "#e74c3c",
               "width": 5,
-              "label": "\\vec{F}_D"
+              "label": "$\\vec{F}_D$"
             },
             {
               "id": "text_drag",
               "type": "text",
-              "text": "Drag \\propto \\rho v^2",
+              "text": "$F_D \\propto \\rho v^2$",
               "position": [
                 -5,
                 14,
@@ -246,7 +246,7 @@
           "info": [
             {
               "id": "info_beta",
-              "content": "### Ballistic Coefficient\n$\\beta = \\frac{m}{C_d A} = \\frac{{{s1_mass}}}{1.5 \\times {{s1_area}}} = {{toFixed(s1_mass / (1.5 * s1_area), 1)}}$ kg/m$^2$\n\nDrag $F_D = \\frac{1}{2} \\rho v^2 C_d A$",
+              "content": "### Ballistic Coefficient\nAssume a blunt-capsule drag coefficient $C_d = 1.5$.\n\n$\\beta = \\frac{m}{C_d A} = \\frac{{{s1_mass}}}{1.5 \\times {{s1_area}}} = {{toFixed(s1_mass / (1.5 * s1_area), 1)}}\\ \\text{kg/m}^2$\n\n$F_D = \\frac{1}{2} \\rho v^2 C_d A$",
               "position": "top-right"
             }
           ]
@@ -254,7 +254,7 @@
       ]
     },
     {
-      "title": "Trajectory and The Entry Corridor",
+      "title": "Trajectory and the Entry Corridor",
       "description": "Understand that the entry angle must be shallow enough to avoid excessive G-forces, but steep enough to prevent skipping.",
       "markdown": "# The Re-entry Corridor\nImagine a narrow 3D tunnel. Enter above it, and you skip off the atmosphere back into space. Enter below it, and the deceleration forces and heating will crush and burn the spacecraft.\n\n# Allen-Eggers Peak Deceleration\nFor a purely ballistic entry, the maximum deceleration is $a_{\\text{max}} = \\frac{V_E^2 \\sin \\gamma}{2e H}$, independent of mass and drag coefficient. The density of the atmosphere is modeled exponentially as $\\rho = \\rho_0 e^{-h/H}$.",
       "prompt": "Guide the user to understand why the entry corridor is so narrow. Emphasize that too steep means burning up, and too shallow means skipping off. Discuss the Allen-Eggers Peak Deceleration theorem.",
@@ -430,8 +430,8 @@
             {
               "type": "parametric_curve",
               "id": "traj_steep",
-              "x": "(8.4 - t) * cos(0.5 + (s2_gamma - 5.5) * 0.02)",
-              "y": "(8.4 - t) * sin(0.5 - (s2_gamma - 5.5) * 0.02)",
+              "x": "(8.4 - t) * cos(0.59)",
+              "y": "(8.4 - t) * sin(0.41)",
               "z": "0",
               "range": [
                 0,
@@ -444,8 +444,8 @@
               "type": "point",
               "id": "capsule_steep",
               "position": [
-                "(8.4 - 1.5) * cos(0.5 + (s2_gamma - 5.5) * 0.02)",
-                "(8.4 - 1.5) * sin(0.5 - (s2_gamma - 5.5) * 0.02)",
+                "(8.4 - 1.5) * cos(0.59)",
+                "(8.4 - 1.5) * sin(0.41)",
                 "0"
               ],
               "color": "#e74c3c",
@@ -456,31 +456,16 @@
               "id": "steep_label",
               "text": "Crush & Burn",
               "position": [
-                "(8.4 - 1.5) * cos(0.5 + (s2_gamma - 5.5) * 0.02) + 0.5",
-                "(8.4 - 1.5) * sin(0.5 - (s2_gamma - 5.5) * 0.02) + 0.5",
+                "(8.4 - 1.5) * cos(0.59) + 0.5",
+                "(8.4 - 1.5) * sin(0.41) + 0.5",
                 "0"
               ],
               "color": "#e74c3c"
             }
           ],
           "remove": [],
-          "sliders": [
-            {
-              "id": "s2_gamma",
-              "label": "$\\gamma$ (deg)",
-              "min": 1,
-              "max": 12,
-              "default": 10,
-              "step": 0.1
-            }
-          ],
-          "info": [
-            {
-              "id": "gamma_info",
-              "content": "### Flight Path Angle\n$\\gamma = {{s2_gamma}}^\\circ$",
-              "position": "top-right"
-            }
-          ]
+          "sliders": [],
+          "info": []
         },
         {
           "title": "Too Shallow!",
@@ -535,10 +520,6 @@
             },
             {
               "type": "slider"
-            },
-            {
-              "type": "info",
-              "id": "gamma_info"
             }
           ],
           "sliders": [],
@@ -546,8 +527,8 @@
         },
         {
           "title": "Peak Deceleration",
-          "description": "The Allen-Eggers Peak Deceleration theorem tells us the maximum G-force depends primarily on the entry velocity and flight path angle, not the mass.",
-          "prompt": "Guide the student through the derivation of the Allen-Eggers Peak Deceleration equation. Focus on how density and drag relate to acceleration.",
+          "description": "The Allen-Eggers peak deceleration theorem says the maximum deceleration scales with entry velocity and flight path angle, not directly with the capsule mass. Use the sliders to see how steeper and faster entries raise the peak.",
+          "prompt": "Guide the student through the Allen-Eggers scaling. Tie the graph peak directly to the velocity and flight-path-angle sliders so the theorem is visible, not just stated.",
           "add": [
             {
               "type": "axis",
@@ -559,7 +540,7 @@
               ],
               "color": "#ffffff",
               "width": 1.5,
-              "label": "Altitude"
+              "label": "Entry Progress"
             },
             {
               "type": "axis",
@@ -571,13 +552,13 @@
               ],
               "color": "#ffffff",
               "width": 1.5,
-              "label": "G-Force"
+              "label": "Deceleration Proxy"
             },
             {
               "type": "parametric_curve",
               "id": "graph_gforce",
               "x": "10 + t",
-              "y": "4 * exp(-0.5 * (t - 2.5)^2)",
+              "y": "(0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180)) * exp(-0.5 * (t - 2.5)^2)",
               "z": "0",
               "range": [
                 0,
@@ -609,8 +590,31 @@
               "id": "shallow_label"
             }
           ],
-          "sliders": [],
-          "info": [],
+          "sliders": [
+            {
+              "id": "s2_peak_velocity",
+              "label": "$V_E$ (km/s)",
+              "min": 7.8,
+              "max": 11.2,
+              "default": 11,
+              "step": 0.1
+            },
+            {
+              "id": "s2_peak_gamma",
+              "label": "$\\gamma$ (deg)",
+              "min": 4,
+              "max": 8,
+              "default": 6,
+              "step": 0.1
+            }
+          ],
+          "info": [
+            {
+              "id": "peak_info",
+              "content": "### Peak-Deceleration Scaling\n$a_{\\text{max}} \\propto V_E^2 \\sin \\gamma$\n\n$V_E = {{s2_peak_velocity}}$ km/s\n$\\gamma = {{s2_peak_gamma}}^\\circ$\n\nScaled plot peak $\\approx {{toFixed(0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180), 2)}}$",
+              "position": "top-right"
+            }
+          ],
           "camera": {
             "position": [
               12.5,
@@ -677,7 +681,7 @@
     {
       "title": "Aerodynamic Heating and the Bow Shock",
       "description": "Understand why blunt bodies are used for reentry to create a detached bow shock.",
-      "markdown": "# Aerodynamic Heating and the Bow Shock\n\nA common misconception is that spacecraft heat up during re-entry because of friction with the air. In reality, the vast majority of the heating is caused by **adiabatic compression**.\n\n## The Blunt Body Solution\nIn 1958, H. Julian Allen and Alfred J. Eggers demonstrated that a blunt shape is far superior to a sharp, aerodynamic shape for re-entry. A blunt capsule plows through the atmosphere, creating a **detached bow shock**. The air squeezed between this shockwave and the capsule is violently compressed, heating up immensely. This super-heated cushion of air keeps the worst of the heat off the spacecraft's skin.\n\nIf a sharp-nosed vehicle were used, the shockwave would attach directly to the tip, concentrating all the thermal energy there and quickly melting the structure.\n\n## Stagnation Point Heating Rate\nThe heating is most intense at the **stagnation point**—the point on the heat shield where the airflow is brought to a complete stop. The convective heating rate $\\dot{q}_s$ at this point is given by:\n\n$$ \\dot{q}_s \\approx K \\sqrt{\\rho} V^3 $$\n\nWhere:\n- $\\rho$ is the atmospheric density\n- $V$ is the spacecraft's velocity\n- $K$ is a constant depending on the geometry\n\nBecause heating scales with the *cube* of velocity ($V^3$), entering the atmosphere at lunar return speeds ($11 \\text{ km/s}$) generates exponentially more heat than returning from Low Earth Orbit ($7.8 \\text{ km/s}$).",
+      "markdown": "# Aerodynamic Heating and the Bow Shock\n\nA common misconception is that spacecraft heat up during re-entry because of friction with the air. In reality, the vast majority of the heating is caused by **adiabatic compression**.\n\n## The Blunt Body Solution\nIn 1958, H. Julian Allen and Alfred J. Eggers demonstrated that a blunt shape is far superior to a sharp, aerodynamic shape for re-entry. A blunt capsule plows through the atmosphere, creating a **detached bow shock**. The air squeezed between this shockwave and the capsule is violently compressed, heating up immensely. This super-heated cushion of air keeps the worst of the heat off the spacecraft's skin.\n\nIf a sharp-nosed vehicle were used, the shockwave would attach directly to the tip, concentrating all the thermal energy there and quickly melting the structure.\n\n## Stagnation Point Heating Rate\nThe heating is most intense at the **stagnation point**\u2014the point on the heat shield where the airflow is brought to a complete stop. The convective heating rate $\\dot{q}_s$ at this point is given by:\n\n$$ \\dot{q}_s \\approx K \\sqrt{\\rho} V^3 $$\n\nWhere:\n- $\\rho$ is the atmospheric density\n- $V$ is the spacecraft's velocity\n- $K$ is a constant depending on the geometry\n\nBecause heating scales with the *cube* of velocity ($V^3$), a lunar-return speed of $11\\,\\text{km/s}$ produces about $2.81\\times$ the convective heating of a $7.8\\,\\text{km/s}$ LEO return from speed alone.",
       "prompt": "You are a tutor explaining the physics of atmospheric entry. Emphasize that heating is due to adiabatic compression, not friction. Guide the student to experiment with the bluntness slider to see how the bow shock detaches. Ask follow up questions like: 'If velocity doubles, how much does the heating rate increase according to the V^3 law?'",
       "range": [
         [
@@ -733,8 +737,8 @@
       "steps": [
         {
           "title": "The Friction Misconception",
-          "description": "A common misconception is that spacecraft heat up due to friction with the air. While a sharp nose is aerodynamic, it absorbs all the heat directly into its tip, melting it.",
-          "prompt": "Explain why a sharp nose is bad for re-entry. It creates an attached shockwave that concentrates heat right at the tip.",
+          "description": "A common misconception is that reentry heating is mostly friction. A sharp nose actually creates an attached shock that concentrates the hottest compressed gas right at the tip.",
+          "prompt": "Correct the friction misconception directly. Explain why a sharp nose is bad for re-entry: it creates an attached shockwave that concentrates heating at the tip.",
           "add": [
             {
               "type": "polygon",
@@ -772,7 +776,7 @@
             {
               "type": "text",
               "id": "label_friction",
-              "text": "Friction Heating",
+              "text": "Attached shock, concentrated heating",
               "position": [
                 2,
                 1.5,
@@ -838,7 +842,7 @@
             {
               "type": "vector_field",
               "id": "flow_blunt",
-              "fx": "x > 0 and x < 2 ? (-4 + 3*s3_bluntness) : -4",
+              "fx": "x > 0 ? (x < 2 ? (-4 + 3*s3_bluntness) : -4) : -4",
               "fy": "x < 2 ? (y > 0 ? 2 - s3_bluntness : -2 + s3_bluntness) : 0",
               "fz": "0",
               "density": 4,
@@ -884,8 +888,8 @@
         },
         {
           "title": "Stagnation Point Heating",
-          "description": "The convective heating rate at the stagnation point is proportional to the cube of the velocity. Faster entries, like returning from the Moon, generate exponentially more heat.",
-          "prompt": "Highlight the stagnation point where heating is most intense. Explain the V^3 relationship.",
+          "description": "The convective heating rate at the stagnation point is proportional to the cube of the velocity. Faster entries, like returning from the Moon, generate much larger heat loads.",
+          "prompt": "Highlight the stagnation point where heating is most intense. Explain the $V^3$ relationship and compare LEO return with lunar return.",
           "add": [
             {
               "type": "parametric_curve",
@@ -941,7 +945,7 @@
     },
     {
       "title": "Comparing Spacecraft Profiles",
-      "description": "Compare the direct entry of Apollo/Dragon with the skip-entry maneuver of Artemis 2.",
+      "description": "Compare the direct entry of Apollo and Dragon with the skip-entry maneuver of Artemis 2.",
       "markdown": "# Comparing Spacecraft Profiles\n\nDifferent spacecraft use different reentry trajectories to manage aerodynamic heating and deceleration (G-forces).\n\n### Dragon LEO Return\nReturning from Low Earth Orbit (LEO), a Crew Dragon enters at about $7.8 \\text{ km/s}$ with a shallow angle. Its heat load and G-forces are relatively moderate.\n\n### Apollo Lunar Direct Entry\nReturning from the Moon, Apollo entered at $11 \\text{ km/s}$. It used a direct entry, diving deeper to scrub speed quickly, resulting in very high G-forces and intense heat loads.\n\n### Artemis Skip Entry\nArtemis (Orion) uses a **Skip Entry**: A re-entry trajectory where the spacecraft dips into the atmosphere, uses lift to exit back into space to cool down, and then performs a final descent.\n*Intuition:* Like skipping a stone across a pond to bleed off speed and heat in two stages instead of one.\n\n### Bank Angle Steering\nBecause the capsule has an offset center of mass, it naturally generates lift. By rolling the capsule around its velocity axis (changing the bank angle), the lift vector points up, down, or sideways, steering the capsule without any wings.",
       "prompt": "Ensure the graphs clearly distinguish the single massive peak of Apollo vs the two smaller peaks of Artemis. The colors are Dragon (blue), Apollo (red), Artemis (green), and Lift Vector (orange).",
       "range": [
@@ -1217,8 +1221,8 @@
         },
         {
           "title": "Bank Angle Steering",
-          "description": "How does it skip? Capsules have an offset center of mass, generating lift. By rolling the capsule (changing the bank angle), the lift vector can point up (to skip) or down (to dig in).",
-          "prompt": "Guide the user to play with the Bank Angle slider to see how rotating the lift vector affects the spacecraft's path.",
+          "description": "How does it skip? Capsules have an offset center of mass, generating lift. By rolling the capsule, the lift vector tilts upward, downward, or sideways, changing the direction the path bends.",
+          "prompt": "Guide the user to play with the Bank Angle slider and watch both the lift vector and the projected flight-path bend rotate together.",
           "add": [
             {
               "id": "lift_vec",
@@ -1235,7 +1239,7 @@
               ],
               "color": "#f39c12",
               "width": 5,
-              "label": "\\vec{L}"
+              "label": "$\\vec{L}$"
             },
             {
               "id": "artemis_pt_mid",
@@ -1247,13 +1251,27 @@
               ],
               "color": "#2ecc71",
               "size": 10
+            },
+            {
+              "id": "bank_path",
+              "type": "parametric_curve",
+              "x": "5 + t",
+              "y": "2 + 0.25 * t * cos(s4_bank_angle * pi / 180)",
+              "z": "2 + 0.25 * t * sin(s4_bank_angle * pi / 180)",
+              "range": [
+                0,
+                4
+              ],
+              "color": "#f39c12",
+              "width": 3,
+              "opacity": 0.8
             }
           ],
           "remove": [],
           "sliders": [
             {
               "id": "s4_bank_angle",
-              "label": "Bank Angle ($^\\circ$)",
+              "label": "Bank Angle (deg)",
               "min": -180,
               "max": 180,
               "default": 0,
@@ -1263,7 +1281,7 @@
           "info": [
             {
               "id": "bank_info",
-              "content": "### Lift Steering\nBank Angle: ${{s4_bank_angle}}^\\circ$\nLift Vector rotates to steer the capsule.",
+              "content": "### Lift Steering\nBank Angle: ${{s4_bank_angle}}^\\circ$\n\nVertical lift $\\propto \\cos \\phi = {{toFixed(cos(s4_bank_angle * pi / 180), 2)}}$\nLateral lift $\\propto \\sin \\phi = {{toFixed(sin(s4_bank_angle * pi / 180), 2)}}$",
               "position": "top-right"
             }
           ]
@@ -1272,8 +1290,8 @@
     },
     {
       "title": "Splashdown Dynamics",
-      "description": "Understand terminal velocity under parachutes and the physics of water impact.",
-      "markdown": "# Splashdown Dynamics\n\nAfter surviving the intense heat of reentry, a spacecraft must decelerate to a safe landing speed. In the lower, thicker atmosphere, capsules like Apollo, Crew Dragon, and Orion deploy a series of parachutes to increase their drag area and reduce their **terminal velocity** before splashdown.\n\n### Terminal Velocity\nWhen a capsule falls, gravity pulls it downward ($F_g = mg$) while aerodynamic drag pushes upward ($F_d = \\frac{1}{2}\\rho V^2 C_d A$). As the capsule accelerates, drag increases until it perfectly balances gravity:\n\n$$F_g = F_d$$\n\n$$mg = \\frac{1}{2}\\rho V_t^2 C_d A$$\n\nSolving for velocity gives the terminal velocity $V_t$:\n\n$$V_t = \\sqrt{\\frac{2mg}{\\rho C_d A}}$$\n\n### The Role of Parachutes\nBy deploying parachutes, the spacecraft massively increases its cross-sectional area $A$ and drag coefficient $C_d$. According to the terminal velocity equation, increasing $A$ in the denominator dramatically reduces $V_t$, allowing the crew to splash down safely at around 8 m/s (18 mph).",
+      "description": "Understand terminal velocity under parachutes and how stopping time in water sets the final splashdown loads.",
+      "markdown": "# Splashdown Dynamics\n\nAfter surviving the intense heat of reentry, a spacecraft must decelerate to a safe landing speed. In the lower, thicker atmosphere, capsules like Apollo, Crew Dragon, and Orion deploy a series of parachutes to increase their drag area and reduce their **terminal velocity** before splashdown.\n\n### Terminal Velocity\nWhen a capsule falls, gravity pulls it downward ($F_g = mg$) while aerodynamic drag pushes upward ($F_d = \\frac{1}{2}\\rho V^2 C_d A$). As the capsule accelerates, drag increases until it perfectly balances gravity:\n\n$$F_g = F_d$$\n\n$$mg = \\frac{1}{2}\\rho V_t^2 C_d A$$\n\nSolving for velocity gives the terminal velocity $V_t$:\n\n$$V_t = \\sqrt{\\frac{2mg}{\\rho C_d A}}$$\n\n### The Role of Parachutes\nBy deploying parachutes, the spacecraft massively increases its cross-sectional area $A$ and drag coefficient $C_d$. According to the terminal velocity equation, increasing $A$ in the denominator dramatically reduces $V_t$, allowing the crew to approach a safe splashdown speed.\n\n### Water Impact Loads\nEven after the parachutes do their job, the capsule still reaches the ocean with nonzero speed. If the vertical speed just before contact is $V_t$ and the water brings the capsule to rest over a stopping time $\\Delta t$, then the average deceleration is roughly\n\n$$a_{\\text{impact}} \\approx \\frac{V_t}{\\Delta t}$$\n\nand the corresponding load factor is\n\n$$n \\approx \\frac{a_{\\text{impact}}}{g}.$$\n\nA softer, longer splashdown reduces the deceleration the crew feels.",
       "prompt": "Emphasize how terminal velocity is reached when drag equals gravity. Guide the student to see how parachute area inversely affects the final velocity. Suggest asking 'What would happen if the atmosphere were thinner (like on Mars)?'",
       "range": [
         [
@@ -1461,7 +1479,7 @@
         {
           "title": "Parachute Deployment",
           "description": "Drogue and then main parachutes are deployed. This massively increases the cross-sectional area and drag coefficient, causing rapid deceleration.",
-          "prompt": "Highlight the slider for Parachute Area. Explain how deploying the chute causes an immediate spike in drag force.",
+          "prompt": "Highlight the slider for Parachute Area. Explain how deploying the chute causes an immediate spike in drag force and lowers the eventual terminal speed.",
           "add": [
             {
               "id": "parachute",
@@ -1524,7 +1542,7 @@
               ],
               "toExpr": [
                 "0",
-                "12 + s5_chute_area/50",
+                "12 + s5_chute_area/150",
                 "0"
               ],
               "color": "#e74c3c",
@@ -1541,10 +1559,10 @@
             {
               "id": "s5_chute_area",
               "label": "Parachute Area $A$",
-              "min": 10,
-              "max": 500,
-              "default": 10,
-              "step": 10,
+              "min": 100,
+              "max": 800,
+              "default": 400,
+              "step": 25,
               "animate": true,
               "duration": 3000
             }
@@ -1552,7 +1570,7 @@
           "info": [
             {
               "id": "info_drag",
-              "content": "### Aerodynamic Drag\n$F_d \\propto A$\nArea: $A = {{s5_chute_area}}$ m$^2$",
+              "content": "### Aerodynamic Drag\n$F_d \\propto A$\n$A = {{s5_chute_area}}\\ \\text{m}^2$",
               "position": "top-right"
             }
           ]
@@ -1583,16 +1601,140 @@
           "remove": [
             {
               "id": "vec_drag_chute"
+            },
+            {
+              "type": "info",
+              "id": "info_drag"
             }
           ],
           "sliders": [],
           "info": [
             {
               "id": "info_terminal",
-              "content": "### Equilibrium\n$\\Sigma F = 0$\n$F_g = F_d$\n$V_t = \\sqrt{\\frac{C}{A}} = {{toFixed(sqrt(16000 / s5_chute_area), 1)}}$ m/s",
+              "content": "### Terminal Velocity\nAssume $m = 5000\\ \\text{kg}$, $\\rho = 1.2\\ \\text{kg/m}^3$, and $C_d = 1.6$.\n\n$F_g = F_d$\n\n$V_t = \\sqrt{\\frac{2mg}{\\rho C_d A}} = {{toFixed(sqrt((2 * 5000 * 9.81) / (1.2 * 1.6 * s5_chute_area)), 1)}}\\ \\text{m/s}$",
               "position": "top-right"
             }
           ]
+        },
+        {
+          "title": "Water Impact Loads",
+          "description": "Even under parachutes, the capsule still hits the water with nonzero speed. The shorter the stopping time in water, the larger the splashdown load on the crew.",
+          "prompt": "Connect the parachute-limited terminal speed to the final splashdown. Ask the user to vary the stopping-time slider and notice how a shorter stop means a harsher impact.",
+          "add": [
+            {
+              "id": "capsule_splash",
+              "type": "point",
+              "position": [
+                0,
+                0.8,
+                0
+              ],
+              "color": "#ffffff",
+              "size": 18,
+              "label": "Capsule"
+            },
+            {
+              "id": "vec_gravity_splash",
+              "type": "vector",
+              "from": [
+                0,
+                0.8,
+                0
+              ],
+              "to": [
+                0,
+                -2.2,
+                0
+              ],
+              "color": "#2ecc71",
+              "width": 4,
+              "label": "$F_g$"
+            },
+            {
+              "id": "vec_water",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0.8,
+                0
+              ],
+              "toExpr": [
+                "0",
+                "0.8 + 0.6 * sqrt((2 * 5000 * 9.81) / (1.2 * 1.6 * s5_chute_area)) / (9.81 * s5_stop_time)",
+                "0"
+              ],
+              "color": "#f1c40f",
+              "width": 5,
+              "label": "$F_{\\text{water}}$"
+            },
+            {
+              "id": "impact_ring",
+              "type": "parametric_curve",
+              "x": "1.2 * cos(t)",
+              "y": "0",
+              "z": "1.2 * sin(t)",
+              "range": [
+                0,
+                6.2832
+              ],
+              "color": "#ffffff",
+              "width": 2,
+              "opacity": 0.5
+            }
+          ],
+          "remove": [
+            {
+              "id": "capsule"
+            },
+            {
+              "id": "vec_gravity"
+            },
+            {
+              "id": "vec_drag_terminal"
+            },
+            {
+              "id": "parachute"
+            },
+            {
+              "id": "cords1"
+            },
+            {
+              "id": "cords2"
+            },
+            {
+              "type": "info",
+              "id": "info_terminal"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "s5_stop_time",
+              "label": "Water Stop Time (s)",
+              "min": 0.5,
+              "max": 3,
+              "default": 1.5,
+              "step": 0.1
+            }
+          ],
+          "info": [
+            {
+              "id": "info_impact",
+              "content": "### Water Impact\nUsing the same $V_t$ from the previous step,\n\n$a_{\\text{impact}} \\approx \\frac{V_t}{\\Delta t} = {{toFixed(sqrt((2 * 5000 * 9.81) / (1.2 * 1.6 * s5_chute_area)) / s5_stop_time, 1)}}\\ \\text{m/s}^2$\n\n$n \\approx \\frac{a_{\\text{impact}}}{g} = {{toFixed(sqrt((2 * 5000 * 9.81) / (1.2 * 1.6 * s5_chute_area)) / (9.81 * s5_stop_time), 1)}}\\ g$",
+              "position": "top-right"
+            }
+          ],
+          "camera": {
+            "position": [
+              0,
+              4,
+              22
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
         }
       ],
       "proof": {
