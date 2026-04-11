@@ -430,48 +430,79 @@
             {
               "type": "parametric_curve",
               "id": "traj_steep",
-              "x": "(8.4 - t) * cos(0.59)",
-              "y": "(8.4 - t) * sin(0.41)",
+              "x": "(8.4 - t) * cos(0.5 + (s2_gamma - 5.5) * 0.02)",
+              "y": "(8.4 - t) * sin(0.5 - (s2_gamma - 5.5) * 0.02)",
               "z": "0",
               "range": [
                 0,
                 2
               ],
               "color": "#e74c3c",
-              "width": 3
+              "width": 3,
+              "opacity": "s2_gamma > 7 ? 1 : 0"
             },
             {
               "type": "point",
               "id": "capsule_steep",
               "position": [
-                "(8.4 - 1.5) * cos(0.59)",
-                "(8.4 - 1.5) * sin(0.41)",
+                "(8.4 - 1.5) * cos(0.5 + (s2_gamma - 5.5) * 0.02)",
+                "(8.4 - 1.5) * sin(0.5 - (s2_gamma - 5.5) * 0.02)",
                 "0"
               ],
               "color": "#e74c3c",
-              "size": 8
+              "size": 8,
+              "opacity": "s2_gamma > 7 ? 1 : 0"
             },
             {
               "type": "text",
               "id": "steep_label",
               "text": "Crush & Burn",
               "position": [
-                "(8.4 - 1.5) * cos(0.59) + 0.5",
-                "(8.4 - 1.5) * sin(0.41) + 0.5",
+                "(8.4 - 1.5) * cos(0.5 + (s2_gamma - 5.5) * 0.02) + 0.5",
+                "(8.4 - 1.5) * sin(0.5 - (s2_gamma - 5.5) * 0.02) + 0.5",
                 "0"
               ],
-              "color": "#e74c3c"
-            }
-          ],
-          "remove": [],
-          "sliders": [],
-          "info": []
-        },
-        {
-          "title": "Too Shallow!",
-          "description": "If the angle is too shallow, the spacecraft skips off the atmosphere back into space, potentially missing the landing zone.",
-          "prompt": "Point out the bounce trajectory. Explain that while g-forces are low, skipping means missing the landing zone.",
-          "add": [
+              "color": "#e74c3c",
+              "opacity": "s2_gamma > 7 ? 1 : 0"
+            },
+            {
+              "type": "parametric_curve",
+              "id": "traj_safe",
+              "x": "(8.4 - t) * cos(0.5)",
+              "y": "(8.4 - t) * sin(0.5)",
+              "z": "0",
+              "range": [
+                0,
+                2
+              ],
+              "color": "#2ecc71",
+              "width": 3,
+              "opacity": "s2_gamma >= 4 and s2_gamma <= 7 ? 1 : 0"
+            },
+            {
+              "type": "point",
+              "id": "capsule_safe",
+              "position": [
+                "(8.4 - 1.5) * cos(0.5)",
+                "(8.4 - 1.5) * sin(0.5)",
+                "0"
+              ],
+              "color": "#2ecc71",
+              "size": 8,
+              "opacity": "s2_gamma >= 4 and s2_gamma <= 7 ? 1 : 0"
+            },
+            {
+              "type": "text",
+              "id": "safe_label",
+              "text": "Safe Entry",
+              "position": [
+                "(8.4 - 1.5) * cos(0.5) + 0.5",
+                "(8.4 - 1.5) * sin(0.5) + 0.5",
+                "0"
+              ],
+              "color": "#2ecc71",
+              "opacity": "s2_gamma >= 4 and s2_gamma <= 7 ? 1 : 0"
+            },
             {
               "type": "parametric_curve",
               "id": "traj_shallow",
@@ -483,7 +514,8 @@
                 4
               ],
               "color": "#3498db",
-              "width": 3
+              "width": 3,
+              "opacity": "s2_gamma < 4 ? 1 : 0"
             },
             {
               "type": "point",
@@ -494,7 +526,8 @@
                 "0"
               ],
               "color": "#3498db",
-              "size": 8
+              "size": 8,
+              "opacity": "s2_gamma < 4 ? 1 : 0"
             },
             {
               "type": "text",
@@ -505,24 +538,47 @@
                 "8.4*sin(0.5) - 3 + 0.3*3^2 + 1",
                 "0"
               ],
-              "color": "#3498db"
+              "color": "#3498db",
+              "opacity": "s2_gamma < 4 ? 1 : 0"
             }
           ],
-          "remove": [
+          "remove": [],
+          "sliders": [
             {
-              "id": "traj_steep"
-            },
-            {
-              "id": "capsule_steep"
-            },
-            {
-              "id": "steep_label"
-            },
-            {
-              "type": "slider"
+              "id": "s2_gamma",
+              "label": "$\\gamma$ (deg)",
+              "min": 1,
+              "max": 12,
+              "default": 10,
+              "step": 0.1
             }
           ],
-          "sliders": [],
+          "info": [
+            {
+              "id": "gamma_info",
+              "content": "### Flight Path Angle\n$\\gamma = {{s2_gamma}}^\\circ$\n\nStatus: **{{s2_gamma > 7 ? 'Crush & Burn' : (s2_gamma < 4 ? 'Skip Out' : 'Safe Corridor')}}**",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "Too Shallow!",
+          "description": "If the angle is too shallow, the spacecraft skips off the atmosphere back into space, potentially missing the landing zone.",
+          "prompt": "Point out the bounce trajectory. Explain that while g-forces are low, skipping means missing the landing zone.",
+          "add": [],
+          "remove": [],
+          "sliders": [
+            {
+              "id": "s2_gamma",
+              "label": "$\\gamma$ (deg)",
+              "min": 1,
+              "max": 12,
+              "default": 2,
+              "step": 0.1,
+              "animate": true,
+              "duration": 1500
+            }
+          ],
           "info": []
         },
         {
@@ -581,6 +637,24 @@
           ],
           "remove": [
             {
+              "id": "traj_steep"
+            },
+            {
+              "id": "capsule_steep"
+            },
+            {
+              "id": "steep_label"
+            },
+            {
+              "id": "traj_safe"
+            },
+            {
+              "id": "capsule_safe"
+            },
+            {
+              "id": "safe_label"
+            },
+            {
               "id": "traj_shallow"
             },
             {
@@ -588,6 +662,13 @@
             },
             {
               "id": "shallow_label"
+            },
+            {
+              "type": "slider"
+            },
+            {
+              "type": "info",
+              "id": "gamma_info"
             }
           ],
           "sliders": [
