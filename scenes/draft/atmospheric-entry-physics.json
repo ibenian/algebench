@@ -1862,25 +1862,20 @@
         "steps": [
           {
             "type": "given",
-            "label": "Forces in Balance",
-            "math": "F_g = \\htmlClass{hl-drag}{F_d}",
-            "justification": "When acceleration stops, the downward pull of gravity equals the upward push of air resistance.",
-            "explanation": "Imagine holding a tug-of-war where both sides pull exactly as hard. The capsule stops speeding up and falls at a constant speed.",
+            "label": "Gravity (Weight)",
+            "math": "F_g = mg",
+            "justification": "The downward force on the capsule is its weight.",
+            "explanation": "Gravity pulls the capsule down with a force equal to its mass $m$ times the acceleration due to gravity $g$.",
             "sceneStep": 2,
-            "highlights": {
-              "drag": {
-                "color": "red",
-                "label": "Aerodynamic Drag"
-              }
-            },
-            "prompt": "Explain the logic of this algebraic step clearly to the student."
+            "highlights": {},
+            "prompt": "Ask the student to recall the formula for weight."
           },
           {
-            "type": "step",
-            "label": "Substitute Equations",
-            "math": "mg = \\frac{1}{2}\\rho V_t^2 C_d \\htmlClass{hl-area}{A}",
-            "justification": "Replace the force symbols with their actual physics formulas.",
-            "explanation": "Gravity is mass times $g$. Drag depends on the air density $\\rho$, velocity squared, the parachute's drag coefficient $C_d$, and the total area $A$. We call this specific balanced velocity $V_t$ (terminal velocity).",
+            "type": "given",
+            "label": "Aerodynamic Drag",
+            "math": "F_d = \\frac{1}{2}\\rho V^2 C_d \\htmlClass{hl-area}{A}",
+            "justification": "The upward force opposing gravity is aerodynamic drag.",
+            "explanation": "Drag depends on the air density $\\rho$, velocity squared, the parachute's drag coefficient $C_d$, and the total parachute area $A$.",
             "sceneStep": 2,
             "highlights": {
               "area": {
@@ -1888,7 +1883,32 @@
                 "label": "Parachute Area"
               }
             },
-            "prompt": "Explain the logic of this algebraic step clearly to the student."
+            "prompt": "Ask the student to identify the components of the drag equation, particularly the area A."
+          },
+          {
+            "type": "step",
+            "label": "Forces in Balance",
+            "math": "F_g = F_d",
+            "justification": "When acceleration stops, the downward pull equals the upward push.",
+            "explanation": "Imagine holding a tug-of-war where both sides pull exactly as hard. The capsule stops speeding up and falls at a constant speed, which we call terminal velocity ($V_t$).",
+            "sceneStep": 2,
+            "highlights": {},
+            "prompt": "Explain what happens when forces are balanced (acceleration becomes zero)."
+          },
+          {
+            "type": "step",
+            "label": "Substitute Equations",
+            "math": "mg = \\frac{1}{2}\\rho V_t^2 C_d \\htmlClass{hl-area}{A}",
+            "justification": "Replace the force symbols with their actual physics formulas.",
+            "explanation": "We replace $F_g$ with $mg$ and $F_d$ with the drag equation. We also specifically write $V_t$ for the velocity to show we are at terminal velocity.",
+            "sceneStep": 2,
+            "highlights": {
+              "area": {
+                "color": "cyan",
+                "label": "Parachute Area"
+              }
+            },
+            "prompt": "Guide the student to substitute the earlier equations into the balance equation."
           },
           {
             "type": "step",
