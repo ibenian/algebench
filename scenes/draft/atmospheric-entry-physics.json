@@ -1,5 +1,8 @@
 {
   "title": "Atmospheric Entry and Splashdown Physics",
+  "import": [
+    "atmospheric-entry"
+  ],
   "scenes": [
     {
       "title": "The Forces of Reentry",
@@ -255,63 +258,87 @@
     },
     {
       "title": "Trajectory and the Entry Corridor",
-      "description": "Understand that the entry angle must be shallow enough to avoid excessive G-forces, but steep enough to prevent skipping.",
-      "markdown": "# The Re-entry Corridor\nImagine a narrow 3D tunnel. Enter above it, and you skip off the atmosphere back into space. Enter below it, and the deceleration forces and heating will crush and burn the spacecraft.\n\n# Allen-Eggers Peak Deceleration\nFor a purely ballistic entry, the maximum deceleration is $a_{\\text{max}} = \\frac{V_E^2 \\sin \\gamma}{2e H}$, independent of mass and drag coefficient. The density of the atmosphere is modeled exponentially as $\\rho = \\rho_0 e^{-h/H}$.",
-      "prompt": "Guide the user to understand why the entry corridor is so narrow. Emphasize that too steep means burning up, and too shallow means skipping off. Discuss the Allen-Eggers Peak Deceleration theorem.",
+      "description": "Use a simplified point-mass simulation to see how vehicle choice, entry angle, and bank angle reshape the corridor and the live g-load history.",
+      "markdown": "# Simulated Entry Corridor\n\nThis scene replaces the hand-drawn path with a simplified **pre-parachute point-mass entry model**. The capsule starts at the Earth entry interface ($121.92\\,\\text{km}$) and is propagated under gravity, drag, and in-plane lift:\n\n$$\\mathbf{a}=\\mathbf{g}+\\mathbf{a}_D+\\mathbf{a}_L.$$\n\nThe atmosphere is exponential, each vehicle preset uses a fixed blunt-body $C_d$, and capsules with known lifting behavior get a fixed $L/D$ estimate.\n\n## Corridor Definition In This Lesson\nFor this scene, an entry angle counts as **inside the corridor** if the simulated capsule:\n\n- does **not** skip back out above the entry interface,\n- reaches the selected vehicle's parachute-deployment altitude,\n- stays below the chosen peak-$g$ limit.\n\nThis remains a low-order educational model. It does **not** include winds, Earth rotation, mission-specific guidance, or full aero tables $C_d(M,\\alpha)$ and $C_l(M,\\alpha)$.",
+      "prompt": "Teach the corridor as a computed result of the simulation rather than a fixed wedge. Encourage the user to switch vehicles, change gamma and bank, and scrub the animated time slider to connect path shape with current altitude, speed, and g-load.",
       "range": [
         [
-          350,
-          700
+          375,
+          895
         ],
         [
-          100,
-          500
+          -260,
+          260
         ],
         [
           -200,
           200
         ]
       ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
       "camera": {
         "position": [
-          600,
-          300,
-          300
+          785,
+          0,
+          360
         ],
         "target": [
-          550,
-          250,
+          635,
+          0,
           0
         ]
       },
       "views": [
         {
-          "name": "Entry Region",
+          "name": "Entry Plane",
           "position": [
-            600,
-            300,
-            300
+            785,
+            0,
+            360
           ],
           "target": [
-            550,
-            250,
+            635,
+            0,
             0
           ],
-          "description": "View of Earth limb and entry corridor"
+          "description": "3D Earth-limb view of the entry plane"
+        },
+        {
+          "name": "Planar",
+          "position": [
+            900,
+            0,
+            0
+          ],
+          "target": [
+            635,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
+          "description": "Face-on to the simulated entry plane"
         },
         {
           "name": "Graph View",
           "position": [
-            550,
-            385,
-            150
+            640,
+            0,
+            320
           ],
           "target": [
-            550,
-            385,
+            610,
+            0,
             0
           ],
-          "description": "View of the deceleration graph"
+          "description": "Focus on the live g-load graph"
         }
       ],
       "elements": [
@@ -325,9 +352,9 @@
       ],
       "steps": [
         {
-          "title": "The Entry Corridor",
-          "description": "The flight path angle is measured from local horizontal at the atmosphere boundary. Adjust it to see how shallow entries skip off and steep entries produce fatal g-loads.",
-          "prompt": "Guide the user to experiment with the flight path angle slider. At 1 degree the approach is nearly tangent to the atmosphere \u2014 the trajectory barely dips in and skips back out. The safe corridor is roughly 4 to 7 degrees. Above 7 degrees the Allen-Eggers peak deceleration exceeds survivable limits. Ask the user to notice how the trajectory shape changes continuously and how the peak-g value in the info panel responds to the angle.",
+          "title": "Computed Corridor",
+          "description": "Switch vehicles, vary the flight-path angle, and roll the bank angle to see the corridor recomputed from the simulated trajectory.",
+          "prompt": "Make the user connect three things: the vehicle preset sets speed and ballistic properties, gamma sets how deeply the path dives, and bank angle changes how much in-plane lift keeps the capsule higher. Ask them to watch how the green corridor limits move as those assumptions change.",
           "add": [
             {
               "type": "sphere",
@@ -338,8 +365,15 @@
                 0
               ],
               "radius": 637.1,
-              "color": "#3498db",
-              "opacity": 0.8
+              "widthSegments": 96,
+              "heightSegments": 64,
+              "color": "#2d6ea3",
+              "opacity": 0.88,
+              "shader": {
+                "shininess": 42,
+                "specular": "#95c8f0",
+                "emissive": "#0f2135"
+              }
             },
             {
               "type": "sphere",
@@ -349,225 +383,239 @@
                 0,
                 0
               ],
-              "radius": 650,
-              "color": "#85c1e9",
-              "opacity": 0.2
+              "radius": 649.292,
+              "widthSegments": 96,
+              "heightSegments": 64,
+              "color": "#8dd7ff",
+              "opacity": 0.16
             },
             {
-              "type": "line",
-              "id": "tangent_ref",
+              "type": "animated_line",
+              "id": "local_horizontal",
               "points": [
                 [
-                  598.7,
-                  253.1,
-                  0
+                  "649.292",
+                  "-62",
+                  "0"
                 ],
                 [
-                  629.9,
-                  179.4,
-                  0
+                  "649.292",
+                  "62",
+                  "0"
                 ]
               ],
-              "color": "#888888",
+              "color": "#8f97a8",
               "width": 1.5,
-              "opacity": 0.6
+              "opacity": 0.65
             },
             {
               "type": "text",
-              "id": "tangent_label",
+              "id": "horizontal_label",
               "text": "Local Horizontal",
               "position": [
-                631,
-                180,
+                661,
+                70,
                 0
               ],
-              "color": "#888888"
+              "color": "#8f97a8"
             },
             {
-              "type": "line",
+              "type": "animated_line",
               "id": "corridor_lo",
               "points": [
                 [
-                  634.9,
-                  181.8,
-                  0
+                  "649.292",
+                  "0",
+                  "0"
                 ],
                 [
-                  598.7,
-                  253.1,
-                  0
+                  "649.292 - 92 * sin(entryCorridorLo() * pi / 180)",
+                  "92 * cos(entryCorridorLo() * pi / 180)",
+                  "0"
                 ]
               ],
               "color": "#2ecc71",
-              "width": 1.5,
-              "opacity": 0.4
+              "width": 2,
+              "opacity": 0.5
             },
             {
-              "type": "line",
+              "type": "animated_line",
               "id": "corridor_hi",
               "points": [
                 [
-                  638.6,
-                  183.8,
-                  0
+                  "649.292",
+                  "0",
+                  "0"
                 ],
                 [
-                  598.7,
-                  253.1,
-                  0
+                  "649.292 - 92 * sin(entryCorridorHi() * pi / 180)",
+                  "92 * cos(entryCorridorHi() * pi / 180)",
+                  "0"
                 ]
               ],
               "color": "#2ecc71",
-              "width": 1.5,
-              "opacity": 0.4
+              "width": 2,
+              "opacity": 0.5
             },
             {
               "type": "text",
               "id": "corridor_label",
-              "text": "Safe Corridor",
+              "text": "Computed Corridor",
               "position": [
-                620,
-                213,
+                633,
+                93,
                 0
               ],
               "color": "#2ecc71"
             },
             {
               "type": "animated_vector",
-              "id": "vec_approach",
+              "id": "entry_vector",
               "fromExpr": [
-                "598.7 + 37.5 * sin(0.4 + s2_gamma * pi / 180)",
-                "253.1 - 37.5 * cos(0.4 + s2_gamma * pi / 180)",
+                "649.292 + 42 * sin(s2_gamma * pi / 180)",
+                "-42 * cos(s2_gamma * pi / 180)",
                 "0"
               ],
               "toExpr": [
-                "598.7",
-                "253.1",
+                "649.292",
+                "0",
                 "0"
               ],
-              "color": "s2_gamma > 7 ? \"#e74c3c\" : (s2_gamma < 4 ? \"#3498db\" : \"#2ecc71\")",
-              "width": 1.5,
+              "color": "#ffd166",
+              "width": 2,
               "label": "Entry Vector"
             },
             {
               "type": "parametric_curve",
-              "id": "angle_arc",
-              "x": "598.7 + 15 * sin(0.4 + t * s2_gamma * pi / 180)",
-              "y": "253.1 - 15 * cos(0.4 + t * s2_gamma * pi / 180)",
+              "id": "trajectory",
+              "x": "entryX(t) / 10",
+              "y": "entryY(t) / 10",
               "z": "0",
               "range": [
                 0,
-                1
+                1500
               ],
-              "color": "#ffffff",
-              "width": 2,
-              "samples": 64
+              "samples": 420,
+              "color": "#f6c453",
+              "width": 3
             },
             {
               "type": "animated_point",
-              "id": "gamma_marker",
+              "id": "capsule_live",
               "expr": [
-                "598.7 + 18 * sin(0.4 + s2_gamma * pi / 360)",
-                "253.1 - 18 * cos(0.4 + s2_gamma * pi / 360)",
+                "entryX(s2_t) / 10",
+                "entryY(s2_t) / 10",
                 "0"
               ],
               "color": "#ffffff",
-              "size": 0,
-              "label": "$\\gamma$"
-            },
-            {
-              "type": "parametric_curve",
-              "id": "trajectory",
-              "x": "max(650 - t * sin(s2_gamma * pi / 180) * 20 + 0.06 * t^2 / (1 + sin(s2_gamma * pi / 180) * 15), 637.1) * cos(0.4 + t * cos(s2_gamma * pi / 180) * 0.03)",
-              "y": "max(650 - t * sin(s2_gamma * pi / 180) * 20 + 0.06 * t^2 / (1 + sin(s2_gamma * pi / 180) * 15), 637.1) * sin(0.4 + t * cos(s2_gamma * pi / 180) * 0.03)",
-              "z": "0",
-              "range": [
-                0,
-                15
-              ],
-              "color": "#f39c12",
-              "width": 3,
-              "samples": 250
-            },
-            {
-              "type": "point",
-              "id": "capsule_entry",
-              "position": [
-                598.7,
-                253.1,
-                0
-              ],
-              "color": "#ffffff",
-              "size": 10,
+              "size": 11,
               "label": "Capsule"
             },
             {
-              "type": "animated_point",
-              "id": "fireball",
-              "expr": [
-                "max(650 - 3 * sin(s2_gamma * pi / 180) * 20 + 0.06 * 9 / (1 + sin(s2_gamma * pi / 180) * 15), 637.1) * cos(0.4 + 3 * cos(s2_gamma * pi / 180) * 0.03)",
-                "max(650 - 3 * sin(s2_gamma * pi / 180) * 20 + 0.06 * 9 / (1 + sin(s2_gamma * pi / 180) * 15), 637.1) * sin(0.4 + 3 * cos(s2_gamma * pi / 180) * 0.03)",
+              "type": "animated_vector",
+              "id": "velocity_vector",
+              "fromExpr": [
+                "entryX(s2_t) / 10",
+                "entryY(s2_t) / 10",
                 "0"
               ],
-              "color": "#ff2200",
-              "radius": 6,
-              "shader": {
-                "emissive": "#ff4400",
-                "shininess": 100
-              },
-              "visibleExpr": "s2_gamma > 7",
-              "label": "Burn-up!"
+              "toExpr": [
+                "entryX(s2_t) / 10 + 20 * entryVx(s2_t) / max(0.2, entrySpeed(s2_t))",
+                "entryY(s2_t) / 10 + 20 * entryVy(s2_t) / max(0.2, entrySpeed(s2_t))",
+                "0"
+              ],
+              "color": "#4db6ff",
+              "width": 3,
+              "label": "$\\vec{v}$"
             },
             {
-              "type": "animated_point",
-              "id": "skip_label",
-              "expr": [
-                "max(650 - 12 * sin(s2_gamma * pi / 180) * 20 + 0.06 * 144 / (1 + sin(s2_gamma * pi / 180) * 15), 637.1) * cos(0.4 + 12 * cos(s2_gamma * pi / 180) * 0.03)",
-                "max(650 - 12 * sin(s2_gamma * pi / 180) * 20 + 0.06 * 144 / (1 + sin(s2_gamma * pi / 180) * 15), 637.1) * sin(0.4 + 12 * cos(s2_gamma * pi / 180) * 0.03)",
+              "type": "animated_vector",
+              "id": "drag_vector",
+              "fromExpr": [
+                "entryX(s2_t) / 10",
+                "entryY(s2_t) / 10",
                 "0"
               ],
-              "color": "#3498db",
-              "size": 0,
-              "visibleExpr": "s2_gamma < 4",
-              "label": "\u2190 Skip to space"
+              "toExpr": [
+                "entryX(s2_t) / 10 - min(entryG(s2_t), 10) * 1.5 * entryVx(s2_t) / max(0.2, entrySpeed(s2_t))",
+                "entryY(s2_t) / 10 - min(entryG(s2_t), 10) * 1.5 * entryVy(s2_t) / max(0.2, entrySpeed(s2_t))",
+                "0"
+              ],
+              "color": "#ff6b5f",
+              "width": 3,
+              "label": "$\\vec{D}$"
             }
           ],
           "remove": [],
           "sliders": [
             {
+              "id": "s2_vehicle",
+              "label": "Vehicle Preset",
+              "min": 0,
+              "max": 3,
+              "default": 3,
+              "step": 1
+            },
+            {
               "id": "s2_gamma",
-              "label": "$\\gamma$ (deg)",
+              "label": "$\\gamma$ (deg below horizontal)",
               "min": 1,
               "max": 12,
-              "default": 5.5,
+              "default": 6.5,
               "step": 0.1
+            },
+            {
+              "id": "s2_bank",
+              "label": "Bank Angle (deg)",
+              "min": -180,
+              "max": 180,
+              "default": 0,
+              "step": 1
+            },
+            {
+              "id": "s2_g_limit",
+              "label": "Corridor g-limit",
+              "min": 4,
+              "max": 12,
+              "default": 9,
+              "step": 0.5
+            },
+            {
+              "id": "s2_t",
+              "label": "Simulation Time t (s)",
+              "min": 0,
+              "max": 1500,
+              "default": 0,
+              "step": 1,
+              "animate": true,
+              "duration": 12000
             }
           ],
           "info": [
             {
-              "id": "gamma_info",
-              "content": "### Flight Path Angle\n$\\gamma = {{s2_gamma}}^\\circ$\n\n**Peak deceleration (Allen-Eggers):**\n$a_{max} = \\frac{V_E^2 \\sin\\gamma}{2eH} \\approx {{toFixed(152 * sin(s2_gamma * pi / 180), 1)}}\\,g$\n\n**Status:** {{s2_gamma > 7 ? \"TOO STEEP (High Gs)\" : (s2_gamma < 4 ? \"TOO SHALLOW (Skip)\" : \"SAFE CORRIDOR\")}}",
-              "position": "top-right"
+              "id": "entry_info",
+              "position": "top-right",
+              "content": "### Simulated Entry State\n**Vehicle:** {{entryVehicleName()}}  \n**Mission:** {{entryVehicleMission()}}  \n**Entry speed:** {{toFixed(entryVehicleSpeed(), 2)}} km/s  \n**Estimated $\\beta$:** {{toFixed(entryVehicleBeta(), 1)}} kg/m$^2$  \n**Reference $L/D$:** {{toFixed(entryVehicleLD(), 2)}}\n\n**Computed corridor:** {{toFixed(entryCorridorLo(), 2)}}\u00b0 to {{toFixed(entryCorridorHi(), 2)}}\u00b0  \n**Selected $\\gamma$:** {{toFixed(s2_gamma, 2)}}\u00b0  \n**Effective bank:** {{toFixed(s2_bank, 0)}}\u00b0  \n**Time:** {{toFixed(min(s2_t, entryEndTime()), 0)}} s\n\n**Altitude:** {{toFixed(entryAlt(s2_t), 1)}} km  \n**Speed:** {{toFixed(entrySpeed(s2_t), 2)}} km/s  \n**Current aero decel:** {{toFixed(entryG(s2_t), 2)}} g\n\n{{entryOutcome()}}"
             }
           ]
         },
         {
-          "title": "Peak Deceleration",
-          "description": "This step shows the full Allen-Eggers deceleration profile using a normalized atmospheric-depth variable $x$, not literal clock time or downrange distance. The peak always occurs at $x=1$, while its height scales with entry velocity and flight path angle.",
-          "prompt": "Guide the student through the Allen-Eggers scaling using the full normalized profile. Be explicit that the horizontal axis is the model variable x from the derivation, not time or distance. Emphasize two ideas: the curve shape stays the same, and only the peak height changes with $V_E^2 \\sin \\gamma$.",
+          "title": "Live G-Load History",
+          "description": "The second step keeps the same entry simulation but adds a live g-load history versus actual time, including the chosen corridor limit and the peak deceleration marker.",
+          "prompt": "Link the path to the graph. The current capsule position and the white graph marker refer to the same simulation time. Point out that shallow entries spread the deceleration over longer time, while steeper entries concentrate it into a higher peak.",
           "add": [
             {
               "type": "line",
-              "id": "graph_x_axis",
+              "id": "g_graph_x",
               "points": [
                 [
-                  510,
-                  355,
+                  556,
+                  122,
                   0
                 ],
                 [
-                  590,
-                  355,
+                  676,
+                  122,
                   0
                 ]
               ],
@@ -577,16 +625,16 @@
             },
             {
               "type": "line",
-              "id": "graph_y_axis",
+              "id": "g_graph_y",
               "points": [
                 [
-                  510,
-                  355,
+                  556,
+                  122,
                   0
                 ],
                 [
-                  510,
-                  407,
+                  556,
+                  242,
                   0
                 ]
               ],
@@ -595,618 +643,150 @@
               "opacity": 0.9
             },
             {
-              "type": "line",
-              "id": "graph_x_tick_1",
+              "type": "animated_line",
+              "id": "g_limit_line",
               "points": [
                 [
-                  526,
-                  355,
-                  0
+                  "556",
+                  "122 + 10 * s2_g_limit",
+                  "0"
                 ],
                 [
-                  526,
-                  353,
-                  0
+                  "676",
+                  "122 + 10 * s2_g_limit",
+                  "0"
                 ]
               ],
-              "color": "#cccccc",
-              "width": 1.2
-            },
-            {
-              "type": "line",
-              "id": "graph_x_tick_2",
-              "points": [
-                [
-                  542,
-                  355,
-                  0
-                ],
-                [
-                  542,
-                  353,
-                  0
-                ]
-              ],
-              "color": "#cccccc",
-              "width": 1.2
-            },
-            {
-              "type": "line",
-              "id": "graph_x_tick_3",
-              "points": [
-                [
-                  558,
-                  355,
-                  0
-                ],
-                [
-                  558,
-                  353,
-                  0
-                ]
-              ],
-              "color": "#cccccc",
-              "width": 1.2
-            },
-            {
-              "type": "line",
-              "id": "graph_x_tick_4",
-              "points": [
-                [
-                  574,
-                  355,
-                  0
-                ],
-                [
-                  574,
-                  353,
-                  0
-                ]
-              ],
-              "color": "#cccccc",
-              "width": 1.2
-            },
-            {
-              "type": "line",
-              "id": "graph_y_tick_2g",
-              "points": [
-                [
-                  508,
-                  375,
-                  0
-                ],
-                [
-                  510,
-                  375,
-                  0
-                ]
-              ],
-              "color": "#cccccc",
-              "width": 1.2
-            },
-            {
-              "type": "line",
-              "id": "graph_y_tick_4g",
-              "points": [
-                [
-                  508,
-                  395,
-                  0
-                ],
-                [
-                  510,
-                  395,
-                  0
-                ]
-              ],
-              "color": "#cccccc",
-              "width": 1.2
-            },
-            {
-              "type": "text",
-              "id": "graph_x0_label",
-              "text": "0",
-              "position": [
-                510,
-                351.5,
-                0
-              ],
-              "color": "#cccccc"
-            },
-            {
-              "type": "text",
-              "id": "graph_x1_label",
-              "text": "1",
-              "position": [
-                526,
-                351.5,
-                0
-              ],
-              "color": "#cccccc"
-            },
-            {
-              "type": "text",
-              "id": "graph_x2_label",
-              "text": "2",
-              "position": [
-                542,
-                351.5,
-                0
-              ],
-              "color": "#cccccc"
-            },
-            {
-              "type": "text",
-              "id": "graph_x3_label",
-              "text": "3",
-              "position": [
-                558,
-                351.5,
-                0
-              ],
-              "color": "#cccccc"
-            },
-            {
-              "type": "text",
-              "id": "graph_x4_label",
-              "text": "4",
-              "position": [
-                574,
-                351.5,
-                0
-              ],
-              "color": "#cccccc"
-            },
-            {
-              "type": "text",
-              "id": "graph_y0_label",
-              "text": "0 g",
-              "position": [
-                504,
-                355,
-                0
-              ],
-              "color": "#cccccc"
-            },
-            {
-              "type": "text",
-              "id": "graph_y2_label",
-              "text": "2 g",
-              "position": [
-                504,
-                375,
-                0
-              ],
-              "color": "#cccccc"
-            },
-            {
-              "type": "text",
-              "id": "graph_y4_label",
-              "text": "4 g",
-              "position": [
-                504,
-                395,
-                0
-              ],
-              "color": "#cccccc"
-            },
-            {
-              "type": "text",
-              "id": "graph_x_label",
-              "text": "Normalized entry depth $x$",
-              "position": [
-                550,
-                347,
-                0
-              ],
-              "color": "#ffffff"
-            },
-            {
-              "type": "text",
-              "id": "graph_y_label",
-              "text": "Deceleration (g)",
-              "position": [
-                522,
-                405,
-                0
-              ],
-              "color": "#ffffff"
+              "color": "#2ecc71",
+              "width": 1.5,
+              "opacity": 0.65
             },
             {
               "type": "parametric_curve",
-              "id": "graph_gforce",
-              "x": "510 + 16 * t",
-              "y": "355 + 10 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180)) * e * t * exp(-t)",
+              "id": "g_curve",
+              "x": "556 + 120 * t / 1500",
+              "y": "122 + 10 * entryG(t)",
               "z": "0",
               "range": [
                 0,
-                4.5
+                1500
               ],
-              "color": "#e74c3c",
+              "samples": 420,
+              "color": "#ff6b5f",
               "width": 3
             },
             {
               "type": "animated_point",
-              "id": "graph_peak_point",
+              "id": "g_marker",
               "expr": [
-                "526",
-                "355 + 10 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180))",
+                "556 + 120 * min(s2_t, entryEndTime()) / 1500",
+                "122 + 10 * entryG(s2_t)",
                 "0"
               ],
-              "color": "#f39c12",
+              "color": "#ffffff",
               "size": 8,
-              "label": "Peak"
+              "label": "now"
             },
             {
-              "type": "line",
-              "id": "graph_peak_vertical",
-              "points": [
-                [
-                  526,
-                  355,
-                  0
-                ],
-                [
-                  "526",
-                  "355 + 10 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180))",
-                  "0"
-                ]
+              "type": "animated_point",
+              "id": "g_peak",
+              "expr": [
+                "556 + 120 * entryPeakGT() / 1500",
+                "122 + 10 * entryPeakG()",
+                "0"
               ],
-              "color": "#f39c12",
-              "width": 1.5,
-              "opacity": 0.5
-            },
-            {
-              "type": "line",
-              "id": "graph_peak_horizontal",
-              "points": [
-                [
-                  510,
-                  "355 + 10 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180))",
-                  "0"
-                ],
-                [
-                  526,
-                  "355 + 10 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180))",
-                  "0"
-                ]
-              ],
-              "color": "#f39c12",
-              "width": 1.5,
-              "opacity": 0.5
+              "color": "#ffd166",
+              "size": 8,
+              "label": "peak"
             },
             {
               "type": "text",
-              "id": "graph_peak_label",
-              "text": "$a_{\\text{max}}$ at $x=1$",
+              "id": "g_axis_title",
+              "text": "Aero decel vs time",
               "position": [
-                "533",
-                "358 + 10 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180))",
+                616,
+                248,
                 0
               ],
-              "color": "#f39c12"
+              "color": "#ffffff"
             },
             {
               "type": "text",
-              "id": "graph_profile_formula",
-              "text": "$a(x) = a_{\\max} e x e^{-x}$",
+              "id": "g_x0",
+              "text": "0 s",
               "position": [
-                555,
-                402,
+                556,
+                114,
                 0
               ],
-              "color": "#e5e7eb"
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "g_x1",
+              "text": "750 s",
+              "position": [
+                616,
+                114,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "g_x2",
+              "text": "1500 s",
+              "position": [
+                676,
+                114,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "g_y0",
+              "text": "0 g",
+              "position": [
+                548,
+                122,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "g_y1",
+              "text": "6 g",
+              "position": [
+                548,
+                182,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "g_y2",
+              "text": "12 g",
+              "position": [
+                548,
+                242,
+                0
+              ],
+              "color": "#cccccc"
             }
           ],
-          "remove": [
-            {
-              "id": "trajectory"
-            },
-            {
-              "id": "vec_approach"
-            },
-            {
-              "id": "angle_arc"
-            },
-            {
-              "id": "gamma_marker"
-            },
-            {
-              "id": "capsule_entry"
-            },
-            {
-              "id": "tangent_ref"
-            },
-            {
-              "id": "tangent_label"
-            },
-            {
-              "id": "corridor_lo"
-            },
-            {
-              "id": "corridor_hi"
-            },
-            {
-              "id": "corridor_label"
-            },
-            {
-              "id": "fireball"
-            },
-            {
-              "id": "skip_label"
-            },
-            {
-              "type": "slider"
-            },
-            {
-              "type": "info",
-              "id": "gamma_info"
-            },
-            {
-              "id": "earth"
-            },
-            {
-              "id": "atmosphere"
-            }
-          ],
-          "sliders": [
-            {
-              "id": "s2_peak_velocity",
-              "label": "$V_E$ (km/s)",
-              "min": 7.8,
-              "max": 11.2,
-              "default": 11,
-              "step": 0.1
-            },
-            {
-              "id": "s2_peak_gamma",
-              "label": "$\\gamma$ (deg)",
-              "min": 4,
-              "max": 8,
-              "default": 6,
-              "step": 0.1
-            }
-          ],
+          "remove": [],
           "info": [
             {
-              "id": "peak_info",
-              "content": "### Full Peak-Deceleration Profile\nThis plot shows the full Allen-Eggers profile against the normalized variable $x$, not literal time or distance.\n\n$a(x) = a_{\\max} e x e^{-x}$, so the peak always occurs at $x = 1$.\n\n$a_{\\max} \\propto V_E^2 \\sin \\gamma$\n\n$V_E = {{s2_peak_velocity}}$ km/s\n$\\gamma = {{s2_peak_gamma}}^\\circ$\n\n$a_{\\max} \\approx {{toFixed(0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180), 2)}}\\, g$",
-              "position": "top-right"
+              "id": "g_history_info",
+              "position": "top-left",
+              "content": "### Entry Summary\n**Peak aero decel:** {{toFixed(entryPeakG(), 2)}} g at {{toFixed(entryPeakGT(), 0)}} s  \n**Peak heating index:** {{toFixed(entryPeakHeat(), 2)}} at {{toFixed(entryPeakHeatT(), 0)}} s  \n**Minimum altitude reached:** {{toFixed(entryMinAlt(), 1)}} km  \n**Parachute deployment altitude:** {{toFixed(entryChuteAlt(), 2)}} km  \n**Simulation end:** {{toFixed(entryEndTime(), 0)}} s\n\nThe green line is the corridor threshold chosen for this lesson. Angles steeper than the upper corridor bound reach the chute window too harshly; angles shallower than the lower bound skip out before getting there."
             }
-          ],
-          "camera": {
-            "position": [
-              550,
-              385,
-              150
-            ],
-            "target": [
-              550,
-              385,
-              0
-            ]
-          }
+          ]
         }
-      ],
-      "proof": {
-        "id": "allen_eggers_deceleration",
-        "title": "Allen-Eggers Peak Deceleration",
-        "technique": "derivation",
-        "techniqueHint": "Use the simplest ballistic-entry model: drag dominates near peak deceleration, density falls exponentially with altitude, and the flight-path angle stays nearly constant. Turn the altitude dependence into one compact variable so the peak appears as the maximum of x e^{-x}.",
-        "goal": "$$a_{\\text{max}} = \\frac{V_E^2 \\sin \\gamma}{2e H}$$",
-        "prompt": "Walk the student through the math of peak deceleration step-by-step. Keep it accessible to a high schooler: we trade time for altitude, find how velocity drops, and see where the braking force hits its absolute maximum.",
-        "steps": [
-          {
-            "type": "given",
-            "label": "Acceleration means change of speed",
-            "math": "a = \\frac{dV}{dt}",
-            "justification": "Acceleration tells us how quickly the speed changes with time.",
-            "explanation": "This is the quantity we want to track during reentry: how fast the spacecraft is slowing down.",
-            "prompt": "Ask the student what it means physically if $dV/dt$ is negative.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "given",
-            "label": "Newton's second law links force and acceleration",
-            "math": "F_{\\text{net}} = ma",
-            "justification": "Net force divided by mass gives acceleration.",
-            "explanation": "So once we know the main force acting on the capsule, we can turn that force into a deceleration formula.",
-            "prompt": "Tell the student this is the bridge from forces to motion.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "given",
-            "label": "The main braking force is drag",
-            "math": "D = \\frac{1}{2}\\rho V^2 C_d A",
-            "justification": "This is the standard aerodynamic drag formula.",
-            "explanation": "Each symbol has a job: $\\rho$ is air density, $V$ is speed, $C_d$ describes shape, and $A$ is cross-sectional area.",
-            "prompt": "Pause to name each symbol before moving on.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "During peak braking, drag dominates",
-            "math": "F_{\\text{net}} \\approx -D",
-            "justification": "In the intense part of reentry, drag is much larger than gravity along the flight path, so the net force points opposite the motion.",
-            "explanation": "The minus sign means drag acts against the direction of travel, so it reduces the speed.",
-            "prompt": "Explain why we are making a simplified model here instead of keeping every force.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Turn drag into a deceleration formula",
-            "math": "m\\left(-\\frac{dV}{dt}\\right) = D \\quad \\Longrightarrow \\quad -\\frac{dV}{dt} = \\frac{D}{m} = \\frac{1}{2m}\\rho V^2 C_d A",
-            "justification": "Substitute $F_{\\text{net}} \\approx -D$ into Newton's second law and divide by $m$.",
-            "explanation": "Now we have an equation for how the speed changes. The left side is deceleration, and the right side tells what causes it.",
-            "prompt": "Make clear that we are solving for the size of the slowdown, not the direction of motion.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Introduce the ballistic coefficient",
-            "math": "\\beta = \\frac{m}{C_d A}",
-            "justification": "This definition packages mass, drag coefficient, and area into one parameter.",
-            "explanation": "Instead of carrying around $m$, $C_d$, and $A$ separately, we combine them into one quantity that measures how hard the atmosphere can slow the vehicle.",
-            "prompt": "Remind the student that this came from the earlier scene, not out of nowhere.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Rewrite the deceleration using $\\beta$",
-            "math": "-\\frac{dV}{dt} = \\frac{\\rho V^2}{2\\beta}",
-            "justification": "Since $\\beta = m/(C_dA)$, we have $C_dA/m = 1/\\beta$.",
-            "explanation": "This is the same physics as before, just written more compactly.",
-            "prompt": "Point out exactly where $m$, $C_d$, and $A$ went.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Model how air density changes with altitude",
-            "math": "\\rho(h) = \\rho_0 e^{-h/H}",
-            "justification": "Allen and Eggers approximate the atmosphere by an exponential density law.",
-            "explanation": "This says the air gets thinner very quickly as altitude increases. The constant $H$ is the scale height.",
-            "prompt": "Explain that this is a model of the atmosphere, not a new force law.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Switch from time to altitude",
-            "math": "\\frac{dV}{dt} = \\frac{dV}{dh}\\frac{dh}{dt}",
-            "justification": "This is the chain rule from calculus.",
-            "explanation": "We use altitude because density depends on altitude. So it is smarter to ask how speed changes as height changes.",
-            "prompt": "Explain the chain rule in words before using it symbolically.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Write the vertical speed",
-            "math": "\\frac{dh}{dt} = -V\\sin\\gamma",
-            "justification": "The downward component of velocity is the full speed times $\\sin\\gamma$.",
-            "explanation": "The minus sign appears because the spacecraft is descending, so its altitude is going down.",
-            "prompt": "Connect $\\gamma$ to the flight-path-angle picture in the scene.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Substitute those two ideas together",
-            "math": "-V\\sin\\gamma\\,\\frac{dV}{dh} = -\\frac{\\rho V^2}{2\\beta}",
-            "justification": "Replace $dV/dt$ by $(dV/dh)(dh/dt)$ and then use $dh/dt=-V\\sin\\gamma$.",
-            "explanation": "This is the same deceleration law as before, but now it is written in terms of altitude instead of time.",
-            "prompt": "Say explicitly that nothing mysterious happened here; we only replaced one variable with another.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Separate the variables",
-            "math": "\\frac{dV}{V} = \\frac{\\rho(h)}{2\\beta\\sin\\gamma}\\,dh",
-            "justification": "Cancel one factor of $V$ and divide both sides by the remaining terms.",
-            "explanation": "Now all the speed pieces are on one side and all the altitude pieces are on the other side. That makes integration possible.",
-            "prompt": "Explain that 'separate the variables' just means putting like quantities on the same side.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Integrate both sides",
-            "math": "\\int_{V_E}^{V(h)} \\frac{dV}{V} = \\int_{\\infty}^{h} \\frac{\\rho_0 e^{-h'/H}}{2\\beta\\sin\\gamma}\\,dh'",
-            "justification": "We add up the tiny changes in speed from the top of the atmosphere down to altitude $h$.",
-            "explanation": "The left side starts at entry speed $V_E$. The right side starts high enough that the air is essentially negligible.",
-            "prompt": "Explain what the limits mean physically before evaluating the integrals.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Evaluate the integrals",
-            "math": "\\ln\\!\\left(\\frac{V(h)}{V_E}\\right) = -\\frac{\\rho_0 H}{2\\beta\\sin\\gamma}e^{-h/H}",
-            "justification": "The left integral gives a logarithm, and the right integral of the exponential gives another exponential term.",
-            "explanation": "This is where the logarithm comes from: integrating $1/V$ always gives $\\ln V$.",
-            "prompt": "Call out the source of the logarithm so it does not feel like magic.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Solve that for the speed",
-            "math": "V(h) = V_E\\exp\\!\\left[-\\frac{\\rho_0 H}{2\\beta\\sin\\gamma}e^{-h/H}\\right]",
-            "justification": "Exponentiate both sides to undo the logarithm.",
-            "explanation": "Now we have a direct formula for the speed at altitude $h$.",
-            "prompt": "Say plainly: 'the logarithm disappears because we exponentiate both sides.'",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Substitute speed back into the drag formula",
-            "math": "a(h) = \\frac{\\rho(h)V(h)^2}{2\\beta}",
-            "justification": "Peak deceleration means we need an explicit formula for deceleration as a function of altitude.",
-            "explanation": "We already found $V(h)$, and we already know $\\rho(h)$, so now we combine them.",
-            "prompt": "Tell the student this is the moment where the pieces come back together.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Collect the altitude dependence into one variable",
-            "math": "a(h) = \\frac{V_E^2\\sin\\gamma}{2H}\\,x e^{-x}, \\qquad x = \\frac{\\rho_0 H}{\\beta\\sin\\gamma}e^{-h/H}",
-            "justification": "After substitution and simplification, all the messy altitude terms can be grouped into a single variable $x$.",
-            "explanation": "The new variable $x$ is not a new piece of physics. It is just a shorthand to make the peak easier to find.",
-            "prompt": "Explicitly reassure the student that $x$ is only bookkeeping.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Find the peak of the simpler function",
-            "math": "\\frac{d}{dx}(x e^{-x}) = e^{-x}(1-x) = 0",
-            "justification": "A maximum occurs where the derivative is zero.",
-            "explanation": "The constant factor $V_E^2\\sin\\gamma/(2H)$ does not affect where the peak happens, so we only need to maximize $x e^{-x}$.",
-            "prompt": "Explain why we can ignore the constant factor when searching for the peak location.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Solve for the peak location",
-            "math": "e^{-x}(1-x)=0 \\quad \\Longrightarrow \\quad x=1",
-            "justification": "The exponential factor is never zero, so the only way the product is zero is if $1-x=0$.",
-            "explanation": "This is a small but important algebra point: exponentials never vanish.",
-            "prompt": "Explain why $e^{-x}$ cannot equal zero.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "conclusion",
-            "label": "Allen-Eggers peak deceleration",
-            "math": "a_{\\text{max}} = \\frac{\\htmlClass{hl-ve}{V_E^2}\\sin\\htmlClass{hl-gamma}{\\gamma}}{2eH}",
-            "justification": "At the peak, $x=1$, so $x e^{-x} = 1/e$.",
-            "explanation": "In this simplified ballistic-entry model, the peak deceleration depends on entry speed, entry angle, and atmospheric scale height. The vehicle parameters are hidden in the altitude where the peak happens, but they cancel out of the peak value itself.",
-            "prompt": "State the limitation clearly: this result comes from the simplified Allen-Eggers model and applies when the deceleration peak occurs before impact.",
-            "sceneStep": 1,
-            "highlights": {
-              "ve": {
-                "color": "cyan",
-                "label": "Entry Velocity"
-              },
-              "gamma": {
-                "color": "yellow",
-                "label": "Flight Path Angle"
-              }
-            }
-          }
-        ]
-      }
+      ]
     },
     {
       "title": "Aerodynamic Heating and the Bow Shock",
