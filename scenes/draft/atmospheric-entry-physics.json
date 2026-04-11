@@ -361,9 +361,9 @@
       ],
       "steps": [
         {
-          "title": "The Safe Corridor",
-          "description": "The entry corridor is a narrow 3D tunnel. Enter perfectly, and you safely decelerate.",
-          "prompt": "Ask the user to notice the narrow green corridor relative to the size of the Earth.",
+          "title": "The Entry Corridor",
+          "description": "The entry corridor is a narrow 3D tunnel. Adjust the angle of entry to see what happens when you are too steep or too shallow.",
+          "prompt": "Guide the user to experiment with the angle of entry slider. Emphasize that too steep means crushing g-forces and burning up, while too shallow means skipping off the atmosphere.",
           "add": [
             {
               "type": "sphere",
@@ -416,21 +416,11 @@
                 0.5
               ],
               "color": "#2ecc71"
-            }
-          ],
-          "remove": [],
-          "sliders": [],
-          "info": []
-        },
-        {
-          "title": "Too Steep!",
-          "description": "If the flight path angle is too steep, the deceleration forces and heating will crush and burn the spacecraft.",
-          "prompt": "Highlight the red trajectory. Ask what happens to the g-forces when hitting the atmosphere at a steep angle.",
-          "add": [
+            },
             {
               "type": "animated_vector",
               "id": "vec_gamma",
-              "from": [
+              "fromExpr": [
                 "8.371 * cos(0.5)",
                 "8.371 * sin(0.5)",
                 "0"
@@ -443,6 +433,48 @@
               "color": "s2_gamma > 7 ? \"#e74c3c\" : (s2_gamma < 4 ? \"#3498db\" : \"#2ecc71\")",
               "width": 5,
               "label": "Angle of Entry"
+            },
+            {
+              "type": "parametric_curve",
+              "id": "traj_steep",
+              "x": "(8.4 - t) * cos(0.5 + (s2_gamma - 5.5) * 0.02)",
+              "y": "(8.4 - t) * sin(0.5 - (s2_gamma - 5.5) * 0.02)",
+              "z": "0",
+              "range": [
+                0,
+                2
+              ],
+              "color": "#e74c3c",
+              "width": 3,
+              "opacity": "s2_gamma > 7 ? 1 : 0"
+            },
+            {
+              "type": "parametric_curve",
+              "id": "traj_safe",
+              "x": "(8.4 - t) * cos(0.5)",
+              "y": "(8.4 - t) * sin(0.5)",
+              "z": "0",
+              "range": [
+                0,
+                2
+              ],
+              "color": "#2ecc71",
+              "width": 3,
+              "opacity": "s2_gamma >= 4 and s2_gamma <= 7 ? 1 : 0"
+            },
+            {
+              "type": "parametric_curve",
+              "id": "traj_shallow",
+              "x": "8.4*cos(0.5) - t",
+              "y": "8.4*sin(0.5) - t + 0.3*t^2",
+              "z": "0",
+              "range": [
+                0,
+                4
+              ],
+              "color": "#3498db",
+              "width": 3,
+              "opacity": "s2_gamma < 4 ? 1 : 0"
             },
             {
               "type": "point",
@@ -475,26 +507,6 @@
               "position": "top-right"
             }
           ]
-        },
-        {
-          "title": "Too Shallow!",
-          "description": "If the angle is too shallow, the spacecraft skips off the atmosphere back into space, potentially missing the landing zone.",
-          "prompt": "Point out the bounce trajectory. Explain that while g-forces are low, skipping means missing the landing zone.",
-          "add": [],
-          "remove": [],
-          "sliders": [
-            {
-              "id": "s2_gamma",
-              "label": "$\\gamma$ (deg)",
-              "min": 1,
-              "max": 12,
-              "default": 2,
-              "step": 0.1,
-              "animate": true,
-              "duration": 1500
-            }
-          ],
-          "info": []
         },
         {
           "title": "Peak Deceleration",
@@ -552,10 +564,38 @@
           ],
           "remove": [
             {
+              "id": "traj_steep"
+            },
+            {
+              "id": "traj_safe"
+            },
+            {
+              "id": "traj_shallow"
+            },
+            {
               "id": "vec_gamma"
             },
             {
               "id": "capsule_entry"
+            },
+            {
+              "type": "slider"
+            },
+            {
+              "type": "info",
+              "id": "gamma_info"
+            },
+            {
+              "id": "earth"
+            },
+            {
+              "id": "atmosphere"
+            },
+            {
+              "id": "corridor"
+            },
+            {
+              "id": "corridor_label"
             }
           ],
           "sliders": [
