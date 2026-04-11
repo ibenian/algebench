@@ -260,97 +260,61 @@
       "prompt": "Guide the user to understand why the entry corridor is so narrow. Emphasize that too steep means burning up, and too shallow means skipping off. Discuss the Allen-Eggers Peak Deceleration theorem.",
       "range": [
         [
-          -15,
-          15
+          350,
+          700
         ],
         [
-          -15,
-          15
+          100,
+          500
         ],
         [
-          -15,
-          15
+          -200,
+          200
         ]
       ],
       "camera": {
         "position": [
-          10,
-          8,
-          10
+          600,
+          300,
+          300
         ],
         "target": [
-          4,
-          4,
+          550,
+          250,
           0
         ]
       },
       "views": [
         {
-          "name": "Default",
+          "name": "Entry Region",
           "position": [
-            10,
-            8,
-            10
+            600,
+            300,
+            300
           ],
           "target": [
-            4,
-            4,
+            550,
+            250,
             0
           ],
-          "description": "3D isometric view of the Earth limb"
+          "description": "View of Earth limb and entry corridor"
         },
         {
           "name": "Graph View",
           "position": [
-            15,
-            5,
-            0
+            550,
+            385,
+            150
           ],
           "target": [
-            10,
-            0,
+            550,
+            385,
             0
           ],
           "description": "View of the deceleration graph"
         }
       ],
       "elements": [
-        {
-          "type": "axis",
-          "id": "axis_x",
-          "axis": "x",
-          "range": [
-            -15,
-            15
-          ],
-          "color": "#ff4444",
-          "width": 1.5,
-          "label": "x"
-        },
-        {
-          "type": "axis",
-          "id": "axis_y",
-          "axis": "y",
-          "range": [
-            -15,
-            15
-          ],
-          "color": "#44cc44",
-          "width": 1.5,
-          "label": "y"
-        },
-        {
-          "type": "axis",
-          "id": "axis_z",
-          "axis": "z",
-          "range": [
-            -15,
-            15
-          ],
-          "color": "#4488ff",
-          "width": 1.5,
-          "label": "z"
-        },
         {
           "type": "grid",
           "id": "_mathbox_init",
@@ -362,8 +326,8 @@
       "steps": [
         {
           "title": "The Entry Corridor",
-          "description": "The entry corridor is a narrow 3D tunnel. Adjust the angle of entry to see what happens when you are too steep or too shallow.",
-          "prompt": "Guide the user to experiment with the angle of entry slider. Emphasize that too steep means crushing g-forces and burning up, while too shallow means skipping off the atmosphere.",
+          "description": "The flight path angle is measured from local horizontal at the atmosphere boundary. Adjust it to see how shallow entries skip off and steep entries produce fatal g-loads.",
+          "prompt": "Guide the user to experiment with the flight path angle slider. At 1 degree the approach is nearly tangent to the atmosphere \u2014 the trajectory barely dips in and skips back out. The safe corridor is roughly 4 to 7 degrees. Above 7 degrees the Allen-Eggers peak deceleration exceeds survivable limits. Ask the user to notice how the trajectory shape changes continuously and how the peak-g value in the info panel responds to the angle.",
           "add": [
             {
               "type": "sphere",
@@ -373,7 +337,7 @@
                 0,
                 0
               ],
-              "radius": 6.371,
+              "radius": 637.1,
               "color": "#3498db",
               "opacity": 0.8
             },
@@ -385,108 +349,187 @@
                 0,
                 0
               ],
-              "radius": 6.471,
+              "radius": 650,
               "color": "#85c1e9",
               "opacity": 0.2
             },
             {
-              "type": "parametric_surface",
-              "id": "corridor",
-              "x": "(6.371 + v) * cos(0.5 + 0.05 * cos(u))",
-              "y": "(6.371 + v) * sin(0.5 + 0.05 * cos(u))",
-              "z": "0.05 * sin(u)",
-              "uRange": [
-                0,
-                6.2832
+              "type": "line",
+              "id": "tangent_ref",
+              "points": [
+                [
+                  598.7,
+                  253.1,
+                  0
+                ],
+                [
+                  629.9,
+                  179.4,
+                  0
+                ]
               ],
-              "vRange": [
-                0,
-                2
+              "color": "#888888",
+              "width": 1.5,
+              "opacity": 0.6
+            },
+            {
+              "type": "text",
+              "id": "tangent_label",
+              "text": "Local Horizontal",
+              "position": [
+                631,
+                180,
+                0
+              ],
+              "color": "#888888"
+            },
+            {
+              "type": "line",
+              "id": "corridor_lo",
+              "points": [
+                [
+                  634.9,
+                  181.8,
+                  0
+                ],
+                [
+                  598.7,
+                  253.1,
+                  0
+                ]
               ],
               "color": "#2ecc71",
-              "opacity": 0.3
+              "width": 1.5,
+              "opacity": 0.4
+            },
+            {
+              "type": "line",
+              "id": "corridor_hi",
+              "points": [
+                [
+                  638.6,
+                  183.8,
+                  0
+                ],
+                [
+                  598.7,
+                  253.1,
+                  0
+                ]
+              ],
+              "color": "#2ecc71",
+              "width": 1.5,
+              "opacity": 0.4
             },
             {
               "type": "text",
               "id": "corridor_label",
               "text": "Safe Corridor",
               "position": [
-                7.5,
-                4.5,
-                0.5
+                620,
+                213,
+                0
               ],
               "color": "#2ecc71"
             },
             {
               "type": "animated_vector",
-              "id": "vec_gamma",
+              "id": "vec_approach",
               "fromExpr": [
-                "8.371 * cos(0.5)",
-                "8.371 * sin(0.5)",
+                "598.7 + 37.5 * sin(0.4 + s2_gamma * pi / 180)",
+                "253.1 - 37.5 * cos(0.4 + s2_gamma * pi / 180)",
                 "0"
               ],
               "toExpr": [
-                "5.5 * cos(0.5 + (s2_gamma - 5.5) * 0.02)",
-                "5.5 * sin(0.5 + (s2_gamma - 5.5) * 0.02)",
+                "598.7",
+                "253.1",
                 "0"
               ],
               "color": "s2_gamma > 7 ? \"#e74c3c\" : (s2_gamma < 4 ? \"#3498db\" : \"#2ecc71\")",
-              "width": 5,
-              "label": "Angle of Entry"
+              "width": 1.5,
+              "label": "Entry Vector"
             },
             {
               "type": "parametric_curve",
-              "id": "traj_steep",
-              "x": "(8.4 - t) * cos(0.5 + (s2_gamma - 5.5) * 0.02)",
-              "y": "(8.4 - t) * sin(0.5 - (s2_gamma - 5.5) * 0.02)",
+              "id": "angle_arc",
+              "x": "598.7 + 15 * sin(0.4 + t * s2_gamma * pi / 180)",
+              "y": "253.1 - 15 * cos(0.4 + t * s2_gamma * pi / 180)",
               "z": "0",
               "range": [
                 0,
-                2
+                1
               ],
-              "color": "#e74c3c",
-              "width": 3,
-              "opacity": "s2_gamma > 7 ? 1 : 0"
+              "color": "#ffffff",
+              "width": 2,
+              "samples": 64
+            },
+            {
+              "type": "animated_point",
+              "id": "gamma_marker",
+              "expr": [
+                "598.7 + 18 * sin(0.4 + s2_gamma * pi / 360)",
+                "253.1 - 18 * cos(0.4 + s2_gamma * pi / 360)",
+                "0"
+              ],
+              "color": "#ffffff",
+              "size": 0,
+              "label": "$\\gamma$"
             },
             {
               "type": "parametric_curve",
-              "id": "traj_safe",
-              "x": "(8.4 - t) * cos(0.5)",
-              "y": "(8.4 - t) * sin(0.5)",
+              "id": "trajectory",
+              "x": "max(650 - t * sin(s2_gamma * pi / 180) * 20 + 0.06 * t^2 / (1 + sin(s2_gamma * pi / 180) * 15), 637.1) * cos(0.4 + t * cos(s2_gamma * pi / 180) * 0.03)",
+              "y": "max(650 - t * sin(s2_gamma * pi / 180) * 20 + 0.06 * t^2 / (1 + sin(s2_gamma * pi / 180) * 15), 637.1) * sin(0.4 + t * cos(s2_gamma * pi / 180) * 0.03)",
               "z": "0",
               "range": [
                 0,
-                2
+                15
               ],
-              "color": "#2ecc71",
+              "color": "#f39c12",
               "width": 3,
-              "opacity": "s2_gamma >= 4 and s2_gamma <= 7 ? 1 : 0"
-            },
-            {
-              "type": "parametric_curve",
-              "id": "traj_shallow",
-              "x": "8.4*cos(0.5) - t",
-              "y": "8.4*sin(0.5) - t + 0.3*t^2",
-              "z": "0",
-              "range": [
-                0,
-                4
-              ],
-              "color": "#3498db",
-              "width": 3,
-              "opacity": "s2_gamma < 4 ? 1 : 0"
+              "samples": 250
             },
             {
               "type": "point",
               "id": "capsule_entry",
               "position": [
-                "8.371 * cos(0.5)",
-                "8.371 * sin(0.5)",
-                "0"
+                598.7,
+                253.1,
+                0
               ],
               "color": "#ffffff",
               "size": 10,
               "label": "Capsule"
+            },
+            {
+              "type": "animated_point",
+              "id": "fireball",
+              "expr": [
+                "max(650 - 3 * sin(s2_gamma * pi / 180) * 20 + 0.06 * 9 / (1 + sin(s2_gamma * pi / 180) * 15), 637.1) * cos(0.4 + 3 * cos(s2_gamma * pi / 180) * 0.03)",
+                "max(650 - 3 * sin(s2_gamma * pi / 180) * 20 + 0.06 * 9 / (1 + sin(s2_gamma * pi / 180) * 15), 637.1) * sin(0.4 + 3 * cos(s2_gamma * pi / 180) * 0.03)",
+                "0"
+              ],
+              "color": "#ff2200",
+              "radius": 6,
+              "shader": {
+                "emissive": "#ff4400",
+                "shininess": 100
+              },
+              "visibleExpr": "s2_gamma > 7",
+              "label": "Burn-up!"
+            },
+            {
+              "type": "animated_point",
+              "id": "skip_label",
+              "expr": [
+                "max(650 - 12 * sin(s2_gamma * pi / 180) * 20 + 0.06 * 144 / (1 + sin(s2_gamma * pi / 180) * 15), 637.1) * cos(0.4 + 12 * cos(s2_gamma * pi / 180) * 0.03)",
+                "max(650 - 12 * sin(s2_gamma * pi / 180) * 20 + 0.06 * 144 / (1 + sin(s2_gamma * pi / 180) * 15), 637.1) * sin(0.4 + 12 * cos(s2_gamma * pi / 180) * 0.03)",
+                "0"
+              ],
+              "color": "#3498db",
+              "size": 0,
+              "visibleExpr": "s2_gamma < 4",
+              "label": "\u2190 Skip to space"
             }
           ],
           "remove": [],
@@ -496,14 +539,14 @@
               "label": "$\\gamma$ (deg)",
               "min": 1,
               "max": 12,
-              "default": 10,
+              "default": 5.5,
               "step": 0.1
             }
           ],
           "info": [
             {
               "id": "gamma_info",
-              "content": "### Angle of Entry\n$\\gamma = {{s2_gamma}}^\\circ$\n\nResult: **{{s2_gamma > 7 ? 'Crush & Burn' : (s2_gamma < 4 ? 'Skip Out' : 'Safe Corridor')}}**",
+              "content": "### Flight Path Angle\n$\\gamma = {{s2_gamma}}^\\circ$\n\n**Peak deceleration (Allen-Eggers):**\n$a_{max} = \\frac{V_E^2 \\sin\\gamma}{2eH} \\approx {{toFixed(152 * sin(s2_gamma * pi / 180), 1)}}\\,g$\n\n**Status:** {{s2_gamma > 7 ? \"TOO STEEP (High Gs)\" : (s2_gamma < 4 ? \"TOO SHALLOW (Skip)\" : \"SAFE CORRIDOR\")}}",
               "position": "top-right"
             }
           ]
@@ -518,8 +561,8 @@
               "id": "graph_axis_x",
               "axis": "x",
               "range": [
-                10,
-                15
+                500,
+                600
               ],
               "color": "#ffffff",
               "width": 1.5,
@@ -530,18 +573,18 @@
               "id": "graph_axis_y",
               "axis": "y",
               "range": [
-                0,
-                5
+                350,
+                420
               ],
               "color": "#ffffff",
               "width": 1.5,
-              "label": "Deceleration Proxy"
+              "label": "Deceleration (g)"
             },
             {
               "type": "parametric_curve",
               "id": "graph_gforce",
-              "x": "10 + t",
-              "y": "(0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180)) * exp(-0.5 * (t - 2.5)^2)",
+              "x": "500 + t * 20",
+              "y": "350 + 14 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180)) * exp(-0.5 * (t - 2.5)^2)",
               "z": "0",
               "range": [
                 0,
@@ -555,8 +598,8 @@
               "id": "graph_label",
               "text": "$a_{\\text{max}}$",
               "position": [
-                12.5,
-                4.2,
+                550,
+                415,
                 0
               ],
               "color": "#e74c3c"
@@ -564,19 +607,40 @@
           ],
           "remove": [
             {
-              "id": "traj_steep"
+              "id": "trajectory"
             },
             {
-              "id": "traj_safe"
+              "id": "vec_approach"
             },
             {
-              "id": "traj_shallow"
+              "id": "angle_arc"
             },
             {
-              "id": "vec_gamma"
+              "id": "gamma_marker"
             },
             {
               "id": "capsule_entry"
+            },
+            {
+              "id": "tangent_ref"
+            },
+            {
+              "id": "tangent_label"
+            },
+            {
+              "id": "corridor_lo"
+            },
+            {
+              "id": "corridor_hi"
+            },
+            {
+              "id": "corridor_label"
+            },
+            {
+              "id": "fireball"
+            },
+            {
+              "id": "skip_label"
             },
             {
               "type": "slider"
@@ -590,12 +654,6 @@
             },
             {
               "id": "atmosphere"
-            },
-            {
-              "id": "corridor"
-            },
-            {
-              "id": "corridor_label"
             }
           ],
           "sliders": [
@@ -625,13 +683,13 @@
           ],
           "camera": {
             "position": [
-              12.5,
-              2.5,
-              10
+              550,
+              385,
+              150
             ],
             "target": [
-              12.5,
-              2.5,
+              550,
+              385,
               0
             ]
           }
@@ -642,36 +700,56 @@
         "title": "Allen-Eggers Peak Deceleration",
         "technique": "derivation",
         "goal": "$$a_{\\text{max}} = \\frac{V_E^2 \\sin \\gamma}{2e H}$$",
-        "prompt": "Guide the user through the derivation of peak deceleration during ballistic entry.",
+        "prompt": "Walk the student through the math of peak deceleration step-by-step. Keep it accessible to a high schooler: we trade time for altitude, find how velocity drops, and see where the braking force hits its absolute maximum.",
         "steps": [
           {
             "type": "given",
-            "label": "Exponential Atmosphere",
-            "math": "\\rho = \\rho_0 e^{-h/H}",
-            "justification": "Atmospheric density decays exponentially with altitude $h$, where $H$ is the scale height.",
-            "explanation": "This is a standard model for planetary atmospheres.",
-            "prompt": "Ask the user what happens to density as altitude decreases.",
-            "sceneStep": 3,
+            "label": "Newton's Second Law",
+            "math": "m \\frac{dV}{dt} = -\\frac{1}{2}\\rho V^2 C_d A",
+            "justification": "The main force slowing the spacecraft down is aerodynamic drag.",
+            "explanation": "Mass times acceleration equals the drag force. Gravity is ignored here because drag is overwhelmingly stronger during peak heating.",
+            "prompt": "Ask the student to remember the basic F=ma rule. The 'a' here is the rate of change of velocity over time.",
+            "sceneStep": 1,
             "highlights": {}
           },
           {
             "type": "step",
-            "label": "Newton's Second Law",
-            "math": "m \\frac{dV}{dt} = -\\frac{1}{2}\\rho V^2 C_d A",
-            "justification": "The only significant force during peak deceleration is aerodynamic drag.",
-            "explanation": "We equate mass times acceleration to the drag equation.",
-            "prompt": "Have the user identify the components of the drag equation.",
-            "sceneStep": 3,
+            "label": "Change of Variables",
+            "math": "\\frac{dV}{dt} = \\frac{dV}{dh} \\frac{dh}{dt} = -V \\sin \\gamma \\frac{dV}{dh}",
+            "justification": "We replace time ($t$) with altitude ($h$) since the atmosphere changes with altitude.",
+            "explanation": "Instead of tracking time, we track how fast we are falling. The vertical speed is just the total speed $V$ times the sine of the entry angle $\\gamma$.",
+            "prompt": "Explain the chain rule simply: 'We want to know how speed changes with height, not time.'",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Velocity vs Altitude",
+            "math": "V(h) = V_E \\exp\\left(-\\frac{C_d A \\rho_0}{2m \\beta} e^{-h/H}\\right)",
+            "justification": "Substitute the exponential density $\\rho = \\rho_0 e^{-h/H}$ and integrate.",
+            "explanation": "Skipping the messy calculus, if we add up all the drag as we fall, we get a formula showing how our speed $V$ drops from our initial entry speed $V_E$.",
+            "prompt": "Tell the student not to worry about the calculus integration. The key takeaway is: speed drops exponentially as the air gets thicker.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Finding the Maximum",
+            "math": "\\frac{d}{dh} \\left( \\frac{dV}{dt} \\right) = 0",
+            "justification": "To find the peak (maximum) deceleration, we find where the derivative of deceleration is zero.",
+            "explanation": "In calculus, you find the highest point of a curve by looking for where it goes flat (slope is zero). The maximum drag happens exactly when the spacecraft has lost a specific fraction of its speed.",
+            "prompt": "Relate finding a maximum to the peak of a roller coaster\u2014the very top is flat for a split second.",
+            "sceneStep": 1,
             "highlights": {}
           },
           {
             "type": "conclusion",
             "label": "Maximum Deceleration",
             "math": "a_{\\text{max}} = \\frac{\\htmlClass{hl-ve}{V_E^2} \\sin \\htmlClass{hl-gamma}{\\gamma}}{2e H}",
-            "justification": "By changing variables from $t$ to $h$ and finding the maximum of the acceleration function.",
-            "explanation": "Notice that the peak deceleration does not depend on the mass $m$ or the drag coefficient $C_d$.",
-            "prompt": "Highlight that $a_{\\text{max}}$ is independent of the spacecraft's mass.",
-            "sceneStep": 3,
+            "justification": "Plugging the critical altitude back into the drag equation gives the absolute maximum G-force.",
+            "explanation": "This is the amazing result! The mass $m$, size $A$, and shape $C_d$ of the spacecraft completely cancel out. The crushing G-force depends ONLY on how fast you come in ($V_E$) and how steep your angle is ($\\gamma$).",
+            "prompt": "Make sure the student realizes the profound implication: you can't build a 'heavier' ship to lower the peak G-forces. You MUST come in slower or shallower.",
+            "sceneStep": 1,
             "highlights": {
               "ve": {
                 "color": "cyan",
@@ -1750,42 +1828,59 @@
         "title": "Terminal Velocity",
         "technique": "derivation",
         "goal": "$$V_t = \\sqrt{\\frac{2mg}{\\rho C_d A}}$$",
-        "prompt": "Guide the student through the derivation of terminal velocity from Newton's second law in equilibrium.",
+        "prompt": "Guide the student through the derivation of terminal velocity step by step. Use simple algebra terms like 'isolate the variable' and explain that this is a state of balance.",
         "steps": [
           {
             "type": "given",
-            "label": "Equilibrium",
+            "label": "Forces in Balance",
             "math": "F_g = \\htmlClass{hl-drag}{F_d}",
-            "justification": "At terminal velocity, acceleration is zero, so forces are balanced.",
-            "explanation": "When the capsule falls at a constant speed, the downward pull of gravity is perfectly matched by the upward push of air resistance.",
+            "justification": "When acceleration stops, the downward pull of gravity equals the upward push of air resistance.",
+            "explanation": "Imagine holding a tug-of-war where both sides pull exactly as hard. The capsule stops speeding up and falls at a constant speed.",
             "sceneStep": 2,
             "highlights": {
               "drag": {
                 "color": "red",
                 "label": "Aerodynamic Drag"
               }
-            }
+            },
+            "prompt": "Explain the logic of this algebraic step clearly to the student."
           },
           {
             "type": "step",
-            "label": "Substitute Forces",
-            "math": "mg = \\frac{1}{2}\\rho V^2 C_d \\htmlClass{hl-area}{A}",
-            "justification": "Substitute the formulas for weight and aerodynamic drag.",
-            "explanation": "We replace $F_g$ with $mg$ and $F_d$ with the drag equation. Notice how the area $A$ directly influences the required velocity.",
+            "label": "Substitute Equations",
+            "math": "mg = \\frac{1}{2}\\rho V_t^2 C_d \\htmlClass{hl-area}{A}",
+            "justification": "Replace the force symbols with their actual physics formulas.",
+            "explanation": "Gravity is mass times $g$. Drag depends on the air density $\\rho$, velocity squared, the parachute's drag coefficient $C_d$, and the total area $A$. We call this specific balanced velocity $V_t$ (terminal velocity).",
             "sceneStep": 2,
             "highlights": {
               "area": {
                 "color": "cyan",
                 "label": "Parachute Area"
               }
-            }
+            },
+            "prompt": "Explain the logic of this algebraic step clearly to the student."
+          },
+          {
+            "type": "step",
+            "label": "Isolate Velocity Squared",
+            "math": "V_t^2 = \\frac{2mg}{\\rho C_d \\htmlClass{hl-area}{A}}",
+            "justification": "Multiply both sides by 2 and divide by everything else to get $V_t^2$ by itself.",
+            "explanation": "We want to know how fast we're falling, so we rearrange the algebra to get velocity alone on the left side. Notice that the big area $A$ is on the bottom\u2014a larger parachute means a smaller speed!",
+            "sceneStep": 2,
+            "highlights": {
+              "area": {
+                "color": "cyan",
+                "label": "Parachute Area"
+              }
+            },
+            "prompt": "Explain the logic of this algebraic step clearly to the student."
           },
           {
             "type": "conclusion",
-            "label": "Solve for Velocity",
+            "label": "Solve for Terminal Velocity",
             "math": "\\htmlClass{hl-vt}{V_t} = \\sqrt{\\frac{2mg}{\\rho C_d \\htmlClass{hl-area}{A}}}",
-            "justification": "Isolate $V$ to find the terminal velocity.",
-            "explanation": "This shows that increasing the parachute area $A$ decreases the terminal velocity $V_t$, allowing for a gentle splashdown.",
+            "justification": "Take the square root of both sides.",
+            "explanation": "This final formula proves that a massive capsule ($m$) will fall faster, but deploying huge parachutes ($A$) guarantees it slows down enough for a safe splashdown.",
             "sceneStep": 2,
             "highlights": {
               "vt": {
@@ -1796,7 +1891,8 @@
                 "color": "cyan",
                 "label": "Parachute Area"
               }
-            }
+            },
+            "prompt": "Explain the logic of this algebraic step clearly to the student."
           }
         ]
       }
