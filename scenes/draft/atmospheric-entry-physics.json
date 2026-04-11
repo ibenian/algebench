@@ -705,10 +705,40 @@
           {
             "type": "given",
             "label": "Newton's Second Law",
+            "math": "F_{\\text{net}} = m a",
+            "justification": "The fundamental law of motion relates net force to mass and acceleration.",
+            "explanation": "Acceleration $a$ is the rate of change of velocity, so we can write this as $F_{\\text{net}} = m \\frac{dV}{dt}$.",
+            "prompt": "Remind the student of Newton's Second Law and ask what acceleration means in terms of velocity.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "given",
+            "label": "Aerodynamic Drag",
+            "math": "F_D = \\frac{1}{2}\\rho V^2 C_d A",
+            "justification": "This is the standard drag equation.",
+            "explanation": "Drag depends on the air density $\\rho$, the square of the velocity $V^2$, the capsule's drag coefficient $C_d$, and its cross-sectional area $A$.",
+            "prompt": "Have the user identify the components of the drag equation.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Net Force in Flight",
+            "math": "F_{\\text{net}} \\approx -F_D",
+            "justification": "During the most intense part of reentry, drag is so massive that gravity is negligible by comparison.",
+            "explanation": "We ignore gravity because the deceleration from drag reaches many G's. The negative sign shows that drag opposes the direction of motion.",
+            "prompt": "Ask the student why we can ignore gravity when the spacecraft is experiencing 10 G's of deceleration.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Combine Equations",
             "math": "m \\frac{dV}{dt} = -\\frac{1}{2}\\rho V^2 C_d A",
-            "justification": "The main force slowing the spacecraft down is aerodynamic drag.",
-            "explanation": "Mass times acceleration equals the drag force. Gravity is ignored here because drag is overwhelmingly stronger during peak heating.",
-            "prompt": "Ask the student to remember the basic F=ma rule. The 'a' here is the rate of change of velocity over time.",
+            "justification": "Substitute the definition of acceleration and the drag equation into Newton's Second Law.",
+            "explanation": "This gives us our starting differential equation for the spacecraft's motion. It tells us exactly how fast the velocity is dropping at any given moment.",
+            "prompt": "Ask the student to put the pieces together to form the full equation of motion.",
             "sceneStep": 1,
             "highlights": {}
           },
