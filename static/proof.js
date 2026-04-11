@@ -116,7 +116,7 @@ function preRenderProofSteps(proof) {
         let contentHtml = `<div class="proof-step-header">
             <span class="proof-step-number">${i + 1}</span>
             <span class="proof-step-type ${typeClass}">${type}</span>
-            <span class="proof-step-label">${escapeHtml(step.label)}</span>
+            <span class="proof-step-label">${renderKaTeX(step.label, false)}</span>
             <span class="proof-step-status"></span>
         </div>`;
 

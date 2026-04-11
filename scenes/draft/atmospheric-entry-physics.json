@@ -553,56 +553,349 @@
         },
         {
           "title": "Peak Deceleration",
-          "description": "The Allen-Eggers peak deceleration theorem says the maximum deceleration scales with entry velocity and flight path angle, not directly with the capsule mass. Use the sliders to see how steeper and faster entries raise the peak.",
-          "prompt": "Guide the student through the Allen-Eggers scaling. Tie the graph peak directly to the velocity and flight-path-angle sliders so the theorem is visible, not just stated.",
+          "description": "This step shows the full Allen-Eggers deceleration profile using a normalized atmospheric-depth variable $x$, not literal clock time or downrange distance. The peak always occurs at $x=1$, while its height scales with entry velocity and flight path angle.",
+          "prompt": "Guide the student through the Allen-Eggers scaling using the full normalized profile. Be explicit that the horizontal axis is the model variable x from the derivation, not time or distance. Emphasize two ideas: the curve shape stays the same, and only the peak height changes with $V_E^2 \\sin \\gamma$.",
           "add": [
             {
-              "type": "axis",
-              "id": "graph_axis_x",
-              "axis": "x",
-              "range": [
-                500,
-                600
+              "type": "line",
+              "id": "graph_x_axis",
+              "points": [
+                [
+                  510,
+                  355,
+                  0
+                ],
+                [
+                  590,
+                  355,
+                  0
+                ]
               ],
               "color": "#ffffff",
               "width": 1.5,
-              "label": "Entry Progress"
+              "opacity": 0.9
             },
             {
-              "type": "axis",
-              "id": "graph_axis_y",
-              "axis": "y",
-              "range": [
-                350,
-                420
+              "type": "line",
+              "id": "graph_y_axis",
+              "points": [
+                [
+                  510,
+                  355,
+                  0
+                ],
+                [
+                  510,
+                  407,
+                  0
+                ]
               ],
               "color": "#ffffff",
               "width": 1.5,
-              "label": "Deceleration (g)"
+              "opacity": 0.9
+            },
+            {
+              "type": "line",
+              "id": "graph_x_tick_1",
+              "points": [
+                [
+                  526,
+                  355,
+                  0
+                ],
+                [
+                  526,
+                  353,
+                  0
+                ]
+              ],
+              "color": "#cccccc",
+              "width": 1.2
+            },
+            {
+              "type": "line",
+              "id": "graph_x_tick_2",
+              "points": [
+                [
+                  542,
+                  355,
+                  0
+                ],
+                [
+                  542,
+                  353,
+                  0
+                ]
+              ],
+              "color": "#cccccc",
+              "width": 1.2
+            },
+            {
+              "type": "line",
+              "id": "graph_x_tick_3",
+              "points": [
+                [
+                  558,
+                  355,
+                  0
+                ],
+                [
+                  558,
+                  353,
+                  0
+                ]
+              ],
+              "color": "#cccccc",
+              "width": 1.2
+            },
+            {
+              "type": "line",
+              "id": "graph_x_tick_4",
+              "points": [
+                [
+                  574,
+                  355,
+                  0
+                ],
+                [
+                  574,
+                  353,
+                  0
+                ]
+              ],
+              "color": "#cccccc",
+              "width": 1.2
+            },
+            {
+              "type": "line",
+              "id": "graph_y_tick_2g",
+              "points": [
+                [
+                  508,
+                  375,
+                  0
+                ],
+                [
+                  510,
+                  375,
+                  0
+                ]
+              ],
+              "color": "#cccccc",
+              "width": 1.2
+            },
+            {
+              "type": "line",
+              "id": "graph_y_tick_4g",
+              "points": [
+                [
+                  508,
+                  395,
+                  0
+                ],
+                [
+                  510,
+                  395,
+                  0
+                ]
+              ],
+              "color": "#cccccc",
+              "width": 1.2
+            },
+            {
+              "type": "text",
+              "id": "graph_x0_label",
+              "text": "0",
+              "position": [
+                510,
+                351.5,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "graph_x1_label",
+              "text": "1",
+              "position": [
+                526,
+                351.5,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "graph_x2_label",
+              "text": "2",
+              "position": [
+                542,
+                351.5,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "graph_x3_label",
+              "text": "3",
+              "position": [
+                558,
+                351.5,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "graph_x4_label",
+              "text": "4",
+              "position": [
+                574,
+                351.5,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "graph_y0_label",
+              "text": "0 g",
+              "position": [
+                504,
+                355,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "graph_y2_label",
+              "text": "2 g",
+              "position": [
+                504,
+                375,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "graph_y4_label",
+              "text": "4 g",
+              "position": [
+                504,
+                395,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "graph_x_label",
+              "text": "Normalized entry depth $x$",
+              "position": [
+                550,
+                347,
+                0
+              ],
+              "color": "#ffffff"
+            },
+            {
+              "type": "text",
+              "id": "graph_y_label",
+              "text": "Deceleration (g)",
+              "position": [
+                522,
+                405,
+                0
+              ],
+              "color": "#ffffff"
             },
             {
               "type": "parametric_curve",
               "id": "graph_gforce",
-              "x": "500 + t * 20",
-              "y": "350 + 14 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180)) * exp(-0.5 * (t - 2.5)^2)",
+              "x": "510 + 16 * t",
+              "y": "355 + 10 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180)) * e * t * exp(-t)",
               "z": "0",
               "range": [
                 0,
-                5
+                4.5
               ],
               "color": "#e74c3c",
               "width": 3
             },
             {
+              "type": "animated_point",
+              "id": "graph_peak_point",
+              "expr": [
+                "526",
+                "355 + 10 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180))",
+                "0"
+              ],
+              "color": "#f39c12",
+              "size": 8,
+              "label": "Peak"
+            },
+            {
+              "type": "line",
+              "id": "graph_peak_vertical",
+              "points": [
+                [
+                  526,
+                  355,
+                  0
+                ],
+                [
+                  "526",
+                  "355 + 10 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180))",
+                  "0"
+                ]
+              ],
+              "color": "#f39c12",
+              "width": 1.5,
+              "opacity": 0.5
+            },
+            {
+              "type": "line",
+              "id": "graph_peak_horizontal",
+              "points": [
+                [
+                  510,
+                  "355 + 10 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180))",
+                  "0"
+                ],
+                [
+                  526,
+                  "355 + 10 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180))",
+                  "0"
+                ]
+              ],
+              "color": "#f39c12",
+              "width": 1.5,
+              "opacity": 0.5
+            },
+            {
               "type": "text",
-              "id": "graph_label",
-              "text": "$a_{\\text{max}}$",
+              "id": "graph_peak_label",
+              "text": "$a_{\\text{max}}$ at $x=1$",
               "position": [
-                550,
-                415,
+                "533",
+                "358 + 10 * (0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180))",
                 0
               ],
-              "color": "#e74c3c"
+              "color": "#f39c12"
+            },
+            {
+              "type": "text",
+              "id": "graph_profile_formula",
+              "text": "$a(x) = a_{\\max} e x e^{-x}$",
+              "position": [
+                555,
+                402,
+                0
+              ],
+              "color": "#e5e7eb"
             }
           ],
           "remove": [
@@ -677,7 +970,7 @@
           "info": [
             {
               "id": "peak_info",
-              "content": "### Peak-Deceleration Scaling\n$a_{\\text{max}} \\propto V_E^2 \\sin \\gamma$\n\n$V_E = {{s2_peak_velocity}}$ km/s\n$\\gamma = {{s2_peak_gamma}}^\\circ$\n\nScaled plot peak $\\approx {{toFixed(0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180), 2)}}$",
+              "content": "### Full Peak-Deceleration Profile\nThis plot shows the full Allen-Eggers profile against the normalized variable $x$, not literal time or distance.\n\n$a(x) = a_{\\max} e x e^{-x}$, so the peak always occurs at $x = 1$.\n\n$a_{\\max} \\propto V_E^2 \\sin \\gamma$\n\n$V_E = {{s2_peak_velocity}}$ km/s\n$\\gamma = {{s2_peak_gamma}}^\\circ$\n\n$a_{\\max} \\approx {{toFixed(0.28 * s2_peak_velocity^2 * sin(s2_peak_gamma * pi / 180), 2)}}\\, g$",
               "position": "top-right"
             }
           ],
@@ -699,86 +992,207 @@
         "id": "allen_eggers_deceleration",
         "title": "Allen-Eggers Peak Deceleration",
         "technique": "derivation",
+        "techniqueHint": "Use the simplest ballistic-entry model: drag dominates near peak deceleration, density falls exponentially with altitude, and the flight-path angle stays nearly constant. Turn the altitude dependence into one compact variable so the peak appears as the maximum of x e^{-x}.",
         "goal": "$$a_{\\text{max}} = \\frac{V_E^2 \\sin \\gamma}{2e H}$$",
         "prompt": "Walk the student through the math of peak deceleration step-by-step. Keep it accessible to a high schooler: we trade time for altitude, find how velocity drops, and see where the braking force hits its absolute maximum.",
         "steps": [
           {
             "type": "given",
-            "label": "Newton's Second Law",
-            "math": "F_{\\text{net}} = m a",
-            "justification": "The fundamental law of motion relates net force to mass and acceleration.",
-            "explanation": "Acceleration $a$ is the rate of change of velocity, so we can write this as $F_{\\text{net}} = m \\frac{dV}{dt}$.",
-            "prompt": "Remind the student of Newton's Second Law and ask what acceleration means in terms of velocity.",
+            "label": "Acceleration means change of speed",
+            "math": "a = \\frac{dV}{dt}",
+            "justification": "Acceleration tells us how quickly the speed changes with time.",
+            "explanation": "This is the quantity we want to track during reentry: how fast the spacecraft is slowing down.",
+            "prompt": "Ask the student what it means physically if $dV/dt$ is negative.",
             "sceneStep": 1,
             "highlights": {}
           },
           {
             "type": "given",
-            "label": "Aerodynamic Drag",
-            "math": "F_D = \\frac{1}{2}\\rho V^2 C_d A",
-            "justification": "This is the standard drag equation.",
-            "explanation": "Drag depends on the air density $\\rho$, the square of the velocity $V^2$, the capsule's drag coefficient $C_d$, and its cross-sectional area $A$.",
-            "prompt": "Have the user identify the components of the drag equation.",
+            "label": "Newton's second law links force and acceleration",
+            "math": "F_{\\text{net}} = ma",
+            "justification": "Net force divided by mass gives acceleration.",
+            "explanation": "So once we know the main force acting on the capsule, we can turn that force into a deceleration formula.",
+            "prompt": "Tell the student this is the bridge from forces to motion.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "given",
+            "label": "The main braking force is drag",
+            "math": "D = \\frac{1}{2}\\rho V^2 C_d A",
+            "justification": "This is the standard aerodynamic drag formula.",
+            "explanation": "Each symbol has a job: $\\rho$ is air density, $V$ is speed, $C_d$ describes shape, and $A$ is cross-sectional area.",
+            "prompt": "Pause to name each symbol before moving on.",
             "sceneStep": 1,
             "highlights": {}
           },
           {
             "type": "step",
-            "label": "Net Force in Flight",
-            "math": "F_{\\text{net}} \\approx -F_D",
-            "justification": "During the most intense part of reentry, drag is so massive that gravity is negligible by comparison.",
-            "explanation": "We ignore gravity because the deceleration from drag reaches many G's. The negative sign shows that drag opposes the direction of motion.",
-            "prompt": "Ask the student why we can ignore gravity when the spacecraft is experiencing 10 G's of deceleration.",
+            "label": "During peak braking, drag dominates",
+            "math": "F_{\\text{net}} \\approx -D",
+            "justification": "In the intense part of reentry, drag is much larger than gravity along the flight path, so the net force points opposite the motion.",
+            "explanation": "The minus sign means drag acts against the direction of travel, so it reduces the speed.",
+            "prompt": "Explain why we are making a simplified model here instead of keeping every force.",
             "sceneStep": 1,
             "highlights": {}
           },
           {
             "type": "step",
-            "label": "Combine Equations",
-            "math": "m \\frac{dV}{dt} = -\\frac{1}{2}\\rho V^2 C_d A",
-            "justification": "Substitute the definition of acceleration and the drag equation into Newton's Second Law.",
-            "explanation": "This gives us our starting differential equation for the spacecraft's motion. It tells us exactly how fast the velocity is dropping at any given moment.",
-            "prompt": "Ask the student to put the pieces together to form the full equation of motion.",
+            "label": "Turn drag into a deceleration formula",
+            "math": "m\\left(-\\frac{dV}{dt}\\right) = D \\quad \\Longrightarrow \\quad -\\frac{dV}{dt} = \\frac{D}{m} = \\frac{1}{2m}\\rho V^2 C_d A",
+            "justification": "Substitute $F_{\\text{net}} \\approx -D$ into Newton's second law and divide by $m$.",
+            "explanation": "Now we have an equation for how the speed changes. The left side is deceleration, and the right side tells what causes it.",
+            "prompt": "Make clear that we are solving for the size of the slowdown, not the direction of motion.",
             "sceneStep": 1,
             "highlights": {}
           },
           {
             "type": "step",
-            "label": "Change of Variables",
-            "math": "\\frac{dV}{dt} = \\frac{dV}{dh} \\frac{dh}{dt} = -V \\sin \\gamma \\frac{dV}{dh}",
-            "justification": "We replace time ($t$) with altitude ($h$) since the atmosphere changes with altitude.",
-            "explanation": "Instead of tracking time, we track how fast we are falling. The vertical speed is just the total speed $V$ times the sine of the entry angle $\\gamma$.",
-            "prompt": "Explain the chain rule simply: 'We want to know how speed changes with height, not time.'",
+            "label": "Introduce the ballistic coefficient",
+            "math": "\\beta = \\frac{m}{C_d A}",
+            "justification": "This definition packages mass, drag coefficient, and area into one parameter.",
+            "explanation": "Instead of carrying around $m$, $C_d$, and $A$ separately, we combine them into one quantity that measures how hard the atmosphere can slow the vehicle.",
+            "prompt": "Remind the student that this came from the earlier scene, not out of nowhere.",
             "sceneStep": 1,
             "highlights": {}
           },
           {
             "type": "step",
-            "label": "Velocity vs Altitude",
-            "math": "V(h) = V_E \\exp\\left(-\\frac{C_d A \\rho_0}{2m \\beta} e^{-h/H}\\right)",
-            "justification": "Substitute the exponential density $\\rho = \\rho_0 e^{-h/H}$ and integrate.",
-            "explanation": "Skipping the messy calculus, if we add up all the drag as we fall, we get a formula showing how our speed $V$ drops from our initial entry speed $V_E$.",
-            "prompt": "Tell the student not to worry about the calculus integration. The key takeaway is: speed drops exponentially as the air gets thicker.",
+            "label": "Rewrite the deceleration using $\\beta$",
+            "math": "-\\frac{dV}{dt} = \\frac{\\rho V^2}{2\\beta}",
+            "justification": "Since $\\beta = m/(C_dA)$, we have $C_dA/m = 1/\\beta$.",
+            "explanation": "This is the same physics as before, just written more compactly.",
+            "prompt": "Point out exactly where $m$, $C_d$, and $A$ went.",
             "sceneStep": 1,
             "highlights": {}
           },
           {
             "type": "step",
-            "label": "Finding the Maximum",
-            "math": "\\frac{d}{dh} \\left( \\frac{dV}{dt} \\right) = 0",
-            "justification": "To find the peak (maximum) deceleration, we find where the derivative of deceleration is zero.",
-            "explanation": "In calculus, you find the highest point of a curve by looking for where it goes flat (slope is zero). The maximum drag happens exactly when the spacecraft has lost a specific fraction of its speed.",
-            "prompt": "Relate finding a maximum to the peak of a roller coaster\u2014the very top is flat for a split second.",
+            "label": "Model how air density changes with altitude",
+            "math": "\\rho(h) = \\rho_0 e^{-h/H}",
+            "justification": "Allen and Eggers approximate the atmosphere by an exponential density law.",
+            "explanation": "This says the air gets thinner very quickly as altitude increases. The constant $H$ is the scale height.",
+            "prompt": "Explain that this is a model of the atmosphere, not a new force law.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Switch from time to altitude",
+            "math": "\\frac{dV}{dt} = \\frac{dV}{dh}\\frac{dh}{dt}",
+            "justification": "This is the chain rule from calculus.",
+            "explanation": "We use altitude because density depends on altitude. So it is smarter to ask how speed changes as height changes.",
+            "prompt": "Explain the chain rule in words before using it symbolically.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Write the vertical speed",
+            "math": "\\frac{dh}{dt} = -V\\sin\\gamma",
+            "justification": "The downward component of velocity is the full speed times $\\sin\\gamma$.",
+            "explanation": "The minus sign appears because the spacecraft is descending, so its altitude is going down.",
+            "prompt": "Connect $\\gamma$ to the flight-path-angle picture in the scene.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Substitute those two ideas together",
+            "math": "-V\\sin\\gamma\\,\\frac{dV}{dh} = -\\frac{\\rho V^2}{2\\beta}",
+            "justification": "Replace $dV/dt$ by $(dV/dh)(dh/dt)$ and then use $dh/dt=-V\\sin\\gamma$.",
+            "explanation": "This is the same deceleration law as before, but now it is written in terms of altitude instead of time.",
+            "prompt": "Say explicitly that nothing mysterious happened here; we only replaced one variable with another.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Separate the variables",
+            "math": "\\frac{dV}{V} = \\frac{\\rho(h)}{2\\beta\\sin\\gamma}\\,dh",
+            "justification": "Cancel one factor of $V$ and divide both sides by the remaining terms.",
+            "explanation": "Now all the speed pieces are on one side and all the altitude pieces are on the other side. That makes integration possible.",
+            "prompt": "Explain that 'separate the variables' just means putting like quantities on the same side.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Integrate both sides",
+            "math": "\\int_{V_E}^{V(h)} \\frac{dV}{V} = \\int_{\\infty}^{h} \\frac{\\rho_0 e^{-h'/H}}{2\\beta\\sin\\gamma}\\,dh'",
+            "justification": "We add up the tiny changes in speed from the top of the atmosphere down to altitude $h$.",
+            "explanation": "The left side starts at entry speed $V_E$. The right side starts high enough that the air is essentially negligible.",
+            "prompt": "Explain what the limits mean physically before evaluating the integrals.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Evaluate the integrals",
+            "math": "\\ln\\!\\left(\\frac{V(h)}{V_E}\\right) = -\\frac{\\rho_0 H}{2\\beta\\sin\\gamma}e^{-h/H}",
+            "justification": "The left integral gives a logarithm, and the right integral of the exponential gives another exponential term.",
+            "explanation": "This is where the logarithm comes from: integrating $1/V$ always gives $\\ln V$.",
+            "prompt": "Call out the source of the logarithm so it does not feel like magic.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Solve that for the speed",
+            "math": "V(h) = V_E\\exp\\!\\left[-\\frac{\\rho_0 H}{2\\beta\\sin\\gamma}e^{-h/H}\\right]",
+            "justification": "Exponentiate both sides to undo the logarithm.",
+            "explanation": "Now we have a direct formula for the speed at altitude $h$.",
+            "prompt": "Say plainly: 'the logarithm disappears because we exponentiate both sides.'",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Substitute speed back into the drag formula",
+            "math": "a(h) = \\frac{\\rho(h)V(h)^2}{2\\beta}",
+            "justification": "Peak deceleration means we need an explicit formula for deceleration as a function of altitude.",
+            "explanation": "We already found $V(h)$, and we already know $\\rho(h)$, so now we combine them.",
+            "prompt": "Tell the student this is the moment where the pieces come back together.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Collect the altitude dependence into one variable",
+            "math": "a(h) = \\frac{V_E^2\\sin\\gamma}{2H}\\,x e^{-x}, \\qquad x = \\frac{\\rho_0 H}{\\beta\\sin\\gamma}e^{-h/H}",
+            "justification": "After substitution and simplification, all the messy altitude terms can be grouped into a single variable $x$.",
+            "explanation": "The new variable $x$ is not a new piece of physics. It is just a shorthand to make the peak easier to find.",
+            "prompt": "Explicitly reassure the student that $x$ is only bookkeeping.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Find the peak of the simpler function",
+            "math": "\\frac{d}{dx}(x e^{-x}) = e^{-x}(1-x) = 0",
+            "justification": "A maximum occurs where the derivative is zero.",
+            "explanation": "The constant factor $V_E^2\\sin\\gamma/(2H)$ does not affect where the peak happens, so we only need to maximize $x e^{-x}$.",
+            "prompt": "Explain why we can ignore the constant factor when searching for the peak location.",
+            "sceneStep": 1,
+            "highlights": {}
+          },
+          {
+            "type": "step",
+            "label": "Solve for the peak location",
+            "math": "e^{-x}(1-x)=0 \\quad \\Longrightarrow \\quad x=1",
+            "justification": "The exponential factor is never zero, so the only way the product is zero is if $1-x=0$.",
+            "explanation": "This is a small but important algebra point: exponentials never vanish.",
+            "prompt": "Explain why $e^{-x}$ cannot equal zero.",
             "sceneStep": 1,
             "highlights": {}
           },
           {
             "type": "conclusion",
-            "label": "Maximum Deceleration",
-            "math": "a_{\\text{max}} = \\frac{\\htmlClass{hl-ve}{V_E^2} \\sin \\htmlClass{hl-gamma}{\\gamma}}{2e H}",
-            "justification": "Plugging the critical altitude back into the drag equation gives the absolute maximum G-force.",
-            "explanation": "This is the amazing result! The mass $m$, size $A$, and shape $C_d$ of the spacecraft completely cancel out. The crushing G-force depends ONLY on how fast you come in ($V_E$) and how steep your angle is ($\\gamma$).",
-            "prompt": "Make sure the student realizes the profound implication: you can't build a 'heavier' ship to lower the peak G-forces. You MUST come in slower or shallower.",
+            "label": "Allen-Eggers peak deceleration",
+            "math": "a_{\\text{max}} = \\frac{\\htmlClass{hl-ve}{V_E^2}\\sin\\htmlClass{hl-gamma}{\\gamma}}{2eH}",
+            "justification": "At the peak, $x=1$, so $x e^{-x} = 1/e$.",
+            "explanation": "In this simplified ballistic-entry model, the peak deceleration depends on entry speed, entry angle, and atmospheric scale height. The vehicle parameters are hidden in the altitude where the peak happens, but they cancel out of the peak value itself.",
+            "prompt": "State the limitation clearly: this result comes from the simplified Allen-Eggers model and applies when the deceleration peak occurs before impact.",
             "sceneStep": 1,
             "highlights": {
               "ve": {
@@ -1857,50 +2271,81 @@
         "id": "terminal_velocity",
         "title": "Terminal Velocity",
         "technique": "derivation",
+        "techniqueHint": "Treat terminal velocity as a balance point: acceleration becomes zero, so upward drag must match downward weight. Then it is just algebra.",
         "goal": "$$V_t = \\sqrt{\\frac{2mg}{\\rho C_d A}}$$",
         "prompt": "Guide the student through the derivation of terminal velocity step by step. Use simple algebra terms like 'isolate the variable' and explain that this is a state of balance.",
         "steps": [
           {
             "type": "given",
-            "label": "Gravity (Weight)",
-            "math": "F_g = mg",
-            "justification": "The downward force on the capsule is its weight.",
-            "explanation": "Gravity pulls the capsule down with a force equal to its mass $m$ times the acceleration due to gravity $g$.",
+            "label": "Acceleration means change in velocity",
+            "math": "a = \\frac{dV}{dt}",
+            "justification": "Acceleration measures how the speed changes over time.",
+            "explanation": "Terminal velocity is the special moment when this change becomes zero.",
             "sceneStep": 2,
             "highlights": {},
-            "prompt": "Ask the student to recall the formula for weight."
+            "prompt": "Ask what it means physically when the velocity stops changing."
           },
           {
             "type": "given",
-            "label": "Aerodynamic Drag",
-            "math": "F_d = \\frac{1}{2}\\rho V^2 C_d \\htmlClass{hl-area}{A}",
-            "justification": "The upward force opposing gravity is aerodynamic drag.",
-            "explanation": "Drag depends on the air density $\\rho$, velocity squared, the parachute's drag coefficient $C_d$, and the total parachute area $A$.",
-            "sceneStep": 2,
-            "highlights": {
-              "area": {
-                "color": "cyan",
-                "label": "Parachute Area"
-              }
-            },
-            "prompt": "Ask the student to identify the components of the drag equation, particularly the area A."
-          },
-          {
-            "type": "step",
-            "label": "Forces in Balance",
-            "math": "F_g = F_d",
-            "justification": "When acceleration stops, the downward pull equals the upward push.",
-            "explanation": "Imagine holding a tug-of-war where both sides pull exactly as hard. The capsule stops speeding up and falls at a constant speed, which we call terminal velocity ($V_t$).",
+            "label": "Newton's second law",
+            "math": "F_{\\text{net}} = ma",
+            "justification": "Net force produces acceleration.",
+            "explanation": "This lets us translate a force balance into a statement about constant speed.",
             "sceneStep": 2,
             "highlights": {},
-            "prompt": "Explain what happens when forces are balanced (acceleration becomes zero)."
+            "prompt": "Tell the student this is the starting rule behind the whole derivation."
+          },
+          {
+            "type": "given",
+            "label": "Weight pulls downward",
+            "math": "F_g = mg",
+            "justification": "The capsule's weight is mass times gravitational acceleration.",
+            "explanation": "This is the downward force trying to make the capsule fall faster.",
+            "sceneStep": 2,
+            "highlights": {},
+            "prompt": "Ask the student to identify which force points downward in the scene."
+          },
+          {
+            "type": "given",
+            "label": "Drag pushes upward",
+            "math": "F_d = \\frac{1}{2}\\rho V^2 C_d \\htmlClass{hl-area}{A}",
+            "justification": "This is the standard drag law for the resisting force from the air.",
+            "explanation": "A bigger parachute area $A$ or a larger drag coefficient $C_d$ makes the upward drag force stronger.",
+            "sceneStep": 2,
+            "highlights": {
+              "area": {
+                "color": "cyan",
+                "label": "Parachute Area"
+              }
+            },
+            "prompt": "Have the student locate the term that gets larger when the parachute opens."
           },
           {
             "type": "step",
-            "label": "Substitute Equations",
+            "label": "Terminal velocity means zero acceleration",
+            "math": "a = 0 \\quad \\Longrightarrow \\quad F_{\\text{net}} = 0",
+            "justification": "If the falling speed stays constant, then $dV/dt=0$, so acceleration is zero. Newton's second law then says net force is zero.",
+            "explanation": "The capsule is still moving downward, but it is no longer changing its speed.",
+            "sceneStep": 2,
+            "highlights": {},
+            "prompt": "Use the phrase 'steady falling speed' before naming it terminal velocity."
+          },
+          {
+            "type": "step",
+            "label": "So the forces must balance",
+            "math": "F_g = F_d",
+            "justification": "If the net force is zero, the upward and downward forces must be equal in magnitude.",
+            "explanation": "This balance is the definition of terminal velocity in this setting.",
+            "sceneStep": 2,
+            "highlights": {},
+            "prompt": "Compare it to a tug-of-war ending in a tie."
+          },
+          {
+            "type": "step",
+            "label": "Replace each force with its formula",
             "math": "mg = \\frac{1}{2}\\rho V_t^2 C_d \\htmlClass{hl-area}{A}",
-            "justification": "Replace the force symbols with their actual physics formulas.",
-            "explanation": "We replace $F_g$ with $mg$ and $F_d$ with the drag equation. We also specifically write $V_t$ for the velocity to show we are at terminal velocity.",
+            "justification": "Replace each force symbol with its formula and use $V_t$ for the steady falling speed.",
+            "explanation": "Now the physics has turned into an algebra problem.",
             "sceneStep": 2,
             "highlights": {
               "area": {
@@ -1908,14 +2353,14 @@
                 "label": "Parachute Area"
               }
             },
-            "prompt": "Guide the student to substitute the earlier equations into the balance equation."
+            "prompt": "Tell the student this is the key equation for the whole derivation."
           },
           {
             "type": "step",
-            "label": "Isolate Velocity Squared",
-            "math": "V_t^2 = \\frac{2mg}{\\rho C_d \\htmlClass{hl-area}{A}}",
-            "justification": "Multiply both sides by 2 and divide by everything else to get $V_t^2$ by itself.",
-            "explanation": "We want to know how fast we're falling, so we rearrange the algebra to get velocity alone on the left side. Notice that the big area $A$ is on the bottom\u2014a larger parachute means a smaller speed!",
+            "label": "Clear the factor of one-half",
+            "math": "2mg = \\rho V_t^2 C_d \\htmlClass{hl-area}{A}",
+            "justification": "Multiply both sides by 2.",
+            "explanation": "This removes the fraction and makes the next algebra step easier to see.",
             "sceneStep": 2,
             "highlights": {
               "area": {
@@ -1923,14 +2368,29 @@
                 "label": "Parachute Area"
               }
             },
-            "prompt": "Explain the logic of this algebraic step clearly to the student."
+            "prompt": "Explain that we are simplifying the equation one small move at a time."
+          },
+          {
+            "type": "step",
+            "label": "Get $V_t^2$ by itself",
+            "math": "V_t^2 = \\frac{2mg}{\\rho C_d \\htmlClass{hl-area}{A}}",
+            "justification": "Divide both sides by $\\rho C_d A$.",
+            "explanation": "The area $A$ ends up in the denominator, which matches intuition: a larger parachute gives a lower terminal speed.",
+            "sceneStep": 2,
+            "highlights": {
+              "area": {
+                "color": "cyan",
+                "label": "Parachute Area"
+              }
+            },
+            "prompt": "Use the phrase 'get $V_t^2$ alone' so the algebra feels mechanical and safe."
           },
           {
             "type": "conclusion",
             "label": "Solve for Terminal Velocity",
             "math": "\\htmlClass{hl-vt}{V_t} = \\sqrt{\\frac{2mg}{\\rho C_d \\htmlClass{hl-area}{A}}}",
-            "justification": "Take the square root of both sides.",
-            "explanation": "This final formula proves that a massive capsule ($m$) will fall faster, but deploying huge parachutes ($A$) guarantees it slows down enough for a safe splashdown.",
+            "justification": "Take the square root of both sides. We keep the positive root because speed is a positive magnitude.",
+            "explanation": "The final formula shows the tradeoff clearly: more mass raises terminal speed, while denser air, more drag, or a larger parachute lower it.",
             "sceneStep": 2,
             "highlights": {
               "vt": {
@@ -1942,7 +2402,7 @@
                 "label": "Parachute Area"
               }
             },
-            "prompt": "Explain the logic of this algebraic step clearly to the student."
+            "prompt": "End by connecting back to splashdown: reducing $V_t$ makes the water impact gentler."
           }
         ]
       }
