@@ -1,0 +1,1893 @@
+{
+  "title": "Atmospheric Entry and Splashdown: Orion, Dragon, and Apollo",
+  "scenes": [
+    {
+      "title": "Entry Corridor Comparison",
+      "description": "Compare how Apollo, Orion, and Dragon move from entry interface to parachutes and splashdown.",
+      "markdown": "# Entry Corridor Comparison\n\nAll three capsules solve the same problem: convert enormous kinetic energy into drag, lift, heat, and finally a splashdown your crew can survive.\n\n## One atmosphere, three different jobs\n\n- **Apollo** returns from the Moon at roughly $11\\,\\text{km/s}$ and uses a lifting direct entry.\n- **Orion / Artemis II** also returns from lunar speed, but uses a **skip entry** so it can manage heating, g-load, and landing footprint more precisely.\n- **Crew Dragon** returns from low Earth orbit at roughly $7.7\\,\\text{km/s}$, so its energy problem is milder even though it still faces severe heating.\n\nThe slider in this scene moves a marker along each nominal path. These are **teaching profiles**, not flight-reconstruction telemetry, but they preserve the important physics: lunar-return capsules start faster, Orion intentionally climbs back up during skip entry, and all three hand off from aerodynamics to parachutes near the bottom of the atmosphere.\n\n## Key reference numbers\n\n- Orion reentry: about **25,000 mph** and nearly **5,000 F** on return from deep space.\n- Dragon deorbit return: drogue deployment near **18,000 ft** at about **350 mph**, then mains near **6,000 ft** at about **119 mph**.\n- Apollo recovery system: drogues after forward heat-shield separation near **24,000 ft**, mains below about **11,000 ft**, and splashdown near **22 mph**.\n\n## Sources\n\n- NASA Orion splashdown and heat shield reporting: https://www.nasa.gov/image-article/orions-successful-splashdown-paves-way-artemis-future/\n- NASA Artemis / Orion entry blog: https://www.nasa.gov/blogs/missions/2022/12/11/artemis-i-flight-day-26-orion-crew-module-separation-from-service-module-complete/\n- NASA Commercial Crew deorbit updates: https://www.nasa.gov/blogs/commercialcrew/2021/11/08/crew-2-crew-dragon-deorbit-burn-complete/\n- NASA Apollo parachute history: https://www.nasa.gov/history/60-years-ago-apollo-parachute-development-and-testing/",
+      "prompt": "Teach this scene as a comparison lesson, not as memorization. Keep emphasizing why Orion gets a skip arc, why Dragon can use a simpler orbital return, and how Apollo and Orion both use lift even though they look like blunt capsules.",
+      "range": [
+        [
+          0,
+          12
+        ],
+        [
+          0,
+          130
+        ],
+        [
+          -1,
+          1
+        ]
+      ],
+      "camera": {
+        "position": [
+          6,
+          65,
+          18
+        ],
+        "target": [
+          6,
+          65,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Overview",
+          "position": [
+            6,
+            65,
+            18
+          ],
+          "target": [
+            6,
+            65,
+            0
+          ],
+          "description": "Whole entry corridor"
+        },
+        {
+          "name": "Upper Atmosphere",
+          "position": [
+            9,
+            100,
+            10
+          ],
+          "target": [
+            9,
+            92,
+            0
+          ],
+          "description": "Focus on interface and skip entry"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s1_x",
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            0,
+            12
+          ],
+          "color": "#9aa5b1",
+          "label": "speed (km/s)",
+          "width": 1.5
+        },
+        {
+          "id": "s1_y",
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            0,
+            130
+          ],
+          "color": "#9aa5b1",
+          "label": "altitude (km)",
+          "width": 1.5
+        },
+        {
+          "id": "s1_grid",
+          "type": "grid",
+          "plane": "xy",
+          "color": [
+            0.25,
+            0.3,
+            0.4
+          ],
+          "opacity": 0.1,
+          "divisions": 13
+        }
+      ],
+      "steps": [
+        {
+          "title": "Three Return Speeds",
+          "description": "Apollo and Orion start near lunar-return speed, while Dragon starts much slower because it returns from low Earth orbit instead of the Moon.",
+          "sliders": [
+            {
+              "id": "phase",
+              "label": "entry progress",
+              "min": 0,
+              "max": 1,
+              "step": 0.01,
+              "default": 0.08
+            }
+          ],
+          "add": [
+            {
+              "id": "s1_interface",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  122,
+                  0
+                ],
+                [
+                  12,
+                  122,
+                  0
+                ]
+              ],
+              "color": "#6b7280",
+              "width": 1.2,
+              "opacity": 0.8
+            },
+            {
+              "id": "s1_interface_label",
+              "type": "text",
+              "text": "Entry interface ~122 km",
+              "position": [
+                2.3,
+                125.5,
+                0
+              ],
+              "color": "#d1d5db"
+            },
+            {
+              "id": "s1_apollo_path",
+              "type": "line",
+              "points": [
+                [
+                  11.1,
+                  122,
+                  0
+                ],
+                [
+                  10.7,
+                  105,
+                  0
+                ],
+                [
+                  9.6,
+                  78,
+                  0
+                ],
+                [
+                  6.2,
+                  48,
+                  0
+                ],
+                [
+                  1.4,
+                  12,
+                  0
+                ],
+                [
+                  0.05,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#f59e0b",
+              "width": 2.6,
+              "opacity": 0.9
+            },
+            {
+              "id": "s1_orion_path",
+              "type": "line",
+              "points": [
+                [
+                  11.0,
+                  122,
+                  0
+                ],
+                [
+                  10.6,
+                  101,
+                  0
+                ],
+                [
+                  10.1,
+                  83,
+                  0
+                ],
+                [
+                  9.8,
+                  89,
+                  0
+                ],
+                [
+                  8.8,
+                  80,
+                  0
+                ],
+                [
+                  5.8,
+                  42,
+                  0
+                ],
+                [
+                  0.05,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#38bdf8",
+              "width": 2.6,
+              "opacity": 0.92
+            },
+            {
+              "id": "s1_dragon_path",
+              "type": "line",
+              "points": [
+                [
+                  7.7,
+                  122,
+                  0
+                ],
+                [
+                  7.1,
+                  102,
+                  0
+                ],
+                [
+                  5.9,
+                  74,
+                  0
+                ],
+                [
+                  3.6,
+                  38,
+                  0
+                ],
+                [
+                  0.9,
+                  10,
+                  0
+                ],
+                [
+                  0.05,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#34d399",
+              "width": 2.6,
+              "opacity": 0.9
+            },
+            {
+              "id": "s1_apollo_label",
+              "type": "text",
+              "text": "Apollo",
+              "position": [
+                10.9,
+                116,
+                0
+              ],
+              "color": "#fbbf24"
+            },
+            {
+              "id": "s1_orion_label",
+              "type": "text",
+              "text": "Orion / Artemis II",
+              "position": [
+                10.1,
+                110.5,
+                0
+              ],
+              "color": "#7dd3fc"
+            },
+            {
+              "id": "s1_dragon_label",
+              "type": "text",
+              "text": "Crew Dragon",
+              "position": [
+                7.15,
+                112,
+                0
+              ],
+              "color": "#6ee7b7"
+            },
+            {
+              "id": "s1_apollo_marker",
+              "type": "animated_point",
+              "position": [
+                "phase < 0.2 ? 11.1 - 2.0*phase : phase < 0.4 ? 10.7 - 5.5*(phase - 0.2) : phase < 0.6 ? 9.6 - 17.0*(phase - 0.4) : phase < 0.8 ? 6.2 - 24.0*(phase - 0.6) : 1.4 - 6.75*(phase - 0.8)",
+                "phase < 0.2 ? 122 - 85*phase : phase < 0.4 ? 105 - 135*(phase - 0.2) : phase < 0.6 ? 78 - 150*(phase - 0.4) : phase < 0.8 ? 48 - 180*(phase - 0.6) : 12 - 60*(phase - 0.8)",
+                "0"
+              ],
+              "color": "#f59e0b",
+              "radius": 0.12
+            },
+            {
+              "id": "s1_orion_marker",
+              "type": "animated_point",
+              "position": [
+                "phase < 0.2 ? 11.0 - 2.0*phase : phase < 0.4 ? 10.6 - 2.5*(phase - 0.2) : phase < 0.6 ? 10.1 - 6.5*(phase - 0.4) : phase < 0.8 ? 8.8 - 15.0*(phase - 0.6) : 5.8 - 28.75*(phase - 0.8)",
+                "phase < 0.2 ? 122 - 105*phase : phase < 0.4 ? 101 - 60*(phase - 0.2) : phase < 0.6 ? 89 - 45*(phase - 0.4) : phase < 0.8 ? 80 - 190*(phase - 0.6) : 42 - 210*(phase - 0.8)",
+                "0"
+              ],
+              "color": "#38bdf8",
+              "radius": 0.12
+            },
+            {
+              "id": "s1_dragon_marker",
+              "type": "animated_point",
+              "position": [
+                "phase < 0.2 ? 7.7 - 3.0*phase : phase < 0.4 ? 7.1 - 6.0*(phase - 0.2) : phase < 0.6 ? 5.9 - 11.5*(phase - 0.4) : phase < 0.8 ? 3.6 - 13.5*(phase - 0.6) : 0.9 - 4.25*(phase - 0.8)",
+                "phase < 0.2 ? 122 - 100*phase : phase < 0.4 ? 102 - 140*(phase - 0.2) : phase < 0.6 ? 74 - 180*(phase - 0.4) : phase < 0.8 ? 38 - 140*(phase - 0.6) : 10 - 50*(phase - 0.8)",
+                "0"
+              ],
+              "color": "#34d399",
+              "radius": 0.12
+            }
+          ],
+          "info": [
+            {
+              "id": "s1_info",
+              "position": "top-left",
+              "content": "**Comparison cue**\n\nApollo and Orion begin near **11 km/s**.\n\nDragon begins near **7.7 km/s**.\n\nUse the slider to scrub from interface to splashdown."
+            }
+          ]
+        },
+        {
+          "title": "Orion's Skip Entry",
+          "description": "Orion deliberately dips into the atmosphere, generates lift, then climbs back up before final descent. That skip entry reduces peak loads and helps target the landing zone.",
+          "add": [
+            {
+              "id": "s1_skip_band",
+              "type": "line",
+              "points": [
+                [
+                  8.8,
+                  86,
+                  0
+                ],
+                [
+                  10.2,
+                  86,
+                  0
+                ]
+              ],
+              "color": "#bae6fd",
+              "width": 1.4,
+              "opacity": 0.85
+            },
+            {
+              "id": "s1_skip_label",
+              "type": "text",
+              "text": "Skip entry: dip, climb, then descend",
+              "position": [
+                8.55,
+                92.5,
+                0
+              ],
+              "color": "#bae6fd"
+            }
+          ]
+        },
+        {
+          "title": "Lift Shapes the Path",
+          "description": "Even blunt capsules can generate lift by flying slightly off-balance. Apollo uses lift for corridor control, Orion uses it more aggressively for skip entry, and Dragon uses a simpler single-pass return.",
+          "add": [
+            {
+              "id": "s1_apollo_note",
+              "type": "text",
+              "text": "Apollo: lifting direct entry",
+              "position": [
+                7.25,
+                63,
+                0
+              ],
+              "color": "#fde68a"
+            },
+            {
+              "id": "s1_orion_note",
+              "type": "text",
+              "text": "Orion: skip-guided lifting entry",
+              "position": [
+                8.2,
+                72,
+                0
+              ],
+              "color": "#bae6fd"
+            },
+            {
+              "id": "s1_dragon_note",
+              "type": "text",
+              "text": "Dragon: single-pass orbital return",
+              "position": [
+                4.2,
+                53,
+                0
+              ],
+              "color": "#a7f3d0"
+            }
+          ]
+        },
+        {
+          "title": "Parachutes Take Over",
+          "description": "Below the lower atmosphere, entry physics hands off to parachutes and splashdown recovery. That handoff happens after the main heating and deceleration problem has already been solved.",
+          "add": [
+            {
+              "id": "s1_chute_band",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  7,
+                  0
+                ],
+                [
+                  12,
+                  7,
+                  0
+                ]
+              ],
+              "color": "#e5e7eb",
+              "width": 1.2,
+              "opacity": 0.8
+            },
+            {
+              "id": "s1_chute_label",
+              "type": "text",
+              "text": "Parachute and recovery band",
+              "position": [
+                3.2,
+                10.2,
+                0
+              ],
+              "color": "#f3f4f6"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Forces Acting on the Capsules",
+      "description": "Compare velocity, drag, lift, and weight during entry for Apollo, Orion, and Dragon.",
+      "markdown": "# Forces Acting on the Capsules\n\nThe entry problem is governed by only a few forces, but their balance changes dramatically as the capsule dives deeper.\n\n## Core aerodynamic model\n\nThe drag force is\n\n$$D = \\tfrac12 \\rho v^2 C_D A,$$\n\nand the lift force is similar:\n\n$$L = \\tfrac12 \\rho v^2 C_L A.$$\n\nAt hypersonic speed, $v^2$ is huge, so a small change in velocity or density produces a large change in aerodynamic force. That is why entry guidance is mostly about controlling **where** you spend your speed.\n\n## What differs between the vehicles\n\n- **Apollo** and **Orion** both return from lunar speed, so they need substantial drag and some lift to stay inside the entry corridor.\n- **Orion** uses that lift to execute a skip entry.\n- **Dragon** returns from orbital speed, so its force environment is less extreme even though it still relies on drag to remove most of its kinetic energy.\n\nIn the last step, the density slider scales the drag arrows so students can see why the atmosphere becomes dramatically more effective as the capsule descends.\n\n## Source anchors\n\n- NASA Orion entry reporting: https://www.nasa.gov/blogs/missions/2022/12/11/artemis-i-flight-day-26-orion-crew-module-separation-from-service-module-complete/\n- NASA Crew Dragon deorbit updates: https://www.nasa.gov/blogs/commercialcrew/2021/11/08/crew-2-crew-dragon-deorbit-burn-complete/",
+      "prompt": "Keep the explanation physical. Students should come away understanding that drag kills speed, lift reshapes the path, and density makes both forces ramp quickly as altitude drops.",
+      "range": [
+        [
+          -11,
+          11
+        ],
+        [
+          -6,
+          6
+        ],
+        [
+          -1,
+          1
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          16
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Front",
+          "position": [
+            0,
+            0,
+            16
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Force diagram"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s2_x",
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -11,
+            11
+          ],
+          "color": "#6b7280",
+          "width": 1.2
+        },
+        {
+          "id": "s2_y",
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -6,
+            6
+          ],
+          "color": "#6b7280",
+          "width": 1.2
+        },
+        {
+          "id": "s2_grid",
+          "type": "grid",
+          "plane": "xy",
+          "color": [
+            0.25,
+            0.28,
+            0.36
+          ],
+          "opacity": 0.08,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "Velocity and Weight",
+          "description": "Start with the two forces every entry vehicle has: velocity forward and weight downward. Each capsule is shown at the same scale only for comparison of forces, not real size.",
+          "add": [
+            {
+              "id": "s2_apollo_capsule",
+              "type": "sphere",
+              "center": [
+                -7,
+                0,
+                0
+              ],
+              "radius": 0.55,
+              "color": "#f59e0b",
+              "opacity": 0.95
+            },
+            {
+              "id": "s2_orion_capsule",
+              "type": "sphere",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radius": 0.65,
+              "color": "#38bdf8",
+              "opacity": 0.95
+            },
+            {
+              "id": "s2_dragon_capsule",
+              "type": "sphere",
+              "center": [
+                7,
+                0,
+                0
+              ],
+              "radius": 0.58,
+              "color": "#34d399",
+              "opacity": 0.95
+            },
+            {
+              "id": "s2_apollo_name",
+              "type": "text",
+              "text": "Apollo",
+              "position": [
+                -7.55,
+                1.4,
+                0
+              ],
+              "color": "#fbbf24"
+            },
+            {
+              "id": "s2_orion_name",
+              "type": "text",
+              "text": "Orion",
+              "position": [
+                -0.5,
+                1.55,
+                0
+              ],
+              "color": "#7dd3fc"
+            },
+            {
+              "id": "s2_dragon_name",
+              "type": "text",
+              "text": "Dragon",
+              "position": [
+                6.45,
+                1.45,
+                0
+              ],
+              "color": "#6ee7b7"
+            },
+            {
+              "id": "s2_apollo_v",
+              "type": "line",
+              "points": [
+                [
+                  -7,
+                  0,
+                  0
+                ],
+                [
+                  -4.2,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#fca5a5",
+              "width": 2.2
+            },
+            {
+              "id": "s2_orion_v",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  3.0,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#fca5a5",
+              "width": 2.2
+            },
+            {
+              "id": "s2_dragon_v",
+              "type": "line",
+              "points": [
+                [
+                  7,
+                  0,
+                  0
+                ],
+                [
+                  9.3,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#fca5a5",
+              "width": 2.2
+            },
+            {
+              "id": "s2_v_label",
+              "type": "text",
+              "text": "velocity $v$",
+              "position": [
+                3.7,
+                0.7,
+                0
+              ],
+              "color": "#fecaca"
+            },
+            {
+              "id": "s2_apollo_w",
+              "type": "line",
+              "points": [
+                [
+                  -7,
+                  0,
+                  0
+                ],
+                [
+                  -7,
+                  -2.2,
+                  0
+                ]
+              ],
+              "color": "#e5e7eb",
+              "width": 2.1
+            },
+            {
+              "id": "s2_orion_w",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  -2.5,
+                  0
+                ]
+              ],
+              "color": "#e5e7eb",
+              "width": 2.1
+            },
+            {
+              "id": "s2_dragon_w",
+              "type": "line",
+              "points": [
+                [
+                  7,
+                  0,
+                  0
+                ],
+                [
+                  7,
+                  -2.35,
+                  0
+                ]
+              ],
+              "color": "#e5e7eb",
+              "width": 2.1
+            },
+            {
+              "id": "s2_w_label",
+              "type": "text",
+              "text": "weight $mg$",
+              "position": [
+                0.5,
+                -3.0,
+                0
+              ],
+              "color": "#f3f4f6"
+            }
+          ]
+        },
+        {
+          "title": "Drag Does the Braking",
+          "description": "Drag points opposite the motion and removes most of the kinetic energy. Lunar-return capsules need larger integrated drag because they arrive with much more speed to shed.",
+          "add": [
+            {
+              "id": "s2_apollo_drag",
+              "type": "line",
+              "points": [
+                [
+                  -7,
+                  0,
+                  0
+                ],
+                [
+                  -10.2,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#f97316",
+              "width": 2.5
+            },
+            {
+              "id": "s2_orion_drag",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  -3.4,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#f97316",
+              "width": 2.5
+            },
+            {
+              "id": "s2_dragon_drag",
+              "type": "line",
+              "points": [
+                [
+                  7,
+                  0,
+                  0
+                ],
+                [
+                  4.7,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#f97316",
+              "width": 2.5
+            },
+            {
+              "id": "s2_drag_formula",
+              "type": "text",
+              "text": "$D = \\tfrac12\\rho v^2 C_D A$",
+              "position": [
+                -1.8,
+                4.3,
+                0
+              ],
+              "color": "#fdba74"
+            }
+          ]
+        },
+        {
+          "title": "Lift Reshapes the Entry",
+          "description": "Lift is smaller than drag for these capsules, but it matters enormously because it lets guidance trade altitude against heating and deceleration.",
+          "add": [
+            {
+              "id": "s2_apollo_lift",
+              "type": "line",
+              "points": [
+                [
+                  -7,
+                  0,
+                  0
+                ],
+                [
+                  -7,
+                  1.5,
+                  0
+                ]
+              ],
+              "color": "#60a5fa",
+              "width": 2.2
+            },
+            {
+              "id": "s2_orion_lift",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  2.2,
+                  0
+                ]
+              ],
+              "color": "#60a5fa",
+              "width": 2.2
+            },
+            {
+              "id": "s2_dragon_lift",
+              "type": "line",
+              "points": [
+                [
+                  7,
+                  0,
+                  0
+                ],
+                [
+                  7,
+                  0.9,
+                  0
+                ]
+              ],
+              "color": "#60a5fa",
+              "width": 2.2
+            },
+            {
+              "id": "s2_lift_label",
+              "type": "text",
+              "text": "lift $L$",
+              "position": [
+                0.45,
+                2.85,
+                0
+              ],
+              "color": "#93c5fd"
+            },
+            {
+              "id": "s2_program_label",
+              "type": "text",
+              "text": "Orion uses lift most aggressively because skip entry needs it.",
+              "position": [
+                -5.2,
+                5.0,
+                0
+              ],
+              "color": "#dbeafe"
+            }
+          ]
+        },
+        {
+          "title": "Density Makes Drag Explode",
+          "description": "Increase the density scale and watch drag grow. This is why most braking happens lower in the atmosphere even though entry starts much higher up.",
+          "remove": [
+            {
+              "id": "s2_apollo_drag"
+            },
+            {
+              "id": "s2_orion_drag"
+            },
+            {
+              "id": "s2_dragon_drag"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "rho",
+              "label": "density scale",
+              "min": 0.3,
+              "max": 1.8,
+              "step": 0.01,
+              "default": 1
+            }
+          ],
+          "add": [
+            {
+              "id": "s2_apollo_drag_live",
+              "type": "animated_line",
+              "points": [
+                [
+                  "-7",
+                  "0",
+                  "0"
+                ],
+                [
+                  "-7 - (1.4 + 1.8*rho)",
+                  "0",
+                  "0"
+                ]
+              ],
+              "color": "#f97316",
+              "width": 2.7
+            },
+            {
+              "id": "s2_orion_drag_live",
+              "type": "animated_line",
+              "points": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "-(1.3 + 2.0*rho)",
+                  "0",
+                  "0"
+                ]
+              ],
+              "color": "#f97316",
+              "width": 2.7
+            },
+            {
+              "id": "s2_dragon_drag_live",
+              "type": "animated_line",
+              "points": [
+                [
+                  "7",
+                  "0",
+                  "0"
+                ],
+                [
+                  "7 - (0.9 + 1.4*rho)",
+                  "0",
+                  "0"
+                ]
+              ],
+              "color": "#f97316",
+              "width": 2.7
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_info",
+              "position": "top-left",
+              "content": "**Density scale:** {{toFixed(rho, 2)}}x\n\nDrag grows like $\\rho v^2$.\n\nSame capsule, denser air, much stronger braking."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Ballistic Coefficient, Heating, and g-Load",
+      "description": "Compare how entry speed and ballistic coefficient shape deceleration and thermal severity.",
+      "markdown": "# Ballistic Coefficient, Heating, and g-Load\n\nA useful comparison quantity is the **ballistic coefficient**\n\n$$\\beta = \\frac{m}{C_D A}.$$\n\nA lower $\\beta$ means more drag per unit mass. A higher $\\beta$ means the capsule penetrates deeper before the atmosphere can slow it down effectively.\n\n## Why this matters here\n\n- **Apollo** and **Orion** have similar lunar-return entry speed, so their heat shields and guidance laws must handle very high energy.\n- **Dragon** has a larger mass-per-area proxy, but it starts at much lower speed, so its total entry problem is still milder.\n- **Orion** uses a skip entry to turn that deep-space return into a lower-g, more targetable splashdown than a simple one-pass lunar dive.\n\nThis chart uses approximate comparison values. The horizontal axis is a **beta proxy** in units of $100\\,\\text{kg/m}^2$ so the points fit naturally in one plot.\n\n## Heat shields\n\n- **Apollo**: Avcoat ablative heat shield.\n- **Orion**: Avcoat ablative heat shield, larger than Apollo's and designed for crewed Artemis lunar return.\n- **Dragon**: PICA-X family ablative heat shield for orbital return.\n\n## Source anchors\n\n- NASA Orion heat shield milestone: https://www.nasa.gov/blogs/missions/2020/07/08/heat-shield-milestone-for-first-artemis-mission-with-crew/\n- NASA Orion splashdown article: https://www.nasa.gov/image-article/orions-successful-splashdown-paves-way-artemis-future/\n- NASA Commercial Crew deorbit updates: https://www.nasa.gov/blogs/commercialcrew/2021/11/08/crew-2-crew-dragon-deorbit-burn-complete/",
+      "prompt": "Drive home the main comparison: deceleration depends on dynamic pressure divided by ballistic coefficient, but overall severity also depends strongly on entry speed. Students should see why Dragon is not 'harder' just because its beta proxy is higher.",
+      "range": [
+        [
+          2.5,
+          10
+        ],
+        [
+          0,
+          12
+        ],
+        [
+          -1,
+          1
+        ]
+      ],
+      "camera": {
+        "position": [
+          6.2,
+          6,
+          13
+        ],
+        "target": [
+          6.2,
+          6,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Chart",
+          "position": [
+            6.2,
+            6,
+            13
+          ],
+          "target": [
+            6.2,
+            6,
+            0
+          ],
+          "description": "Ballistic coefficient chart"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s3_x",
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            2.5,
+            10
+          ],
+          "color": "#9aa5b1",
+          "label": "$\\beta$ proxy (100 kg/m$^2$)",
+          "width": 1.5
+        },
+        {
+          "id": "s3_y",
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            0,
+            12
+          ],
+          "color": "#9aa5b1",
+          "label": "entry speed (km/s)",
+          "width": 1.5
+        },
+        {
+          "id": "s3_grid",
+          "type": "grid",
+          "plane": "xy",
+          "color": [
+            0.24,
+            0.29,
+            0.39
+          ],
+          "opacity": 0.1,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "Where the Capsules Sit",
+          "description": "Plot the capsules by approximate ballistic-coefficient proxy and entry speed. Dragon sits farther right, but much lower, because its return speed is orbital rather than lunar.",
+          "add": [
+            {
+              "id": "s3_apollo_pt",
+              "type": "point",
+              "position": [
+                4.6,
+                11.0,
+                0
+              ],
+              "color": "#f59e0b",
+              "size": 12,
+              "label": "Apollo"
+            },
+            {
+              "id": "s3_orion_pt",
+              "type": "point",
+              "position": [
+                5.2,
+                11.0,
+                0
+              ],
+              "color": "#38bdf8",
+              "size": 12,
+              "label": "Orion"
+            },
+            {
+              "id": "s3_dragon_pt",
+              "type": "point",
+              "position": [
+                8.9,
+                7.7,
+                0
+              ],
+              "color": "#34d399",
+              "size": 12,
+              "label": "Dragon"
+            },
+            {
+              "id": "s3_apollo_g",
+              "type": "text",
+              "text": "Apollo: peak ~6-7 g",
+              "position": [
+                3.55,
+                10.05,
+                0
+              ],
+              "color": "#fde68a"
+            },
+            {
+              "id": "s3_orion_g",
+              "type": "text",
+              "text": "Orion: up to ~3.9 g",
+              "position": [
+                5.45,
+                10.15,
+                0
+              ],
+              "color": "#bae6fd"
+            },
+            {
+              "id": "s3_dragon_g",
+              "type": "text",
+              "text": "Dragon: ~3-4 g typical",
+              "position": [
+                7.3,
+                6.8,
+                0
+              ],
+              "color": "#bbf7d0"
+            }
+          ]
+        },
+        {
+          "title": "Severity Moves Up and Right",
+          "description": "The hardest entry problems generally move toward higher speed and higher ballistic coefficient. Speed matters so strongly that Apollo and Orion remain the tougher thermal cases despite Dragon's larger mass-per-area proxy.",
+          "add": [
+            {
+              "id": "s3_severity_arrow",
+              "type": "line",
+              "points": [
+                [
+                  4.2,
+                  4.0,
+                  0
+                ],
+                [
+                  8.6,
+                  10.0,
+                  0
+                ]
+              ],
+              "color": "#fda4af",
+              "width": 2.0,
+              "opacity": 0.85
+            },
+            {
+              "id": "s3_severity_text",
+              "type": "text",
+              "text": "greater thermal / deceleration challenge",
+              "position": [
+                5.0,
+                5.1,
+                0
+              ],
+              "color": "#fecdd3"
+            },
+            {
+              "id": "s3_heatshield_text",
+              "type": "text",
+              "text": "Apollo + Orion use Avcoat; Dragon uses PICA-X",
+              "position": [
+                3.25,
+                1.2,
+                0
+              ],
+              "color": "#e5e7eb"
+            }
+          ]
+        },
+        {
+          "title": "Change Drag Coefficient",
+          "description": "Move the drag-coefficient scale and watch the points shift horizontally. A larger $C_D$ lowers ballistic coefficient, so the atmosphere can do more braking for the same mass.",
+          "remove": [
+            {
+              "id": "s3_apollo_pt"
+            },
+            {
+              "id": "s3_orion_pt"
+            },
+            {
+              "id": "s3_dragon_pt"
+            },
+            {
+              "id": "s3_apollo_g"
+            },
+            {
+              "id": "s3_orion_g"
+            },
+            {
+              "id": "s3_dragon_g"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "cdScale",
+              "label": "$C_D$ scale",
+              "min": 0.8,
+              "max": 1.2,
+              "step": 0.01,
+              "default": 1
+            }
+          ],
+          "add": [
+            {
+              "id": "s3_apollo_live",
+              "type": "animated_point",
+              "position": [
+                "4.6 / cdScale",
+                "11.0",
+                "0"
+              ],
+              "color": "#f59e0b",
+              "radius": 0.11
+            },
+            {
+              "id": "s3_orion_live",
+              "type": "animated_point",
+              "position": [
+                "5.2 / cdScale",
+                "11.0",
+                "0"
+              ],
+              "color": "#38bdf8",
+              "radius": 0.11
+            },
+            {
+              "id": "s3_dragon_live",
+              "type": "animated_point",
+              "position": [
+                "8.9 / cdScale",
+                "7.7",
+                "0"
+              ],
+              "color": "#34d399",
+              "radius": 0.11
+            },
+            {
+              "id": "s3_apollo_live_label",
+              "type": "text",
+              "text": "Apollo",
+              "positionExpr": [
+                "4.6 / cdScale - 0.7",
+                "10.25",
+                "0"
+              ],
+              "color": "#fbbf24"
+            },
+            {
+              "id": "s3_orion_live_label",
+              "type": "text",
+              "text": "Orion",
+              "positionExpr": [
+                "5.2 / cdScale + 0.15",
+                "10.25",
+                "0"
+              ],
+              "color": "#7dd3fc"
+            },
+            {
+              "id": "s3_dragon_live_label",
+              "type": "text",
+              "text": "Dragon",
+              "positionExpr": [
+                "8.9 / cdScale - 0.55",
+                "6.95",
+                "0"
+              ],
+              "color": "#6ee7b7"
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_info",
+              "position": "top-left",
+              "content": "$$\\beta = \\frac{m}{C_D A}$$\n\nCurrent $C_D$ scale: {{toFixed(cdScale, 2)}}\n\nHigher $C_D$ means lower $\\beta$ and stronger braking per unit mass."
+            }
+          ]
+        },
+        {
+          "title": "Open the Proof Panel",
+          "description": "The proof panel derives the simple but powerful rule $a_D = q/\\beta$. That relation is the cleanest way to connect the chart to actual deceleration.",
+          "add": [
+            {
+              "id": "s3_proof_note",
+              "type": "text",
+              "text": "Proof panel: $a_D = q / \\beta$ with $q = \\tfrac12\\rho v^2$",
+              "position": [
+                3.2,
+                2.1,
+                0
+              ],
+              "color": "#f3f4f6"
+            }
+          ]
+        }
+      ],
+      "proof": {
+        "id": "drag-beta-derivation",
+        "title": "Why Deceleration Scales Like $q / \\beta$",
+        "technique": "derivation",
+        "goal": "$$a_D = \\frac{D}{m} = \\frac{q}{\\beta}, \\qquad q = \\tfrac12\\rho v^2, \\qquad \\beta = \\frac{m}{C_D A}$$",
+        "prompt": "Explain each algebraic step and keep tying it back to the chart. The main insight is that dynamic pressure measures what the air is doing, while ballistic coefficient measures how hard the vehicle is to slow.",
+        "steps": [
+          {
+            "type": "given",
+            "label": "Start with drag",
+            "math": "D = \\htmlClass{hl-q}{\\tfrac12\\rho v^2} \\htmlClass{hl-ca}{C_D A}",
+            "highlights": {
+              "q": {
+                "color": "cyan",
+                "label": "dynamic pressure piece"
+              },
+              "ca": {
+                "color": "orange",
+                "label": "aerodynamic area factor"
+              }
+            },
+            "justification": "The standard hypersonic drag model multiplies dynamic pressure by drag coefficient and reference area.",
+            "explanation": "Everything the atmosphere does begins with density and speed. Those combine into the dynamic-pressure term $\\tfrac12\\rho v^2$.",
+            "prompt": "Emphasize that speed enters squared here.",
+            "sceneStep": 0
+          },
+          {
+            "type": "step",
+            "label": "Divide by mass",
+            "math": "a_D = \\frac{D}{m} = \\htmlClass{hl-q}{\\tfrac12\\rho v^2} \\frac{\\htmlClass{hl-ca}{C_D A}}{\\htmlClass{hl-m}{m}}",
+            "highlights": {
+              "q": {
+                "color": "cyan",
+                "label": "what the air is doing"
+              },
+              "ca": {
+                "color": "orange",
+                "label": "shape and size"
+              },
+              "m": {
+                "color": "yellow",
+                "label": "inertia to overcome"
+              }
+            },
+            "justification": "Acceleration is force divided by mass, so mass moves from the left side into the denominator on the right.",
+            "explanation": "A heavy capsule is harder to slow. A large blunt capsule is easier to slow. This is the core tradeoff.",
+            "prompt": "Connect the denominator to inertia.",
+            "sceneStep": 1
+          },
+          {
+            "type": "step",
+            "label": "Define ballistic coefficient",
+            "math": "\\beta = \\frac{\\htmlClass{hl-m}{m}}{\\htmlClass{hl-ca}{C_D A}} \\quad \\Longrightarrow \\quad \\frac{\\htmlClass{hl-ca}{C_D A}}{\\htmlClass{hl-m}{m}} = \\frac{1}{\\beta}",
+            "highlights": {
+              "m": {
+                "color": "yellow",
+                "label": "mass"
+              },
+              "ca": {
+                "color": "orange",
+                "label": "drag area"
+              }
+            },
+            "justification": "Ballistic coefficient packages the mass-versus-drag-area tradeoff into one parameter.",
+            "explanation": "Large $\\beta$ means the vehicle is hard for the atmosphere to slow. Small $\\beta$ means the atmosphere gets more leverage.",
+            "prompt": "This is the definition students should remember.",
+            "sceneStep": 2
+          },
+          {
+            "type": "conclusion",
+            "label": "Combine the pieces",
+            "math": "a_D = \\htmlClass{hl-q}{q} \\cdot \\frac{1}{\\htmlClass{hl-beta}{\\beta}} = \\frac{\\htmlClass{hl-q}{q}}{\\htmlClass{hl-beta}{\\beta}}",
+            "highlights": {
+              "q": {
+                "color": "cyan",
+                "label": "dynamic pressure"
+              },
+              "beta": {
+                "color": "orange",
+                "label": "ballistic coefficient"
+              }
+            },
+            "justification": "Substituting $q = \\tfrac12\\rho v^2$ and $1/\\beta = C_D A / m$ gives the compact deceleration law.",
+            "explanation": "This equation is why the chart matters: entry severity rises when the atmosphere pushes harder or when the capsule is harder to slow.",
+            "prompt": "Tie the conclusion back to Apollo, Orion, and Dragon.",
+            "sceneStep": 3
+          }
+        ]
+      }
+    },
+    {
+      "title": "Parachutes and Splashdown",
+      "description": "Compare the recovery ladders for Apollo, Orion, and Dragon from drogue deployment to water impact.",
+      "markdown": "# Parachutes and Splashdown\n\nBy the time parachutes deploy, the capsule has already survived the hardest thermal and deceleration part of entry. Recovery now becomes a different physics problem: keeping the vehicle stable, reducing vertical speed, and landing with acceptable water impact loads.\n\n## Recovery sequences\n\n- **Apollo**: forward heat-shield separation near **24,000 ft**, drogues to about **11,000 ft**, then three mains and a roughly **22 mph** splashdown target.\n- **Orion**: an **11-parachute** system slows the crew module from roughly **300 mph** to about **20 mph** for splashdown.\n- **Dragon**: drogues at about **18,000 ft** near **350 mph**, then mains at about **6,000 ft** near **119 mph**, followed by ocean splashdown under four main parachutes.\n\nThe slider in this scene scrubs all three capsules down their recovery ladders so students can compare where each system changes configuration.\n\n## Sources\n\n- NASA Apollo parachute history: https://www.nasa.gov/history/60-years-ago-apollo-parachute-development-and-testing/\n- NASA Orion parachute testing: https://www.nasa.gov/missions/artemis/orion/orion-parachute-tests-prove-out-complex-system-for-human-deep-space-missions/\n- NASA Crew Dragon deorbit updates: https://www.nasa.gov/blogs/commercialcrew/2021/11/08/crew-2-crew-dragon-deorbit-burn-complete/",
+      "prompt": "Teach the last scene as the handoff from hypersonic entry to recovery engineering. Students should notice that similar parachute logic appears across decades, but the upstream entry program is what sets up a survivable splashdown.",
+      "range": [
+        [
+          -10,
+          10
+        ],
+        [
+          0,
+          26
+        ],
+        [
+          -1,
+          1
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          13,
+          17
+        ],
+        "target": [
+          0,
+          13,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Recovery Ladder",
+          "position": [
+            0,
+            13,
+            17
+          ],
+          "target": [
+            0,
+            13,
+            0
+          ],
+          "description": "Parachute sequence comparison"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s4_x",
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -10,
+            10
+          ],
+          "color": "#6b7280",
+          "width": 1.2
+        },
+        {
+          "id": "s4_y",
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            0,
+            26
+          ],
+          "color": "#9aa5b1",
+          "label": "altitude (thousand ft)",
+          "width": 1.5
+        },
+        {
+          "id": "s4_grid",
+          "type": "grid",
+          "plane": "xy",
+          "color": [
+            0.22,
+            0.28,
+            0.36
+          ],
+          "opacity": 0.08,
+          "divisions": 13
+        }
+      ],
+      "steps": [
+        {
+          "title": "Descent Ladder",
+          "description": "Each vertical lane represents one capsule descending toward splashdown. Use the slider to scrub the recovery phase.",
+          "sliders": [
+            {
+              "id": "descent",
+              "label": "recovery progress",
+              "min": 0,
+              "max": 1,
+              "step": 0.01,
+              "default": 0.12
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_apollo_lane",
+              "type": "line",
+              "points": [
+                [
+                  -6,
+                  0,
+                  0
+                ],
+                [
+                  -6,
+                  25,
+                  0
+                ]
+              ],
+              "color": "#f59e0b",
+              "width": 1.8,
+              "opacity": 0.8
+            },
+            {
+              "id": "s4_orion_lane",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  25,
+                  0
+                ]
+              ],
+              "color": "#38bdf8",
+              "width": 1.8,
+              "opacity": 0.8
+            },
+            {
+              "id": "s4_dragon_lane",
+              "type": "line",
+              "points": [
+                [
+                  6,
+                  0,
+                  0
+                ],
+                [
+                  6,
+                  25,
+                  0
+                ]
+              ],
+              "color": "#34d399",
+              "width": 1.8,
+              "opacity": 0.8
+            },
+            {
+              "id": "s4_apollo_name",
+              "type": "text",
+              "text": "Apollo",
+              "position": [
+                -6.75,
+                25.2,
+                0
+              ],
+              "color": "#fbbf24"
+            },
+            {
+              "id": "s4_orion_name",
+              "type": "text",
+              "text": "Orion",
+              "position": [
+                -0.5,
+                25.2,
+                0
+              ],
+              "color": "#7dd3fc"
+            },
+            {
+              "id": "s4_dragon_name",
+              "type": "text",
+              "text": "Dragon",
+              "position": [
+                5.35,
+                25.2,
+                0
+              ],
+              "color": "#6ee7b7"
+            },
+            {
+              "id": "s4_waterline",
+              "type": "line",
+              "points": [
+                [
+                  -10,
+                  0,
+                  0
+                ],
+                [
+                  10,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#60a5fa",
+              "width": 2,
+              "opacity": 0.85
+            },
+            {
+              "id": "s4_apollo_capsule",
+              "type": "animated_point",
+              "position": [
+                "-6",
+                "25 * (1 - descent)",
+                "0"
+              ],
+              "color": "#f59e0b",
+              "radius": 0.12
+            },
+            {
+              "id": "s4_orion_capsule",
+              "type": "animated_point",
+              "position": [
+                "0",
+                "25 * (1 - descent)",
+                "0"
+              ],
+              "color": "#38bdf8",
+              "radius": 0.12
+            },
+            {
+              "id": "s4_dragon_capsule",
+              "type": "animated_point",
+              "position": [
+                "6",
+                "25 * (1 - descent)",
+                "0"
+              ],
+              "color": "#34d399",
+              "radius": 0.12
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_info",
+              "position": "top-left",
+              "content": "Scrub the slider to compare where each capsule switches from drogues to main parachutes and finally to splashdown."
+            }
+          ]
+        },
+        {
+          "title": "Apollo Recovery",
+          "description": "Apollo separates the forward heat shield near 24,000 feet, rides drogues to about 11,000 feet, then opens three mains for a roughly 22 mph splashdown.",
+          "add": [
+            {
+              "id": "s4_apollo_24",
+              "type": "line",
+              "points": [
+                [
+                  -6.8,
+                  24,
+                  0
+                ],
+                [
+                  -5.2,
+                  24,
+                  0
+                ]
+              ],
+              "color": "#fde68a",
+              "width": 1.5
+            },
+            {
+              "id": "s4_apollo_11",
+              "type": "line",
+              "points": [
+                [
+                  -6.8,
+                  11,
+                  0
+                ],
+                [
+                  -5.2,
+                  11,
+                  0
+                ]
+              ],
+              "color": "#fde68a",
+              "width": 1.5
+            },
+            {
+              "id": "s4_apollo_text1",
+              "type": "text",
+              "text": "24k ft: heat shield sep + drogues",
+              "position": [
+                -9.2,
+                23.2,
+                0
+              ],
+              "color": "#fde68a"
+            },
+            {
+              "id": "s4_apollo_text2",
+              "type": "text",
+              "text": "11k ft: three main parachutes",
+              "position": [
+                -9.1,
+                10.1,
+                0
+              ],
+              "color": "#fde68a"
+            },
+            {
+              "id": "s4_apollo_text3",
+              "type": "text",
+              "text": "Splashdown target ~22 mph",
+              "position": [
+                -9.0,
+                1.4,
+                0
+              ],
+              "color": "#fde68a"
+            }
+          ]
+        },
+        {
+          "title": "Orion Recovery",
+          "description": "Orion's recovery system uses 11 parachutes overall and slows the capsule from around 300 mph to about 20 mph for splashdown after deep-space return.",
+          "add": [
+            {
+              "id": "s4_orion_22",
+              "type": "line",
+              "points": [
+                [
+                  -0.8,
+                  22,
+                  0
+                ],
+                [
+                  0.8,
+                  22,
+                  0
+                ]
+              ],
+              "color": "#bae6fd",
+              "width": 1.5
+            },
+            {
+              "id": "s4_orion_6",
+              "type": "line",
+              "points": [
+                [
+                  -0.8,
+                  6,
+                  0
+                ],
+                [
+                  0.8,
+                  6,
+                  0
+                ]
+              ],
+              "color": "#bae6fd",
+              "width": 1.5
+            },
+            {
+              "id": "s4_orion_text1",
+              "type": "text",
+              "text": "22k ft: drogues in the lunar-return descent",
+              "position": [
+                -4.8,
+                21.1,
+                0
+              ],
+              "color": "#bae6fd"
+            },
+            {
+              "id": "s4_orion_text2",
+              "type": "text",
+              "text": "6k ft: main parachutes",
+              "position": [
+                -3.6,
+                5.1,
+                0
+              ],
+              "color": "#bae6fd"
+            },
+            {
+              "id": "s4_orion_text3",
+              "type": "text",
+              "text": "Splashdown target ~20 mph",
+              "position": [
+                -3.9,
+                1.5,
+                0
+              ],
+              "color": "#bae6fd"
+            }
+          ]
+        },
+        {
+          "title": "Dragon Recovery",
+          "description": "Dragon deploys drogues near 18,000 feet at about 350 mph, then mains near 6,000 feet at about 119 mph, and splashes down under four mains.",
+          "add": [
+            {
+              "id": "s4_dragon_18",
+              "type": "line",
+              "points": [
+                [
+                  5.2,
+                  18,
+                  0
+                ],
+                [
+                  6.8,
+                  18,
+                  0
+                ]
+              ],
+              "color": "#bbf7d0",
+              "width": 1.5
+            },
+            {
+              "id": "s4_dragon_6",
+              "type": "line",
+              "points": [
+                [
+                  5.2,
+                  6,
+                  0
+                ],
+                [
+                  6.8,
+                  6,
+                  0
+                ]
+              ],
+              "color": "#bbf7d0",
+              "width": 1.5
+            },
+            {
+              "id": "s4_dragon_text1",
+              "type": "text",
+              "text": "18k ft: drogues at ~350 mph",
+              "position": [
+                2.1,
+                17.1,
+                0
+              ],
+              "color": "#bbf7d0"
+            },
+            {
+              "id": "s4_dragon_text2",
+              "type": "text",
+              "text": "6k ft: mains at ~119 mph",
+              "position": [
+                2.4,
+                5.1,
+                0
+              ],
+              "color": "#bbf7d0"
+            },
+            {
+              "id": "s4_dragon_text3",
+              "type": "text",
+              "text": "Orbital return, not lunar skip entry",
+              "position": [
+                1.7,
+                1.6,
+                0
+              ],
+              "color": "#bbf7d0"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
