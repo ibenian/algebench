@@ -14,7 +14,7 @@ import { setupSettingsPanel, initLightControls, setupPanelResize, setupExplainTo
          getAllElements, addInfoOverlay, removeAllInfoOverlays, updateInfoOverlays,
          setBuildSceneTreeFn } from '/overlay.js';
 import { setupFollowAngleLockToggle } from '/follow-cam.js';
-import { dataCameraToWorld } from '/coords.js';
+import { dataCameraToWorld, worldCameraToData } from '/coords.js';
 import { navigateTo, setupSceneDock, loadScene, loadLesson, isLessonFormat,
          updateDockVisibility } from '/scene-loader.js';
 import { buildSceneTree } from '/context-browser.js';
@@ -85,6 +85,7 @@ window.isLessonFormat = isLessonFormat;
 window.updateDockVisibility = updateDockVisibility;
 window.animateSlider = animateSlider;
 window.dataCameraToWorld = dataCameraToWorld;
+window.worldCameraToData = worldCameraToData;
 
 // Proof system
 window.navigateProof = navigateProof;
