@@ -552,6 +552,10 @@
           "type": "number",
           "description": "Scale factor for animated_vector shaft thickness. Default: 1."
         },
+        "scale": {
+          "type": "number",
+          "description": "Scale factor for animated_vector length. Multiplies the displacement from 'from' to 'to' without changing the underlying expressions. Default: 1."
+        },
         "keyframes": {
           "type": "array",
           "description": "Keyframe array for animated_vector. Each keyframe defines a target position over time."

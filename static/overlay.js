@@ -7,6 +7,7 @@ import { state } from '/state.js';
 import { renderMarkdown, renderKaTeX, parseColor, colorToCSS, injectAskButtons, makeAiAskButton } from '/labels.js';
 import { compileExpr, evalExpr, _getMathNamesAndValues } from '/expr.js';
 import { getSliderIds, syncSliderState } from '/sliders.js';
+import { worldCameraToData } from '/coords.js';
 
 // Forward reference for buildSceneTree — assigned by context-browser.js via
 // setBuildSceneTreeFn() to avoid a circular import.
@@ -684,18 +685,20 @@ export function updateStatusBar() {
     const camPopup = document.getElementById('cam-popup-content');
     const camPopupText = document.getElementById('cam-popup-text');
     if (camPopup && state.camera && state.controls) {
-        const p = state.camera.position;
-        const t = state.controls.target;
+        const pw = state.camera.position;
+        const tw = state.controls.target;
         const u = state.camera.up;
-        const dist = p.distanceTo(t);
+        const p = worldCameraToData([pw.x, pw.y, pw.z]);
+        const t = worldCameraToData([tw.x, tw.y, tw.z]);
+        const dist = Math.sqrt((p[0]-t[0])**2 + (p[1]-t[1])**2 + (p[2]-t[2])**2);
         const fov = state.camera.isPerspectiveCamera ? state.camera.fov : null;
         const fmt = v => v.toFixed(3);
         const activeViewBtn = document.querySelector('.cam-btn.active');
         const viewName = activeViewBtn ? activeViewBtn.dataset.view : null;
         let txt = '';
         if (viewName) txt += `view ${viewName}\n`;
-        txt += `pos  x: ${fmt(p.x)}  y: ${fmt(p.y)}  z: ${fmt(p.z)}\n`
-             + `tgt  x: ${fmt(t.x)}  y: ${fmt(t.y)}  z: ${fmt(t.z)}\n`
+        txt += `pos  x: ${fmt(p[0])}  y: ${fmt(p[1])}  z: ${fmt(p[2])}\n`
+             + `tgt  x: ${fmt(t[0])}  y: ${fmt(t[1])}  z: ${fmt(t[2])}\n`
              + `up   x: ${fmt(u.x)}  y: ${fmt(u.y)}  z: ${fmt(u.z)}\n`
              + `dist ${dist.toFixed(3)}`;
         if (fov != null) txt += `\nfov  ${Math.round(fov)}°`;

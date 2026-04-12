@@ -271,8 +271,8 @@
           260
         ],
         [
-          -200,
-          200
+          -260,
+          260
         ]
       ],
       "scale": [
@@ -282,30 +282,40 @@
       ],
       "camera": {
         "position": [
-          785,
-          0,
-          360
+          647.424,
+          111.171,
+          188.686
         ],
         "target": [
-          635,
-          0,
-          0
+          638.333,
+          122.792,
+          38.678
+        ],
+        "up": [
+          0.998,
+          0.011,
+          -0.060
         ]
       },
       "views": [
         {
-          "name": "Entry Plane",
+          "name": "Corridor Overview",
           "position": [
-            785,
-            0,
-            360
+            669.339,
+            -59.353,
+            40.260
           ],
           "target": [
-            635,
-            0,
-            0
+            617.474,
+            140.115,
+            -22.130
           ],
-          "description": "3D Earth-limb view of the entry plane"
+          "up": [
+            0.945,
+            0.325,
+            -0.019
+          ],
+          "description": "Side view showing the full entry corridor with Earth limb"
         },
         {
           "name": "Planar",
@@ -329,16 +339,31 @@
         {
           "name": "Graph View",
           "position": [
-            640,
-            0,
-            320
+            683.399,
+            35.905,
+            148.221
           ],
           "target": [
-            610,
-            0,
-            0
+            688.647,
+            33.277,
+            31.735
+          ],
+          "up": [
+            0.999,
+            -0.017,
+            0.045
           ],
           "description": "Focus on the live g-load graph"
+        },
+        {
+          "name": "Follow Capsule",
+          "follow": "capsule_live",
+          "offset": [
+            0,
+            0,
+            30
+          ],
+          "description": "Camera tracks the capsule along its trajectory"
         }
       ],
       "elements": [
@@ -420,6 +445,31 @@
               "color": "#8f97a8"
             },
             {
+              "type": "animated_polygon",
+              "id": "corridor_fill",
+              "label": "Entry Corridor",
+              "vertices": [
+                [
+                  "649.292",
+                  "0",
+                  "0"
+                ],
+                [
+                  "649.292 - 130 * sin(entryCorridorLo() * pi / 180)",
+                  "130 * cos(entryCorridorLo() * pi / 180)",
+                  "0"
+                ],
+                [
+                  "649.292 - 130 * sin(entryCorridorHi() * pi / 180)",
+                  "130 * cos(entryCorridorHi() * pi / 180)",
+                  "0"
+                ]
+              ],
+              "color": "#2ecc71",
+              "opacity": 0.22,
+              "thickness": 0.01
+            },
+            {
               "type": "animated_line",
               "id": "corridor_lo",
               "points": [
@@ -435,8 +485,8 @@
                 ]
               ],
               "color": "#2ecc71",
-              "width": 2,
-              "opacity": 0.5
+              "width": 3,
+              "opacity": 0.9
             },
             {
               "type": "animated_line",
@@ -454,8 +504,8 @@
                 ]
               ],
               "color": "#2ecc71",
-              "width": 2,
-              "opacity": 0.5
+              "width": 3,
+              "opacity": 0.9
             },
             {
               "type": "text",
@@ -469,11 +519,50 @@
               "color": "#2ecc71"
             },
             {
+              "type": "animated_point",
+              "id": "corridor_lo_marker",
+              "expr": [
+                "649.292 - 130 * sin(entryCorridorLo() * pi / 180)",
+                "130 * cos(entryCorridorLo() * pi / 180)",
+                "0"
+              ],
+              "color": "#b8ffcc",
+              "size": 5,
+              "labelExpr": "concat('lo ', toFixed(entryCorridorLo(), 2), ' deg')",
+              "visibleExpr": "entryCorridorHi() - entryCorridorLo() >= 0.3"
+            },
+            {
+              "type": "animated_point",
+              "id": "corridor_hi_marker",
+              "expr": [
+                "649.292 - 130 * sin(entryCorridorHi() * pi / 180)",
+                "130 * cos(entryCorridorHi() * pi / 180)",
+                "0"
+              ],
+              "color": "#b8ffcc",
+              "size": 5,
+              "labelExpr": "concat('hi ', toFixed(entryCorridorHi(), 2), ' deg')",
+              "visibleExpr": "entryCorridorHi() - entryCorridorLo() >= 0.3"
+            },
+            {
+              "type": "animated_point",
+              "id": "corridor_warning",
+              "expr": [
+                "620",
+                "145",
+                "0"
+              ],
+              "color": "#ff8a80",
+              "size": 6,
+              "label": "No survivable corridor at this g-limit",
+              "visibleExpr": "entryCorridorHi() - entryCorridorLo() < 0.3"
+            },
+            {
               "type": "animated_vector",
               "id": "entry_vector",
               "fromExpr": [
-                "649.292 + 42 * sin(s2_gamma * pi / 180)",
-                "-42 * cos(s2_gamma * pi / 180)",
+                "649.292 + 21 * sin(s2_gamma * pi / 180)",
+                "-21 * cos(s2_gamma * pi / 180)",
                 "0"
               ],
               "toExpr": [
@@ -482,7 +571,8 @@
                 "0"
               ],
               "color": "#ffd166",
-              "width": 2,
+              "width": 0.5,
+              "scale": 0.25,
               "label": "Entry Vector"
             },
             {
@@ -497,7 +587,8 @@
               ],
               "samples": 420,
               "color": "#f6c453",
-              "width": 3
+              "width": 3,
+              "label": "Trajectory"
             },
             {
               "type": "animated_point",
@@ -526,7 +617,9 @@
               ],
               "color": "#4db6ff",
               "width": 3,
-              "label": "$\\vec{v}$"
+              "scale": 0.75,
+              "label": "$\\vec{v}$",
+              "labelOffset": [0, 0, 5]
             },
             {
               "type": "animated_vector",
@@ -543,14 +636,16 @@
               ],
               "color": "#ff6b5f",
               "width": 3,
-              "label": "$\\vec{D}$"
+              "scale": 0.75,
+              "label": "$\\vec{D}$",
+              "labelOffset": [0, 0, -5]
             }
           ],
           "remove": [],
           "sliders": [
             {
               "id": "s2_vehicle",
-              "label": "Vehicle Preset",
+              "label": "Vehicle (0:Dragon, 1:Gemini, 2:Apollo, 3:Orion)",
               "min": 0,
               "max": 3,
               "default": 3,
@@ -569,7 +664,7 @@
               "label": "Bank Angle (deg)",
               "min": -180,
               "max": 180,
-              "default": 0,
+              "default": 50,
               "step": 1
             },
             {
@@ -595,7 +690,7 @@
             {
               "id": "entry_info",
               "position": "top-right",
-              "content": "### Simulated Entry State\n**Vehicle:** {{entryVehicleName()}}  \n**Mission:** {{entryVehicleMission()}}  \n**Entry speed:** {{toFixed(entryVehicleSpeed(), 2)}} km/s  \n**Estimated $\\beta$:** {{toFixed(entryVehicleBeta(), 1)}} kg/m$^2$  \n**Reference $L/D$:** {{toFixed(entryVehicleLD(), 2)}}\n\n**Computed corridor:** {{toFixed(entryCorridorLo(), 2)}}\u00b0 to {{toFixed(entryCorridorHi(), 2)}}\u00b0  \n**Selected $\\gamma$:** {{toFixed(s2_gamma, 2)}}\u00b0  \n**Effective bank:** {{toFixed(s2_bank, 0)}}\u00b0  \n**Time:** {{toFixed(min(s2_t, entryEndTime()), 0)}} s\n\n**Altitude:** {{toFixed(entryAlt(s2_t), 1)}} km  \n**Speed:** {{toFixed(entrySpeed(s2_t), 2)}} km/s  \n**Current aero decel:** {{toFixed(entryG(s2_t), 2)}} g\n\n{{entryOutcome()}}"
+              "content": "### Simulated Entry State\n**Vehicle:** {{entryVehicleName()}}  \n**Mission:** {{entryVehicleMission()}}  \n**Entry speed:** {{toFixed(entryVehicleSpeed(), 2)}} km/s  \n**Estimated $\\beta$:** {{toFixed(entryVehicleBeta(), 1)}} kg/m$^2$  \n**Reference $L/D$:** {{toFixed(entryVehicleLD(), 2)}}\n\n**Computed corridor:** {{toFixed(entryCorridorLo(), 2)}}° to {{toFixed(entryCorridorHi(), 2)}}°  \n**Selected $\\gamma$:** {{toFixed(s2_gamma, 2)}}°  \n**Effective bank:** {{toFixed(s2_bank, 0)}}°  \n**Time:** {{toFixed(min(s2_t, entryEndTime()), 0)}} s\n\n**Altitude:** {{toFixed(entryAlt(s2_t), 1)}} km  \n**Speed:** {{toFixed(entrySpeed(s2_t), 2)}} km/s  \n**Current aero decel:** {{toFixed(entryG(s2_t), 2)}} g\n\n{{entryOutcome()}}"
             }
           ]
         },
@@ -609,13 +704,13 @@
               "id": "g_graph_x",
               "points": [
                 [
-                  556,
-                  122,
+                  660,
+                  60,
                   0
                 ],
                 [
-                  676,
-                  122,
+                  660,
+                  -60,
                   0
                 ]
               ],
@@ -628,13 +723,13 @@
               "id": "g_graph_y",
               "points": [
                 [
-                  556,
-                  122,
+                  660,
+                  60,
                   0
                 ],
                 [
-                  556,
-                  242,
+                  780,
+                  60,
                   0
                 ]
               ],
@@ -647,13 +742,13 @@
               "id": "g_limit_line",
               "points": [
                 [
-                  "556",
-                  "122 + 10 * s2_g_limit",
+                  "660 + 10 * s2_g_limit",
+                  "60",
                   "0"
                 ],
                 [
-                  "676",
-                  "122 + 10 * s2_g_limit",
+                  "660 + 10 * s2_g_limit",
+                  "-60",
                   "0"
                 ]
               ],
@@ -662,10 +757,22 @@
               "opacity": 0.65
             },
             {
+              "type": "animated_point",
+              "id": "g_limit_marker",
+              "expr": [
+                "660 + 10 * s2_g_limit",
+                "60",
+                "0"
+              ],
+              "color": "#2ecc71",
+              "size": 4,
+              "labelExpr": "concat(toFixed(s2_g_limit, 1), ' g')"
+            },
+            {
               "type": "parametric_curve",
               "id": "g_curve",
-              "x": "556 + 120 * t / 1500",
-              "y": "122 + 10 * entryG(t)",
+              "x": "660 + 10 * entryG(t)",
+              "y": "60 - 120 * t / 1500",
               "z": "0",
               "range": [
                 0,
@@ -679,33 +786,32 @@
               "type": "animated_point",
               "id": "g_marker",
               "expr": [
-                "556 + 120 * min(s2_t, entryEndTime()) / 1500",
-                "122 + 10 * entryG(s2_t)",
+                "660 + 10 * entryG(s2_t)",
+                "60 - 120 * min(s2_t, entryEndTime()) / 1500",
                 "0"
               ],
-              "color": "#ffffff",
-              "size": 8,
-              "label": "now"
+              "color": "#ff6b5f",
+              "size": 6
             },
             {
               "type": "animated_point",
               "id": "g_peak",
               "expr": [
-                "556 + 120 * entryPeakGT() / 1500",
-                "122 + 10 * entryPeakG()",
+                "660 + 10 * entryPeakG()",
+                "60 - 120 * entryPeakGT() / 1500",
                 "0"
               ],
               "color": "#ffd166",
               "size": 8,
-              "label": "peak"
+              "labelExpr": "concat('peak: ', toFixed(entryPeakG(), 1), ' g')"
             },
             {
               "type": "text",
               "id": "g_axis_title",
               "text": "Aero decel vs time",
               "position": [
-                616,
-                248,
+                720,
+                68,
                 0
               ],
               "color": "#ffffff"
@@ -715,8 +821,8 @@
               "id": "g_x0",
               "text": "0 s",
               "position": [
-                556,
-                114,
+                652,
+                60,
                 0
               ],
               "color": "#cccccc"
@@ -726,8 +832,8 @@
               "id": "g_x1",
               "text": "750 s",
               "position": [
-                616,
-                114,
+                652,
+                0,
                 0
               ],
               "color": "#cccccc"
@@ -737,8 +843,8 @@
               "id": "g_x2",
               "text": "1500 s",
               "position": [
-                676,
-                114,
+                652,
+                -60,
                 0
               ],
               "color": "#cccccc"
@@ -748,8 +854,8 @@
               "id": "g_y0",
               "text": "0 g",
               "position": [
-                548,
-                122,
+                660,
+                66,
                 0
               ],
               "color": "#cccccc"
@@ -759,8 +865,8 @@
               "id": "g_y1",
               "text": "6 g",
               "position": [
-                548,
-                182,
+                720,
+                66,
                 0
               ],
               "color": "#cccccc"
@@ -770,11 +876,49 @@
               "id": "g_y2",
               "text": "12 g",
               "position": [
-                548,
-                242,
+                780,
+                66,
                 0
               ],
               "color": "#cccccc"
+            },
+            {
+              "type": "parametric_curve",
+              "id": "speed_curve",
+              "x": "660 + 10 * entrySpeed(t)",
+              "y": "60 - 120 * t / 1500",
+              "z": "0",
+              "range": [
+                0,
+                1500
+              ],
+              "samples": 420,
+              "color": "#4db6ff",
+              "width": 2,
+              "label": "Speed (km/s)"
+            },
+            {
+              "type": "animated_point",
+              "id": "speed_marker",
+              "expr": [
+                "660 + 10 * entrySpeed(s2_t)",
+                "60 - 120 * min(s2_t, entryEndTime()) / 1500",
+                "0"
+              ],
+              "color": "#4db6ff",
+              "size": 6
+            },
+            {
+              "type": "animated_point",
+              "id": "outcome_label",
+              "expr": [
+                "720",
+                "-68",
+                "0"
+              ],
+              "color": "#ffd166",
+              "size": 0,
+              "labelExpr": "entryOutcome()"
             }
           ],
           "remove": [],
@@ -782,7 +926,17 @@
             {
               "id": "g_history_info",
               "position": "top-left",
-              "content": "### Entry Summary\n**Peak aero decel:** {{toFixed(entryPeakG(), 2)}} g at {{toFixed(entryPeakGT(), 0)}} s  \n**Peak heating index:** {{toFixed(entryPeakHeat(), 2)}} at {{toFixed(entryPeakHeatT(), 0)}} s  \n**Minimum altitude reached:** {{toFixed(entryMinAlt(), 1)}} km  \n**Parachute deployment altitude:** {{toFixed(entryChuteAlt(), 2)}} km  \n**Simulation end:** {{toFixed(entryEndTime(), 0)}} s\n\nThe green line is the corridor threshold chosen for this lesson. Angles steeper than the upper corridor bound reach the chute window too harshly; angles shallower than the lower bound skip out before getting there."
+              "content": "### Entry Summary\n**Vehicle:** {{entryVehicleName()}} ({{entryVehicleMission()}})\n**Peak aero decel:** {{toFixed(entryPeakG(), 2)}} g at {{toFixed(entryPeakGT(), 0)}} s  \n**Peak heating index:** {{toFixed(entryPeakHeat(), 2)}} at {{toFixed(entryPeakHeatT(), 0)}} s  \n**Minimum altitude reached:** {{toFixed(entryMinAlt(), 1)}} km  \n**Parachute deployment altitude:** {{toFixed(entryChuteAlt(), 2)}} km  \n**Simulation end:** {{toFixed(entryEndTime(), 0)}} s\n\nThe green line is the corridor threshold chosen for this lesson. Angles steeper than the upper corridor bound reach the chute window too harshly; angles shallower than the lower bound skip out before getting there."
+            }
+          ],
+          "sliders": [
+            {
+              "id": "s2_vehicle",
+              "label": "Vehicle (0:Dragon, 1:Gemini, 2:Apollo, 3:Orion)",
+              "min": 0,
+              "max": 3,
+              "default": 3,
+              "step": 1
             }
           ]
         }
@@ -791,7 +945,7 @@
     {
       "title": "Aerodynamic Heating and the Bow Shock",
       "description": "Understand why blunt bodies are used for reentry to create a detached bow shock.",
-      "markdown": "# Aerodynamic Heating and the Bow Shock\n\nA common misconception is that spacecraft heat up during re-entry because of friction with the air. In reality, the vast majority of the heating is caused by **adiabatic compression**.\n\n## The Blunt Body Solution\nIn 1958, H. Julian Allen and Alfred J. Eggers demonstrated that a blunt shape is far superior to a sharp, aerodynamic shape for re-entry. A blunt capsule plows through the atmosphere, creating a **detached bow shock**. The air squeezed between this shockwave and the capsule is violently compressed, heating up immensely. This super-heated cushion of air keeps the worst of the heat off the spacecraft's skin.\n\nIf a sharp-nosed vehicle were used, the shockwave would attach directly to the tip, concentrating all the thermal energy there and quickly melting the structure.\n\n## Stagnation Point Heating Rate\nThe heating is most intense at the **stagnation point**\u2014the point on the heat shield where the airflow is brought to a complete stop. The convective heating rate $\\dot{q}_s$ at this point is given by:\n\n$$ \\dot{q}_s \\approx K \\sqrt{\\rho} V^3 $$\n\nWhere:\n- $\\rho$ is the atmospheric density\n- $V$ is the spacecraft's velocity\n- $K$ is a constant depending on the geometry\n\nBecause heating scales with the *cube* of velocity ($V^3$), a lunar-return speed of $11\\,\\text{km/s}$ produces about $2.81\\times$ the convective heating of a $7.8\\,\\text{km/s}$ LEO return from speed alone.",
+      "markdown": "# Aerodynamic Heating and the Bow Shock\n\nA common misconception is that spacecraft heat up during re-entry because of friction with the air. In reality, the vast majority of the heating is caused by **adiabatic compression**.\n\n## The Blunt Body Solution\nIn 1958, H. Julian Allen and Alfred J. Eggers demonstrated that a blunt shape is far superior to a sharp, aerodynamic shape for re-entry. A blunt capsule plows through the atmosphere, creating a **detached bow shock**. The air squeezed between this shockwave and the capsule is violently compressed, heating up immensely. This super-heated cushion of air keeps the worst of the heat off the spacecraft's skin.\n\nIf a sharp-nosed vehicle were used, the shockwave would attach directly to the tip, concentrating all the thermal energy there and quickly melting the structure.\n\n## Stagnation Point Heating Rate\nThe heating is most intense at the **stagnation point**—the point on the heat shield where the airflow is brought to a complete stop. The convective heating rate $\\dot{q}_s$ at this point is given by:\n\n$$ \\dot{q}_s \\approx K \\sqrt{\\rho} V^3 $$\n\nWhere:\n- $\\rho$ is the atmospheric density\n- $V$ is the spacecraft's velocity\n- $K$ is a constant depending on the geometry\n\nBecause heating scales with the *cube* of velocity ($V^3$), a lunar-return speed of $11\\,\\text{km/s}$ produces about $2.81\\times$ the convective heating of a $7.8\\,\\text{km/s}$ LEO return from speed alone.",
       "prompt": "You are a tutor explaining the physics of atmospheric entry. Emphasize that heating is due to adiabatic compression, not friction. Guide the student to experiment with the bluntness slider to see how the bow shock detaches. Ask follow up questions like: 'If velocity doubles, how much does the heating rate increase according to the V^3 law?'",
       "range": [
         [
@@ -1038,7 +1192,7 @@
               "id": "s3_velocity",
               "label": "Velocity (km/s)",
               "min": 7.8,
-              "max": 11.0,
+              "max": 11,
               "default": 7.8,
               "step": 0.1
             }

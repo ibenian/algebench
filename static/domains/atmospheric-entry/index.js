@@ -245,7 +245,7 @@
     function _corridorFor(vehicle, bankDeg, gLimit) {
         let lo = null;
         let hi = null;
-        for (let gamma = 1.0; gamma <= 12.0001; gamma += 0.25) {
+        for (let gamma = 1.0; gamma <= 12.0001; gamma += 0.05) {
             const sim = _simulateEntry(vehicle, gamma, bankDeg, { dt: 0.5, storeArrays: false });
             const nominal = sim.deployed && !sim.skip && sim.peakG <= gLimit;
             if (nominal) {
@@ -331,11 +331,11 @@
 
     function entryOutcome() {
         const data = _ensureCache();
-        if (data.sim.skip) return 'Outcome: skip back out above the interface';
-        if (data.sim.deployed && data.sim.peakG <= data.gLimit) return 'Outcome: within corridor to parachute deployment';
-        if (data.sim.deployed) return 'Outcome: reaches chute window but exceeds g-limit';
-        if (data.sim.endReason === 'surface') return 'Outcome: surface intercept before chute window';
-        return 'Outcome: simulation ended before classification';
+        if (data.sim.skip) return 'Skip-out — too shallow, vehicle exits atmosphere';
+        if (data.sim.deployed && data.sim.peakG <= data.gLimit) return 'Nominal entry — chute deployment within g-limit';
+        if (data.sim.deployed) return 'Excessive g-load — entry too steep for crew survival';
+        if (data.sim.endReason === 'surface') return 'Ballistic impact — no chute deployment';
+        return 'Undetermined — simulation ended before classification';
     }
 
     window.AlgeBenchDomains.register('atmospheric-entry', {
