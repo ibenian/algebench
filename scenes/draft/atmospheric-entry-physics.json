@@ -15,8 +15,8 @@
           10
         ],
         [
-          2,
-          22
+          0,
+          20
         ],
         [
           -10,
@@ -26,12 +26,12 @@
       "camera": {
         "position": [
           0,
-          12.2,
+          10,
           20
         ],
         "target": [
           0,
-          12.2,
+          10,
           0
         ]
       },
@@ -40,12 +40,12 @@
           "name": "Face On",
           "position": [
             0,
-            12.2,
+            10,
             20
           ],
           "target": [
             0,
-            12.2,
+            10,
             0
           ],
           "description": "Face-on 2D view"
@@ -67,8 +67,8 @@
           "type": "axis",
           "axis": "y",
           "range": [
-            2,
-            22
+            0,
+            20
           ],
           "color": "#44cc44",
           "width": 1.5,
@@ -105,12 +105,12 @@
               "points": [
                 [
                   -10,
-                  12.2,
+                  10,
                   0
                 ],
                 [
                   10,
-                  12.2,
+                  10,
                   0
                 ]
               ],
@@ -123,7 +123,7 @@
               "text": "Entry Interface (122 km)",
               "position": [
                 0,
-                12.7,
+                10.5,
                 0
               ],
               "color": "#aaaaaa"
@@ -133,7 +133,7 @@
               "type": "point",
               "position": [
                 0,
-                12.2,
+                10,
                 0
               ],
               "color": "#ffffff",
@@ -145,12 +145,12 @@
               "type": "animated_vector",
               "from": [
                 0,
-                12.2,
+                10,
                 0
               ],
               "expr": [
                 "0",
-                "12.2 - s1_velocity * 0.5",
+                "10 - s1_velocity * 0.5",
                 "0"
               ],
               "color": "#3498db",
@@ -181,12 +181,12 @@
               "type": "animated_vector",
               "from": [
                 0,
-                12.2,
+                10,
                 0
               ],
               "expr": [
                 "0",
-                "12.2 + s1_density * (s1_velocity^2) / 20",
+                "10 + s1_density * (s1_velocity^2) / 20",
                 "0"
               ],
               "color": "#e74c3c",
@@ -255,6 +255,396 @@
           ]
         }
       ]
+    },
+    {
+      "title": "The Exponential Atmosphere",
+      "description": "Explore the exponential atmosphere model ρ(h) = ρ₀ e^{-h/H} and understand scale height — the single number that controls how quickly air thins with altitude.",
+      "markdown": "# The Exponential Atmosphere\n\nThe density of air falls off exponentially with altitude:\n\n$$ \\rho(h) = \\rho_0\\, e^{-h/H} $$\n\nwhere $\\rho_0 = 1.225\\,\\text{kg/m}^3$ is sea-level density and $H \\approx 7.2\\,\\text{km}$ is the **scale height** — the altitude gain that reduces density by a factor of $e \\approx 2.718$.\n\nThis simple model captures the essential physics: the atmosphere is a thin shell that gets exponentially thinner with altitude. By the entry interface at $122\\,\\text{km}$, density is roughly $10^{-7}$ of sea level — effectively vacuum.\n\n---\n**Key insight:** Every $H$ km of altitude costs a factor of $e$ in density. After $n$ scale heights, density is $e^{-n}$ of the surface value.",
+      "prompt": "Help the student build intuition for exponential decay in the atmosphere. Emphasize the scale height concept and connect it to why entry dynamics are so sensitive to altitude.",
+      "range": [
+        [
+          -10,
+          140
+        ],
+        [
+          0,
+          150
+        ],
+        [
+          -75,
+          75
+        ]
+      ],
+      "camera": {
+        "position": [
+          65,
+          75,
+          200
+        ],
+        "target": [
+          65,
+          75,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            65,
+            75,
+            200
+          ],
+          "target": [
+            65,
+            75,
+            0
+          ],
+          "description": "2D view of density vs altitude"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "id": "_mathbox_init",
+          "plane": "xy",
+          "opacity": 0,
+          "divisions": 1
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            0,
+            130
+          ],
+          "color": "#aaaaaa",
+          "width": 1.5,
+          "label": "$\\rho$ (% of sea level)"
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            0,
+            150
+          ],
+          "color": "#aaaaaa",
+          "width": 1.5,
+          "label": "$h$ (km)"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Sea-Level Density",
+          "description": "At sea level (h = 0), the atmosphere has its maximum density ρ₀ = 1.225 kg/m³. This is the starting point of our exponential model.",
+          "prompt": "Introduce ρ₀ as the anchor point. Ask: how does density change as we go up? Most students guess linear — set up the surprise that it's exponential.",
+          "add": [
+            {
+              "type": "point",
+              "id": "pt_sea_level",
+              "position": [
+                100,
+                5,
+                0
+              ],
+              "color": "#2ecc71",
+              "size": 12,
+              "label": "$\\rho_0 = 1.225$ kg/m³ (100%)"
+            },
+            {
+              "type": "line",
+              "id": "line_sea_level",
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  130,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#2ecc71",
+              "width": 1,
+              "opacity": 0.4
+            }
+          ]
+        },
+        {
+          "title": "The Exponential Profile",
+          "description": "Density drops exponentially: ρ(h) = ρ₀ e^{-h/H}. The curve hugs the altitude axis — almost all the atmosphere is packed into the lowest few tens of kilometers.",
+          "prompt": "Point out how the curve is steep near the ground and nearly flat high up. Ask: at what altitude has the density dropped to half? (Answer: h = H·ln2 ≈ 5 km.)",
+          "add": [
+            {
+              "type": "parametric_curve",
+              "id": "curve_density",
+              "x": "100 * exp(-t / s_atm_H)",
+              "y": "t",
+              "z": "0",
+              "range": [
+                0,
+                150
+              ],
+              "samples": 300,
+              "color": "#3498db",
+              "width": 3,
+              "label": "$\\rho(h)$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "s_atm_H",
+              "label": "Scale Height H (km)",
+              "min": 3,
+              "max": 15,
+              "default": 7.2,
+              "step": 0.1
+            }
+          ]
+        },
+        {
+          "title": "Scale Height",
+          "description": "The scale height H = 7.2 km is the altitude at which density drops by a factor of e ≈ 2.718. It's the characteristic 'thickness' of the atmosphere.",
+          "prompt": "Draw attention to the horizontal markers showing density at each scale height. Ask: after 3 scale heights (~22 km), what fraction of sea-level density remains? Answer: e^{-3} ≈ 5%.",
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "line_1H",
+              "points": [
+                [
+                  "0",
+                  "s_atm_H",
+                  "0"
+                ],
+                [
+                  "100 * exp(-1)",
+                  "s_atm_H",
+                  "0"
+                ]
+              ],
+              "color": "#f39c12",
+              "width": 1.5,
+              "opacity": 0.7
+            },
+            {
+              "type": "animated_point",
+              "id": "pt_1H",
+              "expr": [
+                "100 * exp(-1)",
+                "s_atm_H",
+                "0"
+              ],
+              "color": "#f39c12",
+              "size": 8,
+              "label": "$1H$: 36.8%"
+            },
+            {
+              "type": "animated_line",
+              "id": "line_2H",
+              "points": [
+                [
+                  "0",
+                  "2 * s_atm_H",
+                  "0"
+                ],
+                [
+                  "100 * exp(-2)",
+                  "2 * s_atm_H",
+                  "0"
+                ]
+              ],
+              "color": "#e67e22",
+              "width": 1.5,
+              "opacity": 0.7
+            },
+            {
+              "type": "animated_point",
+              "id": "pt_2H",
+              "expr": [
+                "100 * exp(-2)",
+                "2 * s_atm_H",
+                "0"
+              ],
+              "color": "#e67e22",
+              "size": 8,
+              "label": "$2H$: 13.5%"
+            },
+            {
+              "type": "animated_line",
+              "id": "line_3H",
+              "points": [
+                [
+                  "0",
+                  "3 * s_atm_H",
+                  "0"
+                ],
+                [
+                  "100 * exp(-3)",
+                  "3 * s_atm_H",
+                  "0"
+                ]
+              ],
+              "color": "#e74c3c",
+              "width": 1.5,
+              "opacity": 0.7
+            },
+            {
+              "type": "animated_point",
+              "id": "pt_3H",
+              "expr": [
+                "100 * exp(-3)",
+                "3 * s_atm_H",
+                "0"
+              ],
+              "color": "#e74c3c",
+              "size": 8,
+              "label": "$3H$: 5.0%"
+            }
+          ]
+        },
+        {
+          "title": "The Entry Interface",
+          "description": "At 122 km — about 17 scale heights — the density is roughly 10⁻⁷ of sea level. This is the altitude where atmospheric drag first becomes non-negligible for an entering spacecraft.",
+          "prompt": "Emphasize the enormous contrast: at the entry interface, density is essentially zero on this plot. Yet that tiny sliver of air is enough to generate thousands of degrees of heating and many G's of deceleration at orbital speeds.",
+          "add": [
+            {
+              "type": "line",
+              "id": "line_entry",
+              "points": [
+                [
+                  0,
+                  122,
+                  0
+                ],
+                [
+                  30,
+                  122,
+                  0
+                ]
+              ],
+              "color": "#e74c3c",
+              "width": 2,
+              "opacity": 0.8
+            },
+            {
+              "type": "text",
+              "id": "text_entry",
+              "text": "Entry Interface (122 km)",
+              "position": [
+                35,
+                122,
+                0
+              ],
+              "color": "#e74c3c"
+            },
+            {
+              "type": "text",
+              "id": "text_entry_rho",
+              "text": "$\\rho \\approx 10^{-7}\\rho_0$",
+              "position": [
+                35,
+                116,
+                0
+              ],
+              "color": "#e74c3c"
+            }
+          ],
+          "info": [
+            {
+              "id": "atm_info",
+              "content": "### Density at Key Altitudes\n\n| Altitude | Scale Heights | Density |\n|----------|--------------|--------|\n| Sea level | 0 | 100% |\n| $1H$ = ${{toFixed(s_atm_H, 1)}}$ km | 1 | 36.8% |\n| $3H$ = ${{toFixed(3 * s_atm_H, 1)}}$ km | 3 | 5.0% |\n| 50 km | ${{toFixed(50 / s_atm_H, 1)}}$ | ${{toFixed(100 * exp(-50 / s_atm_H), 4)}}$% |\n| 122 km | ${{toFixed(122 / s_atm_H, 1)}}$ | $\\approx 0$ |",
+              "position": "top-right"
+            }
+          ]
+        }
+      ],
+      "proof": {
+        "id": "exponential_atmosphere_derivation",
+        "title": "Deriving the Exponential Atmosphere",
+        "technique": "derivation",
+        "goal": "$$\\rho(h) = \\rho_0\\, e^{-h/H}, \\quad H = \\frac{k_B T}{m g}$$",
+        "prompt": "Derive the exponential atmosphere from first principles — hydrostatic equilibrium and the ideal gas law. Show that the scale height has a beautiful physical meaning: the height at which thermal energy equals gravitational potential energy per molecule.",
+        "steps": [
+          {
+            "type": "given",
+            "label": "Hydrostatic Equilibrium",
+            "math": "dP = -\\rho\\, g\\, dh",
+            "justification": "The pressure decrease across a thin slab of air equals the weight of that slab per unit area.",
+            "explanation": "Consider a thin horizontal layer of air at altitude $h$ with thickness $dh$. The pressure at the bottom must support the weight of the air above. This gives a differential relationship between pressure and altitude.",
+            "prompt": "Ask: why is there a negative sign? Because pressure decreases as altitude increases.",
+            "sceneStep": 0
+          },
+          {
+            "type": "given",
+            "label": "Ideal Gas Law",
+            "math": "P = \\frac{\\rho\\, k_B T}{m}",
+            "justification": "The ideal gas equation of state, written in terms of mass density $\\rho$ and molecular mass $m$.",
+            "explanation": "Air behaves as an ideal gas to a good approximation. Here $k_B$ is Boltzmann's constant, $T$ is temperature, and $m$ is the mean molecular mass of air ($\\approx 4.8 \\times 10^{-26}$ kg).",
+            "prompt": "If the student asks about the molecular mass, explain that air is ~78% N₂ and ~21% O₂, giving a mean molecular weight of about 29 g/mol.",
+            "sceneStep": 0
+          },
+          {
+            "type": "step",
+            "label": "Assume Constant Temperature",
+            "math": "T = \\text{const} \\implies dP = \\frac{k_B T}{m}\\, d\\rho",
+            "justification": "Isothermal approximation: temperature doesn't vary much over the relevant altitude range.",
+            "explanation": "This is the key simplification. Real atmosphere temperature varies, but the isothermal model captures the essential exponential behavior. Differentiating the ideal gas law at constant $T$ gives $dP$ in terms of $d\\rho$.",
+            "prompt": "Acknowledge this is an approximation. The real atmosphere has a lapse rate, but the exponential model is surprisingly good for entry dynamics because the density variation dominates over temperature variation.",
+            "sceneStep": 1
+          },
+          {
+            "type": "step",
+            "label": "Combine into a Separable ODE",
+            "math": "\\frac{d\\rho}{\\rho} = -\\frac{m g}{k_B T}\\, dh",
+            "justification": "Substitute $dP = (k_B T / m)\\, d\\rho$ into the hydrostatic equation and divide by $\\rho$.",
+            "explanation": "This is now a separable first-order ODE — the same form as radioactive decay, population decline, or RC circuit discharge. The ratio $mg / (k_B T)$ is a constant with units of inverse length.",
+            "prompt": "Point out the universality: this is the same math as radioactive decay. Exponential processes appear everywhere in physics when the rate of change is proportional to the current value.",
+            "sceneStep": 1
+          },
+          {
+            "type": "step",
+            "label": "Define the Scale Height",
+            "math": "\\htmlClass{hl-H}{H \\equiv \\frac{k_B T}{m g}}",
+            "justification": "Group the constants into a single characteristic length.",
+            "explanation": "The scale height $H$ has a beautiful physical interpretation: it's the altitude at which gravitational potential energy $mgh$ equals thermal kinetic energy $k_B T$. For Earth at $T \\approx 250\\,\\text{K}$: $H \\approx 7.2\\,\\text{km}$.",
+            "prompt": "Emphasize the physical meaning: $H$ is where gravity and thermal motion are in balance. Below $H$, thermal agitation keeps molecules aloft. Above $H$, gravity wins and density drops rapidly.",
+            "sceneStep": 2,
+            "highlights": {
+              "H": {
+                "color": "yellow",
+                "label": "scale height — where thermal energy balances gravity"
+              }
+            }
+          },
+          {
+            "type": "step",
+            "label": "Integrate",
+            "math": "\\int_{\\rho_0}^{\\rho} \\frac{d\\rho'}{\\rho'} = -\\frac{1}{H} \\int_0^h dh' \\implies \\ln\\frac{\\rho}{\\rho_0} = -\\frac{h}{H}",
+            "justification": "Definite integral from sea level ($h=0$, $\\rho = \\rho_0$) to altitude $h$.",
+            "explanation": "The left side gives a logarithm, the right side is linear in $h$. This is the standard result for any exponential decay process.",
+            "prompt": "Remind the student: $\\int d\\rho/\\rho = \\ln\\rho$. The boundary condition $\\rho(0) = \\rho_0$ fixes the constant of integration.",
+            "sceneStep": 2
+          },
+          {
+            "type": "conclusion",
+            "label": "Exponential Atmosphere",
+            "math": "\\htmlClass{hl-result}{\\rho(h) = \\rho_0\\, e^{-h/H}}",
+            "justification": "Exponentiate both sides.",
+            "explanation": "This is the result used throughout atmospheric entry analysis. The entire structure of the atmosphere — and all of entry dynamics — flows from this single exponential. Every $H \\approx 7.2\\,\\text{km}$ of altitude costs a factor of $e \\approx 2.718$ in density.",
+            "prompt": "Connect to the visualization: the curve you see is exactly this equation. Drag the scale height slider to see how $H$ controls the rate of thinning.",
+            "sceneStep": 1,
+            "highlights": {
+              "result": {
+                "color": "green",
+                "label": "the exponential atmosphere model"
+              }
+            }
+          }
+        ]
+      }
     },
     {
       "title": "Trajectory and the Entry Corridor",
