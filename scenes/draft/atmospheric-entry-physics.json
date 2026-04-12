@@ -249,7 +249,7 @@
           "info": [
             {
               "id": "info_beta",
-              "content": "### Ballistic Coefficient\nAssume a blunt-capsule drag coefficient $C_d = 1.5$.\n\n$\\beta = \\frac{m}{C_d A} = \\frac{{{s1_mass}}}{1.5 \\times {{s1_area}}} = {{toFixed(s1_mass / (1.5 * s1_area), 1)}}\\ \\text{kg/m}^2$\n\n$F_D = \\frac{1}{2} \\rho v^2 C_d A$",
+              "content": "### Ballistic Coefficient\nAssume a blunt-capsule drag coefficient $C_d = 1.5$.\n\n$\\beta = \\frac{m}{C_d A} = \\frac{ {{s1_mass}} }{1.5 \\times {{s1_area}}} = {{toFixed(s1_mass / (1.5 * s1_area), 1)}}\\ \\text{kg/m}^2$\n\n$F_D = \\frac{1}{2} \\rho v^2 C_d A$",
               "position": "top-right"
             }
           ]

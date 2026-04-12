@@ -376,6 +376,7 @@ Double-escape all backslashes: `\\vec{v}`, `\\frac{a}{b}`, `\\lambda`, `\\htmlCl
 | `x.toFixed(2)` | `toFixed(x, 2)` |
 | `t**2` | `t^2` |
 | `{a}` in overlay | `{{a}}` |
+| `\frac{{{expr}}}` in overlay | `\frac{ {{expr}} }` — space around `{{}}` inside LaTeX braces to prevent the lazy regex from mismatching |
 | Mismatched axis/scene range | Match them |
 | Non-uniform range spans | Equal spans on all axes |
 | No grid in scene elements | Always include at least an invisible grid (`opacity: 0`) — MathBox won't initialize without one |
