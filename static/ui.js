@@ -292,13 +292,13 @@ async function startVideoExport() {
                 displaySurface: 'browser',
                 cursor: 'never',
             },
-            audio: false,
+            audio: true,
             preferCurrentTab: true,
         });
 
-        const tracks = [...displayStream.getVideoTracks()];
+        const tracks = [...displayStream.getTracks()];
         const getTTSStream = window.algebenchGetTTSAudioStream;
-        if (typeof getTTSStream === 'function') {
+        if (typeof getTTSStream === 'function' && displayStream.getAudioTracks().length === 0) {
             const ttsStream = getTTSStream();
             if (ttsStream) tracks.push(...ttsStream.getAudioTracks());
         }

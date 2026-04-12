@@ -791,7 +791,8 @@
                 "0"
               ],
               "color": "#ff6b5f",
-              "size": 6
+              "size": 8,
+              "label": "now"
             },
             {
               "type": "animated_point",
@@ -906,7 +907,8 @@
                 "0"
               ],
               "color": "#4db6ff",
-              "size": 6
+              "size": 8,
+              "label": "now"
             },
             {
               "type": "animated_point",
