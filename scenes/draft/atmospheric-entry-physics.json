@@ -294,7 +294,7 @@
         "up": [
           0.998,
           0.011,
-          -0.060
+          -0.06
         ]
       },
       "views": [
@@ -303,12 +303,12 @@
           "position": [
             669.339,
             -59.353,
-            40.260
+            40.26
           ],
           "target": [
             617.474,
             140.115,
-            -22.130
+            -22.13
           ],
           "up": [
             0.945,
@@ -580,7 +580,11 @@
               "width": 3,
               "scale": 0.75,
               "label": "$\\vec{v}$",
-              "labelOffset": [0, 0, 5]
+              "labelOffset": [
+                0,
+                0,
+                5
+              ]
             },
             {
               "type": "animated_vector",
@@ -599,7 +603,11 @@
               "width": 3,
               "scale": 0.75,
               "label": "$\\vec{D}$",
-              "labelOffset": [0, 0, -5]
+              "labelOffset": [
+                0,
+                0,
+                -5
+              ]
             }
           ],
           "remove": [],
@@ -904,104 +912,523 @@
           ]
         }
       ],
-      "proof": {
-        "id": "allen_eggers_deceleration",
-        "title": "Allen-Eggers Peak Deceleration",
-        "technique": "derivation",
-        "goal": "$$a_{\\text{max}} = \\frac{V_E^2 \\sin \\gamma}{2e H}$$",
-        "prompt": "Walk the student through the math of peak deceleration step-by-step. Keep it accessible to a high schooler: we trade time for altitude, find how velocity drops, and see where the braking force hits its absolute maximum.",
-        "steps": [
-          {
-            "type": "given",
-            "label": "Newton's Second Law",
-            "math": "F_{\\text{net}} = m a",
-            "justification": "The fundamental law of motion relates net force to mass and acceleration.",
-            "explanation": "Acceleration $a$ is the rate of change of velocity, so we can write this as $F_{\\text{net}} = m \\frac{dV}{dt}$.",
-            "prompt": "Remind the student of Newton's Second Law and ask what acceleration means in terms of velocity.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "given",
-            "label": "Aerodynamic Drag",
-            "math": "F_D = \\frac{1}{2}\\rho V^2 C_d A",
-            "justification": "This is the standard drag equation.",
-            "explanation": "Drag depends on the air density $\\rho$, the square of the velocity $V^2$, the capsule's drag coefficient $C_d$, and its cross-sectional area $A$.",
-            "prompt": "Have the user identify the components of the drag equation.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Net Force in Flight",
-            "math": "F_{\\text{net}} \\approx -F_D",
-            "justification": "During the most intense part of reentry, drag is so massive that gravity is negligible by comparison.",
-            "explanation": "We ignore gravity because the deceleration from drag reaches many G's. The negative sign shows that drag opposes the direction of motion.",
-            "prompt": "Ask the student why we can ignore gravity when the spacecraft is experiencing 10 G's of deceleration.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Combine Equations",
-            "math": "m \\frac{dV}{dt} = -\\frac{1}{2}\\rho V^2 C_d A",
-            "justification": "Substitute the definition of acceleration and the drag equation into Newton's Second Law.",
-            "explanation": "This gives us our starting differential equation for the spacecraft's motion. It tells us exactly how fast the velocity is dropping at any given moment.",
-            "prompt": "Ask the student to put the pieces together to form the full equation of motion.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Change of Variables",
-            "math": "\\frac{dV}{dt} = \\frac{dV}{dh} \\frac{dh}{dt} = -V \\sin \\gamma \\frac{dV}{dh}",
-            "justification": "We replace time ($t$) with altitude ($h$) since the atmosphere changes with altitude.",
-            "explanation": "Instead of tracking time, we track how fast we are falling. The vertical speed is just the total speed $V$ times the sine of the entry angle $\\gamma$.",
-            "prompt": "Explain the chain rule simply: 'We want to know how speed changes with height, not time.'",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Velocity vs Altitude",
-            "math": "V(h) = V_E \\exp\\left(-\\frac{C_d A \\rho_0}{2m \\beta} e^{-h/H}\\right)",
-            "justification": "Substitute the exponential density $\\rho = \\rho_0 e^{-h/H}$ and integrate.",
-            "explanation": "Skipping the messy calculus, if we add up all the drag as we fall, we get a formula showing how our speed $V$ drops from our initial entry speed $V_E$.",
-            "prompt": "Tell the student not to worry about the calculus integration. The key takeaway is: speed drops exponentially as the air gets thicker.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "step",
-            "label": "Finding the Maximum",
-            "math": "\\frac{d}{dh} \\left( \\frac{dV}{dt} \\right) = 0",
-            "justification": "To find the peak (maximum) deceleration, we find where the derivative of deceleration is zero.",
-            "explanation": "In calculus, you find the highest point of a curve by looking for where it goes flat (slope is zero). The maximum drag happens exactly when the spacecraft has lost a specific fraction of its speed.",
-            "prompt": "Relate finding a maximum to the peak of a roller coaster\u2014the very top is flat for a split second.",
-            "sceneStep": 1,
-            "highlights": {}
-          },
-          {
-            "type": "conclusion",
-            "label": "Maximum Deceleration",
-            "math": "a_{\\text{max}} = \\frac{\\htmlClass{hl-ve}{V_E^2} \\sin \\htmlClass{hl-gamma}{\\gamma}}{2e H}",
-            "justification": "Plugging the critical altitude back into the drag equation gives the absolute maximum G-force.",
-            "explanation": "This is the amazing result! The mass $m$, size $A$, and shape $C_d$ of the spacecraft completely cancel out. The crushing G-force depends ONLY on how fast you come in ($V_E$) and how steep your angle is ($\\gamma$).",
-            "prompt": "Make sure the student realizes the profound implication: you can't build a 'heavier' ship to lower the peak G-forces. You MUST come in slower or shallower.",
-            "sceneStep": 1,
-            "highlights": {
-              "ve": {
-                "color": "cyan",
-                "label": "Entry Velocity"
-              },
-              "gamma": {
-                "color": "yellow",
-                "label": "Flight Path Angle"
+      "proof": [
+        {
+          "id": "entry_equations_of_motion",
+          "title": "Equations of Motion for Atmospheric Entry",
+          "technique": "derivation",
+          "goal": "$$\\ddot{\\mathbf{r}} = -\\frac{\\mu}{r^3}\\mathbf{r} - \\frac{\\rho V}{2\\beta}\\mathbf{V} + \\frac{L}{D}\\cos\\phi\\cdot\\frac{\\rho V^2}{2\\beta}\\hat{n}$$",
+          "prompt": "Walk through the physical forces acting on a capsule during entry. Build up from gravity alone, add drag, then lift. Emphasize that this ODE is what the simulation integrates numerically.",
+          "sceneStep": 0,
+          "steps": [
+            {
+              "type": "given",
+              "label": "Planet-Centered Coordinates",
+              "math": "\\mathbf{r} = (x, y), \\quad r = \\|\\mathbf{r}\\| = \\sqrt{x^2 + y^2}",
+              "justification": "Position vector in the 2D entry plane, measured from the planet center.",
+              "explanation": "We work in a plane containing the entry trajectory. The altitude above the surface is $h = r - R_p$ where $R_p$ is the planet radius.",
+              "prompt": "Relate the math to the 3D view: the Earth sphere has radius $R_p = 6371\\,\\text{km}$, and $r$ is measured from the center.",
+              "sceneStep": 0
+            },
+            {
+              "type": "given",
+              "label": "Gravitational Acceleration",
+              "math": "\\mathbf{a}_g = -\\frac{\\mu}{r^3}\\mathbf{r}",
+              "justification": "Newton's law of gravitation. $\\mu = GM$ is the gravitational parameter.",
+              "explanation": "Gravity pulls the capsule toward the planet center. The inverse-square law is written in vector form: the $r^3$ in the denominator (not $r^2$) comes from the unit vector $\\hat{r} = \\mathbf{r}/r$.",
+              "prompt": "Ask the student why the denominator is $r^3$ rather than $r^2$. Answer: we're multiplying the $1/r^2$ magnitude by the direction vector $\\mathbf{r}/r$.",
+              "sceneStep": 0
+            },
+            {
+              "type": "given",
+              "label": "Exponential Atmosphere Model",
+              "math": "\\rho(h) = \\rho_0\\, e^{-h/H}",
+              "justification": "Standard scale-height atmosphere: density drops by a factor of $e$ every $H \\approx 7.2\\,\\text{km}$.",
+              "explanation": "This is the simplest useful atmosphere model. $\\rho_0 = 1.225\\,\\text{kg/m}^3$ is sea-level density and $H$ is the scale height. At the entry interface ($h = 122\\,\\text{km}$), density is roughly $10^{-7}$ of sea level.",
+              "prompt": "Have the student estimate: at $h = 50\\,\\text{km}$, what fraction of sea-level density is the air? Answer: $e^{-50/7.2} \\approx 10^{-3}$.",
+              "sceneStep": 0
+            },
+            {
+              "type": "given",
+              "label": "Aerodynamic Drag Force",
+              "math": "\\mathbf{a}_D = -\\frac{1}{2m}\\rho V^2 C_d A\\,\\hat{V} = -\\frac{\\rho V}{2\\beta}\\mathbf{V}",
+              "justification": "Standard drag equation with ballistic coefficient $\\beta = m/(C_d A)$.",
+              "explanation": "Drag opposes the velocity direction ($-\\hat{V}$). We write $V^2 \\hat{V} = V\\mathbf{V}$ to get the compact form. The ballistic coefficient $\\beta$ bundles all vehicle properties into a single number.",
+              "prompt": "Ask: why does drag go as $V^2$? Because the capsule sweeps out volume $\\propto V$, and the momentum of each intercepted air molecule is also $\\propto V$.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Lift Force (In-Plane Component)",
+              "math": "\\mathbf{a}_L = \\frac{L}{D}\\cos\\phi \\cdot a_D \\cdot \\hat{n}",
+              "justification": "Lift is perpendicular to the velocity, scaled by the lift-to-drag ratio $L/D$ and bank angle $\\phi$.",
+              "explanation": "The unit vector $\\hat{n}$ is perpendicular to $\\mathbf{V}$ and points away from the planet (the \"upward\" normal). The bank angle $\\phi$ controls how much of the total lift acts in the entry plane: $\\cos 0° = 1$ (full lift up), $\\cos 90° = 0$ (all lift goes sideways, out of plane).",
+              "prompt": "Connect to the bank-angle slider: rolling the capsule redirects lift. Full bank ($90°$) gives zero in-plane lift, behaving like a ballistic entry.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Upward Normal Vector",
+              "math": "\\hat{n} = \\frac{1}{V}\\begin{pmatrix} -v_y \\\\ v_x \\end{pmatrix}, \\quad \\text{chosen so } \\hat{n} \\cdot \\hat{r} > 0",
+              "justification": "Rotate the velocity vector $90°$ and pick the direction pointing away from the planet.",
+              "explanation": "There are two perpendicular directions to any velocity vector. We choose the one that has a positive component along the radial (outward) direction, so that positive lift pushes the capsule away from the planet.",
+              "prompt": "Explain the sign choice: if we picked the wrong perpendicular, 'lift' would push the capsule toward the ground.",
+              "sceneStep": 0
+            },
+            {
+              "type": "conclusion",
+              "label": "Full Equation of Motion",
+              "math": "\\htmlClass{hl-eom}{\\ddot{\\mathbf{r}} = -\\frac{\\mu}{r^3}\\mathbf{r} - \\frac{\\rho V}{2\\beta}\\mathbf{V} + \\frac{L}{D}\\cos\\phi\\cdot\\frac{\\rho V^2}{2\\beta}\\hat{n}}",
+              "justification": "Sum all forces: gravity + drag + lift.",
+              "explanation": "This is the vector ODE that the simulation integrates numerically using Euler steps. It has no closed-form solution in general — the exponential atmosphere couples altitude and velocity in a nonlinear way. But under simplifying assumptions (straight-line path, drag-dominant), Allen and Eggers found elegant approximate solutions.",
+              "prompt": "Emphasize: this one equation generates every trajectory you see in the visualization. Changing the vehicle changes $\\beta$ and $L/D$. Changing $\\gamma$ changes the initial velocity direction. Changing bank angle changes $\\cos\\phi$.",
+              "sceneStep": 0,
+              "highlights": {
+                "eom": {
+                  "color": "cyan",
+                  "label": "Complete entry dynamics equation"
+                }
               }
             }
-          }
-        ]
-      }
+          ]
+        },
+        {
+          "id": "allen_eggers_velocity",
+          "title": "Allen-Eggers Velocity Solution",
+          "technique": "derivation",
+          "goal": "$$V(h) = V_E \\exp\\!\\left(-\\frac{\\rho_0 H}{2\\beta\\sin\\gamma}\\,e^{-h/H}\\right)$$",
+          "prompt": "Derive the closed-form velocity solution by making the Allen-Eggers straight-line approximation. This is the foundation for the peak-g and corridor-bounds results.",
+          "sceneStep": 0,
+          "steps": [
+            {
+              "type": "given",
+              "label": "Scalar Equation of Motion (Drag Only)",
+              "math": "m\\frac{dV}{dt} = -\\frac{1}{2}\\rho V^2 C_d A",
+              "justification": "During peak deceleration, drag overwhelms gravity by an order of magnitude.",
+              "explanation": "We drop gravity and lift to isolate the dominant drag force. This is the Allen-Eggers approximation: valid when the deceleration is many G's.",
+              "prompt": "Ask the student: at 10 G's of deceleration, gravity (1 G) is only a 10% correction. Why is ignoring it still useful?",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Straight-Line Approximation",
+              "math": "\\frac{dh}{dt} = -V\\sin\\gamma, \\quad \\gamma = \\text{const}",
+              "justification": "Assume the flight-path angle $\\gamma$ stays approximately constant during the intense deceleration phase.",
+              "explanation": "The rate of altitude loss is the vertical component of velocity. For a steep, fast entry, the path curves very little before most of the energy is dissipated. This lets us treat $\\gamma$ as a constant.",
+              "prompt": "This is the key simplification. In reality $\\gamma$ changes, but for ballistic or near-ballistic entries the path is nearly straight through the region of peak heating and deceleration.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Change of Independent Variable",
+              "math": "\\frac{dV}{dt} = \\frac{dV}{dh}\\cdot\\frac{dh}{dt} = -V\\sin\\gamma\\,\\frac{dV}{dh}",
+              "justification": "Chain rule: replace time with altitude as the independent variable.",
+              "explanation": "The atmosphere varies with altitude, not time, so altitude is the natural variable. The chain rule lets us swap.",
+              "prompt": "Explain simply: 'We want to know how speed changes with height, not with time, because the air density is a function of height.'",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Separable ODE",
+              "math": "\\frac{dV}{V} = \\frac{\\rho_0\\, e^{-h/H}}{2\\beta\\sin\\gamma}\\,dh",
+              "justification": "Substitute $\\rho = \\rho_0 e^{-h/H}$, cancel one $V$, and separate variables.",
+              "explanation": "Substituting the chain rule result into the equation of motion and dividing both sides by $V$: $-V\\sin\\gamma\\frac{dV}{dh} = -\\frac{\\rho V^2}{2\\beta}$, which simplifies to $\\frac{dV}{V} = \\frac{\\rho}{2\\beta\\sin\\gamma}dh$.",
+              "prompt": "Walk through the algebra step by step. One $V$ cancels, and $\\sin\\gamma$ moves to the denominator.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Integrate Both Sides",
+              "math": "\\int_{V_E}^{V}\\frac{dV'}{V'} = \\int_{h_E}^{h}\\frac{\\rho_0\\,e^{-h'/H}}{2\\beta\\sin\\gamma}\\,dh'",
+              "justification": "Definite integral from the entry interface ($h_E$, $V_E$) down to altitude $h$.",
+              "explanation": "The left side integrates to $\\ln(V/V_E)$. The right side has the integral of an exponential.",
+              "prompt": "Remind the student: $\\int e^{-h/H}dh = -H e^{-h/H}$.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Evaluate the Integrals",
+              "math": "\\ln\\frac{V}{V_E} = \\frac{\\rho_0 H}{2\\beta\\sin\\gamma}\\left(\\htmlClass{hl-exit}{e^{-h_E/H}} - \\htmlClass{hl-curr}{e^{-h/H}}\\right)",
+              "justification": "The integral of $e^{-h/H}$ evaluates to $-He^{-h/H}$. Flip sign from integration limits.",
+              "explanation": "We get two terms: one evaluated at the entry altitude $h_E$ and one at the current altitude $h$.",
+              "prompt": "Point out the signs carefully: we are descending, so $h < h_E$, meaning $e^{-h/H} > e^{-h_E/H}$.",
+              "sceneStep": 0,
+              "highlights": {
+                "exit": {
+                  "color": "green",
+                  "label": "≈ 0 because entry altitude is very high"
+                },
+                "curr": {
+                  "color": "yellow",
+                  "label": "grows as the capsule descends"
+                }
+              }
+            },
+            {
+              "type": "step",
+              "label": "Drop the Entry-Altitude Term",
+              "math": "e^{-h_E/H} = e^{-122/7.2} \\approx 4 \\times 10^{-8} \\approx 0",
+              "justification": "At $h_E = 122\\,\\text{km}$ with $H = 7.2\\,\\text{km}$, the density is negligible.",
+              "explanation": "The atmosphere at the entry interface is essentially vacuum. The exponential term there is so tiny we can set it to zero without meaningful error.",
+              "prompt": "Have the student compute: $122/7.2 \\approx 17$ scale heights, so $e^{-17} \\approx 4 \\times 10^{-8}$.",
+              "sceneStep": 0
+            },
+            {
+              "type": "conclusion",
+              "label": "Velocity as a Function of Altitude",
+              "math": "\\htmlClass{hl-result}{V(h) = V_E \\exp\\!\\left(-\\frac{\\rho_0 H}{2\\beta\\sin\\gamma}\\,e^{-h/H}\\right)}",
+              "justification": "Exponentiate both sides: $V/V_E = \\exp(\\text{negative quantity})$, so $V < V_E$ always.",
+              "explanation": "This is the Allen-Eggers velocity solution. As the capsule descends, $e^{-h/H}$ grows, making the exponent more negative, and $V$ drops. The rate of deceleration depends on $\\beta$ (how heavy and blunt the vehicle is) and $\\sin\\gamma$ (how steeply it enters). Remarkably, this closed-form solution captures the essential physics of atmospheric braking.",
+              "prompt": "Key insight: a heavier vehicle ($\\beta$ large) loses speed more slowly — it 'punches through' the atmosphere. A steep entry ($\\gamma$ large) means less path length through thin upper air, so deceleration is concentrated lower down.",
+              "sceneStep": 0,
+              "highlights": {
+                "result": {
+                  "color": "green",
+                  "label": "Allen-Eggers velocity solution"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "allen_eggers_deceleration",
+          "title": "Allen-Eggers Peak Deceleration",
+          "technique": "derivation",
+          "goal": "$$a_{\\text{max}} = \\frac{V_E^2 \\sin \\gamma}{2e H}$$",
+          "prompt": "Walk the student through the math of peak deceleration step-by-step. Keep it accessible to a high schooler: we trade time for altitude, find how velocity drops, and see where the braking force hits its absolute maximum.",
+          "steps": [
+            {
+              "type": "given",
+              "label": "Newton's Second Law",
+              "math": "F_{\\text{net}} = m a",
+              "justification": "The fundamental law of motion relates net force to mass and acceleration.",
+              "explanation": "Acceleration $a$ is the rate of change of velocity, so we can write this as $F_{\\text{net}} = m \\frac{dV}{dt}$.",
+              "prompt": "Remind the student of Newton's Second Law and ask what acceleration means in terms of velocity.",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "given",
+              "label": "Aerodynamic Drag",
+              "math": "F_D = \\frac{1}{2}\\rho V^2 C_d A",
+              "justification": "This is the standard drag equation.",
+              "explanation": "Drag depends on the air density $\\rho$, the square of the velocity $V^2$, the capsule's drag coefficient $C_d$, and its cross-sectional area $A$.",
+              "prompt": "Have the user identify the components of the drag equation.",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "step",
+              "label": "Net Force in Flight",
+              "math": "F_{\\text{net}} \\approx -F_D",
+              "justification": "During the most intense part of reentry, drag is so massive that gravity is negligible by comparison.",
+              "explanation": "We ignore gravity because the deceleration from drag reaches many G's. The negative sign shows that drag opposes the direction of motion.",
+              "prompt": "Ask the student why we can ignore gravity when the spacecraft is experiencing 10 G's of deceleration.",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "step",
+              "label": "Combine Equations",
+              "math": "m \\frac{dV}{dt} = -\\frac{1}{2}\\rho V^2 C_d A",
+              "justification": "Substitute the definition of acceleration and the drag equation into Newton's Second Law.",
+              "explanation": "This gives us our starting differential equation for the spacecraft's motion. It tells us exactly how fast the velocity is dropping at any given moment.",
+              "prompt": "Ask the student to put the pieces together to form the full equation of motion.",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "step",
+              "label": "Change of Variables",
+              "math": "\\frac{dV}{dt} = \\frac{dV}{dh} \\frac{dh}{dt} = -V \\sin \\gamma \\frac{dV}{dh}",
+              "justification": "We replace time ($t$) with altitude ($h$) since the atmosphere changes with altitude.",
+              "explanation": "Instead of tracking time, we track how fast we are falling. The vertical speed is just the total speed $V$ times the sine of the entry angle $\\gamma$.",
+              "prompt": "Explain the chain rule simply: 'We want to know how speed changes with height, not time.'",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "step",
+              "label": "Velocity vs Altitude",
+              "math": "V(h) = V_E \\exp\\left(-\\frac{C_d A \\rho_0}{2m \\beta} e^{-h/H}\\right)",
+              "justification": "Substitute the exponential density $\\rho = \\rho_0 e^{-h/H}$ and integrate.",
+              "explanation": "Skipping the messy calculus, if we add up all the drag as we fall, we get a formula showing how our speed $V$ drops from our initial entry speed $V_E$.",
+              "prompt": "Tell the student not to worry about the calculus integration. The key takeaway is: speed drops exponentially as the air gets thicker.",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "step",
+              "label": "Finding the Maximum",
+              "math": "\\frac{d}{dh} \\left( \\frac{dV}{dt} \\right) = 0",
+              "justification": "To find the peak (maximum) deceleration, we find where the derivative of deceleration is zero.",
+              "explanation": "In calculus, you find the highest point of a curve by looking for where it goes flat (slope is zero). The maximum drag happens exactly when the spacecraft has lost a specific fraction of its speed.",
+              "prompt": "Relate finding a maximum to the peak of a roller coaster—the very top is flat for a split second.",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "conclusion",
+              "label": "Maximum Deceleration",
+              "math": "a_{\\text{max}} = \\frac{\\htmlClass{hl-ve}{V_E^2} \\sin \\htmlClass{hl-gamma}{\\gamma}}{2e H}",
+              "justification": "Plugging the critical altitude back into the drag equation gives the absolute maximum G-force.",
+              "explanation": "This is the amazing result! The mass $m$, size $A$, and shape $C_d$ of the spacecraft completely cancel out. The crushing G-force depends ONLY on how fast you come in ($V_E$) and how steep your angle is ($\\gamma$).",
+              "prompt": "Make sure the student realizes the profound implication: you can't build a 'heavier' ship to lower the peak G-forces. You MUST come in slower or shallower.",
+              "sceneStep": 1,
+              "highlights": {
+                "ve": {
+                  "color": "cyan",
+                  "label": "Entry Velocity"
+                },
+                "gamma": {
+                  "color": "yellow",
+                  "label": "Flight Path Angle"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "entry_g_load_profile",
+          "title": "G-Load Profile and Peak Altitude",
+          "technique": "derivation",
+          "goal": "$$a_D(h) = \\frac{\\rho_0 V_E^2}{2\\beta}\\,u\\,\\exp\\!\\left(-\\frac{\\rho_0 H}{\\beta\\sin\\gamma}\\,u\\right), \\quad u = e^{-h/H}$$",
+          "prompt": "Show how the full g-load profile is a function of altitude alone, and find the exact altitude where peak deceleration occurs. Connect to the g-load chart in the visualization.",
+          "sceneStep": 1,
+          "steps": [
+            {
+              "type": "given",
+              "label": "Drag Deceleration",
+              "math": "a_D = \\frac{\\rho V^2}{2\\beta}",
+              "justification": "Drag acceleration magnitude from the equation of motion.",
+              "explanation": "The g-load felt by the crew is proportional to this deceleration: $n = a_D / g_0$. We want to find how $a_D$ varies with altitude.",
+              "prompt": "Remind the student that the g-load chart in the visualization is showing exactly this quantity divided by $g_0 = 9.81\\,\\text{m/s}^2$.",
+              "sceneStep": 1
+            },
+            {
+              "type": "step",
+              "label": "Substitute the Velocity Solution",
+              "math": "a_D(h) = \\frac{\\rho_0\\,e^{-h/H}\\cdot V_E^2}{2\\beta}\\exp\\!\\left(-\\frac{\\rho_0 H}{\\beta\\sin\\gamma}\\,e^{-h/H}\\right)",
+              "justification": "Plug $\\rho = \\rho_0 e^{-h/H}$ and $V(h)^2 = V_E^2 \\exp\\left(-\\frac{\\rho_0 H}{\\beta\\sin\\gamma}e^{-h/H}\\right)$ into the drag formula.",
+              "explanation": "Note: $V^2$ brings a factor of $\\exp(-2\\cdot\\ldots)$, but one factor of $\\rho_0 H/(2\\beta\\sin\\gamma)$ was already in the $V$ exponent. Combined with the $\\rho$ in front, the $e^{-h/H}$ terms group into a product of $u$ and $e^{-ku}$.",
+              "prompt": "The algebra is a bit involved. Focus on the structure: it's density × speed², and both change with altitude in opposing ways.",
+              "sceneStep": 1
+            },
+            {
+              "type": "step",
+              "label": "Substitution $u = e^{-h/H}$",
+              "math": "a_D = \\frac{\\rho_0 V_E^2}{2\\beta}\\;\\htmlClass{hl-u}{u}\\;\\exp\\!\\left(-\\htmlClass{hl-k}{k}\\,u\\right), \\quad k = \\frac{\\rho_0 H}{\\beta\\sin\\gamma}",
+              "justification": "Let $u = e^{-h/H}$ so that $u$ increases as altitude decreases.",
+              "explanation": "This is the key form: $a_D \\propto u\\,e^{-ku}$. As we descend ($u$ increases), density rises linearly in $u$, but velocity drops exponentially. The product has a single maximum.",
+              "prompt": "Ask: what happens at very high altitude ($u \\to 0$)? Almost no air, so $a_D \\to 0$. At very low altitude ($u$ large)? The vehicle has already slowed down, so $a_D \\to 0$ again. The peak must be somewhere in between.",
+              "sceneStep": 1,
+              "highlights": {
+                "u": {
+                  "color": "yellow",
+                  "label": "density factor (grows during descent)"
+                },
+                "k": {
+                  "color": "cyan",
+                  "label": "dimensionless drag parameter"
+                }
+              }
+            },
+            {
+              "type": "step",
+              "label": "Differentiate to Find the Peak",
+              "math": "\\frac{da_D}{du} = \\frac{\\rho_0 V_E^2}{2\\beta}\\,e^{-ku}(1 - ku) = 0",
+              "justification": "Product rule: $\\frac{d}{du}[u\\,e^{-ku}] = e^{-ku} - ku\\,e^{-ku} = e^{-ku}(1-ku)$.",
+              "explanation": "Setting the derivative to zero, and noting that $e^{-ku} > 0$ always, the only solution is $1 - ku^* = 0$.",
+              "prompt": "This is a standard calculus optimization. The exponential is never zero, so the bracket must vanish.",
+              "sceneStep": 1
+            },
+            {
+              "type": "step",
+              "label": "Critical Density Parameter",
+              "math": "u^* = \\frac{1}{k} = \\frac{\\beta\\sin\\gamma}{\\rho_0 H}",
+              "justification": "Solve $ku^* = 1$ for $u^*$.",
+              "explanation": "At peak deceleration, the density parameter $u^*$ depends on the vehicle ($\\beta$) and entry angle ($\\gamma$). A heavier or steeper-entering vehicle reaches peak-g at a lower altitude (larger $u^*$, meaning denser air).",
+              "prompt": "Connect to the visualization: heavier capsules (higher $\\beta$) punch deeper into the atmosphere before reaching peak g.",
+              "sceneStep": 1
+            },
+            {
+              "type": "step",
+              "label": "Peak Deceleration Altitude",
+              "math": "\\htmlClass{hl-hstar}{h^* = H\\ln\\frac{\\rho_0 H}{\\beta\\sin\\gamma}}",
+              "justification": "From $u^* = e^{-h^*/H}$, solve for $h^*$: $h^* = -H\\ln u^* = H\\ln(1/u^*) = H\\ln(k)$.",
+              "explanation": "This gives the exact altitude of maximum g-load. For Apollo at $\\gamma = 6.5°$: $\\beta \\approx 458$, so $h^* \\approx 7.2 \\times \\ln(1.225 \\times 7200 / (458 \\times 0.113)) \\approx 7.2 \\times \\ln(170) \\approx 37\\,\\text{km}$.",
+              "prompt": "Have the student estimate $h^*$ for the current vehicle and compare with where the peak appears on the g-load chart.",
+              "sceneStep": 1,
+              "highlights": {
+                "hstar": {
+                  "color": "magenta",
+                  "label": "altitude of peak g-load"
+                }
+              }
+            },
+            {
+              "type": "conclusion",
+              "label": "Complete G-Load Profile",
+              "math": "\\htmlClass{hl-profile}{n(h) = \\frac{V_E^2\\sin\\gamma}{2eHg_0}\\;\\left(\\frac{u}{u^*}\\right)\\exp\\!\\left(1 - \\frac{u}{u^*}\\right)}",
+              "justification": "Divide $a_D(h)$ by the peak value $a_{\\max} = V_E^2\\sin\\gamma/(2eH)$ and multiply by that peak to get the normalized profile scaled to physical units.",
+              "explanation": "The g-load profile is a universal bell-shaped curve when plotted against $u/u^*$ (normalized density). The shape is always the same — only the peak value and peak altitude change with vehicle and entry angle. This is the curve you see in the g-load chart.",
+              "prompt": "Key insight: the SHAPE of the g-load curve is universal for all ballistic entries. Only the peak value and the altitude shift change.",
+              "sceneStep": 1,
+              "highlights": {
+                "profile": {
+                  "color": "green",
+                  "label": "universal g-load profile"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "entry_corridor_bounds",
+          "title": "Entry Corridor Bounds",
+          "technique": "derivation",
+          "goal": "$$\\gamma_{\\text{steep}} = \\arcsin\\!\\left(\\frac{2eHg_0 n_{\\max}}{V_E^2}\\right), \\quad \\gamma_{\\text{shallow}} \\approx \\frac{\\rho_0 H\\,e^{-h_E/H}}{2\\beta\\,\\delta_{\\min}}$$",
+          "prompt": "Derive both corridor limits analytically. The steep limit is exact from Allen-Eggers; the shallow limit uses the velocity solution to find the minimum entry angle that produces enough deceleration for capture.",
+          "sceneStep": 0,
+          "steps": [
+            {
+              "type": "given",
+              "label": "Corridor Definition",
+              "math": "\\gamma_{\\text{steep}} \\leq \\gamma \\leq \\gamma_{\\text{shallow}}",
+              "justification": "The entry corridor is the range of flight-path angles that produce a survivable entry.",
+              "explanation": "Too steep ($\\gamma > \\gamma_{\\text{steep}}$) and the g-loads exceed crew tolerance. Too shallow ($\\gamma < \\gamma_{\\text{shallow}}$) and the vehicle skips off the atmosphere back into space. The corridor is the safe window between these extremes.",
+              "prompt": "Relate to the green wedge in the visualization: the two edges correspond to these two limits. Ask the student what happens at each edge.",
+              "sceneStep": 0
+            },
+            {
+              "type": "given",
+              "label": "Allen-Eggers Peak Deceleration",
+              "math": "a_{\\max} = \\frac{V_E^2\\sin\\gamma}{2eH}",
+              "justification": "Previously derived: the maximum deceleration depends only on entry speed and angle.",
+              "explanation": "This result (from the Allen-Eggers proof) is the key to the steep boundary. The vehicle parameters $m$, $C_d$, $A$ have cancelled out completely.",
+              "prompt": "Reference the earlier proof. The student should already know this result.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Steep Boundary (G-Limit)",
+              "math": "\\frac{V_E^2\\sin\\gamma_{\\text{steep}}}{2eH} = \\htmlClass{hl-glimit}{n_{\\max}\\cdot g_0}",
+              "justification": "Set the peak deceleration equal to the maximum tolerable g-load.",
+              "explanation": "The crew can survive up to $n_{\\max}$ G's (typically 8–12 G for short-duration entry). Setting the Allen-Eggers peak equal to this limit defines the steepest allowable angle.",
+              "prompt": "Have the student adjust the g-limit slider and watch how the steep boundary moves. Lower g-tolerance → shallower steep limit → narrower corridor.",
+              "sceneStep": 0,
+              "highlights": {
+                "glimit": {
+                  "color": "red",
+                  "label": "crew survivability limit"
+                }
+              }
+            },
+            {
+              "type": "conclusion",
+              "label": "Steep Bound Solution",
+              "math": "\\htmlClass{hl-steep}{\\gamma_{\\text{steep}} = \\arcsin\\!\\left(\\frac{2eHg_0\\,n_{\\max}}{V_E^2}\\right)}",
+              "justification": "Solve for $\\gamma$: $\\sin\\gamma = 2eHg_0 n_{\\max}/V_E^2$.",
+              "explanation": "For Apollo ($V_E = 11\\,\\text{km/s}$, $n_{\\max} = 10\\,\\text{G}$): $\\sin\\gamma = 2 \\times 2.718 \\times 7200 \\times 9.81 \\times 10 / (11000)^2 \\approx 0.0318$, giving $\\gamma_{\\text{steep}} \\approx 1.8°$. Faster entry speeds dramatically narrow the corridor — the denominator grows as $V_E^2$.",
+              "prompt": "Key insight: the steep boundary depends only on the entry speed and the g-tolerance, NOT on the vehicle's mass or shape. A heavier capsule hits the same peak g at the same angle — it just happens deeper in the atmosphere.",
+              "sceneStep": 0,
+              "highlights": {
+                "steep": {
+                  "color": "red",
+                  "label": "maximum entry angle for crew survival"
+                }
+              }
+            },
+            {
+              "type": "step",
+              "label": "Skip-Out Physics",
+              "math": "V_{\\text{exit}} = V_E\\exp\\!\\left(-\\frac{\\rho_0 H}{2\\beta\\sin\\gamma}\\,e^{-h_E/H}\\right)",
+              "justification": "Apply the Allen-Eggers velocity solution at the exit altitude $h \\approx h_E$.",
+              "explanation": "For a symmetric atmospheric pass (valid at shallow angles), the vehicle exits near the same altitude it entered. If the exit speed is still close to orbital velocity, the resulting orbit will carry the vehicle back above the atmosphere — a skip-out.",
+              "prompt": "Ask: why is the pass approximately symmetric for shallow angles? Because $\\gamma$ is small, so the path barely curves — the vehicle enters and exits at nearly the same altitude.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Fractional Velocity Loss",
+              "math": "\\htmlClass{hl-delta}{\\delta} \\equiv 1 - \\frac{V_{\\text{exit}}}{V_E} = 1 - \\exp\\!\\left(-\\frac{\\rho_0 H\\,e^{-h_E/H}}{2\\beta\\sin\\gamma}\\right)",
+              "justification": "Define $\\delta$ as the fraction of entry speed lost during the atmospheric pass.",
+              "explanation": "For very shallow angles ($\\gamma \\to 0$), $\\sin\\gamma \\to 0$, the exponent's denominator grows, making the exponential approach 1, so $\\delta \\to 0$ — negligible deceleration, guaranteed skip-out. For steeper angles, more speed is lost.",
+              "prompt": "This is the critical quantity: $\\delta$ measures how effective the atmosphere is at capturing the vehicle. Too little $\\delta$ → skip-out.",
+              "sceneStep": 0,
+              "highlights": {
+                "delta": {
+                  "color": "orange",
+                  "label": "fractional speed loss during atmospheric pass"
+                }
+              }
+            },
+            {
+              "type": "step",
+              "label": "Minimum Deceleration for Capture",
+              "math": "\\delta \\geq \\htmlClass{hl-dmin}{\\delta_{\\min}} = 1 - \\frac{V_{\\text{circ}}}{V_E}\\sqrt{1 + \\frac{2h_E}{R_p}}",
+              "justification": "The post-pass orbit must have perigee below the entry interface. For an orbit at radius $r_E = R_p + h_E$ with speed $V_{\\text{exit}}$, the apoapsis condition gives this threshold.",
+              "explanation": "If the vehicle exits with speed above this threshold, its orbit takes it back above the atmosphere and it escapes. For lunar return ($V_E \\approx 11\\,\\text{km/s}$, $V_{\\text{circ}} \\approx 7.8\\,\\text{km/s}$), $\\delta_{\\min}$ is only about $2\\%$ — the corridor is more forgiving than for LEO return. For LEO return ($V_E \\approx V_{\\text{circ}}$), the vehicle barely needs any deceleration.",
+              "prompt": "For super-orbital entries (like lunar or Mars return), the vehicle comes in much faster than orbital speed, so even a small fractional loss matters enormously.",
+              "sceneStep": 0,
+              "highlights": {
+                "dmin": {
+                  "color": "magenta",
+                  "label": "minimum fractional speed loss for atmospheric capture"
+                }
+              }
+            },
+            {
+              "type": "step",
+              "label": "Solve for the Shallow Bound",
+              "math": "\\sin\\gamma_{\\text{shallow}} = \\frac{\\rho_0 H\\,e^{-h_E/H}}{2\\beta\\,\\ln\\!\\left(\\frac{1}{1 - \\delta_{\\min}}\\right)}",
+              "justification": "Set $\\delta = \\delta_{\\min}$ in the velocity-loss equation and solve for $\\sin\\gamma$.",
+              "explanation": "From $1 - \\delta_{\\min} = \\exp(-\\xi)$ where $\\xi = \\rho_0 H e^{-h_E/H}/(2\\beta\\sin\\gamma)$, we get $\\xi = \\ln(1/(1-\\delta_{\\min}))$, then solve for $\\sin\\gamma$.",
+              "prompt": "Walk through the algebra: take the log of both sides, then isolate $\\sin\\gamma$.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Small-$\\delta$ Approximation",
+              "math": "\\htmlClass{hl-shallow}{\\gamma_{\\text{shallow}} \\approx \\arcsin\\!\\left(\\frac{\\rho_0 H\\,e^{-h_E/H}}{2\\beta\\,\\delta_{\\min}}\\right)}",
+              "justification": "For small $\\delta_{\\min}$, $\\ln(1/(1-\\delta)) \\approx \\delta$.",
+              "explanation": "Unlike the steep bound, the shallow bound depends on the vehicle through $\\beta$: a heavier, more streamlined vehicle ($\\beta$ large) needs a steeper angle to get enough drag for capture. The atmosphere's density at the entry interface ($\\rho_0 e^{-h_E/H}$) sets the scale.",
+              "prompt": "Compare with the steep bound: the steep bound is vehicle-independent (depends only on $V_E$ and $n_{\\max}$), but the shallow bound depends on $\\beta$. This means different vehicles have different corridor widths even at the same entry speed.",
+              "sceneStep": 0,
+              "highlights": {
+                "shallow": {
+                  "color": "orange",
+                  "label": "minimum entry angle to avoid skip-out"
+                }
+              }
+            },
+            {
+              "type": "step",
+              "label": "Effect of Lift on the Corridor",
+              "math": "\\beta_{\\text{eff}} = \\frac{\\beta}{1 + (L/D)\\cos\\phi}",
+              "justification": "Lift acts perpendicular to the velocity but its upward component reduces the net 'sinking' rate, effectively increasing the path length through the atmosphere.",
+              "explanation": "A lifting vehicle with $L/D > 0$ can fly shallower without skipping out — the lift force keeps it in the atmosphere longer, giving drag more time to work. This widens the corridor. Setting $\\phi = 0°$ (full lift up) gives maximum corridor width; $\\phi = 90°$ (full bank) gives the ballistic corridor.",
+              "prompt": "Have the student adjust the bank angle slider: at $0°$ bank, the corridor is widest. At $90°$ bank, it collapses to the ballistic corridor. This is why Apollo rolled during entry — to modulate the corridor width.",
+              "sceneStep": 0
+            },
+            {
+              "type": "conclusion",
+              "label": "Corridor Width",
+              "math": "\\htmlClass{hl-width}{\\Delta\\gamma = \\gamma_{\\text{steep}} - \\gamma_{\\text{shallow}}}",
+              "justification": "The corridor width is the difference between the two bounds.",
+              "explanation": "For Apollo lunar return: $\\gamma_{\\text{steep}} \\approx 7.5°$ and $\\gamma_{\\text{shallow}} \\approx 5.3°$, giving a corridor of only $\\sim 2°$. This razor-thin window is why guidance, navigation, and control (GNC) is so critical for crewed entry. Faster entries and lower g-tolerances narrow the corridor further. Lifting bodies widen it — this is a key design driver for crewed capsules.",
+              "prompt": "Final takeaway: the entry corridor is a consequence of two competing constraints — not burning up vs. not bouncing off. The numbers show why atmospheric entry is one of the hardest problems in spaceflight.",
+              "sceneStep": 0,
+              "highlights": {
+                "width": {
+                  "color": "green",
+                  "label": "the survivable entry window"
+                }
+              }
+            }
+          ]
+        }
+      ]
     },
     {
       "title": "Aerodynamic Heating and the Bow Shock",
