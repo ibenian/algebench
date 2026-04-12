@@ -493,6 +493,11 @@ async function sendChatMessage(text, { silent = false } = {}) {
                         const key = viewName.toLowerCase().replace(/\s+/g, '-');
                         if (CAMERA_VIEWS[key]) {
                             animateCamera(key, 800);
+                        } else {
+                            // Follow-cam and expr-camera views aren't in CAMERA_VIEWS;
+                            // activate them by clicking the matching camera button.
+                            const btn = document.querySelector(`.cam-btn[data-view="${key}"]`);
+                            if (btn) btn.click();
                         }
                     } else if (tc.args.position) {
                         let pos = tc.args.position;
@@ -515,7 +520,10 @@ async function sendChatMessage(text, { silent = false } = {}) {
                             pos = [tgt[0] + dx * s, tgt[1] + dy * s, tgt[2] + dz * s];
                         }
                         if (typeof CAMERA_VIEWS !== 'undefined' && typeof animateCamera === 'function') {
-                            CAMERA_VIEWS['__agent'] = { position: pos, target: tgt };
+                            // Convert data-space coords to world-space (same as view buttons)
+                            const wPos = (typeof dataCameraToWorld === 'function') ? dataCameraToWorld(pos) : pos;
+                            const wTgt = (typeof dataCameraToWorld === 'function') ? dataCameraToWorld(tgt) : tgt;
+                            CAMERA_VIEWS['__agent'] = { position: wPos, target: wTgt };
                             animateCamera('__agent', 800);
                         }
                     }
