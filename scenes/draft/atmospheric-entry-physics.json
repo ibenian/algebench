@@ -466,46 +466,7 @@
                 ]
               ],
               "color": "#2ecc71",
-              "opacity": 0.22,
-              "thickness": 0.01
-            },
-            {
-              "type": "animated_line",
-              "id": "corridor_lo",
-              "points": [
-                [
-                  "649.292",
-                  "0",
-                  "0"
-                ],
-                [
-                  "649.292 - 92 * sin(entryCorridorLo() * pi / 180)",
-                  "92 * cos(entryCorridorLo() * pi / 180)",
-                  "0"
-                ]
-              ],
-              "color": "#2ecc71",
-              "width": 3,
-              "opacity": 0.9
-            },
-            {
-              "type": "animated_line",
-              "id": "corridor_hi",
-              "points": [
-                [
-                  "649.292",
-                  "0",
-                  "0"
-                ],
-                [
-                  "649.292 - 92 * sin(entryCorridorHi() * pi / 180)",
-                  "92 * cos(entryCorridorHi() * pi / 180)",
-                  "0"
-                ]
-              ],
-              "color": "#2ecc71",
-              "width": 3,
-              "opacity": 0.9
+              "opacity": 0.4
             },
             {
               "type": "text",
@@ -587,7 +548,7 @@
               ],
               "samples": 420,
               "color": "#f6c453",
-              "width": 3,
+              "width": 1.5,
               "label": "Trajectory"
             },
             {
