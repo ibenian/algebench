@@ -2363,9 +2363,56 @@
         },
         {
           "title": "Bank Angle Steering",
-          "description": "How does it skip? Capsules have an offset center of mass, generating lift. By rolling the capsule, the lift vector tilts upward, downward, or sideways, changing the direction the path bends.",
+          "description": "The bank angle φ is the roll angle around the velocity vector. Rolling doesn't change the total lift — it redirects it. At φ = 0° all lift fights gravity (maximum corridor width). As the capsule banks, lift trades altitude control for lateral steering, curving the ground track left or right. More bank means more crossrange but a narrower entry corridor.",
           "prompt": "Guide the user to play with the Bank Angle slider and watch both the lift vector and the projected flight-path bend rotate together.",
           "add": [
+            {
+              "id": "artemis_pt_mid",
+              "type": "point",
+              "position": [
+                5,
+                2,
+                2
+              ],
+              "color": "#2ecc71",
+              "size": 10,
+              "label": "Capsule"
+            },
+            {
+              "id": "velocity_vec",
+              "type": "vector",
+              "from": [
+                5,
+                2,
+                2
+              ],
+              "to": [
+                2,
+                2,
+                2
+              ],
+              "color": "#3498db",
+              "width": 4,
+              "label": "$\\vec{V}$ (velocity)"
+            },
+            {
+              "id": "up_ref",
+              "type": "vector",
+              "from": [
+                5,
+                2,
+                2
+              ],
+              "to": [
+                5,
+                3.8,
+                2
+              ],
+              "color": "#888888",
+              "width": 2,
+              "opacity": 0.5,
+              "label": "radial (up)"
+            },
             {
               "id": "lift_vec",
               "type": "animated_vector",
@@ -2376,37 +2423,39 @@
               ],
               "expr": [
                 "5",
-                "2 + 1.5*cos(s4_bank_angle * pi / 180)",
-                "2 + 1.5*sin(s4_bank_angle * pi / 180)"
+                "2 + 1.8 * cos(s4_bank_angle * pi / 180)",
+                "2 + 1.8 * sin(s4_bank_angle * pi / 180)"
               ],
               "color": "#f39c12",
               "width": 5,
-              "label": "$\\vec{L}$"
+              "label": "$\\vec{L}$ (lift)"
             },
             {
-              "id": "artemis_pt_mid",
-              "type": "point",
-              "position": [
-                5,
-                2,
-                2
-              ],
-              "color": "#2ecc71",
-              "size": 10
-            },
-            {
-              "id": "bank_path",
+              "id": "bank_arc",
               "type": "parametric_curve",
-              "x": "5 + t",
-              "y": "2 + 0.25 * t * cos(s4_bank_angle * pi / 180)",
-              "z": "2 + 0.25 * t * sin(s4_bank_angle * pi / 180)",
+              "x": "5",
+              "y": "2 + 0.8 * cos(t * pi / 180)",
+              "z": "2 + 0.8 * sin(t * pi / 180)",
               "range": [
                 0,
-                4
+                "s4_bank_angle"
               ],
-              "color": "#f39c12",
-              "width": 3,
+              "samples": 60,
+              "color": "#e74c3c",
+              "width": 2,
               "opacity": 0.8
+            },
+            {
+              "id": "bank_label",
+              "type": "animated_point",
+              "expr": [
+                "5",
+                "2 + 1.0 * cos(s4_bank_angle / 2 * pi / 180)",
+                "2 + 1.0 * sin(s4_bank_angle / 2 * pi / 180)"
+              ],
+              "color": "#e74c3c",
+              "size": 0,
+              "labelExpr": "concat('φ = ', toFixed(abs(s4_bank_angle), 0), '°')"
             }
           ],
           "remove": [],
@@ -2423,7 +2472,7 @@
           "info": [
             {
               "id": "bank_info",
-              "content": "### Lift Steering\nBank Angle: ${{s4_bank_angle}}^\\circ$\n\nVertical lift $\\propto \\cos \\phi = {{toFixed(cos(s4_bank_angle * pi / 180), 2)}}$\nLateral lift $\\propto \\sin \\phi = {{toFixed(sin(s4_bank_angle * pi / 180), 2)}}$",
+              "content": "### Lift Steering\nBank Angle: ${{s4_bank_angle}}^\\circ$\n\nVertical lift $\\propto \\cos \\phi = {{toFixed(cos(s4_bank_angle * pi / 180), 2)}}$\nLateral lift $\\propto \\sin \\phi = {{toFixed(sin(s4_bank_angle * pi / 180), 2)}}$\n\nTotal lift is fixed by aerodynamics. Banking doesn't create more lift — it **redirects** it. Vertical lift controls descent rate and corridor width. Lateral lift steers the ground track left or right (crossrange). More bank = more crossrange steering but narrower corridor.",
               "position": "top-right"
             }
           ]
