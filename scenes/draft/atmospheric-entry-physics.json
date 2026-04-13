@@ -2709,7 +2709,8 @@
               "min": 0,
               "max": 3,
               "step": 1,
-              "default": 2
+              "default": 2,
+              "valueExpr": "dataTable('capsules', s5_capsule, 'name')"
             }
           ],
           "info": []

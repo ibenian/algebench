@@ -675,6 +675,10 @@
         "reset": {
           "type": "boolean",
           "description": "If true, previous slider state is snapshotted for undo on backward navigation."
+        },
+        "valueExpr": {
+          "type": "string",
+          "description": "Expression to format the displayed slider value. Evaluated via the standard expression engine (math.js / JS fallback). Example: \"dataTable('capsules', s5_capsule, 'name')\" displays the capsule name instead of a numeric index."
         }
       },
       "additionalProperties": false

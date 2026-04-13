@@ -4,7 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { compileExpr, recompileActiveSceneFunctions, _getMathNamesAndValues } from '/expr.js';
+import { compileExpr, evalExpr, recompileActiveSceneFunctions, _getMathNamesAndValues } from '/expr.js';
 import { renderKaTeX, stripLatex } from '/labels.js';
 
 // ----- Slider helpers -----
@@ -26,6 +26,16 @@ export function _sliderValueNum(id, fallback = 0) {
     if (!s) return fallback;
     const v = Number(s.value);
     return Number.isFinite(v) ? v : fallback;
+}
+
+function _formatSliderValue(s) {
+    if (s._valueExprCompiled) {
+        try {
+            const result = evalExpr(s._valueExprCompiled, 0, { useVirtualTime: false });
+            return String(result);
+        } catch (_e) { /* fall through */ }
+    }
+    return Number(s.value).toFixed(1);
 }
 
 // ----- Slider Loop Animation -----
@@ -64,7 +74,7 @@ export function startSliderLoop(id) {
         if (input) {
             input.value = slider.value;
             const valSpan = input.parentElement && input.parentElement.querySelector('.slider-value');
-            if (valSpan) valSpan.textContent = Number(slider.value).toFixed(2);
+            if (valSpan) valSpan.textContent = _formatSliderValue(slider);
         }
         refreshActiveExprsForSliderValueChange();
         if (slider._loopPlaying) {
@@ -187,7 +197,12 @@ export function registerSliders(sliderDefs) {
             duration: def.duration || 3000,
             _loopPlaying: false,
             _loopRaf: null,
+            _valueExprString: def.valueExpr || null,
+            _valueExprCompiled: null,
         };
+        if (def.valueExpr) {
+            try { state.sceneSliders[def.id]._valueExprCompiled = compileExpr(def.valueExpr); } catch (_e) {}
+        }
         ids.push(def.id);
     }
     // Auto-start animated sliders unless explicitly disabled.
@@ -272,13 +287,13 @@ export function buildSliderOverlay() {
 
         const valSpan = document.createElement('span');
         valSpan.className = 'slider-value';
-        valSpan.textContent = Number(s.value).toFixed(1);
+        valSpan.textContent = _formatSliderValue(s);
         row.appendChild(valSpan);
 
         input.addEventListener('input', () => {
             if (s._loopPlaying) stopSliderLoop(id);
             s.value = parseFloat(input.value);
-            valSpan.textContent = Number(s.value).toFixed(1);
+            valSpan.textContent = _formatSliderValue(s);
             recompileActiveExprs();
             syncSliderState();
         });
@@ -364,6 +379,12 @@ export function refreshActiveExprsForSliderValueChange() {
 
 export function recompileActiveExprs() {
     recompileActiveSceneFunctions();
+    // Recompile valueExpr for all sliders
+    for (const s of Object.values(state.sceneSliders)) {
+        if (s._valueExprString) {
+            try { s._valueExprCompiled = compileExpr(s._valueExprString); } catch (_e) {}
+        }
+    }
     for (const entry of state.activeAnimExprs) {
         if (entry.animState.stopped) continue;
         if (typeof entry._rebuildFn === 'function') {
@@ -490,7 +511,7 @@ export function animateSlider(id, target, duration) {
             if (input) {
                 input.value = slider.value;
                 const valSpan = input.parentElement && input.parentElement.querySelector('.slider-value');
-                if (valSpan) valSpan.textContent = Number(slider.value).toFixed(1);
+                if (valSpan) valSpan.textContent = _formatSliderValue(slider);
             }
             recompileActiveExprs();
             if (t < 1) {
