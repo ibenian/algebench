@@ -195,8 +195,35 @@ If the scene outline includes a `proof_plan`:
 | `range` | `[[xmin,xmax],[ymin,ymax],[zmin,zmax]]` | no | Data coordinate range. Default `[[-5,5],[-5,5],[-5,5]]` |
 | `camera` | object | no | Initial camera: `{"position":[x,y,z],"target":[x,y,z]}` — in **data space** |
 | `views` | array | no | Custom camera preset buttons. Omit to get 4 defaults (Iso, Front, Top, Right) |
+| `data` | object | no | Named data tables for `dataTable()` lookups. Defined at lesson or scene level (scene overrides lesson). |
 | `unsafe` | boolean | no | Set `true` if scene uses native JS expressions |
 | `unsafe_explanation` | string | no | Shown in the trust dialog. Required when `unsafe: true` |
+
+---
+
+## Data Tables
+
+Define lookup tables in `data` at the lesson root (shared) or per-scene (overrides). Access values in expressions with `dataTable('tableName', rowIndex, 'column')`.
+
+```json
+"data": {
+  "capsules": [
+    { "name": "Crew Dragon", "mass": 9525, "chuteArea": 440 },
+    { "name": "Apollo CM",   "mass": 5500, "chuteArea": 333 }
+  ]
+}
+```
+
+Use with a slider to select rows:
+```json
+"sliders": [{ "id": "capsule", "label": "Capsule", "min": 0, "max": 1, "step": 1, "default": 0 }]
+```
+
+In expressions: `dataTable('capsules', capsule, 'mass')` → returns mass for selected row.
+
+In info overlays: `{{dataTable('capsules', capsule, 'name')}}` → displays name.
+
+Use single quotes for string arguments — they are auto-converted to double quotes for math.js.
 
 ---
 

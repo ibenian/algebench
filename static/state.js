@@ -113,6 +113,9 @@ export const state = {
     _proofPreRendered: null,      // cached pre-rendered step HTML nodes (per active proof)
     _proofPreRenderedAll: {},     // cached pre-rendered step HTML nodes keyed by proof id
 
+    // ----- Scene data tables (from JSON "data" field) -----
+    sceneData: {},
+
     // ----- Slider drag (used within sliders.js) -----
     _sliderDrag: { active: false, startX: 0, startY: 0, startLeft: 0, startBottom: 0 },
 };

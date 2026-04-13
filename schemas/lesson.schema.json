@@ -32,6 +32,10 @@
           "type": "string",
           "description": "Human-readable explanation of why this lesson uses unsafe JS, shown in the trust dialog. Example: \"This lesson uses scene-level reusable functions with IIFE loops.\""
         },
+        "data": {
+          "$ref": "#/$defs/dataTable",
+          "description": "Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions."
+        },
         "proof": {
           "$ref": "#/$defs/proofOrProofArray",
           "description": "Root-level proof(s) visible across all scenes. Can be a single proof object or an array of proofs."
@@ -62,6 +66,7 @@
         "camera": { "$ref": "#/$defs/camera", "description": "Initial camera position and target." },
         "views": { "type": "array", "items": { "$ref": "#/$defs/view" }, "description": "Named camera presets shown as buttons." },
         "functions": { "type": "array", "items": { "$ref": "#/$defs/sceneFunction" }, "description": "Reusable math functions available in expressions." },
+        "data": { "$ref": "#/$defs/dataTable", "description": "Data tables accessible via dataTable() in expressions." },
         "starfield": { "$ref": "#/$defs/starfield", "description": "Background starfield configuration." },
         "elements": { "type": "array", "items": { "$ref": "#/$defs/element" }, "description": "Base scene elements rendered on load." },
         "steps": { "type": "array", "items": { "$ref": "#/$defs/step" }, "description": "Incremental steps that add/remove elements." },
@@ -111,6 +116,10 @@
           "type": "array",
           "items": { "$ref": "#/$defs/sceneFunction" },
           "description": "Reusable scene-level functions callable from expressions. Registered in the math.js sandbox."
+        },
+        "data": {
+          "$ref": "#/$defs/dataTable",
+          "description": "Scene-level data tables. Override lesson-level tables with the same name."
         },
         "starfield": {
           "$ref": "#/$defs/starfield",
@@ -754,6 +763,15 @@
       },
       "additionalProperties": false
     },
+    "dataTable": {
+      "type": "object",
+      "description": "Named data tables accessible from expressions via dataTable('tableName', rowIndex, 'column'). Each key is a table name mapping to an array of row objects. Defined at lesson level (shared) or scene level (override).",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "object" },
+        "description": "Array of row objects. Each row is a plain object with string keys and number/string values."
+      }
+    },
     "sceneFunction": {
       "type": "object",
       "description": "Reusable function registered in the math.js sandbox. Can be called from any expression in the scene.",
@@ -1020,6 +1038,11 @@
             { "type": "string" }
           ],
           "description": "Rotation angle in radians. Can be an expression string. Default: 0."
+        },
+        "plane": {
+          "type": "string",
+          "enum": ["xy", "xz", "yz"],
+          "description": "Plane in which the polygon is generated. Default: \"xy\"."
         }
       },
       "additionalProperties": false

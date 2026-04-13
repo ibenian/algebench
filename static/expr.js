@@ -21,6 +21,16 @@ const _MATHJS_EXTENSIONS = {
         const n = Math.round(Math.max(0, Math.min(1, Number(val))) * Number(w));
         return '\u2588'.repeat(n) + '\u2591'.repeat(Number(w) - n);
     },
+    // dataTable(table, rowIndex, column) — look up a value from the scene's "data" tables.
+    // Example: dataTable('capsules', s5_capsule, 'mass') → state.sceneData.capsules[2].mass
+    dataTable: (table, rowIndex, column) => {
+        const t = state.sceneData && state.sceneData[String(table)];
+        if (!Array.isArray(t)) return 0;
+        const row = t[Math.max(0, Math.min(t.length - 1, Math.round(Number(rowIndex))))];
+        if (!row) return 0;
+        const val = row[String(column)];
+        return val != null ? val : 0;
+    },
 };
 
 _mathjs.import({
@@ -38,6 +48,9 @@ export const _JS_ONLY_RE = /\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwh
 
 // Populated from _MATHJS_EXTENSIONS — do not add helpers here directly.
 const _EXPR_HELPERS = { ..._MATHJS_EXTENSIONS };
+
+// Exported so overlay.js can recognise extension names as known identifiers.
+export const EXTENSION_NAMES = Object.keys(_MATHJS_EXTENSIONS);
 
 const _CORE_MATH_NAMES = ['sin','cos','tan','asin','acos','atan','atan2','sinh','cosh','tanh',
     'abs','sqrt','cbrt','pow','exp','log','log2','log10','floor','ceil','round','trunc',
@@ -254,6 +267,9 @@ export function resolveVirtualAnimTime(rawT) {
 }
 
 export function compileExpr(exprStr) {
+    // Normalise single-quoted strings to double-quoted so math.js can parse them
+    // without falling through to the JS fallback (which requires scene trust).
+    exprStr = exprStr.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, '"$1"');
     if (_JS_ONLY_RE.test(exprStr)) {
         if (state._sceneJsTrustState === 'trusted') {
             const fn = Function('scope', 'with (scope) { return (' + exprStr + '); }');
@@ -291,6 +307,7 @@ export function evalExpr(compiled, t, opts = {}) {
 }
 
 export function compileSurfaceExpr(exprStr) {
+    exprStr = exprStr.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, '"$1"');
     if (_JS_ONLY_RE.test(exprStr)) {
         if (state._sceneJsTrustState === 'trusted') {
             const fn = Function('scope', 'with (scope) { return (' + exprStr + '); }');

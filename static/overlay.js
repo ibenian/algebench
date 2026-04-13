@@ -5,7 +5,7 @@
 
 import { state } from '/state.js';
 import { renderMarkdown, renderKaTeX, parseColor, colorToCSS, injectAskButtons, makeAiAskButton } from '/labels.js';
-import { compileExpr, evalExpr, _getMathNamesAndValues } from '/expr.js';
+import { compileExpr, evalExpr, _getMathNamesAndValues, EXTENSION_NAMES } from '/expr.js';
 import { getSliderIds, syncSliderState } from '/sliders.js';
 import { worldCameraToData } from '/coords.js';
 
@@ -291,7 +291,7 @@ function _isKnownInfoExprIdentifier(name) {
     if (name === 't' || name === 'u' || name === 'v') return true;
     if (name === 'pi' || name === 'e' || name === 'PI' || name === 'E') return true;
     if (name === 'true' || name === 'false' || name === 'Infinity' || name === 'NaN') return true;
-    if (name === 'toFixed') return true;
+    if (EXTENSION_NAMES.includes(name)) return true;
     return _getMathNamesAndValues().names.includes(name);
 }
 
