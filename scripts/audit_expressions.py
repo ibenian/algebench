@@ -34,12 +34,19 @@ _JS_ONLY_RE = re.compile(
     r'|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\('
 )
 
+# Math.js extensions registered in static/expr.js via _MATHJS_EXTENSIONS.
+# These are available in the math.js sandbox and should NOT be flagged as JS.
+_MATHJS_EXTENSION_NAMES = frozenset({
+    'toFixed', 'concat', 'bar', 'dataTable',
+})
+
 # Secondary pattern: JS-only built-in functions used without a leading dot
-# (e.g. toFixed(h, 2)) — these don't match _JS_ONLY_RE but fail math.js
+# (e.g. parseInt(x)) — these don't match _JS_ONLY_RE but fail math.js
 # parsing and are silently evaluated via the JS fallback in compileExpr /
 # _evalInfoExpr, without triggering the trust dialog proactively.
+# Excludes functions registered as math.js extensions.
 _JS_BUILTIN_FUNC_RE = re.compile(
-    r'\b(toFixed|toPrecision|toString|parseInt|parseFloat|isNaN|isFinite)\s*\('
+    r'\b(toPrecision|toString|parseInt|parseFloat|isNaN|isFinite)\s*\('
 )
 
 # Fields actively scanned by _scanSpecForUnsafeJs in static/app.js.

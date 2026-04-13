@@ -2119,6 +2119,264 @@
           ],
           "expr": "v^3 / sqrt(rn)"
         }
+      ],
+      "proof": [
+        {
+          "id": "normal-shock-stagnation",
+          "title": "Stagnation Temperature Behind a Normal Shock",
+          "sceneStep": 0,
+          "goal": "Show that the stagnation temperature rises as $T_0 \\propto V^2$",
+          "prompt": "Derive why the temperature at the stagnation point scales with the square of velocity. Emphasize this is adiabatic compression, not friction.",
+          "steps": [
+            {
+              "id": "ke-start",
+              "type": "given",
+              "label": "Kinetic energy of oncoming air",
+              "math": "E_k = \\frac{1}{2} m \\htmlClass{hl-vel}{V}^2",
+              "explanation": "From the spacecraft frame, air rushes toward it at velocity V. Each parcel of air carries kinetic energy proportional to V\u00b2.",
+              "highlights": {
+                "vel": {
+                  "color": "cyan",
+                  "label": "Freestream velocity"
+                }
+              }
+            },
+            {
+              "id": "stagnation",
+              "type": "step",
+              "label": "Air brought to rest at stagnation point",
+              "math": "\\frac{1}{2} V^2 = \\htmlClass{hl-cp}{c_p} (\\htmlClass{hl-T0}{T_0} - \\htmlClass{hl-Tinf}{T_\\infty})",
+              "justification": "Energy conservation (adiabatic): kinetic energy converts entirely to enthalpy",
+              "explanation": "At the stagnation point the flow velocity is zero. All kinetic energy converts to thermal energy via adiabatic compression \u2014 not friction. Here $T_0$ is the stagnation temperature (at the surface), $T_\\infty$ is the freestream temperature of the undisturbed air, and $c_p$ is the specific heat at constant pressure.",
+              "highlights": {
+                "T0": {
+                  "color": "orange",
+                  "label": "Stagnation temperature (at surface)"
+                },
+                "Tinf": {
+                  "color": "blue",
+                  "label": "Freestream temperature (undisturbed air)"
+                },
+                "cp": {
+                  "color": "green",
+                  "label": "Specific heat at constant pressure"
+                }
+              }
+            },
+            {
+              "id": "solve-T0",
+              "type": "step",
+              "label": "Solve for stagnation temperature",
+              "math": "\\htmlClass{hl-T0}{T_0} = \\htmlClass{hl-Tinf}{T_\\infty} + \\htmlClass{hl-dom}{\\frac{V^2}{2 c_p}}",
+              "justification": "Rearrange for T\u2080",
+              "explanation": "At high altitude $T_\\infty \\approx 200\\,\\text{K}$, so the stagnation temperature is dominated by the $V^2$ term.",
+              "highlights": {
+                "T0": {
+                  "color": "orange",
+                  "label": "Stagnation temperature"
+                },
+                "Tinf": {
+                  "color": "blue",
+                  "label": "~200 K at altitude \u2014 small"
+                },
+                "dom": {
+                  "color": "yellow",
+                  "label": "Dominant term at entry speeds"
+                }
+              }
+            },
+            {
+              "id": "mach-form",
+              "type": "step",
+              "label": "Express in terms of Mach number",
+              "math": "\\frac{T_0}{T_\\infty} = 1 + \\frac{\\htmlClass{hl-gamma}{\\gamma} - 1}{2} \\htmlClass{hl-mach}{M}^2",
+              "justification": "Substitute $V = M a$ and $c_p = \\frac{\\gamma R}{(\\gamma-1) M_w}$, where $M$ is the Mach number, $a$ is the speed of sound, and $\\gamma \\approx 1.4$ is the ratio of specific heats for air",
+              "explanation": "For a Mach 25 reentry (\u22487.8 km/s), this gives T\u2080/T\u221e \u2248 1 + 0.2 \u00d7 625 = 126. Even with T\u221e = 200 K, that is over 25,000 K.",
+              "highlights": {
+                "gamma": {
+                  "color": "green",
+                  "label": "Ratio of specific heats (\u03b3 \u2248 1.4 for air)"
+                },
+                "mach": {
+                  "color": "cyan",
+                  "label": "Mach number (M \u2248 25 for LEO entry)"
+                }
+              }
+            },
+            {
+              "id": "conclusion",
+              "type": "conclusion",
+              "label": "Heating is adiabatic compression, not friction",
+              "math": "\\htmlClass{hl-result}{T_0 \\propto V^2}",
+              "justification": "The V\u00b2 dependence comes from kinetic energy conversion",
+              "explanation": "The enormous temperatures at the stagnation point arise from adiabatic compression of the air \u2014 the same process that heats air in a bicycle pump. Friction plays a negligible role.",
+              "highlights": {
+                "result": {
+                  "color": "yellow",
+                  "label": "Adiabatic compression, not friction"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "blunt-body-heating",
+          "title": "Why Blunt Bodies Survive: The 1/\u221aR_N Law",
+          "sceneStep": 2,
+          "goal": "Derive $\\dot{q}_s \\approx \\frac{K}{\\sqrt{R_N}} \\sqrt{\\rho} V^3$ and show why larger nose radius reduces heating",
+          "prompt": "Walk through the Fay-Riddell result showing how nose radius affects stagnation point heating. Connect to the bluntness slider.",
+          "steps": [
+            {
+              "id": "boundary-layer",
+              "type": "given",
+              "label": "Boundary layer thickness at stagnation point",
+              "math": "\\htmlClass{hl-delta}{\\delta} \\propto \\sqrt{\\frac{\\htmlClass{hl-rn}{R_N}}{\\rho V}}",
+              "explanation": "The thermal boundary layer at the stagnation point grows with nose radius R_N. A blunter body creates a thicker boundary layer.",
+              "highlights": {
+                "delta": {
+                  "color": "orange",
+                  "label": "Boundary layer thickness"
+                },
+                "rn": {
+                  "color": "cyan",
+                  "label": "Nose radius"
+                }
+              }
+            },
+            {
+              "id": "heat-flux-gradient",
+              "type": "step",
+              "label": "Heat flux through the boundary layer",
+              "math": "\\htmlClass{hl-qdot}{\\dot{q}_s} \\propto \\frac{\\Delta T}{\\htmlClass{hl-delta}{\\delta}}",
+              "justification": "Fourier's law: heat flux = thermal conductivity \u00d7 temperature gradient",
+              "explanation": "The heat conducted to the surface is proportional to the temperature difference across the boundary layer divided by its thickness.",
+              "highlights": {
+                "qdot": {
+                  "color": "red",
+                  "label": "Stagnation point heat flux"
+                },
+                "delta": {
+                  "color": "orange",
+                  "label": "Thicker boundary layer \u2192 less heating"
+                }
+              }
+            },
+            {
+              "id": "delta-T",
+              "type": "step",
+              "label": "Temperature difference scales with V\u00b2",
+              "math": "\\Delta T = T_0 - T_w \\propto \\htmlClass{hl-v2}{V^2}",
+              "justification": "From the stagnation temperature result: T\u2080 \u221d V\u00b2",
+              "explanation": "The wall temperature T_w is kept relatively low by the heat shield, so \u0394T is dominated by the stagnation temperature.",
+              "highlights": {
+                "v2": {
+                  "color": "yellow",
+                  "label": "From stagnation temperature proof"
+                }
+              }
+            },
+            {
+              "id": "combine",
+              "type": "step",
+              "label": "Combine to get heating rate",
+              "math": "\\dot{q}_s \\propto \\frac{V^2}{\\sqrt{R_N / (\\rho V)}} = \\htmlClass{hl-result}{\\frac{\\sqrt{\\rho} \\cdot V^{5/2}}{\\sqrt{R_N}}}",
+              "justification": "Substitute \u03b4 and \u0394T into the heat flux expression",
+              "explanation": "This simplified analysis gives V^(5/2). The full Fay-Riddell analysis, accounting for dissociation and ionization effects at high temperatures, modifies this to V\u00b3.",
+              "highlights": {
+                "result": {
+                  "color": "yellow",
+                  "label": "Simplified analysis \u2014 real-gas effects modify this"
+                }
+              }
+            },
+            {
+              "id": "fay-riddell",
+              "type": "step",
+              "label": "Fay-Riddell stagnation heating (1958)",
+              "math": "\\htmlClass{hl-fr}{\\dot{q}_s \\approx \\frac{K}{\\sqrt{R_N}} \\sqrt{\\rho} \\, V^3}",
+              "justification": "Full analysis includes real-gas effects (dissociation, ionization) which steepen the velocity dependence from V^(5/2) to V\u00b3",
+              "explanation": "This is the key result used in spacecraft design. K depends on gas properties but is roughly constant for Earth entry.",
+              "highlights": {
+                "fr": {
+                  "color": "cyan",
+                  "label": "Fay-Riddell (1958) \u2014 the spacecraft design formula"
+                }
+              }
+            },
+            {
+              "id": "blunt-insight",
+              "type": "conclusion",
+              "label": "The blunt body principle",
+              "math": "\\dot{q}_s \\propto \\htmlClass{hl-inv}{\\frac{1}{\\sqrt{R_N}}} \\implies \\text{larger nose} \\rightarrow \\text{less heating}",
+              "justification": "Doubling the nose radius reduces heating by \u221a2 \u2248 29%",
+              "explanation": "This is Allen and Eggers' key insight (1958): a blunt shape is counterintuitively better for reentry. The thicker boundary layer acts as an insulating cushion, and the detached bow shock diverts most of the heated air around the vehicle.",
+              "highlights": {
+                "inv": {
+                  "color": "green",
+                  "label": "Double R_N \u2192 29% less heating"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "lunar-vs-leo-heating",
+          "title": "Lunar Return vs LEO: The V\u00b3 Penalty",
+          "sceneStep": 2,
+          "goal": "Calculate the heating ratio between lunar return (11 km/s) and LEO return (7.8 km/s)",
+          "prompt": "Use the V\u00b3 law to show why lunar return is so much more demanding thermally.",
+          "steps": [
+            {
+              "id": "ratio-setup",
+              "type": "given",
+              "label": "Heating ratio at same altitude",
+              "math": "\\frac{\\dot{q}_{\\text{lunar}}}{\\dot{q}_{\\text{LEO}}} = \\htmlClass{hl-cube}{\\left(\\frac{V_{\\text{lunar}}}{V_{\\text{LEO}}}\\right)^3}",
+              "explanation": "At the same altitude (same \u03c1) and same vehicle (same R_N), only velocity differs between the two returns.",
+              "highlights": {
+                "cube": {
+                  "color": "yellow",
+                  "label": "Cubic velocity dependence"
+                }
+              }
+            },
+            {
+              "id": "substitute",
+              "type": "step",
+              "label": "Substitute return velocities",
+              "math": "\\frac{\\dot{q}_{\\text{lunar}}}{\\dot{q}_{\\text{LEO}}} = \\left(\\frac{\\htmlClass{hl-vl}{11.0}}{\\htmlClass{hl-vleo}{7.8}}\\right)^3 = (\\htmlClass{hl-ratio}{1.410})^3",
+              "justification": "V_lunar \u2248 11.0 km/s (Earth escape), V_LEO \u2248 7.8 km/s (circular orbit)",
+              "explanation": "Lunar return velocity is only 41% higher than LEO, but the cubic relationship amplifies this dramatically.",
+              "highlights": {
+                "vl": {
+                  "color": "orange",
+                  "label": "Lunar return \u2248 Earth escape velocity"
+                },
+                "vleo": {
+                  "color": "cyan",
+                  "label": "LEO circular orbit velocity"
+                },
+                "ratio": {
+                  "color": "yellow",
+                  "label": "Only 41% faster, but cubed..."
+                }
+              }
+            },
+            {
+              "id": "result",
+              "type": "conclusion",
+              "label": "The V\u00b3 penalty",
+              "math": "\\frac{\\dot{q}_{\\text{lunar}}}{\\dot{q}_{\\text{LEO}}} \\approx \\htmlClass{hl-result}{2.81}",
+              "justification": "1.410\u00b3 \u2248 2.81",
+              "explanation": "Lunar return produces 2.81\u00d7 the peak heating of LEO return \u2014 from speed alone. This is why Apollo needed a massive ablative heat shield, and why Artemis uses a skip entry to spread the heat load over two atmospheric passes.",
+              "highlights": {
+                "result": {
+                  "color": "red",
+                  "label": "2.81\u00d7 more heating from speed alone"
+                }
+              }
+            }
+          ]
+        }
       ]
     },
     {
