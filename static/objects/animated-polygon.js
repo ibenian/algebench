@@ -84,6 +84,8 @@ export function renderAnimatedPolygon(el, view) {
             cRot: compileExpr(rotExpr),
         };
 
+        const plane = (reg.plane || 'xy').toLowerCase();
+
         getVerts = (tSec) => {
             const N   = Math.max(3, Math.round(evalExpr(regState.cN,   tSec)));
             const r   = evalExpr(regState.cR,   tSec);
@@ -94,7 +96,10 @@ export function renderAnimatedPolygon(el, view) {
             const verts = [];
             for (let k = 0; k < N; k++) {
                 const angle = rot + (2 * Math.PI * k) / N;
-                verts.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle), cz]);
+                const a = r * Math.cos(angle), b = r * Math.sin(angle);
+                if (plane === 'xz')      verts.push([cx + a, cy, cz + b]);
+                else if (plane === 'yz')  verts.push([cx, cy + a, cz + b]);
+                else                      verts.push([cx + a, cy + b, cz]);
             }
             return verts;
         };
