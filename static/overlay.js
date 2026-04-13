@@ -204,12 +204,25 @@ export function buildLegend(elements) {
     const legend = document.getElementById('legend');
     const grouped = new Map();
     for (const el of elements) {
-        if (!el.label || !el.color || el.type === 'axis' || el.type === 'grid') continue;
-        const key = `${el.label}__${colorToCSS(el.color)}`;
+        if (el.type === 'axis' || el.type === 'grid') continue;
+        // legendGroup lets an element join a legend group without rendering its own label text.
+        // The group key matches the label+color of the primary element.
+        const groupLabel = el.legendGroup || el.label;
+        if (!groupLabel || !el.color) continue;
+        const key = `${groupLabel}__${colorToCSS(el.color)}`;
         if (!grouped.has(key)) {
-            grouped.set(key, { label: el.label, color: el.color, ids: [] });
+            // Only create a visible legend entry if this element has a real label (not just legendGroup)
+            grouped.set(key, { label: el.label || null, color: el.color, ids: [] });
+        }
+        // If this element has a real label and the group was created by a legendGroup-only element, upgrade it
+        if (el.label && !grouped.get(key).label) {
+            grouped.get(key).label = el.label;
         }
         if (el.id) grouped.get(key).ids.push(el.id);
+    }
+    // Remove groups that never got a real label (only legendGroup members, no primary)
+    for (const [key, val] of grouped) {
+        if (!val.label) grouped.delete(key);
     }
     const items = [...grouped.values()];
     if (items.length === 0) {

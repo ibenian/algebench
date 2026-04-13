@@ -147,6 +147,29 @@ If the scene outline includes a `proof_plan`:
 
 **Detailed field reference for each type**: Read from `reference/objects/<type>.md` in this skill directory. Load only the types needed for the scene you're building.
 
+### Legend Grouping Rule
+
+The legend groups elements by `label + color`. Clicking a legend entry toggles **all** elements that share the same `label` and `color`. When a `text` element serves as a label for another object (vector, curve, polygon, line, etc.), it **must** have a `label` field matching that object's `label`, and the same `color`. Otherwise the legend only toggles the text, not the object it describes.
+
+**Rule:** Every `text` element that annotates a specific object must set `"label"` and `"color"` to match that object's legend group. The object itself should use `"legendGroup"` (not `"label"`) to join the group without rendering duplicate text, because most element types (line, animated_line, polygon, parametric_curve, etc.) render a visible text sprite when `label` is set.
+
+- **`label`** — creates a legend entry AND renders visible text in the viewport (for non-`text` types).
+- **`legendGroup`** — joins a legend group (matched by label+color key) WITHOUT rendering visible text.
+- **`text` type** — always renders its `text` field; its `label` is only used for legend grouping (no duplication).
+
+Use `label` on the **primary labeled element** (the text annotation, or a vector/point whose label you want visible). Use `legendGroup` on **companion elements** (lines, polygons, curves) that should toggle with the group but shouldn't show extra text.
+
+Example — a line with its text annotation:
+```json
+{"id": "line_entry", "type": "line", "color": "#e74c3c", "legendGroup": "Entry Interface", ...},
+{"id": "text_entry", "type": "text", "text": "Entry Interface (122 km)", "color": "#e74c3c", "label": "Entry Interface", ...}
+```
+
+Example — a vector that already has a meaningful label (no separate text element needed):
+```json
+{"id": "vec_drag", "type": "animated_vector", "color": "#e74c3c", "label": "$\\vec{F}_D$", ...}
+```
+
 ---
 
 ## Scene File Format
@@ -394,6 +417,7 @@ Double-escape all backslashes: `\\vec{v}`, `\\frac{a}{b}`, `\\lambda`, `\\htmlCl
 - [ ] `remove` targets exist in current state
 - [ ] Proof highlights match `\htmlClass` regions; `sceneStep` values valid
 - [ ] Colors follow outline conventions
+- [ ] Text elements that label objects share the same `label` and `color` as those objects (legend grouping rule)
 
 ## Common Mistakes
 

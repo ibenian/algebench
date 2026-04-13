@@ -123,7 +123,8 @@
                 ]
               ],
               "color": "#aaaaaa",
-              "width": 2
+              "width": 2,
+              "legendGroup": "Entry Interface"
             },
             {
               "id": "text_interface",
@@ -134,7 +135,8 @@
                 10.5,
                 0
               ],
-              "color": "#aaaaaa"
+              "color": "#aaaaaa",
+              "label": "Entry Interface"
             },
             {
               "id": "pt_capsule",
@@ -210,7 +212,8 @@
                 14,
                 0
               ],
-              "color": "#e74c3c"
+              "color": "#e74c3c",
+              "label": "$\\vec{F}_D$"
             }
           ],
           "remove": [],
@@ -435,18 +438,7 @@
               ],
               "color": "#f39c12",
               "width": 1.5,
-              "opacity": 0.7
-            },
-            {
-              "type": "animated_point",
-              "id": "pt_1H",
-              "expr": [
-                "100 * exp(-1)",
-                "s_atm_H",
-                "0"
-              ],
-              "color": "#f39c12",
-              "size": 8,
+              "opacity": 0.7,
               "label": "$1H$: 36.8%"
             },
             {
@@ -466,18 +458,7 @@
               ],
               "color": "#e67e22",
               "width": 1.5,
-              "opacity": 0.7
-            },
-            {
-              "type": "animated_point",
-              "id": "pt_2H",
-              "expr": [
-                "100 * exp(-2)",
-                "2 * s_atm_H",
-                "0"
-              ],
-              "color": "#e67e22",
-              "size": 8,
+              "opacity": 0.7,
               "label": "$2H$: 13.5%"
             },
             {
@@ -497,18 +478,7 @@
               ],
               "color": "#e74c3c",
               "width": 1.5,
-              "opacity": 0.7
-            },
-            {
-              "type": "animated_point",
-              "id": "pt_3H",
-              "expr": [
-                "100 * exp(-3)",
-                "3 * s_atm_H",
-                "0"
-              ],
-              "color": "#e74c3c",
-              "size": 8,
+              "opacity": 0.7,
               "label": "$3H$: 5.0%"
             }
           ]
@@ -535,7 +505,8 @@
               ],
               "color": "#e74c3c",
               "width": 2,
-              "opacity": 0.8
+              "opacity": 0.8,
+              "legendGroup": "Entry Interface"
             },
             {
               "type": "text",
@@ -546,7 +517,8 @@
                 122,
                 0
               ],
-              "color": "#e74c3c"
+              "color": "#e74c3c",
+              "label": "Entry Interface"
             },
             {
               "type": "text",
@@ -557,7 +529,8 @@
                 116,
                 0
               ],
-              "color": "#e74c3c"
+              "color": "#e74c3c",
+              "label": "Entry Interface"
             }
           ],
           "info": [
@@ -829,7 +802,8 @@
               ],
               "color": "#8f97a8",
               "width": 1.5,
-              "opacity": 0.65
+              "opacity": 0.65,
+              "legendGroup": "Local Horizontal"
             },
             {
               "type": "text",
@@ -840,12 +814,13 @@
                 70,
                 0
               ],
-              "color": "#8f97a8"
+              "color": "#8f97a8",
+              "label": "Local Horizontal"
             },
             {
               "type": "animated_polygon",
               "id": "corridor_fill",
-              "label": "Entry Corridor",
+              "legendGroup": "Entry Corridor",
               "vertices": [
                 [
                   "649.292",
@@ -875,7 +850,8 @@
                 93,
                 0
               ],
-              "color": "#2ecc71"
+              "color": "#2ecc71",
+              "label": "Entry Corridor"
             },
             {
               "type": "animated_point",
@@ -1147,7 +1123,8 @@
               ],
               "samples": 420,
               "color": "#ff6b5f",
-              "width": 3
+              "width": 3,
+              "label": "Deceleration (g)"
             },
             {
               "type": "animated_point",
@@ -1158,8 +1135,9 @@
                 "0"
               ],
               "color": "#ff6b5f",
-              "size": 8,
-              "label": "now"
+              "radius": 2,
+              "labelExpr": "concat(toFixed(entryG(s2_t), 1), ' g')",
+              "labelOffset": [5, 5, 0]
             },
             {
               "type": "animated_point",
@@ -1179,7 +1157,7 @@
               "text": "Aero decel vs time",
               "position": [
                 720,
-                68,
+                76,
                 0
               ],
               "color": "#ffffff"
@@ -1274,15 +1252,16 @@
                 "0"
               ],
               "color": "#4db6ff",
-              "size": 8,
-              "label": "now"
+              "radius": 2,
+              "labelExpr": "concat(toFixed(entrySpeed(s2_t), 1), ' km/s')",
+              "labelOffset": [5, 5, 0]
             },
             {
               "type": "animated_point",
               "id": "outcome_label",
               "expr": [
                 "720",
-                "-68",
+                "-50",
                 "0"
               ],
               "color": "#ffd166",
@@ -1911,7 +1890,8 @@
                 ]
               ],
               "color": "#95a5a6",
-              "opacity": 1
+              "opacity": 1,
+              "legendGroup": "Sharp Nose"
             },
             {
               "type": "vector_field",
@@ -1932,7 +1912,8 @@
                 1.5,
                 0
               ],
-              "color": "#e74c3c"
+              "color": "#95a5a6",
+              "label": "Sharp Nose"
             }
           ],
           "remove": []
@@ -1987,7 +1968,8 @@
               ],
               "color": "#e74c3c",
               "width": 5,
-              "opacity": "0.5 + 0.5*s3_bluntness"
+              "opacity": "0.5 + 0.5*s3_bluntness",
+              "legendGroup": "Bow Shock"
             },
             {
               "type": "vector_field",
@@ -2008,7 +1990,8 @@
                 "1.5",
                 "0"
               ],
-              "color": "#e74c3c"
+              "color": "#e74c3c",
+              "label": "Bow Shock"
             }
           ],
           "remove": [
@@ -2261,7 +2244,8 @@
                 ]
               ],
               "color": "#ffffff",
-              "width": 2
+              "width": 2,
+              "legendGroup": "G-Force"
             },
             {
               "id": "graph_label",
@@ -2272,7 +2256,8 @@
                 10.5,
                 -5
               ],
-              "color": "#ffffff"
+              "color": "#ffffff",
+              "label": "G-Force"
             }
           ],
           "remove": []
