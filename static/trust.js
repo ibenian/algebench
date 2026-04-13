@@ -18,9 +18,13 @@ export function scanSpecForUnsafeJs(spec) {
     const EXPR_KEYS = new Set(['expr', 'x', 'y', 'z', 'expression', 'fx', 'fy', 'fz']);
     const _TEMPLATE_RE = /\{\{([\s\S]*?)\}\}/g;
 
+    function _isExprKey(k) {
+        return EXPR_KEYS.has(k) || (k.endsWith('Expr') && k.length > 4);
+    }
+
     function walk(obj, parentKey, path) {
         if (typeof obj === 'string') {
-            if (parentKey && EXPR_KEYS.has(parentKey) && _JS_ONLY_RE.test(obj)) {
+            if (parentKey && _isExprKey(parentKey) && _JS_ONLY_RE.test(obj)) {
                 issues.push({ path, expr: obj, type: 'expr' });
             }
             return;
