@@ -3,6 +3,14 @@
   "import": [
     "atmospheric-entry"
   ],
+  "data": {
+    "capsules": [
+      { "name": "Crew Dragon", "mass": 9525, "chuteArea": 440, "chuteCd": 1.6 },
+      { "name": "Gemini",      "mass": 2132, "chuteArea": 84,  "chuteCd": 1.4 },
+      { "name": "Apollo CM",   "mass": 5500, "chuteArea": 333, "chuteCd": 1.5 },
+      { "name": "Orion",       "mass": 9299, "chuteArea": 348, "chuteCd": 1.5 }
+    ]
+  },
   "scenes": [
     {
       "title": "The Forces of Reentry",
@@ -2482,7 +2490,7 @@
     {
       "title": "Splashdown Dynamics",
       "description": "Understand terminal velocity under parachutes and how stopping time in water sets the final splashdown loads.",
-      "markdown": "# Splashdown Dynamics\n\nAfter surviving the intense heat of reentry, a spacecraft must decelerate to a safe landing speed. In the lower, thicker atmosphere, capsules like Apollo, Crew Dragon, and Orion deploy a series of parachutes to increase their drag area and reduce their **terminal velocity** before splashdown.\n\n### Terminal Velocity\nWhen a capsule falls, gravity pulls it downward ($F_g = mg$) while aerodynamic drag pushes upward ($F_d = \\frac{1}{2}\\rho V^2 C_d A$). As the capsule accelerates, drag increases until it perfectly balances gravity:\n\n$$F_g = F_d$$\n\n$$mg = \\frac{1}{2}\\rho V_t^2 C_d A$$\n\nSolving for velocity gives the terminal velocity $V_t$:\n\n$$V_t = \\sqrt{\\frac{2mg}{\\rho C_d A}}$$\n\n### The Role of Parachutes\nBy deploying parachutes, the spacecraft massively increases its cross-sectional area $A$ and drag coefficient $C_d$. According to the terminal velocity equation, increasing $A$ in the denominator dramatically reduces $V_t$, allowing the crew to approach a safe splashdown speed.\n\n### Water Impact Loads\nEven after the parachutes do their job, the capsule still reaches the ocean with nonzero speed. If the vertical speed just before contact is $V_t$ and the water brings the capsule to rest over a stopping time $\\Delta t$, then the average deceleration is roughly\n\n$$a_{\\text{impact}} \\approx \\frac{V_t}{\\Delta t}$$\n\nand the corresponding load factor is\n\n$$n \\approx \\frac{a_{\\text{impact}}}{g}.$$\n\nA softer, longer splashdown reduces the deceleration the crew feels.",
+      "markdown": "# Splashdown Dynamics\n\nAfter surviving the intense heat of reentry, a spacecraft must decelerate to a safe landing speed. In the lower, thicker atmosphere, capsules like Apollo, Crew Dragon, and Orion deploy a series of parachutes to increase their drag area and reduce their **terminal velocity** before splashdown.\n\n### The Force Balance\nTwo forces act on the falling capsule:\n\n* **Gravity** pulls it downward: $F_g = mg$\n* **Aerodynamic drag** pushes upward: $F_d = \\frac{1}{2}\\rho V^2 C_d A$\n\nDrag depends on the square of speed — the faster the capsule falls, the harder the air pushes back.\n\n### Why $F_d = F_g$ Means Constant Speed\nFor the capsule to fall at **constant speed** (zero acceleration), Newton's second law requires the net force to be zero:\n\n$$F_{\\text{net}} = F_d - F_g = 0 \\quad \\Longrightarrow \\quad F_d = F_g$$\n\nThe unique speed at which this balance occurs is the **terminal velocity**. Once the capsule reaches it, there is no more acceleration — the crew feels only **1g** (their own weight), just like sitting in a chair.\n\n### Solving for Terminal Velocity\nSetting $F_g = F_d$:\n\n$$mg = \\frac{1}{2}\\rho V_t^2 C_d A \\quad \\Longrightarrow \\quad V_t = \\sqrt{\\frac{2mg}{\\rho C_d A}}$$\n\n### The Role of Parachutes\nBy deploying parachutes, the spacecraft massively increases its cross-sectional area $A$ and drag coefficient $C_d$. Increasing $A$ in the denominator dramatically reduces $V_t$, allowing the crew to approach a safe splashdown speed.\n\n**Right after deployment**, the capsule is still falling fast from freefall, so $F_d > F_g$ and the crew feels a brief high-g deceleration spike. As the capsule slows, drag decreases until $F_d = F_g$ and the ride becomes a gentle 1g descent.\n\n### Water Impact Loads\nEven after the parachutes do their job, the capsule still reaches the ocean with nonzero speed. If the vertical speed just before contact is $V_t$ and the water brings the capsule to rest over a stopping time $\\Delta t$, then the average deceleration is roughly\n\n$$a_{\\text{impact}} \\approx \\frac{V_t}{\\Delta t}$$\n\nand the corresponding load factor is\n\n$$n \\approx \\frac{a_{\\text{impact}}}{g}$$\n\nA softer, longer splashdown reduces the deceleration the crew feels.",
       "prompt": "Emphasize how terminal velocity is reached when drag equals gravity. Guide the student to see how parachute area inversely affects the final velocity. Suggest asking 'What would happen if the atmosphere were thinner (like on Mars)?'",
       "range": [
         [
@@ -2630,16 +2638,16 @@
             },
             {
               "id": "vec_gravity",
-              "type": "vector",
+              "type": "animated_vector",
               "from": [
                 0,
                 10,
                 0
               ],
-              "to": [
-                0,
-                5,
-                0
+              "toExpr": [
+                "0",
+                "10 - dataTable('capsules', s5_capsule, 'mass') / 2000",
+                "0"
               ],
               "color": "#2ecc71",
               "width": 4,
@@ -2647,78 +2655,76 @@
             },
             {
               "id": "vec_drag_freefall",
-              "type": "vector",
+              "type": "animated_vector",
               "from": [
                 0,
                 10,
                 0
               ],
-              "to": [
-                0,
-                12,
-                0
+              "toExpr": [
+                "0",
+                "10 + dataTable('capsules', s5_capsule, 'mass') / 5000",
+                "0"
               ],
               "color": "#e74c3c",
               "width": 4,
-              "label": "$F_d$"
+              "label": "$F_d$ (small)"
             }
           ],
           "remove": [],
-          "sliders": [],
+          "sliders": [
+            {
+              "id": "s5_capsule",
+              "label": "Capsule",
+              "min": 0,
+              "max": 3,
+              "step": 1,
+              "default": 2
+            }
+          ],
           "info": []
         },
         {
           "title": "Parachute Deployment",
-          "description": "Drogue and then main parachutes are deployed. This massively increases the cross-sectional area and drag coefficient, causing rapid deceleration.",
-          "prompt": "Highlight the slider for Parachute Area. Explain how deploying the chute causes an immediate spike in drag force and lowers the eventual terminal speed.",
+          "description": "The chute opens and drag jumps. The capsule is still fast from freefall, so $F_d > F_g$ — causing rapid deceleration. Select a capsule to see its parachute area.",
+          "prompt": "Highlight the capsule selector slider. Explain how each capsule has a different parachute area. Crew Dragon has the largest chute at 440 m², Gemini the smallest at 84 m².",
           "add": [
             {
               "id": "parachute",
-              "type": "polygon",
+              "type": "animated_polygon",
               "regular": {
-                "n": 12,
-                "radius": "sqrt(s5_chute_area)/3",
-                "center": [
-                  0,
-                  14,
-                  0
-                ]
+                "n": 64,
+                "radius": "sqrt(dataTable('capsules', s5_capsule, 'chuteArea') / pi)",
+                "center": ["0", "14", "0"],
+                "plane": "xz"
               },
               "color": "#ffffff",
-              "opacity": 0.8
+              "opacity": 0.6
+            },
+            {
+              "id": "chute_area_label",
+              "type": "animated_point",
+              "expr": ["0", "14", "0"],
+              "color": "#ffffff",
+              "size": 0,
+              "labelExpr": "concat(dataTable('capsules', s5_capsule, 'name'), ': A = ', toFixed(dataTable('capsules', s5_capsule, 'chuteArea'), 0), ' m²')"
             },
             {
               "id": "cords1",
-              "type": "line",
+              "type": "animated_line",
               "points": [
-                [
-                  "-sqrt(s5_chute_area)/3",
-                  "14",
-                  "0"
-                ],
-                [
-                  0,
-                  10.2,
-                  0
-                ]
+                ["-sqrt(dataTable('capsules', s5_capsule, 'chuteArea') / pi)", "14", "0"],
+                ["0", "10.2", "0"]
               ],
               "color": "#aaaaaa",
               "width": 2
             },
             {
               "id": "cords2",
-              "type": "line",
+              "type": "animated_line",
               "points": [
-                [
-                  "sqrt(s5_chute_area)/3",
-                  "14",
-                  "0"
-                ],
-                [
-                  0,
-                  10.2,
-                  0
-                ]
+                ["sqrt(dataTable('capsules', s5_capsule, 'chuteArea') / pi)", "14", "0"],
+                ["0", "10.2", "0"]
               ],
               "color": "#aaaaaa",
               "width": 2
@@ -2733,12 +2739,12 @@
               ],
               "toExpr": [
                 "0",
-                "12 + s5_chute_area/150",
+                "10 + dataTable('capsules', s5_capsule, 'mass') / 2000 * 1.3",
                 "0"
               ],
               "color": "#e74c3c",
               "width": 4,
-              "label": "$F_d$"
+              "label": "$F_d > F_g$"
             }
           ],
           "remove": [
@@ -2746,47 +2752,36 @@
               "id": "vec_drag_freefall"
             }
           ],
-          "sliders": [
-            {
-              "id": "s5_chute_area",
-              "label": "Parachute Area $A$",
-              "min": 100,
-              "max": 800,
-              "default": 400,
-              "step": 25,
-              "animate": true,
-              "duration": 3000
-            }
-          ],
+          "sliders": [],
           "info": [
             {
               "id": "info_drag",
-              "content": "### Aerodynamic Drag\n$F_d \\propto A$\n$A = {{s5_chute_area}}\\ \\text{m}^2$",
+              "content": "### {{dataTable('capsules', s5_capsule, 'name')}}\n$m = {{dataTable('capsules', s5_capsule, 'mass')}}\\ \\text{kg}$\n$A = {{toFixed(dataTable('capsules', s5_capsule, 'chuteArea'), 0)}}\\ \\text{m}^2$\n$C_d = {{dataTable('capsules', s5_capsule, 'chuteCd')}}$",
               "position": "top-right"
             }
           ]
         },
         {
           "title": "Terminal Velocity",
-          "description": "Eventually, the drag force perfectly equals the gravitational force. Acceleration becomes zero, and the capsule falls at a constant 'terminal velocity'.",
+          "description": "For constant speed (zero acceleration), we need $F_d = F_g$ exactly. The speed where this balance occurs is the terminal velocity — the crew feels only 1g from here to splashdown.",
           "prompt": "Point out that the drag and gravity vectors are now equal in length but opposite in direction. This means net force is zero.",
           "add": [
             {
               "id": "vec_drag_terminal",
-              "type": "vector",
+              "type": "animated_vector",
               "from": [
                 0,
                 10,
                 0
               ],
-              "to": [
-                0,
-                15,
-                0
+              "toExpr": [
+                "0",
+                "10 + dataTable('capsules', s5_capsule, 'mass') / 2000",
+                "0"
               ],
               "color": "#e74c3c",
               "width": 4,
-              "label": "$F_d$"
+              "label": "$F_d = F_g$"
             }
           ],
           "remove": [
@@ -2802,7 +2797,7 @@
           "info": [
             {
               "id": "info_terminal",
-              "content": "### Terminal Velocity\nAssume $m = 5000\\ \\text{kg}$, $\\rho = 1.2\\ \\text{kg/m}^3$, and $C_d = 1.6$.\n\n$F_g = F_d$\n\n$V_t = \\sqrt{\\frac{2mg}{\\rho C_d A}} = {{toFixed(sqrt((2 * 5000 * 9.81) / (1.2 * 1.6 * s5_chute_area)), 1)}}\\ \\text{m/s}$",
+              "content": "### Terminal Velocity — {{dataTable('capsules', s5_capsule, 'name')}}\n$m = {{dataTable('capsules', s5_capsule, 'mass')}}\\ \\text{kg}$, $\\rho = 1.225\\ \\text{kg/m}^3$, $C_d = {{dataTable('capsules', s5_capsule, 'chuteCd')}}$\n\n$F_g = F_d$\n\n$V_t = \\sqrt{ \\frac{2mg}{\\rho C_d A} } = {{toFixed(sqrt(2 * dataTable('capsules', s5_capsule, 'mass') * 9.81 / (1.225 * dataTable('capsules', s5_capsule, 'chuteCd') * dataTable('capsules', s5_capsule, 'chuteArea'))), 1)}}\\ \\text{m/s}$",
               "position": "top-right"
             }
           ]
@@ -2851,7 +2846,7 @@
               ],
               "toExpr": [
                 "0",
-                "0.8 + 0.6 * sqrt((2 * 5000 * 9.81) / (1.2 * 1.6 * s5_chute_area)) / (9.81 * s5_stop_time)",
+                "0.8 + 0.6 * sqrt(2 * dataTable('capsules', s5_capsule, 'mass') * 9.81 / (1.225 * dataTable('capsules', s5_capsule, 'chuteCd') * dataTable('capsules', s5_capsule, 'chuteArea'))) / (9.81 * s5_stop_time)",
                 "0"
               ],
               "color": "#f1c40f",
@@ -2910,7 +2905,7 @@
           "info": [
             {
               "id": "info_impact",
-              "content": "### Water Impact\nUsing the same $V_t$ from the previous step,\n\n$a_{\\text{impact}} \\approx \\frac{V_t}{\\Delta t} = {{toFixed(sqrt((2 * 5000 * 9.81) / (1.2 * 1.6 * s5_chute_area)) / s5_stop_time, 1)}}\\ \\text{m/s}^2$\n\n$n \\approx \\frac{a_{\\text{impact}}}{g} = {{toFixed(sqrt((2 * 5000 * 9.81) / (1.2 * 1.6 * s5_chute_area)) / (9.81 * s5_stop_time), 1)}}\\ g$",
+              "content": "### Water Impact — {{dataTable('capsules', s5_capsule, 'name')}}\n$V_t = {{toFixed(sqrt(2 * dataTable('capsules', s5_capsule, 'mass') * 9.81 / (1.225 * dataTable('capsules', s5_capsule, 'chuteCd') * dataTable('capsules', s5_capsule, 'chuteArea'))), 1)}}\\ \\text{m/s}$\n\n$a_{\\text{impact}} \\approx \\frac{V_t}{\\Delta t} = {{toFixed(sqrt(2 * dataTable('capsules', s5_capsule, 'mass') * 9.81 / (1.225 * dataTable('capsules', s5_capsule, 'chuteCd') * dataTable('capsules', s5_capsule, 'chuteArea'))) / s5_stop_time, 1)}}\\ \\text{m/s}^2$\n\n$n \\approx \\frac{a}{g} = {{toFixed(sqrt(2 * dataTable('capsules', s5_capsule, 'mass') * 9.81 / (1.225 * dataTable('capsules', s5_capsule, 'chuteCd') * dataTable('capsules', s5_capsule, 'chuteArea'))) / (9.81 * s5_stop_time), 1)}}\\ g$",
               "position": "top-right"
             }
           ],
@@ -2928,12 +2923,13 @@
           }
         }
       ],
-      "proof": {
+      "proof": [
+        {
         "id": "terminal_velocity",
         "title": "Terminal Velocity",
         "technique": "derivation",
         "techniqueHint": "Treat terminal velocity as a balance point: acceleration becomes zero, so upward drag must match downward weight. Then it is just algebra.",
-        "goal": "$$V_t = \\sqrt{\\frac{2mg}{\\rho C_d A}}$$",
+        "goal": "Derive the terminal velocity $V_t$ by finding the speed at which drag exactly balances gravity: $$V_t = \\sqrt{\\frac{2mg}{\\rho C_d A}}$$",
         "prompt": "Guide the student through the derivation of terminal velocity step by step. Use simple algebra terms like 'isolate the variable' and explain that this is a state of balance.",
         "steps": [
           {
@@ -3066,7 +3062,104 @@
             "prompt": "End by connecting back to splashdown: reducing $V_t$ makes the water impact gentler."
           }
         ]
-      }
+      },
+        {
+          "id": "impact_loads",
+          "title": "Splashdown Impact Loads",
+          "technique": "derivation",
+          "techniqueHint": "Use the kinematic definition of average acceleration and convert to g-loads.",
+          "goal": "Find the g-load on the crew at splashdown, given the terminal velocity $V_t$ and the water stopping time $\\Delta t$: $$n = \\frac{V_t}{g\\,\\Delta t}$$",
+          "prompt": "Walk the student through the impact load derivation. Emphasize that shorter stopping time means harsher impact.",
+          "steps": [
+            {
+              "type": "given",
+              "label": "Capsule arrives at terminal velocity",
+              "math": "V_i = \\htmlClass{hl-vt}{V_t}",
+              "justification": "The parachute has slowed the capsule to its terminal speed before hitting the water.",
+              "explanation": "This is the speed we derived in the terminal velocity proof — the starting condition for the water impact.",
+              "sceneStep": 3,
+              "highlights": {
+                "vt": { "color": "green", "label": "Terminal Velocity" }
+              },
+              "prompt": "Remind the student that V_t depends on mass, chute area, and drag coefficient."
+            },
+            {
+              "type": "given",
+              "label": "Water brings capsule to rest",
+              "math": "V_f = 0",
+              "justification": "The capsule decelerates from $V_t$ to zero as the water absorbs its kinetic energy.",
+              "explanation": "The question is: how quickly does this happen?",
+              "sceneStep": 3,
+              "highlights": {},
+              "prompt": "Ask what determines how harsh this stop feels to the crew."
+            },
+            {
+              "type": "given",
+              "label": "Average acceleration",
+              "math": "\\bar{a} = \\frac{\\Delta V}{\\htmlClass{hl-dt}{\\Delta t}} = \\frac{V_f - V_i}{\\htmlClass{hl-dt}{\\Delta t}}",
+              "justification": "Average acceleration is the change in velocity divided by the time interval.",
+              "explanation": "This is the kinematic definition — it tells us the average deceleration the crew experiences.",
+              "sceneStep": 3,
+              "highlights": {
+                "dt": { "color": "orange", "label": "Stop Time" }
+              },
+              "prompt": "Point out that a shorter time interval means a larger acceleration."
+            },
+            {
+              "type": "step",
+              "label": "Substitute known values",
+              "math": "\\bar{a} = \\frac{0 - \\htmlClass{hl-vt}{V_t}}{\\htmlClass{hl-dt}{\\Delta t}} = -\\frac{\\htmlClass{hl-vt}{V_t}}{\\htmlClass{hl-dt}{\\Delta t}}",
+              "justification": "Replace $V_f = 0$ and $V_i = V_t$.",
+              "explanation": "The negative sign means deceleration (slowing down). We care about the magnitude.",
+              "sceneStep": 3,
+              "highlights": {
+                "vt": { "color": "green", "label": "Terminal Velocity" },
+                "dt": { "color": "orange", "label": "Stop Time" }
+              },
+              "prompt": "Explain that the minus sign just means slowing down, and we take the absolute value."
+            },
+            {
+              "type": "step",
+              "label": "Impact deceleration magnitude",
+              "math": "a_{\\text{impact}} = \\frac{\\htmlClass{hl-vt}{V_t}}{\\htmlClass{hl-dt}{\\Delta t}}",
+              "justification": "Take the absolute value — we want the magnitude of deceleration felt by the crew.",
+              "explanation": "Faster arrival speed or shorter stopping time means harsher impact.",
+              "sceneStep": 3,
+              "highlights": {
+                "vt": { "color": "green", "label": "Terminal Velocity" },
+                "dt": { "color": "orange", "label": "Stop Time" }
+              },
+              "prompt": "Use concrete numbers: if V_t = 8 m/s and stop time is 0.5 s, that is 16 m/s²."
+            },
+            {
+              "type": "step",
+              "label": "Convert to g-loads",
+              "math": "\\htmlClass{hl-n}{n} = \\frac{a_{\\text{impact}}}{g}",
+              "justification": "Dividing by $g = 9.81\\ \\text{m/s}^2$ expresses the deceleration as a multiple of Earth's gravity.",
+              "explanation": "Astronauts and engineers think in g-loads — 1g is normal gravity, 3g is uncomfortable, 10g+ is dangerous.",
+              "sceneStep": 3,
+              "highlights": {
+                "n": { "color": "yellow", "label": "Load Factor" }
+              },
+              "prompt": "Compare to everyday examples: a roller coaster is about 3-4g, fighter pilots experience up to 9g."
+            },
+            {
+              "type": "conclusion",
+              "label": "Splashdown load factor",
+              "math": "\\htmlClass{hl-n}{n} = \\frac{\\htmlClass{hl-vt}{V_t}}{g\\,\\htmlClass{hl-dt}{\\Delta t}}",
+              "justification": "Combine the two previous steps: substitute $a_{\\text{impact}} = V_t / \\Delta t$ into $n = a/g$.",
+              "explanation": "A lower terminal velocity (bigger chute) or a longer stopping time (softer water entry) reduces the g-load on the crew.",
+              "sceneStep": 3,
+              "highlights": {
+                "n": { "color": "yellow", "label": "Load Factor" },
+                "vt": { "color": "green", "label": "Terminal Velocity" },
+                "dt": { "color": "orange", "label": "Stop Time" }
+              },
+              "prompt": "Connect back to design: this is why capsules have crushable structures and why landing in water is gentler than land."
+            }
+          ]
+        }
+      ]
     }
   ]
 }
