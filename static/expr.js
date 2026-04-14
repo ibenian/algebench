@@ -60,6 +60,12 @@ const _MATH_SCOPE = Object.fromEntries(
     _CORE_MATH_NAMES.map(n => [n, Object.prototype.hasOwnProperty.call(_EXPR_HELPERS, n) ? _EXPR_HELPERS[n] : Math[n]])
 );
 
+function _normalizeSingleQuotes(str) {
+    return str.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_match, content) =>
+        JSON.stringify(content.replace(/\\'/g, "'"))
+    );
+}
+
 const _SCENE_FN_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function _isValidSceneFunctionName(name) {
@@ -269,7 +275,7 @@ export function resolveVirtualAnimTime(rawT) {
 export function compileExpr(exprStr) {
     // Normalise single-quoted strings to double-quoted so math.js can parse them
     // without falling through to the JS fallback (which requires scene trust).
-    exprStr = exprStr.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, '"$1"');
+    exprStr = _normalizeSingleQuotes(exprStr);
     if (_JS_ONLY_RE.test(exprStr)) {
         if (state._sceneJsTrustState === 'trusted') {
             const fn = Function('scope', 'with (scope) { return (' + exprStr + '); }');
@@ -307,7 +313,7 @@ export function evalExpr(compiled, t, opts = {}) {
 }
 
 export function compileSurfaceExpr(exprStr) {
-    exprStr = exprStr.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, '"$1"');
+    exprStr = _normalizeSingleQuotes(exprStr);
     if (_JS_ONLY_RE.test(exprStr)) {
         if (state._sceneJsTrustState === 'trusted') {
             const fn = Function('scope', 'with (scope) { return (' + exprStr + '); }');
