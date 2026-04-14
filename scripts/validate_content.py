@@ -451,6 +451,7 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
             print(f'    {fix_path}: {old[:40]} → {new[:40]}')
         if len(fixes) > 10:
             print(f'    ... and {len(fixes) - 10} more')
+        print(f'\n  Run: python scripts/validate_content.py --fix {path}')
 
     if errors:
         print(f'\n  Errors ({total_errors}):')

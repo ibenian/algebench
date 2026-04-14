@@ -226,6 +226,7 @@ def main():
         print(f'  Errors ({len(errors)}):')
         for e in errors:
             print(f'    {e}')
+        print(f'\n  Run: python scripts/lint_scene.py --fix {args.files[0]}')
         sys.exit(1)
     else:
         print(f'  Result: OK')
