@@ -9,7 +9,7 @@
         {
           "type": "animated_point",
           "id": "p1",
-          "positionExpr": ["Math.sin(t)", "Math.cos(t)", "0"],
+          "positionExpr": ["sin(t)", "cos(t)", "0"],
           "color": "#ff0000"
         }
       ]
