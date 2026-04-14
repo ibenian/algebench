@@ -81,9 +81,15 @@ jobs:
           CONTENT_EXIT="${{ steps.content.outputs.exit_code }}"
           LINT_EXIT="${{ steps.lint.outputs.exit_code }}"
 
-          SCHEMA_ICON=$( [ "$SCHEMA_EXIT" = "0" ] && echo "✅" || echo "❌" )
-          CONTENT_ICON=$( [ "$CONTENT_EXIT" = "0" ] && echo "✅" || echo "❌" )
-          LINT_ICON=$( [ "$LINT_EXIT" = "0" ] && echo "✅" || echo "❌" )
+          icon() {
+            local exit_code="$1" output="$2"
+            if [ "$exit_code" != "0" ]; then echo "❌"; return; fi
+            if echo "$output" | grep -qiE '(warning|⚠️|auto-fixable)'; then echo "⚠️"; return; fi
+            echo "✅"
+          }
+          SCHEMA_ICON=$(icon "$SCHEMA_EXIT" "$SCHEMA_OUT")
+          CONTENT_ICON=$(icon "$CONTENT_EXIT" "$CONTENT_OUT")
+          LINT_ICON=$(icon "$LINT_EXIT" "$LINT_OUT")
 
           BODY="<!-- scene-validation-report -->
           ### Scene Validation Report
