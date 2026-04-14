@@ -1555,7 +1555,7 @@
             {
               "type": "step",
               "label": "Velocity vs Altitude",
-              "math": "V(h) = V_E \\exp\\left(-\\frac{C_d A \\rho_0}{2m \\beta} e^{-h/H}\\right)",
+              "math": "V(h) = V_E \\exp\\left(-\\frac{\\rho_0 H}{2\\beta \\sin\\gamma}\\,e^{-h/H}\\right)",
               "justification": "Substitute the exponential density $\\rho = \\rho_0 e^{-h/H}$ and integrate.",
               "explanation": "Skipping the messy calculus, if we add up all the drag as we fall, we get a formula showing how our speed $V$ drops from our initial entry speed $V_E$.",
               "prompt": "Tell the student not to worry about the calculus integration. The key takeaway is: speed drops exponentially as the air gets thicker.",
