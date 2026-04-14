@@ -29,7 +29,209 @@
         "chuteArea": 348,
         "chuteCd": 1.5
       }
-    ]
+    ],
+    "research": {
+      "schema_version": "1.0",
+      "purpose": "Pre-parachute Earth entry trajectory modeling inputs",
+      "notes": [
+        "This package is suitable for a simplified 3-DOF point-mass simulation up to parachute deployment.",
+        "Fields marked as estimated_or_model_default are not directly specified in the cited source set and should be refined for higher-fidelity work.",
+        "Reference area is the projected frontal area computed from the cited base/heat-shield diameter."
+      ],
+      "planet": {
+        "name": "Earth",
+        "radius_m": 6371000.0,
+        "mu_m3_s2": 398600441800000.0,
+        "rotation_rate_rad_s": 0.00007292115,
+        "atmosphere_model_recommended": "US Standard Atmosphere 1976",
+        "entry_interface_altitude_m_model_default": 121920.0
+      },
+      "vehicles": {
+        "orion": {
+          "name": "Orion Crew Module",
+          "program": "Artemis",
+          "mission_class": "lunar_return",
+          "geometry": {
+            "height_m": 3.3528,
+            "diameter_m": 5.0292,
+            "reference_area_m2": 19.866,
+            "shape": "blunt lifting capsule"
+          },
+          "mass": {
+            "landing_weight_lb_artemis_ii": 20500.0,
+            "entry_mass_kg_approx": 9299.0
+          },
+          "entry": {
+            "entry_speed_mph": 25000.0,
+            "entry_speed_mps": 11176.0,
+            "entry_type": "skip_entry",
+            "lift_to_drag_ratio": {
+              "value_range": [0.25, 0.27],
+              "source_type": "NASA technical paper"
+            },
+            "flight_path_angle_deg_estimated_or_model_default": -6.5
+          },
+          "thermal_protection": {
+            "type": "Avcoat ablative heat shield",
+            "heat_shield_diameter_m": 5.0292
+          },
+          "parachutes": {
+            "total_parachutes": 11,
+            "forward_bay_cover": {
+              "count": 3, "diameter_ft": 7.0, "diameter_m": 2.1336,
+              "deploy_altitude_ft": 26500.0, "deploy_altitude_m": 8077.2,
+              "deploy_speed_fps": 475.0, "deploy_speed_mps": 144.78, "deploy_speed_mph": 324.0
+            },
+            "drogue": {
+              "count": 2, "diameter_ft": 23.0, "diameter_m": 7.0104,
+              "single_canopy_area_m2": 38.61, "combined_area_m2": 77.22,
+              "deploy_altitude_ft": 25000.0, "deploy_altitude_m": 7620.0,
+              "deploy_speed_fps": 450.0, "deploy_speed_mps": 137.16, "deploy_speed_mph": 307.0
+            },
+            "pilot": {
+              "count": 3, "diameter_ft": 11.0, "diameter_m": 3.3528,
+              "single_canopy_area_m2": 8.83, "combined_area_m2": 26.48,
+              "deploy_altitude_ft": 9500.0, "deploy_altitude_m": 2895.6,
+              "deploy_speed_fps": 190.0, "deploy_speed_mps": 57.91, "deploy_speed_mph": 130.0
+            },
+            "main": {
+              "count": 3, "diameter_ft": 116.0, "diameter_m": 35.3568,
+              "single_canopy_area_m2": 981.97, "combined_area_m2": 2945.91,
+              "full_deploy_altitude_ft": 9000.0, "full_deploy_altitude_m": 2743.2,
+              "deploy_speed_mph": 130.0
+            }
+          },
+          "modeling_status": {
+            "good_for_pre_chute_3dof": true,
+            "needs_full_aero_tables_for_high_fidelity": true
+          }
+        },
+        "crew_dragon": {
+          "name": "SpaceX Crew Dragon",
+          "program": "Commercial Crew",
+          "mission_class": "LEO_return",
+          "geometry": {
+            "height_m": 8.1382, "diameter_m": 3.7,
+            "reference_area_m2": 10.752, "shape": "blunt lifting capsule"
+          },
+          "mass": {
+            "vehicle_weight_lb_approx": 21000.0,
+            "entry_mass_kg_approx": 9525.0,
+            "mass_quality": "approximate"
+          },
+          "entry": {
+            "entry_speed_mph": 17500.0, "entry_speed_mps": 7823.2,
+            "entry_type": "direct_LEO_return",
+            "lift_to_drag_ratio": { "value": null, "note": "Not found in the source set used here" },
+            "flight_path_angle_deg_estimated_or_model_default": -6.0
+          },
+          "thermal_protection": { "type": "PICA-X" },
+          "parachutes": {
+            "drogue": {
+              "count": 2, "deploy_altitude_ft": 18000.0, "deploy_altitude_m": 5486.4,
+              "deploy_speed_mph": 350.0, "deploy_speed_mps": 156.46
+            },
+            "main": {
+              "count": 4, "diameter_m": 35.0, "diameter_ft": 114.83,
+              "single_canopy_area_m2": 962.11, "combined_area_m2": 3848.45,
+              "deploy_altitude_ft": 6000.0, "deploy_altitude_m": 1828.8,
+              "deploy_speed_mph": 119.0, "deploy_speed_mps": 53.2
+            },
+            "touchdown_speed": { "min_mps": 4.8, "max_mps": 5.4, "min_fps": 16.0, "max_fps": 18.0 }
+          },
+          "modeling_status": {
+            "good_for_pre_chute_3dof": true,
+            "needs_better_mass_and_aero_data_for_higher_fidelity": true
+          }
+        },
+        "gemini": {
+          "name": "Gemini Reentry Module",
+          "program": "Project Gemini",
+          "mission_class": "LEO_return",
+          "geometry": {
+            "spacecraft_total_height_m": 5.6134, "spacecraft_total_base_diameter_m": 3.048,
+            "reentry_module_height_m": 3.3528, "reentry_module_base_diameter_m": 2.22504,
+            "reference_area_m2": 3.888, "shape": "blunt lifting capsule"
+          },
+          "mass": {
+            "launch_weight_lb_approx": 7000.0,
+            "reentry_module_landing_weight_lb_approx": 4700.0,
+            "entry_mass_kg_approx": 2132.0
+          },
+          "entry": {
+            "reentry_velocity_fps": 24000.0, "entry_speed_mph": 16450.0, "entry_speed_mps": 7353.96,
+            "entry_type": "direct_LEO_return",
+            "lift_to_drag_ratio": { "value_approx": 0.26, "source_type": "NASA history source" },
+            "flight_path_angle_deg_estimated_or_model_default": -6.0
+          },
+          "thermal_protection": { "type": "ablative heat shield" },
+          "parachutes": {
+            "drogue": {
+              "count": 1, "diameter_ft": 8.3, "diameter_m": 2.52984,
+              "single_canopy_area_m2": 5.03,
+              "deploy_altitude_ft": 50000.0, "deploy_altitude_m": 15240.0
+            },
+            "pilot": {
+              "count": 1, "diameter_ft": 18.2, "diameter_m": 5.54736,
+              "single_canopy_area_m2": 24.17,
+              "deploy_altitude_ft": 10600.0, "deploy_altitude_m": 3230.88
+            },
+            "main": {
+              "count": 1, "diameter_ft": 84.2, "diameter_m": 25.66416,
+              "single_canopy_area_m2": 517.24,
+              "deploy_altitude_ft": 10600.0, "deploy_altitude_m": 3230.88,
+              "descent_rate_fps_at_1000_ft": 29.8, "descent_rate_mps_at_1000_ft": 9.08
+            }
+          },
+          "modeling_status": {
+            "good_for_pre_chute_3dof": true,
+            "needs_mission_specific_entry_state_for_best_results": true
+          }
+        },
+        "apollo_command_module": {
+          "name": "Apollo Command Module",
+          "program": "Apollo",
+          "mission_class": "lunar_return",
+          "geometry": {
+            "height_m": 3.23, "diameter_m": 3.91,
+            "reference_area_m2": 12.0, "shape": "blunt lifting capsule"
+          },
+          "mass": { "entry_mass_kg": 5500 },
+          "entry": {
+            "entry_speed_mps": 11000, "entry_speed_mph": 25000,
+            "entry_type": "skip_entry_capable",
+            "lift_to_drag_ratio": { "value_range": [0.3, 0.35] },
+            "flight_path_angle_deg_estimated_or_model_default": -6.5
+          },
+          "thermal_protection": {
+            "type": "Avcoat ablative heat shield",
+            "heat_shield_diameter_m": 3.91
+          },
+          "aero": { "drag_coefficient_cd_estimated": 1.0, "lift_coefficient_cl_estimated": 0.3 },
+          "parachutes": {
+            "drogue": { "count": 2, "diameter_m": 5.2, "deploy_altitude_m": 7600 },
+            "main": { "count": 3, "diameter_m": 25.4, "combined_area_m2": 1520, "deploy_altitude_m": 3000 }
+          },
+          "landing": { "type": "ocean", "touchdown_velocity_mps": 9 },
+          "modeling_notes": {
+            "good_for_pre_chute_3dof": true,
+            "skip_entry_behavior": "requires lift + guidance modeling",
+            "similarity_to_orion": "high"
+          }
+        }
+      },
+      "minimum_equations_needed": {
+        "drag": "D = 0.5 * rho * v^2 * Cd * A",
+        "lift": "L = 0.5 * rho * v^2 * Cl * A",
+        "ballistic_coefficient": "beta = m / (Cd * A)"
+      },
+      "missing_for_high_fidelity": [
+        "Cd(Mach, alpha)", "Cl(Mach, alpha)", "bank-angle guidance law",
+        "mission-specific entry interface state vector", "winds",
+        "Earth rotation treatment if landing footprint matters",
+        "trim angle of attack and center-of-mass offset details"
+      ]
+    }
   },
   "scenes": [
     {

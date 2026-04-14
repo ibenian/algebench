@@ -769,11 +769,19 @@
     },
     "dataTable": {
       "type": "object",
-      "description": "Named data tables accessible from expressions via dataTable('tableName', rowIndex, 'column'). Each key is a table name mapping to an array of row objects. Defined at lesson level (shared) or scene level (override).",
+      "description": "Named data entries. Array values are tables accessible via dataTable('name', row, 'col'). Object values are freeform reference data.",
       "additionalProperties": {
-        "type": "array",
-        "items": { "type": "object" },
-        "description": "Array of row objects. Each row is a plain object with string keys and number/string values."
+        "oneOf": [
+          {
+            "type": "array",
+            "items": { "type": "object" },
+            "description": "Table: array of row objects with string keys and number/string values."
+          },
+          {
+            "type": "object",
+            "description": "Freeform reference data (not accessible via dataTable)."
+          }
+        ]
       }
     },
     "sceneFunction": {
