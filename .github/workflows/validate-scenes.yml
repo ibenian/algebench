@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout repository
@@ -44,29 +45,99 @@ jobs:
           echo "files=${CHANGED}" >> "$GITHUB_OUTPUT"
 
       - name: Schema validation
+        id: schema
         if: steps.changed.outputs.files != ''
         run: |
-          echo "::group::Schema Validation"
-          python scripts/validate_schema.py ${{ steps.changed.outputs.files }}
-          echo "::endgroup::"
+          python scripts/validate_schema.py -v ${{ steps.changed.outputs.files }} 2>&1 | tee /tmp/schema-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Content validation
-        if: steps.changed.outputs.files != ''
+        id: content
+        if: steps.changed.outputs.files != '' && (steps.schema.outputs.exit_code == '0' || steps.schema.outcome == 'success')
         run: |
-          echo "::group::Content Validation"
-          python scripts/validate_content.py ${{ steps.changed.outputs.files }}
-          echo "::endgroup::"
+          python scripts/validate_content.py ${{ steps.changed.outputs.files }} 2>&1 | tee /tmp/content-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Lint
+        id: lint
         if: steps.changed.outputs.files != ''
         run: |
-          echo "::group::Lint"
           FAILED=0
           for f in ${{ steps.changed.outputs.files }}; do
-            python scripts/lint_scene.py "$f" || FAILED=1
-          done
-          exit $FAILED
-          echo "::endgroup::"
+            python scripts/lint_scene.py "$f" 2>&1 || FAILED=1
+          done | tee /tmp/lint-output.txt
+          echo "exit_code=${FAILED}" >> "$GITHUB_OUTPUT"
+
+      - name: Post validation report as PR comment
+        if: github.event_name == 'pull_request' && steps.changed.outputs.files != '' && always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SCHEMA_OUT=$(cat /tmp/schema-output.txt 2>/dev/null || echo "Not run")
+          CONTENT_OUT=$(cat /tmp/content-output.txt 2>/dev/null || echo "Not run")
+          LINT_OUT=$(cat /tmp/lint-output.txt 2>/dev/null || echo "Not run")
+
+          SCHEMA_EXIT="${{ steps.schema.outputs.exit_code }}"
+          CONTENT_EXIT="${{ steps.content.outputs.exit_code }}"
+          LINT_EXIT="${{ steps.lint.outputs.exit_code }}"
+
+          SCHEMA_ICON=$( [ "$SCHEMA_EXIT" = "0" ] && echo "✅" || echo "❌" )
+          CONTENT_ICON=$( [ "$CONTENT_EXIT" = "0" ] && echo "✅" || echo "❌" )
+          LINT_ICON=$( [ "$LINT_EXIT" = "0" ] && echo "✅" || echo "❌" )
+
+          BODY="<!-- scene-validation-report -->
+          ### Scene Validation Report
+
+          | Check | Status |
+          |-------|--------|
+          | Schema | ${SCHEMA_ICON} |
+          | Content | ${CONTENT_ICON} |
+          | Lint | ${LINT_ICON} |
+
+          <details>
+          <summary>Schema Validation</summary>
+
+          \`\`\`
+          ${SCHEMA_OUT}
+          \`\`\`
+
+          </details>
+
+          <details>
+          <summary>Content Validation</summary>
+
+          \`\`\`
+          ${CONTENT_OUT}
+          \`\`\`
+
+          </details>
+
+          <details>
+          <summary>Lint</summary>
+
+          \`\`\`
+          ${LINT_OUT}
+          \`\`\`
+
+          </details>"
+
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body "$BODY" \
+            --edit-last 2>/dev/null || \
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body "$BODY"
+
+      - name: Fail if any check errored
+        if: steps.changed.outputs.files != '' && always()
+        run: |
+          FAILED=0
+          [ "${{ steps.schema.outputs.exit_code }}" != "0" ] && [ -n "${{ steps.schema.outputs.exit_code }}" ] && FAILED=1
+          [ "${{ steps.content.outputs.exit_code }}" != "0" ] && [ -n "${{ steps.content.outputs.exit_code }}" ] && FAILED=1
+          [ "${{ steps.lint.outputs.exit_code }}" != "0" ] && [ -n "${{ steps.lint.outputs.exit_code }}" ] && FAILED=1
+          if [ "$FAILED" = "1" ]; then
+            echo "❌ One or more validation checks failed — see the PR comment for details."
+            exit 1
+          fi
 
       - name: No scene files changed
         if: steps.changed.outputs.files == ''
