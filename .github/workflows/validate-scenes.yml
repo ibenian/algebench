@@ -1,0 +1,73 @@
+name: Validate Scene Files
+
+on:
+  pull_request:
+    paths:
+      - 'scenes/**/*.json'
+      - 'scenes/*.json'
+      - 'schemas/lesson.schema.json'
+      - 'scripts/validate_schema.py'
+      - 'scripts/validate_content.py'
+      - 'scripts/lint_scene.py'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Schema, Content & Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install jsonschema
+
+      - name: Resolve scene files
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...HEAD \
+              | grep '^scenes/.*\.json$' | tr '\n' ' ')
+          else
+            CHANGED=$(find scenes -name '*.json' | tr '\n' ' ')
+          fi
+          echo "files=${CHANGED}" >> "$GITHUB_OUTPUT"
+
+      - name: Schema validation
+        if: steps.changed.outputs.files != ''
+        run: |
+          echo "::group::Schema Validation"
+          python scripts/validate_schema.py ${{ steps.changed.outputs.files }}
+          echo "::endgroup::"
+
+      - name: Content validation
+        if: steps.changed.outputs.files != ''
+        run: |
+          echo "::group::Content Validation"
+          python scripts/validate_content.py ${{ steps.changed.outputs.files }}
+          echo "::endgroup::"
+
+      - name: Lint
+        if: steps.changed.outputs.files != ''
+        run: |
+          echo "::group::Lint"
+          FAILED=0
+          for f in ${{ steps.changed.outputs.files }}; do
+            python scripts/lint_scene.py "$f" || FAILED=1
+          done
+          exit $FAILED
+          echo "::endgroup::"
+
+      - name: No scene files changed
+        if: steps.changed.outputs.files == ''
+        run: echo "No scene files changed — skipping validation"
