@@ -1174,6 +1174,10 @@
       "description": "A single step in a mathematical proof.",
       "required": ["label"],
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional stable proof-step ID for references, context, and future navigation/state features."
+        },
         "type": {
           "type": "string",
           "description": "Step type displayed as a badge. Common values: 'step', 'definition', 'axiom', 'theorem', 'lemma', 'assumption', 'substitution', 'simplification', 'conclusion'. Default: 'step'.",
