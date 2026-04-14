@@ -1,0 +1,3710 @@
+{
+  "title": "Atmospheric Entry and Splashdown Physics",
+  "import": [
+    "atmospheric-entry"
+  ],
+  "data": {
+    "capsules": [
+      {
+        "name": "Crew Dragon",
+        "mass": 9525,
+        "chuteArea": 440,
+        "chuteCd": 1.6
+      },
+      {
+        "name": "Gemini",
+        "mass": 2132,
+        "chuteArea": 84,
+        "chuteCd": 1.4
+      },
+      {
+        "name": "Apollo CM",
+        "mass": 5500,
+        "chuteArea": 333,
+        "chuteCd": 1.5
+      },
+      {
+        "name": "Orion",
+        "mass": 9299,
+        "chuteArea": 348,
+        "chuteCd": 1.5
+      }
+    ],
+    "research": {
+      "schema_version": "1.0",
+      "purpose": "Pre-parachute Earth entry trajectory modeling inputs",
+      "notes": [
+        "This package is suitable for a simplified 3-DOF point-mass simulation up to parachute deployment.",
+        "Fields marked as estimated_or_model_default are not directly specified in the cited source set and should be refined for higher-fidelity work.",
+        "Reference area is the projected frontal area computed from the cited base/heat-shield diameter."
+      ],
+      "planet": {
+        "name": "Earth",
+        "radius_m": 6371000.0,
+        "mu_m3_s2": 398600441800000.0,
+        "rotation_rate_rad_s": 0.00007292115,
+        "atmosphere_model_recommended": "US Standard Atmosphere 1976",
+        "entry_interface_altitude_m_model_default": 121920.0
+      },
+      "vehicles": {
+        "orion": {
+          "name": "Orion Crew Module",
+          "program": "Artemis",
+          "mission_class": "lunar_return",
+          "geometry": {
+            "height_m": 3.3528,
+            "diameter_m": 5.0292,
+            "reference_area_m2": 19.866,
+            "shape": "blunt lifting capsule"
+          },
+          "mass": {
+            "landing_weight_lb_artemis_ii": 20500.0,
+            "entry_mass_kg_approx": 9299.0
+          },
+          "entry": {
+            "entry_speed_mph": 25000.0,
+            "entry_speed_mps": 11176.0,
+            "entry_type": "skip_entry",
+            "lift_to_drag_ratio": {
+              "value_range": [0.25, 0.27],
+              "source_type": "NASA technical paper"
+            },
+            "flight_path_angle_deg_estimated_or_model_default": -6.5
+          },
+          "thermal_protection": {
+            "type": "Avcoat ablative heat shield",
+            "heat_shield_diameter_m": 5.0292
+          },
+          "parachutes": {
+            "total_parachutes": 11,
+            "forward_bay_cover": {
+              "count": 3, "diameter_ft": 7.0, "diameter_m": 2.1336,
+              "deploy_altitude_ft": 26500.0, "deploy_altitude_m": 8077.2,
+              "deploy_speed_fps": 475.0, "deploy_speed_mps": 144.78, "deploy_speed_mph": 324.0
+            },
+            "drogue": {
+              "count": 2, "diameter_ft": 23.0, "diameter_m": 7.0104,
+              "single_canopy_area_m2": 38.61, "combined_area_m2": 77.22,
+              "deploy_altitude_ft": 25000.0, "deploy_altitude_m": 7620.0,
+              "deploy_speed_fps": 450.0, "deploy_speed_mps": 137.16, "deploy_speed_mph": 307.0
+            },
+            "pilot": {
+              "count": 3, "diameter_ft": 11.0, "diameter_m": 3.3528,
+              "single_canopy_area_m2": 8.83, "combined_area_m2": 26.48,
+              "deploy_altitude_ft": 9500.0, "deploy_altitude_m": 2895.6,
+              "deploy_speed_fps": 190.0, "deploy_speed_mps": 57.91, "deploy_speed_mph": 130.0
+            },
+            "main": {
+              "count": 3, "diameter_ft": 116.0, "diameter_m": 35.3568,
+              "single_canopy_area_m2": 981.97, "combined_area_m2": 2945.91,
+              "full_deploy_altitude_ft": 9000.0, "full_deploy_altitude_m": 2743.2,
+              "deploy_speed_mph": 130.0
+            }
+          },
+          "modeling_status": {
+            "good_for_pre_chute_3dof": true,
+            "needs_full_aero_tables_for_high_fidelity": true
+          }
+        },
+        "crew_dragon": {
+          "name": "SpaceX Crew Dragon",
+          "program": "Commercial Crew",
+          "mission_class": "LEO_return",
+          "geometry": {
+            "height_m": 8.1382, "diameter_m": 3.7,
+            "reference_area_m2": 10.752, "shape": "blunt lifting capsule"
+          },
+          "mass": {
+            "vehicle_weight_lb_approx": 21000.0,
+            "entry_mass_kg_approx": 9525.0,
+            "mass_quality": "approximate"
+          },
+          "entry": {
+            "entry_speed_mph": 17500.0, "entry_speed_mps": 7823.2,
+            "entry_type": "direct_LEO_return",
+            "lift_to_drag_ratio": { "value": null, "note": "Not found in the source set used here" },
+            "flight_path_angle_deg_estimated_or_model_default": -6.0
+          },
+          "thermal_protection": { "type": "PICA-X" },
+          "parachutes": {
+            "drogue": {
+              "count": 2, "deploy_altitude_ft": 18000.0, "deploy_altitude_m": 5486.4,
+              "deploy_speed_mph": 350.0, "deploy_speed_mps": 156.46
+            },
+            "main": {
+              "count": 4, "diameter_m": 35.0, "diameter_ft": 114.83,
+              "single_canopy_area_m2": 962.11, "combined_area_m2": 3848.45,
+              "deploy_altitude_ft": 6000.0, "deploy_altitude_m": 1828.8,
+              "deploy_speed_mph": 119.0, "deploy_speed_mps": 53.2
+            },
+            "touchdown_speed": { "min_mps": 4.8, "max_mps": 5.4, "min_fps": 16.0, "max_fps": 18.0 }
+          },
+          "modeling_status": {
+            "good_for_pre_chute_3dof": true,
+            "needs_better_mass_and_aero_data_for_higher_fidelity": true
+          }
+        },
+        "gemini": {
+          "name": "Gemini Reentry Module",
+          "program": "Project Gemini",
+          "mission_class": "LEO_return",
+          "geometry": {
+            "spacecraft_total_height_m": 5.6134, "spacecraft_total_base_diameter_m": 3.048,
+            "reentry_module_height_m": 3.3528, "reentry_module_base_diameter_m": 2.22504,
+            "reference_area_m2": 3.888, "shape": "blunt lifting capsule"
+          },
+          "mass": {
+            "launch_weight_lb_approx": 7000.0,
+            "reentry_module_landing_weight_lb_approx": 4700.0,
+            "entry_mass_kg_approx": 2132.0
+          },
+          "entry": {
+            "reentry_velocity_fps": 24000.0, "entry_speed_mph": 16450.0, "entry_speed_mps": 7353.96,
+            "entry_type": "direct_LEO_return",
+            "lift_to_drag_ratio": { "value_approx": 0.26, "source_type": "NASA history source" },
+            "flight_path_angle_deg_estimated_or_model_default": -6.0
+          },
+          "thermal_protection": { "type": "ablative heat shield" },
+          "parachutes": {
+            "drogue": {
+              "count": 1, "diameter_ft": 8.3, "diameter_m": 2.52984,
+              "single_canopy_area_m2": 5.03,
+              "deploy_altitude_ft": 50000.0, "deploy_altitude_m": 15240.0
+            },
+            "pilot": {
+              "count": 1, "diameter_ft": 18.2, "diameter_m": 5.54736,
+              "single_canopy_area_m2": 24.17,
+              "deploy_altitude_ft": 10600.0, "deploy_altitude_m": 3230.88
+            },
+            "main": {
+              "count": 1, "diameter_ft": 84.2, "diameter_m": 25.66416,
+              "single_canopy_area_m2": 517.24,
+              "deploy_altitude_ft": 10600.0, "deploy_altitude_m": 3230.88,
+              "descent_rate_fps_at_1000_ft": 29.8, "descent_rate_mps_at_1000_ft": 9.08
+            }
+          },
+          "modeling_status": {
+            "good_for_pre_chute_3dof": true,
+            "needs_mission_specific_entry_state_for_best_results": true
+          }
+        },
+        "apollo_command_module": {
+          "name": "Apollo Command Module",
+          "program": "Apollo",
+          "mission_class": "lunar_return",
+          "geometry": {
+            "height_m": 3.23, "diameter_m": 3.91,
+            "reference_area_m2": 12.0, "shape": "blunt lifting capsule"
+          },
+          "mass": { "entry_mass_kg": 5500 },
+          "entry": {
+            "entry_speed_mps": 11000, "entry_speed_mph": 25000,
+            "entry_type": "skip_entry_capable",
+            "lift_to_drag_ratio": { "value_range": [0.3, 0.35] },
+            "flight_path_angle_deg_estimated_or_model_default": -6.5
+          },
+          "thermal_protection": {
+            "type": "Avcoat ablative heat shield",
+            "heat_shield_diameter_m": 3.91
+          },
+          "aero": { "drag_coefficient_cd_estimated": 1.0, "lift_coefficient_cl_estimated": 0.3 },
+          "parachutes": {
+            "drogue": { "count": 2, "diameter_m": 5.2, "deploy_altitude_m": 7600 },
+            "main": { "count": 3, "diameter_m": 25.4, "combined_area_m2": 1520, "deploy_altitude_m": 3000 }
+          },
+          "landing": { "type": "ocean", "touchdown_velocity_mps": 9 },
+          "modeling_notes": {
+            "good_for_pre_chute_3dof": true,
+            "skip_entry_behavior": "requires lift + guidance modeling",
+            "similarity_to_orion": "high"
+          }
+        }
+      },
+      "minimum_equations_needed": {
+        "drag": "D = 0.5 * rho * v^2 * Cd * A",
+        "lift": "L = 0.5 * rho * v^2 * Cl * A",
+        "ballistic_coefficient": "beta = m / (Cd * A)"
+      },
+      "missing_for_high_fidelity": [
+        "Cd(Mach, alpha)", "Cl(Mach, alpha)", "bank-angle guidance law",
+        "mission-specific entry interface state vector", "winds",
+        "Earth rotation treatment if landing footprint matters",
+        "trim angle of attack and center-of-mass offset details"
+      ]
+    }
+  },
+  "scenes": [
+    {
+      "title": "The Forces of Reentry",
+      "description": "Understand how drag counters gravity to decelerate the spacecraft, and define the ballistic coefficient.",
+      "markdown": "# The Forces of Reentry\n\n## The Entry Interface\nThe **Entry Interface** is the altitude at which atmospheric drag becomes non-negligible, typically defined as $122\\text{ km}$ ($400,000\\text{ ft}$) for Earth. This is the invisible boundary where space ends and aerodynamic physics begins.\n\n## Ballistic Coefficient\nThe **Ballistic Coefficient** ($\\beta$) is a measure of a body's ability to overcome air resistance, defined as:\n\n$$ \\beta = \\frac{m}{C_d A} $$\n\nwhere:\n* $m$ is mass\n* $C_d$ is the drag coefficient\n* $A$ is the cross-sectional area\n\nA high value means a vehicle cuts through the air like a dart. A low value means it is slowed down easily high in the atmosphere, like a blunt capsule. This concept is foundational to atmospheric entry design, as established by Allen & Eggers [1].\n\n---\n**References:**\n[1] Allen, H. J., & Eggers Jr, A. J. (1958). A study of the motion and aerodynamic heating of ballistic missiles entering the earth's atmosphere at high supersonic speeds (NACA-TR-1381).",
+      "prompt": "Ensure the drag vector scales properly with velocity squared and density.",
+      "range": [
+        [
+          -10,
+          10
+        ],
+        [
+          0,
+          20
+        ],
+        [
+          -10,
+          10
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          10,
+          20
+        ],
+        "target": [
+          0,
+          10,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            10,
+            20
+          ],
+          "target": [
+            0,
+            10,
+            0
+          ],
+          "description": "Face-on 2D view"
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -10,
+            10
+          ],
+          "color": "#ff4444",
+          "width": 1.5,
+          "label": "x"
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            0,
+            20
+          ],
+          "color": "#44cc44",
+          "width": 1.5,
+          "label": "y"
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -10,
+            10
+          ],
+          "color": "#4488ff",
+          "width": 1.5,
+          "label": "z"
+        },
+        {
+          "id": "_mathbox_init",
+          "type": "grid",
+          "plane": "xy",
+          "opacity": 0,
+          "divisions": 10
+        }
+      ],
+      "steps": [
+        {
+          "title": "The Entry Interface",
+          "description": "At the entry interface (typically 122 km or 400,000 ft for Earth), space ends and aerodynamic physics begins. The capsule is traveling at immense speeds.",
+          "prompt": "Explain the concept of the entry interface and the high initial velocity.",
+          "add": [
+            {
+              "id": "line_interface",
+              "type": "line",
+              "points": [
+                [
+                  -10,
+                  10,
+                  0
+                ],
+                [
+                  10,
+                  10,
+                  0
+                ]
+              ],
+              "color": "#aaaaaa",
+              "width": 2,
+              "legendGroup": "Entry Interface"
+            },
+            {
+              "id": "text_interface",
+              "type": "text",
+              "text": "Entry Interface (122 km)",
+              "position": [
+                0,
+                10.5,
+                0
+              ],
+              "color": "#aaaaaa",
+              "label": "Entry Interface"
+            },
+            {
+              "id": "pt_capsule",
+              "type": "point",
+              "position": [
+                0,
+                10,
+                0
+              ],
+              "color": "#ffffff",
+              "size": 12,
+              "label": "Capsule"
+            },
+            {
+              "id": "vec_velocity",
+              "type": "animated_vector",
+              "from": [
+                0,
+                10,
+                0
+              ],
+              "expr": [
+                "0",
+                "10 - s1_velocity * 0.5",
+                "0"
+              ],
+              "color": "#3498db",
+              "width": 4,
+              "label": "$\\vec{v}$"
+            }
+          ],
+          "remove": [],
+          "sliders": [
+            {
+              "id": "s1_velocity",
+              "label": "Velocity (km/s)",
+              "min": 5,
+              "max": 12,
+              "default": 7.8,
+              "step": 0.1
+            }
+          ],
+          "info": []
+        },
+        {
+          "title": "Aerodynamic Drag",
+          "description": "As the capsule descends, atmospheric density increases exponentially, creating a massive drag force that counters gravity and decelerates the craft.",
+          "prompt": "Explain how atmospheric density and velocity square contribute to aerodynamic drag.",
+          "add": [
+            {
+              "id": "vec_drag",
+              "type": "animated_vector",
+              "from": [
+                0,
+                10,
+                0
+              ],
+              "expr": [
+                "0",
+                "10 + s1_density * (s1_velocity^2) / 20",
+                "0"
+              ],
+              "color": "#e74c3c",
+              "width": 5,
+              "label": "$\\vec{F}_D$"
+            },
+            {
+              "id": "text_drag",
+              "type": "text",
+              "text": "$F_D \\propto \\rho v^2$",
+              "position": [
+                -5,
+                14,
+                0
+              ],
+              "color": "#e74c3c",
+              "label": "$\\vec{F}_D$"
+            }
+          ],
+          "remove": [],
+          "sliders": [
+            {
+              "id": "s1_density",
+              "label": "Atmospheric Density",
+              "min": 0,
+              "max": 1,
+              "default": 0.1,
+              "step": 0.01
+            }
+          ],
+          "info": []
+        },
+        {
+          "title": "Ballistic Coefficient",
+          "description": "The ballistic coefficient (beta = m / C_d A) measures a body's ability to overcome air resistance. A low value, like for a blunt capsule, means it slows down easily high in the atmosphere.",
+          "prompt": "Discuss the ballistic coefficient relationship with mass and area. Explain why a blunt shape is preferred for re-entry capsules.",
+          "add": [],
+          "remove": [
+            {
+              "id": "text_drag"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "s1_mass",
+              "label": "Capsule Mass",
+              "min": 1000,
+              "max": 10000,
+              "default": 5000,
+              "step": 100
+            },
+            {
+              "id": "s1_area",
+              "label": "Cross-sectional Area",
+              "min": 5,
+              "max": 20,
+              "default": 10,
+              "step": 0.5
+            }
+          ],
+          "info": [
+            {
+              "id": "info_beta",
+              "content": "### Ballistic Coefficient\nAssume a blunt-capsule drag coefficient $C_d = 1.5$.\n\n$\\beta = \\frac{m}{C_d A} = \\frac{ {{s1_mass}} }{1.5 \\times {{s1_area}}} = {{toFixed(s1_mass / (1.5 * s1_area), 1)}}\\ \\text{kg/m}^2$\n\n$F_D = \\frac{1}{2} \\rho v^2 C_d A$",
+              "position": "top-right"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "The Exponential Atmosphere",
+      "description": "Explore the exponential atmosphere model \u03c1(h) = \u03c1\u2080 e^{-h/H} and understand scale height \u2014 the single number that controls how quickly air thins with altitude.",
+      "markdown": "# The Exponential Atmosphere\n\nThe density of air falls off exponentially with altitude:\n\n$$ \\rho(h) = \\rho_0\\, e^{-h/H} $$\n\nwhere $\\rho_0 = 1.225\\,\\text{kg/m}^3$ is sea-level density and $H \\approx 7.2\\,\\text{km}$ is the **scale height** \u2014 the altitude gain that reduces density by a factor of $e \\approx 2.718$.\n\nThis simple model captures the essential physics: the atmosphere is a thin shell that gets exponentially thinner with altitude. By the entry interface at $122\\,\\text{km}$, density is roughly $10^{-7}$ of sea level \u2014 effectively vacuum.\n\n---\n**Key insight:** Every $H$ km of altitude costs a factor of $e$ in density. After $n$ scale heights, density is $e^{-n}$ of the surface value.",
+      "prompt": "Help the student build intuition for exponential decay in the atmosphere. Emphasize the scale height concept and connect it to why entry dynamics are so sensitive to altitude.",
+      "range": [
+        [
+          -10,
+          140
+        ],
+        [
+          0,
+          150
+        ],
+        [
+          -75,
+          75
+        ]
+      ],
+      "camera": {
+        "position": [
+          65,
+          75,
+          200
+        ],
+        "target": [
+          65,
+          75,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            65,
+            75,
+            200
+          ],
+          "target": [
+            65,
+            75,
+            0
+          ],
+          "description": "2D view of density vs altitude"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "id": "_mathbox_init",
+          "plane": "xy",
+          "opacity": 0,
+          "divisions": 1
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            0,
+            130
+          ],
+          "color": "#aaaaaa",
+          "width": 1.5,
+          "label": "$\\rho$ (% of sea level)"
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            0,
+            150
+          ],
+          "color": "#aaaaaa",
+          "width": 1.5,
+          "label": "$h$ (km)"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Sea-Level Density",
+          "description": "At sea level (h = 0), the atmosphere has its maximum density \u03c1\u2080 = 1.225 kg/m\u00b3. This is the starting point of our exponential model.",
+          "prompt": "Introduce \u03c1\u2080 as the anchor point. Ask: how does density change as we go up? Most students guess linear \u2014 set up the surprise that it's exponential.",
+          "add": [
+            {
+              "type": "point",
+              "id": "pt_sea_level",
+              "position": [
+                100,
+                5,
+                0
+              ],
+              "color": "#2ecc71",
+              "size": 12,
+              "label": "$\\rho_0 = 1.225$ kg/m\u00b3 (100%)"
+            },
+            {
+              "type": "line",
+              "id": "line_sea_level",
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  130,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#2ecc71",
+              "width": 1,
+              "opacity": 0.4
+            }
+          ]
+        },
+        {
+          "title": "The Exponential Profile",
+          "description": "Density drops exponentially: \u03c1(h) = \u03c1\u2080 e^{-h/H}. The curve hugs the altitude axis \u2014 almost all the atmosphere is packed into the lowest few tens of kilometers.",
+          "prompt": "Point out how the curve is steep near the ground and nearly flat high up. Ask: at what altitude has the density dropped to half? (Answer: h = H\u00b7ln2 \u2248 5 km.)",
+          "add": [
+            {
+              "type": "parametric_curve",
+              "id": "curve_density",
+              "x": "100 * exp(-t / s_atm_H)",
+              "y": "t",
+              "z": "0",
+              "range": [
+                0,
+                150
+              ],
+              "samples": 300,
+              "color": "#3498db",
+              "width": 3,
+              "label": "$\\rho(h)$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "s_atm_H",
+              "label": "Scale Height H (km)",
+              "min": 3,
+              "max": 15,
+              "default": 7.2,
+              "step": 0.1
+            }
+          ]
+        },
+        {
+          "title": "Scale Height",
+          "description": "The scale height H = 7.2 km is the altitude at which density drops by a factor of e \u2248 2.718. It's the characteristic 'thickness' of the atmosphere.",
+          "prompt": "Draw attention to the horizontal markers showing density at each scale height. Ask: after 3 scale heights (~22 km), what fraction of sea-level density remains? Answer: e^{-3} \u2248 5%.",
+          "add": [
+            {
+              "type": "animated_line",
+              "id": "line_1H",
+              "points": [
+                [
+                  "0",
+                  "s_atm_H",
+                  "0"
+                ],
+                [
+                  "100 * exp(-1)",
+                  "s_atm_H",
+                  "0"
+                ]
+              ],
+              "color": "#f39c12",
+              "width": 1.5,
+              "opacity": 0.7,
+              "label": "$1H$: 36.8%"
+            },
+            {
+              "type": "animated_line",
+              "id": "line_2H",
+              "points": [
+                [
+                  "0",
+                  "2 * s_atm_H",
+                  "0"
+                ],
+                [
+                  "100 * exp(-2)",
+                  "2 * s_atm_H",
+                  "0"
+                ]
+              ],
+              "color": "#e67e22",
+              "width": 1.5,
+              "opacity": 0.7,
+              "label": "$2H$: 13.5%"
+            },
+            {
+              "type": "animated_line",
+              "id": "line_3H",
+              "points": [
+                [
+                  "0",
+                  "3 * s_atm_H",
+                  "0"
+                ],
+                [
+                  "100 * exp(-3)",
+                  "3 * s_atm_H",
+                  "0"
+                ]
+              ],
+              "color": "#e74c3c",
+              "width": 1.5,
+              "opacity": 0.7,
+              "label": "$3H$: 5.0%"
+            }
+          ]
+        },
+        {
+          "title": "The Entry Interface",
+          "description": "At 122 km \u2014 about 17 scale heights \u2014 the density is roughly 10\u207b\u2077 of sea level. This is the altitude where atmospheric drag first becomes non-negligible for an entering spacecraft.",
+          "prompt": "Emphasize the enormous contrast: at the entry interface, density is essentially zero on this plot. Yet that tiny sliver of air is enough to generate thousands of degrees of heating and many G's of deceleration at orbital speeds.",
+          "add": [
+            {
+              "type": "line",
+              "id": "line_entry",
+              "points": [
+                [
+                  0,
+                  122,
+                  0
+                ],
+                [
+                  30,
+                  122,
+                  0
+                ]
+              ],
+              "color": "#e74c3c",
+              "width": 2,
+              "opacity": 0.8,
+              "legendGroup": "Entry Interface"
+            },
+            {
+              "type": "text",
+              "id": "text_entry",
+              "text": "Entry Interface (122 km)",
+              "position": [
+                35,
+                122,
+                0
+              ],
+              "color": "#e74c3c",
+              "label": "Entry Interface"
+            },
+            {
+              "type": "text",
+              "id": "text_entry_rho",
+              "text": "$\\rho \\approx 10^{-7}\\rho_0$",
+              "position": [
+                35,
+                116,
+                0
+              ],
+              "color": "#e74c3c",
+              "label": "Entry Interface"
+            }
+          ],
+          "info": [
+            {
+              "id": "atm_info",
+              "content": "### Density at Key Altitudes\n\n| Altitude | Scale Heights | Density |\n|----------|--------------|--------|\n| Sea level | 0 | 100% |\n| $1H$ = ${{toFixed(s_atm_H, 1)}}$ km | 1 | 36.8% |\n| $3H$ = ${{toFixed(3 * s_atm_H, 1)}}$ km | 3 | 5.0% |\n| 50 km | ${{toFixed(50 / s_atm_H, 1)}}$ | ${{toFixed(100 * exp(-50 / s_atm_H), 4)}}$% |\n| 122 km | ${{toFixed(122 / s_atm_H, 1)}}$ | $\\approx 0$ |",
+              "position": "top-right"
+            }
+          ]
+        }
+      ],
+      "proof": {
+        "id": "exponential_atmosphere_derivation",
+        "title": "Deriving the Exponential Atmosphere",
+        "technique": "derivation",
+        "goal": "$$\\rho(h) = \\rho_0\\, e^{-h/H}, \\quad H = \\frac{k_B T}{m g}$$",
+        "prompt": "Derive the exponential atmosphere from first principles \u2014 hydrostatic equilibrium and the ideal gas law. Show that the scale height has a beautiful physical meaning: the height at which thermal energy equals gravitational potential energy per molecule.",
+        "steps": [
+          {
+            "type": "given",
+            "label": "Hydrostatic Equilibrium",
+            "math": "dP = -\\rho\\, g\\, dh",
+            "justification": "The pressure decrease across a thin slab of air equals the weight of that slab per unit area.",
+            "explanation": "Consider a thin horizontal layer of air at altitude $h$ with thickness $dh$. The pressure at the bottom must support the weight of the air above. This gives a differential relationship between pressure and altitude.",
+            "prompt": "Ask: why is there a negative sign? Because pressure decreases as altitude increases.",
+            "sceneStep": 0
+          },
+          {
+            "type": "given",
+            "label": "Ideal Gas Law",
+            "math": "P = \\frac{\\rho\\, k_B T}{m}",
+            "justification": "The ideal gas equation of state, written in terms of mass density $\\rho$ and molecular mass $m$.",
+            "explanation": "Air behaves as an ideal gas to a good approximation. Here $k_B$ is Boltzmann's constant, $T$ is temperature, and $m$ is the mean molecular mass of air ($\\approx 4.8 \\times 10^{-26}$ kg).",
+            "prompt": "If the student asks about the molecular mass, explain that air is ~78% N\u2082 and ~21% O\u2082, giving a mean molecular weight of about 29 g/mol.",
+            "sceneStep": 0
+          },
+          {
+            "type": "step",
+            "label": "Assume Constant Temperature",
+            "math": "T = \\text{const} \\implies dP = \\frac{k_B T}{m}\\, d\\rho",
+            "justification": "Isothermal approximation: temperature doesn't vary much over the relevant altitude range.",
+            "explanation": "This is the key simplification. Real atmosphere temperature varies, but the isothermal model captures the essential exponential behavior. Differentiating the ideal gas law at constant $T$ gives $dP$ in terms of $d\\rho$.",
+            "prompt": "Acknowledge this is an approximation. The real atmosphere has a lapse rate, but the exponential model is surprisingly good for entry dynamics because the density variation dominates over temperature variation.",
+            "sceneStep": 1
+          },
+          {
+            "type": "step",
+            "label": "Combine into a Separable ODE",
+            "math": "\\frac{d\\rho}{\\rho} = -\\frac{m g}{k_B T}\\, dh",
+            "justification": "Substitute $dP = (k_B T / m)\\, d\\rho$ into the hydrostatic equation and divide by $\\rho$.",
+            "explanation": "This is now a separable first-order ODE \u2014 the same form as radioactive decay, population decline, or RC circuit discharge. The ratio $mg / (k_B T)$ is a constant with units of inverse length.",
+            "prompt": "Point out the universality: this is the same math as radioactive decay. Exponential processes appear everywhere in physics when the rate of change is proportional to the current value.",
+            "sceneStep": 1
+          },
+          {
+            "type": "step",
+            "label": "Define the Scale Height",
+            "math": "\\htmlClass{hl-H}{H \\equiv \\frac{k_B T}{m g}}",
+            "justification": "Group the constants into a single characteristic length.",
+            "explanation": "The scale height $H$ has a beautiful physical interpretation: it's the altitude at which gravitational potential energy $mgh$ equals thermal kinetic energy $k_B T$. For Earth at $T \\approx 250\\,\\text{K}$: $H \\approx 7.2\\,\\text{km}$.",
+            "prompt": "Emphasize the physical meaning: $H$ is where gravity and thermal motion are in balance. Below $H$, thermal agitation keeps molecules aloft. Above $H$, gravity wins and density drops rapidly.",
+            "sceneStep": 2,
+            "highlights": {
+              "H": {
+                "color": "yellow",
+                "label": "scale height \u2014 where thermal energy balances gravity"
+              }
+            }
+          },
+          {
+            "type": "step",
+            "label": "Integrate",
+            "math": "\\int_{\\rho_0}^{\\rho} \\frac{d\\rho'}{\\rho'} = -\\frac{1}{H} \\int_0^h dh' \\implies \\ln\\frac{\\rho}{\\rho_0} = -\\frac{h}{H}",
+            "justification": "Definite integral from sea level ($h=0$, $\\rho = \\rho_0$) to altitude $h$.",
+            "explanation": "The left side gives a logarithm, the right side is linear in $h$. This is the standard result for any exponential decay process.",
+            "prompt": "Remind the student: $\\int d\\rho/\\rho = \\ln\\rho$. The boundary condition $\\rho(0) = \\rho_0$ fixes the constant of integration.",
+            "sceneStep": 2
+          },
+          {
+            "type": "conclusion",
+            "label": "Exponential Atmosphere",
+            "math": "\\htmlClass{hl-result}{\\rho(h) = \\rho_0\\, e^{-h/H}}",
+            "justification": "Exponentiate both sides.",
+            "explanation": "This is the result used throughout atmospheric entry analysis. The entire structure of the atmosphere \u2014 and all of entry dynamics \u2014 flows from this single exponential. Every $H \\approx 7.2\\,\\text{km}$ of altitude costs a factor of $e \\approx 2.718$ in density.",
+            "prompt": "Connect to the visualization: the curve you see is exactly this equation. Drag the scale height slider to see how $H$ controls the rate of thinning.",
+            "sceneStep": 1,
+            "highlights": {
+              "result": {
+                "color": "green",
+                "label": "the exponential atmosphere model"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "title": "Trajectory and the Entry Corridor",
+      "description": "Use a simplified point-mass simulation to see how vehicle choice, entry angle, and bank angle reshape the corridor and the live g-load history.",
+      "markdown": "# Simulated Entry Corridor\n\nThis scene replaces the hand-drawn path with a simplified **pre-parachute point-mass entry model**. The capsule starts at the Earth entry interface ($121.92\\,\\text{km}$) and is propagated under gravity, drag, and in-plane lift:\n\n$$\\mathbf{a}=\\mathbf{g}+\\mathbf{a}_D+\\mathbf{a}_L.$$\n\nThe atmosphere is exponential, each vehicle preset uses a fixed blunt-body $C_d$, and capsules with known lifting behavior get a fixed $L/D$ estimate.\n\n## Corridor Definition In This Lesson\nFor this scene, an entry angle counts as **inside the corridor** if the simulated capsule:\n\n- does **not** skip back out above the entry interface,\n- reaches the selected vehicle's parachute-deployment altitude,\n- stays below the chosen peak-$g$ limit.\n\nThis remains a low-order educational model. It does **not** include winds, Earth rotation, mission-specific guidance, or full aero tables $C_d(M,\\alpha)$ and $C_l(M,\\alpha)$.",
+      "prompt": "Teach the corridor as a computed result of the simulation rather than a fixed wedge. Encourage the user to switch vehicles, change gamma and bank, and scrub the animated time slider to connect path shape with current altitude, speed, and g-load.",
+      "range": [
+        [
+          375,
+          895
+        ],
+        [
+          -260,
+          260
+        ],
+        [
+          -260,
+          260
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          647.424,
+          111.171,
+          188.686
+        ],
+        "target": [
+          638.333,
+          122.792,
+          38.678
+        ],
+        "up": [
+          0.998,
+          0.011,
+          -0.06
+        ]
+      },
+      "views": [
+        {
+          "name": "Corridor Overview",
+          "position": [
+            669.339,
+            -59.353,
+            40.26
+          ],
+          "target": [
+            617.474,
+            140.115,
+            -22.13
+          ],
+          "up": [
+            0.945,
+            0.325,
+            -0.019
+          ],
+          "description": "Side view showing the full entry corridor with Earth limb"
+        },
+        {
+          "name": "Planar",
+          "position": [
+            900,
+            0,
+            0
+          ],
+          "target": [
+            635,
+            0,
+            0
+          ],
+          "up": [
+            0,
+            0,
+            1
+          ],
+          "description": "Face-on to the simulated entry plane"
+        },
+        {
+          "name": "Graph View",
+          "position": [
+            683.399,
+            35.905,
+            148.221
+          ],
+          "target": [
+            688.647,
+            33.277,
+            31.735
+          ],
+          "up": [
+            0.999,
+            -0.017,
+            0.045
+          ],
+          "description": "Focus on the live g-load graph"
+        },
+        {
+          "name": "Follow Capsule",
+          "follow": "capsule_live",
+          "offset": [
+            0,
+            0,
+            30
+          ],
+          "description": "Camera tracks the capsule along its trajectory"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "id": "_mathbox_init",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "Computed Corridor",
+          "description": "Switch vehicles, vary the flight-path angle, and roll the bank angle to see the corridor recomputed from the simulated trajectory.",
+          "prompt": "Make the user connect three things: the vehicle preset sets speed and ballistic properties, gamma sets how deeply the path dives, and bank angle changes how much in-plane lift keeps the capsule higher. Ask them to watch how the green corridor limits move as those assumptions change.",
+          "add": [
+            {
+              "type": "sphere",
+              "id": "earth",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radius": 637.1,
+              "widthSegments": 96,
+              "heightSegments": 64,
+              "color": "#2d6ea3",
+              "opacity": 0.88,
+              "shader": {
+                "shininess": 42,
+                "specular": "#95c8f0",
+                "emissive": "#0f2135"
+              }
+            },
+            {
+              "type": "sphere",
+              "id": "atmosphere",
+              "center": [
+                0,
+                0,
+                0
+              ],
+              "radius": 649.292,
+              "widthSegments": 96,
+              "heightSegments": 64,
+              "color": "#8dd7ff",
+              "opacity": 0.16
+            },
+            {
+              "type": "animated_line",
+              "id": "local_horizontal",
+              "points": [
+                [
+                  "649.292",
+                  "-62",
+                  "0"
+                ],
+                [
+                  "649.292",
+                  "62",
+                  "0"
+                ]
+              ],
+              "color": "#8f97a8",
+              "width": 1.5,
+              "opacity": 0.65,
+              "legendGroup": "Local Horizontal"
+            },
+            {
+              "type": "text",
+              "id": "horizontal_label",
+              "text": "Local Horizontal",
+              "position": [
+                661,
+                70,
+                0
+              ],
+              "color": "#8f97a8",
+              "label": "Local Horizontal"
+            },
+            {
+              "type": "animated_polygon",
+              "id": "corridor_fill",
+              "legendGroup": "Entry Corridor",
+              "vertices": [
+                [
+                  "649.292",
+                  "0",
+                  "0"
+                ],
+                [
+                  "649.292 - 130 * sin(entryCorridorLo() * pi / 180)",
+                  "130 * cos(entryCorridorLo() * pi / 180)",
+                  "0"
+                ],
+                [
+                  "649.292 - 130 * sin(entryCorridorHi() * pi / 180)",
+                  "130 * cos(entryCorridorHi() * pi / 180)",
+                  "0"
+                ]
+              ],
+              "color": "#2ecc71",
+              "opacity": 0.4
+            },
+            {
+              "type": "text",
+              "id": "corridor_label",
+              "text": "Computed Corridor",
+              "position": [
+                633,
+                93,
+                0
+              ],
+              "color": "#2ecc71",
+              "label": "Entry Corridor"
+            },
+            {
+              "type": "animated_point",
+              "id": "corridor_lo_marker",
+              "expr": [
+                "649.292 - 130 * sin(entryCorridorLo() * pi / 180)",
+                "130 * cos(entryCorridorLo() * pi / 180)",
+                "0"
+              ],
+              "color": "#b8ffcc",
+              "size": 5,
+              "labelExpr": "concat('lo ', toFixed(entryCorridorLo(), 2), ' deg')",
+              "visibleExpr": "entryCorridorHi() - entryCorridorLo() >= 0.3"
+            },
+            {
+              "type": "animated_point",
+              "id": "corridor_hi_marker",
+              "expr": [
+                "649.292 - 130 * sin(entryCorridorHi() * pi / 180)",
+                "130 * cos(entryCorridorHi() * pi / 180)",
+                "0"
+              ],
+              "color": "#b8ffcc",
+              "size": 5,
+              "labelExpr": "concat('hi ', toFixed(entryCorridorHi(), 2), ' deg')",
+              "visibleExpr": "entryCorridorHi() - entryCorridorLo() >= 0.3"
+            },
+            {
+              "type": "animated_point",
+              "id": "corridor_warning",
+              "expr": [
+                "620",
+                "145",
+                "0"
+              ],
+              "color": "#ff8a80",
+              "size": 6,
+              "label": "No survivable corridor at this g-limit",
+              "visibleExpr": "entryCorridorHi() - entryCorridorLo() < 0.3"
+            },
+            {
+              "type": "animated_vector",
+              "id": "entry_vector",
+              "fromExpr": [
+                "649.292 + 21 * sin(s2_gamma * pi / 180)",
+                "-21 * cos(s2_gamma * pi / 180)",
+                "0"
+              ],
+              "toExpr": [
+                "649.292",
+                "0",
+                "0"
+              ],
+              "color": "#ffd166",
+              "width": 0.5,
+              "scale": 0.25,
+              "label": "Entry Vector"
+            },
+            {
+              "type": "parametric_curve",
+              "id": "trajectory",
+              "x": "entryX(t) / 10",
+              "y": "entryY(t) / 10",
+              "z": "0",
+              "range": [
+                0,
+                1500
+              ],
+              "samples": 420,
+              "color": "#f6c453",
+              "width": 1.5,
+              "label": "Trajectory"
+            },
+            {
+              "type": "animated_point",
+              "id": "capsule_live",
+              "expr": [
+                "entryX(s2_t) / 10",
+                "entryY(s2_t) / 10",
+                "0"
+              ],
+              "color": "#ffffff",
+              "size": 11,
+              "label": "Capsule"
+            },
+            {
+              "type": "animated_vector",
+              "id": "velocity_vector",
+              "fromExpr": [
+                "entryX(s2_t) / 10",
+                "entryY(s2_t) / 10",
+                "0"
+              ],
+              "toExpr": [
+                "entryX(s2_t) / 10 + 20 * entryVx(s2_t) / max(0.2, entrySpeed(s2_t))",
+                "entryY(s2_t) / 10 + 20 * entryVy(s2_t) / max(0.2, entrySpeed(s2_t))",
+                "0"
+              ],
+              "color": "#4db6ff",
+              "width": 3,
+              "scale": 0.75,
+              "label": "$\\vec{v}$",
+              "labelOffset": [
+                0,
+                0,
+                5
+              ]
+            },
+            {
+              "type": "animated_vector",
+              "id": "drag_vector",
+              "fromExpr": [
+                "entryX(s2_t) / 10",
+                "entryY(s2_t) / 10",
+                "0"
+              ],
+              "toExpr": [
+                "entryX(s2_t) / 10 - min(entryG(s2_t), 10) * 1.5 * entryVx(s2_t) / max(0.2, entrySpeed(s2_t))",
+                "entryY(s2_t) / 10 - min(entryG(s2_t), 10) * 1.5 * entryVy(s2_t) / max(0.2, entrySpeed(s2_t))",
+                "0"
+              ],
+              "color": "#ff6b5f",
+              "width": 3,
+              "scale": 0.75,
+              "label": "$\\vec{D}$",
+              "labelOffset": [
+                0,
+                0,
+                -5
+              ]
+            }
+          ],
+          "remove": [],
+          "sliders": [
+            {
+              "id": "s2_vehicle",
+              "label": "Vehicle (0:Dragon, 1:Gemini, 2:Apollo, 3:Orion)",
+              "min": 0,
+              "max": 3,
+              "default": 3,
+              "step": 1
+            },
+            {
+              "id": "s2_gamma",
+              "label": "$\\gamma$ (deg below horizontal)",
+              "min": 1,
+              "max": 12,
+              "default": 6.5,
+              "step": 0.1
+            },
+            {
+              "id": "s2_bank",
+              "label": "Bank Angle (deg)",
+              "min": -180,
+              "max": 180,
+              "default": 50,
+              "step": 1
+            },
+            {
+              "id": "s2_g_limit",
+              "label": "Corridor g-limit",
+              "min": 4,
+              "max": 12,
+              "default": 9,
+              "step": 0.5
+            },
+            {
+              "id": "s2_t",
+              "label": "Simulation Time t (s)",
+              "min": 0,
+              "max": 1500,
+              "default": 0,
+              "step": 1,
+              "animate": true,
+              "duration": 12000
+            }
+          ],
+          "info": [
+            {
+              "id": "entry_info",
+              "position": "top-right",
+              "content": "### Simulated Entry State\n**Vehicle:** {{entryVehicleName()}}  \n**Mission:** {{entryVehicleMission()}}  \n**Entry speed:** {{toFixed(entryVehicleSpeed(), 2)}} km/s  \n**Estimated $\\beta$:** {{toFixed(entryVehicleBeta(), 1)}} kg/m$^2$  \n**Reference $L/D$:** {{toFixed(entryVehicleLD(), 2)}}\n\n**Computed corridor:** {{toFixed(entryCorridorLo(), 2)}}\u00b0 to {{toFixed(entryCorridorHi(), 2)}}\u00b0  \n**Selected $\\gamma$:** {{toFixed(s2_gamma, 2)}}\u00b0  \n**Effective bank:** {{toFixed(s2_bank, 0)}}\u00b0  \n**Time:** {{toFixed(min(s2_t, entryEndTime()), 0)}} s\n\n**Altitude:** {{toFixed(entryAlt(s2_t), 1)}} km  \n**Speed:** {{toFixed(entrySpeed(s2_t), 2)}} km/s  \n**Current aero decel:** {{toFixed(entryG(s2_t), 2)}} g\n\n{{entryOutcome()}}"
+            }
+          ]
+        },
+        {
+          "title": "Live G-Load History",
+          "description": "The second step keeps the same entry simulation but adds a live g-load history versus actual time, including the chosen corridor limit and the peak deceleration marker.",
+          "prompt": "Link the path to the graph. The current capsule position and the white graph marker refer to the same simulation time. Point out that shallow entries spread the deceleration over longer time, while steeper entries concentrate it into a higher peak.",
+          "add": [
+            {
+              "type": "line",
+              "id": "g_graph_x",
+              "points": [
+                [
+                  660,
+                  60,
+                  0
+                ],
+                [
+                  660,
+                  -60,
+                  0
+                ]
+              ],
+              "color": "#ffffff",
+              "width": 1.5,
+              "opacity": 0.9
+            },
+            {
+              "type": "line",
+              "id": "g_graph_y",
+              "points": [
+                [
+                  660,
+                  60,
+                  0
+                ],
+                [
+                  780,
+                  60,
+                  0
+                ]
+              ],
+              "color": "#ffffff",
+              "width": 1.5,
+              "opacity": 0.9
+            },
+            {
+              "type": "animated_line",
+              "id": "g_limit_line",
+              "points": [
+                [
+                  "660 + 10 * s2_g_limit",
+                  "60",
+                  "0"
+                ],
+                [
+                  "660 + 10 * s2_g_limit",
+                  "-60",
+                  "0"
+                ]
+              ],
+              "color": "#2ecc71",
+              "width": 1.5,
+              "opacity": 0.65
+            },
+            {
+              "type": "animated_point",
+              "id": "g_limit_marker",
+              "expr": [
+                "660 + 10 * s2_g_limit",
+                "60",
+                "0"
+              ],
+              "color": "#2ecc71",
+              "size": 4,
+              "labelExpr": "concat(toFixed(s2_g_limit, 1), ' g')"
+            },
+            {
+              "type": "parametric_curve",
+              "id": "g_curve",
+              "x": "660 + 10 * entryG(t)",
+              "y": "60 - 120 * t / 1500",
+              "z": "0",
+              "range": [
+                0,
+                1500
+              ],
+              "samples": 420,
+              "color": "#ff6b5f",
+              "width": 3,
+              "label": "Deceleration (g)"
+            },
+            {
+              "type": "animated_point",
+              "id": "g_marker",
+              "expr": [
+                "660 + 10 * entryG(s2_t)",
+                "60 - 120 * min(s2_t, entryEndTime()) / 1500",
+                "0"
+              ],
+              "color": "#ff6b5f",
+              "radius": 2,
+              "labelExpr": "concat(toFixed(entryG(s2_t), 1), ' g')",
+              "labelOffset": [
+                5,
+                5,
+                0
+              ]
+            },
+            {
+              "type": "animated_point",
+              "id": "g_peak",
+              "expr": [
+                "660 + 10 * entryPeakG()",
+                "60 - 120 * entryPeakGT() / 1500",
+                "0"
+              ],
+              "color": "#ffd166",
+              "size": 8,
+              "labelExpr": "concat('peak: ', toFixed(entryPeakG(), 1), ' g')"
+            },
+            {
+              "type": "text",
+              "id": "g_axis_title",
+              "text": "Aero decel vs time",
+              "position": [
+                720,
+                76,
+                0
+              ],
+              "color": "#ffffff"
+            },
+            {
+              "type": "text",
+              "id": "g_x0",
+              "text": "0 s",
+              "position": [
+                652,
+                60,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "g_x1",
+              "text": "750 s",
+              "position": [
+                652,
+                0,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "g_x2",
+              "text": "1500 s",
+              "position": [
+                652,
+                -60,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "g_y0",
+              "text": "0 g",
+              "position": [
+                660,
+                66,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "g_y1",
+              "text": "6 g",
+              "position": [
+                720,
+                66,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "text",
+              "id": "g_y2",
+              "text": "12 g",
+              "position": [
+                780,
+                66,
+                0
+              ],
+              "color": "#cccccc"
+            },
+            {
+              "type": "parametric_curve",
+              "id": "speed_curve",
+              "x": "660 + 10 * entrySpeed(t)",
+              "y": "60 - 120 * t / 1500",
+              "z": "0",
+              "range": [
+                0,
+                1500
+              ],
+              "samples": 420,
+              "color": "#4db6ff",
+              "width": 2,
+              "label": "Speed (km/s)"
+            },
+            {
+              "type": "animated_point",
+              "id": "speed_marker",
+              "expr": [
+                "660 + 10 * entrySpeed(s2_t)",
+                "60 - 120 * min(s2_t, entryEndTime()) / 1500",
+                "0"
+              ],
+              "color": "#4db6ff",
+              "radius": 2,
+              "labelExpr": "concat(toFixed(entrySpeed(s2_t), 1), ' km/s')",
+              "labelOffset": [
+                5,
+                5,
+                0
+              ]
+            },
+            {
+              "type": "animated_point",
+              "id": "outcome_label",
+              "expr": [
+                "720",
+                "-50",
+                "0"
+              ],
+              "color": "#ffd166",
+              "size": 0,
+              "labelExpr": "entryOutcome()"
+            }
+          ],
+          "remove": [],
+          "info": [
+            {
+              "id": "g_history_info",
+              "position": "top-left",
+              "content": "### Entry Summary\n**Vehicle:** {{entryVehicleName()}} ({{entryVehicleMission()}})\n**Peak aero decel:** {{toFixed(entryPeakG(), 2)}} g at {{toFixed(entryPeakGT(), 0)}} s  \n**Peak heating index:** {{toFixed(entryPeakHeat(), 2)}} at {{toFixed(entryPeakHeatT(), 0)}} s  \n**Minimum altitude reached:** {{toFixed(entryMinAlt(), 1)}} km  \n**Parachute deployment altitude:** {{toFixed(entryChuteAlt(), 2)}} km  \n**Simulation end:** {{toFixed(entryEndTime(), 0)}} s\n\nThe green line is the corridor threshold chosen for this lesson. Angles steeper than the upper corridor bound reach the chute window too harshly; angles shallower than the lower bound skip out before getting there."
+            }
+          ],
+          "sliders": [
+            {
+              "id": "s2_vehicle",
+              "label": "Vehicle (0:Dragon, 1:Gemini, 2:Apollo, 3:Orion)",
+              "min": 0,
+              "max": 3,
+              "default": 3,
+              "step": 1
+            }
+          ]
+        }
+      ],
+      "proof": [
+        {
+          "id": "entry_equations_of_motion",
+          "title": "Equations of Motion for Atmospheric Entry",
+          "technique": "derivation",
+          "goal": "$$\\ddot{\\mathbf{r}} = -\\frac{\\mu}{r^3}\\mathbf{r} - \\frac{\\rho V}{2\\beta}\\mathbf{V} + \\frac{L}{D}\\cos\\phi\\cdot\\frac{\\rho V^2}{2\\beta}\\hat{n}$$",
+          "prompt": "Walk through the physical forces acting on a capsule during entry. Build up from gravity alone, add drag, then lift. Emphasize that this ODE is what the simulation integrates numerically.",
+          "sceneStep": 0,
+          "steps": [
+            {
+              "type": "given",
+              "label": "Planet-Centered Coordinates",
+              "math": "\\mathbf{r} = (x, y), \\quad r = \\|\\mathbf{r}\\| = \\sqrt{x^2 + y^2}",
+              "justification": "Position vector in the 2D entry plane, measured from the planet center.",
+              "explanation": "We work in a plane containing the entry trajectory. The altitude above the surface is $h = r - R_p$ where $R_p$ is the planet radius.",
+              "prompt": "Relate the math to the 3D view: the Earth sphere has radius $R_p = 6371\\,\\text{km}$, and $r$ is measured from the center.",
+              "sceneStep": 0
+            },
+            {
+              "type": "given",
+              "label": "Gravitational Acceleration",
+              "math": "\\mathbf{a}_g = -\\frac{\\mu}{r^3}\\mathbf{r}",
+              "justification": "Newton's law of gravitation. $\\mu = GM$ is the gravitational parameter.",
+              "explanation": "Gravity pulls the capsule toward the planet center. The inverse-square law is written in vector form: the $r^3$ in the denominator (not $r^2$) comes from the unit vector $\\hat{r} = \\mathbf{r}/r$.",
+              "prompt": "Ask the student why the denominator is $r^3$ rather than $r^2$. Answer: we're multiplying the $1/r^2$ magnitude by the direction vector $\\mathbf{r}/r$.",
+              "sceneStep": 0
+            },
+            {
+              "type": "given",
+              "label": "Exponential Atmosphere Model",
+              "math": "\\rho(h) = \\rho_0\\, e^{-h/H}",
+              "justification": "Standard scale-height atmosphere: density drops by a factor of $e$ every $H \\approx 7.2\\,\\text{km}$.",
+              "explanation": "This is the simplest useful atmosphere model. $\\rho_0 = 1.225\\,\\text{kg/m}^3$ is sea-level density and $H$ is the scale height. At the entry interface ($h = 122\\,\\text{km}$), density is roughly $10^{-7}$ of sea level.",
+              "prompt": "Have the student estimate: at $h = 50\\,\\text{km}$, what fraction of sea-level density is the air? Answer: $e^{-50/7.2} \\approx 10^{-3}$.",
+              "sceneStep": 0
+            },
+            {
+              "type": "given",
+              "label": "Aerodynamic Drag Force",
+              "math": "\\mathbf{a}_D = -\\frac{1}{2m}\\rho V^2 C_d A\\,\\hat{V} = -\\frac{\\rho V}{2\\beta}\\mathbf{V}",
+              "justification": "Standard drag equation with ballistic coefficient $\\beta = m/(C_d A)$.",
+              "explanation": "Drag opposes the velocity direction ($-\\hat{V}$). We write $V^2 \\hat{V} = V\\mathbf{V}$ to get the compact form. The ballistic coefficient $\\beta$ bundles all vehicle properties into a single number.",
+              "prompt": "Ask: why does drag go as $V^2$? Because the capsule sweeps out volume $\\propto V$, and the momentum of each intercepted air molecule is also $\\propto V$.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Lift Force (In-Plane Component)",
+              "math": "\\mathbf{a}_L = \\frac{L}{D}\\cos\\phi \\cdot a_D \\cdot \\hat{n}",
+              "justification": "Lift is perpendicular to the velocity, scaled by the lift-to-drag ratio $L/D$ and bank angle $\\phi$.",
+              "explanation": "The unit vector $\\hat{n}$ is perpendicular to $\\mathbf{V}$ and points away from the planet (the \"upward\" normal). The bank angle $\\phi$ controls how much of the total lift acts in the entry plane: $\\cos 0\u00b0 = 1$ (full lift up), $\\cos 90\u00b0 = 0$ (all lift goes sideways, out of plane).",
+              "prompt": "Connect to the bank-angle slider: rolling the capsule redirects lift. Full bank ($90\u00b0$) gives zero in-plane lift, behaving like a ballistic entry.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Upward Normal Vector",
+              "math": "\\hat{n} = \\frac{1}{V}\\begin{pmatrix} -v_y \\\\ v_x \\end{pmatrix}, \\quad \\text{chosen so } \\hat{n} \\cdot \\hat{r} > 0",
+              "justification": "Rotate the velocity vector $90\u00b0$ and pick the direction pointing away from the planet.",
+              "explanation": "There are two perpendicular directions to any velocity vector. We choose the one that has a positive component along the radial (outward) direction, so that positive lift pushes the capsule away from the planet.",
+              "prompt": "Explain the sign choice: if we picked the wrong perpendicular, 'lift' would push the capsule toward the ground.",
+              "sceneStep": 0
+            },
+            {
+              "type": "conclusion",
+              "label": "Full Equation of Motion",
+              "math": "\\htmlClass{hl-eom}{\\ddot{\\mathbf{r}} = -\\frac{\\mu}{r^3}\\mathbf{r} - \\frac{\\rho V}{2\\beta}\\mathbf{V} + \\frac{L}{D}\\cos\\phi\\cdot\\frac{\\rho V^2}{2\\beta}\\hat{n}}",
+              "justification": "Sum all forces: gravity + drag + lift.",
+              "explanation": "This is the vector ODE that the simulation integrates numerically using Euler steps. It has no closed-form solution in general \u2014 the exponential atmosphere couples altitude and velocity in a nonlinear way. But under simplifying assumptions (straight-line path, drag-dominant), Allen and Eggers found elegant approximate solutions.",
+              "prompt": "Emphasize: this one equation generates every trajectory you see in the visualization. Changing the vehicle changes $\\beta$ and $L/D$. Changing $\\gamma$ changes the initial velocity direction. Changing bank angle changes $\\cos\\phi$.",
+              "sceneStep": 0,
+              "highlights": {
+                "eom": {
+                  "color": "cyan",
+                  "label": "Complete entry dynamics equation"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "allen_eggers_velocity",
+          "title": "Allen-Eggers Velocity Solution",
+          "technique": "derivation",
+          "goal": "$$V(h) = V_E \\exp\\!\\left(-\\frac{\\rho_0 H}{2\\beta\\sin\\gamma}\\,e^{-h/H}\\right)$$",
+          "prompt": "Derive the closed-form velocity solution by making the Allen-Eggers straight-line approximation. This is the foundation for the peak-g and corridor-bounds results.",
+          "sceneStep": 0,
+          "steps": [
+            {
+              "type": "given",
+              "label": "Scalar Equation of Motion (Drag Only)",
+              "math": "m\\frac{dV}{dt} = -\\frac{1}{2}\\rho V^2 C_d A",
+              "justification": "During peak deceleration, drag overwhelms gravity by an order of magnitude.",
+              "explanation": "We drop gravity and lift to isolate the dominant drag force. This is the Allen-Eggers approximation: valid when the deceleration is many G's.",
+              "prompt": "Ask the student: at 10 G's of deceleration, gravity (1 G) is only a 10% correction. Why is ignoring it still useful?",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Straight-Line Approximation",
+              "math": "\\frac{dh}{dt} = -V\\sin\\gamma, \\quad \\gamma = \\text{const}",
+              "justification": "Assume the flight-path angle $\\gamma$ stays approximately constant during the intense deceleration phase.",
+              "explanation": "The rate of altitude loss is the vertical component of velocity. For a steep, fast entry, the path curves very little before most of the energy is dissipated. This lets us treat $\\gamma$ as a constant.",
+              "prompt": "This is the key simplification. In reality $\\gamma$ changes, but for ballistic or near-ballistic entries the path is nearly straight through the region of peak heating and deceleration.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Change of Independent Variable",
+              "math": "\\frac{dV}{dt} = \\frac{dV}{dh}\\cdot\\frac{dh}{dt} = -V\\sin\\gamma\\,\\frac{dV}{dh}",
+              "justification": "Chain rule: replace time with altitude as the independent variable.",
+              "explanation": "The atmosphere varies with altitude, not time, so altitude is the natural variable. The chain rule lets us swap.",
+              "prompt": "Explain simply: 'We want to know how speed changes with height, not with time, because the air density is a function of height.'",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Separable ODE",
+              "math": "\\frac{dV}{V} = \\frac{\\rho_0\\, e^{-h/H}}{2\\beta\\sin\\gamma}\\,dh",
+              "justification": "Substitute $\\rho = \\rho_0 e^{-h/H}$, cancel one $V$, and separate variables.",
+              "explanation": "Substituting the chain rule result into the equation of motion and dividing both sides by $V$: $-V\\sin\\gamma\\frac{dV}{dh} = -\\frac{\\rho V^2}{2\\beta}$, which simplifies to $\\frac{dV}{V} = \\frac{\\rho}{2\\beta\\sin\\gamma}dh$.",
+              "prompt": "Walk through the algebra step by step. One $V$ cancels, and $\\sin\\gamma$ moves to the denominator.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Integrate Both Sides",
+              "math": "\\int_{V_E}^{V}\\frac{dV'}{V'} = \\int_{h_E}^{h}\\frac{\\rho_0\\,e^{-h'/H}}{2\\beta\\sin\\gamma}\\,dh'",
+              "justification": "Definite integral from the entry interface ($h_E$, $V_E$) down to altitude $h$.",
+              "explanation": "The left side integrates to $\\ln(V/V_E)$. The right side has the integral of an exponential.",
+              "prompt": "Remind the student: $\\int e^{-h/H}dh = -H e^{-h/H}$.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Evaluate the Integrals",
+              "math": "\\ln\\frac{V}{V_E} = \\frac{\\rho_0 H}{2\\beta\\sin\\gamma}\\left(\\htmlClass{hl-exit}{e^{-h_E/H}} - \\htmlClass{hl-curr}{e^{-h/H}}\\right)",
+              "justification": "The integral of $e^{-h/H}$ evaluates to $-He^{-h/H}$. Flip sign from integration limits.",
+              "explanation": "We get two terms: one evaluated at the entry altitude $h_E$ and one at the current altitude $h$.",
+              "prompt": "Point out the signs carefully: we are descending, so $h < h_E$, meaning $e^{-h/H} > e^{-h_E/H}$.",
+              "sceneStep": 0,
+              "highlights": {
+                "exit": {
+                  "color": "green",
+                  "label": "\u2248 0 because entry altitude is very high"
+                },
+                "curr": {
+                  "color": "yellow",
+                  "label": "grows as the capsule descends"
+                }
+              }
+            },
+            {
+              "type": "step",
+              "label": "Drop the Entry-Altitude Term",
+              "math": "e^{-h_E/H} = e^{-122/7.2} \\approx 4 \\times 10^{-8} \\approx 0",
+              "justification": "At $h_E = 122\\,\\text{km}$ with $H = 7.2\\,\\text{km}$, the density is negligible.",
+              "explanation": "The atmosphere at the entry interface is essentially vacuum. The exponential term there is so tiny we can set it to zero without meaningful error.",
+              "prompt": "Have the student compute: $122/7.2 \\approx 17$ scale heights, so $e^{-17} \\approx 4 \\times 10^{-8}$.",
+              "sceneStep": 0
+            },
+            {
+              "type": "conclusion",
+              "label": "Velocity as a Function of Altitude",
+              "math": "\\htmlClass{hl-result}{V(h) = V_E \\exp\\!\\left(-\\frac{\\rho_0 H}{2\\beta\\sin\\gamma}\\,e^{-h/H}\\right)}",
+              "justification": "Exponentiate both sides: $V/V_E = \\exp(\\text{negative quantity})$, so $V < V_E$ always.",
+              "explanation": "This is the Allen-Eggers velocity solution. As the capsule descends, $e^{-h/H}$ grows, making the exponent more negative, and $V$ drops. The rate of deceleration depends on $\\beta$ (how heavy and blunt the vehicle is) and $\\sin\\gamma$ (how steeply it enters). Remarkably, this closed-form solution captures the essential physics of atmospheric braking.",
+              "prompt": "Key insight: a heavier vehicle ($\\beta$ large) loses speed more slowly \u2014 it 'punches through' the atmosphere. A steep entry ($\\gamma$ large) means less path length through thin upper air, so deceleration is concentrated lower down.",
+              "sceneStep": 0,
+              "highlights": {
+                "result": {
+                  "color": "green",
+                  "label": "Allen-Eggers velocity solution"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "allen_eggers_deceleration",
+          "title": "Allen-Eggers Peak Deceleration",
+          "technique": "derivation",
+          "goal": "$$a_{\\text{max}} = \\frac{V_E^2 \\sin \\gamma}{2e H}$$",
+          "prompt": "Walk the student through the math of peak deceleration step-by-step. Keep it accessible to a high schooler: we trade time for altitude, find how velocity drops, and see where the braking force hits its absolute maximum.",
+          "steps": [
+            {
+              "type": "given",
+              "label": "Newton's Second Law",
+              "math": "F_{\\text{net}} = m a",
+              "justification": "The fundamental law of motion relates net force to mass and acceleration.",
+              "explanation": "Acceleration $a$ is the rate of change of velocity, so we can write this as $F_{\\text{net}} = m \\frac{dV}{dt}$.",
+              "prompt": "Remind the student of Newton's Second Law and ask what acceleration means in terms of velocity.",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "given",
+              "label": "Aerodynamic Drag",
+              "math": "F_D = \\frac{1}{2}\\rho V^2 C_d A",
+              "justification": "This is the standard drag equation.",
+              "explanation": "Drag depends on the air density $\\rho$, the square of the velocity $V^2$, the capsule's drag coefficient $C_d$, and its cross-sectional area $A$.",
+              "prompt": "Have the user identify the components of the drag equation.",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "step",
+              "label": "Net Force in Flight",
+              "math": "F_{\\text{net}} \\approx -F_D",
+              "justification": "During the most intense part of reentry, drag is so massive that gravity is negligible by comparison.",
+              "explanation": "We ignore gravity because the deceleration from drag reaches many G's. The negative sign shows that drag opposes the direction of motion.",
+              "prompt": "Ask the student why we can ignore gravity when the spacecraft is experiencing 10 G's of deceleration.",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "step",
+              "label": "Combine Equations",
+              "math": "m \\frac{dV}{dt} = -\\frac{1}{2}\\rho V^2 C_d A",
+              "justification": "Substitute the definition of acceleration and the drag equation into Newton's Second Law.",
+              "explanation": "This gives us our starting differential equation for the spacecraft's motion. It tells us exactly how fast the velocity is dropping at any given moment.",
+              "prompt": "Ask the student to put the pieces together to form the full equation of motion.",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "step",
+              "label": "Change of Variables",
+              "math": "\\frac{dV}{dt} = \\frac{dV}{dh} \\frac{dh}{dt} = -V \\sin \\gamma \\frac{dV}{dh}",
+              "justification": "We replace time ($t$) with altitude ($h$) since the atmosphere changes with altitude.",
+              "explanation": "Instead of tracking time, we track how fast we are falling. The vertical speed is just the total speed $V$ times the sine of the entry angle $\\gamma$.",
+              "prompt": "Explain the chain rule simply: 'We want to know how speed changes with height, not time.'",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "step",
+              "label": "Velocity vs Altitude",
+              "math": "V(h) = V_E \\exp\\left(-\\frac{\\rho_0 H}{2\\beta \\sin\\gamma}\\,e^{-h/H}\\right)",
+              "justification": "Substitute the exponential density $\\rho = \\rho_0 e^{-h/H}$ and integrate.",
+              "explanation": "Skipping the messy calculus, if we add up all the drag as we fall, we get a formula showing how our speed $V$ drops from our initial entry speed $V_E$.",
+              "prompt": "Tell the student not to worry about the calculus integration. The key takeaway is: speed drops exponentially as the air gets thicker.",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "step",
+              "label": "Finding the Maximum",
+              "math": "\\frac{d}{dh} \\left( \\frac{dV}{dt} \\right) = 0",
+              "justification": "To find the peak (maximum) deceleration, we find where the derivative of deceleration is zero.",
+              "explanation": "In calculus, you find the highest point of a curve by looking for where it goes flat (slope is zero). The maximum drag happens exactly when the spacecraft has lost a specific fraction of its speed.",
+              "prompt": "Relate finding a maximum to the peak of a roller coaster\u2014the very top is flat for a split second.",
+              "sceneStep": 1,
+              "highlights": {}
+            },
+            {
+              "type": "conclusion",
+              "label": "Maximum Deceleration",
+              "math": "a_{\\text{max}} = \\frac{\\htmlClass{hl-ve}{V_E^2} \\sin \\htmlClass{hl-gamma}{\\gamma}}{2e H}",
+              "justification": "Plugging the critical altitude back into the drag equation gives the absolute maximum G-force.",
+              "explanation": "This is the amazing result! The mass $m$, size $A$, and shape $C_d$ of the spacecraft completely cancel out. The crushing G-force depends ONLY on how fast you come in ($V_E$) and how steep your angle is ($\\gamma$).",
+              "prompt": "Make sure the student realizes the profound implication: you can't build a 'heavier' ship to lower the peak G-forces. You MUST come in slower or shallower.",
+              "sceneStep": 1,
+              "highlights": {
+                "ve": {
+                  "color": "cyan",
+                  "label": "Entry Velocity"
+                },
+                "gamma": {
+                  "color": "yellow",
+                  "label": "Flight Path Angle"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "entry_g_load_profile",
+          "title": "G-Load Profile and Peak Altitude",
+          "technique": "derivation",
+          "goal": "$$a_D(h) = \\frac{\\rho_0 V_E^2}{2\\beta}\\,u\\,\\exp\\!\\left(-\\frac{\\rho_0 H}{\\beta\\sin\\gamma}\\,u\\right), \\quad u = e^{-h/H}$$",
+          "prompt": "Show how the full g-load profile is a function of altitude alone, and find the exact altitude where peak deceleration occurs. Connect to the g-load chart in the visualization.",
+          "sceneStep": 1,
+          "steps": [
+            {
+              "type": "given",
+              "label": "Drag Deceleration",
+              "math": "a_D = \\frac{\\rho V^2}{2\\beta}",
+              "justification": "Drag acceleration magnitude from the equation of motion.",
+              "explanation": "The g-load felt by the crew is proportional to this deceleration: $n = a_D / g_0$. We want to find how $a_D$ varies with altitude.",
+              "prompt": "Remind the student that the g-load chart in the visualization is showing exactly this quantity divided by $g_0 = 9.81\\,\\text{m/s}^2$.",
+              "sceneStep": 1
+            },
+            {
+              "type": "step",
+              "label": "Substitute the Velocity Solution",
+              "math": "a_D(h) = \\frac{\\rho_0\\,e^{-h/H}\\cdot V_E^2}{2\\beta}\\exp\\!\\left(-\\frac{\\rho_0 H}{\\beta\\sin\\gamma}\\,e^{-h/H}\\right)",
+              "justification": "Plug $\\rho = \\rho_0 e^{-h/H}$ and $V(h)^2 = V_E^2 \\exp\\left(-\\frac{\\rho_0 H}{\\beta\\sin\\gamma}e^{-h/H}\\right)$ into the drag formula.",
+              "explanation": "Note: $V^2$ brings a factor of $\\exp(-2\\cdot\\ldots)$, but one factor of $\\rho_0 H/(2\\beta\\sin\\gamma)$ was already in the $V$ exponent. Combined with the $\\rho$ in front, the $e^{-h/H}$ terms group into a product of $u$ and $e^{-ku}$.",
+              "prompt": "The algebra is a bit involved. Focus on the structure: it's density \u00d7 speed\u00b2, and both change with altitude in opposing ways.",
+              "sceneStep": 1
+            },
+            {
+              "type": "step",
+              "label": "Substitution $u = e^{-h/H}$",
+              "math": "a_D = \\frac{\\rho_0 V_E^2}{2\\beta}\\;\\htmlClass{hl-u}{u}\\;\\exp\\!\\left(-\\htmlClass{hl-k}{k}\\,u\\right), \\quad k = \\frac{\\rho_0 H}{\\beta\\sin\\gamma}",
+              "justification": "Let $u = e^{-h/H}$ so that $u$ increases as altitude decreases.",
+              "explanation": "This is the key form: $a_D \\propto u\\,e^{-ku}$. As we descend ($u$ increases), density rises linearly in $u$, but velocity drops exponentially. The product has a single maximum.",
+              "prompt": "Ask: what happens at very high altitude ($u \\to 0$)? Almost no air, so $a_D \\to 0$. At very low altitude ($u$ large)? The vehicle has already slowed down, so $a_D \\to 0$ again. The peak must be somewhere in between.",
+              "sceneStep": 1,
+              "highlights": {
+                "u": {
+                  "color": "yellow",
+                  "label": "density factor (grows during descent)"
+                },
+                "k": {
+                  "color": "cyan",
+                  "label": "dimensionless drag parameter"
+                }
+              }
+            },
+            {
+              "type": "step",
+              "label": "Differentiate to Find the Peak",
+              "math": "\\frac{da_D}{du} = \\frac{\\rho_0 V_E^2}{2\\beta}\\,e^{-ku}(1 - ku) = 0",
+              "justification": "Product rule: $\\frac{d}{du}[u\\,e^{-ku}] = e^{-ku} - ku\\,e^{-ku} = e^{-ku}(1-ku)$.",
+              "explanation": "Setting the derivative to zero, and noting that $e^{-ku} > 0$ always, the only solution is $1 - ku^* = 0$.",
+              "prompt": "This is a standard calculus optimization. The exponential is never zero, so the bracket must vanish.",
+              "sceneStep": 1
+            },
+            {
+              "type": "step",
+              "label": "Critical Density Parameter",
+              "math": "u^* = \\frac{1}{k} = \\frac{\\beta\\sin\\gamma}{\\rho_0 H}",
+              "justification": "Solve $ku^* = 1$ for $u^*$.",
+              "explanation": "At peak deceleration, the density parameter $u^*$ depends on the vehicle ($\\beta$) and entry angle ($\\gamma$). A heavier or steeper-entering vehicle reaches peak-g at a lower altitude (larger $u^*$, meaning denser air).",
+              "prompt": "Connect to the visualization: heavier capsules (higher $\\beta$) punch deeper into the atmosphere before reaching peak g.",
+              "sceneStep": 1
+            },
+            {
+              "type": "step",
+              "label": "Peak Deceleration Altitude",
+              "math": "\\htmlClass{hl-hstar}{h^* = H\\ln\\frac{\\rho_0 H}{\\beta\\sin\\gamma}}",
+              "justification": "From $u^* = e^{-h^*/H}$, solve for $h^*$: $h^* = -H\\ln u^* = H\\ln(1/u^*) = H\\ln(k)$.",
+              "explanation": "This gives the exact altitude of maximum g-load. For Apollo at $\\gamma = 6.5\u00b0$: $\\beta \\approx 458$, so $h^* \\approx 7.2 \\times \\ln(1.225 \\times 7200 / (458 \\times 0.113)) \\approx 7.2 \\times \\ln(170) \\approx 37\\,\\text{km}$.",
+              "prompt": "Have the student estimate $h^*$ for the current vehicle and compare with where the peak appears on the g-load chart.",
+              "sceneStep": 1,
+              "highlights": {
+                "hstar": {
+                  "color": "magenta",
+                  "label": "altitude of peak g-load"
+                }
+              }
+            },
+            {
+              "type": "conclusion",
+              "label": "Complete G-Load Profile",
+              "math": "\\htmlClass{hl-profile}{n(h) = \\frac{V_E^2\\sin\\gamma}{2eHg_0}\\;\\left(\\frac{u}{u^*}\\right)\\exp\\!\\left(1 - \\frac{u}{u^*}\\right)}",
+              "justification": "Divide $a_D(h)$ by the peak value $a_{\\max} = V_E^2\\sin\\gamma/(2eH)$ and multiply by that peak to get the normalized profile scaled to physical units.",
+              "explanation": "The g-load profile is a universal bell-shaped curve when plotted against $u/u^*$ (normalized density). The shape is always the same \u2014 only the peak value and peak altitude change with vehicle and entry angle. This is the curve you see in the g-load chart.",
+              "prompt": "Key insight: the SHAPE of the g-load curve is universal for all ballistic entries. Only the peak value and the altitude shift change.",
+              "sceneStep": 1,
+              "highlights": {
+                "profile": {
+                  "color": "green",
+                  "label": "universal g-load profile"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "entry_corridor_bounds",
+          "title": "Entry Corridor Bounds",
+          "technique": "derivation",
+          "goal": "$$\\gamma_{\\text{steep}} = \\arcsin\\!\\left(\\frac{2eHg_0 n_{\\max}}{V_E^2}\\right), \\quad \\gamma_{\\text{shallow}} \\approx \\frac{\\rho_0 H\\,e^{-h_E/H}}{2\\beta\\,\\delta_{\\min}}$$",
+          "prompt": "Derive both corridor limits analytically. The steep limit is exact from Allen-Eggers; the shallow limit uses the velocity solution to find the minimum entry angle that produces enough deceleration for capture.",
+          "sceneStep": 0,
+          "steps": [
+            {
+              "type": "given",
+              "label": "Corridor Definition",
+              "math": "\\gamma_{\\text{steep}} \\leq \\gamma \\leq \\gamma_{\\text{shallow}}",
+              "justification": "The entry corridor is the range of flight-path angles that produce a survivable entry.",
+              "explanation": "Too steep ($\\gamma > \\gamma_{\\text{steep}}$) and the g-loads exceed crew tolerance. Too shallow ($\\gamma < \\gamma_{\\text{shallow}}$) and the vehicle skips off the atmosphere back into space. The corridor is the safe window between these extremes.",
+              "prompt": "Relate to the green wedge in the visualization: the two edges correspond to these two limits. Ask the student what happens at each edge.",
+              "sceneStep": 0
+            },
+            {
+              "type": "given",
+              "label": "Allen-Eggers Peak Deceleration",
+              "math": "a_{\\max} = \\frac{V_E^2\\sin\\gamma}{2eH}",
+              "justification": "Previously derived: the maximum deceleration depends only on entry speed and angle.",
+              "explanation": "This result (from the Allen-Eggers proof) is the key to the steep boundary. The vehicle parameters $m$, $C_d$, $A$ have cancelled out completely.",
+              "prompt": "Reference the earlier proof. The student should already know this result.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Steep Boundary (G-Limit)",
+              "math": "\\frac{V_E^2\\sin\\gamma_{\\text{steep}}}{2eH} = \\htmlClass{hl-glimit}{n_{\\max}\\cdot g_0}",
+              "justification": "Set the peak deceleration equal to the maximum tolerable g-load.",
+              "explanation": "The crew can survive up to $n_{\\max}$ G's (typically 8\u201312 G for short-duration entry). Setting the Allen-Eggers peak equal to this limit defines the steepest allowable angle.",
+              "prompt": "Have the student adjust the g-limit slider and watch how the steep boundary moves. Lower g-tolerance \u2192 shallower steep limit \u2192 narrower corridor.",
+              "sceneStep": 0,
+              "highlights": {
+                "glimit": {
+                  "color": "red",
+                  "label": "crew survivability limit"
+                }
+              }
+            },
+            {
+              "type": "conclusion",
+              "label": "Steep Bound Solution",
+              "math": "\\htmlClass{hl-steep}{\\gamma_{\\text{steep}} = \\arcsin\\!\\left(\\frac{2eHg_0\\,n_{\\max}}{V_E^2}\\right)}",
+              "justification": "Solve for $\\gamma$: $\\sin\\gamma = 2eHg_0 n_{\\max}/V_E^2$.",
+              "explanation": "For Apollo ($V_E = 11\\,\\text{km/s}$, $n_{\\max} = 10\\,\\text{G}$): $\\sin\\gamma = 2 \\times 2.718 \\times 7200 \\times 9.81 \\times 10 / (11000)^2 \\approx 0.0318$, giving $\\gamma_{\\text{steep}} \\approx 1.8\u00b0$. Faster entry speeds dramatically narrow the corridor \u2014 the denominator grows as $V_E^2$.",
+              "prompt": "Key insight: the steep boundary depends only on the entry speed and the g-tolerance, NOT on the vehicle's mass or shape. A heavier capsule hits the same peak g at the same angle \u2014 it just happens deeper in the atmosphere.",
+              "sceneStep": 0,
+              "highlights": {
+                "steep": {
+                  "color": "red",
+                  "label": "maximum entry angle for crew survival"
+                }
+              }
+            },
+            {
+              "type": "step",
+              "label": "Skip-Out Physics",
+              "math": "V_{\\text{exit}} = V_E\\exp\\!\\left(-\\frac{\\rho_0 H}{2\\beta\\sin\\gamma}\\,e^{-h_E/H}\\right)",
+              "justification": "Apply the Allen-Eggers velocity solution at the exit altitude $h \\approx h_E$.",
+              "explanation": "For a symmetric atmospheric pass (valid at shallow angles), the vehicle exits near the same altitude it entered. If the exit speed is still close to orbital velocity, the resulting orbit will carry the vehicle back above the atmosphere \u2014 a skip-out.",
+              "prompt": "Ask: why is the pass approximately symmetric for shallow angles? Because $\\gamma$ is small, so the path barely curves \u2014 the vehicle enters and exits at nearly the same altitude.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Fractional Velocity Loss",
+              "math": "\\htmlClass{hl-delta}{\\delta} \\equiv 1 - \\frac{V_{\\text{exit}}}{V_E} = 1 - \\exp\\!\\left(-\\frac{\\rho_0 H\\,e^{-h_E/H}}{2\\beta\\sin\\gamma}\\right)",
+              "justification": "Define $\\delta$ as the fraction of entry speed lost during the atmospheric pass.",
+              "explanation": "For very shallow angles ($\\gamma \\to 0$), $\\sin\\gamma \\to 0$, the exponent's denominator grows, making the exponential approach 1, so $\\delta \\to 0$ \u2014 negligible deceleration, guaranteed skip-out. For steeper angles, more speed is lost.",
+              "prompt": "This is the critical quantity: $\\delta$ measures how effective the atmosphere is at capturing the vehicle. Too little $\\delta$ \u2192 skip-out.",
+              "sceneStep": 0,
+              "highlights": {
+                "delta": {
+                  "color": "orange",
+                  "label": "fractional speed loss during atmospheric pass"
+                }
+              }
+            },
+            {
+              "type": "step",
+              "label": "Minimum Deceleration for Capture",
+              "math": "\\delta \\geq \\htmlClass{hl-dmin}{\\delta_{\\min}} = 1 - \\frac{V_{\\text{circ}}}{V_E}\\sqrt{1 + \\frac{2h_E}{R_p}}",
+              "justification": "The post-pass orbit must have perigee below the entry interface. For an orbit at radius $r_E = R_p + h_E$ with speed $V_{\\text{exit}}$, the apoapsis condition gives this threshold.",
+              "explanation": "If the vehicle exits with speed above this threshold, its orbit takes it back above the atmosphere and it escapes. For lunar return ($V_E \\approx 11\\,\\text{km/s}$, $V_{\\text{circ}} \\approx 7.8\\,\\text{km/s}$), $\\delta_{\\min}$ is only about $2\\%$ \u2014 the corridor is more forgiving than for LEO return. For LEO return ($V_E \\approx V_{\\text{circ}}$), the vehicle barely needs any deceleration.",
+              "prompt": "For super-orbital entries (like lunar or Mars return), the vehicle comes in much faster than orbital speed, so even a small fractional loss matters enormously.",
+              "sceneStep": 0,
+              "highlights": {
+                "dmin": {
+                  "color": "magenta",
+                  "label": "minimum fractional speed loss for atmospheric capture"
+                }
+              }
+            },
+            {
+              "type": "step",
+              "label": "Solve for the Shallow Bound",
+              "math": "\\sin\\gamma_{\\text{shallow}} = \\frac{\\rho_0 H\\,e^{-h_E/H}}{2\\beta\\,\\ln\\!\\left(\\frac{1}{1 - \\delta_{\\min}}\\right)}",
+              "justification": "Set $\\delta = \\delta_{\\min}$ in the velocity-loss equation and solve for $\\sin\\gamma$.",
+              "explanation": "From $1 - \\delta_{\\min} = \\exp(-\\xi)$ where $\\xi = \\rho_0 H e^{-h_E/H}/(2\\beta\\sin\\gamma)$, we get $\\xi = \\ln(1/(1-\\delta_{\\min}))$, then solve for $\\sin\\gamma$.",
+              "prompt": "Walk through the algebra: take the log of both sides, then isolate $\\sin\\gamma$.",
+              "sceneStep": 0
+            },
+            {
+              "type": "step",
+              "label": "Small-$\\delta$ Approximation",
+              "math": "\\htmlClass{hl-shallow}{\\gamma_{\\text{shallow}} \\approx \\arcsin\\!\\left(\\frac{\\rho_0 H\\,e^{-h_E/H}}{2\\beta\\,\\delta_{\\min}}\\right)}",
+              "justification": "For small $\\delta_{\\min}$, $\\ln(1/(1-\\delta)) \\approx \\delta$.",
+              "explanation": "Unlike the steep bound, the shallow bound depends on the vehicle through $\\beta$: a heavier, more streamlined vehicle ($\\beta$ large) needs a steeper angle to get enough drag for capture. The atmosphere's density at the entry interface ($\\rho_0 e^{-h_E/H}$) sets the scale.",
+              "prompt": "Compare with the steep bound: the steep bound is vehicle-independent (depends only on $V_E$ and $n_{\\max}$), but the shallow bound depends on $\\beta$. This means different vehicles have different corridor widths even at the same entry speed.",
+              "sceneStep": 0,
+              "highlights": {
+                "shallow": {
+                  "color": "orange",
+                  "label": "minimum entry angle to avoid skip-out"
+                }
+              }
+            },
+            {
+              "type": "step",
+              "label": "Effect of Lift on the Corridor",
+              "math": "\\beta_{\\text{eff}} = \\frac{\\beta}{1 + (L/D)\\cos\\phi}",
+              "justification": "Lift acts perpendicular to the velocity but its upward component reduces the net 'sinking' rate, effectively increasing the path length through the atmosphere.",
+              "explanation": "A lifting vehicle with $L/D > 0$ can fly shallower without skipping out \u2014 the lift force keeps it in the atmosphere longer, giving drag more time to work. This widens the corridor. Setting $\\phi = 0\u00b0$ (full lift up) gives maximum corridor width; $\\phi = 90\u00b0$ (full bank) gives the ballistic corridor.",
+              "prompt": "Have the student adjust the bank angle slider: at $0\u00b0$ bank, the corridor is widest. At $90\u00b0$ bank, it collapses to the ballistic corridor. This is why Apollo rolled during entry \u2014 to modulate the corridor width.",
+              "sceneStep": 0
+            },
+            {
+              "type": "conclusion",
+              "label": "Corridor Width",
+              "math": "\\htmlClass{hl-width}{\\Delta\\gamma = \\gamma_{\\text{steep}} - \\gamma_{\\text{shallow}}}",
+              "justification": "The corridor width is the difference between the two bounds.",
+              "explanation": "For Apollo lunar return: $\\gamma_{\\text{steep}} \\approx 7.5\u00b0$ and $\\gamma_{\\text{shallow}} \\approx 5.3\u00b0$, giving a corridor of only $\\sim 2\u00b0$. This razor-thin window is why guidance, navigation, and control (GNC) is so critical for crewed entry. Faster entries and lower g-tolerances narrow the corridor further. Lifting bodies widen it \u2014 this is a key design driver for crewed capsules.",
+              "prompt": "Final takeaway: the entry corridor is a consequence of two competing constraints \u2014 not burning up vs. not bouncing off. The numbers show why atmospheric entry is one of the hardest problems in spaceflight.",
+              "sceneStep": 0,
+              "highlights": {
+                "width": {
+                  "color": "green",
+                  "label": "the survivable entry window"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Aerodynamic Heating and the Bow Shock",
+      "description": "Understand why blunt bodies are used for reentry to create a detached bow shock.",
+      "markdown": "# Aerodynamic Heating and the Bow Shock\n\nA common misconception is that spacecraft heat up during re-entry because of friction with the air. In reality, the vast majority of the heating is caused by **adiabatic compression**.\n\n## The Blunt Body Solution\nIn 1958, H. Julian Allen and Alfred J. Eggers demonstrated that a blunt shape is far superior to a sharp, aerodynamic shape for re-entry. A blunt capsule plows through the atmosphere, creating a **detached bow shock**. The air squeezed between this shockwave and the capsule is violently compressed, heating up immensely. This super-heated cushion of air keeps the worst of the heat off the spacecraft's skin.\n\nIf a sharp-nosed vehicle were used, the shockwave would attach directly to the tip, concentrating all the thermal energy there and quickly melting the structure.\n\n## Stagnation Point Heating Rate\nThe heating is most intense at the **stagnation point**\u2014the point on the heat shield where the airflow is brought to a complete stop. The convective heating rate $\\dot{q}_s$ at this point is given by:\n\n$$ \\dot{q}_s \\approx \\frac{K}{\\sqrt{R_N}} \\sqrt{\\rho} \\, V^3 $$\n\nWhere:\n- $\\rho$ is the atmospheric density\n- $V$ is the spacecraft's velocity\n- $R_N$ is the nose radius (larger for blunter bodies)\n\nBecause heating scales with the *cube* of velocity ($V^3$), a lunar-return speed of $11\\,\\text{km/s}$ produces about $2.81\\times$ the convective heating of a $7.8\\,\\text{km/s}$ LEO return from speed alone.",
+      "prompt": "You are a tutor explaining the physics of atmospheric entry. Emphasize that heating is due to adiabatic compression, not friction. Guide the student to experiment with the bluntness slider to see how the bow shock detaches. Ask follow up questions like: 'If velocity doubles, how much does the heating rate increase according to the V^3 law?'",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          10
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Side Profile",
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "2D side cross-section view of the capsule and airflow"
+        }
+      ],
+      "elements": [
+        {
+          "id": "_mathbox_init",
+          "type": "grid",
+          "plane": "xy",
+          "opacity": 0,
+          "divisions": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "The Friction Misconception",
+          "description": "A common misconception is that reentry heating is mostly friction. A sharp nose actually creates an attached shock that concentrates the hottest compressed gas right at the tip.",
+          "prompt": "Correct the friction misconception directly. Explain why a sharp nose is bad for re-entry: it creates an attached shockwave that concentrates heating at the tip.",
+          "add": [
+            {
+              "type": "polygon",
+              "id": "capsule_sharp",
+              "vertices": [
+                [
+                  -2,
+                  -1.5,
+                  0
+                ],
+                [
+                  2,
+                  0,
+                  0
+                ],
+                [
+                  -2,
+                  1.5,
+                  0
+                ]
+              ],
+              "color": "#95a5a6",
+              "opacity": 1,
+              "legendGroup": "Sharp Nose"
+            },
+            {
+              "type": "vector_field",
+              "id": "flow_sharp",
+              "fx": "-4",
+              "fy": "x < 2 ? (y > 0 ? 2 : -2) : 0",
+              "fz": "0",
+              "density": 4,
+              "scale": 0.2,
+              "color": "#3498db"
+            },
+            {
+              "type": "text",
+              "id": "label_friction",
+              "text": "Attached shock, concentrated heating",
+              "position": [
+                2,
+                1.5,
+                0
+              ],
+              "color": "#95a5a6",
+              "label": "Sharp Nose"
+            }
+          ],
+          "remove": []
+        },
+        {
+          "title": "The Blunt Body Solution",
+          "description": "Blunt bodies solve this. They plow through the air, creating a detached bow shock. The air is violently compressed in front of the shockwave, and this adiabatic compression generates the heat.",
+          "prompt": "Explain the blunt body solution. As the bluntness slider increases, the shockwave detaches and stands off from the capsule. This creates a cushion of super-heated adiabatically compressed air.",
+          "add": [
+            {
+              "type": "animated_polygon",
+              "id": "capsule_animated",
+              "vertices": [
+                [
+                  "-2",
+                  "-1.5",
+                  "0"
+                ],
+                [
+                  "2 - 1.5*s3_bluntness",
+                  "-1.5*s3_bluntness",
+                  "0"
+                ],
+                [
+                  "2 - 0.5*s3_bluntness",
+                  "0",
+                  "0"
+                ],
+                [
+                  "2 - 1.5*s3_bluntness",
+                  "1.5*s3_bluntness",
+                  "0"
+                ],
+                [
+                  "-2",
+                  "1.5",
+                  "0"
+                ]
+              ],
+              "color": "#95a5a6",
+              "opacity": 1
+            },
+            {
+              "type": "parametric_curve",
+              "id": "bow_shock",
+              "x": "2 - ((1 - s3_bluntness)*abs(t) + s3_bluntness*0.2*t^2)",
+              "y": "t",
+              "z": "0",
+              "range": [
+                -3,
+                3
+              ],
+              "color": "#e74c3c",
+              "width": 5,
+              "opacity": "0.5 + 0.5*s3_bluntness",
+              "legendGroup": "Bow Shock"
+            },
+            {
+              "type": "vector_field",
+              "id": "flow_blunt",
+              "fx": "x > 0 ? (x < 2 ? (-4 + 3*s3_bluntness) : -4) : -4",
+              "fy": "x < 2 ? (y > 0 ? 2 - s3_bluntness : -2 + s3_bluntness) : 0",
+              "fz": "0",
+              "density": 4,
+              "scale": 0.2,
+              "color": "#3498db"
+            },
+            {
+              "type": "text",
+              "id": "label_compression",
+              "text": "Adiabatic Compression",
+              "positionExpr": [
+                "2.5",
+                "1.5",
+                "0"
+              ],
+              "color": "#e74c3c",
+              "label": "Bow Shock"
+            }
+          ],
+          "remove": [
+            {
+              "id": "capsule_sharp"
+            },
+            {
+              "id": "flow_sharp"
+            },
+            {
+              "id": "label_friction"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "s3_bluntness",
+              "label": "Nose Bluntness",
+              "min": 0,
+              "max": 1,
+              "default": 0,
+              "step": 0.01,
+              "animate": true,
+              "animateMode": "once",
+              "duration": 2000
+            }
+          ]
+        },
+        {
+          "title": "Stagnation Point Heating",
+          "description": "The convective heating rate at the stagnation point is proportional to the cube of the velocity. Faster entries, like returning from the Moon, generate much larger heat loads.",
+          "prompt": "Highlight the stagnation point where heating is most intense. Explain the $V^3$ relationship and compare LEO return with lunar return.",
+          "add": [
+            {
+              "type": "parametric_curve",
+              "id": "bow_shock_hot",
+              "x": "2 - ((1 - s3_bluntness)*abs(t) + s3_bluntness*0.2*t^2)",
+              "y": "t",
+              "z": "0",
+              "range": [
+                -3,
+                3
+              ],
+              "color": "#e74c3c",
+              "width": 5,
+              "opacity": "s3_bluntness * (0.5 + 0.5 * ((s3_velocity - 7.8) / 3.2))"
+            },
+            {
+              "type": "animated_point",
+              "id": "stagnation_point",
+              "positionExpr": [
+                "2 - 0.5*s3_bluntness",
+                "0",
+                "0"
+              ],
+              "color": "#ffffff",
+              "size": 12,
+              "label": "Stagnation Point"
+            }
+          ],
+          "remove": [
+            {
+              "id": "bow_shock"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "s3_velocity",
+              "label": "Velocity (km/s)",
+              "min": 7.8,
+              "max": 11,
+              "default": 7.8,
+              "step": 0.1
+            }
+          ],
+          "info": [
+            {
+              "id": "heating_info",
+              "position": "top-right",
+              "content": "### Stagnation Heating\n\n$$\\dot{q}_s \\approx \\frac{K}{\\sqrt{R_N}} \\sqrt{\\rho} \\, V^3$$\n\n$R_N$ (Nose Radius): **{{toFixed(noseRadius(s3_bluntness), 2)}} m**\n\n$V$ (Velocity): **{{s3_velocity}} km/s**\n\nRelative Heating: **{{toFixed(heatingRate(s3_velocity, noseRadius(s3_bluntness)) / heatingRate(7.8, noseRadius(1)), 2)}}\u00d7** vs blunt LEO"
+            }
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "noseRadius",
+          "args": [
+            "b"
+          ],
+          "expr": "0.1 + 1.9 * b"
+        },
+        {
+          "name": "heatingRate",
+          "args": [
+            "v",
+            "rn"
+          ],
+          "expr": "v^3 / sqrt(rn)"
+        }
+      ],
+      "proof": [
+        {
+          "id": "normal-shock-stagnation",
+          "title": "Stagnation Temperature Behind a Normal Shock",
+          "sceneStep": 0,
+          "goal": "Show that the stagnation temperature rises as $T_0 \\propto V^2$",
+          "prompt": "Derive why the temperature at the stagnation point scales with the square of velocity. Emphasize this is adiabatic compression, not friction.",
+          "steps": [
+            {
+              "id": "ke-start",
+              "type": "given",
+              "label": "Kinetic energy of oncoming air",
+              "math": "E_k = \\frac{1}{2} m \\htmlClass{hl-vel}{V}^2",
+              "explanation": "From the spacecraft frame, air rushes toward it at velocity V. Each parcel of air carries kinetic energy proportional to V\u00b2.",
+              "highlights": {
+                "vel": {
+                  "color": "cyan",
+                  "label": "Freestream velocity"
+                }
+              }
+            },
+            {
+              "id": "stagnation",
+              "type": "step",
+              "label": "Air brought to rest at stagnation point",
+              "math": "\\frac{1}{2} V^2 = \\htmlClass{hl-cp}{c_p} (\\htmlClass{hl-T0}{T_0} - \\htmlClass{hl-Tinf}{T_\\infty})",
+              "justification": "Energy conservation (adiabatic): kinetic energy converts entirely to enthalpy",
+              "explanation": "At the stagnation point the flow velocity is zero. All kinetic energy converts to thermal energy via adiabatic compression \u2014 not friction. Here $T_0$ is the stagnation temperature (at the surface), $T_\\infty$ is the freestream temperature of the undisturbed air, and $c_p$ is the specific heat at constant pressure.",
+              "highlights": {
+                "T0": {
+                  "color": "orange",
+                  "label": "Stagnation temperature (at surface)"
+                },
+                "Tinf": {
+                  "color": "blue",
+                  "label": "Freestream temperature (undisturbed air)"
+                },
+                "cp": {
+                  "color": "green",
+                  "label": "Specific heat at constant pressure"
+                }
+              }
+            },
+            {
+              "id": "solve-T0",
+              "type": "step",
+              "label": "Solve for stagnation temperature",
+              "math": "\\htmlClass{hl-T0}{T_0} = \\htmlClass{hl-Tinf}{T_\\infty} + \\htmlClass{hl-dom}{\\frac{V^2}{2 c_p}}",
+              "justification": "Rearrange for T\u2080",
+              "explanation": "At high altitude $T_\\infty \\approx 200\\,\\text{K}$, so the stagnation temperature is dominated by the $V^2$ term.",
+              "highlights": {
+                "T0": {
+                  "color": "orange",
+                  "label": "Stagnation temperature"
+                },
+                "Tinf": {
+                  "color": "blue",
+                  "label": "~200 K at altitude \u2014 small"
+                },
+                "dom": {
+                  "color": "yellow",
+                  "label": "Dominant term at entry speeds"
+                }
+              }
+            },
+            {
+              "id": "mach-form",
+              "type": "step",
+              "label": "Express in terms of Mach number",
+              "math": "\\frac{T_0}{T_\\infty} = 1 + \\frac{\\htmlClass{hl-gamma}{\\gamma} - 1}{2} \\htmlClass{hl-mach}{M}^2",
+              "justification": "Substitute $V = M a$ and $c_p = \\frac{\\gamma R}{(\\gamma-1) M_w}$, where $M$ is the Mach number, $a$ is the speed of sound, and $\\gamma \\approx 1.4$ is the ratio of specific heats for air",
+              "explanation": "For a Mach 25 reentry (\u22487.8 km/s), this gives T\u2080/T\u221e \u2248 1 + 0.2 \u00d7 625 = 126. Even with T\u221e = 200 K, that is over 25,000 K.",
+              "highlights": {
+                "gamma": {
+                  "color": "green",
+                  "label": "Ratio of specific heats (\u03b3 \u2248 1.4 for air)"
+                },
+                "mach": {
+                  "color": "cyan",
+                  "label": "Mach number (M \u2248 25 for LEO entry)"
+                }
+              }
+            },
+            {
+              "id": "conclusion",
+              "type": "conclusion",
+              "label": "Heating is adiabatic compression, not friction",
+              "math": "\\htmlClass{hl-result}{T_0 \\propto V^2}",
+              "justification": "The V\u00b2 dependence comes from kinetic energy conversion",
+              "explanation": "The enormous temperatures at the stagnation point arise from adiabatic compression of the air \u2014 the same process that heats air in a bicycle pump. Friction plays a negligible role.",
+              "highlights": {
+                "result": {
+                  "color": "yellow",
+                  "label": "Adiabatic compression, not friction"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "blunt-body-heating",
+          "title": "Why Blunt Bodies Survive: The 1/\u221aR_N Law",
+          "sceneStep": 2,
+          "goal": "Derive $\\dot{q}_s \\approx \\frac{K}{\\sqrt{R_N}} \\sqrt{\\rho} V^3$ and show why larger nose radius reduces heating",
+          "prompt": "Walk through the Fay-Riddell result showing how nose radius affects stagnation point heating. Connect to the bluntness slider.",
+          "steps": [
+            {
+              "id": "boundary-layer",
+              "type": "given",
+              "label": "Boundary layer thickness at stagnation point",
+              "math": "\\htmlClass{hl-delta}{\\delta} \\propto \\sqrt{\\frac{\\htmlClass{hl-rn}{R_N}}{\\rho V}}",
+              "explanation": "The thermal boundary layer at the stagnation point grows with nose radius R_N. A blunter body creates a thicker boundary layer.",
+              "highlights": {
+                "delta": {
+                  "color": "orange",
+                  "label": "Boundary layer thickness"
+                },
+                "rn": {
+                  "color": "cyan",
+                  "label": "Nose radius"
+                }
+              }
+            },
+            {
+              "id": "heat-flux-gradient",
+              "type": "step",
+              "label": "Heat flux through the boundary layer",
+              "math": "\\htmlClass{hl-qdot}{\\dot{q}_s} \\propto \\frac{\\Delta T}{\\htmlClass{hl-delta}{\\delta}}",
+              "justification": "Fourier's law: heat flux = thermal conductivity \u00d7 temperature gradient",
+              "explanation": "The heat conducted to the surface is proportional to the temperature difference across the boundary layer divided by its thickness.",
+              "highlights": {
+                "qdot": {
+                  "color": "red",
+                  "label": "Stagnation point heat flux"
+                },
+                "delta": {
+                  "color": "orange",
+                  "label": "Thicker boundary layer \u2192 less heating"
+                }
+              }
+            },
+            {
+              "id": "delta-T",
+              "type": "step",
+              "label": "Temperature difference scales with V\u00b2",
+              "math": "\\Delta T = T_0 - T_w \\propto \\htmlClass{hl-v2}{V^2}",
+              "justification": "From the stagnation temperature result: T\u2080 \u221d V\u00b2",
+              "explanation": "The wall temperature T_w is kept relatively low by the heat shield, so \u0394T is dominated by the stagnation temperature.",
+              "highlights": {
+                "v2": {
+                  "color": "yellow",
+                  "label": "From stagnation temperature proof"
+                }
+              }
+            },
+            {
+              "id": "combine",
+              "type": "step",
+              "label": "Combine to get heating rate",
+              "math": "\\dot{q}_s \\propto \\frac{V^2}{\\sqrt{R_N / (\\rho V)}} = \\htmlClass{hl-result}{\\frac{\\sqrt{\\rho} \\cdot V^{5/2}}{\\sqrt{R_N}}}",
+              "justification": "Substitute \u03b4 and \u0394T into the heat flux expression",
+              "explanation": "This simplified analysis gives V^(5/2). The full Fay-Riddell analysis, accounting for dissociation and ionization effects at high temperatures, modifies this to V\u00b3.",
+              "highlights": {
+                "result": {
+                  "color": "yellow",
+                  "label": "Simplified analysis \u2014 real-gas effects modify this"
+                }
+              }
+            },
+            {
+              "id": "fay-riddell",
+              "type": "step",
+              "label": "Fay-Riddell stagnation heating (1958)",
+              "math": "\\htmlClass{hl-fr}{\\dot{q}_s \\approx \\frac{K}{\\sqrt{R_N}} \\sqrt{\\rho} \\, V^3}",
+              "justification": "Full analysis includes real-gas effects (dissociation, ionization) which steepen the velocity dependence from V^(5/2) to V\u00b3",
+              "explanation": "This is the key result used in spacecraft design. K depends on gas properties but is roughly constant for Earth entry.",
+              "highlights": {
+                "fr": {
+                  "color": "cyan",
+                  "label": "Fay-Riddell (1958) \u2014 the spacecraft design formula"
+                }
+              }
+            },
+            {
+              "id": "blunt-insight",
+              "type": "conclusion",
+              "label": "The blunt body principle",
+              "math": "\\dot{q}_s \\propto \\htmlClass{hl-inv}{\\frac{1}{\\sqrt{R_N}}} \\implies \\text{larger nose} \\rightarrow \\text{less heating}",
+              "justification": "Doubling the nose radius reduces heating by \u221a2 \u2248 29%",
+              "explanation": "This is Allen and Eggers' key insight (1958): a blunt shape is counterintuitively better for reentry. The thicker boundary layer acts as an insulating cushion, and the detached bow shock diverts most of the heated air around the vehicle.",
+              "highlights": {
+                "inv": {
+                  "color": "green",
+                  "label": "Double R_N \u2192 29% less heating"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "lunar-vs-leo-heating",
+          "title": "Lunar Return vs LEO: The V\u00b3 Penalty",
+          "sceneStep": 2,
+          "goal": "Calculate the heating ratio between lunar return (11 km/s) and LEO return (7.8 km/s)",
+          "prompt": "Use the V\u00b3 law to show why lunar return is so much more demanding thermally.",
+          "steps": [
+            {
+              "id": "ratio-setup",
+              "type": "given",
+              "label": "Heating ratio at same altitude",
+              "math": "\\frac{\\dot{q}_{\\text{lunar}}}{\\dot{q}_{\\text{LEO}}} = \\htmlClass{hl-cube}{\\left(\\frac{V_{\\text{lunar}}}{V_{\\text{LEO}}}\\right)^3}",
+              "explanation": "At the same altitude (same \u03c1) and same vehicle (same R_N), only velocity differs between the two returns.",
+              "highlights": {
+                "cube": {
+                  "color": "yellow",
+                  "label": "Cubic velocity dependence"
+                }
+              }
+            },
+            {
+              "id": "substitute",
+              "type": "step",
+              "label": "Substitute return velocities",
+              "math": "\\frac{\\dot{q}_{\\text{lunar}}}{\\dot{q}_{\\text{LEO}}} = \\left(\\frac{\\htmlClass{hl-vl}{11.0}}{\\htmlClass{hl-vleo}{7.8}}\\right)^3 = (\\htmlClass{hl-ratio}{1.410})^3",
+              "justification": "V_lunar \u2248 11.0 km/s (Earth escape), V_LEO \u2248 7.8 km/s (circular orbit)",
+              "explanation": "Lunar return velocity is only 41% higher than LEO, but the cubic relationship amplifies this dramatically.",
+              "highlights": {
+                "vl": {
+                  "color": "orange",
+                  "label": "Lunar return \u2248 Earth escape velocity"
+                },
+                "vleo": {
+                  "color": "cyan",
+                  "label": "LEO circular orbit velocity"
+                },
+                "ratio": {
+                  "color": "yellow",
+                  "label": "Only 41% faster, but cubed..."
+                }
+              }
+            },
+            {
+              "id": "result",
+              "type": "conclusion",
+              "label": "The V\u00b3 penalty",
+              "math": "\\frac{\\dot{q}_{\\text{lunar}}}{\\dot{q}_{\\text{LEO}}} \\approx \\htmlClass{hl-result}{2.81}",
+              "justification": "1.410\u00b3 \u2248 2.81",
+              "explanation": "Lunar return produces 2.81\u00d7 the peak heating of LEO return \u2014 from speed alone. This is why Apollo needed a massive ablative heat shield, and why Artemis uses a skip entry to spread the heat load over two atmospheric passes.",
+              "highlights": {
+                "result": {
+                  "color": "red",
+                  "label": "2.81\u00d7 more heating from speed alone"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Comparing Spacecraft Profiles",
+      "description": "Compare the direct entry of Apollo and Dragon with the skip-entry maneuver of Artemis 2.",
+      "markdown": "# Comparing Spacecraft Profiles\n\nDifferent spacecraft use different reentry trajectories to manage aerodynamic heating and deceleration (G-forces).\n\n### Dragon LEO Return\nReturning from Low Earth Orbit (LEO), a Crew Dragon enters at about $7.8 \\text{ km/s}$ with a shallow angle. Its heat load and G-forces are relatively moderate.\n\n### Apollo Lunar Direct Entry\nReturning from the Moon, Apollo entered at $11 \\text{ km/s}$. It used a direct entry, diving deeper to scrub speed quickly, resulting in very high G-forces and intense heat loads.\n\n### Artemis Skip Entry\nArtemis (Orion) uses a **Skip Entry**: A re-entry trajectory where the spacecraft dips into the atmosphere, uses lift to exit back into space to cool down, and then performs a final descent.\n*Intuition:* Like skipping a stone across a pond to bleed off speed and heat in two stages instead of one.\n\n### Bank Angle Steering\nBecause the capsule has an offset center of mass, it naturally generates lift. By rolling the capsule around its velocity axis (changing the bank angle), the lift vector points up, down, or sideways, steering the capsule without any wings.",
+      "prompt": "Ensure the graphs clearly distinguish the single massive peak of Apollo vs the two smaller peaks of Artemis. The colors are Dragon (blue), Apollo (red), Artemis (green), and Lift Vector (orange).",
+      "range": [
+        [
+          -1,
+          11
+        ],
+        [
+          -1,
+          11
+        ],
+        [
+          -6,
+          6
+        ]
+      ],
+      "camera": {
+        "position": [
+          14,
+          8,
+          14
+        ],
+        "target": [
+          5,
+          4,
+          -1
+        ]
+      },
+      "views": [
+        {
+          "name": "Isometric",
+          "description": "3D isometric showing trajectory paths",
+          "position": [
+            14,
+            8,
+            14
+          ],
+          "target": [
+            5,
+            4,
+            -1
+          ]
+        },
+        {
+          "name": "Graphs Focused",
+          "description": "View focused on the G-force graphs",
+          "position": [
+            5,
+            7,
+            -15
+          ],
+          "target": [
+            5,
+            7,
+            -5
+          ]
+        }
+      ],
+      "elements": [
+        {
+          "id": "_mathbox_init",
+          "type": "grid",
+          "plane": "xz",
+          "opacity": 0,
+          "divisions": 1
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -1,
+            11
+          ],
+          "color": "#ff4444",
+          "width": 1.5,
+          "label": "x"
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -1,
+            11
+          ],
+          "color": "#44cc44",
+          "width": 1.5,
+          "label": "y"
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -6,
+            6
+          ],
+          "color": "#4488ff",
+          "width": 1.5,
+          "label": "z"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Dragon LEO Return",
+          "description": "Returning from Low Earth Orbit, a Crew Dragon enters at about 7.8 km/s with a shallow angle. Its heat load and G-forces are relatively moderate.",
+          "prompt": "Highlight the shallow trajectory and the moderate, single-peak G-force curve.",
+          "add": [
+            {
+              "id": "dragon_traj",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "4 - 0.4*t",
+              "z": "-2",
+              "range": [
+                0,
+                10
+              ],
+              "color": "#3498db",
+              "width": 3
+            },
+            {
+              "id": "dragon_pt",
+              "type": "point",
+              "position": [
+                10,
+                0,
+                -2
+              ],
+              "color": "#3498db",
+              "size": 8,
+              "label": "Dragon"
+            },
+            {
+              "id": "dragon_g",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "5 + 1.5*exp(-(t-5)^2)",
+              "z": "-5",
+              "range": [
+                0,
+                10
+              ],
+              "color": "#3498db",
+              "width": 3
+            },
+            {
+              "id": "graph_axes",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  10,
+                  -5
+                ],
+                [
+                  0,
+                  5,
+                  -5
+                ],
+                [
+                  10,
+                  5,
+                  -5
+                ]
+              ],
+              "color": "#ffffff",
+              "width": 2,
+              "legendGroup": "G-Force"
+            },
+            {
+              "id": "graph_label",
+              "type": "text",
+              "text": "G-Force",
+              "position": [
+                0,
+                10.5,
+                -5
+              ],
+              "color": "#ffffff",
+              "label": "G-Force"
+            }
+          ],
+          "remove": []
+        },
+        {
+          "title": "Apollo Lunar Direct Entry",
+          "description": "Returning from the Moon, Apollo entered at 11 km/s. It used a direct entry, diving deeper to scrub speed quickly, resulting in very high G-forces and intense heat loads.",
+          "prompt": "Compare Apollo's steep trajectory and massive G-force peak to Dragon's.",
+          "add": [
+            {
+              "id": "apollo_traj",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "4 - 0.8*t + 0.04*t^2",
+              "z": "0",
+              "range": [
+                0,
+                10
+              ],
+              "color": "#e74c3c",
+              "width": 3
+            },
+            {
+              "id": "apollo_pt",
+              "type": "point",
+              "position": [
+                10,
+                0,
+                0
+              ],
+              "color": "#e74c3c",
+              "size": 8,
+              "label": "Apollo"
+            },
+            {
+              "id": "apollo_g",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "5 + 4.5*exp(-(t-4)^2)",
+              "z": "-5",
+              "range": [
+                0,
+                10
+              ],
+              "color": "#e74c3c",
+              "width": 3
+            }
+          ],
+          "remove": []
+        },
+        {
+          "title": "Artemis Skip Entry",
+          "description": "Artemis (Orion) uses a skip entry. It dips into the atmosphere to bleed off speed, uses lift to skip back up to cool down, and then performs a final descent. This splits the G-forces and heat load into two manageable peaks.",
+          "prompt": "Emphasize how Artemis's skip maneuver creates two smaller G-force peaks instead of one massive one like Apollo.",
+          "add": [
+            {
+              "id": "artemis_traj",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "4 - 0.4*t - 1.5*sin(t*pi/5)",
+              "z": "2",
+              "range": [
+                0,
+                10
+              ],
+              "color": "#2ecc71",
+              "width": 3
+            },
+            {
+              "id": "artemis_pt",
+              "type": "point",
+              "position": [
+                10,
+                0,
+                2
+              ],
+              "color": "#2ecc71",
+              "size": 8,
+              "label": "Artemis"
+            },
+            {
+              "id": "artemis_g",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "5 + 2.0*exp(-(t-2.5)^2) + 1.5*exp(-(t-9)^2)",
+              "z": "-5",
+              "range": [
+                0,
+                10
+              ],
+              "color": "#2ecc71",
+              "width": 3
+            }
+          ],
+          "remove": []
+        },
+        {
+          "title": "Bank Angle Steering",
+          "description": "The bank angle \u03c6 is the roll angle around the velocity vector. Rolling doesn't change the total lift \u2014 it redirects it. At \u03c6 = 0\u00b0 all lift fights gravity (maximum corridor width). As the capsule banks, lift trades altitude control for lateral steering, curving the ground track left or right. More bank means more crossrange but a narrower entry corridor.",
+          "prompt": "Guide the user to play with the Bank Angle slider and watch both the lift vector and the projected flight-path bend rotate together.",
+          "add": [
+            {
+              "id": "artemis_pt_mid",
+              "type": "point",
+              "position": [
+                5,
+                2,
+                2
+              ],
+              "color": "#2ecc71",
+              "size": 10,
+              "label": "Capsule"
+            },
+            {
+              "id": "velocity_vec",
+              "type": "vector",
+              "from": [
+                5,
+                2,
+                2
+              ],
+              "to": [
+                2,
+                2,
+                2
+              ],
+              "color": "#3498db",
+              "width": 4,
+              "label": "$\\vec{V}$ (velocity)"
+            },
+            {
+              "id": "up_ref",
+              "type": "vector",
+              "from": [
+                5,
+                2,
+                2
+              ],
+              "to": [
+                5,
+                3.8,
+                2
+              ],
+              "color": "#888888",
+              "width": 2,
+              "opacity": 0.5,
+              "label": "radial (up)"
+            },
+            {
+              "id": "lift_vec",
+              "type": "animated_vector",
+              "from": [
+                5,
+                2,
+                2
+              ],
+              "expr": [
+                "5",
+                "2 + 1.8 * cos(s4_bank_angle * pi / 180)",
+                "2 + 1.8 * sin(s4_bank_angle * pi / 180)"
+              ],
+              "color": "#f39c12",
+              "width": 5,
+              "label": "$\\vec{L}$ (lift)"
+            },
+            {
+              "id": "bank_arc",
+              "type": "parametric_curve",
+              "x": "5",
+              "y": "2 + 0.8 * cos(t * pi / 180)",
+              "z": "2 + 0.8 * sin(t * pi / 180)",
+              "range": [
+                0,
+                "s4_bank_angle"
+              ],
+              "samples": 60,
+              "color": "#e74c3c",
+              "width": 2,
+              "opacity": 0.8
+            },
+            {
+              "id": "bank_label",
+              "type": "animated_point",
+              "expr": [
+                "5",
+                "2 + 1.0 * cos(s4_bank_angle / 2 * pi / 180)",
+                "2 + 1.0 * sin(s4_bank_angle / 2 * pi / 180)"
+              ],
+              "color": "#e74c3c",
+              "size": 0,
+              "labelExpr": "concat('\u03c6 = ', toFixed(abs(s4_bank_angle), 0), '\u00b0')"
+            }
+          ],
+          "remove": [],
+          "sliders": [
+            {
+              "id": "s4_bank_angle",
+              "label": "Bank Angle (deg)",
+              "min": -180,
+              "max": 180,
+              "default": 0,
+              "step": 1
+            }
+          ],
+          "info": [
+            {
+              "id": "bank_info",
+              "content": "### Lift Steering\nBank Angle: ${{s4_bank_angle}}^\\circ$\n\nVertical lift $\\propto \\cos \\phi = {{toFixed(cos(s4_bank_angle * pi / 180), 2)}}$\nLateral lift $\\propto \\sin \\phi = {{toFixed(sin(s4_bank_angle * pi / 180), 2)}}$\n\nTotal lift is fixed by aerodynamics. Banking doesn't create more lift \u2014 it **redirects** it. Vertical lift controls descent rate and corridor width. Lateral lift steers the ground track left or right (crossrange). More bank = more crossrange steering but narrower corridor.",
+              "position": "top-right"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Splashdown Dynamics",
+      "description": "Understand terminal velocity under parachutes and how stopping time in water sets the final splashdown loads.",
+      "markdown": "# Splashdown Dynamics\n\nAfter surviving the intense heat of reentry, a spacecraft must decelerate to a safe landing speed. In the lower, thicker atmosphere, capsules like Apollo, Crew Dragon, and Orion deploy a series of parachutes to increase their drag area and reduce their **terminal velocity** before splashdown.\n\n### The Force Balance\nTwo forces act on the falling capsule:\n\n* **Gravity** pulls it downward: $F_g = mg$\n* **Aerodynamic drag** pushes upward: $F_d = \\frac{1}{2}\\rho V^2 C_d A$\n\nDrag depends on the square of speed \u2014 the faster the capsule falls, the harder the air pushes back.\n\n### Why $F_d = F_g$ Means Constant Speed\nFor the capsule to fall at **constant speed** (zero acceleration), Newton's second law requires the net force to be zero:\n\n$$F_{\\text{net}} = F_d - F_g = 0 \\quad \\Longrightarrow \\quad F_d = F_g$$\n\nThe unique speed at which this balance occurs is the **terminal velocity**. Once the capsule reaches it, there is no more acceleration \u2014 the crew feels only **1g** (their own weight), just like sitting in a chair.\n\n### Solving for Terminal Velocity\nSetting $F_g = F_d$:\n\n$$mg = \\frac{1}{2}\\rho V_t^2 C_d A \\quad \\Longrightarrow \\quad V_t = \\sqrt{\\frac{2mg}{\\rho C_d A}}$$\n\n### The Role of Parachutes\nBy deploying parachutes, the spacecraft massively increases its cross-sectional area $A$ and drag coefficient $C_d$. Increasing $A$ in the denominator dramatically reduces $V_t$, allowing the crew to approach a safe splashdown speed.\n\n**Right after deployment**, the capsule is still falling fast from freefall, so $F_d > F_g$ and the crew feels a brief high-g deceleration spike. As the capsule slows, drag decreases until $F_d = F_g$ and the ride becomes a gentle 1g descent.\n\n### Water Impact Loads\nEven after the parachutes do their job, the capsule still reaches the ocean with nonzero speed. If the vertical speed just before contact is $V_t$ and the water brings the capsule to rest over a stopping time $\\Delta t$, then the average deceleration is roughly\n\n$$a_{\\text{impact}} \\approx \\frac{V_t}{\\Delta t}$$\n\nand the corresponding load factor is\n\n$$n \\approx \\frac{a_{\\text{impact}}}{g}$$\n\nA softer, longer splashdown reduces the deceleration the crew feels.",
+      "prompt": "Emphasize how terminal velocity is reached when drag equals gravity. Guide the student to see how parachute area inversely affects the final velocity. Suggest asking 'What would happen if the atmosphere were thinner (like on Mars)?'",
+      "range": [
+        [
+          -12,
+          12
+        ],
+        [
+          -2,
+          22
+        ],
+        [
+          -12,
+          12
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          10,
+          30
+        ],
+        "target": [
+          0,
+          10,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Side Profile",
+          "position": [
+            0,
+            10,
+            30
+          ],
+          "target": [
+            0,
+            10,
+            0
+          ],
+          "description": "2D side profile tracking the capsule"
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -12,
+            12
+          ],
+          "color": "#ff4444",
+          "width": 1.5,
+          "label": "x"
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -2,
+            22
+          ],
+          "color": "#44cc44",
+          "width": 1.5,
+          "label": "y"
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -12,
+            12
+          ],
+          "color": "#4488ff",
+          "width": 1.5,
+          "label": "z"
+        },
+        {
+          "id": "grid_bg",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -12,
+            22
+          ],
+          "color": [
+            0.3,
+            0.3,
+            0.5
+          ],
+          "opacity": 0.15,
+          "divisions": 24
+        },
+        {
+          "id": "ocean_surface",
+          "type": "polygon",
+          "vertices": [
+            [
+              -12,
+              0,
+              -12
+            ],
+            [
+              12,
+              0,
+              -12
+            ],
+            [
+              12,
+              0,
+              12
+            ],
+            [
+              -12,
+              0,
+              12
+            ]
+          ],
+          "color": "#3498db",
+          "opacity": 0.4
+        }
+      ],
+      "steps": [
+        {
+          "title": "Freefall in Lower Atmosphere",
+          "description": "After the fiery reentry, the capsule is in the lower, thicker atmosphere, falling subsonically. Gravity is pulling it down, but the blunt body drag isn't enough for a safe landing.",
+          "prompt": "Point out that the drag vector is much smaller than the gravity vector, meaning the capsule is still accelerating downward.",
+          "add": [
+            {
+              "id": "capsule",
+              "type": "point",
+              "position": [
+                0,
+                10,
+                0
+              ],
+              "color": "#ffffff",
+              "size": 18,
+              "label": "Capsule"
+            },
+            {
+              "id": "vec_gravity",
+              "type": "animated_vector",
+              "from": [
+                0,
+                10,
+                0
+              ],
+              "toExpr": [
+                "0",
+                "10 - dataTable('capsules', s5_capsule, 'mass') / 2000",
+                "0"
+              ],
+              "color": "#2ecc71",
+              "width": 4,
+              "label": "$F_g$"
+            },
+            {
+              "id": "vec_drag_freefall",
+              "type": "animated_vector",
+              "from": [
+                0,
+                10,
+                0
+              ],
+              "toExpr": [
+                "0",
+                "10 + dataTable('capsules', s5_capsule, 'mass') / 5000",
+                "0"
+              ],
+              "color": "#e74c3c",
+              "width": 4,
+              "label": "$F_d$ (small)"
+            }
+          ],
+          "remove": [],
+          "sliders": [
+            {
+              "id": "s5_capsule",
+              "label": "Capsule",
+              "min": 0,
+              "max": 3,
+              "step": 1,
+              "default": 2,
+              "valueExpr": "dataTable('capsules', s5_capsule, 'name')"
+            }
+          ],
+          "info": []
+        },
+        {
+          "title": "Parachute Deployment",
+          "description": "The chute opens and drag jumps. The capsule is still fast from freefall, so $F_d > F_g$ \u2014 causing rapid deceleration. Select a capsule to see its parachute area.",
+          "prompt": "Highlight the capsule selector slider. Explain how each capsule has a different parachute area. Crew Dragon has the largest chute at 440 m\u00b2, Gemini the smallest at 84 m\u00b2.",
+          "add": [
+            {
+              "id": "parachute",
+              "type": "animated_polygon",
+              "regular": {
+                "n": 64,
+                "radius": "sqrt(dataTable('capsules', s5_capsule, 'chuteArea') / pi)",
+                "center": [
+                  "0",
+                  "14",
+                  "0"
+                ],
+                "plane": "xz"
+              },
+              "color": "#ffffff",
+              "opacity": 0.6
+            },
+            {
+              "id": "chute_area_label",
+              "type": "animated_point",
+              "expr": [
+                "0",
+                "14",
+                "0"
+              ],
+              "color": "#ffffff",
+              "size": 0,
+              "labelExpr": "concat(dataTable('capsules', s5_capsule, 'name'), ': A = ', toFixed(dataTable('capsules', s5_capsule, 'chuteArea'), 0), ' m\u00b2')"
+            },
+            {
+              "id": "cords1",
+              "type": "animated_line",
+              "points": [
+                [
+                  "-sqrt(dataTable('capsules', s5_capsule, 'chuteArea') / pi)",
+                  "14",
+                  "0"
+                ],
+                [
+                  "0",
+                  "10.2",
+                  "0"
+                ]
+              ],
+              "color": "#aaaaaa",
+              "width": 2
+            },
+            {
+              "id": "cords2",
+              "type": "animated_line",
+              "points": [
+                [
+                  "sqrt(dataTable('capsules', s5_capsule, 'chuteArea') / pi)",
+                  "14",
+                  "0"
+                ],
+                [
+                  "0",
+                  "10.2",
+                  "0"
+                ]
+              ],
+              "color": "#aaaaaa",
+              "width": 2
+            },
+            {
+              "id": "vec_drag_chute",
+              "type": "animated_vector",
+              "from": [
+                0,
+                10,
+                0
+              ],
+              "toExpr": [
+                "0",
+                "10 + dataTable('capsules', s5_capsule, 'mass') / 2000 * 1.3",
+                "0"
+              ],
+              "color": "#e74c3c",
+              "width": 4,
+              "label": "$F_d > F_g$"
+            }
+          ],
+          "remove": [
+            {
+              "id": "vec_drag_freefall"
+            }
+          ],
+          "sliders": [],
+          "info": [
+            {
+              "id": "info_drag",
+              "content": "### {{dataTable('capsules', s5_capsule, 'name')}}\n$m = {{dataTable('capsules', s5_capsule, 'mass')}}\\ \\text{kg}$\n$A = {{toFixed(dataTable('capsules', s5_capsule, 'chuteArea'), 0)}}\\ \\text{m}^2$\n$C_d = {{dataTable('capsules', s5_capsule, 'chuteCd')}}$",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "Terminal Velocity",
+          "description": "For constant speed (zero acceleration), we need $F_d = F_g$ exactly. The speed where this balance occurs is the terminal velocity \u2014 the crew feels only 1g from here to splashdown.",
+          "prompt": "Point out that the drag and gravity vectors are now equal in length but opposite in direction. This means net force is zero.",
+          "add": [
+            {
+              "id": "vec_drag_terminal",
+              "type": "animated_vector",
+              "from": [
+                0,
+                10,
+                0
+              ],
+              "toExpr": [
+                "0",
+                "10 + dataTable('capsules', s5_capsule, 'mass') / 2000",
+                "0"
+              ],
+              "color": "#e74c3c",
+              "width": 4,
+              "label": "$F_d = F_g$"
+            }
+          ],
+          "remove": [
+            {
+              "id": "vec_drag_chute"
+            },
+            {
+              "type": "info",
+              "id": "info_drag"
+            }
+          ],
+          "sliders": [],
+          "info": [
+            {
+              "id": "info_terminal",
+              "content": "### Terminal Velocity \u2014 {{dataTable('capsules', s5_capsule, 'name')}}\n$m = {{dataTable('capsules', s5_capsule, 'mass')}}\\ \\text{kg}$, $\\rho = 1.225\\ \\text{kg/m}^3$, $C_d = {{dataTable('capsules', s5_capsule, 'chuteCd')}}$\n\n$F_g = F_d$\n\n$V_t = \\sqrt{ \\frac{2mg}{\\rho C_d A} } = {{toFixed(sqrt(2 * dataTable('capsules', s5_capsule, 'mass') * 9.81 / (1.225 * dataTable('capsules', s5_capsule, 'chuteCd') * dataTable('capsules', s5_capsule, 'chuteArea'))), 1)}}\\ \\text{m/s}$",
+              "position": "top-right"
+            }
+          ]
+        },
+        {
+          "title": "Water Impact Loads",
+          "description": "Even under parachutes, the capsule still hits the water with nonzero speed. The shorter the stopping time in water, the larger the splashdown load on the crew.",
+          "prompt": "Connect the parachute-limited terminal speed to the final splashdown. Ask the user to vary the stopping-time slider and notice how a shorter stop means a harsher impact.",
+          "add": [
+            {
+              "id": "capsule_splash",
+              "type": "point",
+              "position": [
+                0,
+                0.8,
+                0
+              ],
+              "color": "#ffffff",
+              "size": 18,
+              "label": "Capsule"
+            },
+            {
+              "id": "vec_gravity_splash",
+              "type": "vector",
+              "from": [
+                0,
+                0.8,
+                0
+              ],
+              "to": [
+                0,
+                -2.2,
+                0
+              ],
+              "color": "#2ecc71",
+              "width": 4,
+              "label": "$F_g$"
+            },
+            {
+              "id": "vec_water",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0.8,
+                0
+              ],
+              "toExpr": [
+                "0",
+                "0.8 + 0.6 * sqrt(2 * dataTable('capsules', s5_capsule, 'mass') * 9.81 / (1.225 * dataTable('capsules', s5_capsule, 'chuteCd') * dataTable('capsules', s5_capsule, 'chuteArea'))) / (9.81 * s5_stop_time)",
+                "0"
+              ],
+              "color": "#f1c40f",
+              "width": 5,
+              "label": "$F_{\\text{water}}$"
+            },
+            {
+              "id": "impact_ring",
+              "type": "parametric_curve",
+              "x": "1.2 * cos(t)",
+              "y": "0",
+              "z": "1.2 * sin(t)",
+              "range": [
+                0,
+                6.2832
+              ],
+              "color": "#ffffff",
+              "width": 2,
+              "opacity": 0.5
+            }
+          ],
+          "remove": [
+            {
+              "id": "capsule"
+            },
+            {
+              "id": "vec_gravity"
+            },
+            {
+              "id": "vec_drag_terminal"
+            },
+            {
+              "id": "parachute"
+            },
+            {
+              "id": "cords1"
+            },
+            {
+              "id": "cords2"
+            },
+            {
+              "type": "info",
+              "id": "info_terminal"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "s5_stop_time",
+              "label": "Water Stop Time (s)",
+              "min": 0.5,
+              "max": 3,
+              "default": 1.5,
+              "step": 0.1
+            }
+          ],
+          "info": [
+            {
+              "id": "info_impact",
+              "content": "### Water Impact \u2014 {{dataTable('capsules', s5_capsule, 'name')}}\n$V_t = {{toFixed(sqrt(2 * dataTable('capsules', s5_capsule, 'mass') * 9.81 / (1.225 * dataTable('capsules', s5_capsule, 'chuteCd') * dataTable('capsules', s5_capsule, 'chuteArea'))), 1)}}\\ \\text{m/s}$\n\n$a_{\\text{impact}} \\approx \\frac{V_t}{\\Delta t} = {{toFixed(sqrt(2 * dataTable('capsules', s5_capsule, 'mass') * 9.81 / (1.225 * dataTable('capsules', s5_capsule, 'chuteCd') * dataTable('capsules', s5_capsule, 'chuteArea'))) / s5_stop_time, 1)}}\\ \\text{m/s}^2$\n\n$n \\approx \\frac{a}{g} = {{toFixed(sqrt(2 * dataTable('capsules', s5_capsule, 'mass') * 9.81 / (1.225 * dataTable('capsules', s5_capsule, 'chuteCd') * dataTable('capsules', s5_capsule, 'chuteArea'))) / (9.81 * s5_stop_time), 1)}}\\ g$",
+              "position": "top-right"
+            }
+          ],
+          "camera": {
+            "position": [
+              0,
+              4,
+              22
+            ],
+            "target": [
+              0,
+              2,
+              0
+            ]
+          }
+        }
+      ],
+      "proof": [
+        {
+          "id": "terminal_velocity",
+          "title": "Terminal Velocity",
+          "technique": "derivation",
+          "techniqueHint": "Treat terminal velocity as a balance point: acceleration becomes zero, so upward drag must match downward weight. Then it is just algebra.",
+          "goal": "Derive the terminal velocity $V_t$ by finding the speed at which drag exactly balances gravity: $$V_t = \\sqrt{\\frac{2mg}{\\rho C_d A}}$$",
+          "prompt": "Guide the student through the derivation of terminal velocity step by step. Use simple algebra terms like 'isolate the variable' and explain that this is a state of balance.",
+          "steps": [
+            {
+              "type": "given",
+              "label": "Acceleration means change in velocity",
+              "math": "a = \\frac{dV}{dt}",
+              "justification": "Acceleration measures how the speed changes over time.",
+              "explanation": "Terminal velocity is the special moment when this change becomes zero.",
+              "sceneStep": 2,
+              "highlights": {},
+              "prompt": "Ask what it means physically when the velocity stops changing."
+            },
+            {
+              "type": "given",
+              "label": "Newton's second law",
+              "math": "F_{\\text{net}} = ma",
+              "justification": "Net force produces acceleration.",
+              "explanation": "This lets us translate a force balance into a statement about constant speed.",
+              "sceneStep": 2,
+              "highlights": {},
+              "prompt": "Tell the student this is the starting rule behind the whole derivation."
+            },
+            {
+              "type": "given",
+              "label": "Weight pulls downward",
+              "math": "F_g = mg",
+              "justification": "The capsule's weight is mass times gravitational acceleration.",
+              "explanation": "This is the downward force trying to make the capsule fall faster.",
+              "sceneStep": 2,
+              "highlights": {},
+              "prompt": "Ask the student to identify which force points downward in the scene."
+            },
+            {
+              "type": "given",
+              "label": "Drag pushes upward",
+              "math": "F_d = \\frac{1}{2}\\rho V^2 C_d \\htmlClass{hl-area}{A}",
+              "justification": "This is the standard drag law for the resisting force from the air.",
+              "explanation": "A bigger parachute area $A$ or a larger drag coefficient $C_d$ makes the upward drag force stronger.",
+              "sceneStep": 2,
+              "highlights": {
+                "area": {
+                  "color": "cyan",
+                  "label": "Parachute Area"
+                }
+              },
+              "prompt": "Have the student locate the term that gets larger when the parachute opens."
+            },
+            {
+              "type": "step",
+              "label": "Terminal velocity means zero acceleration",
+              "math": "a = 0 \\quad \\Longrightarrow \\quad F_{\\text{net}} = 0",
+              "justification": "If the falling speed stays constant, then $dV/dt=0$, so acceleration is zero. Newton's second law then says net force is zero.",
+              "explanation": "The capsule is still moving downward, but it is no longer changing its speed.",
+              "sceneStep": 2,
+              "highlights": {},
+              "prompt": "Use the phrase 'steady falling speed' before naming it terminal velocity."
+            },
+            {
+              "type": "step",
+              "label": "So the forces must balance",
+              "math": "F_g = F_d",
+              "justification": "If the net force is zero, the upward and downward forces must be equal in magnitude.",
+              "explanation": "This balance is the definition of terminal velocity in this setting.",
+              "sceneStep": 2,
+              "highlights": {},
+              "prompt": "Compare it to a tug-of-war ending in a tie."
+            },
+            {
+              "type": "step",
+              "label": "Replace each force with its formula",
+              "math": "mg = \\frac{1}{2}\\rho V_t^2 C_d \\htmlClass{hl-area}{A}",
+              "justification": "Replace each force symbol with its formula and use $V_t$ for the steady falling speed.",
+              "explanation": "Now the physics has turned into an algebra problem.",
+              "sceneStep": 2,
+              "highlights": {
+                "area": {
+                  "color": "cyan",
+                  "label": "Parachute Area"
+                }
+              },
+              "prompt": "Tell the student this is the key equation for the whole derivation."
+            },
+            {
+              "type": "step",
+              "label": "Clear the factor of one-half",
+              "math": "2mg = \\rho V_t^2 C_d \\htmlClass{hl-area}{A}",
+              "justification": "Multiply both sides by 2.",
+              "explanation": "This removes the fraction and makes the next algebra step easier to see.",
+              "sceneStep": 2,
+              "highlights": {
+                "area": {
+                  "color": "cyan",
+                  "label": "Parachute Area"
+                }
+              },
+              "prompt": "Explain that we are simplifying the equation one small move at a time."
+            },
+            {
+              "type": "step",
+              "label": "Get $V_t^2$ by itself",
+              "math": "V_t^2 = \\frac{2mg}{\\rho C_d \\htmlClass{hl-area}{A}}",
+              "justification": "Divide both sides by $\\rho C_d A$.",
+              "explanation": "The area $A$ ends up in the denominator, which matches intuition: a larger parachute gives a lower terminal speed.",
+              "sceneStep": 2,
+              "highlights": {
+                "area": {
+                  "color": "cyan",
+                  "label": "Parachute Area"
+                }
+              },
+              "prompt": "Use the phrase 'get $V_t^2$ alone' so the algebra feels mechanical and safe."
+            },
+            {
+              "type": "conclusion",
+              "label": "Solve for Terminal Velocity",
+              "math": "\\htmlClass{hl-vt}{V_t} = \\sqrt{\\frac{2mg}{\\rho C_d \\htmlClass{hl-area}{A}}}",
+              "justification": "Take the square root of both sides. We keep the positive root because speed is a positive magnitude.",
+              "explanation": "The final formula shows the tradeoff clearly: more mass raises terminal speed, while denser air, more drag, or a larger parachute lower it.",
+              "sceneStep": 2,
+              "highlights": {
+                "vt": {
+                  "color": "green",
+                  "label": "Terminal Velocity"
+                },
+                "area": {
+                  "color": "cyan",
+                  "label": "Parachute Area"
+                }
+              },
+              "prompt": "End by connecting back to splashdown: reducing $V_t$ makes the water impact gentler."
+            }
+          ]
+        },
+        {
+          "id": "impact_loads",
+          "title": "Splashdown Impact Loads",
+          "technique": "derivation",
+          "techniqueHint": "Use the kinematic definition of average acceleration and convert to g-loads.",
+          "goal": "Find the g-load on the crew at splashdown, given the terminal velocity $V_t$ and the water stopping time $\\Delta t$: $$n = \\frac{V_t}{g\\,\\Delta t}$$",
+          "prompt": "Walk the student through the impact load derivation. Emphasize that shorter stopping time means harsher impact.",
+          "steps": [
+            {
+              "type": "given",
+              "label": "Capsule arrives at terminal velocity",
+              "math": "V_i = \\htmlClass{hl-vt}{V_t}",
+              "justification": "The parachute has slowed the capsule to its terminal speed before hitting the water.",
+              "explanation": "This is the speed we derived in the terminal velocity proof \u2014 the starting condition for the water impact.",
+              "sceneStep": 3,
+              "highlights": {
+                "vt": {
+                  "color": "green",
+                  "label": "Terminal Velocity"
+                }
+              },
+              "prompt": "Remind the student that V_t depends on mass, chute area, and drag coefficient."
+            },
+            {
+              "type": "given",
+              "label": "Water brings capsule to rest",
+              "math": "V_f = 0",
+              "justification": "The capsule decelerates from $V_t$ to zero as the water absorbs its kinetic energy.",
+              "explanation": "The question is: how quickly does this happen?",
+              "sceneStep": 3,
+              "highlights": {},
+              "prompt": "Ask what determines how harsh this stop feels to the crew."
+            },
+            {
+              "type": "given",
+              "label": "Average acceleration",
+              "math": "\\bar{a} = \\frac{\\Delta V}{\\htmlClass{hl-dt}{\\Delta t}} = \\frac{V_f - V_i}{\\htmlClass{hl-dt}{\\Delta t}}",
+              "justification": "Average acceleration is the change in velocity divided by the time interval.",
+              "explanation": "This is the kinematic definition \u2014 it tells us the average deceleration the crew experiences.",
+              "sceneStep": 3,
+              "highlights": {
+                "dt": {
+                  "color": "orange",
+                  "label": "Stop Time"
+                }
+              },
+              "prompt": "Point out that a shorter time interval means a larger acceleration."
+            },
+            {
+              "type": "step",
+              "label": "Substitute known values",
+              "math": "\\bar{a} = \\frac{0 - \\htmlClass{hl-vt}{V_t}}{\\htmlClass{hl-dt}{\\Delta t}} = -\\frac{\\htmlClass{hl-vt}{V_t}}{\\htmlClass{hl-dt}{\\Delta t}}",
+              "justification": "Replace $V_f = 0$ and $V_i = V_t$.",
+              "explanation": "The negative sign means deceleration (slowing down). We care about the magnitude.",
+              "sceneStep": 3,
+              "highlights": {
+                "vt": {
+                  "color": "green",
+                  "label": "Terminal Velocity"
+                },
+                "dt": {
+                  "color": "orange",
+                  "label": "Stop Time"
+                }
+              },
+              "prompt": "Explain that the minus sign just means slowing down, and we take the absolute value."
+            },
+            {
+              "type": "step",
+              "label": "Impact deceleration magnitude",
+              "math": "a_{\\text{impact}} = \\frac{\\htmlClass{hl-vt}{V_t}}{\\htmlClass{hl-dt}{\\Delta t}}",
+              "justification": "Take the absolute value \u2014 we want the magnitude of deceleration felt by the crew.",
+              "explanation": "Faster arrival speed or shorter stopping time means harsher impact.",
+              "sceneStep": 3,
+              "highlights": {
+                "vt": {
+                  "color": "green",
+                  "label": "Terminal Velocity"
+                },
+                "dt": {
+                  "color": "orange",
+                  "label": "Stop Time"
+                }
+              },
+              "prompt": "Use concrete numbers: if V_t = 8 m/s and stop time is 0.5 s, that is 16 m/s\u00b2."
+            },
+            {
+              "type": "step",
+              "label": "Convert to g-loads",
+              "math": "\\htmlClass{hl-n}{n} = \\frac{a_{\\text{impact}}}{g}",
+              "justification": "Dividing by $g = 9.81\\ \\text{m/s}^2$ expresses the deceleration as a multiple of Earth's gravity.",
+              "explanation": "Astronauts and engineers think in g-loads \u2014 1g is normal gravity, 3g is uncomfortable, 10g+ is dangerous.",
+              "sceneStep": 3,
+              "highlights": {
+                "n": {
+                  "color": "yellow",
+                  "label": "Load Factor"
+                }
+              },
+              "prompt": "Compare to everyday examples: a roller coaster is about 3-4g, fighter pilots experience up to 9g."
+            },
+            {
+              "type": "conclusion",
+              "label": "Splashdown load factor",
+              "math": "\\htmlClass{hl-n}{n} = \\frac{\\htmlClass{hl-vt}{V_t}}{g\\,\\htmlClass{hl-dt}{\\Delta t}}",
+              "justification": "Combine the two previous steps: substitute $a_{\\text{impact}} = V_t / \\Delta t$ into $n = a/g$.",
+              "explanation": "A lower terminal velocity (bigger chute) or a longer stopping time (softer water entry) reduces the g-load on the crew.",
+              "sceneStep": 3,
+              "highlights": {
+                "n": {
+                  "color": "yellow",
+                  "label": "Load Factor"
+                },
+                "vt": {
+                  "color": "green",
+                  "label": "Terminal Velocity"
+                },
+                "dt": {
+                  "color": "orange",
+                  "label": "Stop Time"
+                }
+              },
+              "prompt": "Connect back to design: this is why capsules have crushable structures and why landing in water is gentler than land."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

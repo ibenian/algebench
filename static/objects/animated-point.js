@@ -16,6 +16,9 @@ export function renderAnimatedPoint(el, view) {
         || (Array.isArray(el.position) && el.position.length === 3 ? el.position.map(v => String(v)) : null);
     const visibleExprString = (typeof el.visibleExpr === 'string' && el.visibleExpr.trim()) ? el.visibleExpr.trim() : null;
     const labelExprString = (typeof el.labelExpr === 'string' && el.labelExpr.trim()) ? el.labelExpr.trim() : null;
+    const labelOffset = (Array.isArray(el.labelOffset) && el.labelOffset.length === 3)
+        ? [Number(el.labelOffset[0]) || 0, Number(el.labelOffset[1]) || 0, Number(el.labelOffset[2]) || 0]
+        : [0, 0, 0.3];
 
     if (!Array.isArray(exprStrings) || exprStrings.length !== 3) return null;
 
@@ -68,7 +71,7 @@ export function renderAnimatedPoint(el, view) {
     let labelEl = null;
     if (label || labelExprFn) {
         const initText = label || '';
-        labelEl = addLabel3D(initText, [initPos[0], initPos[1], initPos[2] + 0.3], color);
+        labelEl = addLabel3D(initText, [initPos[0] + labelOffset[0], initPos[1] + labelOffset[1], initPos[2] + labelOffset[2]], color);
         if (labelExprFn) {
             try {
                 const txt = String(evalExpr(labelExprFn, 0));
@@ -124,9 +127,9 @@ export function renderAnimatedPoint(el, view) {
             mesh.scale.setScalar(worldRadius);
 
             if (labelEl) {
-                labelEl.dataPos[0] = p[0];
-                labelEl.dataPos[1] = p[1];
-                labelEl.dataPos[2] = p[2] + 0.3;
+                labelEl.dataPos[0] = p[0] + labelOffset[0];
+                labelEl.dataPos[1] = p[1] + labelOffset[1];
+                labelEl.dataPos[2] = p[2] + labelOffset[2];
                 labelEl.forceHidden = !isVisible;
                 if (labelExprFn) {
                     try {

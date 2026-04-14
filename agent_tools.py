@@ -33,7 +33,7 @@ SET_CAMERA_TOOL_DECL = types.FunctionDeclaration(
             "position": types.Schema(
                 type="ARRAY",
                 items=types.Schema(type="NUMBER"),
-                description="Custom camera position as [x, y, z] in world coordinates. Ignored if view is set.",
+                description="Custom camera position as [x, y, z] in data coordinates (same coordinate system as scene elements and range). Ignored if view is set.",
             ),
             "target": types.Schema(
                 type="ARRAY",

@@ -34,12 +34,19 @@ _JS_ONLY_RE = re.compile(
     r'|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\('
 )
 
+# Math.js extensions registered in static/expr.js via _MATHJS_EXTENSIONS.
+# These are available in the math.js sandbox and should NOT be flagged as JS.
+_MATHJS_EXTENSION_NAMES = frozenset({
+    'toFixed', 'concat', 'bar', 'dataTable',
+})
+
 # Secondary pattern: JS-only built-in functions used without a leading dot
-# (e.g. toFixed(h, 2)) — these don't match _JS_ONLY_RE but fail math.js
+# (e.g. parseInt(x)) — these don't match _JS_ONLY_RE but fail math.js
 # parsing and are silently evaluated via the JS fallback in compileExpr /
 # _evalInfoExpr, without triggering the trust dialog proactively.
+# Excludes functions registered as math.js extensions.
 _JS_BUILTIN_FUNC_RE = re.compile(
-    r'\b(toFixed|toPrecision|toString|parseInt|parseFloat|isNaN|isFinite)\s*\('
+    r'\b(toPrecision|toString|parseInt|parseFloat|isNaN|isFinite)\s*\('
 )
 
 # Fields actively scanned by _scanSpecForUnsafeJs in static/app.js.
@@ -52,8 +59,12 @@ _SCANNED_KEYS = frozenset({'expr', 'x', 'y', 'z', 'expression', 'fx', 'fy', 'fz'
 # are classified as 'js_uncovered' when they match _JS_ONLY_RE.
 _UNSCANNED_EXPR_KEYS = frozenset({
     'visibleExpr', 'radiusExpr', 'radiiExpr', 'centerExpr',
-    'fromExpr', 'toExpr', 'positionExpr',
+    'fromExpr', 'toExpr', 'positionExpr', 'valueExpr', 'labelExpr',
 })
+
+def _is_expr_key(k):
+    """Return True if k is a known expression key or matches the *Expr pattern."""
+    return k in _SCANNED_KEYS or k in _UNSCANNED_EXPR_KEYS or (k.endswith('Expr') and k not in _NON_EXPR_KEYS)
 
 # Keys whose string values are never mathematical expressions — labels, ids,
 # documentation fields, etc.  Excluded from the dynamic discovery pass.
@@ -62,6 +73,7 @@ _NON_EXPR_KEYS = frozenset({
     'doc', 'prompt', 'caption', 'content', 'format', 'unit',
     'axis', 'camera', 'range', 'theme',
     'markdown', 'text', 'unsafeExplanation',
+    'explanation', 'math', 'legendGroup', 'goal',
 })
 
 # Regex that extracts {{...}} template expressions from content strings.
@@ -91,7 +103,7 @@ def discover_unregistered_expr_keys(scene_files):
     def _walk(obj):
         if isinstance(obj, dict):
             for k, v in obj.items():
-                if k in known or k in ('vertices', 'points'):
+                if k in known or k in ('vertices', 'points') or _is_expr_key(k):
                     continue
                 if isinstance(v, str) and v.strip() and k not in found:
                     if _JS_ONLY_RE.search(v) or _JS_BUILTIN_FUNC_RE.search(v):
@@ -138,13 +150,9 @@ def extract_expressions(obj, parent_key=None):
                     elif isinstance(vertex, str) and vertex.strip():
                         results.append((vertex.strip(), k))
 
-            elif k in _SCANNED_KEYS and isinstance(v, str) and v.strip():
-                results.append((v.strip(), k))
-
-            elif k in _UNSCANNED_EXPR_KEYS:
-                # These fields are compiled by app.js but not scanned by
-                # _scanSpecForUnsafeJs.  Extract string expressions from them
-                # so we can flag any JS patterns as uncovered.
+            elif _is_expr_key(k):
+                # Expression-bearing field — either scanned (trust dialog) or
+                # unscanned.  Also catches any future *Expr keys automatically.
                 if isinstance(v, str) and v.strip():
                     results.append((v.strip(), k))
                 elif isinstance(v, list):

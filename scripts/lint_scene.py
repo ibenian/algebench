@@ -38,6 +38,7 @@ EXPR_KEYS = {
     'expr', 'fromExpr', 'toExpr', 'positionExpr', 'centerExpr',
     'x', 'y', 'z', 'fx', 'fy', 'fz', 'expression',
     'radiusExpr', 'visibleExpr', 'labelExpr', 'rangeExpr',
+    'valueExpr',
 }
 
 

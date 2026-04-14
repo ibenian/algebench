@@ -74,10 +74,22 @@ export function renderAnimatedVector(el, view) {
         }
     }
 
+    const vecScale = (typeof el.scale === 'number' && isFinite(el.scale)) ? el.scale : 1;
+
     let currentFrom = initFrom.slice();
     let currentTo = initTo.slice();
 
+    function applyVecScale(from, to) {
+        if (vecScale === 1) return to;
+        return [
+            from[0] + (to[0] - from[0]) * vecScale,
+            from[1] + (to[1] - from[1]) * vecScale,
+            from[2] + (to[2] - from[2]) * vecScale,
+        ];
+    }
+
     function computeArrowParams(from, to) {
+        to = applyVecScale(from, to);
         const tipWorld = dataToWorld(to);
         const fromWorld = dataToWorld(from);
         const wdx = tipWorld[0]-fromWorld[0], wdy = tipWorld[1]-fromWorld[1], wdz = tipWorld[2]-fromWorld[2];

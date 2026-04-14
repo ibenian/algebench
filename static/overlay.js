@@ -5,8 +5,9 @@
 
 import { state } from '/state.js';
 import { renderMarkdown, renderKaTeX, parseColor, colorToCSS, injectAskButtons, makeAiAskButton } from '/labels.js';
-import { compileExpr, evalExpr, _getMathNamesAndValues } from '/expr.js';
+import { compileExpr, evalExpr, _getMathNamesAndValues, EXTENSION_NAMES } from '/expr.js';
 import { getSliderIds, syncSliderState } from '/sliders.js';
+import { worldCameraToData } from '/coords.js';
 
 // Forward reference for buildSceneTree — assigned by context-browser.js via
 // setBuildSceneTreeFn() to avoid a circular import.
@@ -203,12 +204,25 @@ export function buildLegend(elements) {
     const legend = document.getElementById('legend');
     const grouped = new Map();
     for (const el of elements) {
-        if (!el.label || !el.color || el.type === 'axis' || el.type === 'grid') continue;
-        const key = `${el.label}__${colorToCSS(el.color)}`;
+        if (el.type === 'axis' || el.type === 'grid') continue;
+        // legendGroup lets an element join a legend group without rendering its own label text.
+        // The group key matches the label+color of the primary element.
+        const groupLabel = el.legendGroup || el.label;
+        if (!groupLabel || !el.color) continue;
+        const key = `${groupLabel}__${colorToCSS(el.color)}`;
         if (!grouped.has(key)) {
-            grouped.set(key, { label: el.label, color: el.color, ids: [] });
+            // Only create a visible legend entry if this element has a real label (not just legendGroup)
+            grouped.set(key, { label: el.label || null, color: el.color, ids: [] });
+        }
+        // If this element has a real label and the group was created by a legendGroup-only element, upgrade it
+        if (el.label && !grouped.get(key).label) {
+            grouped.get(key).label = el.label;
         }
         if (el.id) grouped.get(key).ids.push(el.id);
+    }
+    // Remove groups that never got a real label (only legendGroup members, no primary)
+    for (const [key, val] of grouped) {
+        if (!val.label) grouped.delete(key);
     }
     const items = [...grouped.values()];
     if (items.length === 0) {
@@ -290,7 +304,7 @@ function _isKnownInfoExprIdentifier(name) {
     if (name === 't' || name === 'u' || name === 'v') return true;
     if (name === 'pi' || name === 'e' || name === 'PI' || name === 'E') return true;
     if (name === 'true' || name === 'false' || name === 'Infinity' || name === 'NaN') return true;
-    if (name === 'toFixed') return true;
+    if (EXTENSION_NAMES.includes(name)) return true;
     return _getMathNamesAndValues().names.includes(name);
 }
 
@@ -684,18 +698,20 @@ export function updateStatusBar() {
     const camPopup = document.getElementById('cam-popup-content');
     const camPopupText = document.getElementById('cam-popup-text');
     if (camPopup && state.camera && state.controls) {
-        const p = state.camera.position;
-        const t = state.controls.target;
+        const pw = state.camera.position;
+        const tw = state.controls.target;
         const u = state.camera.up;
-        const dist = p.distanceTo(t);
+        const p = worldCameraToData([pw.x, pw.y, pw.z]);
+        const t = worldCameraToData([tw.x, tw.y, tw.z]);
+        const dist = Math.sqrt((p[0]-t[0])**2 + (p[1]-t[1])**2 + (p[2]-t[2])**2);
         const fov = state.camera.isPerspectiveCamera ? state.camera.fov : null;
         const fmt = v => v.toFixed(3);
         const activeViewBtn = document.querySelector('.cam-btn.active');
         const viewName = activeViewBtn ? activeViewBtn.dataset.view : null;
         let txt = '';
         if (viewName) txt += `view ${viewName}\n`;
-        txt += `pos  x: ${fmt(p.x)}  y: ${fmt(p.y)}  z: ${fmt(p.z)}\n`
-             + `tgt  x: ${fmt(t.x)}  y: ${fmt(t.y)}  z: ${fmt(t.z)}\n`
+        txt += `pos  x: ${fmt(p[0])}  y: ${fmt(p[1])}  z: ${fmt(p[2])}\n`
+             + `tgt  x: ${fmt(t[0])}  y: ${fmt(t[1])}  z: ${fmt(t[2])}\n`
              + `up   x: ${fmt(u.x)}  y: ${fmt(u.y)}  z: ${fmt(u.z)}\n`
              + `dist ${dist.toFixed(3)}`;
         if (fov != null) txt += `\nfov  ${Math.round(fov)}°`;

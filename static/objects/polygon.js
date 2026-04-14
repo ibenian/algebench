@@ -65,10 +65,14 @@ export function renderPolygon(el, view) {
         const cy  = Array.isArray(reg.center) ? Number(reg.center[1] ?? 0) : 0;
         const cz  = Array.isArray(reg.center) ? Number(reg.center[2] ?? 0) : 0;
         const rot = Number(reg.rotation ?? 0);
+        const plane = (reg.plane || 'xy').toLowerCase();
         vertices = [];
         for (let k = 0; k < N; k++) {
             const angle = rot + (2 * Math.PI * k) / N;
-            vertices.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle), cz]);
+            const a = r * Math.cos(angle), b = r * Math.sin(angle);
+            if (plane === 'xz')      vertices.push([cx + a, cy, cz + b]);
+            else if (plane === 'yz') vertices.push([cx, cy + a, cz + b]);
+            else                     vertices.push([cx + a, cy + b, cz]);
         }
     } else {
         vertices = el.vertices || el.points || [[0,0,0],[1,0,0],[1,1,0],[0,1,0]];

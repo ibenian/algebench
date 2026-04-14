@@ -523,6 +523,10 @@ export async function loadScene(spec) {
     clearWorldStarfield();
     clearWorldSkybox();
     state.currentSpec = spec;
+    // Merge data tables: lesson-level first, scene-level overrides
+    const lessonData = (state.lessonSpec && state.lessonSpec.data) || {};
+    const sceneData = (spec && spec.data) || {};
+    state.sceneData = { ...lessonData, ...sceneData };
     setActiveSceneFunctions(spec);
     setActiveVirtualTimeExpr(spec, -1);
     updateTitle(spec);

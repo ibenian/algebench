@@ -493,29 +493,48 @@ async function sendChatMessage(text, { silent = false } = {}) {
                         const key = viewName.toLowerCase().replace(/\s+/g, '-');
                         if (CAMERA_VIEWS[key]) {
                             animateCamera(key, 800);
+                        } else {
+                            // Follow-cam and expr-camera views aren't in CAMERA_VIEWS;
+                            // activate them by clicking the matching camera button.
+                            const btn = document.querySelector(`.cam-btn[data-view="${key}"]`);
+                            if (btn) btn.click();
                         }
-                    } else if (tc.args.position) {
-                        let pos = tc.args.position;
+                    } else if (tc.args.position || tc.args.target) {
                         const tgt = tc.args.target || [0, 0, 0];
+                        let pos = tc.args.position;
                         const zoom = tc.args.zoom;
-                        // Direction vector from target to requested position
-                        const dx = pos[0] - tgt[0], dy = pos[1] - tgt[1], dz = pos[2] - tgt[2];
-                        const dirLen = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
-                        if (zoom != null && zoom > 0) {
-                            // Explicit zoom: scale the requested distance
-                            const s = 1 / zoom;
-                            pos = [tgt[0] + dx * s, tgt[1] + dy * s, tgt[2] + dz * s];
-                        } else if (typeof camera !== 'undefined' && typeof controls !== 'undefined') {
-                            // No zoom: keep current distance, only change angle
-                            const cx = camera.position.x - controls.target.x;
-                            const cy = camera.position.y - controls.target.y;
-                            const cz = camera.position.z - controls.target.z;
-                            const curDist = Math.sqrt(cx * cx + cy * cy + cz * cz);
-                            const s = curDist / dirLen;
-                            pos = [tgt[0] + dx * s, tgt[1] + dy * s, tgt[2] + dz * s];
+                        if (!pos && typeof camera !== 'undefined' && typeof controls !== 'undefined'
+                            && typeof worldCameraToData === 'function') {
+                            // Target-only: keep current camera offset, re-aim at new target
+                            const curPosData = worldCameraToData([camera.position.x, camera.position.y, camera.position.z]);
+                            const curTgtData = worldCameraToData([controls.target.x, controls.target.y, controls.target.z]);
+                            pos = [
+                                tgt[0] + (curPosData[0] - curTgtData[0]),
+                                tgt[1] + (curPosData[1] - curTgtData[1]),
+                                tgt[2] + (curPosData[2] - curTgtData[2]),
+                            ];
+                        } else if (!pos) {
+                            pos = [tgt[0], tgt[1] + 50, tgt[2] + 50]; // fallback offset
+                        }
+                        if (pos) {
+                            // Direction vector from target to requested position
+                            const dx = pos[0] - tgt[0], dy = pos[1] - tgt[1], dz = pos[2] - tgt[2];
+                            const dirLen = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+                            if (zoom != null && zoom > 0) {
+                                // Explicit zoom: scale the requested distance
+                                const s = 1 / zoom;
+                                pos = [tgt[0] + dx * s, tgt[1] + dy * s, tgt[2] + dz * s];
+                            }
                         }
                         if (typeof CAMERA_VIEWS !== 'undefined' && typeof animateCamera === 'function') {
-                            CAMERA_VIEWS['__agent'] = { position: pos, target: tgt };
+                            // Convert data-space coords to world-space (same as view buttons)
+                            const wPos = (typeof dataCameraToWorld === 'function') ? dataCameraToWorld(pos) : pos;
+                            const wTgt = (typeof dataCameraToWorld === 'function') ? dataCameraToWorld(tgt) : tgt;
+                            // Preserve the current up vector so orientation isn't flipped
+                            const sceneUp = (typeof camera !== 'undefined' && camera)
+                                ? [camera.up.x, camera.up.y, camera.up.z]
+                                : [0, 1, 0];
+                            CAMERA_VIEWS['__agent'] = { position: wPos, target: wTgt, up: sceneUp };
                             animateCamera('__agent', 800);
                         }
                     }

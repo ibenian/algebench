@@ -147,6 +147,29 @@ If the scene outline includes a `proof_plan`:
 
 **Detailed field reference for each type**: Read from `reference/objects/<type>.md` in this skill directory. Load only the types needed for the scene you're building.
 
+### Legend Grouping Rule
+
+The legend groups elements by `label + color`. Clicking a legend entry toggles **all** elements that share the same `label` and `color`. When a `text` element serves as a label for another object (vector, curve, polygon, line, etc.), it **must** have a `label` field matching that object's `label`, and the same `color`. Otherwise the legend only toggles the text, not the object it describes.
+
+**Rule:** Every `text` element that annotates a specific object must set `"label"` and `"color"` to match that object's legend group. The object itself should use `"legendGroup"` (not `"label"`) to join the group without rendering duplicate text, because most element types (line, animated_line, polygon, parametric_curve, etc.) render a visible text sprite when `label` is set.
+
+- **`label`** — creates a legend entry AND renders visible text in the viewport (for non-`text` types).
+- **`legendGroup`** — joins a legend group (matched by label+color key) WITHOUT rendering visible text.
+- **`text` type** — always renders its `text` field; its `label` is only used for legend grouping (no duplication).
+
+Use `label` on the **primary labeled element** (the text annotation, or a vector/point whose label you want visible). Use `legendGroup` on **companion elements** (lines, polygons, curves) that should toggle with the group but shouldn't show extra text.
+
+Example — a line with its text annotation:
+```json
+{"id": "line_entry", "type": "line", "color": "#e74c3c", "legendGroup": "Entry Interface", ...},
+{"id": "text_entry", "type": "text", "text": "Entry Interface (122 km)", "color": "#e74c3c", "label": "Entry Interface", ...}
+```
+
+Example — a vector that already has a meaningful label (no separate text element needed):
+```json
+{"id": "vec_drag", "type": "animated_vector", "color": "#e74c3c", "label": "$\\vec{F}_D$", ...}
+```
+
 ---
 
 ## Scene File Format
@@ -195,8 +218,35 @@ If the scene outline includes a `proof_plan`:
 | `range` | `[[xmin,xmax],[ymin,ymax],[zmin,zmax]]` | no | Data coordinate range. Default `[[-5,5],[-5,5],[-5,5]]` |
 | `camera` | object | no | Initial camera: `{"position":[x,y,z],"target":[x,y,z]}` — in **data space** |
 | `views` | array | no | Custom camera preset buttons. Omit to get 4 defaults (Iso, Front, Top, Right) |
+| `data` | object | no | Named data tables for `dataTable()` lookups. Defined at lesson or scene level (scene overrides lesson). |
 | `unsafe` | boolean | no | Set `true` if scene uses native JS expressions |
 | `unsafe_explanation` | string | no | Shown in the trust dialog. Required when `unsafe: true` |
+
+---
+
+## Data Tables
+
+Define lookup tables in `data` at the lesson root (shared) or per-scene (overrides). Access values in expressions with `dataTable('tableName', rowIndex, 'column')`.
+
+```json
+"data": {
+  "capsules": [
+    { "name": "Crew Dragon", "mass": 9525, "chuteArea": 440 },
+    { "name": "Apollo CM",   "mass": 5500, "chuteArea": 333 }
+  ]
+}
+```
+
+Use with a slider to select rows:
+```json
+"sliders": [{ "id": "capsule", "label": "Capsule", "min": 0, "max": 1, "step": 1, "default": 0 }]
+```
+
+In expressions: `dataTable('capsules', capsule, 'mass')` → returns mass for selected row.
+
+In info overlays: `{{dataTable('capsules', capsule, 'name')}}` → displays name.
+
+Use single quotes for string arguments — they are auto-converted to double quotes for math.js.
 
 ---
 
@@ -367,6 +417,7 @@ Double-escape all backslashes: `\\vec{v}`, `\\frac{a}{b}`, `\\lambda`, `\\htmlCl
 - [ ] `remove` targets exist in current state
 - [ ] Proof highlights match `\htmlClass` regions; `sceneStep` values valid
 - [ ] Colors follow outline conventions
+- [ ] Text elements that label objects share the same `label` and `color` as those objects (legend grouping rule)
 
 ## Common Mistakes
 
@@ -376,6 +427,7 @@ Double-escape all backslashes: `\\vec{v}`, `\\frac{a}{b}`, `\\lambda`, `\\htmlCl
 | `x.toFixed(2)` | `toFixed(x, 2)` |
 | `t**2` | `t^2` |
 | `{a}` in overlay | `{{a}}` |
+| `\frac{{{expr}}}` in overlay | `\frac{ {{expr}} }` — space around `{{}}` inside LaTeX braces to prevent the lazy regex from mismatching |
 | Mismatched axis/scene range | Match them |
 | Non-uniform range spans | Equal spans on all axes |
 | No grid in scene elements | Always include at least an invisible grid (`opacity: 0`) — MathBox won't initialize without one |

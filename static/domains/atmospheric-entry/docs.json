@@ -1,0 +1,41 @@
+{
+  "name": "atmospheric-entry",
+  "description": "Simplified pre-parachute atmospheric entry dynamics for blunt capsules. Integrates a 2D planet-centered entry-plane model with gravity, drag, and in-plane lift.",
+  "model": {
+    "planet": {
+      "radius_km": 6371.0,
+      "mu_km3_s2": 398600.4418
+    },
+    "atmosphere": {
+      "type": "exponential",
+      "rho0_kg_m3": 1.225,
+      "scale_height_km": 7.2,
+      "entry_interface_km": 121.92
+    },
+    "aerodynamics": {
+      "drag_acceleration_km_s2": "a_D = 500 * rho * v^2 / beta",
+      "ballistic_coefficient": "beta = m / (Cd * A)",
+      "lift_model": "a_L = (L/D) * a_D * cos(bank)"
+    },
+    "limits": [
+      "No winds",
+      "No planetary rotation",
+      "No mission-specific guidance law",
+      "Fixed Cd and L/D per vehicle",
+      "Stops at parachute deployment altitude instead of splashdown"
+    ]
+  },
+  "sliders": {
+    "s2_vehicle": "Vehicle preset index: 0 Dragon, 1 Gemini, 2 Apollo CM, 3 Orion",
+    "s2_gamma": "Entry flight-path angle magnitude in degrees below local horizontal",
+    "s2_bank": "Bank angle in degrees; in-plane lift scales with cos(bank)",
+    "s2_g_limit": "Crew-load threshold used to define the corridor"
+  },
+  "functions": [
+    "entryX(t), entryY(t), entryVx(t), entryVy(t)",
+    "entryAlt(t), entrySpeed(t), entryRho(t), entryG(t), entryHeat(t)",
+    "entryPeakG(), entryPeakGT(), entryPeakHeat(), entryPeakHeatT(), entryEndTime()",
+    "entryCorridorLo(), entryCorridorHi(), entryOutcome()",
+    "entryVehicleName(), entryVehicleMission(), entryVehicleMass(), entryVehicleArea(), entryVehicleCd(), entryVehicleBeta(), entryVehicleLD(), entryVehicleSpeed(), entryVehicleNominalGamma(), entryChuteAlt()"
+  ]
+}

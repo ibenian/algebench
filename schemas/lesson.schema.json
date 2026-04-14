@@ -32,6 +32,10 @@
           "type": "string",
           "description": "Human-readable explanation of why this lesson uses unsafe JS, shown in the trust dialog. Example: \"This lesson uses scene-level reusable functions with IIFE loops.\""
         },
+        "data": {
+          "$ref": "#/$defs/dataTable",
+          "description": "Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions."
+        },
         "proof": {
           "$ref": "#/$defs/proofOrProofArray",
           "description": "Root-level proof(s) visible across all scenes. Can be a single proof object or an array of proofs."
@@ -62,6 +66,7 @@
         "camera": { "$ref": "#/$defs/camera", "description": "Initial camera position and target." },
         "views": { "type": "array", "items": { "$ref": "#/$defs/view" }, "description": "Named camera presets shown as buttons." },
         "functions": { "type": "array", "items": { "$ref": "#/$defs/sceneFunction" }, "description": "Reusable math functions available in expressions." },
+        "data": { "$ref": "#/$defs/dataTable", "description": "Data tables accessible via dataTable() in expressions." },
         "starfield": { "$ref": "#/$defs/starfield", "description": "Background starfield configuration." },
         "elements": { "type": "array", "items": { "$ref": "#/$defs/element" }, "description": "Base scene elements rendered on load." },
         "steps": { "type": "array", "items": { "$ref": "#/$defs/step" }, "description": "Incremental steps that add/remove elements." },
@@ -111,6 +116,10 @@
           "type": "array",
           "items": { "$ref": "#/$defs/sceneFunction" },
           "description": "Reusable scene-level functions callable from expressions. Registered in the math.js sandbox."
+        },
+        "data": {
+          "$ref": "#/$defs/dataTable",
+          "description": "Scene-level data tables. Override lesson-level tables with the same name."
         },
         "starfield": {
           "$ref": "#/$defs/starfield",
@@ -552,6 +561,10 @@
           "type": "number",
           "description": "Scale factor for animated_vector shaft thickness. Default: 1."
         },
+        "scale": {
+          "type": "number",
+          "description": "Scale factor for animated_vector length. Multiplies the displacement from 'from' to 'to' without changing the underlying expressions. Default: 1."
+        },
         "keyframes": {
           "type": "array",
           "description": "Keyframe array for animated_vector. Each keyframe defines a target position over time."
@@ -662,6 +675,10 @@
         "reset": {
           "type": "boolean",
           "description": "If true, previous slider state is snapshotted for undo on backward navigation."
+        },
+        "valueExpr": {
+          "type": "string",
+          "description": "Expression to format the displayed slider value. Evaluated via the standard expression engine (math.js / JS fallback). Example: \"dataTable('capsules', s5_capsule, 'name')\" displays the capsule name instead of a numeric index."
         }
       },
       "additionalProperties": false
@@ -749,6 +766,23 @@
         }
       },
       "additionalProperties": false
+    },
+    "dataTable": {
+      "type": "object",
+      "description": "Named data entries. Array values are tables accessible via dataTable('name', row, 'col'). Object values are freeform reference data.",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "array",
+            "items": { "type": "object" },
+            "description": "Table: array of row objects with string keys and number/string values."
+          },
+          {
+            "type": "object",
+            "description": "Freeform reference data (not accessible via dataTable)."
+          }
+        ]
+      }
     },
     "sceneFunction": {
       "type": "object",
@@ -1016,6 +1050,11 @@
             { "type": "string" }
           ],
           "description": "Rotation angle in radians. Can be an expression string. Default: 0."
+        },
+        "plane": {
+          "type": "string",
+          "enum": ["xy", "xz", "yz"],
+          "description": "Plane in which the polygon is generated. Default: \"xy\"."
         }
       },
       "additionalProperties": false
@@ -1143,6 +1182,10 @@
       "description": "A single step in a mathematical proof.",
       "required": ["label"],
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional stable proof-step ID for references, context, and future navigation/state features."
+        },
         "type": {
           "type": "string",
           "description": "Step type displayed as a badge. Common values: 'step', 'definition', 'axiom', 'theorem', 'lemma', 'assumption', 'substitution', 'simplification', 'conclusion'. Default: 'step'.",
