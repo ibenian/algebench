@@ -1,0 +1,36 @@
+{
+  "title": "CI Validation Test",
+  "scenes": [
+    {
+      "title": "Test Scene",
+      "description": "This scene has intentional issues for CI testing",
+      "range": [[-5, 5], [-5, 5], [-5, 5]],
+      "elements": [
+        {
+          "type": "animated_point",
+          "id": "p1",
+          "positionExpr": ["Math.sin(t)", "Math.cos(t)", "0"],
+          "color": "#ff0000"
+        },
+        {
+          "type": "animated_vector",
+          "fromExpr": ["0", "0", "0"],
+          "toExpr": ["t", "t", "0"],
+          "bogusField": true
+        }
+      ],
+      "steps": [
+        {
+          "add": [
+            {
+              "type": "text",
+              "position": [1, 1, 0],
+              "content": "Step 1"
+            }
+          ],
+          "remove": ["nonexistent_id"]
+        }
+      ]
+    }
+  ]
+}
