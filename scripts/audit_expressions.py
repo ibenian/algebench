@@ -73,7 +73,7 @@ _NON_EXPR_KEYS = frozenset({
     'doc', 'prompt', 'caption', 'content', 'format', 'unit',
     'axis', 'camera', 'range', 'theme',
     'markdown', 'text', 'unsafeExplanation',
-    'explanation', 'math', 'legendGroup',
+    'explanation', 'math', 'legendGroup', 'goal',
 })
 
 # Regex that extracts {{...}} template expressions from content strings.
