@@ -218,7 +218,7 @@ def main():
             print(f'    {fix}')
 
     if warnings:
-        print(f'  Warnings ({len(warnings)}):')
+        print(f'  ⚠️  Warnings ({len(warnings)}):')
         for w in warnings:
             print(f'    {w}')
 
