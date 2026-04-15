@@ -446,11 +446,12 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
     print(f'  Overlays:    {status(0, ow)} ({oc} checked)')
 
     if fixes:
-        print(f'\n  Auto-fixable ({len(fixes)}):')
+        print(f'\n  ⚠️  Auto-fixable ({len(fixes)}):')
         for fix_path, old, new in fixes[:10]:
             print(f'    {fix_path}: {old[:40]} → {new[:40]}')
         if len(fixes) > 10:
             print(f'    ... and {len(fixes) - 10} more')
+        print(f'\n  Run: ./run.sh scripts/validate_content.py --fix {path}')
 
     if errors:
         print(f'\n  Errors ({total_errors}):')
@@ -458,7 +459,7 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
             print(f'    ❌ {e}')
 
     if warnings:
-        print(f'\n  Warnings ({total_warnings}):')
+        print(f'\n  ⚠️  Warnings ({total_warnings}):')
         for w in warnings[:20]:
             print(f'    ⚠️  {w}')
 

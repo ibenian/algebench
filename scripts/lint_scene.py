@@ -218,7 +218,7 @@ def main():
             print(f'    {fix}')
 
     if warnings:
-        print(f'  Warnings ({len(warnings)}):')
+        print(f'  ⚠️  Warnings ({len(warnings)}):')
         for w in warnings:
             print(f'    {w}')
 
@@ -226,6 +226,7 @@ def main():
         print(f'  Errors ({len(errors)}):')
         for e in errors:
             print(f'    {e}')
+        print(f'\n  Run: ./run.sh scripts/lint_scene.py --fix {args.file}')
         sys.exit(1)
     else:
         print(f'  Result: OK')

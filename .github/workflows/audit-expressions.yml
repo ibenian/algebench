@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scenes/*.json'
+      - 'scenes/**/*.json'
       - 'static/app.js'
       - 'scripts/audit_expressions.py'
   workflow_dispatch:
