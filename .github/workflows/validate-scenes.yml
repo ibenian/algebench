@@ -53,7 +53,7 @@ jobs:
 
       - name: Content validation
         id: content
-        if: steps.changed.outputs.files != '' && (steps.schema.outputs.exit_code == '0' || steps.schema.outcome == 'success')
+        if: steps.changed.outputs.files != '' && steps.schema.outputs.exit_code == '0'
         run: |
           python scripts/validate_content.py ${{ steps.changed.outputs.files }} 2>&1 | tee /tmp/content-output.txt
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
@@ -63,9 +63,11 @@ jobs:
         if: steps.changed.outputs.files != ''
         run: |
           FAILED=0
+          : > /tmp/lint-output.txt
           for f in ${{ steps.changed.outputs.files }}; do
-            python scripts/lint_scene.py "$f" 2>&1 || FAILED=1
-          done | tee /tmp/lint-output.txt
+            python scripts/lint_scene.py "$f" 2>&1 | tee -a /tmp/lint-output.txt
+            [ "${PIPESTATUS[0]}" != "0" ] && FAILED=1
+          done
           echo "exit_code=${FAILED}" >> "$GITHUB_OUTPUT"
 
       - name: Post validation report as PR comment

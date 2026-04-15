@@ -1,0 +1,34 @@
+{
+  "title": "CI Validation Test",
+  "scenes": [
+    {
+      "title": "Unit Circle",
+      "prompt": "A minimal scene to verify CI validation workflows.",
+      "description": "A simple unit circle to test schema, content, and lint checks.",
+      "range": [[-2, 2], [-2, 2], [-1, 1]],
+      "camera": { "position": [0, 0, 5], "target": [0, 0, 0] },
+      "elements": [
+        { "type": "axis", "axis": "x", "range": [-2, 2], "color": "#444444" },
+        { "type": "axis", "axis": "y", "range": [-2, 2], "color": "#444444" }
+      ],
+      "steps": [
+        {
+          "title": "Draw a unit circle",
+          "description": "Parametric curve tracing $x = \\cos(t)$, $y = \\sin(t)$.",
+          "add": [
+            {
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [0, 6.2832],
+              "samples": 64,
+              "color": "#4da6ff",
+              "width": 3
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
