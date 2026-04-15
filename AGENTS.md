@@ -29,6 +29,9 @@ The server runs at `http://localhost:8785`.
 ./run.sh scripts/assemble_scene.py lesson.json --list                  # list scenes
 ./run.sh scripts/lint_scene.py scene.json                              # lint a scene
 ./run.sh scripts/lint_scene.py --fix scene.json                        # lint + auto-fix
+./run.sh scripts/latex_to_graph.py "F = m \cdot a"                     # LaTeX → semantic graph JSON
+./run.sh scripts/latex_to_graph.py --pretty "E = mc^2"                 # pretty-printed output
+./run.sh scripts/latex_to_graph.py -o graph.json "\frac{dv}{dt} = a"   # write to file
 ```
 
 ### Browser Testing
