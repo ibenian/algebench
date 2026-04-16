@@ -32,6 +32,11 @@ The server runs at `http://localhost:8785`.
 ./run.sh scripts/latex_to_graph.py "F = m \cdot a"                     # LaTeX → semantic graph JSON
 ./run.sh scripts/latex_to_graph.py --pretty "E = mc^2"                 # pretty-printed output
 ./run.sh scripts/latex_to_graph.py -o graph.json "\frac{dv}{dt} = a"   # write to file
+./run.sh scripts/graph_to_mermaid.py graph.json                        # semantic graph → Mermaid
+./run.sh scripts/graph_to_mermaid.py --style role-colored graph.json   # with a named style
+./run.sh scripts/graph_to_mermaid.py --label-mode latex graph.json     # LaTeX labels
+./run.sh scripts/graph_to_mermaid.py --list-styles                     # list available styles
+./run.sh scripts/latex_to_graph.py "F = m \cdot a" | ./run.sh scripts/graph_to_mermaid.py --wrap -  # full pipeline
 ```
 
 ### Browser Testing

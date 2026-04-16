@@ -1,0 +1,17 @@
+{
+  "name": "default",
+  "direction": "LR",
+  "labelMode": "emoji",
+  "nodeStyles": {
+    "scalar":   { "shape": "rect",    "fill": "#e8f5e9", "stroke": "#66bb6a", "color": "#2e7d32" },
+    "vector":   { "shape": "rect",    "fill": "#e8f5e9", "stroke": "#66bb6a", "color": "#2e7d32" },
+    "constant": { "shape": "rect",    "fill": "#e8f5e9", "stroke": "#66bb6a", "color": "#2e7d32" },
+    "number":   { "shape": "rect",    "fill": "#e8f5e9", "stroke": "#66bb6a", "color": "#2e7d32" },
+    "operator": { "shape": "circle",  "fill": "#e3f2fd", "stroke": "#42a5f5", "color": "#1565c0" },
+    "function": { "shape": "hexagon", "fill": "#e3f2fd", "stroke": "#42a5f5", "color": "#1565c0" },
+    "relation": { "shape": "diamond", "fill": "#fff8e1", "stroke": "#ffa726", "color": "#e65100" },
+    "result":   { "shape": "stadium", "fill": "#fff8e1", "stroke": "#ffa726", "color": "#e65100" }
+  },
+  "edgeStyle": { "stroke": "#777", "strokeWidth": 2 },
+  "fontSize": 15
+}

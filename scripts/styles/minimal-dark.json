@@ -1,0 +1,22 @@
+{
+  "name": "minimal-dark",
+  "direction": "TB",
+  "labelMode": "emoji",
+  "nodeStyles": {
+    "scalar":   { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" },
+    "vector":   { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" },
+    "constant": { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" },
+    "number":   { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" },
+    "operator": { "shape": "circle", "fill": "#2a2a3a", "stroke": "#555", "color": "#ccc" },
+    "function": { "shape": "circle", "fill": "#2a2a3a", "stroke": "#555", "color": "#ccc" },
+    "relation": { "shape": "diamond","fill": "#2a2a3a", "stroke": "#555", "color": "#ccc" },
+    "result":   { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" }
+  },
+  "edgeStyles": {
+    "amplify":  { "stroke": "#ef5350", "strokeWidth": 4 },
+    "dampen":   { "stroke": "#42a5f5", "strokeWidth": 1 },
+    "neutral":  { "stroke": "#777",    "strokeWidth": 2 }
+  },
+  "useLinkStyle": true,
+  "fontSize": 16
+}
