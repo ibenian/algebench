@@ -43,13 +43,17 @@ try:
         pi, E, I, oo,
     )
 except ImportError:
-    print("❌ Missing dependency: pip install sympy", file=sys.stderr)
+    print("❌ Missing dependency: sympy. Re-run via "
+          "'./run.sh scripts/latex_to_graph.py ...' to auto-manage dependencies.",
+          file=sys.stderr)
     sys.exit(1)
 
 try:
     from sympy.parsing.latex import parse_latex
 except ImportError:
-    print("❌ Missing dependency: pip install antlr4-python3-runtime==4.11.1", file=sys.stderr)
+    print("❌ Missing dependency: antlr4-python3-runtime==4.11.1. Re-run via "
+          "'./run.sh scripts/latex_to_graph.py ...' to auto-manage dependencies.",
+          file=sys.stderr)
     sys.exit(1)
 
 
@@ -179,7 +183,7 @@ class SemanticGraphBuilder:
 
     def _next_id(self, prefix: str = "n") -> str:
         self._id_counter += 1
-        return f"{prefix}_{self._id_counter}"
+        return f"__{prefix}_{self._id_counter}"
 
     def _add_node(self, node_id: str, **attrs: str) -> None:
         node: dict[str, str] = {"id": node_id}
@@ -217,13 +221,7 @@ class SemanticGraphBuilder:
             self._seen_symbols[name] = node_id
             return node_id
 
-        # --- Numbers ---
-        if isinstance(expr, Number):
-            node_id = self._next_id("num")
-            self._add_node(node_id, label=str(expr), emoji="🔢", type="number")
-            return node_id
-
-        # --- Constants (pi, e, i, ∞) ---
+        # --- Constants (pi, e, i, ∞) — check before Number since some are NumberSymbol ---
         for const, meta in CONSTANT_MAP.items():
             if expr is const:
                 node_id = self._next_id("const")
@@ -234,6 +232,12 @@ class SemanticGraphBuilder:
                     type="constant",
                 )
                 return node_id
+
+        # --- Numbers ---
+        if isinstance(expr, Number):
+            node_id = self._next_id("num")
+            self._add_node(node_id, label=str(expr), emoji="🔢", type="number")
+            return node_id
 
         # --- Known functions (sin, cos, …) ---
         if isinstance(expr, sympy.Function):
@@ -445,7 +449,7 @@ def main() -> None:
     result = json.dumps(graph, indent=indent, ensure_ascii=False)
 
     if args.output:
-        with open(args.output, "w") as f:
+        with open(args.output, "w", encoding="utf-8") as f:
             f.write(result + "\n")
         print(f"✅ Graph written to {args.output}")
     else:

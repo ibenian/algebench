@@ -31,15 +31,14 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
+      - name: Install test runner
         run: |
-          pip install -r requirements.txt
-          pip install pytest
+          ./run.sh -m pip install pytest -q
 
       - name: Run tests
         id: tests
         run: |
-          python -m pytest tests/ -v --tb=short --junitxml=test-results.xml 2>&1 | tee test-output.txt
+          ./run.sh -m pytest tests/ -v --tb=short --junitxml=test-results.xml 2>&1 | tee test-output.txt
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Post failure report as PR comment
