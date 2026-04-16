@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout repository
@@ -36,4 +37,72 @@ jobs:
           pip install pytest
 
       - name: Run tests
-        run: python -m pytest tests/ -v
+        id: tests
+        run: |
+          python -m pytest tests/ -v --tb=short --junitxml=test-results.xml 2>&1 | tee test-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Post test report as PR comment
+        if: github.event_name == 'pull_request' && always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OUTPUT=$(cat test-output.txt)
+          EXIT="${{ steps.tests.outputs.exit_code }}"
+
+          # Extract summary line (e.g. "28 passed" or "1 failed, 27 passed")
+          SUMMARY=$(echo "$OUTPUT" | grep -E '^\s*=+.*(passed|failed|error)' | tail -1 | sed 's/=//g' | xargs)
+
+          if [ "$EXIT" = "0" ]; then
+            STATUS="✅ All tests passed"
+          else
+            STATUS="❌ Some tests failed"
+          fi
+
+          # Collect failed test names
+          FAILED=$(echo "$OUTPUT" | grep '^FAILED ' | sed 's/^FAILED //' || true)
+
+          BODY="<!-- test-report -->
+          ### Test Report
+
+          | Status | Summary |
+          |--------|---------|
+          | ${STATUS} | ${SUMMARY} |"
+
+          if [ -n "$FAILED" ]; then
+            BODY="${BODY}
+
+          <details>
+          <summary>❌ Failed Tests</summary>
+
+          \`\`\`
+          ${FAILED}
+          \`\`\`
+
+          </details>"
+          fi
+
+          BODY="${BODY}
+
+          <details>
+          <summary>📋 Full Output</summary>
+
+          \`\`\`
+          ${OUTPUT}
+          \`\`\`
+
+          </details>"
+
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body "$BODY" \
+            --edit-last 2>/dev/null || \
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body "$BODY"
+
+      - name: Fail if tests failed
+        if: always()
+        run: |
+          if [ "${{ steps.tests.outputs.exit_code }}" != "0" ]; then
+            echo "❌ Tests failed"
+            exit 1
+          fi
