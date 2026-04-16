@@ -314,12 +314,12 @@ def _preprocess_latex(latex: str) -> str:
     """
     # \frac{d^2 y}{dx^2}  →  \frac{d}{dx}\frac{d y}{dx}
     # \frac{\partial^2 u}{\partial x^2}  →  \frac{\partial}{\partial x}\frac{\partial u}{\partial x}
-    # Also handles d^3, \partial^3, etc.
+    # Also handles d^3, d^{3}, \partial^3, \partial^{3}, etc.
     def _expand_higher_deriv(m: re.Match) -> str:
         op = m.group(1)       # "d" or "\\partial"
-        order = int(m.group(2))
-        func = m.group(3)
-        var = m.group(4)
+        order = int(m.group(2) or m.group(3))
+        func = m.group(4)
+        var = m.group(5)
         if order <= 1:
             return m.group(0)
         wrapper = r"\frac{%s}{%s %s}" % (op, op, var)
@@ -327,8 +327,9 @@ def _preprocess_latex(latex: str) -> str:
         return wrapper * (order - 1) + core
 
     # Match \frac{d^N <func>}{d<var>^N}  and  \frac{\partial^N <func>}{\partial <var>^N}
+    # N can be bare (^2) or braced (^{2})
     latex = re.sub(
-        r"\\frac\{(d|\\partial)\^(\d+)\s*([^}]+)\}\{\1\s*([^}]+)\^\d+\}",
+        r"\\frac\{(d|\\partial)\^(?:\{(\d+)\}|(\d+))\s*([^}]+)\}\{\1\s*([^}]+?)\s*\^(?:\{\d+\}|\d+)\}",
         _expand_higher_deriv,
         latex,
     )

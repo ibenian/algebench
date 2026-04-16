@@ -181,6 +181,14 @@ class TestDerivatives:
         result = _preprocess_latex(r"\frac{d^2 y}{dy^2}")
         assert result.count(r"\frac") == 2
 
+    def test_higher_order_derivative_braced(self):
+        result = _preprocess_latex(r"\frac{d^{2} y}{dy^{2}}")
+        assert result.count(r"\frac") == 2
+
+    def test_higher_order_partial_braced(self):
+        result = _preprocess_latex(r"\frac{\partial^{3} u}{\partial x^{3}}")
+        assert result.count(r"\frac") == 3
+
 
 # ---------------------------------------------------------------------------
 # Classification
