@@ -37,6 +37,10 @@ The server runs at `http://localhost:8785`.
 ./run.sh scripts/graph_to_mermaid.py --label-mode latex graph.json     # LaTeX labels
 ./run.sh scripts/graph_to_mermaid.py --list-styles                     # list available styles
 ./run.sh scripts/latex_to_graph.py "F = m \cdot a" | ./run.sh scripts/graph_to_mermaid.py --wrap -  # full pipeline
+./run.sh scripts/render_math.py "y = x^2 - 2x + 1"                    # render LaTeX → HTML in browser
+./run.sh scripts/render_math.py "E = mc^2" --mermaid                   # LaTeX + Mermaid diagram
+./run.sh scripts/render_math.py "F = m \cdot a" --mermaid --style power-flow  # with named style
+./run.sh scripts/render_math.py "E = mc^2" --mermaid --no-latex        # Mermaid only
 ```
 
 ### Browser Testing
