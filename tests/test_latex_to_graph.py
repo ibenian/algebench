@@ -173,13 +173,32 @@ class TestDerivatives:
         assert r"\frac" in result
         assert "d t" in result or "dt" in result
 
+    def test_dot_notation_graph(self):
+        g = latex_to_semantic_graph(r"\dot{x}")
+        deriv = _find_node(g, type="operator", op="derivative")
+        assert deriv is not None
+        assert "t" in deriv.get("with_respect_to", "")
+
     def test_ddot_notation_preprocessed(self):
         result = _preprocess_latex(r"\ddot{x}")
         assert result.count(r"\frac") == 2
 
+    def test_ddot_notation_graph(self):
+        g = latex_to_semantic_graph(r"\ddot{x}")
+        deriv = _find_node(g, type="operator", op="derivative")
+        assert deriv is not None
+        # SymPy collapses nested derivatives; ddot produces Derivative(x, t, t)
+        assert "t" in deriv.get("with_respect_to", "")
+
     def test_higher_order_derivative(self):
         result = _preprocess_latex(r"\frac{d^2 y}{dy^2}")
         assert result.count(r"\frac") == 2
+
+    def test_higher_order_derivative_graph(self):
+        g = latex_to_semantic_graph(r"\frac{d^2 y}{d y^2}")
+        deriv = _find_node(g, type="operator", op="derivative")
+        assert deriv is not None
+        assert "y" in deriv.get("with_respect_to", "")
 
     def test_higher_order_derivative_braced(self):
         result = _preprocess_latex(r"\frac{d^{2} y}{dy^{2}}")
