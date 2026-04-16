@@ -374,9 +374,11 @@ def _classify_expression(expr: sympy.Basic) -> dict[str, Any]:
     for d in derivs:
         if isinstance(d.expr, Symbol):
             dep_syms.add(d.expr)
+        deriv_order = 0
         for var, count in d.variable_count:
             indep_syms.add(var)
-            max_order = max(max_order, int(count))
+            deriv_order += int(count)
+        max_order = max(max_order, deriv_order)
 
     is_pde = len(indep_syms) > 1
     kind = "PDE" if is_pde else "ODE"
@@ -424,13 +426,17 @@ def _split_on_relation(latex: str) -> tuple[str, dict[str, str], str] | None:
     """If *latex* contains a relation operator from RELATION_MAP, return
     ``(lhs_latex, relation_meta, rhs_latex)``.  Returns ``None`` when no
     relation is found."""
+    best: tuple[int, str, dict[str, str]] | None = None
     for cmd, meta in RELATION_MAP:
         idx = latex.find(cmd)
-        if idx != -1:
-            lhs = latex[:idx].strip()
-            rhs = latex[idx + len(cmd):].strip()
-            if lhs and rhs:
-                return lhs, meta, rhs
+        if idx != -1 and (best is None or idx < best[0]):
+            best = (idx, cmd, meta)
+    if best is not None:
+        idx, cmd, meta = best
+        lhs = latex[:idx].strip()
+        rhs = latex[idx + len(cmd):].strip()
+        if lhs and rhs:
+            return lhs, meta, rhs
     return None
 
 

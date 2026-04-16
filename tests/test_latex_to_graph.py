@@ -281,6 +281,13 @@ class TestRelations:
         incoming = [e for e in g["edges"] if e["to"] == rel["id"]]
         assert len(incoming) == 2
 
+    def test_leftmost_relation_wins(self):
+        """When multiple relations appear, split on the leftmost one."""
+        g = latex_to_semantic_graph(r"x \to y \implies z")
+        # \to is leftmost, so it should be the relation
+        rel = _find_node(g, type="relation", op="maps_to")
+        assert rel is not None
+
 
 # ---------------------------------------------------------------------------
 # Complex real-world formulas
@@ -435,6 +442,15 @@ class TestClassification:
     def test_algebraic_equation(self):
         g = latex_to_semantic_graph("E = m c^2")
         assert g["classification"]["kind"] == "algebraic"
+
+    def test_mixed_partial_derivative_order(self):
+        """Mixed partial d²u/(dx dt) should report order 2, not 1."""
+        g = latex_to_semantic_graph(
+            r"\frac{\partial}{\partial x}\frac{\partial u}{\partial t} = 0"
+        )
+        c = g["classification"]
+        assert c["kind"] == "PDE"
+        assert c["order"] == 2
 
 
 # ---------------------------------------------------------------------------
