@@ -4,3 +4,5 @@ numpy>=1.26.0
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 jsonschema>=4.23.0
+sympy>=1.13.0
+antlr4-python3-runtime==4.11.1

@@ -1,0 +1,83 @@
+name: Tests
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/**/*.py'
+      - 'tests/**/*.py'
+      - 'requirements.txt'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**/*.py'
+      - 'tests/**/*.py'
+      - 'requirements.txt'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: pytest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install test runner
+        run: |
+          ./run.sh -m pip install pytest -q
+
+      - name: Run tests
+        id: tests
+        run: |
+          ./run.sh -m pytest tests/ -v --tb=short --junitxml=test-results.xml 2>&1 | tee test-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Post failure report as PR comment
+        if: github.event_name == 'pull_request' && steps.tests.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OUTPUT=$(cat test-output.txt)
+          SUMMARY=$(echo "$OUTPUT" | grep -E '^\s*=+.*(passed|failed|error)' | tail -1 | sed 's/=//g' | xargs)
+          FAILED=$(echo "$OUTPUT" | grep '^FAILED ' | sed 's/^FAILED //' || true)
+
+          BODY="<!-- test-report -->
+          ### ❌ Test Failures
+
+          **${SUMMARY}**
+
+          \`\`\`
+          ${FAILED}
+          \`\`\`
+
+          <details>
+          <summary>Full Output</summary>
+
+          \`\`\`
+          ${OUTPUT}
+          \`\`\`
+
+          </details>"
+
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body "$BODY" \
+            --edit-last 2>/dev/null || \
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body "$BODY"
+
+      - name: Fail if tests failed
+        if: always()
+        run: |
+          if [ "${{ steps.tests.outputs.exit_code }}" != "0" ]; then
+            echo "❌ Tests failed"
+            exit 1
+          fi
