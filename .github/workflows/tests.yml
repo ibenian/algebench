@@ -1,0 +1,39 @@
+name: Tests
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/**/*.py'
+      - 'tests/**/*.py'
+      - 'requirements.txt'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**/*.py'
+      - 'tests/**/*.py'
+      - 'requirements.txt'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: pytest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run tests
+        run: python -m pytest tests/ -v
