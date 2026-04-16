@@ -209,6 +209,141 @@ class TestDerivatives:
 
 
 # ---------------------------------------------------------------------------
+# Complex real-world formulas
+# ---------------------------------------------------------------------------
+
+class TestComplexFormulas:
+    """Parse real physics/math formulas and verify the graph captures key
+    structural features (node types, operators, symbols, classification)."""
+
+    def test_euler_identity(self):
+        """e^{i pi} + 1 = 0 — symbols, constants, power, addition, equality.
+        Note: parse_latex treats 'e' and 'i' as plain symbols; pi is a constant."""
+        g = latex_to_semantic_graph(r"e^{i \pi} + 1 = 0")
+        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, id="e")
+        assert _find_node(g, type="constant", label="pi")
+        assert _find_node(g, type="operator", op="power")
+        assert _find_node(g, type="operator", op="add")
+        assert g["classification"]["kind"] == "algebraic"
+
+    def test_kinetic_energy(self):
+        """K = 1/2 m v^2 — equation with fraction, multiplication, power."""
+        g = latex_to_semantic_graph(r"K = \frac{1}{2} m v^2")
+        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, id="K")
+        assert _find_node(g, id="m", label="mass")
+        assert _find_node(g, id="v", label="velocity")
+        assert _find_node(g, type="operator", op="power")
+        assert _find_node(g, type="operator", op="multiply")
+
+    def test_gaussian_integral(self):
+        """integral from -inf to inf of e^{-x^2} dx = sqrt(pi) —
+        definite integral, exponential, constant, equality."""
+        g = latex_to_semantic_graph(
+            r"\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}"
+        )
+        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, type="operator", op="integral")
+        assert _find_node(g, type="operator", op="power")
+        assert _find_node(g, id="x")
+        assert g["classification"]["kind"] == "algebraic"
+
+    def test_wave_equation_pde(self):
+        """u_tt = c^2 u_xx — second-order PDE, partial derivatives."""
+        g = latex_to_semantic_graph(
+            r"\frac{\partial^2 u}{\partial t^2} = c^2 \frac{\partial^2 u}{\partial x^2}"
+        )
+        derivs = _find_nodes(g, type="operator", op="derivative")
+        assert len(derivs) == 2
+        wrt_vars = {d["with_respect_to"] for d in derivs}
+        assert "t" in wrt_vars
+        assert "x" in wrt_vars
+        c = g["classification"]
+        assert c["kind"] == "PDE"
+        assert c["order"] == 2
+        assert set(c["independent_variables"]) == {"t", "x"}
+
+    def test_harmonic_oscillator_ode(self):
+        """x'' + omega^2 x = 0 — second-order linear ODE."""
+        g = latex_to_semantic_graph(
+            r"\frac{d^2 x}{dt^2} + \omega^2 x = 0"
+        )
+        assert _find_node(g, type="operator", op="derivative")
+        assert _find_node(g, id="omega", label="angular velocity")
+        c = g["classification"]
+        assert c["kind"] == "ODE"
+        assert c["order"] == 2
+        assert c.get("linear") is True
+
+    def test_schrodinger_time_independent(self):
+        """E psi = -(h^2/2m) psi'' + V psi — ODE with many operators."""
+        g = latex_to_semantic_graph(
+            r"E \psi = -\frac{h^2}{2m} \frac{d^2 \psi}{dx^2} + V \psi"
+        )
+        assert _find_node(g, id="psi", label="wave function")
+        assert _find_node(g, id="h", label="Planck constant")
+        assert _find_node(g, type="operator", op="derivative")
+        assert _find_node(g, type="operator", op="equals")
+        c = g["classification"]
+        assert c["kind"] == "ODE"
+        assert c["order"] == 2
+
+    def test_coulomb_law(self):
+        """F = k q1 q2 / r^2 — subscripted variables, fractions."""
+        g = latex_to_semantic_graph(r"F = k \frac{q_1 q_2}{r^2}")
+        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, id="F", label="force")
+        assert _find_node(g, id="r", label="radius")
+        assert _find_node(g, type="operator", op="power")
+        # q_1 and q_2 are distinct symbols
+        nodes = g["nodes"]
+        q_nodes = [n for n in nodes if n["id"].startswith("q_")]
+        assert len(q_nodes) == 2
+
+    def test_taylor_series_sin(self):
+        """sin(x) = sum — function, summation, factorial, power."""
+        g = latex_to_semantic_graph(
+            r"\sin(x) = \sum_{n=0}^{\infty} \frac{(-1)^n}{(2n+1)!} x^{2n+1}"
+        )
+        assert _find_node(g, type="function", op="sin")
+        assert _find_node(g, type="operator", op="sum")
+        assert _find_node(g, type="operator", op="equals")
+        # Should have factorial node
+        assert _find_node(g, op="factorial")
+        assert g["classification"]["kind"] == "algebraic"
+
+    def test_lorentz_factor(self):
+        """gamma = 1/sqrt(1 - v^2/c^2) — nested fractions, sqrt via power."""
+        g = latex_to_semantic_graph(
+            r"\gamma = \frac{1}{\sqrt{1 - \frac{v^2}{c^2}}}"
+        )
+        assert _find_node(g, id="gamma")
+        assert _find_node(g, id="v", label="velocity")
+        assert _find_node(g, id="c", label="speed of light")
+        assert _find_node(g, type="operator", op="equals")
+        assert g["classification"]["kind"] == "algebraic"
+
+    def test_quadratic_formula(self):
+        """x = (-b +/- sqrt(b^2 - 4ac)) / 2a — covers many node types."""
+        g = latex_to_semantic_graph(
+            r"x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}"
+        )
+        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, id="x")
+        assert _find_node(g, id="a")
+        assert _find_node(g, id="b")
+        assert _find_node(g, id="c")
+        # Must have both addition and multiplication
+        assert _find_node(g, type="operator", op="add")
+        assert _find_node(g, type="operator", op="multiply")
+        assert _find_node(g, type="operator", op="power")
+        # Graph should be non-trivial
+        assert len(g["nodes"]) >= 10
+        assert len(g["edges"]) >= 10
+
+
+# ---------------------------------------------------------------------------
 # Classification
 # ---------------------------------------------------------------------------
 
