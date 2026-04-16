@@ -12,7 +12,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from scripts.latex_to_graph import (
     latex_to_semantic_graph,
     parse_var_overrides,
-    SemanticGraphBuilder,
     _preprocess_latex,
 )
 
