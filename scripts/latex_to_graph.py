@@ -145,15 +145,15 @@ CONSTANT_MAP: dict[Any, dict[str, str]] = {
 
 # Relations that parse_latex cannot handle — checked before SymPy parsing.
 # Order matters: longer commands must come before shorter prefixes.
-RELATION_MAP: list[tuple[str, str]] = [
-    (r"\Leftrightarrow", "iff"),
-    (r"\Rightarrow", "implies"),
-    (r"\implies", "implies"),
-    (r"\propto", "proportional"),
-    (r"\approx", "approximately"),
-    (r"\iff", "iff"),
-    (r"\to", "maps_to"),
-    (r"\rightarrow", "maps_to"),
+RELATION_MAP: list[tuple[str, dict[str, str]]] = [
+    (r"\Leftrightarrow", {"op": "iff", "label": "if and only if", "emoji": "⇔"}),
+    (r"\Rightarrow", {"op": "implies", "label": "implies", "emoji": "⇒"}),
+    (r"\implies", {"op": "implies", "label": "implies", "emoji": "⇒"}),
+    (r"\propto", {"op": "proportional", "label": "proportional to", "emoji": "∝"}),
+    (r"\approx", {"op": "approximately", "label": "approximately equal", "emoji": "≈"}),
+    (r"\iff", {"op": "iff", "label": "if and only if", "emoji": "⇔"}),
+    (r"\to", {"op": "maps_to", "label": "maps to", "emoji": "→"}),
+    (r"\rightarrow", {"op": "maps_to", "label": "maps to", "emoji": "→"}),
 ]
 
 
@@ -420,17 +420,17 @@ def _classify_expression(expr: sympy.Basic) -> dict[str, Any]:
     return meta
 
 
-def _split_on_relation(latex: str) -> tuple[str, str, str] | None:
+def _split_on_relation(latex: str) -> tuple[str, dict[str, str], str] | None:
     """If *latex* contains a relation operator from RELATION_MAP, return
-    ``(lhs_latex, relation_name, rhs_latex)``.  Returns ``None`` when no
+    ``(lhs_latex, relation_meta, rhs_latex)``.  Returns ``None`` when no
     relation is found."""
-    for cmd, name in RELATION_MAP:
+    for cmd, meta in RELATION_MAP:
         idx = latex.find(cmd)
         if idx != -1:
             lhs = latex[:idx].strip()
             rhs = latex[idx + len(cmd):].strip()
             if lhs and rhs:
-                return lhs, name, rhs
+                return lhs, meta, rhs
     return None
 
 
@@ -446,7 +446,7 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     # Check for relation operators that parse_latex cannot handle.
     rel = _split_on_relation(preprocessed)
     if rel is not None:
-        lhs_latex, rel_name, rhs_latex = rel
+        lhs_latex, rel_meta, rhs_latex = rel
         try:
             lhs_expr = parse_latex(lhs_latex)
             rhs_expr = parse_latex(rhs_latex)
@@ -456,8 +456,8 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         builder = SemanticGraphBuilder(overrides=overrides)
         lhs_id = builder._walk(lhs_expr)
         rhs_id = builder._walk(rhs_expr)
-        rel_id = builder._next_id(rel_name)
-        builder._add_node(rel_id, type="relation", op=rel_name)
+        rel_id = builder._next_id(rel_meta["op"])
+        builder._add_node(rel_id, type="relation", **rel_meta)
         builder._add_edge(lhs_id, rel_id)
         builder._add_edge(rhs_id, rel_id)
         graph = {"nodes": builder.nodes, "edges": builder.edges}

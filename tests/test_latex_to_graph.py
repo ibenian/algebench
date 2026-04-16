@@ -219,6 +219,8 @@ class TestRelations:
         g = latex_to_semantic_graph(r"F \propto m a")
         rel = _find_node(g, type="relation", op="proportional")
         assert rel is not None
+        assert rel["label"] == "proportional to"
+        assert rel["emoji"] == "∝"
         assert _find_node(g, id="F")
         assert _find_node(g, type="operator", op="multiply")
 
@@ -226,21 +228,27 @@ class TestRelations:
         g = latex_to_semantic_graph(r"x > 0 \implies x^2 > 0")
         rel = _find_node(g, type="relation", op="implies")
         assert rel is not None
+        assert rel["label"] == "implies"
+        assert rel["emoji"] == "⇒"
 
     def test_rightarrow_implies(self):
         g = latex_to_semantic_graph(r"x > 0 \Rightarrow x^2 > 0")
         rel = _find_node(g, type="relation", op="implies")
         assert rel is not None
+        assert rel["emoji"] == "⇒"
 
     def test_iff(self):
         g = latex_to_semantic_graph(r"x = 0 \iff x^2 = 0")
         rel = _find_node(g, type="relation", op="iff")
         assert rel is not None
+        assert rel["label"] == "if and only if"
+        assert rel["emoji"] == "⇔"
 
     def test_leftrightarrow_iff(self):
         g = latex_to_semantic_graph(r"A \Leftrightarrow B")
         rel = _find_node(g, type="relation", op="iff")
         assert rel is not None
+        assert rel["emoji"] == "⇔"
         assert _find_node(g, id="A")
         assert _find_node(g, id="B")
 
@@ -248,12 +256,16 @@ class TestRelations:
         g = latex_to_semantic_graph(r"\pi \approx 3.14")
         rel = _find_node(g, type="relation", op="approximately")
         assert rel is not None
+        assert rel["label"] == "approximately equal"
+        assert rel["emoji"] == "≈"
         assert _find_node(g, type="constant", label="pi")
 
     def test_maps_to(self):
         g = latex_to_semantic_graph(r"x \to y")
         rel = _find_node(g, type="relation", op="maps_to")
         assert rel is not None
+        assert rel["label"] == "maps to"
+        assert rel["emoji"] == "→"
         assert _find_node(g, id="x")
         assert _find_node(g, id="y")
 
