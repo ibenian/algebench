@@ -209,6 +209,68 @@ class TestDerivatives:
 
 
 # ---------------------------------------------------------------------------
+# Relation operators (proportional, implies, iff, maps_to, approximately)
+# ---------------------------------------------------------------------------
+
+class TestRelations:
+    """Relations that SymPy's parse_latex cannot handle natively."""
+
+    def test_proportional(self):
+        g = latex_to_semantic_graph(r"F \propto m a")
+        rel = _find_node(g, type="relation", op="proportional")
+        assert rel is not None
+        assert _find_node(g, id="F")
+        assert _find_node(g, type="operator", op="multiply")
+
+    def test_implies(self):
+        g = latex_to_semantic_graph(r"x > 0 \implies x^2 > 0")
+        rel = _find_node(g, type="relation", op="implies")
+        assert rel is not None
+
+    def test_rightarrow_implies(self):
+        g = latex_to_semantic_graph(r"x > 0 \Rightarrow x^2 > 0")
+        rel = _find_node(g, type="relation", op="implies")
+        assert rel is not None
+
+    def test_iff(self):
+        g = latex_to_semantic_graph(r"x = 0 \iff x^2 = 0")
+        rel = _find_node(g, type="relation", op="iff")
+        assert rel is not None
+
+    def test_leftrightarrow_iff(self):
+        g = latex_to_semantic_graph(r"A \Leftrightarrow B")
+        rel = _find_node(g, type="relation", op="iff")
+        assert rel is not None
+        assert _find_node(g, id="A")
+        assert _find_node(g, id="B")
+
+    def test_approximately(self):
+        g = latex_to_semantic_graph(r"\pi \approx 3.14")
+        rel = _find_node(g, type="relation", op="approximately")
+        assert rel is not None
+        assert _find_node(g, type="constant", label="pi")
+
+    def test_maps_to(self):
+        g = latex_to_semantic_graph(r"x \to y")
+        rel = _find_node(g, type="relation", op="maps_to")
+        assert rel is not None
+        assert _find_node(g, id="x")
+        assert _find_node(g, id="y")
+
+    def test_maps_to_function(self):
+        g = latex_to_semantic_graph(r"f(x) \to f(x+1)")
+        rel = _find_node(g, type="relation", op="maps_to")
+        assert rel is not None
+
+    def test_relation_has_two_edges(self):
+        """Every relation node should connect LHS and RHS."""
+        g = latex_to_semantic_graph(r"F \propto m a")
+        rel = _find_node(g, type="relation", op="proportional")
+        incoming = [e for e in g["edges"] if e["to"] == rel["id"]]
+        assert len(incoming) == 2
+
+
+# ---------------------------------------------------------------------------
 # Complex real-world formulas
 # ---------------------------------------------------------------------------
 

@@ -143,6 +143,19 @@ CONSTANT_MAP: dict[Any, dict[str, str]] = {
     oo: {"label": "infinity", "emoji": "♾️"},
 }
 
+# Relations that parse_latex cannot handle — checked before SymPy parsing.
+# Order matters: longer commands must come before shorter prefixes.
+RELATION_MAP: list[tuple[str, str]] = [
+    (r"\Leftrightarrow", "iff"),
+    (r"\Rightarrow", "implies"),
+    (r"\implies", "implies"),
+    (r"\propto", "proportional"),
+    (r"\approx", "approximately"),
+    (r"\iff", "iff"),
+    (r"\to", "maps_to"),
+    (r"\rightarrow", "maps_to"),
+]
+
 
 # ---------------------------------------------------------------------------
 # Graph builder
@@ -407,11 +420,58 @@ def _classify_expression(expr: sympy.Basic) -> dict[str, Any]:
     return meta
 
 
+def _split_on_relation(latex: str) -> tuple[str, str, str] | None:
+    """If *latex* contains a relation operator from RELATION_MAP, return
+    ``(lhs_latex, relation_name, rhs_latex)``.  Returns ``None`` when no
+    relation is found."""
+    for cmd, name in RELATION_MAP:
+        idx = latex.find(cmd)
+        if idx != -1:
+            lhs = latex[:idx].strip()
+            rhs = latex[idx + len(cmd):].strip()
+            if lhs and rhs:
+                return lhs, name, rhs
+    return None
+
+
 def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | None = None) -> dict:
-    """Parse a LaTeX string and return a semantic graph dict."""
-    latex = _preprocess_latex(latex)
+    """Parse a LaTeX string and return a semantic graph dict.
+
+    Handles relation operators (\\propto, \\implies, \\iff, \\to, \\approx,
+    \\Rightarrow, \\Leftrightarrow) by splitting on the relation, parsing
+    each side independently, and emitting a ``type='relation'`` node.
+    """
+    preprocessed = _preprocess_latex(latex)
+
+    # Check for relation operators that parse_latex cannot handle.
+    rel = _split_on_relation(preprocessed)
+    if rel is not None:
+        lhs_latex, rel_name, rhs_latex = rel
+        try:
+            lhs_expr = parse_latex(lhs_latex)
+            rhs_expr = parse_latex(rhs_latex)
+        except Exception as exc:
+            raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
+
+        builder = SemanticGraphBuilder(overrides=overrides)
+        lhs_id = builder._walk(lhs_expr)
+        rhs_id = builder._walk(rhs_expr)
+        rel_id = builder._next_id(rel_name)
+        builder._add_node(rel_id, type="relation", op=rel_name)
+        builder._add_edge(lhs_id, rel_id)
+        builder._add_edge(rhs_id, rel_id)
+        graph = {"nodes": builder.nodes, "edges": builder.edges}
+        # Classify based on both sides combined.  Relational expressions
+        # (inequalities, Eq) don't support arithmetic, so fall back gracefully.
+        try:
+            combined = lhs_expr - rhs_expr
+        except TypeError:
+            combined = lhs_expr
+        graph["classification"] = _classify_expression(combined)
+        return graph
+
     try:
-        expr = parse_latex(latex)
+        expr = parse_latex(preprocessed)
     except Exception as exc:
         raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
 
