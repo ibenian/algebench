@@ -141,8 +141,25 @@ class TestFunctions:
 
 
 # ---------------------------------------------------------------------------
-# Derivatives
+# Calculus (Integrals, Sums, Derivatives)
 # ---------------------------------------------------------------------------
+
+class TestCalculus:
+    def test_integral_with_limits(self):
+        g = latex_to_semantic_graph("\\int_0^1 x^2 dx")
+        integral_node = _find_node(g, type="operator", op="integral")
+        assert integral_node is not None
+        assert _find_node(g, id="x") is not None
+        assert _find_node(g, label="0") is not None
+        assert _find_node(g, label="1") is not None
+
+    def test_sum_with_limits(self):
+        g = latex_to_semantic_graph("\\sum_{n=1}^\\infty n")
+        sum_node = _find_node(g, type="operator", op="sum")
+        assert sum_node is not None
+        assert _find_node(g, id="n") is not None
+        assert _find_node(g, label="1") is not None
+        assert _find_node(g, label="infinity") is not None
 
 class TestDerivatives:
     def test_first_order_derivative(self):

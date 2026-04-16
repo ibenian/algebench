@@ -267,8 +267,9 @@ class SemanticGraphBuilder:
         if isinstance(expr, Integral):
             node_id = self._next_id("integral")
             self._add_node(node_id, type="operator", op="integral")
-            child_id = self._walk(expr.args[0])
-            self._add_edge(child_id, node_id)
+            for arg in expr.args:
+                child_id = self._walk(arg)
+                self._add_edge(child_id, node_id)
             return node_id
 
         # --- Sum / Product ---
@@ -276,8 +277,9 @@ class SemanticGraphBuilder:
             op = "sum" if isinstance(expr, Sum) else "product"
             node_id = self._next_id(op)
             self._add_node(node_id, type="operator", op=op)
-            child_id = self._walk(expr.args[0])
-            self._add_edge(child_id, node_id)
+            for arg in expr.args:
+                child_id = self._walk(arg)
+                self._add_edge(child_id, node_id)
             return node_id
 
         # --- Binary/n-ary operators (Add, Mul, Pow, Eq) ---
@@ -326,14 +328,14 @@ def _preprocess_latex(latex: str) -> str:
 
     # Match \frac{d^N <func>}{d<var>^N}  and  \frac{\partial^N <func>}{\partial <var>^N}
     latex = re.sub(
-        r"\\frac\{(d|\\partial)\^(\d+)\s*(\w+)\}\{\1\s*(\w+)\^\d+\}",
+        r"\\frac\{(d|\\partial)\^(\d+)\s*([^}]+)\}\{\1\s*([^}]+)\^\d+\}",
         _expand_higher_deriv,
         latex,
     )
 
     # \dot{x} → \frac{dx}{dt}  and  \ddot{x} → \frac{d}{dt}\frac{dx}{dt}
-    latex = re.sub(r"\\ddot\{(\w+)\}", r"\\frac{d}{dt}\\frac{d \1}{d t}", latex)
-    latex = re.sub(r"\\dot\{(\w+)\}", r"\\frac{d \1}{d t}", latex)
+    latex = re.sub(r"\\ddot\{([^}]+)\}", r"\\frac{d}{dt}\\frac{d \1}{d t}", latex)
+    latex = re.sub(r"\\dot\{([^}]+)\}", r"\\frac{d \1}{d t}", latex)
 
     return latex
 
