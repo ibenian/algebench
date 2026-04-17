@@ -35,6 +35,7 @@ from typing import Any
 
 
 STYLES_DIR = Path(__file__).parent / "styles"
+SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "semantic-graph.schema.json"
 
 SHAPE_WRAPPERS: dict[str, tuple[str, str]] = {
     "rect":    ("[",   "]"),
@@ -88,6 +89,23 @@ OPERATOR_LATEX: dict[str, str] = {
 # Style loading
 # ---------------------------------------------------------------------------
 
+def validate_graph(graph: dict[str, Any]) -> list[str]:
+    """Validate a semantic graph against the schema. Returns a list of error messages."""
+    try:
+        import jsonschema
+    except ImportError:
+        return ["jsonschema not installed — pip install jsonschema"]
+    if not SCHEMA_PATH.exists():
+        return [f"Schema not found: {SCHEMA_PATH}"]
+    with open(SCHEMA_PATH, encoding="utf-8") as f:
+        schema = json.load(f)
+    errors = []
+    for error in jsonschema.Draft202012Validator(schema).iter_errors(graph):
+        location = " > ".join(str(p) for p in error.absolute_path) or "(root)"
+        errors.append(f"[{location}] {error.message}")
+    return errors
+
+
 def load_style(name: str, styles_dir: Path | None = None) -> dict[str, Any]:
     """Load a style JSON file by name from the styles directory."""
     d = styles_dir or STYLES_DIR
@@ -127,10 +145,8 @@ def _format_label(node: dict[str, str], label_mode: str) -> str:
     if node_type == "relation":
         rel_emoji = node.get("emoji", "")
         rel_label = node.get("label", op)
-        if label_mode == "latex":
-            return f"$${rel_emoji}$$" if rel_emoji else rel_label
-        if label_mode == "emoji":
-            return f"{rel_emoji} {rel_label}" if rel_emoji else rel_label
+        if rel_emoji:
+            return f"$${rel_emoji}$$"
         return rel_label
 
     emoji = node.get("emoji", "")
@@ -355,6 +371,11 @@ def main() -> None:
         help="Write output to file instead of stdout",
     )
     parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Validate the input graph against the semantic-graph schema before rendering",
+    )
+    parser.add_argument(
         "--wrap",
         action="store_true",
         help="Wrap output in a ```mermaid code fence",
@@ -379,6 +400,15 @@ def main() -> None:
             sys.exit(1)
         with open(path, encoding="utf-8") as f:
             graph = json.load(f)
+
+    # Validate graph
+    if args.validate:
+        errors = validate_graph(graph)
+        if errors:
+            print("❌ Graph failed schema validation:", file=sys.stderr)
+            for e in errors:
+                print(f"  {e}", file=sys.stderr)
+            sys.exit(1)
 
     # Load style
     if args.style_file:

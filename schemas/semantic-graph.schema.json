@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://algebench.dev/schemas/semantic-graph.schema.json",
+  "title": "Semantic Graph",
+  "description": "Schema for the semantic graph produced by latex_to_graph.py. Represents a LaTeX expression as a directed graph of typed nodes (variables, operators, numbers) connected by edges.",
+  "type": "object",
+  "required": ["nodes", "edges"],
+  "additionalProperties": false,
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "description": "Ordered list of graph nodes. Each node represents a symbol, operator, number, or composite expression.",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "description": "Directed edges connecting nodes. Direction flows from operand to operator (e.g. m → multiply).",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "classification": {
+      "$ref": "#/$defs/classification",
+      "description": "Expression classification metadata (algebraic, ODE, PDE)."
+    }
+  },
+  "$defs": {
+    "nodeType": {
+      "type": "string",
+      "enum": ["scalar", "vector", "constant", "number", "operator", "function", "relation", "expression"],
+      "description": "The semantic role of the node."
+    },
+    "operatorOp": {
+      "type": "string",
+      "enum": [
+        "add", "multiply", "power", "equals",
+        "derivative", "integral", "sum", "product",
+        "sin", "cos", "tan", "log", "exp", "sqrt", "abs",
+        "arcsin", "arccos", "arctan"
+      ],
+      "description": "The mathematical operation this operator or function performs."
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique node identifier. Variables use their symbol name (e.g. \"m\"); generated nodes use a prefix with counter (e.g. \"__multiply_1\")."
+        },
+        "type": {
+          "$ref": "#/$defs/nodeType"
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable descriptive name (e.g. \"mass\", \"acceleration\"). Present on symbols and numbers."
+        },
+        "emoji": {
+          "type": "string",
+          "description": "Emoji representing the physical or mathematical concept (e.g. \"⚖️\" for mass)."
+        },
+        "latex": {
+          "type": "string",
+          "description": "LaTeX rendering of the symbol (e.g. \"\\\\psi\", \"\\\\hbar\"). Present on symbols; may differ from the id when the symbol has a special LaTeX command."
+        },
+        "op": {
+          "type": "string",
+          "description": "Operation name for operator, function, relation, and expression nodes. Standard operators use values from the operatorOp enum; expressions use the SymPy class name (e.g. \"Tuple\"); relations use the relation name (e.g. \"equals\", \"greater_than\")."
+        },
+        "exponent": {
+          "type": "string",
+          "description": "Literal exponent value, present only on power operators with a constant exponent (e.g. \"2\" for x²). The exponent is absorbed into the operator node rather than represented as a separate number child."
+        },
+        "with_respect_to": {
+          "type": "string",
+          "description": "Differentiation variable, present only on derivative operators (e.g. \"t\" for d/dt)."
+        },
+        "subexpr": {
+          "type": "string",
+          "description": "LaTeX sub-expression reconstructed by sympy.latex() for the SymPy expression rooted at this node. Used for interactive hover tooltips."
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Source node id (operand)."
+        },
+        "to": {
+          "type": "string",
+          "description": "Target node id (operator or result)."
+        },
+        "label": {
+          "type": "string",
+          "description": "Optional edge label displayed on the diagram."
+        },
+        "semantic": {
+          "type": "string",
+          "enum": ["amplify", "dampen", "neutral"],
+          "description": "Semantic weight of the edge, used by styles that vary stroke width/color by proportionality."
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["algebraic", "ODE", "PDE"],
+          "description": "Expression type: algebraic (no derivatives), ODE (single independent variable), or PDE (multiple independent variables)."
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Highest derivative order. Present only for ODE/PDE."
+        },
+        "dependent_variables": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Variables being differentiated (e.g. [\"psi\"]). Present only for ODE/PDE."
+        },
+        "independent_variables": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Variables differentiated with respect to (e.g. [\"t\", \"x\"]). Present only for ODE/PDE."
+        },
+        "sympy_hints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "SymPy classify_ode hint strings (e.g. [\"separable\", \"1st_linear\"]). Present only for single-variable ODEs."
+        },
+        "linear": {
+          "type": "boolean",
+          "description": "Whether the ODE is linear. Present only for single-variable ODEs."
+        },
+        "homogeneous": {
+          "type": "boolean",
+          "description": "Whether the ODE is homogeneous. Present only for single-variable ODEs."
+        },
+        "constant_coefficients": {
+          "type": "boolean",
+          "description": "Whether the ODE has constant coefficients. Present only for single-variable ODEs."
+        }
+      }
+    }
+  }
+}

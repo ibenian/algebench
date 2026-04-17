@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from latex_to_graph import latex_to_semantic_graph
-from graph_to_mermaid import semantic_graph_to_mermaid, load_style
+from graph_to_mermaid import semantic_graph_to_mermaid, load_style, validate_graph
 
 
 HTML_TEMPLATE = """\
@@ -174,11 +174,13 @@ class MathRenderer:
         style: str | dict[str, Any] = "default",
         label_mode: str | None = None,
         theme: str | None = None,
+        validate: bool = False,
     ) -> None:
         self.latex = latex
         self.show_latex = show_latex
         self.show_mermaid = show_mermaid
         self.label_mode = label_mode
+        self.validate = validate
 
         if isinstance(style, str):
             self.style_name = style
@@ -202,6 +204,13 @@ class MathRenderer:
 
     def _build_mermaid_card(self) -> tuple[str, dict]:
         graph = latex_to_semantic_graph(self.latex)
+        if self.validate:
+            errors = validate_graph(graph)
+            if errors:
+                raise ValueError(
+                    "Graph failed schema validation:\n"
+                    + "\n".join(f"  {e}" for e in errors)
+                )
         mermaid_src = semantic_graph_to_mermaid(
             graph, style=self.style, label_mode=self.label_mode,
         )
@@ -320,12 +329,20 @@ def main() -> None:
         help="Mermaid label mode",
     )
     parser.add_argument(
+        "--direction", choices=["LR", "RL", "TB", "BT"], default=None,
+        help="Override Mermaid flowchart direction (default: from style)",
+    )
+    parser.add_argument(
         "--theme", choices=["light", "dark"], default=None,
         help="Force light or dark theme (auto-detected from style if omitted)",
     )
     parser.add_argument(
         "-o", "--output", default=None,
         help="Write HTML to this path instead of /tmp",
+    )
+    parser.add_argument(
+        "--validate", action="store_true",
+        help="Validate the semantic graph against the schema before rendering",
     )
     parser.add_argument(
         "--no-open", action="store_true",
@@ -338,13 +355,19 @@ def main() -> None:
         parser.error("--no-latex requires --mermaid")
 
     try:
+        style = args.style
+        if args.direction:
+            if isinstance(style, str):
+                style = load_style(style)
+            style["direction"] = args.direction
         renderer = MathRenderer(
             args.latex,
             show_latex=show_latex,
             show_mermaid=args.mermaid,
-            style=args.style,
+            style=style,
             label_mode=args.label_mode,
             theme=args.theme,
+            validate=args.validate,
         )
     except (ValueError, FileNotFoundError) as exc:
         print(f"❌ {exc}", file=sys.stderr)

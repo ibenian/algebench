@@ -502,7 +502,7 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         lhs_id = builder._walk(lhs_expr)
         rhs_id = builder._walk(rhs_expr)
         rel_id = builder._next_id(rel_meta["op"])
-        builder._add_node(rel_id, type="relation", **rel_meta)
+        builder._add_node(rel_id, type="relation", subexpr=latex.strip(), **rel_meta)
         builder._add_edge(lhs_id, rel_id)
         builder._add_edge(rhs_id, rel_id)
         graph = {"nodes": builder.nodes, "edges": builder.edges}
