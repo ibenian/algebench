@@ -150,7 +150,7 @@ class TestWrapShape:
         assert _wrap_shape("F", "force", "stadium") == 'F(["force"])'
 
     def test_hexagon(self):
-        assert _wrap_shape("op", "+", "hexagon") == 'op{{"+"}}'
+        assert _wrap_shape("op", "+", "hexagon") == 'op{{"#43;"}}'
 
     def test_diamond(self):
         assert _wrap_shape("r", "=", "diamond") == 'r{"="}'
@@ -183,8 +183,9 @@ class TestSemanticGraphToMermaid:
 
     def test_style_directives_present(self):
         result = semantic_graph_to_mermaid(SIMPLE_GRAPH)
-        assert "style x " in result
+        assert "classDef scalar " in result
         assert "fill:" in result
+        assert ":::scalar" in result
 
     def test_custom_direction(self):
         style = load_style("role-colored")
@@ -244,7 +245,7 @@ class TestEndToEnd:
         graph = latex_to_semantic_graph(r"F = m \cdot a")
         result = semantic_graph_to_mermaid(graph)
         assert result.startswith("flowchart")
-        assert "style" in result
+        assert "classDef" in result
         lines = result.strip().split("\n")
         assert len(lines) >= 3
 

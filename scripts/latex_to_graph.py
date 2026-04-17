@@ -161,6 +161,16 @@ RELATION_MAP: list[tuple[str, dict[str, str]]] = [
 # Graph builder
 # ---------------------------------------------------------------------------
 
+def _extract_latex_commands(latex: str) -> dict[str, str]:
+    r"""Scan raw LaTeX for ``\command`` tokens and return {name: \name}.
+
+    This preserves the user's original notation through the pipeline —
+    SymPy strips backslashes (``\hbar`` → Symbol ``"hbar"``), so we
+    capture them here and map them back after parsing.
+    """
+    return {m.group(1): m.group(0) for m in re.finditer(r"\\([a-zA-Z]+)", latex)}
+
+
 def parse_var_overrides(var_specs: list[str] | None) -> dict[str, dict[str, str]]:
     """Parse ``--var`` CLI arguments into a dict of {symbol_name: {prop: value}}.
 
@@ -187,12 +197,17 @@ def parse_var_overrides(var_specs: list[str] | None) -> dict[str, dict[str, str]
 class SemanticGraphBuilder:
     """Walks a SymPy expression tree and emits nodes + edges."""
 
-    def __init__(self, overrides: dict[str, dict[str, str]] | None = None) -> None:
+    def __init__(
+        self,
+        overrides: dict[str, dict[str, str]] | None = None,
+        latex_commands: dict[str, str] | None = None,
+    ) -> None:
         self.nodes: list[dict[str, str]] = []
         self.edges: list[dict[str, str]] = []
         self._id_counter = 0
         self._seen_symbols: dict[str, str] = {}  # symbol name → node id
         self._overrides = overrides or {}
+        self._latex_commands = latex_commands or {}  # sympy name → \command
 
     def _next_id(self, prefix: str = "n") -> str:
         self._id_counter += 1
@@ -221,11 +236,12 @@ class SemanticGraphBuilder:
                 return self._seen_symbols[name]
             meta = KNOWN_VARIABLES.get(name, {})
             node_id = name
+            latex_fallback = self._latex_commands.get(name, name)
             attrs: dict[str, str] = {
                 "label": meta.get("label", name),
                 "emoji": meta.get("emoji", "🔣"),
                 "type": meta.get("type", "scalar"),
-                "latex": meta.get("latex", name),
+                "latex": meta.get("latex", latex_fallback),
             }
             # Apply user overrides (can set any property: unit, tooltip, ai_prompt, etc.)
             if name in self._overrides:
@@ -448,6 +464,7 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     each side independently, and emitting a ``type='relation'`` node.
     """
     preprocessed = _preprocess_latex(latex)
+    latex_commands = _extract_latex_commands(latex)
 
     # Check for relation operators that parse_latex cannot handle.
     rel = _split_on_relation(preprocessed)
@@ -459,7 +476,7 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         except Exception as exc:
             raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
 
-        builder = SemanticGraphBuilder(overrides=overrides)
+        builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands)
         lhs_id = builder._walk(lhs_expr)
         rhs_id = builder._walk(rhs_expr)
         rel_id = builder._next_id(rel_meta["op"])
@@ -482,7 +499,7 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
 
     classification = _classify_expression(expr)
-    builder = SemanticGraphBuilder(overrides=overrides)
+    builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands)
     graph = builder.build(expr)
     graph["classification"] = classification
     return graph

@@ -47,7 +47,7 @@ SHAPE_WRAPPERS: dict[str, tuple[str, str]] = {
 OPERATOR_SYMBOLS: dict[str, str] = {
     "add": "+",
     "multiply": "×",
-    "power": "^",
+    "power": "(·)ⁿ",
     "equals": "=",
     "derivative": "d/dt",
     "integral": "∫",
@@ -168,6 +168,9 @@ def _wrap_shape(sanitized_id: str, label: str, shape: str) -> str:
     """Wrap a label in Mermaid shape delimiters."""
     left, right = SHAPE_WRAPPERS.get(shape, ("[", "]"))
     escaped = label.replace('"', "'")
+    # Mermaid 11 interprets +/- as markdown list markers inside node labels.
+    # Use HTML entities to prevent this.
+    escaped = escaped.replace("+", "#43;").replace("-", "#45;")
     return f'{sanitized_id}{left}"{escaped}"{right}'
 
 
@@ -222,8 +225,30 @@ def semantic_graph_to_mermaid(
     edges = graph.get("edges", [])
 
     lines: list[str] = [f"flowchart {direction}"]
-    style_lines: list[str] = []
     link_style_lines: list[str] = []
+
+    # classDef — one per node type instead of per-node style directives
+    emitted_classes: set[str] = set()
+    for ntype, ns in node_styles.items():
+        effective = dict(ns)
+        if global_font_size and "fontSize" not in effective:
+            effective["fontSize"] = global_font_size
+        parts = []
+        if effective.get("fill"):
+            parts.append(f"fill:{effective['fill']}")
+        if effective.get("stroke"):
+            parts.append(f"stroke:{effective['stroke']}")
+        if effective.get("color"):
+            parts.append(f"color:{effective['color']}")
+        sw = effective.get("strokeWidth")
+        if sw:
+            parts.append(f"stroke-width:{sw}px")
+        fs = effective.get("fontSize")
+        if fs:
+            parts.append(f"font-size:{fs}px")
+        if parts:
+            lines.append(f"  classDef {ntype} {','.join(parts)}")
+            emitted_classes.add(ntype)
 
     # Node definitions
     for node in nodes:
@@ -232,15 +257,10 @@ def semantic_graph_to_mermaid(
         ns = node_styles.get(ntype, {})
         shape = ns.get("shape", "rect")
         label = _format_label(node, lm)
-        lines.append(f"  {_wrap_shape(nid, label, shape)}")
-
-        # Style directive
-        effective_style = dict(ns)
-        if global_font_size and "fontSize" not in effective_style:
-            effective_style["fontSize"] = global_font_size
-        directive = _style_directive(nid, effective_style)
-        if directive:
-            style_lines.append(directive)
+        node_def = _wrap_shape(nid, label, shape)
+        if ntype in emitted_classes:
+            node_def += f":::{ntype}"
+        lines.append(f"  {node_def}")
 
     # Edge definitions
     default_arrow = edge_style.get("arrow", "-->") if edge_style else "-->"
@@ -250,7 +270,6 @@ def semantic_graph_to_mermaid(
         edge_label = edge.get("label", "")
         edge_semantic = edge.get("semantic", "")
 
-        # Choose arrow style based on semantic or default
         arrow = default_arrow
         if edge_styles and edge_semantic in edge_styles:
             es = edge_styles[edge_semantic]
@@ -261,9 +280,8 @@ def semantic_graph_to_mermaid(
         else:
             lines.append(f"  {src} {arrow} {dst}")
 
-        # linkStyle directives
-        if use_link_style and edge_styles:
-            es = edge_styles.get(edge_semantic, edge_styles.get("neutral", {}))
+        if use_link_style and edge_styles and edge_semantic:
+            es = edge_styles.get(edge_semantic, {})
             ls_parts = []
             if es.get("stroke"):
                 ls_parts.append(f"stroke:{es['stroke']}")
@@ -273,14 +291,7 @@ def semantic_graph_to_mermaid(
             if ls_parts:
                 link_style_lines.append(f"  linkStyle {i} {','.join(ls_parts)}")
 
-    # Append style directives
-    if style_lines:
-        lines.append("")
-        lines.extend(style_lines)
-
-    if link_style_lines:
-        lines.append("")
-        lines.extend(link_style_lines)
+    lines.extend(link_style_lines)
 
     return "\n".join(lines) + "\n"
 
