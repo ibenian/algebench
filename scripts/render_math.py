@@ -25,6 +25,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import tempfile
 import webbrowser
@@ -95,10 +96,28 @@ HTML_TEMPLATE = """\
     text-align: center;
     margin-top: 0.5rem;
   }}
+  #subexpr-tooltip {{
+    position: fixed;
+    padding: 0.6rem 1rem;
+    background: {card_bg};
+    border: 1px solid {border};
+    border-radius: 8px;
+    box-shadow: 0 4px 16px {shadow};
+    font-size: 1.4rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 1000;
+  }}
+  #subexpr-tooltip.visible {{
+    opacity: 1;
+  }}
 </style>
 </head>
 <body>
 {body}
+<div id="subexpr-tooltip"></div>
+{hover_script}
 </body>
 </html>
 """
@@ -181,7 +200,7 @@ class MathRenderer:
             "</div>"
         )
 
-    def _build_mermaid_card(self) -> str:
+    def _build_mermaid_card(self) -> tuple[str, dict]:
         graph = latex_to_semantic_graph(self.latex)
         mermaid_src = semantic_graph_to_mermaid(
             graph, style=self.style, label_mode=self.label_mode,
@@ -189,26 +208,69 @@ class MathRenderer:
         meta = f'style: {self.style_name}'
         if self.label_mode:
             meta += f', labels: {self.label_mode}'
-        return (
+        card = (
             '<div class="card">\n'
             "  <h2>Semantic Graph</h2>\n"
             f'  <pre class="mermaid">\n{mermaid_src}  </pre>\n'
             f'  <div class="meta">{meta}</div>\n'
             "</div>"
         )
+        return card, graph
+
+    @staticmethod
+    def _build_hover_script(graph: dict) -> str:
+        subexprs = {}
+        for node in graph.get("nodes", []):
+            if "subexpr" in node:
+                nid = node["id"].replace("-", "_").replace(".", "_").replace(" ", "_")
+                subexprs[nid] = node["subexpr"]
+        if not subexprs:
+            return ""
+        graph_json = json.dumps(subexprs)
+        return (
+            f'<script type="module">\n'
+            f'const subexprs = {graph_json};\n'
+            'const tip = document.getElementById("subexpr-tooltip");\n'
+            'function attachHandlers() {\n'
+            '  document.querySelectorAll(".mermaid svg .node").forEach(el => {\n'
+            '    const id = el.id.replace(/^flowchart-/, "").replace(/-\\d+$/, "");\n'
+            '    const expr = subexprs[id];\n'
+            '    if (!expr) return;\n'
+            '    el.style.cursor = "pointer";\n'
+            '    el.addEventListener("mouseenter", e => {\n'
+            '      katex.render(expr, tip, {displayMode: true, throwOnError: false});\n'
+            '      tip.classList.add("visible");\n'
+            '    });\n'
+            '    el.addEventListener("mousemove", e => {\n'
+            '      tip.style.left = (e.clientX + 16) + "px";\n'
+            '      tip.style.top = (e.clientY - 40) + "px";\n'
+            '    });\n'
+            '    el.addEventListener("mouseleave", () => {\n'
+            '      tip.classList.remove("visible");\n'
+            '    });\n'
+            '  });\n'
+            '}\n'
+            'setTimeout(attachHandlers, 1000);\n'
+            '</script>\n'
+        )
 
     def render_html(self) -> str:
         """Return a complete HTML string."""
         parts: list[str] = []
+        graph = None
         if self.show_latex:
             parts.append(self._build_latex_card())
         if self.show_mermaid:
-            parts.append(self._build_mermaid_card())
+            card, graph = self._build_mermaid_card()
+            parts.append(card)
+
+        hover_script = self._build_hover_script(graph) if graph else ""
 
         colors = THEMES[self.theme]
         return HTML_TEMPLATE.format(
             title=f"render_math: {self.latex[:60]}",
             body="\n".join(parts),
+            hover_script=hover_script,
             **colors,
         )
 

@@ -226,7 +226,20 @@ class SemanticGraphBuilder:
         self._walk(expr)
         return {"nodes": self.nodes, "edges": self.edges}
 
+    def _set_subexpr(self, node_id: str, expr: sympy.Basic) -> None:
+        """Annotate a node with the LaTeX sub-expression it represents."""
+        for node in self.nodes:
+            if node["id"] == node_id and "subexpr" not in node:
+                node["subexpr"] = sympy.latex(expr)
+                break
+
     def _walk(self, expr: sympy.Basic) -> str:
+        """Walk *expr*, annotate the resulting node with its LaTeX sub-expression."""
+        node_id = self._walk_inner(expr)
+        self._set_subexpr(node_id, expr)
+        return node_id
+
+    def _walk_inner(self, expr: sympy.Basic) -> str:
         """Recursively walk *expr*, returning the node id for this sub-expression."""
 
         # --- Symbols ---
