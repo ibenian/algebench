@@ -90,6 +90,9 @@ HTML_TEMPLATE = """\
     justify-content: center;
     padding: 1rem 0;
   }}
+  .mermaid svg .node, .mermaid svg .edgePath, .mermaid svg .flowchart-link, .mermaid svg .edgeLabel {{
+    transition: opacity 0.25s;
+  }}
   .meta {{
     font-size: 0.75rem;
     color: {muted};
@@ -227,19 +230,79 @@ class MathRenderer:
         return card, graph
 
     @staticmethod
+    def _sanitize_id(node_id: str) -> str:
+        out = node_id
+        for ch in "-. {}()*":
+            out = out.replace(ch, "_")
+        return out
+
+    @staticmethod
     def _build_hover_script(graph: dict) -> str:
+        sanitize = MathRenderer._sanitize_id
         subexprs = {}
         for node in graph.get("nodes", []):
             if "subexpr" in node:
-                nid = node["id"].replace("-", "_").replace(".", "_").replace(" ", "_")
-                subexprs[nid] = node["subexpr"]
+                subexprs[sanitize(node["id"])] = node["subexpr"]
         if not subexprs:
             return ""
-        graph_json = json.dumps(subexprs)
+        edges = [
+            [sanitize(e["from"]), sanitize(e["to"])]
+            for e in graph.get("edges", [])
+        ]
         return (
-            f'<script type="module">\n'
-            f'const subexprs = {graph_json};\n'
+            '<script type="module">\n'
+            f'const subexprs = {json.dumps(subexprs)};\n'
+            f'const edges = {json.dumps(edges)};\n'
             'const tip = document.getElementById("subexpr-tooltip");\n'
+            'let activeNode = null;\n'
+            '\n'
+            'function getUpstream(nodeId) {\n'
+            '  const visited = new Set();\n'
+            '  const queue = [nodeId];\n'
+            '  while (queue.length) {\n'
+            '    const cur = queue.shift();\n'
+            '    if (visited.has(cur)) continue;\n'
+            '    visited.add(cur);\n'
+            '    for (const [src, dst] of edges) {\n'
+            '      if (dst === cur && !visited.has(src)) queue.push(src);\n'
+            '    }\n'
+            '  }\n'
+            '  return visited;\n'
+            '}\n'
+            '\n'
+            'function getUpstreamEdgeIndices(upstream) {\n'
+            '  const indices = new Set();\n'
+            '  edges.forEach(([src, dst], i) => {\n'
+            '    if (upstream.has(src) && upstream.has(dst)) indices.add(i);\n'
+            '  });\n'
+            '  return indices;\n'
+            '}\n'
+            '\n'
+            'function highlight(nodeId) {\n'
+            '  const svg = document.querySelector(".mermaid svg");\n'
+            '  if (!svg) return;\n'
+            '  const upstream = getUpstream(nodeId);\n'
+            '  const upEdges = getUpstreamEdgeIndices(upstream);\n'
+            '  svg.querySelectorAll(".node").forEach(el => {\n'
+            '    const id = el.id.replace(/^flowchart-/, "").replace(/-\\d+$/, "");\n'
+            '    el.style.opacity = upstream.has(id) ? "1" : "0.15";\n'
+            '  });\n'
+            '  svg.querySelectorAll(".edgePath, .flowchart-link").forEach((el, i) => {\n'
+            '    el.style.opacity = upEdges.has(i) ? "1" : "0.1";\n'
+            '  });\n'
+            '  svg.querySelectorAll(".edgeLabel").forEach((el, i) => {\n'
+            '    el.style.opacity = upEdges.has(i) ? "1" : "0.1";\n'
+            '  });\n'
+            '}\n'
+            '\n'
+            'function clearHighlight() {\n'
+            '  const svg = document.querySelector(".mermaid svg");\n'
+            '  if (!svg) return;\n'
+            '  svg.querySelectorAll(".node, .edgePath, .flowchart-link, .edgeLabel").forEach(el => {\n'
+            '    el.style.opacity = "1";\n'
+            '  });\n'
+            '}\n'
+            '\n'
             'function attachHandlers() {\n'
             '  document.querySelectorAll(".mermaid svg .node").forEach(el => {\n'
             '    const id = el.id.replace(/^flowchart-/, "").replace(/-\\d+$/, "");\n'
@@ -257,6 +320,20 @@ class MathRenderer:
             '    el.addEventListener("mouseleave", () => {\n'
             '      tip.classList.remove("visible");\n'
             '    });\n'
+            '    el.addEventListener("click", e => {\n'
+            '      e.stopPropagation();\n'
+            '      if (activeNode === id) {\n'
+            '        activeNode = null;\n'
+            '        clearHighlight();\n'
+            '      } else {\n'
+            '        activeNode = id;\n'
+            '        highlight(id);\n'
+            '      }\n'
+            '    });\n'
+            '  });\n'
+            '  document.addEventListener("click", () => {\n'
+            '    activeNode = null;\n'
+            '    clearHighlight();\n'
             '  });\n'
             '}\n'
             'setTimeout(attachHandlers, 1000);\n'
