@@ -93,11 +93,11 @@ class TestStyleLoading:
 class TestLabelFormatting:
     def test_emoji_mode_variable(self):
         node = {"id": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
-        assert _format_label(node, "emoji") == "⚖️ mass (m)"
+        assert _format_label(node, "emoji") == "⚖️ m"
 
     def test_emoji_mode_operator(self):
         node = {"id": "__mul_1", "type": "operator", "op": "multiply"}
-        assert _format_label(node, "emoji") == "×"
+        assert _format_label(node, "emoji") == r"$$\times$$"
 
     def test_latex_mode_variable(self):
         node = {"id": "F", "label": "force", "emoji": "🏹", "type": "vector", "latex": "F"}
@@ -109,7 +109,7 @@ class TestLabelFormatting:
 
     def test_plain_mode(self):
         node = {"id": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
-        assert _format_label(node, "plain") == "m (mass)"
+        assert _format_label(node, "plain") == "m"
 
     def test_plain_mode_label_equals_id(self):
         node = {"id": "x", "label": "x", "emoji": "📍", "type": "scalar"}
@@ -200,7 +200,6 @@ class TestSemanticGraphToMermaid:
     def test_plain_label_mode(self):
         result = semantic_graph_to_mermaid(F_MA_GRAPH, label_mode="plain")
         assert "⚖️" not in result
-        assert "$$" not in result
 
     def test_empty_graph(self):
         result = semantic_graph_to_mermaid({"nodes": [], "edges": []})

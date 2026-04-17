@@ -18,5 +18,5 @@
     "neutral":  { "stroke": "#777",    "strokeWidth": 2 }
   },
   "useLinkStyle": true,
-  "fontSize": 16
+  "fontSize": 20
 }

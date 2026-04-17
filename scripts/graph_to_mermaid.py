@@ -118,10 +118,11 @@ def _format_label(node: dict[str, str], label_mode: str) -> str:
     op = node.get("op", "")
 
     if node_type in ("operator", "function"):
-        if label_mode == "latex":
-            symbol = OPERATOR_LATEX.get(op, op)
-            return f"$${symbol}$$"
-        return OPERATOR_SYMBOLS.get(op, op)
+        exponent = node.get("exponent", "")
+        if op == "power" and exponent:
+            return f"$${{(\\cdot)}}^{{{exponent}}}$$"
+        symbol = OPERATOR_LATEX.get(op, OPERATOR_SYMBOLS.get(op, op))
+        return f"$${symbol}$$"
 
     if node_type == "relation":
         rel_emoji = node.get("emoji", "")
@@ -132,27 +133,23 @@ def _format_label(node: dict[str, str], label_mode: str) -> str:
             return f"{rel_emoji} {rel_label}" if rel_emoji else rel_label
         return rel_label
 
-    label = node.get("label", node.get("id", "?"))
     emoji = node.get("emoji", "")
     latex = node.get("latex", "")
     node_id = node.get("id", "")
-
-    if label_mode == "latex" and latex:
-        return f"$${latex}$$"
-    if label_mode == "emoji":
-        parts = []
-        if emoji:
-            parts.append(emoji)
-        parts.append(label)
-        sym = node_id if not node_id.startswith("__") else ""
-        if sym and sym != label:
-            parts[-1] = f"{label} ({sym})"
-        return " ".join(parts)
-    # plain
     sym = node_id if not node_id.startswith("__") else ""
-    if sym and sym != label:
-        return f"{sym} ({label})"
-    return label
+    display_name = sym or node.get("label", "?")
+
+    # Use LaTeX rendering when the symbol has a latex field that differs
+    # from the plain name (e.g. \psi, \hbar), or always in latex mode
+    if latex and (label_mode == "latex" or latex != display_name):
+        display_name = f"$${latex}$$"
+
+    if label_mode == "emoji":
+        if emoji:
+            return f"{emoji} {display_name}"
+        return display_name
+    # plain and latex
+    return display_name
 
 
 # ---------------------------------------------------------------------------
@@ -164,13 +161,26 @@ def _sanitize_id(node_id: str) -> str:
     return node_id.replace("-", "_").replace(".", "_").replace(" ", "_")
 
 
+def _escape_mermaid_label(label: str) -> str:
+    """Escape characters that Mermaid 11 misinterprets as markdown.
+
+    Only escapes +/- outside of ``$$...$$`` LaTeX blocks, since KaTeX
+    needs the raw characters.
+    """
+    if "$$" not in label:
+        return label.replace("+", "#43;").replace("-", "#45;")
+    # Split on LaTeX delimiters, only escape non-LaTeX parts
+    parts = label.split("$$")
+    for i in range(0, len(parts), 2):  # even indices are outside $$
+        parts[i] = parts[i].replace("+", "#43;").replace("-", "#45;")
+    return "$$".join(parts)
+
+
 def _wrap_shape(sanitized_id: str, label: str, shape: str) -> str:
     """Wrap a label in Mermaid shape delimiters."""
     left, right = SHAPE_WRAPPERS.get(shape, ("[", "]"))
     escaped = label.replace('"', "'")
-    # Mermaid 11 interprets +/- as markdown list markers inside node labels.
-    # Use HTML entities to prevent this.
-    escaped = escaped.replace("+", "#43;").replace("-", "#45;")
+    escaped = _escape_mermaid_label(escaped)
     return f'{sanitized_id}{left}"{escaped}"{right}'
 
 
@@ -251,6 +261,7 @@ def semantic_graph_to_mermaid(
             emitted_classes.add(ntype)
 
     # Node definitions
+    tooltip_lines: list[str] = []
     for node in nodes:
         nid = _sanitize_id(node["id"])
         ntype = node.get("type", "scalar")
@@ -261,6 +272,12 @@ def semantic_graph_to_mermaid(
         if ntype in emitted_classes:
             node_def += f":::{ntype}"
         lines.append(f"  {node_def}")
+        # Tooltip with descriptive label + type
+        desc = node.get("label", "")
+        node_id = node.get("id", "")
+        sym = node_id if not node_id.startswith("__") else ""
+        if desc and sym and desc != sym:
+            tooltip_lines.append(f'  click {nid} "#" "{desc} ({ntype})"')
 
     # Edge definitions
     default_arrow = edge_style.get("arrow", "-->") if edge_style else "-->"
@@ -292,6 +309,7 @@ def semantic_graph_to_mermaid(
                 link_style_lines.append(f"  linkStyle {i} {','.join(ls_parts)}")
 
     lines.extend(link_style_lines)
+    lines.extend(tooltip_lines)
 
     return "\n".join(lines) + "\n"
 

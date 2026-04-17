@@ -311,6 +311,15 @@ class SemanticGraphBuilder:
                 self._add_edge(child_id, node_id)
             return node_id
 
+        # --- Power with literal exponent — absorb the number into the node ---
+        if isinstance(expr, Pow) and isinstance(expr.args[1], Number):
+            exp_val = str(expr.args[1])
+            node_id = self._next_id("power")
+            self._add_node(node_id, type="operator", op="power", exponent=exp_val)
+            base_id = self._walk(expr.args[0])
+            self._add_edge(base_id, node_id)
+            return node_id
+
         # --- Binary/n-ary operators (Add, Mul, Pow, Eq) ---
         op_name = OPERATOR_MAP.get(type(expr))
         if op_name is not None:
