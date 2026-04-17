@@ -139,7 +139,11 @@ def _format_label(node: dict[str, str], label_mode: str) -> str:
         exponent = node.get("exponent", "")
         if op == "power" and exponent:
             return f"$${{(\\cdot)}}^{{{exponent}}}$$"
-        symbol = OPERATOR_LATEX.get(op, OPERATOR_SYMBOLS.get(op, op))
+        node_latex = node.get("latex")
+        if node_latex:
+            symbol = node_latex
+        else:
+            symbol = OPERATOR_LATEX.get(op, OPERATOR_SYMBOLS.get(op, op))
         return f"$${symbol}$$"
 
     if node_type == "relation":
@@ -174,7 +178,10 @@ def _format_label(node: dict[str, str], label_mode: str) -> str:
 
 def _sanitize_id(node_id: str) -> str:
     """Make a node ID safe for Mermaid (no special chars)."""
-    return node_id.replace("-", "_").replace(".", "_").replace(" ", "_")
+    out = node_id
+    for ch in "-. {}()*":
+        out = out.replace(ch, "_")
+    return out
 
 
 def _escape_mermaid_label(label: str) -> str:

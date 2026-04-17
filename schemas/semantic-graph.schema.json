@@ -20,6 +20,10 @@
     "classification": {
       "$ref": "#/$defs/classification",
       "description": "Expression classification metadata (algebraic, ODE, PDE)."
+    },
+    "domain": {
+      "type": "string",
+      "description": "The mathematical or scientific domain of this expression (e.g. \"thermodynamics\", \"electromagnetism\", \"linear_algebra\", \"topology\"). Declared once for the whole graph; disambiguates symbols like P (power vs pressure) and informs how variables should be interpreted."
     }
   },
   "$defs": {
@@ -77,6 +81,23 @@
         "subexpr": {
           "type": "string",
           "description": "LaTeX sub-expression reconstructed by sympy.latex() for the SymPy expression rooted at this node. Used for interactive hover tooltips."
+        },
+        "quantity": {
+          "type": "string",
+          "description": "Physical quantity from a controlled vocabulary (e.g. \"pressure\", \"velocity\", \"energy\"). Enables semantic matching — two variables with the same quantity represent the same physical concept regardless of symbol name."
+        },
+        "dimension": {
+          "type": "string",
+          "description": "SI dimensional formula (e.g. \"M·L⁻¹·T⁻²\" for pressure, \"L·T⁻¹\" for velocity). Enables dimensional analysis and unit checking."
+        },
+        "unit": {
+          "type": "string",
+          "description": "Default SI unit (e.g. \"Pa\", \"m/s\", \"kg\"). Informational; does not imply the expression is in these units."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["state_variable", "parameter", "constant", "coefficient", "index", "dependent", "independent", "observable", "field"],
+          "description": "The role this variable plays in the equation. Distinguishes constants from variables, independent from dependent quantities, etc."
         }
       }
     },

@@ -146,6 +146,8 @@ CONSTANT_MAP: dict[Any, dict[str, str]] = {
 # Relations that parse_latex cannot handle — checked before SymPy parsing.
 # Order matters: longer commands must come before shorter prefixes.
 RELATION_MAP: list[tuple[str, dict[str, str]]] = [
+    (r"\Longleftrightarrow", {"op": "iff", "label": "if and only if", "emoji": "⟺"}),
+    (r"\Longrightarrow", {"op": "implies", "label": "implies", "emoji": "⟹"}),
     (r"\Leftrightarrow", {"op": "iff", "label": "if and only if", "emoji": "⇔"}),
     (r"\Rightarrow", {"op": "implies", "label": "implies", "emoji": "⇒"}),
     (r"\implies", {"op": "implies", "label": "implies", "emoji": "⇒"}),
@@ -249,7 +251,14 @@ class SemanticGraphBuilder:
                 return self._seen_symbols[name]
             meta = KNOWN_VARIABLES.get(name, {})
             node_id = name
-            latex_fallback = self._latex_commands.get(name, name)
+            latex_fallback = self._latex_commands.get(name)
+            if latex_fallback is None:
+                base = name.split("_")[0] if "_" in name else None
+                if base and base in self._latex_commands:
+                    suffix = name[len(base):]
+                    latex_fallback = self._latex_commands[base] + suffix
+                else:
+                    latex_fallback = name
             attrs: dict[str, str] = {
                 "label": meta.get("label", name),
                 "emoji": meta.get("emoji", "🔣"),
@@ -286,7 +295,11 @@ class SemanticGraphBuilder:
             cls_name = type(expr).__name__
             func_name = FUNCTION_MAP.get(cls_name, cls_name)
             node_id = self._next_id(func_name)
-            self._add_node(node_id, type="function", op=func_name)
+            func_latex = self._latex_commands.get(func_name)
+            func_attrs: dict[str, str] = {"type": "function", "op": func_name}
+            if func_latex:
+                func_attrs["latex"] = func_latex
+            self._add_node(node_id, **func_attrs)
             for arg in expr.args:
                 child_id = self._walk(arg)
                 self._add_edge(child_id, node_id)
@@ -389,6 +402,16 @@ def _preprocess_latex(latex: str) -> str:
     latex = re.sub(r"\\ddot\{([^}]+)\}", r"\\frac{d}{dt}\\frac{d \1}{d t}", latex)
     latex = re.sub(r"\\dot\{([^}]+)\}", r"\\frac{d \1}{d t}", latex)
 
+    # \text{impact} → textimpact  (collapse to single token for SymPy)
+    # The original \text{...} is preserved via _extract_latex_commands / overrides.
+    latex = re.sub(r"\\text\{([^}]+)\}", lambda m: m.group(1).replace(" ", ""), latex)
+
+    # Brace bare single-char subscripts: C_d → C_{d}  (so SymPy doesn't merge C_d A → C_{dA})
+    latex = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", latex)
+
+    # Strip spacing commands that SymPy doesn't understand
+    latex = re.sub(r"\\(?:quad|qquad|,|;|!)\s*", " ", latex)
+
     return latex
 
 
@@ -478,7 +501,7 @@ def _split_on_relation(latex: str) -> tuple[str, dict[str, str], str] | None:
     return None
 
 
-def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | None = None) -> dict:
+def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | None = None, domain: str | None = None) -> dict:
     """Parse a LaTeX string and return a semantic graph dict.
 
     Handles relation operators (\\propto, \\implies, \\iff, \\to, \\approx,
@@ -513,6 +536,8 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         except TypeError:
             combined = lhs_expr
         graph["classification"] = _classify_expression(combined)
+        if domain:
+            graph["domain"] = domain
         return graph
 
     try:
@@ -524,6 +549,8 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands)
     graph = builder.build(expr)
     graph["classification"] = classification
+    if domain:
+        graph["domain"] = domain
     return graph
 
 
@@ -540,6 +567,8 @@ def main() -> None:
                         help="Pretty-print the JSON output")
     parser.add_argument("-o", "--output", type=str, default=None,
                         help="Write JSON to a file instead of stdout")
+    parser.add_argument("--domain", type=str, default=None,
+                        help="Domain of the expression (e.g. 'thermodynamics', 'linear_algebra')")
     parser.add_argument("--var", action="append", dest="vars", metavar="NAME:KEY=VAL,...",
                         help="Override variable properties. "
                              "Example: --var 'm:unit=kg,tooltip=Inertial mass' "
@@ -548,7 +577,7 @@ def main() -> None:
 
     try:
         overrides = parse_var_overrides(args.vars)
-        graph = latex_to_semantic_graph(args.latex, overrides=overrides)
+        graph = latex_to_semantic_graph(args.latex, overrides=overrides, domain=args.domain)
     except ValueError as exc:
         print(f"❌ {exc}", file=sys.stderr)
         sys.exit(1)
