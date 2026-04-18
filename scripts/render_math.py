@@ -195,8 +195,9 @@ class MathRenderer:
 
     def __init__(
         self,
-        latex: str,
+        latex: str = "",
         *,
+        graph: dict[str, Any] | None = None,
         show_latex: bool = True,
         show_mermaid: bool = False,
         style: str | dict[str, Any] = "default",
@@ -207,8 +208,9 @@ class MathRenderer:
         color_by: str | None = None,
     ) -> None:
         self.latex = latex
-        self.show_latex = show_latex
-        self.show_mermaid = show_mermaid
+        self._graph = graph
+        self.show_latex = show_latex and not graph
+        self.show_mermaid = show_mermaid or bool(graph)
         self.label_mode = label_mode
         self.validate = validate
         self.show = show
@@ -235,7 +237,7 @@ class MathRenderer:
         )
 
     def _build_mermaid_card(self) -> tuple[str, dict]:
-        graph = latex_to_semantic_graph(self.latex)
+        graph = self._graph if self._graph else latex_to_semantic_graph(self.latex)
         if self.validate:
             errors = validate_graph(graph)
             if errors:
@@ -343,7 +345,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Render LaTeX as HTML with optional Mermaid diagram.",
     )
-    parser.add_argument("latex", help="LaTeX expression to render")
+    parser.add_argument("latex", nargs="?", default="",
+                        help="LaTeX expression to render")
+    parser.add_argument(
+        "--graph", "-g", default=None,
+        help="Path to semantic graph JSON file (skip LaTeX parsing)",
+    )
     parser.add_argument(
         "--mermaid", action="store_true",
         help="Include a Mermaid semantic-graph diagram",
@@ -393,8 +400,19 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    graph = None
+    if args.graph:
+        graph_path = Path(args.graph)
+        if not graph_path.exists():
+            print(f"❌ File not found: {graph_path}", file=sys.stderr)
+            sys.exit(1)
+        with open(graph_path, encoding="utf-8") as f:
+            graph = json.load(f)
+    elif not args.latex:
+        parser.error("either latex or --graph is required")
+
     show_latex = not args.no_latex
-    if not show_latex and not args.mermaid:
+    if not show_latex and not args.mermaid and not graph:
         parser.error("--no-latex requires --mermaid")
 
     try:
@@ -406,6 +424,7 @@ def main() -> None:
         show_fields = set(args.show.split(",")) if args.show else None
         renderer = MathRenderer(
             args.latex,
+            graph=graph,
             show_latex=show_latex,
             show_mermaid=args.mermaid,
             style=style,
