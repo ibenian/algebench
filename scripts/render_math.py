@@ -32,8 +32,12 @@ import webbrowser
 from pathlib import Path
 from typing import Any
 
-from latex_to_graph import latex_to_semantic_graph
-from graph_to_mermaid import semantic_graph_to_mermaid, load_style, validate_graph
+try:
+    from latex_to_graph import latex_to_semantic_graph
+    from graph_to_mermaid import semantic_graph_to_mermaid, load_style, validate_graph
+except ImportError:
+    from scripts.latex_to_graph import latex_to_semantic_graph
+    from scripts.graph_to_mermaid import semantic_graph_to_mermaid, load_style, validate_graph
 
 _GRAPH_PANEL_DIR = Path(__file__).resolve().parent.parent / "static" / "graph-panel"
 
@@ -318,7 +322,18 @@ class MathRenderer:
             f'document.getElementById("semantic-graph-data").textContent);\n'
             f'const container = document.querySelector(".mermaid");\n'
             f'const gp = new SemanticGraphPanel(graph, {{ container, katex }});\n'
-            f'setTimeout(() => gp.attach(), 1000);\n'
+            f'if (container && container.querySelector("svg")) {{\n'
+            f'  gp.attach();\n'
+            f'}} else {{\n'
+            f'  const obs = new MutationObserver(() => {{\n'
+            f'    if (container && container.querySelector("svg")) {{\n'
+            f'      obs.disconnect();\n'
+            f'      gp.attach();\n'
+            f'    }}\n'
+            f'  }});\n'
+            f'  obs.observe(container || document.body, '
+            f'{{ childList: true, subtree: true }});\n'
+            f'}}\n'
             f'</script>\n'
         )
 

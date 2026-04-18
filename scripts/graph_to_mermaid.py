@@ -253,26 +253,6 @@ def _wrap_shape(sanitized_id: str, label: str, shape: str) -> str:
     return f'{sanitized_id}{left}"{escaped}"{right}'
 
 
-def _style_directive(sanitized_id: str, style: dict[str, Any]) -> str:
-    """Build a Mermaid ``style`` directive for a node."""
-    parts = []
-    if style.get("fill"):
-        parts.append(f"fill:{style['fill']}")
-    if style.get("stroke"):
-        parts.append(f"stroke:{style['stroke']}")
-    if style.get("color"):
-        parts.append(f"color:{style['color']}")
-    sw = style.get("strokeWidth")
-    if sw:
-        parts.append(f"stroke-width:{sw}px")
-    fs = style.get("fontSize")
-    if fs:
-        parts.append(f"font-size:{fs}px")
-    if not parts:
-        return ""
-    return f"  style {sanitized_id} {','.join(parts)}"
-
-
 def semantic_graph_to_mermaid(
     graph: dict[str, Any],
     style: dict[str, Any] | None = None,
