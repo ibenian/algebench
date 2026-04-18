@@ -17,7 +17,6 @@
 
 const PANEL_FIELDS = [
   ["label", "Label"],
-  ["description", "Description"],
   ["type", "Type"],
   ["role", "Role"],
   ["quantity", "Quantity"],
@@ -167,15 +166,22 @@ export class SemanticGraphPanel {
     const symbolEl = this.panel.querySelector(".gp-symbol");
     const fieldsEl = this.panel.querySelector(".gp-fields");
     const emoji = data.emoji || "";
-    const latex = data.latex || data.id || "";
+    const expr = this._subexprs[nodeId];
+    const hasOwnLatex = !!data.latex;
+    const titleLatex = data.latex || (expr ? expr : null);
+    const titleText = data.id || "";
+    const showEmoji = emoji && hasOwnLatex;
 
-    if (latex && this.katex) {
+    if (titleLatex && this.katex) {
       try {
-        this.katex.render(latex, symbolEl, { displayMode: true, throwOnError: false });
-        if (emoji) symbolEl.innerHTML = emoji + " " + symbolEl.innerHTML;
-      } catch (_) { symbolEl.textContent = emoji + " " + latex; }
+        const mathSpan = document.createElement("span");
+        this.katex.render(titleLatex, mathSpan, { displayMode: false, throwOnError: false });
+        symbolEl.innerHTML = "";
+        if (showEmoji) symbolEl.appendChild(document.createTextNode(emoji));
+        symbolEl.appendChild(mathSpan);
+      } catch (_) { symbolEl.textContent = (showEmoji ? emoji + " " : "") + titleText; }
     } else {
-      symbolEl.textContent = emoji + (emoji ? " " : "") + latex;
+      symbolEl.textContent = (showEmoji ? emoji + " " : "") + titleText;
     }
 
     let html = "";
@@ -185,18 +191,10 @@ export class SemanticGraphPanel {
                 `<span class="gp-val">${data[key]}</span></div>`;
       }
     }
-    const expr = this._subexprs[nodeId];
-    if (expr) {
-      html += `<div class="gp-field gp-field-col">` +
-              `<span class="gp-key">Sub-expression</span>` +
-              `<span class="gp-val" id="gp-subexpr-val"></span></div>`;
+    if (data.description) {
+      html += `<div class="gp-description">${data.description}</div>`;
     }
     fieldsEl.innerHTML = html;
-
-    if (expr && this.katex) {
-      const el = document.getElementById("gp-subexpr-val");
-      if (el) this.katex.render(expr, el, { displayMode: false, throwOnError: false });
-    }
     this.panel.classList.add("open");
   }
 

@@ -36,6 +36,10 @@
   font-size: 1.8rem;
   text-align: center;
   padding: 1rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
 }
 .graph-panel-info .gp-field {
   display: flex;
@@ -62,6 +66,18 @@
   border: none;
   font-size: 1.2rem;
   opacity: 0.6;
+}
+
+.graph-panel-info .gp-description {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-style: italic;
+  line-height: 1.5;
+  opacity: 0.85;
+  background: rgba(128, 128, 128, 0.08);
+  border-left: 3px solid rgba(128, 128, 128, 0.3);
 }
 
 /* Transition for highlight/dim */
