@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
-"""Validate AlgeBench scene JSON files against the lesson schema.
+"""Validate AlgeBench JSON files against a schema.
 
 Usage:
-    # Validate a single file
+    # Validate scene files against lesson schema (default)
     ./run.sh scripts/validate_schema.py scenes/eigenvalues.json
 
     # Validate all scenes
     ./run.sh scripts/validate_schema.py scenes/*.json
+
+    # Validate a semantic graph against the semantic-graph schema
+    ./run.sh scripts/validate_schema.py --schema semantic-graph graph.json
+
+    # Pipe from latex_to_graph
+    ./run.sh scripts/latex_to_graph.py "E = mc^2" | ./run.sh scripts/validate_schema.py --schema semantic-graph -
 
     # Validate with verbose output
     ./run.sh scripts/validate_schema.py -v scenes/eigenvalues.json
 
     # Just check the schema itself is valid
     ./run.sh scripts/validate_schema.py --check-schema
+    ./run.sh scripts/validate_schema.py --check-schema --schema semantic-graph
 
 Exit codes:
     0  All files valid
@@ -33,15 +40,23 @@ except ImportError:
     print("   Or run: ./run.sh scripts/validate_schema.py (handles venv automatically)", file=sys.stderr)
     sys.exit(2)
 
-SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "lesson.schema.json"
+SCHEMAS_DIR = Path(__file__).parent.parent / "schemas"
+
+SCHEMA_ALIASES: dict[str, str] = {
+    "lesson": "lesson.schema.json",
+    "semantic-graph": "semantic-graph.schema.json",
+}
 
 
-def load_schema() -> dict:
-    if not SCHEMA_PATH.exists():
-        print(f"❌ Schema not found: {SCHEMA_PATH}", file=sys.stderr)
-        print("   Run /algebench-schema-generator to create it.", file=sys.stderr)
+def load_schema(name: str = "lesson") -> dict:
+    filename = SCHEMA_ALIASES.get(name, f"{name}.schema.json")
+    path = SCHEMAS_DIR / filename
+    if not path.exists():
+        available = sorted(p.stem.removesuffix(".schema") for p in SCHEMAS_DIR.glob("*.schema.json"))
+        print(f"❌ Schema not found: {path}", file=sys.stderr)
+        print(f"   Available: {', '.join(available)}", file=sys.stderr)
         sys.exit(2)
-    with open(SCHEMA_PATH) as f:
+    with open(path) as f:
         return json.load(f)
 
 
@@ -73,19 +88,38 @@ def validate_file(path: Path, validator: Draft202012Validator, verbose: bool) ->
     return errors
 
 
+def validate_data(data: dict, validator: Draft202012Validator, verbose: bool) -> list[str]:
+    errors = []
+    for error in sorted(validator.iter_errors(data), key=lambda e: list(e.absolute_path)):
+        location = " > ".join(str(p) for p in error.absolute_path) or "(root)"
+        errors.append(f"  [{location}] {error.message}")
+        if verbose and error.context:
+            for sub in error.context:
+                sub_loc = " > ".join(str(p) for p in sub.absolute_path) or "(root)"
+                errors.append(f"    └ [{sub_loc}] {sub.message}")
+    return errors
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Validate scene JSON against AlgeBench schema")
-    parser.add_argument("files", nargs="*", type=Path, help="Scene JSON files to validate")
+    parser = argparse.ArgumentParser(description="Validate JSON files against an AlgeBench schema")
+    parser.add_argument(
+        "files", nargs="*",
+        help="JSON files to validate, or '-' for stdin",
+    )
+    parser.add_argument(
+        "--schema", "-s", default="lesson",
+        help="Schema name: 'lesson' (default), 'semantic-graph', or any basename in schemas/",
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="Show sub-errors for oneOf/anyOf")
     parser.add_argument("-e", "--errors-only", action="store_true", help="Only show files with errors (suppress passing files)")
     parser.add_argument("--check-schema", action="store_true", help="Only validate the schema itself")
     args = parser.parse_args()
 
-    schema = load_schema()
+    schema = load_schema(args.schema)
 
     if args.check_schema:
         if check_schema(schema):
-            print("✅ Schema is valid.")
+            print(f"✅ Schema '{args.schema}' is valid.")
             sys.exit(0)
         else:
             sys.exit(2)
@@ -99,26 +133,46 @@ def main():
 
     validator = Draft202012Validator(schema)
     failed = 0
+    total = 0
 
-    for path in args.files:
-        if not path.exists():
-            print(f"⏭️  {path} (not found)")
-            continue
-
-        errors = validate_file(path, validator, args.verbose)
-        if errors:
-            print(f"❌ {path}")
-            for e in errors:
-                print(e)
-            failed += 1
-        elif not args.errors_only:
-            print(f"✅ {path}")
+    for entry in args.files:
+        if entry == "-":
+            total += 1
+            try:
+                data = json.load(sys.stdin)
+            except json.JSONDecodeError as e:
+                print(f"❌ (stdin)")
+                print(f"  Invalid JSON: {e}")
+                failed += 1
+                continue
+            errors = validate_data(data, validator, args.verbose)
+            if errors:
+                print(f"❌ (stdin)")
+                for e in errors:
+                    print(e)
+                failed += 1
+            elif not args.errors_only:
+                print(f"✅ (stdin)")
+        else:
+            path = Path(entry)
+            total += 1
+            if not path.exists():
+                print(f"⏭️  {path} (not found)")
+                continue
+            errors = validate_file(path, validator, args.verbose)
+            if errors:
+                print(f"❌ {path}")
+                for e in errors:
+                    print(e)
+                failed += 1
+            elif not args.errors_only:
+                print(f"✅ {path}")
 
     if failed:
         print(f"\n❌ {failed} file(s) failed validation.")
         sys.exit(1)
     elif not args.errors_only:
-        print(f"\n✅ All {len(args.files)} file(s) valid.")
+        print(f"\n✅ All {total} file(s) valid.")
         sys.exit(0)
 
 

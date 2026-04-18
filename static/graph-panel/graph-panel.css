@@ -1,0 +1,89 @@
+.graph-panel-tooltip {
+  position: fixed;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  font-size: 1.4rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 1000;
+}
+.graph-panel-tooltip.visible {
+  opacity: 1;
+}
+
+.graph-panel-info {
+  position: fixed;
+  right: -340px;
+  top: 0;
+  width: 320px;
+  height: 100vh;
+  overflow-y: auto;
+  transition: right 0.3s ease;
+  z-index: 900;
+  padding: 1.5rem;
+}
+.graph-panel-info.open {
+  right: 0;
+}
+.graph-panel-info h3 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+}
+.graph-panel-info .gp-symbol {
+  font-size: 1.8rem;
+  text-align: center;
+  padding: 1rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.graph-panel-info .gp-field {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  font-size: 0.85rem;
+}
+.graph-panel-info .gp-field-col {
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.graph-panel-info .gp-key {
+  opacity: 0.6;
+}
+.graph-panel-info .gp-val {
+  font-weight: 500;
+}
+.graph-panel-info .gp-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  opacity: 0.6;
+}
+
+.graph-panel-info .gp-description {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-style: italic;
+  line-height: 1.5;
+  opacity: 0.85;
+  background: rgba(128, 128, 128, 0.08);
+  border-left: 3px solid rgba(128, 128, 128, 0.3);
+}
+
+/* Transition for highlight/dim */
+svg .node,
+svg .edgePath,
+svg .flowchart-link,
+svg .edgeLabel {
+  transition: opacity 0.25s;
+}
