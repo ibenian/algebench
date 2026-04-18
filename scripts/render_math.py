@@ -79,12 +79,6 @@ FRAGMENT_CSS = """\
     justify-content: center;
     padding: 1rem 0;
   }}
-  .render-math-container .meta {{
-    font-size: 0.75rem;
-    color: {muted};
-    text-align: center;
-    margin-top: 0.5rem;
-  }}
   {graph_panel_css}
   .graph-panel-tooltip {{
     background: {card_bg};
@@ -142,10 +136,62 @@ PAGE_TEMPLATE = """\
     padding: 2rem;
     min-height: 100vh;
   }}
+  .json-toggle {{
+    position: fixed;
+    bottom: 1rem;
+    left: 1rem;
+    background: {card_bg};
+    border: 1px solid {border};
+    border-radius: 6px;
+    color: {muted};
+    font-family: monospace;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+    z-index: 800;
+  }}
+  .json-toggle:hover {{ opacity: 1; }}
+  .json-overlay {{
+    display: none;
+    position: fixed;
+    bottom: 3rem;
+    left: 1rem;
+    max-width: 500px;
+    max-height: 60vh;
+    overflow: auto;
+    background: {card_bg};
+    border: 1px solid {border};
+    border-radius: 8px;
+    box-shadow: 0 4px 16px {shadow};
+    font-size: 0.7rem;
+    line-height: 1.4;
+    padding: 1rem;
+    color: {fg};
+    white-space: pre-wrap;
+    word-break: break-word;
+    z-index: 800;
+  }}
+  .json-overlay.open {{ display: block; }}
+  .json-overlay::-webkit-scrollbar {{
+    width: 6px;
+  }}
+  .json-overlay::-webkit-scrollbar-track {{
+    background: transparent;
+  }}
+  .json-overlay::-webkit-scrollbar-thumb {{
+    background: {border};
+    border-radius: 3px;
+  }}
+  .json-overlay::-webkit-scrollbar-thumb:hover {{
+    background: {muted};
+  }}
 </style>
 </head>
 <body>
 {fragment}
+{json_viewer}
 </body>
 </html>
 """
@@ -249,18 +295,10 @@ class MathRenderer:
             graph, style=self.style, label_mode=self.label_mode,
             show=self.show, color_by=self.color_by,
         )
-        meta = f'style: {self.style_name}'
-        if self.label_mode:
-            meta += f', labels: {self.label_mode}'
-        if self.show:
-            meta += f', show: {",".join(sorted(self.show))}'
-        if self.color_by:
-            meta += f', color-by: {self.color_by}'
         card = (
             '<div class="card">\n'
             "  <h2>Semantic Graph</h2>\n"
             f'  <pre class="mermaid">\n{mermaid_src}  </pre>\n'
-            f'  <div class="meta">{meta}</div>\n'
             "</div>"
         )
         return card, graph
@@ -288,13 +326,14 @@ class MathRenderer:
         (KaTeX, Mermaid) which the host page must provide.
         """
         parts: list[str] = []
-        graph = None
+        graph: dict | None = None
         if self.show_latex:
             parts.append(self._build_latex_card())
         if self.show_mermaid:
             card, graph = self._build_mermaid_card()
             parts.append(card)
 
+        self._last_graph = graph
         hover_script = self._build_hover_script(graph) if graph else ""
         colors = THEMES[self.theme]
 
@@ -311,9 +350,20 @@ class MathRenderer:
     def render_html(self) -> str:
         """Return a complete standalone HTML page."""
         colors = THEMES[self.theme]
+        fragment = self.render_fragment()
+        json_viewer = ""
+        if self._last_graph:
+            graph_json = json.dumps(self._last_graph, indent=2, ensure_ascii=False)
+            json_viewer = (
+                '<button class="json-toggle" onclick="'
+                "document.querySelector('.json-overlay').classList.toggle('open')"
+                '" title="Show semantic graph JSON">&lbrace; &rbrace;</button>\n'
+                f'<pre class="json-overlay">{graph_json}</pre>\n'
+            )
         return PAGE_TEMPLATE.format(
             title=f"render_math: {self.latex[:60]}",
-            fragment=self.render_fragment(),
+            fragment=fragment,
+            json_viewer=json_viewer,
             **colors,
         )
 

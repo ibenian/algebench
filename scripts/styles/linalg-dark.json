@@ -14,8 +14,8 @@
     "result":   { "shape": "rect",   "fill": "none",    "stroke": "none",    "color": "#ccc" }
   },
   "edgeStyles": {
-    "amplify":  { "stroke": "#ef5350", "strokeWidth": 4 },
-    "dampen":   { "stroke": "#42a5f5", "strokeWidth": 1 },
+    "direct":  { "stroke": "#ef5350", "strokeWidth": 4 },
+    "inverse":   { "stroke": "#42a5f5", "strokeWidth": 1 },
     "neutral":  { "stroke": "#777",    "strokeWidth": 2 }
   },
   "useLinkStyle": true,

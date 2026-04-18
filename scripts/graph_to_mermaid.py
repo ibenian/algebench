@@ -47,7 +47,9 @@ SHAPE_WRAPPERS: dict[str, tuple[str, str]] = {
 
 OPERATOR_SYMBOLS: dict[str, str] = {
     "add": "+",
+    "subtract": "−",
     "multiply": "×",
+    "divide": "÷",
     "power": "(·)ⁿ",
     "equals": "=",
     "derivative": "d/dt",
@@ -68,7 +70,9 @@ OPERATOR_SYMBOLS: dict[str, str] = {
 
 OPERATOR_LATEX: dict[str, str] = {
     "add": "+",
+    "subtract": "-",
     "multiply": r"\times",
+    "divide": r"\div",
     "power": r"(\cdot)^n",
     "equals": "=",
     "derivative": r"\frac{d}{dt}",
@@ -146,7 +150,7 @@ def _format_label(
     node_type = node.get("type", "")
     op = node.get("op", "")
 
-    if node_type in ("operator", "function"):
+    if node_type in ("operator", "function", "expression"):
         exponent = node.get("exponent", "")
         if op == "power" and exponent:
             return f"$${{(\\cdot)}}^{{{exponent}}}$$"

@@ -35,7 +35,7 @@
     "operatorOp": {
       "type": "string",
       "enum": [
-        "add", "multiply", "power", "equals",
+        "add", "subtract", "multiply", "divide", "power", "equals",
         "derivative", "integral", "sum", "product",
         "sin", "cos", "tan", "log", "exp", "sqrt", "abs",
         "arcsin", "arccos", "arctan"
@@ -125,8 +125,8 @@
         },
         "semantic": {
           "type": "string",
-          "enum": ["amplify", "dampen", "neutral"],
-          "description": "Semantic weight of the edge, used by styles that vary stroke width/color by proportionality."
+          "enum": ["direct", "inverse", "neutral"],
+          "description": "Proportionality of the edge: direct (more input → more output), inverse (more input → less output), or neutral."
         }
       }
     },
