@@ -82,6 +82,10 @@
           "type": "string",
           "description": "LaTeX sub-expression reconstructed by sympy.latex() for the SymPy expression rooted at this node. Used for interactive hover tooltips."
         },
+        "description": {
+          "type": "string",
+          "description": "Human-readable explanation of what this node represents in context (e.g. \"rest mass times speed of light squared — the mass-energy equivalence term\"). Can be author-provided via overrides or AI-generated."
+        },
         "quantity": {
           "type": "string",
           "description": "Physical quantity from a controlled vocabulary (e.g. \"pressure\", \"velocity\", \"energy\"). Enables semantic matching — two variables with the same quantity represent the same physical concept regardless of symbol name."
