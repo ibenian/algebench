@@ -336,7 +336,6 @@ def semantic_graph_to_mermaid(
             emitted_classes.add(ntype)
 
     # Node definitions
-    tooltip_lines: list[str] = []
     for node in nodes:
         nid = _sanitize_id(node["id"])
         ntype = node.get("type", "scalar")
@@ -350,12 +349,6 @@ def semantic_graph_to_mermaid(
         elif ntype in emitted_classes:
             node_def += f":::{ntype}"
         lines.append(f"  {node_def}")
-        # Tooltip with descriptive label + type
-        desc = node.get("label", "")
-        node_id = node.get("id", "")
-        sym = node_id if not node_id.startswith("__") else ""
-        if desc and sym and desc != sym:
-            tooltip_lines.append(f'  click {nid} "#" "{desc} ({ntype})"')
 
     # Edge definitions
     default_arrow = edge_style.get("arrow", "-->") if edge_style else "-->"
@@ -387,7 +380,7 @@ def semantic_graph_to_mermaid(
                 link_style_lines.append(f"  linkStyle {i} {','.join(ls_parts)}")
 
     lines.extend(link_style_lines)
-    lines.extend(tooltip_lines)
+
 
     return "\n".join(lines) + "\n"
 
