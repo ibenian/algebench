@@ -46,35 +46,14 @@ _GRAPH_PANEL_CSS = _read_asset("graph-panel.css")
 _GRAPH_PANEL_JS = _read_asset("graph-panel.js").replace("export class", "class")
 
 
-HTML_TEMPLATE = """\
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title}</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
-  onload="renderMathInElement(document.body, {{delimiters:[{{left:'$$',right:'$$',display:true}},{{left:'$',right:'$',display:false}}]}});"></script>
-<script type="module">
-  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
-  mermaid.initialize({{ startOnLoad: true, theme: '{mermaid_theme}' }});
-</script>
-<style>
-  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-  body {{
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: {bg};
-    color: {fg};
-    padding: 2rem;
+FRAGMENT_CSS = """\
+  .render-math-container {{
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2rem;
-    min-height: 100vh;
   }}
-  .card {{
+  .render-math-container .card {{
     background: {card_bg};
     border: 1px solid {border};
     border-radius: 12px;
@@ -83,24 +62,24 @@ HTML_TEMPLATE = """\
     width: 100%;
     box-shadow: 0 2px 8px {shadow};
   }}
-  .card h2 {{
+  .render-math-container .card h2 {{
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: {muted};
     margin-bottom: 1rem;
   }}
-  .latex-block {{
+  .render-math-container .latex-block {{
     font-size: 1.6rem;
     text-align: center;
     padding: 1.5rem 0;
   }}
-  .mermaid {{
+  .render-math-container .mermaid {{
     display: flex;
     justify-content: center;
     padding: 1rem 0;
   }}
-  .meta {{
+  .render-math-container .meta {{
     font-size: 0.75rem;
     color: {muted};
     text-align: center;
@@ -127,11 +106,46 @@ HTML_TEMPLATE = """\
   .graph-panel-info .gp-close {{
     color: {muted};
   }}
+"""
+
+FRAGMENT_TEMPLATE = """\
+<style>
+{fragment_css}
+</style>
+<div class="render-math-container">
+{body}
+</div>
+{hover_script}
+"""
+
+PAGE_TEMPLATE = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {{delimiters:[{{left:'$$',right:'$$',display:true}},{{left:'$',right:'$',display:false}}]}});"></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({{ startOnLoad: true, theme: '{mermaid_theme}' }});
+</script>
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  body {{
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: {bg};
+    color: {fg};
+    padding: 2rem;
+    min-height: 100vh;
+  }}
 </style>
 </head>
 <body>
-{body}
-{hover_script}
+{fragment}
 </body>
 </html>
 """
@@ -265,8 +279,12 @@ class MathRenderer:
             f'</script>\n'
         )
 
-    def render_html(self) -> str:
-        """Return a complete HTML string."""
+    def render_fragment(self) -> str:
+        """Return an embeddable HTML fragment (style + cards + script).
+
+        The fragment is self-contained except for external dependencies
+        (KaTeX, Mermaid) which the host page must provide.
+        """
         parts: list[str] = []
         graph = None
         if self.show_latex:
@@ -276,13 +294,24 @@ class MathRenderer:
             parts.append(card)
 
         hover_script = self._build_hover_script(graph) if graph else ""
-
         colors = THEMES[self.theme]
-        return HTML_TEMPLATE.format(
-            title=f"render_math: {self.latex[:60]}",
+
+        fragment_css = FRAGMENT_CSS.format(
+            graph_panel_css=_GRAPH_PANEL_CSS,
+            **colors,
+        )
+        return FRAGMENT_TEMPLATE.format(
+            fragment_css=fragment_css,
             body="\n".join(parts),
             hover_script=hover_script,
-            graph_panel_css=_GRAPH_PANEL_CSS,
+        )
+
+    def render_html(self) -> str:
+        """Return a complete standalone HTML page."""
+        colors = THEMES[self.theme]
+        return PAGE_TEMPLATE.format(
+            title=f"render_math: {self.latex[:60]}",
+            fragment=self.render_fragment(),
             **colors,
         )
 
