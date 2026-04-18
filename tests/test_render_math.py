@@ -40,7 +40,8 @@ class TestMathRendererHTML:
     def test_mermaid_only(self):
         r = MathRenderer("F = ma", show_latex=False, show_mermaid=True)
         html = r.render_html()
-        assert "LaTeX" not in html.split("<body>")[-1]
+        assert "<h2>LaTeX</h2>" not in html
+        assert 'class="latex-block"' not in html
         assert "flowchart" in html
 
     def test_style_applied(self):
