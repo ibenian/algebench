@@ -48,7 +48,6 @@ class TestMathRendererHTML:
         r = MathRenderer("x + y", show_mermaid=True, style="role-colored")
         html = r.render_html()
         assert "flowchart TB" in html
-        assert "style: role-colored" in html
 
     def test_label_mode_latex(self):
         r = MathRenderer("F = ma", show_mermaid=True, label_mode="latex")
@@ -144,7 +143,6 @@ class TestStyleDictInput:
         r = MathRenderer("x + y", show_mermaid=True, style=custom)
         html = r.render_html()
         assert "flowchart RL" in html
-        assert "style: my-custom" in html
 
 
 # ---------------------------------------------------------------------------

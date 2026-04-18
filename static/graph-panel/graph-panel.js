@@ -184,17 +184,27 @@ export class SemanticGraphPanel {
       symbolEl.textContent = (showEmoji ? emoji + " " : "") + titleText;
     }
 
-    let html = "";
+    fieldsEl.innerHTML = "";
     for (const [key, label] of PANEL_FIELDS) {
       if (data[key]) {
-        html += `<div class="gp-field"><span class="gp-key">${label}</span>` +
-                `<span class="gp-val">${data[key]}</span></div>`;
+        const row = document.createElement("div");
+        row.className = "gp-field";
+        const keyEl = document.createElement("span");
+        keyEl.className = "gp-key";
+        keyEl.textContent = label;
+        const valEl = document.createElement("span");
+        valEl.className = "gp-val";
+        valEl.textContent = data[key];
+        row.append(keyEl, valEl);
+        fieldsEl.appendChild(row);
       }
     }
     if (data.description) {
-      html += `<div class="gp-description">${data.description}</div>`;
+      const desc = document.createElement("div");
+      desc.className = "gp-description";
+      desc.textContent = data.description;
+      fieldsEl.appendChild(desc);
     }
-    fieldsEl.innerHTML = html;
     this.panel.classList.add("open");
   }
 

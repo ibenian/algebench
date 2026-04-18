@@ -308,11 +308,14 @@ class MathRenderer:
         if not graph.get("nodes"):
             return ""
         graph_panel_js = _GRAPH_PANEL_JS
-        graph_json = json.dumps(graph)
+        graph_json = json.dumps(graph).replace("</", "<\\/")
         return (
+            f'<script type="application/json" id="semantic-graph-data">'
+            f'{graph_json}</script>\n'
             f'<script type="module">\n'
             f'{graph_panel_js}\n'
-            f'const graph = {graph_json};\n'
+            f'const graph = JSON.parse('
+            f'document.getElementById("semantic-graph-data").textContent);\n'
             f'const container = document.querySelector(".mermaid");\n'
             f'const gp = new SemanticGraphPanel(graph, {{ container, katex }});\n'
             f'setTimeout(() => gp.attach(), 1000);\n'
