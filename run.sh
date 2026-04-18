@@ -24,6 +24,13 @@ if [ $# -eq 0 ]; then
     echo "  ./run.sh schemas/validate.py scenes/*.json"
     echo "  ./run.sh schemas/validate.py --check-schema"
     echo "  ./run.sh schemas/validate.py -v scenes/eigenvalues.json"
+    echo ""
+    echo "Testing:"
+    echo "  ./run.sh -m pytest tests/                    # run all tests"
+    echo "  ./run.sh -m pytest tests/test_render_math.py # run one test file"
+    echo "  ./run.sh -m pytest tests/ -k 'test_style'    # run tests matching name"
+    echo "  ./run.sh -m pytest tests/ -v                 # verbose output"
+    echo "  ./run.sh -m pytest tests/ --tb=short         # shorter tracebacks"
     exit 0
 fi
 
