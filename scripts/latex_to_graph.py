@@ -58,62 +58,118 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
-# Semantic metadata
+# SI base dimensions
 # ---------------------------------------------------------------------------
 
-# Known variable annotations: label, emoji, type, latex
-# Additional properties (unit, tooltip, ai_prompt) have no defaults
-# but can be supplied via user overrides.
+DIMENSIONS: dict[str, dict[str, str]] = {
+    "M": {"name": "mass", "si_unit": "kg", "si_unit_name": "kilogram"},
+    "L": {"name": "length", "si_unit": "m", "si_unit_name": "metre"},
+    "T": {"name": "time", "si_unit": "s", "si_unit_name": "second"},
+    "I": {"name": "electric current", "si_unit": "A", "si_unit_name": "ampere"},
+    "Θ": {"name": "temperature", "si_unit": "K", "si_unit_name": "kelvin"},
+    "N": {"name": "amount of substance", "si_unit": "mol", "si_unit_name": "mole"},
+    "J": {"name": "luminous intensity", "si_unit": "cd", "si_unit_name": "candela"},
+}
+
+DIMENSION_PATTERN = r"^1$|^[MLTIΘNJ](⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)?(·[MLTIΘNJ](⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)?)*$"
+
+# ---------------------------------------------------------------------------
+# Semantic metadata
+# ---------------------------------------------------------------------------
 KNOWN_VARIABLES: dict[str, dict[str, str]] = {
     # Mechanics
-    "F": {"label": "force", "emoji": "🏹", "type": "vector", "latex": "F"},
-    "m": {"label": "mass", "emoji": "⚖️", "type": "scalar", "latex": "m"},
-    "a": {"label": "acceleration", "emoji": "🧭", "type": "vector", "latex": "a"},
-    "v": {"label": "velocity", "emoji": "💨", "type": "vector", "latex": "v"},
-    "t": {"label": "time", "emoji": "⏱️", "type": "scalar", "latex": "t"},
-    "p": {"label": "momentum", "emoji": "🎯", "type": "vector", "latex": "p"},
-    "g": {"label": "gravitational acceleration", "emoji": "🌍", "type": "scalar", "latex": "g"},
-    "r": {"label": "radius", "emoji": "📏", "type": "scalar", "latex": "r"},
-    "x": {"label": "position", "emoji": "📍", "type": "scalar", "latex": "x"},
-    "y": {"label": "position", "emoji": "📍", "type": "scalar", "latex": "y"},
-    "z": {"label": "position", "emoji": "📍", "type": "scalar", "latex": "z"},
-    "d": {"label": "distance", "emoji": "📏", "type": "scalar", "latex": "d"},
-    "s": {"label": "displacement", "emoji": "📏", "type": "scalar", "latex": "s"},
-    "W": {"label": "work", "emoji": "⚡", "type": "scalar", "latex": "W"},
-    "P": {"label": "power", "emoji": "⚡", "type": "scalar", "latex": "P"},
+    "F": {"label": "force", "emoji": "🏹", "type": "vector", "latex": "F",
+           "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N", "role": "dependent"},
+    "m": {"label": "mass", "emoji": "⚖️", "type": "scalar", "latex": "m",
+           "quantity": "mass", "dimension": "M", "unit": "kg", "role": "parameter"},
+    "a": {"label": "acceleration", "emoji": "🧭", "type": "vector", "latex": "a",
+           "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²", "role": "dependent"},
+    "v": {"label": "velocity", "emoji": "💨", "type": "vector", "latex": "v",
+           "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "role": "state_variable"},
+    "t": {"label": "time", "emoji": "⏱️", "type": "scalar", "latex": "t",
+           "quantity": "time", "dimension": "T", "unit": "s", "role": "independent"},
+    "p": {"label": "momentum", "emoji": "🎯", "type": "vector", "latex": "p",
+           "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s", "role": "state_variable"},
+    "g": {"label": "gravitational acceleration", "emoji": "🌍", "type": "scalar", "latex": "g",
+           "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²", "role": "constant"},
+    "r": {"label": "radius", "emoji": "📏", "type": "scalar", "latex": "r",
+           "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
+    "x": {"label": "position", "emoji": "📍", "type": "scalar", "latex": "x",
+           "quantity": "length", "dimension": "L", "unit": "m", "role": "independent"},
+    "y": {"label": "position", "emoji": "📍", "type": "scalar", "latex": "y",
+           "quantity": "length", "dimension": "L", "unit": "m", "role": "independent"},
+    "z": {"label": "position", "emoji": "📍", "type": "scalar", "latex": "z",
+           "quantity": "length", "dimension": "L", "unit": "m", "role": "independent"},
+    "d": {"label": "distance", "emoji": "📏", "type": "scalar", "latex": "d",
+           "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
+    "s": {"label": "displacement", "emoji": "📏", "type": "scalar", "latex": "s",
+           "quantity": "length", "dimension": "L", "unit": "m", "role": "state_variable"},
+    "W": {"label": "work", "emoji": "⚡", "type": "scalar", "latex": "W",
+           "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J", "role": "dependent"},
+    "P": {"label": "power", "emoji": "⚡", "type": "scalar", "latex": "P",
+           "quantity": "power", "dimension": "M·L²·T⁻³", "unit": "W", "role": "dependent"},
     # Energy
-    "E": {"label": "energy", "emoji": "⚡", "type": "scalar", "latex": "E"},
-    "T": {"label": "temperature", "emoji": "🌡️", "type": "scalar", "latex": "T"},
-    "K": {"label": "kinetic energy", "emoji": "⚡", "type": "scalar", "latex": "K"},
-    "U": {"label": "potential energy", "emoji": "⚡", "type": "scalar", "latex": "U"},
+    "E": {"label": "energy", "emoji": "⚡", "type": "scalar", "latex": "E",
+           "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J", "role": "state_variable"},
+    "T": {"label": "temperature", "emoji": "🌡️", "type": "scalar", "latex": "T",
+           "quantity": "temperature", "dimension": "Θ", "unit": "K", "role": "state_variable"},
+    "K": {"label": "kinetic energy", "emoji": "⚡", "type": "scalar", "latex": "K",
+           "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J", "role": "dependent"},
+    "U": {"label": "potential energy", "emoji": "⚡", "type": "scalar", "latex": "U",
+           "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J", "role": "dependent"},
     # Electromagnetism
-    "q": {"label": "charge", "emoji": "🔋", "type": "scalar", "latex": "q"},
-    "V": {"label": "voltage", "emoji": "🔌", "type": "scalar", "latex": "V"},
-    "I": {"label": "current", "emoji": "⚡", "type": "scalar", "latex": "I"},
-    "R": {"label": "resistance", "emoji": "🔧", "type": "scalar", "latex": "R"},
-    "B": {"label": "magnetic field", "emoji": "🧲", "type": "vector", "latex": "B"},
+    "q": {"label": "charge", "emoji": "🔋", "type": "scalar", "latex": "q",
+           "quantity": "charge", "dimension": "I·T", "unit": "C", "role": "parameter"},
+    "V": {"label": "voltage", "emoji": "🔌", "type": "scalar", "latex": "V",
+           "quantity": "voltage", "dimension": "M·L²·T⁻³·I⁻¹", "unit": "V", "role": "dependent"},
+    "I": {"label": "current", "emoji": "⚡", "type": "scalar", "latex": "I",
+           "quantity": "current", "dimension": "I", "unit": "A", "role": "state_variable"},
+    "R": {"label": "resistance", "emoji": "🔧", "type": "scalar", "latex": "R",
+           "quantity": "resistance", "dimension": "M·L²·T⁻³·I⁻²", "unit": "Ω", "role": "parameter"},
+    "B": {"label": "magnetic field", "emoji": "🧲", "type": "vector", "latex": "B",
+           "quantity": "magnetic_flux_density", "dimension": "M·T⁻²·I⁻¹", "unit": "T", "role": "field"},
     # Waves / Quantum
-    "f": {"label": "frequency", "emoji": "🔊", "type": "scalar", "latex": "f"},
-    "h": {"label": "Planck constant", "emoji": "📐", "type": "scalar", "latex": "h"},
-    "c": {"label": "speed of light", "emoji": "💡", "type": "scalar", "latex": "c"},
-    "n": {"label": "index", "emoji": "🔢", "type": "scalar", "latex": "n"},
-    "k": {"label": "wave number", "emoji": "🌊", "type": "scalar", "latex": "k"},
+    "f": {"label": "frequency", "emoji": "🔊", "type": "scalar", "latex": "f",
+           "quantity": "frequency", "dimension": "T⁻¹", "unit": "Hz", "role": "parameter"},
+    "h": {"label": "Planck constant", "emoji": "📐", "type": "scalar", "latex": "h",
+           "quantity": "action", "dimension": "M·L²·T⁻¹", "unit": "J·s", "role": "constant"},
+    "c": {"label": "speed of light", "emoji": "💡", "type": "scalar", "latex": "c",
+           "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "role": "constant"},
+    "n": {"label": "index", "emoji": "🔢", "type": "scalar", "latex": "n",
+           "role": "index"},
+    "k": {"label": "wave number", "emoji": "🌊", "type": "scalar", "latex": "k",
+           "quantity": "wave_number", "dimension": "L⁻¹", "unit": "m⁻¹", "role": "parameter"},
     # Greek letters
-    "alpha": {"label": "alpha", "emoji": "🔤", "type": "scalar", "latex": "\\alpha"},
-    "beta": {"label": "beta", "emoji": "🔤", "type": "scalar", "latex": "\\beta"},
-    "gamma": {"label": "gamma", "emoji": "🔤", "type": "scalar", "latex": "\\gamma"},
-    "delta": {"label": "delta", "emoji": "🔤", "type": "scalar", "latex": "\\delta"},
-    "epsilon": {"label": "epsilon", "emoji": "🔤", "type": "scalar", "latex": "\\epsilon"},
-    "theta": {"label": "angle", "emoji": "📐", "type": "scalar", "latex": "\\theta"},
-    "phi": {"label": "angle", "emoji": "📐", "type": "scalar", "latex": "\\phi"},
-    "psi": {"label": "wave function", "emoji": "🌊", "type": "scalar", "latex": "\\psi"},
-    "omega": {"label": "angular velocity", "emoji": "🔄", "type": "scalar", "latex": "\\omega"},
-    "lambda": {"label": "wavelength", "emoji": "🌊", "type": "scalar", "latex": "\\lambda"},
-    "mu": {"label": "mu", "emoji": "🔤", "type": "scalar", "latex": "\\mu"},
-    "sigma": {"label": "sigma", "emoji": "🔤", "type": "scalar", "latex": "\\sigma"},
-    "tau": {"label": "torque", "emoji": "🔄", "type": "scalar", "latex": "\\tau"},
-    "rho": {"label": "density", "emoji": "🧱", "type": "scalar", "latex": "\\rho"},
-    "pi": {"label": "pi", "emoji": "🥧", "type": "constant", "latex": "\\pi"},
+    "alpha": {"label": "alpha", "emoji": "🔤", "type": "scalar", "latex": "\\alpha",
+              "role": "parameter"},
+    "beta": {"label": "beta", "emoji": "🔤", "type": "scalar", "latex": "\\beta",
+             "role": "parameter"},
+    "gamma": {"label": "gamma", "emoji": "🔤", "type": "scalar", "latex": "\\gamma",
+              "role": "parameter"},
+    "delta": {"label": "delta", "emoji": "🔤", "type": "scalar", "latex": "\\delta",
+              "role": "parameter"},
+    "epsilon": {"label": "epsilon", "emoji": "🔤", "type": "scalar", "latex": "\\epsilon",
+                "role": "parameter"},
+    "theta": {"label": "angle", "emoji": "📐", "type": "scalar", "latex": "\\theta",
+              "quantity": "angle", "dimension": "1", "unit": "rad", "role": "state_variable"},
+    "phi": {"label": "angle", "emoji": "📐", "type": "scalar", "latex": "\\phi",
+            "quantity": "angle", "dimension": "1", "unit": "rad", "role": "state_variable"},
+    "psi": {"label": "wave function", "emoji": "🌊", "type": "scalar", "latex": "\\psi",
+            "quantity": "wave_function", "role": "state_variable"},
+    "omega": {"label": "angular velocity", "emoji": "🔄", "type": "scalar", "latex": "\\omega",
+              "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s", "role": "state_variable"},
+    "lambda": {"label": "wavelength", "emoji": "🌊", "type": "scalar", "latex": "\\lambda",
+               "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
+    "mu": {"label": "mu", "emoji": "🔤", "type": "scalar", "latex": "\\mu",
+           "role": "parameter"},
+    "sigma": {"label": "sigma", "emoji": "🔤", "type": "scalar", "latex": "\\sigma",
+              "role": "parameter"},
+    "tau": {"label": "torque", "emoji": "🔄", "type": "scalar", "latex": "\\tau",
+            "quantity": "torque", "dimension": "M·L²·T⁻²", "unit": "N·m", "role": "dependent"},
+    "rho": {"label": "density", "emoji": "🧱", "type": "scalar", "latex": "\\rho",
+            "quantity": "density", "dimension": "M·L⁻³", "unit": "kg/m³", "role": "parameter"},
+    "pi": {"label": "pi", "emoji": "🥧", "type": "constant", "latex": "\\pi",
+           "role": "constant"},
 }
 
 OPERATOR_MAP: dict[type, str] = {
@@ -203,6 +259,7 @@ class SemanticGraphBuilder:
         self,
         overrides: dict[str, dict[str, str]] | None = None,
         latex_commands: dict[str, str] | None = None,
+        original_latex: str | None = None,
     ) -> None:
         self.nodes: list[dict[str, str]] = []
         self.edges: list[dict[str, str]] = []
@@ -210,6 +267,7 @@ class SemanticGraphBuilder:
         self._seen_symbols: dict[str, str] = {}  # symbol name → node id
         self._overrides = overrides or {}
         self._latex_commands = latex_commands or {}  # sympy name → \command
+        self._original_latex = original_latex or ""
 
     def _next_id(self, prefix: str = "n") -> str:
         self._id_counter += 1
@@ -223,16 +281,66 @@ class SemanticGraphBuilder:
     def _add_edge(self, src: str, dst: str) -> None:
         self.edges.append({"from": src, "to": dst})
 
-    def build(self, expr: sympy.Basic) -> dict:
+    def build(self, expr: sympy.Basic, original_latex: str | None = None) -> dict:
         """Build the graph from *expr* and return ``{nodes, edges}``."""
-        self._walk(expr)
+        root_id = self._walk(expr)
+        if original_latex:
+            for node in self.nodes:
+                if node["id"] == root_id:
+                    node["subexpr"] = original_latex.strip()
+                    break
         return {"nodes": self.nodes, "edges": self.edges}
+
+    def _original_position(self, sym_name: str) -> int:
+        """Return the first position of *sym_name* in the original LaTeX."""
+        latex_cmd = self._latex_commands.get(sym_name, "")
+        for token in (latex_cmd, sym_name):
+            if token:
+                pos = self._original_latex.find(token)
+                if pos >= 0:
+                    return pos
+        return len(self._original_latex)
+
+    def _subexpr_ordered(self, expr: sympy.Basic) -> str:
+        """Like ``sympy.latex(expr)`` but with terms in authorial order."""
+        if not self._original_latex:
+            return sympy.latex(expr)
+
+        if isinstance(expr, Mul):
+            factors = list(expr.as_ordered_factors())
+            factors.sort(key=lambda f: self._original_position(
+                str(f.args[0]) if isinstance(f, Pow) else str(f)
+            ))
+            parts = []
+            for f in factors:
+                s = self._subexpr_ordered(f)
+                if isinstance(f, Add):
+                    s = rf"\left({s}\right)"
+                parts.append(s)
+            return " ".join(parts)
+
+        if isinstance(expr, Add):
+            terms = list(expr.as_ordered_terms())
+            terms.sort(key=lambda t: self._original_position(
+                str(t.args[0]) if isinstance(t, (Mul, Pow)) else str(t)
+            ))
+            parts = []
+            for i, t in enumerate(terms):
+                s = self._subexpr_ordered(t)
+                if i > 0 and not s.startswith("-"):
+                    s = "+ " + s
+                elif i > 0:
+                    s = "- " + s[1:].lstrip()
+                parts.append(s)
+            return " ".join(parts)
+
+        return sympy.latex(expr)
 
     def _set_subexpr(self, node_id: str, expr: sympy.Basic) -> None:
         """Annotate a node with the LaTeX sub-expression it represents."""
         for node in self.nodes:
             if node["id"] == node_id and "subexpr" not in node:
-                node["subexpr"] = sympy.latex(expr)
+                node["subexpr"] = self._subexpr_ordered(expr)
                 break
 
     def _walk(self, expr: sympy.Basic) -> str:
@@ -265,6 +373,9 @@ class SemanticGraphBuilder:
                 "type": meta.get("type", "scalar"),
                 "latex": meta.get("latex", latex_fallback),
             }
+            for sem_key in ("quantity", "dimension", "unit", "role"):
+                if meta.get(sem_key):
+                    attrs[sem_key] = meta[sem_key]
             # Apply user overrides (can set any property: unit, tooltip, ai_prompt, etc.)
             if name in self._overrides:
                 attrs.update(self._overrides[name])
@@ -521,9 +632,14 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         except Exception as exc:
             raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
 
-        builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands)
+        builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands, original_latex=latex)
         lhs_id = builder._walk(lhs_expr)
         rhs_id = builder._walk(rhs_expr)
+        for node in builder.nodes:
+            if node["id"] == lhs_id:
+                node["subexpr"] = lhs_latex.strip()
+            elif node["id"] == rhs_id:
+                node["subexpr"] = rhs_latex.strip()
         rel_id = builder._next_id(rel_meta["op"])
         builder._add_node(rel_id, type="relation", subexpr=latex.strip(), **rel_meta)
         builder._add_edge(lhs_id, rel_id)
@@ -546,8 +662,8 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
 
     classification = _classify_expression(expr)
-    builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands)
-    graph = builder.build(expr)
+    builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands, original_latex=latex)
+    graph = builder.build(expr, original_latex=latex)
     graph["classification"] = classification
     if domain:
         graph["domain"] = domain

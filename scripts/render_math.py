@@ -35,6 +35,16 @@ from typing import Any
 from latex_to_graph import latex_to_semantic_graph
 from graph_to_mermaid import semantic_graph_to_mermaid, load_style, validate_graph
 
+_GRAPH_PANEL_DIR = Path(__file__).resolve().parent.parent / "static" / "graph-panel"
+
+
+def _read_asset(name: str) -> str:
+    return (_GRAPH_PANEL_DIR / name).read_text(encoding="utf-8")
+
+
+_GRAPH_PANEL_CSS = _read_asset("graph-panel.css")
+_GRAPH_PANEL_JS = _read_asset("graph-panel.js").replace("export class", "class")
+
 
 HTML_TEMPLATE = """\
 <!DOCTYPE html>
@@ -90,36 +100,37 @@ HTML_TEMPLATE = """\
     justify-content: center;
     padding: 1rem 0;
   }}
-  .mermaid svg .node, .mermaid svg .edgePath, .mermaid svg .flowchart-link, .mermaid svg .edgeLabel {{
-    transition: opacity 0.25s;
-  }}
   .meta {{
     font-size: 0.75rem;
     color: {muted};
     text-align: center;
     margin-top: 0.5rem;
   }}
-  #subexpr-tooltip {{
-    position: fixed;
-    padding: 0.6rem 1rem;
+  {graph_panel_css}
+  .graph-panel-tooltip {{
     background: {card_bg};
     border: 1px solid {border};
-    border-radius: 8px;
     box-shadow: 0 4px 16px {shadow};
-    font-size: 1.4rem;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.15s;
-    z-index: 1000;
   }}
-  #subexpr-tooltip.visible {{
-    opacity: 1;
+  .graph-panel-info {{
+    background: {card_bg};
+    border-left: 1px solid {border};
+    box-shadow: -4px 0 16px {shadow};
+    color: {fg};
+  }}
+  .graph-panel-info h3 {{
+    color: {muted};
+  }}
+  .graph-panel-info .gp-field {{
+    border-bottom: 1px solid {border};
+  }}
+  .graph-panel-info .gp-close {{
+    color: {muted};
   }}
 </style>
 </head>
 <body>
 {body}
-<div id="subexpr-tooltip"></div>
 {hover_script}
 </body>
 </html>
@@ -178,12 +189,16 @@ class MathRenderer:
         label_mode: str | None = None,
         theme: str | None = None,
         validate: bool = False,
+        show: set[str] | None = None,
+        color_by: str | None = None,
     ) -> None:
         self.latex = latex
         self.show_latex = show_latex
         self.show_mermaid = show_mermaid
         self.label_mode = label_mode
         self.validate = validate
+        self.show = show
+        self.color_by = color_by
 
         if isinstance(style, str):
             self.style_name = style
@@ -216,10 +231,15 @@ class MathRenderer:
                 )
         mermaid_src = semantic_graph_to_mermaid(
             graph, style=self.style, label_mode=self.label_mode,
+            show=self.show, color_by=self.color_by,
         )
         meta = f'style: {self.style_name}'
         if self.label_mode:
             meta += f', labels: {self.label_mode}'
+        if self.show:
+            meta += f', show: {",".join(sorted(self.show))}'
+        if self.color_by:
+            meta += f', color-by: {self.color_by}'
         card = (
             '<div class="card">\n'
             "  <h2>Semantic Graph</h2>\n"
@@ -230,114 +250,19 @@ class MathRenderer:
         return card, graph
 
     @staticmethod
-    def _sanitize_id(node_id: str) -> str:
-        out = node_id
-        for ch in "-. {}()*":
-            out = out.replace(ch, "_")
-        return out
-
-    @staticmethod
     def _build_hover_script(graph: dict) -> str:
-        sanitize = MathRenderer._sanitize_id
-        subexprs = {}
-        for node in graph.get("nodes", []):
-            if "subexpr" in node:
-                subexprs[sanitize(node["id"])] = node["subexpr"]
-        if not subexprs:
+        if not graph.get("nodes"):
             return ""
-        edges = [
-            [sanitize(e["from"]), sanitize(e["to"])]
-            for e in graph.get("edges", [])
-        ]
+        graph_panel_js = _GRAPH_PANEL_JS
+        graph_json = json.dumps(graph)
         return (
-            '<script type="module">\n'
-            f'const subexprs = {json.dumps(subexprs)};\n'
-            f'const edges = {json.dumps(edges)};\n'
-            'const tip = document.getElementById("subexpr-tooltip");\n'
-            'let activeNode = null;\n'
-            '\n'
-            'function getUpstream(nodeId) {\n'
-            '  const visited = new Set();\n'
-            '  const queue = [nodeId];\n'
-            '  while (queue.length) {\n'
-            '    const cur = queue.shift();\n'
-            '    if (visited.has(cur)) continue;\n'
-            '    visited.add(cur);\n'
-            '    for (const [src, dst] of edges) {\n'
-            '      if (dst === cur && !visited.has(src)) queue.push(src);\n'
-            '    }\n'
-            '  }\n'
-            '  return visited;\n'
-            '}\n'
-            '\n'
-            'function getUpstreamEdgeIndices(upstream) {\n'
-            '  const indices = new Set();\n'
-            '  edges.forEach(([src, dst], i) => {\n'
-            '    if (upstream.has(src) && upstream.has(dst)) indices.add(i);\n'
-            '  });\n'
-            '  return indices;\n'
-            '}\n'
-            '\n'
-            'function highlight(nodeId) {\n'
-            '  const svg = document.querySelector(".mermaid svg");\n'
-            '  if (!svg) return;\n'
-            '  const upstream = getUpstream(nodeId);\n'
-            '  const upEdges = getUpstreamEdgeIndices(upstream);\n'
-            '  svg.querySelectorAll(".node").forEach(el => {\n'
-            '    const id = el.id.replace(/^flowchart-/, "").replace(/-\\d+$/, "");\n'
-            '    el.style.opacity = upstream.has(id) ? "1" : "0.15";\n'
-            '  });\n'
-            '  svg.querySelectorAll(".edgePath, .flowchart-link").forEach((el, i) => {\n'
-            '    el.style.opacity = upEdges.has(i) ? "1" : "0.1";\n'
-            '  });\n'
-            '  svg.querySelectorAll(".edgeLabel").forEach((el, i) => {\n'
-            '    el.style.opacity = upEdges.has(i) ? "1" : "0.1";\n'
-            '  });\n'
-            '}\n'
-            '\n'
-            'function clearHighlight() {\n'
-            '  const svg = document.querySelector(".mermaid svg");\n'
-            '  if (!svg) return;\n'
-            '  svg.querySelectorAll(".node, .edgePath, .flowchart-link, .edgeLabel").forEach(el => {\n'
-            '    el.style.opacity = "1";\n'
-            '  });\n'
-            '}\n'
-            '\n'
-            'function attachHandlers() {\n'
-            '  document.querySelectorAll(".mermaid svg .node").forEach(el => {\n'
-            '    const id = el.id.replace(/^flowchart-/, "").replace(/-\\d+$/, "");\n'
-            '    const expr = subexprs[id];\n'
-            '    if (!expr) return;\n'
-            '    el.style.cursor = "pointer";\n'
-            '    el.addEventListener("mouseenter", e => {\n'
-            '      katex.render(expr, tip, {displayMode: true, throwOnError: false});\n'
-            '      tip.classList.add("visible");\n'
-            '    });\n'
-            '    el.addEventListener("mousemove", e => {\n'
-            '      tip.style.left = (e.clientX + 16) + "px";\n'
-            '      tip.style.top = (e.clientY - 40) + "px";\n'
-            '    });\n'
-            '    el.addEventListener("mouseleave", () => {\n'
-            '      tip.classList.remove("visible");\n'
-            '    });\n'
-            '    el.addEventListener("click", e => {\n'
-            '      e.stopPropagation();\n'
-            '      if (activeNode === id) {\n'
-            '        activeNode = null;\n'
-            '        clearHighlight();\n'
-            '      } else {\n'
-            '        activeNode = id;\n'
-            '        highlight(id);\n'
-            '      }\n'
-            '    });\n'
-            '  });\n'
-            '  document.addEventListener("click", () => {\n'
-            '    activeNode = null;\n'
-            '    clearHighlight();\n'
-            '  });\n'
-            '}\n'
-            'setTimeout(attachHandlers, 1000);\n'
-            '</script>\n'
+            f'<script type="module">\n'
+            f'{graph_panel_js}\n'
+            f'const graph = {graph_json};\n'
+            f'const container = document.querySelector(".mermaid");\n'
+            f'const gp = new GraphPanel(graph, {{ container, katex }});\n'
+            f'setTimeout(() => gp.attach(), 1000);\n'
+            f'</script>\n'
         )
 
     def render_html(self) -> str:
@@ -357,6 +282,7 @@ class MathRenderer:
             title=f"render_math: {self.latex[:60]}",
             body="\n".join(parts),
             hover_script=hover_script,
+            graph_panel_css=_GRAPH_PANEL_CSS,
             **colors,
         )
 
@@ -418,6 +344,17 @@ def main() -> None:
         help="Write HTML to this path instead of /tmp",
     )
     parser.add_argument(
+        "--show",
+        default=None,
+        help="Comma-separated fields to show on nodes: emoji,unit,role,quantity,dimension,label",
+    )
+    parser.add_argument(
+        "--color-by",
+        default=None,
+        choices=["type", "role"],
+        help="Property to color nodes by (default: type)",
+    )
+    parser.add_argument(
         "--validate", action="store_true",
         help="Validate the semantic graph against the schema before rendering",
     )
@@ -437,6 +374,7 @@ def main() -> None:
             if isinstance(style, str):
                 style = load_style(style)
             style["direction"] = args.direction
+        show_fields = set(args.show.split(",")) if args.show else None
         renderer = MathRenderer(
             args.latex,
             show_latex=show_latex,
@@ -445,6 +383,8 @@ def main() -> None:
             label_mode=args.label_mode,
             theme=args.theme,
             validate=args.validate,
+            show=show_fields,
+            color_by=args.color_by,
         )
     except (ValueError, FileNotFoundError) as exc:
         print(f"❌ {exc}", file=sys.stderr)

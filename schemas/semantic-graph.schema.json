@@ -88,7 +88,8 @@
         },
         "dimension": {
           "type": "string",
-          "description": "SI dimensional formula (e.g. \"M·L⁻¹·T⁻²\" for pressure, \"L·T⁻¹\" for velocity). Enables dimensional analysis and unit checking."
+          "pattern": "^1$|^[MLTIΘNJ](⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)?(·[MLTIΘNJ](⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)?)*$",
+          "description": "SI dimensional formula using the 7 base dimension symbols: M (mass), L (length), T (time), I (electric current), Θ (temperature), N (amount of substance), J (luminous intensity). Use '1' for dimensionless. Exponents use Unicode superscripts (e.g. \"M·L⁻¹·T⁻²\" for pressure, \"L·T⁻¹\" for velocity). Separator is middle dot '·'."
         },
         "unit": {
           "type": "string",

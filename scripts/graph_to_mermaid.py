@@ -130,8 +130,19 @@ def list_styles(styles_dir: Path | None = None) -> list[str]:
 # Label formatting
 # ---------------------------------------------------------------------------
 
-def _format_label(node: dict[str, str], label_mode: str) -> str:
-    """Format a node label based on the label mode."""
+SHOW_FIELDS = {"emoji", "unit", "role", "quantity", "dimension", "label"}
+
+
+def _format_label(
+    node: dict[str, str],
+    label_mode: str,
+    show: set[str] | None = None,
+) -> str:
+    """Format a node label based on the label mode and visible fields.
+
+    When *show* is ``None``, falls back to the legacy ``label_mode`` behaviour.
+    When *show* is a set, only the listed fields appear on the node.
+    """
     node_type = node.get("type", "")
     op = node.get("op", "")
 
@@ -153,22 +164,41 @@ def _format_label(node: dict[str, str], label_mode: str) -> str:
             return f"$${rel_emoji}$$"
         return rel_label
 
+    # --- Symbol / number nodes ---
     emoji = node.get("emoji", "")
     latex = node.get("latex", "")
     node_id = node.get("id", "")
     sym = node_id if not node_id.startswith("__") else ""
     display_name = sym or node.get("label", "?")
 
-    # Use LaTeX rendering when the symbol has a latex field that differs
-    # from the plain name (e.g. \psi, \hbar), or always in latex mode
     if latex and (label_mode == "latex" or latex != display_name):
         display_name = f"$${latex}$$"
 
+    if show is not None:
+        parts: list[str] = []
+        if "emoji" in show and emoji:
+            parts.append(emoji)
+        parts.append(display_name)
+        annotations: list[str] = []
+        if "unit" in show and node.get("unit"):
+            annotations.append(node["unit"])
+        if "role" in show and node.get("role"):
+            annotations.append(node["role"])
+        if "quantity" in show and node.get("quantity"):
+            annotations.append(node["quantity"])
+        if "dimension" in show and node.get("dimension"):
+            annotations.append(node["dimension"])
+        if "label" in show and node.get("label") and node["label"] != sym:
+            annotations.append(node["label"])
+        if annotations:
+            parts.append(f"({', '.join(annotations)})")
+        return " ".join(parts)
+
+    # Legacy label_mode fallback
     if label_mode == "emoji":
         if emoji:
             return f"{emoji} {display_name}"
         return display_name
-    # plain and latex
     return display_name
 
 
@@ -231,6 +261,8 @@ def semantic_graph_to_mermaid(
     graph: dict[str, Any],
     style: dict[str, Any] | None = None,
     label_mode: str | None = None,
+    show: set[str] | None = None,
+    color_by: str | None = None,
 ) -> str:
     """Convert a semantic graph dict to a Mermaid flowchart string.
 
@@ -242,6 +274,13 @@ def semantic_graph_to_mermaid(
         Style definition. Falls back to the ``default`` style.
     label_mode : str, optional
         Override the style's ``labelMode`` (``emoji``, ``latex``, ``plain``).
+    show : set of str, optional
+        Fields to display on nodes (``emoji``, ``unit``, ``role``,
+        ``quantity``, ``dimension``, ``label``). When set, overrides
+        ``label_mode`` for symbol nodes.
+    color_by : str, optional
+        Node property to use for classDef grouping. Default ``"type"``.
+        Set to ``"role"`` to color nodes by their semantic role.
     """
     if style is None:
         style = load_style("default")
@@ -260,7 +299,9 @@ def semantic_graph_to_mermaid(
     lines: list[str] = [f"flowchart {direction}"]
     link_style_lines: list[str] = []
 
-    # classDef — one per node type instead of per-node style directives
+    color_prop = color_by or "type"
+
+    # classDef — one per grouping key instead of per-node style directives
     emitted_classes: set[str] = set()
     for ntype, ns in node_styles.items():
         effective = dict(ns)
@@ -290,9 +331,12 @@ def semantic_graph_to_mermaid(
         ntype = node.get("type", "scalar")
         ns = node_styles.get(ntype, {})
         shape = ns.get("shape", "rect")
-        label = _format_label(node, lm)
+        label = _format_label(node, lm, show=show)
         node_def = _wrap_shape(nid, label, shape)
-        if ntype in emitted_classes:
+        class_key = node.get(color_prop, ntype) if color_prop != "type" else ntype
+        if class_key in emitted_classes:
+            node_def += f":::{class_key}"
+        elif ntype in emitted_classes:
             node_def += f":::{ntype}"
         lines.append(f"  {node_def}")
         # Tooltip with descriptive label + type
@@ -368,6 +412,17 @@ def main() -> None:
         help="Override label mode from the style",
     )
     parser.add_argument(
+        "--show",
+        default=None,
+        help="Comma-separated fields to show on nodes: emoji,unit,role,quantity,dimension,label",
+    )
+    parser.add_argument(
+        "--color-by",
+        default=None,
+        choices=["type", "role"],
+        help="Property to color nodes by (default: type)",
+    )
+    parser.add_argument(
         "--list-styles",
         action="store_true",
         help="List available built-in styles and exit",
@@ -428,7 +483,11 @@ def main() -> None:
             print(f"❌ {exc}", file=sys.stderr)
             sys.exit(1)
 
-    result = semantic_graph_to_mermaid(graph, style=style, label_mode=args.label_mode)
+    show = set(args.show.split(",")) if args.show else None
+    result = semantic_graph_to_mermaid(
+        graph, style=style, label_mode=args.label_mode,
+        show=show, color_by=args.color_by,
+    )
 
     if args.wrap:
         result = f"```mermaid\n{result}```\n"
