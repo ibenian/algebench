@@ -88,6 +88,18 @@ OPERATOR_LATEX: dict[str, str] = {
     "abs": r"|\cdot|",
 }
 
+ROLE_COLORS: dict[str, dict[str, str]] = {
+    "state_variable": {"fill": "#e3f2fd", "stroke": "#1e88e5", "color": "#0d47a1"},
+    "parameter":      {"fill": "#e8f5e9", "stroke": "#43a047", "color": "#1b5e20"},
+    "constant":       {"fill": "#fce4ec", "stroke": "#e53935", "color": "#b71c1c"},
+    "coefficient":    {"fill": "#fff3e0", "stroke": "#fb8c00", "color": "#e65100"},
+    "index":          {"fill": "#f3e5f5", "stroke": "#8e24aa", "color": "#4a148c"},
+    "dependent":      {"fill": "#e1f5fe", "stroke": "#039be5", "color": "#01579b"},
+    "independent":    {"fill": "#f1f8e9", "stroke": "#7cb342", "color": "#33691e"},
+    "observable":     {"fill": "#fff8e1", "stroke": "#fdd835", "color": "#f57f17"},
+    "field":          {"fill": "#ede7f6", "stroke": "#5e35b1", "color": "#311b92"},
+}
+
 
 # ---------------------------------------------------------------------------
 # Style loading
@@ -307,6 +319,21 @@ def semantic_graph_to_mermaid(
 
     # classDef — one per grouping key instead of per-node style directives
     emitted_classes: set[str] = set()
+
+    if color_prop == "role":
+        role_colors = style.get("roleStyles", ROLE_COLORS)
+        for role_name, rc in role_colors.items():
+            parts = []
+            if rc.get("fill"):
+                parts.append(f"fill:{rc['fill']}")
+            if rc.get("stroke"):
+                parts.append(f"stroke:{rc['stroke']}")
+            if rc.get("color"):
+                parts.append(f"color:{rc['color']}")
+            if parts:
+                lines.append(f"  classDef {role_name} {','.join(parts)}")
+                emitted_classes.add(role_name)
+
     for ntype, ns in node_styles.items():
         effective = dict(ns)
         if global_font_size and "fontSize" not in effective:

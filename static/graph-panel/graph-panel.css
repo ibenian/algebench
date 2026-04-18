@@ -81,9 +81,9 @@
 }
 
 /* Transition for highlight/dim */
-.graph-panel-container svg .node,
-.graph-panel-container svg .edgePath,
-.graph-panel-container svg .flowchart-link,
-.graph-panel-container svg .edgeLabel {
+svg .node,
+svg .edgePath,
+svg .flowchart-link,
+svg .edgeLabel {
   transition: opacity 0.25s;
 }

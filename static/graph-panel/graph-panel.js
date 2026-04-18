@@ -240,6 +240,7 @@ export class SemanticGraphPanel {
       }
 
       const onClick = (e) => {
+        e.preventDefault();
         e.stopPropagation();
         if (this._activeNode === id) {
           this._activeNode = null;
