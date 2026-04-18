@@ -91,7 +91,8 @@ KNOWN_VARIABLES: dict[str, dict[str, str]] = {
     "p": {"label": "momentum", "emoji": "🎯", "type": "vector", "latex": "p",
            "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s", "role": "state_variable"},
     "g": {"label": "gravitational acceleration", "emoji": "🌍", "type": "scalar", "latex": "g",
-           "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²", "role": "constant"},
+           "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²", "role": "constant",
+           "value": 9.80665},
     "r": {"label": "radius", "emoji": "📏", "type": "scalar", "latex": "r",
            "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
     "x": {"label": "position", "emoji": "📍", "type": "scalar", "latex": "x",
@@ -132,9 +133,11 @@ KNOWN_VARIABLES: dict[str, dict[str, str]] = {
     "f": {"label": "frequency", "emoji": "🔊", "type": "scalar", "latex": "f",
            "quantity": "frequency", "dimension": "T⁻¹", "unit": "Hz", "role": "parameter"},
     "h": {"label": "Planck constant", "emoji": "📐", "type": "scalar", "latex": "h",
-           "quantity": "action", "dimension": "M·L²·T⁻¹", "unit": "J·s", "role": "constant"},
+           "quantity": "action", "dimension": "M·L²·T⁻¹", "unit": "J·s", "role": "constant",
+           "value": "6.626e-34"},
     "c": {"label": "speed of light", "emoji": "💡", "type": "scalar", "latex": "c",
-           "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "role": "constant"},
+           "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "role": "constant",
+           "value": 299792458},
     "n": {"label": "index", "emoji": "🔢", "type": "scalar", "latex": "n",
            "role": "index"},
     "k": {"label": "wave number", "emoji": "🌊", "type": "scalar", "latex": "k",
@@ -169,7 +172,7 @@ KNOWN_VARIABLES: dict[str, dict[str, str]] = {
     "rho": {"label": "density", "emoji": "🧱", "type": "scalar", "latex": "\\rho",
             "quantity": "density", "dimension": "M·L⁻³", "unit": "kg/m³", "role": "parameter"},
     "pi": {"label": "pi", "emoji": "🥧", "type": "constant", "latex": "\\pi",
-           "role": "constant"},
+           "role": "constant", "value": 3.141592653589793},
 }
 
 OPERATOR_MAP: dict[type, str] = {
@@ -386,7 +389,7 @@ class SemanticGraphBuilder:
                 "type": meta.get("type", "scalar"),
                 "latex": meta.get("latex", latex_fallback),
             }
-            for sem_key in ("quantity", "dimension", "unit", "role"):
+            for sem_key in ("quantity", "dimension", "unit", "value", "role"):
                 if meta.get(sem_key):
                     attrs[sem_key] = meta[sem_key]
             # Apply user overrides (can set any property: unit, tooltip, ai_prompt, etc.)

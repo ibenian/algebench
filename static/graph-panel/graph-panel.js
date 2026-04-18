@@ -22,6 +22,7 @@ const PANEL_FIELDS = [
   ["quantity", "Quantity"],
   ["dimension", "Dimension"],
   ["unit", "Unit"],
+  ["value", "Value"],
   ["op", "Operation"],
 ];
 
@@ -60,8 +61,8 @@ export class SemanticGraphPanel {
       const sid = sanitize(node.id);
       const info = {};
       for (const key of ["id", "type", "label", "description", "emoji", "op", "quantity",
-                          "dimension", "unit", "role", "latex"]) {
-        if (node[key]) info[key] = node[key];
+                          "dimension", "unit", "value", "role", "latex"]) {
+        if (node[key] !== undefined && node[key] !== null) info[key] = node[key];
       }
       this._nodeData[sid] = info;
       if (node.subexpr) this._subexprs[sid] = node.subexpr;
