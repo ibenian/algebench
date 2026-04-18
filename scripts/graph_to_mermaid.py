@@ -381,6 +381,15 @@ def semantic_graph_to_mermaid(
 
     lines.extend(link_style_lines)
 
+    if not use_link_style and edge_style:
+        ls_parts = []
+        if edge_style.get("stroke"):
+            ls_parts.append(f"stroke:{edge_style['stroke']}")
+        sw = edge_style.get("strokeWidth")
+        if sw:
+            ls_parts.append(f"stroke-width:{sw}px")
+        if ls_parts:
+            lines.append(f"  linkStyle default {','.join(ls_parts)}")
 
     return "\n".join(lines) + "\n"
 
