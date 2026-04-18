@@ -268,6 +268,7 @@ class SemanticGraphBuilder:
         self._overrides = overrides or {}
         self._latex_commands = latex_commands or {}  # sympy name → \command
         self._original_latex = original_latex or ""
+        self._symbol_order = self._build_symbol_order()
 
     def _next_id(self, prefix: str = "n") -> str:
         self._id_counter += 1
@@ -291,15 +292,27 @@ class SemanticGraphBuilder:
                     break
         return {"nodes": self.nodes, "edges": self.edges}
 
+    def _build_symbol_order(self) -> dict[str, int]:
+        """Build a symbol-name → position mapping from the original LaTeX."""
+        if not self._original_latex:
+            return {}
+        order: dict[str, int] = {}
+        all_names = set(KNOWN_VARIABLES.keys()) | set(self._latex_commands.keys())
+        if self._overrides:
+            all_names |= set(self._overrides.keys())
+        for name in all_names:
+            latex_cmd = self._latex_commands.get(name, "")
+            for token in (latex_cmd, name):
+                if token:
+                    pos = self._original_latex.find(token)
+                    if pos >= 0:
+                        order[name] = pos
+                        break
+        return order
+
     def _original_position(self, sym_name: str) -> int:
-        """Return the first position of *sym_name* in the original LaTeX."""
-        latex_cmd = self._latex_commands.get(sym_name, "")
-        for token in (latex_cmd, sym_name):
-            if token:
-                pos = self._original_latex.find(token)
-                if pos >= 0:
-                    return pos
-        return len(self._original_latex)
+        """Return the position of *sym_name* in the original LaTeX."""
+        return self._symbol_order.get(sym_name, len(self._original_latex))
 
     def _subexpr_ordered(self, expr: sympy.Basic) -> str:
         """Like ``sympy.latex(expr)`` but with terms in authorial order."""
