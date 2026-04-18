@@ -1,17 +1,17 @@
 /**
- * GraphPanel — reusable info panel + highlight + tooltip for semantic graph
+ * SemanticGraphPanel — reusable info panel + highlight + tooltip for semantic graph
  * Mermaid diagrams.
  *
  * Usage (ES module):
- *   import { GraphPanel } from './graph-panel/graph-panel.js';
- *   const gp = new GraphPanel(graph, { container, katex });
+ *   import { SemanticGraphPanel } from './graph-panel/graph-panel.js';
+ *   const gp = new SemanticGraphPanel(graph, { container, katex });
  *   // call gp.attach() after Mermaid has rendered the SVG
  *   gp.attach();
  *   // cleanup
  *   gp.destroy();
  *
  * Usage (inline / render_math.py):
- *   const gp = new GraphPanel(graph, { container, katex });
+ *   const gp = new SemanticGraphPanel(graph, { container, katex });
  *   setTimeout(() => gp.attach(), 1000);
  */
 
@@ -25,7 +25,7 @@ const PANEL_FIELDS = [
   ["op", "Operation"],
 ];
 
-export class GraphPanel {
+export class SemanticGraphPanel {
   /**
    * @param {Object} graph - Semantic graph {nodes, edges}
    * @param {Object} opts
@@ -55,7 +55,7 @@ export class GraphPanel {
   _buildNodeIndex() {
     this._nodeData = {};
     this._subexprs = {};
-    const sanitize = GraphPanel.sanitizeId;
+    const sanitize = SemanticGraphPanel.sanitizeId;
     for (const node of this.graph.nodes || []) {
       const sid = sanitize(node.id);
       const info = {};
@@ -69,7 +69,7 @@ export class GraphPanel {
   }
 
   _buildEdgeList() {
-    const sanitize = GraphPanel.sanitizeId;
+    const sanitize = SemanticGraphPanel.sanitizeId;
     this._edges = (this.graph.edges || []).map(e => [
       sanitize(e.from), sanitize(e.to),
     ]);

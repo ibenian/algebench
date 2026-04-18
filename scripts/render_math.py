@@ -260,7 +260,7 @@ class MathRenderer:
             f'{graph_panel_js}\n'
             f'const graph = {graph_json};\n'
             f'const container = document.querySelector(".mermaid");\n'
-            f'const gp = new GraphPanel(graph, {{ container, katex }});\n'
+            f'const gp = new SemanticGraphPanel(graph, {{ container, katex }});\n'
             f'setTimeout(() => gp.attach(), 1000);\n'
             f'</script>\n'
         )
