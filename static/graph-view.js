@@ -22,12 +22,32 @@ import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 let _currentGraphPanel = null;
 let _currentSemanticKey = null;
 let _initDone = false;
-let _currentTheme = 'linalg-dark';
+
+// Persisted user preferences. localStorage keys are versioned with an
+// `algebench.graph.` prefix so future format changes can be migrated without
+// colliding with stored values from unrelated features.
+const LS_KEYS = {
+    theme: 'algebench.graph.theme',
+    mode: 'algebench.graph.mode',
+    direction: 'algebench.graph.direction',
+    labels: 'algebench.graph.labels',
+};
+const _lsGet = (key, fallback) => {
+    try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
+};
+const _lsSet = (key, value) => {
+    try { localStorage.setItem(key, value); } catch {}
+};
+
+let _currentTheme = _lsGet(LS_KEYS.theme, 'linalg-dark');
+// Mode is derived from the theme's declared ``mode`` once themes are loaded.
+// Until then we bootstrap from localStorage (or 'dark' as the historical default).
+let _currentMode = _lsGet(LS_KEYS.mode, 'dark');
 // Mermaid direction tokens are relative to edge flow. Our semantic graphs
 // point from variables → operators → root equation, so picking 'RL' puts
 // the equation on the LEFT and variables on the RIGHT — which matches the
 // user-facing "Left-Right" label (root first, dive into variables).
-let _currentDirection = 'RL';
+let _currentDirection = _lsGet(LS_KEYS.direction, 'RL');
 // Label detail presets — map UI dropdown values to `show` field sets
 // passed to scripts/graph_to_mermaid.py via /api/graph/mermaid.
 const LABEL_PRESETS = {
@@ -37,7 +57,11 @@ const LABEL_PRESETS = {
     description: ['emoji', 'description', 'label'],
     full:        ['emoji', 'description', 'label', 'unit', 'role', 'quantity', 'dimension'],
 };
-let _currentLabels = 'description';
+let _currentLabels = _lsGet(LS_KEYS.labels, 'description');
+if (!(_currentLabels in LABEL_PRESETS)) _currentLabels = 'description';
+// Authoritative list of available themes, populated from /api/graph/themes.
+// Each entry: { name, mode }. Used to filter the dropdown by current mode.
+let _allThemes = [];
 let _activeMermaidMode = null;
 // `_zoom` is in display-percent space (1.0 = 100%). The actual CSS transform
 // scale applied to the SVG is `ZOOM_BASELINE * _zoom` — so "100%" corresponds
@@ -541,43 +565,81 @@ function onProofLoad() {
     onStepChange();
 }
 
+// Monochrome unicode glyphs (LAST QUARTER MOON / BLACK SUN WITH RAYS).
+// The ``\uFE0E`` variation selector forces text-style rendering so platforms
+// don't substitute in a full-color emoji for the sun.
+const MODE_ICON = { dark: '\u263E\uFE0E', light: '\u2600\uFE0E' };
+
+// Re-fill the theme dropdown with only themes matching `_currentMode`.
+// If the active theme doesn't fit the new mode, fall back to the first
+// available theme in that mode (or the first theme overall as last resort).
+function refreshThemeDropdown() {
+    const themeSel = document.getElementById('graph-theme-select');
+    if (!themeSel) return;
+    const matching = _allThemes.filter(t => t.mode === _currentMode);
+    const pool = matching.length ? matching : _allThemes;
+    if (!pool.some(t => t.name === _currentTheme)) {
+        _currentTheme = pool.length ? pool[0].name : 'default';
+        _lsSet(LS_KEYS.theme, _currentTheme);
+    }
+    themeSel.innerHTML = '';
+    pool.forEach(({ name }) => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = prettyThemeName(name);
+        if (name === _currentTheme) opt.selected = true;
+        themeSel.appendChild(opt);
+    });
+}
+
+function refreshModeToggle() {
+    const btn = document.getElementById('graph-mode-toggle');
+    if (!btn) return;
+    btn.textContent = MODE_ICON[_currentMode] || MODE_ICON.dark;
+    const other = _currentMode === 'dark' ? 'light' : 'dark';
+    btn.title = `Switch to ${other} theme`;
+    btn.setAttribute('aria-label', `Theme mode: ${_currentMode} (click to switch)`);
+}
+
 async function setupGraphControls() {
+    try {
+        const res = await fetch('/api/graph/themes');
+        const data = await res.json();
+        const raw = (data && data.themes) || [];
+        // `raw` may be a list of strings (legacy) or {name, mode} objects.
+        _allThemes = raw.map(item => (typeof item === 'string')
+            ? { name: item, mode: 'light' }
+            : { name: item.name, mode: item.mode || 'light' });
+    } catch (e) {
+        console.warn('[graph-view] could not load themes:', e);
+        _allThemes = [{ name: 'default', mode: 'light' }];
+    }
+    // Align mode with the stored theme's declared mode. Stored mode only
+    // matters as a fallback when the stored theme is unknown to the server.
+    const active = _allThemes.find(t => t.name === _currentTheme);
+    if (active) _currentMode = active.mode;
+    _lsSet(LS_KEYS.mode, _currentMode);
+
+    refreshModeToggle();
+    refreshThemeDropdown();
+
+    const modeBtn = document.getElementById('graph-mode-toggle');
+    if (modeBtn) {
+        modeBtn.addEventListener('click', () => {
+            _currentMode = _currentMode === 'dark' ? 'light' : 'dark';
+            _lsSet(LS_KEYS.mode, _currentMode);
+            refreshModeToggle();
+            refreshThemeDropdown();
+            _lsSet(LS_KEYS.theme, _currentTheme);
+            renderCurrentStepGraph(true);
+        });
+    }
+
     const themeSel = document.getElementById('graph-theme-select');
     if (themeSel) {
-        try {
-            const res = await fetch('/api/graph/themes');
-            const data = await res.json();
-            const themes = (data && data.themes) || [{ name: 'default', mode: 'light' }];
-            themeSel.innerHTML = '';
-            // Group themes by their declared mode (dark | light). `themes`
-            // may be a list of strings (legacy) or objects {name, mode}.
-            const groups = { dark: [], light: [] };
-            themes.forEach(item => {
-                const entry = (typeof item === 'string')
-                    ? { name: item, mode: 'light' }
-                    : { name: item.name, mode: item.mode || 'light' };
-                (groups[entry.mode] || groups.light).push(entry);
-            });
-            const appendGroup = (label, list) => {
-                if (!list.length) return;
-                const g = document.createElement('optgroup');
-                g.label = label;
-                list.forEach(({ name }) => {
-                    const opt = document.createElement('option');
-                    opt.value = name;
-                    opt.textContent = prettyThemeName(name);
-                    if (name === _currentTheme) opt.selected = true;
-                    g.appendChild(opt);
-                });
-                themeSel.appendChild(g);
-            };
-            appendGroup('Dark', groups.dark);
-            appendGroup('Light', groups.light);
-        } catch (e) {
-            console.warn('[graph-view] could not load themes:', e);
-        }
         themeSel.addEventListener('change', () => {
             _currentTheme = themeSel.value || 'default';
+            _lsSet(LS_KEYS.theme, _currentTheme);
             renderCurrentStepGraph(true);
         });
     }
@@ -586,6 +648,7 @@ async function setupGraphControls() {
         dirSel.value = _currentDirection;
         dirSel.addEventListener('change', () => {
             _currentDirection = dirSel.value || 'LR';
+            _lsSet(LS_KEYS.direction, _currentDirection);
             renderCurrentStepGraph(true);
         });
     }
@@ -595,6 +658,7 @@ async function setupGraphControls() {
         labelsSel.addEventListener('change', () => {
             _currentLabels = labelsSel.value in LABEL_PRESETS
                 ? labelsSel.value : 'description';
+            _lsSet(LS_KEYS.labels, _currentLabels);
             renderCurrentStepGraph(true);
         });
     }
