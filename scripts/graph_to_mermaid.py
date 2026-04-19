@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Any
 
 
-STYLES_DIR = Path(__file__).parent / "styles"
+STYLES_DIR = Path(__file__).parent.parent / "themes" / "semantic-graph"
 SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "semantic-graph.schema.json"
 
 SHAPE_WRAPPERS: dict[str, tuple[str, str]] = {

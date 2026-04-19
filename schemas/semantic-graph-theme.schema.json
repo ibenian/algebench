@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://algebench.dev/schemas/semantic-graph-theme.schema.json",
+  "title": "Semantic Graph Theme",
+  "description": "Schema for visual themes used when rendering a semantic graph as a Mermaid flowchart. Each theme bundles per-node-type shapes/colors, per-edge-semantic strokes, layout direction, label mode, and optional overrides. Consumed by scripts/graph_to_mermaid.py via load_theme().",
+  "type": "object",
+  "required": ["name"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Kebab-case identifier, must match the filename stem (e.g. \"role-colored\" → role-colored.json)."
+    },
+    "direction": {
+      "$ref": "#/$defs/direction"
+    },
+    "labelMode": {
+      "$ref": "#/$defs/labelMode"
+    },
+    "nodeStyles": {
+      "type": "object",
+      "description": "Per-node-type visual styling. Keys are node types from the semantic graph schema; values describe shape + colors.",
+      "additionalProperties": false,
+      "properties": {
+        "scalar":   { "$ref": "#/$defs/nodeStyle" },
+        "vector":   { "$ref": "#/$defs/nodeStyle" },
+        "matrix":   { "$ref": "#/$defs/nodeStyle" },
+        "tensor":   { "$ref": "#/$defs/nodeStyle" },
+        "number":   { "$ref": "#/$defs/nodeStyle" },
+        "constant": { "$ref": "#/$defs/nodeStyle" },
+        "operator": { "$ref": "#/$defs/nodeStyle" },
+        "function": { "$ref": "#/$defs/nodeStyle" },
+        "relation": { "$ref": "#/$defs/nodeStyle" },
+        "result":   { "$ref": "#/$defs/nodeStyle" },
+        "set":      { "$ref": "#/$defs/nodeStyle" },
+        "boolean":  { "$ref": "#/$defs/nodeStyle" }
+      }
+    },
+    "operatorVariants": {
+      "type": "object",
+      "description": "Optional per-semantic overrides for operator nodes (direct / inverse / neutral flow). Only color + font fields — shape comes from nodeStyles.operator.",
+      "additionalProperties": false,
+      "properties": {
+        "direct":  { "$ref": "#/$defs/variantStyle" },
+        "inverse": { "$ref": "#/$defs/variantStyle" },
+        "neutral": { "$ref": "#/$defs/variantStyle" }
+      }
+    },
+    "edgeStyle": {
+      "$ref": "#/$defs/edgeStyle",
+      "description": "Default edge styling applied to every edge. Used when no per-semantic edgeStyles entry matches, or as the flowchart-wide linkStyle default."
+    },
+    "edgeStyles": {
+      "type": "object",
+      "description": "Per-semantic edge styling, keyed by the edge's ``semantic`` field (direct / inverse / neutral).",
+      "additionalProperties": false,
+      "properties": {
+        "direct":  { "$ref": "#/$defs/edgeStyle" },
+        "inverse": { "$ref": "#/$defs/edgeStyle" },
+        "neutral": { "$ref": "#/$defs/edgeStyle" }
+      }
+    },
+    "roleStyles": {
+      "type": "object",
+      "description": "Optional per-role color palette (used when the renderer is called with color_by=\"role\"). Keys are semantic roles (state_variable, parameter, constant, coefficient, index, dependent, independent, observable, field). Unknown roles are also allowed for extensibility.",
+      "additionalProperties": { "$ref": "#/$defs/roleStyle" }
+    },
+    "useLinkStyle": {
+      "type": "boolean",
+      "description": "When true, each edge gets its own per-index linkStyle directive (derived from edgeStyles). When false, a single linkStyle default is emitted from edgeStyle."
+    },
+    "fontSize": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Global font size in pixels. Falls back per nodeStyle when the node's own fontSize is unset."
+    }
+  },
+  "$defs": {
+    "direction": {
+      "enum": ["LR", "RL", "TB", "BT"],
+      "description": "Mermaid flowchart layout direction."
+    },
+    "labelMode": {
+      "enum": ["emoji", "latex", "plain"],
+      "description": "How symbol node labels are rendered: emoji prefix, KaTeX-rendered LaTeX, or plain text."
+    },
+    "shape": {
+      "enum": [
+        "rect", "circle", "stadium", "hexagon", "diamond",
+        "triangle", "inv_triangle", "trap_top", "trap_bot",
+        "framed_circle", "framed_rect", "double_circle",
+        "lean_right", "lean_left", "hourglass", "notched_rect",
+        "bow_tie", "cloud"
+      ],
+      "description": "Node shape. Classic wrappers (rect/circle/stadium/hexagon/diamond) map to Mermaid's legacy syntax; the rest use Mermaid 11+ typed-shape form."
+    },
+    "color": {
+      "type": "string",
+      "pattern": "^(#[0-9a-fA-F]{3,8}|none|transparent|currentColor|[a-zA-Z][a-zA-Z0-9-]*|rgba?\\([^)]+\\)|hsla?\\([^)]+\\))$",
+      "description": "CSS color: hex (#rgb/#rrggbb/#rrggbbaa), named (red, steelblue…), keyword (none, transparent, currentColor), or rgb()/rgba()/hsl()/hsla() function."
+    },
+    "nodeStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shape":       { "$ref": "#/$defs/shape" },
+        "fill":        { "$ref": "#/$defs/color" },
+        "stroke":      { "$ref": "#/$defs/color" },
+        "color":       { "$ref": "#/$defs/color" },
+        "strokeWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "fontSize":    { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "variantStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fill":        { "$ref": "#/$defs/color" },
+        "stroke":      { "$ref": "#/$defs/color" },
+        "color":       { "$ref": "#/$defs/color" },
+        "strokeWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "fontSize":    { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "edgeStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stroke":      { "$ref": "#/$defs/color" },
+        "strokeWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "arrow": {
+          "type": "string",
+          "enum": ["-->", "==>", "-.->", "---", "===", "-.-"],
+          "description": "Mermaid edge arrow syntax. Solid (-->/---), thick (==>/===), or dotted (-.->/-.-)."
+        }
+      }
+    },
+    "roleStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fill":   { "$ref": "#/$defs/color" },
+        "stroke": { "$ref": "#/$defs/color" },
+        "color":  { "$ref": "#/$defs/color" }
+      }
+    }
+  }
+}
