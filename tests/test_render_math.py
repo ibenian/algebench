@@ -43,7 +43,7 @@ class TestMathRendererHTML:
         assert "flowchart" in html
 
     def test_theme_applied(self):
-        r = MathRenderer("x + y", show_mermaid=True, graph_theme="role-colored")
+        r = MathRenderer("x + y", show_mermaid=True, graph_theme="role-colored-light")
         html = r.render_html()
         assert "flowchart TB" in html
 
@@ -64,7 +64,7 @@ class TestMathRendererHTML:
 
 class TestColorModeDetection:
     def test_light_mode_default(self):
-        r = MathRenderer("x", graph_theme="default")
+        r = MathRenderer("x", graph_theme="default-light")
         assert r.color_mode == "light"
 
     def test_dark_mode_for_dark_themes(self):
@@ -85,7 +85,7 @@ class TestColorModeDetection:
         assert "#0d1117" in html
 
     def test_light_mode_colors_in_html(self):
-        r = MathRenderer("x", graph_theme="default")
+        r = MathRenderer("x", graph_theme="default-light")
         html = r.render_html()
         assert "#f8f9fa" in html
 

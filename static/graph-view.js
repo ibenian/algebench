@@ -39,7 +39,23 @@ const _lsSet = (key, value) => {
     try { localStorage.setItem(key, value); } catch {}
 };
 
+// Migrate legacy theme names — every theme now ends in ``-light`` or
+// ``-dark`` so the alternative variant is easy to spot in listings. A user
+// with a stored preference from before the rename would otherwise get
+// bounced to a fallback by refreshThemeDropdown — this table preserves
+// their choice instead.
+const LEGACY_THEME_RENAME = {
+    'default': 'default-light',
+    'minimal-flat': 'minimal-flat-light',
+    'power-direction': 'power-direction-light',
+    'power-flow': 'power-flow-light',
+    'role-colored': 'role-colored-light',
+};
 let _currentTheme = _lsGet(LS_KEYS.theme, 'linalg-dark');
+if (_currentTheme in LEGACY_THEME_RENAME) {
+    _currentTheme = LEGACY_THEME_RENAME[_currentTheme];
+    _lsSet(LS_KEYS.theme, _currentTheme);
+}
 // Mode is derived from the theme's declared ``mode`` once themes are loaded.
 // Until then we bootstrap from localStorage (or 'dark' as the historical default).
 let _currentMode = _lsGet(LS_KEYS.mode, 'dark');
@@ -604,15 +620,29 @@ function refreshModeToggle() {
 async function setupGraphControls() {
     try {
         const res = await fetch('/api/graph/themes');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         const raw = (data && data.themes) || [];
+        if (!raw.length) throw new Error('empty themes list');
         // `raw` may be a list of strings (legacy) or {name, mode} objects.
         _allThemes = raw.map(item => (typeof item === 'string')
             ? { name: item, mode: 'light' }
             : { name: item.name, mode: item.mode || 'light' });
     } catch (e) {
+        // Fallback mirrors the on-disk themes so the picker stays populated
+        // even when the server is stale or unreachable. Keep in sync with
+        // themes/semantic-graph/*.json.
         console.warn('[graph-view] could not load themes:', e);
-        _allThemes = [{ name: 'default', mode: 'light' }];
+        _allThemes = [
+            { name: 'linalg-dark', mode: 'dark' },
+            { name: 'minimal-dark', mode: 'dark' },
+            { name: 'power-direction-dark', mode: 'dark' },
+            { name: 'default-light', mode: 'light' },
+            { name: 'minimal-flat-light', mode: 'light' },
+            { name: 'power-direction-light', mode: 'light' },
+            { name: 'power-flow-light', mode: 'light' },
+            { name: 'role-colored-light', mode: 'light' },
+        ];
     }
     // Align mode with the stored theme's declared mode. Stored mode only
     // matters as a fallback when the stored theme is unknown to the server.

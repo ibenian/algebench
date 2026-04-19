@@ -10,7 +10,7 @@ Usage:
     ./run.sh scripts/graph_to_mermaid.py graph.json
 
     # With a named theme
-    ./run.sh scripts/graph_to_mermaid.py --theme role-colored graph.json
+    ./run.sh scripts/graph_to_mermaid.py --theme role-colored-light graph.json
 
     # Pipe from latex_to_graph
     ./run.sh scripts/latex_to_graph.py "F = m \\cdot a" | ./run.sh scripts/graph_to_mermaid.py -
@@ -358,7 +358,7 @@ def semantic_graph_to_mermaid(
         Set to ``"role"`` to color nodes by their semantic role.
     """
     if theme is None:
-        theme = load_theme("default")
+        theme = load_theme("default-light")
 
     direction = theme.get("direction", "LR")
     lm = label_mode or theme.get("labelMode", "emoji")
@@ -502,8 +502,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--theme", "-t",
-        default="default",
-        help="Theme name (loads from themes/semantic-graph/). Default: 'default'",
+        default="default-light",
+        help="Theme name (loads from themes/semantic-graph/). Default: 'default-light'",
     )
     parser.add_argument(
         "--theme-file",

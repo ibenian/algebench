@@ -1888,7 +1888,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     class MermaidRenderRequest(BaseModel):
         graph: dict = {}
-        theme: str = "default"
+        theme: str = "default-light"
         direction: str | None = None
         # Optional list of fields to display on node labels.
         # Valid values: "emoji", "label", "unit", "role", "quantity", "dimension".
@@ -1921,7 +1921,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         """Regenerate Mermaid source from a semantic graph with the given theme/direction."""
         try:
             g2m = _load_script_module("scripts/graph_to_mermaid.py", "graph_to_mermaid")
-            theme = g2m.load_theme(req.theme or "default")
+            theme = g2m.load_theme(req.theme or "default-light")
             if req.direction:
                 theme = dict(theme)
                 theme["direction"] = req.direction

@@ -59,21 +59,27 @@ SIMPLE_GRAPH = {
 
 class TestThemeLoading:
     def test_load_default_theme(self):
-        theme = load_theme("default")
-        assert theme["name"] == "default"
+        theme = load_theme("default-light")
+        assert theme["name"] == "default-light"
         assert "nodeStyles" in theme
         assert "direction" in theme
 
     def test_list_themes_returns_all_builtin(self):
         names = list_themes()
-        assert "default" in names
-        assert "minimal-flat" in names
-        assert "role-colored" in names
-        assert "power-direction" in names
+        # Every theme filename ends in ``-light`` or ``-dark`` so the
+        # opposite-mode variant is immediately discoverable.
+        assert "default-light" in names
+        assert "minimal-flat-light" in names
+        assert "role-colored-light" in names
+        assert "power-direction-light" in names
         assert "power-direction-dark" in names
-        assert "power-flow" in names
+        assert "power-flow-light" in names
         assert "minimal-dark" in names
         assert "linalg-dark" in names
+        for name in names:
+            assert name.endswith("-light") or name.endswith("-dark"), (
+                f"Theme {name!r} must end with '-light' or '-dark'"
+            )
 
     def test_load_nonexistent_theme_raises(self):
         with pytest.raises(FileNotFoundError, match="not found"):
@@ -190,7 +196,7 @@ class TestSemanticGraphToMermaid:
         assert ":::scalar" in result
 
     def test_custom_direction(self):
-        theme = load_theme("role-colored")
+        theme = load_theme("role-colored-light")
         result = semantic_graph_to_mermaid(SIMPLE_GRAPH, theme=theme)
         assert result.startswith("flowchart TB\n")
 

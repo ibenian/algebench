@@ -9,7 +9,7 @@ Usage:
     ./run.sh scripts/render_math.py "F = m \\cdot a" --mermaid
 
     # Mermaid with a specific theme and label mode
-    ./run.sh scripts/render_math.py "E = mc^2" --mermaid --graph-theme role-colored --label-mode latex
+    ./run.sh scripts/render_math.py "E = mc^2" --mermaid --graph-theme role-colored-light --label-mode latex
 
     # Mermaid only (no LaTeX block)
     ./run.sh scripts/render_math.py "E = mc^2" --mermaid --no-latex
@@ -233,7 +233,7 @@ class MathRenderer:
     show_mermaid : bool
         Include a Mermaid semantic graph diagram. Default ``False``.
     graph_theme : str or dict
-        Semantic-graph theme name or theme dict. Default ``"default"``.
+        Semantic-graph theme name or theme dict. Default ``"default-light"``.
     label_mode : str
         Mermaid label mode: ``"emoji"``, ``"latex"``, ``"plain"``.
     color_mode : str or None
@@ -248,7 +248,7 @@ class MathRenderer:
         graph: dict[str, Any] | None = None,
         show_latex: bool = True,
         show_mermaid: bool = False,
-        graph_theme: str | dict[str, Any] = "default",
+        graph_theme: str | dict[str, Any] = "default-light",
         label_mode: str | None = None,
         color_mode: str | None = None,
         validate: bool = False,
@@ -419,8 +419,8 @@ def main() -> None:
         help="Omit the LaTeX rendering (use with --mermaid)",
     )
     parser.add_argument(
-        "--graph-theme", "-t", default="default",
-        help="Semantic-graph theme name (default: 'default')",
+        "--graph-theme", "-t", default="default-light",
+        help="Semantic-graph theme name (default: 'default-light')",
     )
     parser.add_argument(
         "--label-mode", choices=["emoji", "latex", "plain"], default=None,
