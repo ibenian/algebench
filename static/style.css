@@ -3628,10 +3628,16 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     max-height: 100% !important;
 }
 #graph-empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     color: rgba(176, 186, 229, 0.55);
     font-size: 0.9rem;
     text-align: center;
     padding: 2rem;
+    max-width: 80%;
+    pointer-events: none;
 }
 #graph-mermaid-container:not(:empty) ~ #graph-empty-state {
     display: none;

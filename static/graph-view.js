@@ -39,10 +39,15 @@ const LABEL_PRESETS = {
 };
 let _currentLabels = 'description';
 let _activeMermaidTheme = null;
-let _zoom = 0.7; // default 70%
-const ZOOM_MIN = 0.25;
-const ZOOM_MAX = 3.0;
-const ZOOM_STEP = 0.15;
+// `_zoom` is in display-percent space (1.0 = 100%). The actual CSS transform
+// scale applied to the SVG is `ZOOM_BASELINE * _zoom` — so "100%" corresponds
+// to the comfortable default view rather than an untransformed (unreadably
+// large) Mermaid SVG.
+let _zoom = 1.0;
+const ZOOM_BASELINE = 0.7;
+const ZOOM_MIN = 0.4;   // 40%
+const ZOOM_MAX = 4.0;   // 400%
+const ZOOM_STEP = 0.1;  // 10% per click → 90/100/110/120%
 
 function initMermaidForTheme(theme) {
     if (typeof window.mermaid === 'undefined') return false;
@@ -518,7 +523,7 @@ function prettyStyleName(name) {
 
 function applyZoom() {
     const svgEl = document.querySelector('#graph-mermaid-container svg');
-    if (svgEl) svgEl.style.transform = `scale(${_zoom})`;
+    if (svgEl) svgEl.style.transform = `scale(${(ZOOM_BASELINE * _zoom).toFixed(3)})`;
     const label = document.getElementById('graph-zoom-level');
     if (label) label.textContent = `${Math.round(_zoom * 100)}%`;
 }
