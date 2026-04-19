@@ -859,6 +859,7 @@
                     "id": "__div_coef",
                     "type": "operator",
                     "op": "divide",
+                    "variant": "inverse",
                     "description": "Divides ℏ² by 2m to produce the kinetic coefficient. Larger mass → smaller coefficient → weaker quantum-kinetic spreading.",
                     "subexpr": "\\frac{\\hbar^2}{2m}"
                   },
@@ -940,8 +941,8 @@
                   { "from": "hbar", "to": "__power_hbar2" },
                   { "from": "__num_2", "to": "__mult_2m" },
                   { "from": "m", "to": "__mult_2m" },
-                  { "from": "__power_hbar2", "to": "__div_coef" },
-                  { "from": "__mult_2m", "to": "__div_coef" },
+                  { "from": "__power_hbar2", "to": "__div_coef", "semantic": "direct" },
+                  { "from": "__mult_2m", "to": "__div_coef", "semantic": "inverse" },
                   { "from": "psi", "to": "__laplacian_psi" },
                   { "from": "__num_neg_1", "to": "__mult_kinetic" },
                   { "from": "__div_coef", "to": "__mult_kinetic" },
