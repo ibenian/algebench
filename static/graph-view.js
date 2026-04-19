@@ -60,11 +60,12 @@ if (_currentTheme in LEGACY_THEME_RENAME) {
 // Mode is derived from the theme's declared ``mode`` once themes are loaded.
 // Until then we bootstrap from localStorage (or 'dark' as the historical default).
 let _currentMode = _lsGet(LS_KEYS.mode, 'dark');
-// Mermaid direction tokens are relative to edge flow. Our semantic graphs
-// point from variables → operators → root equation, so picking 'RL' puts
-// the equation on the LEFT and variables on the RIGHT — which matches the
-// user-facing "Left-Right" label (root first, dive into variables).
-let _currentDirection = _lsGet(LS_KEYS.direction, 'RL');
+// Mermaid direction tokens describe edge flow literally:
+//   TB = top→bottom, BT = bottom→top, LR = left→right, RL = right→left.
+// The UI dropdown labels match these tokens directly (Top-Down = TB, etc.).
+// Our semantic graphs point from variables → operators → root equation,
+// so 'LR' renders variables on the LEFT and the equation on the RIGHT.
+let _currentDirection = _lsGet(LS_KEYS.direction, 'LR');
 // Label detail presets — map UI dropdown values to `show` field sets
 // passed to scripts/graph_to_mermaid.py via /api/graph/mermaid.
 const LABEL_PRESETS = {
