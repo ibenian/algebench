@@ -45,11 +45,33 @@ SHAPE_WRAPPERS: dict[str, tuple[str, str]] = {
     "diamond": ("{",   "}"),
 }
 
+# Mermaid 11+ extended shape library (typed-shape syntax:
+# ``nid@{ shape: "tri", label: "X" }``). Classic ``[...]``/``((...))``
+# wrappers don't cover these, so we emit the attribute form for any shape
+# listed here. Keeps compatibility: any shape not in either table falls
+# back to ``rect``.
+TYPED_SHAPES: dict[str, str] = {
+    "triangle":       "tri",
+    "inv_triangle":   "flip-tri",
+    "trap_top":       "trap-t",
+    "trap_bot":       "trap-b",
+    "framed_circle":  "fr-circ",
+    "framed_rect":    "fr-rect",
+    "double_circle":  "dbl-circ",
+    "lean_right":     "lean-r",
+    "lean_left":      "lean-l",
+    "hourglass":      "hourglass",
+    "notched_rect":   "notch-rect",
+    "bow_tie":        "bow-rect",
+    "cloud":          "cloud",
+}
+
 OPERATOR_SYMBOLS: dict[str, str] = {
     "add": "+",
     "subtract": "−",
     "multiply": "×",
     "divide": "÷",
+    "negate": "−",
     "power": "(·)ⁿ",
     "equals": "=",
     "derivative": "d/dt",
@@ -73,6 +95,7 @@ OPERATOR_LATEX: dict[str, str] = {
     "subtract": "-",
     "multiply": r"\times",
     "divide": r"\div",
+    "negate": "-",
     "power": r"(\cdot)^n",
     "equals": "=",
     "derivative": r"\frac{d}{dt}",
@@ -185,14 +208,20 @@ def _format_label(
     latex = node.get("latex", "")
     node_id = node.get("id", "")
     sym = node_id if not node_id.startswith("__") else ""
-    display_name = sym or node.get("label", "?")
+    raw_symbol = sym or node.get("label", "?")
 
     # Render the symbol as inline LaTeX. We use single-``$`` delimiters here
     # because Mermaid's own KaTeX integration (``$$...$$``) swallows the
     # surrounding ``<br/>`` separators and collapses multi-line labels. The
     # client instead runs a post-Mermaid pass via ``window.katex`` to rewrite
     # every ``$...$`` span in the rendered SVG — see ``graph-view.js``.
-    display_name = f"${latex or display_name}$"
+    symbol_latex = latex or raw_symbol
+    display_name = f"${symbol_latex}$"
+
+    # Treat the rendered head as "the symbol" for deduplication. For a number
+    # node where ``label == latex == "-1"``, we don't want a second line
+    # repeating the same glyph.
+    head_texts = {raw_symbol, symbol_latex}
 
     if show is not None:
         # Multi-line label layout. Mermaid's normal string form doesn't honour
@@ -212,6 +241,11 @@ def _format_label(
             desc_text = node["description"]
         elif "label" in show and node.get("label") and node["label"] != sym:
             desc_text = node["label"]
+        # Suppress duplicates when the description/label merely repeats the
+        # head symbol (common for number nodes like ``-1`` where label and
+        # latex are identical).
+        if desc_text and desc_text in head_texts:
+            desc_text = None
         if desc_text:
             lines.append(desc_text)
 
@@ -273,8 +307,18 @@ def _wrap_shape(sanitized_id: str, label: str, shape: str) -> str:
     """Wrap a label in Mermaid shape delimiters.
 
     Markdown strings (``\`...\```) are passed through with real newlines
-    preserved. Plain strings get the normal +/- escape pipeline.
+    preserved. Plain strings get the normal +/- escape pipeline. Shapes
+    from the Mermaid 11 extended library (triangles, trapezoids, …) use
+    the typed-shape attribute form ``nid@{ shape: <kind>, label: "…" }``.
     """
+    # Mermaid 11 typed-shape path (triangles, trapezoids, framed shapes).
+    if shape in TYPED_SHAPES:
+        mshape = TYPED_SHAPES[shape]
+        escaped = label.replace('"', "'")
+        if not (escaped.startswith("`") and escaped.endswith("`")):
+            escaped = _escape_mermaid_label(escaped)
+        return f'{sanitized_id}@{{ shape: "{mshape}", label: "{escaped}" }}'
+
     left, right = SHAPE_WRAPPERS.get(shape, ("[", "]"))
     if label.startswith("`") and label.endswith("`"):
         # Mermaid markdown-string form: F["`line 1\nline 2`"]. Just swap any
@@ -368,20 +412,33 @@ def semantic_graph_to_mermaid(
             lines.append(f"  classDef {ntype} {','.join(parts)}")
             emitted_classes.add(ntype)
 
-    # Node definitions
+    # Node definitions. Mermaid 11's typed-shape form (``@{ ... }``) doesn't
+    # accept the inline ``:::className`` shortcut, so we emit those classes
+    # via separate ``class nid className`` statements instead.
+    typed_class_assignments: list[tuple[str, str]] = []
     for node in nodes:
         nid = _sanitize_id(node["id"])
         ntype = node.get("type", "scalar")
         ns = node_styles.get(ntype, {})
-        shape = ns.get("shape", "rect")
+        # Node-level ``shape`` wins over the type default so specific ops
+        # (e.g. ``negate`` → ``inv_triangle``) can pick their own visual.
+        shape = node.get("shape") or ns.get("shape", "rect")
         label = _format_label(node, lm, show=show)
         node_def = _wrap_shape(nid, label, shape)
         class_key = node.get(color_prop, ntype) if color_prop != "type" else ntype
+        cls_name: str | None = None
         if class_key in emitted_classes:
-            node_def += f":::{class_key}"
+            cls_name = class_key
         elif ntype in emitted_classes:
-            node_def += f":::{ntype}"
+            cls_name = ntype
+        is_typed = shape in TYPED_SHAPES
+        if cls_name and not is_typed:
+            node_def += f":::{cls_name}"
+        elif cls_name and is_typed:
+            typed_class_assignments.append((nid, cls_name))
         lines.append(f"  {node_def}")
+    for nid, cls_name in typed_class_assignments:
+        lines.append(f"  class {nid} {cls_name}")
 
     # Edge definitions
     default_arrow = edge_style.get("arrow", "-->") if edge_style else "-->"

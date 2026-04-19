@@ -323,6 +323,19 @@ class SemanticGraphBuilder:
             return sympy.latex(expr)
 
         if isinstance(expr, Mul):
+            # Negation: ``Mul(-1, X)`` renders as ``-X`` (or ``-(…)`` when the
+            # remainder is a sum). Without this, SymPy's factor enumeration
+            # gives the clunky ``-1 F_{reaction}``.
+            if expr.args and expr.args[0] == sympy.S.NegativeOne:
+                rest = expr.args[1:]
+                if len(rest) == 1:
+                    sub = rest[0]
+                    s = self._subexpr_ordered(sub)
+                    if isinstance(sub, Add):
+                        s = rf"\left({s}\right)"
+                    return "-" + s
+                inner = Mul(*rest)
+                return "-" + self._subexpr_ordered(inner)
             factors = list(expr.as_ordered_factors())
             factors.sort(key=lambda f: self._original_position(
                 str(f.args[0]) if isinstance(f, Pow) else str(f)
@@ -476,6 +489,29 @@ class SemanticGraphBuilder:
             self._add_node(node_id, type="operator", op="power", exponent=exp_val)
             base_id = self._walk(expr.args[0])
             self._add_edge(base_id, node_id)
+            return node_id
+
+        # --- Unary negation (Mul(-1, X)) — emit a single-input ``negate``
+        # operator instead of the noisy ``× (-1)`` pair. Shape defaults to
+        # an inverted triangle so the flip reads at a glance.
+        if (
+            isinstance(expr, Mul)
+            and len(expr.args) >= 2
+            and expr.args[0] == sympy.S.NegativeOne
+        ):
+            rest = expr.args[1:]
+            node_id = self._next_id("negate")
+            self._add_node(
+                node_id,
+                type="operator",
+                op="negate",
+                shape="inv_triangle",
+            )
+            if len(rest) == 1:
+                child_id = self._walk(rest[0])
+            else:
+                child_id = self._walk(Mul(*rest))
+            self._add_edge(child_id, node_id)
             return node_id
 
         # --- Binary/n-ary operators (Add, Mul, Pow, Eq) ---

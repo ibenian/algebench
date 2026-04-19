@@ -93,7 +93,9 @@ class TestStyleLoading:
 class TestLabelFormatting:
     def test_emoji_mode_variable(self):
         node = {"id": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
-        assert _format_label(node, "emoji") == "⚖️ m"
+        # Symbol nodes are now always wrapped in single-``$`` inline math so
+        # the post-Mermaid KaTeX pass can render them uniformly.
+        assert _format_label(node, "emoji") == "⚖️ $m$"
 
     def test_emoji_mode_operator(self):
         node = {"id": "__mul_1", "type": "operator", "op": "multiply"}
@@ -101,7 +103,7 @@ class TestLabelFormatting:
 
     def test_latex_mode_variable(self):
         node = {"id": "F", "label": "force", "emoji": "🏹", "type": "vector", "latex": "F"}
-        assert _format_label(node, "latex") == "$$F$$"
+        assert _format_label(node, "latex") == "$F$"
 
     def test_latex_mode_operator(self):
         node = {"id": "__mul_1", "type": "operator", "op": "multiply"}
@@ -109,15 +111,15 @@ class TestLabelFormatting:
 
     def test_plain_mode(self):
         node = {"id": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
-        assert _format_label(node, "plain") == "m"
+        assert _format_label(node, "plain") == "$m$"
 
     def test_plain_mode_label_equals_id(self):
         node = {"id": "x", "label": "x", "emoji": "📍", "type": "scalar"}
-        assert _format_label(node, "plain") == "x"
+        assert _format_label(node, "plain") == "$x$"
 
     def test_emoji_mode_no_emoji(self):
         node = {"id": "z", "label": "z", "type": "scalar"}
-        assert _format_label(node, "emoji") == "z"
+        assert _format_label(node, "emoji") == "$z$"
 
 
 # ---------------------------------------------------------------------------
@@ -194,8 +196,10 @@ class TestSemanticGraphToMermaid:
 
     def test_label_mode_override(self):
         result = semantic_graph_to_mermaid(F_MA_GRAPH, label_mode="latex")
-        assert "$$m$$" in result
-        assert "$$F$$" in result
+        # Symbol nodes use single-``$`` inline math now (post-Mermaid KaTeX
+        # pass rewrites them). Operators still use ``$$...$$``.
+        assert "$m$" in result
+        assert "$F$" in result
 
     def test_plain_label_mode(self):
         result = semantic_graph_to_mermaid(F_MA_GRAPH, label_mode="plain")

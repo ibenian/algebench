@@ -78,11 +78,17 @@ _ACCENT_COMMANDS = (
 )
 
 
-def _strip_accent_commands(latex: str) -> str:
+def _strip_accent_commands(
+    latex: str,
+    accent_map: dict[str, str] | None = None,
+) -> str:
     """Peel ``\\vec{X}``/``\\hat{X}``/``\\mathbf{X}``/... → ``X``.
 
     Walks the string once, tracking brace depth for the decorator's body so
-    nested braces inside (``\\vec{F_{abc}}``) are handled correctly.
+    nested braces inside (``\\vec{F_{abc}}``) are handled correctly. When
+    *accent_map* is provided, every stripped ``\\accent{body}`` is recorded
+    as ``{body: accent}`` so callers can restore the decoration in the
+    produced graph's display latex (via :func:`_restore_accents_in_graph`).
     """
     if not isinstance(latex, str) or "\\" not in latex:
         return latex
@@ -121,10 +127,63 @@ def _strip_accent_commands(latex: str) -> str:
                 if depth == 0:
                     break
             j += 1
+        raw_body = latex[body_start:j]
         # Recurse on body so nested accents peel too (``\vec{\hat{F}}`` → ``F``).
-        out.append(_strip_accent_commands(latex[body_start:j]))
+        clean_body = _strip_accent_commands(raw_body, accent_map)
+        if accent_map is not None and clean_body and "\\" not in clean_body:
+            # Skip layout-only wrappers (``\mathrm`` on ``sin``, etc.) and
+            # only remember genuine accents that produce a visual mark.
+            if matched_cmd in {
+                "vec", "hat", "bar", "tilde", "dot", "ddot", "dddot", "ddddot",
+                "overline", "widehat", "widetilde", "check", "breve",
+                "mathring", "acute", "grave",
+            }:
+                accent_map.setdefault(clean_body, matched_cmd)
+        out.append(clean_body)
         i = j + 1
     return "".join(out)
+
+
+def _restore_accents_in_graph(
+    graph: dict | None,
+    accent_map: dict[str, str],
+) -> None:
+    """Re-wrap stripped accents in each node's display ``latex`` field.
+
+    For every ``{body: accent}`` in *accent_map*, find nodes whose latex is
+    a bare ``body`` or ``body`` plus a subscript/superscript, and restore
+    ``\\accent{body}`` at the front so the graph still shows ``\\vec{F}``
+    rather than a plain ``F``.
+    """
+    if not graph or not accent_map:
+        return
+    nodes = graph.get("nodes") or []
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        if node.get("type") in ("operator", "relation"):
+            continue
+        latex = node.get("latex")
+        if not isinstance(latex, str) or not latex:
+            continue
+        for body, accent in accent_map.items():
+            # Match either ``body`` exactly or ``body<boundary>...`` where
+            # boundary is ``_``/``^`` (subscript / superscript). Skip if the
+            # accent is already present (e.g. authored graphs).
+            if f"\\{accent}{{{body}}}" in latex:
+                continue
+            if latex == body:
+                node["latex"] = f"\\{accent}{{{body}}}"
+                if accent == "vec":
+                    node["type"] = "vector"
+                break
+            if latex.startswith(body) and len(latex) > len(body):
+                tail = latex[len(body):]
+                if tail[0] in "_^":
+                    node["latex"] = f"\\{accent}{{{body}}}{tail}"
+                    if accent == "vec":
+                        node["type"] = "vector"
+                    break
 
 
 def _substitute_multichar_subscripts(latex: str) -> tuple[str, dict[str, str]]:
@@ -295,8 +354,10 @@ def _derive_equation_chain_graph(latex: str) -> dict | None:
 
     for si, side in enumerate(sides):
         # Peel visual accents (\vec, \hat, \mathbf, …) per side so SymPy
-        # sees ``F_{action}`` rather than an unknown ``\vec`` token.
-        clean_side = _strip_accent_commands(side)
+        # sees ``F_{action}`` rather than an unknown ``\vec`` token. Track
+        # what got stripped so we can restore the display latex post-parse.
+        accent_map: dict[str, str] = {}
+        clean_side = _strip_accent_commands(side, accent_map)
         rewritten, mapping = _substitute_multichar_subscripts(clean_side)
         try:
             sub = l2g.latex_to_semantic_graph(rewritten)
@@ -306,6 +367,7 @@ def _derive_equation_chain_graph(latex: str) -> dict | None:
         if not isinstance(sub, dict) or not sub.get("nodes"):
             return None
         _restore_subscripts_in_graph(sub, mapping)
+        _restore_accents_in_graph(sub, accent_map)
 
         prefix = f"s{si}_"
         def _rename(nid: str, p: str = prefix) -> str:
@@ -381,7 +443,8 @@ def _derive_semantic_graph(math_src: str) -> dict | None:
     # Peel purely-visual accents (\vec, \hat, \mathbf, …) that SymPy can't
     # parse, then swap multi-char subscripts (\text{prop}, _{sp}, …) with
     # Greek placeholders so SymPy treats them as atomic symbols, then restore.
-    stripped = _strip_accent_commands(math_src)
+    accent_map: dict[str, str] = {}
+    stripped = _strip_accent_commands(math_src, accent_map)
     rewritten, mapping = _substitute_multichar_subscripts(stripped)
     try:
         l2g = _load_script_module("scripts/latex_to_graph.py", "latex_to_graph")
@@ -401,6 +464,7 @@ def _derive_semantic_graph(math_src: str) -> dict | None:
             graph = None
         else:
             _restore_subscripts_in_graph(graph, mapping)
+            _restore_accents_in_graph(graph, accent_map)
     _latex_graph_cache[key] = graph
     return graph
 
