@@ -3615,12 +3615,17 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     display: none;
 }
 #graph-mermaid-container {
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 #graph-mermaid-container svg {
-    max-width: 100%;
-    height: auto;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
 }
 #graph-empty-state {
     color: rgba(176, 186, 229, 0.55);
@@ -3628,8 +3633,88 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     text-align: center;
     padding: 2rem;
 }
-#graph-mermaid-container:not(:empty) + #graph-empty-state {
+#graph-mermaid-container:not(:empty) ~ #graph-empty-state {
     display: none;
+}
+
+/* Floating graph controls (style top-left, direction top-right) */
+.graph-controls {
+    position: absolute;
+    top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    z-index: 2;
+}
+#graph-controls-left { left: 14px; }
+#graph-controls-right { right: 14px; }
+.graph-ctrl-label {
+    color: rgba(188, 198, 232, 0.78);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    user-select: none;
+}
+.graph-ctrl-select {
+    background: rgba(10, 12, 26, 0.9);
+    color: #e8eeff;
+    border: 1px solid rgba(110, 124, 180, 0.45);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    outline: none;
+}
+.graph-ctrl-select:hover,
+.graph-ctrl-select:focus {
+    border-color: rgba(140, 160, 220, 0.75);
+}
+
+#graph-zoom-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 6px;
+}
+#graph-zoom-level {
+    min-width: 40px;
+    text-align: center;
+    color: rgba(210, 218, 245, 0.9);
+    font-variant-numeric: tabular-nums;
+}
+.graph-ctrl-btn {
+    background: rgba(10, 12, 26, 0.9);
+    color: #e8eeff;
+    border: 1px solid rgba(110, 124, 180, 0.45);
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    min-width: 28px;
+}
+.graph-ctrl-btn:hover { border-color: rgba(140, 160, 220, 0.85); }
+.graph-ctrl-btn:active { transform: translateY(1px); }
+
+/* Light-paper backdrop for styles that assume a light background */
+#graph-viewport.gv-theme-light #graph-mermaid-container {
+    background: #f7f8fb;
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    padding: 24px;
+}
+#graph-viewport.gv-theme-dark #graph-mermaid-container {
+    background: transparent;
+}
+
+/* Zoom wrapper — svg scales inside this, keeping aspect ratio */
+#graph-mermaid-container svg {
+    transform-origin: center center;
+    transition: transform 120ms ease-out;
 }
 
 /* Semantic info panel (inline, inside dock) — override the fixed drawer */

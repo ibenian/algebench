@@ -70,6 +70,24 @@
         <div id="viewport">
             <div id="mathbox-container"></div>
             <div id="graph-viewport" class="hidden">
+                <div id="graph-controls-left" class="graph-controls">
+                    <label for="graph-style-select" class="graph-ctrl-label">Style</label>
+                    <select id="graph-style-select" class="graph-ctrl-select"></select>
+                </div>
+                <div id="graph-controls-right" class="graph-controls">
+                    <div id="graph-zoom-controls">
+                        <button id="graph-zoom-out" class="graph-ctrl-btn" title="Zoom out">&minus;</button>
+                        <span id="graph-zoom-level" class="graph-ctrl-label">70%</span>
+                        <button id="graph-zoom-in" class="graph-ctrl-btn" title="Zoom in">+</button>
+                    </div>
+                    <label for="graph-direction-select" class="graph-ctrl-label">Direction</label>
+                    <select id="graph-direction-select" class="graph-ctrl-select">
+                        <option value="TB">Top-Down</option>
+                        <option value="LR" selected>Left-Right</option>
+                        <option value="RL">Right-Left</option>
+                        <option value="BT">Bottom-Up</option>
+                    </select>
+                </div>
                 <div id="graph-mermaid-container"></div>
                 <div id="graph-empty-state">Select a proof step with a semantic graph to view it here.</div>
             </div>

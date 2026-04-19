@@ -19,29 +19,68 @@
 import { state } from '/state.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 
-let _mermaidInitialized = false;
 let _currentGraphPanel = null;
 let _currentSemanticKey = null;
 let _initDone = false;
+let _currentStyle = 'linalg-dark';
+let _currentDirection = 'LR';
+let _activeMermaidTheme = null;
+let _zoom = 0.7; // default 70%
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 3.0;
+const ZOOM_STEP = 0.15;
 
-function ensureMermaid() {
-    if (_mermaidInitialized) return true;
+function initMermaidForTheme(theme) {
     if (typeof window.mermaid === 'undefined') return false;
-    window.mermaid.initialize({
+    const isDark = theme === 'dark';
+    const cfg = {
         startOnLoad: false,
-        theme: 'dark',
+        theme: isDark ? 'dark' : 'base',
         securityLevel: 'loose',
         flowchart: { htmlLabels: true, curve: 'basis' },
-        themeVariables: {
-            background: '#0b0d1d',
-            primaryColor: '#1f2446',
-            primaryBorderColor: '#6c7aca',
-            primaryTextColor: '#e8eeff',
-            lineColor: '#8e9ad8',
+        themeVariables: isDark ? {
+            // Dark viewport — bright arrows/text
+            background: 'transparent',
+            lineColor: '#a9b3dc',
+            textColor: '#e8eeff',
+            mainBkg: 'transparent',
+            nodeBorder: '#8e9ad8',
+            clusterBkg: 'transparent',
+        } : {
+            // Light paper card — dark arrows/text
+            background: '#f7f8fb',
+            lineColor: '#555',
+            textColor: '#222',
+            nodeBorder: '#888',
         },
-    });
-    _mermaidInitialized = true;
+    };
+    window.mermaid.initialize(cfg);
+    _activeMermaidTheme = theme;
     return true;
+}
+
+function ensureMermaid(theme = 'dark') {
+    if (typeof window.mermaid === 'undefined') return false;
+    if (_activeMermaidTheme !== theme) initMermaidForTheme(theme);
+    return true;
+}
+
+function applyDirectionToCode(code, dir) {
+    if (!code) return code;
+    return code.replace(/^(\s*(?:flowchart|graph)\s+)(TB|TD|LR|RL|BT)\b/mi,
+        (_, head) => head + dir);
+}
+
+async function fetchMermaidFromGraph(graph, style, direction) {
+    const res = await fetch('/api/graph/mermaid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ graph, style, direction }),
+    });
+    if (!res.ok) throw new Error(`mermaid render failed: HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return { mermaid: data.mermaid, theme: data.theme || 'dark' };
 }
 
 function isGraphModeActive() {
@@ -284,23 +323,62 @@ function updateTreeHighlight() {
 /* ------------------------------------------------------------------ */
 
 async function renderCurrentStepGraph(force = false) {
-    if (!ensureMermaid()) return;
     const container = document.getElementById('graph-mermaid-container');
     if (!container) return;
     const step = currentProofStep();
     if (!step || !step.semanticGraph) return; // leave intact per spec
     const sg = step.semanticGraph;
-    const mermaidCode = sg.mermaid;
     const graph = sg.graph;
-    if (!mermaidCode) return;
 
-    const key = stableStepKey(step);
+    const key = stableStepKey(step) + '|' + _currentStyle + '|' + _currentDirection;
     if (key === _currentSemanticKey && !force) return;
+
+    // Prefer live regeneration from graph JSON so style/direction apply.
+    // Fall back to pre-rendered mermaid (with just direction override) if no graph.
+    let mermaidCode;
+    let theme = 'dark';
+    try {
+        if (graph) {
+            const res = await fetchMermaidFromGraph(graph, _currentStyle, _currentDirection);
+            mermaidCode = res.mermaid;
+            theme = res.theme;
+        } else if (sg.mermaid) {
+            mermaidCode = applyDirectionToCode(sg.mermaid, _currentDirection);
+        } else {
+            return;
+        }
+    } catch (err) {
+        console.error('[graph-view] failed to build mermaid source:', err);
+        container.innerHTML = `<div style="color:#f88; padding:2rem;">Failed to build graph source.<br><small>${escapeHtml(err.message || String(err))}</small></div>`;
+        return;
+    }
+
+    // Apply paper backdrop + reinit Mermaid so arrow/text colors match theme.
+    const viewport = document.getElementById('graph-viewport');
+    if (viewport) {
+        viewport.classList.toggle('gv-theme-light', theme === 'light');
+        viewport.classList.toggle('gv-theme-dark', theme !== 'light');
+    }
+    if (!ensureMermaid(theme)) return;
 
     try {
         const svgId = 'gp-svg-' + Math.random().toString(36).slice(2, 8);
         const { svg } = await window.mermaid.render(svgId, mermaidCode);
         container.innerHTML = svg;
+        // Mermaid inlines a fixed max-width/height on the SVG which keeps small
+        // graphs tiny. Strip those so CSS (width/height: 100%) takes over and
+        // the preserveAspectRatio=xMidYMid meet default scales it to fit.
+        const svgEl = container.querySelector('svg');
+        if (svgEl) {
+            svgEl.style.removeProperty('max-width');
+            svgEl.style.removeProperty('max-height');
+            svgEl.removeAttribute('width');
+            svgEl.removeAttribute('height');
+            if (!svgEl.getAttribute('preserveAspectRatio')) {
+                svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            }
+            applyZoom();
+        }
     } catch (err) {
         console.error('[graph-view] mermaid render failed:', err);
         container.innerHTML = `<div style="color:#f88; padding:2rem;">Failed to render graph.<br><small>${escapeHtml(err.message || String(err))}</small></div>`;
@@ -385,10 +463,71 @@ function onProofLoad() {
     onStepChange();
 }
 
+async function setupGraphControls() {
+    const styleSel = document.getElementById('graph-style-select');
+    if (styleSel) {
+        try {
+            const res = await fetch('/api/graph/styles');
+            const data = await res.json();
+            const styles = (data && data.styles) || ['default'];
+            styleSel.innerHTML = '';
+            styles.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = prettyStyleName(name);
+                if (name === _currentStyle) opt.selected = true;
+                styleSel.appendChild(opt);
+            });
+        } catch (e) {
+            console.warn('[graph-view] could not load styles:', e);
+        }
+        styleSel.addEventListener('change', () => {
+            _currentStyle = styleSel.value || 'default';
+            renderCurrentStepGraph(true);
+        });
+    }
+    const dirSel = document.getElementById('graph-direction-select');
+    if (dirSel) {
+        dirSel.value = _currentDirection;
+        dirSel.addEventListener('change', () => {
+            _currentDirection = dirSel.value || 'LR';
+            renderCurrentStepGraph(true);
+        });
+    }
+}
+
+function prettyStyleName(name) {
+    return String(name).split(/[-_]/).map(p =>
+        p.length ? p[0].toUpperCase() + p.slice(1) : p).join(' ');
+}
+
+function applyZoom() {
+    const svgEl = document.querySelector('#graph-mermaid-container svg');
+    if (svgEl) svgEl.style.transform = `scale(${_zoom})`;
+    const label = document.getElementById('graph-zoom-level');
+    if (label) label.textContent = `${Math.round(_zoom * 100)}%`;
+}
+
+function setupZoomControls() {
+    const inBtn = document.getElementById('graph-zoom-in');
+    const outBtn = document.getElementById('graph-zoom-out');
+    if (inBtn) inBtn.addEventListener('click', () => {
+        _zoom = Math.min(ZOOM_MAX, +(_zoom + ZOOM_STEP).toFixed(2));
+        applyZoom();
+    });
+    if (outBtn) outBtn.addEventListener('click', () => {
+        _zoom = Math.max(ZOOM_MIN, +(_zoom - ZOOM_STEP).toFixed(2));
+        applyZoom();
+    });
+    applyZoom();
+}
+
 function init() {
     if (_initDone) return;
     _initDone = true;
     setupDockTabs();
+    setupGraphControls();
+    setupZoomControls();
     window.addEventListener('algebench:stepchange', onStepChange);
     window.addEventListener('algebench:proofload', onProofLoad);
 }

@@ -34,6 +34,17 @@ from google.genai import types
 script_dir = Path(__file__).parent.resolve()
 scenes_dir = script_dir / "scenes"
 
+# Make scripts/ importable (no __init__.py there, so add its parent to sys.path
+# and import via a fully qualified module name via importlib).
+import importlib.util as _iu
+def _load_script_module(rel_path: str, mod_name: str):
+    spec = _iu.spec_from_file_location(mod_name, script_dir / rel_path)
+    if spec is None or spec.loader is None:
+        return None
+    mod = _iu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
 try:
     from gemini_live_tools import GeminiLiveAPI, pcm_to_wav_bytes, get_static_content as _glt_static, _split_sentences
     TTS_AVAILABLE = True
@@ -825,7 +836,6 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     if tts_output_file is not None:
         tts_stream_kwargs['output_path'] = tts_output_file
 
-    html_content = generate_html(debug=debug)
     current_spec = [None]
 
     # ---- Pydantic request models ----
@@ -853,8 +863,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/")
     @fastapp.get("/index.html")
     async def get_index():
+        # Read fresh on each request so edits to index.html are picked up
+        # without a server restart (same pattern as /style.css, /*.js).
         return HTMLResponse(
-            content=html_content,
+            content=generate_html(debug=debug),
             headers={
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Content-Security-Policy":
@@ -913,6 +925,60 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         'sliders', 'overlay', 'context-browser', 'scene-loader', 'ui',
         'json-browser', 'main', 'proof', 'graph-view',
     }
+
+    @fastapp.get("/api/graph/styles")
+    async def get_graph_styles():
+        """List available semantic-graph style presets from scripts/styles/."""
+        try:
+            g2m = _load_script_module("scripts/graph_to_mermaid.py", "graph_to_mermaid")
+            return JSONResponse({"styles": g2m.list_styles()})
+        except Exception as e:
+            return JSONResponse({"error": str(e), "styles": []}, status_code=500)
+
+    class MermaidRenderRequest(BaseModel):
+        graph: dict = {}
+        style: str = "default"
+        direction: str | None = None
+
+    def _classify_style_theme(style: dict) -> str:
+        """Infer 'dark' or 'light' backdrop preference from a style's fills.
+        Light pastel fills => the style expects a light/paper backdrop.
+        """
+        fills = []
+        for ns in (style.get("nodeStyles") or {}).values():
+            fill = ns.get("fill")
+            if isinstance(fill, str) and fill.startswith("#") and len(fill) in (4, 7):
+                fills.append(fill)
+        if not fills:
+            return "dark"  # no fills — works against any bg, but dark viewport is our default
+        def _lum(hx: str) -> float:
+            h = hx.lstrip("#")
+            if len(h) == 3: h = "".join(c*2 for c in h)
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            return (0.299*r + 0.587*g + 0.114*b) / 255.0
+        avg = sum(_lum(f) for f in fills) / len(fills)
+        return "light" if avg >= 0.6 else "dark"
+
+    @fastapp.post("/api/graph/mermaid")
+    async def post_graph_mermaid(req: MermaidRenderRequest):
+        """Regenerate Mermaid source from a semantic graph with the given style/direction."""
+        try:
+            g2m = _load_script_module("scripts/graph_to_mermaid.py", "graph_to_mermaid")
+            style = g2m.load_style(req.style or "default")
+            if req.direction:
+                style = dict(style)
+                style["direction"] = req.direction
+            mermaid_src = g2m.semantic_graph_to_mermaid(req.graph or {}, style=style)
+            theme = _classify_style_theme(style)
+            return JSONResponse({"mermaid": mermaid_src, "style": req.style,
+                                 "direction": style.get("direction"),
+                                 "theme": theme})
+        except FileNotFoundError as e:
+            return JSONResponse({"error": str(e)}, status_code=404)
+        except Exception as e:
+            import traceback
+            print(f"   ❌ /api/graph/mermaid: {e}\n{traceback.format_exc()}")
+            return JSONResponse({"error": str(e)}, status_code=500)
 
     @fastapp.get("/graph-panel/{filename:path}")
     async def get_graph_panel_file(filename: str):
