@@ -505,14 +505,36 @@ function updateTreeHighlight() {
 /* Graph rendering                                                    */
 /* ------------------------------------------------------------------ */
 
+// Tear down the live graph — used both on navigation to a step that has
+// no semanticGraph and on explicit "clear" actions. Empties the Mermaid
+// container (so the #graph-empty-state sibling reappears via CSS),
+// destroys any attached SemanticGraphPanel, and resets the cache key so
+// the next real render is a full rebuild.
+function clearGraph() {
+    const container = document.getElementById('graph-mermaid-container');
+    if (container) container.innerHTML = '';
+    if (_currentGraphPanel) {
+        try { _currentGraphPanel.destroy(); } catch {}
+        _currentGraphPanel = null;
+    }
+    const infoHost = document.getElementById('graph-info-panel-host');
+    if (infoHost) infoHost.innerHTML = '';
+    _currentSemanticKey = null;
+}
+
 async function renderCurrentStepGraph(force = false) {
     const container = document.getElementById('graph-mermaid-container');
     if (!container) return;
     const step = currentProofStep();
-    if (!step || !step.semanticGraph) return; // leave intact per spec
-    const sg = step.semanticGraph;
-    const graph = sg.graph;
-    if (!graph) return; // nothing to render
+    const sg = step && step.semanticGraph;
+    const graph = sg && sg.graph;
+    if (!graph) {
+        // No graph for this step — wipe whatever is there so the user
+        // doesn't see a stale diagram from the previous step and the
+        // empty-state message can surface.
+        clearGraph();
+        return;
+    }
 
     const key = stableStepKey(step) + '|' + _currentTheme + '|' +
                 _currentDirection + '|' + _currentLabels;
