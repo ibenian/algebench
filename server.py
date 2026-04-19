@@ -65,6 +65,68 @@ _GREEK_POOL = [
 ]
 
 
+# Purely visual decorators SymPy's LaTeX parser chokes on — strip them
+# before parsing so ``\vec{F}`` is treated as just ``F``. The graph's
+# display latex loses the decoration; authors can re-add it via scene
+# ``highlights`` metadata or hand-crafted ``semanticGraph`` entries.
+_ACCENT_COMMANDS = (
+    "vec", "hat", "bar", "tilde", "dot", "ddot", "dddot", "ddddot",
+    "overline", "underline", "widehat", "widetilde", "check", "breve",
+    "mathring", "acute", "grave",
+    "mathbf", "mathrm", "mathit", "mathsf", "mathcal", "mathfrak",
+    "boldsymbol", "bm", "operatorname",
+)
+
+
+def _strip_accent_commands(latex: str) -> str:
+    """Peel ``\\vec{X}``/``\\hat{X}``/``\\mathbf{X}``/... → ``X``.
+
+    Walks the string once, tracking brace depth for the decorator's body so
+    nested braces inside (``\\vec{F_{abc}}``) are handled correctly.
+    """
+    if not isinstance(latex, str) or "\\" not in latex:
+        return latex
+    out: list[str] = []
+    i = 0
+    n = len(latex)
+    while i < n:
+        if latex[i] != "\\":
+            out.append(latex[i])
+            i += 1
+            continue
+        # Try to match one of our known accent commands at this position.
+        matched_cmd: str | None = None
+        for cmd in _ACCENT_COMMANDS:
+            end = i + 1 + len(cmd)
+            if latex.startswith(cmd, i + 1) and end < n:
+                # The next char must be ``{`` (body) and must not be another
+                # identifier char (so ``\vec`` matches but ``\vector`` doesn't).
+                nxt = latex[end]
+                if nxt == "{":
+                    matched_cmd = cmd
+                    break
+        if matched_cmd is None:
+            out.append(latex[i])
+            i += 1
+            continue
+        body_start = i + 1 + len(matched_cmd) + 1  # skip '\cmd{'
+        depth = 1
+        j = body_start
+        while j < n and depth > 0:
+            c = latex[j]
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            j += 1
+        # Recurse on body so nested accents peel too (``\vec{\hat{F}}`` → ``F``).
+        out.append(_strip_accent_commands(latex[body_start:j]))
+        i = j + 1
+    return "".join(out)
+
+
 def _substitute_multichar_subscripts(latex: str) -> tuple[str, dict[str, str]]:
     """Replace multi-character subscript bodies with Greek placeholders.
 
@@ -232,7 +294,10 @@ def _derive_equation_chain_graph(latex: str) -> dict | None:
     roots: list[str] = []
 
     for si, side in enumerate(sides):
-        rewritten, mapping = _substitute_multichar_subscripts(side)
+        # Peel visual accents (\vec, \hat, \mathbf, …) per side so SymPy
+        # sees ``F_{action}`` rather than an unknown ``\vec`` token.
+        clean_side = _strip_accent_commands(side)
+        rewritten, mapping = _substitute_multichar_subscripts(clean_side)
         try:
             sub = l2g.latex_to_semantic_graph(rewritten)
         except Exception as e:
@@ -313,9 +378,11 @@ def _derive_semantic_graph(math_src: str) -> dict | None:
     key = math_src
     if key in _latex_graph_cache:
         return _latex_graph_cache[key]
-    # Swap multi-char subscripts (\text{prop}, _{sp}, …) with Greek
-    # placeholders so SymPy treats them as atomic symbols, then restore.
-    rewritten, mapping = _substitute_multichar_subscripts(math_src)
+    # Peel purely-visual accents (\vec, \hat, \mathbf, …) that SymPy can't
+    # parse, then swap multi-char subscripts (\text{prop}, _{sp}, …) with
+    # Greek placeholders so SymPy treats them as atomic symbols, then restore.
+    stripped = _strip_accent_commands(math_src)
+    rewritten, mapping = _substitute_multichar_subscripts(stripped)
     try:
         l2g = _load_script_module("scripts/latex_to_graph.py", "latex_to_graph")
         graph = l2g.latex_to_semantic_graph(rewritten) if l2g else None
@@ -399,11 +466,13 @@ def _apply_highlights_to_graph(
     nodes = graph.get("nodes") or []
 
     def _normalize(s: str) -> str:
-        """Normalize LaTeX for comparison — brace single-char subscripts
-        (``v_e`` → ``v_{e}``) so both forms match, and strip spaces.
+        """Normalize LaTeX for comparison — peel visual accents (``\\vec``,
+        ``\\hat``, ``\\mathbf``, …), brace single-char subscripts (``v_e`` →
+        ``v_{e}``), and strip spaces so both authoring forms match.
         """
         if not isinstance(s, str):
             return ""
+        s = _strip_accent_commands(s)
         s = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", s)
         return s.replace(" ", "")
 

@@ -70,6 +70,7 @@ class TestStyleLoading:
         assert "minimal-flat" in names
         assert "role-colored" in names
         assert "power-direction" in names
+        assert "power-direction-dark" in names
         assert "power-flow" in names
         assert "minimal-dark" in names
         assert "linalg-dark" in names
