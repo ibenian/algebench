@@ -199,12 +199,100 @@ def _rewrite_dot_derivatives(
         # display pass can restore ``\dot{…}``/``\ddot{…}`` in subexprs.
         if captured is not None:
             captured[var] = max(captured.get(var, 0), order)
-        # Build nested \frac{d}{dt}...\frac{d <var>}{d t} for orders > 1.
-        frac = f"\\frac{{d {var}}}{{d t}}"
+        # Build nested ``\frac{d}{d t}`` wrappers in SymPy-canonical form
+        # (empty numerator, variable trails after). The seemingly-natural
+        # ``\frac{d <var>}{d t}`` form *fails to parse in SymPy whenever
+        # <var> carries a subscript* (``\frac{d m_{\alpha}}{d t}`` →
+        # "I expected one of these: '}'"), so we always emit the shape
+        # SymPy's parser handles reliably.
+        frac = f"\\frac{{d}}{{d t}} {var}"
         for _ in range(order - 1):
             frac = f"\\frac{{d}}{{d t}} {frac}"
         out.append(frac)
         i = j
+    return "".join(out)
+
+
+# ---------------------------------------------------------------------------
+# User-written ``\frac{d<body>}{d t}`` normalizer. SymPy's LaTeX parser only
+# handles this form when <body> is a single letter (``\frac{dp}{dt}``); any
+# subscripted form (``\frac{dm_{\text{exhaust}}}{dt}``) fails with a
+# cryptic brace-mismatch error. Rewrite the user's input to the canonical
+# ``\frac{d}{d t} <body>`` form *before* handing it to SymPy, so authoring
+# either shape is safe.
+# ---------------------------------------------------------------------------
+def _normalize_frac_derivatives(latex: str) -> str:
+    """Rewrite ``\\frac{d<body>}{d t}`` → ``\\frac{d}{d t} <body>`` so the
+    SymPy parser accepts subscripted/complex numerators.
+
+    Only fires when the numerator starts with ``d`` immediately followed by
+    a variable body (optionally with a trailing ``_{…}`` or ``^{…}``). Does
+    NOT populate the dotted-vars capture — the author explicitly wrote a
+    fraction, so we want to preserve that shape in display subexprs rather
+    than collapsing it to ``\\dot{X}`` notation.
+    """
+    if not isinstance(latex, str) or "\\frac" not in latex:
+        return latex
+
+    def find_matching_brace(s: str, open_idx: int) -> int | None:
+        if open_idx >= len(s) or s[open_idx] != "{":
+            return None
+        depth = 1
+        j = open_idx + 1
+        while j < len(s):
+            c = s[j]
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    return j
+            j += 1
+        return None
+
+    out: list[str] = []
+    i = 0
+    n = len(latex)
+    while i < n:
+        if not latex.startswith("\\frac{", i):
+            out.append(latex[i])
+            i += 1
+            continue
+        num_open = i + len("\\frac")
+        num_close = find_matching_brace(latex, num_open)
+        if num_close is None or num_close + 1 >= n or latex[num_close + 1] != "{":
+            out.append(latex[i])
+            i += 1
+            continue
+        den_open = num_close + 1
+        den_close = find_matching_brace(latex, den_open)
+        if den_close is None:
+            out.append(latex[i])
+            i += 1
+            continue
+        numerator = latex[num_open + 1:num_close].strip()
+        denominator = latex[den_open + 1:den_close].strip()
+        # Only rewrite when numerator looks like ``d<body>`` AND denominator
+        # is ``d t`` (optionally with a superscript for higher-order, though
+        # those are rare in practice and we leave them alone for safety).
+        if (numerator.startswith("d") and len(numerator) > 1
+                and numerator[1] != "d"
+                and denominator.replace(" ", "") == "dt"):
+            body = numerator[1:].lstrip()
+            # Recurse into body so nested fracs (``\frac{d(\frac{dx}{dt})}{dt}``
+            # and the like) get normalized too, though such cases are rare.
+            body = _normalize_frac_derivatives(body)
+            out.append(f"\\frac{{d}}{{d t}} {body}")
+            i = den_close + 1
+            continue
+        # Not a derivative-shaped fraction — keep it verbatim but still
+        # recurse into the numerator/denominator so nested matches fire.
+        out.append("\\frac{")
+        out.append(_normalize_frac_derivatives(latex[num_open + 1:num_close]))
+        out.append("}{")
+        out.append(_normalize_frac_derivatives(latex[den_open + 1:den_close]))
+        out.append("}")
+        i = den_close + 1
     return "".join(out)
 
 
@@ -559,6 +647,7 @@ def _derive_equation_chain_graph(latex: str) -> dict | None:
         # than an unknown ``\vec`` token. Track what got stripped so we
         # can restore the display latex post-parse.
         deriv_side = _rewrite_dot_derivatives(side, dotted_vars)
+        deriv_side = _normalize_frac_derivatives(deriv_side)
         accent_map: dict[str, str] = {}
         clean_side = _strip_accent_commands(deriv_side, accent_map)
         rewritten, mapping = _substitute_multichar_subscripts(clean_side)
@@ -657,6 +746,7 @@ def _derive_semantic_graph(
     # treats them as atomic symbols, then restore.
     dotted_vars: dict[str, int] = {}
     deriv_src = _rewrite_dot_derivatives(math_src, dotted_vars)
+    deriv_src = _normalize_frac_derivatives(deriv_src)
     accent_map: dict[str, str] = {}
     stripped = _strip_accent_commands(deriv_src, accent_map)
     rewritten, mapping = _substitute_multichar_subscripts(stripped)
