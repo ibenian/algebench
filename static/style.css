@@ -3621,11 +3621,22 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     align-items: center;
     justify-content: center;
 }
+/* ``.gv-card`` wraps the Mermaid SVG and carries both the card visuals
+   (background / radius / shadow in light theme) and the zoom transform so
+   they scale together — zooming inflates the whole card, not just the SVG. */
+#graph-mermaid-container .gv-card {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
 /* Only size the top-level Mermaid SVG, not nested ones (KaTeX renders the
    vector-accent arrow and sqrt overlays as inline ``<svg>`` inside the node
    labels — forcing those to ``width: 100%`` collapses the arrow to 0px and
    the arrowhead disappears). Child combinator keeps the rule off descendants. */
-#graph-mermaid-container > svg {
+#graph-mermaid-container .gv-card > svg {
     width: 100% !important;
     height: 100% !important;
     max-width: 100% !important;
@@ -3717,13 +3728,13 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     background-color: #eceff5;
     background-image: radial-gradient(ellipse at center, #f7f8fb 0%, #e4e7ef 100%);
 }
-#graph-viewport.gv-theme-light #graph-mermaid-container {
+#graph-viewport.gv-theme-light #graph-mermaid-container .gv-card {
     background: #f7f8fb;
     border-radius: 12px;
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
     padding: 24px;
 }
-#graph-viewport.gv-theme-dark #graph-mermaid-container {
+#graph-viewport.gv-theme-dark #graph-mermaid-container .gv-card {
     background: transparent;
 }
 
@@ -3750,9 +3761,10 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     color: rgba(60, 70, 110, 0.65);
 }
 
-/* Zoom wrapper — svg scales inside this, keeping aspect ratio. Child
-   combinator again, so nested KaTeX SVGs don't inherit the transition. */
-#graph-mermaid-container > svg {
+/* Zoom wrapper — the ``.gv-card`` carries the zoom transform so the card
+   visuals (bg/radius/shadow) scale together with the SVG. The direct-child
+   combinator below keeps the rule off nested KaTeX SVGs inside node labels. */
+#graph-mermaid-container .gv-card {
     transform-origin: center center;
     transition: transform 120ms ease-out;
 }

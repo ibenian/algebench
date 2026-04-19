@@ -429,11 +429,19 @@ async function renderCurrentStepGraph(force = false) {
     try {
         const svgId = 'gp-svg-' + Math.random().toString(36).slice(2, 8);
         const { svg } = await window.mermaid.render(svgId, mermaidCode);
-        container.innerHTML = svg;
+        // Wrap the SVG in a ``.gv-card`` host so the card styling (background,
+        // rounded corners, shadow in light theme) and the zoom transform live
+        // on the same element — that way zoom scales the card *with* the SVG
+        // instead of inflating only the SVG inside a fixed-size card.
+        const card = document.createElement('div');
+        card.className = 'gv-card';
+        card.innerHTML = svg;
+        container.innerHTML = '';
+        container.appendChild(card);
         // Mermaid inlines a fixed max-width/height on the SVG which keeps small
         // graphs tiny. Strip those so CSS (width/height: 100%) takes over and
         // the preserveAspectRatio=xMidYMid meet default scales it to fit.
-        const svgEl = container.querySelector('svg');
+        const svgEl = card.querySelector('svg');
         if (svgEl) {
             svgEl.style.removeProperty('max-width');
             svgEl.style.removeProperty('max-height');
@@ -581,8 +589,12 @@ function prettyStyleName(name) {
 }
 
 function applyZoom() {
-    const svgEl = document.querySelector('#graph-mermaid-container svg');
-    if (svgEl) svgEl.style.transform = `scale(${(ZOOM_BASELINE * _zoom).toFixed(3)})`;
+    // Scale the ``.gv-card`` wrapper so the card (bg/rounded/shadow) zooms
+    // together with the SVG. Fall back to the SVG itself if the wrapper is
+    // not present yet (first render / legacy path).
+    const card = document.querySelector('#graph-mermaid-container .gv-card');
+    const target = card || document.querySelector('#graph-mermaid-container svg');
+    if (target) target.style.transform = `scale(${(ZOOM_BASELINE * _zoom).toFixed(3)})`;
     const label = document.getElementById('graph-zoom-level');
     if (label) label.textContent = `${Math.round(_zoom * 100)}%`;
 }
