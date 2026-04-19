@@ -69,13 +69,130 @@ _GREEK_POOL = [
 # before parsing so ``\vec{F}`` is treated as just ``F``. The graph's
 # display latex loses the decoration; authors can re-add it via scene
 # ``highlights`` metadata or hand-crafted ``semanticGraph`` entries.
+#
+# ``\dot``/``\ddot``/``\dddot``/``\ddddot`` are intentionally NOT in this
+# list — they have semantic meaning (time derivatives) and get rewritten
+# to ``\frac{d…}{dt}`` form by :func:`_rewrite_dot_derivatives` *before*
+# the accent stripper runs, so SymPy parses them as real ``Derivative``
+# objects rather than dropping the decoration entirely.
 _ACCENT_COMMANDS = (
-    "vec", "hat", "bar", "tilde", "dot", "ddot", "dddot", "ddddot",
+    "vec", "hat", "bar", "tilde",
     "overline", "underline", "widehat", "widetilde", "check", "breve",
     "mathring", "acute", "grave",
     "mathbf", "mathrm", "mathit", "mathsf", "mathcal", "mathfrak",
     "boldsymbol", "bm", "operatorname",
 )
+
+
+# ---------------------------------------------------------------------------
+# Dot-accent → fraction rewrite. SymPy's LaTeX parser doesn't understand
+# overhead-dot notation — ``\dot{m}`` comes back as ``dot * m`` (two symbols
+# multiplied). Since the dot IS semantically a time derivative, we rewrite
+# it to ``\frac{d m}{d t}`` so SymPy returns a proper ``Derivative`` node
+# and the graph gains a real ``d/dt`` operator subgraph. ``\ddot`` nests as
+# ``\frac{d}{d t}\frac{d x}{d t}`` because SymPy's parser doesn't recognise
+# the flat ``\frac{d^2 x}{d t^2}`` form.
+# ---------------------------------------------------------------------------
+_DOT_ACCENT_ORDERS: dict[str, int] = {
+    "dot": 1, "ddot": 2, "dddot": 3, "ddddot": 4,
+}
+
+
+def _rewrite_dot_derivatives(latex: str) -> str:
+    """Rewrite ``\\dot{X}``/``\\ddot{X}``/... into ``\\frac{dX}{dt}`` form.
+
+    Trailing subscripts or superscripts on the accented body are absorbed
+    into the differentiated variable. Physics notation ``\\dot{m}_{exhaust}``
+    means ``d(m_{exhaust})/dt`` (the exhaust subsystem's mass-flow rate),
+    not ``(dm/dt)_{exhaust}`` — so they belong inside the numerator.
+    """
+    if not isinstance(latex, str) or "\\" not in latex:
+        return latex
+    # Quick bail-out: no dot accent commands present.
+    if not any(f"\\{cmd}{{" in latex for cmd in _DOT_ACCENT_ORDERS):
+        return latex
+
+    def find_matching_brace(s: str, open_idx: int) -> int | None:
+        """Given s[open_idx] == '{', return index of matching '}' or None."""
+        if open_idx >= len(s) or s[open_idx] != "{":
+            return None
+        depth = 1
+        j = open_idx + 1
+        while j < len(s):
+            c = s[j]
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    return j
+            j += 1
+        return None
+
+    def consume_sub_sup(s: str, pos: int) -> tuple[str, int]:
+        """Consume one ``_{…}``/``^{…}`` or ``_x``/``^x`` token. Returns
+        ``(literal, new_pos)``. ``('', pos)`` when there's nothing to eat."""
+        if pos >= len(s) or s[pos] not in "_^":
+            return "", pos
+        op = s[pos]
+        p = pos + 1
+        if p >= len(s):
+            return "", pos
+        if s[p] == "{":
+            end = find_matching_brace(s, p)
+            if end is None:
+                return "", pos
+            return op + s[p:end + 1], end + 1
+        # Single-char sub/sup: _x or ^2
+        return op + s[p], p + 1
+
+    out: list[str] = []
+    i = 0
+    n = len(latex)
+    while i < n:
+        if latex[i] != "\\":
+            out.append(latex[i])
+            i += 1
+            continue
+        matched_cmd: str | None = None
+        for cmd in _DOT_ACCENT_ORDERS:
+            end = i + 1 + len(cmd)
+            if latex.startswith(cmd, i + 1) and end < n and latex[end] == "{":
+                matched_cmd = cmd
+                break
+        if matched_cmd is None:
+            out.append(latex[i])
+            i += 1
+            continue
+        order = _DOT_ACCENT_ORDERS[matched_cmd]
+        body_open = i + 1 + len(matched_cmd)
+        body_close = find_matching_brace(latex, body_open)
+        if body_close is None:
+            out.append(latex[i])
+            i += 1
+            continue
+        body = latex[body_open + 1:body_close]
+        # Recurse so nested accents (``\dot{\dot{x}}`` → second-order, or
+        # ``\dot{\vec{p}}`` → ``\frac{d \vec{p}}{d t}``) are handled too.
+        body = _rewrite_dot_derivatives(body)
+        j = body_close + 1
+        # Absorb any trailing subscript/superscript chain as part of the
+        # differentiated variable.
+        suffix = ""
+        while True:
+            tok, new_j = consume_sub_sup(latex, j)
+            if not tok:
+                break
+            suffix += tok
+            j = new_j
+        var = body + suffix
+        # Build nested \frac{d}{dt}...\frac{d <var>}{d t} for orders > 1.
+        frac = f"\\frac{{d {var}}}{{d t}}"
+        for _ in range(order - 1):
+            frac = f"\\frac{{d}}{{d t}} {frac}"
+        out.append(frac)
+        i = j
+    return "".join(out)
 
 
 def _strip_accent_commands(
@@ -353,11 +470,15 @@ def _derive_equation_chain_graph(latex: str) -> dict | None:
     roots: list[str] = []
 
     for si, side in enumerate(sides):
-        # Peel visual accents (\vec, \hat, \mathbf, …) per side so SymPy
-        # sees ``F_{action}`` rather than an unknown ``\vec`` token. Track
-        # what got stripped so we can restore the display latex post-parse.
+        # Lift ``\dot{m}`` → ``\frac{d m}{d t}`` (SymPy doesn't understand
+        # overhead-dot notation natively but does produce ``Derivative``
+        # nodes from the fraction form). Then peel visual accents
+        # (\vec, \hat, \mathbf, …) so SymPy sees ``F_{action}`` rather
+        # than an unknown ``\vec`` token. Track what got stripped so we
+        # can restore the display latex post-parse.
+        deriv_side = _rewrite_dot_derivatives(side)
         accent_map: dict[str, str] = {}
-        clean_side = _strip_accent_commands(side, accent_map)
+        clean_side = _strip_accent_commands(deriv_side, accent_map)
         rewritten, mapping = _substitute_multichar_subscripts(clean_side)
         try:
             sub = l2g.latex_to_semantic_graph(rewritten)
@@ -440,11 +561,14 @@ def _derive_semantic_graph(math_src: str) -> dict | None:
     key = math_src
     if key in _latex_graph_cache:
         return _latex_graph_cache[key]
-    # Peel purely-visual accents (\vec, \hat, \mathbf, …) that SymPy can't
-    # parse, then swap multi-char subscripts (\text{prop}, _{sp}, …) with
-    # Greek placeholders so SymPy treats them as atomic symbols, then restore.
+    # Rewrite ``\dot{m}`` → ``\frac{d m}{d t}`` first so SymPy sees a real
+    # derivative. Then peel purely-visual accents (\vec, \hat, \mathbf, …)
+    # that SymPy can't parse, then swap multi-char subscripts
+    # (\text{prop}, _{sp}, …) with Greek placeholders so SymPy treats them
+    # as atomic symbols, then restore.
+    deriv_src = _rewrite_dot_derivatives(math_src)
     accent_map: dict[str, str] = {}
-    stripped = _strip_accent_commands(math_src, accent_map)
+    stripped = _strip_accent_commands(deriv_src, accent_map)
     rewritten, mapping = _substitute_multichar_subscripts(stripped)
     try:
         l2g = _load_script_module("scripts/latex_to_graph.py", "latex_to_graph")
