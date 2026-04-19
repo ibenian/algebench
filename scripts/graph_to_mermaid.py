@@ -187,35 +187,52 @@ def _format_label(
     sym = node_id if not node_id.startswith("__") else ""
     display_name = sym or node.get("label", "?")
 
-    # Always render the symbol as LaTeX. If a `latex` field is provided, use it;
-    # otherwise wrap the plain display name (id / label) in $$...$$ so Mermaid's
-    # KaTeX pass renders it uniformly (plain letters like "F" still look right).
-    display_name = f"$${latex or display_name}$$"
+    # Render the symbol as inline LaTeX. We use single-``$`` delimiters here
+    # because Mermaid's own KaTeX integration (``$$...$$``) swallows the
+    # surrounding ``<br/>`` separators and collapses multi-line labels. The
+    # client instead runs a post-Mermaid pass via ``window.katex`` to rewrite
+    # every ``$...$`` span in the rendered SVG — see ``graph-view.js``.
+    display_name = f"${latex or display_name}$"
 
     if show is not None:
-        parts: list[str] = []
+        # Multi-line label layout. Mermaid's normal string form doesn't honour
+        # `<br/>` once KaTeX is active in the same label, so we emit the
+        # backtick-delimited *markdown string* form instead — real newlines
+        # inside the backticks become line breaks in the rendered node.
+        lines: list[str] = []
+
+        head_parts: list[str] = []
         if "emoji" in show and emoji:
-            parts.append(emoji)
-        parts.append(display_name)
-        annotations: list[str] = []
-        # Prefer a richer `description` when both description and label are
-        # requested — they serve the same purpose ("what is this symbol?")
-        # and duplicating them makes node tails noisy.
+            head_parts.append(emoji)
+        head_parts.append(display_name)
+        lines.append(" ".join(head_parts))
+
+        desc_text = None
         if "description" in show and node.get("description"):
-            annotations.append(node["description"])
+            desc_text = node["description"]
         elif "label" in show and node.get("label") and node["label"] != sym:
-            annotations.append(node["label"])
+            desc_text = node["label"]
+        if desc_text:
+            lines.append(desc_text)
+
+        meta: list[str] = []
         if "unit" in show and node.get("unit"):
-            annotations.append(node["unit"])
+            meta.append(node["unit"])
         if "role" in show and node.get("role"):
-            annotations.append(node["role"])
+            meta.append(node["role"])
         if "quantity" in show and node.get("quantity"):
-            annotations.append(node["quantity"])
+            meta.append(node["quantity"])
         if "dimension" in show and node.get("dimension"):
-            annotations.append(node["dimension"])
-        if annotations:
-            parts.append(f"({', '.join(annotations)})")
-        return " ".join(parts)
+            meta.append(node["dimension"])
+        if meta:
+            lines.append(", ".join(meta))
+
+        if len(lines) <= 1:
+            return lines[0] if lines else display_name
+        # Mermaid flowcharts with ``htmlLabels: true`` render ``<br/>`` as a
+        # real line break inside node labels. The graph-view.js init already
+        # sets that flag; we just emit the separator.
+        return "<br/>".join(lines)
 
     # Legacy label_mode fallback
     if label_mode == "emoji":
@@ -253,8 +270,17 @@ def _escape_mermaid_label(label: str) -> str:
 
 
 def _wrap_shape(sanitized_id: str, label: str, shape: str) -> str:
-    """Wrap a label in Mermaid shape delimiters."""
+    """Wrap a label in Mermaid shape delimiters.
+
+    Markdown strings (``\`...\```) are passed through with real newlines
+    preserved. Plain strings get the normal +/- escape pipeline.
+    """
     left, right = SHAPE_WRAPPERS.get(shape, ("[", "]"))
+    if label.startswith("`") and label.endswith("`"):
+        # Mermaid markdown-string form: F["`line 1\nline 2`"]. Just swap any
+        # inner double-quotes so they don't terminate our wrapping `"..."`.
+        escaped = label.replace('"', "'")
+        return f'{sanitized_id}{left}"{escaped}"{right}'
     escaped = label.replace('"', "'")
     escaped = _escape_mermaid_label(escaped)
     return f'{sanitized_id}{left}"{escaped}"{right}'

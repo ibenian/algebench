@@ -385,10 +385,15 @@ class SemanticGraphBuilder:
                     latex_fallback = name
             attrs: dict[str, str] = {
                 "label": meta.get("label", name),
-                "emoji": meta.get("emoji", "🔣"),
                 "type": meta.get("type", "scalar"),
                 "latex": meta.get("latex", latex_fallback),
             }
+            # Only attach an emoji when we actually know one. The old
+            # "🔣" fallback renders as a broken-glyph box in most fonts
+            # and adds visual noise — leave it off unless the KNOWN_VARIABLES
+            # table (or a user override) provides a real emoji.
+            if meta.get("emoji"):
+                attrs["emoji"] = meta["emoji"]
             for sem_key in ("quantity", "dimension", "unit", "value", "role"):
                 if meta.get(sem_key):
                     attrs[sem_key] = meta[sem_key]

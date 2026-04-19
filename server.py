@@ -11,6 +11,7 @@ Usage:
 import sys
 import json
 import os
+import re
 import asyncio
 import webbrowser
 import builtins
@@ -44,6 +45,490 @@ def _load_script_module(rel_path: str, mod_name: str):
     mod = _iu.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+# ---------------------------------------------------------------------------
+# Semantic-graph auto-derivation for proof steps missing explicit graphs.
+# Called on every scene-load endpoint so the Graph tab can show a diagram
+# even for steps that were authored without a ``semanticGraph`` field.
+# ---------------------------------------------------------------------------
+_latex_graph_cache: dict[str, dict | None] = {}
+
+# Greek placeholders for multi-character subscripts. SymPy's parse_latex
+# treats multi-letter identifiers as implicit multiplication (``\text{prop}``
+# → ``p*r*o*p``), but single-symbol Greek letters round-trip cleanly, so we
+# swap in a Greek letter, parse, then rewrite the resulting graph back.
+_GREEK_POOL = [
+    "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta",
+    "iota", "kappa", "lambda", "mu", "nu", "xi", "rho", "sigma", "tau",
+    "upsilon", "phi", "chi", "psi", "omega",
+]
+
+
+def _substitute_multichar_subscripts(latex: str) -> tuple[str, dict[str, str]]:
+    """Replace multi-character subscript bodies with Greek placeholders.
+
+    Returns ``(rewritten_latex, greek_to_original_latex)``. The mapping keys
+    are plain names like ``"xi"``; values are the original body (e.g.
+    ``"\\text{prop}"`` or ``"sp"``).
+    """
+    mapping: dict[str, str] = {}
+    greek_iter = iter(_GREEK_POOL)
+
+    def allocate(original: str) -> str | None:
+        # Re-use the same placeholder if we've already seen this body, so that
+        # repeated occurrences map to the same symbol in the graph.
+        for k, v in mapping.items():
+            if v == original:
+                return k
+        try:
+            k = next(greek_iter)
+        except StopIteration:
+            return None
+        mapping[k] = original
+        return k
+
+    # 1) Substitute every \text{BODY} first — doesn't matter where it sits;
+    #    as a standalone symbol it still becomes an atomic placeholder.
+    def _sub_text(m: re.Match) -> str:
+        body = m.group(1)
+        k = allocate(f"\\text{{{body}}}")
+        return f"\\{k}" if k else m.group(0)
+    latex = re.sub(r"\\text\{([^{}]+)\}", _sub_text, latex)
+
+    # 2) Substitute any remaining multi-letter subscripts: _{foo} or _{abc1}.
+    def _sub_sub(m: re.Match) -> str:
+        body = m.group(1)
+        # Single-char bodies and numeric-only bodies are fine as-is.
+        if len(body) == 1 or body.isdigit():
+            return m.group(0)
+        # Numeric suffix preserved: I_{sp2} → _{ξ_{2}}? Skip numeric — just
+        # replace the whole alphabetic run; SymPy can handle `_{ξ}` either
+        # way, but it can't recover the original text. We take the simple
+        # path: only substitute when the body is purely alphabetic, keeping
+        # the "sp" → "ξ" round-trip trivial.
+        if not body.isalpha():
+            return m.group(0)
+        k = allocate(body)
+        return f"_{{\\{k}}}" if k else m.group(0)
+    latex = re.sub(r"_\{([^{}]+)\}", _sub_sub, latex)
+
+    return latex, mapping
+
+
+def _restore_subscripts_in_graph(graph: dict, mapping: dict[str, str]) -> None:
+    """Walk *graph* and swap each Greek placeholder back to the original body.
+
+    Modifies ``graph`` in-place. Touches ``id``, ``label``, ``latex``, and
+    ``subexpr`` on every node, and the ``from``/``to`` refs on every edge.
+    """
+    if not mapping:
+        return
+    # Sort keys so longer placeholders win (avoid partial clobber — though
+    # Greek names never share prefixes in our pool, this is defensive).
+    items = sorted(mapping.items(), key=lambda kv: -len(kv[0]))
+
+    def rewrite(s: str) -> str:
+        if not isinstance(s, str):
+            return s
+        for greek_name, original in items:
+            # latex form: \xi → original
+            s = s.replace(f"\\{greek_name}", original)
+            # sympy id form: bare name → original. Scope to subscript
+            # context to avoid matching unrelated substrings in operator
+            # subexprs.
+            s = s.replace(f"{{{greek_name}}}", f"{{{original}}}")
+        return s
+
+    for node in graph.get("nodes") or []:
+        if not isinstance(node, dict):
+            continue
+        for field in ("id", "label", "latex", "subexpr"):
+            if field in node and isinstance(node[field], str):
+                node[field] = rewrite(node[field])
+    for edge in graph.get("edges") or []:
+        if not isinstance(edge, dict):
+            continue
+        for field in ("from", "to"):
+            if field in edge and isinstance(edge[field], str):
+                edge[field] = rewrite(edge[field])
+
+
+_CHAIN_RELATION_COMMANDS = ("\\approx", "\\simeq", "\\equiv")
+
+
+def _split_equation_chain_sides(latex: str) -> list[str]:
+    """Split *latex* on top-level equality-like operators.
+
+    Splits on bare ``=`` and the relational commands ``\\approx``,
+    ``\\simeq``, ``\\equiv``. Returns the ordered list of sides (trimmed).
+    A non-chained expression returns a single-element list.
+    """
+    if not isinstance(latex, str) or not latex:
+        return []
+    parts: list[str] = []
+    buf: list[str] = []
+    depth = 0
+    i = 0
+    L = len(latex)
+    while i < L:
+        c = latex[i]
+        if c == '{':
+            depth += 1
+        elif c == '}':
+            depth = max(0, depth - 1)
+        split_adv = 0
+        if depth == 0:
+            for cmd in _CHAIN_RELATION_COMMANDS:
+                if latex.startswith(cmd, i):
+                    split_adv = len(cmd)
+                    break
+            if split_adv == 0 and c == '=':
+                prev = latex[i - 1] if i > 0 else ''
+                nxt = latex[i + 1] if i + 1 < L else ''
+                if prev != '\\' and nxt != '=':
+                    split_adv = 1
+        if split_adv:
+            parts.append(''.join(buf).strip())
+            buf = []
+            i += split_adv
+            continue
+        buf.append(c)
+        i += 1
+    parts.append(''.join(buf).strip())
+    return [p for p in parts if p]
+
+
+def _derive_equation_chain_graph(latex: str) -> dict | None:
+    """Derive a semantic graph for a possibly-chained equation.
+
+    For ``a = b = c = d`` each side is parsed as its own expression sub-graph,
+    then all sub-graphs are merged into a single graph whose roots converge
+    on one central ``__equals_1`` operator node. Repeated variables (e.g.
+    ``v_e`` appearing in two sides) share the same node so the graph captures
+    the cross-links naturally.
+
+    For a single expression or a plain ``a = b`` equation, delegates to the
+    ordinary single-expression derivation.
+    """
+    if not isinstance(latex, str) or not latex:
+        return None
+    sides = _split_equation_chain_sides(latex)
+    if len(sides) <= 1:
+        return _derive_semantic_graph(latex)
+    if len(sides) == 2:
+        return _derive_semantic_graph(f"{sides[0]} = {sides[1]}")
+
+    try:
+        l2g = _load_script_module("scripts/latex_to_graph.py", "latex_to_graph")
+    except Exception as e:
+        print(f"   ⚠️  chain derivation: could not load latex_to_graph: {e}")
+        return None
+    if l2g is None:
+        return None
+
+    merged_nodes: dict[str, dict] = {}
+    merged_edges: list[dict] = []
+    roots: list[str] = []
+
+    for si, side in enumerate(sides):
+        rewritten, mapping = _substitute_multichar_subscripts(side)
+        try:
+            sub = l2g.latex_to_semantic_graph(rewritten)
+        except Exception as e:
+            print(f"   ⚠️  chain side parse failed ({side!r}): {e}")
+            return None
+        if not isinstance(sub, dict) or not sub.get("nodes"):
+            return None
+        _restore_subscripts_in_graph(sub, mapping)
+
+        prefix = f"s{si}_"
+        def _rename(nid: str, p: str = prefix) -> str:
+            return p + nid if nid.startswith("__") else nid
+
+        # Merge nodes. Variables (no ``__`` prefix) collapse by id; operators
+        # are scoped per-side so we don't collide across sub-graphs.
+        for n in sub.get("nodes") or []:
+            if not isinstance(n, dict):
+                continue
+            nid = n.get("id")
+            if not isinstance(nid, str):
+                continue
+            new_id = _rename(nid)
+            cloned = dict(n)
+            cloned["id"] = new_id
+            if new_id not in merged_nodes:
+                merged_nodes[new_id] = cloned
+            else:
+                # Variable already present — keep existing richness, fill gaps.
+                existing = merged_nodes[new_id]
+                for k, v in cloned.items():
+                    existing.setdefault(k, v)
+
+        for e in sub.get("edges") or []:
+            merged_edges.append({
+                "from": _rename(e.get("from", "")),
+                "to": _rename(e.get("to", "")),
+            })
+
+        # Identify this side's root (node with no outgoing edge in its own
+        # sub-graph). Fallback: the sole node if the side is atomic.
+        out_set = {e.get("from") for e in sub.get("edges") or []}
+        root_candidates = [
+            n.get("id") for n in sub.get("nodes") or []
+            if isinstance(n, dict) and n.get("id") not in out_set
+        ]
+        if root_candidates:
+            roots.append(_rename(root_candidates[0]))
+        else:
+            roots.append(_rename(sub["nodes"][0].get("id", "")))
+
+    # Central equals node — every side points into it.
+    equals_id = "__equals_1"
+    merged_nodes[equals_id] = {
+        "id": equals_id,
+        "type": "operator",
+        "op": "equals",
+        "subexpr": " = ".join(sides),
+    }
+    for r in roots:
+        if r:
+            merged_edges.append({"from": r, "to": equals_id})
+
+    return {
+        "nodes": list(merged_nodes.values()),
+        "edges": merged_edges,
+        "classification": {"kind": "algebraic"},
+    }
+
+
+def _derive_semantic_graph(math_src: str) -> dict | None:
+    """Parse *math_src* and return a semantic-graph dict, or None on failure.
+
+    Results are memoized — scenes often repeat the same subexpression, and
+    sympy's LaTeX parser is not cheap.
+    """
+    if not isinstance(math_src, str):
+        return None
+    key = math_src
+    if key in _latex_graph_cache:
+        return _latex_graph_cache[key]
+    # Swap multi-char subscripts (\text{prop}, _{sp}, …) with Greek
+    # placeholders so SymPy treats them as atomic symbols, then restore.
+    rewritten, mapping = _substitute_multichar_subscripts(math_src)
+    try:
+        l2g = _load_script_module("scripts/latex_to_graph.py", "latex_to_graph")
+        graph = l2g.latex_to_semantic_graph(rewritten) if l2g else None
+    except Exception as e:  # pragma: no cover — parser errors, keep scene loadable
+        print(f"   ⚠️  auto-graph failed for {math_src!r}: {e}")
+        graph = None
+    # Reject degenerate graphs that come back as a single ``__expr_*`` node —
+    # that's what SymPy emits when it collapses a chained equality into a
+    # Boolean. Returning None lets the caller fall through and show the
+    # "no graph" empty state instead of a confusing pseudo-node.
+    if isinstance(graph, dict):
+        nodes = graph.get('nodes') or []
+        if (len(nodes) == 1 and isinstance(nodes[0], dict)
+                and isinstance(nodes[0].get('id'), str)
+                and nodes[0]['id'].startswith('__expr_')):
+            graph = None
+        else:
+            _restore_subscripts_in_graph(graph, mapping)
+    _latex_graph_cache[key] = graph
+    return graph
+
+
+def _extract_htmlclass_pairs(latex: str) -> list[tuple[str, str]]:
+    """Return ``[(class_key, body_latex), ...]`` for every ``\\htmlClass`` span.
+
+    ``class_key`` drops the ``hl-`` prefix so it matches the keys in a step's
+    ``highlights`` dict. Nested ``\\htmlClass`` wrappers are reported at the
+    outer level only (the inner body still appears verbatim as the body).
+    """
+    if not isinstance(latex, str) or "\\htmlClass" not in latex:
+        return []
+    out: list[tuple[str, str]] = []
+    i = 0
+    while i < len(latex):
+        # Look for \htmlClass{class}{body}
+        if latex.startswith("\\htmlClass{", i):
+            j = i + len("\\htmlClass{")
+            # class token
+            k = latex.find("}", j)
+            if k == -1:
+                break
+            class_name = latex[j:k]
+            # body — find matching brace
+            if k + 1 >= len(latex) or latex[k + 1] != '{':
+                i = k + 1
+                continue
+            b_start = k + 2
+            depth = 1
+            b = b_start
+            while b < len(latex) and depth > 0:
+                c = latex[b]
+                if c == '{':
+                    depth += 1
+                elif c == '}':
+                    depth -= 1
+                    if depth == 0:
+                        break
+                b += 1
+            body = latex[b_start:b]
+            key = class_name[3:] if class_name.startswith("hl-") else class_name
+            out.append((key, body.strip()))
+            i = b + 1
+        else:
+            i += 1
+    return out
+
+
+def _apply_highlights_to_graph(
+    graph: dict,
+    hl_pairs: list[tuple[str, str]],
+    highlights_meta: dict,
+) -> None:
+    """Overlay step-level highlight metadata onto matching graph nodes.
+
+    For each ``(class_key, body)`` pair harvested from the raw math, find the
+    node whose latex/id matches ``body`` and annotate it with the highlight's
+    ``color``, human ``label``, and the original ``hl_class`` tag.
+    """
+    if not graph or not hl_pairs or not isinstance(highlights_meta, dict):
+        return
+    nodes = graph.get("nodes") or []
+
+    def _normalize(s: str) -> str:
+        """Normalize LaTeX for comparison — brace single-char subscripts
+        (``v_e`` → ``v_{e}``) so both forms match, and strip spaces.
+        """
+        if not isinstance(s, str):
+            return ""
+        s = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", s)
+        return s.replace(" ", "")
+
+    def _keys_for_node(n: dict) -> list[str]:
+        keys: list[str] = []
+        for f in ("latex", "id"):
+            v = n.get(f)
+            if isinstance(v, str):
+                keys.append(_normalize(v))
+        return keys
+
+    # Also normalize body latex (strip surrounding whitespace; keep \text{}
+    # wrappers — restored subscripts should match).
+    for class_key, body in hl_pairs:
+        body = _normalize(body)
+        meta = highlights_meta.get(class_key)
+        if not isinstance(meta, dict):
+            continue
+        matched: dict | None = None
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            if node.get("type") in ("operator", "relation"):
+                continue
+            if body in _keys_for_node(node):
+                matched = node
+                break
+        if matched is None:
+            continue
+        # Attach highlight metadata. Respect existing fields so hand-authored
+        # richness wins over auto-derived overlays.
+        if "color" in meta and not matched.get("color"):
+            matched["color"] = meta["color"]
+        if meta.get("label") and not matched.get("description"):
+            matched["description"] = meta["label"]
+        matched.setdefault("hl_class", f"hl-{class_key}")
+
+
+# Match any `\htmlClass{...}{body}` wrapper (may be nested) and peel it off.
+_HTML_CLASS_RE = re.compile(r"\\htmlClass\{[^}]*\}\{")
+
+def _strip_html_class(latex: str) -> str:
+    """Remove `\\htmlClass{...}{...}` wrappers, keeping only the inner body.
+
+    AlgeBench scenes annotate math with `\\htmlClass{hl-X}{...}` for
+    step-highlighting. These cannot be parsed by SymPy's LaTeX parser, so we
+    strip them before handing the expression off to the graph builder.
+    """
+    if not isinstance(latex, str) or "\\htmlClass" not in latex:
+        return latex
+    out = []
+    i = 0
+    while i < len(latex):
+        m = _HTML_CLASS_RE.match(latex, i)
+        if not m:
+            out.append(latex[i])
+            i += 1
+            continue
+        # We're at `\htmlClass{class}{` — find matching `}` for the body.
+        i = m.end()
+        depth = 1
+        while i < len(latex) and depth > 0:
+            c = latex[i]
+            if c == '{':
+                depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0:
+                    break
+            out.append(c)
+            i += 1
+        i += 1  # skip closing `}`
+    return ''.join(out)
+
+
+def _autofill_semantic_graphs(scene: dict) -> dict:
+    """Walk a scene spec and populate missing ``semanticGraph`` fields in-place.
+
+    For each proof step that has ``math`` but no ``semanticGraph``, attempt to
+    derive a graph via ``scripts/latex_to_graph.py`` and attach it under the
+    standard ``{"graph": {...}}`` wrapper.
+
+    Returns the same dict for chaining. Silently skips anything that doesn't
+    look like a scene with proofs — safe to call on any JSON.
+    """
+    if not isinstance(scene, dict):
+        return scene
+    scenes_list = scene.get('scenes')
+    if not isinstance(scenes_list, list):
+        return scene
+    filled = 0
+    for sc in scenes_list:
+        if not isinstance(sc, dict):
+            continue
+        proof = sc.get('proof')
+        if not isinstance(proof, dict):
+            continue
+        steps = proof.get('steps')
+        if not isinstance(steps, list):
+            continue
+        for step in steps:
+            if not isinstance(step, dict):
+                continue
+            if step.get('semanticGraph'):
+                continue
+            math_src = step.get('math')
+            if not math_src:
+                continue
+            # Capture highlight bindings (\htmlClass{hl-X}{body}) BEFORE the
+            # wrappers are stripped so we can map the class back to a node.
+            hl_pairs = _extract_htmlclass_pairs(math_src)
+            cleaned = _strip_html_class(math_src)
+            # Full-chain derivation: every side becomes part of the graph,
+            # converging on a single central ``__equals_1`` operator node.
+            graph = _derive_equation_chain_graph(cleaned)
+            if graph:
+                _apply_highlights_to_graph(
+                    graph, hl_pairs, step.get('highlights') or {},
+                )
+                step['semanticGraph'] = {'graph': graph, 'autoDerived': True}
+                filled += 1
+    if filled:
+        title = scene.get('title') or '(scene)'
+        print(f"   ✨ auto-derived {filled} semantic graph(s) for {title}")
+    return scene
 
 try:
     from gemini_live_tools import GeminiLiveAPI, pcm_to_wav_bytes, get_static_content as _glt_static, _split_sentences
@@ -963,6 +1448,26 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         avg = sum(_lum(f) for f in fills) / len(fills)
         return "light" if avg >= 0.6 else "dark"
 
+    class LatexToGraphRequest(BaseModel):
+        latex: str
+        domain: str | None = None
+
+    @fastapp.post("/api/graph/from-latex")
+    async def post_graph_from_latex(req: LatexToGraphRequest):
+        """Derive a semantic graph from a LaTeX math string.
+
+        Used by the Graph tab to auto-populate diagrams for proof steps that
+        do not ship an explicit ``semanticGraph`` field.
+        """
+        try:
+            l2g = _load_script_module("scripts/latex_to_graph.py", "latex_to_graph")
+            graph = l2g.latex_to_semantic_graph(req.latex, domain=req.domain)
+            return JSONResponse({"graph": graph})
+        except Exception as e:
+            import traceback
+            print(f"   ❌ /api/graph/from-latex: {e}\n{traceback.format_exc()}")
+            return JSONResponse({"error": str(e)}, status_code=400)
+
     @fastapp.post("/api/graph/mermaid")
     async def post_graph_mermaid(req: MermaidRenderRequest):
         """Regenerate Mermaid source from a semantic graph with the given style/direction."""
@@ -1064,6 +1569,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         try:
             with open(resolved_path, 'r') as f:
                 scene = json.load(f)
+            _autofill_semantic_graphs(scene)
             return JSONResponse({"spec": scene, "path": str(resolved_path),
                                  "label": resolved_path.name})
         except json.JSONDecodeError:
@@ -1123,6 +1629,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     async def get_scene(name: str):
         scene = load_builtin_scene(name)
         if scene:
+            _autofill_semantic_graphs(scene)
             return JSONResponse(scene)
         return Response(content=b'Scene not found', status_code=404)
 
@@ -1251,6 +1758,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         body = await request.body()
         try:
             new_spec = json.loads(body)
+            _autofill_semantic_graphs(new_spec)
             current_spec[0] = new_spec
             return JSONResponse({"status": "loaded"})
         except json.JSONDecodeError:

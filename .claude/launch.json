@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "algebench",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": ["scenes/artemis-ii-mission-simulation.json", "--debug"],
+      "port": 8785
+    }
+  ]
+}

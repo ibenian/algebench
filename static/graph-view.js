@@ -96,6 +96,60 @@ async function fetchMermaidFromGraph(graph, style, direction, show) {
     return { mermaid: data.mermaid, theme: data.theme || 'dark' };
 }
 
+/**
+ * Walk every rendered node label and replace ``$...$`` spans with KaTeX
+ * HTML. Mermaid's own KaTeX integration runs only on display-math (``$$..$$``)
+ * and collapses neighbouring ``<br/>`` separators, so we emit inline ``$..$``
+ * and render it here to keep the per-line layout of auto-derived graphs.
+ */
+function renderInlineLatexInNodes(container) {
+    const katex = window.katex;
+    if (!katex || !container) return;
+    // Mermaid with htmlLabels:true places each label inside a foreignObject
+    // holding a <span class="nodeLabel"> (or similar). We scan any element
+    // whose textContent contains a ``$`` and walk its text-node descendants.
+    const INLINE_MATH = /\$([^$\n]+)\$/g;
+    const labels = container.querySelectorAll(
+        'foreignObject span, foreignObject div, foreignObject p, .nodeLabel'
+    );
+    labels.forEach((host) => {
+        if (!host.textContent || host.textContent.indexOf('$') === -1) return;
+        // Collect all text descendants first — we mutate the tree as we go.
+        const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT, null);
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+        textNodes.forEach((tn) => {
+            const src = tn.nodeValue;
+            if (!src || src.indexOf('$') === -1) return;
+            INLINE_MATH.lastIndex = 0;
+            if (!INLINE_MATH.test(src)) return;
+            INLINE_MATH.lastIndex = 0;
+            // Build a fragment of [text, katex-span, text, ...]
+            const frag = document.createDocumentFragment();
+            let last = 0;
+            let m;
+            while ((m = INLINE_MATH.exec(src)) !== null) {
+                if (m.index > last) {
+                    frag.appendChild(document.createTextNode(src.slice(last, m.index)));
+                }
+                const span = document.createElement('span');
+                try {
+                    katex.render(m[1], span, { throwOnError: false, displayMode: false });
+                } catch (_err) {
+                    span.textContent = m[0];
+                }
+                frag.appendChild(span);
+                last = m.index + m[0].length;
+            }
+            if (last < src.length) {
+                frag.appendChild(document.createTextNode(src.slice(last)));
+            }
+            tn.parentNode.replaceChild(frag, tn);
+        });
+    });
+}
+
+
 function isGraphModeActive() {
     const tab = document.querySelector('.dock-tab.active');
     return tab && tab.dataset.dockTab === 'graph';
@@ -390,6 +444,11 @@ async function renderCurrentStepGraph(force = false) {
             }
             applyZoom();
         }
+        // Mermaid's built-in KaTeX pass only fires for display math (``$$..$$``)
+        // and eats the surrounding ``<br/>`` line breaks. We emit inline
+        // ``$..$`` instead and render it ourselves here so multi-line node
+        // labels keep their separators intact.
+        renderInlineLatexInNodes(container);
     } catch (err) {
         console.error('[graph-view] mermaid render failed:', err);
         container.innerHTML = `<div style="color:#f88; padding:2rem;">Failed to render graph.<br><small>${escapeHtml(err.message || String(err))}</small></div>`;
