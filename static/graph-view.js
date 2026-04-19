@@ -708,20 +708,13 @@ async function setupGraphControls() {
             ? { name: item, mode: 'light' }
             : { name: item.name, mode: item.mode || 'light' });
     } catch (e) {
-        // Fallback mirrors the on-disk themes so the picker stays populated
-        // even when the server is stale or unreachable. Keep in sync with
-        // themes/semantic-graph/*.json.
+        // No meaningful fallback: if /api/graph/themes is unreachable then
+        // /api/graph/mermaid is almost certainly unreachable too, so any
+        // theme we'd preload here can't be applied to an actual graph.
+        // Leave _allThemes empty — the dropdown will render blank, which
+        // honestly reflects the broken state.
         console.warn('[graph-view] could not load themes:', e);
-        _allThemes = [
-            { name: 'linalg-dark', mode: 'dark' },
-            { name: 'minimal-dark', mode: 'dark' },
-            { name: 'power-direction-dark', mode: 'dark' },
-            { name: 'default-light', mode: 'light' },
-            { name: 'minimal-flat-light', mode: 'light' },
-            { name: 'power-direction-light', mode: 'light' },
-            { name: 'power-flow-light', mode: 'light' },
-            { name: 'role-colored-light', mode: 'light' },
-        ];
+        _allThemes = [];
     }
     // Align mode with the stored theme's declared mode. Stored mode only
     // matters as a fallback when the stored theme is unknown to the server.
