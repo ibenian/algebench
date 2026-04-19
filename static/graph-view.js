@@ -60,12 +60,32 @@ if (_currentTheme in LEGACY_THEME_RENAME) {
 // Mode is derived from the theme's declared ``mode`` once themes are loaded.
 // Until then we bootstrap from localStorage (or 'dark' as the historical default).
 let _currentMode = _lsGet(LS_KEYS.mode, 'dark');
-// Mermaid direction tokens describe edge flow literally:
-//   TB = top→bottom, BT = bottom→top, LR = left→right, RL = right→left.
-// The UI dropdown labels match these tokens directly (Top-Down = TB, etc.).
-// Our semantic graphs point from variables → operators → root equation,
-// so 'LR' renders variables on the LEFT and the equation on the RIGHT.
-let _currentDirection = _lsGet(LS_KEYS.direction, 'LR');
+// Our direction vocabulary describes the layout from the user's reading
+// perspective — "Left-Right" means the root equation sits on the left and
+// the graph unfolds rightward into variables. Because our semantic graphs
+// point from variables → operators → root, this maps to Mermaid's
+// *opposite* edge-flow token: "left-right" → "RL", "top-down" → "BT", etc.
+// The mapping is applied at the API boundary (see fetchMermaidFromGraph).
+const DIRECTION_TO_MERMAID = {
+    'top-down':   'BT',
+    'left-right': 'RL',
+    'right-left': 'LR',
+    'bottom-up':  'TB',
+};
+// One-shot migration: rewrite any pre-existing Mermaid-token values
+// in localStorage (from before the semantic-name refactor) into our
+// vocabulary so returning users don't land on a direction the dropdown
+// can't reflect.
+const LEGACY_DIRECTION_MAP = {
+    TB: 'bottom-up', BT: 'top-down', LR: 'right-left', RL: 'left-right',
+};
+{
+    const stored = _lsGet(LS_KEYS.direction, null);
+    if (stored && LEGACY_DIRECTION_MAP[stored]) {
+        _lsSet(LS_KEYS.direction, LEGACY_DIRECTION_MAP[stored]);
+    }
+}
+let _currentDirection = _lsGet(LS_KEYS.direction, 'left-right');
 // Label detail presets — map UI dropdown values to `show` field sets
 // passed to scripts/graph_to_mermaid.py via /api/graph/mermaid.
 const LABEL_PRESETS = {
@@ -134,10 +154,13 @@ function ensureMermaid(mode = 'dark') {
 }
 
 async function fetchMermaidFromGraph(graph, theme, direction, show) {
+    // Translate our UI direction vocabulary to Mermaid's edge-flow token.
+    // Unknown values pass through so explicit Mermaid tokens still work.
+    const mermaidDir = DIRECTION_TO_MERMAID[direction] || direction;
     const res = await fetch('/api/graph/mermaid', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ graph, theme, direction, show }),
+        body: JSON.stringify({ graph, theme, direction: mermaidDir, show }),
     });
     if (!res.ok) throw new Error(`mermaid render failed: HTTP ${res.status}`);
     const data = await res.json();
@@ -755,7 +778,7 @@ async function setupGraphControls() {
     if (dirSel) {
         dirSel.value = _currentDirection;
         dirSel.addEventListener('change', () => {
-            _currentDirection = dirSel.value || 'LR';
+            _currentDirection = dirSel.value || 'left-right';
             _lsSet(LS_KEYS.direction, _currentDirection);
             renderCurrentStepGraph(true);
         });
