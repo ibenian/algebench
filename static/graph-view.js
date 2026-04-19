@@ -31,6 +31,7 @@ const LS_KEYS = {
     mode: 'algebench.graph.mode',
     direction: 'algebench.graph.direction',
     labels: 'algebench.graph.labels',
+    zoom: 'algebench.graph.zoom',
 };
 const _lsGet = (key, fallback) => {
     try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
@@ -83,11 +84,18 @@ let _activeMermaidMode = null;
 // scale applied to the SVG is `ZOOM_BASELINE * _zoom` — so "100%" corresponds
 // to the comfortable default view rather than an untransformed (unreadably
 // large) Mermaid SVG.
-let _zoom = 1.0;
 const ZOOM_BASELINE = 0.7;
 const ZOOM_MIN = 0.4;   // 40%
 const ZOOM_MAX = 4.0;   // 400%
 const ZOOM_STEP = 0.1;  // 10% per click → 90/100/110/120%
+// Clamp+sanitize a stored zoom value — localStorage strings can be anything,
+// including NaN or out-of-range numbers from older builds.
+function _normalizeZoom(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 1.0;
+    return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, n));
+}
+let _zoom = _normalizeZoom(_lsGet(LS_KEYS.zoom, '1.0'));
 
 function initMermaidForMode(mode) {
     if (typeof window.mermaid === 'undefined') return false;
@@ -715,10 +723,12 @@ function setupZoomControls() {
     const outBtn = document.getElementById('graph-zoom-out');
     if (inBtn) inBtn.addEventListener('click', () => {
         _zoom = Math.min(ZOOM_MAX, +(_zoom + ZOOM_STEP).toFixed(2));
+        _lsSet(LS_KEYS.zoom, String(_zoom));
         applyZoom();
     });
     if (outBtn) outBtn.addEventListener('click', () => {
         _zoom = Math.max(ZOOM_MIN, +(_zoom - ZOOM_STEP).toFixed(2));
+        _lsSet(LS_KEYS.zoom, String(_zoom));
         applyZoom();
     });
     applyZoom();
