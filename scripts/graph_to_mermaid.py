@@ -187,8 +187,10 @@ def _format_label(
     sym = node_id if not node_id.startswith("__") else ""
     display_name = sym or node.get("label", "?")
 
-    if latex and (label_mode == "latex" or latex != display_name):
-        display_name = f"$${latex}$$"
+    # Always render the symbol as LaTeX. If a `latex` field is provided, use it;
+    # otherwise wrap the plain display name (id / label) in $$...$$ so Mermaid's
+    # KaTeX pass renders it uniformly (plain letters like "F" still look right).
+    display_name = f"$${latex or display_name}$$"
 
     if show is not None:
         parts: list[str] = []

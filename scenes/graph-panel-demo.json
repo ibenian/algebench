@@ -273,11 +273,15 @@
                   },
                   {
                     "id": "v_{0}",
-                    "label": "v_{0}",
+                    "label": "initial velocity",
                     "description": "Initial velocity at t = 0",
                     "emoji": "\ud83d\udd23",
                     "type": "scalar",
                     "latex": "v_{0}",
+                    "quantity": "velocity",
+                    "dimension": "L\u00b7T\u207b\u00b9",
+                    "unit": "m/s",
+                    "role": "parameter",
                     "subexpr": "v_{0}"
                   },
                   {

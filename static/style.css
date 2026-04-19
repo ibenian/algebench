@@ -3640,18 +3640,18 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 /* Floating graph controls (style top-left, direction top-right) */
 .graph-controls {
     position: absolute;
-    top: 14px;
+    top: 4px;
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 10px;
+    padding: 2px 8px;
     background: transparent;
     border: none;
     border-radius: 0;
     z-index: 2;
 }
-#graph-controls-left { left: 14px; }
-#graph-controls-right { right: 14px; }
+#graph-controls-left { left: 8px; }
+#graph-controls-right { right: 8px; }
 .graph-ctrl-label {
     color: rgba(188, 198, 232, 0.78);
     font-size: 0.75rem;
