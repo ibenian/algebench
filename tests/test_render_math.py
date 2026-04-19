@@ -50,7 +50,10 @@ class TestMathRendererHTML:
     def test_label_mode_latex(self):
         r = MathRenderer("F = ma", show_mermaid=True, label_mode="latex")
         html = r.render_html()
-        assert "$$F$$" in html or r"$$\times$$" in html
+        # All labels use single-``$`` inline math — see _format_label docstring
+        # in scripts/graph_to_mermaid.py for why we avoid Mermaid's built-in
+        # MathML-only KaTeX path.
+        assert "$F$" in html or r"$\times$" in html
 
     def test_label_mode_plain(self):
         r = MathRenderer("F = ma", show_mermaid=True, label_mode="plain")

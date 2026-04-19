@@ -105,7 +105,11 @@ class TestLabelFormatting:
 
     def test_emoji_mode_operator(self):
         node = {"id": "__mul_1", "type": "operator", "op": "multiply"}
-        assert _format_label(node, "emoji") == r"$$\times$$"
+        # Operators use single-``$`` inline math so the post-Mermaid KaTeX
+        # pass renders them with HTML (TeX-quality) output. Double-``$$``
+        # is intercepted by Mermaid's own KaTeX → MathML path, which has
+        # worse accent placement and no stretchy decorations.
+        assert _format_label(node, "emoji") == r"$\times$"
 
     def test_latex_mode_variable(self):
         node = {"id": "F", "label": "force", "emoji": "🏹", "type": "vector", "latex": "F"}
@@ -113,7 +117,7 @@ class TestLabelFormatting:
 
     def test_latex_mode_operator(self):
         node = {"id": "__mul_1", "type": "operator", "op": "multiply"}
-        assert _format_label(node, "latex") == r"$$\times$$"
+        assert _format_label(node, "latex") == r"$\times$"
 
     def test_plain_mode(self):
         node = {"id": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
@@ -202,8 +206,9 @@ class TestSemanticGraphToMermaid:
 
     def test_label_mode_override(self):
         result = semantic_graph_to_mermaid(F_MA_GRAPH, label_mode="latex")
-        # Symbol nodes use single-``$`` inline math now (post-Mermaid KaTeX
-        # pass rewrites them). Operators still use ``$$...$$``.
+        # All labels (symbol and operator) use single-``$`` inline math so
+        # the post-Mermaid KaTeX pass renders them uniformly with HTML
+        # output.
         assert "$m$" in result
         assert "$F$" in result
 

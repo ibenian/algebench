@@ -726,24 +726,18 @@
                     "subexpr": "\\psi"
                   },
                   {
-                    "id": "__apply_H",
-                    "type": "function",
-                    "op": "hamiltonian",
-                    "description": "Hamiltonian operator Ĥ applied to ψ. Ĥ is the total-energy operator; its eigenvalues are the allowed energies of the system and its eigenfunctions are stationary states.",
-                    "subexpr": "\\hat{H} \\psi"
-                  },
-                  {
                     "id": "Hhat",
                     "label": "Hamiltonian",
-                    "description": "The Hamiltonian operator Ĥ: in most settings, Ĥ = T̂ + V̂ (kinetic plus potential). It is Hermitian (real eigenvalues) and generates time translation via the Schrödinger equation.",
+                    "description": "Hamiltonian operator Ĥ — the total-energy operator of the system. Typically Ĥ = T̂ + V̂ (kinetic plus potential). Hermitian (real eigenvalues = allowed energies), and it generates time translation via the Schrödinger equation. When ψ feeds in, the output is Ĥψ — the *action* of the operator on the state, not a product.",
                     "emoji": "\ud83d\udd2e",
                     "type": "operator",
+                    "op": "hamiltonian",
                     "latex": "\\hat{H}",
                     "quantity": "energy",
                     "dimension": "M·L²·T⁻²",
                     "unit": "J",
                     "role": "observable",
-                    "subexpr": "\\hat{H}"
+                    "subexpr": "\\hat{H} \\psi"
                   }
                 ],
                 "edges": [
@@ -752,9 +746,8 @@
                   { "from": "psi", "to": "__deriv_psi_t" },
                   { "from": "__deriv_psi_t", "to": "__mult_lhs" },
                   { "from": "__mult_lhs", "to": "__equals_1" },
-                  { "from": "Hhat", "to": "__apply_H" },
-                  { "from": "psi", "to": "__apply_H" },
-                  { "from": "__apply_H", "to": "__equals_1" }
+                  { "from": "psi", "to": "Hhat" },
+                  { "from": "Hhat", "to": "__equals_1" }
                 ],
                 "classification": {
                   "kind": "PDE",
@@ -910,9 +903,11 @@
                   },
                   {
                     "id": "__laplacian_psi",
-                    "type": "function",
+                    "type": "operator",
                     "op": "laplacian",
-                    "description": "Laplacian of ψ: ∇²ψ = ∂²ψ/∂x² + ∂²ψ/∂y² + ∂²ψ/∂z². Measures the local curvature of the wavefunction; wavefunctions with sharper spatial variations carry more kinetic energy.",
+                    "label": "Laplacian",
+                    "latex": "\\nabla^{2}",
+                    "description": "Laplacian operator ∇² applied to ψ: ∇²ψ = ∂²ψ/∂x² + ∂²ψ/∂y² + ∂²ψ/∂z². Measures the local curvature of the wavefunction; wavefunctions with sharper spatial variations carry more kinetic energy. Like Ĥ, ∇² is an operator that acts on ψ — not a multiplication.",
                     "subexpr": "\\nabla^{2} \\psi"
                   },
                   {

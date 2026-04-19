@@ -186,22 +186,28 @@ def _format_label(
     node_type = node.get("type", "")
     op = node.get("op", "")
 
+    # Operator / function / expression labels: emit single-``$`` so the
+    # client-side post-Mermaid walker renders them with KaTeX's HTML output
+    # (TeX-quality typography). Double-``$$`` is intercepted by Mermaid's own
+    # KaTeX integration, which only produces MathML — browser-native math
+    # layout has tight accent placement (e.g. the hat in ``\hat{H}`` sits
+    # right on top of the base) and no stretchy primes, so we avoid it.
     if node_type in ("operator", "function", "expression"):
         exponent = node.get("exponent", "")
         if op == "power" and exponent:
-            return f"$${{(\\cdot)}}^{{{exponent}}}$$"
+            return f"${{(\\cdot)}}^{{{exponent}}}$"
         node_latex = node.get("latex")
         if node_latex:
             symbol = node_latex
         else:
             symbol = OPERATOR_LATEX.get(op, OPERATOR_SYMBOLS.get(op, op))
-        return f"$${symbol}$$"
+        return f"${symbol}$"
 
     if node_type == "relation":
         rel_emoji = node.get("emoji", "")
         rel_label = node.get("label", op)
         if rel_emoji:
-            return f"$${rel_emoji}$$"
+            return f"${rel_emoji}$"
         return rel_label
 
     # --- Symbol / number nodes ---

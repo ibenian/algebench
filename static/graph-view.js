@@ -146,9 +146,12 @@ async function fetchMermaidFromGraph(graph, theme, direction, show) {
 
 /**
  * Walk every rendered node label and replace ``$...$`` spans with KaTeX
- * HTML. Mermaid's own KaTeX integration runs only on display-math (``$$..$$``)
- * and collapses neighbouring ``<br/>`` separators, so we emit inline ``$..$``
- * and render it here to keep the per-line layout of auto-derived graphs.
+ * HTML. Mermaid's own KaTeX integration runs only on display-math
+ * (``$$..$$``) and emits MathML-only, which the browser renders with
+ * tight accent placement and without KaTeX's hand-tuned glyph metrics —
+ * we avoid that path entirely by emitting inline ``$..$`` everywhere
+ * and rendering it here with KaTeX's HTML output. Also keeps the
+ * per-line layout of auto-derived graphs.
  */
 function renderInlineLatexInNodes(container) {
     const katex = window.katex;
@@ -194,6 +197,47 @@ function renderInlineLatexInNodes(container) {
             }
             tn.parentNode.replaceChild(frag, tn);
         });
+    });
+}
+
+/**
+ * Center each node's label content horizontally inside its Mermaid-sized
+ * ``foreignObject``.
+ *
+ * Why this is needed: Mermaid sizes the ``foreignObject`` + parent shape
+ * from the *raw* label string (``$\hat{H}$`` measures ~64px as plain
+ * text). Our post-Mermaid walker then replaces that string with KaTeX
+ * HTML — which is often much narrower. Mermaid's outer ``<div>`` uses
+ * ``display: table-cell`` with auto width, so the shrunken content sits
+ * flush-left inside the oversized box, leaving a fat right gutter.
+ *
+ * We fix the visual asymmetry by wrapping the existing label div in a
+ * flex-centered box that fills the foreignObject. The shape and the
+ * foreignObject itself are left untouched so every Mermaid-computed
+ * edge keeps terminating at the correct stroke boundary.
+ */
+function centerLabelsInNodes(container) {
+    const svg = container && container.querySelector('svg');
+    if (!svg) return;
+    const NS = 'http://www.w3.org/1999/xhtml';
+    svg.querySelectorAll('g.node foreignObject').forEach((fo) => {
+        const outer = fo.firstElementChild;
+        if (!outer || outer.nodeType !== 1) return;
+        // Idempotent — a second pass (e.g. on re-render in place) would
+        // otherwise nest wrappers indefinitely.
+        if (outer.dataset && outer.dataset.gvCentered === 'wrapper') return;
+        if (outer.parentElement !== fo) return;
+
+        const wrapper = document.createElementNS(NS, 'div');
+        wrapper.setAttribute(
+            'style',
+            'display:flex;justify-content:center;align-items:center;width:100%;height:100%;',
+        );
+        // Tag the *wrapper* so we can detect the already-processed state
+        // on subsequent passes without relying on structural heuristics.
+        wrapper.dataset.gvCentered = 'wrapper';
+        fo.insertBefore(wrapper, outer);
+        wrapper.appendChild(outer);
     });
 }
 
@@ -500,11 +544,22 @@ async function renderCurrentStepGraph(force = false) {
             }
             applyZoom();
         }
-        // Mermaid's built-in KaTeX pass only fires for display math (``$$..$$``)
-        // and eats the surrounding ``<br/>`` line breaks. We emit inline
-        // ``$..$`` instead and render it ourselves here so multi-line node
-        // labels keep their separators intact.
+        // Mermaid's built-in KaTeX integration only fires for display math
+        // (``$$..$$``) and produces MathML-only output, which the browser's
+        // native math engine renders with tight accent placement (the hat
+        // in ``\hat{H}`` sits right on top of the H) and no stretchy
+        // decorations. It also eats the surrounding ``<br/>`` line breaks.
+        // We emit inline ``$..$`` for all labels instead and render here
+        // with KaTeX's HTML output so TeX-quality typography applies and
+        // multi-line node labels keep their separators intact.
         renderInlineLatexInNodes(container);
+        // Mermaid sizes each node's box from the *raw* label string
+        // (``$\hat{H}$`` measures much wider than its rendered KaTeX).
+        // The label div is ``display: table-cell`` with auto width, so
+        // it sits flush-left inside the oversized box. Flex-wrap the
+        // label so KaTeX content centers horizontally within the shape
+        // without mutating any shape geometry (edges stay attached).
+        centerLabelsInNodes(container);
     } catch (err) {
         console.error('[graph-view] mermaid render failed:', err);
         container.innerHTML = `<div style="color:#f88; padding:2rem;">Failed to render graph.<br><small>${escapeHtml(err.message || String(err))}</small></div>`;
