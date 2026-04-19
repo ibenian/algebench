@@ -613,12 +613,41 @@ function setupZoomControls() {
     applyZoom();
 }
 
+/**
+ * Watch the graph viewport + its two floating control clusters and toggle
+ * ``gv-controls-stacked`` on the viewport whenever the left/right groups
+ * would collide at the current width. Only ``top`` changes between the
+ * two modes, so horizontal bounds stay valid either way and we can just
+ * compare ``left.right`` against ``right.left`` directly.
+ */
+function setupControlsOverflowWatcher() {
+    const viewport = document.getElementById('graph-viewport');
+    const left = document.getElementById('graph-controls-left');
+    const right = document.getElementById('graph-controls-right');
+    if (!viewport || !left || !right) return;
+    const GAP = 12;
+    const update = () => {
+        const l = left.getBoundingClientRect();
+        const r = right.getBoundingClientRect();
+        if (!l.width || !r.width) return;  // hidden / not laid out yet
+        const overlap = (l.right + GAP) > r.left;
+        viewport.classList.toggle('gv-controls-stacked', overlap);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(viewport);
+    ro.observe(left);
+    ro.observe(right);
+    window.addEventListener('resize', update);
+}
+
 function init() {
     if (_initDone) return;
     _initDone = true;
     setupDockTabs();
     setupGraphControls();
     setupZoomControls();
+    setupControlsOverflowWatcher();
     window.addEventListener('algebench:stepchange', onStepChange);
     window.addEventListener('algebench:proofload', onProofLoad);
 }

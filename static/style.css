@@ -3609,12 +3609,13 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     justify-content: center;
     overflow: auto;
     padding: 40px;
-    /* Extra head-room above the card so the two rows of floating controls
-       (left: Style + Labels, right: Zoom + Direction) sit cleanly above it
-       without overlapping each other or the diagram. */
-    padding-top: 76px;
     z-index: 10090;
 }
+/* When the left + right control clusters would overlap at narrow widths,
+   the JS overflow-watcher toggles ``.gv-controls-stacked`` on the viewport.
+   In that mode the right cluster drops to its own row and we add extra
+   head-room above the card so neither row covers the diagram. */
+#graph-viewport.gv-controls-stacked { padding-top: 76px; }
 #graph-viewport.hidden {
     display: none;
 }
@@ -3662,12 +3663,14 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     display: none;
 }
 
-/* Floating graph controls (style top-left, direction top-right). The right
-   cluster sits on its own row so the two groups can't collide at narrow
-   viewport widths — the card/SVG below has its ``top: 40px`` padding so
-   neither row overlaps the diagram. */
+/* Floating graph controls — left (Style + Labels) and right (Zoom +
+   Direction) sit on the same row at the top. A ResizeObserver in
+   ``graph-view.js`` flips ``.gv-controls-stacked`` on the viewport when
+   the two clusters would collide; in that mode the right cluster drops
+   to its own row below the left one. */
 .graph-controls {
     position: absolute;
+    top: 4px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -3677,8 +3680,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     border-radius: 0;
     z-index: 2;
 }
-#graph-controls-left  { top: 4px;  left: 8px; }
-#graph-controls-right { top: 40px; right: 8px; }
+#graph-controls-left  { left: 8px; }
+#graph-controls-right { right: 8px; }
+#graph-viewport.gv-controls-stacked #graph-controls-right { top: 40px; }
 .graph-ctrl-label {
     color: rgba(188, 198, 232, 0.78);
     font-size: 0.75rem;
