@@ -86,7 +86,10 @@ jobs:
           icon() {
             local exit_code="$1" output="$2"
             if [ "$exit_code" != "0" ]; then echo "❌"; return; fi
-            if echo "$output" | grep -qiE '(warning|⚠️|auto-fixable)'; then echo "⚠️"; return; fi
+            # Only flag ⚠️ when there's an actual non-zero count or explicit
+            # warning marker — a literal "0 auto-fixable" shouldn't trigger it.
+            if echo "$output" | grep -qiE '(^|[^0-9])([1-9][0-9]*)\s+auto-fixable'; then echo "⚠️"; return; fi
+            if echo "$output" | grep -qiE '(warning|⚠️)'; then echo "⚠️"; return; fi
             echo "✅"
           }
           SCHEMA_ICON=$(icon "$SCHEMA_EXIT" "$SCHEMA_OUT")
