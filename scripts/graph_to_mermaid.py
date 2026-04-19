@@ -146,7 +146,7 @@ def list_styles(styles_dir: Path | None = None) -> list[str]:
 # Label formatting
 # ---------------------------------------------------------------------------
 
-SHOW_FIELDS = {"emoji", "unit", "role", "quantity", "dimension", "label"}
+SHOW_FIELDS = {"emoji", "unit", "role", "quantity", "dimension", "label", "description"}
 
 
 def _format_label(
@@ -196,6 +196,13 @@ def _format_label(
             parts.append(emoji)
         parts.append(display_name)
         annotations: list[str] = []
+        # Prefer a richer `description` when both description and label are
+        # requested — they serve the same purpose ("what is this symbol?")
+        # and duplicating them makes node tails noisy.
+        if "description" in show and node.get("description"):
+            annotations.append(node["description"])
+        elif "label" in show and node.get("label") and node["label"] != sym:
+            annotations.append(node["label"])
         if "unit" in show and node.get("unit"):
             annotations.append(node["unit"])
         if "role" in show and node.get("role"):
@@ -204,8 +211,6 @@ def _format_label(
             annotations.append(node["quantity"])
         if "dimension" in show and node.get("dimension"):
             annotations.append(node["dimension"])
-        if "label" in show and node.get("label") and node["label"] != sym:
-            annotations.append(node["label"])
         if annotations:
             parts.append(f"({', '.join(annotations)})")
         return " ".join(parts)

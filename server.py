@@ -939,6 +939,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         graph: dict = {}
         style: str = "default"
         direction: str | None = None
+        # Optional list of fields to display on node labels.
+        # Valid values: "emoji", "label", "unit", "role", "quantity", "dimension".
+        # Example: ["emoji","label"] -> "🏹 F (force)"
+        show: list[str] | None = None
 
     def _classify_style_theme(style: dict) -> str:
         """Infer 'dark' or 'light' backdrop preference from a style's fills.
@@ -968,7 +972,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             if req.direction:
                 style = dict(style)
                 style["direction"] = req.direction
-            mermaid_src = g2m.semantic_graph_to_mermaid(req.graph or {}, style=style)
+            show_set = set(req.show) if req.show else None
+            mermaid_src = g2m.semantic_graph_to_mermaid(
+                req.graph or {}, style=style, show=show_set,
+            )
             theme = _classify_style_theme(style)
             return JSONResponse({"mermaid": mermaid_src, "style": req.style,
                                  "direction": style.get("direction"),

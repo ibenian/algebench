@@ -23,7 +23,21 @@ let _currentGraphPanel = null;
 let _currentSemanticKey = null;
 let _initDone = false;
 let _currentStyle = 'linalg-dark';
-let _currentDirection = 'LR';
+// Mermaid direction tokens are relative to edge flow. Our semantic graphs
+// point from variables → operators → root equation, so picking 'RL' puts
+// the equation on the LEFT and variables on the RIGHT — which matches the
+// user-facing "Left-Right" label (root first, dive into variables).
+let _currentDirection = 'RL';
+// Label detail presets — map UI dropdown values to `show` field sets
+// passed to scripts/graph_to_mermaid.py via /api/graph/mermaid.
+const LABEL_PRESETS = {
+    minimal:     null,                                                   // emoji + symbol (legacy emoji mode)
+    // + human description. `description` (context-rich) takes priority over `label`
+    // (short name) when both are on the node — see graph_to_mermaid._format_label.
+    description: ['emoji', 'description', 'label'],
+    full:        ['emoji', 'description', 'label', 'unit', 'role', 'quantity', 'dimension'],
+};
+let _currentLabels = 'description';
 let _activeMermaidTheme = null;
 let _zoom = 0.7; // default 70%
 const ZOOM_MIN = 0.25;
@@ -65,17 +79,11 @@ function ensureMermaid(theme = 'dark') {
     return true;
 }
 
-function applyDirectionToCode(code, dir) {
-    if (!code) return code;
-    return code.replace(/^(\s*(?:flowchart|graph)\s+)(TB|TD|LR|RL|BT)\b/mi,
-        (_, head) => head + dir);
-}
-
-async function fetchMermaidFromGraph(graph, style, direction) {
+async function fetchMermaidFromGraph(graph, style, direction, show) {
     const res = await fetch('/api/graph/mermaid', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ graph, style, direction }),
+        body: JSON.stringify({ graph, style, direction, show }),
     });
     if (!res.ok) throw new Error(`mermaid render failed: HTTP ${res.status}`);
     const data = await res.json();
@@ -204,7 +212,7 @@ function rebuildProofTree() {
             stepsEl.className = 'gp-tree-steps';
             (proof.steps || []).forEach((step, sIdx) => {
                 const hasGraph = !!(step && step.semanticGraph &&
-                    (step.semanticGraph.mermaid || step.semanticGraph.graph));
+                    step.semanticGraph.graph);
                 const stepEl = document.createElement('div');
                 stepEl.className = 'gp-tree-step' + (hasGraph ? '' : ' no-graph');
                 stepEl.dataset.sceneIdx = entry.sceneIndex != null ? entry.sceneIndex : '';
@@ -329,24 +337,22 @@ async function renderCurrentStepGraph(force = false) {
     if (!step || !step.semanticGraph) return; // leave intact per spec
     const sg = step.semanticGraph;
     const graph = sg.graph;
+    if (!graph) return; // nothing to render
 
-    const key = stableStepKey(step) + '|' + _currentStyle + '|' + _currentDirection;
+    const key = stableStepKey(step) + '|' + _currentStyle + '|' +
+                _currentDirection + '|' + _currentLabels;
     if (key === _currentSemanticKey && !force) return;
 
-    // Prefer live regeneration from graph JSON so style/direction apply.
-    // Fall back to pre-rendered mermaid (with just direction override) if no graph.
+    // Live regeneration from graph JSON so style/direction/labels apply.
     let mermaidCode;
     let theme = 'dark';
     try {
-        if (graph) {
-            const res = await fetchMermaidFromGraph(graph, _currentStyle, _currentDirection);
-            mermaidCode = res.mermaid;
-            theme = res.theme;
-        } else if (sg.mermaid) {
-            mermaidCode = applyDirectionToCode(sg.mermaid, _currentDirection);
-        } else {
-            return;
-        }
+        const showFields = LABEL_PRESETS[_currentLabels] || null;
+        const res = await fetchMermaidFromGraph(
+            graph, _currentStyle, _currentDirection, showFields,
+        );
+        mermaidCode = res.mermaid;
+        theme = res.theme;
     } catch (err) {
         console.error('[graph-view] failed to build mermaid source:', err);
         container.innerHTML = `<div style="color:#f88; padding:2rem;">Failed to build graph source.<br><small>${escapeHtml(err.message || String(err))}</small></div>`;
@@ -491,6 +497,15 @@ async function setupGraphControls() {
         dirSel.value = _currentDirection;
         dirSel.addEventListener('change', () => {
             _currentDirection = dirSel.value || 'LR';
+            renderCurrentStepGraph(true);
+        });
+    }
+    const labelsSel = document.getElementById('graph-labels-select');
+    if (labelsSel) {
+        labelsSel.value = _currentLabels;
+        labelsSel.addEventListener('change', () => {
+            _currentLabels = labelsSel.value in LABEL_PRESETS
+                ? labelsSel.value : 'description';
             renderCurrentStepGraph(true);
         });
     }

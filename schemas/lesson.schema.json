@@ -1230,17 +1230,14 @@
         },
         "semanticGraph": {
           "type": "object",
-          "description": "Optional pre-generated semantic graph for this step. Rendered in the 'Graph' dock view as an interactive Mermaid diagram. Produced by scripts/latex_to_graph.py + scripts/graph_to_mermaid.py.",
+          "description": "Optional semantic graph for this step. The Math dock view regenerates the Mermaid diagram at render time from this graph JSON (so style, direction, and label detail can be switched live).",
           "properties": {
-            "mermaid": {
-              "type": "string",
-              "description": "Mermaid flowchart source rendered in the graph viewport. Typically emitted by scripts/graph_to_mermaid.py."
-            },
             "graph": {
               "type": "object",
-              "description": "Semantic graph JSON (nodes + edges) used by the interactive info panel and node highlighting. See schemas/semantic-graph.schema.json."
+              "description": "Semantic graph JSON (nodes + edges) used by the Mermaid renderer and the interactive info panel. See schemas/semantic-graph.schema.json. Produced by scripts/latex_to_graph.py."
             }
           },
+          "required": ["graph"],
           "additionalProperties": false
         }
       },

@@ -60,7 +60,6 @@
             "justification": "Illustrative equation: Newton's Second Law.",
             "sceneStep": 0,
             "semanticGraph": {
-              "mermaid": "flowchart LR\n  classDef scalar fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef vector fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef constant fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef number fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef operator fill:#e3f2fd,stroke:#42a5f5,color:#1565c0,font-size:15px\n  classDef function fill:#e3f2fd,stroke:#42a5f5,color:#1565c0,font-size:15px\n  classDef relation fill:#fff8e1,stroke:#ffa726,color:#e65100,font-size:15px\n  classDef result fill:#fff8e1,stroke:#ffa726,color:#e65100,font-size:15px\n  __equals_1((\"$$=$$\")):::operator\n  F[\"\ud83c\udff9 F\"]:::vector\n  __multiply_2((\"$$\\times$$\")):::operator\n  m[\"\u2696\ufe0f m\"]:::scalar\n  a[\"\ud83e\udded a\"]:::vector\n  F --> __equals_1\n  m --> __multiply_2\n  a --> __multiply_2\n  __multiply_2 --> __equals_1\n  linkStyle default stroke:#777,stroke-width:2px\n",
               "graph": {
                 "nodes": [
                   {
@@ -72,6 +71,7 @@
                   {
                     "id": "F",
                     "label": "force",
+                    "description": "Net force applied to the object",
                     "emoji": "\ud83c\udff9",
                     "type": "vector",
                     "latex": "F",
@@ -90,6 +90,7 @@
                   {
                     "id": "m",
                     "label": "mass",
+                    "description": "Inertial mass of the object",
                     "emoji": "\u2696\ufe0f",
                     "type": "scalar",
                     "latex": "m",
@@ -102,6 +103,7 @@
                   {
                     "id": "a",
                     "label": "acceleration",
+                    "description": "Rate of change of velocity",
                     "emoji": "\ud83e\udded",
                     "type": "vector",
                     "latex": "a",
@@ -144,7 +146,6 @@
             "justification": "Illustrative equation: Mass-energy equivalence.",
             "sceneStep": 1,
             "semanticGraph": {
-              "mermaid": "flowchart LR\n  classDef scalar fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef vector fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef constant fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef number fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef operator fill:#e3f2fd,stroke:#42a5f5,color:#1565c0,font-size:15px\n  classDef function fill:#e3f2fd,stroke:#42a5f5,color:#1565c0,font-size:15px\n  classDef relation fill:#fff8e1,stroke:#ffa726,color:#e65100,font-size:15px\n  classDef result fill:#fff8e1,stroke:#ffa726,color:#e65100,font-size:15px\n  __equals_1((\"$$=$$\")):::operator\n  E[\"\u26a1 E\"]:::scalar\n  __multiply_2((\"$$\\times$$\")):::operator\n  m[\"\u2696\ufe0f m\"]:::scalar\n  __power_3((\"$${(\\cdot)}^{2}$$\")):::operator\n  c[\"\ud83d\udca1 c\"]:::scalar\n  E --> __equals_1\n  m --> __multiply_2\n  c --> __power_3\n  __power_3 --> __multiply_2\n  __multiply_2 --> __equals_1\n  linkStyle default stroke:#777,stroke-width:2px\n",
               "graph": {
                 "nodes": [
                   {
@@ -156,6 +157,7 @@
                   {
                     "id": "E",
                     "label": "energy",
+                    "description": "Rest energy of the object",
                     "emoji": "\u26a1",
                     "type": "scalar",
                     "latex": "E",
@@ -174,6 +176,7 @@
                   {
                     "id": "m",
                     "label": "mass",
+                    "description": "Rest mass",
                     "emoji": "\u2696\ufe0f",
                     "type": "scalar",
                     "latex": "m",
@@ -193,6 +196,7 @@
                   {
                     "id": "c",
                     "label": "speed of light",
+                    "description": "Speed of light in vacuum",
                     "emoji": "\ud83d\udca1",
                     "type": "scalar",
                     "latex": "c",
@@ -240,7 +244,6 @@
             "justification": "Illustrative equation: Uniform acceleration.",
             "sceneStep": 2,
             "semanticGraph": {
-              "mermaid": "flowchart LR\n  classDef scalar fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef vector fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef constant fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef number fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef operator fill:#e3f2fd,stroke:#42a5f5,color:#1565c0,font-size:15px\n  classDef function fill:#e3f2fd,stroke:#42a5f5,color:#1565c0,font-size:15px\n  classDef relation fill:#fff8e1,stroke:#ffa726,color:#e65100,font-size:15px\n  classDef result fill:#fff8e1,stroke:#ffa726,color:#e65100,font-size:15px\n  __equals_1((\"$$=$$\")):::operator\n  v[\"\ud83d\udca8 v\"]:::vector\n  __add_2((\"$$+$$\")):::operator\n  v__0_[\"\ud83d\udd23 v_{0}\"]:::scalar\n  __multiply_3((\"$$\\times$$\")):::operator\n  a[\"\ud83e\udded a\"]:::vector\n  t[\"\u23f1\ufe0f t\"]:::scalar\n  v --> __equals_1\n  v__0_ --> __add_2\n  a --> __multiply_3\n  t --> __multiply_3\n  __multiply_3 --> __add_2\n  __add_2 --> __equals_1\n  linkStyle default stroke:#777,stroke-width:2px\n",
               "graph": {
                 "nodes": [
                   {
@@ -252,6 +255,7 @@
                   {
                     "id": "v",
                     "label": "velocity",
+                    "description": "Final velocity at time t",
                     "emoji": "\ud83d\udca8",
                     "type": "vector",
                     "latex": "v",
@@ -270,6 +274,7 @@
                   {
                     "id": "v_{0}",
                     "label": "v_{0}",
+                    "description": "Initial velocity at t = 0",
                     "emoji": "\ud83d\udd23",
                     "type": "scalar",
                     "latex": "v_{0}",
@@ -284,6 +289,7 @@
                   {
                     "id": "a",
                     "label": "acceleration",
+                    "description": "Constant acceleration",
                     "emoji": "\ud83e\udded",
                     "type": "vector",
                     "latex": "a",
@@ -296,6 +302,7 @@
                   {
                     "id": "t",
                     "label": "time",
+                    "description": "Elapsed time since t = 0",
                     "emoji": "\u23f1\ufe0f",
                     "type": "scalar",
                     "latex": "t",
