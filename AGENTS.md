@@ -39,9 +39,23 @@ The server runs at `http://localhost:8785`.
 ./run.sh scripts/latex_to_graph.py "F = m \cdot a" | ./run.sh scripts/graph_to_mermaid.py --wrap -  # full pipeline
 ./run.sh scripts/render_math.py "y = x^2 - 2x + 1"                    # render LaTeX → HTML in browser
 ./run.sh scripts/render_math.py "E = mc^2" --mermaid                   # LaTeX + Mermaid diagram
-./run.sh scripts/render_math.py "F = m \cdot a" --mermaid --graph-theme power-flow-light  # with named theme
+./run.sh scripts/render_math.py "F = m \cdot a" --mermaid --theme power-flow-light  # with named theme
 ./run.sh scripts/render_math.py "E = mc^2" --mermaid --no-latex        # Mermaid only
 ```
+
+### Running Tests
+
+**Always use `./run.sh -m pytest` to run tests** — never invoke `pytest` or `python -m pytest` directly (the tests import `scripts.*` modules through the venv and fail outside it).
+
+```bash
+./run.sh -m pytest tests/                      # run the full suite
+./run.sh -m pytest tests/test_render_math.py   # one file
+./run.sh -m pytest tests/ -k 'mermaid'         # filter by name
+./run.sh -m pytest tests/ -v                   # verbose
+./run.sh -m pytest tests/ --tb=short           # shorter tracebacks
+```
+
+Run the full suite before committing any change that touches `scripts/`, `server.py`, or theme JSON.
 
 ### Browser Testing
 

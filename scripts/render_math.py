@@ -9,7 +9,7 @@ Usage:
     ./run.sh scripts/render_math.py "F = m \\cdot a" --mermaid
 
     # Mermaid with a specific theme and label mode
-    ./run.sh scripts/render_math.py "E = mc^2" --mermaid --graph-theme role-colored-light --label-mode latex
+    ./run.sh scripts/render_math.py "E = mc^2" --mermaid --theme role-colored-light --label-mode latex
 
     # Mermaid only (no LaTeX block)
     ./run.sh scripts/render_math.py "E = mc^2" --mermaid --no-latex
@@ -419,7 +419,7 @@ def main() -> None:
         help="Omit the LaTeX rendering (use with --mermaid)",
     )
     parser.add_argument(
-        "--graph-theme", "-t", default="default-light",
+        "--theme", "-t", dest="graph_theme", default="default-light",
         help="Semantic-graph theme name (default: 'default-light')",
     )
     parser.add_argument(
