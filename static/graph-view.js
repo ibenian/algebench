@@ -594,6 +594,22 @@ function onProofLoad() {
 // don't substitute in a full-color emoji for the sun.
 const MODE_ICON = { dark: '\u263E\uFE0E', light: '\u2600\uFE0E' };
 
+// Try to find the ``targetMode`` counterpart of a theme by suffix-swap.
+// E.g. ``power-direction-light`` ↔ ``power-direction-dark``. Returns null
+// when the stem has no alternative in the target mode (e.g. ``linalg-dark``
+// has no ``linalg-light``), so the caller can fall back to its default
+// picking strategy.
+function counterpartTheme(name, targetMode) {
+    const otherMode = targetMode === 'dark' ? 'light' : 'dark';
+    const suffix = `-${otherMode}`;
+    if (!name.endsWith(suffix)) return null;
+    const stem = name.slice(0, -suffix.length);
+    const candidate = `${stem}-${targetMode}`;
+    return _allThemes.some(t => t.name === candidate && t.mode === targetMode)
+        ? candidate
+        : null;
+}
+
 // Re-fill the theme dropdown with only themes matching `_currentMode`.
 // If the active theme doesn't fit the new mode, fall back to the first
 // available theme in that mode (or the first theme overall as last resort).
@@ -667,6 +683,11 @@ async function setupGraphControls() {
             _currentMode = _currentMode === 'dark' ? 'light' : 'dark';
             _lsSet(LS_KEYS.mode, _currentMode);
             refreshModeToggle();
+            // Prefer the stem-matching counterpart of the active theme when
+            // one exists (e.g. power-direction-light → power-direction-dark),
+            // otherwise leave it to refreshThemeDropdown's fallback.
+            const twin = counterpartTheme(_currentTheme, _currentMode);
+            if (twin) _currentTheme = twin;
             refreshThemeDropdown();
             _lsSet(LS_KEYS.theme, _currentTheme);
             renderCurrentStepGraph(true);
