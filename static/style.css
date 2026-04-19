@@ -3731,6 +3731,17 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 .graph-ctrl-btn:hover { border-color: rgba(140, 160, 220, 0.85); }
 .graph-ctrl-btn:active { transform: translateY(1px); }
 
+/* The mode toggle swaps between ☾ and ☀ glyphs which have different
+   intrinsic widths. Pin the button so the whole control row doesn't
+   shift every time the user flips modes. */
+#graph-mode-toggle {
+    width: 32px;
+    min-width: 32px;
+    padding-left: 0;
+    padding-right: 0;
+    text-align: center;
+}
+
 /* Light-paper backdrop for styles that assume a light background.
    Override the viewport's dark gradient too, otherwise the dark backdrop
    shows through the viewport's 40px padding around the mermaid container. */
