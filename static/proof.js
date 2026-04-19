@@ -341,6 +341,18 @@ export function navigateProof(index) {
         activateHighlights(state._proofPreRendered[index], steps[index]);
     }
 
+    // Notify subscribers (e.g. semantic graph view) about the step change.
+    try {
+        window.dispatchEvent(new CustomEvent('algebench:stepchange', {
+            detail: {
+                proof,
+                proofActiveIndex: state.proofActiveIndex,
+                stepIndex: index,
+                sceneIndex: state.currentSceneIndex,
+            },
+        }));
+    } catch (_) { /* ignore event errors */ }
+
     // Bidirectional sync: proof → scene
     if (state.proofSyncEnabled && !state._proofSyncInProgress) {
         // At goal (index -1), use proof-level sceneStep; otherwise use step-level
@@ -742,6 +754,17 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
     if (hasVisible && savedExpanded === 'true' && !state.proofExpanded) {
         _toggleProofPanel(true);
     }
+
+    // Notify subscribers (semantic graph view) that the proof tree changed.
+    try {
+        window.dispatchEvent(new CustomEvent('algebench:proofload', {
+            detail: {
+                sceneIndex,
+                stepIndex,
+                proofCount: allProofs.length,
+            },
+        }));
+    } catch (_) { /* ignore */ }
 }
 
 /** Build the "In Context" tab DOM once with all proofs. Visibility is toggled by _updateContextVisibility. */

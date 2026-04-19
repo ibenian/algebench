@@ -911,8 +911,27 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     _TOP_LEVEL_MODULES = {
         'state', 'expr', 'trust', 'coords', 'labels', 'follow-cam', 'camera',
         'sliders', 'overlay', 'context-browser', 'scene-loader', 'ui',
-        'json-browser', 'main', 'proof',
+        'json-browser', 'main', 'proof', 'graph-view',
     }
+
+    @fastapp.get("/graph-panel/{filename:path}")
+    async def get_graph_panel_file(filename: str):
+        """Serve files from static/graph-panel/ subdirectory."""
+        safe = filename.replace('..', '').lstrip('/')
+        path = static_dir / "graph-panel" / safe
+        if not path.is_file():
+            return Response(status_code=404)
+        suffix = path.suffix
+        if suffix == '.js':
+            media_type = "application/javascript"
+        elif suffix == '.css':
+            media_type = "text/css"
+        else:
+            media_type = "application/octet-stream"
+        with open(path, 'rb') as f:
+            content = f.read()
+        return Response(content=content, media_type=media_type,
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
     @fastapp.get("/{name}.js")
     async def get_module_js(name: str):

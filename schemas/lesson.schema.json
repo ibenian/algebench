@@ -1227,6 +1227,21 @@
             { "type": "string" }
           ],
           "description": "Scene step to sync to when this proof step is active. Integer for step index in current scene, or 'sceneIdx:stepIdx' for cross-scene."
+        },
+        "semanticGraph": {
+          "type": "object",
+          "description": "Optional pre-generated semantic graph for this step. Rendered in the 'Graph' dock view as an interactive Mermaid diagram. Produced by scripts/latex_to_graph.py + scripts/graph_to_mermaid.py.",
+          "properties": {
+            "mermaid": {
+              "type": "string",
+              "description": "Mermaid flowchart source rendered in the graph viewport. Typically emitted by scripts/graph_to_mermaid.py."
+            },
+            "graph": {
+              "type": "object",
+              "description": "Semantic graph JSON (nodes + edges) used by the interactive info panel and node highlighting. See schemas/semantic-graph.schema.json."
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

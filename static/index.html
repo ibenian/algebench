@@ -14,7 +14,9 @@
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mathjs@13.0.0/lib/browser/math.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
 <link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/graph-panel/graph-panel.css">
 </head>
 <body>
 <div id="app">
@@ -49,14 +51,28 @@
         <div id="scene-dock">
             <div id="scene-dock-toggle" title="Scene tree (T)">&#9776;</div>
             <div id="scene-dock-panel">
-                <div id="scene-dock-header">
-                    <div id="scene-dock-title">Scenes</div>
+                <div id="dock-tabs">
+                    <button class="dock-tab active" data-dock-tab="scenes" title="Scene tree">Scenes</button>
+                    <button class="dock-tab" data-dock-tab="graph" title="Semantic math graph">Math</button>
                 </div>
-                <div id="scene-tree"></div>
+                <div id="dock-tab-scenes" class="dock-tab-content active">
+                    <div id="scene-dock-header">
+                        <div id="scene-dock-title">Scenes</div>
+                    </div>
+                    <div id="scene-tree"></div>
+                </div>
+                <div id="dock-tab-graph" class="dock-tab-content">
+                    <div id="graph-proof-tree"></div>
+                    <div id="graph-info-panel-host"></div>
+                </div>
             </div>
         </div>
         <div id="viewport">
             <div id="mathbox-container"></div>
+            <div id="graph-viewport" class="hidden">
+                <div id="graph-mermaid-container"></div>
+                <div id="graph-empty-state">Select a proof step with a semantic graph to view it here.</div>
+            </div>
             <div id="camera-buttons"></div>
             <div id="viewport-top-left">
                 <div id="settings-toggle" title="Display settings">&#9881;</div>
@@ -257,6 +273,7 @@
 <input type="file" id="file-input" accept=".json">
 <script>const DEBUG_MODE = __DEBUG_MODE__;</script>
 <script type="module" src="/main.js"></script>
+<script type="module" src="/graph-view.js"></script>
 <script src="/gemini-live-tools/js/voice-character-selector.js"></script>
 <script src="/gemini-live-tools/js/tts-audio-player.js"></script>
 <script src="/chat.js"></script>

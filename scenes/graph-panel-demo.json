@@ -1,0 +1,345 @@
+{
+  "title": "Semantic Graph Demo",
+  "scenes": [
+    {
+      "title": "Semantic Graph Demo",
+      "description": "Demonstrates the semantic graph dock view.",
+      "markdown": "## Semantic Graph Demo\n\nSwitch to the **Graph** tab in the left dock to view interactive Mermaid diagrams for each proof step.",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ]
+      ],
+      "camera": {
+        "position": [
+          6,
+          4,
+          6
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "elements": [],
+      "steps": [
+        {
+          "title": "Newton's Second Law",
+          "description": "$F = m \\cdot a$"
+        },
+        {
+          "title": "Mass-energy equivalence",
+          "description": "$E = m c^2$"
+        },
+        {
+          "title": "Uniform acceleration",
+          "description": "$v = v_0 + a t$"
+        }
+      ],
+      "proof": {
+        "id": "classical-mechanics-demo",
+        "title": "Classical Mechanics Equations",
+        "technique": "derivation",
+        "goal": "Inspect semantic graphs for canonical physics equations",
+        "steps": [
+          {
+            "id": "proof-step-0",
+            "type": "given",
+            "label": "Newton's Second Law",
+            "math": "F = m \\cdot a",
+            "justification": "Illustrative equation: Newton's Second Law.",
+            "sceneStep": 0,
+            "semanticGraph": {
+              "mermaid": "flowchart LR\n  classDef scalar fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef vector fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef constant fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef number fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef operator fill:#e3f2fd,stroke:#42a5f5,color:#1565c0,font-size:15px\n  classDef function fill:#e3f2fd,stroke:#42a5f5,color:#1565c0,font-size:15px\n  classDef relation fill:#fff8e1,stroke:#ffa726,color:#e65100,font-size:15px\n  classDef result fill:#fff8e1,stroke:#ffa726,color:#e65100,font-size:15px\n  __equals_1((\"$$=$$\")):::operator\n  F[\"\ud83c\udff9 F\"]:::vector\n  __multiply_2((\"$$\\times$$\")):::operator\n  m[\"\u2696\ufe0f m\"]:::scalar\n  a[\"\ud83e\udded a\"]:::vector\n  F --> __equals_1\n  m --> __multiply_2\n  a --> __multiply_2\n  __multiply_2 --> __equals_1\n  linkStyle default stroke:#777,stroke-width:2px\n",
+              "graph": {
+                "nodes": [
+                  {
+                    "id": "__equals_1",
+                    "type": "operator",
+                    "op": "equals",
+                    "subexpr": "F = m \\cdot a"
+                  },
+                  {
+                    "id": "F",
+                    "label": "force",
+                    "emoji": "\ud83c\udff9",
+                    "type": "vector",
+                    "latex": "F",
+                    "quantity": "force",
+                    "dimension": "M\u00b7L\u00b7T\u207b\u00b2",
+                    "unit": "N",
+                    "role": "dependent",
+                    "subexpr": "F"
+                  },
+                  {
+                    "id": "__multiply_2",
+                    "type": "operator",
+                    "op": "multiply",
+                    "subexpr": "m a"
+                  },
+                  {
+                    "id": "m",
+                    "label": "mass",
+                    "emoji": "\u2696\ufe0f",
+                    "type": "scalar",
+                    "latex": "m",
+                    "quantity": "mass",
+                    "dimension": "M",
+                    "unit": "kg",
+                    "role": "parameter",
+                    "subexpr": "m"
+                  },
+                  {
+                    "id": "a",
+                    "label": "acceleration",
+                    "emoji": "\ud83e\udded",
+                    "type": "vector",
+                    "latex": "a",
+                    "quantity": "acceleration",
+                    "dimension": "L\u00b7T\u207b\u00b2",
+                    "unit": "m/s\u00b2",
+                    "role": "dependent",
+                    "subexpr": "a"
+                  }
+                ],
+                "edges": [
+                  {
+                    "from": "F",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "m",
+                    "to": "__multiply_2"
+                  },
+                  {
+                    "from": "a",
+                    "to": "__multiply_2"
+                  },
+                  {
+                    "from": "__multiply_2",
+                    "to": "__equals_1"
+                  }
+                ],
+                "classification": {
+                  "kind": "algebraic"
+                }
+              }
+            }
+          },
+          {
+            "id": "proof-step-1",
+            "type": "step",
+            "label": "Mass-energy equivalence",
+            "math": "E = m c^2",
+            "justification": "Illustrative equation: Mass-energy equivalence.",
+            "sceneStep": 1,
+            "semanticGraph": {
+              "mermaid": "flowchart LR\n  classDef scalar fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef vector fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef constant fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef number fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef operator fill:#e3f2fd,stroke:#42a5f5,color:#1565c0,font-size:15px\n  classDef function fill:#e3f2fd,stroke:#42a5f5,color:#1565c0,font-size:15px\n  classDef relation fill:#fff8e1,stroke:#ffa726,color:#e65100,font-size:15px\n  classDef result fill:#fff8e1,stroke:#ffa726,color:#e65100,font-size:15px\n  __equals_1((\"$$=$$\")):::operator\n  E[\"\u26a1 E\"]:::scalar\n  __multiply_2((\"$$\\times$$\")):::operator\n  m[\"\u2696\ufe0f m\"]:::scalar\n  __power_3((\"$${(\\cdot)}^{2}$$\")):::operator\n  c[\"\ud83d\udca1 c\"]:::scalar\n  E --> __equals_1\n  m --> __multiply_2\n  c --> __power_3\n  __power_3 --> __multiply_2\n  __multiply_2 --> __equals_1\n  linkStyle default stroke:#777,stroke-width:2px\n",
+              "graph": {
+                "nodes": [
+                  {
+                    "id": "__equals_1",
+                    "type": "operator",
+                    "op": "equals",
+                    "subexpr": "E = m c^2"
+                  },
+                  {
+                    "id": "E",
+                    "label": "energy",
+                    "emoji": "\u26a1",
+                    "type": "scalar",
+                    "latex": "E",
+                    "quantity": "energy",
+                    "dimension": "M\u00b7L\u00b2\u00b7T\u207b\u00b2",
+                    "unit": "J",
+                    "role": "state_variable",
+                    "subexpr": "E"
+                  },
+                  {
+                    "id": "__multiply_2",
+                    "type": "operator",
+                    "op": "multiply",
+                    "subexpr": "m c^{2}"
+                  },
+                  {
+                    "id": "m",
+                    "label": "mass",
+                    "emoji": "\u2696\ufe0f",
+                    "type": "scalar",
+                    "latex": "m",
+                    "quantity": "mass",
+                    "dimension": "M",
+                    "unit": "kg",
+                    "role": "parameter",
+                    "subexpr": "m"
+                  },
+                  {
+                    "id": "__power_3",
+                    "type": "operator",
+                    "op": "power",
+                    "exponent": "2",
+                    "subexpr": "c^{2}"
+                  },
+                  {
+                    "id": "c",
+                    "label": "speed of light",
+                    "emoji": "\ud83d\udca1",
+                    "type": "scalar",
+                    "latex": "c",
+                    "quantity": "velocity",
+                    "dimension": "L\u00b7T\u207b\u00b9",
+                    "unit": "m/s",
+                    "value": 299792458,
+                    "role": "constant",
+                    "subexpr": "c"
+                  }
+                ],
+                "edges": [
+                  {
+                    "from": "E",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "m",
+                    "to": "__multiply_2"
+                  },
+                  {
+                    "from": "c",
+                    "to": "__power_3"
+                  },
+                  {
+                    "from": "__power_3",
+                    "to": "__multiply_2"
+                  },
+                  {
+                    "from": "__multiply_2",
+                    "to": "__equals_1"
+                  }
+                ],
+                "classification": {
+                  "kind": "algebraic"
+                }
+              }
+            }
+          },
+          {
+            "id": "proof-step-2",
+            "type": "step",
+            "label": "Uniform acceleration",
+            "math": "v = v_0 + a t",
+            "justification": "Illustrative equation: Uniform acceleration.",
+            "sceneStep": 2,
+            "semanticGraph": {
+              "mermaid": "flowchart LR\n  classDef scalar fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef vector fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef constant fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef number fill:#e8f5e9,stroke:#66bb6a,color:#2e7d32,font-size:15px\n  classDef operator fill:#e3f2fd,stroke:#42a5f5,color:#1565c0,font-size:15px\n  classDef function fill:#e3f2fd,stroke:#42a5f5,color:#1565c0,font-size:15px\n  classDef relation fill:#fff8e1,stroke:#ffa726,color:#e65100,font-size:15px\n  classDef result fill:#fff8e1,stroke:#ffa726,color:#e65100,font-size:15px\n  __equals_1((\"$$=$$\")):::operator\n  v[\"\ud83d\udca8 v\"]:::vector\n  __add_2((\"$$+$$\")):::operator\n  v__0_[\"\ud83d\udd23 v_{0}\"]:::scalar\n  __multiply_3((\"$$\\times$$\")):::operator\n  a[\"\ud83e\udded a\"]:::vector\n  t[\"\u23f1\ufe0f t\"]:::scalar\n  v --> __equals_1\n  v__0_ --> __add_2\n  a --> __multiply_3\n  t --> __multiply_3\n  __multiply_3 --> __add_2\n  __add_2 --> __equals_1\n  linkStyle default stroke:#777,stroke-width:2px\n",
+              "graph": {
+                "nodes": [
+                  {
+                    "id": "__equals_1",
+                    "type": "operator",
+                    "op": "equals",
+                    "subexpr": "v = v_0 + a t"
+                  },
+                  {
+                    "id": "v",
+                    "label": "velocity",
+                    "emoji": "\ud83d\udca8",
+                    "type": "vector",
+                    "latex": "v",
+                    "quantity": "velocity",
+                    "dimension": "L\u00b7T\u207b\u00b9",
+                    "unit": "m/s",
+                    "role": "state_variable",
+                    "subexpr": "v"
+                  },
+                  {
+                    "id": "__add_2",
+                    "type": "operator",
+                    "op": "add",
+                    "subexpr": "a t + v_{0}"
+                  },
+                  {
+                    "id": "v_{0}",
+                    "label": "v_{0}",
+                    "emoji": "\ud83d\udd23",
+                    "type": "scalar",
+                    "latex": "v_{0}",
+                    "subexpr": "v_{0}"
+                  },
+                  {
+                    "id": "__multiply_3",
+                    "type": "operator",
+                    "op": "multiply",
+                    "subexpr": "a t"
+                  },
+                  {
+                    "id": "a",
+                    "label": "acceleration",
+                    "emoji": "\ud83e\udded",
+                    "type": "vector",
+                    "latex": "a",
+                    "quantity": "acceleration",
+                    "dimension": "L\u00b7T\u207b\u00b2",
+                    "unit": "m/s\u00b2",
+                    "role": "dependent",
+                    "subexpr": "a"
+                  },
+                  {
+                    "id": "t",
+                    "label": "time",
+                    "emoji": "\u23f1\ufe0f",
+                    "type": "scalar",
+                    "latex": "t",
+                    "quantity": "time",
+                    "dimension": "T",
+                    "unit": "s",
+                    "role": "independent",
+                    "subexpr": "t"
+                  }
+                ],
+                "edges": [
+                  {
+                    "from": "v",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "v_{0}",
+                    "to": "__add_2"
+                  },
+                  {
+                    "from": "a",
+                    "to": "__multiply_3"
+                  },
+                  {
+                    "from": "t",
+                    "to": "__multiply_3"
+                  },
+                  {
+                    "from": "__multiply_3",
+                    "to": "__add_2"
+                  },
+                  {
+                    "from": "__add_2",
+                    "to": "__equals_1"
+                  }
+                ],
+                "classification": {
+                  "kind": "algebraic"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

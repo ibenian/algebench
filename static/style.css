@@ -3445,3 +3445,238 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 .proof-step.collapsed .proof-step-justification,
 .proof-step.collapsed .proof-step-explanation,
 .proof-step.collapsed .proof-step-tags { display: none; }
+
+/* ============================================================
+   Semantic graph dock + viewport (issue #119)
+   ============================================================ */
+
+/* Dock tab bar */
+#dock-tabs {
+    display: flex;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(112, 124, 214, 0.14);
+    background: rgba(10, 12, 28, 0.55);
+}
+.dock-tab {
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(176, 186, 229, 0.62);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.dock-tab:hover {
+    color: rgba(232, 238, 255, 0.95);
+    background: rgba(32, 38, 70, 0.45);
+}
+.dock-tab.active {
+    color: rgba(182, 196, 255, 0.98);
+    border-bottom-color: rgba(149, 164, 255, 0.65);
+    background: rgba(28, 33, 62, 0.6);
+}
+
+/* Dock tab content */
+.dock-tab-content {
+    display: none;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+}
+.dock-tab-content.active {
+    display: flex;
+}
+
+/* Graph nav pane: proof tree (top) + semantic info (bottom) */
+#dock-tab-graph {
+    overflow: hidden;
+}
+#graph-proof-tree {
+    flex: 1 1 60%;
+    overflow-y: auto;
+    padding: 10px 10px 14px;
+    border-bottom: 1px solid rgba(112, 124, 214, 0.12);
+    min-height: 120px;
+}
+#graph-info-panel-host {
+    flex: 1 1 40%;
+    overflow-y: auto;
+    padding: 10px 12px 14px;
+    min-height: 120px;
+    background: rgba(10, 12, 28, 0.35);
+}
+
+/* Proof tree entries */
+.gp-tree-scene {
+    margin-bottom: 10px;
+}
+.gp-tree-scene-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(176, 186, 229, 0.6);
+    padding: 6px 4px;
+}
+.gp-tree-proof {
+    margin-bottom: 6px;
+    border: 1px solid rgba(108, 121, 198, 0.08);
+    border-radius: 10px;
+    background: rgba(29, 33, 60, 0.45);
+    overflow: hidden;
+}
+.gp-tree-proof-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    font-size: 0.78em;
+    font-weight: 600;
+    color: rgba(208, 214, 241, 0.88);
+    cursor: pointer;
+    user-select: none;
+}
+.gp-tree-proof-header:hover {
+    background: rgba(39, 44, 78, 0.78);
+    color: #fff;
+}
+.gp-tree-proof-arrow {
+    font-size: 10px;
+    width: 12px;
+    text-align: center;
+    transition: transform 0.15s;
+    color: rgba(163, 172, 220, 0.64);
+}
+.gp-tree-proof.expanded .gp-tree-proof-arrow {
+    transform: rotate(90deg);
+}
+.gp-tree-steps {
+    display: none;
+    padding: 2px 8px 8px 20px;
+}
+.gp-tree-proof.expanded .gp-tree-steps {
+    display: block;
+}
+.gp-tree-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    margin: 2px 0;
+    border-radius: 6px;
+    font-size: 0.75em;
+    color: rgba(196, 204, 232, 0.78);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s, color 0.12s;
+}
+.gp-tree-step:hover {
+    background: rgba(39, 44, 78, 0.6);
+    color: #fff;
+}
+.gp-tree-step.active {
+    background: linear-gradient(180deg, rgba(58, 66, 120, 0.88), rgba(43, 49, 98, 0.88));
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.gp-tree-step.no-graph {
+    opacity: 0.55;
+}
+.gp-tree-step-idx {
+    font-size: 0.68em;
+    opacity: 0.5;
+    min-width: 20px;
+    text-align: right;
+}
+.gp-tree-step-has-graph {
+    font-size: 0.7em;
+    color: rgba(149, 164, 255, 0.8);
+}
+
+/* Graph viewport (Mermaid host) */
+#graph-viewport {
+    position: absolute;
+    inset: 0;
+    background-color: #080a16;
+    background-image: radial-gradient(ellipse at center, #101328 0%, #080a16 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    padding: 40px;
+    z-index: 10090;
+}
+#graph-viewport.hidden {
+    display: none;
+}
+#graph-mermaid-container {
+    max-width: 100%;
+    max-height: 100%;
+}
+#graph-mermaid-container svg {
+    max-width: 100%;
+    height: auto;
+}
+#graph-empty-state {
+    color: rgba(176, 186, 229, 0.55);
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 2rem;
+}
+#graph-mermaid-container:not(:empty) + #graph-empty-state {
+    display: none;
+}
+
+/* Semantic info panel (inline, inside dock) — override the fixed drawer */
+#graph-info-panel-host .graph-panel-info {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 4px 0;
+    background: transparent;
+    z-index: auto;
+    transition: none;
+    right: auto;
+    top: auto;
+}
+#graph-info-panel-host .graph-panel-info h3 {
+    color: rgba(176, 186, 229, 0.72);
+    margin-bottom: 0.6rem;
+    margin-top: 0.2rem;
+    font-weight: 700;
+}
+#graph-info-panel-host .graph-panel-info .gp-symbol {
+    color: rgba(232, 238, 255, 0.95);
+    font-size: 1.4rem;
+    padding: 0.6rem 0;
+}
+#graph-info-panel-host .graph-panel-info .gp-field {
+    color: rgba(208, 214, 241, 0.9);
+}
+#graph-info-panel-host .graph-panel-info .gp-key {
+    color: rgba(163, 172, 220, 0.6);
+}
+#graph-info-panel-host .graph-panel-info .gp-close {
+    color: rgba(176, 186, 229, 0.7);
+}
+#graph-info-panel-host .graph-panel-info.open {
+    /* Always 'open' in inline mode — no slide-in behavior */
+}
+/* When no node is selected, hide the info panel body so tree gets all space */
+#graph-info-panel-host:empty,
+#graph-info-panel-host .graph-panel-info:not(.open) {
+    display: none;
+}
+
+/* Graph tooltip should sit above the dock */
+.graph-panel-tooltip {
+    background: rgba(18, 21, 41, 0.96);
+    color: #e8eeff;
+    border: 1px solid rgba(112, 124, 214, 0.22);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
