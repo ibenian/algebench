@@ -1,5 +1,6 @@
 {
   "name": "minimal-dark",
+  "mode": "dark",
   "direction": "TB",
   "labelMode": "emoji",
   "nodeStyles": {

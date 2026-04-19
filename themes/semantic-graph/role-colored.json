@@ -1,5 +1,6 @@
 {
   "name": "role-colored",
+  "mode": "light",
   "direction": "TB",
   "labelMode": "emoji",
   "nodeStyles": {

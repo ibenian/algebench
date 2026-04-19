@@ -2,14 +2,15 @@
 """Convert a semantic graph (JSON) into a Mermaid flowchart diagram.
 
 Reads a semantic graph produced by ``latex_to_graph.py`` and renders it as
-Mermaid syntax with configurable styling.
+Mermaid syntax with a configurable visual theme (loaded from
+``themes/semantic-graph/``).
 
 Usage:
     # From a JSON file
     ./run.sh scripts/graph_to_mermaid.py graph.json
 
-    # With a named style
-    ./run.sh scripts/graph_to_mermaid.py --style role-colored graph.json
+    # With a named theme
+    ./run.sh scripts/graph_to_mermaid.py --theme role-colored graph.json
 
     # Pipe from latex_to_graph
     ./run.sh scripts/latex_to_graph.py "F = m \\cdot a" | ./run.sh scripts/graph_to_mermaid.py -
@@ -22,7 +23,7 @@ Usage:
 
 Exit codes:
     0  Success
-    1  Invalid input or missing style
+    1  Invalid input or missing theme
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ from pathlib import Path
 from typing import Any
 
 
-STYLES_DIR = Path(__file__).parent.parent / "themes" / "semantic-graph"
+THEME_DIR = Path(__file__).parent.parent / "themes" / "semantic-graph"
 SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "semantic-graph.schema.json"
 
 SHAPE_WRAPPERS: dict[str, tuple[str, str]] = {
@@ -145,23 +146,23 @@ def validate_graph(graph: dict[str, Any]) -> list[str]:
     return errors
 
 
-def load_style(name: str, styles_dir: Path | None = None) -> dict[str, Any]:
-    """Load a style JSON file by name from the styles directory."""
-    d = styles_dir or STYLES_DIR
+def load_theme(name: str, theme_dir: Path | None = None) -> dict[str, Any]:
+    """Load a theme JSON file by name from the semantic-graph theme directory."""
+    d = theme_dir or THEME_DIR
     path = d / f"{name}.json"
     if not path.exists():
         available = sorted(p.stem for p in d.glob("*.json"))
         raise FileNotFoundError(
-            f"Style {name!r} not found in {d}. "
+            f"Theme {name!r} not found in {d}. "
             f"Available: {', '.join(available)}"
         )
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
-def list_styles(styles_dir: Path | None = None) -> list[str]:
-    """Return names of all available styles."""
-    d = styles_dir or STYLES_DIR
+def list_themes(theme_dir: Path | None = None) -> list[str]:
+    """Return names of all available themes."""
+    d = theme_dir or THEME_DIR
     return sorted(p.stem for p in d.glob("*.json"))
 
 
@@ -332,7 +333,7 @@ def _wrap_shape(sanitized_id: str, label: str, shape: str) -> str:
 
 def semantic_graph_to_mermaid(
     graph: dict[str, Any],
-    style: dict[str, Any] | None = None,
+    theme: dict[str, Any] | None = None,
     label_mode: str | None = None,
     show: set[str] | None = None,
     color_by: str | None = None,
@@ -343,10 +344,11 @@ def semantic_graph_to_mermaid(
     ----------
     graph : dict
         Semantic graph with ``nodes`` and ``edges``.
-    style : dict, optional
-        Style definition. Falls back to the ``default`` style.
+    theme : dict, optional
+        Semantic-graph theme (from ``themes/semantic-graph/``). Falls back
+        to the ``default`` theme when unset.
     label_mode : str, optional
-        Override the style's ``labelMode`` (``emoji``, ``latex``, ``plain``).
+        Override the theme's ``labelMode`` (``emoji``, ``latex``, ``plain``).
     show : set of str, optional
         Fields to display on nodes (``emoji``, ``unit``, ``role``,
         ``quantity``, ``dimension``, ``label``). When set, overrides
@@ -355,16 +357,16 @@ def semantic_graph_to_mermaid(
         Node property to use for classDef grouping. Default ``"type"``.
         Set to ``"role"`` to color nodes by their semantic role.
     """
-    if style is None:
-        style = load_style("default")
+    if theme is None:
+        theme = load_theme("default")
 
-    direction = style.get("direction", "LR")
-    lm = label_mode or style.get("labelMode", "emoji")
-    node_styles = style.get("nodeStyles", {})
-    edge_style = style.get("edgeStyle", {})
-    edge_styles = style.get("edgeStyles", {})
-    use_link_style = style.get("useLinkStyle", False)
-    global_font_size = style.get("fontSize")
+    direction = theme.get("direction", "LR")
+    lm = label_mode or theme.get("labelMode", "emoji")
+    node_styles = theme.get("nodeStyles", {})
+    edge_style = theme.get("edgeStyle", {})
+    edge_styles = theme.get("edgeStyles", {})
+    use_link_style = theme.get("useLinkStyle", False)
+    global_font_size = theme.get("fontSize")
 
     nodes = graph.get("nodes", [])
     edges = graph.get("edges", [])
@@ -378,7 +380,7 @@ def semantic_graph_to_mermaid(
     emitted_classes: set[str] = set()
 
     if color_prop == "role":
-        role_colors = style.get("roleStyles", ROLE_COLORS)
+        role_colors = theme.get("roleStyles", ROLE_COLORS)
         for role_name, rc in role_colors.items():
             parts = []
             if rc.get("fill"):
@@ -499,20 +501,20 @@ def main() -> None:
         help="Path to semantic graph JSON file, or '-' for stdin",
     )
     parser.add_argument(
-        "--style", "-s",
+        "--theme", "-t",
         default="default",
-        help="Style name (loads from styles/ directory). Default: 'default'",
+        help="Theme name (loads from themes/semantic-graph/). Default: 'default'",
     )
     parser.add_argument(
-        "--style-file",
+        "--theme-file",
         default=None,
-        help="Path to a custom style JSON file (overrides --style)",
+        help="Path to a custom theme JSON file (overrides --theme)",
     )
     parser.add_argument(
         "--label-mode",
         choices=["emoji", "latex", "plain"],
         default=None,
-        help="Override label mode from the style",
+        help="Override label mode from the theme",
     )
     parser.add_argument(
         "--show",
@@ -526,9 +528,9 @@ def main() -> None:
         help="Property to color nodes by (default: type)",
     )
     parser.add_argument(
-        "--list-styles",
+        "--list-themes",
         action="store_true",
-        help="List available built-in styles and exit",
+        help="List available built-in themes and exit",
     )
     parser.add_argument(
         "-o", "--output",
@@ -547,8 +549,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.list_styles:
-        for name in list_styles():
+    if args.list_themes:
+        for name in list_themes():
             print(name)
         return
 
@@ -575,20 +577,20 @@ def main() -> None:
                 print(f"  {e}", file=sys.stderr)
             sys.exit(1)
 
-    # Load style
-    if args.style_file:
-        with open(args.style_file, encoding="utf-8") as f:
-            style = json.load(f)
+    # Load theme
+    if args.theme_file:
+        with open(args.theme_file, encoding="utf-8") as f:
+            theme = json.load(f)
     else:
         try:
-            style = load_style(args.style)
+            theme = load_theme(args.theme)
         except FileNotFoundError as exc:
             print(f"❌ {exc}", file=sys.stderr)
             sys.exit(1)
 
     show = set(args.show.split(",")) if args.show else None
     result = semantic_graph_to_mermaid(
-        graph, style=style, label_mode=args.label_mode,
+        graph, theme=theme, label_mode=args.label_mode,
         show=show, color_by=args.color_by,
     )
 

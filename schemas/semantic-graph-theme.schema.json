@@ -4,13 +4,17 @@
   "title": "Semantic Graph Theme",
   "description": "Schema for visual themes used when rendering a semantic graph as a Mermaid flowchart. Each theme bundles per-node-type shapes/colors, per-edge-semantic strokes, layout direction, label mode, and optional overrides. Consumed by scripts/graph_to_mermaid.py via load_theme().",
   "type": "object",
-  "required": ["name"],
+  "required": ["name", "mode"],
   "additionalProperties": false,
   "properties": {
     "name": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$",
       "description": "Kebab-case identifier, must match the filename stem (e.g. \"role-colored\" → role-colored.json)."
+    },
+    "mode": {
+      "enum": ["dark", "light"],
+      "description": "Declares the viewport backdrop this theme is designed for. Consumed by the renderer (Mermaid init theme) and the picker UI (groups themes by mode)."
     },
     "direction": {
       "$ref": "#/$defs/direction"

@@ -1,5 +1,6 @@
 {
   "name": "minimal-flat",
+  "mode": "light",
   "direction": "LR",
   "labelMode": "emoji",
   "nodeStyles": {

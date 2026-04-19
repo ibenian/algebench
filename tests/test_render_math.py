@@ -42,8 +42,8 @@ class TestMathRendererHTML:
         assert 'class="latex-block"' not in html
         assert "flowchart" in html
 
-    def test_style_applied(self):
-        r = MathRenderer("x + y", show_mermaid=True, style="role-colored")
+    def test_theme_applied(self):
+        r = MathRenderer("x + y", show_mermaid=True, graph_theme="role-colored")
         html = r.render_html()
         assert "flowchart TB" in html
 
@@ -59,33 +59,33 @@ class TestMathRendererHTML:
 
 
 # ---------------------------------------------------------------------------
-# Theme detection
+# Color mode detection (from each theme's declared ``mode`` field)
 # ---------------------------------------------------------------------------
 
-class TestThemeDetection:
-    def test_light_theme_default(self):
-        r = MathRenderer("x", style="default")
-        assert r.theme == "light"
+class TestColorModeDetection:
+    def test_light_mode_default(self):
+        r = MathRenderer("x", graph_theme="default")
+        assert r.color_mode == "light"
 
-    def test_dark_theme_for_dark_styles(self):
-        r = MathRenderer("x", style="minimal-dark")
-        assert r.theme == "dark"
+    def test_dark_mode_for_dark_themes(self):
+        r = MathRenderer("x", graph_theme="minimal-dark")
+        assert r.color_mode == "dark"
 
-    def test_dark_theme_for_linalg_dark(self):
-        r = MathRenderer("x", style="linalg-dark")
-        assert r.theme == "dark"
+    def test_dark_mode_for_linalg_dark(self):
+        r = MathRenderer("x", graph_theme="linalg-dark")
+        assert r.color_mode == "dark"
 
-    def test_theme_override(self):
-        r = MathRenderer("x", style="minimal-dark", theme="light")
-        assert r.theme == "light"
+    def test_color_mode_override(self):
+        r = MathRenderer("x", graph_theme="minimal-dark", color_mode="light")
+        assert r.color_mode == "light"
 
-    def test_dark_theme_colors_in_html(self):
-        r = MathRenderer("x", style="minimal-dark")
+    def test_dark_mode_colors_in_html(self):
+        r = MathRenderer("x", graph_theme="minimal-dark")
         html = r.render_html()
         assert "#0d1117" in html
 
-    def test_light_theme_colors_in_html(self):
-        r = MathRenderer("x", style="default")
+    def test_light_mode_colors_in_html(self):
+        r = MathRenderer("x", graph_theme="default")
         html = r.render_html()
         assert "#f8f9fa" in html
 
@@ -123,13 +123,14 @@ class TestFileOutput:
 
 
 # ---------------------------------------------------------------------------
-# Style dict input
+# Theme dict input
 # ---------------------------------------------------------------------------
 
-class TestStyleDictInput:
-    def test_custom_style_dict(self):
+class TestThemeDictInput:
+    def test_custom_theme_dict(self):
         custom = {
             "name": "my-custom",
+            "mode": "light",
             "direction": "RL",
             "labelMode": "plain",
             "nodeStyles": {
@@ -138,7 +139,7 @@ class TestStyleDictInput:
             },
             "edgeStyle": {"stroke": "#555", "strokeWidth": 1},
         }
-        r = MathRenderer("x + y", show_mermaid=True, style=custom)
+        r = MathRenderer("x + y", show_mermaid=True, graph_theme=custom)
         html = r.render_html()
         assert "flowchart RL" in html
 
@@ -165,9 +166,9 @@ class TestEdgeCases:
         html = r.render_html()
         assert f"<title>render_math: {'x' * 60}</title>" in html
 
-    def test_all_styles_render(self):
-        from scripts.graph_to_mermaid import list_styles
-        for name in list_styles():
-            r = MathRenderer("a + b", show_mermaid=True, style=name)
+    def test_all_themes_render(self):
+        from scripts.graph_to_mermaid import list_themes
+        for name in list_themes():
+            r = MathRenderer("a + b", show_mermaid=True, graph_theme=name)
             html = r.render_html()
             assert "flowchart" in html

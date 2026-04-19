@@ -22,7 +22,7 @@ import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 let _currentGraphPanel = null;
 let _currentSemanticKey = null;
 let _initDone = false;
-let _currentStyle = 'linalg-dark';
+let _currentTheme = 'linalg-dark';
 // Mermaid direction tokens are relative to edge flow. Our semantic graphs
 // point from variables → operators → root equation, so picking 'RL' puts
 // the equation on the LEFT and variables on the RIGHT — which matches the
@@ -38,7 +38,7 @@ const LABEL_PRESETS = {
     full:        ['emoji', 'description', 'label', 'unit', 'role', 'quantity', 'dimension'],
 };
 let _currentLabels = 'description';
-let _activeMermaidTheme = null;
+let _activeMermaidMode = null;
 // `_zoom` is in display-percent space (1.0 = 100%). The actual CSS transform
 // scale applied to the SVG is `ZOOM_BASELINE * _zoom` — so "100%" corresponds
 // to the comfortable default view rather than an untransformed (unreadably
@@ -49,9 +49,9 @@ const ZOOM_MIN = 0.4;   // 40%
 const ZOOM_MAX = 4.0;   // 400%
 const ZOOM_STEP = 0.1;  // 10% per click → 90/100/110/120%
 
-function initMermaidForTheme(theme) {
+function initMermaidForMode(mode) {
     if (typeof window.mermaid === 'undefined') return false;
-    const isDark = theme === 'dark';
+    const isDark = mode === 'dark';
     const cfg = {
         startOnLoad: false,
         theme: isDark ? 'dark' : 'base',
@@ -74,26 +74,26 @@ function initMermaidForTheme(theme) {
         },
     };
     window.mermaid.initialize(cfg);
-    _activeMermaidTheme = theme;
+    _activeMermaidMode = mode;
     return true;
 }
 
-function ensureMermaid(theme = 'dark') {
+function ensureMermaid(mode = 'dark') {
     if (typeof window.mermaid === 'undefined') return false;
-    if (_activeMermaidTheme !== theme) initMermaidForTheme(theme);
+    if (_activeMermaidMode !== mode) initMermaidForMode(mode);
     return true;
 }
 
-async function fetchMermaidFromGraph(graph, style, direction, show) {
+async function fetchMermaidFromGraph(graph, theme, direction, show) {
     const res = await fetch('/api/graph/mermaid', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ graph, style, direction, show }),
+        body: JSON.stringify({ graph, theme, direction, show }),
     });
     if (!res.ok) throw new Error(`mermaid render failed: HTTP ${res.status}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    return { mermaid: data.mermaid, theme: data.theme || 'dark' };
+    return { mermaid: data.mermaid, mode: data.mode || 'dark' };
 }
 
 /**
@@ -398,33 +398,33 @@ async function renderCurrentStepGraph(force = false) {
     const graph = sg.graph;
     if (!graph) return; // nothing to render
 
-    const key = stableStepKey(step) + '|' + _currentStyle + '|' +
+    const key = stableStepKey(step) + '|' + _currentTheme + '|' +
                 _currentDirection + '|' + _currentLabels;
     if (key === _currentSemanticKey && !force) return;
 
-    // Live regeneration from graph JSON so style/direction/labels apply.
+    // Live regeneration from graph JSON so theme/direction/labels apply.
     let mermaidCode;
-    let theme = 'dark';
+    let mode = 'dark';
     try {
         const showFields = LABEL_PRESETS[_currentLabels] || null;
         const res = await fetchMermaidFromGraph(
-            graph, _currentStyle, _currentDirection, showFields,
+            graph, _currentTheme, _currentDirection, showFields,
         );
         mermaidCode = res.mermaid;
-        theme = res.theme;
+        mode = res.mode;
     } catch (err) {
         console.error('[graph-view] failed to build mermaid source:', err);
         container.innerHTML = `<div style="color:#f88; padding:2rem;">Failed to build graph source.<br><small>${escapeHtml(err.message || String(err))}</small></div>`;
         return;
     }
 
-    // Apply paper backdrop + reinit Mermaid so arrow/text colors match theme.
+    // Apply paper backdrop + reinit Mermaid so arrow/text colors match mode.
     const viewport = document.getElementById('graph-viewport');
     if (viewport) {
-        viewport.classList.toggle('gv-theme-light', theme === 'light');
-        viewport.classList.toggle('gv-theme-dark', theme !== 'light');
+        viewport.classList.toggle('gv-theme-light', mode === 'light');
+        viewport.classList.toggle('gv-theme-dark', mode !== 'light');
     }
-    if (!ensureMermaid(theme)) return;
+    if (!ensureMermaid(mode)) return;
 
     try {
         const svgId = 'gp-svg-' + Math.random().toString(36).slice(2, 8);
@@ -542,25 +542,42 @@ function onProofLoad() {
 }
 
 async function setupGraphControls() {
-    const styleSel = document.getElementById('graph-style-select');
-    if (styleSel) {
+    const themeSel = document.getElementById('graph-theme-select');
+    if (themeSel) {
         try {
-            const res = await fetch('/api/graph/styles');
+            const res = await fetch('/api/graph/themes');
             const data = await res.json();
-            const styles = (data && data.styles) || ['default'];
-            styleSel.innerHTML = '';
-            styles.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = name;
-                opt.textContent = prettyStyleName(name);
-                if (name === _currentStyle) opt.selected = true;
-                styleSel.appendChild(opt);
+            const themes = (data && data.themes) || [{ name: 'default', mode: 'light' }];
+            themeSel.innerHTML = '';
+            // Group themes by their declared mode (dark | light). `themes`
+            // may be a list of strings (legacy) or objects {name, mode}.
+            const groups = { dark: [], light: [] };
+            themes.forEach(item => {
+                const entry = (typeof item === 'string')
+                    ? { name: item, mode: 'light' }
+                    : { name: item.name, mode: item.mode || 'light' };
+                (groups[entry.mode] || groups.light).push(entry);
             });
+            const appendGroup = (label, list) => {
+                if (!list.length) return;
+                const g = document.createElement('optgroup');
+                g.label = label;
+                list.forEach(({ name }) => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = prettyThemeName(name);
+                    if (name === _currentTheme) opt.selected = true;
+                    g.appendChild(opt);
+                });
+                themeSel.appendChild(g);
+            };
+            appendGroup('Dark', groups.dark);
+            appendGroup('Light', groups.light);
         } catch (e) {
-            console.warn('[graph-view] could not load styles:', e);
+            console.warn('[graph-view] could not load themes:', e);
         }
-        styleSel.addEventListener('change', () => {
-            _currentStyle = styleSel.value || 'default';
+        themeSel.addEventListener('change', () => {
+            _currentTheme = themeSel.value || 'default';
             renderCurrentStepGraph(true);
         });
     }
@@ -583,7 +600,7 @@ async function setupGraphControls() {
     }
 }
 
-function prettyStyleName(name) {
+function prettyThemeName(name) {
     return String(name).split(/[-_]/).map(p =>
         p.length ? p[0].toUpperCase() + p.slice(1) : p).join(' ');
 }

@@ -8,8 +8,8 @@ Usage:
     # LaTeX + Mermaid diagram
     ./run.sh scripts/render_math.py "F = m \\cdot a" --mermaid
 
-    # Mermaid with a specific style and label mode
-    ./run.sh scripts/render_math.py "E = mc^2" --mermaid --style role-colored --label-mode latex
+    # Mermaid with a specific theme and label mode
+    ./run.sh scripts/render_math.py "E = mc^2" --mermaid --graph-theme role-colored --label-mode latex
 
     # Mermaid only (no LaTeX block)
     ./run.sh scripts/render_math.py "E = mc^2" --mermaid --no-latex
@@ -34,10 +34,10 @@ from typing import Any
 
 try:
     from latex_to_graph import latex_to_semantic_graph
-    from graph_to_mermaid import semantic_graph_to_mermaid, load_style, validate_graph
+    from graph_to_mermaid import semantic_graph_to_mermaid, load_theme, validate_graph
 except ImportError:
     from scripts.latex_to_graph import latex_to_semantic_graph
-    from scripts.graph_to_mermaid import semantic_graph_to_mermaid, load_style, validate_graph
+    from scripts.graph_to_mermaid import semantic_graph_to_mermaid, load_theme, validate_graph
 
 _GRAPH_PANEL_DIR = Path(__file__).resolve().parent.parent / "static" / "graph-panel"
 
@@ -221,9 +221,6 @@ THEMES = {
     },
 }
 
-DARK_STYLES = {"minimal-dark", "linalg-dark"}
-
-
 class MathRenderer:
     """Renders a LaTeX expression to a self-contained HTML file.
 
@@ -235,12 +232,13 @@ class MathRenderer:
         Include a KaTeX-rendered LaTeX block. Default ``True``.
     show_mermaid : bool
         Include a Mermaid semantic graph diagram. Default ``False``.
-    style : str or dict
-        Mermaid style name or style dict. Default ``"default"``.
+    graph_theme : str or dict
+        Semantic-graph theme name or theme dict. Default ``"default"``.
     label_mode : str
         Mermaid label mode: ``"emoji"``, ``"latex"``, ``"plain"``.
-    theme : str or None
-        Force ``"light"`` or ``"dark"``. Auto-detected from style if ``None``.
+    color_mode : str or None
+        Force ``"light"`` or ``"dark"`` page chrome. Defaults to the theme's
+        declared ``mode`` field.
     """
 
     def __init__(
@@ -250,9 +248,9 @@ class MathRenderer:
         graph: dict[str, Any] | None = None,
         show_latex: bool = True,
         show_mermaid: bool = False,
-        style: str | dict[str, Any] = "default",
+        graph_theme: str | dict[str, Any] = "default",
         label_mode: str | None = None,
-        theme: str | None = None,
+        color_mode: str | None = None,
         validate: bool = False,
         show: set[str] | None = None,
         color_by: str | None = None,
@@ -266,17 +264,14 @@ class MathRenderer:
         self.show = show
         self.color_by = color_by
 
-        if isinstance(style, str):
-            self.style_name = style
-            self.style = load_style(style)
+        if isinstance(graph_theme, str):
+            self.graph_theme_name = graph_theme
+            self.graph_theme = load_theme(graph_theme)
         else:
-            self.style_name = style.get("name", "custom")
-            self.style = style
+            self.graph_theme_name = graph_theme.get("name", "custom")
+            self.graph_theme = graph_theme
 
-        if theme:
-            self.theme = theme
-        else:
-            self.theme = "dark" if self.style_name in DARK_STYLES else "light"
+        self.color_mode = color_mode or self.graph_theme.get("mode", "light")
 
     def _build_latex_card(self) -> str:
         return (
@@ -296,7 +291,7 @@ class MathRenderer:
                     + "\n".join(f"  {e}" for e in errors)
                 )
         mermaid_src = semantic_graph_to_mermaid(
-            graph, style=self.style, label_mode=self.label_mode,
+            graph, theme=self.graph_theme, label_mode=self.label_mode,
             show=self.show, color_by=self.color_by,
         )
         card = (
@@ -349,7 +344,7 @@ class MathRenderer:
 
         self._last_graph = graph
         hover_script = self._build_hover_script(graph) if graph else ""
-        colors = THEMES[self.theme]
+        colors = THEMES[self.color_mode]
 
         fragment_css = FRAGMENT_CSS.format(
             graph_panel_css=_GRAPH_PANEL_CSS,
@@ -363,7 +358,7 @@ class MathRenderer:
 
     def render_html(self) -> str:
         """Return a complete standalone HTML page."""
-        colors = THEMES[self.theme]
+        colors = THEMES[self.color_mode]
         fragment = self.render_fragment()
         json_viewer = ""
         if self._last_graph:
@@ -424,8 +419,8 @@ def main() -> None:
         help="Omit the LaTeX rendering (use with --mermaid)",
     )
     parser.add_argument(
-        "--style", "-s", default="default",
-        help="Mermaid style name (default: 'default')",
+        "--graph-theme", "-t", default="default",
+        help="Semantic-graph theme name (default: 'default')",
     )
     parser.add_argument(
         "--label-mode", choices=["emoji", "latex", "plain"], default=None,
@@ -433,11 +428,11 @@ def main() -> None:
     )
     parser.add_argument(
         "--direction", choices=["LR", "RL", "TB", "BT"], default=None,
-        help="Override Mermaid flowchart direction (default: from style)",
+        help="Override Mermaid flowchart direction (default: from theme)",
     )
     parser.add_argument(
-        "--theme", choices=["light", "dark"], default=None,
-        help="Force light or dark theme (auto-detected from style if omitted)",
+        "--color-mode", choices=["light", "dark"], default=None,
+        help="Force light or dark page chrome (defaults to the theme's 'mode')",
     )
     parser.add_argument(
         "-o", "--output", default=None,
@@ -480,20 +475,20 @@ def main() -> None:
         parser.error("--no-latex requires --mermaid")
 
     try:
-        style = args.style
+        graph_theme: str | dict[str, Any] = args.graph_theme
         if args.direction:
-            if isinstance(style, str):
-                style = load_style(style)
-            style["direction"] = args.direction
+            if isinstance(graph_theme, str):
+                graph_theme = load_theme(graph_theme)
+            graph_theme["direction"] = args.direction
         show_fields = set(args.show.split(",")) if args.show else None
         renderer = MathRenderer(
             args.latex,
             graph=graph,
             show_latex=show_latex,
             show_mermaid=args.mermaid,
-            style=style,
+            graph_theme=graph_theme,
             label_mode=args.label_mode,
-            theme=args.theme,
+            color_mode=args.color_mode,
             validate=args.validate,
             show=show_fields,
             color_by=args.color_by,

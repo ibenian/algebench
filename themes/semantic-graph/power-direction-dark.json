@@ -1,5 +1,6 @@
 {
   "name": "power-direction-dark",
+  "mode": "dark",
   "direction": "TB",
   "labelMode": "emoji",
   "nodeStyles": {

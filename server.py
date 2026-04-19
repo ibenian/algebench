@@ -1864,42 +1864,36 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         'json-browser', 'main', 'proof', 'graph-view',
     }
 
-    @fastapp.get("/api/graph/styles")
-    async def get_graph_styles():
-        """List available semantic-graph style presets from scripts/styles/."""
+    @fastapp.get("/api/graph/themes")
+    async def get_graph_themes():
+        """List available semantic-graph theme presets from themes/semantic-graph/.
+
+        Each entry is ``{name, mode}`` — ``mode`` is read from the theme's
+        declared ``mode`` field (``"dark"`` or ``"light"``) so the picker UI
+        can group themes by backdrop.
+        """
         try:
             g2m = _load_script_module("scripts/graph_to_mermaid.py", "graph_to_mermaid")
-            return JSONResponse({"styles": g2m.list_styles()})
+            names = g2m.list_themes()
+            themes = []
+            for name in names:
+                try:
+                    t = g2m.load_theme(name)
+                    themes.append({"name": name, "mode": t.get("mode", "light")})
+                except Exception:
+                    themes.append({"name": name, "mode": "light"})
+            return JSONResponse({"themes": themes})
         except Exception as e:
-            return JSONResponse({"error": str(e), "styles": []}, status_code=500)
+            return JSONResponse({"error": str(e), "themes": []}, status_code=500)
 
     class MermaidRenderRequest(BaseModel):
         graph: dict = {}
-        style: str = "default"
+        theme: str = "default"
         direction: str | None = None
         # Optional list of fields to display on node labels.
         # Valid values: "emoji", "label", "unit", "role", "quantity", "dimension".
         # Example: ["emoji","label"] -> "🏹 F (force)"
         show: list[str] | None = None
-
-    def _classify_style_theme(style: dict) -> str:
-        """Infer 'dark' or 'light' backdrop preference from a style's fills.
-        Light pastel fills => the style expects a light/paper backdrop.
-        """
-        fills = []
-        for ns in (style.get("nodeStyles") or {}).values():
-            fill = ns.get("fill")
-            if isinstance(fill, str) and fill.startswith("#") and len(fill) in (4, 7):
-                fills.append(fill)
-        if not fills:
-            return "dark"  # no fills — works against any bg, but dark viewport is our default
-        def _lum(hx: str) -> float:
-            h = hx.lstrip("#")
-            if len(h) == 3: h = "".join(c*2 for c in h)
-            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-            return (0.299*r + 0.587*g + 0.114*b) / 255.0
-        avg = sum(_lum(f) for f in fills) / len(fills)
-        return "light" if avg >= 0.6 else "dark"
 
     class LatexToGraphRequest(BaseModel):
         latex: str
@@ -1924,21 +1918,20 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     @fastapp.post("/api/graph/mermaid")
     async def post_graph_mermaid(req: MermaidRenderRequest):
-        """Regenerate Mermaid source from a semantic graph with the given style/direction."""
+        """Regenerate Mermaid source from a semantic graph with the given theme/direction."""
         try:
             g2m = _load_script_module("scripts/graph_to_mermaid.py", "graph_to_mermaid")
-            style = g2m.load_style(req.style or "default")
+            theme = g2m.load_theme(req.theme or "default")
             if req.direction:
-                style = dict(style)
-                style["direction"] = req.direction
+                theme = dict(theme)
+                theme["direction"] = req.direction
             show_set = set(req.show) if req.show else None
             mermaid_src = g2m.semantic_graph_to_mermaid(
-                req.graph or {}, style=style, show=show_set,
+                req.graph or {}, theme=theme, show=show_set,
             )
-            theme = _classify_style_theme(style)
-            return JSONResponse({"mermaid": mermaid_src, "style": req.style,
-                                 "direction": style.get("direction"),
-                                 "theme": theme})
+            return JSONResponse({"mermaid": mermaid_src, "theme": req.theme,
+                                 "direction": theme.get("direction"),
+                                 "mode": theme.get("mode", "dark")})
         except FileNotFoundError as e:
             return JSONResponse({"error": str(e)}, status_code=404)
         except Exception as e:

@@ -12,8 +12,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from scripts.graph_to_mermaid import (
     semantic_graph_to_mermaid,
-    load_style,
-    list_styles,
+    load_theme,
+    list_themes,
     _format_label,
     _sanitize_id,
     _wrap_shape,
@@ -54,18 +54,18 @@ SIMPLE_GRAPH = {
 
 
 # ---------------------------------------------------------------------------
-# Style loading
+# Theme loading
 # ---------------------------------------------------------------------------
 
-class TestStyleLoading:
-    def test_load_default_style(self):
-        style = load_style("default")
-        assert style["name"] == "default"
-        assert "nodeStyles" in style
-        assert "direction" in style
+class TestThemeLoading:
+    def test_load_default_theme(self):
+        theme = load_theme("default")
+        assert theme["name"] == "default"
+        assert "nodeStyles" in theme
+        assert "direction" in theme
 
-    def test_list_styles_returns_all_builtin(self):
-        names = list_styles()
+    def test_list_themes_returns_all_builtin(self):
+        names = list_themes()
         assert "default" in names
         assert "minimal-flat" in names
         assert "role-colored" in names
@@ -75,15 +75,15 @@ class TestStyleLoading:
         assert "minimal-dark" in names
         assert "linalg-dark" in names
 
-    def test_load_nonexistent_style_raises(self):
+    def test_load_nonexistent_theme_raises(self):
         with pytest.raises(FileNotFoundError, match="not found"):
-            load_style("nonexistent-style-xyz")
+            load_theme("nonexistent-theme-xyz")
 
-    def test_load_custom_style_from_dir(self, tmp_path):
+    def test_load_custom_theme_from_dir(self, tmp_path):
         custom = {"name": "test", "direction": "TB", "nodeStyles": {}, "edgeStyle": {}}
         (tmp_path / "test.json").write_text(json.dumps(custom))
-        style = load_style("test", styles_dir=tmp_path)
-        assert style["name"] == "test"
+        theme = load_theme("test", theme_dir=tmp_path)
+        assert theme["name"] == "test"
 
 
 # ---------------------------------------------------------------------------
@@ -190,8 +190,8 @@ class TestSemanticGraphToMermaid:
         assert ":::scalar" in result
 
     def test_custom_direction(self):
-        style = load_style("role-colored")
-        result = semantic_graph_to_mermaid(SIMPLE_GRAPH, style=style)
+        theme = load_theme("role-colored")
+        result = semantic_graph_to_mermaid(SIMPLE_GRAPH, theme=theme)
         assert result.startswith("flowchart TB\n")
 
     def test_label_mode_override(self):
@@ -210,7 +210,7 @@ class TestSemanticGraphToMermaid:
         assert result.startswith("flowchart")
 
     def test_link_style_directives(self):
-        style = load_style("minimal-dark")
+        theme = load_theme("minimal-dark")
         graph = {
             "nodes": [
                 {"id": "a", "label": "a", "type": "scalar"},
@@ -220,7 +220,7 @@ class TestSemanticGraphToMermaid:
                 {"from": "a", "to": "__op_1", "semantic": "neutral"},
             ],
         }
-        result = semantic_graph_to_mermaid(graph, style=style)
+        result = semantic_graph_to_mermaid(graph, theme=theme)
         assert "linkStyle 0" in result
 
     def test_edge_labels(self):
@@ -256,9 +256,9 @@ class TestEndToEnd:
         from scripts.latex_to_graph import latex_to_semantic_graph
 
         graph = latex_to_semantic_graph("E = mc^2")
-        for style_name in list_styles():
-            style = load_style(style_name)
-            result = semantic_graph_to_mermaid(graph, style=style)
+        for theme_name in list_themes():
+            theme = load_theme(theme_name)
+            result = semantic_graph_to_mermaid(graph, theme=theme)
             assert result.startswith("flowchart")
 
     def test_all_label_modes(self):
