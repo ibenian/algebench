@@ -752,10 +752,14 @@ function renderEdgeLegend(edgeStyles, graph) {
         const src = nodeById[e.from];
         const dst = nodeById[e.to];
         if (src && src.op === 'power') {
-            const n = parseFloat(src.exponent);
+            const raw = src.exponent;
+            const n = parseFloat(raw);
             if (Number.isFinite(n)) {
                 if (n < 0) { present.add('inverse'); continue; }
                 if (Math.abs(n) > 1) { present.add('direct'); continue; }
+            } else if (typeof raw === 'string' && raw.trimStart().startsWith('-')) {
+                present.add('inverse');
+                continue;
             }
         }
         if (dst && dst.op === 'multiply') {

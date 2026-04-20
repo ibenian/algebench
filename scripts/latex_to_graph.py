@@ -255,6 +255,21 @@ def parse_var_overrides(var_specs: list[str] | None) -> dict[str, dict[str, str]
     return overrides
 
 
+def _is_inverse_pow(expr: sympy.Basic) -> bool:
+    """True for ``Pow(base, neg)`` where ``neg`` is a negative literal
+    or a ``Mul`` starting with ``-1``. Used by the multiply parser to
+    skip its over-eager ``direct`` tagging on denominator children — the
+    renderer's power-source inference paints those edges ``inverse``."""
+    if not isinstance(expr, Pow):
+        return False
+    exp = expr.args[1]
+    if isinstance(exp, Number) and exp < 0:
+        return True
+    if isinstance(exp, Mul) and exp.args and exp.args[0] == sympy.S.NegativeOne:
+        return True
+    return False
+
+
 class SemanticGraphBuilder:
     """Walks a SymPy expression tree and emits nodes + edges."""
 
@@ -525,6 +540,28 @@ class SemanticGraphBuilder:
             self._add_edge(base_id, node_id)
             return node_id
 
+        # --- Power with symbolic-negative exponent — absorb it too ---
+        # ``x^{-n}`` arrives as ``Pow(x, Mul(-1, n))``. Without this
+        # branch it would fall through to OPERATOR_MAP, which produces
+        # a power node with no ``exponent`` attribute and a separate
+        # ``__negate`` child for the exponent. The renderer then has
+        # nothing to infer from. Mirroring the literal-Number path
+        # absorbs ``-n`` onto the node as ``exponent="-n"`` so the
+        # outgoing edge gets painted ``inverse`` at render time.
+        if (
+            isinstance(expr, Pow)
+            and isinstance(expr.args[1], Mul)
+            and expr.args[1].args
+            and expr.args[1].args[0] == sympy.S.NegativeOne
+        ):
+            node_id = self._next_id("power")
+            self._add_node(
+                node_id, type="operator", op="power", exponent=str(expr.args[1])
+            )
+            base_id = self._walk(expr.args[0])
+            self._add_edge(base_id, node_id)
+            return node_id
+
         # --- Unary negation (Mul(-1, X)) — emit a single-input ``negate``
         # operator instead of the noisy ``× (-1)`` pair. The renderer
         # gives ``negate`` an inverted-triangle default shape via
@@ -565,12 +602,21 @@ class SemanticGraphBuilder:
             edge_semantic = "direct" if op_name == "multiply" else None
             edge_weight = 1.0 if op_name == "multiply" else None
             for arg in expr.args:
+                # Denominators arrive here as ``Pow(_, -k)`` (literal) or
+                # ``Pow(_, -n)`` (symbolic) — leave those edges plain so
+                # the renderer's power-source inference paints them
+                # ``inverse`` instead of overriding it with ``direct``.
+                child_semantic = edge_semantic
+                child_weight = edge_weight
+                if op_name == "multiply" and _is_inverse_pow(arg):
+                    child_semantic = None
+                    child_weight = None
                 child_id = self._walk(arg)
                 self._add_edge(
                     child_id,
                     node_id,
-                    semantic=edge_semantic,
-                    weight=edge_weight,
+                    semantic=child_semantic,
+                    weight=child_weight,
                 )
             return node_id
 

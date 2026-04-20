@@ -568,6 +568,41 @@ class TestEdgeSemantics:
         errs = validate_graph(g)
         assert errs == [], f"unexpected schema errors: {errs}"
 
+    def test_multiply_skips_tagging_for_inverse_pow_children(self):
+        # ``a/b`` is ``Mul(a, Pow(b, -1))``. The factor edge for ``a``
+        # is still ``direct`` but the edge from the inverse-power child
+        # must stay plain so the renderer's power-source inference can
+        # paint it ``inverse``.
+        g = latex_to_semantic_graph(r"y = a / b")
+        mul_node = _find_node(g, type="operator", op="multiply")
+        assert mul_node is not None
+        a_edge = next(e for e in g["edges"]
+                      if e["to"] == mul_node["id"] and e["from"] == "a")
+        assert a_edge.get("semantic") == "direct"
+        assert a_edge.get("weight") == 1.0
+        pow_edge = next(e for e in g["edges"]
+                        if e["to"] == mul_node["id"] and e["from"].startswith("__power"))
+        assert "semantic" not in pow_edge, (
+            f"inverse-pow → multiply edge must stay plain (got {pow_edge})"
+        )
+        assert "weight" not in pow_edge
+
+    def test_symbolic_negative_pow_absorbs_exponent(self):
+        # ``x^{-n}`` should produce a single power node with
+        # ``exponent="-n"`` and just one incoming edge from the base —
+        # no extra ``__negate``/``n`` children. This is what lets the
+        # renderer paint the outgoing edge ``inverse``.
+        g = latex_to_semantic_graph(r"y = x^{-n}")
+        pow_nodes = _find_nodes(g, type="operator", op="power")
+        assert len(pow_nodes) == 1
+        pn = pow_nodes[0]
+        assert pn.get("exponent") == "-n"
+        incoming = [e for e in g["edges"] if e["to"] == pn["id"]]
+        assert len(incoming) == 1
+        assert incoming[0]["from"] == "x"
+        # And no negate/exponent helper nodes leaked through.
+        assert not _find_nodes(g, type="operator", op="negate")
+
 
 # ---------------------------------------------------------------------------
 # Error handling

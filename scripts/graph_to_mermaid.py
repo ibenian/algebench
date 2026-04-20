@@ -600,8 +600,9 @@ def semantic_graph_to_mermaid(
             src_node = nodes_by_id.get(edge.get("from"))
             dst_node = nodes_by_id.get(edge.get("to"))
             if src_node and src_node.get("op") == "power":
+                raw_exp = src_node.get("exponent", "")
                 try:
-                    exp_val = float(src_node.get("exponent", ""))
+                    exp_val = float(raw_exp)
                 except (TypeError, ValueError):
                     exp_val = None
                 if exp_val is not None:
@@ -612,6 +613,13 @@ def semantic_graph_to_mermaid(
                         edge_semantic = "direct"
                     if edge_semantic and edge_weight is None and abs_exp > 0:
                         edge_weight = abs_exp
+                elif isinstance(raw_exp, str) and raw_exp.lstrip().startswith("-"):
+                    # Symbolic-negative exponent (``-n``, ``-(n+1)``…) —
+                    # we know it's inverse, but the magnitude is unknown
+                    # at render time, so default the strength to 1.
+                    edge_semantic = "inverse"
+                    if edge_weight is None:
+                        edge_weight = 1.0
             if not edge_semantic and dst_node and dst_node.get("op") == "multiply":
                 edge_semantic = "direct"
                 if edge_weight is None:

@@ -446,6 +446,33 @@ class TestSemanticGraphToMermaid:
         assert "stroke:#aaa" in out_line       # neutral
         assert "stroke:#ef5350" not in out_line  # NOT direct
 
+    def test_symbolic_negative_exponent_inferred_as_inverse(self):
+        # A power node with a non-numeric exponent that starts with ``-``
+        # (e.g. ``-n``, ``-(n+1)``) carries an inverse relationship
+        # whose magnitude isn't known at render time. The renderer
+        # should still tag the outgoing edge ``inverse`` (with default
+        # weight 1) so the visual reads correctly.
+        theme = load_theme("power-direction-dark")
+        graph = {
+            "nodes": [
+                {"id": "x", "type": "scalar"},
+                {"id": "__p_1", "type": "operator", "op": "power", "exponent": "-n"},
+            ],
+            "edges": [
+                {"from": "x", "to": "__p_1"},
+                {"from": "__p_1", "to": "x"},  # outgoing → inverse, width=1*1=1
+            ],
+        }
+        result = semantic_graph_to_mermaid(graph, theme=theme)
+        out_line = next(
+            (l for l in result.splitlines()
+             if l.strip().startswith("linkStyle 1 ")),
+            None,
+        )
+        assert out_line is not None
+        assert "stroke:#42a5f5" in out_line  # inverse blue
+        assert "stroke-width:1px" in out_line  # base 1 × weight 1
+
     def test_edge_weight_clamped_to_min(self):
         # Tiny weights still yield visible edges (MIN = 1px).
         theme = load_theme("power-direction-dark")
