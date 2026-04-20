@@ -118,6 +118,47 @@ function _normalizeZoom(v) {
 }
 let _zoom = _normalizeZoom(_lsGet(LS_KEYS.zoom, '1.0'));
 
+// ---------------------------------------------------------------------
+// Mermaid: lazy-load on first Graph tab activation.
+//
+// index.html intentionally does NOT include mermaid.min.js — the bundle
+// is ~700 KB gzipped and only needed once the user opens the Math tab.
+// ``loadMermaidLib()`` injects a <script> tag on first call and memoizes
+// the resulting promise, so subsequent callers share the same load.
+// ---------------------------------------------------------------------
+const MERMAID_CDN_URL =
+    'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js';
+
+let _mermaidLoadPromise = null;
+
+function loadMermaidLib() {
+    if (_mermaidLoadPromise) return _mermaidLoadPromise;
+    // If the page was already loaded with mermaid (e.g. a consumer embedded
+    // a <script> tag of its own), don't re-inject.
+    if (typeof window.mermaid !== 'undefined') {
+        _mermaidLoadPromise = Promise.resolve(window.mermaid);
+        return _mermaidLoadPromise;
+    }
+    _mermaidLoadPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = MERMAID_CDN_URL;
+        s.async = true;
+        s.onload = () => {
+            if (typeof window.mermaid === 'undefined') {
+                reject(new Error('mermaid script loaded but window.mermaid is undefined'));
+                return;
+            }
+            resolve(window.mermaid);
+        };
+        s.onerror = () => reject(new Error(`failed to load mermaid from ${MERMAID_CDN_URL}`));
+        document.head.appendChild(s);
+    });
+    // On failure, clear the cached promise so a later tab activation can
+    // retry (e.g. user reconnects to the network).
+    _mermaidLoadPromise.catch(() => { _mermaidLoadPromise = null; });
+    return _mermaidLoadPromise;
+}
+
 function initMermaidForMode(mode) {
     if (typeof window.mermaid === 'undefined') return false;
     const isDark = mode === 'dark';
@@ -147,8 +188,13 @@ function initMermaidForMode(mode) {
     return true;
 }
 
-function ensureMermaid(mode = 'dark') {
-    if (typeof window.mermaid === 'undefined') return false;
+async function ensureMermaid(mode = 'dark') {
+    try {
+        await loadMermaidLib();
+    } catch (err) {
+        console.error('[graph-view]', err);
+        return false;
+    }
     if (_activeMermaidMode !== mode) initMermaidForMode(mode);
     return true;
 }
@@ -301,6 +347,10 @@ function setDockTab(name) {
         graphVp.classList.remove('hidden');
         // Keep mathbox mounted — just hide it.
         mathVp.style.visibility = 'hidden';
+        // Kick off the Mermaid bundle download now so it can run in parallel
+        // with the /api/graph/mermaid fetch that renderCurrentStepGraph
+        // triggers below. ensureMermaid() will await the same promise.
+        loadMermaidLib().catch(() => { /* error surfaced at render time */ });
         rebuildProofTree();
         renderCurrentStepGraph(true);
     } else {
@@ -562,7 +612,13 @@ async function renderCurrentStepGraph(force = false) {
         viewport.classList.toggle('gv-theme-light', mode === 'light');
         viewport.classList.toggle('gv-theme-dark', mode !== 'light');
     }
-    if (!ensureMermaid(mode)) return;
+    // ensureMermaid lazy-loads mermaid.min.js on first call — this is the
+    // one place the bundle actually has to be resident, so awaiting it here
+    // keeps the critical path lean for users who never open this tab.
+    if (!(await ensureMermaid(mode))) {
+        container.innerHTML = `<div style="color:#f88; padding:2rem;">Failed to load Mermaid.<br><small>Check your network connection and reopen the Math tab.</small></div>`;
+        return;
+    }
 
     try {
         const svgId = 'gp-svg-' + Math.random().toString(36).slice(2, 8);
