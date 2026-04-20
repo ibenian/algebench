@@ -175,6 +175,7 @@
                 "edges": [
                   { "from": "F", "to": "__equals_1" },
                   { "from": "p", "to": "__derivative_p_t" },
+                  { "from": "t", "to": "__derivative_p_t" },
                   { "from": "__derivative_p_t", "to": "__equals_1" }
                 ],
                 "classification": {
