@@ -515,30 +515,14 @@ class SemanticGraphBuilder:
             node_id = self._next_id("power")
             self._add_node(node_id, type="operator", op="power", exponent=exp_val)
             base_id = self._walk(expr.args[0])
-            # A negative literal exponent means the base enters the enclosing
-            # expression via reciprocation — SymPy represents ``a / b`` as
-            # ``Mul(a, Pow(b, -1))``, so ``b → Pow(b, -1)`` is the one edge
-            # that deserves an ``inverse`` tag. Positive exponents leave
-            # monotonicity intact, so we get ``direct`` only when the
-            # exponent is > 1 (a plain ``x`` is just ``x`` and doesn't
-            # deserve a proportional tag). The edge *weight* is the
-            # absolute value of the exponent — ``x²`` is "more
-            # proportional" than ``x``, ``x⁻²`` is "more inverse" than
-            # ``x⁻¹``. Renderers clamp the weight to a safe stroke-width
-            # range so unusual exponents don't blow up the visual.
-            is_negative = getattr(exponent, "is_negative", False)
-            try:
-                abs_exp = abs(float(exponent))
-            except (TypeError, ValueError):
-                abs_exp = None
-            if is_negative:
-                semantic: str | None = "inverse"
-            elif abs_exp is not None and abs_exp > 1:
-                semantic = "direct"
-            else:
-                semantic = None
-            weight = abs_exp if abs_exp is not None and abs_exp > 0 else None
-            self._add_edge(base_id, node_id, semantic=semantic, weight=weight)
+            # The base→power edge stays plain. The proportionality
+            # semantics for a power live on the *outgoing* edge from
+            # the power node (where the squared/cubed/inverse
+            # relationship is actually carried into the rest of the
+            # expression). The renderer reads ``exponent`` off this
+            # node at render time and tags that downstream edge —
+            # see ``scripts/graph_to_mermaid.semantic_graph_to_mermaid``.
+            self._add_edge(base_id, node_id)
             return node_id
 
         # --- Unary negation (Mul(-1, X)) — emit a single-input ``negate``

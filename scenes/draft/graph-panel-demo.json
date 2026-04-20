@@ -23,7 +23,8 @@
         { "title": "Uniform acceleration (velocity)", "description": "$v = v_0 + a t$" },
         { "title": "Uniform acceleration (position)", "description": "$x = x_0 + v_0 t + \\tfrac{1}{2} a t^2$" },
         { "title": "Schrödinger equation (compact)", "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = \\hat{H}\\,\\psi$" },
-        { "title": "Schrödinger equation (expanded)", "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = -\\dfrac{\\hbar^2}{2m}\\nabla^2 \\psi + V\\psi$" }
+        { "title": "Schrödinger equation (expanded)", "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = -\\dfrac{\\hbar^2}{2m}\\nabla^2 \\psi + V\\psi$" },
+        { "title": "Higher powers (^3, ^4, ^n)", "description": "$y = x^3 + x^4 + x^n$" }
       ],
       "proof": {
         "id": "physics-equations-demo",
@@ -960,6 +961,88 @@
                   "dependent_variables": ["psi"],
                   "independent_variables": ["t", "x", "y", "z"]
                 }
+              }
+            }
+          },
+          {
+            "id": "proof-step-8",
+            "type": "step",
+            "label": "Higher powers — ^3, ^4, ^n",
+            "math": "y = x^3 + x^4 + x^n",
+            "justification": "Three powers of the same base sum together. Lets us eyeball how the renderer encodes proportionality strength on the *outgoing* edge of each power node: literal exponents 3 and 4 saturate the direct-edge stroke (clamped to the theme's max width), while the symbolic exponent n stays neutral because the inference rule only fires for numeric exponents.",
+            "sceneStep": 8,
+            "semanticGraph": {
+              "graph": {
+                "domain": "algebra",
+                "nodes": [
+                  {
+                    "id": "__equals_1",
+                    "type": "operator",
+                    "op": "equals",
+                    "description": "Equates y to a sum of three monomials in x with increasing exponents.",
+                    "subexpr": "y = x^3 + x^4 + x^n"
+                  },
+                  {
+                    "id": "y",
+                    "label": "y",
+                    "description": "Dependent variable — its value is determined by x once the three powers are summed.",
+                    "type": "scalar",
+                    "latex": "y",
+                    "role": "dependent",
+                    "subexpr": "y"
+                  },
+                  {
+                    "id": "x",
+                    "label": "x",
+                    "description": "Shared base for all three powers. Reused across the diagram so the contrast between the three outgoing power-edges is the only visual difference.",
+                    "type": "scalar",
+                    "latex": "x",
+                    "role": "independent",
+                    "subexpr": "x"
+                  },
+                  {
+                    "id": "__add_rhs",
+                    "type": "operator",
+                    "op": "add",
+                    "description": "Sums the three monomials. Addition edges are structural — they don't carry proportionality semantics.",
+                    "subexpr": "x^3 + x^4 + x^n"
+                  },
+                  {
+                    "id": "__power_x3",
+                    "type": "operator",
+                    "op": "power",
+                    "exponent": "3",
+                    "description": "Cubes x. The renderer reads this exponent and tags the *outgoing* edge as direct with weight 3 (clamped to the theme's max stroke width).",
+                    "subexpr": "x^{3}"
+                  },
+                  {
+                    "id": "__power_x4",
+                    "type": "operator",
+                    "op": "power",
+                    "exponent": "4",
+                    "description": "Raises x to the fourth power. Outgoing edge tagged direct, weight 4 — saturates the clamp on themes with a base direct-stroke ≥ 2.",
+                    "subexpr": "x^{4}"
+                  },
+                  {
+                    "id": "__power_xn",
+                    "type": "operator",
+                    "op": "power",
+                    "exponent": "n",
+                    "description": "Raises x to the symbolic power n. The inference rule needs a numeric exponent to fire, so this node's outgoing edge stays neutral — a deliberate contrast with the two literal cases.",
+                    "subexpr": "x^{n}"
+                  }
+                ],
+                "edges": [
+                  { "from": "y", "to": "__equals_1" },
+                  { "from": "x", "to": "__power_x3" },
+                  { "from": "x", "to": "__power_x4" },
+                  { "from": "x", "to": "__power_xn" },
+                  { "from": "__power_x3", "to": "__add_rhs" },
+                  { "from": "__power_x4", "to": "__add_rhs" },
+                  { "from": "__power_xn", "to": "__add_rhs" },
+                  { "from": "__add_rhs", "to": "__equals_1" }
+                ],
+                "classification": { "kind": "algebraic" }
               }
             }
           }

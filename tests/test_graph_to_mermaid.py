@@ -384,48 +384,67 @@ class TestSemanticGraphToMermaid:
         assert "stroke-width:400px" not in result
 
     def test_power_edge_semantic_inferred_at_render(self):
-        # Hand-authored scenes sometimes omit the semantic on a
-        # ``base → Pow(n)`` edge. The renderer recovers it from the
-        # destination node's ``exponent`` so the diagram still paints
-        # the right color.
+        # The proportionality lives on the *outgoing* edge from a
+        # power node — that's where the squared/cubed/inverse
+        # relationship is actually carried into the rest of the
+        # expression. The renderer reads ``exponent`` off the source
+        # power node and tags the downstream edge accordingly.
         theme = load_theme("power-direction-dark")
         graph = {
             "nodes": [
                 {"id": "c", "type": "scalar"},
                 {"id": "__p_1", "type": "operator", "op": "power", "exponent": "2"},
+                {"id": "__m_1", "type": "operator", "op": "multiply"},
             ],
             "edges": [
-                {"from": "c", "to": "__p_1"},  # untagged!
+                {"from": "c", "to": "__p_1"},        # base → power: stays plain
+                {"from": "__p_1", "to": "__m_1"},    # power → next: gets ``direct``
             ],
         }
         result = semantic_graph_to_mermaid(graph, theme=theme)
-        # ``direct`` stroke from edgeStyles.direct.stroke + width = 4*2 = 8 (clamped).
-        assert "stroke:#ef5350" in result
-        assert "stroke-width:8px" in result
+        link_lines = [
+            line for line in result.splitlines()
+            if line.strip().startswith("linkStyle")
+        ]
+        # Index 0 — base → power: should be neutral fallback (no direct red).
+        in_line = next((l for l in link_lines if "linkStyle 0 " in l), None)
+        assert in_line is not None, "expected a linkStyle for the incoming edge"
+        assert "stroke:#aaa" in in_line, f"incoming edge should be neutral: {in_line!r}"
+        # Index 1 — power → multiply: should be direct + width = 4*2 = 8 (clamped).
+        out_line = next((l for l in link_lines if "linkStyle 1 " in l), None)
+        assert out_line is not None, "expected a linkStyle for the outgoing edge"
+        assert "stroke:#ef5350" in out_line  # direct
+        assert "stroke-width:8px" in out_line
 
     def test_explicit_edge_tag_wins_over_inference(self):
-        # An explicit semantic on the edge should not be overridden by
-        # the renderer's structural inference.
+        # An explicit semantic on the *outgoing* edge from a power
+        # node should not be overridden by the renderer's structural
+        # inference (which would otherwise tag it ``direct`` for
+        # ``exponent=2``).
         theme = load_theme("power-direction-dark")
         graph = {
             "nodes": [
                 {"id": "c", "type": "scalar"},
                 {"id": "__p_1", "type": "operator", "op": "power", "exponent": "2"},
+                {"id": "__m_1", "type": "operator", "op": "multiply"},
             ],
             "edges": [
-                {"from": "c", "to": "__p_1", "semantic": "neutral"},
+                {"from": "c", "to": "__p_1"},
+                {"from": "__p_1", "to": "__m_1", "semantic": "neutral"},
             ],
         }
         result = semantic_graph_to_mermaid(graph, theme=theme)
-        # Check only the linkStyle line — the direct stroke colour
-        # appears elsewhere in classDefs for the operator-variant styling.
-        link_line = next(
-            (line for line in result.splitlines() if line.strip().startswith("linkStyle")),
+        # Check only the linkStyle for the explicitly-tagged outgoing
+        # edge — the direct stroke colour appears elsewhere in classDefs
+        # for the operator-variant styling.
+        out_line = next(
+            (l for l in result.splitlines()
+             if l.strip().startswith("linkStyle 1 ")),
             None,
         )
-        assert link_line is not None, "expected a linkStyle directive"
-        assert "stroke:#aaa" in link_line  # neutral
-        assert "stroke:#ef5350" not in link_line  # NOT direct
+        assert out_line is not None, "expected a linkStyle for the outgoing edge"
+        assert "stroke:#aaa" in out_line       # neutral
+        assert "stroke:#ef5350" not in out_line  # NOT direct
 
     def test_edge_weight_clamped_to_min(self):
         # Tiny weights still yield visible edges (MIN = 1px).

@@ -580,41 +580,42 @@ def semantic_graph_to_mermaid(
         edge_semantic = edge.get("semantic", "")
         edge_weight = edge.get("weight")
 
-        # Auto-infer for untagged edges feeding an operator. The graph
-        # already carries enough shape to recover the semantics that
-        # ``latex_to_graph.py`` would have tagged on a freshly-parsed
-        # graph, so hand-authored scenes don't need to re-enter every
-        # detail. Explicit edge tags always win over this inference.
+        # Auto-infer for untagged edges. The graph already carries
+        # enough shape to recover sensible semantics, so hand-authored
+        # scenes don't need to re-enter every detail. Explicit edge
+        # tags always win over this inference.
         #
-        # Rules:
-        #   * ``→ multiply`` — each factor is linearly proportional to
-        #     the product (``direct`` with unit weight).
-        #   * ``→ power`` with literal ``exponent`` — strength of the
-        #     proportionality is the absolute exponent; sign picks
-        #     between ``direct`` (n > 1) and ``inverse`` (n < 0). A
-        #     plain ``x`` (n=1) stays untagged since there's nothing
-        #     to emphasize.
+        # Rules (chosen to put the visual emphasis where the relationship
+        # is "carried", not where it originates):
+        #   * Edge *out of* a ``power`` node with literal ``exponent`` —
+        #     the value flowing through this edge has been raised to
+        #     that exponent, so it's where the squared/cubed/inverse
+        #     relationship reads. Sign picks between ``direct`` (n > 1)
+        #     and ``inverse`` (n < 0); ``weight = |n|``. The incoming
+        #     edge to the power node stays neutral — it's just "the
+        #     base arriving" and bears no strength on its own.
+        #   * Edge *into* a ``multiply`` node — each factor is linearly
+        #     proportional to the product (``direct`` + unit weight).
         if not edge_semantic:
+            src_node = nodes_by_id.get(edge.get("from"))
             dst_node = nodes_by_id.get(edge.get("to"))
-            if dst_node:
-                dst_op = dst_node.get("op")
-                if dst_op == "multiply":
-                    edge_semantic = "direct"
-                    if edge_weight is None:
-                        edge_weight = 1.0
-                elif dst_op == "power":
-                    try:
-                        exp_val = float(dst_node.get("exponent", ""))
-                    except (TypeError, ValueError):
-                        exp_val = None
-                    if exp_val is not None:
-                        abs_exp = abs(exp_val)
-                        if exp_val < 0:
-                            edge_semantic = "inverse"
-                        elif abs_exp > 1:
-                            edge_semantic = "direct"
-                        if edge_semantic and edge_weight is None and abs_exp > 0:
-                            edge_weight = abs_exp
+            if src_node and src_node.get("op") == "power":
+                try:
+                    exp_val = float(src_node.get("exponent", ""))
+                except (TypeError, ValueError):
+                    exp_val = None
+                if exp_val is not None:
+                    abs_exp = abs(exp_val)
+                    if exp_val < 0:
+                        edge_semantic = "inverse"
+                    elif abs_exp > 1:
+                        edge_semantic = "direct"
+                    if edge_semantic and edge_weight is None and abs_exp > 0:
+                        edge_weight = abs_exp
+            if not edge_semantic and dst_node and dst_node.get("op") == "multiply":
+                edge_semantic = "direct"
+                if edge_weight is None:
+                    edge_weight = 1.0
 
         arrow = default_arrow
         if edge_styles and edge_semantic in edge_styles:

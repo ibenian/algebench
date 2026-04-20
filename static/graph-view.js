@@ -732,10 +732,11 @@ function renderEdgeLegend(edgeStyles, graph) {
     // advertise a distinction that isn't visible in the diagram. The
     // server-side renderer mirrors this logic (see
     // ``scripts/graph_to_mermaid.semantic_graph_to_mermaid``): any edge
-    // without an explicit semantic is painted as ``neutral``, and
-    // edges feeding a ``multiply`` operator are auto-inferred as
-    // ``direct``. We replicate both here so the legend honestly
-    // advertises every color the diagram actually paints.
+    // without an explicit semantic is painted as ``neutral``, edges
+    // *into* a ``multiply`` operator are auto-tagged ``direct``, and
+    // edges *out of* a ``power`` operator inherit ``direct``/``inverse``
+    // from the literal exponent. We replicate both rules here so the
+    // legend honestly advertises every color the diagram actually paints.
     const nodeById = Object.create(null);
     for (const n of (graph && graph.nodes) || []) {
         if (n && n.id) nodeById[n.id] = n;
@@ -748,17 +749,18 @@ function renderEdgeLegend(edgeStyles, graph) {
             present.add(e.semantic);
             continue;
         }
+        const src = nodeById[e.from];
         const dst = nodeById[e.to];
-        if (dst && dst.op === 'multiply') {
-            present.add('direct');
-            continue;
-        }
-        if (dst && dst.op === 'power') {
-            const n = parseFloat(dst.exponent);
+        if (src && src.op === 'power') {
+            const n = parseFloat(src.exponent);
             if (Number.isFinite(n)) {
                 if (n < 0) { present.add('inverse'); continue; }
                 if (Math.abs(n) > 1) { present.add('direct'); continue; }
             }
+        }
+        if (dst && dst.op === 'multiply') {
+            present.add('direct');
+            continue;
         }
         hasUntagged = true;
     }

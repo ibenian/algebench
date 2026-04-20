@@ -506,75 +506,43 @@ def _edge(graph, src, dst):
 class TestEdgeSemantics:
     """Heuristics:
 
-    - ``base → Pow(n)`` edge is tagged ``inverse`` when ``n`` is
-      negative (division, reciprocation) and ``direct`` when ``n > 1``
-      (higher-than-linear growth). A plain ``x`` (n=1) is untagged
-      since there's nothing to highlight.
-    - Every factor of a ``Mul`` is tagged ``direct`` — each operand is
-      linearly proportional to the product.
+    - ``base → Pow(n)`` edges stay untagged at parse time. The
+      proportionality semantics live on the *outgoing* edge from a
+      power node and are recovered by the renderer at draw time
+      (it reads ``exponent`` off the power node and tags the
+      downstream edge ``direct``/``inverse`` accordingly). This
+      keeps the parsed graph lean and gives a single source of
+      truth for the heuristic.
+    - Every factor of a ``Mul`` is tagged ``direct`` at parse time —
+      each operand is linearly proportional to the product, and
+      multiply has many incoming edges so we can't recover this at
+      render time without inspecting the source side.
     - Addition/subtraction/equality edges stay untagged: summands
       compose additively, not proportionally.
-    - ``edge.weight`` encodes the *strength* of the relationship. For
-      a power edge it's the absolute exponent; for plain multiplication
-      it's 1 (unit-strength linear). Renderers clamp this to a safe
-      stroke-width range.
     """
 
-    def test_division_tags_denominator_as_inverse(self):
-        g = latex_to_semantic_graph("y = a / b")
-        pow_node = _find_node(g, type="operator", op="power", exponent="-1")
-        assert pow_node is not None, "expected Pow(b, -1) for the denominator"
-        edge = _edge(g, "b", pow_node["id"])
-        assert edge is not None
-        assert edge.get("semantic") == "inverse"
-        assert edge.get("weight") == 1.0
-
-    def test_frac_tags_denominator_as_inverse(self):
-        g = latex_to_semantic_graph(r"y = \frac{a}{b}")
-        pow_node = _find_node(g, type="operator", op="power", exponent="-1")
-        assert pow_node is not None
-        edge = _edge(g, "b", pow_node["id"])
-        assert edge.get("semantic") == "inverse"
-        assert edge.get("weight") == 1.0
-
-    def test_square_tags_direct_with_weight_two(self):
-        # ``x²`` is "more than linearly" proportional — we signal that
-        # with ``direct`` + weight=2, which the renderer turns into a
-        # thicker stroke.
-        g = latex_to_semantic_graph("y = x^2")
-        pow_node = _find_node(g, type="operator", op="power", exponent="2")
-        assert pow_node is not None
-        edge = _edge(g, "x", pow_node["id"])
-        assert edge is not None
-        assert edge.get("semantic") == "direct"
-        assert edge.get("weight") == 2.0
-
-    def test_cube_tags_direct_with_weight_three(self):
-        g = latex_to_semantic_graph("y = x^3")
-        pow_node = _find_node(g, type="operator", op="power", exponent="3")
-        assert pow_node is not None
-        edge = _edge(g, "x", pow_node["id"])
-        assert edge.get("semantic") == "direct"
-        assert edge.get("weight") == 3.0
-
-    def test_inverse_square_chain(self):
-        # SymPy represents ``1/r²`` as ``Pow(Pow(r, 2), -1)``, giving a
-        # chain: ``r → Pow(2) → Pow(-1)``. Both edges get tagged: the
-        # inner square is ``direct`` weight 2, the outer reciprocation
-        # is ``inverse`` weight 1. Together they still read as "strong
-        # inverse" to a viewer because the red-then-dashed path is
-        # visually distinct.
-        g = latex_to_semantic_graph(r"F = \frac{1}{r^2}")
-        square = _find_node(g, type="operator", op="power", exponent="2")
-        recip = _find_node(g, type="operator", op="power", exponent="-1")
-        assert square is not None and recip is not None
-        inner = _edge(g, "r", square["id"])
-        outer = _edge(g, square["id"], recip["id"])
-        assert inner is not None and outer is not None
-        assert inner.get("semantic") == "direct"
-        assert inner.get("weight") == 2.0
-        assert outer.get("semantic") == "inverse"
-        assert outer.get("weight") == 1.0
+    def test_pow_edges_are_not_tagged_at_parse_time(self):
+        # The base→power edge stays plain. The renderer reads
+        # ``exponent`` off the power node and applies the semantic
+        # to the *outgoing* edge instead — see
+        # ``scripts/graph_to_mermaid.semantic_graph_to_mermaid``.
+        for latex_src in ("y = a / b", r"y = \frac{a}{b}", "y = x^2",
+                          "y = x^3", r"F = \frac{1}{r^2}"):
+            g = latex_to_semantic_graph(latex_src)
+            pow_nodes = _find_nodes(g, type="operator", op="power")
+            assert pow_nodes, f"expected a power node for {latex_src!r}"
+            for pn in pow_nodes:
+                incoming = [e for e in g["edges"] if e["to"] == pn["id"]]
+                assert incoming, "power node should have an incoming edge"
+                for edge in incoming:
+                    assert "semantic" not in edge, (
+                        f"{latex_src!r}: pow incoming edge should not be tagged "
+                        f"at parse time (got {edge})"
+                    )
+                    assert "weight" not in edge, (
+                        f"{latex_src!r}: pow incoming edge should not have a "
+                        f"weight at parse time (got {edge})"
+                    )
 
     def test_addition_has_no_semantic_tags(self):
         g = latex_to_semantic_graph("y = a + b")
