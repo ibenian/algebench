@@ -383,6 +383,50 @@ class TestSemanticGraphToMermaid:
         assert "stroke-width:8px" in result
         assert "stroke-width:400px" not in result
 
+    def test_power_edge_semantic_inferred_at_render(self):
+        # Hand-authored scenes sometimes omit the semantic on a
+        # ``base → Pow(n)`` edge. The renderer recovers it from the
+        # destination node's ``exponent`` so the diagram still paints
+        # the right color.
+        theme = load_theme("power-direction-dark")
+        graph = {
+            "nodes": [
+                {"id": "c", "type": "scalar"},
+                {"id": "__p_1", "type": "operator", "op": "power", "exponent": "2"},
+            ],
+            "edges": [
+                {"from": "c", "to": "__p_1"},  # untagged!
+            ],
+        }
+        result = semantic_graph_to_mermaid(graph, theme=theme)
+        # ``direct`` stroke from edgeStyles.direct.stroke + width = 4*2 = 8 (clamped).
+        assert "stroke:#ef5350" in result
+        assert "stroke-width:8px" in result
+
+    def test_explicit_edge_tag_wins_over_inference(self):
+        # An explicit semantic on the edge should not be overridden by
+        # the renderer's structural inference.
+        theme = load_theme("power-direction-dark")
+        graph = {
+            "nodes": [
+                {"id": "c", "type": "scalar"},
+                {"id": "__p_1", "type": "operator", "op": "power", "exponent": "2"},
+            ],
+            "edges": [
+                {"from": "c", "to": "__p_1", "semantic": "neutral"},
+            ],
+        }
+        result = semantic_graph_to_mermaid(graph, theme=theme)
+        # Check only the linkStyle line — the direct stroke colour
+        # appears elsewhere in classDefs for the operator-variant styling.
+        link_line = next(
+            (line for line in result.splitlines() if line.strip().startswith("linkStyle")),
+            None,
+        )
+        assert link_line is not None, "expected a linkStyle directive"
+        assert "stroke:#aaa" in link_line  # neutral
+        assert "stroke:#ef5350" not in link_line  # NOT direct
+
     def test_edge_weight_clamped_to_min(self):
         # Tiny weights still yield visible edges (MIN = 1px).
         theme = load_theme("power-direction-dark")

@@ -580,18 +580,41 @@ def semantic_graph_to_mermaid(
         edge_semantic = edge.get("semantic", "")
         edge_weight = edge.get("weight")
 
-        # Auto-infer for untagged edges feeding an operator: each
-        # factor of a ``multiply`` is linearly proportional to the
-        # product, so give it ``direct`` + unit weight. Addition
-        # operands would compose additively, not proportionally, so we
-        # leave those as ``neutral``. Explicit tags on the edge always
-        # override this inference.
+        # Auto-infer for untagged edges feeding an operator. The graph
+        # already carries enough shape to recover the semantics that
+        # ``latex_to_graph.py`` would have tagged on a freshly-parsed
+        # graph, so hand-authored scenes don't need to re-enter every
+        # detail. Explicit edge tags always win over this inference.
+        #
+        # Rules:
+        #   * ``→ multiply`` — each factor is linearly proportional to
+        #     the product (``direct`` with unit weight).
+        #   * ``→ power`` with literal ``exponent`` — strength of the
+        #     proportionality is the absolute exponent; sign picks
+        #     between ``direct`` (n > 1) and ``inverse`` (n < 0). A
+        #     plain ``x`` (n=1) stays untagged since there's nothing
+        #     to emphasize.
         if not edge_semantic:
             dst_node = nodes_by_id.get(edge.get("to"))
-            if dst_node and dst_node.get("op") == "multiply":
-                edge_semantic = "direct"
-                if edge_weight is None:
-                    edge_weight = 1.0
+            if dst_node:
+                dst_op = dst_node.get("op")
+                if dst_op == "multiply":
+                    edge_semantic = "direct"
+                    if edge_weight is None:
+                        edge_weight = 1.0
+                elif dst_op == "power":
+                    try:
+                        exp_val = float(dst_node.get("exponent", ""))
+                    except (TypeError, ValueError):
+                        exp_val = None
+                    if exp_val is not None:
+                        abs_exp = abs(exp_val)
+                        if exp_val < 0:
+                            edge_semantic = "inverse"
+                        elif abs_exp > 1:
+                            edge_semantic = "direct"
+                        if edge_semantic and edge_weight is None and abs_exp > 0:
+                            edge_weight = abs_exp
 
         arrow = default_arrow
         if edge_styles and edge_semantic in edge_styles:
