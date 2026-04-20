@@ -976,7 +976,7 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
                 _apply_highlights_to_graph(
                     graph, hl_pairs, step.get('highlights') or {},
                 )
-                step['semanticGraph'] = {'graph': graph, 'autoDerived': True}
+                step['semanticGraph'] = {'graph': graph}
                 filled += 1
     if filled:
         title = scene.get('title') or '(scene)'
