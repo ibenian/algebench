@@ -4,12 +4,6 @@
 DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV="$DIR/.venv"
 
-# Inherit user shell env when spawned from non-interactive parents (Claude Preview,
-# editors, etc). Re-sources ~/.zshrc via a zsh subshell and re-exports everything.
-if command -v zsh >/dev/null 2>&1 && [ -f "$HOME/.zshrc" ]; then
-    eval "$(zsh -c 'source ~/.zshrc >/dev/null 2>&1; export -p' 2>/dev/null)"
-fi
-
 if [ "$1" = "--update" ]; then
     shift
     echo "🔍 Checking for latest gemini-live-tools..."
