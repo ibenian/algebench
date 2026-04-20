@@ -232,10 +232,10 @@ def _format_label(
     head_texts = {raw_symbol, symbol_latex}
 
     if show is not None:
-        # Multi-line label layout. Mermaid's normal string form doesn't honour
-        # `<br/>` once KaTeX is active in the same label, so we emit the
-        # backtick-delimited *markdown string* form instead — real newlines
-        # inside the backticks become line breaks in the rendered node.
+        # Multi-line label layout. We build the visible lines here (head +
+        # optional description + optional metadata) and join them with
+        # ``<br/>`` below — see the comment at the ``return`` for why that
+        # form works given our Mermaid init settings.
         lines: list[str] = []
 
         head_parts: list[str] = []
