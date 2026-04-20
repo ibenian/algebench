@@ -115,6 +115,11 @@
         "highlight": {
           "type": "string",
           "description": "Name of the proof-step highlight that matched this node — the key used in ``proofStep.highlights`` (e.g. \"m\" for the highlight authored as ``\\htmlClass{hl-m}{...}``). Informational only at render time; reserved for downstream visualizations that want to cross-reference graph nodes with their originating highlight."
+        },
+        "variant": {
+          "type": "string",
+          "enum": ["direct", "inverse", "neutral"],
+          "description": "Optional proportionality variant for the node, mirroring the edge ``semantic`` values (direct, inverse, neutral)."
         }
       }
     },
