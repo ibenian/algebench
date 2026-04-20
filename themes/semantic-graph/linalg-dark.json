@@ -1,5 +1,6 @@
 {
   "name": "linalg-dark",
+  "mode": "dark",
   "direction": "TB",
   "labelMode": "emoji",
   "nodeStyles": {

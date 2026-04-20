@@ -11,6 +11,7 @@ Usage:
 import sys
 import json
 import os
+import re
 import asyncio
 import webbrowser
 import builtins
@@ -33,6 +34,954 @@ from google.genai import types
 
 script_dir = Path(__file__).parent.resolve()
 scenes_dir = script_dir / "scenes"
+
+# Make scripts/ importable (no __init__.py there, so add its parent to sys.path
+# and import via a fully qualified module name via importlib).
+import importlib.util as _iu
+def _load_script_module(rel_path: str, mod_name: str):
+    spec = _iu.spec_from_file_location(mod_name, script_dir / rel_path)
+    if spec is None or spec.loader is None:
+        return None
+    mod = _iu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# ---------------------------------------------------------------------------
+# Semantic-graph auto-derivation for proof steps missing explicit graphs.
+# Called on every scene-load endpoint so the Graph tab can show a diagram
+# even for steps that were authored without a ``semanticGraph`` field.
+# ---------------------------------------------------------------------------
+_latex_graph_cache: dict[str, dict | None] = {}
+
+# Greek placeholders for multi-character subscripts. SymPy's parse_latex
+# treats multi-letter identifiers as implicit multiplication (``\text{prop}``
+# → ``p*r*o*p``), but single-symbol Greek letters round-trip cleanly, so we
+# swap in a Greek letter, parse, then rewrite the resulting graph back.
+_GREEK_POOL = [
+    "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta",
+    "iota", "kappa", "lambda", "mu", "nu", "xi", "rho", "sigma", "tau",
+    "upsilon", "phi", "chi", "psi", "omega",
+]
+
+
+# Purely visual decorators SymPy's LaTeX parser chokes on — strip them
+# before parsing so ``\vec{F}`` is treated as just ``F``. The graph's
+# display latex loses the decoration; authors can re-add it via scene
+# ``highlights`` metadata or hand-crafted ``semanticGraph`` entries.
+#
+# ``\dot``/``\ddot``/``\dddot``/``\ddddot`` are intentionally NOT in this
+# list — they have semantic meaning (time derivatives) and get rewritten
+# to ``\frac{d…}{dt}`` form by :func:`_rewrite_dot_derivatives` *before*
+# the accent stripper runs, so SymPy parses them as real ``Derivative``
+# objects rather than dropping the decoration entirely.
+_ACCENT_COMMANDS = (
+    "vec", "hat", "bar", "tilde",
+    "overline", "underline", "widehat", "widetilde", "check", "breve",
+    "mathring", "acute", "grave",
+    "mathbf", "mathrm", "mathit", "mathsf", "mathcal", "mathfrak",
+    "boldsymbol", "bm", "operatorname",
+)
+
+
+# ---------------------------------------------------------------------------
+# Dot-accent → fraction rewrite. SymPy's LaTeX parser doesn't understand
+# overhead-dot notation — ``\dot{m}`` comes back as ``dot * m`` (two symbols
+# multiplied). Since the dot IS semantically a time derivative, we rewrite
+# it to ``\frac{d m}{d t}`` so SymPy returns a proper ``Derivative`` node
+# and the graph gains a real ``d/dt`` operator subgraph. ``\ddot`` nests as
+# ``\frac{d}{d t}\frac{d x}{d t}`` because SymPy's parser doesn't recognise
+# the flat ``\frac{d^2 x}{d t^2}`` form.
+# ---------------------------------------------------------------------------
+_DOT_ACCENT_ORDERS: dict[str, int] = {
+    "dot": 1, "ddot": 2, "dddot": 3, "ddddot": 4,
+}
+
+
+def _rewrite_dot_derivatives(
+    latex: str,
+    captured: dict[str, int] | None = None,
+) -> str:
+    """Rewrite ``\\dot{X}``/``\\ddot{X}``/... into ``\\frac{dX}{dt}`` form.
+
+    Trailing subscripts or superscripts on the accented body are absorbed
+    into the differentiated variable. Physics notation ``\\dot{m}_{exhaust}``
+    means ``d(m_{exhaust})/dt`` (the exhaust subsystem's mass-flow rate),
+    not ``(dm/dt)_{exhaust}`` — so they belong inside the numerator.
+
+    When *captured* is provided, every rewritten accent is recorded as
+    ``{var_latex: max_order}`` so callers can later restore the original
+    ``\\dot{X}`` notation in graph node subexprs for display (without
+    sacrificing SymPy's ability to parse the intermediate form as a real
+    ``Derivative`` node).
+    """
+    if not isinstance(latex, str) or "\\" not in latex:
+        return latex
+    # Quick bail-out: no dot accent commands present.
+    if not any(f"\\{cmd}{{" in latex for cmd in _DOT_ACCENT_ORDERS):
+        return latex
+
+    def find_matching_brace(s: str, open_idx: int) -> int | None:
+        """Given s[open_idx] == '{', return index of matching '}' or None."""
+        if open_idx >= len(s) or s[open_idx] != "{":
+            return None
+        depth = 1
+        j = open_idx + 1
+        while j < len(s):
+            c = s[j]
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    return j
+            j += 1
+        return None
+
+    def consume_sub_sup(s: str, pos: int) -> tuple[str, int]:
+        """Consume one ``_{…}``/``^{…}`` or ``_x``/``^x`` token. Returns
+        ``(literal, new_pos)``. ``('', pos)`` when there's nothing to eat."""
+        if pos >= len(s) or s[pos] not in "_^":
+            return "", pos
+        op = s[pos]
+        p = pos + 1
+        if p >= len(s):
+            return "", pos
+        if s[p] == "{":
+            end = find_matching_brace(s, p)
+            if end is None:
+                return "", pos
+            return op + s[p:end + 1], end + 1
+        # Single-char sub/sup: _x or ^2
+        return op + s[p], p + 1
+
+    out: list[str] = []
+    i = 0
+    n = len(latex)
+    while i < n:
+        if latex[i] != "\\":
+            out.append(latex[i])
+            i += 1
+            continue
+        matched_cmd: str | None = None
+        for cmd in _DOT_ACCENT_ORDERS:
+            end = i + 1 + len(cmd)
+            if latex.startswith(cmd, i + 1) and end < n and latex[end] == "{":
+                matched_cmd = cmd
+                break
+        if matched_cmd is None:
+            out.append(latex[i])
+            i += 1
+            continue
+        order = _DOT_ACCENT_ORDERS[matched_cmd]
+        body_open = i + 1 + len(matched_cmd)
+        body_close = find_matching_brace(latex, body_open)
+        if body_close is None:
+            out.append(latex[i])
+            i += 1
+            continue
+        body = latex[body_open + 1:body_close]
+        # Recurse so nested accents (``\dot{\dot{x}}`` → second-order, or
+        # ``\dot{\vec{p}}`` → ``\frac{d \vec{p}}{d t}``) are handled too.
+        body = _rewrite_dot_derivatives(body, captured)
+        j = body_close + 1
+        # Absorb any trailing subscript/superscript chain as part of the
+        # differentiated variable.
+        suffix = ""
+        while True:
+            tok, new_j = consume_sub_sup(latex, j)
+            if not tok:
+                break
+            suffix += tok
+            j = new_j
+        var = body + suffix
+        # Record the accented variable (and its max observed order) so the
+        # display pass can restore ``\dot{…}``/``\ddot{…}`` in subexprs.
+        if captured is not None:
+            captured[var] = max(captured.get(var, 0), order)
+        # Build nested ``\frac{d}{d t}`` wrappers in SymPy-canonical form
+        # (empty numerator, variable trails after). The seemingly-natural
+        # ``\frac{d <var>}{d t}`` form *fails to parse in SymPy whenever
+        # <var> carries a subscript* (``\frac{d m_{\alpha}}{d t}`` →
+        # "I expected one of these: '}'"), so we always emit the shape
+        # SymPy's parser handles reliably.
+        frac = f"\\frac{{d}}{{d t}} {var}"
+        for _ in range(order - 1):
+            frac = f"\\frac{{d}}{{d t}} {frac}"
+        out.append(frac)
+        i = j
+    return "".join(out)
+
+
+# ---------------------------------------------------------------------------
+# User-written ``\frac{d<body>}{d t}`` normalizer. SymPy's LaTeX parser only
+# handles this form when <body> is a single letter (``\frac{dp}{dt}``); any
+# subscripted form (``\frac{dm_{\text{exhaust}}}{dt}``) fails with a
+# cryptic brace-mismatch error. Rewrite the user's input to the canonical
+# ``\frac{d}{d t} <body>`` form *before* handing it to SymPy, so authoring
+# either shape is safe.
+# ---------------------------------------------------------------------------
+def _normalize_frac_derivatives(latex: str) -> str:
+    """Rewrite ``\\frac{d<body>}{d t}`` → ``\\frac{d}{d t} <body>`` so the
+    SymPy parser accepts subscripted/complex numerators.
+
+    Only fires when the numerator starts with ``d`` immediately followed by
+    a variable body (optionally with a trailing ``_{…}`` or ``^{…}``). Does
+    NOT populate the dotted-vars capture — the author explicitly wrote a
+    fraction, so we want to preserve that shape in display subexprs rather
+    than collapsing it to ``\\dot{X}`` notation.
+    """
+    if not isinstance(latex, str) or "\\frac" not in latex:
+        return latex
+
+    def find_matching_brace(s: str, open_idx: int) -> int | None:
+        if open_idx >= len(s) or s[open_idx] != "{":
+            return None
+        depth = 1
+        j = open_idx + 1
+        while j < len(s):
+            c = s[j]
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    return j
+            j += 1
+        return None
+
+    out: list[str] = []
+    i = 0
+    n = len(latex)
+    while i < n:
+        if not latex.startswith("\\frac{", i):
+            out.append(latex[i])
+            i += 1
+            continue
+        num_open = i + len("\\frac")
+        num_close = find_matching_brace(latex, num_open)
+        if num_close is None or num_close + 1 >= n or latex[num_close + 1] != "{":
+            out.append(latex[i])
+            i += 1
+            continue
+        den_open = num_close + 1
+        den_close = find_matching_brace(latex, den_open)
+        if den_close is None:
+            out.append(latex[i])
+            i += 1
+            continue
+        numerator = latex[num_open + 1:num_close].strip()
+        denominator = latex[den_open + 1:den_close].strip()
+        # Only rewrite when numerator looks like ``d<body>`` AND denominator
+        # is ``d t`` (optionally with a superscript for higher-order, though
+        # those are rare in practice and we leave them alone for safety).
+        if (numerator.startswith("d") and len(numerator) > 1
+                and numerator[1] != "d"
+                and denominator.replace(" ", "") == "dt"):
+            body = numerator[1:].lstrip()
+            # Recurse into body so nested fracs (``\frac{d(\frac{dx}{dt})}{dt}``
+            # and the like) get normalized too, though such cases are rare.
+            body = _normalize_frac_derivatives(body)
+            out.append(f"\\frac{{d}}{{d t}} {body}")
+            i = den_close + 1
+            continue
+        # Not a derivative-shaped fraction — keep it verbatim but still
+        # recurse into the numerator/denominator so nested matches fire.
+        out.append("\\frac{")
+        out.append(_normalize_frac_derivatives(latex[num_open + 1:num_close]))
+        out.append("}{")
+        out.append(_normalize_frac_derivatives(latex[den_open + 1:den_close]))
+        out.append("}")
+        i = den_close + 1
+    return "".join(out)
+
+
+# ---------------------------------------------------------------------------
+# Display-layer restore. After SymPy re-renders a subexpression, a first-
+# order time derivative comes back as ``\frac{d}{d t} X`` and higher orders
+# as ``\frac{d^{n}}{d t^{n}} X``. For any variable the user originally
+# wrote with overhead-dot notation, rewrite those patterns back to the
+# compact ``\dot{X}``/``\ddot{X}`` form the author chose — without touching
+# the underlying graph semantics (still a ``Derivative`` node behind it).
+# ---------------------------------------------------------------------------
+_ORDER_TO_ACCENT: dict[int, str] = {1: "dot", 2: "ddot", 3: "dddot", 4: "ddddot"}
+
+
+def _restore_dot_notation(
+    latex: str,
+    dotted_vars: dict[str, int],
+) -> str:
+    """Collapse SymPy's ``\\frac{d[...]}{d t[...]} X`` output back to the
+    user's original ``\\dot{X}`` form, for any X listed in *dotted_vars*.
+    """
+    if not isinstance(latex, str) or not dotted_vars or "\\frac" not in latex:
+        return latex
+    # Process highest-order vars first so ``\ddot{x}`` doesn't get eaten by
+    # an earlier ``\dot`` pattern matching ``\frac{d}{d t}`` of the nested
+    # second-order form.
+    for var, order in sorted(dotted_vars.items(), key=lambda kv: -kv[1]):
+        if order not in _ORDER_TO_ACCENT:
+            continue
+        accent = _ORDER_TO_ACCENT[order]
+        escaped_var = re.escape(var)
+        if order == 1:
+            # Two shapes to restore:
+            #   • SymPy canonical:  ``\frac{d}{d t} <var>``
+            #   • Rewrite literal:  ``\frac{d <var>}{d t}``   (our own output
+            #     that survives in the equals node's subexpr, which stores
+            #     the raw rewritten input rather than SymPy's re-render).
+            patterns = [
+                rf"\\frac\{{d\}}\{{d\s*t\}}\s*{escaped_var}",
+                rf"\\frac\{{d\s*{escaped_var}\}}\{{d\s*t\}}",
+            ]
+        else:
+            patterns = [
+                rf"\\frac\{{d\^\{{{order}\}}\}}"
+                rf"\{{d\s*t\^\{{{order}\}}\}}\s*{escaped_var}"
+            ]
+        for pattern in patterns:
+            latex = re.sub(pattern, rf"\\{accent}{{{var}}}", latex)
+    return latex
+
+
+def _restore_dot_notation_in_graph(
+    graph: dict,
+    dotted_vars: dict[str, int],
+) -> None:
+    """Walk every node's ``subexpr`` (and top-level ``latex`` when the node
+    itself represents a dotted variable) and restore ``\\dot`` notation.
+    """
+    if not isinstance(graph, dict) or not dotted_vars:
+        return
+    for node in graph.get("nodes") or []:
+        if not isinstance(node, dict):
+            continue
+        sub = node.get("subexpr")
+        if isinstance(sub, str) and "\\frac" in sub:
+            node["subexpr"] = _restore_dot_notation(sub, dotted_vars)
+
+
+def _strip_accent_commands(
+    latex: str,
+    accent_map: dict[str, str] | None = None,
+) -> str:
+    """Peel ``\\vec{X}``/``\\hat{X}``/``\\mathbf{X}``/... → ``X``.
+
+    Walks the string once, tracking brace depth for the decorator's body so
+    nested braces inside (``\\vec{F_{abc}}``) are handled correctly. When
+    *accent_map* is provided, every stripped ``\\accent{body}`` is recorded
+    as ``{body: accent}`` so callers can restore the decoration in the
+    produced graph's display latex (via :func:`_restore_accents_in_graph`).
+    """
+    if not isinstance(latex, str) or "\\" not in latex:
+        return latex
+    out: list[str] = []
+    i = 0
+    n = len(latex)
+    while i < n:
+        if latex[i] != "\\":
+            out.append(latex[i])
+            i += 1
+            continue
+        # Try to match one of our known accent commands at this position.
+        matched_cmd: str | None = None
+        for cmd in _ACCENT_COMMANDS:
+            end = i + 1 + len(cmd)
+            if latex.startswith(cmd, i + 1) and end < n:
+                # The next char must be ``{`` (body) and must not be another
+                # identifier char (so ``\vec`` matches but ``\vector`` doesn't).
+                nxt = latex[end]
+                if nxt == "{":
+                    matched_cmd = cmd
+                    break
+        if matched_cmd is None:
+            out.append(latex[i])
+            i += 1
+            continue
+        body_start = i + 1 + len(matched_cmd) + 1  # skip '\cmd{'
+        depth = 1
+        j = body_start
+        while j < n and depth > 0:
+            c = latex[j]
+            if c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            j += 1
+        raw_body = latex[body_start:j]
+        # Recurse on body so nested accents peel too (``\vec{\hat{F}}`` → ``F``).
+        clean_body = _strip_accent_commands(raw_body, accent_map)
+        if accent_map is not None and clean_body and "\\" not in clean_body:
+            # Skip layout-only wrappers (``\mathrm`` on ``sin``, etc.) and
+            # only remember genuine accents that produce a visual mark.
+            if matched_cmd in {
+                "vec", "hat", "bar", "tilde", "dot", "ddot", "dddot", "ddddot",
+                "overline", "widehat", "widetilde", "check", "breve",
+                "mathring", "acute", "grave",
+            }:
+                accent_map.setdefault(clean_body, matched_cmd)
+        out.append(clean_body)
+        i = j + 1
+    return "".join(out)
+
+
+def _restore_accents_in_graph(
+    graph: dict | None,
+    accent_map: dict[str, str],
+) -> None:
+    """Re-wrap stripped accents in each node's display ``latex`` field.
+
+    For every ``{body: accent}`` in *accent_map*, find nodes whose latex is
+    a bare ``body`` or ``body`` plus a subscript/superscript, and restore
+    ``\\accent{body}`` at the front so the graph still shows ``\\vec{F}``
+    rather than a plain ``F``.
+    """
+    if not graph or not accent_map:
+        return
+    nodes = graph.get("nodes") or []
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        if node.get("type") in ("operator", "relation"):
+            continue
+        latex = node.get("latex")
+        if not isinstance(latex, str) or not latex:
+            continue
+        for body, accent in accent_map.items():
+            # Match either ``body`` exactly or ``body<boundary>...`` where
+            # boundary is ``_``/``^`` (subscript / superscript). Skip if the
+            # accent is already present (e.g. authored graphs).
+            if f"\\{accent}{{{body}}}" in latex:
+                continue
+            if latex == body:
+                node["latex"] = f"\\{accent}{{{body}}}"
+                if accent == "vec":
+                    node["type"] = "vector"
+                break
+            if latex.startswith(body) and len(latex) > len(body):
+                tail = latex[len(body):]
+                if tail[0] in "_^":
+                    node["latex"] = f"\\{accent}{{{body}}}{tail}"
+                    if accent == "vec":
+                        node["type"] = "vector"
+                    break
+
+
+def _substitute_multichar_subscripts(latex: str) -> tuple[str, dict[str, str]]:
+    """Replace multi-character subscript bodies with Greek placeholders.
+
+    Returns ``(rewritten_latex, greek_to_original_latex)``. The mapping keys
+    are plain names like ``"xi"``; values are the original body (e.g.
+    ``"\\text{prop}"`` or ``"sp"``).
+    """
+    mapping: dict[str, str] = {}
+    greek_iter = iter(_GREEK_POOL)
+
+    def allocate(original: str) -> str | None:
+        # Re-use the same placeholder if we've already seen this body, so that
+        # repeated occurrences map to the same symbol in the graph.
+        for k, v in mapping.items():
+            if v == original:
+                return k
+        try:
+            k = next(greek_iter)
+        except StopIteration:
+            return None
+        mapping[k] = original
+        return k
+
+    # 1) Substitute every \text{BODY} first — doesn't matter where it sits;
+    #    as a standalone symbol it still becomes an atomic placeholder.
+    def _sub_text(m: re.Match) -> str:
+        body = m.group(1)
+        k = allocate(f"\\text{{{body}}}")
+        return f"\\{k}" if k else m.group(0)
+    latex = re.sub(r"\\text\{([^{}]+)\}", _sub_text, latex)
+
+    # 2) Substitute any remaining multi-letter subscripts: _{foo} or _{abc1}.
+    def _sub_sub(m: re.Match) -> str:
+        body = m.group(1)
+        # Single-char bodies and numeric-only bodies are fine as-is.
+        if len(body) == 1 or body.isdigit():
+            return m.group(0)
+        # Numeric suffix preserved: I_{sp2} → _{ξ_{2}}? Skip numeric — just
+        # replace the whole alphabetic run; SymPy can handle `_{ξ}` either
+        # way, but it can't recover the original text. We take the simple
+        # path: only substitute when the body is purely alphabetic, keeping
+        # the "sp" → "ξ" round-trip trivial.
+        if not body.isalpha():
+            return m.group(0)
+        k = allocate(body)
+        return f"_{{\\{k}}}" if k else m.group(0)
+    latex = re.sub(r"_\{([^{}]+)\}", _sub_sub, latex)
+
+    return latex, mapping
+
+
+def _restore_subscripts_in_graph(graph: dict, mapping: dict[str, str]) -> None:
+    """Walk *graph* and swap each Greek placeholder back to the original body.
+
+    Modifies ``graph`` in-place. Touches ``id``, ``label``, ``latex``, and
+    ``subexpr`` on every node, and the ``from``/``to`` refs on every edge.
+    """
+    if not mapping:
+        return
+    # Sort keys so longer placeholders win (avoid partial clobber — though
+    # Greek names never share prefixes in our pool, this is defensive).
+    items = sorted(mapping.items(), key=lambda kv: -len(kv[0]))
+
+    def rewrite(s: str) -> str:
+        if not isinstance(s, str):
+            return s
+        for greek_name, original in items:
+            # latex form: \xi → original
+            s = s.replace(f"\\{greek_name}", original)
+            # sympy id form: bare name → original. Scope to subscript
+            # context to avoid matching unrelated substrings in operator
+            # subexprs.
+            s = s.replace(f"{{{greek_name}}}", f"{{{original}}}")
+        return s
+
+    for node in graph.get("nodes") or []:
+        if not isinstance(node, dict):
+            continue
+        for field in ("id", "label", "latex", "subexpr"):
+            if field in node and isinstance(node[field], str):
+                node[field] = rewrite(node[field])
+    for edge in graph.get("edges") or []:
+        if not isinstance(edge, dict):
+            continue
+        for field in ("from", "to"):
+            if field in edge and isinstance(edge[field], str):
+                edge[field] = rewrite(edge[field])
+
+
+_CHAIN_RELATION_COMMANDS = ("\\approx", "\\simeq", "\\equiv")
+
+
+def _split_equation_chain_sides(latex: str) -> list[str]:
+    """Split *latex* on top-level equality-like operators.
+
+    Splits on bare ``=`` and the relational commands ``\\approx``,
+    ``\\simeq``, ``\\equiv``. Returns the ordered list of sides (trimmed).
+    A non-chained expression returns a single-element list.
+    """
+    if not isinstance(latex, str) or not latex:
+        return []
+    parts: list[str] = []
+    buf: list[str] = []
+    depth = 0
+    i = 0
+    L = len(latex)
+    while i < L:
+        c = latex[i]
+        if c == '{':
+            depth += 1
+        elif c == '}':
+            depth = max(0, depth - 1)
+        split_adv = 0
+        if depth == 0:
+            for cmd in _CHAIN_RELATION_COMMANDS:
+                if latex.startswith(cmd, i):
+                    split_adv = len(cmd)
+                    break
+            if split_adv == 0 and c == '=':
+                prev = latex[i - 1] if i > 0 else ''
+                nxt = latex[i + 1] if i + 1 < L else ''
+                if prev != '\\' and nxt != '=':
+                    split_adv = 1
+        if split_adv:
+            parts.append(''.join(buf).strip())
+            buf = []
+            i += split_adv
+            continue
+        buf.append(c)
+        i += 1
+    parts.append(''.join(buf).strip())
+    return [p for p in parts if p]
+
+
+def _derive_equation_chain_graph(latex: str) -> dict | None:
+    """Derive a semantic graph for a possibly-chained equation.
+
+    For ``a = b = c = d`` each side is parsed as its own expression sub-graph,
+    then all sub-graphs are merged into a single graph whose roots converge
+    on one central ``__equals_1`` operator node. Repeated variables (e.g.
+    ``v_e`` appearing in two sides) share the same node so the graph captures
+    the cross-links naturally.
+
+    For a single expression or a plain ``a = b`` equation, delegates to the
+    ordinary single-expression derivation.
+    """
+    if not isinstance(latex, str) or not latex:
+        return None
+    sides = _split_equation_chain_sides(latex)
+    if len(sides) <= 1:
+        return _derive_semantic_graph(latex)
+    if len(sides) == 2:
+        return _derive_semantic_graph(f"{sides[0]} = {sides[1]}")
+
+    try:
+        l2g = _load_script_module("scripts/latex_to_graph.py", "latex_to_graph")
+    except Exception as e:
+        print(f"   ⚠️  chain derivation: could not load latex_to_graph: {e}")
+        return None
+    if l2g is None:
+        return None
+
+    merged_nodes: dict[str, dict] = {}
+    merged_edges: list[dict] = []
+    roots: list[str] = []
+    # Shared across sides: the RHS of one step commonly contains vars
+    # dot-accented on a previous side, and the display restore pass needs
+    # to know about all of them regardless of which side introduced them.
+    dotted_vars: dict[str, int] = {}
+
+    for si, side in enumerate(sides):
+        # Lift ``\dot{m}`` → ``\frac{d m}{d t}`` (SymPy doesn't understand
+        # overhead-dot notation natively but does produce ``Derivative``
+        # nodes from the fraction form). Then peel visual accents
+        # (\vec, \hat, \mathbf, …) so SymPy sees ``F_{action}`` rather
+        # than an unknown ``\vec`` token. Track what got stripped so we
+        # can restore the display latex post-parse.
+        deriv_side = _rewrite_dot_derivatives(side, dotted_vars)
+        deriv_side = _normalize_frac_derivatives(deriv_side)
+        accent_map: dict[str, str] = {}
+        clean_side = _strip_accent_commands(deriv_side, accent_map)
+        rewritten, mapping = _substitute_multichar_subscripts(clean_side)
+        try:
+            sub = l2g.latex_to_semantic_graph(rewritten)
+        except Exception as e:
+            print(f"   ⚠️  chain side parse failed ({side!r}): {e}")
+            return None
+        if not isinstance(sub, dict) or not sub.get("nodes"):
+            return None
+        _restore_subscripts_in_graph(sub, mapping)
+        _restore_accents_in_graph(sub, accent_map)
+        _restore_dot_notation_in_graph(sub, dotted_vars)
+
+        prefix = f"s{si}_"
+        def _rename(nid: str, p: str = prefix) -> str:
+            return p + nid if nid.startswith("__") else nid
+
+        # Merge nodes. Variables (no ``__`` prefix) collapse by id; operators
+        # are scoped per-side so we don't collide across sub-graphs.
+        for n in sub.get("nodes") or []:
+            if not isinstance(n, dict):
+                continue
+            nid = n.get("id")
+            if not isinstance(nid, str):
+                continue
+            new_id = _rename(nid)
+            cloned = dict(n)
+            cloned["id"] = new_id
+            if new_id not in merged_nodes:
+                merged_nodes[new_id] = cloned
+            else:
+                # Variable already present — keep existing richness, fill gaps.
+                existing = merged_nodes[new_id]
+                for k, v in cloned.items():
+                    existing.setdefault(k, v)
+
+        for e in sub.get("edges") or []:
+            merged_edges.append({
+                "from": _rename(e.get("from", "")),
+                "to": _rename(e.get("to", "")),
+            })
+
+        # Identify this side's root (node with no outgoing edge in its own
+        # sub-graph). Fallback: the sole node if the side is atomic.
+        out_set = {e.get("from") for e in sub.get("edges") or []}
+        root_candidates = [
+            n.get("id") for n in sub.get("nodes") or []
+            if isinstance(n, dict) and n.get("id") not in out_set
+        ]
+        if root_candidates:
+            roots.append(_rename(root_candidates[0]))
+        else:
+            roots.append(_rename(sub["nodes"][0].get("id", "")))
+
+    # Central equals node — every side points into it.
+    equals_id = "__equals_1"
+    merged_nodes[equals_id] = {
+        "id": equals_id,
+        "type": "operator",
+        "op": "equals",
+        "subexpr": " = ".join(sides),
+    }
+    for r in roots:
+        if r:
+            merged_edges.append({"from": r, "to": equals_id})
+
+    return {
+        "nodes": list(merged_nodes.values()),
+        "edges": merged_edges,
+        "classification": {"kind": "algebraic"},
+    }
+
+
+def _derive_semantic_graph(
+    math_src: str,
+    domain: str | None = None,
+) -> dict | None:
+    """Parse *math_src* and return a semantic-graph dict, or None on failure.
+
+    Results are memoized — scenes often repeat the same subexpression, and
+    sympy's LaTeX parser is not cheap. The cache key includes *domain* so
+    domain-specific labelling doesn't leak between calls.
+    """
+    if not isinstance(math_src, str):
+        return None
+    key = (math_src, domain) if domain else math_src
+    if key in _latex_graph_cache:
+        return _latex_graph_cache[key]
+    # Rewrite ``\dot{m}`` → ``\frac{d m}{d t}`` first so SymPy sees a real
+    # derivative. Capture the dotted variables so the display pass can
+    # restore ``\dot{m}`` notation in subexprs after SymPy has emitted
+    # canonical ``\frac{d}{d t} m`` text. Then peel purely-visual accents
+    # (\vec, \hat, \mathbf, …) that SymPy can't parse, then swap multi-char
+    # subscripts (\text{prop}, _{sp}, …) with Greek placeholders so SymPy
+    # treats them as atomic symbols, then restore.
+    dotted_vars: dict[str, int] = {}
+    deriv_src = _rewrite_dot_derivatives(math_src, dotted_vars)
+    deriv_src = _normalize_frac_derivatives(deriv_src)
+    accent_map: dict[str, str] = {}
+    stripped = _strip_accent_commands(deriv_src, accent_map)
+    rewritten, mapping = _substitute_multichar_subscripts(stripped)
+    try:
+        l2g = _load_script_module("scripts/latex_to_graph.py", "latex_to_graph")
+        if l2g is None:
+            graph = None
+        elif domain:
+            graph = l2g.latex_to_semantic_graph(rewritten, domain=domain)
+        else:
+            graph = l2g.latex_to_semantic_graph(rewritten)
+    except Exception as e:  # pragma: no cover — parser errors, keep scene loadable
+        print(f"   ⚠️  auto-graph failed for {math_src!r}: {e}")
+        graph = None
+    # Reject degenerate graphs that come back as a single ``__expr_*`` node —
+    # that's what SymPy emits when it collapses a chained equality into a
+    # Boolean. Returning None lets the caller fall through and show the
+    # "no graph" empty state instead of a confusing pseudo-node.
+    if isinstance(graph, dict):
+        nodes = graph.get('nodes') or []
+        if (len(nodes) == 1 and isinstance(nodes[0], dict)
+                and isinstance(nodes[0].get('id'), str)
+                and nodes[0]['id'].startswith('__expr_')):
+            graph = None
+        else:
+            _restore_subscripts_in_graph(graph, mapping)
+            _restore_accents_in_graph(graph, accent_map)
+            _restore_dot_notation_in_graph(graph, dotted_vars)
+    _latex_graph_cache[key] = graph
+    return graph
+
+
+def _extract_htmlclass_pairs(latex: str) -> list[tuple[str, str]]:
+    """Return ``[(class_key, body_latex), ...]`` for every ``\\htmlClass`` span.
+
+    ``class_key`` drops the ``hl-`` prefix so it matches the keys in a step's
+    ``highlights`` dict. Nested ``\\htmlClass`` wrappers are reported at the
+    outer level only (the inner body still appears verbatim as the body).
+    """
+    if not isinstance(latex, str) or "\\htmlClass" not in latex:
+        return []
+    out: list[tuple[str, str]] = []
+    i = 0
+    while i < len(latex):
+        # Look for \htmlClass{class}{body}
+        if latex.startswith("\\htmlClass{", i):
+            j = i + len("\\htmlClass{")
+            # class token
+            k = latex.find("}", j)
+            if k == -1:
+                break
+            class_name = latex[j:k]
+            # body — find matching brace
+            if k + 1 >= len(latex) or latex[k + 1] != '{':
+                i = k + 1
+                continue
+            b_start = k + 2
+            depth = 1
+            b = b_start
+            while b < len(latex) and depth > 0:
+                c = latex[b]
+                if c == '{':
+                    depth += 1
+                elif c == '}':
+                    depth -= 1
+                    if depth == 0:
+                        break
+                b += 1
+            body = latex[b_start:b]
+            key = class_name[3:] if class_name.startswith("hl-") else class_name
+            out.append((key, body.strip()))
+            i = b + 1
+        else:
+            i += 1
+    return out
+
+
+def _apply_highlights_to_graph(
+    graph: dict,
+    hl_pairs: list[tuple[str, str]],
+    highlights_meta: dict,
+) -> None:
+    """Overlay step-level highlight metadata onto matching graph nodes.
+
+    For each ``(class_key, body)`` pair harvested from the raw math, find the
+    node whose latex/id matches ``body`` and annotate it with the highlight's
+    ``color``, human ``label``, and the original ``hl_class`` tag.
+    """
+    if not graph or not hl_pairs or not isinstance(highlights_meta, dict):
+        return
+    nodes = graph.get("nodes") or []
+
+    def _normalize(s: str) -> str:
+        """Normalize LaTeX for comparison — peel visual accents (``\\vec``,
+        ``\\hat``, ``\\mathbf``, …) *and* dot-derivative wrappers
+        (``\\dot``/``\\ddot``/...) so ``\\htmlClass{hl-mdot}{\\dot{m}}``
+        still matches the graph's ``m`` variable node after the dot→frac
+        pre-parse rewrite. Braces single-char subscripts (``v_e`` →
+        ``v_{e}``) and strips spaces so both authoring forms match.
+        """
+        if not isinstance(s, str):
+            return ""
+        s = _strip_accent_commands(s)
+        # Repeatedly peel ``\dot{X}``/``\ddot{X}``/... → ``X`` (loop handles
+        # nested cases like ``\ddot{\vec{p}}`` after the accent strip above).
+        prev = None
+        while prev != s:
+            prev = s
+            for cmd in _DOT_ACCENT_ORDERS:
+                s = re.sub(rf"\\{cmd}\{{([^{{}}]*)\}}", r"\1", s)
+        s = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", s)
+        return s.replace(" ", "")
+
+    def _keys_for_node(n: dict) -> list[str]:
+        keys: list[str] = []
+        for f in ("latex", "id"):
+            v = n.get(f)
+            if isinstance(v, str):
+                keys.append(_normalize(v))
+        return keys
+
+    # Also normalize body latex (strip surrounding whitespace; keep \text{}
+    # wrappers — restored subscripts should match).
+    for class_key, body in hl_pairs:
+        body = _normalize(body)
+        meta = highlights_meta.get(class_key)
+        if not isinstance(meta, dict):
+            continue
+        matched: dict | None = None
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            if node.get("type") in ("operator", "relation"):
+                continue
+            if body in _keys_for_node(node):
+                matched = node
+                break
+        if matched is None:
+            continue
+        # Attach highlight metadata. Respect existing fields so hand-authored
+        # richness wins over auto-derived overlays.
+        if "color" in meta and not matched.get("color"):
+            matched["color"] = meta["color"]
+        if meta.get("label") and not matched.get("description"):
+            matched["description"] = meta["label"]
+        matched.setdefault("hl_class", f"hl-{class_key}")
+
+
+# Match any `\htmlClass{...}{body}` wrapper (may be nested) and peel it off.
+_HTML_CLASS_RE = re.compile(r"\\htmlClass\{[^}]*\}\{")
+
+def _strip_html_class(latex: str) -> str:
+    """Remove `\\htmlClass{...}{...}` wrappers, keeping only the inner body.
+
+    AlgeBench scenes annotate math with `\\htmlClass{hl-X}{...}` for
+    step-highlighting. These cannot be parsed by SymPy's LaTeX parser, so we
+    strip them before handing the expression off to the graph builder.
+    """
+    if not isinstance(latex, str) or "\\htmlClass" not in latex:
+        return latex
+    out = []
+    i = 0
+    while i < len(latex):
+        m = _HTML_CLASS_RE.match(latex, i)
+        if not m:
+            out.append(latex[i])
+            i += 1
+            continue
+        # We're at `\htmlClass{class}{` — find matching `}` for the body.
+        i = m.end()
+        depth = 1
+        while i < len(latex) and depth > 0:
+            c = latex[i]
+            if c == '{':
+                depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0:
+                    break
+            out.append(c)
+            i += 1
+        i += 1  # skip closing `}`
+    return ''.join(out)
+
+
+def _autofill_semantic_graphs(scene: dict) -> dict:
+    """Walk a scene spec and populate missing ``semanticGraph`` fields in-place.
+
+    For each proof step that has ``math`` but no ``semanticGraph``, attempt to
+    derive a graph via ``scripts/latex_to_graph.py`` and attach it under the
+    standard ``{"graph": {...}}`` wrapper.
+
+    Returns the same dict for chaining. Silently skips anything that doesn't
+    look like a scene with proofs — safe to call on any JSON.
+    """
+    if not isinstance(scene, dict):
+        return scene
+    scenes_list = scene.get('scenes')
+    if not isinstance(scenes_list, list):
+        return scene
+    filled = 0
+    for sc in scenes_list:
+        if not isinstance(sc, dict):
+            continue
+        proof = sc.get('proof')
+        if not isinstance(proof, dict):
+            continue
+        steps = proof.get('steps')
+        if not isinstance(steps, list):
+            continue
+        for step in steps:
+            if not isinstance(step, dict):
+                continue
+            if step.get('semanticGraph'):
+                continue
+            math_src = step.get('math')
+            if not math_src:
+                continue
+            # Capture highlight bindings (\htmlClass{hl-X}{body}) BEFORE the
+            # wrappers are stripped so we can map the class back to a node.
+            hl_pairs = _extract_htmlclass_pairs(math_src)
+            cleaned = _strip_html_class(math_src)
+            # Full-chain derivation: every side becomes part of the graph,
+            # converging on a single central ``__equals_1`` operator node.
+            graph = _derive_equation_chain_graph(cleaned)
+            if graph:
+                _apply_highlights_to_graph(
+                    graph, hl_pairs, step.get('highlights') or {},
+                )
+                step['semanticGraph'] = {'graph': graph}
+                filled += 1
+    if filled:
+        title = scene.get('title') or '(scene)'
+        print(f"   ✨ auto-derived {filled} semantic graph(s) for {title}")
+    return scene
 
 try:
     from gemini_live_tools import GeminiLiveAPI, pcm_to_wav_bytes, get_static_content as _glt_static, _split_sentences
@@ -825,7 +1774,6 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     if tts_output_file is not None:
         tts_stream_kwargs['output_path'] = tts_output_file
 
-    html_content = generate_html(debug=debug)
     current_spec = [None]
 
     # ---- Pydantic request models ----
@@ -853,8 +1801,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/")
     @fastapp.get("/index.html")
     async def get_index():
+        # Read fresh on each request so edits to index.html are picked up
+        # without a server restart (same pattern as /style.css, /*.js).
         return HTMLResponse(
-            content=html_content,
+            content=generate_html(debug=debug),
             headers={
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Content-Security-Policy":
@@ -911,8 +1861,102 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     _TOP_LEVEL_MODULES = {
         'state', 'expr', 'trust', 'coords', 'labels', 'follow-cam', 'camera',
         'sliders', 'overlay', 'context-browser', 'scene-loader', 'ui',
-        'json-browser', 'main', 'proof',
+        'json-browser', 'main', 'proof', 'graph-view',
     }
+
+    @fastapp.get("/api/graph/themes")
+    async def get_graph_themes():
+        """List available semantic-graph theme presets from themes/semantic-graph/.
+
+        Each entry is ``{name, mode}`` — ``mode`` is read from the theme's
+        declared ``mode`` field (``"dark"`` or ``"light"``) so the picker UI
+        can group themes by backdrop.
+        """
+        try:
+            g2m = _load_script_module("scripts/graph_to_mermaid.py", "graph_to_mermaid")
+            names = g2m.list_themes()
+            themes = []
+            for name in names:
+                try:
+                    t = g2m.load_theme(name)
+                    themes.append({"name": name, "mode": t.get("mode", "light")})
+                except Exception:
+                    themes.append({"name": name, "mode": "light"})
+            return JSONResponse({"themes": themes})
+        except Exception as e:
+            return JSONResponse({"error": str(e), "themes": []}, status_code=500)
+
+    class MermaidRenderRequest(BaseModel):
+        graph: dict = {}
+        theme: str = "default-light"
+        direction: str | None = None
+        # Optional list of fields to display on node labels.
+        # Valid values: "emoji", "label", "unit", "role", "quantity", "dimension".
+        # Example: ["emoji","label"] -> "🏹 F (force)"
+        show: list[str] | None = None
+
+    class LatexToGraphRequest(BaseModel):
+        latex: str
+        domain: str | None = None
+
+    @fastapp.post("/api/graph/from-latex")
+    async def post_graph_from_latex(req: LatexToGraphRequest):
+        """Derive a semantic graph from a LaTeX math string.
+
+        Used by the Graph tab to auto-populate diagrams for proof steps that
+        do not ship an explicit ``semanticGraph`` field. Delegates to
+        :func:`_derive_semantic_graph` so visual accents, dot-derivative
+        rewrites, and multichar-subscript handling all run on this path too.
+        """
+        try:
+            graph = _derive_semantic_graph(req.latex, domain=req.domain)
+            return JSONResponse({"graph": graph})
+        except Exception as e:
+            import traceback
+            print(f"   ❌ /api/graph/from-latex: {e}\n{traceback.format_exc()}")
+            return JSONResponse({"error": str(e)}, status_code=400)
+
+    @fastapp.post("/api/graph/mermaid")
+    async def post_graph_mermaid(req: MermaidRenderRequest):
+        """Regenerate Mermaid source from a semantic graph with the given theme/direction."""
+        try:
+            g2m = _load_script_module("scripts/graph_to_mermaid.py", "graph_to_mermaid")
+            theme = g2m.load_theme(req.theme or "default-light")
+            if req.direction:
+                theme = dict(theme)
+                theme["direction"] = req.direction
+            show_set = set(req.show) if req.show else None
+            mermaid_src = g2m.semantic_graph_to_mermaid(
+                req.graph or {}, theme=theme, show=show_set,
+            )
+            return JSONResponse({"mermaid": mermaid_src, "theme": req.theme,
+                                 "direction": theme.get("direction"),
+                                 "mode": theme.get("mode", "dark")})
+        except FileNotFoundError as e:
+            return JSONResponse({"error": str(e)}, status_code=404)
+        except Exception as e:
+            import traceback
+            print(f"   ❌ /api/graph/mermaid: {e}\n{traceback.format_exc()}")
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @fastapp.get("/graph-panel/{filename:path}")
+    async def get_graph_panel_file(filename: str):
+        """Serve files from static/graph-panel/ subdirectory."""
+        safe = filename.replace('..', '').lstrip('/')
+        path = static_dir / "graph-panel" / safe
+        if not path.is_file():
+            return Response(status_code=404)
+        suffix = path.suffix
+        if suffix == '.js':
+            media_type = "application/javascript"
+        elif suffix == '.css':
+            media_type = "text/css"
+        else:
+            media_type = "application/octet-stream"
+        with open(path, 'rb') as f:
+            content = f.read()
+        return Response(content=content, media_type=media_type,
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
     @fastapp.get("/{name}.js")
     async def get_module_js(name: str):
@@ -972,6 +2016,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         try:
             with open(resolved_path, 'r') as f:
                 scene = json.load(f)
+            _autofill_semantic_graphs(scene)
             return JSONResponse({"spec": scene, "path": str(resolved_path),
                                  "label": resolved_path.name})
         except json.JSONDecodeError:
@@ -1031,6 +2076,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     async def get_scene(name: str):
         scene = load_builtin_scene(name)
         if scene:
+            _autofill_semantic_graphs(scene)
             return JSONResponse(scene)
         return Response(content=b'Scene not found', status_code=404)
 
@@ -1159,6 +2205,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         body = await request.body()
         try:
             new_spec = json.loads(body)
+            _autofill_semantic_graphs(new_spec)
             current_spec[0] = new_spec
             return JSONResponse({"status": "loaded"})
         except json.JSONDecodeError:

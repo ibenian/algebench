@@ -12,8 +12,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from scripts.graph_to_mermaid import (
     semantic_graph_to_mermaid,
-    load_style,
-    list_styles,
+    load_theme,
+    list_themes,
     _format_label,
     _sanitize_id,
     _wrap_shape,
@@ -54,35 +54,42 @@ SIMPLE_GRAPH = {
 
 
 # ---------------------------------------------------------------------------
-# Style loading
+# Theme loading
 # ---------------------------------------------------------------------------
 
-class TestStyleLoading:
-    def test_load_default_style(self):
-        style = load_style("default")
-        assert style["name"] == "default"
-        assert "nodeStyles" in style
-        assert "direction" in style
+class TestThemeLoading:
+    def test_load_default_theme(self):
+        theme = load_theme("default-light")
+        assert theme["name"] == "default-light"
+        assert "nodeStyles" in theme
+        assert "direction" in theme
 
-    def test_list_styles_returns_all_builtin(self):
-        names = list_styles()
-        assert "default" in names
-        assert "minimal-flat" in names
-        assert "role-colored" in names
-        assert "power-direction" in names
-        assert "power-flow" in names
+    def test_list_themes_returns_all_builtin(self):
+        names = list_themes()
+        # Every theme filename ends in ``-light`` or ``-dark`` so the
+        # opposite-mode variant is immediately discoverable.
+        assert "default-light" in names
+        assert "minimal-flat-light" in names
+        assert "role-colored-light" in names
+        assert "power-direction-light" in names
+        assert "power-direction-dark" in names
+        assert "power-flow-light" in names
         assert "minimal-dark" in names
         assert "linalg-dark" in names
+        for name in names:
+            assert name.endswith("-light") or name.endswith("-dark"), (
+                f"Theme {name!r} must end with '-light' or '-dark'"
+            )
 
-    def test_load_nonexistent_style_raises(self):
+    def test_load_nonexistent_theme_raises(self):
         with pytest.raises(FileNotFoundError, match="not found"):
-            load_style("nonexistent-style-xyz")
+            load_theme("nonexistent-theme-xyz")
 
-    def test_load_custom_style_from_dir(self, tmp_path):
+    def test_load_custom_theme_from_dir(self, tmp_path):
         custom = {"name": "test", "direction": "TB", "nodeStyles": {}, "edgeStyle": {}}
         (tmp_path / "test.json").write_text(json.dumps(custom))
-        style = load_style("test", styles_dir=tmp_path)
-        assert style["name"] == "test"
+        theme = load_theme("test", theme_dir=tmp_path)
+        assert theme["name"] == "test"
 
 
 # ---------------------------------------------------------------------------
@@ -92,31 +99,37 @@ class TestStyleLoading:
 class TestLabelFormatting:
     def test_emoji_mode_variable(self):
         node = {"id": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
-        assert _format_label(node, "emoji") == "⚖️ m"
+        # Symbol nodes are now always wrapped in single-``$`` inline math so
+        # the post-Mermaid KaTeX pass can render them uniformly.
+        assert _format_label(node, "emoji") == "⚖️ $m$"
 
     def test_emoji_mode_operator(self):
         node = {"id": "__mul_1", "type": "operator", "op": "multiply"}
-        assert _format_label(node, "emoji") == r"$$\times$$"
+        # Operators use single-``$`` inline math so the post-Mermaid KaTeX
+        # pass renders them with HTML (TeX-quality) output. Double-``$$``
+        # is intercepted by Mermaid's own KaTeX → MathML path, which has
+        # worse accent placement and no stretchy decorations.
+        assert _format_label(node, "emoji") == r"$\times$"
 
     def test_latex_mode_variable(self):
         node = {"id": "F", "label": "force", "emoji": "🏹", "type": "vector", "latex": "F"}
-        assert _format_label(node, "latex") == "$$F$$"
+        assert _format_label(node, "latex") == "$F$"
 
     def test_latex_mode_operator(self):
         node = {"id": "__mul_1", "type": "operator", "op": "multiply"}
-        assert _format_label(node, "latex") == r"$$\times$$"
+        assert _format_label(node, "latex") == r"$\times$"
 
     def test_plain_mode(self):
         node = {"id": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
-        assert _format_label(node, "plain") == "m"
+        assert _format_label(node, "plain") == "$m$"
 
     def test_plain_mode_label_equals_id(self):
         node = {"id": "x", "label": "x", "emoji": "📍", "type": "scalar"}
-        assert _format_label(node, "plain") == "x"
+        assert _format_label(node, "plain") == "$x$"
 
     def test_emoji_mode_no_emoji(self):
         node = {"id": "z", "label": "z", "type": "scalar"}
-        assert _format_label(node, "emoji") == "z"
+        assert _format_label(node, "emoji") == "$z$"
 
 
 # ---------------------------------------------------------------------------
@@ -187,14 +200,17 @@ class TestSemanticGraphToMermaid:
         assert ":::scalar" in result
 
     def test_custom_direction(self):
-        style = load_style("role-colored")
-        result = semantic_graph_to_mermaid(SIMPLE_GRAPH, style=style)
+        theme = load_theme("role-colored-light")
+        result = semantic_graph_to_mermaid(SIMPLE_GRAPH, theme=theme)
         assert result.startswith("flowchart TB\n")
 
     def test_label_mode_override(self):
         result = semantic_graph_to_mermaid(F_MA_GRAPH, label_mode="latex")
-        assert "$$m$$" in result
-        assert "$$F$$" in result
+        # All labels (symbol and operator) use single-``$`` inline math so
+        # the post-Mermaid KaTeX pass renders them uniformly with HTML
+        # output.
+        assert "$m$" in result
+        assert "$F$" in result
 
     def test_plain_label_mode(self):
         result = semantic_graph_to_mermaid(F_MA_GRAPH, label_mode="plain")
@@ -205,7 +221,7 @@ class TestSemanticGraphToMermaid:
         assert result.startswith("flowchart")
 
     def test_link_style_directives(self):
-        style = load_style("minimal-dark")
+        theme = load_theme("minimal-dark")
         graph = {
             "nodes": [
                 {"id": "a", "label": "a", "type": "scalar"},
@@ -215,7 +231,7 @@ class TestSemanticGraphToMermaid:
                 {"from": "a", "to": "__op_1", "semantic": "neutral"},
             ],
         }
-        result = semantic_graph_to_mermaid(graph, style=style)
+        result = semantic_graph_to_mermaid(graph, theme=theme)
         assert "linkStyle 0" in result
 
     def test_edge_labels(self):
@@ -251,9 +267,9 @@ class TestEndToEnd:
         from scripts.latex_to_graph import latex_to_semantic_graph
 
         graph = latex_to_semantic_graph("E = mc^2")
-        for style_name in list_styles():
-            style = load_style(style_name)
-            result = semantic_graph_to_mermaid(graph, style=style)
+        for theme_name in list_themes():
+            theme = load_theme(theme_name)
+            result = semantic_graph_to_mermaid(graph, theme=theme)
             assert result.startswith("flowchart")
 
     def test_all_label_modes(self):

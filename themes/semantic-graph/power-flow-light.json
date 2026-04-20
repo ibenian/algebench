@@ -1,5 +1,6 @@
 {
-  "name": "power-flow",
+  "name": "power-flow-light",
+  "mode": "light",
   "direction": "TB",
   "labelMode": "emoji",
   "nodeStyles": {

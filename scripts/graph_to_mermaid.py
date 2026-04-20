@@ -2,14 +2,15 @@
 """Convert a semantic graph (JSON) into a Mermaid flowchart diagram.
 
 Reads a semantic graph produced by ``latex_to_graph.py`` and renders it as
-Mermaid syntax with configurable styling.
+Mermaid syntax with a configurable visual theme (loaded from
+``themes/semantic-graph/``).
 
 Usage:
     # From a JSON file
     ./run.sh scripts/graph_to_mermaid.py graph.json
 
-    # With a named style
-    ./run.sh scripts/graph_to_mermaid.py --style role-colored graph.json
+    # With a named theme
+    ./run.sh scripts/graph_to_mermaid.py --theme role-colored-light graph.json
 
     # Pipe from latex_to_graph
     ./run.sh scripts/latex_to_graph.py "F = m \\cdot a" | ./run.sh scripts/graph_to_mermaid.py -
@@ -22,7 +23,7 @@ Usage:
 
 Exit codes:
     0  Success
-    1  Invalid input or missing style
+    1  Invalid input or missing theme
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ from pathlib import Path
 from typing import Any
 
 
-STYLES_DIR = Path(__file__).parent / "styles"
+THEME_DIR = Path(__file__).parent.parent / "themes" / "semantic-graph"
 SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "semantic-graph.schema.json"
 
 SHAPE_WRAPPERS: dict[str, tuple[str, str]] = {
@@ -45,11 +46,33 @@ SHAPE_WRAPPERS: dict[str, tuple[str, str]] = {
     "diamond": ("{",   "}"),
 }
 
+# Mermaid 11+ extended shape library (typed-shape syntax:
+# ``nid@{ shape: "tri", label: "X" }``). Classic ``[...]``/``((...))``
+# wrappers don't cover these, so we emit the attribute form for any shape
+# listed here. Keeps compatibility: any shape not in either table falls
+# back to ``rect``.
+TYPED_SHAPES: dict[str, str] = {
+    "triangle":       "tri",
+    "inv_triangle":   "flip-tri",
+    "trap_top":       "trap-t",
+    "trap_bot":       "trap-b",
+    "framed_circle":  "fr-circ",
+    "framed_rect":    "fr-rect",
+    "double_circle":  "dbl-circ",
+    "lean_right":     "lean-r",
+    "lean_left":      "lean-l",
+    "hourglass":      "hourglass",
+    "notched_rect":   "notch-rect",
+    "bow_tie":        "bow-rect",
+    "cloud":          "cloud",
+}
+
 OPERATOR_SYMBOLS: dict[str, str] = {
     "add": "+",
     "subtract": "−",
     "multiply": "×",
     "divide": "÷",
+    "negate": "−",
     "power": "(·)ⁿ",
     "equals": "=",
     "derivative": "d/dt",
@@ -73,6 +96,7 @@ OPERATOR_LATEX: dict[str, str] = {
     "subtract": "-",
     "multiply": r"\times",
     "divide": r"\div",
+    "negate": "-",
     "power": r"(\cdot)^n",
     "equals": "=",
     "derivative": r"\frac{d}{dt}",
@@ -122,23 +146,23 @@ def validate_graph(graph: dict[str, Any]) -> list[str]:
     return errors
 
 
-def load_style(name: str, styles_dir: Path | None = None) -> dict[str, Any]:
-    """Load a style JSON file by name from the styles directory."""
-    d = styles_dir or STYLES_DIR
+def load_theme(name: str, theme_dir: Path | None = None) -> dict[str, Any]:
+    """Load a theme JSON file by name from the semantic-graph theme directory."""
+    d = theme_dir or THEME_DIR
     path = d / f"{name}.json"
     if not path.exists():
         available = sorted(p.stem for p in d.glob("*.json"))
         raise FileNotFoundError(
-            f"Style {name!r} not found in {d}. "
+            f"Theme {name!r} not found in {d}. "
             f"Available: {', '.join(available)}"
         )
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
-def list_styles(styles_dir: Path | None = None) -> list[str]:
-    """Return names of all available styles."""
-    d = styles_dir or STYLES_DIR
+def list_themes(theme_dir: Path | None = None) -> list[str]:
+    """Return names of all available themes."""
+    d = theme_dir or THEME_DIR
     return sorted(p.stem for p in d.glob("*.json"))
 
 
@@ -146,7 +170,7 @@ def list_styles(styles_dir: Path | None = None) -> list[str]:
 # Label formatting
 # ---------------------------------------------------------------------------
 
-SHOW_FIELDS = {"emoji", "unit", "role", "quantity", "dimension", "label"}
+SHOW_FIELDS = {"emoji", "unit", "role", "quantity", "dimension", "label", "description"}
 
 
 def _format_label(
@@ -162,22 +186,28 @@ def _format_label(
     node_type = node.get("type", "")
     op = node.get("op", "")
 
+    # Operator / function / expression labels: emit single-``$`` so the
+    # client-side post-Mermaid walker renders them with KaTeX's HTML output
+    # (TeX-quality typography). Double-``$$`` is intercepted by Mermaid's own
+    # KaTeX integration, which only produces MathML — browser-native math
+    # layout has tight accent placement (e.g. the hat in ``\hat{H}`` sits
+    # right on top of the base) and no stretchy primes, so we avoid it.
     if node_type in ("operator", "function", "expression"):
         exponent = node.get("exponent", "")
         if op == "power" and exponent:
-            return f"$${{(\\cdot)}}^{{{exponent}}}$$"
+            return f"${{(\\cdot)}}^{{{exponent}}}$"
         node_latex = node.get("latex")
         if node_latex:
             symbol = node_latex
         else:
             symbol = OPERATOR_LATEX.get(op, OPERATOR_SYMBOLS.get(op, op))
-        return f"$${symbol}$$"
+        return f"${symbol}$"
 
     if node_type == "relation":
         rel_emoji = node.get("emoji", "")
         rel_label = node.get("label", op)
         if rel_emoji:
-            return f"$${rel_emoji}$$"
+            return f"${rel_emoji}$"
         return rel_label
 
     # --- Symbol / number nodes ---
@@ -185,30 +215,65 @@ def _format_label(
     latex = node.get("latex", "")
     node_id = node.get("id", "")
     sym = node_id if not node_id.startswith("__") else ""
-    display_name = sym or node.get("label", "?")
+    raw_symbol = sym or node.get("label", "?")
 
-    if latex and (label_mode == "latex" or latex != display_name):
-        display_name = f"$${latex}$$"
+    # Render the symbol as inline LaTeX. We use single-``$`` delimiters here
+    # because Mermaid's own KaTeX integration (``$$...$$``) swallows the
+    # surrounding ``<br/>`` separators and collapses multi-line labels. The
+    # client instead runs a post-Mermaid pass via ``window.katex`` to rewrite
+    # every ``$...$`` span in the rendered SVG — see ``graph-view.js``.
+    symbol_latex = latex or raw_symbol
+    display_name = f"${symbol_latex}$"
+
+    # Treat the rendered head as "the symbol" for deduplication. For a number
+    # node where ``label == latex == "-1"``, we don't want a second line
+    # repeating the same glyph.
+    head_texts = {raw_symbol, symbol_latex}
 
     if show is not None:
-        parts: list[str] = []
+        # Multi-line label layout. Mermaid's normal string form doesn't honour
+        # `<br/>` once KaTeX is active in the same label, so we emit the
+        # backtick-delimited *markdown string* form instead — real newlines
+        # inside the backticks become line breaks in the rendered node.
+        lines: list[str] = []
+
+        head_parts: list[str] = []
         if "emoji" in show and emoji:
-            parts.append(emoji)
-        parts.append(display_name)
-        annotations: list[str] = []
+            head_parts.append(emoji)
+        head_parts.append(display_name)
+        lines.append(" ".join(head_parts))
+
+        desc_text = None
+        if "description" in show and node.get("description"):
+            desc_text = node["description"]
+        elif "label" in show and node.get("label") and node["label"] != sym:
+            desc_text = node["label"]
+        # Suppress duplicates when the description/label merely repeats the
+        # head symbol (common for number nodes like ``-1`` where label and
+        # latex are identical).
+        if desc_text and desc_text in head_texts:
+            desc_text = None
+        if desc_text:
+            lines.append(desc_text)
+
+        meta: list[str] = []
         if "unit" in show and node.get("unit"):
-            annotations.append(node["unit"])
+            meta.append(node["unit"])
         if "role" in show and node.get("role"):
-            annotations.append(node["role"])
+            meta.append(node["role"])
         if "quantity" in show and node.get("quantity"):
-            annotations.append(node["quantity"])
+            meta.append(node["quantity"])
         if "dimension" in show and node.get("dimension"):
-            annotations.append(node["dimension"])
-        if "label" in show and node.get("label") and node["label"] != sym:
-            annotations.append(node["label"])
-        if annotations:
-            parts.append(f"({', '.join(annotations)})")
-        return " ".join(parts)
+            meta.append(node["dimension"])
+        if meta:
+            lines.append(", ".join(meta))
+
+        if len(lines) <= 1:
+            return lines[0] if lines else display_name
+        # Mermaid flowcharts with ``htmlLabels: true`` render ``<br/>`` as a
+        # real line break inside node labels. The graph-view.js init already
+        # sets that flag; we just emit the separator.
+        return "<br/>".join(lines)
 
     # Legacy label_mode fallback
     if label_mode == "emoji":
@@ -246,8 +311,27 @@ def _escape_mermaid_label(label: str) -> str:
 
 
 def _wrap_shape(sanitized_id: str, label: str, shape: str) -> str:
-    """Wrap a label in Mermaid shape delimiters."""
+    """Wrap a label in Mermaid shape delimiters.
+
+    Markdown strings (``\`...\```) are passed through with real newlines
+    preserved. Plain strings get the normal +/- escape pipeline. Shapes
+    from the Mermaid 11 extended library (triangles, trapezoids, …) use
+    the typed-shape attribute form ``nid@{ shape: <kind>, label: "…" }``.
+    """
+    # Mermaid 11 typed-shape path (triangles, trapezoids, framed shapes).
+    if shape in TYPED_SHAPES:
+        mshape = TYPED_SHAPES[shape]
+        escaped = label.replace('"', "'")
+        if not (escaped.startswith("`") and escaped.endswith("`")):
+            escaped = _escape_mermaid_label(escaped)
+        return f'{sanitized_id}@{{ shape: "{mshape}", label: "{escaped}" }}'
+
     left, right = SHAPE_WRAPPERS.get(shape, ("[", "]"))
+    if label.startswith("`") and label.endswith("`"):
+        # Mermaid markdown-string form: F["`line 1\nline 2`"]. Just swap any
+        # inner double-quotes so they don't terminate our wrapping `"..."`.
+        escaped = label.replace('"', "'")
+        return f'{sanitized_id}{left}"{escaped}"{right}'
     escaped = label.replace('"', "'")
     escaped = _escape_mermaid_label(escaped)
     return f'{sanitized_id}{left}"{escaped}"{right}'
@@ -255,7 +339,7 @@ def _wrap_shape(sanitized_id: str, label: str, shape: str) -> str:
 
 def semantic_graph_to_mermaid(
     graph: dict[str, Any],
-    style: dict[str, Any] | None = None,
+    theme: dict[str, Any] | None = None,
     label_mode: str | None = None,
     show: set[str] | None = None,
     color_by: str | None = None,
@@ -266,10 +350,11 @@ def semantic_graph_to_mermaid(
     ----------
     graph : dict
         Semantic graph with ``nodes`` and ``edges``.
-    style : dict, optional
-        Style definition. Falls back to the ``default`` style.
+    theme : dict, optional
+        Semantic-graph theme (from ``themes/semantic-graph/``). Falls back
+        to the ``default`` theme when unset.
     label_mode : str, optional
-        Override the style's ``labelMode`` (``emoji``, ``latex``, ``plain``).
+        Override the theme's ``labelMode`` (``emoji``, ``latex``, ``plain``).
     show : set of str, optional
         Fields to display on nodes (``emoji``, ``unit``, ``role``,
         ``quantity``, ``dimension``, ``label``). When set, overrides
@@ -278,16 +363,16 @@ def semantic_graph_to_mermaid(
         Node property to use for classDef grouping. Default ``"type"``.
         Set to ``"role"`` to color nodes by their semantic role.
     """
-    if style is None:
-        style = load_style("default")
+    if theme is None:
+        theme = load_theme("default-light")
 
-    direction = style.get("direction", "LR")
-    lm = label_mode or style.get("labelMode", "emoji")
-    node_styles = style.get("nodeStyles", {})
-    edge_style = style.get("edgeStyle", {})
-    edge_styles = style.get("edgeStyles", {})
-    use_link_style = style.get("useLinkStyle", False)
-    global_font_size = style.get("fontSize")
+    direction = theme.get("direction", "LR")
+    lm = label_mode or theme.get("labelMode", "emoji")
+    node_styles = theme.get("nodeStyles", {})
+    edge_style = theme.get("edgeStyle", {})
+    edge_styles = theme.get("edgeStyles", {})
+    use_link_style = theme.get("useLinkStyle", False)
+    global_font_size = theme.get("fontSize")
 
     nodes = graph.get("nodes", [])
     edges = graph.get("edges", [])
@@ -301,7 +386,7 @@ def semantic_graph_to_mermaid(
     emitted_classes: set[str] = set()
 
     if color_prop == "role":
-        role_colors = style.get("roleStyles", ROLE_COLORS)
+        role_colors = theme.get("roleStyles", ROLE_COLORS)
         for role_name, rc in role_colors.items():
             parts = []
             if rc.get("fill"):
@@ -335,20 +420,33 @@ def semantic_graph_to_mermaid(
             lines.append(f"  classDef {ntype} {','.join(parts)}")
             emitted_classes.add(ntype)
 
-    # Node definitions
+    # Node definitions. Mermaid 11's typed-shape form (``@{ ... }``) doesn't
+    # accept the inline ``:::className`` shortcut, so we emit those classes
+    # via separate ``class nid className`` statements instead.
+    typed_class_assignments: list[tuple[str, str]] = []
     for node in nodes:
         nid = _sanitize_id(node["id"])
         ntype = node.get("type", "scalar")
         ns = node_styles.get(ntype, {})
-        shape = ns.get("shape", "rect")
+        # Node-level ``shape`` wins over the type default so specific ops
+        # (e.g. ``negate`` → ``inv_triangle``) can pick their own visual.
+        shape = node.get("shape") or ns.get("shape", "rect")
         label = _format_label(node, lm, show=show)
         node_def = _wrap_shape(nid, label, shape)
         class_key = node.get(color_prop, ntype) if color_prop != "type" else ntype
+        cls_name: str | None = None
         if class_key in emitted_classes:
-            node_def += f":::{class_key}"
+            cls_name = class_key
         elif ntype in emitted_classes:
-            node_def += f":::{ntype}"
+            cls_name = ntype
+        is_typed = shape in TYPED_SHAPES
+        if cls_name and not is_typed:
+            node_def += f":::{cls_name}"
+        elif cls_name and is_typed:
+            typed_class_assignments.append((nid, cls_name))
         lines.append(f"  {node_def}")
+    for nid, cls_name in typed_class_assignments:
+        lines.append(f"  class {nid} {cls_name}")
 
     # Edge definitions
     default_arrow = edge_style.get("arrow", "-->") if edge_style else "-->"
@@ -409,20 +507,20 @@ def main() -> None:
         help="Path to semantic graph JSON file, or '-' for stdin",
     )
     parser.add_argument(
-        "--style", "-s",
-        default="default",
-        help="Style name (loads from styles/ directory). Default: 'default'",
+        "--theme", "-t",
+        default="default-light",
+        help="Theme name (loads from themes/semantic-graph/). Default: 'default-light'",
     )
     parser.add_argument(
-        "--style-file",
+        "--theme-file",
         default=None,
-        help="Path to a custom style JSON file (overrides --style)",
+        help="Path to a custom theme JSON file (overrides --theme)",
     )
     parser.add_argument(
         "--label-mode",
         choices=["emoji", "latex", "plain"],
         default=None,
-        help="Override label mode from the style",
+        help="Override label mode from the theme",
     )
     parser.add_argument(
         "--show",
@@ -436,9 +534,9 @@ def main() -> None:
         help="Property to color nodes by (default: type)",
     )
     parser.add_argument(
-        "--list-styles",
+        "--list-themes",
         action="store_true",
-        help="List available built-in styles and exit",
+        help="List available built-in themes and exit",
     )
     parser.add_argument(
         "-o", "--output",
@@ -457,8 +555,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.list_styles:
-        for name in list_styles():
+    if args.list_themes:
+        for name in list_themes():
             print(name)
         return
 
@@ -485,20 +583,20 @@ def main() -> None:
                 print(f"  {e}", file=sys.stderr)
             sys.exit(1)
 
-    # Load style
-    if args.style_file:
-        with open(args.style_file, encoding="utf-8") as f:
-            style = json.load(f)
+    # Load theme
+    if args.theme_file:
+        with open(args.theme_file, encoding="utf-8") as f:
+            theme = json.load(f)
     else:
         try:
-            style = load_style(args.style)
+            theme = load_theme(args.theme)
         except FileNotFoundError as exc:
             print(f"❌ {exc}", file=sys.stderr)
             sys.exit(1)
 
     show = set(args.show.split(",")) if args.show else None
     result = semantic_graph_to_mermaid(
-        graph, style=style, label_mode=args.label_mode,
+        graph, theme=theme, label_mode=args.label_mode,
         show=show, color_by=args.color_by,
     )
 

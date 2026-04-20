@@ -14,7 +14,9 @@
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mathjs@13.0.0/lib/browser/math.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
 <link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/graph-panel/graph-panel.css">
 </head>
 <body>
 <div id="app">
@@ -49,14 +51,53 @@
         <div id="scene-dock">
             <div id="scene-dock-toggle" title="Scene tree (T)">&#9776;</div>
             <div id="scene-dock-panel">
-                <div id="scene-dock-header">
-                    <div id="scene-dock-title">Scenes</div>
+                <div id="dock-tabs">
+                    <button class="dock-tab active" data-dock-tab="scenes" title="Scene tree">Scenes</button>
+                    <button class="dock-tab" data-dock-tab="graph" title="Semantic math graph">Math</button>
                 </div>
-                <div id="scene-tree"></div>
+                <div id="dock-tab-scenes" class="dock-tab-content active">
+                    <div id="scene-dock-header">
+                        <div id="scene-dock-title">Scenes</div>
+                    </div>
+                    <div id="scene-tree"></div>
+                </div>
+                <div id="dock-tab-graph" class="dock-tab-content">
+                    <div id="graph-proof-tree"></div>
+                    <div id="graph-info-panel-host"></div>
+                </div>
             </div>
         </div>
         <div id="viewport">
             <div id="mathbox-container"></div>
+            <div id="graph-viewport" class="hidden">
+                <div id="graph-controls-left" class="graph-controls">
+                    <button id="graph-mode-toggle" class="graph-ctrl-btn" title="Switch between dark and light themes" aria-label="Theme mode">&#x263E;&#xFE0E;</button>
+                    <label for="graph-theme-select" class="graph-ctrl-label">Theme</label>
+                    <select id="graph-theme-select" class="graph-ctrl-select"></select>
+                    <label for="graph-labels-select" class="graph-ctrl-label">Labels</label>
+                    <select id="graph-labels-select" class="graph-ctrl-select">
+                        <option value="minimal">Symbol only</option>
+                        <option value="description" selected>Description</option>
+                        <option value="full">Full details</option>
+                    </select>
+                </div>
+                <div id="graph-controls-right" class="graph-controls">
+                    <div id="graph-zoom-controls">
+                        <button id="graph-zoom-out" class="graph-ctrl-btn" title="Zoom out">&minus;</button>
+                        <span id="graph-zoom-level" class="graph-ctrl-label">100%</span>
+                        <button id="graph-zoom-in" class="graph-ctrl-btn" title="Zoom in">+</button>
+                    </div>
+                    <label for="graph-direction-select" class="graph-ctrl-label">Direction</label>
+                    <select id="graph-direction-select" class="graph-ctrl-select">
+                        <option value="top-down">Top-Down</option>
+                        <option value="left-right" selected>Left-Right</option>
+                        <option value="right-left">Right-Left</option>
+                        <option value="bottom-up">Bottom-Up</option>
+                    </select>
+                </div>
+                <div id="graph-mermaid-container"></div>
+                <div id="graph-empty-state">Select a proof step with a semantic graph to view it here.</div>
+            </div>
             <div id="camera-buttons"></div>
             <div id="viewport-top-left">
                 <div id="settings-toggle" title="Display settings">&#9881;</div>
@@ -257,6 +298,7 @@
 <input type="file" id="file-input" accept=".json">
 <script>const DEBUG_MODE = __DEBUG_MODE__;</script>
 <script type="module" src="/main.js"></script>
+<script type="module" src="/graph-view.js"></script>
 <script src="/gemini-live-tools/js/voice-character-selector.js"></script>
 <script src="/gemini-live-tools/js/tts-audio-player.js"></script>
 <script src="/chat.js"></script>

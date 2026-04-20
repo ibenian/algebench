@@ -1,0 +1,18 @@
+{
+  "name": "minimal-flat-dark",
+  "mode": "dark",
+  "direction": "LR",
+  "labelMode": "emoji",
+  "nodeStyles": {
+    "scalar":   { "shape": "rect", "fill": "none", "stroke": "none", "color": "#bbb" },
+    "vector":   { "shape": "rect", "fill": "none", "stroke": "none", "color": "#bbb" },
+    "constant": { "shape": "rect", "fill": "none", "stroke": "none", "color": "#bbb" },
+    "number":   { "shape": "rect", "fill": "none", "stroke": "none", "color": "#bbb" },
+    "operator": { "shape": "rect", "fill": "none", "stroke": "none", "color": "#bbb" },
+    "function": { "shape": "rect", "fill": "none", "stroke": "none", "color": "#bbb" },
+    "relation": { "shape": "rect", "fill": "none", "stroke": "none", "color": "#bbb" },
+    "result":   { "shape": "rect", "fill": "none", "stroke": "none", "color": "#bbb" }
+  },
+  "edgeStyle": { "stroke": "#aaa", "strokeWidth": 1 },
+  "fontSize": 16
+}
