@@ -2004,9 +2004,19 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     @fastapp.get("/graph-panel/{filename:path}")
     async def get_graph_panel_file(filename: str):
-        """Serve files from static/graph-panel/ subdirectory."""
-        safe = filename.replace('..', '').lstrip('/')
-        path = static_dir / "graph-panel" / safe
+        """Serve files from static/graph-panel/ subdirectory.
+
+        Resolves the requested path and confirms it's still inside
+        ``static/graph-panel`` before opening anything — this blocks
+        ``../`` traversal, absolute paths, and symlinks escaping the
+        subtree. Matches the pattern used by ``/domains/{path:path}``.
+        """
+        panel_root = (static_dir / "graph-panel").resolve()
+        try:
+            path = (static_dir / "graph-panel" / filename).resolve()
+            path.relative_to(panel_root)
+        except (OSError, ValueError):
+            return Response(status_code=404)
         if not path.is_file():
             return Response(status_code=404)
         suffix = path.suffix
