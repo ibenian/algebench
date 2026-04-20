@@ -442,7 +442,7 @@ def semantic_graph_to_mermaid(
     operator_variants = theme.get("operatorVariants", {})
     edge_style = theme.get("edgeStyle", {})
     edge_styles = theme.get("edgeStyles", {})
-    use_link_style = theme.get("useLinkStyle", False)
+    paint_by_semantic = theme.get("paintBySemantic", False)
     global_font_size = theme.get("fontSize")
 
     nodes = graph.get("nodes", [])
@@ -632,7 +632,7 @@ def semantic_graph_to_mermaid(
         # semantic's colors; untagged ones fall back to ``neutral`` so
         # the diagram matches what the legend advertises instead of
         # leaking Mermaid's grey default.
-        if use_link_style and edge_styles:
+        if paint_by_semantic and edge_styles:
             effective_semantic = edge_semantic or "neutral"
             es = edge_styles.get(effective_semantic, {})
             ls_parts = []
@@ -647,7 +647,7 @@ def semantic_graph_to_mermaid(
 
     lines.extend(link_style_lines)
 
-    if not use_link_style and edge_style:
+    if not paint_by_semantic and edge_style:
         ls_parts = []
         if edge_style.get("stroke"):
             ls_parts.append(f"stroke:{edge_style['stroke']}")

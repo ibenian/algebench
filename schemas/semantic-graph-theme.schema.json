@@ -70,9 +70,9 @@
       "description": "Optional per-role color palette (used when the renderer is called with color_by=\"role\"). Keys are semantic roles (state_variable, parameter, constant, coefficient, index, dependent, independent, observable, field). Unknown roles are also allowed for extensibility.",
       "additionalProperties": { "$ref": "#/$defs/roleStyle" }
     },
-    "useLinkStyle": {
+    "paintBySemantic": {
       "type": "boolean",
-      "description": "When true, each edge gets its own per-index linkStyle directive (derived from edgeStyles). When false, a single linkStyle default is emitted from edgeStyle."
+      "description": "When true, every edge is painted from the edgeStyles palette keyed by its semantic tag (untagged edges fall back to neutral). When false, a single linkStyle default is emitted from edgeStyle."
     },
     "fontSize": {
       "type": "number",

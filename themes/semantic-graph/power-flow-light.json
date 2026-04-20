@@ -18,6 +18,6 @@
     "inverse":   { "stroke": "#42a5f5", "strokeWidth": 1 },
     "neutral":  { "stroke": "#777",    "strokeWidth": 2 }
   },
-  "useLinkStyle": true,
+  "paintBySemantic": true,
   "fontSize": 15
 }
