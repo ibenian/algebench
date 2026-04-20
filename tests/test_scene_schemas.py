@@ -1,12 +1,14 @@
-"""Schema-validate every scene (lesson) file.
+"""Schema-validate every published scene (lesson) file.
 
-Ensures scenes/*.json and scenes/draft/*.json all conform to
-schemas/lesson.schema.json. Mirrors test_semantic_graph_themes.py for scenes.
+Ensures every ``scenes/*.json`` conforms to ``schemas/lesson.schema.json``.
+Drafts under ``scenes/draft/`` are intentionally skipped — they are WIP and
+allowed to lag behind the schema. Mirrors ``test_semantic_graph_themes.py``
+for scenes.
 
 The CI workflow (.github/workflows/validate-data.yml) runs the same check
 against changed files on every PR; this test catches regressions locally
 and gives devs a single ``pytest`` invocation that covers all data-shape
-invariants.
+invariants for published content.
 """
 
 from __future__ import annotations
