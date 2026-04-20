@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -295,19 +296,34 @@ def _sanitize_id(node_id: str) -> str:
     return out
 
 
-def _escape_mermaid_label(label: str) -> str:
-    """Escape characters that Mermaid 11 misinterprets as markdown.
+# Inline (``$...$``) and display (``$$...$$``) math spans. The client-side
+# post-Mermaid pass routes these through KaTeX, which needs the raw ``+``/
+# ``-`` characters untouched — escaping them to ``#43;``/``#45;`` breaks the
+# LaTeX. Outside these spans, Mermaid 11 parses bare ``+``/``-`` as markdown
+# list/heading starters and mangles the label, so we do escape them there.
+#
+# Node labels nowadays emit single-``$`` inline math (see ``_format_label``);
+# double-``$$`` is kept supported for any hand-authored labels that still use
+# it. Both forms assume no interior ``$`` (``[^$]*``), which matches normal
+# LaTeX usage.
+_MATH_SPAN_RE = re.compile(r"\$\$[^$]*\$\$|\$[^$]*\$")
 
-    Only escapes +/- outside of ``$$...$$`` LaTeX blocks, since KaTeX
-    needs the raw characters.
-    """
-    if "$$" not in label:
-        return label.replace("+", "#43;").replace("-", "#45;")
-    # Split on LaTeX delimiters, only escape non-LaTeX parts
-    parts = label.split("$$")
-    for i in range(0, len(parts), 2):  # even indices are outside $$
-        parts[i] = parts[i].replace("+", "#43;").replace("-", "#45;")
-    return "$$".join(parts)
+
+def _escape_mermaid_label(label: str) -> str:
+    """Escape ``+``/``-`` for Mermaid, preserving them inside LaTeX spans."""
+    out: list[str] = []
+    last = 0
+    for m in _MATH_SPAN_RE.finditer(label):
+        # Plain text between spans — escape so Mermaid doesn't treat the
+        # characters as markdown.
+        segment = label[last:m.start()]
+        out.append(segment.replace("+", "#43;").replace("-", "#45;"))
+        # Math span — keep verbatim so KaTeX sees the original source.
+        out.append(m.group(0))
+        last = m.end()
+    tail = label[last:]
+    out.append(tail.replace("+", "#43;").replace("-", "#45;"))
+    return "".join(out)
 
 
 def _wrap_shape(sanitized_id: str, label: str, shape: str) -> str:

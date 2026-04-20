@@ -14,6 +14,7 @@ from scripts.graph_to_mermaid import (
     semantic_graph_to_mermaid,
     load_theme,
     list_themes,
+    _escape_mermaid_label,
     _format_label,
     _sanitize_id,
     _wrap_shape,
@@ -145,6 +146,54 @@ class TestSanitizeId:
 
     def test_dots(self):
         assert _sanitize_id("node.1") == "node_1"
+
+
+# ---------------------------------------------------------------------------
+# Mermaid escaping
+# ---------------------------------------------------------------------------
+
+class TestEscapeMermaidLabel:
+    def test_plain_text_escapes_plus_and_minus(self):
+        assert _escape_mermaid_label("a + b") == "a #43; b"
+        assert _escape_mermaid_label("a - b") == "a #45; b"
+        assert _escape_mermaid_label("+ -") == "#43; #45;"
+
+    def test_inline_math_span_preserved(self):
+        # Operator labels — the case the original bug broke.
+        assert _escape_mermaid_label("$-$") == "$-$"
+        assert _escape_mermaid_label("$-1$") == "$-1$"
+        assert _escape_mermaid_label("$a + b$") == "$a + b$"
+
+    def test_display_math_span_preserved(self):
+        assert _escape_mermaid_label("$$-$$") == "$$-$$"
+        assert _escape_mermaid_label("$$a+b$$") == "$$a+b$$"
+
+    def test_mixed_math_and_plain(self):
+        # +/- inside the span stays raw, +/- outside gets escaped.
+        assert (
+            _escape_mermaid_label("a + b $-$ c + d")
+            == "a #43; b $-$ c #43; d"
+        )
+
+    def test_inline_math_with_trailing_text(self):
+        assert (
+            _escape_mermaid_label("$-$<br/>desc")
+            == "$-$<br/>desc"
+        )
+        assert (
+            _escape_mermaid_label("$-$<br/>a - b")
+            == "$-$<br/>a #45; b"
+        )
+
+    def test_empty_label(self):
+        assert _escape_mermaid_label("") == ""
+
+    def test_no_math_no_specials(self):
+        assert _escape_mermaid_label("hello world") == "hello world"
+
+    def test_unterminated_math_falls_through(self):
+        # Lone ``$`` isn't a real span, so +/- still escape around it.
+        assert _escape_mermaid_label("$a+b") == "$a#43;b"
 
 
 # ---------------------------------------------------------------------------
