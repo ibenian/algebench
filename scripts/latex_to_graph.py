@@ -492,8 +492,11 @@ class SemanticGraphBuilder:
             return node_id
 
         # --- Unary negation (Mul(-1, X)) — emit a single-input ``negate``
-        # operator instead of the noisy ``× (-1)`` pair. Shape defaults to
-        # an inverted triangle so the flip reads at a glance.
+        # operator instead of the noisy ``× (-1)`` pair. The renderer
+        # gives ``negate`` an inverted-triangle default shape via
+        # ``graph_to_mermaid.OP_DEFAULT_SHAPES`` so the flip reads at a
+        # glance; no shape lives on the node itself (graph schema is
+        # semantic-only).
         if (
             isinstance(expr, Mul)
             and len(expr.args) >= 2
@@ -505,7 +508,6 @@ class SemanticGraphBuilder:
                 node_id,
                 type="operator",
                 op="negate",
-                shape="inv_triangle",
             )
             if len(rest) == 1:
                 child_id = self._walk(rest[0])

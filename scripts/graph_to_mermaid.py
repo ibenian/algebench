@@ -113,6 +113,17 @@ OPERATOR_LATEX: dict[str, str] = {
     "abs": r"|\cdot|",
 }
 
+# Op-specific shape defaults. The graph schema is semantic-only
+# (``additionalProperties: false`` at the node level), so authors can't
+# pin a shape on a node directly. Instead, the renderer gives certain
+# operators a characteristic shape so the visual reads at a glance —
+# e.g. unary ``negate`` as a flipped triangle. Themes can still override
+# the type-level default via ``nodeStyles.operator.shape``; entries here
+# only apply when the theme hasn't set one.
+OP_DEFAULT_SHAPES: dict[str, str] = {
+    "negate": "inv_triangle",
+}
+
 ROLE_COLORS: dict[str, dict[str, str]] = {
     "state_variable": {"fill": "#e3f2fd", "stroke": "#1e88e5", "color": "#0d47a1"},
     "parameter":      {"fill": "#e8f5e9", "stroke": "#43a047", "color": "#1b5e20"},
@@ -327,7 +338,7 @@ def _escape_mermaid_label(label: str) -> str:
 
 
 def _wrap_shape(sanitized_id: str, label: str, shape: str) -> str:
-    """Wrap a label in Mermaid shape delimiters.
+    r"""Wrap a label in Mermaid shape delimiters.
 
     Markdown strings (``\`...\```) are passed through with real newlines
     preserved. Plain strings get the normal +/- escape pipeline. Shapes
@@ -476,9 +487,17 @@ def semantic_graph_to_mermaid(
         nid = _sanitize_id(node["id"])
         ntype = node.get("type", "scalar")
         ns = node_styles.get(ntype, {})
-        # Node-level ``shape`` wins over the type default so specific ops
-        # (e.g. ``negate`` → ``inv_triangle``) can pick their own visual.
-        shape = node.get("shape") or ns.get("shape", "rect")
+        # Shape resolution order:
+        #   1. op-specific default (``OP_DEFAULT_SHAPES[op]``) —
+        #      e.g. unary ``negate`` always renders as an inverted
+        #      triangle, since "unary vs. binary" is a semantic
+        #      distinction any theme should preserve
+        #   2. theme's type-level shape (``nodeStyles.<type>.shape``)
+        #   3. ``rect`` fallback
+        # The node itself doesn't carry a ``shape`` field — the graph
+        # schema is semantic-only.
+        op_default = OP_DEFAULT_SHAPES.get(node.get("op"))
+        shape = op_default or ns.get("shape") or "rect"
         label = _format_label(node, lm, show=show)
         node_def = _wrap_shape(nid, label, shape)
         # ``operatorVariants`` styling only applies to operator-like nodes.
