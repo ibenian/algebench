@@ -24,7 +24,7 @@
         { "title": "Uniform acceleration (position)", "description": "$x = x_0 + v_0 t + \\tfrac{1}{2} a t^2$" },
         { "title": "Schrödinger equation (compact)", "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = \\hat{H}\\,\\psi$" },
         { "title": "Schrödinger equation (expanded)", "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = -\\dfrac{\\hbar^2}{2m}\\nabla^2 \\psi + V\\psi$" },
-        { "title": "Higher powers (^3, ^4, ^n, ^-3, ^-4, ^-n)", "description": "$y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n}$" }
+        { "title": "Higher powers and a quotient (^3, ^4, ^n, ^-3, ^-4, ^-n, a/b)", "description": "$y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n} + \\frac{a}{b}$" }
       ],
       "proof": {
         "id": "physics-equations-demo",
@@ -967,9 +967,9 @@
           {
             "id": "proof-step-8",
             "type": "step",
-            "label": "Higher powers — ^3, ^4, ^n, ^-3, ^-4, ^-n",
-            "math": "y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n}",
-            "justification": "Six powers of the same base sum together — three positive, three negative — so the contrast between direct (positive integer exponent) and inverse (negative integer exponent) proportionality reads at a glance. The two symbolic exponents (n and −n) sit between the two camps as neutral controls: the inference rule only fires for numeric exponents, so neither outgoing edge gets tagged.",
+            "label": "Higher powers and a quotient — ^3, ^4, ^n, ^-3, ^-4, ^-n, a/b",
+            "math": "y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n} + \\frac{a}{b}",
+            "justification": "Positive integer exponents read as direct (red) at increasing widths; negative integer exponents read as inverse (blue) at the same widths. The symbolic −n is also tagged inverse with default weight 1 — the renderer can read sign from the leading minus even without a magnitude. Only the positive symbolic n stays neutral. The quotient a/b shows the multiply-with-denominator pattern: the numerator's edge from a paints direct (factor); the edge from the inverse-power (b^-1) paints inverse — the multiply combiner no longer overrides the renderer's power-source inference.",
             "sceneStep": 8,
             "semanticGraph": {
               "graph": {
@@ -979,13 +979,13 @@
                     "id": "__equals_1",
                     "type": "operator",
                     "op": "equals",
-                    "description": "Equates y to a six-term sum: three positive-exponent monomials and three negative-exponent (reciprocal) monomials.",
-                    "subexpr": "y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n}"
+                    "description": "Equates y to a seven-term sum: six monomials in x plus a quotient a/b.",
+                    "subexpr": "y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n} + \\frac{a}{b}"
                   },
                   {
                     "id": "y",
                     "label": "y",
-                    "description": "Dependent variable — its value is determined by x once the six powers are summed.",
+                    "description": "Dependent variable — its value is determined by x, a, and b once the seven terms are summed.",
                     "type": "scalar",
                     "latex": "y",
                     "role": "dependent",
@@ -994,18 +994,36 @@
                   {
                     "id": "x",
                     "label": "x",
-                    "description": "Shared base for all six powers. Reused across the diagram so the contrast between the six outgoing power-edges is the only visual difference.",
+                    "description": "Shared base for the six power monomials. Reused across the diagram so the contrast between the six outgoing power-edges is the only visual difference.",
                     "type": "scalar",
                     "latex": "x",
                     "role": "independent",
                     "subexpr": "x"
                   },
                   {
+                    "id": "a",
+                    "label": "a",
+                    "description": "Numerator of the quotient term. Its edge into the multiply combiner is tagged direct (every multiplicative factor is linearly proportional to the product).",
+                    "type": "scalar",
+                    "latex": "a",
+                    "role": "independent",
+                    "subexpr": "a"
+                  },
+                  {
+                    "id": "b",
+                    "label": "b",
+                    "description": "Denominator of the quotient term. Its edge into the inverse-power node is plain — the proportionality semantics live on the *outgoing* edge from the power.",
+                    "type": "scalar",
+                    "latex": "b",
+                    "role": "independent",
+                    "subexpr": "b"
+                  },
+                  {
                     "id": "__add_rhs",
                     "type": "operator",
                     "op": "add",
-                    "description": "Sums the six monomials. Addition edges are structural — they don't carry proportionality semantics.",
-                    "subexpr": "x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n}"
+                    "description": "Sums the seven terms (six monomials + the a/b quotient). Addition edges are structural — they don't carry proportionality semantics.",
+                    "subexpr": "x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n} + \\frac{a}{b}"
                   },
                   {
                     "id": "__power_x3",
@@ -1028,7 +1046,7 @@
                     "type": "operator",
                     "op": "power",
                     "exponent": "n",
-                    "description": "Raises x to the symbolic power n. The inference rule needs a numeric exponent to fire, so this node's outgoing edge stays neutral — a deliberate contrast with the two literal cases.",
+                    "description": "Raises x to the symbolic power n. The inference rule fires only when sign can be determined; positive symbolic exponents have no usable sign or magnitude, so this node's outgoing edge stays neutral.",
                     "subexpr": "x^{n}"
                   },
                   {
@@ -1052,8 +1070,23 @@
                     "type": "operator",
                     "op": "power",
                     "exponent": "-n",
-                    "description": "Raises x to the symbolic −n power. Like the positive symbolic case, the inference rule can't tell whether −n is positive or negative without a literal value, so the outgoing edge stays neutral.",
+                    "description": "Raises x to the symbolic −n power. The leading minus tells the renderer the relationship is inverse; magnitude is unknown, so it defaults to weight 1 (thin blue stroke).",
                     "subexpr": "x^{-n}"
+                  },
+                  {
+                    "id": "__power_b_neg1",
+                    "type": "operator",
+                    "op": "power",
+                    "exponent": "-1",
+                    "description": "Reciprocal of b — i.e. 1/b. SymPy represents division `a/b` as `Mul(a, Pow(b, -1))`, so the quotient enters the diagram via this inverse-power node. Its outgoing edge into the multiply combiner is tagged inverse, weight 1.",
+                    "subexpr": "\\frac{1}{b}"
+                  },
+                  {
+                    "id": "__multiply_div",
+                    "type": "operator",
+                    "op": "multiply",
+                    "description": "Combines the numerator a with the inverse-power b^{-1} to form the quotient a·(1/b). Factor edges from regular operands are tagged direct; the edge from an inverse-power child is left plain so the renderer's power-source inference paints it inverse instead of overriding it.",
+                    "subexpr": "a \\cdot \\frac{1}{b}"
                   }
                 ],
                 "edges": [
@@ -1070,6 +1103,10 @@
                   { "from": "__power_x_neg3", "to": "__add_rhs" },
                   { "from": "__power_x_neg4", "to": "__add_rhs" },
                   { "from": "__power_x_negn", "to": "__add_rhs" },
+                  { "from": "a", "to": "__multiply_div", "semantic": "direct", "weight": 1.0 },
+                  { "from": "b", "to": "__power_b_neg1" },
+                  { "from": "__power_b_neg1", "to": "__multiply_div" },
+                  { "from": "__multiply_div", "to": "__add_rhs" },
                   { "from": "__add_rhs", "to": "__equals_1" }
                 ],
                 "classification": { "kind": "algebraic" }
