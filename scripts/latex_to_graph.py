@@ -282,8 +282,34 @@ class SemanticGraphBuilder:
         node.update(attrs)
         self.nodes.append(node)
 
-    def _add_edge(self, src: str, dst: str) -> None:
-        self.edges.append({"from": src, "to": dst})
+    def _add_edge(
+        self,
+        src: str,
+        dst: str,
+        *,
+        semantic: str | None = None,
+        weight: float | None = None,
+    ) -> None:
+        """Append an edge. ``semantic`` — when provided — must be one of
+        ``direct`` / ``inverse`` / ``neutral`` (enum from the graph schema).
+
+        Edges without a semantic are rendered as the theme default
+        (generally ``neutral``). Themes like ``power-direction-*`` style
+        the three values differently (thick red / dotted blue / plain
+        gray), which lets the diagram communicate proportionality at a
+        glance when the emitter has enough information to tag the edge.
+
+        ``weight`` — when provided — encodes the *strength* of the
+        relationship (e.g. the absolute exponent for a base→power edge).
+        Renderers multiply this by a base stroke width and clamp to a
+        safe range ``[1, 8]`` so ``x^100`` stays visually legible.
+        """
+        edge: dict[str, Any] = {"from": src, "to": dst}
+        if semantic:
+            edge["semantic"] = semantic
+        if weight is not None:
+            edge["weight"] = weight
+        self.edges.append(edge)
 
     def build(self, expr: sympy.Basic, original_latex: str | None = None) -> dict:
         """Build the graph from *expr* and return ``{nodes, edges}``."""
@@ -484,11 +510,35 @@ class SemanticGraphBuilder:
 
         # --- Power with literal exponent — absorb the number into the node ---
         if isinstance(expr, Pow) and isinstance(expr.args[1], Number):
-            exp_val = str(expr.args[1])
+            exponent = expr.args[1]
+            exp_val = str(exponent)
             node_id = self._next_id("power")
             self._add_node(node_id, type="operator", op="power", exponent=exp_val)
             base_id = self._walk(expr.args[0])
-            self._add_edge(base_id, node_id)
+            # A negative literal exponent means the base enters the enclosing
+            # expression via reciprocation — SymPy represents ``a / b`` as
+            # ``Mul(a, Pow(b, -1))``, so ``b → Pow(b, -1)`` is the one edge
+            # that deserves an ``inverse`` tag. Positive exponents leave
+            # monotonicity intact, so we get ``direct`` only when the
+            # exponent is > 1 (a plain ``x`` is just ``x`` and doesn't
+            # deserve a proportional tag). The edge *weight* is the
+            # absolute value of the exponent — ``x²`` is "more
+            # proportional" than ``x``, ``x⁻²`` is "more inverse" than
+            # ``x⁻¹``. Renderers clamp the weight to a safe stroke-width
+            # range so unusual exponents don't blow up the visual.
+            is_negative = getattr(exponent, "is_negative", False)
+            try:
+                abs_exp = abs(float(exponent))
+            except (TypeError, ValueError):
+                abs_exp = None
+            if is_negative:
+                semantic: str | None = "inverse"
+            elif abs_exp is not None and abs_exp > 1:
+                semantic = "direct"
+            else:
+                semantic = None
+            weight = abs_exp if abs_exp is not None and abs_exp > 0 else None
+            self._add_edge(base_id, node_id, semantic=semantic, weight=weight)
             return node_id
 
         # --- Unary negation (Mul(-1, X)) — emit a single-input ``negate``
@@ -521,9 +571,23 @@ class SemanticGraphBuilder:
         if op_name is not None:
             node_id = self._next_id(op_name)
             self._add_node(node_id, type="operator", op=op_name)
+            # Multiplication is a proportional combiner: each factor is
+            # linearly proportional to the product (more ``a`` → more
+            # ``a·t``, more ``t`` → more ``a·t``). We tag every factor
+            # edge as ``direct`` with unit weight so themes can paint it
+            # accordingly. Addition/subtraction/equality don't share
+            # this property — a summand contributes additively rather
+            # than multiplicatively — so those stay untagged.
+            edge_semantic = "direct" if op_name == "multiply" else None
+            edge_weight = 1.0 if op_name == "multiply" else None
             for arg in expr.args:
                 child_id = self._walk(arg)
-                self._add_edge(child_id, node_id)
+                self._add_edge(
+                    child_id,
+                    node_id,
+                    semantic=edge_semantic,
+                    weight=edge_weight,
+                )
             return node_id
 
         # --- Fallback: treat as a generic node with children ---

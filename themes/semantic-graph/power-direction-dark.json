@@ -23,5 +23,6 @@
     "inverse": { "stroke": "#42a5f5", "strokeWidth": 1, "arrow": "-.->" },
     "neutral": { "stroke": "#aaa",    "strokeWidth": 2, "arrow": "-->" }
   },
+  "useLinkStyle": true,
   "fontSize": 15
 }

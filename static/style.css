@@ -3742,6 +3742,108 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     text-align: center;
 }
 
+/* Edge-semantics legend — painted from the active theme's ``edgeStyles``
+   (forwarded by ``/api/graph/mermaid``). Sits in the bottom-left of the
+   graph viewport so it's close to the diagram without occluding the
+   controls, and only appears when the theme actually differentiates
+   edge semantics. See renderEdgeLegend() in graph-view.js. */
+.graph-edge-legend {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    background: rgba(10, 12, 26, 0.75);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 6px;
+    font-size: 0.72rem;
+    color: rgba(210, 218, 245, 0.92);
+    letter-spacing: 0.02em;
+    z-index: 2;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    pointer-events: none;
+    user-select: none;
+}
+.graph-edge-legend.hidden { display: none; }
+.graph-edge-legend-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.65;
+    margin-bottom: 2px;
+}
+.graph-edge-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+/* Swatch — a 28px-wide pseudo-arrow: stem drawn via background-gradient
+   (respects the --legend-stroke-width variable), arrowhead drawn as a
+   CSS triangle. The ``data-arrow`` attr maps Mermaid arrow kinds to
+   dashed/solid stems so the legend matches the rendered edge at a
+   glance. */
+.graph-edge-legend-swatch {
+    --legend-stroke: currentColor;
+    --legend-stroke-width: 2px;
+    position: relative;
+    display: inline-block;
+    width: 30px;
+    height: 12px;
+    flex-shrink: 0;
+}
+.graph-edge-legend-swatch::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 22px;
+    height: var(--legend-stroke-width);
+    background: var(--legend-stroke);
+    transform: translateY(-50%);
+}
+.graph-edge-legend-swatch[data-arrow="-.->"]::before,
+.graph-edge-legend-swatch[data-arrow="-.-"]::before {
+    background: none;
+    border-top: var(--legend-stroke-width) dotted var(--legend-stroke);
+    height: 0;
+}
+.graph-edge-legend-swatch[data-arrow="==>"]::before,
+.graph-edge-legend-swatch[data-arrow="==="]::before {
+    /* Double-line emphasis for thick arrows that may otherwise read thin
+       when the theme's ``strokeWidth`` is already baked in. */
+    box-shadow: 0 -2px 0 var(--legend-stroke), 0 2px 0 var(--legend-stroke);
+}
+.graph-edge-legend-swatch::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid var(--legend-stroke);
+    transform: translateY(-50%);
+}
+/* Arrow kinds without a head (``---``, ``===``, ``-.-``) — hide the
+   triangle so the swatch is just a line. */
+.graph-edge-legend-swatch[data-arrow="---"]::after,
+.graph-edge-legend-swatch[data-arrow="==="]::after,
+.graph-edge-legend-swatch[data-arrow="-.-"]::after {
+    display: none;
+}
+
+/* Light-theme variant — re-tint the floating legend so it reads on a
+   pale backdrop just like the other graph controls. */
+#graph-viewport.gv-theme-light .graph-edge-legend {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(80, 96, 150, 0.45);
+    color: rgba(40, 48, 80, 0.92);
+}
+
 /* Light-paper backdrop for styles that assume a light background.
    Override the viewport's dark gradient too, otherwise the dark backdrop
    shows through the viewport's 40px padding around the mermaid container. */

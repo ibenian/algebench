@@ -131,6 +131,11 @@
           "type": "string",
           "enum": ["direct", "inverse", "neutral"],
           "description": "Proportionality of the edge: direct (more input → more output), inverse (more input → less output), or neutral."
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Strength of the relationship. For a base→power edge, this is the absolute value of the exponent (e.g. 2 for x², 3 for x⁻³). Renderers multiply this by a base stroke width and clamp to [1, 8] so very large exponents stay visually sane. Omit for edges where strength is undefined (addition, structural)."
         }
       }
     },

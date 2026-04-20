@@ -1992,9 +1992,14 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             mermaid_src = g2m.semantic_graph_to_mermaid(
                 req.graph or {}, theme=theme, show=show_set,
             )
+            # ``edgeStyles`` is forwarded so the client can paint a legend
+            # matching the theme's per-semantic arrow styling (proportional /
+            # inversely proportional / neutral). Themes without ``edgeStyles``
+            # render all edges identically, and the legend stays hidden.
             return JSONResponse({"mermaid": mermaid_src, "theme": req.theme,
                                  "direction": theme.get("direction"),
-                                 "mode": theme.get("mode", "dark")})
+                                 "mode": theme.get("mode", "dark"),
+                                 "edgeStyles": theme.get("edgeStyles", {})})
         except FileNotFoundError as e:
             return JSONResponse({"error": str(e)}, status_code=404)
         except Exception as e:

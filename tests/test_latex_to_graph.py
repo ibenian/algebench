@@ -492,6 +492,116 @@ class TestOverrides:
 
 
 # ---------------------------------------------------------------------------
+# Edge semantics (direct / inverse)
+# ---------------------------------------------------------------------------
+
+def _edge(graph, src, dst):
+    """Return the edge matching (src -> dst), or None."""
+    for e in graph["edges"]:
+        if e.get("from") == src and e.get("to") == dst:
+            return e
+    return None
+
+
+class TestEdgeSemantics:
+    """Heuristics:
+
+    - ``base → Pow(n)`` edge is tagged ``inverse`` when ``n`` is
+      negative (division, reciprocation) and ``direct`` when ``n > 1``
+      (higher-than-linear growth). A plain ``x`` (n=1) is untagged
+      since there's nothing to highlight.
+    - Every factor of a ``Mul`` is tagged ``direct`` — each operand is
+      linearly proportional to the product.
+    - Addition/subtraction/equality edges stay untagged: summands
+      compose additively, not proportionally.
+    - ``edge.weight`` encodes the *strength* of the relationship. For
+      a power edge it's the absolute exponent; for plain multiplication
+      it's 1 (unit-strength linear). Renderers clamp this to a safe
+      stroke-width range.
+    """
+
+    def test_division_tags_denominator_as_inverse(self):
+        g = latex_to_semantic_graph("y = a / b")
+        pow_node = _find_node(g, type="operator", op="power", exponent="-1")
+        assert pow_node is not None, "expected Pow(b, -1) for the denominator"
+        edge = _edge(g, "b", pow_node["id"])
+        assert edge is not None
+        assert edge.get("semantic") == "inverse"
+        assert edge.get("weight") == 1.0
+
+    def test_frac_tags_denominator_as_inverse(self):
+        g = latex_to_semantic_graph(r"y = \frac{a}{b}")
+        pow_node = _find_node(g, type="operator", op="power", exponent="-1")
+        assert pow_node is not None
+        edge = _edge(g, "b", pow_node["id"])
+        assert edge.get("semantic") == "inverse"
+        assert edge.get("weight") == 1.0
+
+    def test_square_tags_direct_with_weight_two(self):
+        # ``x²`` is "more than linearly" proportional — we signal that
+        # with ``direct`` + weight=2, which the renderer turns into a
+        # thicker stroke.
+        g = latex_to_semantic_graph("y = x^2")
+        pow_node = _find_node(g, type="operator", op="power", exponent="2")
+        assert pow_node is not None
+        edge = _edge(g, "x", pow_node["id"])
+        assert edge is not None
+        assert edge.get("semantic") == "direct"
+        assert edge.get("weight") == 2.0
+
+    def test_cube_tags_direct_with_weight_three(self):
+        g = latex_to_semantic_graph("y = x^3")
+        pow_node = _find_node(g, type="operator", op="power", exponent="3")
+        assert pow_node is not None
+        edge = _edge(g, "x", pow_node["id"])
+        assert edge.get("semantic") == "direct"
+        assert edge.get("weight") == 3.0
+
+    def test_inverse_square_chain(self):
+        # SymPy represents ``1/r²`` as ``Pow(Pow(r, 2), -1)``, giving a
+        # chain: ``r → Pow(2) → Pow(-1)``. Both edges get tagged: the
+        # inner square is ``direct`` weight 2, the outer reciprocation
+        # is ``inverse`` weight 1. Together they still read as "strong
+        # inverse" to a viewer because the red-then-dashed path is
+        # visually distinct.
+        g = latex_to_semantic_graph(r"F = \frac{1}{r^2}")
+        square = _find_node(g, type="operator", op="power", exponent="2")
+        recip = _find_node(g, type="operator", op="power", exponent="-1")
+        assert square is not None and recip is not None
+        inner = _edge(g, "r", square["id"])
+        outer = _edge(g, square["id"], recip["id"])
+        assert inner is not None and outer is not None
+        assert inner.get("semantic") == "direct"
+        assert inner.get("weight") == 2.0
+        assert outer.get("semantic") == "inverse"
+        assert outer.get("weight") == 1.0
+
+    def test_addition_has_no_semantic_tags(self):
+        g = latex_to_semantic_graph("y = a + b")
+        add_edges = [e for e in g["edges"] if e["to"].startswith("__add")]
+        assert add_edges, "expected at least one add-edge"
+        for edge in add_edges:
+            assert "semantic" not in edge
+            assert "weight" not in edge
+
+    def test_multiplication_tags_factors_as_direct(self):
+        # ``a · t`` — both operands are linearly proportional to the
+        # product, so every factor edge gets ``direct`` + weight 1.
+        g = latex_to_semantic_graph(r"y = a \cdot t")
+        mul_edges = [e for e in g["edges"] if e["to"].startswith("__multiply")]
+        assert len(mul_edges) == 2
+        for edge in mul_edges:
+            assert edge.get("semantic") == "direct"
+            assert edge.get("weight") == 1.0
+
+    def test_edge_weight_survives_schema_validation(self):
+        from scripts.graph_to_mermaid import validate_graph
+        g = latex_to_semantic_graph(r"v = \frac{x}{t^2}")
+        errs = validate_graph(g)
+        assert errs == [], f"unexpected schema errors: {errs}"
+
+
+# ---------------------------------------------------------------------------
 # Error handling
 # ---------------------------------------------------------------------------
 

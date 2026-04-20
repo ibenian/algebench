@@ -124,6 +124,42 @@ OP_DEFAULT_SHAPES: dict[str, str] = {
     "negate": "inv_triangle",
 }
 
+
+# Stroke-width guardrails for ``edge.weight``-driven scaling. Weight
+# multiplies the theme's semantic-level base stroke width; without
+# clamps, an ``x^100`` edge would render as a 400-pixel slab. The floor
+# keeps edges visible even for ``weight=0`` (shouldn't happen in
+# practice, but defensive); the ceiling lets ``x²``/``x³`` feel
+# noticeably stronger than ``x`` without letting outliers dominate the
+# canvas.
+MIN_EDGE_WIDTH_PX = 1.0
+MAX_EDGE_WIDTH_PX = 8.0
+DEFAULT_WEIGHT_BASE_PX = 2.0  # when the theme doesn't define a
+                              # semantic-level strokeWidth
+
+
+def _resolve_edge_width(
+    semantic: str | None,
+    weight: float | None,
+    edge_styles: dict[str, Any],
+) -> float | None:
+    """Compute the final stroke width for an edge.
+
+    Returns ``None`` when neither a theme style nor a weight applies
+    (the renderer then omits the width from the emitted ``linkStyle``
+    directive, keeping Mermaid's default). When ``weight`` is set, it
+    multiplies the semantic's base width (falling back to
+    ``DEFAULT_WEIGHT_BASE_PX``) and the result is clamped to
+    ``[MIN_EDGE_WIDTH_PX, MAX_EDGE_WIDTH_PX]``.
+    """
+    es = edge_styles.get(semantic, {}) if semantic else {}
+    base = es.get("strokeWidth")
+    if weight is None:
+        return float(base) if base is not None else None
+    base_px = float(base) if base is not None else DEFAULT_WEIGHT_BASE_PX
+    raw = base_px * float(weight)
+    return max(MIN_EDGE_WIDTH_PX, min(MAX_EDGE_WIDTH_PX, raw))
+
 ROLE_COLORS: dict[str, dict[str, str]] = {
     "state_variable": {"fill": "#e3f2fd", "stroke": "#1e88e5", "color": "#0d47a1"},
     "parameter":      {"fill": "#e8f5e9", "stroke": "#43a047", "color": "#1b5e20"},
@@ -528,6 +564,13 @@ def semantic_graph_to_mermaid(
     for nid, cls_name in typed_class_assignments:
         lines.append(f"  class {nid} {cls_name}")
 
+    # Build a lookup so we can peek at the destination node's op — lets
+    # us infer a sensible default semantic for hand-authored graphs that
+    # didn't bother to tag every edge (e.g. demo scenes). Only applies
+    # when the edge doesn't already carry a semantic — explicit tags
+    # always win.
+    nodes_by_id: dict[str, dict[str, Any]] = {n["id"]: n for n in nodes if "id" in n}
+
     # Edge definitions
     default_arrow = edge_style.get("arrow", "-->") if edge_style else "-->"
     for i, edge in enumerate(edges):
@@ -535,6 +578,20 @@ def semantic_graph_to_mermaid(
         dst = _sanitize_id(edge["to"])
         edge_label = edge.get("label", "")
         edge_semantic = edge.get("semantic", "")
+        edge_weight = edge.get("weight")
+
+        # Auto-infer for untagged edges feeding an operator: each
+        # factor of a ``multiply`` is linearly proportional to the
+        # product, so give it ``direct`` + unit weight. Addition
+        # operands would compose additively, not proportionally, so we
+        # leave those as ``neutral``. Explicit tags on the edge always
+        # override this inference.
+        if not edge_semantic:
+            dst_node = nodes_by_id.get(edge.get("to"))
+            if dst_node and dst_node.get("op") == "multiply":
+                edge_semantic = "direct"
+                if edge_weight is None:
+                    edge_weight = 1.0
 
         arrow = default_arrow
         if edge_styles and edge_semantic in edge_styles:
@@ -546,14 +603,21 @@ def semantic_graph_to_mermaid(
         else:
             lines.append(f"  {src} {arrow} {dst}")
 
-        if use_link_style and edge_styles and edge_semantic:
-            es = edge_styles.get(edge_semantic, {})
+        # When the theme opts in to per-edge link styling, we paint
+        # *every* edge from the theme palette — tagged edges get their
+        # semantic's colors; untagged ones fall back to ``neutral`` so
+        # the diagram matches what the legend advertises instead of
+        # leaking Mermaid's grey default.
+        if use_link_style and edge_styles:
+            effective_semantic = edge_semantic or "neutral"
+            es = edge_styles.get(effective_semantic, {})
             ls_parts = []
             if es.get("stroke"):
                 ls_parts.append(f"stroke:{es['stroke']}")
-            sw = es.get("strokeWidth")
-            if sw:
-                ls_parts.append(f"stroke-width:{sw}px")
+            width_px = _resolve_edge_width(effective_semantic, edge_weight, edge_styles)
+            if width_px is not None:
+                # Mermaid accepts fractional px; format to 2dp and trim.
+                ls_parts.append(f"stroke-width:{width_px:g}px")
             if ls_parts:
                 link_style_lines.append(f"  linkStyle {i} {','.join(ls_parts)}")
 

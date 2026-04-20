@@ -211,7 +211,11 @@ async function fetchMermaidFromGraph(graph, theme, direction, show) {
     if (!res.ok) throw new Error(`mermaid render failed: HTTP ${res.status}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    return { mermaid: data.mermaid, mode: data.mode || 'dark' };
+    return {
+        mermaid: data.mermaid,
+        mode: data.mode || 'dark',
+        edgeStyles: data.edgeStyles || {},
+    };
 }
 
 /**
@@ -569,6 +573,11 @@ function clearGraph() {
     }
     const infoHost = document.getElementById('graph-info-panel-host');
     if (infoHost) infoHost.innerHTML = '';
+    const legend = document.getElementById('graph-edge-legend');
+    if (legend) {
+        legend.classList.add('hidden');
+        legend.innerHTML = '';
+    }
     _currentSemanticKey = null;
 }
 
@@ -593,6 +602,7 @@ async function renderCurrentStepGraph(force = false) {
     // Live regeneration from graph JSON so theme/direction/labels apply.
     let mermaidCode;
     let mode = 'dark';
+    let edgeStyles = {};
     try {
         const showFields = LABEL_PRESETS[_currentLabels] || null;
         const res = await fetchMermaidFromGraph(
@@ -600,6 +610,7 @@ async function renderCurrentStepGraph(force = false) {
         );
         mermaidCode = res.mermaid;
         mode = res.mode;
+        edgeStyles = res.edgeStyles || {};
     } catch (err) {
         console.error('[graph-view] failed to build mermaid source:', err);
         container.innerHTML = `<div style="color:#f88; padding:2rem;">Failed to build graph source.<br><small>${escapeHtml(err.message || String(err))}</small></div>`;
@@ -683,7 +694,124 @@ async function renderCurrentStepGraph(force = false) {
         });
         _currentGraphPanel.attach();
     }
+
+    renderEdgeLegend(edgeStyles, graph);
     _currentSemanticKey = key;
+}
+
+// Map from ``edge.semantic`` values to user-facing legend copy. Order here
+// is also the display order in the legend so that the proportionality axis
+// (direct → inverse) reads naturally before the structural ``neutral`` row.
+const EDGE_SEMANTIC_LABELS = [
+    ['direct',  'Proportional'],
+    ['inverse', 'Inversely proportional'],
+    ['neutral', 'Structural'],
+];
+
+// Default arrow glyph if the theme doesn't declare a per-semantic one.
+// Matches ``edgeStyle.arrow`` default in graph_to_mermaid.
+const LEGEND_DEFAULT_ARROW = '-->';
+
+/**
+ * Paint the edge-semantics legend from the theme's ``edgeStyles`` map.
+ *
+ * Only renders rows for semantics that (a) the theme actually styles and
+ * (b) appear in the current graph — no point telling the user about
+ * "inversely proportional" when nothing in the diagram is tagged that way.
+ * If neither condition holds for any semantic, the legend is hidden. This
+ * keeps the viewport uncluttered on the majority of themes
+ * (``default-*``, ``role-colored-*``, ``minimal-flat-*``) that don't
+ * differentiate edge semantics visually.
+ */
+function renderEdgeLegend(edgeStyles, graph) {
+    const host = document.getElementById('graph-edge-legend');
+    if (!host) return;
+    const styled = edgeStyles && typeof edgeStyles === 'object' ? edgeStyles : {};
+
+    // Collect the semantics actually present on graph edges so we don't
+    // advertise a distinction that isn't visible in the diagram. The
+    // server-side renderer mirrors this logic (see
+    // ``scripts/graph_to_mermaid.semantic_graph_to_mermaid``): any edge
+    // without an explicit semantic is painted as ``neutral``, and
+    // edges feeding a ``multiply`` operator are auto-inferred as
+    // ``direct``. We replicate both here so the legend honestly
+    // advertises every color the diagram actually paints.
+    const nodeById = Object.create(null);
+    for (const n of (graph && graph.nodes) || []) {
+        if (n && n.id) nodeById[n.id] = n;
+    }
+    const present = new Set();
+    let hasUntagged = false;
+    for (const e of (graph && graph.edges) || []) {
+        if (!e) continue;
+        if (e.semantic) {
+            present.add(e.semantic);
+            continue;
+        }
+        const dst = nodeById[e.to];
+        if (dst && dst.op === 'multiply') {
+            present.add('direct');
+        } else {
+            hasUntagged = true;
+        }
+    }
+    if (hasUntagged) present.add('neutral');
+    // If nothing at all (no edges), show every semantic the theme styles
+    // so users still get to learn the vocabulary on a "legend-only"
+    // graph — rare in practice but nicer than an empty panel.
+    const noneTagged = present.size === 0;
+
+    const rows = [];
+    for (const [semantic, label] of EDGE_SEMANTIC_LABELS) {
+        const s = styled[semantic];
+        if (!s) continue;
+        if (!noneTagged && !present.has(semantic)) continue;
+        rows.push({ semantic, label, style: s });
+    }
+
+    if (!rows.length) {
+        host.classList.add('hidden');
+        host.innerHTML = '';
+        return;
+    }
+
+    host.innerHTML = '';
+    const title = document.createElement('div');
+    title.className = 'graph-edge-legend-title';
+    title.textContent = 'Edges';
+    host.appendChild(title);
+
+    for (const row of rows) {
+        const item = document.createElement('div');
+        item.className = 'graph-edge-legend-item';
+        item.dataset.semantic = row.semantic;
+
+        const swatch = document.createElement('span');
+        swatch.className = 'graph-edge-legend-swatch';
+        swatch.setAttribute('aria-hidden', 'true');
+        // The swatch is a one-line "arrow": a left-side stem (colored) and
+        // a right-side arrowhead. The theme drives stroke color and width;
+        // we fall back to currentColor so the item stays visible even when
+        // the theme declares only an ``arrow`` kind.
+        const stroke = row.style.stroke || 'currentColor';
+        const width = Number(row.style.strokeWidth || 2);
+        const arrow = row.style.arrow || LEGEND_DEFAULT_ARROW;
+        swatch.style.setProperty('--legend-stroke', stroke);
+        swatch.style.setProperty('--legend-stroke-width', `${width}px`);
+        // Map mermaid arrow kinds to a CSS dash pattern so the dotted
+        // ``-.->`` reads as dotted in the legend too.
+        swatch.dataset.arrow = arrow;
+        swatch.textContent = '';
+        item.appendChild(swatch);
+
+        const lbl = document.createElement('span');
+        lbl.className = 'graph-edge-legend-label';
+        lbl.textContent = row.label;
+        item.appendChild(lbl);
+
+        host.appendChild(item);
+    }
+    host.classList.remove('hidden');
 }
 
 function buildInlineInfoPanel(host) {

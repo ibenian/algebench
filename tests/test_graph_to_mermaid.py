@@ -350,6 +350,55 @@ class TestSemanticGraphToMermaid:
         result = semantic_graph_to_mermaid(graph, theme=theme)
         assert "linkStyle 0" in result
 
+    def test_edge_weight_scales_width(self):
+        # ``weight`` multiplies the semantic's base strokeWidth. With
+        # the power-direction-dark theme, ``direct`` has base 4; a
+        # weight of 1.5 should produce 6px.
+        theme = load_theme("power-direction-dark")
+        graph = {
+            "nodes": [
+                {"id": "a", "type": "scalar"},
+                {"id": "__op_1", "type": "operator", "op": "power", "exponent": "3"},
+            ],
+            "edges": [
+                {"from": "a", "to": "__op_1", "semantic": "direct", "weight": 1.5},
+            ],
+        }
+        result = semantic_graph_to_mermaid(graph, theme=theme)
+        assert "stroke-width:6px" in result
+
+    def test_edge_weight_clamped_to_max(self):
+        # An ``x^100`` edge would naively produce 400px — clamp to 8px.
+        theme = load_theme("power-direction-dark")
+        graph = {
+            "nodes": [
+                {"id": "a", "type": "scalar"},
+                {"id": "__op_1", "type": "operator", "op": "power", "exponent": "100"},
+            ],
+            "edges": [
+                {"from": "a", "to": "__op_1", "semantic": "direct", "weight": 100.0},
+            ],
+        }
+        result = semantic_graph_to_mermaid(graph, theme=theme)
+        assert "stroke-width:8px" in result
+        assert "stroke-width:400px" not in result
+
+    def test_edge_weight_clamped_to_min(self):
+        # Tiny weights still yield visible edges (MIN = 1px).
+        theme = load_theme("power-direction-dark")
+        graph = {
+            "nodes": [
+                {"id": "a", "type": "scalar"},
+                {"id": "__op_1", "type": "operator", "op": "power", "exponent": "0.1"},
+            ],
+            "edges": [
+                {"from": "a", "to": "__op_1", "semantic": "inverse", "weight": 0.1},
+            ],
+        }
+        # inverse base = 1; 1*0.1 = 0.1 → floored to 1.
+        result = semantic_graph_to_mermaid(graph, theme=theme)
+        assert "stroke-width:1px" in result
+
     def test_edge_labels(self):
         graph = {
             "nodes": [
