@@ -24,7 +24,7 @@
         { "title": "Uniform acceleration (position)", "description": "$x = x_0 + v_0 t + \\tfrac{1}{2} a t^2$" },
         { "title": "Schrödinger equation (compact)", "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = \\hat{H}\\,\\psi$" },
         { "title": "Schrödinger equation (expanded)", "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = -\\dfrac{\\hbar^2}{2m}\\nabla^2 \\psi + V\\psi$" },
-        { "title": "Higher powers (^3, ^4, ^n)", "description": "$y = x^3 + x^4 + x^n$" }
+        { "title": "Higher powers (^3, ^4, ^n, ^-3, ^-4, ^-n)", "description": "$y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n}$" }
       ],
       "proof": {
         "id": "physics-equations-demo",
@@ -967,9 +967,9 @@
           {
             "id": "proof-step-8",
             "type": "step",
-            "label": "Higher powers — ^3, ^4, ^n",
-            "math": "y = x^3 + x^4 + x^n",
-            "justification": "Three powers of the same base sum together. Lets us eyeball how the renderer encodes proportionality strength on the *outgoing* edge of each power node: literal exponents 3 and 4 saturate the direct-edge stroke (clamped to the theme's max width), while the symbolic exponent n stays neutral because the inference rule only fires for numeric exponents.",
+            "label": "Higher powers — ^3, ^4, ^n, ^-3, ^-4, ^-n",
+            "math": "y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n}",
+            "justification": "Six powers of the same base sum together — three positive, three negative — so the contrast between direct (positive integer exponent) and inverse (negative integer exponent) proportionality reads at a glance. The two symbolic exponents (n and −n) sit between the two camps as neutral controls: the inference rule only fires for numeric exponents, so neither outgoing edge gets tagged.",
             "sceneStep": 8,
             "semanticGraph": {
               "graph": {
@@ -979,13 +979,13 @@
                     "id": "__equals_1",
                     "type": "operator",
                     "op": "equals",
-                    "description": "Equates y to a sum of three monomials in x with increasing exponents.",
-                    "subexpr": "y = x^3 + x^4 + x^n"
+                    "description": "Equates y to a six-term sum: three positive-exponent monomials and three negative-exponent (reciprocal) monomials.",
+                    "subexpr": "y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n}"
                   },
                   {
                     "id": "y",
                     "label": "y",
-                    "description": "Dependent variable — its value is determined by x once the three powers are summed.",
+                    "description": "Dependent variable — its value is determined by x once the six powers are summed.",
                     "type": "scalar",
                     "latex": "y",
                     "role": "dependent",
@@ -994,7 +994,7 @@
                   {
                     "id": "x",
                     "label": "x",
-                    "description": "Shared base for all three powers. Reused across the diagram so the contrast between the three outgoing power-edges is the only visual difference.",
+                    "description": "Shared base for all six powers. Reused across the diagram so the contrast between the six outgoing power-edges is the only visual difference.",
                     "type": "scalar",
                     "latex": "x",
                     "role": "independent",
@@ -1004,8 +1004,8 @@
                     "id": "__add_rhs",
                     "type": "operator",
                     "op": "add",
-                    "description": "Sums the three monomials. Addition edges are structural — they don't carry proportionality semantics.",
-                    "subexpr": "x^3 + x^4 + x^n"
+                    "description": "Sums the six monomials. Addition edges are structural — they don't carry proportionality semantics.",
+                    "subexpr": "x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n}"
                   },
                   {
                     "id": "__power_x3",
@@ -1030,6 +1030,30 @@
                     "exponent": "n",
                     "description": "Raises x to the symbolic power n. The inference rule needs a numeric exponent to fire, so this node's outgoing edge stays neutral — a deliberate contrast with the two literal cases.",
                     "subexpr": "x^{n}"
+                  },
+                  {
+                    "id": "__power_x_neg3",
+                    "type": "operator",
+                    "op": "power",
+                    "exponent": "-3",
+                    "description": "Raises x to the −3 power (i.e. 1/x³). The negative literal exponent tags the *outgoing* edge as inverse with weight 3, painted in the inverse stroke from the active theme.",
+                    "subexpr": "x^{-3}"
+                  },
+                  {
+                    "id": "__power_x_neg4",
+                    "type": "operator",
+                    "op": "power",
+                    "exponent": "-4",
+                    "description": "Raises x to the −4 power (i.e. 1/x⁴). Outgoing edge tagged inverse, weight 4.",
+                    "subexpr": "x^{-4}"
+                  },
+                  {
+                    "id": "__power_x_negn",
+                    "type": "operator",
+                    "op": "power",
+                    "exponent": "-n",
+                    "description": "Raises x to the symbolic −n power. Like the positive symbolic case, the inference rule can't tell whether −n is positive or negative without a literal value, so the outgoing edge stays neutral.",
+                    "subexpr": "x^{-n}"
                   }
                 ],
                 "edges": [
@@ -1037,9 +1061,15 @@
                   { "from": "x", "to": "__power_x3" },
                   { "from": "x", "to": "__power_x4" },
                   { "from": "x", "to": "__power_xn" },
+                  { "from": "x", "to": "__power_x_neg3" },
+                  { "from": "x", "to": "__power_x_neg4" },
+                  { "from": "x", "to": "__power_x_negn" },
                   { "from": "__power_x3", "to": "__add_rhs" },
                   { "from": "__power_x4", "to": "__add_rhs" },
                   { "from": "__power_xn", "to": "__add_rhs" },
+                  { "from": "__power_x_neg3", "to": "__add_rhs" },
+                  { "from": "__power_x_neg4", "to": "__add_rhs" },
+                  { "from": "__power_x_negn", "to": "__add_rhs" },
                   { "from": "__add_rhs", "to": "__equals_1" }
                 ],
                 "classification": { "kind": "algebraic" }
