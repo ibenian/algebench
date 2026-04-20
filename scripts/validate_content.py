@@ -354,6 +354,85 @@ def check_overlays(data):
     return warnings, checked
 
 
+# ---- Semantic graph checks ----
+
+def check_semantic_graphs(data):
+    """Check proof-step semantic graphs for orphan nodes.
+
+    A node is "orphan" if it appears in ``graph.nodes`` but never appears
+    on either side of any edge in ``graph.edges`` — and the graph contains
+    more than one node total (a lone node is the whole graph, not an orphan).
+
+    Returns (warnings, graph_count).
+    """
+    warnings = []
+    graph_count = 0
+
+    def check_graph(graph, ctx):
+        nonlocal graph_count
+        if not isinstance(graph, dict):
+            return
+        nodes = graph.get('nodes') or []
+        edges = graph.get('edges') or []
+        if not isinstance(nodes, list) or not isinstance(edges, list):
+            return
+        graph_count += 1
+
+        node_ids = [n.get('id') for n in nodes if isinstance(n, dict) and n.get('id')]
+        if len(node_ids) <= 1:
+            return  # single-node graph — nothing to connect to
+
+        referenced = set()
+        for e in edges:
+            if not isinstance(e, dict):
+                continue
+            f = e.get('from')
+            t = e.get('to')
+            if f:
+                referenced.add(f)
+            if t:
+                referenced.add(t)
+
+        orphans = [nid for nid in node_ids if nid not in referenced]
+        for nid in orphans:
+            warnings.append(
+                f'{ctx}: node "{nid}" is not connected by any edge'
+            )
+
+    def check_proof_graphs(proof, ctx):
+        for i, step in enumerate(proof.get('steps', []) or []):
+            sg = step.get('semanticGraph')
+            if not isinstance(sg, dict):
+                continue
+            graph = sg.get('graph')
+            if graph is None:
+                continue
+            check_graph(graph, f'{ctx}.steps[{i}].semanticGraph.graph')
+
+    def scan_proofs(obj, ctx):
+        proof = obj.get('proof')
+        if proof is None:
+            return
+        proofs = proof if isinstance(proof, list) else [proof]
+        for i, p in enumerate(proofs):
+            if not isinstance(p, dict):
+                continue
+            proof_ctx = f'{ctx}.proof[{i}]' if len(proofs) > 1 else f'{ctx}.proof'
+            check_proof_graphs(p, proof_ctx)
+
+    # Root level
+    scan_proofs(data, 'root')
+
+    # Scene and step level
+    scenes = data.get('scenes', [data] if 'elements' in data else [])
+    for si, scene in enumerate(scenes):
+        scan_proofs(scene, f'scenes[{si}]')
+        for sti, step in enumerate(scene.get('steps', []) or []):
+            scan_proofs(step, f'scenes[{si}].steps[{sti}]')
+
+    return warnings, graph_count
+
+
 # ---- Main ----
 
 def validate_file(path, fix=False):
@@ -401,6 +480,11 @@ def validate_file(path, fix=False):
     warnings.extend(ov_warnings)
     stats['overlays'] = (ov_count, len(ov_warnings))
 
+    # Semantic graphs
+    sg_warnings, sg_count = check_semantic_graphs(data)
+    warnings.extend(sg_warnings)
+    stats['semantic_graphs'] = (sg_count, len(sg_warnings))
+
     # Apply fixes if requested
     if fix and fixes:
         text = path.read_text()
@@ -419,6 +503,7 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
     pc, psc, pe, pw = stats.get('proofs', (0, 0, 0, 0))
     cw = stats.get('camera', 0)
     oc, ow = stats.get('overlays', (0, 0))
+    gc, gw = stats.get('semantic_graphs', (0, 0))
 
     def status(errs, warns=0):
         if errs:
@@ -444,6 +529,8 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
         print(f'  Proofs:      N/A')
     print(f'  Camera:      {status(0, cw)}')
     print(f'  Overlays:    {status(0, ow)} ({oc} checked)')
+    if gc > 0:
+        print(f'  Graphs:      {status(0, gw)} ({gc} checked)')
 
     if fixes:
         print(f'\n  ⚠️  Auto-fixable ({len(fixes)}):')
