@@ -107,6 +107,14 @@
           "type": "string",
           "enum": ["state_variable", "parameter", "constant", "coefficient", "index", "dependent", "independent", "observable", "field"],
           "description": "The role this variable plays in the equation. Distinguishes constants from variables, independent from dependent quantities, etc."
+        },
+        "color": {
+          "type": "string",
+          "description": "Optional presentation override for the node's text color (any CSS color, e.g. \"#0d47a1\"). When present, the mermaid renderer prefers this over the role-based palette. Also used by the server-side highlight overlay to mirror step highlight colors onto matched nodes."
+        },
+        "highlight": {
+          "type": "string",
+          "description": "Name of the proof-step highlight that matched this node — the key used in ``proofStep.highlights`` (e.g. \"m\" for the highlight authored as ``\\htmlClass{hl-m}{...}``). Informational only at render time; reserved for downstream visualizations that want to cross-reference graph nodes with their originating highlight."
         }
       }
     },

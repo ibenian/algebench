@@ -896,7 +896,11 @@ def _apply_highlights_to_graph(
 
     For each ``(class_key, body)`` pair harvested from the raw math, find the
     node whose latex/id matches ``body`` and annotate it with the highlight's
-    ``color``, human ``label``, and the original ``hl_class`` tag.
+    ``color`` (paint override), human ``label`` (as ``description``), and the
+    highlight's ``name`` — the key used in ``proofStep.highlights`` (e.g. the
+    ``m`` in ``\\htmlClass{hl-m}{...}``). All three fields are defined on the
+    semantic-graph node schema so annotated graphs still validate; ``highlight``
+    is currently informational only and reserved for future visualizations.
     """
     if not graph or not hl_pairs or not isinstance(highlights_meta, dict):
         return
@@ -907,8 +911,9 @@ def _apply_highlights_to_graph(
         ``\\hat``, ``\\mathbf``, …) *and* dot-derivative wrappers
         (``\\dot``/``\\ddot``/...) so ``\\htmlClass{hl-mdot}{\\dot{m}}``
         still matches the graph's ``m`` variable node after the dot→frac
-        pre-parse rewrite. Braces single-char subscripts (``v_e`` →
-        ``v_{e}``) and strips spaces so both authoring forms match.
+        pre-parse rewrite. Braces single-char sub/super-scripts (``v_e`` →
+        ``v_{e}``, ``x^2`` → ``x^{2}``) and strips spaces so both author and
+        sympy.latex forms match.
         """
         if not isinstance(s, str):
             return ""
@@ -921,11 +926,20 @@ def _apply_highlights_to_graph(
             for cmd in _DOT_ACCENT_ORDERS:
                 s = re.sub(rf"\\{cmd}\{{([^{{}}]*)\}}", r"\1", s)
         s = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", s)
+        s = re.sub(r"\^([A-Za-z0-9])(?![A-Za-z0-9_{])", r"^{\1}", s)
         return s.replace(" ", "")
 
     def _keys_for_node(n: dict) -> list[str]:
+        """Candidate normalized strings a highlight body might match against.
+
+        For leaf symbols, ``latex``/``id`` resolve to the symbol itself. For
+        intermediate operator/expression nodes, ``subexpr`` carries the
+        sympy-reconstructed LaTeX of the whole sub-tree — so a highlight
+        wrapping a sub-expression (e.g. ``\\htmlClass{hl-kinetic}{\\frac{1}{2}
+        m v^2}``) binds to the root operator of that sub-tree.
+        """
         keys: list[str] = []
-        for f in ("latex", "id"):
+        for f in ("latex", "id", "subexpr"):
             v = n.get(f)
             if isinstance(v, str):
                 keys.append(_normalize(v))
@@ -938,6 +952,9 @@ def _apply_highlights_to_graph(
         meta = highlights_meta.get(class_key)
         if not isinstance(meta, dict):
             continue
+        # Prefer leaf symbols when the body is a bare symbol; fall back to
+        # operator/relation nodes (matched via ``subexpr``) when the body
+        # wraps an entire sub-expression.
         matched: dict | None = None
         for node in nodes:
             if not isinstance(node, dict):
@@ -948,6 +965,15 @@ def _apply_highlights_to_graph(
                 matched = node
                 break
         if matched is None:
+            for node in nodes:
+                if not isinstance(node, dict):
+                    continue
+                if node.get("type") not in ("operator", "relation", "expression", "function"):
+                    continue
+                if body in _keys_for_node(node):
+                    matched = node
+                    break
+        if matched is None:
             continue
         # Attach highlight metadata. Respect existing fields so hand-authored
         # richness wins over auto-derived overlays.
@@ -955,7 +981,7 @@ def _apply_highlights_to_graph(
             matched["color"] = meta["color"]
         if meta.get("label") and not matched.get("description"):
             matched["description"] = meta["label"]
-        matched.setdefault("hl_class", f"hl-{class_key}")
+        matched.setdefault("highlight", class_key)
 
 
 # Match any `\htmlClass{...}{body}` wrapper (may be nested) and peel it off.
