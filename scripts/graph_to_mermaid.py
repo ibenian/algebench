@@ -385,6 +385,14 @@ def semantic_graph_to_mermaid(
     direction = theme.get("direction", "LR")
     lm = label_mode or theme.get("labelMode", "emoji")
     node_styles = theme.get("nodeStyles", {})
+    # Optional per-variant overrides for operator/function/expression nodes
+    # (e.g. ``direct`` vs ``inverse`` vs ``neutral``). Themes that define
+    # ``operatorVariants`` let authors tag individual operator nodes with
+    # ``"variant": "<name>"`` and get variant-specific fill/stroke/font
+    # styling layered on top of the type-level shape. See
+    # ``themes/semantic-graph/power-direction-*.json`` for the canonical
+    # example.
+    operator_variants = theme.get("operatorVariants", {})
     edge_style = theme.get("edgeStyle", {})
     edge_styles = theme.get("edgeStyles", {})
     use_link_style = theme.get("useLinkStyle", False)
@@ -436,6 +444,30 @@ def semantic_graph_to_mermaid(
             lines.append(f"  classDef {ntype} {','.join(parts)}")
             emitted_classes.add(ntype)
 
+    # Variant classDefs. Prefixed with ``opv_`` so they can't collide with a
+    # user-defined node type or role that happens to share the variant name.
+    for variant_name, vs in operator_variants.items():
+        effective = dict(vs)
+        if global_font_size and "fontSize" not in effective:
+            effective["fontSize"] = global_font_size
+        parts = []
+        if effective.get("fill"):
+            parts.append(f"fill:{effective['fill']}")
+        if effective.get("stroke"):
+            parts.append(f"stroke:{effective['stroke']}")
+        if effective.get("color"):
+            parts.append(f"color:{effective['color']}")
+        sw = effective.get("strokeWidth")
+        if sw:
+            parts.append(f"stroke-width:{sw}px")
+        fs = effective.get("fontSize")
+        if fs:
+            parts.append(f"font-size:{fs}px")
+        if parts:
+            cls_key = f"opv_{variant_name}"
+            lines.append(f"  classDef {cls_key} {','.join(parts)}")
+            emitted_classes.add(cls_key)
+
     # Node definitions. Mermaid 11's typed-shape form (``@{ ... }``) doesn't
     # accept the inline ``:::className`` shortcut, so we emit those classes
     # via separate ``class nid className`` statements instead.
@@ -449,12 +481,25 @@ def semantic_graph_to_mermaid(
         shape = node.get("shape") or ns.get("shape", "rect")
         label = _format_label(node, lm, show=show)
         node_def = _wrap_shape(nid, label, shape)
-        class_key = node.get(color_prop, ntype) if color_prop != "type" else ntype
+        # ``operatorVariants`` styling only applies to operator-like nodes.
+        # When a matching variant class is available, it takes precedence
+        # over the type/role-based class so authors can highlight "inverse"
+        # or "direct" operations without also overriding the shape.
+        variant = node.get("variant")
+        variant_cls = (
+            f"opv_{variant}"
+            if variant and ntype in ("operator", "function", "expression")
+            else None
+        )
         cls_name: str | None = None
-        if class_key in emitted_classes:
-            cls_name = class_key
-        elif ntype in emitted_classes:
-            cls_name = ntype
+        if variant_cls and variant_cls in emitted_classes:
+            cls_name = variant_cls
+        else:
+            class_key = node.get(color_prop, ntype) if color_prop != "type" else ntype
+            if class_key in emitted_classes:
+                cls_name = class_key
+            elif ntype in emitted_classes:
+                cls_name = ntype
         is_typed = shape in TYPED_SHAPES
         if cls_name and not is_typed:
             node_def += f":::{cls_name}"

@@ -269,6 +269,73 @@ class TestSemanticGraphToMermaid:
         result = semantic_graph_to_mermaid({"nodes": [], "edges": []})
         assert result.startswith("flowchart")
 
+    def test_operator_variant_styling(self):
+        """``node.variant`` + theme.operatorVariants drives a per-variant class."""
+        theme = load_theme("power-direction-dark")
+        graph = {
+            "nodes": [
+                {"id": "a", "label": "a", "type": "scalar"},
+                {"id": "__op_1", "type": "operator", "op": "divide",
+                 "variant": "inverse"},
+                {"id": "__op_2", "type": "operator", "op": "multiply"},
+            ],
+            "edges": [
+                {"from": "a", "to": "__op_1"},
+                {"from": "__op_1", "to": "__op_2"},
+            ],
+        }
+        result = semantic_graph_to_mermaid(graph, theme=theme)
+        # Variant classDefs are emitted for every operatorVariants entry.
+        assert "classDef opv_direct " in result
+        assert "classDef opv_inverse " in result
+        assert "classDef opv_neutral " in result
+        # The tagged operator uses the variant class, not the plain type class.
+        assert ":::opv_inverse" in result
+        # The untagged operator still uses the plain type class.
+        assert "__op_2" in result
+        # Sanity: untagged operator not mislabeled as variant.
+        assert "__op_2{{\"" in result
+        for line in result.splitlines():
+            if line.strip().startswith("__op_2"):
+                assert ":::opv_" not in line, line
+
+    def test_variant_ignored_on_non_operator_nodes(self):
+        """``variant`` on a scalar/relation node should not override its class."""
+        theme = load_theme("power-direction-dark")
+        graph = {
+            "nodes": [
+                # Pathological: scalar with a variant should still render as
+                # scalar, since operatorVariants is scoped to operator-like
+                # types.
+                {"id": "x", "label": "x", "type": "scalar",
+                 "variant": "inverse"},
+            ],
+            "edges": [],
+        }
+        result = semantic_graph_to_mermaid(graph, theme=theme)
+        # Scalar keeps its type-based styling.
+        for line in result.splitlines():
+            if line.strip().startswith("x"):
+                assert ":::scalar" in line
+                assert ":::opv_" not in line
+
+    def test_no_operator_variants_section(self):
+        """Themes without ``operatorVariants`` still render fine."""
+        # ``default-light`` doesn't define operatorVariants.
+        theme = load_theme("default-light")
+        assert "operatorVariants" not in theme  # guard against theme drift
+        graph = {
+            "nodes": [
+                {"id": "__op_1", "type": "operator", "op": "add",
+                 "variant": "direct"},
+            ],
+            "edges": [],
+        }
+        result = semantic_graph_to_mermaid(graph, theme=theme)
+        # No opv_ classes emitted; node falls back to the type class.
+        assert "classDef opv_" not in result
+        assert ":::operator" in result
+
     def test_link_style_directives(self):
         theme = load_theme("minimal-dark")
         graph = {
