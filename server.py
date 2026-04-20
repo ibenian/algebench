@@ -38,12 +38,28 @@ scenes_dir = script_dir / "scenes"
 # Make scripts/ importable (no __init__.py there, so add its parent to sys.path
 # and import via a fully qualified module name via importlib).
 import importlib.util as _iu
+
+# Cache of script modules loaded on demand. Keyed by rel_path → (mtime, module).
+# Invalidated automatically when the on-disk file changes, so `./run.sh server`
+# edit-reload workflows still see fresh code, but hot endpoints like
+# /api/graph/mermaid don't re-exec the module on every request.
+_loaded_script_modules: dict[str, tuple[float, object]] = {}
+
 def _load_script_module(rel_path: str, mod_name: str):
-    spec = _iu.spec_from_file_location(mod_name, script_dir / rel_path)
+    path = script_dir / rel_path
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        return None
+    cached = _loaded_script_modules.get(rel_path)
+    if cached is not None and cached[0] == mtime:
+        return cached[1]
+    spec = _iu.spec_from_file_location(mod_name, path)
     if spec is None or spec.loader is None:
         return None
     mod = _iu.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    _loaded_script_modules[rel_path] = (mtime, mod)
     return mod
 
 
