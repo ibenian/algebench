@@ -23,44 +23,29 @@ TeX-quality typography.
 
 ## Pipeline
 
-```
-                    semanticGraph JSON
-                    (nodes, edges, classification)
-                          │
-                          ▼
-    ┌─────────────────────────────────────────────┐
-    │  POST /api/graph/mermaid                     │
-    │    {graph, theme, direction, show}           │
-    │                                              │
-    │  graph_to_mermaid.semantic_graph_to_mermaid  │
-    │    - load_theme(name)                        │
-    │    - emit classDef per node type/role        │
-    │    - emit operatorVariant classes            │
-    │    - emit node defs (shape + label + class)  │
-    │    - emit edges (semantic → arrow + color)   │
-    │    - emit linkStyle per edge                 │
-    └─────────────────────────────────────────────┘
-                          │
-                          ▼ Mermaid source (string)
-              + edgeStyles (for legend)
-              + mode (light|dark, from theme)
-                          │
-                          ▼
-    ┌─────────────────────────────────────────────┐
-    │  Browser — graph-view.js                     │
-    │    ensureMermaid(mode)   ← lazy CDN load     │
-    │    mermaid.render(id, src) → SVG string      │
-    │    insert into .gv-card                      │
-    │    renderInlineLatexInNodes(container)       │
-    │      ← KaTeX post-pass over $..$ in labels   │
-    │    centerLabelsInNodes(container)            │
-    │    attach SemanticGraphPanel (node info)     │
-    │    renderEdgeLegend(edgeStyles, graph)       │
-    └─────────────────────────────────────────────┘
-                          │
-                          ▼
-                    Interactive SVG
-                in the Graph viewport
+```mermaid
+flowchart TD
+    G["semanticGraph JSON<br/>nodes + edges + classification"]
+
+    subgraph Server["Python server"]
+        API["POST /api/graph/mermaid<br/>graph, theme, direction, show"]
+        EMIT["graph_to_mermaid.semantic_graph_to_mermaid<br/>— load_theme name<br/>— emit classDef per type/role<br/>— emit operatorVariant classes<br/>— emit node defs<br/>— emit edges with semantic arrow/color<br/>— emit linkStyle per edge"]
+        API --> EMIT
+    end
+
+    subgraph Browser["Browser — graph-view.js"]
+        ENSURE["ensureMermaid mode<br/>lazy CDN load"]
+        RENDER["mermaid.render id, src<br/>→ SVG string"]
+        KATEX["renderInlineLatexInNodes<br/>KaTeX post-pass over inline-math labels"]
+        CENTER["centerLabelsInNodes"]
+        PANEL["attach SemanticGraphPanel"]
+        LEGEND["renderEdgeLegend"]
+        ENSURE --> RENDER --> KATEX --> CENTER --> PANEL --> LEGEND
+    end
+
+    G --> API
+    EMIT -->|mermaid source + mode + edgeStyles| ENSURE
+    LEGEND --> OUT["Interactive SVG<br/>in the Graph viewport"]
 ```
 
 Any of theme, direction, or label preset changing refires this pipeline
