@@ -20,7 +20,7 @@
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/graph-panel/graph-panel.css">
 </head>
-<body>
+<body data-debug-mode="__DEBUG_MODE__">
 <div id="app">
     <div id="title-bar">
         <div id="title-content">
@@ -299,7 +299,6 @@
     </div>
 </div>
 <input type="file" id="file-input" accept=".json">
-<script>const DEBUG_MODE = __DEBUG_MODE__;</script>
 <script type="module" src="/main.js"></script>
 <script type="module" src="/graph-view.js"></script>
 <script src="/gemini-live-tools/js/voice-character-selector.js"></script>

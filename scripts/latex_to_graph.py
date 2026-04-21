@@ -633,6 +633,38 @@ class SemanticGraphBuilder:
 # Public API
 # ---------------------------------------------------------------------------
 
+def _collapse_text_commands(latex: str) -> tuple[str, dict[str, dict[str, str]]]:
+    r"""Replace ``\text{NAME}`` with unique placeholder symbols SymPy can parse.
+
+    SymPy's ``parse_latex`` decomposes multi-character identifiers into
+    implicit multiplications (``const`` → ``c*o*n*s*t``). To keep each
+    ``\text{...}`` as a single symbol, substitute each occurrence with a
+    ``\Xi_{N}`` placeholder — Greek letter + numeric subscript is one of
+    the few forms ``parse_latex`` returns atomically.
+
+    Returns ``(rewritten_latex, overrides)`` where ``overrides`` maps the
+    SymPy symbol name (e.g. ``"Xi_{0}"``) to the attributes that restore
+    the original label in the graph.
+    """
+    overrides: dict[str, dict[str, str]] = {}
+    seen: dict[str, int] = {}  # content → index, for dedup
+
+    def repl(m: re.Match) -> str:
+        content = m.group(1).strip()
+        if content not in seen:
+            idx = len(seen)
+            seen[content] = idx
+            overrides[f"Xi_{{{idx}}}"] = {
+                "label": content,
+                "latex": r"\text{" + content + "}",
+                "type": "text",
+            }
+        return rf"\Xi_{seen[content]}"
+
+    rewritten = re.sub(r"\\text\{([^}]+)\}", repl, latex)
+    return rewritten, overrides
+
+
 def _preprocess_latex(latex: str) -> str:
     """Rewrite LaTeX patterns that SymPy's parse_latex doesn't handle natively.
 
@@ -666,9 +698,10 @@ def _preprocess_latex(latex: str) -> str:
     latex = re.sub(r"\\ddot\{([^}]+)\}", r"\\frac{d}{dt}\\frac{d \1}{d t}", latex)
     latex = re.sub(r"\\dot\{([^}]+)\}", r"\\frac{d \1}{d t}", latex)
 
-    # \text{impact} → textimpact  (collapse to single token for SymPy)
-    # The original \text{...} is preserved via _extract_latex_commands / overrides.
-    latex = re.sub(r"\\text\{([^}]+)\}", lambda m: m.group(1).replace(" ", ""), latex)
+    # \text{...} handling happens in _collapse_text_commands before this step,
+    # which substitutes each occurrence with a unique \Xi_{N} placeholder that
+    # SymPy's parse_latex treats as a single symbol. Collapsing to the raw
+    # content (e.g. "const") fails because SymPy decomposes it into c·o·n·s·t.
 
     # Brace bare single-char subscripts: C_d → C_{d}  (so SymPy doesn't merge C_d A → C_{dA})
     latex = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", latex)
@@ -772,8 +805,13 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     \\Rightarrow, \\Leftrightarrow) by splitting on the relation, parsing
     each side independently, and emitting a ``type='relation'`` node.
     """
-    preprocessed = _preprocess_latex(latex)
+    collapsed, text_overrides = _collapse_text_commands(latex)
+    preprocessed = _preprocess_latex(collapsed)
     latex_commands = _extract_latex_commands(latex)
+    # User-supplied overrides take precedence over auto-derived ones for
+    # the same symbol name.
+    merged_overrides: dict[str, dict[str, str]] = {**text_overrides, **(overrides or {})}
+    overrides = merged_overrides
 
     # Check for relation operators that parse_latex cannot handle.
     rel = _split_on_relation(preprocessed)

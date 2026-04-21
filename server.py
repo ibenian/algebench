@@ -607,8 +607,39 @@ def _restore_subscripts_in_graph(graph: dict, mapping: dict[str, str]) -> None:
             s = s.replace(f"{{{greek_name}}}", f"{{{original}}}")
         return s
 
+    # Derive a human-readable display name from each placeholder's original
+    # form. ``\text{const}`` → ``const``; plain subscript bodies like ``sp``
+    # stay as-is. Used to fix up ``id``/``label`` on placeholder nodes, since
+    # those fields hold the bare SymPy name ("alpha") rather than embedded
+    # LaTeX.
+    def _display_of(original: str) -> tuple[str, bool]:
+        if original.startswith("\\text{") and original.endswith("}"):
+            return original[len("\\text{"):-1], True
+        return original, False
+
+    # KNOWN_VARIABLES metadata (emoji, quantity, unit, role) picked up via
+    # the Greek-letter lookup in the builder is nonsense for a
+    # ``\text{...}`` placeholder — strip it so the restored node reads
+    # cleanly as a named constant.
+    _TEXT_POLLUTION_KEYS = ("emoji", "quantity", "dimension", "unit", "value", "role")
+
     for node in graph.get("nodes") or []:
         if not isinstance(node, dict):
+            continue
+        node_id = node.get("id")
+        if isinstance(node_id, str) and node_id in mapping:
+            original = mapping[node_id]
+            display, is_text = _display_of(original)
+            node["id"] = display
+            node["label"] = display
+            node["latex"] = original
+            if is_text:
+                node["type"] = "text"
+                for k in _TEXT_POLLUTION_KEYS:
+                    node.pop(k, None)
+                node.pop("role", None)
+            if "subexpr" in node and isinstance(node["subexpr"], str):
+                node["subexpr"] = rewrite(node["subexpr"])
             continue
         for field in ("id", "label", "latex", "subexpr"):
             if field in node and isinstance(node[field], str):
@@ -618,10 +649,54 @@ def _restore_subscripts_in_graph(graph: dict, mapping: dict[str, str]) -> None:
             continue
         for field in ("from", "to"):
             if field in edge and isinstance(edge[field], str):
-                edge[field] = rewrite(edge[field])
+                # Edge endpoints reference node ids; remap placeholders to
+                # their display name to match the rewritten node.
+                val = edge[field]
+                if val in mapping:
+                    display, _ = _display_of(mapping[val])
+                    edge[field] = display
+                else:
+                    edge[field] = rewrite(val)
 
 
 _CHAIN_RELATION_COMMANDS = ("\\approx", "\\simeq", "\\equiv")
+
+# Logical connectives that bind looser than ``=``. When one of these appears
+# at top level the whole string is no longer a single "equation chain" — each
+# side of the connective is its own equation — so chain-splitting on bare ``=``
+# would incorrectly fuse the two sides into one ``=`` node. We detect them to
+# short-circuit to the single-expression parser, which hands the whole thing
+# to SymPy and recovers the correct ``implies`` root.
+_LOGICAL_CONNECTIVE_COMMANDS = (
+    "\\implies", "\\impliedby", "\\iff",
+    "\\Rightarrow", "\\Leftarrow", "\\Leftrightarrow",
+)
+
+
+def _has_top_level_logical_connective(latex: str) -> bool:
+    if not isinstance(latex, str) or not latex:
+        return False
+    depth = 0
+    i = 0
+    L = len(latex)
+    while i < L:
+        c = latex[i]
+        if c == '{':
+            depth += 1
+            i += 1
+            continue
+        if c == '}':
+            depth = max(0, depth - 1)
+            i += 1
+            continue
+        if depth == 0:
+            for cmd in _LOGICAL_CONNECTIVE_COMMANDS:
+                if latex.startswith(cmd, i):
+                    nxt = latex[i + len(cmd)] if i + len(cmd) < L else ''
+                    if not (nxt.isalpha()):
+                        return True
+        i += 1
+    return False
 
 
 def _split_equation_chain_sides(latex: str) -> list[str]:
@@ -680,6 +755,13 @@ def _derive_equation_chain_graph(latex: str) -> dict | None:
     """
     if not isinstance(latex, str) or not latex:
         return None
+    # Logical connectives (``\implies``, ``\iff``, …) bind looser than ``=``.
+    # Splitting on ``=`` across one would collapse two distinct equations onto
+    # a single central ``=`` node and bury the implication. Hand the whole
+    # string to the single-expression parser instead — SymPy knows how to make
+    # ``implies`` the root with the two ``=`` relations as its operands.
+    if _has_top_level_logical_connective(latex):
+        return _derive_semantic_graph(latex)
     sides = _split_equation_chain_sides(latex)
     if len(sides) <= 1:
         return _derive_semantic_graph(latex)
@@ -1896,8 +1978,14 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             content=generate_html(debug=debug),
             headers={
                 "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Content-Security-Policy":
-                    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-eval' 'unsafe-inline'",
+                "Content-Security-Policy": (
+                    "default-src 'self'; "
+                    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-eval'; "
+                    "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+                    "font-src 'self' https://cdn.jsdelivr.net data:; "
+                    "img-src 'self' data: blob:; "
+                    "connect-src 'self'"
+                ),
             }
         )
 

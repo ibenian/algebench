@@ -289,6 +289,41 @@ class TestRelations:
         assert rel is not None
 
 
+class TestTextCommand:
+    """\\text{NAME} should become a single text node, not decomposed into
+    per-character multiplications (SymPy's parse_latex default behavior)."""
+
+    def test_text_becomes_single_constant(self):
+        g = latex_to_semantic_graph(r"T = \text{const}")
+        node = _find_node(g, type="text", label="const")
+        assert node is not None
+        assert node["latex"] == r"\text{const}"
+        # No stray per-character symbols (c, o, n, s) should appear.
+        for letter in ("c", "o", "n", "s"):
+            assert _find_node(g, id=letter) is None, f"stray {letter!r} symbol leaked"
+
+    def test_text_with_implies(self):
+        """Regression: T = \\text{const} \\implies dP = k_B T / m · dρ
+        previously decomposed 'const' into c·o·n·s·t inside the LHS equation."""
+        g = latex_to_semantic_graph(
+            r"T = \text{const} \implies dP = \frac{k_B T}{m}\, d\rho"
+        )
+        assert _find_node(g, type="text", label="const") is not None
+        assert _find_node(g, type="relation", op="implies") is not None
+        # Two equals nodes: one per side of the implication.
+        equals_nodes = [n for n in g["nodes"]
+                        if n.get("type") == "operator" and n.get("op") == "equals"]
+        assert len(equals_nodes) == 2
+
+    def test_repeated_text_dedups(self):
+        """Same \\text{...} content should map to one node, not duplicate."""
+        g = latex_to_semantic_graph(r"\text{foo} + \text{foo} = \text{bar}")
+        foo_nodes = [n for n in g["nodes"]
+                     if n.get("type") == "text" and n.get("label") == "foo"]
+        assert len(foo_nodes) == 1
+        assert _find_node(g, type="text", label="bar") is not None
+
+
 # ---------------------------------------------------------------------------
 # Complex real-world formulas
 # ---------------------------------------------------------------------------

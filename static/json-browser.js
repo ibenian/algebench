@@ -935,8 +935,7 @@ export function setupContextStatusPopup() {
     const rightResizeHandle = document.getElementById('context-popup-right-resize');
     if (!pill || !popup || !meta || !nav || !body || !closeBtn || !copyBtn || !toggleBtn || !topResizeHandle || !rightResizeHandle) return;
 
-    // DEBUG_MODE is a global set in index.html
-    if (!DEBUG_MODE) {
+    if (document.body.dataset.debugMode !== 'true') {
         pill.classList.add('hidden');
         popup.classList.add('hidden');
         return;

@@ -29,7 +29,7 @@
   "$defs": {
     "nodeType": {
       "type": "string",
-      "enum": ["scalar", "vector", "constant", "number", "operator", "function", "relation", "expression"],
+      "enum": ["scalar", "vector", "constant", "number", "operator", "function", "relation", "expression", "text"],
       "description": "The semantic role of the node."
     },
     "operatorOp": {
