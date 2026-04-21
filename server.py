@@ -1103,6 +1103,21 @@ def _strip_html_class(latex: str) -> str:
     return ''.join(out)
 
 
+def _normalize_proofs(proof_field):
+    """Normalize a proof field (single object, array, or None) into a list.
+
+    Mirrors ``normalizeProofs`` in ``static/proof.js`` so the server walks
+    the same shape the frontend does.
+    """
+    if proof_field is None:
+        return []
+    if isinstance(proof_field, list):
+        return [p for p in proof_field if isinstance(p, dict)]
+    if isinstance(proof_field, dict):
+        return [proof_field]
+    return []
+
+
 def _autofill_semantic_graphs(scene: dict) -> dict:
     """Walk a scene spec and populate missing ``semanticGraph`` fields in-place.
 
@@ -1122,33 +1137,37 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
     for sc in scenes_list:
         if not isinstance(sc, dict):
             continue
-        proof = sc.get('proof')
-        if not isinstance(proof, dict):
-            continue
-        steps = proof.get('steps')
-        if not isinstance(steps, list):
-            continue
-        for step in steps:
-            if not isinstance(step, dict):
+        for proof in _normalize_proofs(sc.get('proof')):
+            steps = proof.get('steps')
+            if not isinstance(steps, list):
                 continue
-            if step.get('semanticGraph'):
-                continue
-            math_src = step.get('math')
-            if not math_src:
-                continue
-            # Capture highlight bindings (\htmlClass{hl-X}{body}) BEFORE the
-            # wrappers are stripped so we can map the class back to a node.
-            hl_pairs = _extract_htmlclass_pairs(math_src)
-            cleaned = _strip_html_class(math_src)
-            # Full-chain derivation: every side becomes part of the graph,
-            # converging on a single central ``__equals_1`` operator node.
-            graph = _derive_equation_chain_graph(cleaned)
-            if graph:
-                _apply_highlights_to_graph(
-                    graph, hl_pairs, step.get('highlights') or {},
-                )
-                step['semanticGraph'] = {'graph': graph}
-                filled += 1
+            for step in steps:
+                if not isinstance(step, dict):
+                    continue
+                if step.get('semanticGraph'):
+                    continue
+                math_src = step.get('math')
+                if not math_src:
+                    continue
+                # Capture highlight bindings (\htmlClass{hl-X}{body}) BEFORE the
+                # wrappers are stripped so we can map the class back to a node.
+                hl_pairs = _extract_htmlclass_pairs(math_src)
+                cleaned = _strip_html_class(math_src)
+                # Full-chain derivation: every side becomes part of the graph,
+                # converging on a single central ``__equals_1`` operator node.
+                # Guard against unexpected derivation failures so a single bad
+                # expression can't break the whole scene load.
+                try:
+                    graph = _derive_equation_chain_graph(cleaned)
+                except Exception as e:
+                    print(f"   ⚠️  auto-graph crashed for {math_src!r}: {e}")
+                    graph = None
+                if graph:
+                    _apply_highlights_to_graph(
+                        graph, hl_pairs, step.get('highlights') or {},
+                    )
+                    step['semanticGraph'] = {'graph': graph}
+                    filled += 1
     if filled:
         title = scene.get('title') or '(scene)'
         print(f"   ✨ auto-derived {filled} semantic graph(s) for {title}")

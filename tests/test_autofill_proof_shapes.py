@@ -1,0 +1,135 @@
+"""Exercise ``_autofill_semantic_graphs`` across both proof shapes.
+
+Scenes may set ``proof`` as either a single object or an array of proofs
+(multi-proof scenes). The frontend's ``normalizeProofs`` handles both
+shapes; the server's autofill must do the same, or array-typed scenes
+silently miss their auto-derived graphs.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from server import _autofill_semantic_graphs, _normalize_proofs  # noqa: E402
+
+
+REPO_ROOT = Path(__file__).parent.parent
+
+
+def test_normalize_proofs_shapes():
+    assert _normalize_proofs(None) == []
+    assert _normalize_proofs({"steps": []}) == [{"steps": []}]
+    assert _normalize_proofs([{"a": 1}, {"b": 2}]) == [{"a": 1}, {"b": 2}]
+    # Non-dict items in an array are filtered out.
+    assert _normalize_proofs([{"a": 1}, "oops", None]) == [{"a": 1}]
+    # Unknown shapes return empty, not a crash.
+    assert _normalize_proofs("not a proof") == []
+    assert _normalize_proofs(42) == []
+
+
+def test_autofill_single_object_proof_still_works():
+    spec = {
+        "scenes": [
+            {
+                "title": "single",
+                "proof": {"steps": [{"math": "y = x^2"}]},
+            }
+        ]
+    }
+    _autofill_semantic_graphs(spec)
+    step = spec["scenes"][0]["proof"]["steps"][0]
+    assert "semanticGraph" in step
+    assert "graph" in step["semanticGraph"]
+
+
+def test_autofill_array_typed_proof_fills_every_proof():
+    spec = {
+        "scenes": [
+            {
+                "title": "multi",
+                "proof": [
+                    {"steps": [{"math": "y = x^2"}]},
+                    {"steps": [{"math": "z = a + b"}]},
+                ],
+            }
+        ]
+    }
+    _autofill_semantic_graphs(spec)
+    proofs = spec["scenes"][0]["proof"]
+    assert "semanticGraph" in proofs[0]["steps"][0]
+    assert "semanticGraph" in proofs[1]["steps"][0]
+
+
+def test_autofill_array_typed_proof_leaves_existing_graphs_alone():
+    existing = {"graph": {"nodes": [{"id": "sentinel"}], "edges": []}}
+    spec = {
+        "scenes": [
+            {
+                "title": "mixed",
+                "proof": [
+                    {"steps": [{"math": "y = x^2", "semanticGraph": existing}]},
+                    {"steps": [{"math": "z = a + b"}]},
+                ],
+            }
+        ]
+    }
+    _autofill_semantic_graphs(spec)
+    proofs = spec["scenes"][0]["proof"]
+    # Step with a pre-existing graph is untouched.
+    assert proofs[0]["steps"][0]["semanticGraph"] is existing
+    # Step without a graph gets one auto-derived.
+    second = proofs[1]["steps"][0]
+    assert "semanticGraph" in second
+    assert second["semanticGraph"]["graph"]["nodes"], "expected non-empty graph"
+
+
+def test_autofill_null_proof_is_noop():
+    spec = {"scenes": [{"title": "empty", "proof": None}]}
+    _autofill_semantic_graphs(spec)  # must not raise
+    assert spec["scenes"][0]["proof"] is None
+
+
+def test_autofill_atmospheric_entry_physics_fixture():
+    """Regression: array-typed proof scenes should get auto-filled graphs.
+
+    Before the fix, ``proof`` being an array caused the scene to be silently
+    skipped and _none_ of its steps would have a ``semanticGraph``. Individual
+    steps may still fail SymPy parsing (out of scope); we just require that
+    each array-typed scene produces graphs for at least some steps.
+    """
+    fixture = REPO_ROOT / "scenes" / "draft" / "atmospheric-entry-physics.json"
+    with open(fixture) as f:
+        spec = json.load(f)
+    _autofill_semantic_graphs(spec)
+
+    def count_filled(scene):
+        proofs = scene.get("proof")
+        if not isinstance(proofs, list):
+            return 0
+        return sum(
+            1
+            for proof in proofs
+            for step in proof.get("steps", [])
+            if isinstance(step, dict) and step.get("semanticGraph")
+        )
+
+    # Scene 2 ("Trajectory and the Entry Corridor") — 5 proofs, array-typed.
+    scene_2 = spec["scenes"][2]
+    assert isinstance(scene_2.get("proof"), list), (
+        "fixture changed — expected array-typed proof on scene 2"
+    )
+    assert count_filled(scene_2) > 0, (
+        "scene 2's array-typed proofs should produce auto-derived graphs"
+    )
+
+    # Scene 3 ("Aerodynamic Heating and the Bow Shock") — array-typed.
+    scene_3 = spec["scenes"][3]
+    assert isinstance(scene_3.get("proof"), list)
+    assert count_filled(scene_3) > 0, (
+        "scene 3's array-typed proofs should produce auto-derived graphs"
+    )
