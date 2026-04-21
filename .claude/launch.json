@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "algebench",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": ["scenes/artemis-ii-mission-simulation.json", "--debug"],
+      "port": 8785
+    },
+    {
+      "name": "graph-panel-demo",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": ["scenes/draft/graph-panel-demo.json", "--port", "5731"],
+      "port": 5731
+    }
+  ]
+}

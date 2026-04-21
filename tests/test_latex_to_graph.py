@@ -289,6 +289,41 @@ class TestRelations:
         assert rel is not None
 
 
+class TestTextCommand:
+    """\\text{NAME} should become a single text node, not decomposed into
+    per-character multiplications (SymPy's parse_latex default behavior)."""
+
+    def test_text_becomes_single_constant(self):
+        g = latex_to_semantic_graph(r"T = \text{const}")
+        node = _find_node(g, type="text", label="const")
+        assert node is not None
+        assert node["latex"] == r"\text{const}"
+        # No stray per-character symbols (c, o, n, s) should appear.
+        for letter in ("c", "o", "n", "s"):
+            assert _find_node(g, id=letter) is None, f"stray {letter!r} symbol leaked"
+
+    def test_text_with_implies(self):
+        """Regression: T = \\text{const} \\implies dP = k_B T / m · dρ
+        previously decomposed 'const' into c·o·n·s·t inside the LHS equation."""
+        g = latex_to_semantic_graph(
+            r"T = \text{const} \implies dP = \frac{k_B T}{m}\, d\rho"
+        )
+        assert _find_node(g, type="text", label="const") is not None
+        assert _find_node(g, type="relation", op="implies") is not None
+        # Two equals nodes: one per side of the implication.
+        equals_nodes = [n for n in g["nodes"]
+                        if n.get("type") == "operator" and n.get("op") == "equals"]
+        assert len(equals_nodes) == 2
+
+    def test_repeated_text_dedups(self):
+        """Same \\text{...} content should map to one node, not duplicate."""
+        g = latex_to_semantic_graph(r"\text{foo} + \text{foo} = \text{bar}")
+        foo_nodes = [n for n in g["nodes"]
+                     if n.get("type") == "text" and n.get("label") == "foo"]
+        assert len(foo_nodes) == 1
+        assert _find_node(g, type="text", label="bar") is not None
+
+
 # ---------------------------------------------------------------------------
 # Complex real-world formulas
 # ---------------------------------------------------------------------------
@@ -489,6 +524,119 @@ class TestOverrides:
         assert m_node["unit"] == "kg"
         assert m_node["tooltip"] == "Inertial mass"
         assert m_node["label"] == "mass"  # default still present
+
+
+# ---------------------------------------------------------------------------
+# Edge semantics (direct / inverse)
+# ---------------------------------------------------------------------------
+
+def _edge(graph, src, dst):
+    """Return the edge matching (src -> dst), or None."""
+    for e in graph["edges"]:
+        if e.get("from") == src and e.get("to") == dst:
+            return e
+    return None
+
+
+class TestEdgeSemantics:
+    """Heuristics:
+
+    - ``base → Pow(n)`` edges stay untagged at parse time. The
+      proportionality semantics live on the *outgoing* edge from a
+      power node and are recovered by the renderer at draw time
+      (it reads ``exponent`` off the power node and tags the
+      downstream edge ``direct``/``inverse`` accordingly). This
+      keeps the parsed graph lean and gives a single source of
+      truth for the heuristic.
+    - Every factor of a ``Mul`` is tagged ``direct`` at parse time —
+      each operand is linearly proportional to the product, and
+      multiply has many incoming edges so we can't recover this at
+      render time without inspecting the source side.
+    - Addition/subtraction/equality edges stay untagged: summands
+      compose additively, not proportionally.
+    """
+
+    def test_pow_edges_are_not_tagged_at_parse_time(self):
+        # The base→power edge stays plain. The renderer reads
+        # ``exponent`` off the power node and applies the semantic
+        # to the *outgoing* edge instead — see
+        # ``scripts/graph_to_mermaid.semantic_graph_to_mermaid``.
+        for latex_src in ("y = a / b", r"y = \frac{a}{b}", "y = x^2",
+                          "y = x^3", r"F = \frac{1}{r^2}"):
+            g = latex_to_semantic_graph(latex_src)
+            pow_nodes = _find_nodes(g, type="operator", op="power")
+            assert pow_nodes, f"expected a power node for {latex_src!r}"
+            for pn in pow_nodes:
+                incoming = [e for e in g["edges"] if e["to"] == pn["id"]]
+                assert incoming, "power node should have an incoming edge"
+                for edge in incoming:
+                    assert "semantic" not in edge, (
+                        f"{latex_src!r}: pow incoming edge should not be tagged "
+                        f"at parse time (got {edge})"
+                    )
+                    assert "weight" not in edge, (
+                        f"{latex_src!r}: pow incoming edge should not have a "
+                        f"weight at parse time (got {edge})"
+                    )
+
+    def test_addition_has_no_semantic_tags(self):
+        g = latex_to_semantic_graph("y = a + b")
+        add_edges = [e for e in g["edges"] if e["to"].startswith("__add")]
+        assert add_edges, "expected at least one add-edge"
+        for edge in add_edges:
+            assert "semantic" not in edge
+            assert "weight" not in edge
+
+    def test_multiplication_tags_factors_as_direct(self):
+        # ``a · t`` — both operands are linearly proportional to the
+        # product, so every factor edge gets ``direct`` + weight 1.
+        g = latex_to_semantic_graph(r"y = a \cdot t")
+        mul_edges = [e for e in g["edges"] if e["to"].startswith("__multiply")]
+        assert len(mul_edges) == 2
+        for edge in mul_edges:
+            assert edge.get("semantic") == "direct"
+            assert edge.get("weight") == 1.0
+
+    def test_edge_weight_survives_schema_validation(self):
+        from scripts.graph_to_mermaid import validate_graph
+        g = latex_to_semantic_graph(r"v = \frac{x}{t^2}")
+        errs = validate_graph(g)
+        assert errs == [], f"unexpected schema errors: {errs}"
+
+    def test_multiply_skips_tagging_for_inverse_pow_children(self):
+        # ``a/b`` is ``Mul(a, Pow(b, -1))``. The factor edge for ``a``
+        # is still ``direct`` but the edge from the inverse-power child
+        # must stay plain so the renderer's power-source inference can
+        # paint it ``inverse``.
+        g = latex_to_semantic_graph(r"y = a / b")
+        mul_node = _find_node(g, type="operator", op="multiply")
+        assert mul_node is not None
+        a_edge = next(e for e in g["edges"]
+                      if e["to"] == mul_node["id"] and e["from"] == "a")
+        assert a_edge.get("semantic") == "direct"
+        assert a_edge.get("weight") == 1.0
+        pow_edge = next(e for e in g["edges"]
+                        if e["to"] == mul_node["id"] and e["from"].startswith("__power"))
+        assert "semantic" not in pow_edge, (
+            f"inverse-pow → multiply edge must stay plain (got {pow_edge})"
+        )
+        assert "weight" not in pow_edge
+
+    def test_symbolic_negative_pow_absorbs_exponent(self):
+        # ``x^{-n}`` should produce a single power node with
+        # ``exponent="-n"`` and just one incoming edge from the base —
+        # no extra ``__negate``/``n`` children. This is what lets the
+        # renderer paint the outgoing edge ``inverse``.
+        g = latex_to_semantic_graph(r"y = x^{-n}")
+        pow_nodes = _find_nodes(g, type="operator", op="power")
+        assert len(pow_nodes) == 1
+        pn = pow_nodes[0]
+        assert pn.get("exponent") == "-n"
+        incoming = [e for e in g["edges"] if e["to"] == pn["id"]]
+        assert len(incoming) == 1
+        assert incoming[0]["from"] == "x"
+        # And no negate/exponent helper nodes leaked through.
+        assert not _find_nodes(g, type="operator", op="negate")
 
 
 # ---------------------------------------------------------------------------

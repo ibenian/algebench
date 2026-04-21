@@ -1227,6 +1227,18 @@
             { "type": "string" }
           ],
           "description": "Scene step to sync to when this proof step is active. Integer for step index in current scene, or 'sceneIdx:stepIdx' for cross-scene."
+        },
+        "semanticGraph": {
+          "type": "object",
+          "description": "Optional semantic graph for this step. The Math dock view regenerates the Mermaid diagram at render time from this graph JSON (so style, direction, and label detail can be switched live).",
+          "properties": {
+            "graph": {
+              "type": "object",
+              "description": "Semantic graph JSON (nodes + edges) used by the Mermaid renderer and the interactive info panel. See schemas/semantic-graph.schema.json. Produced by scripts/latex_to_graph.py."
+            }
+          },
+          "required": ["graph"],
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

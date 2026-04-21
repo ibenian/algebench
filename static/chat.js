@@ -1193,7 +1193,7 @@ function logContextIfChanged() {
         rt.sliders ? `${Object.keys(rt.sliders).length} sliders` : null,
         rt.activeTab || null,
     ].filter(Boolean).join(', ');
-    if (window.DEBUG_MODE) console.log('%c🤖 Chat context updated: %c' +
+    if (document.body.dataset.debugMode === 'true') console.log('%c🤖 Chat context updated: %c' +
         `scene=[${sceneParts}] runtime=[${rtParts}] (${json.length} chars)`,
         'color: #8888ff; font-weight: bold', 'color: #ccc');
 }

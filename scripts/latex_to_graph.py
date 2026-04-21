@@ -255,6 +255,21 @@ def parse_var_overrides(var_specs: list[str] | None) -> dict[str, dict[str, str]
     return overrides
 
 
+def _is_inverse_pow(expr: sympy.Basic) -> bool:
+    """True for ``Pow(base, neg)`` where ``neg`` is a negative literal
+    or a ``Mul`` starting with ``-1``. Used by the multiply parser to
+    skip its over-eager ``direct`` tagging on denominator children — the
+    renderer's power-source inference paints those edges ``inverse``."""
+    if not isinstance(expr, Pow):
+        return False
+    exp = expr.args[1]
+    if isinstance(exp, Number) and exp < 0:
+        return True
+    if isinstance(exp, Mul) and exp.args and exp.args[0] == sympy.S.NegativeOne:
+        return True
+    return False
+
+
 class SemanticGraphBuilder:
     """Walks a SymPy expression tree and emits nodes + edges."""
 
@@ -282,8 +297,34 @@ class SemanticGraphBuilder:
         node.update(attrs)
         self.nodes.append(node)
 
-    def _add_edge(self, src: str, dst: str) -> None:
-        self.edges.append({"from": src, "to": dst})
+    def _add_edge(
+        self,
+        src: str,
+        dst: str,
+        *,
+        semantic: str | None = None,
+        weight: float | None = None,
+    ) -> None:
+        """Append an edge. ``semantic`` — when provided — must be one of
+        ``direct`` / ``inverse`` / ``neutral`` (enum from the graph schema).
+
+        Edges without a semantic are rendered as the theme default
+        (generally ``neutral``). Themes like ``power-direction-*`` style
+        the three values differently (thick red / dotted blue / plain
+        gray), which lets the diagram communicate proportionality at a
+        glance when the emitter has enough information to tag the edge.
+
+        ``weight`` — when provided — encodes the *strength* of the
+        relationship (e.g. the absolute exponent for a base→power edge).
+        Renderers multiply this by a base stroke width and clamp to a
+        safe range ``[1, 8]`` so ``x^100`` stays visually legible.
+        """
+        edge: dict[str, Any] = {"from": src, "to": dst}
+        if semantic:
+            edge["semantic"] = semantic
+        if weight is not None:
+            edge["weight"] = weight
+        self.edges.append(edge)
 
     def build(self, expr: sympy.Basic, original_latex: str | None = None) -> dict:
         """Build the graph from *expr* and return ``{nodes, edges}``."""
@@ -323,6 +364,19 @@ class SemanticGraphBuilder:
             return sympy.latex(expr)
 
         if isinstance(expr, Mul):
+            # Negation: ``Mul(-1, X)`` renders as ``-X`` (or ``-(…)`` when the
+            # remainder is a sum). Without this, SymPy's factor enumeration
+            # gives the clunky ``-1 F_{reaction}``.
+            if expr.args and expr.args[0] == sympy.S.NegativeOne:
+                rest = expr.args[1:]
+                if len(rest) == 1:
+                    sub = rest[0]
+                    s = self._subexpr_ordered(sub)
+                    if isinstance(sub, Add):
+                        s = rf"\left({s}\right)"
+                    return "-" + s
+                inner = Mul(*rest)
+                return "-" + self._subexpr_ordered(inner)
             factors = list(expr.as_ordered_factors())
             factors.sort(key=lambda f: self._original_position(
                 str(f.args[0]) if isinstance(f, Pow) else str(f)
@@ -381,14 +435,29 @@ class SemanticGraphBuilder:
                 if base and base in self._latex_commands:
                     suffix = name[len(base):]
                     latex_fallback = self._latex_commands[base] + suffix
+                elif (
+                    len(name) > 1
+                    and name[0] == "d"
+                    and name[1:] in self._latex_commands
+                ):
+                    # Leibniz differential: SymPy's parse_latex merges `d\rho`
+                    # into a single symbol `drho` (losing the macro). Emit
+                    # `\mathrm{d}\rho` — upright d per ISO 80000-2 — so KaTeX
+                    # renders `dρ` instead of the literal identifier `drho`.
+                    latex_fallback = r"\mathrm{d}" + self._latex_commands[name[1:]]
                 else:
                     latex_fallback = name
             attrs: dict[str, str] = {
                 "label": meta.get("label", name),
-                "emoji": meta.get("emoji", "🔣"),
                 "type": meta.get("type", "scalar"),
                 "latex": meta.get("latex", latex_fallback),
             }
+            # Only attach an emoji when we actually know one. The old
+            # "🔣" fallback renders as a broken-glyph box in most fonts
+            # and adds visual noise — leave it off unless the KNOWN_VARIABLES
+            # table (or a user override) provides a real emoji.
+            if meta.get("emoji"):
+                attrs["emoji"] = meta["emoji"]
             for sem_key in ("quantity", "dimension", "unit", "value", "role"):
                 if meta.get(sem_key):
                     attrs[sem_key] = meta[sem_key]
@@ -466,11 +535,66 @@ class SemanticGraphBuilder:
 
         # --- Power with literal exponent — absorb the number into the node ---
         if isinstance(expr, Pow) and isinstance(expr.args[1], Number):
-            exp_val = str(expr.args[1])
+            exponent = expr.args[1]
+            exp_val = str(exponent)
             node_id = self._next_id("power")
             self._add_node(node_id, type="operator", op="power", exponent=exp_val)
             base_id = self._walk(expr.args[0])
+            # The base→power edge stays plain. The proportionality
+            # semantics for a power live on the *outgoing* edge from
+            # the power node (where the squared/cubed/inverse
+            # relationship is actually carried into the rest of the
+            # expression). The renderer reads ``exponent`` off this
+            # node at render time and tags that downstream edge —
+            # see ``scripts/graph_to_mermaid.semantic_graph_to_mermaid``.
             self._add_edge(base_id, node_id)
+            return node_id
+
+        # --- Power with symbolic-negative exponent — absorb it too ---
+        # ``x^{-n}`` arrives as ``Pow(x, Mul(-1, n))``. Without this
+        # branch it would fall through to OPERATOR_MAP, which produces
+        # a power node with no ``exponent`` attribute and a separate
+        # ``__negate`` child for the exponent. The renderer then has
+        # nothing to infer from. Mirroring the literal-Number path
+        # absorbs ``-n`` onto the node as ``exponent="-n"`` so the
+        # outgoing edge gets painted ``inverse`` at render time.
+        if (
+            isinstance(expr, Pow)
+            and isinstance(expr.args[1], Mul)
+            and expr.args[1].args
+            and expr.args[1].args[0] == sympy.S.NegativeOne
+        ):
+            node_id = self._next_id("power")
+            self._add_node(
+                node_id, type="operator", op="power", exponent=str(expr.args[1])
+            )
+            base_id = self._walk(expr.args[0])
+            self._add_edge(base_id, node_id)
+            return node_id
+
+        # --- Unary negation (Mul(-1, X)) — emit a single-input ``negate``
+        # operator instead of the noisy ``× (-1)`` pair. The renderer
+        # gives ``negate`` an inverted-triangle default shape via
+        # ``graph_to_mermaid.OP_DEFAULT_SHAPES`` so the flip reads at a
+        # glance; no shape lives on the node itself (graph schema is
+        # semantic-only).
+        if (
+            isinstance(expr, Mul)
+            and len(expr.args) >= 2
+            and expr.args[0] == sympy.S.NegativeOne
+        ):
+            rest = expr.args[1:]
+            node_id = self._next_id("negate")
+            self._add_node(
+                node_id,
+                type="operator",
+                op="negate",
+            )
+            if len(rest) == 1:
+                child_id = self._walk(rest[0])
+            else:
+                child_id = self._walk(Mul(*rest))
+            self._add_edge(child_id, node_id)
             return node_id
 
         # --- Binary/n-ary operators (Add, Mul, Pow, Eq) ---
@@ -478,9 +602,32 @@ class SemanticGraphBuilder:
         if op_name is not None:
             node_id = self._next_id(op_name)
             self._add_node(node_id, type="operator", op=op_name)
+            # Multiplication is a proportional combiner: each factor is
+            # linearly proportional to the product (more ``a`` → more
+            # ``a·t``, more ``t`` → more ``a·t``). We tag every factor
+            # edge as ``direct`` with unit weight so themes can paint it
+            # accordingly. Addition/subtraction/equality don't share
+            # this property — a summand contributes additively rather
+            # than multiplicatively — so those stay untagged.
+            edge_semantic = "direct" if op_name == "multiply" else None
+            edge_weight = 1.0 if op_name == "multiply" else None
             for arg in expr.args:
+                # Denominators arrive here as ``Pow(_, -k)`` (literal) or
+                # ``Pow(_, -n)`` (symbolic) — leave those edges plain so
+                # the renderer's power-source inference paints them
+                # ``inverse`` instead of overriding it with ``direct``.
+                child_semantic = edge_semantic
+                child_weight = edge_weight
+                if op_name == "multiply" and _is_inverse_pow(arg):
+                    child_semantic = None
+                    child_weight = None
                 child_id = self._walk(arg)
-                self._add_edge(child_id, node_id)
+                self._add_edge(
+                    child_id,
+                    node_id,
+                    semantic=child_semantic,
+                    weight=child_weight,
+                )
             return node_id
 
         # --- Fallback: treat as a generic node with children ---
@@ -495,6 +642,38 @@ class SemanticGraphBuilder:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
+def _collapse_text_commands(latex: str) -> tuple[str, dict[str, dict[str, str]]]:
+    r"""Replace ``\text{NAME}`` with unique placeholder symbols SymPy can parse.
+
+    SymPy's ``parse_latex`` decomposes multi-character identifiers into
+    implicit multiplications (``const`` → ``c*o*n*s*t``). To keep each
+    ``\text{...}`` as a single symbol, substitute each occurrence with a
+    ``\Xi_{N}`` placeholder — Greek letter + numeric subscript is one of
+    the few forms ``parse_latex`` returns atomically.
+
+    Returns ``(rewritten_latex, overrides)`` where ``overrides`` maps the
+    SymPy symbol name (e.g. ``"Xi_{0}"``) to the attributes that restore
+    the original label in the graph.
+    """
+    overrides: dict[str, dict[str, str]] = {}
+    seen: dict[str, int] = {}  # content → index, for dedup
+
+    def repl(m: re.Match) -> str:
+        content = m.group(1).strip()
+        if content not in seen:
+            idx = len(seen)
+            seen[content] = idx
+            overrides[f"Xi_{{{idx}}}"] = {
+                "label": content,
+                "latex": r"\text{" + content + "}",
+                "type": "text",
+            }
+        return rf"\Xi_{seen[content]}"
+
+    rewritten = re.sub(r"\\text\{([^}]+)\}", repl, latex)
+    return rewritten, overrides
+
 
 def _preprocess_latex(latex: str) -> str:
     """Rewrite LaTeX patterns that SymPy's parse_latex doesn't handle natively.
@@ -529,9 +708,10 @@ def _preprocess_latex(latex: str) -> str:
     latex = re.sub(r"\\ddot\{([^}]+)\}", r"\\frac{d}{dt}\\frac{d \1}{d t}", latex)
     latex = re.sub(r"\\dot\{([^}]+)\}", r"\\frac{d \1}{d t}", latex)
 
-    # \text{impact} → textimpact  (collapse to single token for SymPy)
-    # The original \text{...} is preserved via _extract_latex_commands / overrides.
-    latex = re.sub(r"\\text\{([^}]+)\}", lambda m: m.group(1).replace(" ", ""), latex)
+    # \text{...} handling happens in _collapse_text_commands before this step,
+    # which substitutes each occurrence with a unique \Xi_{N} placeholder that
+    # SymPy's parse_latex treats as a single symbol. Collapsing to the raw
+    # content (e.g. "const") fails because SymPy decomposes it into c·o·n·s·t.
 
     # Brace bare single-char subscripts: C_d → C_{d}  (so SymPy doesn't merge C_d A → C_{dA})
     latex = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", latex)
@@ -635,8 +815,13 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     \\Rightarrow, \\Leftrightarrow) by splitting on the relation, parsing
     each side independently, and emitting a ``type='relation'`` node.
     """
-    preprocessed = _preprocess_latex(latex)
+    collapsed, text_overrides = _collapse_text_commands(latex)
+    preprocessed = _preprocess_latex(collapsed)
     latex_commands = _extract_latex_commands(latex)
+    # User-supplied overrides take precedence over auto-derived ones for
+    # the same symbol name.
+    merged_overrides: dict[str, dict[str, str]] = {**text_overrides, **(overrides or {})}
+    overrides = merged_overrides
 
     # Check for relation operators that parse_latex cannot handle.
     rel = _split_on_relation(preprocessed)

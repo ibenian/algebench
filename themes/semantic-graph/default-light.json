@@ -1,5 +1,6 @@
 {
-  "name": "default",
+  "name": "default-light",
+  "mode": "light",
   "direction": "LR",
   "labelMode": "emoji",
   "nodeStyles": {

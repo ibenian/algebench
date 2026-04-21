@@ -7,6 +7,8 @@
 - [../CONTRIBUTING.md](../CONTRIBUTING.md) — How to contribute scenes, characters, and more
 - [sandbox-model.md](sandbox-model.md) — Expression evaluation, trust model, security boundary
 - [sandboxing-plan.md](sandboxing-plan.md) — Implementation status and backend sandboxing roadmap
+- [latex-parser-design.md](latex-parser-design.md) — LaTeX → semantic graph builder (parser layer)
+- [semantic-graph-visualization.md](semantic-graph-visualization.md) — Semantic graph → Mermaid → interactive SVG (render layer)
 - [feature-ideas.md](feature-ideas.md) — Roadmap ideas and creative directions
 - [lesson-ideas.md](lesson-ideas.md) — Lesson concepts and content proposals
 

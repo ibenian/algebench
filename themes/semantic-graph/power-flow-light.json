@@ -1,5 +1,6 @@
 {
-  "name": "power-flow",
+  "name": "power-flow-light",
+  "mode": "light",
   "direction": "TB",
   "labelMode": "emoji",
   "nodeStyles": {
@@ -15,8 +16,9 @@
   "edgeStyles": {
     "direct":  { "stroke": "#ef5350", "strokeWidth": 4 },
     "inverse":   { "stroke": "#42a5f5", "strokeWidth": 1 },
-    "neutral":  { "stroke": "#777",    "strokeWidth": 2 }
+    "neutral":  { "stroke": "#777",    "strokeWidth": 2 },
+    "logical":  { "stroke": "#ab47bc", "strokeWidth": 2, "arrow": "-.->" }
   },
-  "useLinkStyle": true,
+  "paintBySemantic": true,
   "fontSize": 15
 }
