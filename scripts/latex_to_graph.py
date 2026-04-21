@@ -435,6 +435,16 @@ class SemanticGraphBuilder:
                 if base and base in self._latex_commands:
                     suffix = name[len(base):]
                     latex_fallback = self._latex_commands[base] + suffix
+                elif (
+                    len(name) > 1
+                    and name[0] == "d"
+                    and name[1:] in self._latex_commands
+                ):
+                    # Leibniz differential: SymPy's parse_latex merges `d\rho`
+                    # into a single symbol `drho` (losing the macro). Emit
+                    # `\mathrm{d}\rho` — upright d per ISO 80000-2 — so KaTeX
+                    # renders `dρ` instead of the literal identifier `drho`.
+                    latex_fallback = r"\mathrm{d}" + self._latex_commands[name[1:]]
                 else:
                     latex_fallback = name
             attrs: dict[str, str] = {
