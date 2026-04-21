@@ -165,6 +165,8 @@ function initMermaidForMode(mode) {
     const cfg = {
         startOnLoad: false,
         theme: isDark ? 'dark' : 'base',
+        // 'loose' is required for htmlLabels + the KaTeX post-pass that rewrites
+        // node labels. Graphs are server-derived from trusted scenes, not user input.
         securityLevel: 'loose',
         flowchart: { htmlLabels: true, curve: 'basis' },
         themeVariables: isDark ? {

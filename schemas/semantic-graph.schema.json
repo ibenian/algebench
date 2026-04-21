@@ -35,7 +35,7 @@
     "operatorOp": {
       "type": "string",
       "enum": [
-        "add", "subtract", "multiply", "divide", "power", "equals",
+        "add", "subtract", "multiply", "divide", "power", "equals", "negate",
         "derivative", "integral", "sum", "product",
         "sin", "cos", "tan", "log", "exp", "sqrt", "abs",
         "arcsin", "arccos", "arctan"
