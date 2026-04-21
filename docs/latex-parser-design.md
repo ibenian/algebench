@@ -9,6 +9,10 @@ emojis). It powers interactive math visualizations in AlgeBench.
 The parser is built on **SymPy** with its ANTLR-based `parse_latex`, plus a
 small regex preprocessing layer for notation that SymPy doesn't handle natively.
 
+> See [semantic-graph-visualization.md](semantic-graph-visualization.md) for
+> how the graph output is rendered into an interactive themed flowchart in
+> the UI.
+
 ## Parser Comparison
 
 We evaluated four approaches for parsing LaTeX into a form suitable for semantic
