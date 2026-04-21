@@ -57,12 +57,13 @@
     },
     "edgeStyles": {
       "type": "object",
-      "description": "Per-semantic edge styling, keyed by the edge's ``semantic`` field (direct / inverse / neutral).",
+      "description": "Per-semantic edge styling, keyed by the edge's ``semantic`` field (direct / inverse / neutral). The ``logical`` key is a pseudo-semantic used for edges whose destination is a logical-connective operator (implies, iff); it overrides the destination's incoming-edge styling when present.",
       "additionalProperties": false,
       "properties": {
         "direct":  { "$ref": "#/$defs/edgeStyle" },
         "inverse": { "$ref": "#/$defs/edgeStyle" },
-        "neutral": { "$ref": "#/$defs/edgeStyle" }
+        "neutral": { "$ref": "#/$defs/edgeStyle" },
+        "logical": { "$ref": "#/$defs/edgeStyle" }
       }
     },
     "roleStyles": {

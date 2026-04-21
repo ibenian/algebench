@@ -21,7 +21,8 @@
   "edgeStyles": {
     "direct":  { "stroke": "#ef5350", "strokeWidth": 4, "arrow": "==>" },
     "inverse": { "stroke": "#42a5f5", "strokeWidth": 1, "arrow": "-.->" },
-    "neutral": { "stroke": "#aaa",    "strokeWidth": 2, "arrow": "-->" }
+    "neutral": { "stroke": "#aaa",    "strokeWidth": 2, "arrow": "-->" },
+    "logical": { "stroke": "#e1bee7", "strokeWidth": 2, "arrow": "-.->" }
   },
   "paintBySemantic": true,
   "fontSize": 15

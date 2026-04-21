@@ -137,6 +137,12 @@ MAX_EDGE_WIDTH_PX = 8.0
 DEFAULT_WEIGHT_BASE_PX = 2.0  # when the theme doesn't define a
                               # semantic-level strokeWidth
 
+# Relation ops whose incoming edges aren't a computation but a logical
+# connection between two sub-equations. We want these rendered with a
+# dotted arrow so the viewer can instantly see "(LHS) ⟹ (RHS)" rather
+# than confusing it for yet another operand flowing into an operator.
+_LOGICAL_CONNECTIVE_OPS = frozenset({"implies", "iff"})
+
 
 def _resolve_edge_width(
     semantic: str | None,
@@ -630,6 +636,20 @@ def semantic_graph_to_mermaid(
             es = edge_styles[edge_semantic]
             arrow = es.get("arrow", arrow)
 
+        # Edges *into* a logical-connective relation node (``⟹``, ``⟺``)
+        # are inferred as the ``logical`` edge class. This is a
+        # render-time classification — the rendered appearance (arrow
+        # kind, stroke, dash pattern, width) lives entirely in the
+        # theme's ``edgeStyles.logical`` entry, so themes that don't
+        # care about it just omit the key and the edges render like any
+        # other.
+        dst_node = nodes_by_id.get(edge.get("to"))
+        is_logical_edge = bool(
+            dst_node and dst_node.get("op") in _LOGICAL_CONNECTIVE_OPS
+        )
+        if is_logical_edge and edge_styles and "logical" in edge_styles:
+            arrow = edge_styles["logical"].get("arrow", arrow)
+
         if edge_label:
             lines.append(f"  {src} {arrow}|{edge_label}| {dst}")
         else:
@@ -641,15 +661,23 @@ def semantic_graph_to_mermaid(
         # the diagram matches what the legend advertises instead of
         # leaking Mermaid's grey default.
         if paint_by_semantic and edge_styles:
-            effective_semantic = edge_semantic or "neutral"
-            es = edge_styles.get(effective_semantic, {})
+            # Logical edges paint from their own theme entry when it's
+            # defined; otherwise they fall back to the semantic-based
+            # palette like any other edge.
+            effective_key = (
+                "logical" if is_logical_edge and "logical" in edge_styles
+                else (edge_semantic or "neutral")
+            )
+            es = edge_styles.get(effective_key, {})
             ls_parts = []
             if es.get("stroke"):
                 ls_parts.append(f"stroke:{es['stroke']}")
-            width_px = _resolve_edge_width(effective_semantic, edge_weight, edge_styles)
+            width_px = _resolve_edge_width(effective_key, edge_weight, edge_styles)
             if width_px is not None:
                 # Mermaid accepts fractional px; format to 2dp and trim.
                 ls_parts.append(f"stroke-width:{width_px:g}px")
+            if es.get("strokeDasharray"):
+                ls_parts.append(f"stroke-dasharray:{es['strokeDasharray']}")
             if ls_parts:
                 link_style_lines.append(f"  linkStyle {i} {','.join(ls_parts)}")
 
