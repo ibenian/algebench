@@ -99,8 +99,9 @@ class TestThemeLoading:
 
 class TestLabelFormatting:
     def test_emoji_mode_variable(self):
-        # Displayable nodes must supply ``latex`` or ``subexpr``; ``id`` is a
-        # machine identifier and never shown.
+        # Displayable nodes should usually supply ``latex`` or ``subexpr``;
+        # otherwise ``_format_label`` falls back to ``label``. ``id`` is a
+        # machine identifier and is not intended for display.
         node = {"id": "m", "latex": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
         assert _format_label(node, "emoji") == "⚖️ $m$"
 
