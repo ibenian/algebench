@@ -99,9 +99,10 @@ class TestThemeLoading:
 
 class TestLabelFormatting:
     def test_emoji_mode_variable(self):
-        node = {"id": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
-        # Symbol nodes are now always wrapped in single-``$`` inline math so
-        # the post-Mermaid KaTeX pass can render them uniformly.
+        # Displayable nodes should usually supply ``latex`` or ``subexpr``;
+        # otherwise ``_format_label`` falls back to ``label``. ``id`` is a
+        # machine identifier and is not intended for display.
+        node = {"id": "m", "latex": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
         assert _format_label(node, "emoji") == "⚖️ $m$"
 
     def test_emoji_mode_operator(self):
@@ -121,7 +122,7 @@ class TestLabelFormatting:
         assert _format_label(node, "latex") == r"$\times$"
 
     def test_plain_mode(self):
-        node = {"id": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
+        node = {"id": "m", "latex": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
         assert _format_label(node, "plain") == "$m$"
 
     def test_plain_mode_label_equals_id(self):
