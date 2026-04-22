@@ -118,18 +118,30 @@ def test_autofill_atmospheric_entry_physics_fixture():
             if isinstance(step, dict) and step.get("semanticGraph")
         )
 
-    # Scene 2 ("Trajectory and the Entry Corridor") — 5 proofs, array-typed.
-    scene_2 = spec["scenes"][2]
-    assert isinstance(scene_2.get("proof"), list), (
-        "fixture changed — expected array-typed proof on scene 2"
+    def find_scene(title):
+        for scene in spec.get("scenes", []):
+            if scene.get("title") == title:
+                return scene
+        assert False, f"fixture changed — expected scene titled {title!r}"
+
+    # "Trajectory and the Entry Corridor" — array-typed.
+    scene_trajectory = find_scene("Trajectory and the Entry Corridor")
+    assert isinstance(scene_trajectory.get("proof"), list), (
+        "fixture changed — expected array-typed proof on "
+        "'Trajectory and the Entry Corridor'"
     )
-    assert count_filled(scene_2) > 0, (
-        "scene 2's array-typed proofs should produce auto-derived graphs"
+    assert count_filled(scene_trajectory) > 0, (
+        "'Trajectory and the Entry Corridor' array-typed proofs should "
+        "produce auto-derived graphs"
     )
 
-    # Scene 3 ("Aerodynamic Heating and the Bow Shock") — array-typed.
-    scene_3 = spec["scenes"][3]
-    assert isinstance(scene_3.get("proof"), list)
-    assert count_filled(scene_3) > 0, (
-        "scene 3's array-typed proofs should produce auto-derived graphs"
+    # "Aerodynamic Heating and the Bow Shock" — array-typed.
+    scene_heating = find_scene("Aerodynamic Heating and the Bow Shock")
+    assert isinstance(scene_heating.get("proof"), list), (
+        "fixture changed — expected array-typed proof on "
+        "'Aerodynamic Heating and the Bow Shock'"
+    )
+    assert count_filled(scene_heating) > 0, (
+        "'Aerodynamic Heating and the Bow Shock' array-typed proofs should "
+        "produce auto-derived graphs"
     )

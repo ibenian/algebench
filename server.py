@@ -1103,11 +1103,13 @@ def _strip_html_class(latex: str) -> str:
     return ''.join(out)
 
 
-def _normalize_proofs(proof_field):
-    """Normalize a proof field (single object, array, or None) into a list.
+def _normalize_proofs(proof_field: object) -> list[dict]:
+    """Normalize a proof field (single object, array, or ``None``) into a list.
 
-    Mirrors ``normalizeProofs`` in ``static/proof.js`` so the server walks
-    the same shape the frontend does.
+    Inspired by ``normalizeProofs`` in ``static/proof.js``, but stricter:
+    non-dict items inside an array are filtered out, and unrecognised shapes
+    return ``[]`` instead of wrapping blindly.  This keeps the server-side
+    autofill resilient to unexpected scene content.
     """
     if proof_field is None:
         return []
