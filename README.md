@@ -1,16 +1,22 @@
 # AlgeBench
 
-Interactive 3D math visualizer built on [MathBox](https://github.com/unconed/mathbox) / [Three.js](https://github.com/mrdoob/three.js), with AI chat and narrated lessons — powered by [Gemini](https://deepmind.google/technologies/gemini/). Expressions evaluated via [math.js](https://github.com/josdejong/mathjs).
+**Math you can rotate, pause, and ask questions to.**
+
+Interactive 3D lessons with a live AI narrator. Spin up a scene, listen to it explain itself, then interrupt and ask *why* — the narrator answers in real time and the visualization responds.
+
+**Made for:** self-taught learners, students, and educators who think math makes more sense when you can see it move.
+
+![AlgeBench screenshot](docs/rotating-space-habitat.png)
 
 ```
 algebench eigenvalues.json
 ```
 
-![AlgeBench screenshot](docs/rotating-space-habitat.png)
+Built on [MathBox](https://github.com/unconed/mathbox) / [Three.js](https://github.com/mrdoob/three.js), powered by [Gemini](https://deepmind.google/technologies/gemini/), expressions via [math.js](https://github.com/josdejong/mathjs).
 
 ---
 
-## Demo Videos
+## See it in action
 
 **YouTube Channel:** [youtube.com/@AlgeBench](https://www.youtube.com/@AlgeBench)
 
