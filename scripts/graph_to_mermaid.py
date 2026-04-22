@@ -265,24 +265,24 @@ def _format_label(
         return rel_label
 
     # --- Symbol / number nodes ---
+    # ``node.id`` is a machine identifier, never a display symbol — it may
+    # be an internal placeholder (``__num_5``), a chain-merge variant
+    # (``s1___num_5``), or a sanitized multi-char name. Every displayable
+    # node is expected to carry ``latex`` or ``subexpr``; ``label`` is a
+    # last-resort fallback for hand-authored nodes.
     emoji = node.get("emoji", "")
-    latex = node.get("latex", "")
-    node_id = node.get("id", "")
-    sym = node_id if not node_id.startswith("__") else ""
-    raw_symbol = sym or node.get("label", "?")
+    symbol_latex = node.get("latex") or node.get("subexpr") or node.get("label", "?")
 
     # Render the symbol as inline LaTeX. We use single-``$`` delimiters here
     # because Mermaid's own KaTeX integration (``$$...$$``) swallows the
     # surrounding ``<br/>`` separators and collapses multi-line labels. The
     # client instead runs a post-Mermaid pass via ``window.katex`` to rewrite
     # every ``$...$`` span in the rendered SVG — see ``graph-view.js``.
-    symbol_latex = latex or raw_symbol
     display_name = f"${symbol_latex}$"
 
-    # Treat the rendered head as "the symbol" for deduplication. For a number
-    # node where ``label == latex == "-1"``, we don't want a second line
-    # repeating the same glyph.
-    head_texts = {raw_symbol, symbol_latex}
+    # Used below to suppress a description/label line that merely repeats
+    # the head glyph (common for number nodes where label == latex == "-1").
+    head_texts = {symbol_latex}
 
     if show is not None:
         # Multi-line label layout. We build the visible lines here (head +
@@ -300,7 +300,7 @@ def _format_label(
         desc_text = None
         if "description" in show and node.get("description"):
             desc_text = node["description"]
-        elif "label" in show and node.get("label") and node["label"] != sym:
+        elif "label" in show and node.get("label") and node["label"] != symbol_latex:
             desc_text = node["label"]
         # Suppress duplicates when the description/label merely repeats the
         # head symbol (common for number nodes like ``-1`` where label and
