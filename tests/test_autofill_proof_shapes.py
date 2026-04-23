@@ -96,8 +96,8 @@ def test_autofill_null_proof_is_noop():
 
 
 def test_autofill_attaches_error_when_parser_returns_none(monkeypatch):
-    """Issue #137: when the parser returns None, the step should carry a
-    ``semanticGraphError`` record so the UI can surface the failure."""
+    """Issue #137: when the parser returns None, the step should carry an
+    error record inside ``semanticGraph`` so the UI can surface the failure."""
     monkeypatch.setattr(
         server, "_derive_equation_chain_graph", lambda latex: None,
     )
@@ -111,9 +111,11 @@ def test_autofill_attaches_error_when_parser_returns_none(monkeypatch):
     }
     _autofill_semantic_graphs(spec)
     step = spec["scenes"][0]["proof"]["steps"][0]
-    assert "semanticGraph" not in step
-    err = step.get("semanticGraphError")
-    assert err, "expected a semanticGraphError record"
+    sg = step.get("semanticGraph")
+    assert sg, "expected a semanticGraph record"
+    assert "graph" not in sg
+    err = sg.get("error")
+    assert err, "expected an error inside semanticGraph"
     assert err["reason"] == "parse_failed"
     assert err["math"] == "\\int_0^1 f(x) dx"
     assert isinstance(err["message"], str) and err["message"]
@@ -121,7 +123,7 @@ def test_autofill_attaches_error_when_parser_returns_none(monkeypatch):
 
 def test_autofill_attaches_error_when_parser_raises(monkeypatch):
     """Issue #137: parser exceptions must become ``parse_crashed`` errors
-    attached to the step, not silently dropped."""
+    inside ``semanticGraph``, not silently dropped."""
     def boom(_latex):
         raise RuntimeError("synthetic parse crash")
     monkeypatch.setattr(server, "_derive_equation_chain_graph", boom)
@@ -135,16 +137,18 @@ def test_autofill_attaches_error_when_parser_raises(monkeypatch):
     }
     _autofill_semantic_graphs(spec)
     step = spec["scenes"][0]["proof"]["steps"][0]
-    assert "semanticGraph" not in step
-    err = step.get("semanticGraphError")
-    assert err, "expected a semanticGraphError record"
+    sg = step.get("semanticGraph")
+    assert sg, "expected a semanticGraph record"
+    assert "graph" not in sg
+    err = sg.get("error")
+    assert err, "expected an error inside semanticGraph"
     assert err["reason"] == "parse_crashed"
     assert "synthetic parse crash" in err["message"]
 
 
 def test_autofill_success_does_not_attach_error():
-    """Issue #137: the happy path should not leave a stray error record
-    on the step."""
+    """Issue #137: the happy path should have ``graph`` but no ``error``
+    inside ``semanticGraph``."""
     spec = {
         "scenes": [
             {
@@ -155,40 +159,54 @@ def test_autofill_success_does_not_attach_error():
     }
     _autofill_semantic_graphs(spec)
     step = spec["scenes"][0]["proof"]["steps"][0]
-    assert "semanticGraph" in step
-    assert "semanticGraphError" not in step
+    sg = step.get("semanticGraph")
+    assert sg and sg.get("graph")
+    assert "error" not in sg
 
 
-def test_autofill_existing_graph_clears_stale_error():
-    """If a step already has a graph, any legacy error record should be
-    stripped — the graph is the source of truth."""
-    pre_error = {
-        "reason": "parse_failed",
-        "message": "old failure",
-        "math": "old",
-    }
+def test_autofill_skips_step_with_existing_graph():
+    """A step with a pre-existing graph is left untouched — no re-derivation."""
     existing = {"graph": {"nodes": [{"id": "sentinel"}], "edges": []}}
     spec = {
         "scenes": [
             {
-                "title": "stale-error",
+                "title": "pre-existing",
                 "proof": {"steps": [{
                     "math": "y = x^2",
                     "semanticGraph": existing,
-                    "semanticGraphError": pre_error,
                 }]},
             }
         ]
     }
     _autofill_semantic_graphs(spec)
     step = spec["scenes"][0]["proof"]["steps"][0]
-    # Pre-existing graph untouched; stale error not cleared on this path
-    # because we short-circuit above the error-clearing branch. Assert
-    # current behavior: a step with a pre-existing graph should be left
-    # exactly as-is (no new autofill attempted), so the error remains
-    # unchanged. The clear-on-fresh-derive case is covered separately.
     assert step["semanticGraph"] is existing
-    assert step.get("semanticGraphError") == pre_error
+
+
+def test_autofill_overwrites_error_only_record(monkeypatch):
+    """A step that previously had only an error (no graph) should get a
+    fresh derivation attempt on the next autofill pass."""
+    old_error = {"error": {
+        "reason": "parse_failed",
+        "message": "old failure",
+        "math": "y = x^2",
+    }}
+    spec = {
+        "scenes": [
+            {
+                "title": "retry",
+                "proof": {"steps": [{
+                    "math": "y = x^2",
+                    "semanticGraph": old_error,
+                }]},
+            }
+        ]
+    }
+    _autofill_semantic_graphs(spec)
+    step = spec["scenes"][0]["proof"]["steps"][0]
+    sg = step.get("semanticGraph")
+    assert sg and sg.get("graph"), "error-only record should be replaced with a derived graph"
+    assert "error" not in sg
 
 
 def test_autofill_atmospheric_entry_physics_fixture():

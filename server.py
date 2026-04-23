@@ -1127,8 +1127,8 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
     derive a graph via ``scripts/latex_to_graph.py`` and attach it under the
     standard ``{"graph": {...}}`` wrapper.
 
-    When derivation fails (exception or returns ``None``), attach a
-    ``semanticGraphError`` record on the step so the UI can surface the
+    When derivation fails (exception or returns ``None``), attach an
+    ``error`` record inside ``semanticGraph`` so the UI can surface the
     problem instead of silently showing the empty-state placeholder. Issue
     #137.
 
@@ -1152,10 +1152,11 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
             for step in steps:
                 if not isinstance(step, dict):
                     continue
-                if step.get('semanticGraph'):
+                sg = step.get('semanticGraph')
+                if isinstance(sg, dict) and sg.get('graph'):
                     continue
                 math_src = step.get('math')
-                if not math_src:
+                if not math_src or not isinstance(math_src, str):
                     continue
                 # Capture highlight bindings (\htmlClass{hl-X}{body}) BEFORE the
                 # wrappers are stripped so we can map the class back to a node.
@@ -1179,10 +1180,6 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
                         graph, hl_pairs, step.get('highlights') or {},
                     )
                     step['semanticGraph'] = {'graph': graph}
-                    # If a prior pass attached an error (e.g. a graph was
-                    # later supplied manually), clear it now that we have
-                    # a valid graph.
-                    step.pop('semanticGraphError', None)
                     filled += 1
                 else:
                     if error_reason is None:
@@ -1192,11 +1189,11 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
                             'this expression (unsupported LaTeX construct '
                             'or empty result).'
                         )
-                    step['semanticGraphError'] = {
+                    step['semanticGraph'] = {'error': {
                         'reason': error_reason,
                         'message': error_message,
                         'math': math_src,
-                    }
+                    }}
                     failed += 1
     if filled or failed:
         title = scene.get('title') or '(scene)'

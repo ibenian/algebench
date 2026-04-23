@@ -3587,6 +3587,10 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 .gp-tree-step.no-graph {
     opacity: 0.55;
 }
+.gp-tree-step.has-error {
+    opacity: 0.7;
+    border-left: 2px solid rgba(240, 140, 140, 0.55);
+}
 .gp-tree-step-idx {
     font-size: 0.68em;
     opacity: 0.5;
@@ -3669,7 +3673,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 
 /* Surfaced parse-failure banner — issue #137. Shown when a step has
-   ``semanticGraphError`` but no ``semanticGraph``. Overrides the
+   ``semanticGraph.error`` but no ``semanticGraph.graph``. Overrides the
    neutral empty-state message so the user knows *why* the diagram
    is missing instead of seeing the generic "select a step" copy. */
 #graph-error-state {

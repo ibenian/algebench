@@ -444,7 +444,8 @@ function rebuildProofTree() {
             (proof.steps || []).forEach((step, sIdx) => {
                 const hasGraph = !!(step && step.semanticGraph &&
                     step.semanticGraph.graph);
-                const hasError = !!(step && step.semanticGraphError);
+                const hasError = !!(step && step.semanticGraph &&
+                    step.semanticGraph.error);
                 let cls = 'gp-tree-step';
                 if (!hasGraph) cls += ' no-graph';
                 if (hasError) cls += ' has-error';
@@ -470,7 +471,7 @@ function rebuildProofTree() {
                 } else if (hasError) {
                     const warn = document.createElement('span');
                     warn.className = 'gp-tree-step-has-error';
-                    warn.title = step.semanticGraphError.message ||
+                    warn.title = step.semanticGraph.error.message ||
                         'Graph could not be derived for this step';
                     warn.textContent = '⚠';
                     stepEl.appendChild(warn);
@@ -596,7 +597,7 @@ function clearGraph() {
 }
 
 // Render the parse-failure banner (issue #137) when the current step has
-// a ``semanticGraphError`` record but no graph. The banner replaces the
+// a ``semanticGraph.error`` record but no graph. The banner replaces the
 // neutral empty-state copy so users see *why* a graph is missing.
 function showErrorState(err) {
     const host = document.getElementById('graph-error-state');
@@ -643,7 +644,7 @@ async function renderCurrentStepGraph(force = false) {
         clearGraph();
         // If the server attached a parse-failure record (issue #137),
         // surface it in place of the generic empty state.
-        const err = step && step.semanticGraphError;
+        const err = step && step.semanticGraph && step.semanticGraph.error;
         if (err) showErrorState(err);
         return;
     }
