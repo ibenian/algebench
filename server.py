@@ -2096,7 +2096,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         """
         objects_root = (static_dir / "objects").resolve()
         try:
-            path = (static_dir / "objects" / filename).resolve()
+            path = (objects_root / filename).resolve()
             path.relative_to(objects_root)
         except (OSError, ValueError):
             return Response(status_code=404)
