@@ -2086,10 +2086,21 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     @fastapp.get("/objects/{filename:path}")
     async def get_objects_js(filename: str):
-        """Serve ES module files from static/objects/ subdirectory."""
-        safe = filename.replace('..', '').lstrip('/')
-        path = static_dir / "objects" / safe
-        if not path.is_file() or not path.suffix == '.js':
+        """Serve ES module files from static/objects/ subdirectory.
+
+        Resolves the requested path and confirms it's still inside
+        ``static/objects`` before opening anything — this blocks
+        ``../`` traversal, encoded dot variants, absolute paths, and
+        symlinks escaping the subtree. Matches the pattern used by
+        ``/graph-panel/{path:path}``.
+        """
+        objects_root = (static_dir / "objects").resolve()
+        try:
+            path = (static_dir / "objects" / filename).resolve()
+            path.relative_to(objects_root)
+        except (OSError, ValueError):
+            return Response(status_code=404)
+        if not path.is_file() or path.suffix != '.js':
             return Response(status_code=404)
         with open(path, 'r') as f:
             js = f.read()
