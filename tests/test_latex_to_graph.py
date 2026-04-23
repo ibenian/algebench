@@ -118,6 +118,38 @@ class TestNumbersAndConstants:
         # Should produce a number node or a division
         assert len(g["nodes"]) > 0
 
+    def test_float_label_no_precision_noise(self):
+        """Regression: Float(7.2) label was '7.20000000000000' (gh-145)."""
+        g = latex_to_semantic_graph("7.2 x")
+        num = _find_node(g, type="number")
+        assert num is not None
+        assert num["label"] == "7.2"
+
+    def test_negative_integer_label_preserved(self):
+        """Regression: -122 label should stay '-122', not be split (gh-145)."""
+        g = latex_to_semantic_graph("-122")
+        num = _find_node(g, type="number", label="-122")
+        assert num is not None
+
+    def test_negative_fraction_subexpr_no_digit_concat(self):
+        """Regression: -122/7.2 multiply subexpr was '-1 122 ...' (gh-145).
+
+        When SymPy's as_ordered_factors splits Integer(-122) into -1*122,
+        the LaTeX join produces '-1122' visually.  The fix uses expr.args
+        which keeps -122 unified.
+        """
+        g = latex_to_semantic_graph(r"e^{-122/7.2}")
+        mul = _find_node(g, type="operator", op="multiply")
+        assert mul is not None
+        assert "-1 122" not in mul.get("subexpr", "")
+
+    def test_float_exponent_no_precision_noise(self):
+        """Regression: x^{7.2} exponent was '7.20000000000000' (gh-145)."""
+        g = latex_to_semantic_graph("x^{7.2}")
+        pw = _find_node(g, type="operator", op="power")
+        assert pw is not None
+        assert pw["exponent"] == "7.2"
+
 
 # ---------------------------------------------------------------------------
 # Functions
