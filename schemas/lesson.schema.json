@@ -1230,15 +1230,46 @@
         },
         "semanticGraph": {
           "type": "object",
-          "description": "Optional semantic graph for this step. The Math dock view regenerates the Mermaid diagram at render time from this graph JSON (so style, direction, and label detail can be switched live).",
-          "properties": {
-            "graph": {
-              "type": "object",
-              "description": "Semantic graph JSON (nodes + edges) used by the Mermaid renderer and the interactive info panel. See schemas/semantic-graph.schema.json. Produced by scripts/latex_to_graph.py."
+          "description": "Optional semantic graph for this step. Contains either a successfully derived graph or an error record explaining why derivation failed.",
+          "oneOf": [
+            {
+              "properties": {
+                "graph": {
+                  "type": "object",
+                  "description": "Semantic graph JSON (nodes + edges) used by the Mermaid renderer and the interactive info panel. See schemas/semantic-graph.schema.json. Produced by scripts/latex_to_graph.py."
+                }
+              },
+              "required": ["graph"],
+              "additionalProperties": false
+            },
+            {
+              "properties": {
+                "error": {
+                  "type": "object",
+                  "description": "Diagnostic record attached by the server when auto-derivation failed. Surfaced in the Math dock view so the user can see why a graph is missing.",
+                  "properties": {
+                    "reason": {
+                      "type": "string",
+                      "enum": ["parse_failed", "parse_crashed"],
+                      "description": "'parse_failed' — parser returned no graph (unsupported construct). 'parse_crashed' — parser raised an exception."
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Human-readable explanation of the failure."
+                    },
+                    "math": {
+                      "type": "string",
+                      "description": "The original LaTeX source that failed to parse."
+                    }
+                  },
+                  "required": ["reason", "message"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["error"],
+              "additionalProperties": false
             }
-          },
-          "required": ["graph"],
-          "additionalProperties": false
+          ]
         }
       },
       "additionalProperties": false

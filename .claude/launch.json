@@ -2,16 +2,22 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "algebench",
+      "name": "artemis-ii",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["scenes/artemis-ii-mission-simulation.json", "--debug"],
+      "runtimeArgs": ["scenes/artemis-ii-mission-simulation.json", "--port", "8785", "--debug", "--server-only"],
       "port": 8785
     },
     {
       "name": "graph-panel-demo",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["scenes/draft/graph-panel-demo.json", "--port", "5731"],
+      "runtimeArgs": ["scenes/draft/graph-panel-demo.json", "--port", "5731", "--debug", "--server-only"],
       "port": 5731
+    },
+    {
+      "name": "atmospheric-entry",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": ["scenes/draft/atmospheric-entry-physics.json", "--port", "5732", "--debug", "--server-only"],
+      "port": 5732
     }
   ]
 }

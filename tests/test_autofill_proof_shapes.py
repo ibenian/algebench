@@ -15,6 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import server  # noqa: E402
 from server import _autofill_semantic_graphs, _normalize_proofs  # noqa: E402
 
 
@@ -92,6 +93,120 @@ def test_autofill_null_proof_is_noop():
     spec = {"scenes": [{"title": "empty", "proof": None}]}
     _autofill_semantic_graphs(spec)  # must not raise
     assert spec["scenes"][0]["proof"] is None
+
+
+def test_autofill_attaches_error_when_parser_returns_none(monkeypatch):
+    """Issue #137: when the parser returns None, the step should carry an
+    error record inside ``semanticGraph`` so the UI can surface the failure."""
+    monkeypatch.setattr(
+        server, "_derive_equation_chain_graph", lambda latex: None,
+    )
+    spec = {
+        "scenes": [
+            {
+                "title": "unsupported",
+                "proof": {"steps": [{"math": "\\int_0^1 f(x) dx"}]},
+            }
+        ]
+    }
+    _autofill_semantic_graphs(spec)
+    step = spec["scenes"][0]["proof"]["steps"][0]
+    sg = step.get("semanticGraph")
+    assert sg, "expected a semanticGraph record"
+    assert "graph" not in sg
+    err = sg.get("error")
+    assert err, "expected an error inside semanticGraph"
+    assert err["reason"] == "parse_failed"
+    assert err["math"] == "\\int_0^1 f(x) dx"
+    assert isinstance(err["message"], str) and err["message"]
+
+
+def test_autofill_attaches_error_when_parser_raises(monkeypatch):
+    """Issue #137: parser exceptions must become ``parse_crashed`` errors
+    inside ``semanticGraph``, not silently dropped."""
+    def boom(_latex):
+        raise RuntimeError("synthetic parse crash")
+    monkeypatch.setattr(server, "_derive_equation_chain_graph", boom)
+    spec = {
+        "scenes": [
+            {
+                "title": "crashy",
+                "proof": {"steps": [{"math": "y = x^2"}]},
+            }
+        ]
+    }
+    _autofill_semantic_graphs(spec)
+    step = spec["scenes"][0]["proof"]["steps"][0]
+    sg = step.get("semanticGraph")
+    assert sg, "expected a semanticGraph record"
+    assert "graph" not in sg
+    err = sg.get("error")
+    assert err, "expected an error inside semanticGraph"
+    assert err["reason"] == "parse_crashed"
+    assert "synthetic parse crash" in err["message"]
+
+
+def test_autofill_success_does_not_attach_error():
+    """Issue #137: the happy path should have ``graph`` but no ``error``
+    inside ``semanticGraph``."""
+    spec = {
+        "scenes": [
+            {
+                "title": "ok",
+                "proof": {"steps": [{"math": "y = x^2"}]},
+            }
+        ]
+    }
+    _autofill_semantic_graphs(spec)
+    step = spec["scenes"][0]["proof"]["steps"][0]
+    sg = step.get("semanticGraph")
+    assert sg and sg.get("graph")
+    assert "error" not in sg
+
+
+def test_autofill_skips_step_with_existing_graph():
+    """A step with a pre-existing graph is left untouched — no re-derivation."""
+    existing = {"graph": {"nodes": [{"id": "sentinel"}], "edges": []}}
+    spec = {
+        "scenes": [
+            {
+                "title": "pre-existing",
+                "proof": {"steps": [{
+                    "math": "y = x^2",
+                    "semanticGraph": existing,
+                }]},
+            }
+        ]
+    }
+    _autofill_semantic_graphs(spec)
+    step = spec["scenes"][0]["proof"]["steps"][0]
+    assert step["semanticGraph"] is existing
+
+
+def test_autofill_overwrites_error_only_record(monkeypatch):
+    """A step that previously had only an error (no graph) should get a
+    fresh derivation attempt on the next autofill pass."""
+    old_error = {"error": {
+        "reason": "parse_failed",
+        "message": "old failure",
+        "math": "y = x^2",
+    }}
+    spec = {
+        "scenes": [
+            {
+                "title": "retry",
+                "proof": {"steps": [{
+                    "math": "y = x^2",
+                    "semanticGraph": old_error,
+                }]},
+            }
+        ]
+    }
+    _autofill_semantic_graphs(spec)
+    step = spec["scenes"][0]["proof"]["steps"][0]
+    sg = step.get("semanticGraph")
+    assert sg and sg.get("graph"), "error-only record should be replaced with a derived graph"
+    assert "error" not in sg
 
 
 def test_autofill_atmospheric_entry_physics_fixture():

@@ -1127,6 +1127,11 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
     derive a graph via ``scripts/latex_to_graph.py`` and attach it under the
     standard ``{"graph": {...}}`` wrapper.
 
+    When derivation fails (exception or returns ``None``), attach an
+    ``error`` record inside ``semanticGraph`` so the UI can surface the
+    problem instead of silently showing the empty-state placeholder. Issue
+    #137.
+
     Returns the same dict for chaining. Silently skips anything that doesn't
     look like a scene with proofs — safe to call on any JSON.
     """
@@ -1136,6 +1141,7 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
     if not isinstance(scenes_list, list):
         return scene
     filled = 0
+    failed = 0
     for sc in scenes_list:
         if not isinstance(sc, dict):
             continue
@@ -1146,10 +1152,11 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
             for step in steps:
                 if not isinstance(step, dict):
                     continue
-                if step.get('semanticGraph'):
+                sg = step.get('semanticGraph')
+                if isinstance(sg, dict) and sg.get('graph'):
                     continue
                 math_src = step.get('math')
-                if not math_src:
+                if not math_src or not isinstance(math_src, str):
                     continue
                 # Capture highlight bindings (\htmlClass{hl-X}{body}) BEFORE the
                 # wrappers are stripped so we can map the class back to a node.
@@ -1159,20 +1166,46 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
                 # converging on a single central ``__equals_1`` operator node.
                 # Guard against unexpected derivation failures so a single bad
                 # expression can't break the whole scene load.
+                error_reason = None
+                error_message = None
                 try:
                     graph = _derive_equation_chain_graph(cleaned)
                 except Exception as e:
                     print(f"   ⚠️  auto-graph crashed for {math_src!r}: {e}")
                     graph = None
+                    error_reason = 'parse_crashed'
+                    error_message = str(e) or e.__class__.__name__
                 if graph:
                     _apply_highlights_to_graph(
                         graph, hl_pairs, step.get('highlights') or {},
                     )
                     step['semanticGraph'] = {'graph': graph}
                     filled += 1
-    if filled:
+                else:
+                    if error_reason is None:
+                        error_reason = 'parse_failed'
+                        error_message = (
+                            'Parser could not derive a semantic graph for '
+                            'this expression (unsupported LaTeX construct '
+                            'or empty result).'
+                        )
+                    step['semanticGraph'] = {'error': {
+                        'reason': error_reason,
+                        'message': error_message,
+                        'math': math_src,
+                    }}
+                    failed += 1
+    if filled or failed:
         title = scene.get('title') or '(scene)'
-        print(f"   ✨ auto-derived {filled} semantic graph(s) for {title}")
+        if failed:
+            print(
+                f"   ✨ auto-derived {filled} semantic graph(s), "
+                f"{failed} failed for {title}"
+            )
+        else:
+            print(
+                f"   ✨ auto-derived {filled} semantic graph(s) for {title}"
+            )
     return scene
 
 try:
@@ -1967,6 +2000,13 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         tts_stream_kwargs['output_path'] = tts_output_file
 
     current_spec = [None]
+    if initial_scene_path:
+        try:
+            with open(initial_scene_path) as f:
+                current_spec[0] = json.load(f)
+            _autofill_semantic_graphs(current_spec[0])
+        except Exception as e:
+            print(f"   ⚠️  failed to pre-load {initial_scene_path}: {e}")
 
     # ---- Pydantic request models ----
 
