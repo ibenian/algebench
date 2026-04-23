@@ -143,6 +143,13 @@ class TestNumbersAndConstants:
         assert mul is not None
         assert "-1 122" not in mul.get("subexpr", "")
 
+    def test_float_exponent_no_precision_noise(self):
+        """Regression: x^{7.2} exponent was '7.20000000000000' (gh-145)."""
+        g = latex_to_semantic_graph("x^{7.2}")
+        pw = _find_node(g, type="operator", op="power")
+        assert pw is not None
+        assert pw["exponent"] == "7.2"
+
 
 # ---------------------------------------------------------------------------
 # Functions

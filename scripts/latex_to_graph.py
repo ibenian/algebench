@@ -288,6 +288,13 @@ class SemanticGraphBuilder:
         self._original_latex = original_latex or ""
         self._symbol_order = self._build_symbol_order()
 
+    @staticmethod
+    def _fmt_number(expr: sympy.Basic) -> str:
+        """Plain-text label for a numeric expression, without SymPy precision noise."""
+        if isinstance(expr, sympy.Float):
+            return sympy.latex(expr)
+        return str(expr)
+
     def _next_id(self, prefix: str = "n") -> str:
         self._id_counter += 1
         return f"__{prefix}_{self._id_counter}"
@@ -487,10 +494,7 @@ class SemanticGraphBuilder:
         # --- Numbers ---
         if isinstance(expr, Number):
             node_id = self._next_id("num")
-            # ``str(Float("7.2"))`` returns ``"7.20000000000000"`` (SymPy's
-            # default 15-digit printer); ``sympy.latex`` trims trailing zeros
-            # and also emits ``\frac{}`` for rationals, which KaTeX renders.
-            self._add_node(node_id, label=sympy.latex(expr), emoji="🔢", type="number")
+            self._add_node(node_id, label=self._fmt_number(expr), emoji="🔢", type="number")
             return node_id
 
         # --- Known functions (sin, cos, …) ---
@@ -543,7 +547,7 @@ class SemanticGraphBuilder:
         # --- Power with literal exponent — absorb the number into the node ---
         if isinstance(expr, Pow) and isinstance(expr.args[1], Number):
             exponent = expr.args[1]
-            exp_val = str(exponent)
+            exp_val = self._fmt_number(exponent)
             node_id = self._next_id("power")
             self._add_node(node_id, type="operator", op="power", exponent=exp_val)
             base_id = self._walk(expr.args[0])
@@ -573,7 +577,7 @@ class SemanticGraphBuilder:
         ):
             node_id = self._next_id("power")
             self._add_node(
-                node_id, type="operator", op="power", exponent=str(expr.args[1])
+                node_id, type="operator", op="power", exponent=self._fmt_number(expr.args[1])
             )
             base_id = self._walk(expr.args[0])
             self._add_edge(base_id, node_id)
