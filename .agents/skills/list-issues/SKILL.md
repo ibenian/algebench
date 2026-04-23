@@ -12,7 +12,7 @@ Manage the GitHub issue backlog — list, filter, prioritize, and pick issues to
 ## Usage
 
 ```
-/list-issues [--type <label>[,<label>...]] [--prioritize] [--pick]
+/list-issues [--type <label>[,<label>...]] [--top <N>] [--prioritize] [--pick]
 ```
 
 ### Flags
@@ -20,6 +20,7 @@ Manage the GitHub issue backlog — list, filter, prioritize, and pick issues to
 | Flag | Description |
 |------|-------------|
 | `--type <label>` | Filter issues by GitHub label(s). Comma-separated for multiple. Examples: `bug`, `enhancement`, `semantic-graph`, `ui` |
+| `--top <N>` | Show the top N issues (default: **5**). All `high`-labeled issues are always shown in addition to the top N candidates. |
 | `--prioritize` | After listing, prompt the user to approve marking specific issues with the `high` label |
 | `--pick` | Automatically pick the highest-priority issue, sync main, create a branch, and prepare to work on it |
 
@@ -31,20 +32,25 @@ Flags can be combined: `/list-issues --type bug --prioritize --pick`
 
 ### Default (no flags)
 
-1. Run `gh issue list --state open --limit 30` to fetch open issues.
-2. Display issues in a table with columns: **#**, **Title**, **Type** (labels), **Priority** (whether `high` label is present), **Age**.
-3. Issues with the `high` label sort to the top.
+1. Run `gh issue list --state open --limit 100` to fetch all open issues.
+2. Display a **Stats** summary first (see [Stats Summary](#stats-summary) below).
+3. Then display **only the top issues that should be considered first** — not the full list:
+   - All issues with the `high` label (always shown)
+   - Plus top candidates up to **N** total (where N is `--top <N>`, default **5**)
+   - Ranking: `high` first, then bugs before enhancements, then newer before older (recency signals active pain)
+4. If there are more issues not shown, end with a one-liner: `… and N more open issues. Use --type <label> to filter or --top <N> to show more.`
 
 ### With `--type <label>`
 
-1. Run `gh issue list --state open --label "<label>" --limit 30` for each specified label.
-2. Display the filtered list in the same table format.
-3. If multiple labels are given (comma-separated), combine results and deduplicate by issue number.
+1. Run `gh issue list --state open --label "<label>" --limit 100` for each specified label.
+2. Display the **Stats** summary scoped to the filtered set.
+3. Display only the top **N** issues from the filtered set (default 5, overridable with `--top <N>`) using the same ranking rules.
+4. If multiple labels are given (comma-separated), combine results and deduplicate by issue number.
 
 ### With `--prioritize`
 
-1. First, display the issue list (filtered by `--type` if provided).
-2. Suggest which issues should be prioritized based on:
+1. First, display the stats summary and the top-issues table (filtered by `--type` if provided).
+2. Suggest which of the **shown** issues should be prioritized based on:
    - **Bugs** over enhancements (correctness first)
    - **Data loss / silent failures** over cosmetic issues
    - **Dependency blockers** (issues that unblock other issues)
@@ -101,18 +107,39 @@ Flags can be combined: `/list-issues --type bug --prioritize --pick`
 
 ---
 
-## Display Format
+## Stats Summary
+
+Always display a stats block before the top-issues table:
 
 ```
-| #   | Title                                              | Type              | Pri  | Age  |
-|-----|----------------------------------------------------|-------------------|------|------|
+📊 Open Issues: 23 total
+   • High priority: 2
+   • Bugs: 4 · Enhancements: 15 · Other: 4
+   • By label: semantic-graph (11), ui (6), architecture (4), tooling (3), testing (2)
+   • Oldest open: #125 (3d) · Newest: #153 (1h)
+```
+
+Compute counts from the fetched issue list. When `--type` is used, stats are scoped to the filtered set.
+
+---
+
+## Display Format
+
+Show only the **top N issues to consider first** (default 5, configurable with `--top <N>`):
+
+```
+🎯 Top 5 issues to consider first:
+
+| #   | Title                                              | Type              | Pri  | Age |
+|-----|----------------------------------------------------|-------------------|------|-----|
 | 144 | Comma-separated equations: second clause dropped   | bug, semantic-graph | HIGH | 2d  |
 | 153 | Improve left/right panel expand/collapse UX         | enhancement, ui   |      | 1d  |
 ```
 
 - **Pri** column shows `HIGH` if the issue has the `high` label, blank otherwise.
-- **Age** is relative (e.g. `1d`, `3d`, `2w`, `1mo`).
-- Sort order: HIGH first, then bugs before enhancements, then oldest first.
+- **Age** is relative (e.g. `1h`, `1d`, `3d`, `2w`, `1mo`).
+- Ranking: HIGH first, then bugs before enhancements, then newer before older.
+- End with `… and N more open issues` if the full list is longer than what's shown.
 
 ---
 
