@@ -377,7 +377,11 @@ class SemanticGraphBuilder:
                     return "-" + s
                 inner = Mul(*rest)
                 return "-" + self._subexpr_ordered(inner)
-            factors = list(expr.as_ordered_factors())
+            # Use ``expr.args`` instead of ``as_ordered_factors()`` so
+            # negative coefficients stay unified (e.g. ``Integer(-122)``
+            # remains one token instead of being split into ``-1 * 122``
+            # which renders as ``-1122`` after LaTeX juxtaposition).
+            factors = list(expr.args)
             factors.sort(key=lambda f: self._original_position(
                 str(f.args[0]) if isinstance(f, Pow) else str(f)
             ))
@@ -483,7 +487,10 @@ class SemanticGraphBuilder:
         # --- Numbers ---
         if isinstance(expr, Number):
             node_id = self._next_id("num")
-            self._add_node(node_id, label=str(expr), emoji="🔢", type="number")
+            # ``str(Float("7.2"))`` returns ``"7.20000000000000"`` (SymPy's
+            # default 15-digit printer); ``sympy.latex`` trims trailing zeros
+            # and also emits ``\frac{}`` for rationals, which KaTeX renders.
+            self._add_node(node_id, label=sympy.latex(expr), emoji="🔢", type="number")
             return node_id
 
         # --- Known functions (sin, cos, …) ---

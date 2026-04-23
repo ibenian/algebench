@@ -88,6 +88,7 @@ docs/              Architecture, sandbox model, feature ideas
 - **JS from package** — `voice-character-selector.js` is served at runtime from the installed `gemini_live_tools` package via `get_static_content()`. Do not copy it into `static/`.
 - **`.venv` is local** — recreate with `rm -rf .venv && ./algebench` if broken.
 - **Security** — path traversal and XSS vulnerabilities were previously fixed. Be careful with user-supplied paths in the server and anything that renders untrusted expressions.
+- **Always create a feature branch before starting work on an issue.** Create the branch immediately — before making any code changes — so all work is tracked from the start.
 - **Branch protection** — `main` is protected. Always use a feature branch and open a PR; never push directly to `main`. Committing directly to `main` is a last resort (e.g., force-push recovery only).
 - **PR base branch** — PRs must target `main` unless the user explicitly requests a different base. Merging into a feature branch that has already been merged to `main` will orphan the changes.
 - **⚠️ PR workflow** — the standard flow is: create branch → commit → push → create PR → **STOP**. Never merge a PR immediately after creating it. PRs must go through review first. Only merge when the user explicitly says "merge it" or "ok merge" as a **separate instruction** after reviewing. "Commit and merge" means commit + create the PR, not merge it.
