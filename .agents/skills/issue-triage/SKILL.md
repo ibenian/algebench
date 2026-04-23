@@ -1,18 +1,20 @@
 ---
-name: list-issues
-description: List, filter, prioritize, and pick GitHub issues for the current repo. Supports --type filtering by label, --prioritize to mark issues as high priority, and --pick to select and set up a branch for the top issue.
+name: issue-triage
+description: Triage the GitHub issue backlog for the current repo — list, filter, prioritize, and pick issues. Supports --type filtering by label, --prioritize to mark issues as high priority, and --pick to select and set up a branch for the top issue.
 ---
 
-# List Issues
+# Issue Triage
 
-Manage the GitHub issue backlog — list, filter, prioritize, and pick issues to work on.
+Triage the GitHub issue backlog — list, filter, prioritize, and pick issues to work on.
+
+**This skill is opinionated.** It does not simply dump a list and wait. It actively reads the backlog, forms a judgment about what matters most *right now*, and proposes a recommendation the user can accept, override, or challenge. Passive listing without a proposal is a failure mode — always take a stance.
 
 ---
 
 ## Usage
 
 ```
-/list-issues [--type <label>[,<label>...]] [--top <N>] [--prioritize] [--pick]
+/issue-triage [--type <label>[,<label>...]] [--top <N>] [--prioritize] [--pick]
 ```
 
 ### Flags
@@ -24,7 +26,7 @@ Manage the GitHub issue backlog — list, filter, prioritize, and pick issues to
 | `--prioritize` | After listing, prompt the user to approve marking specific issues with the `high` label |
 | `--pick` | Automatically pick the highest-priority issue, sync main, create a branch, and prepare to work on it |
 
-Flags can be combined: `/list-issues --type bug --prioritize --pick`
+Flags can be combined: `/issue-triage --type bug --prioritize --pick`
 
 ---
 
@@ -38,7 +40,8 @@ Flags can be combined: `/list-issues --type bug --prioritize --pick`
    - All issues with the `high` label (always shown)
    - Plus top candidates up to **N** total (where N is `--top <N>`, default **5**)
    - Ranking: `high` first, then bugs before enhancements, then newer before older (recency signals active pain)
-4. If there are more issues not shown, end with a one-liner: `… and N more open issues. Use --type <label> to filter or --top <N> to show more.`
+4. **Always close with a Recommendation block** (see [Recommendation](#recommendation) below) — name one issue you'd pick next, give a 1–2 sentence rationale, and invite the user to accept or redirect. Never end a triage turn without a proposal.
+5. If there are more issues not shown, end with a one-liner: `… and N more open issues. Use --type <label> to filter or --top <N> to show more.`
 
 ### With `--type <label>`
 
@@ -120,6 +123,28 @@ Always display a stats block before the top-issues table:
 ```
 
 Compute counts from the fetched issue list. When `--type` is used, stats are scoped to the filtered set.
+
+---
+
+## Recommendation
+
+**Always** end the default / `--type` flows with an opinionated recommendation. Pick **one** issue (not three, not a menu) and defend the choice briefly. Example:
+
+```
+💡 Recommendation: tackle #144 next.
+   It's the only open bug and it silently drops user input — correctness bugs with
+   silent failure modes erode trust fast. The semantic-graph cluster (#132–143) is
+   bigger in volume but most of those are rendering/cosmetic; #144 is the one
+   actively producing wrong output. Say `--pick` to start on it, or tell me what
+   to pick instead.
+```
+
+Rules:
+- Exactly **one** recommended issue per turn.
+- Rationale must reference the *specific* issue — not generic platitudes.
+- Weigh: correctness > UX > polish; silent failures > loud failures; blockers > leaves; recency as a tiebreaker.
+- If the user's `--type` filter narrows things such that the recommendation feels weak, say so honestly ("nothing here feels urgent — consider dropping the filter").
+- Never hedge with "it depends" or "you could pick any of these." Take a stance.
 
 ---
 
