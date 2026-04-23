@@ -12,6 +12,12 @@
       "runtimeExecutable": "./algebench",
       "runtimeArgs": ["scenes/draft/graph-panel-demo.json", "--port", "5731"],
       "port": 5731
+    },
+    {
+      "name": "atmospheric-entry",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": ["scenes/draft/atmospheric-entry-physics.json", "--port", "5732"],
+      "port": 5732
     }
   ]
 }

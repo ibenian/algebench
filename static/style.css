@@ -3597,6 +3597,11 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     font-size: 0.7em;
     color: rgba(149, 164, 255, 0.8);
 }
+.gp-tree-step-has-error {
+    font-size: 0.75em;
+    color: rgba(240, 150, 150, 0.95);
+    cursor: help;
+}
 
 /* Graph viewport (Mermaid host) */
 #graph-viewport {
@@ -3661,6 +3666,71 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 #graph-mermaid-container:not(:empty) ~ #graph-empty-state {
     display: none;
+}
+
+/* Surfaced parse-failure banner — issue #137. Shown when a step has
+   ``semanticGraphError`` but no ``semanticGraph``. Overrides the
+   neutral empty-state message so the user knows *why* the diagram
+   is missing instead of seeing the generic "select a step" copy. */
+#graph-error-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 560px;
+    width: min(80%, 560px);
+    padding: 14px 18px;
+    background: rgba(140, 40, 40, 0.18);
+    border: 1px solid rgba(240, 140, 140, 0.55);
+    border-radius: 10px;
+    color: #ffdede;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    text-align: left;
+    z-index: 3;
+}
+#graph-error-state.hidden {
+    display: none;
+}
+#graph-error-state .gv-err-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #ffb8b8;
+}
+#graph-error-state .gv-err-message {
+    color: #ffe6e6;
+}
+#graph-error-state .gv-err-math {
+    display: block;
+    margin-top: 8px;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    color: #ffd8d8;
+    word-break: break-all;
+}
+#graph-mermaid-container:not(:empty) ~ #graph-error-state {
+    display: none;
+}
+#graph-viewport.gv-theme-light #graph-error-state {
+    background: rgba(220, 68, 68, 0.09);
+    border-color: rgba(178, 60, 60, 0.4);
+    color: #6a1a1a;
+}
+#graph-viewport.gv-theme-light #graph-error-state .gv-err-title {
+    color: #8a2323;
+}
+#graph-viewport.gv-theme-light #graph-error-state .gv-err-message {
+    color: #4a1010;
+}
+#graph-viewport.gv-theme-light #graph-error-state .gv-err-math {
+    background: rgba(0, 0, 0, 0.06);
+    color: #401010;
 }
 
 /* Floating graph controls — left (Style + Labels) and right (Zoom +

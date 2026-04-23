@@ -1127,6 +1127,11 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
     derive a graph via ``scripts/latex_to_graph.py`` and attach it under the
     standard ``{"graph": {...}}`` wrapper.
 
+    When derivation fails (exception or returns ``None``), attach a
+    ``semanticGraphError`` record on the step so the UI can surface the
+    problem instead of silently showing the empty-state placeholder. Issue
+    #137.
+
     Returns the same dict for chaining. Silently skips anything that doesn't
     look like a scene with proofs — safe to call on any JSON.
     """
@@ -1136,6 +1141,7 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
     if not isinstance(scenes_list, list):
         return scene
     filled = 0
+    failed = 0
     for sc in scenes_list:
         if not isinstance(sc, dict):
             continue
@@ -1159,20 +1165,50 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
                 # converging on a single central ``__equals_1`` operator node.
                 # Guard against unexpected derivation failures so a single bad
                 # expression can't break the whole scene load.
+                error_reason = None
+                error_message = None
                 try:
                     graph = _derive_equation_chain_graph(cleaned)
                 except Exception as e:
                     print(f"   ⚠️  auto-graph crashed for {math_src!r}: {e}")
                     graph = None
+                    error_reason = 'parse_crashed'
+                    error_message = str(e) or e.__class__.__name__
                 if graph:
                     _apply_highlights_to_graph(
                         graph, hl_pairs, step.get('highlights') or {},
                     )
                     step['semanticGraph'] = {'graph': graph}
+                    # If a prior pass attached an error (e.g. a graph was
+                    # later supplied manually), clear it now that we have
+                    # a valid graph.
+                    step.pop('semanticGraphError', None)
                     filled += 1
-    if filled:
+                else:
+                    if error_reason is None:
+                        error_reason = 'parse_failed'
+                        error_message = (
+                            'Parser could not derive a semantic graph for '
+                            'this expression (unsupported LaTeX construct '
+                            'or empty result).'
+                        )
+                    step['semanticGraphError'] = {
+                        'reason': error_reason,
+                        'message': error_message,
+                        'math': math_src,
+                    }
+                    failed += 1
+    if filled or failed:
         title = scene.get('title') or '(scene)'
-        print(f"   ✨ auto-derived {filled} semantic graph(s) for {title}")
+        if failed:
+            print(
+                f"   ✨ auto-derived {filled} semantic graph(s), "
+                f"{failed} failed for {title}"
+            )
+        else:
+            print(
+                f"   ✨ auto-derived {filled} semantic graph(s) for {title}"
+            )
     return scene
 
 try:

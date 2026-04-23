@@ -444,8 +444,12 @@ function rebuildProofTree() {
             (proof.steps || []).forEach((step, sIdx) => {
                 const hasGraph = !!(step && step.semanticGraph &&
                     step.semanticGraph.graph);
+                const hasError = !!(step && step.semanticGraphError);
+                let cls = 'gp-tree-step';
+                if (!hasGraph) cls += ' no-graph';
+                if (hasError) cls += ' has-error';
                 const stepEl = document.createElement('div');
-                stepEl.className = 'gp-tree-step' + (hasGraph ? '' : ' no-graph');
+                stepEl.className = cls;
                 stepEl.dataset.sceneIdx = entry.sceneIndex != null ? entry.sceneIndex : '';
                 stepEl.dataset.proofId = proof.id || '';
                 stepEl.dataset.stepIdx = sIdx;
@@ -463,6 +467,13 @@ function rebuildProofTree() {
                     dot.title = 'Has semantic graph';
                     dot.textContent = '●';
                     stepEl.appendChild(dot);
+                } else if (hasError) {
+                    const warn = document.createElement('span');
+                    warn.className = 'gp-tree-step-has-error';
+                    warn.title = step.semanticGraphError.message ||
+                        'Graph could not be derived for this step';
+                    warn.textContent = '⚠';
+                    stepEl.appendChild(warn);
                 }
 
                 stepEl.addEventListener('click', (e) => {
@@ -580,7 +591,43 @@ function clearGraph() {
         legend.classList.add('hidden');
         legend.innerHTML = '';
     }
+    hideErrorState();
     _currentSemanticKey = null;
+}
+
+// Render the parse-failure banner (issue #137) when the current step has
+// a ``semanticGraphError`` record but no graph. The banner replaces the
+// neutral empty-state copy so users see *why* a graph is missing.
+function showErrorState(err) {
+    const host = document.getElementById('graph-error-state');
+    if (!host) return;
+    const reason = err && err.reason === 'parse_crashed'
+        ? 'Parser error'
+        : 'Unsupported expression';
+    const message = (err && err.message) ||
+        'Parser could not derive a semantic graph.';
+    host.innerHTML =
+        '<div class="gv-err-title">' +
+            '<span aria-hidden="true">&#9888;&#65039;</span>' +
+            '<span>' + escapeHtml(reason) + '</span>' +
+        '</div>' +
+        '<div class="gv-err-message">' + escapeHtml(message) + '</div>' +
+        (err && err.math
+            ? '<code class="gv-err-math">' + escapeHtml(err.math) + '</code>'
+            : '');
+    host.classList.remove('hidden');
+    const empty = document.getElementById('graph-empty-state');
+    if (empty) empty.style.display = 'none';
+}
+
+function hideErrorState() {
+    const host = document.getElementById('graph-error-state');
+    if (host) {
+        host.classList.add('hidden');
+        host.innerHTML = '';
+    }
+    const empty = document.getElementById('graph-empty-state');
+    if (empty) empty.style.display = '';
 }
 
 async function renderCurrentStepGraph(force = false) {
@@ -594,6 +641,10 @@ async function renderCurrentStepGraph(force = false) {
         // doesn't see a stale diagram from the previous step and the
         // empty-state message can surface.
         clearGraph();
+        // If the server attached a parse-failure record (issue #137),
+        // surface it in place of the generic empty state.
+        const err = step && step.semanticGraphError;
+        if (err) showErrorState(err);
         return;
     }
 

@@ -1239,6 +1239,27 @@
           },
           "required": ["graph"],
           "additionalProperties": false
+        },
+        "semanticGraphError": {
+          "type": "object",
+          "description": "Diagnostic record attached by the server when auto-derivation of a semantic graph fails. Surfaced in the Math dock view so the user can see why a graph is missing instead of a silent empty state.",
+          "properties": {
+            "reason": {
+              "type": "string",
+              "enum": ["parse_failed", "parse_crashed"],
+              "description": "'parse_failed' — parser returned no graph (unsupported construct). 'parse_crashed' — parser raised an exception."
+            },
+            "message": {
+              "type": "string",
+              "description": "Human-readable explanation of the failure."
+            },
+            "math": {
+              "type": "string",
+              "description": "The original LaTeX source that failed to parse."
+            }
+          },
+          "required": ["reason", "message"],
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
