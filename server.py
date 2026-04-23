@@ -2000,6 +2000,13 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         tts_stream_kwargs['output_path'] = tts_output_file
 
     current_spec = [None]
+    if initial_scene_path:
+        try:
+            with open(initial_scene_path) as f:
+                current_spec[0] = json.load(f)
+            _autofill_semantic_graphs(current_spec[0])
+        except Exception as e:
+            print(f"   ⚠️  failed to pre-load {initial_scene_path}: {e}")
 
     # ---- Pydantic request models ----
 

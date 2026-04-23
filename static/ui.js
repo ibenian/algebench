@@ -98,6 +98,16 @@ export async function loadInitialSceneFromQuery() {
         if (loaded) return;
     }
     if (!scenePath) {
+        try {
+            const res = await fetch('/api/scene', { cache: 'no-store' });
+            if (res.ok) {
+                const spec = await res.json();
+                if (spec && Array.isArray(spec.scenes) && spec.scenes.length) {
+                    loadLesson(spec);
+                    return;
+                }
+            }
+        } catch {}
         loadScene(null);
         return;
     }
