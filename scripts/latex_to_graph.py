@@ -876,7 +876,6 @@ def _build_comma_separated_graph(
     clauses: list[str],
     overrides: dict[str, dict[str, str]] | None,
     domain: str | None,
-    original_latex: str,
 ) -> dict:
     r"""Parse each statement-separator-detected clause independently and
     emit them as **parallel statements in the same graph** — no parent
@@ -1030,10 +1029,13 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     # ``f(x, y)`` must not split).
     clauses = _split_on_top_level_comma(latex)
     if len(clauses) > 1:
-        # Step 2: build one subgraph per clause and join them under a
-        # central ``comma`` relation node.
+        # Step 2: build one subgraph per clause and return them together
+        # as independent roots in the same graph — no parent or
+        # ``comma`` / ``and`` relation node is emitted. The graph is
+        # multi-rooted; clauses connect only through organically shared
+        # variables.
         return _build_comma_separated_graph(
-            clauses, overrides=overrides, domain=domain, original_latex=latex,
+            clauses, overrides=overrides, domain=domain,
         )
 
     collapsed, text_overrides = _collapse_text_commands(latex)
