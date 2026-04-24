@@ -801,6 +801,45 @@ def _classify_expression(expr: sympy.Basic) -> dict[str, Any]:
     return meta
 
 
+def _split_on_top_level_comma(latex: str) -> list[str]:
+    r"""Split *latex* on top-level commas — commas at brace/paren/bracket
+    depth 0 only. Returns a list of trimmed, non-empty clauses.
+
+    A single-element list means there was no top-level comma (either no
+    commas at all, or every comma was nested inside ``{...}`` / ``(...)``
+    / ``[...]``).
+
+    This lets callers recognise comma-separated statements such as
+    ``f(x) = x^2, \quad x > 0`` or ``a = 1, b = 2`` while leaving commas
+    inside ``\text{const, extra}`` or ``f(x, y)`` untouched.
+    """
+    parts: list[str] = []
+    depth = 0
+    start = 0
+    for i, ch in enumerate(latex):
+        if ch in "{([":
+            depth += 1
+        elif ch in "})]":
+            if depth > 0:
+                depth -= 1
+        elif ch == "," and depth == 0:
+            # Skip LaTeX spacing commands like ``\,`` (thin space). An odd
+            # run of backslashes immediately before the comma means it's
+            # escaped and part of the command, not a clause separator.
+            bs = 0
+            j = i - 1
+            while j >= 0 and latex[j] == "\\":
+                bs += 1
+                j -= 1
+            if bs % 2 == 1:
+                continue
+            parts.append(latex[start:i])
+            start = i + 1
+    parts.append(latex[start:])
+    nonempty = [p.strip() for p in parts if p.strip()]
+    return nonempty if nonempty else [latex]
+
+
 def _split_on_relation(latex: str) -> tuple[str, dict[str, str], str] | None:
     """If *latex* contains a relation operator from RELATION_MAP, return
     ``(lhs_latex, relation_meta, rhs_latex)``.  Returns ``None`` when no
@@ -819,13 +858,125 @@ def _split_on_relation(latex: str) -> tuple[str, dict[str, str], str] | None:
     return None
 
 
+def _build_conjunction_graph(
+    clauses: list[str],
+    overrides: dict[str, dict[str, str]] | None,
+    domain: str | None,
+    original_latex: str,
+) -> dict:
+    r"""Parse each clause independently and merge them under a central
+    ``type='relation', op='and'`` node.
+
+    Comma-separated clauses in mathematical notation cover constraints
+    (``f(x) = x^2, x > 0``), simultaneous definitions (``a = 1, b = 2``),
+    and constraints alongside equations (``\frac{dh}{dt} = -V \sin\gamma,
+    \gamma = \text{const}``). All read naturally as a logical
+    conjunction of statements, so we represent them as such.
+
+    Variable nodes (ids with no ``__`` prefix) are shared across clauses
+    by id; operator/relation nodes are scoped per-clause with a
+    ``c<i>_`` prefix to avoid id collisions. Each clause's root edges
+    into the central ``and`` node.
+
+    If any clause fails to parse, ``ValueError`` is raised (consistent
+    with #137 — no silent drops).
+    """
+    merged_nodes: dict[str, dict] = {}
+    merged_edges: list[dict] = []
+    roots: list[str] = []
+
+    for ci, clause in enumerate(clauses):
+        try:
+            sub = latex_to_semantic_graph(clause, overrides=overrides, domain=domain)
+        except Exception as exc:
+            raise ValueError(
+                f"Failed to parse clause {ci + 1} ({clause!r}) of "
+                f"comma-separated expression: {exc}"
+            ) from exc
+        if not isinstance(sub, dict) or not sub.get("nodes"):
+            raise ValueError(
+                f"Clause {ci + 1} ({clause!r}) produced no graph nodes"
+            )
+
+        prefix = f"c{ci}_"
+
+        def _rename(nid: str, p: str = prefix) -> str:
+            return p + nid if isinstance(nid, str) and nid.startswith("__") else nid
+
+        for n in sub.get("nodes") or []:
+            if not isinstance(n, dict) or "id" not in n:
+                continue
+            new_id = _rename(n["id"])
+            cloned = dict(n)
+            cloned["id"] = new_id
+            if new_id not in merged_nodes:
+                merged_nodes[new_id] = cloned
+            else:
+                # Shared variable — fill gaps without overwriting richer existing data.
+                for k, v in cloned.items():
+                    merged_nodes[new_id].setdefault(k, v)
+
+        for e in sub.get("edges") or []:
+            new_edge = dict(e)
+            new_edge["from"] = _rename(e.get("from", ""))
+            new_edge["to"] = _rename(e.get("to", ""))
+            merged_edges.append(new_edge)
+
+        # Clause root: a node with no outgoing edge within its own sub-graph.
+        out_set = {e.get("from") for e in sub.get("edges") or []}
+        root_candidates = [
+            n.get("id") for n in sub.get("nodes") or []
+            if isinstance(n, dict) and n.get("id") not in out_set
+        ]
+        if root_candidates:
+            roots.append(_rename(root_candidates[0]))
+        elif sub["nodes"]:
+            roots.append(_rename(sub["nodes"][0].get("id", "")))
+
+    # Central conjunction node — every clause root edges into it.
+    conj_id = "__and_1"
+    merged_nodes[conj_id] = {
+        "id": conj_id,
+        "type": "relation",
+        "op": "and",
+        "label": "and",
+        "emoji": "∧",
+        "subexpr": original_latex.strip(),
+    }
+    for r in roots:
+        if r:
+            merged_edges.append({"from": r, "to": conj_id})
+
+    result: dict = {
+        "nodes": list(merged_nodes.values()),
+        "edges": merged_edges,
+        "classification": {"kind": "conjunction"},
+    }
+    if domain:
+        result["domain"] = domain
+    return result
+
+
 def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | None = None, domain: str | None = None) -> dict:
     """Parse a LaTeX string and return a semantic graph dict.
 
     Handles relation operators (\\propto, \\implies, \\iff, \\to, \\approx,
     \\Rightarrow, \\Leftrightarrow) by splitting on the relation, parsing
     each side independently, and emitting a ``type='relation'`` node.
+
+    Also handles top-level comma-separated clauses (``a = 1, b = 2``) by
+    parsing each clause independently and joining them under an ``and``
+    relation node.
     """
+    # Top-level comma split — do this before preprocessing so brace/paren
+    # depth reflects the original LaTeX structure (\text{a, b} and f(x, y)
+    # must not split).
+    clauses = _split_on_top_level_comma(latex)
+    if len(clauses) > 1:
+        return _build_conjunction_graph(
+            clauses, overrides=overrides, domain=domain, original_latex=latex,
+        )
+
     collapsed, text_overrides = _collapse_text_commands(latex)
     preprocessed = _preprocess_latex(collapsed)
     latex_commands = _extract_latex_commands(latex)

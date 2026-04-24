@@ -13,6 +13,7 @@ from scripts.latex_to_graph import (
     latex_to_semantic_graph,
     parse_var_overrides,
     _preprocess_latex,
+    _split_on_top_level_comma,
 )
 
 
@@ -679,3 +680,154 @@ class TestErrors:
     def test_invalid_latex_raises(self):
         with pytest.raises(ValueError, match="Failed to parse"):
             latex_to_semantic_graph("\\frac{}")
+
+
+# ---------------------------------------------------------------------------
+# Comma-separated clauses (issue #144)
+# ---------------------------------------------------------------------------
+
+class TestCommaSplit:
+    """Low-level brace-aware splitting."""
+
+    def test_no_comma_returns_single_clause(self):
+        assert _split_on_top_level_comma("x + y") == ["x + y"]
+
+    def test_top_level_comma_splits(self):
+        assert _split_on_top_level_comma("a = 1, b = 2") == ["a = 1", "b = 2"]
+
+    def test_three_clauses(self):
+        assert _split_on_top_level_comma("a, b, c") == ["a", "b", "c"]
+
+    def test_comma_inside_braces_not_split(self):
+        # \text{const, extra} must stay as a single clause — the comma
+        # is brace-nested.
+        assert _split_on_top_level_comma(r"\text{const, extra}") == [
+            r"\text{const, extra}"
+        ]
+
+    def test_comma_inside_parens_not_split(self):
+        # Function argument lists must not split.
+        assert _split_on_top_level_comma("f(x, y)") == ["f(x, y)"]
+
+    def test_comma_inside_brackets_not_split(self):
+        # e.g. interval notation or matrix indexing.
+        assert _split_on_top_level_comma("A[i, j]") == ["A[i, j]"]
+
+    def test_mixed_nested_and_top_level(self):
+        # Top-level comma splits; nested commas are preserved intact.
+        assert _split_on_top_level_comma("f(x, y) = 0, g(a, b) = 1") == [
+            "f(x, y) = 0",
+            "g(a, b) = 1",
+        ]
+
+    def test_trailing_comma_produces_no_empty_clause(self):
+        assert _split_on_top_level_comma("a = 1,") == ["a = 1"]
+
+    def test_leading_comma_dropped(self):
+        assert _split_on_top_level_comma(", b = 2") == ["b = 2"]
+
+    def test_latex_thin_space_not_split(self):
+        r"""``\,`` is a LaTeX thin-space command — the trailing comma is
+        part of the command, not a clause separator."""
+        assert _split_on_top_level_comma(r"a \, b") == [r"a \, b"]
+        # And combined with a real top-level comma, only the real one splits.
+        assert _split_on_top_level_comma(r"a \, b, c") == [r"a \, b", "c"]
+
+    def test_double_backslash_before_comma_still_splits(self):
+        r"""``\\,`` — escaped backslash followed by a literal comma. The
+        comma is NOT escaped, so the split should happen."""
+        assert _split_on_top_level_comma(r"a \\, b") == [r"a \\", "b"]
+
+
+class TestCommaSeparatedClauses:
+    """Full graph behaviour for comma-separated statements (issue #144)."""
+
+    def test_issue_144_exact_example(self):
+        r"""The exact example from issue #144 must parse both clauses.
+        Before the fix, the second clause was silently dropped by SymPy."""
+        g = latex_to_semantic_graph(
+            r"\frac{dh}{dt} = -V \sin \gamma, \quad \gamma = \text{const}"
+        )
+        # Both clauses present: the first has a Derivative, the second
+        # has a 'const' text node.
+        assert _find_nodes(g, type="operator", op="derivative"), (
+            "first clause (derivative) must survive"
+        )
+        assert _find_node(g, label="const"), (
+            "second clause (γ = const) must survive — this is the bug"
+        )
+        # Central 'and' node joins them.
+        and_node = _find_node(g, type="relation", op="and")
+        assert and_node is not None
+        assert g["classification"]["kind"] == "conjunction"
+
+    def test_simultaneous_definitions(self):
+        """a = 1, b = 2 — two independent equations."""
+        g = latex_to_semantic_graph("a = 1, b = 2")
+        # Both variables a and b are present.
+        assert _find_node(g, id="a") is not None
+        assert _find_node(g, id="b") is not None
+        # Two equals nodes, one per clause.
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert len(equals_nodes) == 2
+        # Conjunction node wires them up.
+        and_node = _find_node(g, type="relation", op="and")
+        assert and_node is not None
+        # Both equals nodes edge into the 'and' node.
+        and_id = and_node["id"]
+        edges_into_and = [e for e in g["edges"] if e["to"] == and_id]
+        assert len(edges_into_and) == 2
+
+    def test_constraint_after_equation(self):
+        """f(x) = x^2, x > 0 — equation plus domain constraint."""
+        g = latex_to_semantic_graph("y = x^2, x > 0")
+        # x must be a single shared node across both clauses.
+        x_nodes = _find_nodes(g, id="x")
+        assert len(x_nodes) == 1, (
+            "x should be shared between the equation and the constraint, "
+            f"got {len(x_nodes)} nodes"
+        )
+        # And the 'and' node must be present.
+        assert _find_node(g, type="relation", op="and") is not None
+
+    def test_three_clauses_all_present(self):
+        g = latex_to_semantic_graph("a = 1, b = 2, c = 3")
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert len(equals_nodes) == 3
+        and_node = _find_node(g, type="relation", op="and")
+        assert and_node is not None
+        # All three clause roots edge into the single 'and' node.
+        edges_into_and = [e for e in g["edges"] if e["to"] == and_node["id"]]
+        assert len(edges_into_and) == 3
+
+    def test_comma_inside_text_not_split(self):
+        r"""Commas inside \text{...} must not trigger a split —
+        otherwise \text{a, b} would be broken into two bogus clauses."""
+        g = latex_to_semantic_graph(r"x = \text{foo, bar}")
+        # Single equation, no conjunction node.
+        assert _find_node(g, type="relation", op="and") is None
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert len(equals_nodes) == 1
+
+    def test_comma_inside_function_args_not_split(self):
+        """f(x, y) — function argument commas must not split."""
+        g = latex_to_semantic_graph("f(x, y)")
+        # No conjunction node was introduced by the comma.
+        assert _find_node(g, type="relation", op="and") is None
+
+    def test_failed_clause_raises_not_silently_dropped(self):
+        """Per issue #137: parse failures must surface, not silently drop.
+        When one clause is malformed, the whole expression should raise."""
+        with pytest.raises(ValueError):
+            latex_to_semantic_graph(r"a = 1, \frac{}")
+
+    def test_shared_variable_dedup_across_clauses(self):
+        r"""γ appearing in both clauses must collapse to one node,
+        consistent with existing in-clause variable dedup."""
+        g = latex_to_semantic_graph(
+            r"\frac{dh}{dt} = -V \sin \gamma, \gamma = \text{const}"
+        )
+        gamma_nodes = _find_nodes(g, id="gamma")
+        assert len(gamma_nodes) == 1, (
+            f"gamma should be shared across clauses, got {len(gamma_nodes)}"
+        )
