@@ -74,6 +74,12 @@ _NON_EXPR_KEYS = frozenset({
     'axis', 'camera', 'range', 'theme',
     'markdown', 'text', 'unsafeExplanation',
     'explanation', 'math', 'legendGroup', 'goal',
+    # Prose fields on proof steps. Not evaluated as expressions.
+    'justification',
+    # LaTeX display strings on semantic-graph nodes. Rendered via KaTeX,
+    # never handed to compileExpr. Can contain math-looking values like
+    # ``a = 1 + 2`` that would otherwise trip the discovery heuristic.
+    'subexpr',
 })
 
 # Regex that extracts {{...}} template expressions from content strings.

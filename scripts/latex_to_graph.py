@@ -801,6 +801,59 @@ def _classify_expression(expr: sympy.Basic) -> dict[str, Any]:
     return meta
 
 
+def _split_on_top_level_comma(latex: str) -> list[str]:
+    r"""Detect whether any commas in *latex* act as **statement separators**
+    and, if so, split the input into its separate statements.
+
+    A comma is treated as a statement separator only when it sits at
+    brace/paren/bracket depth 0 — i.e. outside every ``{...}``, ``(...)``,
+    ``[...]`` group. That distinction is load-bearing: mathematical LaTeX
+    overloads the comma heavily, and only the top-level occurrence
+    actually separates statements.
+
+    Commas that are *not* statement separators (and therefore not split):
+    - Function arguments: ``f(x, y)``
+    - Set / tuple elements: ``\{1, 2, 3\}``, ``(a, b)``
+    - Multi-index subscripts: ``x_{i, j}``
+    - Text content: ``\text{const, extra}``
+    - LaTeX spacing commands: ``\,`` (odd run of backslashes before the comma)
+
+    Commas that *are* statement separators (and therefore split):
+    - Simultaneous definitions: ``a = 1, b = 2``
+    - Constraints alongside equations: ``f(x) = x^2, x > 0``
+    - Multiple equations separated by ``\quad``: ``dh/dt = -V \sin γ, \quad γ = \text{const}``
+
+    Returns a list of trimmed, non-empty clauses. A single-element list
+    means no top-level comma was found (either no commas at all, or every
+    comma was nested or escaped).
+    """
+    parts: list[str] = []
+    depth = 0
+    start = 0
+    for i, ch in enumerate(latex):
+        if ch in "{([":
+            depth += 1
+        elif ch in "})]":
+            if depth > 0:
+                depth -= 1
+        elif ch == "," and depth == 0:
+            # Skip LaTeX spacing commands like ``\,`` (thin space). An odd
+            # run of backslashes immediately before the comma means it's
+            # escaped and part of the command, not a clause separator.
+            bs = 0
+            j = i - 1
+            while j >= 0 and latex[j] == "\\":
+                bs += 1
+                j -= 1
+            if bs % 2 == 1:
+                continue
+            parts.append(latex[start:i])
+            start = i + 1
+    parts.append(latex[start:])
+    nonempty = [p.strip() for p in parts if p.strip()]
+    return nonempty if nonempty else [latex]
+
+
 def _split_on_relation(latex: str) -> tuple[str, dict[str, str], str] | None:
     """If *latex* contains a relation operator from RELATION_MAP, return
     ``(lhs_latex, relation_meta, rhs_latex)``.  Returns ``None`` when no
@@ -819,13 +872,172 @@ def _split_on_relation(latex: str) -> tuple[str, dict[str, str], str] | None:
     return None
 
 
+def _build_comma_separated_graph(
+    clauses: list[str],
+    overrides: dict[str, dict[str, str]] | None,
+    domain: str | None,
+) -> dict:
+    r"""Parse each statement-separator-detected clause independently and
+    emit them as **parallel statements in the same graph** — no parent
+    or relation node joining them.
+
+    Precondition: the caller has already run ``_split_on_top_level_comma``
+    and confirmed these commas are statement separators (not function
+    arguments, tuple elements, etc.).
+
+    Comma-separated clauses in mathematical notation cover constraints
+    (``f(x) = x^2, x > 0``), simultaneous definitions (``a = 1, b = 2``),
+    and constraints alongside equations (``\frac{dh}{dt} = -V \sin\gamma,
+    \gamma = \text{const}``). They're semantically independent statements
+    that happen to share a line — the comma is a pure notational
+    separator, not a logical operator. So: no ``\land``, no ``comma``
+    relation node. Each clause stands on its own; the graph contains
+    each clause's subtree as an independent rooted structure.
+
+    Shared variables across clauses (e.g. ``γ`` appearing in both
+    ``dh/dt = -V \sin γ`` and ``γ = const``) still dedup to a single
+    node — that's an organic property of the expression, not an
+    imposed relation. The resulting graph may therefore be multi-rooted
+    (truly disconnected when clauses share no symbols, or connected
+    only through shared variable nodes when they do).
+
+    Operator/relation node ids are scoped per-clause with a ``c<i>_``
+    prefix to avoid collisions. If any clause fails to parse,
+    ``ValueError`` is raised (consistent with #137 — no silent drops).
+    """
+    merged_nodes: dict[str, dict] = {}
+    merged_edges: list[dict] = []
+    clause_classifications: list[dict] = []
+    cleaned_clauses: list[str] = []
+
+    # Trim leading LaTeX spacing commands from each clause — they're visual
+    # (``\quad`` after a comma is a common authoring pattern) and otherwise
+    # leak into the clause's root subexpr, e.g. ``\quad \gamma = \text{const}``.
+    _leading_space_re = re.compile(r"^\s*(?:\\(?:quad|qquad|,|;|!|:)\s*)+")
+    for clause in clauses:
+        cleaned_clauses.append(_leading_space_re.sub("", clause).strip())
+
+    for ci, clause in enumerate(cleaned_clauses):
+        try:
+            sub = latex_to_semantic_graph(clause, overrides=overrides, domain=domain)
+        except Exception as exc:
+            raise ValueError(
+                f"Failed to parse clause {ci + 1} ({clause!r}) of "
+                f"comma-separated expression: {exc}"
+            ) from exc
+        if not isinstance(sub, dict) or not sub.get("nodes"):
+            raise ValueError(
+                f"Clause {ci + 1} ({clause!r}) produced no graph nodes"
+            )
+
+        prefix = f"c{ci}_"
+
+        def _rename(nid: str, p: str = prefix) -> str:
+            """Scope per-clause ids with *p* so they don't collide when
+            clauses are merged. Namespacing covers:
+
+            - ``__``-prefixed operator / relation / function ids, which
+              ``SemanticGraphBuilder`` auto-numbers per-parse (``__add_1``,
+              ``__equals_1``, …) and would otherwise alias across clauses.
+            - ``Xi_{N}`` text-command placeholders that
+              ``_collapse_text_commands`` assigns per-parse (so
+              ``\\text{foo}`` in clause 0 and ``\\text{bar}`` in clause 1
+              would both be ``Xi_{0}`` and get incorrectly merged into one
+              text node).
+
+            Real free variables (``x``, ``\\gamma``, …) are NOT renamed —
+            their dedup across clauses is the intended cross-statement
+            link (e.g. ``γ`` appearing in both clauses of the
+            ``dh/dt = -V \\sin γ, γ = const`` example stays a single node).
+            """
+            if not isinstance(nid, str):
+                return nid
+            if nid.startswith("__"):
+                return p + nid
+            if nid.startswith("Xi_{"):
+                return p + nid
+            return nid
+
+        for n in sub.get("nodes") or []:
+            if not isinstance(n, dict) or "id" not in n:
+                continue
+            new_id = _rename(n["id"])
+            cloned = dict(n)
+            cloned["id"] = new_id
+            if new_id not in merged_nodes:
+                merged_nodes[new_id] = cloned
+            else:
+                # Shared variable — fill gaps without overwriting richer existing data.
+                for k, v in cloned.items():
+                    merged_nodes[new_id].setdefault(k, v)
+
+        for e in sub.get("edges") or []:
+            new_edge = dict(e)
+            new_edge["from"] = _rename(e.get("from", ""))
+            new_edge["to"] = _rename(e.get("to", ""))
+            merged_edges.append(new_edge)
+
+        # Stash this clause's own classification for the top-level
+        # ``clauses`` list (preserves PDE/ODE/algebraic info per clause
+        # so downstream consumers don't have to re-walk the subtrees).
+        sub_cls = sub.get("classification")
+        if isinstance(sub_cls, dict):
+            clause_classifications.append(sub_cls)
+        else:
+            clause_classifications.append({"kind": "algebraic"})
+
+    # No parent/relation node. The graph is multi-rooted: each clause has
+    # its own root (the node with no outgoing edge within its clause). If
+    # clauses share symbols like γ, they connect through that variable;
+    # otherwise they're truly disconnected sub-graphs in the same nodes/
+    # edges dict. ``classification.kind = "statements"`` signals that the
+    # graph carries multiple independent statements.
+    result: dict = {
+        "nodes": list(merged_nodes.values()),
+        "edges": merged_edges,
+        "classification": {
+            "kind": "statements",
+            "count": len(cleaned_clauses),
+            # Per-clause classifications so downstream can see that,
+            # e.g., statement 0 is a PDE while statement 1 is algebraic
+            # — without re-walking the clause subtrees.
+            "clauses": clause_classifications,
+        },
+    }
+    if domain:
+        result["domain"] = domain
+    return result
+
+
 def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | None = None, domain: str | None = None) -> dict:
     """Parse a LaTeX string and return a semantic graph dict.
 
     Handles relation operators (\\propto, \\implies, \\iff, \\to, \\approx,
     \\Rightarrow, \\Leftrightarrow) by splitting on the relation, parsing
     each side independently, and emitting a ``type='relation'`` node.
+
+    Also handles top-level comma-separated clauses (``a = 1, b = 2``) by
+    first detecting whether the comma is acting as a **statement
+    separator** (as opposed to a function-argument or tuple separator),
+    then parsing each clause independently and emitting each as an
+    independent statement in the same graph — no forced parent or
+    relation node. Shared variables across clauses dedup to one node.
     """
+    # Step 1: detect whether a top-level comma is acting as a statement
+    # separator. Run this before preprocessing so brace/paren depth
+    # reflects the original LaTeX structure (``\text{a, b}`` and
+    # ``f(x, y)`` must not split).
+    clauses = _split_on_top_level_comma(latex)
+    if len(clauses) > 1:
+        # Step 2: build one subgraph per clause and return them together
+        # as independent roots in the same graph — no parent or
+        # ``comma`` / ``and`` relation node is emitted. The graph is
+        # multi-rooted; clauses connect only through organically shared
+        # variables.
+        return _build_comma_separated_graph(
+            clauses, overrides=overrides, domain=domain,
+        )
+
     collapsed, text_overrides = _collapse_text_commands(latex)
     preprocessed = _preprocess_latex(collapsed)
     latex_commands = _extract_latex_commands(latex)

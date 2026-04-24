@@ -159,8 +159,19 @@
       "properties": {
         "kind": {
           "type": "string",
-          "enum": ["algebraic", "ODE", "PDE"],
-          "description": "Expression type: algebraic (no derivatives), ODE (single independent variable), or PDE (multiple independent variables)."
+          "enum": ["algebraic", "ODE", "PDE", "statements"],
+          "description": "Expression type: algebraic (no derivatives), ODE (single independent variable), PDE (multiple independent variables), or statements (top-level comma-separated clauses — each clause is an independent statement emitted as its own subtree; see issue #144)."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "Number of independent statements in the graph. Present only when kind = \"statements\". Redundant with clauses.length but kept for quick access."
+        },
+        "clauses": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/classification" },
+          "description": "Per-clause classifications. Each entry is a full classification object for one comma-separated clause — lets downstream consumers see that, e.g., statement 0 is a PDE while statement 1 is algebraic, without re-walking the clause subtrees. Present only when kind = \"statements\"."
         },
         "order": {
           "type": "integer",

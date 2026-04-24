@@ -13,6 +13,7 @@ from scripts.latex_to_graph import (
     latex_to_semantic_graph,
     parse_var_overrides,
     _preprocess_latex,
+    _split_on_top_level_comma,
 )
 
 
@@ -679,3 +680,368 @@ class TestErrors:
     def test_invalid_latex_raises(self):
         with pytest.raises(ValueError, match="Failed to parse"):
             latex_to_semantic_graph("\\frac{}")
+
+
+# ---------------------------------------------------------------------------
+# Comma-separated clauses (issue #144)
+# ---------------------------------------------------------------------------
+
+class TestCommaSplit:
+    """Low-level brace-aware splitting."""
+
+    def test_no_comma_returns_single_clause(self):
+        assert _split_on_top_level_comma("x + y") == ["x + y"]
+
+    def test_top_level_comma_splits(self):
+        assert _split_on_top_level_comma("a = 1, b = 2") == ["a = 1", "b = 2"]
+
+    def test_three_clauses(self):
+        assert _split_on_top_level_comma("a, b, c") == ["a", "b", "c"]
+
+    def test_comma_inside_braces_not_split(self):
+        # \text{const, extra} must stay as a single clause — the comma
+        # is brace-nested.
+        assert _split_on_top_level_comma(r"\text{const, extra}") == [
+            r"\text{const, extra}"
+        ]
+
+    def test_comma_inside_parens_not_split(self):
+        # Function argument lists must not split.
+        assert _split_on_top_level_comma("f(x, y)") == ["f(x, y)"]
+
+    def test_comma_inside_brackets_not_split(self):
+        # e.g. interval notation or matrix indexing.
+        assert _split_on_top_level_comma("A[i, j]") == ["A[i, j]"]
+
+    def test_mixed_nested_and_top_level(self):
+        # Top-level comma splits; nested commas are preserved intact.
+        assert _split_on_top_level_comma("f(x, y) = 0, g(a, b) = 1") == [
+            "f(x, y) = 0",
+            "g(a, b) = 1",
+        ]
+
+    def test_multi_function_call_all_args_preserved(self):
+        """Multiple function calls in one expression — every argument
+        comma is inside a ``(...)`` and must be preserved."""
+        assert _split_on_top_level_comma("f(x, y) + g(a, b, c)") == [
+            "f(x, y) + g(a, b, c)"
+        ]
+
+    def test_multi_index_subscript_not_split(self):
+        r"""``A_{i, j}`` — the comma is inside a subscript brace group
+        (brace depth 1) and must not be treated as a separator."""
+        assert _split_on_top_level_comma("A_{i, j}") == ["A_{i, j}"]
+        # Even in a larger expression with other top-level operators.
+        assert _split_on_top_level_comma("A_{i, j} + B_{k, l}") == [
+            "A_{i, j} + B_{k, l}"
+        ]
+
+    def test_set_literal_not_split(self):
+        r"""``\{1, 2, 3\}`` — LaTeX set notation. The escaped ``\{`` and
+        ``\}`` still count as brace-depth boundaries so the enclosed
+        commas are nested (not separators)."""
+        assert _split_on_top_level_comma(r"\{1, 2, 3\}") == [r"\{1, 2, 3\}"]
+
+    def test_ordered_pair_not_split(self):
+        """``(a, b)`` — pair notation. The inner comma is paren-nested."""
+        assert _split_on_top_level_comma("(a, b)") == ["(a, b)"]
+
+    def test_integral_with_thin_space_and_top_level_comma(self):
+        r"""``\int f(x)\,dx, g = 0`` — contains ``\,`` (not a separator,
+        via backslash-parity) inside an integral AND a real top-level
+        comma. Only the real one should split."""
+        assert _split_on_top_level_comma(r"\int f(x)\,dx, g = 0") == [
+            r"\int f(x)\,dx",
+            "g = 0",
+        ]
+
+    def test_trailing_comma_produces_no_empty_clause(self):
+        assert _split_on_top_level_comma("a = 1,") == ["a = 1"]
+
+    def test_leading_comma_dropped(self):
+        assert _split_on_top_level_comma(", b = 2") == ["b = 2"]
+
+    def test_latex_thin_space_not_split(self):
+        r"""``\,`` is a LaTeX thin-space command — the trailing comma is
+        part of the command, not a clause separator."""
+        assert _split_on_top_level_comma(r"a \, b") == [r"a \, b"]
+        # And combined with a real top-level comma, only the real one splits.
+        assert _split_on_top_level_comma(r"a \, b, c") == [r"a \, b", "c"]
+
+    def test_double_backslash_before_comma_still_splits(self):
+        r"""``\\,`` — escaped backslash followed by a literal comma. The
+        comma is NOT escaped, so the split should happen."""
+        assert _split_on_top_level_comma(r"a \\, b") == [r"a \\", "b"]
+
+
+class TestCommaSeparatedClauses:
+    """Full graph behaviour for comma-separated statements (issue #144)."""
+
+    def test_issue_144_exact_example(self):
+        r"""The exact example from issue #144 must parse both clauses.
+        Before the fix, the second clause was silently dropped by SymPy."""
+        g = latex_to_semantic_graph(
+            r"\frac{dh}{dt} = -V \sin \gamma, \quad \gamma = \text{const}"
+        )
+        # Both clauses present: the first has a Derivative, the second
+        # has a 'const' text node.
+        assert _find_nodes(g, type="operator", op="derivative"), (
+            "first clause (derivative) must survive"
+        )
+        assert _find_node(g, label="const"), (
+            "second clause (γ = const) must survive — this is the bug"
+        )
+        # Graph carries two independent statements — no parent/relation node.
+        assert g["classification"]["kind"] == "statements"
+        assert g["classification"]["count"] == 2
+
+    def test_no_parent_relation_node_is_emitted(self):
+        """Per author intent (issue #144 follow-up): the comma is a pure
+        statement separator, not a logical operator. The graph must NOT
+        carry a parent ``and`` / ``comma`` / ``conjunction`` relation node
+        artificially joining the clauses."""
+        g = latex_to_semantic_graph("a = 1, b = 2")
+        assert _find_node(g, type="relation", op="and") is None
+        assert _find_node(g, type="relation", op="comma") is None
+        assert _find_node(g, type="relation", op="conjunction") is None
+
+    def test_simultaneous_definitions(self):
+        """a = 1, b = 2 — two independent equations as separate statements."""
+        g = latex_to_semantic_graph("a = 1, b = 2")
+        # Both variables a and b are present.
+        assert _find_node(g, id="a") is not None
+        assert _find_node(g, id="b") is not None
+        # Two equals nodes, one per clause.
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert len(equals_nodes) == 2
+        # The graph has exactly two roots (nodes with no outgoing edges
+        # among the operator/relation nodes) — the two equals nodes.
+        out_set = {e["from"] for e in g["edges"]}
+        op_roots = [n for n in g["nodes"]
+                    if n.get("type") in ("operator", "relation")
+                    and n["id"] not in out_set]
+        assert len(op_roots) == 2, (
+            f"expected two statement roots, got {len(op_roots)}: {op_roots}"
+        )
+
+    def test_simultaneous_definitions_truly_disconnected(self):
+        """`a = 1, b = 2` shares no variables — the two statement
+        sub-graphs must be genuinely disconnected (no path between them)."""
+        g = latex_to_semantic_graph("a = 1, b = 2")
+        # Build undirected adjacency and check connected components.
+        from collections import defaultdict
+        adj = defaultdict(set)
+        for e in g["edges"]:
+            adj[e["from"]].add(e["to"])
+            adj[e["to"]].add(e["from"])
+        node_ids = {n["id"] for n in g["nodes"]}
+        visited = set()
+
+        def walk(start):
+            stack, seen = [start], set()
+            while stack:
+                n = stack.pop()
+                if n in seen:
+                    continue
+                seen.add(n)
+                stack.extend(adj[n] - seen)
+            return seen
+
+        components = 0
+        for nid in node_ids:
+            if nid not in visited:
+                comp = walk(nid)
+                visited |= comp
+                components += 1
+        assert components == 2, (
+            f"expected 2 disconnected components, got {components}"
+        )
+
+    def test_constraint_after_equation(self):
+        """f(x) = x^2, x > 0 — equation plus domain constraint."""
+        g = latex_to_semantic_graph("y = x^2, x > 0")
+        # x must be a single shared node across both clauses — shared
+        # variables dedup even without a parent relation node.
+        x_nodes = _find_nodes(g, id="x")
+        assert len(x_nodes) == 1, (
+            "x should be shared between the equation and the constraint, "
+            f"got {len(x_nodes)} nodes"
+        )
+
+    def test_three_clauses_all_present(self):
+        g = latex_to_semantic_graph("a = 1, b = 2, c = 3")
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert len(equals_nodes) == 3
+        assert g["classification"]["count"] == 3
+
+    def test_classification_lists_per_clause_kinds(self):
+        """Per-clause classifications are preserved under
+        ``classification.clauses`` so downstream consumers can see e.g.
+        that clause 0 is algebraic and clause 1 is too, without walking
+        the subtrees."""
+        g = latex_to_semantic_graph("a = 1, b = 2")
+        cls = g["classification"]
+        assert cls["kind"] == "statements"
+        assert cls["count"] == 2
+        assert "clauses" in cls
+        assert len(cls["clauses"]) == 2
+        # Every clause must have its own ``kind`` field populated.
+        for sub in cls["clauses"]:
+            assert "kind" in sub
+
+    def test_four_clauses_all_present(self):
+        """Any number of commas — the splitter iterates, the builder
+        prefixes operator ids ``c0_``, ``c1_``, …, and the graph holds
+        one independent subtree per clause."""
+        g = latex_to_semantic_graph("a = 1, b = 2, c = 3, d = 4")
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert len(equals_nodes) == 4
+        assert g["classification"]["count"] == 4
+        # All four clause equals-node ids must be uniquely prefixed.
+        equals_ids = {n["id"] for n in equals_nodes}
+        assert equals_ids == {
+            "c0___equals_1", "c1___equals_1", "c2___equals_1", "c3___equals_1",
+        }
+
+    def test_multi_clause_mixed_variable_sharing(self):
+        """Three clauses where two share a variable and the third doesn't:
+        ``a = 1, a + b = 5, c = 3``. The graph should have exactly two
+        connected components (clauses 0+1 glued through shared ``a``;
+        clause 2 standalone)."""
+        g = latex_to_semantic_graph("a = 1, a + b = 5, c = 3")
+        assert g["classification"]["count"] == 3
+        # Count connected components via undirected traversal.
+        from collections import defaultdict
+        adj = defaultdict(set)
+        for e in g["edges"]:
+            adj[e["from"]].add(e["to"])
+            adj[e["to"]].add(e["from"])
+        node_ids = {n["id"] for n in g["nodes"]}
+        visited = set()
+
+        def walk(start):
+            stack, seen = [start], set()
+            while stack:
+                n = stack.pop()
+                if n in seen:
+                    continue
+                seen.add(n)
+                stack.extend(adj[n] - seen)
+            return seen
+
+        components = 0
+        for nid in node_ids:
+            if nid not in visited:
+                visited |= walk(nid)
+                components += 1
+        assert components == 2, (
+            f"expected 2 components (a-clauses merged via shared 'a', "
+            f"c standalone); got {components}"
+        )
+        # ``a`` must be shared — single node referenced by both c0 and c1 equals.
+        a_nodes = _find_nodes(g, id="a")
+        assert len(a_nodes) == 1
+
+    def test_comma_inside_text_not_split(self):
+        r"""Commas inside \text{...} must not trigger a split —
+        otherwise \text{a, b} would be broken into two bogus clauses."""
+        g = latex_to_semantic_graph(r"x = \text{foo, bar}")
+        # Single equation — not multi-statement.
+        assert g["classification"].get("kind") != "statements"
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert len(equals_nodes) == 1
+
+    def test_comma_inside_function_args_not_split(self):
+        """f(x, y) — function argument commas must not split."""
+        g = latex_to_semantic_graph("f(x, y)")
+        # Single statement — the comma is a function-arg separator, not a
+        # statement separator.
+        assert g["classification"].get("kind") != "statements"
+
+    def test_failed_clause_raises_not_silently_dropped(self):
+        """Per issue #137: parse failures must surface, not silently drop.
+        When one clause is malformed, the whole expression should raise."""
+        with pytest.raises(ValueError):
+            latex_to_semantic_graph(r"a = 1, \frac{}")
+
+    def test_shared_variable_dedup_across_clauses(self):
+        r"""γ appearing in both clauses must collapse to one node,
+        consistent with existing in-clause variable dedup."""
+        g = latex_to_semantic_graph(
+            r"\frac{dh}{dt} = -V \sin \gamma, \gamma = \text{const}"
+        )
+        gamma_nodes = _find_nodes(g, id="gamma")
+        assert len(gamma_nodes) == 1, (
+            f"gamma should be shared across clauses, got {len(gamma_nodes)}"
+        )
+
+    def test_clause_subexprs_strip_leading_spacing_commands(self):
+        r"""Authors write ``a, \quad b`` for visual spacing. The ``\quad``
+        is visual only — it must not leak into the second clause's root
+        subexpr (would render as empty whitespace in the UI)."""
+        g = latex_to_semantic_graph(
+            r"\frac{dh}{dt} = -V \sin \gamma, \quad \gamma = \text{const}"
+        )
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        subexprs = {n.get("subexpr", "") for n in equals_nodes}
+        # Neither equals subexpr should start with a leading \quad/\qquad/etc.
+        for s in subexprs:
+            assert not s.lstrip().startswith("\\quad"), (
+                f"leading \\quad leaked into clause subexpr: {s!r}"
+            )
+            assert not s.lstrip().startswith("\\qquad"), (
+                f"leading \\qquad leaked into clause subexpr: {s!r}"
+            )
+        # And the γ = const clause should be clean.
+        assert any("\\gamma = \\text{const}" in s for s in subexprs)
+
+    def test_distinct_text_per_clause_not_merged(self):
+        r"""Regression for Copilot review on PR #155: each clause runs
+        ``_collapse_text_commands`` independently, so ``\text{foo}`` in
+        clause 0 and ``\text{bar}`` in clause 1 would both produce the
+        symbol id ``Xi_{0}``. Without per-clause namespacing of text
+        placeholders, the merge step would incorrectly dedup them into
+        a single text node — clause 1's ``bar`` would disappear."""
+        g = latex_to_semantic_graph(r"x = \text{foo}, y = \text{bar}")
+        text_nodes = _find_nodes(g, type="text")
+        labels = sorted(n.get("label") for n in text_nodes)
+        assert labels == ["bar", "foo"], (
+            f"expected two distinct text nodes (foo, bar), got {labels!r} "
+            f"— Xi_{{N}} placeholder collision across clauses"
+        )
+        # Both equals nodes must survive, each with its own text operand.
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert len(equals_nodes) == 2
+
+    def test_same_text_per_clause_each_gets_its_own_node(self):
+        r"""``\text{foo}`` appearing in two clauses should produce two
+        distinct text nodes — each clause is an independent statement
+        and text placeholders are per-clause, not globally shared."""
+        g = latex_to_semantic_graph(r"x = \text{foo}, y = \text{foo}")
+        text_nodes = _find_nodes(g, type="text", label="foo")
+        assert len(text_nodes) == 2, (
+            f"expected two independent 'foo' text nodes (one per clause), "
+            f"got {len(text_nodes)}"
+        )
+
+    def test_each_clause_has_its_own_clean_subexpr(self):
+        r"""Each clause's root node should carry only that clause's LaTeX
+        as its subexpr — not the full comma-joined expression. No clause
+        should leak the other clause's content into its subexpr."""
+        g = latex_to_semantic_graph(
+            r"\frac{dh}{dt} = -V \sin \gamma, \quad \gamma = \text{const}"
+        )
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        subexprs = [n.get("subexpr", "") for n in equals_nodes]
+        # Neither subexpr should contain a comma (that would mean the
+        # whole original expression leaked in).
+        for s in subexprs:
+            assert "," not in s, (
+                f"clause subexpr should not carry the top-level comma: {s!r}"
+            )
+        # First clause has the derivative/sin, second has \text{const}.
+        has_deriv = any("dh" in s and "dt" in s for s in subexprs)
+        has_const = any("\\text{const}" in s for s in subexprs)
+        assert has_deriv and has_const, (
+            f"each clause should own a distinct subexpr, got {subexprs!r}"
+        )

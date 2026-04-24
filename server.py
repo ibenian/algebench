@@ -699,6 +699,37 @@ def _has_top_level_logical_connective(latex: str) -> bool:
     return False
 
 
+def _has_top_level_statement_comma(latex: str) -> bool:
+    r"""Detect whether *latex* contains a top-level ``,`` that acts as a
+    **statement separator** — depth 0 (outside ``{}`` / ``()`` / ``[]``)
+    and not preceded by an odd run of backslashes (so ``\,``, ``\;``
+    etc. don't count).
+
+    Mirrors ``scripts/latex_to_graph.py::_split_on_top_level_comma``
+    without importing it — this server needs the answer before choosing
+    between the chain-graph and single-expression derivation paths, and
+    loading the script module is deferred.
+    """
+    if not isinstance(latex, str) or not latex:
+        return False
+    depth = 0
+    for i, ch in enumerate(latex):
+        if ch in "{([":
+            depth += 1
+        elif ch in "})]":
+            if depth > 0:
+                depth -= 1
+        elif ch == "," and depth == 0:
+            bs = 0
+            j = i - 1
+            while j >= 0 and latex[j] == "\\":
+                bs += 1
+                j -= 1
+            if bs % 2 == 0:
+                return True
+    return False
+
+
 def _split_equation_chain_sides(latex: str) -> list[str]:
     """Split *latex* on top-level equality-like operators.
 
@@ -761,6 +792,14 @@ def _derive_equation_chain_graph(latex: str) -> dict | None:
     # string to the single-expression parser instead — SymPy knows how to make
     # ``implies`` the root with the two ``=`` relations as its operands.
     if _has_top_level_logical_connective(latex):
+        return _derive_semantic_graph(latex)
+    # Top-level commas are statement separators (issue #144) and bind even
+    # looser than ``=``. Splitting on ``=`` first would mangle a comma-
+    # separated pair like ``a = b, c = d`` into three garbled sides
+    # (``a``, ``b, c``, ``d``) and lose the structure. Delegate to the
+    # single-expression parser, which knows how to split on top-level
+    # commas and emit each clause as an independent statement.
+    if _has_top_level_statement_comma(latex):
         return _derive_semantic_graph(latex)
     sides = _split_equation_chain_sides(latex)
     if len(sides) <= 1:
