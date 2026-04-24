@@ -1112,6 +1112,77 @@
                 "classification": { "kind": "algebraic" }
               }
             }
+          },
+          {
+            "id": "proof-step-9",
+            "type": "given",
+            "label": "Disconnected statements — comma-separated clauses (issue #144)",
+            "math": "a = 1, \\quad b = 2",
+            "justification": "Top-level commas are detected as statement separators (not logical operators, not tuple separators). Each clause is parsed into its own independent subtree with no parent relation node joining them. With no shared variables between the two clauses, the resulting graph has two truly disconnected components — the renderer lays them out side-by-side. Shared variables across clauses (for example γ appearing in both dh/dt = -V sin γ and γ = const) would still dedup organically through the variable node.",
+            "sceneStep": 0,
+            "semanticGraph": {
+              "graph": {
+                "nodes": [
+                  {
+                    "id": "c0___equals_1",
+                    "type": "operator",
+                    "op": "equals",
+                    "description": "First statement's equality — the root of clause 0's subtree. Parsed independently from clause 1 after the top-level comma was detected as a statement separator.",
+                    "subexpr": "a = 1"
+                  },
+                  {
+                    "id": "a",
+                    "label": "a",
+                    "emoji": "🔤",
+                    "type": "scalar",
+                    "latex": "a",
+                    "description": "Free symbol declared in the first statement. No semantic connection to clause 1's b.",
+                    "role": "dependent",
+                    "subexpr": "a"
+                  },
+                  {
+                    "id": "c0___num_2",
+                    "label": "1",
+                    "emoji": "🔢",
+                    "type": "number",
+                    "description": "Numeric literal on the RHS of clause 0.",
+                    "subexpr": "1"
+                  },
+                  {
+                    "id": "c1___equals_1",
+                    "type": "operator",
+                    "op": "equals",
+                    "description": "Second statement's equality — the root of clause 1's subtree. Note the c1_ id prefix: operator/relation ids are scoped per-clause so the two __equals_1 nodes don't collide in the merged graph.",
+                    "subexpr": "b = 2"
+                  },
+                  {
+                    "id": "b",
+                    "label": "b",
+                    "emoji": "🔤",
+                    "type": "scalar",
+                    "latex": "b",
+                    "description": "Free symbol declared in the second statement. Because it shares no name with clause 0's a, the two clause subtrees remain genuinely disconnected components of the graph.",
+                    "role": "dependent",
+                    "subexpr": "b"
+                  },
+                  {
+                    "id": "c1___num_2",
+                    "label": "2",
+                    "emoji": "🔢",
+                    "type": "number",
+                    "description": "Numeric literal on the RHS of clause 1.",
+                    "subexpr": "2"
+                  }
+                ],
+                "edges": [
+                  { "from": "a", "to": "c0___equals_1" },
+                  { "from": "c0___num_2", "to": "c0___equals_1" },
+                  { "from": "b", "to": "c1___equals_1" },
+                  { "from": "c1___num_2", "to": "c1___equals_1" }
+                ],
+                "classification": { "kind": "statements", "count": 2 }
+              }
+            }
           }
         ]
       }
