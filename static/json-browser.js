@@ -620,6 +620,15 @@ export function setupJsonViewer() {
         if (select) selectJsonLine(line);
     }
 
+    // Rebuild the JSON overlay from the current lessonSpec and navigate to
+    // ``path``. Returns ``true`` when the path resolved, ``false`` otherwise.
+    window.algebenchOpenJsonBrowserAtPath = function(path) {
+        btn.click(); // always rebuild from current lessonSpec and ensure overlay is visible
+        if (_pathLineMap[path] === undefined) return false;
+        syncJsonFromTreeClick(path, { select: true });
+        return true;
+    };
+
     // Wire up tree clicks (delegated)
     if (treePanel) {
         treePanel.addEventListener('click', e => {

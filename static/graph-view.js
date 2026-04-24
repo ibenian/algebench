@@ -902,6 +902,87 @@ function currentProofStep() {
     return entry.proof.steps[i];
 }
 
+// Build the dotted JSON path from ``state.lessonSpec`` root to the
+// ``semanticGraph`` of the currently displayed proof step, or ``null`` when
+// the path cannot be determined. Handles single-scene-as-root lessons (no
+// ``scenes`` wrapper) and single-vs-array ``proof`` fields at every level.
+function currentSemanticGraphJsonPath() {
+    const lesson = state.lessonSpec;
+    const entry = state.proofSpec && state.proofSpec[state.proofActiveIndex];
+    const stepIdx = state.proofStepIndex;
+    if (!lesson || !entry || stepIdx < 0) return null;
+
+    const singleSceneRoot = !lesson.scenes && !!lesson.elements;
+
+    function containerToPath(container, basePath, needle) {
+        if (!container) return null;
+        if (Array.isArray(container)) {
+            const i = container.indexOf(needle);
+            return i === -1 ? null : `${basePath}[${i}]`;
+        }
+        return container === needle ? basePath : null;
+    }
+
+    let proofPath = null;
+    if (entry.level === 'file') {
+        proofPath = containerToPath(lesson.proof, 'proof', entry.proof);
+    } else if (entry.level === 'scene') {
+        if (singleSceneRoot) {
+            proofPath = containerToPath(lesson.proof, 'proof', entry.proof);
+        } else {
+            const scene = lesson.scenes && lesson.scenes[entry.sceneIndex];
+            proofPath = containerToPath(
+                scene && scene.proof,
+                `scenes[${entry.sceneIndex}].proof`,
+                entry.proof,
+            );
+        }
+    } else if (entry.level === 'step') {
+        if (singleSceneRoot) {
+            const step = lesson.steps && lesson.steps[entry.stepIndex];
+            proofPath = containerToPath(
+                step && step.proof,
+                `steps[${entry.stepIndex}].proof`,
+                entry.proof,
+            );
+        } else {
+            const step = lesson.scenes &&
+                lesson.scenes[entry.sceneIndex] &&
+                lesson.scenes[entry.sceneIndex].steps &&
+                lesson.scenes[entry.sceneIndex].steps[entry.stepIndex];
+            proofPath = containerToPath(
+                step && step.proof,
+                `scenes[${entry.sceneIndex}].steps[${entry.stepIndex}].proof`,
+                entry.proof,
+            );
+        }
+    }
+
+    if (!proofPath) return null;
+    return `${proofPath}.steps[${stepIdx}].semanticGraph`;
+}
+
+function updateShowJsonButtonState() {
+    const btn = document.getElementById('graph-show-json');
+    if (!btn) return;
+    const step = currentProofStep();
+    const hasGraph = !!(step && step.semanticGraph && step.semanticGraph.graph);
+    btn.disabled = !hasGraph;
+}
+
+function setupShowJsonButton() {
+    const btn = document.getElementById('graph-show-json');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+        const path = currentSemanticGraphJsonPath();
+        if (!path || typeof window.algebenchOpenJsonBrowserAtPath !== 'function') {
+            return;
+        }
+        window.algebenchOpenJsonBrowserAtPath(path);
+    });
+    updateShowJsonButtonState();
+}
+
 function stableStepKey(step) {
     return `${state.proofActiveIndex}:${state.proofStepIndex}:${step.id || ''}`;
 }
@@ -933,6 +1014,7 @@ function escapeHtml(s) {
 
 function onStepChange() {
     updateTreeHighlight();
+    updateShowJsonButtonState();
     if (isGraphModeActive()) renderCurrentStepGraph();
 }
 
@@ -1134,6 +1216,7 @@ function init() {
     setupDockTabs();
     setupGraphControls();
     setupZoomControls();
+    setupShowJsonButton();
     setupControlsOverflowWatcher();
     window.addEventListener('algebench:stepchange', onStepChange);
     window.addEventListener('algebench:proofload', onProofLoad);
