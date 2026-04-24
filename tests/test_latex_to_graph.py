@@ -839,6 +839,59 @@ class TestCommaSeparatedClauses:
         assert len(equals_nodes) == 3
         assert g["classification"]["count"] == 3
 
+    def test_four_clauses_all_present(self):
+        """Any number of commas — the splitter iterates, the builder
+        prefixes operator ids ``c0_``, ``c1_``, …, and the graph holds
+        one independent subtree per clause."""
+        g = latex_to_semantic_graph("a = 1, b = 2, c = 3, d = 4")
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert len(equals_nodes) == 4
+        assert g["classification"]["count"] == 4
+        # All four clause equals-node ids must be uniquely prefixed.
+        equals_ids = {n["id"] for n in equals_nodes}
+        assert equals_ids == {
+            "c0___equals_1", "c1___equals_1", "c2___equals_1", "c3___equals_1",
+        }
+
+    def test_multi_clause_mixed_variable_sharing(self):
+        """Three clauses where two share a variable and the third doesn't:
+        ``a = 1, a + b = 5, c = 3``. The graph should have exactly two
+        connected components (clauses 0+1 glued through shared ``a``;
+        clause 2 standalone)."""
+        g = latex_to_semantic_graph("a = 1, a + b = 5, c = 3")
+        assert g["classification"]["count"] == 3
+        # Count connected components via undirected traversal.
+        from collections import defaultdict
+        adj = defaultdict(set)
+        for e in g["edges"]:
+            adj[e["from"]].add(e["to"])
+            adj[e["to"]].add(e["from"])
+        node_ids = {n["id"] for n in g["nodes"]}
+        visited = set()
+
+        def walk(start):
+            stack, seen = [start], set()
+            while stack:
+                n = stack.pop()
+                if n in seen:
+                    continue
+                seen.add(n)
+                stack.extend(adj[n] - seen)
+            return seen
+
+        components = 0
+        for nid in node_ids:
+            if nid not in visited:
+                visited |= walk(nid)
+                components += 1
+        assert components == 2, (
+            f"expected 2 components (a-clauses merged via shared 'a', "
+            f"c standalone); got {components}"
+        )
+        # ``a`` must be shared — single node referenced by both c0 and c1 equals.
+        a_nodes = _find_nodes(g, id="a")
+        assert len(a_nodes) == 1
+
     def test_comma_inside_text_not_split(self):
         r"""Commas inside \text{...} must not trigger a split —
         otherwise \text{a, b} would be broken into two bogus clauses."""
