@@ -620,6 +620,20 @@ export function setupJsonViewer() {
         if (select) selectJsonLine(line);
     }
 
+    // Open the overlay (rebuilding JSON + tree if it was hidden) and navigate
+    // to ``path``. If the overlay is already open, just navigate. Returns
+    // ``true`` when ``path`` resolved to a known line, ``false`` otherwise.
+    // After the btn click rebuilds the tree synchronously, navigation can
+    // run immediately — ``_pathLineMap`` and the DOM tree items are already
+    // populated. Layout measurements during the scroll happen on the next
+    // frame anyway.
+    window.algebenchOpenJsonBrowserAtPath = function(path) {
+        if (overlay.classList.contains('hidden')) btn.click();
+        if (_pathLineMap[path] === undefined) return false;
+        syncJsonFromTreeClick(path, { select: true });
+        return true;
+    };
+
     // Wire up tree clicks (delegated)
     if (treePanel) {
         treePanel.addEventListener('click', e => {
