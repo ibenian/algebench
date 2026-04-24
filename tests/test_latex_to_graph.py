@@ -831,3 +831,41 @@ class TestCommaSeparatedClauses:
         assert len(gamma_nodes) == 1, (
             f"gamma should be shared across clauses, got {len(gamma_nodes)}"
         )
+
+    def test_clause_subexprs_strip_leading_spacing_commands(self):
+        r"""Authors write ``a, \quad b`` for visual spacing. The ``\quad``
+        is visual only — it must not leak into the second clause's root
+        subexpr (would render as empty whitespace in the UI)."""
+        g = latex_to_semantic_graph(
+            r"\frac{dh}{dt} = -V \sin \gamma, \quad \gamma = \text{const}"
+        )
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        subexprs = {n.get("subexpr", "") for n in equals_nodes}
+        # Neither equals subexpr should start with a leading \quad/\qquad/etc.
+        for s in subexprs:
+            assert not s.lstrip().startswith("\\quad"), (
+                f"leading \\quad leaked into clause subexpr: {s!r}"
+            )
+            assert not s.lstrip().startswith("\\qquad"), (
+                f"leading \\qquad leaked into clause subexpr: {s!r}"
+            )
+        # And the γ = const clause should be clean.
+        assert any("\\gamma = \\text{const}" in s for s in subexprs)
+
+    def test_and_node_subexpr_uses_land_not_comma(self):
+        r"""The ``__and_1`` node's subexpr should be the formal logical
+        conjunction form (``A \land B``), not the authorial comma form.
+        Each clause already has its own clean subexpr on its root; the
+        relation node's subexpr is the semantic, not syntactic, join."""
+        g = latex_to_semantic_graph("a = 1, b = 2")
+        and_node = _find_node(g, type="relation", op="and")
+        assert and_node is not None
+        sub = and_node.get("subexpr", "")
+        assert "\\land" in sub, (
+            f"and-node subexpr should join clauses with \\land, got {sub!r}"
+        )
+        # And the comma should NOT appear at top level — the comma is the
+        # authorial form, \land is the semantic form.
+        assert "," not in sub, (
+            f"and-node subexpr should not contain the original comma: {sub!r}"
+        )

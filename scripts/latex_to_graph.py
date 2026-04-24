@@ -884,8 +884,16 @@ def _build_conjunction_graph(
     merged_nodes: dict[str, dict] = {}
     merged_edges: list[dict] = []
     roots: list[str] = []
+    cleaned_clauses: list[str] = []
 
-    for ci, clause in enumerate(clauses):
+    # Trim leading LaTeX spacing commands from each clause — they're visual
+    # (``\quad`` after a comma is a common authoring pattern) and otherwise
+    # leak into the clause's root subexpr, e.g. ``\quad \gamma = \text{const}``.
+    _leading_space_re = re.compile(r"^\s*(?:\\(?:quad|qquad|,|;|!|:)\s*)+")
+    for clause in clauses:
+        cleaned_clauses.append(_leading_space_re.sub("", clause).strip())
+
+    for ci, clause in enumerate(cleaned_clauses):
         try:
             sub = latex_to_semantic_graph(clause, overrides=overrides, domain=domain)
         except Exception as exc:
@@ -934,6 +942,11 @@ def _build_conjunction_graph(
             roots.append(_rename(sub["nodes"][0].get("id", "")))
 
     # Central conjunction node — every clause root edges into it.
+    # Subexpr is the clauses joined by ``\land`` (formal conjunction), not
+    # the original comma-separated string: each clause already carries its
+    # own clean subexpr on its root node, so duplicating the full original
+    # here just makes the renderer paint an oversized panel repeating what
+    # its children already show.
     conj_id = "__and_1"
     merged_nodes[conj_id] = {
         "id": conj_id,
@@ -941,7 +954,7 @@ def _build_conjunction_graph(
         "op": "and",
         "label": "and",
         "emoji": "∧",
-        "subexpr": original_latex.strip(),
+        "subexpr": r" \land ".join(cleaned_clauses),
     }
     for r in roots:
         if r:
