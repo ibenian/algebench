@@ -908,6 +908,7 @@ def _build_comma_separated_graph(
     """
     merged_nodes: dict[str, dict] = {}
     merged_edges: list[dict] = []
+    clause_classifications: list[dict] = []
     cleaned_clauses: list[str] = []
 
     # Trim leading LaTeX spacing commands from each clause — they're visual
@@ -977,6 +978,15 @@ def _build_comma_separated_graph(
             new_edge["to"] = _rename(e.get("to", ""))
             merged_edges.append(new_edge)
 
+        # Stash this clause's own classification for the top-level
+        # ``clauses`` list (preserves PDE/ODE/algebraic info per clause
+        # so downstream consumers don't have to re-walk the subtrees).
+        sub_cls = sub.get("classification")
+        if isinstance(sub_cls, dict):
+            clause_classifications.append(sub_cls)
+        else:
+            clause_classifications.append({"kind": "algebraic"})
+
     # No parent/relation node. The graph is multi-rooted: each clause has
     # its own root (the node with no outgoing edge within its clause). If
     # clauses share symbols like γ, they connect through that variable;
@@ -986,7 +996,14 @@ def _build_comma_separated_graph(
     result: dict = {
         "nodes": list(merged_nodes.values()),
         "edges": merged_edges,
-        "classification": {"kind": "statements", "count": len(cleaned_clauses)},
+        "classification": {
+            "kind": "statements",
+            "count": len(cleaned_clauses),
+            # Per-clause classifications so downstream can see that,
+            # e.g., statement 0 is a PDE while statement 1 is algebraic
+            # — without re-walking the clause subtrees.
+            "clauses": clause_classifications,
+        },
     }
     if domain:
         result["domain"] = domain

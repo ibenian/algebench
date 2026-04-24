@@ -874,6 +874,21 @@ class TestCommaSeparatedClauses:
         assert len(equals_nodes) == 3
         assert g["classification"]["count"] == 3
 
+    def test_classification_lists_per_clause_kinds(self):
+        """Per-clause classifications are preserved under
+        ``classification.clauses`` so downstream consumers can see e.g.
+        that clause 0 is algebraic and clause 1 is too, without walking
+        the subtrees."""
+        g = latex_to_semantic_graph("a = 1, b = 2")
+        cls = g["classification"]
+        assert cls["kind"] == "statements"
+        assert cls["count"] == 2
+        assert "clauses" in cls
+        assert len(cls["clauses"]) == 2
+        # Every clause must have its own ``kind`` field populated.
+        for sub in cls["clauses"]:
+            assert "kind" in sub
+
     def test_four_clauses_all_present(self):
         """Any number of commas — the splitter iterates, the builder
         prefixes operator ids ``c0_``, ``c1_``, …, and the graph holds

@@ -165,7 +165,13 @@
         "count": {
           "type": "integer",
           "minimum": 2,
-          "description": "Number of independent statements in the graph. Present only when kind = \"statements\"."
+          "description": "Number of independent statements in the graph. Present only when kind = \"statements\". Redundant with clauses.length but kept for quick access."
+        },
+        "clauses": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/classification" },
+          "description": "Per-clause classifications. Each entry is a full classification object for one comma-separated clause — lets downstream consumers see that, e.g., statement 0 is a PDE while statement 1 is algebraic, without re-walking the clause subtrees. Present only when kind = \"statements\"."
         },
         "order": {
           "type": "integer",
