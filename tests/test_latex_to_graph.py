@@ -756,13 +756,22 @@ class TestCommaSeparatedClauses:
         assert _find_node(g, label="const"), (
             "second clause (γ = const) must survive — this is the bug"
         )
-        # Central 'and' node joins them.
-        and_node = _find_node(g, type="relation", op="and")
-        assert and_node is not None
-        assert g["classification"]["kind"] == "conjunction"
+        # Graph carries two independent statements — no parent/relation node.
+        assert g["classification"]["kind"] == "statements"
+        assert g["classification"]["count"] == 2
+
+    def test_no_parent_relation_node_is_emitted(self):
+        """Per author intent (issue #144 follow-up): the comma is a pure
+        statement separator, not a logical operator. The graph must NOT
+        carry a parent ``and`` / ``comma`` / ``conjunction`` relation node
+        artificially joining the clauses."""
+        g = latex_to_semantic_graph("a = 1, b = 2")
+        assert _find_node(g, type="relation", op="and") is None
+        assert _find_node(g, type="relation", op="comma") is None
+        assert _find_node(g, type="relation", op="conjunction") is None
 
     def test_simultaneous_definitions(self):
-        """a = 1, b = 2 — two independent equations."""
+        """a = 1, b = 2 — two independent equations as separate statements."""
         g = latex_to_semantic_graph("a = 1, b = 2")
         # Both variables a and b are present.
         assert _find_node(g, id="a") is not None
@@ -770,50 +779,81 @@ class TestCommaSeparatedClauses:
         # Two equals nodes, one per clause.
         equals_nodes = _find_nodes(g, type="operator", op="equals")
         assert len(equals_nodes) == 2
-        # Conjunction node wires them up.
-        and_node = _find_node(g, type="relation", op="and")
-        assert and_node is not None
-        # Both equals nodes edge into the 'and' node.
-        and_id = and_node["id"]
-        edges_into_and = [e for e in g["edges"] if e["to"] == and_id]
-        assert len(edges_into_and) == 2
+        # The graph has exactly two roots (nodes with no outgoing edges
+        # among the operator/relation nodes) — the two equals nodes.
+        out_set = {e["from"] for e in g["edges"]}
+        op_roots = [n for n in g["nodes"]
+                    if n.get("type") in ("operator", "relation")
+                    and n["id"] not in out_set]
+        assert len(op_roots) == 2, (
+            f"expected two statement roots, got {len(op_roots)}: {op_roots}"
+        )
+
+    def test_simultaneous_definitions_truly_disconnected(self):
+        """`a = 1, b = 2` shares no variables — the two statement
+        sub-graphs must be genuinely disconnected (no path between them)."""
+        g = latex_to_semantic_graph("a = 1, b = 2")
+        # Build undirected adjacency and check connected components.
+        from collections import defaultdict
+        adj = defaultdict(set)
+        for e in g["edges"]:
+            adj[e["from"]].add(e["to"])
+            adj[e["to"]].add(e["from"])
+        node_ids = {n["id"] for n in g["nodes"]}
+        visited = set()
+
+        def walk(start):
+            stack, seen = [start], set()
+            while stack:
+                n = stack.pop()
+                if n in seen:
+                    continue
+                seen.add(n)
+                stack.extend(adj[n] - seen)
+            return seen
+
+        components = 0
+        for nid in node_ids:
+            if nid not in visited:
+                comp = walk(nid)
+                visited |= comp
+                components += 1
+        assert components == 2, (
+            f"expected 2 disconnected components, got {components}"
+        )
 
     def test_constraint_after_equation(self):
         """f(x) = x^2, x > 0 — equation plus domain constraint."""
         g = latex_to_semantic_graph("y = x^2, x > 0")
-        # x must be a single shared node across both clauses.
+        # x must be a single shared node across both clauses — shared
+        # variables dedup even without a parent relation node.
         x_nodes = _find_nodes(g, id="x")
         assert len(x_nodes) == 1, (
             "x should be shared between the equation and the constraint, "
             f"got {len(x_nodes)} nodes"
         )
-        # And the 'and' node must be present.
-        assert _find_node(g, type="relation", op="and") is not None
 
     def test_three_clauses_all_present(self):
         g = latex_to_semantic_graph("a = 1, b = 2, c = 3")
         equals_nodes = _find_nodes(g, type="operator", op="equals")
         assert len(equals_nodes) == 3
-        and_node = _find_node(g, type="relation", op="and")
-        assert and_node is not None
-        # All three clause roots edge into the single 'and' node.
-        edges_into_and = [e for e in g["edges"] if e["to"] == and_node["id"]]
-        assert len(edges_into_and) == 3
+        assert g["classification"]["count"] == 3
 
     def test_comma_inside_text_not_split(self):
         r"""Commas inside \text{...} must not trigger a split —
         otherwise \text{a, b} would be broken into two bogus clauses."""
         g = latex_to_semantic_graph(r"x = \text{foo, bar}")
-        # Single equation, no conjunction node.
-        assert _find_node(g, type="relation", op="and") is None
+        # Single equation — not multi-statement.
+        assert g["classification"].get("kind") != "statements"
         equals_nodes = _find_nodes(g, type="operator", op="equals")
         assert len(equals_nodes) == 1
 
     def test_comma_inside_function_args_not_split(self):
         """f(x, y) — function argument commas must not split."""
         g = latex_to_semantic_graph("f(x, y)")
-        # No conjunction node was introduced by the comma.
-        assert _find_node(g, type="relation", op="and") is None
+        # Single statement — the comma is a function-arg separator, not a
+        # statement separator.
+        assert g["classification"].get("kind") != "statements"
 
     def test_failed_clause_raises_not_silently_dropped(self):
         """Per issue #137: parse failures must surface, not silently drop.
@@ -852,20 +892,24 @@ class TestCommaSeparatedClauses:
         # And the γ = const clause should be clean.
         assert any("\\gamma = \\text{const}" in s for s in subexprs)
 
-    def test_and_node_subexpr_uses_land_not_comma(self):
-        r"""The ``__and_1`` node's subexpr should be the formal logical
-        conjunction form (``A \land B``), not the authorial comma form.
-        Each clause already has its own clean subexpr on its root; the
-        relation node's subexpr is the semantic, not syntactic, join."""
-        g = latex_to_semantic_graph("a = 1, b = 2")
-        and_node = _find_node(g, type="relation", op="and")
-        assert and_node is not None
-        sub = and_node.get("subexpr", "")
-        assert "\\land" in sub, (
-            f"and-node subexpr should join clauses with \\land, got {sub!r}"
+    def test_each_clause_has_its_own_clean_subexpr(self):
+        r"""Each clause's root node should carry only that clause's LaTeX
+        as its subexpr — not the full comma-joined expression. No clause
+        should leak the other clause's content into its subexpr."""
+        g = latex_to_semantic_graph(
+            r"\frac{dh}{dt} = -V \sin \gamma, \quad \gamma = \text{const}"
         )
-        # And the comma should NOT appear at top level — the comma is the
-        # authorial form, \land is the semantic form.
-        assert "," not in sub, (
-            f"and-node subexpr should not contain the original comma: {sub!r}"
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        subexprs = [n.get("subexpr", "") for n in equals_nodes]
+        # Neither subexpr should contain a comma (that would mean the
+        # whole original expression leaked in).
+        for s in subexprs:
+            assert "," not in s, (
+                f"clause subexpr should not carry the top-level comma: {s!r}"
+            )
+        # First clause has the derivative/sin, second has \text{const}.
+        has_deriv = any("dh" in s and "dt" in s for s in subexprs)
+        has_const = any("\\text{const}" in s for s in subexprs)
+        assert has_deriv and has_const, (
+            f"each clause should own a distinct subexpr, got {subexprs!r}"
         )
