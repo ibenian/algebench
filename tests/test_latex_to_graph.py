@@ -720,6 +720,41 @@ class TestCommaSplit:
             "g(a, b) = 1",
         ]
 
+    def test_multi_function_call_all_args_preserved(self):
+        """Multiple function calls in one expression — every argument
+        comma is inside a ``(...)`` and must be preserved."""
+        assert _split_on_top_level_comma("f(x, y) + g(a, b, c)") == [
+            "f(x, y) + g(a, b, c)"
+        ]
+
+    def test_multi_index_subscript_not_split(self):
+        r"""``A_{i, j}`` — the comma is inside a subscript brace group
+        (brace depth 1) and must not be treated as a separator."""
+        assert _split_on_top_level_comma("A_{i, j}") == ["A_{i, j}"]
+        # Even in a larger expression with other top-level operators.
+        assert _split_on_top_level_comma("A_{i, j} + B_{k, l}") == [
+            "A_{i, j} + B_{k, l}"
+        ]
+
+    def test_set_literal_not_split(self):
+        r"""``\{1, 2, 3\}`` — LaTeX set notation. The escaped ``\{`` and
+        ``\}`` still count as brace-depth boundaries so the enclosed
+        commas are nested (not separators)."""
+        assert _split_on_top_level_comma(r"\{1, 2, 3\}") == [r"\{1, 2, 3\}"]
+
+    def test_ordered_pair_not_split(self):
+        """``(a, b)`` — pair notation. The inner comma is paren-nested."""
+        assert _split_on_top_level_comma("(a, b)") == ["(a, b)"]
+
+    def test_integral_with_thin_space_and_top_level_comma(self):
+        r"""``\int f(x)\,dx, g = 0`` — contains ``\,`` (not a separator,
+        via backslash-parity) inside an integral AND a real top-level
+        comma. Only the real one should split."""
+        assert _split_on_top_level_comma(r"\int f(x)\,dx, g = 0") == [
+            r"\int f(x)\,dx",
+            "g = 0",
+        ]
+
     def test_trailing_comma_produces_no_empty_clause(self):
         assert _split_on_top_level_comma("a = 1,") == ["a = 1"]
 
