@@ -933,7 +933,30 @@ def _build_comma_separated_graph(
         prefix = f"c{ci}_"
 
         def _rename(nid: str, p: str = prefix) -> str:
-            return p + nid if isinstance(nid, str) and nid.startswith("__") else nid
+            """Scope per-clause ids with *p* so they don't collide when
+            clauses are merged. Namespacing covers:
+
+            - ``__``-prefixed operator / relation / function ids, which
+              ``SemanticGraphBuilder`` auto-numbers per-parse (``__add_1``,
+              ``__equals_1``, …) and would otherwise alias across clauses.
+            - ``Xi_{N}`` text-command placeholders that
+              ``_collapse_text_commands`` assigns per-parse (so
+              ``\\text{foo}`` in clause 0 and ``\\text{bar}`` in clause 1
+              would both be ``Xi_{0}`` and get incorrectly merged into one
+              text node).
+
+            Real free variables (``x``, ``\\gamma``, …) are NOT renamed —
+            their dedup across clauses is the intended cross-statement
+            link (e.g. ``γ`` appearing in both clauses of the
+            ``dh/dt = -V \\sin γ, γ = const`` example stays a single node).
+            """
+            if not isinstance(nid, str):
+                return nid
+            if nid.startswith("__"):
+                return p + nid
+            if nid.startswith("Xi_{"):
+                return p + nid
+            return nid
 
         for n in sub.get("nodes") or []:
             if not isinstance(n, dict) or "id" not in n:

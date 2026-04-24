@@ -74,6 +74,8 @@ _NON_EXPR_KEYS = frozenset({
     'axis', 'camera', 'range', 'theme',
     'markdown', 'text', 'unsafeExplanation',
     'explanation', 'math', 'legendGroup', 'goal',
+    # Prose fields on proof steps. Not evaluated as expressions.
+    'justification',
 })
 
 # Regex that extracts {{...}} template expressions from content strings.

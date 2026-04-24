@@ -980,6 +980,35 @@ class TestCommaSeparatedClauses:
         # And the γ = const clause should be clean.
         assert any("\\gamma = \\text{const}" in s for s in subexprs)
 
+    def test_distinct_text_per_clause_not_merged(self):
+        r"""Regression for Copilot review on PR #155: each clause runs
+        ``_collapse_text_commands`` independently, so ``\text{foo}`` in
+        clause 0 and ``\text{bar}`` in clause 1 would both produce the
+        symbol id ``Xi_{0}``. Without per-clause namespacing of text
+        placeholders, the merge step would incorrectly dedup them into
+        a single text node — clause 1's ``bar`` would disappear."""
+        g = latex_to_semantic_graph(r"x = \text{foo}, y = \text{bar}")
+        text_nodes = _find_nodes(g, type="text")
+        labels = sorted(n.get("label") for n in text_nodes)
+        assert labels == ["bar", "foo"], (
+            f"expected two distinct text nodes (foo, bar), got {labels!r} "
+            f"— Xi_{{N}} placeholder collision across clauses"
+        )
+        # Both equals nodes must survive, each with its own text operand.
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert len(equals_nodes) == 2
+
+    def test_same_text_per_clause_each_gets_its_own_node(self):
+        r"""``\text{foo}`` appearing in two clauses should produce two
+        distinct text nodes — each clause is an independent statement
+        and text placeholders are per-clause, not globally shared."""
+        g = latex_to_semantic_graph(r"x = \text{foo}, y = \text{foo}")
+        text_nodes = _find_nodes(g, type="text", label="foo")
+        assert len(text_nodes) == 2, (
+            f"expected two independent 'foo' text nodes (one per clause), "
+            f"got {len(text_nodes)}"
+        )
+
     def test_each_clause_has_its_own_clean_subexpr(self):
         r"""Each clause's root node should carry only that clause's LaTeX
         as its subexpr — not the full comma-joined expression. No clause
