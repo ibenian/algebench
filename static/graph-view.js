@@ -925,7 +925,6 @@ function currentSemanticGraphJsonPath() {
 
     let proofPath = null;
     if (entry.level === 'file') {
-        if (singleSceneRoot) return null;
         proofPath = containerToPath(lesson.proof, 'proof', entry.proof);
     } else if (entry.level === 'scene') {
         if (singleSceneRoot) {
