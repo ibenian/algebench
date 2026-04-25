@@ -203,7 +203,16 @@ export class SemanticGraphPanel {
     if (data.description) {
       const desc = document.createElement("div");
       desc.className = "gp-description";
-      desc.textContent = data.description;
+      // Use the project's standard renderer (labels.js → window.renderKaTeX)
+      // so descriptions get the same prose+math+markdown handling as the rest
+      // of the app (proof steps, overlays, slider labels, 3D label objects).
+      // Safe to use innerHTML here because the agent schema rejects HTML
+      // brackets via _NO_HTML pattern on the description field.
+      if (typeof window !== "undefined" && typeof window.renderKaTeX === "function") {
+        desc.innerHTML = window.renderKaTeX(data.description, false);
+      } else {
+        desc.textContent = data.description;
+      }
       fieldsEl.appendChild(desc);
     }
     this.panel.classList.add("open");

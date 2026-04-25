@@ -751,6 +751,109 @@ async function renderCurrentStepGraph(force = false) {
 
     renderEdgeLegend(edgeStyles, graph);
     _currentSemanticKey = key;
+
+    // Background Gemini enrichment: fire-and-forget. Only triggers once per
+    // graph (skips when ``__enriched`` is set). Re-renders in place when the
+    // response arrives, but only if the user hasn't moved on to another step
+    // in the meantime.
+    enrichGraphInBackground(graph, key, step);
+}
+
+// Build context payload for the enrichment agent — lesson/scene/proof/step
+// metadata that disambiguates symbols (e.g. T = thrust vs temperature).
+// Returns null when no useful context is available.
+function buildEnrichContext(step) {
+    const lesson = state.lessonSpec || null;
+    const entry = state.proofSpec && state.proofSpec[state.proofActiveIndex];
+    if (!lesson && !entry) return null;
+    const scene = lesson && lesson.scenes && entry
+        ? lesson.scenes[entry.sceneIndex] : null;
+    const proof = entry && entry.proof || null;
+    const ctx = {};
+    if (lesson) {
+        if (lesson.title) ctx.lessonTitle = lesson.title;
+        if (lesson.description) ctx.lessonDescription = lesson.description;
+    }
+    if (scene) {
+        if (scene.title) ctx.sceneTitle = scene.title;
+        if (scene.description) ctx.sceneDescription = scene.description;
+    }
+    if (proof) {
+        if (proof.title) ctx.proofTitle = proof.title;
+        if (proof.goal) ctx.proofGoal = proof.goal;
+        if (proof.technique) ctx.proofTechnique = proof.technique;
+    }
+    if (step) {
+        if (step.label) ctx.stepLabel = step.label;
+        if (step.math) ctx.stepMath = step.math;
+        if (step.justification) ctx.stepJustification = step.justification;
+        if (step.explanation) ctx.stepExplanation = step.explanation;
+    }
+    return Object.keys(ctx).length ? ctx : null;
+}
+
+// Returns true only when EVERY node already has a non-empty description.
+// We skip the Gemini call in that case (authored scene already covered);
+// otherwise we enrich so missing descriptions get filled in.
+function allNodesHaveDescriptions(graph) {
+    const nodes = graph && graph.nodes;
+    if (!Array.isArray(nodes) || nodes.length === 0) return false;
+    for (const n of nodes) {
+        if (!n || typeof n.description !== 'string' || !n.description.trim()) return false;
+    }
+    return true;
+}
+
+function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
+    if (!graph || graph.__enriched) return;
+    if (allNodesHaveDescriptions(graph)) {
+        // Every node already has a description — skip enrichment.
+        try {
+            Object.defineProperty(graph, '__enriched', {
+                value: true, writable: true, configurable: true, enumerable: false,
+            });
+        } catch { graph.__enriched = true; }
+        return;
+    }
+    let attempted;
+    try {
+        Object.defineProperty(graph, '__enriched', {
+            value: true, writable: true, configurable: true, enumerable: false,
+        });
+        attempted = true;
+    } catch { attempted = false; }
+    if (!attempted) graph.__enriched = true;
+
+    const context = buildEnrichContext(stepAtFetch);
+    fetch('/api/graph/enrich', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(context ? { graph, context } : { graph }),
+    }).then(async (res) => {
+        if (!res.ok) {
+            console.warn('[graph-view] enrich failed:', res.status);
+            return;
+        }
+        const data = await res.json();
+        const enriched = data && data.enriched;
+        if (!enriched || !Array.isArray(enriched.nodes)) return;
+
+        const nowStep = currentProofStep();
+        if (nowStep !== stepAtFetch) {
+            return;
+        }
+        if (!nowStep || !nowStep.semanticGraph) return;
+        Object.defineProperty(enriched, '__enriched', {
+            value: true, writable: true, configurable: true, enumerable: false,
+        });
+        nowStep.semanticGraph.graph = enriched;
+        // Force re-render so the enriched fields propagate through Mermaid
+        // and the side panel.
+        _currentSemanticKey = null;
+        renderCurrentStepGraph(true);
+    }).catch((err) => {
+        console.warn('[graph-view] enrich error:', err);
+    });
 }
 
 // Map from ``edge.semantic`` values to user-facing legend copy. Order here
