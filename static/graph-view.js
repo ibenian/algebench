@@ -830,8 +830,15 @@ const ENRICH_DWELL_MS = 400;
 // than queuing up extra fetches.
 const _enrichDwellTimers = new WeakMap();
 
+// Graphs with an enrichment fetch currently in flight. Prevents duplicate
+// requests while still letting a future render retry if the fetch fails
+// (failed graphs are removed from this set, but ``__enriched`` is only set
+// on success — so the next render can try again).
+const _enrichInFlight = new WeakSet();
+
 function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
     if (!graph || graph.__enriched) return;
+    if (_enrichInFlight.has(graph)) return;
     if (allNodesHaveDescriptions(graph)) {
         // Every node already has a description — skip enrichment.
         try {
@@ -857,25 +864,29 @@ function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
 }
 
 function _runEnrichmentFetch(graph, keyAtFetch, stepAtFetch) {
-    if (graph.__enriched) return;
-    let attempted;
-    try {
-        Object.defineProperty(graph, '__enriched', {
-            value: true, writable: true, configurable: true, enumerable: false,
-        });
-        attempted = true;
-    } catch { attempted = false; }
-    if (!attempted) graph.__enriched = true;
+    if (graph.__enriched || _enrichInFlight.has(graph)) return;
+    // Mark in-flight so concurrent renders don't fire a duplicate fetch.
+    // ``__enriched`` itself is set only after a successful response — a
+    // failed fetch leaves the graph unmarked so a later render can retry.
+    _enrichInFlight.add(graph);
 
     const context = buildEnrichContext(stepAtFetch);
     // Each enrichment owns its own indicator. When several fire — say the user
     // pages through steps quickly — they stack independently and each removes
     // itself when its own fetch resolves, regardless of order.
     const indicator = showEnrichmentIndicator(stepAtFetch);
-    const removeIndicator = () => {
+    const cleanup = () => {
+        _enrichInFlight.delete(graph);
         if (indicator && indicator.parentNode) {
             indicator.parentNode.removeChild(indicator);
         }
+    };
+    const markEnriched = (g) => {
+        try {
+            Object.defineProperty(g, '__enriched', {
+                value: true, writable: true, configurable: true, enumerable: false,
+            });
+        } catch { g.__enriched = true; }
     };
     fetch('/api/graph/enrich', {
         method: 'POST',
@@ -890,14 +901,15 @@ function _runEnrichmentFetch(graph, keyAtFetch, stepAtFetch) {
         const enriched = data && data.enriched;
         if (!enriched || !Array.isArray(enriched.nodes)) return;
 
+        // Mark the original graph too, so if the user navigates away and back
+        // we don't refetch — the response is cached server-side anyway, but
+        // skipping the round trip is cheaper.
+        markEnriched(graph);
+
         const nowStep = currentProofStep();
-        if (nowStep !== stepAtFetch) {
-            return;
-        }
+        if (nowStep !== stepAtFetch) return;
         if (!nowStep || !nowStep.semanticGraph) return;
-        Object.defineProperty(enriched, '__enriched', {
-            value: true, writable: true, configurable: true, enumerable: false,
-        });
+        markEnriched(enriched);
         nowStep.semanticGraph.graph = enriched;
         // Force re-render so the enriched fields propagate through Mermaid
         // and the side panel.
@@ -905,7 +917,7 @@ function _runEnrichmentFetch(graph, keyAtFetch, stepAtFetch) {
         renderCurrentStepGraph(true);
     }).catch((err) => {
         console.warn('[graph-view] enrich error:', err);
-    }).finally(removeIndicator);
+    }).finally(cleanup);
 }
 
 // Floating "thinking" pill, one per in-flight enrichment fetch. Lives in
