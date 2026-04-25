@@ -237,27 +237,33 @@ SET_PRESET_PROMPTS_TOOL_DECL = types.FunctionDeclaration(
 
 SET_INFO_OVERLAY_TOOL_DECL = types.FunctionDeclaration(
     name="set_info_overlay",
-    description="Add, update, or remove a floating info overlay on the 3D canvas. Overlays render LaTeX and live math that updates automatically when sliders change. Use {{slider_id}} / {{expression}} placeholders for live values. Call with clear=true to remove all overlays. REQUIRED: when not clearing, you MUST pass a stable `id` (e.g. 'matrix', 'formula') — id-less calls are dropped. Use proactively to show matrix representations, formulas, or key values while users explore a scene.",
+    description="Add or update a floating info overlay on the 3D canvas. Overlays render LaTeX and live math that updates automatically when sliders change. Use {{slider_id}} / {{expression}} placeholders for live values. Use proactively to show matrix representations, formulas, or key values while users explore a scene. To remove all overlays, call `clear_info_overlays` instead.",
     parameters=types.Schema(
         type="OBJECT",
         properties={
             "id": types.Schema(
                 type="STRING",
-                description="REQUIRED unless clear=true. Stable, unique identifier for this overlay (e.g. 'matrix', 'formula', 'energy'). Reuse the same id to update an existing overlay; pick a new id for a distinct overlay. Without an id the call is rejected.",
+                description="Stable, unique identifier for this overlay (e.g. 'matrix', 'formula', 'energy'). Reuse the same id to update an existing overlay; pick a new id for a distinct overlay.",
             ),
             "content": types.Schema(
                 type="STRING",
-                description="Content to display — same rendering as step captions: $...$ inline math, $$...$$ display math, plain text, \\n for line breaks. Use {{slider_id}} / {{expression}} for live values, e.g. '$$\\\\begin{pmatrix} {{a}} & {{b}} \\\\\\\\ {{c}} & {{d}} \\\\end{pmatrix}$$'. CRITICAL: only double-brace placeholders are evaluated; single-brace {id} is not evaluated. Omit when clear=true.",
+                description="Content to display — same rendering as step captions: $...$ inline math, $$...$$ display math, plain text, \\n for line breaks. Use {{slider_id}} / {{expression}} for live values, e.g. '$$\\\\begin{pmatrix} {{a}} & {{b}} \\\\\\\\ {{c}} & {{d}} \\\\end{pmatrix}$$'. CRITICAL: only double-brace placeholders are evaluated; single-brace {id} is not evaluated.",
             ),
             "position": types.Schema(
                 type="STRING",
                 description="Position on canvas: 'top-left' (default), 'top-right', 'top-center', 'bottom-left', or 'bottom-right'.",
             ),
-            "clear": types.Schema(
-                type="BOOLEAN",
-                description="If true, remove all overlays and ignore id/content.",
-            ),
         },
+        required=["id", "content"],
+    ),
+)
+
+CLEAR_INFO_OVERLAYS_TOOL_DECL = types.FunctionDeclaration(
+    name="clear_info_overlays",
+    description="Remove all currently-displayed info overlays from the 3D canvas. Use to wipe the slate before showing a different set of overlays, or when overlays no longer apply to the current step. Takes no parameters.",
+    parameters=types.Schema(
+        type="OBJECT",
+        properties={},
     ),
 )
 
@@ -290,6 +296,7 @@ ALL_TOOL_DECLS = [
     MEM_SET_TOOL_DECL,
     SET_PRESET_PROMPTS_TOOL_DECL,
     SET_INFO_OVERLAY_TOOL_DECL,
+    CLEAR_INFO_OVERLAYS_TOOL_DECL,
     NAVIGATE_PROOF_TOOL_DECL,
 ]
 
@@ -360,7 +367,8 @@ def build_system_prompt(context, agent_memory=None):
   - `add_scene`: build a visualization. **Only call when the user explicitly requests it or when it clearly serves the current interaction — not as a default response to every question.** A `line` with many `points` draws a curve; `vectors` with `froms`/`tos` arrays draws a series of arrows. Do not hardcode arrays that could be computed — use `eval_math` first. **Put sliders only in `steps[].sliders` (never top-level `scene.sliders`).**
   - `set_sliders`: animate sliders to show how parameters change the visualization.
   - `set_preset_prompts`: call this **once** per response to surface 2–4 follow-up chips. Always a function call — never inline JSON. Never call it more than once per turn. **Do NOT also list them as links or bullets in your response text** — they already appear as buttons in the UI.
-  - `set_info_overlay`: show a live LaTeX panel on the canvas. **REQUIRED: always pass a stable `id`** (e.g. `'matrix'`, `'formula'`, `'energy'`) — calls without an id are dropped. Reuse the same id to update an overlay; pick a new id for a distinct one. Use `{{expr}}` placeholders (math.js syntax) so values update automatically. Examples: `{{a}}` (slider value), `{{a*d-b*c}}` (determinant), `{{toFixed(sqrt(a^2+b^2), 2)}}` (formatted magnitude), `{{toFixed(2*pi*rpm/60, 3)}}` (angular velocity), `{{v > 0 ? "stable" : "unstable"}}` (conditional string). Do NOT use single-brace `{...}` placeholders. Always add a matrix overlay when sliders define a matrix. Call with `clear: true` to remove all overlays.
+  - `set_info_overlay`: show a live LaTeX panel on the canvas. Pass a stable `id` (e.g. `'matrix'`, `'formula'`, `'energy'`) and `content`. Reuse the same id to update an overlay; pick a new id for a distinct one. Use `{{expr}}` placeholders (math.js syntax) so values update automatically. Examples: `{{a}}` (slider value), `{{a*d-b*c}}` (determinant), `{{toFixed(sqrt(a^2+b^2), 2)}}` (formatted magnitude), `{{toFixed(2*pi*rpm/60, 3)}}` (angular velocity), `{{v > 0 ? "stable" : "unstable"}}` (conditional string). Do NOT use single-brace `{...}` placeholders. Always add a matrix overlay when sliders define a matrix.
+  - `clear_info_overlays`: remove all info overlays from the canvas. Takes no parameters.
   - `parametric_curve`: continuous smooth curve using math.js expressions — use `sin(t)` not `Math.sin(t)`, `pi` not `Math.PI`, `pow(x,n)` or `x^n` not `x**n`. Use only when a slider drives the shape live and exact point values are not needed.
   - **math.js expression syntax** (used in all animated elements, parametric_curve, and info overlay placeholders): trig `sin cos tan asin acos atan atan2` · power `pow(x,n)` or `x^n` · roots `sqrt cbrt` · exp/log `exp log log2 log10` · rounding `floor ceil round fix` · misc `abs sign min max hypot` · constants `pi e` · ternary `cond ? a : b` · formatting `toFixed(val, n)`. Do NOT use `Math.sin`, `Math.PI`, `x.toFixed()`, or JS keywords (`let`, `return`, `=>`).
 """
