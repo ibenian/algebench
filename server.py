@@ -2218,8 +2218,17 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     async def post_graph_enrich(req: GraphEnrichRequest):
         """Enrich a semantic graph via Gemini (descriptions, emoji, color, corrections).
 
-        Runtime in-memory cache keyed by the input graph hash. Returns the
-        original graph unchanged on agent failure so the UI can keep rendering.
+        Runtime in-memory cache keyed by ``sha256({graph, context})`` — the
+        same graph asked about in two different lesson/scene contexts will
+        cache as two separate entries, since context disambiguates ambiguous
+        symbols (e.g. ``T`` = thrust vs temperature).
+
+        Failure modes:
+          - 502 on ``AgentError`` (Gemini exhausted retries / unexpected output)
+          - 503 if the agents package can't import or ``GEMINI_API_KEY`` is missing
+          - 500 on any other exception
+        The client treats all non-2xx as "keep showing the unenriched graph"
+        and may retry on a future render.
         """
         import hashlib
         import json as _json
