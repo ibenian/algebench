@@ -137,4 +137,4 @@ Skills live in `.agents/skills/` (checked into the repo). Each agent platform sy
 
 ## In-App Agent Tools
 
-See [`agent-tools-reference.md`](agent-tools-reference.md) for the full reference on tools available to the in-app Gemini agent (`add_scene`, `eval_math`, `set_sliders`, `navigate_to`, `set_camera`, `set_info_overlay`, `mem_get`/`mem_set`, `set_preset_prompts`).
+See [`agent-tools-reference.md`](agent-tools-reference.md) for the full reference on tools available to the in-app Gemini agent (`add_scene`, `eval_math`, `set_sliders`, `navigate_to`, `set_camera`, `set_info_overlay`, `clear_info_overlays`, `mem_get`/`mem_set`, `set_preset_prompts`).

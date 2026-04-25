@@ -597,7 +597,12 @@ async function sendChatMessage(text, { silent = false } = {}) {
                 } else if (tc.name === 'set_preset_prompts') {
                     setPresetPrompts(tc.args.prompts || []);
                 } else if (tc.name === 'set_info_overlay') {
-                    if (tc.args.id) {
+                    // Backwards-compat: legacy callers used { clear: true } on this tool to
+                    // wipe overlays. The new dedicated tool is `clear_info_overlays`; honor
+                    // the legacy form here so older sessions / cached tool calls still work.
+                    if (tc.args.clear) {
+                        if (typeof removeAllInfoOverlays === 'function') removeAllInfoOverlays();
+                    } else if (tc.args.id) {
                         if (typeof addInfoOverlay === 'function')
                             addInfoOverlay(tc.args.id, tc.args.content || '', tc.args.position || 'top-left');
                     } else {
