@@ -933,6 +933,12 @@ function _runEnrichmentFetch(graph, keyAtFetch, stepAtFetch) {
 function showEnrichmentIndicator(step) {
     const viewport = document.getElementById('graph-viewport');
     if (!viewport) return null;
+    let stack = viewport.querySelector('.graph-enrich-indicator-stack');
+    if (!stack) {
+        stack = document.createElement('div');
+        stack.className = 'graph-enrich-indicator-stack';
+        viewport.appendChild(stack);
+    }
     const el = document.createElement('div');
     el.className = 'graph-enrich-indicator';
     el.setAttribute('role', 'status');
@@ -949,7 +955,7 @@ function showEnrichmentIndicator(step) {
     text.className = 'gei-text';
     text.textContent = 'Enriching graph…';
     el.append(dots, text);
-    viewport.appendChild(el);
+    stack.appendChild(el);
     refreshEnrichmentIndicatorVisibility();
     return el;
 }
@@ -959,7 +965,9 @@ function refreshEnrichmentIndicatorVisibility() {
     if (!viewport) return;
     const step = currentProofStep();
     const currentKey = step ? stableStepKey(step) : null;
-    viewport.querySelectorAll('.graph-enrich-indicator').forEach((el) => {
+    const stack = viewport.querySelector('.graph-enrich-indicator-stack');
+    if (!stack) return;
+    stack.querySelectorAll('.graph-enrich-indicator').forEach((el) => {
         el.classList.toggle('hidden', el.dataset.stepKey !== currentKey);
     });
 }

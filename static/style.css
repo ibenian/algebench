@@ -3821,10 +3821,21 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
    graph viewport so it's close to the diagram without occluding the
    controls, and only appears when the theme actually differentiates
    edge semantics. See renderEdgeLegend() in graph-view.js. */
-.graph-enrich-indicator {
+/* Container for one or more in-flight enrichment indicators. Anchored
+   bottom-right of the viewport, stacks pills upward via flex column-reverse
+   so the newest indicator sits at the bottom and earlier ones rise above —
+   scales to any number of concurrent enrichments without per-sibling CSS. */
+.graph-enrich-indicator-stack {
     position: absolute;
     right: 8px;
     bottom: 8px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+    z-index: 3;
+    pointer-events: none;
+}
+.graph-enrich-indicator {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -3835,20 +3846,12 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     font-size: 0.72rem;
     color: rgba(210, 218, 245, 0.92);
     letter-spacing: 0.02em;
-    z-index: 3;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    pointer-events: none;
     user-select: none;
     animation: gei-fade-in 180ms ease-out;
 }
 .graph-enrich-indicator.hidden { display: none; }
-.graph-enrich-indicator + .graph-enrich-indicator {
-    bottom: 44px;
-}
-.graph-enrich-indicator + .graph-enrich-indicator + .graph-enrich-indicator {
-    bottom: 80px;
-}
 .graph-enrich-indicator .gei-dots {
     display: inline-flex;
     align-items: center;
