@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from agents.models import SemanticGraph
+from models import SemanticGraph
 from agents.semantic_graph_enricher import SemanticGraphEnrichmentAgent
 
 

@@ -11,7 +11,7 @@ import json
 from typing import Any, Dict, Optional
 
 from .base import BaseAgent
-from .models import SemanticGraph
+from models import SemanticGraph
 
 
 _SYSTEM_PROMPT = """\
