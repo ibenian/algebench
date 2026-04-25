@@ -2,7 +2,7 @@
 
 We feed a handful of representative LaTeX strings through
 ``scripts/latex_to_graph.py`` and round-trip the resulting graphs through
-``agents.schemas.SemanticGraph``. Any shape the parser emits must validate;
+``agents.models.SemanticGraph``. Any shape the parser emits must validate;
 otherwise enrichment will reject perfectly good unenriched graphs.
 
 Also rounds-trips inline graphs from ``scenes/*.json`` if any are present.
@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from agents.schemas import SemanticGraph
+from agents.models import SemanticGraph
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
