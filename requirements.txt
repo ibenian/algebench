@@ -6,3 +6,4 @@ uvicorn[standard]>=0.32.0
 jsonschema>=4.23.0
 sympy>=1.13.0
 antlr4-python3-runtime==4.11.1
+pydantic-ai-slim[google]>=1.56.0

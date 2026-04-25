@@ -30,4 +30,12 @@ elif [ ! -d "$VENV" ]; then
     "$VENV/bin/pip" install -r "$DIR/requirements.txt"
 fi
 
+# Load gitignored secrets if present. Format: KEY=VALUE per line (shell syntax).
+# Does not override values already set in the parent environment.
+if [ -f "$DIR/.env.local" ]; then
+    set -a
+    . "$DIR/.env.local"
+    set +a
+fi
+
 exec "$VENV/bin/python3" "$DIR/server.py" "$@"

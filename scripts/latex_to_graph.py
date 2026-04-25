@@ -459,10 +459,16 @@ class SemanticGraphBuilder:
                 else:
                     latex_fallback = name
             attrs: dict[str, str] = {
-                "label": meta.get("label", name),
                 "type": meta.get("type", "scalar"),
                 "latex": meta.get("latex", latex_fallback),
             }
+            # Only set ``label`` when KNOWN_VARIABLES provides a meaningful
+            # human-readable name (e.g. ``"force"``, ``"mass"``). For unknown
+            # symbols, the SymPy identifier (``"F_action"``, ``"psi"``) is just
+            # noise next to the already-rendered ``latex`` field — leave label
+            # unset so the panel doesn't show a redundant row.
+            if meta.get("label"):
+                attrs["label"] = meta["label"]
             # Only attach an emoji when we actually know one. The old
             # "🔣" fallback renders as a broken-glyph box in most fonts
             # and adds visual noise — leave it off unless the KNOWN_VARIABLES

@@ -187,23 +187,44 @@ export class SemanticGraphPanel {
 
     fieldsEl.innerHTML = "";
     for (const [key, label] of PANEL_FIELDS) {
-      if (data[key]) {
-        const row = document.createElement("div");
-        row.className = "gp-field";
-        const keyEl = document.createElement("span");
-        keyEl.className = "gp-key";
-        keyEl.textContent = label;
-        const valEl = document.createElement("span");
-        valEl.className = "gp-val";
+      if (!data[key]) continue;
+      // ``label`` carries the symbol's raw LaTeX source — typeset it instead
+      // of dumping ``F_{\text{action}}`` into the DOM as text. Skip the row
+      // entirely when it's identical to the symbol already rendered at the
+      // top of the panel; showing the same thing twice is just clutter.
+      if (key === "label" && data.label === titleLatex) continue;
+      const row = document.createElement("div");
+      row.className = "gp-field";
+      const keyEl = document.createElement("span");
+      keyEl.className = "gp-key";
+      keyEl.textContent = label;
+      const valEl = document.createElement("span");
+      valEl.className = "gp-val";
+      if (key === "label" && typeof window !== "undefined"
+          && typeof window.renderKaTeX === "function") {
+        // Labels can be plain prose ("force"), pure LaTeX, or a mix —
+        // ``renderKaTeX`` handles all three: text passes through, ``$..$``
+        // segments typeset as math.
+        valEl.innerHTML = window.renderKaTeX(data.label, false);
+      } else {
         valEl.textContent = data[key];
-        row.append(keyEl, valEl);
-        fieldsEl.appendChild(row);
       }
+      row.append(keyEl, valEl);
+      fieldsEl.appendChild(row);
     }
     if (data.description) {
       const desc = document.createElement("div");
       desc.className = "gp-description";
-      desc.textContent = data.description;
+      // Use the project's standard renderer (labels.js → window.renderKaTeX)
+      // so descriptions get the same prose+math+markdown handling as the rest
+      // of the app (proof steps, overlays, slider labels, 3D label objects).
+      // Safe to use innerHTML here because the agent schema rejects HTML
+      // brackets via _NO_HTML pattern on the description field.
+      if (typeof window !== "undefined" && typeof window.renderKaTeX === "function") {
+        desc.innerHTML = window.renderKaTeX(data.description, false);
+      } else {
+        desc.textContent = data.description;
+      }
       fieldsEl.appendChild(desc);
     }
     this.panel.classList.add("open");
@@ -265,6 +286,25 @@ export class SemanticGraphPanel {
     };
     document.addEventListener("click", onDocClick);
     this._handlers.push([document, "click", onDocClick]);
+  }
+
+  /**
+   * Programmatically activate a node — same effect as a user click.
+   * No-op (returns false) if the id isn't in this graph's node index, so
+   * callers can safely pass a stale id from a previous render without
+   * having to check first. Returns true on successful selection.
+   */
+  selectNode(nodeId) {
+    if (!nodeId || !this._nodeData[nodeId]) return false;
+    this._activeNode = nodeId;
+    this._highlight(nodeId);
+    this._showPanel(nodeId);
+    return true;
+  }
+
+  /** Currently active node id, or null. */
+  get activeNode() {
+    return this._activeNode;
   }
 
   destroy() {

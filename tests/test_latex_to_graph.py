@@ -96,7 +96,9 @@ class TestKnownVariables:
     def test_unknown_variable_gets_defaults(self):
         g = latex_to_semantic_graph("Q")
         node = _find_node(g, id="Q")
-        assert node["label"] == "Q"
+        # Unknown symbols intentionally have no ``label`` — the SymPy
+        # identifier would just duplicate the rendered ``latex`` field.
+        assert "label" not in node
         assert node["type"] == "scalar"
 
     def test_symbol_deduplication(self):

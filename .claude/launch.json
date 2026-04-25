@@ -18,6 +18,18 @@
       "runtimeExecutable": "./algebench",
       "runtimeArgs": ["scenes/draft/atmospheric-entry-physics.json", "--port", "5732", "--debug", "--server-only"],
       "port": 5732
+    },
+    {
+      "name": "eigenvalues",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": ["scenes/eigenvalues.json", "--port", "5733", "--debug", "--server-only"],
+      "port": 5733
+    },
+    {
+      "name": "test-proof-quadratic",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": ["scenes/draft/test-proof-quadratic.json", "--port", "5734", "--debug", "--server-only"],
+      "port": 5734
     }
   ]
 }

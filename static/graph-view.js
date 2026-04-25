@@ -21,6 +21,7 @@ import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 
 let _currentGraphPanel = null;
 let _currentSemanticKey = null;
+let _activeStepForPanel = null;
 let _initDone = false;
 
 // Persisted user preferences. localStorage keys are versioned with an
@@ -733,7 +734,16 @@ async function renderCurrentStepGraph(force = false) {
         return;
     }
 
+    // Preserve the active node across re-renders of the *same* step so theme
+    // /direction/labels changes and async enrichment don't steal the user's
+    // selection. ``_activeStepForPanel`` tracks which step the previous panel
+    // was attached to; if the user moved on, we drop the selection because
+    // node ids can collide across steps (e.g. ``m`` in two different graphs).
+    let preservedActiveNode = null;
     if (_currentGraphPanel) {
+        if (_activeStepForPanel === step) {
+            preservedActiveNode = _currentGraphPanel.activeNode || null;
+        }
         try { _currentGraphPanel.destroy(); } catch {}
         _currentGraphPanel = null;
     }
@@ -747,10 +757,219 @@ async function renderCurrentStepGraph(force = false) {
             panel: buildInlineInfoPanel(infoHost),
         });
         _currentGraphPanel.attach();
+        _activeStepForPanel = step;
+        if (preservedActiveNode) {
+            _currentGraphPanel.selectNode(preservedActiveNode);
+        }
     }
 
     renderEdgeLegend(edgeStyles, graph);
     _currentSemanticKey = key;
+    refreshEnrichmentIndicatorVisibility();
+
+    // Background Gemini enrichment: fire-and-forget. Only triggers once per
+    // graph (skips when ``__enriched`` is set). Re-renders in place when the
+    // response arrives, but only if the user hasn't moved on to another step
+    // in the meantime.
+    enrichGraphInBackground(graph, key, step);
+}
+
+// Build context payload for the enrichment agent — lesson/scene/proof/step
+// metadata that disambiguates symbols (e.g. T = thrust vs temperature).
+// Returns null when no useful context is available.
+function buildEnrichContext(step) {
+    const lesson = state.lessonSpec || null;
+    const entry = state.proofSpec && state.proofSpec[state.proofActiveIndex];
+    if (!lesson && !entry) return null;
+    const scene = lesson && lesson.scenes && entry
+        ? lesson.scenes[entry.sceneIndex] : null;
+    const proof = entry && entry.proof || null;
+    const ctx = {};
+    if (lesson) {
+        if (lesson.title) ctx.lessonTitle = lesson.title;
+        if (lesson.description) ctx.lessonDescription = lesson.description;
+    }
+    if (scene) {
+        if (scene.title) ctx.sceneTitle = scene.title;
+        if (scene.description) ctx.sceneDescription = scene.description;
+    }
+    if (proof) {
+        if (proof.title) ctx.proofTitle = proof.title;
+        if (proof.goal) ctx.proofGoal = proof.goal;
+        if (proof.technique) ctx.proofTechnique = proof.technique;
+    }
+    if (step) {
+        if (step.label) ctx.stepLabel = step.label;
+        if (step.math) ctx.stepMath = step.math;
+        if (step.justification) ctx.stepJustification = step.justification;
+        if (step.explanation) ctx.stepExplanation = step.explanation;
+    }
+    return Object.keys(ctx).length ? ctx : null;
+}
+
+// Returns true only when EVERY node already has a non-empty description.
+// We skip the Gemini call in that case (authored scene already covered);
+// otherwise we enrich so missing descriptions get filled in.
+function allNodesHaveDescriptions(graph) {
+    const nodes = graph && graph.nodes;
+    if (!Array.isArray(nodes) || nodes.length === 0) return false;
+    for (const n of nodes) {
+        if (!n || typeof n.description !== 'string' || !n.description.trim()) return false;
+    }
+    return true;
+}
+
+// How long the user must dwell on a step before we actually fire the
+// enrichment fetch. Quick scrubs through a proof would otherwise queue up a
+// burst of parallel requests, each producing an indicator pill, only one of
+// which matches the step the user finally lands on.
+const ENRICH_DWELL_MS = 400;
+
+// Pending dwell timer keyed by graph identity. Multiple ``renderCurrentStep
+// Graph`` calls during the dwell window just keep resetting the timer rather
+// than queuing up extra fetches.
+const _enrichDwellTimers = new WeakMap();
+
+// Graphs with an enrichment fetch currently in flight. Prevents duplicate
+// requests while still letting a future render retry if the fetch fails
+// (failed graphs are removed from this set, but ``__enriched`` is only set
+// on success — so the next render can try again).
+const _enrichInFlight = new WeakSet();
+
+function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
+    if (!graph || graph.__enriched) return;
+    if (_enrichInFlight.has(graph)) return;
+    if (allNodesHaveDescriptions(graph)) {
+        // Every node already has a description — skip enrichment.
+        try {
+            Object.defineProperty(graph, '__enriched', {
+                value: true, writable: true, configurable: true, enumerable: false,
+            });
+        } catch { graph.__enriched = true; }
+        return;
+    }
+
+    // Dwell-gate: cancel any in-flight timer for this graph and start a fresh
+    // one. The fetch only runs if the user stays on this step long enough.
+    const prev = _enrichDwellTimers.get(graph);
+    if (prev) clearTimeout(prev);
+    const handle = setTimeout(() => {
+        _enrichDwellTimers.delete(graph);
+        // Bail if the user has moved on — the next render's enrich call will
+        // own the new step's graph.
+        if (currentProofStep() !== stepAtFetch) return;
+        _runEnrichmentFetch(graph, keyAtFetch, stepAtFetch);
+    }, ENRICH_DWELL_MS);
+    _enrichDwellTimers.set(graph, handle);
+}
+
+function _runEnrichmentFetch(graph, keyAtFetch, stepAtFetch) {
+    if (graph.__enriched || _enrichInFlight.has(graph)) return;
+    // Mark in-flight so concurrent renders don't fire a duplicate fetch.
+    // ``__enriched`` itself is set only after a successful response — a
+    // failed fetch leaves the graph unmarked so a later render can retry.
+    _enrichInFlight.add(graph);
+
+    const context = buildEnrichContext(stepAtFetch);
+    // Each enrichment owns its own indicator. When several fire — say the user
+    // pages through steps quickly — they stack independently and each removes
+    // itself when its own fetch resolves, regardless of order.
+    const indicator = showEnrichmentIndicator(stepAtFetch);
+    const cleanup = () => {
+        _enrichInFlight.delete(graph);
+        if (indicator && indicator.parentNode) {
+            indicator.parentNode.removeChild(indicator);
+        }
+    };
+    const markEnriched = (g) => {
+        try {
+            Object.defineProperty(g, '__enriched', {
+                value: true, writable: true, configurable: true, enumerable: false,
+            });
+        } catch { g.__enriched = true; }
+    };
+    fetch('/api/graph/enrich', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(context ? { graph, context } : { graph }),
+    }).then(async (res) => {
+        if (!res.ok) {
+            console.warn('[graph-view] enrich failed:', res.status);
+            return;
+        }
+        const data = await res.json();
+        const enriched = data && data.enriched;
+        if (!enriched || !Array.isArray(enriched.nodes)) return;
+
+        // Mark the original graph too, so if the user navigates away and back
+        // we don't refetch — the response is cached server-side anyway, but
+        // skipping the round trip is cheaper.
+        markEnriched(graph);
+
+        const nowStep = currentProofStep();
+        if (nowStep !== stepAtFetch) return;
+        if (!nowStep || !nowStep.semanticGraph) return;
+        markEnriched(enriched);
+        nowStep.semanticGraph.graph = enriched;
+        // Force re-render so the enriched fields propagate through Mermaid
+        // and the side panel.
+        _currentSemanticKey = null;
+        renderCurrentStepGraph(true);
+    }).catch((err) => {
+        console.warn('[graph-view] enrich error:', err);
+    }).finally(cleanup);
+}
+
+// Floating "thinking" pill, one per in-flight enrichment fetch. Lives in
+// ``#graph-viewport`` so it shares the same coordinate system as the graph
+// surface but doesn't get wiped by ``clearGraph()`` (which only touches the
+// mermaid container and the info panel host).
+//
+// We tag each indicator with the step's stable key. If the user navigates
+// to a different step, ``refreshEnrichmentIndicatorVisibility()`` hides the
+// ones that don't belong to the currently visible step — they stay in the
+// DOM so the same indicator reappears if the user navigates back before
+// the fetch resolves.
+function showEnrichmentIndicator(step) {
+    const viewport = document.getElementById('graph-viewport');
+    if (!viewport) return null;
+    let stack = viewport.querySelector('.graph-enrich-indicator-stack');
+    if (!stack) {
+        stack = document.createElement('div');
+        stack.className = 'graph-enrich-indicator-stack';
+        viewport.appendChild(stack);
+    }
+    const el = document.createElement('div');
+    el.className = 'graph-enrich-indicator';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.dataset.stepKey = stableStepKey(step);
+    const dots = document.createElement('span');
+    dots.className = 'gei-dots';
+    dots.append(
+        document.createElement('span'),
+        document.createElement('span'),
+        document.createElement('span'),
+    );
+    const text = document.createElement('span');
+    text.className = 'gei-text';
+    text.textContent = 'Enriching graph…';
+    el.append(dots, text);
+    stack.appendChild(el);
+    refreshEnrichmentIndicatorVisibility();
+    return el;
+}
+
+function refreshEnrichmentIndicatorVisibility() {
+    const viewport = document.getElementById('graph-viewport');
+    if (!viewport) return;
+    const step = currentProofStep();
+    const currentKey = step ? stableStepKey(step) : null;
+    const stack = viewport.querySelector('.graph-enrich-indicator-stack');
+    if (!stack) return;
+    stack.querySelectorAll('.graph-enrich-indicator').forEach((el) => {
+        el.classList.toggle('hidden', el.dataset.stepKey !== currentKey);
+    });
 }
 
 // Map from ``edge.semantic`` values to user-facing legend copy. Order here

@@ -4,6 +4,8 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.local
+.env.*.local
 *.wav
 *.m4a
 settings.local.json
@@ -12,5 +14,6 @@ settings.local.json
 !.agents/
 !.claude/
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 !AGENTS.md
 !CLAUDE.md

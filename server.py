@@ -117,6 +117,12 @@ def _load_script_module(rel_path: str, mod_name: str):
 # ---------------------------------------------------------------------------
 _latex_graph_cache: dict[str, dict | None] = {}
 
+# In-memory cache for Gemini-enriched semantic graphs. Key is sha256 of the
+# input graph JSON (sorted keys); value is the enriched graph dict. Runtime
+# only — cleared on restart.
+_graph_enrich_cache: dict[str, dict] = {}
+_graph_enricher = None
+
 # Greek placeholders for multi-character subscripts. SymPy's parse_latex
 # treats multi-letter identifiers as implicit multiplication (``\text{prop}``
 # → ``p*r*o*p``), but single-symbol Greek letters round-trip cleanly, so we
@@ -2203,6 +2209,78 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             import traceback
             print(f"   ❌ /api/graph/from-latex: {e}\n{traceback.format_exc()}")
             return JSONResponse({"error": str(e)}, status_code=400)
+
+    class GraphEnrichRequest(BaseModel):
+        graph: dict
+        context: dict | None = None
+
+    @fastapp.post("/api/graph/enrich")
+    async def post_graph_enrich(req: GraphEnrichRequest):
+        """Enrich a semantic graph via Gemini (descriptions, emoji, color, corrections).
+
+        Runtime in-memory cache keyed by ``sha256({graph, context})`` — the
+        same graph asked about in two different lesson/scene contexts will
+        cache as two separate entries, since context disambiguates ambiguous
+        symbols (e.g. ``T`` = thrust vs temperature).
+
+        Failure modes:
+          - 502 on ``AgentError`` (Gemini exhausted retries / unexpected output)
+          - 503 if the agents package can't import or ``GEMINI_API_KEY`` is missing
+          - 500 on any other exception
+        The client treats all non-2xx as "keep showing the unenriched graph"
+        and may retry on a future render.
+        """
+        import hashlib
+        import json as _json
+
+        global _graph_enricher
+
+        try:
+            graph_in = req.graph or {}
+            context_in = req.context or None
+            node_count = len(graph_in.get("nodes", []) or [])
+            domain = graph_in.get("domain") or (context_in or {}).get("domain") or "?"
+            cache_payload = {"graph": graph_in, "context": context_in}
+            key = hashlib.sha256(
+                _json.dumps(cache_payload, sort_keys=True).encode("utf-8")
+            ).hexdigest()
+            cached = _graph_enrich_cache.get(key)
+            if cached is not None:
+                print(f"[enrich] cache hit  nodes={node_count} domain={domain!r} ctx={'y' if context_in else 'n'} key={key[:8]}", flush=True)
+                return JSONResponse({"enriched": cached, "cached": True})
+
+            print(f"[enrich] miss → Gemini  nodes={node_count} domain={domain!r} ctx={'y' if context_in else 'n'} key={key[:8]}", flush=True)
+            # Full payload contains lesson/scene text (potentially sensitive)
+            # and adds significant log volume — gate on DEBUG_MODE.
+            if DEBUG_MODE:
+                print(f"[enrich] payload: {_json.dumps({'graph': graph_in, 'context': context_in}, indent=2)}", flush=True)
+
+            try:
+                from agents import AgentError, SemanticGraphEnrichmentAgent
+            except ImportError as e:
+                return JSONResponse({"error": f"agents package unavailable: {e}"}, status_code=503)
+
+            if _graph_enricher is None:
+                try:
+                    _graph_enricher = SemanticGraphEnrichmentAgent()
+                except AgentError as e:
+                    return JSONResponse({"error": str(e)}, status_code=503)
+
+            try:
+                enriched = await _graph_enricher.aenrich(graph_in, context_in)
+            except AgentError as e:
+                print(f"[enrich] agent error: {e}", flush=True)
+                return JSONResponse({"error": str(e)}, status_code=502)
+
+            _graph_enrich_cache[key] = enriched
+            print(f"[enrich] ok  cached  key={key[:8]}", flush=True)
+            if DEBUG_MODE:
+                print(f"[enrich] response: {_json.dumps(enriched, indent=2)}", flush=True)
+            return JSONResponse({"enriched": enriched, "cached": False})
+        except Exception as e:
+            import traceback
+            print(f"   ❌ /api/graph/enrich: {e}\n{traceback.format_exc()}")
+            return JSONResponse({"error": str(e)}, status_code=500)
 
     @fastapp.post("/api/graph/mermaid")
     async def post_graph_mermaid(req: MermaidRenderRequest):
