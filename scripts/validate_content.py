@@ -151,7 +151,7 @@ def check_remove_targets(data):
                 if rm_id and rm_id != '*' and rm_id not in active_ids and not rm_type:
                     errors.append(
                         f'scenes[{si}].steps[{sti}].remove: '
-                        f'ID "{rm_id}" not found in active elements'
+                        f'ID "{rm_id}" not found in active elements/sliders/overlays'
                     )
 
     return errors, checked

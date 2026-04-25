@@ -221,6 +221,11 @@ function processStepRemoves(removeList, tracker) {
             removeTrackSliders(tracker);
             continue;
         }
+        if (item.type === 'info') {
+            if (item.id) removeInfoOverlay(item.id);
+            else removeAllInfoOverlays();
+            continue;
+        }
         if (item.id) {
             if (!ownIds.has(item.id) && state.elementRegistry[item.id] && !state.elementRegistry[item.id].hidden) {
                 hideElementById(item.id);
@@ -228,11 +233,6 @@ function processStepRemoves(removeList, tracker) {
             }
             if (removeTrackSliderById(item.id, tracker)) slidersChanged = true;
             removeInfoOverlay(item.id);
-            continue;
-        }
-        if (item.type === 'info') {
-            if (item.id) removeInfoOverlay(item.id);
-            else removeAllInfoOverlays();
             continue;
         }
         if (item.type === 'slider') {

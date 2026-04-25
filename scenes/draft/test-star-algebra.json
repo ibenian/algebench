@@ -47,7 +47,7 @@
         {
           "type": "text",
           "id": "info",
-          "label": "Adjoints: $T^*$, $S^*$\n$C^*$-algebra: $\\|a^*a\\| = \\|a\\|^2$\nConvolution: $f * g$",
+          "text": "Adjoints: $T^*$, $S^*$\n$C^*$-algebra: $\\|a^*a\\| = \\|a\\|^2$\nConvolution: $f * g$",
           "position": [0, 1, 0],
           "color": "#ffffff"
         }
