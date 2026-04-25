@@ -280,8 +280,16 @@ export class SemanticGraphPanel {
     });
 
     const onDocClick = (e) => {
-      if (this.panel.contains(e.target)) return;
       if (this._activeNode === null) return;
+      if (this.panel.contains(e.target)) return;
+      // Only deselect when the click landed inside the graph viewport itself
+      // (i.e. clicked the canvas / empty SVG area). Clicks on the chat,
+      // side panel, scenes tree, controls, etc. must preserve selection so
+      // the user can reference the active node from the chat.
+      if (!this.container.contains(e.target)) return;
+      // Clicks on a node are handled by the node-level click handler above —
+      // bail here so we don't double-process and clear state mid-toggle.
+      if (e.target.closest && e.target.closest(".node")) return;
       this._activeNode = null;
       this._clearHighlight();
       this.panel.classList.remove("open");

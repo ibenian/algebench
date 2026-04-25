@@ -1270,7 +1270,14 @@ function sendWelcomeMessage() {
     if (!chatAvailable || shouldSkipWelcome() || welcomeInFlight) return;
     welcomeInFlight = true;
     sendChatMessage(
-        'The user just switched to the Chat tab. Read the **USER VIEWING** line in Current State and ground your welcome in exactly that surface — if they are on the semantic graph, mention the graph (and the selected node if any); if they are on the 3D scene, mention the scene. Keep it to 1-2 sentences and offer one concrete next thing they could ask about *based on what is on screen right now*.',
+        'The user just switched to the Chat tab. Read the **USER VIEWING** line in Current State and ground your welcome in exactly that surface. Then *actually explain what is on screen* — do not just acknowledge it. Structure:\n\n' +
+        '1. ONE short sentence acknowledging the surface (e.g. "You are looking at the semantic graph for step 3" or "You are on the 3D scene of …").\n' +
+        '2. A SUBSTANTIVE explanation (3–6 sentences) of what is on screen right now:\n' +
+        '   - If a graph node is selected: explain that node — what the symbol means in context, what role it plays in the equation, and how it relates to the surrounding nodes (use the incoming/outgoing neighbors from Active Semantic Graph).\n' +
+        '   - If the semantic graph is open with no node selected: walk through the structure of the graph (root operator, key operands, the relationship the graph encodes).\n' +
+        '   - If on the 3D scene: explain the visible elements and what the current step is demonstrating.\n' +
+        '3. End with ONE concrete follow-up question the user is most likely to ask next, phrased as an offer (e.g. "Want me to walk through how … relates to … ?").\n\n' +
+        'Do not be generic. Do not list capabilities. Use the specific names, symbols, and relationships from the Active Semantic Graph / Active Proof Step / Current Scene Definition sections of the system prompt.',
         { silent: true }
     ).finally(() => { welcomeInFlight = false; });
 }

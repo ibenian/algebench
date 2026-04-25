@@ -521,8 +521,12 @@ def build_system_prompt(context, agent_memory=None):
     # Active Semantic Graph — placed right after the proof block since it's
     # generally derived from the active proof step. Mirrors the
     # ``## Active Proof Step ..`` header pattern (issue #124).
+    # Only emit when the dock is actually open — otherwise the agent would
+    # bring up the graph unprompted in welcomes / replies even when the
+    # user isn't looking at it. The graph JSON is still available in the
+    # scene definition dump if the agent needs to reason about it.
     gp = runtime.get('graphPanel')
-    if gp:
+    if gp and gp.get('open'):
         sn = gp.get('selectedNode') or {}
         header_suffix = ''
         if sn:
