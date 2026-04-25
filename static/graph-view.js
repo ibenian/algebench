@@ -1456,7 +1456,10 @@ window.graphView = {
 
 /**
  * Read-only snapshot of the semantic-graph dock state, for chat context
- * (issue #124). Returns null when no graph is loaded for the current step.
+ * (issue #124). Returns null only when the graph dock is inactive AND the
+ * current step has no graph. When the dock is active, returns a state
+ * object even if `hasGraph` is false — so callers can tell the user is
+ * looking at the (empty) Math view.
  */
 function getGraphPanelState() {
     const dockActive = isGraphModeActive();

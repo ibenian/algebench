@@ -1270,7 +1270,7 @@ function sendWelcomeMessage() {
     if (!chatAvailable || shouldSkipWelcome() || welcomeInFlight) return;
     welcomeInFlight = true;
     sendChatMessage(
-        'The user just switched to the Chat tab. Read the **USER VIEWING** line in Current State and ground your welcome in exactly that surface. Then *actually explain what is on screen* — do not just acknowledge it. Structure:\n\n' +
+        'The user just switched to the Chat tab. This welcome is the ONE place to relax the usual brevity rule — give a real explanation, not a one-liner. Read the **USER VIEWING** line in Current State and ground your welcome in exactly that surface. Then *actually explain what is on screen* — do not just acknowledge it. Structure:\n\n' +
         '1. ONE short sentence acknowledging the surface (e.g. "You are looking at the semantic graph for step 3" or "You are on the 3D scene of …").\n' +
         '2. A SUBSTANTIVE explanation (3–6 sentences) of what is on screen right now:\n' +
         '   - If a graph node is selected: explain that node — what the symbol means in context, what role it plays in the equation, and how it relates to the surrounding nodes (use the incoming/outgoing neighbors from Active Semantic Graph).\n' +

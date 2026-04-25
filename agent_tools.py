@@ -523,8 +523,10 @@ def build_system_prompt(context, agent_memory=None):
     # ``## Active Proof Step ..`` header pattern (issue #124).
     # Only emit when the dock is actually open — otherwise the agent would
     # bring up the graph unprompted in welcomes / replies even when the
-    # user isn't looking at it. The graph JSON is still available in the
-    # scene definition dump if the agent needs to reason about it.
+    # user isn't looking at it. ``runtime.graphPanel`` is the authoritative
+    # source for the visible graph here — the scene-definition dump strips
+    # the proof field, where step-level ``semanticGraph`` lives, so the
+    # agent only sees graph structure through this section.
     gp = runtime.get('graphPanel')
     if gp and gp.get('open'):
         sn = gp.get('selectedNode') or {}
