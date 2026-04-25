@@ -82,7 +82,7 @@ Always add a matrix overlay when sliders define a matrix.
 clear_info_overlays()
 ```
 
-Wipes every active info overlay. No parameters. Use to clean the slate before posting a fresh batch on a new topic. (The legacy `set_info_overlay(clear=True)` form still works for backwards compatibility but is deprecated — prefer `clear_info_overlays`.)
+Wipes every active info overlay. No parameters. Use to clean the slate before posting a fresh batch on a new topic.
 
 ---
 

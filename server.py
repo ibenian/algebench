@@ -1912,24 +1912,17 @@ def call_gemini_chat(message, history, context):
                     if DEBUG_MODE:
                         print(f"   💬 set_preset_prompts: {prompts}")
                 elif tc_name == 'set_info_overlay':
-                    # Backwards-compat: older tool calls used `clear: true` to wipe overlays.
-                    # The new dedicated tool is `clear_info_overlays`; route legacy calls there.
-                    if tc_args.get('clear'):
-                        tc_result = {"status": "success", "message": "Cleared all info overlays."}
-                        if DEBUG_MODE:
-                            print(f"   🖼️  set_info_overlay(clear=true): cleared all (legacy)")
-                    else:
-                        overlay_id = tc_args.get('id', '')
-                        content = tc_args.get('content', '')
-                        position = tc_args.get('position', 'top-left')
-                        tc_result = {
-                            "status": "success",
-                            "id": overlay_id,
-                            "position": position,
-                            "message": f"Overlay '{overlay_id}' set at {position}.",
-                        }
-                        if DEBUG_MODE:
-                            print(f"   🖼️  set_info_overlay['{overlay_id}'] @ {position}: {content[:60]}{'…' if len(content) > 60 else ''}")
+                    overlay_id = tc_args.get('id', '')
+                    content = tc_args.get('content', '')
+                    position = tc_args.get('position', 'top-left')
+                    tc_result = {
+                        "status": "success",
+                        "id": overlay_id,
+                        "position": position,
+                        "message": f"Overlay '{overlay_id}' set at {position}.",
+                    }
+                    if DEBUG_MODE:
+                        print(f"   🖼️  set_info_overlay['{overlay_id}'] @ {position}: {content[:60]}{'…' if len(content) > 60 else ''}")
                 elif tc_name == 'clear_info_overlays':
                     tc_result = {"status": "success", "message": "Cleared all info overlays."}
                     if DEBUG_MODE:
