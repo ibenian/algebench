@@ -2241,7 +2241,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                 return JSONResponse({"enriched": cached, "cached": True})
 
             print(f"[enrich] miss → Gemini  nodes={node_count} domain={domain!r} ctx={'y' if context_in else 'n'} key={key[:8]}", flush=True)
-            print(f"[enrich] payload: {_json.dumps({'graph': graph_in, 'context': context_in}, indent=2)}", flush=True)
+            # Full payload contains lesson/scene text (potentially sensitive)
+            # and adds significant log volume — gate on DEBUG_MODE.
+            if DEBUG_MODE:
+                print(f"[enrich] payload: {_json.dumps({'graph': graph_in, 'context': context_in}, indent=2)}", flush=True)
 
             try:
                 from agents import AgentError, SemanticGraphEnrichmentAgent
@@ -2262,7 +2265,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
             _graph_enrich_cache[key] = enriched
             print(f"[enrich] ok  cached  key={key[:8]}", flush=True)
-            print(f"[enrich] response: {_json.dumps(enriched, indent=2)}", flush=True)
+            if DEBUG_MODE:
+                print(f"[enrich] response: {_json.dumps(enriched, indent=2)}", flush=True)
             return JSONResponse({"enriched": enriched, "cached": False})
         except Exception as e:
             import traceback
