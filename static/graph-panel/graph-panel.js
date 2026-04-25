@@ -202,11 +202,10 @@ export class SemanticGraphPanel {
       valEl.className = "gp-val";
       if (key === "label" && typeof window !== "undefined"
           && typeof window.renderKaTeX === "function") {
-        // Label values are bare LaTeX source (e.g. ``F_{\text{action}}``).
-        // ``renderKaTeX`` is the project's prose+math renderer, so wrap in
-        // ``$..$`` to flag the whole thing as inline math. Same path as the
-        // description field so panel rendering stays consistent.
-        valEl.innerHTML = window.renderKaTeX("$" + data.label + "$", false);
+        // Labels can be plain prose ("force"), pure LaTeX, or a mix —
+        // ``renderKaTeX`` handles all three: text passes through, ``$..$``
+        // segments typeset as math.
+        valEl.innerHTML = window.renderKaTeX(data.label, false);
       } else {
         valEl.textContent = data[key];
       }
