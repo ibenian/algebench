@@ -187,18 +187,31 @@ export class SemanticGraphPanel {
 
     fieldsEl.innerHTML = "";
     for (const [key, label] of PANEL_FIELDS) {
-      if (data[key]) {
-        const row = document.createElement("div");
-        row.className = "gp-field";
-        const keyEl = document.createElement("span");
-        keyEl.className = "gp-key";
-        keyEl.textContent = label;
-        const valEl = document.createElement("span");
-        valEl.className = "gp-val";
+      if (!data[key]) continue;
+      // ``label`` carries the symbol's raw LaTeX source — typeset it instead
+      // of dumping ``F_{\text{action}}`` into the DOM as text. Skip the row
+      // entirely when it's identical to the symbol already rendered at the
+      // top of the panel; showing the same thing twice is just clutter.
+      if (key === "label" && data.label === titleLatex) continue;
+      const row = document.createElement("div");
+      row.className = "gp-field";
+      const keyEl = document.createElement("span");
+      keyEl.className = "gp-key";
+      keyEl.textContent = label;
+      const valEl = document.createElement("span");
+      valEl.className = "gp-val";
+      if (key === "label" && typeof window !== "undefined"
+          && typeof window.renderKaTeX === "function") {
+        // Label values are bare LaTeX source (e.g. ``F_{\text{action}}``).
+        // ``renderKaTeX`` is the project's prose+math renderer, so wrap in
+        // ``$..$`` to flag the whole thing as inline math. Same path as the
+        // description field so panel rendering stays consistent.
+        valEl.innerHTML = window.renderKaTeX("$" + data.label + "$", false);
+      } else {
         valEl.textContent = data[key];
-        row.append(keyEl, valEl);
-        fieldsEl.appendChild(row);
       }
+      row.append(keyEl, valEl);
+      fieldsEl.appendChild(row);
     }
     if (data.description) {
       const desc = document.createElement("div");

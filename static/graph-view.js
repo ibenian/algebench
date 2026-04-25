@@ -819,6 +819,17 @@ function allNodesHaveDescriptions(graph) {
     return true;
 }
 
+// How long the user must dwell on a step before we actually fire the
+// enrichment fetch. Quick scrubs through a proof would otherwise queue up a
+// burst of parallel requests, each producing an indicator pill, only one of
+// which matches the step the user finally lands on.
+const ENRICH_DWELL_MS = 400;
+
+// Pending dwell timer keyed by graph identity. Multiple ``renderCurrentStep
+// Graph`` calls during the dwell window just keep resetting the timer rather
+// than queuing up extra fetches.
+const _enrichDwellTimers = new WeakMap();
+
 function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
     if (!graph || graph.__enriched) return;
     if (allNodesHaveDescriptions(graph)) {
@@ -830,6 +841,23 @@ function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
         } catch { graph.__enriched = true; }
         return;
     }
+
+    // Dwell-gate: cancel any in-flight timer for this graph and start a fresh
+    // one. The fetch only runs if the user stays on this step long enough.
+    const prev = _enrichDwellTimers.get(graph);
+    if (prev) clearTimeout(prev);
+    const handle = setTimeout(() => {
+        _enrichDwellTimers.delete(graph);
+        // Bail if the user has moved on — the next render's enrich call will
+        // own the new step's graph.
+        if (currentProofStep() !== stepAtFetch) return;
+        _runEnrichmentFetch(graph, keyAtFetch, stepAtFetch);
+    }, ENRICH_DWELL_MS);
+    _enrichDwellTimers.set(graph, handle);
+}
+
+function _runEnrichmentFetch(graph, keyAtFetch, stepAtFetch) {
+    if (graph.__enriched) return;
     let attempted;
     try {
         Object.defineProperty(graph, '__enriched', {
