@@ -472,6 +472,17 @@ export function addInfoOverlay(id, content, position, stepDefined = false, keep 
     const container = document.getElementById('info-overlays');
     if (!container) return;
     const pos = position || 'top-left';
+    if (!id) {
+        const preview = typeof content === 'string'
+            ? (content.length > 80 ? content.slice(0, 80) + '…' : content)
+            : undefined;
+        console.warn('addInfoOverlay: id is required; ignoring overlay', {
+            position: pos,
+            contentLength: typeof content === 'string' ? content.length : undefined,
+            contentPreview: preview,
+        });
+        return;
+    }
     let existing = activeInfoOverlays[id];
     let el = existing && existing.el;
     let contentEl = existing && existing.contentEl;

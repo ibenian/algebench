@@ -121,7 +121,8 @@ Defines all Gemini tool declarations and the dynamic system prompt builder.
 | `mem_get` | Read a value from agent memory |
 | `mem_set` | Write a value to agent memory |
 | `set_preset_prompts` | Set clickable suggestion chips in the chat UI |
-| `set_info_overlay` | Add/update/clear floating LaTeX overlays on the canvas |
+| `set_info_overlay` | Add or update a floating LaTeX overlay on the canvas (id + content required) |
+| `clear_info_overlays` | Remove all info overlays from the canvas |
 
 ### System Prompt
 
@@ -380,7 +381,8 @@ When the server returns tool calls, `chat.js` executes them client-side:
 | `add_scene` | Calls `window.addScene(sceneJson)` |
 | `set_sliders` | Calls `window.setSliders(values)` |
 | `set_preset_prompts` | Renders suggestion chips |
-| `set_info_overlay` | Calls `window.setInfoOverlay(...)` |
+| `set_info_overlay` | Calls `window.addInfoOverlay(id, content, position)` |
+| `clear_info_overlays` | Calls `window.removeAllInfoOverlays()` |
 
 ### TTS Pipeline
 

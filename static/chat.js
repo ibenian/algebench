@@ -597,12 +597,14 @@ async function sendChatMessage(text, { silent = false } = {}) {
                 } else if (tc.name === 'set_preset_prompts') {
                     setPresetPrompts(tc.args.prompts || []);
                 } else if (tc.name === 'set_info_overlay') {
-                    if (tc.args.clear) {
-                        if (typeof removeAllInfoOverlays === 'function') removeAllInfoOverlays();
-                    } else if (tc.args.id) {
+                    if (tc.args.id) {
                         if (typeof addInfoOverlay === 'function')
                             addInfoOverlay(tc.args.id, tc.args.content || '', tc.args.position || 'top-left');
+                    } else {
+                        console.warn('set_info_overlay: tool call missing required `id`; dropping', { args: tc.args });
                     }
+                } else if (tc.name === 'clear_info_overlays') {
+                    if (typeof removeAllInfoOverlays === 'function') removeAllInfoOverlays();
                 } else if (tc.name === 'navigate_proof') {
                     const proofStep = parseInt(tc.result?.step ?? tc.args?.step ?? 0);
                     // Agent uses 1-based, navigateProof uses 0-based (-1 = goal)

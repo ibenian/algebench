@@ -69,12 +69,20 @@ set_info_overlay(id="det", content="$\\det(M) = {{a*d - b*c}}$", position="top-r
 set_info_overlay(id="mag", content="$\\|\\vec{v}\\| = {{toFixed(sqrt(vx^2+vy^2+vz^2), 2)}}$")
 set_info_overlay(id="omega", content="$\\omega = {{toFixed(2*pi*rpm/60, 3)}}\\text{ rad/s}$")
 set_info_overlay(id="status", content="Status: {{v > 0 ? \"stable\" : \"unstable\"}}")
-set_info_overlay(clear=True)   // remove all overlays
 ```
 
+`id` and `content` are required. Reuse the same id to update an existing overlay; pick a new id for a distinct one.
 `{{expr}}` placeholders use math.js syntax and update live as sliders move.
 Write `{{a}}`. Do not use single-brace `{a}` placeholders.
 Always add a matrix overlay when sliders define a matrix.
+
+### `clear_info_overlays` — Remove all info overlays
+
+```
+clear_info_overlays()
+```
+
+Wipes every active info overlay. No parameters. Use to clean the slate before posting a fresh batch on a new topic.
 
 ---
 
