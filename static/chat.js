@@ -602,6 +602,8 @@ async function sendChatMessage(text, { silent = false } = {}) {
                     } else if (tc.args.id) {
                         if (typeof addInfoOverlay === 'function')
                             addInfoOverlay(tc.args.id, tc.args.content || '', tc.args.position || 'top-left');
+                    } else {
+                        console.warn('set_info_overlay: tool call missing required `id` (and clear!=true); dropping', { args: tc.args });
                     }
                 } else if (tc.name === 'navigate_proof') {
                     const proofStep = parseInt(tc.result?.step ?? tc.args?.step ?? 0);
