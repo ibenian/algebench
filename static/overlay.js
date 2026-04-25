@@ -471,6 +471,10 @@ export function applyStepInfoOverlays(infoDefs) {
 export function addInfoOverlay(id, content, position, stepDefined = false, keep = false) {
     const container = document.getElementById('info-overlays');
     if (!container) return;
+    if (!id) {
+        console.warn('addInfoOverlay: id is required; ignoring overlay', { content, position });
+        return;
+    }
     const pos = position || 'top-left';
     let existing = activeInfoOverlays[id];
     let el = existing && existing.el;
