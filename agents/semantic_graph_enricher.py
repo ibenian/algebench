@@ -50,9 +50,46 @@ Your job:
 3. Add or refine `color` as a CSS hex string (e.g. "#0d47a1"). Use color to
    group related concepts; reserve red for energy/heat, blue for fluid/water,
    green for biology/growth, purple for quantum, etc. Hex only.
-4. Correct obviously wrong `role`, `dimension`, `unit`, `quantity`, and `value`
-   when the symbol's identity is unambiguous in the given context. Only fill or
-   change these — never invent values for unknown symbols.
+4. Fill missing `dimension`, `unit`, and `quantity` whenever they can be
+   determined unambiguously — and correct obviously wrong values where
+   they are present.
+   - **Quantity / scalar / vector / constant / number nodes**: read the
+     symbol's identity from the context (e.g. in a rocket-thrust step,
+     `T` is thrust → unit `N`, dimension `M·L·T⁻²`, quantity `thrust`).
+   - **Operator / expression / function nodes**: compose the dimension
+     and unit from the operands when the operation makes that
+     well-defined. Examples:
+       - `m · a`         → unit `N`,    dimension `M·L·T⁻²`
+       - `\\dot{m} · v_e · t` → unit `kg·m/s`, dimension `M·L·T⁻¹`
+       - `d(m v) / dt`   → unit `N`,    dimension `M·L·T⁻²`
+       - `\\sin(x)`, `\\log(x)`, `\\exp(x)` for dimensionless `x`
+                         → unit `\"\"`, dimension `1`
+     For sums/differences, only fill if all operands share the same
+     dimension. Skip operator nodes whose operands are themselves
+     missing units — don't guess.
+   - **Relation nodes (`=`, `<`, `>`, `≈`)**: these are propositions, not
+     physical quantities. Leave `dimension` / `unit` / `quantity` unset.
+   - **Text nodes**: leave `dimension` / `unit` / `quantity` unset.
+
+   Conventions (match the existing corpus):
+   - Compact SI units: `m`, `s`, `kg`, `N`, `J`, `Pa`, `K`, `m/s`,
+     `m/s²`, `kg·m/s`, `J·s`, etc. Use `·` for products and `⁻¹`, `⁻²`
+     for negative exponents. Dimensionless quantities take `unit: \"\"`
+     and `dimension: \"1\"`.
+   - Dimensions use MLT-exponent form: `L`, `T`, `M`, `L·T⁻¹`,
+     `M·L·T⁻²`, `M·L²·T⁻²`, etc.
+   - Quantity is a short symbolic name (`mass`, `velocity`, `thrust`,
+     `pressure`, `temperature`, `impulse`, `energy`).
+
+   Also correct an obviously wrong `role` when context makes it
+   unambiguous.
+
+   Do NOT invent numeric `value`s for unknown symbols. Only fill `value`
+   when the context literally states a number for that symbol (e.g.
+   \"g = 9.81 m/s²\" → value 9.81).
+
+   When the symbol or composition is ambiguous, leave the field unset
+   rather than guessing.
 5. Preserve every node `id` exactly. Preserve `edges` verbatim. Preserve
    `classification` and `domain` verbatim.
 6. Do NOT add new nodes or remove existing nodes. Do NOT include any prose,
