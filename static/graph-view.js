@@ -1453,3 +1453,83 @@ window.graphView = {
     rebuildProofTree,
     renderCurrentStepGraph,
 };
+
+/**
+ * Read-only snapshot of the semantic-graph dock state, for chat context
+ * (issue #124). Returns null only when the graph dock is inactive AND the
+ * current step has no graph. When the dock is active, returns a state
+ * object even if `hasGraph` is false — so callers can tell the user is
+ * looking at the (empty) Math view.
+ */
+function getGraphPanelState() {
+    const dockActive = isGraphModeActive();
+    const step = (typeof currentProofStep === 'function') ? currentProofStep() : null;
+    const sg = step && step.semanticGraph;
+    const graph = sg && sg.graph;
+
+    // Skip the section entirely only when the user isn't on the graph dock
+    // *and* the current step has no graph to describe — there's nothing to
+    // tell the agent. If the dock is active, always emit a state object
+    // (even with no graph) so the agent knows the user is *looking at the
+    // graph view*, just an empty one.
+    if (!graph && !dockActive) return null;
+
+    const nodes = (graph && Array.isArray(graph.nodes)) ? graph.nodes : [];
+    const edges = (graph && Array.isArray(graph.edges)) ? graph.edges : [];
+
+    const out = {
+        open: dockActive,
+        hasGraph: !!graph,
+        source: graph ? 'step-embedded' : null,
+        stepNumber: (state && typeof state.proofStepIndex === 'number')
+            ? state.proofStepIndex + 1 : null,
+        theme: _currentTheme,
+        labelMode: _currentLabels,
+        direction: _currentDirection,
+        zoom: Math.round(_zoom * 100),
+        nodeCount: nodes.length,
+        edgeCount: edges.length,
+    };
+
+    if (sg && sg.error) {
+        out.parseError = sg.error.message || String(sg.error);
+    }
+
+    // Compact nodes / edges so the agent can reason about graph structure
+    // without having to ask the user to click each node. Capped to keep
+    // prompt size sane — most graphs are well under these limits.
+    if (graph) {
+        const NODE_CAP = 60, EDGE_CAP = 80, DESC_CAP = 120;
+        out.nodes = nodes.slice(0, NODE_CAP).map(n => {
+            const e = { id: n.id };
+            if (n.type) e.type = n.type;
+            if (n.op) e.op = n.op;
+            if (n.label) e.label = n.label;
+            if (n.role) e.role = n.role;
+            if (n.description) {
+                e.description = n.description.length > DESC_CAP
+                    ? n.description.slice(0, DESC_CAP - 1) + '…'
+                    : n.description;
+            }
+            return e;
+        });
+        if (nodes.length > NODE_CAP) out.nodesTruncated = nodes.length - NODE_CAP;
+        out.edges = edges.slice(0, EDGE_CAP).map(e => {
+            const o = { from: e.from, to: e.to };
+            if (e.semantic) o.semantic = e.semantic;
+            return o;
+        });
+        if (edges.length > EDGE_CAP) out.edgesTruncated = edges.length - EDGE_CAP;
+    }
+
+    if (_currentGraphPanel && _currentGraphPanel.activeNode) {
+        const id = _currentGraphPanel.activeNode;
+        const payload = typeof _currentGraphPanel.getNodePayload === 'function'
+            ? _currentGraphPanel.getNodePayload(id) : null;
+        if (payload) out.selectedNode = payload;
+    }
+
+    return out;
+}
+
+window.algebenchGetGraphPanelState = getGraphPanelState;

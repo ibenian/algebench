@@ -20,6 +20,26 @@ const CHAT_HISTORY_MAX = Infinity;
 
 let _presetPrompts = [];
 
+// Track which surface the user last interacted with so chat context can
+// disambiguate "what are they looking at right now" — the dock tab being
+// "graph" only tells us the graph is *visible*, not that the user is
+// actually working in it (vs. the 3D viewport or the side panel).
+// Values: 'graph' | 'viewport' | 'panel' | null
+let _lastFocusedSurface = null;
+function _classifyFocusTarget(target) {
+    if (!target || !target.closest) return null;
+    if (target.closest('#graph-viewport, #dock-tab-graph, .graph-panel-info, .graph-panel-tooltip')) return 'graph';
+    if (target.closest('#mathbox-container, #mathbox-overlay, canvas')) return 'viewport';
+    if (target.closest('.explanation-panel, .panel-tab, .tab-content, #chat-input, #preset-prompts')) return 'panel';
+    return null;
+}
+if (typeof window !== 'undefined') {
+    window.addEventListener('pointerdown', (e) => {
+        const surface = _classifyFocusTarget(e.target);
+        if (surface) _lastFocusedSurface = surface;
+    }, true);
+}
+
 function setPresetPrompts(prompts) {
     _presetPrompts = prompts || [];
     const container = document.getElementById('preset-prompts');
@@ -184,6 +204,44 @@ function buildChatContext() {
             runtime.proof = proofCtx;
         }
     }
+
+    // Semantic-graph dock context (issue #124)
+    if (typeof window.algebenchGetGraphPanelState === 'function') {
+        try {
+            const gp = window.algebenchGetGraphPanelState();
+            if (gp) runtime.graphPanel = gp;
+        } catch (e) {
+            console.warn('[chat] failed to read graph panel state:', e);
+        }
+    }
+
+    // Which surface did the user last touch? Disambiguates dock visibility
+    // from actual user attention (issue #124 follow-up).
+    if (_lastFocusedSurface) {
+        runtime.lastFocusedSurface = _lastFocusedSurface;
+    }
+
+    // High-level "what is the user actually seeing right now?" — composed
+    // from the dock tab (main viewport), the right-panel tab, and the
+    // proof-panel toggle. Gives the agent a one-glance summary it can use
+    // for both the welcome message and contextual replies.
+    // Examples:
+    //   ['scene', 'doc']
+    //   ['scene', 'chat', 'proof']
+    //   ['semantic graph', 'chat', 'proof']
+    const viewing = [];
+    const graphActive = runtime.graphPanel && runtime.graphPanel.open;
+    viewing.push(graphActive ? 'semantic graph' : 'scene');
+    if (runtime.activeTab === 'chat') {
+        viewing.push('chat');
+        const proofPanel = document.getElementById('proof-panel');
+        if (proofPanel && !proofPanel.classList.contains('hidden')) {
+            viewing.push('proof');
+        }
+    } else if (runtime.activeTab === 'doc') {
+        viewing.push('doc');
+    }
+    runtime.userViewing = viewing;
 
     ctx.runtime = runtime;
     return ctx;
@@ -1212,7 +1270,15 @@ function sendWelcomeMessage() {
     if (!chatAvailable || shouldSkipWelcome() || welcomeInFlight) return;
     welcomeInFlight = true;
     sendChatMessage(
-        'The user just opened the visualization. Give a brief, friendly welcome (1-2 sentences) and mention what they\'re currently looking at. Be concise.',
+        '**LENGTH OVERRIDE FOR THIS REPLY ONLY:** the usual brevity rule does NOT apply to this welcome. Subsequent replies revert to normal brevity.\n\n' +
+        'The user just switched to the Chat tab. Read the **USER VIEWING** line in Current State and ground your welcome in exactly that surface. *Actually explain what is on screen* — do not just acknowledge it. Structure:\n\n' +
+        '1. ONE short sentence acknowledging the surface (e.g. "You are looking at the semantic graph for step 3" or "You are on the 3D scene of …").\n' +
+        '2. A SUBSTANTIVE explanation (3–6 sentences) of what is on screen right now:\n' +
+        '   - If a graph node is selected: explain that node — what the symbol means in context, what role it plays in the equation, and how it relates to the surrounding nodes (use the incoming/outgoing neighbors from Active Semantic Graph).\n' +
+        '   - If the semantic graph is open with no node selected: walk through the structure of the graph (root operator, key operands, the relationship the graph encodes).\n' +
+        '   - If on the 3D scene: explain the visible elements and what the current step is demonstrating.\n' +
+        '3. End with ONE concrete follow-up question the user is most likely to ask next, phrased as an offer (e.g. "Want me to walk through how … relates to … ?").\n\n' +
+        'Do not be generic. Do not list capabilities. Use the specific names, symbols, and relationships from the Active Semantic Graph / Active Proof Step / Current Scene Definition sections of the system prompt.',
         { silent: true }
     ).finally(() => { welcomeInFlight = false; });
 }

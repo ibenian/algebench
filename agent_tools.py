@@ -361,7 +361,7 @@ def build_system_prompt(context, agent_memory=None):
 - Do not write scene JSON as text in chat — make tool calls so things actually render.
 - **CRITICAL**: Always call `set_preset_prompts` as a function tool call. NEVER write the prompts as JSON text in your response.
 - **CRITICAL**: NEVER use `{{expr}}` placeholders in your chat response text. Placeholders like `{{theta}}` or `{{toFixed(v,1)}}` only work inside `set_info_overlay` content, not in chat messages. In chat, write computed values directly or describe them in words.
-- **STATE over history**: The Current State section is always authoritative for scene, step, sliders, and camera.
+- **STATE over history**: The Current State section is always authoritative for scene, step, sliders, semantic graph and camera.
 - **Tool capabilities**:
   - `eval_math`: compute exact numbers. When asked to "compute", "calculate", "get", or "make a series" — call `eval_math` and let the result appear in chat. To sweep a range: set `sweep_var="x"`, `sweep_start`, `sweep_end`, `sweep_steps`. Only pipe the result into `add_scene` if the user also wants a visualization. Expression syntax is Python: `sin(x)` not `Math.sin(x)`, `x**2` not `x^2`.
   - `add_scene`: build a visualization. **Only call when the user explicitly requests it or when it clearly serves the current interaction — not as a default response to every question.** A `line` with many `points` draws a curve; `vectors` with `froms`/`tos` arrays draws a series of arrows. Do not hardcode arrays that could be computed — use `eval_math` first. **Put sliders only in `steps[].sliders` (never top-level `scene.sliders`).**
@@ -416,8 +416,16 @@ def build_system_prompt(context, agent_memory=None):
         parts.append(f"- Caption displayed to user: \"{runtime['currentCaption']}\"")
     if runtime.get('projection'):
         parts.append(f"- Projection: {runtime['projection']}")
-    if runtime.get('activeTab'):
-        parts.append(f"- User viewing: {runtime['activeTab']} panel")
+
+    # >>> USER VIEWING — emphasized last so it's the freshest line in
+    # the agent's context window. Composite of main viewport (scene /
+    # semantic graph) + visible right-panel surfaces (doc / chat / proof).
+    # Falls back to the bare active tab for older clients.
+    if runtime.get('userViewing'):
+        viewing = ', '.join(runtime['userViewing'])
+        parts.append(f"- **USER VIEWING: {viewing}** ← what the user is looking at right now; ground your reply in this.")
+    elif runtime.get('activeTab'):
+        parts.append(f"- **USER VIEWING: {runtime['activeTab']} panel** ← what the user is looking at right now; ground your reply in this.")
 
     # Scene tree for navigation
     if context.get('sceneTree'):
@@ -509,6 +517,80 @@ def build_system_prompt(context, agent_memory=None):
         if upcoming:
             lines = [f"{s['step']}. {s.get('label', '?')}" for s in upcoming]
             parts.append(f"\n## Upcoming Proof Steps\n" + "\n".join(lines))
+
+    # Active Semantic Graph — placed right after the proof block since it's
+    # generally derived from the active proof step. Mirrors the
+    # ``## Active Proof Step ..`` header pattern (issue #124).
+    # Only emit when the dock is actually open — otherwise the agent would
+    # bring up the graph unprompted in welcomes / replies even when the
+    # user isn't looking at it. ``runtime.graphPanel`` is the authoritative
+    # source for the visible graph here — the scene-definition dump strips
+    # the proof field, where step-level ``semanticGraph`` lives, so the
+    # agent only sees graph structure through this section.
+    gp = runtime.get('graphPanel')
+    if gp and gp.get('open'):
+        sn = gp.get('selectedNode') or {}
+        header_suffix = ''
+        if sn:
+            type_str = sn.get('type') or ''
+            op_str = sn.get('op')
+            type_label = f"{type_str}/{op_str}" if (type_str and op_str) else (type_str or op_str or '')
+            header_suffix = f" — selected: {sn.get('id')}" + (f" ({type_label})" if type_label else "")
+        parts.append(f"\n## Active Semantic Graph{header_suffix}")
+        if not gp.get('hasGraph', True):
+            parts.append(
+                f"- Dock open, but the current step (step {gp.get('stepNumber')}) "
+                f"has no semantic graph. Suggest a step that does, or fall back to the 3D scene."
+            )
+        else:
+            parts.append(
+                f"- {gp.get('nodeCount')} nodes, {gp.get('edgeCount')} edges · "
+                f"step {gp.get('stepNumber')} · "
+                f"theme={gp.get('theme')}, labels={gp.get('labelMode')}, "
+                f"direction={gp.get('direction')}, zoom={gp.get('zoom')}%"
+            )
+            # Whole-graph structure — so the agent can reason about *all*
+            # nodes, not just the one the user happened to click.
+            nodes = gp.get('nodes') or []
+            if nodes:
+                parts.append("- Nodes:")
+                for n in nodes:
+                    facets = []
+                    if n.get('type'): facets.append(n['type'])
+                    if n.get('op'): facets.append(f"op={n['op']}")
+                    if n.get('label'): facets.append(f"label={n['label']}")
+                    if n.get('role'): facets.append(f"role={n['role']}")
+                    facet_str = f" [{', '.join(facets)}]" if facets else ''
+                    desc_str = f" — {n['description']}" if n.get('description') else ''
+                    parts.append(f"  - `{n['id']}`{facet_str}{desc_str}")
+                if gp.get('nodesTruncated'):
+                    parts.append(f"  - … ({gp['nodesTruncated']} more nodes truncated)")
+            edges = gp.get('edges') or []
+            if edges:
+                parts.append("- Edges:")
+                for e in edges:
+                    sem = f" ({e['semantic']})" if e.get('semantic') else ''
+                    parts.append(f"  - `{e['from']}` → `{e['to']}`{sem}")
+                if gp.get('edgesTruncated'):
+                    parts.append(f"  - … ({gp['edgesTruncated']} more edges truncated)")
+        if gp.get('parseError'):
+            parts.append(f"- Parse error: {gp['parseError']}")
+        if sn:
+            parts.append(f"- **Selected node** `{sn.get('id')}`:")
+            for k in ('type', 'role', 'op', 'label'):
+                if sn.get(k):
+                    parts.append(f"  - {k}: {sn[k]}")
+            if sn.get('subexpr'):
+                parts.append(f"  - subexpr: `{sn['subexpr']}`")
+            if sn.get('description'):
+                parts.append(f"  - description: \"{sn['description']}\"")
+            neigh = sn.get('neighbors') or {}
+            inc = neigh.get('incoming') or []
+            out = neigh.get('outgoing') or []
+            if inc: parts.append(f"  - incoming: {', '.join(inc)}")
+            if out: parts.append(f"  - outgoing: {', '.join(out)}")
+        elif gp.get('hasGraph', True):
+            parts.append("- No node selected.")
 
     # Agent tools reference (loaded from external file)
     if _AGENT_TOOLS_REFERENCE:

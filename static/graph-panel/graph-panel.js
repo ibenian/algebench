@@ -273,16 +273,27 @@ export class SemanticGraphPanel {
           this._highlight(id);
           this._showPanel(id);
         }
+        this._emitSelectionChange();
       };
       el.addEventListener("click", onClick);
       this._handlers.push([el, "click", onClick]);
     });
 
     const onDocClick = (e) => {
+      if (this._activeNode === null) return;
       if (this.panel.contains(e.target)) return;
+      // Only deselect when the click landed inside the graph viewport itself
+      // (i.e. clicked the canvas / empty SVG area). Clicks on the chat,
+      // side panel, scenes tree, controls, etc. must preserve selection so
+      // the user can reference the active node from the chat.
+      if (!this.container.contains(e.target)) return;
+      // Clicks on a node are handled by the node-level click handler above —
+      // bail here so we don't double-process and clear state mid-toggle.
+      if (e.target.closest && e.target.closest(".node")) return;
       this._activeNode = null;
       this._clearHighlight();
       this.panel.classList.remove("open");
+      this._emitSelectionChange();
     };
     document.addEventListener("click", onDocClick);
     this._handlers.push([document, "click", onDocClick]);
@@ -299,12 +310,47 @@ export class SemanticGraphPanel {
     this._activeNode = nodeId;
     this._highlight(nodeId);
     this._showPanel(nodeId);
+    this._emitSelectionChange();
     return true;
   }
 
   /** Currently active node id, or null. */
   get activeNode() {
     return this._activeNode;
+  }
+
+  /**
+   * Return a serializable payload for a node id (sanitized id form),
+   * including immediate edge neighbors. Used by chat-context builders to
+   * tell the AI assistant which node the user has selected.
+   */
+  getNodePayload(nodeId) {
+    if (!nodeId || !this._nodeData[nodeId]) return null;
+    const data = this._nodeData[nodeId];
+    const subexpr = this._subexprs[nodeId] || null;
+    const incoming = [];
+    const outgoing = [];
+    for (const [src, dst] of this._edges) {
+      if (dst === nodeId && src !== nodeId) incoming.push(src);
+      if (src === nodeId && dst !== nodeId) outgoing.push(dst);
+    }
+    return {
+      ...data,
+      subexpr,
+      neighbors: { incoming, outgoing },
+    };
+  }
+
+  _emitSelectionChange() {
+    if (typeof window === "undefined") return;
+    try {
+      window.dispatchEvent(new CustomEvent("algebench:graphselectionchange", {
+        detail: {
+          activeNode: this._activeNode,
+          payload: this._activeNode ? this.getNodePayload(this._activeNode) : null,
+        },
+      }));
+    } catch {}
   }
 
   destroy() {
