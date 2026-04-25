@@ -1270,7 +1270,7 @@ function sendWelcomeMessage() {
     if (!chatAvailable || shouldSkipWelcome() || welcomeInFlight) return;
     welcomeInFlight = true;
     sendChatMessage(
-        'The user just opened the visualization. Give a brief, friendly welcome (1-2 sentences) and mention what they\'re currently looking at. Be concise.',
+        'The user just switched to the Chat tab. Read the **USER VIEWING** line in Current State and ground your welcome in exactly that surface — if they are on the semantic graph, mention the graph (and the selected node if any); if they are on the 3D scene, mention the scene. Keep it to 1-2 sentences and offer one concrete next thing they could ask about *based on what is on screen right now*.',
         { silent: true }
     ).finally(() => { welcomeInFlight = false; });
 }
