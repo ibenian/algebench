@@ -276,6 +276,25 @@ export class SemanticGraphPanel {
     this._handlers.push([document, "click", onDocClick]);
   }
 
+  /**
+   * Programmatically activate a node — same effect as a user click.
+   * No-op (returns false) if the id isn't in this graph's node index, so
+   * callers can safely pass a stale id from a previous render without
+   * having to check first. Returns true on successful selection.
+   */
+  selectNode(nodeId) {
+    if (!nodeId || !this._nodeData[nodeId]) return false;
+    this._activeNode = nodeId;
+    this._highlight(nodeId);
+    this._showPanel(nodeId);
+    return true;
+  }
+
+  /** Currently active node id, or null. */
+  get activeNode() {
+    return this._activeNode;
+  }
+
   destroy() {
     for (const [el, evt, fn] of this._handlers) {
       el.removeEventListener(evt, fn);

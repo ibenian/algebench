@@ -21,6 +21,7 @@ import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 
 let _currentGraphPanel = null;
 let _currentSemanticKey = null;
+let _activeStepForPanel = null;
 let _initDone = false;
 
 // Persisted user preferences. localStorage keys are versioned with an
@@ -733,7 +734,16 @@ async function renderCurrentStepGraph(force = false) {
         return;
     }
 
+    // Preserve the active node across re-renders of the *same* step so theme
+    // /direction/labels changes and async enrichment don't steal the user's
+    // selection. ``_activeStepForPanel`` tracks which step the previous panel
+    // was attached to; if the user moved on, we drop the selection because
+    // node ids can collide across steps (e.g. ``m`` in two different graphs).
+    let preservedActiveNode = null;
     if (_currentGraphPanel) {
+        if (_activeStepForPanel === step) {
+            preservedActiveNode = _currentGraphPanel.activeNode || null;
+        }
         try { _currentGraphPanel.destroy(); } catch {}
         _currentGraphPanel = null;
     }
@@ -747,10 +757,15 @@ async function renderCurrentStepGraph(force = false) {
             panel: buildInlineInfoPanel(infoHost),
         });
         _currentGraphPanel.attach();
+        _activeStepForPanel = step;
+        if (preservedActiveNode) {
+            _currentGraphPanel.selectNode(preservedActiveNode);
+        }
     }
 
     renderEdgeLegend(edgeStyles, graph);
     _currentSemanticKey = key;
+    refreshEnrichmentIndicatorVisibility();
 
     // Background Gemini enrichment: fire-and-forget. Only triggers once per
     // graph (skips when ``__enriched`` is set). Re-renders in place when the
@@ -825,6 +840,15 @@ function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
     if (!attempted) graph.__enriched = true;
 
     const context = buildEnrichContext(stepAtFetch);
+    // Each enrichment owns its own indicator. When several fire — say the user
+    // pages through steps quickly — they stack independently and each removes
+    // itself when its own fetch resolves, regardless of order.
+    const indicator = showEnrichmentIndicator(stepAtFetch);
+    const removeIndicator = () => {
+        if (indicator && indicator.parentNode) {
+            indicator.parentNode.removeChild(indicator);
+        }
+    };
     fetch('/api/graph/enrich', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -853,6 +877,50 @@ function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
         renderCurrentStepGraph(true);
     }).catch((err) => {
         console.warn('[graph-view] enrich error:', err);
+    }).finally(removeIndicator);
+}
+
+// Floating "thinking" pill, one per in-flight enrichment fetch. Lives in
+// ``#graph-viewport`` so it shares the same coordinate system as the graph
+// surface but doesn't get wiped by ``clearGraph()`` (which only touches the
+// mermaid container and the info panel host).
+//
+// We tag each indicator with the step's stable key. If the user navigates
+// to a different step, ``refreshEnrichmentIndicatorVisibility()`` hides the
+// ones that don't belong to the currently visible step — they stay in the
+// DOM so the same indicator reappears if the user navigates back before
+// the fetch resolves.
+function showEnrichmentIndicator(step) {
+    const viewport = document.getElementById('graph-viewport');
+    if (!viewport) return null;
+    const el = document.createElement('div');
+    el.className = 'graph-enrich-indicator';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.dataset.stepKey = stableStepKey(step);
+    const dots = document.createElement('span');
+    dots.className = 'gei-dots';
+    dots.append(
+        document.createElement('span'),
+        document.createElement('span'),
+        document.createElement('span'),
+    );
+    const text = document.createElement('span');
+    text.className = 'gei-text';
+    text.textContent = 'Enriching graph…';
+    el.append(dots, text);
+    viewport.appendChild(el);
+    refreshEnrichmentIndicatorVisibility();
+    return el;
+}
+
+function refreshEnrichmentIndicatorVisibility() {
+    const viewport = document.getElementById('graph-viewport');
+    if (!viewport) return;
+    const step = currentProofStep();
+    const currentKey = step ? stableStepKey(step) : null;
+    viewport.querySelectorAll('.graph-enrich-indicator').forEach((el) => {
+        el.classList.toggle('hidden', el.dataset.stepKey !== currentKey);
     });
 }
 
