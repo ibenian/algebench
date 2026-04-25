@@ -294,6 +294,10 @@ function _highlightColorRGB(color) {
         white:   [255, 255, 255],
         gray:    [160, 170, 185],
         gold:    [255, 200, 50],
+        silver:  [200, 210, 220],
+        purple:  [170, 100, 220],
+        teal:    [60, 200, 200],
+        lime:    [180, 230, 80],
     };
     return colors[color] || colors.cyan;
 }

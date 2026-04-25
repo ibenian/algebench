@@ -1,10 +1,9 @@
 {
   "title": "Star Algebra Test",
-  "description": "Test scene for * inside LaTeX — adjoint operators, C*-algebras, convolution",
   "scenes": [
     {
       "title": "Star Notation",
-      "description": "The adjoint $T^*$ of an operator $T$ satisfies $\\langle Tx, y \\rangle = \\langle x, T^* y \\rangle$.",
+      "description": "Test scene for * inside LaTeX — adjoint operators, C*-algebras, convolution. The adjoint $T^*$ of an operator $T$ satisfies $\\langle Tx, y \\rangle = \\langle x, T^* y \\rangle$.",
       "camera": { "position": [0, 0, 6] },
       "steps": [
         {
@@ -46,9 +45,9 @@
       ],
       "elements": [
         {
-          "type": "label",
+          "type": "text",
           "id": "info",
-          "label": "Adjoints: $T^*$, $S^*$\n$C^*$-algebra: $\\|a^*a\\| = \\|a\\|^2$\nConvolution: $f * g$",
+          "text": "Adjoints: $T^*$, $S^*$\n$C^*$-algebra: $\\|a^*a\\| = \\|a\\|^2$\nConvolution: $f * g$",
           "position": [0, 1, 0],
           "color": "#ffffff"
         }

@@ -221,17 +221,18 @@ function processStepRemoves(removeList, tracker) {
             removeTrackSliders(tracker);
             continue;
         }
+        if (item.type === 'info') {
+            if (item.id) removeInfoOverlay(item.id);
+            else removeAllInfoOverlays();
+            continue;
+        }
         if (item.id) {
             if (!ownIds.has(item.id) && state.elementRegistry[item.id] && !state.elementRegistry[item.id].hidden) {
                 hideElementById(item.id);
                 tracker.removedIds.push(item.id);
             }
             if (removeTrackSliderById(item.id, tracker)) slidersChanged = true;
-            continue;
-        }
-        if (item.type === 'info') {
-            if (item.id) removeInfoOverlay(item.id);
-            else removeAllInfoOverlays();
+            removeInfoOverlay(item.id);
             continue;
         }
         if (item.type === 'slider') {

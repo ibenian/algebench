@@ -30,6 +30,12 @@
       "runtimeExecutable": "./algebench",
       "runtimeArgs": ["scenes/draft/test-proof-quadratic.json", "--port", "5734", "--debug", "--server-only"],
       "port": 5734
+    },
+    {
+      "name": "quantum-states",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": ["scenes/draft/quantum-states.json", "--port", "5735", "--debug", "--server-only"],
+      "port": 5735
     }
   ]
 }
