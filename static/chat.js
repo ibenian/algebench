@@ -20,6 +20,26 @@ const CHAT_HISTORY_MAX = Infinity;
 
 let _presetPrompts = [];
 
+// Track which surface the user last interacted with so chat context can
+// disambiguate "what are they looking at right now" — the dock tab being
+// "graph" only tells us the graph is *visible*, not that the user is
+// actually working in it (vs. the 3D viewport or the side panel).
+// Values: 'graph' | 'viewport' | 'panel' | null
+let _lastFocusedSurface = null;
+function _classifyFocusTarget(target) {
+    if (!target || !target.closest) return null;
+    if (target.closest('#graph-viewport, #dock-tab-graph, .graph-panel-info, .graph-panel-tooltip')) return 'graph';
+    if (target.closest('#mathbox-container, #mathbox-overlay, canvas')) return 'viewport';
+    if (target.closest('.explanation-panel, .panel-tab, .tab-content, #chat-input, #preset-prompts')) return 'panel';
+    return null;
+}
+if (typeof window !== 'undefined') {
+    window.addEventListener('pointerdown', (e) => {
+        const surface = _classifyFocusTarget(e.target);
+        if (surface) _lastFocusedSurface = surface;
+    }, true);
+}
+
 function setPresetPrompts(prompts) {
     _presetPrompts = prompts || [];
     const container = document.getElementById('preset-prompts');
@@ -184,6 +204,44 @@ function buildChatContext() {
             runtime.proof = proofCtx;
         }
     }
+
+    // Semantic-graph dock context (issue #124)
+    if (typeof window.algebenchGetGraphPanelState === 'function') {
+        try {
+            const gp = window.algebenchGetGraphPanelState();
+            if (gp) runtime.graphPanel = gp;
+        } catch (e) {
+            console.warn('[chat] failed to read graph panel state:', e);
+        }
+    }
+
+    // Which surface did the user last touch? Disambiguates dock visibility
+    // from actual user attention (issue #124 follow-up).
+    if (_lastFocusedSurface) {
+        runtime.lastFocusedSurface = _lastFocusedSurface;
+    }
+
+    // High-level "what is the user actually seeing right now?" — composed
+    // from the dock tab (main viewport), the right-panel tab, and the
+    // proof-panel toggle. Gives the agent a one-glance summary it can use
+    // for both the welcome message and contextual replies.
+    // Examples:
+    //   ['scene', 'doc']
+    //   ['scene', 'chat', 'proof']
+    //   ['semantic graph', 'chat', 'proof']
+    const viewing = [];
+    const graphActive = runtime.graphPanel && runtime.graphPanel.open;
+    viewing.push(graphActive ? 'semantic graph' : 'scene');
+    if (runtime.activeTab === 'chat') {
+        viewing.push('chat');
+        const proofPanel = document.getElementById('proof-panel');
+        if (proofPanel && !proofPanel.classList.contains('hidden')) {
+            viewing.push('proof');
+        }
+    } else if (runtime.activeTab === 'doc') {
+        viewing.push('doc');
+    }
+    runtime.userViewing = viewing;
 
     ctx.runtime = runtime;
     return ctx;

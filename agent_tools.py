@@ -361,7 +361,7 @@ def build_system_prompt(context, agent_memory=None):
 - Do not write scene JSON as text in chat — make tool calls so things actually render.
 - **CRITICAL**: Always call `set_preset_prompts` as a function tool call. NEVER write the prompts as JSON text in your response.
 - **CRITICAL**: NEVER use `{{expr}}` placeholders in your chat response text. Placeholders like `{{theta}}` or `{{toFixed(v,1)}}` only work inside `set_info_overlay` content, not in chat messages. In chat, write computed values directly or describe them in words.
-- **STATE over history**: The Current State section is always authoritative for scene, step, sliders, and camera.
+- **STATE over history**: The Current State section is always authoritative for scene, step, sliders, semantic graph and camera.
 - **Tool capabilities**:
   - `eval_math`: compute exact numbers. When asked to "compute", "calculate", "get", or "make a series" — call `eval_math` and let the result appear in chat. To sweep a range: set `sweep_var="x"`, `sweep_start`, `sweep_end`, `sweep_steps`. Only pipe the result into `add_scene` if the user also wants a visualization. Expression syntax is Python: `sin(x)` not `Math.sin(x)`, `x**2` not `x^2`.
   - `add_scene`: build a visualization. **Only call when the user explicitly requests it or when it clearly serves the current interaction — not as a default response to every question.** A `line` with many `points` draws a curve; `vectors` with `froms`/`tos` arrays draws a series of arrows. Do not hardcode arrays that could be computed — use `eval_math` first. **Put sliders only in `steps[].sliders` (never top-level `scene.sliders`).**
@@ -416,8 +416,51 @@ def build_system_prompt(context, agent_memory=None):
         parts.append(f"- Caption displayed to user: \"{runtime['currentCaption']}\"")
     if runtime.get('projection'):
         parts.append(f"- Projection: {runtime['projection']}")
-    if runtime.get('activeTab'):
-        parts.append(f"- User viewing: {runtime['activeTab']} panel")
+
+    # Semantic-graph dock state (issue #124) — only when a graph is present
+    # for the current step.
+    gp = runtime.get('graphPanel')
+    if gp:
+        sn = gp.get('selectedNode') or {}
+        bits = [
+            f"open={gp.get('open')}",
+            f"step={gp.get('stepNumber')}",
+            f"nodes={gp.get('nodeCount')}",
+            f"edges={gp.get('edgeCount')}",
+            f"selected={sn.get('id') if sn else 'none'}",
+            f"theme={gp.get('theme')}",
+            f"labels={gp.get('labelMode')}",
+            f"direction={gp.get('direction')}",
+            f"zoom={gp.get('zoom')}%",
+        ]
+        parts.append(f"- Semantic graph: {', '.join(bits)}")
+        if gp.get('parseError'):
+            parts.append(f"  - Parse error: {gp['parseError']}")
+        if sn:
+            sn_bits = [f"id={sn.get('id')}"]
+            for k in ('type', 'role', 'op', 'label'):
+                if sn.get(k):
+                    sn_bits.append(f"{k}={sn[k]}")
+            if sn.get('subexpr'):
+                sn_bits.append(f"subexpr=`{sn['subexpr']}`")
+            if sn.get('description'):
+                sn_bits.append(f"description=\"{sn['description']}\"")
+            neigh = sn.get('neighbors') or {}
+            inc = neigh.get('incoming') or []
+            out = neigh.get('outgoing') or []
+            if inc: sn_bits.append(f"incoming=[{', '.join(inc)}]")
+            if out: sn_bits.append(f"outgoing=[{', '.join(out)}]")
+            parts.append(f"  - Selected node: {', '.join(sn_bits)}")
+
+    # >>> USER VIEWING — emphasized last so it's the freshest line in
+    # the agent's context window. Composite of main viewport (scene /
+    # semantic graph) + visible right-panel surfaces (doc / chat / proof).
+    # Falls back to the bare active tab for older clients.
+    if runtime.get('userViewing'):
+        viewing = ', '.join(runtime['userViewing'])
+        parts.append(f"- **USER VIEWING: {viewing}** ← what the user is looking at right now; ground your reply in this.")
+    elif runtime.get('activeTab'):
+        parts.append(f"- **USER VIEWING: {runtime['activeTab']} panel** ← what the user is looking at right now; ground your reply in this.")
 
     # Scene tree for navigation
     if context.get('sceneTree'):

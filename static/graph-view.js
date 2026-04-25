@@ -1453,3 +1453,45 @@ window.graphView = {
     rebuildProofTree,
     renderCurrentStepGraph,
 };
+
+/**
+ * Read-only snapshot of the semantic-graph dock state, for chat context
+ * (issue #124). Returns null when no graph is loaded for the current step.
+ */
+function getGraphPanelState() {
+    const step = (typeof currentProofStep === 'function') ? currentProofStep() : null;
+    const sg = step && step.semanticGraph;
+    const graph = sg && sg.graph;
+    if (!graph) return null;
+
+    const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+    const edges = Array.isArray(graph.edges) ? graph.edges : [];
+
+    const out = {
+        open: isGraphModeActive(),
+        source: 'step-embedded',
+        stepNumber: (state && typeof state.proofStepIndex === 'number')
+            ? state.proofStepIndex + 1 : null,
+        theme: _currentTheme,
+        labelMode: _currentLabels,
+        direction: _currentDirection,
+        zoom: Math.round(_zoom * 100),
+        nodeCount: nodes.length,
+        edgeCount: edges.length,
+    };
+
+    if (sg.error) {
+        out.parseError = sg.error.message || String(sg.error);
+    }
+
+    if (_currentGraphPanel && _currentGraphPanel.activeNode) {
+        const id = _currentGraphPanel.activeNode;
+        const payload = typeof _currentGraphPanel.getNodePayload === 'function'
+            ? _currentGraphPanel.getNodePayload(id) : null;
+        if (payload) out.selectedNode = payload;
+    }
+
+    return out;
+}
+
+window.algebenchGetGraphPanelState = getGraphPanelState;
