@@ -135,6 +135,13 @@ def check_remove_targets(data):
             for el in step.get('add', []):
                 if el.get('id'):
                     active_ids.add(el['id'])
+            # Info overlays declared on this step are also valid remove targets
+            for ov in step.get('info', []):
+                if ov.get('id'):
+                    active_ids.add(ov['id'])
+            for sl in step.get('sliders', []):
+                if sl.get('id'):
+                    active_ids.add(sl['id'])
 
             # Check removes
             for rm in step.get('remove', []):

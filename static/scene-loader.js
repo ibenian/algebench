@@ -227,6 +227,7 @@ function processStepRemoves(removeList, tracker) {
                 tracker.removedIds.push(item.id);
             }
             if (removeTrackSliderById(item.id, tracker)) slidersChanged = true;
+            removeInfoOverlay(item.id);
             continue;
         }
         if (item.type === 'info') {
