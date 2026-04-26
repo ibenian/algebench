@@ -58,14 +58,16 @@ class TestGraphStructure:
         assert _find_node(g, type="operator", op="add")
 
     def test_simple_multiplication(self):
+        # Parser emits structural fields only — labels/quantities are filled
+        # by the enricher, not pre-baked from a hardcoded symbol table.
         g = latex_to_semantic_graph("m \\cdot a")
-        assert _find_node(g, id="m", label="mass")
-        assert _find_node(g, id="a", label="acceleration")
+        assert _find_node(g, id="m", type="scalar")
+        assert _find_node(g, id="a", type="vector")  # 'a' is in vector hints
         assert _find_node(g, type="operator", op="multiply")
 
     def test_equation(self):
         g = latex_to_semantic_graph("F = m \\cdot a")
-        assert _find_node(g, id="F", label="force")
+        assert _find_node(g, id="F", type="vector")
         assert _find_node(g, type="operator", op="equals")
 
     def test_power(self):
@@ -86,12 +88,19 @@ class TestGraphStructure:
 # ---------------------------------------------------------------------------
 
 class TestKnownVariables:
-    def test_known_variable_gets_metadata(self):
+    def test_known_vector_gets_type_hint_only(self):
+        # The parser used to bake in a hardcoded label/emoji/quantity/unit
+        # for ``F`` (force, 🏹, M·L·T⁻², N). That guess was misleading in
+        # other domains and is now the enricher's job. The parser emits
+        # only ``type`` (so the renderer picks the right node shape) and
+        # ``latex`` (so KaTeX renders the symbol nicely).
         g = latex_to_semantic_graph("F")
         node = _find_node(g, id="F")
-        assert node["label"] == "force"
         assert node["type"] == "vector"
-        assert node["emoji"] == "\U0001f3f9"
+        assert node["latex"] == "F"
+        # No semantic claims pre-filled — those wait for the enricher.
+        for forbidden in ("label", "emoji", "quantity", "dimension", "unit", "role", "value"):
+            assert forbidden not in node, f"{forbidden!r} should not be parser-set"
 
     def test_unknown_variable_gets_defaults(self):
         g = latex_to_semantic_graph("Q")
@@ -293,7 +302,10 @@ class TestRelations:
         assert rel is not None
         assert rel["label"] == "approximately equal"
         assert rel["emoji"] == "≈"
-        assert _find_node(g, type="constant", label="pi")
+        # parse_latex emits ``\pi`` as a Symbol named ``pi`` (not the
+        # sympy.pi NumberSymbol), so the parser routes it through the
+        # symbol path — KNOWN_VARIABLES["pi"] still pins type=constant.
+        assert _find_node(g, id="pi", type="constant")
 
     def test_maps_to(self):
         g = latex_to_semantic_graph(r"x \to y")
@@ -369,11 +381,13 @@ class TestComplexFormulas:
 
     def test_euler_identity(self):
         """e^{i pi} + 1 = 0 — symbols, constants, power, addition, equality.
-        Note: parse_latex treats 'e' and 'i' as plain symbols; pi is a constant."""
+        Note: parse_latex treats 'e', 'i', and 'pi' as plain Symbols, so all
+        three flow through the symbol path. KNOWN_VARIABLES["pi"] still pins
+        type=constant; ``e`` / ``i`` default to scalar."""
         g = latex_to_semantic_graph(r"e^{i \pi} + 1 = 0")
         assert _find_node(g, type="operator", op="equals")
         assert _find_node(g, id="e")
-        assert _find_node(g, type="constant", label="pi")
+        assert _find_node(g, id="pi", type="constant")  # label/emoji are enricher's job
         assert _find_node(g, type="operator", op="power")
         assert _find_node(g, type="operator", op="add")
         assert g["classification"]["kind"] == "algebraic"
@@ -383,8 +397,8 @@ class TestComplexFormulas:
         g = latex_to_semantic_graph(r"K = \frac{1}{2} m v^2")
         assert _find_node(g, type="operator", op="equals")
         assert _find_node(g, id="K")
-        assert _find_node(g, id="m", label="mass")
-        assert _find_node(g, id="v", label="velocity")
+        assert _find_node(g, id="m")  # parser doesn't pre-fill labels
+        assert _find_node(g, id="v")
         assert _find_node(g, type="operator", op="power")
         assert _find_node(g, type="operator", op="multiply")
 
@@ -421,7 +435,7 @@ class TestComplexFormulas:
             r"\frac{d^2 x}{dt^2} + \omega^2 x = 0"
         )
         assert _find_node(g, type="operator", op="derivative")
-        assert _find_node(g, id="omega", label="angular velocity")
+        assert _find_node(g, id="omega")  # label/quantity left for the enricher
         c = g["classification"]
         assert c["kind"] == "ODE"
         assert c["order"] == 2
@@ -432,8 +446,8 @@ class TestComplexFormulas:
         g = latex_to_semantic_graph(
             r"E \psi = -\frac{h^2}{2m} \frac{d^2 \psi}{dx^2} + V \psi"
         )
-        assert _find_node(g, id="psi", label="wave function")
-        assert _find_node(g, id="h", label="Planck constant")
+        assert _find_node(g, id="psi")
+        assert _find_node(g, id="h")
         assert _find_node(g, type="operator", op="derivative")
         assert _find_node(g, type="operator", op="equals")
         c = g["classification"]
@@ -444,8 +458,8 @@ class TestComplexFormulas:
         """F = k q1 q2 / r^2 — subscripted variables, fractions."""
         g = latex_to_semantic_graph(r"F = k \frac{q_1 q_2}{r^2}")
         assert _find_node(g, type="operator", op="equals")
-        assert _find_node(g, id="F", label="force")
-        assert _find_node(g, id="r", label="radius")
+        assert _find_node(g, id="F")
+        assert _find_node(g, id="r")
         assert _find_node(g, type="operator", op="power")
         # q_1 and q_2 are distinct symbols
         nodes = g["nodes"]
@@ -470,8 +484,8 @@ class TestComplexFormulas:
             r"\gamma = \frac{1}{\sqrt{1 - \frac{v^2}{c^2}}}"
         )
         assert _find_node(g, id="gamma")
-        assert _find_node(g, id="v", label="velocity")
-        assert _find_node(g, id="c", label="speed of light")
+        assert _find_node(g, id="v")  # parser emits structural fields only
+        assert _find_node(g, id="c")
         assert _find_node(g, type="operator", op="equals")
         assert g["classification"]["kind"] == "algebraic"
 
@@ -552,13 +566,16 @@ class TestOverrides:
             parse_var_overrides(["m:noequalssign"])
 
     def test_overrides_applied_to_graph(self):
+        # Overrides still win — authors can pin any field explicitly.
+        # The parser no longer pre-fills ``label`` for ``m``, so the
+        # override is the only source of label / unit / tooltip metadata.
         g = latex_to_semantic_graph("F = m \\cdot a", overrides={
-            "m": {"unit": "kg", "tooltip": "Inertial mass"},
+            "m": {"label": "mass", "unit": "kg", "tooltip": "Inertial mass"},
         })
         m_node = _find_node(g, id="m")
         assert m_node["unit"] == "kg"
         assert m_node["tooltip"] == "Inertial mass"
-        assert m_node["label"] == "mass"  # default still present
+        assert m_node["label"] == "mass"
 
 
 # ---------------------------------------------------------------------------

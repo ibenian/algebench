@@ -76,103 +76,40 @@ DIMENSION_PATTERN = r"^1$|^[MLTIΘNJ](⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)?(·[ML
 # ---------------------------------------------------------------------------
 # Semantic metadata
 # ---------------------------------------------------------------------------
+# Structural-only hints for common symbols. Used to:
+#   - tag a symbol as a vector (affects renderer node shape) where the
+#     bare letter is conventionally a vector quantity (F, a, v, p, B);
+#   - emit the right LaTeX command for Greek letters (`\alpha`, `\rho`).
+#
+# Semantic fields — `label`, `emoji`, `quantity`, `dimension`, `unit`,
+# `value`, `role` — are NOT pre-filled here. Showing the user a confident
+# guess (e.g. `V → voltage / 🔌`) before the enricher runs is misleading
+# in domains where the same symbol means something else (V is velocity in
+# atmospheric entry, volume in thermo, voltage only in circuits). The
+# enricher reads the lesson context and fills these properly.
 KNOWN_VARIABLES: dict[str, dict[str, str]] = {
-    # Mechanics
-    "F": {"label": "force", "emoji": "🏹", "type": "vector", "latex": "F",
-           "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N", "role": "dependent"},
-    "m": {"label": "mass", "emoji": "⚖️", "type": "scalar", "latex": "m",
-           "quantity": "mass", "dimension": "M", "unit": "kg", "role": "parameter"},
-    "a": {"label": "acceleration", "emoji": "🧭", "type": "vector", "latex": "a",
-           "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²", "role": "dependent"},
-    "v": {"label": "velocity", "emoji": "💨", "type": "vector", "latex": "v",
-           "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "role": "state_variable"},
-    "t": {"label": "time", "emoji": "⏱️", "type": "scalar", "latex": "t",
-           "quantity": "time", "dimension": "T", "unit": "s", "role": "independent"},
-    "p": {"label": "momentum", "emoji": "🎯", "type": "vector", "latex": "p",
-           "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s", "role": "state_variable"},
-    "g": {"label": "gravitational acceleration", "emoji": "🌍", "type": "scalar", "latex": "g",
-           "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²", "role": "constant",
-           "value": 9.80665},
-    "r": {"label": "radius", "emoji": "📏", "type": "scalar", "latex": "r",
-           "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
-    "x": {"label": "position", "emoji": "📍", "type": "scalar", "latex": "x",
-           "quantity": "length", "dimension": "L", "unit": "m", "role": "independent"},
-    "y": {"label": "position", "emoji": "📍", "type": "scalar", "latex": "y",
-           "quantity": "length", "dimension": "L", "unit": "m", "role": "independent"},
-    "z": {"label": "position", "emoji": "📍", "type": "scalar", "latex": "z",
-           "quantity": "length", "dimension": "L", "unit": "m", "role": "independent"},
-    "d": {"label": "distance", "emoji": "📏", "type": "scalar", "latex": "d",
-           "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
-    "s": {"label": "displacement", "emoji": "📏", "type": "scalar", "latex": "s",
-           "quantity": "length", "dimension": "L", "unit": "m", "role": "state_variable"},
-    "W": {"label": "work", "emoji": "⚡", "type": "scalar", "latex": "W",
-           "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J", "role": "dependent"},
-    "P": {"label": "power", "emoji": "⚡", "type": "scalar", "latex": "P",
-           "quantity": "power", "dimension": "M·L²·T⁻³", "unit": "W", "role": "dependent"},
-    # Energy
-    "E": {"label": "energy", "emoji": "⚡", "type": "scalar", "latex": "E",
-           "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J", "role": "state_variable"},
-    "T": {"label": "temperature", "emoji": "🌡️", "type": "scalar", "latex": "T",
-           "quantity": "temperature", "dimension": "Θ", "unit": "K", "role": "state_variable"},
-    "K": {"label": "kinetic energy", "emoji": "⚡", "type": "scalar", "latex": "K",
-           "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J", "role": "dependent"},
-    "U": {"label": "potential energy", "emoji": "⚡", "type": "scalar", "latex": "U",
-           "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J", "role": "dependent"},
-    # Electromagnetism
-    "q": {"label": "charge", "emoji": "🔋", "type": "scalar", "latex": "q",
-           "quantity": "charge", "dimension": "I·T", "unit": "C", "role": "parameter"},
-    "V": {"label": "voltage", "emoji": "🔌", "type": "scalar", "latex": "V",
-           "quantity": "voltage", "dimension": "M·L²·T⁻³·I⁻¹", "unit": "V", "role": "dependent"},
-    "I": {"label": "current", "emoji": "⚡", "type": "scalar", "latex": "I",
-           "quantity": "current", "dimension": "I", "unit": "A", "role": "state_variable"},
-    "R": {"label": "resistance", "emoji": "🔧", "type": "scalar", "latex": "R",
-           "quantity": "resistance", "dimension": "M·L²·T⁻³·I⁻²", "unit": "Ω", "role": "parameter"},
-    "B": {"label": "magnetic field", "emoji": "🧲", "type": "vector", "latex": "B",
-           "quantity": "magnetic_flux_density", "dimension": "M·T⁻²·I⁻¹", "unit": "T", "role": "field"},
-    # Waves / Quantum
-    "f": {"label": "frequency", "emoji": "🔊", "type": "scalar", "latex": "f",
-           "quantity": "frequency", "dimension": "T⁻¹", "unit": "Hz", "role": "parameter"},
-    "h": {"label": "Planck constant", "emoji": "📐", "type": "scalar", "latex": "h",
-           "quantity": "action", "dimension": "M·L²·T⁻¹", "unit": "J·s", "role": "constant",
-           "value": "6.626e-34"},
-    "c": {"label": "speed of light", "emoji": "💡", "type": "scalar", "latex": "c",
-           "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "role": "constant",
-           "value": 299792458},
-    "n": {"label": "index", "emoji": "🔢", "type": "scalar", "latex": "n",
-           "role": "index"},
-    "k": {"label": "wave number", "emoji": "🌊", "type": "scalar", "latex": "k",
-           "quantity": "wave_number", "dimension": "L⁻¹", "unit": "m⁻¹", "role": "parameter"},
-    # Greek letters
-    "alpha": {"label": "alpha", "emoji": "🔤", "type": "scalar", "latex": "\\alpha",
-              "role": "parameter"},
-    "beta": {"label": "beta", "emoji": "🔤", "type": "scalar", "latex": "\\beta",
-             "role": "parameter"},
-    "gamma": {"label": "gamma", "emoji": "🔤", "type": "scalar", "latex": "\\gamma",
-              "role": "parameter"},
-    "delta": {"label": "delta", "emoji": "🔤", "type": "scalar", "latex": "\\delta",
-              "role": "parameter"},
-    "epsilon": {"label": "epsilon", "emoji": "🔤", "type": "scalar", "latex": "\\epsilon",
-                "role": "parameter"},
-    "theta": {"label": "angle", "emoji": "📐", "type": "scalar", "latex": "\\theta",
-              "quantity": "angle", "dimension": "1", "unit": "rad", "role": "state_variable"},
-    "phi": {"label": "angle", "emoji": "📐", "type": "scalar", "latex": "\\phi",
-            "quantity": "angle", "dimension": "1", "unit": "rad", "role": "state_variable"},
-    "psi": {"label": "wave function", "emoji": "🌊", "type": "scalar", "latex": "\\psi",
-            "quantity": "wave_function", "role": "state_variable"},
-    "omega": {"label": "angular velocity", "emoji": "🔄", "type": "scalar", "latex": "\\omega",
-              "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s", "role": "state_variable"},
-    "lambda": {"label": "wavelength", "emoji": "🌊", "type": "scalar", "latex": "\\lambda",
-               "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
-    "mu": {"label": "mu", "emoji": "🔤", "type": "scalar", "latex": "\\mu",
-           "role": "parameter"},
-    "sigma": {"label": "sigma", "emoji": "🔤", "type": "scalar", "latex": "\\sigma",
-              "role": "parameter"},
-    "tau": {"label": "torque", "emoji": "🔄", "type": "scalar", "latex": "\\tau",
-            "quantity": "torque", "dimension": "M·L²·T⁻²", "unit": "N·m", "role": "dependent"},
-    "rho": {"label": "density", "emoji": "🧱", "type": "scalar", "latex": "\\rho",
-            "quantity": "density", "dimension": "M·L⁻³", "unit": "kg/m³", "role": "parameter"},
-    "pi": {"label": "pi", "emoji": "🥧", "type": "constant", "latex": "\\pi",
-           "role": "constant", "value": 3.141592653589793},
+    # Common vectors — type hint only, no semantic claims.
+    "F": {"type": "vector", "latex": "F"},
+    "a": {"type": "vector", "latex": "a"},
+    "v": {"type": "vector", "latex": "v"},
+    "p": {"type": "vector", "latex": "p"},
+    "B": {"type": "vector", "latex": "B"},
+    # Greek-letter LaTeX commands so KaTeX renders ρ instead of `rho`.
+    "alpha":   {"type": "scalar", "latex": "\\alpha"},
+    "beta":    {"type": "scalar", "latex": "\\beta"},
+    "gamma":   {"type": "scalar", "latex": "\\gamma"},
+    "delta":   {"type": "scalar", "latex": "\\delta"},
+    "epsilon": {"type": "scalar", "latex": "\\epsilon"},
+    "theta":   {"type": "scalar", "latex": "\\theta"},
+    "phi":     {"type": "scalar", "latex": "\\phi"},
+    "psi":     {"type": "scalar", "latex": "\\psi"},
+    "omega":   {"type": "scalar", "latex": "\\omega"},
+    "lambda":  {"type": "scalar", "latex": "\\lambda"},
+    "mu":      {"type": "scalar", "latex": "\\mu"},
+    "sigma":   {"type": "scalar", "latex": "\\sigma"},
+    "tau":     {"type": "scalar", "latex": "\\tau"},
+    "rho":     {"type": "scalar", "latex": "\\rho"},
+    "pi":      {"type": "constant", "latex": "\\pi"},
 }
 
 OPERATOR_MAP: dict[type, str] = {
@@ -182,24 +119,22 @@ OPERATOR_MAP: dict[type, str] = {
     Eq: "equals",
 }
 
-FUNCTION_MAP: dict[str, str] = {
-    "sin": "sin",
-    "cos": "cos",
-    "tan": "tan",
-    "log": "log",
-    "exp": "exp",
-    "sqrt": "sqrt",
-    "Abs": "abs",
-    "asin": "arcsin",
-    "acos": "arccos",
-    "atan": "arctan",
-}
+# FUNCTION_MAP removed — the SymPy class name (``sin``, ``cos``, ``Abs``,
+# ``asin``, …) is used directly as the ``op`` field. Renames only mattered
+# for display, and the renderer / enricher handle the raw names fine.
 
+# Mathematical constants. Labels here are unambiguous across every domain
+# (∞ is infinity everywhere, π is pi everywhere) — unlike the per-symbol
+# semantic claims we stripped from KNOWN_VARIABLES, these don't risk the
+# "voltage in atmospheric entry" cross-domain confusion. Most are routed
+# through the Symbol path by ``parse_latex``; ``sympy.oo`` is the one
+# that genuinely arrives here as a NumberSymbol and needs the friendly
+# label (otherwise it shows as the sympy identifier ``"oo"``).
 CONSTANT_MAP: dict[Any, dict[str, str]] = {
-    pi: {"label": "pi", "emoji": "🥧"},
-    E: {"label": "e (Euler's number)", "emoji": "📐"},
-    I: {"label": "imaginary unit", "emoji": "🔮"},
-    oo: {"label": "infinity", "emoji": "♾️"},
+    pi: {"label": "pi"},
+    E: {"label": "e (Euler's number)"},
+    I: {"label": "imaginary unit"},
+    oo: {"label": "infinity"},
 }
 
 # Relations that parse_latex cannot handle — checked before SymPy parsing.
@@ -344,14 +279,30 @@ class SemanticGraphBuilder:
         return {"nodes": self.nodes, "edges": self.edges}
 
     def _build_symbol_order(self) -> dict[str, int]:
-        """Build a symbol-name → position mapping from the original LaTeX."""
+        """Build a symbol-name → position mapping from the original LaTeX.
+
+        Used by ``_subexpr_ordered`` to keep ``Mul``/``Add`` factors in the
+        author's writing order (e.g. ``\\frac{1}{2} m v^2`` stays in that
+        order rather than getting reshuffled to SymPy's canonical
+        ``\\frac{m v^2}{2}``). The candidate name set is intentionally
+        broad — any single letter, common variable name, or LaTeX-command
+        identifier — so removing entries from ``KNOWN_VARIABLES`` doesn't
+        break the order.
+        """
         if not self._original_latex:
             return {}
         order: dict[str, int] = {}
-        all_names = set(KNOWN_VARIABLES.keys()) | set(self._latex_commands.keys())
+        candidates: set[str] = set()
+        # Single ASCII letters (covers most physics/math symbols).
+        for ch in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            candidates.add(ch)
+        # Anything KNOWN_VARIABLES still mentions (Greek letters, vectors).
+        candidates |= set(KNOWN_VARIABLES.keys())
+        # LaTeX-command identifiers from preprocessing (Greek, etc.).
+        candidates |= set(self._latex_commands.keys())
         if self._overrides:
-            all_names |= set(self._overrides.keys())
-        for name in all_names:
+            candidates |= set(self._overrides.keys())
+        for name in candidates:
             latex_cmd = self._latex_commands.get(name, "")
             for token in (latex_cmd, name):
                 if token:
@@ -458,27 +409,18 @@ class SemanticGraphBuilder:
                     latex_fallback = r"\mathrm{d}" + self._latex_commands[name[1:]]
                 else:
                     latex_fallback = name
-            attrs: dict[str, str] = {
+            # Parser emits structural fields only — ``type`` (scalar /
+            # vector / constant) and ``latex`` (Greek-letter command etc.).
+            # All semantic metadata (label, emoji, quantity, dimension,
+            # unit, value, role, description) is left to the enricher,
+            # which reads the lesson context and avoids the cross-domain
+            # confusion the old hardcoded table caused.
+            attrs: dict[str, Any] = {
                 "type": meta.get("type", "scalar"),
                 "latex": meta.get("latex", latex_fallback),
             }
-            # Only set ``label`` when KNOWN_VARIABLES provides a meaningful
-            # human-readable name (e.g. ``"force"``, ``"mass"``). For unknown
-            # symbols, the SymPy identifier (``"F_action"``, ``"psi"``) is just
-            # noise next to the already-rendered ``latex`` field — leave label
-            # unset so the panel doesn't show a redundant row.
-            if meta.get("label"):
-                attrs["label"] = meta["label"]
-            # Only attach an emoji when we actually know one. The old
-            # "🔣" fallback renders as a broken-glyph box in most fonts
-            # and adds visual noise — leave it off unless the KNOWN_VARIABLES
-            # table (or a user override) provides a real emoji.
-            if meta.get("emoji"):
-                attrs["emoji"] = meta["emoji"]
-            for sem_key in ("quantity", "dimension", "unit", "value", "role"):
-                if meta.get(sem_key):
-                    attrs[sem_key] = meta[sem_key]
-            # Apply user overrides (can set any property: unit, tooltip, ai_prompt, etc.)
+            # User overrides still win — authors can pin any property
+            # (label, unit, ai_prompt, etc.) explicitly via ``\overrides{…}``.
             if name in self._overrides:
                 attrs.update(self._overrides[name])
             self._add_node(node_id, **attrs)
@@ -489,24 +431,28 @@ class SemanticGraphBuilder:
         for const, meta in CONSTANT_MAP.items():
             if expr is const:
                 node_id = self._next_id("const")
-                self._add_node(
-                    node_id,
-                    label=meta["label"],
-                    emoji=meta["emoji"],
-                    type="constant",
-                )
+                attrs: dict[str, Any] = {"type": "constant"}
+                if meta.get("label"):
+                    attrs["label"] = meta["label"]
+                # Emoji intentionally omitted — let the enricher decide.
+                self._add_node(node_id, **attrs)
                 return node_id
 
         # --- Numbers ---
         if isinstance(expr, Number):
+            # Label is the numeral itself (the rendered glyph), no emoji —
+            # generic 🔢 is just visual noise on a literal number.
             node_id = self._next_id("num")
-            self._add_node(node_id, label=self._fmt_number(expr), emoji="🔢", type="number")
+            self._add_node(node_id, label=self._fmt_number(expr), type="number")
             return node_id
 
-        # --- Known functions (sin, cos, …) ---
+        # --- Functions (sin, cos, log, exp, sqrt, Abs, asin, …) ---
+        # Use the SymPy class name directly as the ``op``. We used to
+        # remap a handful (``Abs``→``abs``, ``asin``→``arcsin``) but the
+        # rename only mattered for display, and the renderer / enricher
+        # cope fine with the raw sympy names.
         if isinstance(expr, sympy.Function):
-            cls_name = type(expr).__name__
-            func_name = FUNCTION_MAP.get(cls_name, cls_name)
+            func_name = type(expr).__name__
             node_id = self._next_id(func_name)
             func_latex = self._latex_commands.get(func_name)
             func_attrs: dict[str, str] = {"type": "function", "op": func_name}
