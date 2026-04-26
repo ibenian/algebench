@@ -76,6 +76,33 @@ class BaseAgent:
             raise AgentError(f"{self.name or type(self).__name__}: empty result from agent")
         return output
 
+    def _wrap_exc(self, exc: Exception) -> "AgentError":
+        """Wrap any underlying agent failure as ``AgentError``, surfacing
+        validation details when present so we can see *which* field tripped
+        instead of just ``Exceeded maximum retries``."""
+        name = self.name or type(self).__name__
+        details = self._extract_validation_details(exc) or str(exc)
+        return AgentError(f"{name} failed: {details}")
+
+    @staticmethod
+    def _extract_validation_details(exc: Exception) -> Optional[str]:
+        """Pull pydantic ValidationError messages out of pydantic-ai's
+        retry-exhausted exceptions. Walks ``__cause__`` / ``__context__``
+        looking for a ValidationError; returns ``str(exc)`` of that if
+        found, else ``None`` so the caller falls back to the outer message."""
+        try:
+            from pydantic import ValidationError
+        except ImportError:
+            return None
+        seen: set[int] = set()
+        current: Optional[BaseException] = exc
+        while current is not None and id(current) not in seen:
+            seen.add(id(current))
+            if isinstance(current, ValidationError):
+                return f"{type(exc).__name__}: {current}"
+            current = current.__cause__ or current.__context__
+        return None
+
     def run(self, input_data: Any) -> BaseModel:
         """Execute the agent synchronously and return the validated result.
 
@@ -85,7 +112,7 @@ class BaseAgent:
         try:
             result = self._agent.run_sync(self._build_prompt(input_data))
         except Exception as exc:
-            raise AgentError(f"{self.name or type(self).__name__} failed: {exc}") from exc
+            raise self._wrap_exc(exc) from exc
         return self._unwrap(result)
 
     async def arun(self, input_data: Any) -> BaseModel:
@@ -93,5 +120,5 @@ class BaseAgent:
         try:
             result = await self._agent.run(self._build_prompt(input_data))
         except Exception as exc:
-            raise AgentError(f"{self.name or type(self).__name__} failed: {exc}") from exc
+            raise self._wrap_exc(exc) from exc
         return self._unwrap(result)

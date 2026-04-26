@@ -839,6 +839,23 @@ const _enrichInFlight = new WeakSet();
 function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
     if (!graph || graph.__enriched) return;
     if (_enrichInFlight.has(graph)) return;
+    // Server-stamped marker: the persisted graph already went through Gemini
+    // (either earlier this session or in a previous one whose result got
+    // saved into the scene file). Treat it as enriched and skip the call.
+    // Presence of the ``enrichment`` block is the marker; ``reasoning``
+    // inside it is the agent's domain rationale (logged server-side).
+    // Require a non-array plain object — arrays / null shouldn't trip the
+    // gate on malformed data.
+    if (graph.enrichment
+        && typeof graph.enrichment === 'object'
+        && !Array.isArray(graph.enrichment)) {
+        try {
+            Object.defineProperty(graph, '__enriched', {
+                value: true, writable: true, configurable: true, enumerable: false,
+            });
+        } catch { graph.__enriched = true; }
+        return;
+    }
     if (allNodesHaveDescriptions(graph)) {
         // Every node already has a description — skip enrichment.
         try {

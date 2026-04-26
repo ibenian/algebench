@@ -54,7 +54,11 @@ class SemanticGraphNode(BaseModel):
     id: str = Field(min_length=1, max_length=80, pattern=_NO_HTML)
     type: NodeType
     label: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
-    emoji: Optional[str] = Field(default=None, max_length=4)
+    # Cap is generous (not 1-2 chars) because Gemini occasionally returns a
+    # word in this field by mistake (e.g. ``"ускорение"``). Better to accept
+    # the value and strip it post-hoc than to fail the whole enrichment via
+    # exhausted retries. Real emoji values are 1–4 codepoints.
+    emoji: Optional[str] = Field(default=None, max_length=40)
     latex: Optional[str] = Field(default=None, max_length=200)
     op: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     exponent: Optional[str] = Field(default=None, max_length=20, pattern=_NO_HTML)
@@ -103,6 +107,30 @@ class Classification(BaseModel):
 Classification.model_rebuild()
 
 
+class Enrichment(BaseModel):
+    """Metadata about how / when this graph was enriched by the Gemini agent.
+
+    Presence of this field on a graph is the marker that it's been enriched
+    — both the server endpoint and the client gate short-circuit on it,
+    skipping redundant Gemini calls. ``reasoning`` is a one-or-two-sentence
+    explanation of the enricher's domain / disambiguation choices, logged
+    server-side so we can audit decisions without enabling DEBUG_MODE.
+    ``fields`` is the authoritative list of paths the enricher added or
+    changed (computed by diffing input vs output) — graph-level fields
+    appear as bare names like ``"domain"`` and per-node fields use
+    ``"nodes.<id>.<field>"`` form, e.g. ``"nodes.V.quantity"``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # ``reasoning`` is logged server-side, never injected into HTML, so the
+    # ``_NO_HTML`` guard isn't needed — it would just reject natural model
+    # output like "V < V_t until terminal velocity is reached" and force a
+    # full retry-exhausted failure of the entire enrichment.
+    reasoning: Optional[str] = Field(default=None, max_length=300)
+    fields: Optional[List[str]] = Field(default=None)
+
+
 class SemanticGraph(BaseModel):
     """Top-level semantic graph object."""
 
@@ -112,3 +140,4 @@ class SemanticGraph(BaseModel):
     edges: List[SemanticGraphEdge]
     classification: Optional[Classification] = None
     domain: Optional[str] = Field(default=None, max_length=60, pattern=_NO_HTML)
+    enrichment: Optional[Enrichment] = None
