@@ -54,9 +54,9 @@ function setPresetPrompts(prompts) {
         const btn = document.createElement('button');
         btn.className = 'preset-prompt-btn';
         btn.textContent = text;
-        btn.title = text + '\n\nClick to send · Shift+click to edit';
+        btn.title = text + '\n\nClick to send · ⌘/Ctrl-click to edit';
         btn.addEventListener('click', (e) => {
-            if (e.shiftKey) {
+            if (e.metaKey || e.ctrlKey) {
                 const input = document.getElementById('chat-input');
                 if (input) {
                     input.value = text;

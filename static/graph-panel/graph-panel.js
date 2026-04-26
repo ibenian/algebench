@@ -15,6 +15,8 @@
  *   setTimeout(() => gp.attach(), 1000);
  */
 
+import { makeAiAskButton } from "/labels.js";
+
 const PANEL_FIELDS = [
   ["label", "Label"],
   ["type", "Type"],
@@ -45,8 +47,28 @@ export class SemanticGraphPanel {
 
     this.tooltip = opts.tooltip || this._createTooltip();
     this.panel = opts.panel || this._createPanel();
+    if (!this.panel.querySelector(".graph-panel-ai-btn")) {
+      this._ensurePanelHeader(this.panel);
+      this._injectPanelAskButton(this.panel);
+    }
     this._activeNode = null;
     this._handlers = [];
+    this._nodeAskBtn = null;
+  }
+
+  _ensurePanelHeader(panelEl) {
+    if (panelEl.querySelector(".gp-header")) return;
+    const h3 = panelEl.querySelector("h3");
+    if (!h3) return;
+    const header = document.createElement("div");
+    header.className = "gp-header";
+    h3.replaceWith(header);
+    header.appendChild(h3);
+    // Re-parent the close button into the header so it shares the flex
+    // layout instead of sitting on top of (and visually colliding with)
+    // the AI Ask button.
+    const close = panelEl.querySelector(".gp-close");
+    if (close) header.appendChild(close);
   }
 
   /* ------------------------------------------------------------------ */
@@ -91,15 +113,55 @@ export class SemanticGraphPanel {
     const el = document.createElement("div");
     el.className = "graph-panel-info";
     el.innerHTML =
-      '<button class="gp-close">&times;</button>' +
-      '<h3>Node Details</h3>' +
+      '<div class="gp-header"><h3>Node Details</h3>' +
+      '<button class="gp-close">&times;</button></div>' +
       '<div class="gp-symbol"></div>' +
       '<div class="gp-fields"></div>';
     el.querySelector(".gp-close").addEventListener("click", () => {
       el.classList.remove("open");
     });
+    this._injectPanelAskButton(el);
     document.body.appendChild(el);
     return el;
+  }
+
+  _injectPanelAskButton(panelEl) {
+    const header = panelEl.querySelector(".gp-header") || panelEl;
+    const btn = makeAiAskButton(
+      "ai-ask-btn graph-panel-ai-btn",
+      "Ask AI about this node",
+      () => this._buildNodeAskMessage(this._activeNode),
+    );
+    const close = header.querySelector(".gp-close");
+    if (close) header.insertBefore(btn, close);
+    else header.appendChild(btn);
+    this._panelAskBtn = btn;
+  }
+
+  _buildNodeAskMessage(nodeId) {
+    if (!nodeId) return "Explain this graph node.";
+    const data = this._nodeData[nodeId] || {};
+    const subexpr = this._subexprs[nodeId];
+    const lines = ["Explain this semantic graph node:"];
+    if (data.label) lines.push(`Label: ${data.label}`);
+    if (data.type) lines.push(`Type: ${data.type}`);
+    if (data.role) lines.push(`Role: ${data.role}`);
+    if (data.quantity) lines.push(`Quantity: ${data.quantity}`);
+    if (data.dimension) lines.push(`Dimension: ${data.dimension}`);
+    if (data.unit) lines.push(`Unit: ${data.unit}`);
+    if (data.value !== undefined) lines.push(`Value: ${data.value}`);
+    if (data.op) lines.push(`Operation: ${data.op}`);
+    if (subexpr) lines.push(`Expression: $${subexpr}$`);
+    if (data.description) lines.push(`Description: ${data.description}`);
+    const incoming = [];
+    const outgoing = [];
+    for (const [src, dst] of this._edges) {
+      if (dst === nodeId && src !== nodeId) incoming.push(src);
+      if (src === nodeId && dst !== nodeId) outgoing.push(dst);
+    }
+    if (incoming.length) lines.push(`Incoming: ${incoming.join(", ")}`);
+    if (outgoing.length) lines.push(`Outgoing: ${outgoing.join(", ")}`);
+    return lines.join("\n");
   }
 
   /* ------------------------------------------------------------------ */
@@ -234,9 +296,56 @@ export class SemanticGraphPanel {
   /* Attach / detach                                                    */
   /* ------------------------------------------------------------------ */
 
+  _ensureNodeAskBtn() {
+    if (this._nodeAskBtn) return this._nodeAskBtn;
+    const btn = makeAiAskButton(
+      "ai-ask-btn graph-node-ai-btn",
+      "Ask AI about this node",
+      () => this._buildNodeAskMessage(this._hoveredAskNodeId || this._activeNode),
+    );
+    btn.style.position = "fixed";
+    btn.style.opacity = "0";
+    btn.style.pointerEvents = "none";
+    btn.style.zIndex = "950";
+    btn.addEventListener("mouseenter", () => this._cancelNodeAskHide());
+    btn.addEventListener("mouseleave", () => this._hideNodeAskBtn());
+    document.body.appendChild(btn);
+    this._nodeAskBtn = btn;
+    return btn;
+  }
+
+  _showNodeAskBtnFor(nodeEl) {
+    const btn = this._ensureNodeAskBtn();
+    this._cancelNodeAskHide();
+    const r = nodeEl.getBoundingClientRect();
+    btn.style.left = (r.right - 6) + "px";
+    btn.style.top = (r.top - 10) + "px";
+    btn.style.opacity = "1";
+    btn.style.pointerEvents = "auto";
+  }
+
+  _cancelNodeAskHide() {
+    if (this._nodeAskHideTimer) {
+      clearTimeout(this._nodeAskHideTimer);
+      this._nodeAskHideTimer = null;
+    }
+  }
+
+  _hideNodeAskBtn() {
+    if (!this._nodeAskBtn) return;
+    const btn = this._nodeAskBtn;
+    this._cancelNodeAskHide();
+    this._nodeAskHideTimer = setTimeout(() => {
+      btn.style.opacity = "0";
+      btn.style.pointerEvents = "none";
+    }, 220);
+  }
+
   attach() {
     const svg = this.container.querySelector("svg");
     if (!svg) return;
+
+    this._askNodeEls = [];
 
     svg.querySelectorAll(".node").forEach(el => {
       const id = el.id.replace(/^flowchart-/, "").replace(/-\d+$/, "");
@@ -268,6 +377,7 @@ export class SemanticGraphPanel {
           this._activeNode = null;
           this._clearHighlight();
           this.panel.classList.remove("open");
+          this._hideNodeAskBtn();
         } else {
           this._activeNode = id;
           this._highlight(id);
@@ -277,6 +387,10 @@ export class SemanticGraphPanel {
       };
       el.addEventListener("click", onClick);
       this._handlers.push([el, "click", onClick]);
+
+      // Track this node for the global pointer-tracking ask-button logic.
+      this._askNodeEls = this._askNodeEls || [];
+      this._askNodeEls.push({ id, el });
     });
 
     const onDocClick = (e) => {
@@ -293,10 +407,53 @@ export class SemanticGraphPanel {
       this._activeNode = null;
       this._clearHighlight();
       this.panel.classList.remove("open");
+      this._hideNodeAskBtn();
       this._emitSelectionChange();
     };
     document.addEventListener("click", onDocClick);
     this._handlers.push([document, "click", onDocClick]);
+
+    // Global pointer tracker for the ask button — robust to gaps between a
+    // node and the floating button when nodes are large or shapes are wide.
+    const onPointerMove = (e) => {
+      const x = e.clientX;
+      const y = e.clientY;
+      const btn = this._nodeAskBtn;
+      if (btn) {
+        const br = btn.getBoundingClientRect();
+        const padded = (r, pad) => x >= r.left - pad && x <= r.right + pad
+          && y >= r.top - pad && y <= r.bottom + pad;
+        if (btn.style.opacity === "1" && padded(br, 12)) {
+          this._cancelNodeAskHide();
+          return;
+        }
+      }
+      let bestEl = null;
+      let bestId = null;
+      let bestDist = Infinity;
+      for (const { id, el } of this._askNodeEls || []) {
+        const op = el.style.opacity;
+        if (op && parseFloat(op) < 0.9) continue;
+        const r = el.getBoundingClientRect();
+        const padX = 24;
+        const padY = 18;
+        if (x >= r.left - padX && x <= r.right + padX
+            && y >= r.top - padY && y <= r.bottom + padY) {
+          const cx = (r.left + r.right) / 2;
+          const cy = (r.top + r.bottom) / 2;
+          const d = Math.hypot(x - cx, y - cy);
+          if (d < bestDist) { bestDist = d; bestEl = el; bestId = id; }
+        }
+      }
+      if (bestEl) {
+        this._hoveredAskNodeId = bestId;
+        this._showNodeAskBtnFor(bestEl);
+      } else {
+        this._hideNodeAskBtn();
+      }
+    };
+    document.addEventListener("pointermove", onPointerMove);
+    this._handlers.push([document, "pointermove", onPointerMove]);
   }
 
   /**
@@ -360,6 +517,8 @@ export class SemanticGraphPanel {
     this._handlers = [];
     if (this.tooltip.parentNode) this.tooltip.remove();
     if (this.panel.parentNode) this.panel.remove();
+    if (this._nodeAskBtn && this._nodeAskBtn.parentNode) this._nodeAskBtn.remove();
+    this._nodeAskBtn = null;
   }
 
   /* ------------------------------------------------------------------ */

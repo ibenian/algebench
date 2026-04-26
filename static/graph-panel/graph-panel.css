@@ -80,6 +80,31 @@
   border-left: 3px solid rgba(128, 128, 128, 0.3);
 }
 
+.graph-panel-info .gp-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.graph-panel-info .gp-header h3 {
+  margin: 0;
+  flex: 1;
+}
+.graph-panel-info .gp-header .gp-close {
+  position: static;
+  top: auto;
+  right: auto;
+}
+.graph-panel-info .graph-panel-ai-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.graph-node-ai-btn {
+  width: 22px;
+  height: 22px;
+  transition: opacity 0.12s ease;
+}
+
 /* Transition for highlight/dim */
 svg .node,
 svg .edgePath,
