@@ -2245,9 +2245,15 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             # and the Gemini calls entirely and echo the input back. The
             # client uses the same marker to skip even sending the request,
             # so this is mostly a backstop for direct API callers.
+            #
+            # ``cached: false`` here on purpose — the response did NOT come
+            # from ``_graph_enrich_cache``; we just echoed the request body.
+            # ``skipped: true`` is the signal that the Gemini call was
+            # avoided. Keeping ``cached`` honest matters for any caller
+            # that uses it for metrics.
             if isinstance(graph_in.get("enrichment"), dict):
                 print(f"[enrich] input already enriched  nodes={node_count} domain={domain!r}", flush=True)
-                return JSONResponse({"enriched": graph_in, "cached": True, "skipped": True})
+                return JSONResponse({"enriched": graph_in, "cached": False, "skipped": True})
 
             cache_payload = {"graph": graph_in, "context": context_in}
             key = hashlib.sha256(

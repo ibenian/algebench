@@ -844,7 +844,11 @@ function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
     // saved into the scene file). Treat it as enriched and skip the call.
     // Presence of the ``enrichment`` block is the marker; ``reasoning``
     // inside it is the agent's domain rationale (logged server-side).
-    if (graph.enrichment && typeof graph.enrichment === 'object') {
+    // Require a non-array plain object — arrays / null shouldn't trip the
+    // gate on malformed data.
+    if (graph.enrichment
+        && typeof graph.enrichment === 'object'
+        && !Array.isArray(graph.enrichment)) {
         try {
             Object.defineProperty(graph, '__enriched', {
                 value: true, writable: true, configurable: true, enumerable: false,

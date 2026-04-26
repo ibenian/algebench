@@ -275,14 +275,21 @@ def _build_critique_payload(
     )
 
 
+_MISSING = object()
+
+
 def _diff_enriched_fields(
     input_graph: Dict[str, Any],
     output_graph: Dict[str, Any],
 ) -> List[str]:
-    """Authoritative list of dotted JSON-ish paths the enricher added or
-    changed. Computed by diffing input vs output (the model would
-    self-report unreliably). Graph-level fields appear as bare names like
-    ``"domain"``; per-node fields use ``"nodes.<id>.<field>"`` form."""
+    """Authoritative list of dotted JSON-ish paths the enricher added,
+    changed, or removed. Computed by diffing input vs output (the model
+    would self-report unreliably). Graph-level fields appear as bare names
+    like ``"domain"``; per-node fields use ``"nodes.<id>.<field>"`` form.
+
+    Walks the UNION of input/output keys per node so deletions show up too
+    — important now that the prompt forbids enriching some fields (e.g.
+    ``color``) that may have been present on the input."""
     paths: List[str] = []
     # Top-level diff: domain is the only graph-level field the enricher
     # writes; classification is preserved verbatim per prompt.
@@ -298,11 +305,11 @@ def _diff_enriched_fields(
             continue
         node_id = out_node.get("id")
         in_node = in_nodes.get(node_id) or {}
-        for key, val in sorted(out_node.items()):
-            # ``id`` and ``type`` are structural — never enriched. Skip.
-            if key in ("id", "type"):
-                continue
-            if in_node.get(key) != val:
+        # Union of keys: catches additions, modifications, AND removals.
+        # ``id`` / ``type`` are structural — never enriched.
+        keys = (set(in_node.keys()) | set(out_node.keys())) - {"id", "type"}
+        for key in sorted(keys):
+            if in_node.get(key, _MISSING) != out_node.get(key, _MISSING):
                 paths.append(f"nodes.{node_id}.{key}")
     return paths
 

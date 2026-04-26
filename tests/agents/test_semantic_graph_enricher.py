@@ -466,6 +466,27 @@ def test_diff_skips_fields_the_model_left_unchanged() -> None:
     assert paths == ["nodes.V.quantity"]  # label/unit unchanged → not listed
 
 
+def test_diff_reports_field_removals() -> None:
+    # Now that the prompt forbids enriching `color`, the model may strip
+    # a color the input had. The diff must walk the union of input/output
+    # keys per node so removals show up too.
+    from agents.semantic_graph_enricher import _diff_enriched_fields
+
+    inp = {
+        "nodes": [{"id": "V", "type": "scalar", "label": "V", "color": "#cccccc"}],
+        "edges": [],
+    }
+    out = {
+        "nodes": [{"id": "V", "type": "scalar", "label": "V",
+                   "quantity": "velocity"}],  # color is gone
+        "edges": [],
+    }
+    paths = _diff_enriched_fields(inp, out)
+    assert "nodes.V.color" in paths       # removal listed
+    assert "nodes.V.quantity" in paths    # addition listed
+    assert "nodes.V.label" not in paths   # unchanged stays out
+
+
 def test_already_enriched_input_is_passthrough() -> None:
     # An input graph that already carries an `enrichment` block skips both
     # Gemini calls. The exploding agent would raise if either call ran.
