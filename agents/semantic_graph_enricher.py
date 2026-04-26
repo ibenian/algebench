@@ -74,9 +74,9 @@ Your job:
    "⚡", "💨"). Must be a real emoji glyph, not a Font Awesome icon code,
    not a private-use codepoint. Skip `emoji` for operator nodes unless an
    intuitive symbol exists.
-3. Add or refine `color` as a CSS hex string (e.g. "#0d47a1"). Use color to
-   group related concepts; reserve red for energy/heat, blue for fluid/water,
-   green for biology/growth, purple for quantum, etc. Hex only.
+3. Do NOT set or modify `color`. The renderer paints node colors from
+   the active theme (keyed by node type / role), so any per-node `color`
+   the agent writes is orphaned. Leave the field unset.
 4. Fill missing `dimension`, `unit`, and `quantity` whenever they can be
    determined unambiguously — and correct obviously wrong values where
    they are present.
