@@ -266,7 +266,7 @@ export function openChatPanel() {
 export function makeAiAskButton(className, title, getMessage) {
     const btn = document.createElement('button');
     btn.className = className;
-    btn.title = title + '\n\nClick to send · ⌘-click to edit';
+    btn.title = title + '\n\nClick to send · ⌘/Ctrl-click to edit';
     btn.innerHTML = AI_SPARKLE_SVG;
     btn.addEventListener('click', (e) => {
         e.stopPropagation();

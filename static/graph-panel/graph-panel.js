@@ -64,6 +64,11 @@ export class SemanticGraphPanel {
     header.className = "gp-header";
     h3.replaceWith(header);
     header.appendChild(h3);
+    // Re-parent the close button into the header so it shares the flex
+    // layout instead of sitting on top of (and visually colliding with)
+    // the AI Ask button.
+    const close = panelEl.querySelector(".gp-close");
+    if (close) header.appendChild(close);
   }
 
   /* ------------------------------------------------------------------ */
@@ -108,8 +113,8 @@ export class SemanticGraphPanel {
     const el = document.createElement("div");
     el.className = "graph-panel-info";
     el.innerHTML =
-      '<button class="gp-close">&times;</button>' +
-      '<div class="gp-header"><h3>Node Details</h3></div>' +
+      '<div class="gp-header"><h3>Node Details</h3>' +
+      '<button class="gp-close">&times;</button></div>' +
       '<div class="gp-symbol"></div>' +
       '<div class="gp-fields"></div>';
     el.querySelector(".gp-close").addEventListener("click", () => {
@@ -127,7 +132,9 @@ export class SemanticGraphPanel {
       "Ask AI about this node",
       () => this._buildNodeAskMessage(this._activeNode),
     );
-    header.appendChild(btn);
+    const close = header.querySelector(".gp-close");
+    if (close) header.insertBefore(btn, close);
+    else header.appendChild(btn);
     this._panelAskBtn = btn;
   }
 

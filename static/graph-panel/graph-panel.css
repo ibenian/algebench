@@ -83,11 +83,16 @@
 .graph-panel-info .gp-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
 }
 .graph-panel-info .gp-header h3 {
   margin: 0;
+  flex: 1;
+}
+.graph-panel-info .gp-header .gp-close {
+  position: static;
+  top: auto;
+  right: auto;
 }
 .graph-panel-info .graph-panel-ai-btn {
   opacity: 1;
