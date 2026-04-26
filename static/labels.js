@@ -266,13 +266,23 @@ export function openChatPanel() {
 export function makeAiAskButton(className, title, getMessage) {
     const btn = document.createElement('button');
     btn.className = className;
-    btn.title = title;
+    btn.title = title + '\n\nClick to send · ⌘-click to edit';
     btn.innerHTML = AI_SPARKLE_SVG;
     btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (typeof sendChatMessage !== 'function') return;
+        const message = getMessage();
         openChatPanel();
-        sendChatMessage(getMessage());
+        if (e.metaKey || e.ctrlKey) {
+            const input = document.getElementById('chat-input');
+            if (input) {
+                input.value = message;
+                input.focus();
+                input.dispatchEvent(new Event('input'));
+            }
+            return;
+        }
+        if (typeof sendChatMessage !== 'function') return;
+        sendChatMessage(message);
     });
     return btn;
 }
