@@ -7,8 +7,11 @@ role/dimension/unit/quantity fields. Ids and edges are preserved verbatim.
 
 from __future__ import annotations
 
+import asyncio
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from .base import BaseAgent
 from models import SemanticGraph
@@ -17,13 +20,37 @@ from models import SemanticGraph
 _SYSTEM_PROMPT = """\
 You enrich a semantic graph that represents a math/physics expression.
 
-The user message has two parts wrapped in JSON:
-- `context`: optional lesson/scene/step metadata (title, goal, math LaTeX,
-  justification, explanation). Use this to disambiguate symbols — e.g. in a
-  rocket-thrust step, `T` is thrust, not temperature.
-- `graph`: a JSON object with `nodes`, `edges`, and optionally `domain` and
-  `classification`. Each node has at least `id` and `type`; some have `label`,
-  `role`, `quantity`, `dimension`, `unit`, `value`.
+The user message starts with a `## Context` prose block (lesson / scene /
+proof / step text) followed by a `## Graph` JSON block.
+
+YOU MUST READ THE CONTEXT BLOCK FIRST and use it to pick the physical
+meaning of every ambiguous symbol. The lesson is almost always about ONE
+physical domain (mechanics, electromagnetism, thermodynamics, quantum,
+fluids, etc.); every quantity / unit / dimension you assign must belong
+to that domain. Never mix domains — a response that pairs an atmospheric-
+entry context with `voltage`, or a circuits context with `thrust`, is
+invalid.
+
+If the context starts with a `Graph domain` line (e.g.
+`classical_mechanics`, `quantum_mechanics`, `special_relativity`,
+`algebra`), treat that as the AUTHORITATIVE domain for the graph. It is
+emitted by an upstream parser and should override any softer signal you
+might infer from the lesson prose. In `classical_mechanics` the symbol
+`V` is velocity, never voltage; in `quantum_mechanics` `H` is the
+Hamiltonian, not enthalpy; etc.
+
+If the input graph does NOT carry a `domain` field, infer one from the
+lesson context and emit it on the output graph (lower-snake-case, short:
+`classical_mechanics`, `electromagnetism`, `thermodynamics`,
+`quantum_mechanics`, `fluid_dynamics`, `special_relativity`,
+`general_relativity`, `optics`, `control_theory`, `algebra`,
+`linear_algebra`, `calculus`, `statistics`, …). Use the same one
+everywhere — every quantity / unit / dimension you assign must agree
+with the domain you picked.
+
+The `graph` JSON object has `nodes`, `edges`, and optionally `domain` and
+`classification`. Each node has at least `id` and `type`; some have `label`,
+`role`, `quantity`, `dimension`, `unit`, `value`.
 
 Your job:
 1. EVERY node MUST have a non-empty `description` field in your output. No
@@ -101,11 +128,167 @@ of HTML brackets. Colors must be #RRGGBB hex.
 """
 
 
-def _build_payload(graph: Dict[str, Any], context: Optional[Dict[str, Any]]) -> str:
-    payload: Dict[str, Any] = {"graph": graph}
+# Lesson-context fields rendered as a prose preamble. Order matters — broadest
+# scope first so the model reads "what's the lesson about" before "what's this
+# step's local detail".
+_CONTEXT_FIELDS = (
+    ("lessonTitle", "Lesson"),
+    ("lessonDescription", "Lesson description"),
+    ("sceneTitle", "Scene"),
+    ("sceneDescription", "Scene description"),
+    ("proofTitle", "Proof"),
+    ("proofGoal", "Proof goal"),
+    ("proofTechnique", "Technique"),
+    ("stepLabel", "Step"),
+    ("stepMath", "Step math (LaTeX)"),
+    ("stepJustification", "Step justification"),
+    ("stepExplanation", "Step explanation"),
+    # Set by the enricher itself on a critic-driven retry — surfacing it last
+    # means the model sees it as a final corrective hint after the lesson text.
+    ("coherenceFeedback", "Coherence feedback (from previous attempt)"),
+)
+
+
+def _render_context(
+    context: Optional[Dict[str, Any]],
+    graph_domain: Optional[str] = None,
+) -> str:
+    """Render the prose preamble. ``graph_domain`` is lifted from the graph
+    itself (the parser-asserted domain like ``classical_mechanics``) and
+    surfaced as the very first line so the model can't miss it."""
+    has_anything = graph_domain or context
+    if not has_anything:
+        return "## Context\n(no lesson context provided — infer domain from the graph alone)"
+    lines = ["## Context"]
+    if graph_domain:
+        # First line, marked authoritative — the prompt(s) tell the model to
+        # trust this over softer prose signals.
+        lines.append(f"- Graph domain (authoritative, from parser): {graph_domain}")
     if context:
-        payload["context"] = context
-    return json.dumps(payload, sort_keys=True)
+        for key, label in _CONTEXT_FIELDS:
+            val = context.get(key)
+            if val:
+                lines.append(f"- {label}: {val}")
+        # Emit any extra context keys we don't have a label for, so callers
+        # that add fields don't silently lose them.
+        extras = sorted(k for k in context if k not in {f for f, _ in _CONTEXT_FIELDS})
+        for key in extras:
+            val = context.get(key)
+            if val:
+                lines.append(f"- {key}: {val}")
+    if len(lines) == 1:
+        lines.append("(empty)")
+    return "\n".join(lines)
+
+
+def _graph_domain(graph: Dict[str, Any]) -> Optional[str]:
+    val = graph.get("domain") if isinstance(graph, dict) else None
+    if isinstance(val, str) and val.strip():
+        return val.strip()
+    return None
+
+
+def _build_payload(
+    graph: Dict[str, Any],
+    context: Optional[Dict[str, Any]],
+    *,
+    override_domain: Optional[str] = None,
+) -> str:
+    """``override_domain`` lets the retry pass surface a domain that the first
+    pass inferred but which isn't stored on the input ``graph`` itself."""
+    domain = override_domain or _graph_domain(graph)
+    return (
+        f"{_render_context(context, domain)}\n\n"
+        f"## Graph\n{json.dumps(graph, sort_keys=True)}"
+    )
+
+
+# Model-driven coherence critic
+# -----------------------------
+# After enrichment, a second model call inspects the result against the lesson
+# context and decides whether any node's claimed physical quantity belongs to
+# a different physical domain than the lesson (e.g. ``voltage`` in an
+# atmospheric-entry lesson). If yes, we re-enrich once with the critic's
+# feedback folded into the context. We avoid hand-coded keyword tables so the
+# check generalizes to any physical domain the model can reason about.
+
+
+_CRITIC_PROMPT = """\
+You audit an enriched semantic graph for physical-domain coherence.
+
+The user message has:
+- `## Context` : the lesson / scene / proof / step text.
+- `## Enriched graph` : a candidate enrichment with quantity / unit /
+  dimension / description fields on each node.
+
+Steps:
+1. Identify the lesson's primary physical domain. If the context contains
+   a `Graph domain` line (e.g. `classical_mechanics`, `quantum_mechanics`,
+   `special_relativity`, `algebra`), trust it as authoritative. Otherwise
+   infer the domain from the lesson prose (mechanics, electromagnetism,
+   thermodynamics, quantum, fluids, optics, relativity, control theory,
+   …). The lesson is normally about ONE domain.
+2. For every node, check whether its `quantity`, `unit`, `dimension`, and
+   `description` belong to that domain. A node is mismatched when its
+   claimed physical meaning sits in a clearly different physical domain
+   (e.g. `voltage` in a kinematics lesson, `thrust` in a circuits lesson,
+   `entropy` in a quantum-spin lesson).
+3. Be conservative. Only flag clear cross-domain contradictions. Do NOT
+   flag stylistic issues, emoji choice, missing fields, or a node that
+   merely lacks a quantity. Cross-domain analogies that the lesson
+   actually invokes are allowed.
+
+Return:
+- `ok = true`, empty `mismatched_node_ids`, no `feedback` if every node
+  is consistent with the lesson's domain (or if the lesson's domain is
+  genuinely ambiguous and you can't tell).
+- `ok = false`, the offending node ids, and a one-sentence `feedback`
+  pointing the next enrichment attempt at the right reading
+  (e.g. "Lesson is atmospheric entry; symbol V is velocity, not voltage.")
+  whenever you find a clear cross-domain contradiction.
+"""
+
+
+class _CoherenceVerdict(BaseModel):
+    """Critic output: which nodes (if any) clash with the lesson domain."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ok: bool
+    mismatched_node_ids: List[str] = Field(default_factory=list)
+    feedback: Optional[str] = Field(default=None, max_length=400)
+
+
+class SemanticGraphCoherenceCritic(BaseAgent):
+    """Audits an enriched graph for cross-domain physics contradictions."""
+
+    name = "semantic_graph_coherence_critic"
+    system_prompt = _CRITIC_PROMPT
+    result_type = _CoherenceVerdict
+    max_retries = 1
+
+
+def _build_critique_payload(
+    context: Optional[Dict[str, Any]],
+    enriched: Dict[str, Any],
+) -> str:
+    return (
+        f"{_render_context(context, _graph_domain(enriched))}\n\n"
+        f"## Enriched graph\n{json.dumps(enriched, sort_keys=True)}"
+    )
+
+
+def _context_with_feedback(
+    context: Optional[Dict[str, Any]],
+    feedback: str,
+) -> Dict[str, Any]:
+    """Fold critic feedback into the context for a re-enrichment pass."""
+    merged: Dict[str, Any] = dict(context) if context else {}
+    existing = merged.get("coherenceFeedback")
+    merged["coherenceFeedback"] = (
+        f"{existing}\n{feedback}" if existing else feedback
+    )
+    return merged
 
 
 class SemanticGraphEnrichmentAgent(BaseAgent):
@@ -114,20 +297,105 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
     result_type = SemanticGraph
     max_retries = 2
 
-    def enrich(
+    def __init__(
+        self,
+        *,
+        model: Optional[str] = None,
+        agent: Any = None,
+        critic: Optional[SemanticGraphCoherenceCritic] = None,
+    ) -> None:
+        super().__init__(model=model, agent=agent)
+        # ``critic=None`` in production means "build one with the same env";
+        # tests inject a pre-built critic via ``__new__`` to avoid the env
+        # check. If critic creation fails (no key, etc.) we degrade to
+        # single-pass enrichment rather than blowing up the whole agent.
+        if critic is None and agent is None:
+            try:
+                critic = SemanticGraphCoherenceCritic(model=model)
+            except Exception:
+                critic = None
+        self._critic = critic
+
+    async def _first_pass(
         self,
         graph: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None,
+        context: Optional[Dict[str, Any]],
+        *,
+        override_domain: Optional[str] = None,
     ) -> Dict[str, Any]:
-        result = self.run(_build_payload(graph, context))
+        result = await self.arun(
+            _build_payload(graph, context, override_domain=override_domain)
+        )
         assert isinstance(result, SemanticGraph)
         return result.model_dump(by_alias=True, exclude_none=True)
+
+    async def _critique(
+        self,
+        context: Dict[str, Any],
+        enriched: Dict[str, Any],
+    ) -> Optional[_CoherenceVerdict]:
+        if self._critic is None:
+            return None
+        try:
+            verdict = await self._critic.arun(_build_critique_payload(context, enriched))
+        except Exception as exc:
+            print(f"[enrich] critic error (skipping): {exc}", flush=True)
+            return None
+        return verdict if isinstance(verdict, _CoherenceVerdict) else None
 
     async def aenrich(
         self,
         graph: Dict[str, Any],
         context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        result = await self.arun(_build_payload(graph, context))
-        assert isinstance(result, SemanticGraph)
-        return result.model_dump(by_alias=True, exclude_none=True)
+        node_count = len(graph.get("nodes") or [])
+        enriched = await self._first_pass(graph, context)
+        if not context:
+            print(f"[enrich] first-pass ok  nodes={node_count} ctx=n (no critique)", flush=True)
+            return enriched
+        verdict = await self._critique(context, enriched)
+        if verdict is None:
+            print(f"[enrich] first-pass ok  nodes={node_count} critic=unavailable", flush=True)
+            return enriched
+        if verdict.ok:
+            print(f"[enrich] first-pass ok  nodes={node_count} critic=ok", flush=True)
+            return enriched
+        if not verdict.feedback:
+            print(
+                f"[enrich] critic flagged {verdict.mismatched_node_ids!r} "
+                f"but no feedback — keeping first pass",
+                flush=True,
+            )
+            return enriched
+        # If the first pass inferred a domain that the input graph didn't
+        # carry, surface that domain to the retry as authoritative — without
+        # it, the retry would re-infer from prose alone and might land on the
+        # same wrong answer the critic just rejected.
+        inferred_domain = _graph_domain(enriched)
+        if inferred_domain and not _graph_domain(graph):
+            print(f"[enrich] using first-pass inferred domain={inferred_domain!r}", flush=True)
+        print(
+            f"[enrich] critic mismatch nodes={verdict.mismatched_node_ids!r} → retry  "
+            f"feedback={verdict.feedback!r}",
+            flush=True,
+        )
+        retry_context = _context_with_feedback(context, verdict.feedback)
+        retried = await self._first_pass(
+            graph, retry_context, override_domain=inferred_domain,
+        )
+        print(f"[enrich] retry ok  nodes={node_count}", flush=True)
+        return retried
+
+    def enrich(
+        self,
+        graph: Dict[str, Any],
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Sync wrapper around :meth:`aenrich` for CLI / script / sync-test callers.
+
+        Production goes through ``aenrich`` directly from the FastAPI handler.
+        Don't call this from inside a running event loop — ``asyncio.run`` will
+        raise. There's only one real implementation; this just bridges callers
+        that can't ``await``.
+        """
+        return asyncio.run(self.aenrich(graph, context))
