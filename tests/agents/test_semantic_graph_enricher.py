@@ -373,6 +373,65 @@ def test_no_domain_no_authoritative_line() -> None:
     assert "Graph domain" not in payload
 
 
+def test_enriched_marker_stamped_on_first_pass_ok() -> None:
+    # Every successful enrichment marks the result `enriched: true` so the
+    # server and client can short-circuit on second invocations.
+    enricher = _build_agent_with(
+        test_output={"nodes": [_GOOD_VELOCITY_NODE], "edges": []},
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    out = enricher.enrich(
+        {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
+        context=_ATMOSPHERIC_CONTEXT,
+    )
+    assert out.get("enriched") is True
+
+
+def test_enriched_marker_stamped_after_retry() -> None:
+    # The marker also lands on the retry path — otherwise a critic-driven
+    # correction would ship without it and look "unenriched" to callers.
+    enricher = _build_agent_with(
+        test_output=[
+            {"nodes": [_BAD_VOLTAGE_NODE], "edges": []},
+            {"nodes": [_GOOD_VELOCITY_NODE], "edges": []},
+        ],
+        critic_outputs=[
+            {"ok": False, "mismatched_node_ids": ["V"], "feedback": "V is velocity."},
+        ],
+    )
+    out = enricher.enrich(
+        {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
+        context=_ATMOSPHERIC_CONTEXT,
+    )
+    assert out.get("enriched") is True
+    assert out["nodes"][0]["quantity"] == "velocity"
+
+
+def test_already_enriched_input_is_passthrough() -> None:
+    # An input graph already marked enriched skips both Gemini calls.
+    # The stub would raise StopIteration if either call ran (no canned
+    # outputs given) — passing this test proves nothing was called.
+    from agents.semantic_graph_enricher import SemanticGraphEnrichmentAgent
+
+    pre = {
+        "enriched": True,
+        "nodes": [{"id": "V", "type": "scalar", "quantity": "velocity"}],
+        "edges": [],
+    }
+    enricher = SemanticGraphEnrichmentAgent.__new__(SemanticGraphEnrichmentAgent)
+
+    class _ExplodingAgent:
+        async def run(self, _prompt):
+            raise AssertionError("enrichment must not run on a marked graph")
+
+    enricher._agent = _ExplodingAgent()
+    enricher._critic = None
+
+    out = enricher.enrich(pre, context=_ATMOSPHERIC_CONTEXT)
+    assert out is pre  # unchanged, same object
+    assert out["enriched"] is True
+
+
 def test_override_domain_surfaces_in_payload() -> None:
     # When the first pass infers a domain that the input graph didn't
     # carry, the retry must still see that domain as authoritative —

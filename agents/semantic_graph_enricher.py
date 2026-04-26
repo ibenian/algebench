@@ -278,6 +278,13 @@ def _build_critique_payload(
     )
 
 
+def _stamp_enriched(graph: Dict[str, Any]) -> Dict[str, Any]:
+    """Mark a graph as enriched. Used as the gate for skip-on-second-call
+    deduplication on both server and client. Mutates and returns the dict."""
+    graph["enriched"] = True
+    return graph
+
+
 def _context_with_feedback(
     context: Optional[Dict[str, Any]],
     feedback: str,
@@ -348,25 +355,34 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
         graph: Dict[str, Any],
         context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        # Idempotency: if the input graph is already marked enriched, return
+        # it unchanged — both Gemini calls (enrichment + critic) are skipped
+        # and we don't double-stamp. The server does the same short-circuit
+        # higher up, but keeping the guard here too means direct callers
+        # (CLI / scripts / tests) get the same behavior.
+        if isinstance(graph, dict) and graph.get("enriched") is True:
+            print(f"[enrich] input already marked enriched — returning unchanged", flush=True)
+            return graph
+
         node_count = len(graph.get("nodes") or [])
         enriched = await self._first_pass(graph, context)
         if not context:
             print(f"[enrich] first-pass ok  nodes={node_count} ctx=n (no critique)", flush=True)
-            return enriched
+            return _stamp_enriched(enriched)
         verdict = await self._critique(context, enriched)
         if verdict is None:
             print(f"[enrich] first-pass ok  nodes={node_count} critic=unavailable", flush=True)
-            return enriched
+            return _stamp_enriched(enriched)
         if verdict.ok:
             print(f"[enrich] first-pass ok  nodes={node_count} critic=ok", flush=True)
-            return enriched
+            return _stamp_enriched(enriched)
         if not verdict.feedback:
             print(
                 f"[enrich] critic flagged {verdict.mismatched_node_ids!r} "
                 f"but no feedback — keeping first pass",
                 flush=True,
             )
-            return enriched
+            return _stamp_enriched(enriched)
         # If the first pass inferred a domain that the input graph didn't
         # carry, surface that domain to the retry as authoritative — without
         # it, the retry would re-infer from prose alone and might land on the
@@ -384,7 +400,7 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
             graph, retry_context, override_domain=inferred_domain,
         )
         print(f"[enrich] retry ok  nodes={node_count}", flush=True)
-        return retried
+        return _stamp_enriched(retried)
 
     def enrich(
         self,

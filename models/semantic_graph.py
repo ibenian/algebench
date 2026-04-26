@@ -112,3 +112,9 @@ class SemanticGraph(BaseModel):
     edges: List[SemanticGraphEdge]
     classification: Optional[Classification] = None
     domain: Optional[str] = Field(default=None, max_length=60, pattern=_NO_HTML)
+    # Set to ``true`` after a graph has been through the Gemini enricher.
+    # Both the server and the client check this to short-circuit redundant
+    # enrichment calls — a graph that already carries the marker has the
+    # description / quantity / dimension / unit / emoji metadata the
+    # enricher produces, so re-running on it would just burn a Gemini call.
+    enriched: Optional[bool] = Field(default=None)
