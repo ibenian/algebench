@@ -264,6 +264,14 @@ class SemanticGraphCoherenceCritic(BaseAgent):
     system_prompt = _CRITIC_PROMPT
     result_type = _CoherenceVerdict
     max_retries = 1
+    # Pin the highest-tier Gemini model — domain disambiguation is a
+    # judgment call (e.g. is V velocity or voltage in this lesson?) and
+    # the smaller flash models leak training-data junk under uncertainty
+    # (Russian words in emoji fields, phantom nodes, etc.). ``BaseAgent``
+    # precedence is ``__init__(model=)`` arg → this class attr → env var,
+    # so a per-call override still wins; prod overrides need the kwarg
+    # rather than the env var.
+    model = "gemini-2.5-pro"
 
 
 def _build_critique_payload(
@@ -450,6 +458,9 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
     system_prompt = _SYSTEM_PROMPT
     result_type = SemanticGraph
     max_retries = 2
+    # See ``SemanticGraphCoherenceCritic.model`` for the rationale —
+    # enrichment quality matters more than per-call latency.
+    model = "gemini-2.5-pro"
 
     def __init__(
         self,
