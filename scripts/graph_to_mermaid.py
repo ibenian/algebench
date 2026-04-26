@@ -86,15 +86,10 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "log": "log",
     "exp": "exp",
     "sqrt": "√",
-    "abs": "|·|",
-    "arcsin": "arcsin",
-    "arccos": "arccos",
-    "arctan": "arctan",
-    # SymPy class-name alias. ``FUNCTION_MAP`` in the parser used to
-    # normalize ``Abs``→``abs`` (and ``asin``→``arcsin`` etc., but those
-    # arc-trig forms don't appear anywhere in the scene corpus, so we
-    # don't bother aliasing them — if they ever show up, they'll render
-    # as ``asin`` / ``acos`` / ``atan`` until someone adds an entry).
+    # SymPy class names: the parser used to normalize these via
+    # FUNCTION_MAP (``Abs`` → ``abs``), but since FUNCTION_MAP was
+    # removed the parser emits the SymPy class name directly. Key the
+    # entry on what the parser actually produces — no aliases needed.
     "Abs": "|·|",
 }
 
@@ -116,8 +111,8 @@ OPERATOR_LATEX: dict[str, str] = {
     "log": r"\log",
     "exp": r"\exp",
     "sqrt": r"\sqrt{\cdot}",
-    "abs": r"|\cdot|",
-    # SymPy class-name alias — see OPERATOR_SYMBOLS above.
+    # SymPy class name (see OPERATOR_SYMBOLS comment). Parser emits
+    # ``Abs``; nothing in the codebase produces a normalized ``abs``.
     "Abs": r"|\cdot|",
 }
 
