@@ -842,7 +842,9 @@ function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
     // Server-stamped marker: the persisted graph already went through Gemini
     // (either earlier this session or in a previous one whose result got
     // saved into the scene file). Treat it as enriched and skip the call.
-    if (graph.enriched === true) {
+    // Presence of the ``enrichment`` block is the marker; ``reasoning``
+    // inside it is the agent's domain rationale (logged server-side).
+    if (graph.enrichment && typeof graph.enrichment === 'object') {
         try {
             Object.defineProperty(graph, '__enriched', {
                 value: true, writable: true, configurable: true, enumerable: false,

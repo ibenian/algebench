@@ -103,6 +103,21 @@ class Classification(BaseModel):
 Classification.model_rebuild()
 
 
+class Enrichment(BaseModel):
+    """Metadata about how / when this graph was enriched by the Gemini agent.
+
+    Presence of this field on a graph is the marker that it's been enriched
+    — both the server endpoint and the client gate short-circuit on it,
+    skipping redundant Gemini calls. ``reasoning`` is a one-or-two-sentence
+    explanation of the enricher's domain / disambiguation choices, logged
+    server-side so we can audit decisions without enabling DEBUG_MODE.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    reasoning: Optional[str] = Field(default=None, max_length=300, pattern=_NO_HTML)
+
+
 class SemanticGraph(BaseModel):
     """Top-level semantic graph object."""
 
@@ -112,9 +127,4 @@ class SemanticGraph(BaseModel):
     edges: List[SemanticGraphEdge]
     classification: Optional[Classification] = None
     domain: Optional[str] = Field(default=None, max_length=60, pattern=_NO_HTML)
-    # Set to ``true`` after a graph has been through the Gemini enricher.
-    # Both the server and the client check this to short-circuit redundant
-    # enrichment calls — a graph that already carries the marker has the
-    # description / quantity / dimension / unit / emoji metadata the
-    # enricher produces, so re-running on it would just burn a Gemini call.
-    enriched: Optional[bool] = Field(default=None)
+    enrichment: Optional[Enrichment] = None

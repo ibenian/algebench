@@ -373,9 +373,29 @@ def test_no_domain_no_authoritative_line() -> None:
     assert "Graph domain" not in payload
 
 
-def test_enriched_marker_stamped_on_first_pass_ok() -> None:
-    # Every successful enrichment marks the result `enriched: true` so the
-    # server and client can short-circuit on second invocations.
+def test_enrichment_marker_stamped_on_first_pass_ok() -> None:
+    # Every successful enrichment attaches an `enrichment` block so the
+    # server and client can short-circuit on second invocations. Reasoning
+    # supplied by the model is preserved through the stamping.
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [_GOOD_VELOCITY_NODE], "edges": [],
+            "enrichment": {"reasoning": "Atmospheric entry → classical_mechanics; V is velocity."},
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    out = enricher.enrich(
+        {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
+        context=_ATMOSPHERIC_CONTEXT,
+    )
+    assert isinstance(out.get("enrichment"), dict)
+    assert "velocity" in out["enrichment"]["reasoning"]
+
+
+def test_enrichment_marker_stamped_when_model_omits_block() -> None:
+    # Even if the model forgets to include the `enrichment` block on its
+    # output, the enricher backfills an empty one so callers always get
+    # the marker.
     enricher = _build_agent_with(
         test_output={"nodes": [_GOOD_VELOCITY_NODE], "edges": []},
         critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
@@ -384,16 +404,17 @@ def test_enriched_marker_stamped_on_first_pass_ok() -> None:
         {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
         context=_ATMOSPHERIC_CONTEXT,
     )
-    assert out.get("enriched") is True
+    assert isinstance(out.get("enrichment"), dict)
 
 
-def test_enriched_marker_stamped_after_retry() -> None:
+def test_enrichment_marker_stamped_after_retry() -> None:
     # The marker also lands on the retry path — otherwise a critic-driven
-    # correction would ship without it and look "unenriched" to callers.
+    # correction would ship without it and look unenriched to callers.
     enricher = _build_agent_with(
         test_output=[
             {"nodes": [_BAD_VOLTAGE_NODE], "edges": []},
-            {"nodes": [_GOOD_VELOCITY_NODE], "edges": []},
+            {"nodes": [_GOOD_VELOCITY_NODE], "edges": [],
+             "enrichment": {"reasoning": "Corrected: V is velocity, not voltage."}},
         ],
         critic_outputs=[
             {"ok": False, "mismatched_node_ids": ["V"], "feedback": "V is velocity."},
@@ -403,18 +424,18 @@ def test_enriched_marker_stamped_after_retry() -> None:
         {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
         context=_ATMOSPHERIC_CONTEXT,
     )
-    assert out.get("enriched") is True
+    assert isinstance(out.get("enrichment"), dict)
+    assert out["enrichment"]["reasoning"] == "Corrected: V is velocity, not voltage."
     assert out["nodes"][0]["quantity"] == "velocity"
 
 
 def test_already_enriched_input_is_passthrough() -> None:
-    # An input graph already marked enriched skips both Gemini calls.
-    # The stub would raise StopIteration if either call ran (no canned
-    # outputs given) — passing this test proves nothing was called.
+    # An input graph that already carries an `enrichment` block skips both
+    # Gemini calls. The exploding agent would raise if either call ran.
     from agents.semantic_graph_enricher import SemanticGraphEnrichmentAgent
 
     pre = {
-        "enriched": True,
+        "enrichment": {"reasoning": "previous run"},
         "nodes": [{"id": "V", "type": "scalar", "quantity": "velocity"}],
         "edges": [],
     }
@@ -429,19 +450,20 @@ def test_already_enriched_input_is_passthrough() -> None:
 
     out = enricher.enrich(pre, context=_ATMOSPHERIC_CONTEXT)
     assert out is pre  # unchanged, same object
-    assert out["enriched"] is True
+    assert out["enrichment"]["reasoning"] == "previous run"
 
 
-def test_override_domain_surfaces_in_payload() -> None:
-    # When the first pass infers a domain that the input graph didn't
-    # carry, the retry must still see that domain as authoritative —
-    # otherwise the retry would re-infer from prose alone and might land
-    # on the same wrong answer the critic just rejected.
+def test_inferred_domain_threads_into_retry_payload() -> None:
+    # When the first pass infers a domain that the input graph didn't carry,
+    # the retry must see it as authoritative — done by stamping the inferred
+    # domain onto a shallow copy of the graph and surfacing it via the
+    # standard render path. Verifies the mechanism by simulating the retry
+    # graph directly.
     from agents.semantic_graph_enricher import _build_payload
 
-    graph = {"nodes": [], "edges": []}  # no domain on input
-    payload = _build_payload(
-        graph, context=_ATMOSPHERIC_CONTEXT,
-        override_domain="classical_mechanics",
-    )
+    input_graph = {"nodes": [], "edges": []}  # no domain
+    retry_graph = {**input_graph, "domain": "classical_mechanics"}
+    payload = _build_payload(retry_graph, context=_ATMOSPHERIC_CONTEXT)
     assert "Graph domain (authoritative, from parser): classical_mechanics" in payload
+    # The original input graph is not mutated.
+    assert "domain" not in input_graph

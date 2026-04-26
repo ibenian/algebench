@@ -119,18 +119,26 @@ Your job:
    rather than guessing.
 5. Preserve every node `id` exactly. Preserve `edges` verbatim. Preserve
    `classification` and `domain` verbatim.
-6. Do NOT add new nodes or remove existing nodes. Do NOT include any prose,
+6. Set `enrichment.reasoning` to a short (one or two sentences, ≤ 30 words
+   total) explanation of the domain choice and any notable per-symbol
+   disambiguation, e.g. "Step talks about velocity and atmospheric drag,
+   so domain is `classical_mechanics`; V is velocity, not voltage." This
+   is logged server-side so we can audit the agent's decisions.
+7. Do NOT add new nodes or remove existing nodes. Do NOT include any prose,
    commentary, or fields outside the schema.
 
 Return a JSON object matching the SemanticGraph schema (the enriched `graph`
 only — do not echo back the `context`). Keep all string fields short and free
-of HTML brackets. Colors must be #RRGGBB hex.
+of HTML brackets.
 """
 
 
-# Lesson-context fields rendered as a prose preamble. Order matters — broadest
-# scope first so the model reads "what's the lesson about" before "what's this
-# step's local detail".
+# Lesson-context fields, broadest scope to narrowest. ``domain`` is NOT in
+# this table — it lives on the graph itself (set by the lesson author or the
+# parser, or empty otherwise). `_render_context` reads it directly from the
+# graph parameter and surfaces it at the top of the preamble.
+# ``coherenceFeedback`` goes last as a final corrective hint after the
+# lesson text.
 _CONTEXT_FIELDS = (
     ("lessonTitle", "Lesson"),
     ("lessonDescription", "Lesson description"),
@@ -143,27 +151,31 @@ _CONTEXT_FIELDS = (
     ("stepMath", "Step math (LaTeX)"),
     ("stepJustification", "Step justification"),
     ("stepExplanation", "Step explanation"),
-    # Set by the enricher itself on a critic-driven retry — surfacing it last
-    # means the model sees it as a final corrective hint after the lesson text.
     ("coherenceFeedback", "Coherence feedback (from previous attempt)"),
 )
 
 
+def _graph_domain(graph: Optional[Dict[str, Any]]) -> Optional[str]:
+    if not isinstance(graph, dict):
+        return None
+    val = graph.get("domain")
+    if isinstance(val, str) and val.strip():
+        return val.strip()
+    return None
+
+
 def _render_context(
     context: Optional[Dict[str, Any]],
-    graph_domain: Optional[str] = None,
+    graph: Optional[Dict[str, Any]] = None,
 ) -> str:
-    """Render the prose preamble. ``graph_domain`` is lifted from the graph
-    itself (the parser-asserted domain like ``classical_mechanics``) and
-    surfaced as the very first line so the model can't miss it."""
-    has_anything = graph_domain or context
-    if not has_anything:
+    """Render the prose preamble. ``graph.domain`` (if set) appears at the
+    very top as the authoritative domain hint — strongest signal we have."""
+    domain = _graph_domain(graph)
+    if not context and not domain:
         return "## Context\n(no lesson context provided — infer domain from the graph alone)"
     lines = ["## Context"]
-    if graph_domain:
-        # First line, marked authoritative — the prompt(s) tell the model to
-        # trust this over softer prose signals.
-        lines.append(f"- Graph domain (authoritative, from parser): {graph_domain}")
+    if domain:
+        lines.append(f"- Graph domain (authoritative, from parser): {domain}")
     if context:
         for key, label in _CONTEXT_FIELDS:
             val = context.get(key)
@@ -181,24 +193,9 @@ def _render_context(
     return "\n".join(lines)
 
 
-def _graph_domain(graph: Dict[str, Any]) -> Optional[str]:
-    val = graph.get("domain") if isinstance(graph, dict) else None
-    if isinstance(val, str) and val.strip():
-        return val.strip()
-    return None
-
-
-def _build_payload(
-    graph: Dict[str, Any],
-    context: Optional[Dict[str, Any]],
-    *,
-    override_domain: Optional[str] = None,
-) -> str:
-    """``override_domain`` lets the retry pass surface a domain that the first
-    pass inferred but which isn't stored on the input ``graph`` itself."""
-    domain = override_domain or _graph_domain(graph)
+def _build_payload(graph: Dict[str, Any], context: Optional[Dict[str, Any]]) -> str:
     return (
-        f"{_render_context(context, domain)}\n\n"
+        f"{_render_context(context, graph)}\n\n"
         f"## Graph\n{json.dumps(graph, sort_keys=True)}"
     )
 
@@ -273,16 +270,30 @@ def _build_critique_payload(
     enriched: Dict[str, Any],
 ) -> str:
     return (
-        f"{_render_context(context, _graph_domain(enriched))}\n\n"
+        f"{_render_context(context, enriched)}\n\n"
         f"## Enriched graph\n{json.dumps(enriched, sort_keys=True)}"
     )
 
 
 def _stamp_enriched(graph: Dict[str, Any]) -> Dict[str, Any]:
     """Mark a graph as enriched. Used as the gate for skip-on-second-call
-    deduplication on both server and client. Mutates and returns the dict."""
-    graph["enriched"] = True
+    deduplication on both server and client. Preserves any ``reasoning``
+    the model already filled in on the ``enrichment`` block. Mutates and
+    returns the dict."""
+    existing = graph.get("enrichment")
+    if not isinstance(existing, dict):
+        graph["enrichment"] = {}
     return graph
+
+
+def _enrichment_reasoning(graph: Dict[str, Any]) -> Optional[str]:
+    """Pull the model's domain / disambiguation rationale off an enriched
+    graph for logging. ``None`` if the model didn't supply one."""
+    block = graph.get("enrichment") if isinstance(graph, dict) else None
+    if not isinstance(block, dict):
+        return None
+    val = block.get("reasoning")
+    return val.strip() if isinstance(val, str) and val.strip() else None
 
 
 def _context_with_feedback(
@@ -327,12 +338,8 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
         self,
         graph: Dict[str, Any],
         context: Optional[Dict[str, Any]],
-        *,
-        override_domain: Optional[str] = None,
     ) -> Dict[str, Any]:
-        result = await self.arun(
-            _build_payload(graph, context, override_domain=override_domain)
-        )
+        result = await self.arun(_build_payload(graph, context))
         assert isinstance(result, SemanticGraph)
         return result.model_dump(by_alias=True, exclude_none=True)
 
@@ -355,26 +362,31 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
         graph: Dict[str, Any],
         context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        # Idempotency: if the input graph is already marked enriched, return
-        # it unchanged — both Gemini calls (enrichment + critic) are skipped
-        # and we don't double-stamp. The server does the same short-circuit
-        # higher up, but keeping the guard here too means direct callers
-        # (CLI / scripts / tests) get the same behavior.
-        if isinstance(graph, dict) and graph.get("enriched") is True:
-            print(f"[enrich] input already marked enriched — returning unchanged", flush=True)
+        # Idempotency: if the input graph is already enriched (carries the
+        # ``enrichment`` block), return it unchanged — both Gemini calls
+        # (enrichment + critic) are skipped. The server does the same
+        # short-circuit higher up; this keeps direct callers (CLI / scripts
+        # / tests) consistent.
+        if isinstance(graph, dict) and isinstance(graph.get("enrichment"), dict):
+            print(f"[enrich] input already enriched — returning unchanged", flush=True)
             return graph
+
+        def _log_done(stage: str, g: Dict[str, Any]) -> None:
+            reason = _enrichment_reasoning(g)
+            tail = f"  reasoning={reason!r}" if reason else ""
+            print(f"[enrich] {stage}  nodes={node_count}{tail}", flush=True)
 
         node_count = len(graph.get("nodes") or [])
         enriched = await self._first_pass(graph, context)
         if not context:
-            print(f"[enrich] first-pass ok  nodes={node_count} ctx=n (no critique)", flush=True)
+            _log_done("first-pass ok ctx=n (no critique)", enriched)
             return _stamp_enriched(enriched)
         verdict = await self._critique(context, enriched)
         if verdict is None:
-            print(f"[enrich] first-pass ok  nodes={node_count} critic=unavailable", flush=True)
+            _log_done("first-pass ok critic=unavailable", enriched)
             return _stamp_enriched(enriched)
         if verdict.ok:
-            print(f"[enrich] first-pass ok  nodes={node_count} critic=ok", flush=True)
+            _log_done("first-pass ok critic=ok", enriched)
             return _stamp_enriched(enriched)
         if not verdict.feedback:
             print(
@@ -382,24 +394,27 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
                 f"but no feedback — keeping first pass",
                 flush=True,
             )
+            _log_done("kept first pass", enriched)
             return _stamp_enriched(enriched)
         # If the first pass inferred a domain that the input graph didn't
-        # carry, surface that domain to the retry as authoritative — without
-        # it, the retry would re-infer from prose alone and might land on the
-        # same wrong answer the critic just rejected.
+        # carry, stamp that domain onto a shallow copy of the graph for the
+        # retry — the graph is the source of truth for `domain`, and the
+        # render path picks it up from there. Without it, the retry would
+        # re-infer from prose alone and might land on the same wrong answer
+        # the critic just rejected.
+        retry_graph = graph
         inferred_domain = _graph_domain(enriched)
         if inferred_domain and not _graph_domain(graph):
+            retry_graph = {**graph, "domain": inferred_domain}
             print(f"[enrich] using first-pass inferred domain={inferred_domain!r}", flush=True)
+        retry_context = _context_with_feedback(context, verdict.feedback)
         print(
             f"[enrich] critic mismatch nodes={verdict.mismatched_node_ids!r} → retry  "
             f"feedback={verdict.feedback!r}",
             flush=True,
         )
-        retry_context = _context_with_feedback(context, verdict.feedback)
-        retried = await self._first_pass(
-            graph, retry_context, override_domain=inferred_domain,
-        )
-        print(f"[enrich] retry ok  nodes={node_count}", flush=True)
+        retried = await self._first_pass(retry_graph, retry_context)
+        _log_done("retry ok", retried)
         return _stamp_enriched(retried)
 
     def enrich(
