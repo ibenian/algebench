@@ -119,7 +119,9 @@ Your job:
    When the symbol or composition is ambiguous, leave the field unset
    rather than guessing.
 5. Preserve every node `id` exactly. Preserve `edges` verbatim. Preserve
-   `classification` and `domain` verbatim.
+   `classification` verbatim. Preserve `domain` if it was already set on
+   the input — only infer and emit a new `domain` value when the input
+   graph didn't carry one (per the rule above).
 6. Set `enrichment.reasoning` to a short (one or two sentences, ≤ 30 words
    total) explanation of the domain choice and any notable per-symbol
    disambiguation, e.g. "Step talks about velocity and atmospheric drag,

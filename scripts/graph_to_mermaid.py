@@ -90,6 +90,15 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "arcsin": "arcsin",
     "arccos": "arccos",
     "arctan": "arctan",
+    # SymPy class-name aliases. The parser used to normalize these
+    # (``Abs``→``abs``, ``asin``→``arcsin`` …) via FUNCTION_MAP, but that
+    # map is gone — the SymPy class name is now the raw ``op`` value.
+    # These aliases keep the renderer's display glyphs working for both
+    # the old normalized names and the raw SymPy names.
+    "Abs": "|·|",
+    "asin": "arcsin",
+    "acos": "arccos",
+    "atan": "arctan",
 }
 
 OPERATOR_LATEX: dict[str, str] = {
@@ -111,6 +120,11 @@ OPERATOR_LATEX: dict[str, str] = {
     "exp": r"\exp",
     "sqrt": r"\sqrt{\cdot}",
     "abs": r"|\cdot|",
+    # SymPy class-name aliases — see OPERATOR_SYMBOLS above.
+    "Abs": r"|\cdot|",
+    "asin": r"\arcsin",
+    "acos": r"\arccos",
+    "atan": r"\arctan",
 }
 
 # Op-specific shape defaults. The graph schema is semantic-only
