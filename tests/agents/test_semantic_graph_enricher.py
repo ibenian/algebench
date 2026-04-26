@@ -466,6 +466,37 @@ def test_diff_skips_fields_the_model_left_unchanged() -> None:
     assert paths == ["nodes.V.quantity"]  # label/unit unchanged → not listed
 
 
+def test_phantom_nodes_added_by_model_are_dropped() -> None:
+    # Gemini occasionally invents a stray node (e.g. an isolated box
+    # labeled "gravitational acceleration emoji") even though the prompt
+    # forbids it. The agent treats input ids as authoritative and drops
+    # any output node whose id wasn't in the input. Edges that touch a
+    # dropped id go with it.
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [
+                {"id": "g", "type": "scalar", "label": "g",
+                 "quantity": "acceleration", "unit": "m/s²"},
+                {"id": "g_phantom", "type": "scalar",
+                 "label": "gravitational acceleration emoji"},
+            ],
+            "edges": [
+                {"from": "g_phantom", "to": "g"},  # phantom edge
+            ],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    out = enricher.enrich(
+        {"nodes": [{"id": "g", "type": "scalar"}], "edges": []},
+        context=_ATMOSPHERIC_CONTEXT,
+    )
+    ids = [n["id"] for n in out["nodes"]]
+    assert ids == ["g"]                       # phantom dropped
+    assert out["edges"] == []                 # phantom edge dropped too
+    # Real node still got its enrichment.
+    assert out["nodes"][0]["quantity"] == "acceleration"
+
+
 def test_non_emoji_text_in_emoji_field_is_stripped() -> None:
     # Gemini sometimes returns a word in the `emoji` field by mistake
     # (e.g. "ускорение" / "acceleration"). The schema cap is generous so

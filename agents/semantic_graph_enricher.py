@@ -333,6 +333,57 @@ def _looks_like_emoji(s: str) -> bool:
     return True
 
 
+def _drop_phantom_nodes_and_edges(
+    input_graph: Dict[str, Any],
+    output_graph: Dict[str, Any],
+) -> None:
+    """Drop nodes the model invented, plus any edges that reference them.
+
+    The prompt tells the model to preserve the node set verbatim, but Gemini
+    occasionally hallucinates a stray node (e.g. a "gravitational acceleration
+    emoji" box with no connections). Treat the input ids as authoritative —
+    any output node whose id wasn't in the input gets removed, and any edge
+    that touches a removed id goes with it."""
+    in_ids = {
+        n.get("id")
+        for n in (input_graph.get("nodes") or [])
+        if isinstance(n, dict) and isinstance(n.get("id"), str)
+    }
+    nodes = output_graph.get("nodes")
+    if isinstance(nodes, list):
+        kept_nodes = []
+        for n in nodes:
+            if isinstance(n, dict) and n.get("id") in in_ids:
+                kept_nodes.append(n)
+            elif isinstance(n, dict):
+                print(
+                    f"[enrich] dropping phantom node {n.get('id')!r} "
+                    f"(label={n.get('label')!r})",
+                    flush=True,
+                )
+        output_graph["nodes"] = kept_nodes
+    edges = output_graph.get("edges")
+    if isinstance(edges, list):
+        # Edge schema uses ``from_`` / ``to`` after Pydantic; the dump uses
+        # ``from`` (alias) on the wire. Handle both just in case.
+        def _edge_endpoints(e: Dict[str, Any]) -> tuple[Any, Any]:
+            return (e.get("from") or e.get("from_"), e.get("to"))
+
+        kept_edges = []
+        for e in edges:
+            if not isinstance(e, dict):
+                continue
+            src, dst = _edge_endpoints(e)
+            if src in in_ids and dst in in_ids:
+                kept_edges.append(e)
+            else:
+                print(
+                    f"[enrich] dropping phantom edge {src!r}→{dst!r}",
+                    flush=True,
+                )
+        output_graph["edges"] = kept_edges
+
+
 def _strip_bad_emojis(graph: Dict[str, Any]) -> None:
     """Remove ``emoji`` fields that are clearly not a single emoji glyph.
 
@@ -361,6 +412,7 @@ def _stamp_enriched(
     the gate for skip-on-second-call deduplication on both server and
     client. Preserves any ``reasoning`` the model already filled in on the
     ``enrichment`` block. Mutates and returns ``output_graph``."""
+    _drop_phantom_nodes_and_edges(input_graph, output_graph)
     _strip_bad_emojis(output_graph)
     block = output_graph.get("enrichment")
     if not isinstance(block, dict):
