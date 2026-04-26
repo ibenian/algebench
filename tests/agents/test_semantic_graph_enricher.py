@@ -376,10 +376,12 @@ def test_no_domain_no_authoritative_line() -> None:
 def test_enrichment_marker_stamped_on_first_pass_ok() -> None:
     # Every successful enrichment attaches an `enrichment` block so the
     # server and client can short-circuit on second invocations. Reasoning
-    # supplied by the model is preserved through the stamping.
+    # supplied by the model is preserved through the stamping, and the
+    # `fields` list authoritatively records what the enricher changed.
     enricher = _build_agent_with(
         test_output={
             "nodes": [_GOOD_VELOCITY_NODE], "edges": [],
+            "domain": "classical_mechanics",
             "enrichment": {"reasoning": "Atmospheric entry → classical_mechanics; V is velocity."},
         },
         critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
@@ -388,14 +390,23 @@ def test_enrichment_marker_stamped_on_first_pass_ok() -> None:
         {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
         context=_ATMOSPHERIC_CONTEXT,
     )
-    assert isinstance(out.get("enrichment"), dict)
-    assert "velocity" in out["enrichment"]["reasoning"]
+    block = out.get("enrichment")
+    assert isinstance(block, dict)
+    assert "velocity" in block["reasoning"]
+    fields = block.get("fields")
+    assert isinstance(fields, list) and fields
+    # The diff records both top-level (`domain`) and per-node changes, the
+    # latter as `nodes.<id>.<field>` paths.
+    assert "domain" in fields
+    assert any(f.startswith("nodes.V.") for f in fields)
+    assert "nodes.V.quantity" in fields
+    assert "nodes.V.unit" in fields
 
 
 def test_enrichment_marker_stamped_when_model_omits_block() -> None:
     # Even if the model forgets to include the `enrichment` block on its
-    # output, the enricher backfills an empty one so callers always get
-    # the marker.
+    # output, the enricher backfills one (with the diff) so callers always
+    # get the marker.
     enricher = _build_agent_with(
         test_output={"nodes": [_GOOD_VELOCITY_NODE], "edges": []},
         critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
@@ -404,16 +415,20 @@ def test_enrichment_marker_stamped_when_model_omits_block() -> None:
         {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
         context=_ATMOSPHERIC_CONTEXT,
     )
-    assert isinstance(out.get("enrichment"), dict)
+    block = out.get("enrichment")
+    assert isinstance(block, dict)
+    assert isinstance(block.get("fields"), list) and block["fields"]
 
 
 def test_enrichment_marker_stamped_after_retry() -> None:
-    # The marker also lands on the retry path — otherwise a critic-driven
-    # correction would ship without it and look unenriched to callers.
+    # The marker also lands on the retry path. The diff is computed against
+    # the ORIGINAL input graph (not the shallow-copied retry graph), so the
+    # `fields` list reflects everything the agent did across both passes.
     enricher = _build_agent_with(
         test_output=[
             {"nodes": [_BAD_VOLTAGE_NODE], "edges": []},
             {"nodes": [_GOOD_VELOCITY_NODE], "edges": [],
+             "domain": "classical_mechanics",
              "enrichment": {"reasoning": "Corrected: V is velocity, not voltage."}},
         ],
         critic_outputs=[
@@ -424,9 +439,31 @@ def test_enrichment_marker_stamped_after_retry() -> None:
         {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
         context=_ATMOSPHERIC_CONTEXT,
     )
-    assert isinstance(out.get("enrichment"), dict)
-    assert out["enrichment"]["reasoning"] == "Corrected: V is velocity, not voltage."
+    block = out.get("enrichment")
+    assert isinstance(block, dict)
+    assert block["reasoning"] == "Corrected: V is velocity, not voltage."
     assert out["nodes"][0]["quantity"] == "velocity"
+    # Even though the inferred domain came from the first pass and was
+    # re-asserted by the retry, the diff against the original input still
+    # reports it.
+    assert "domain" in block["fields"]
+    assert "nodes.V.quantity" in block["fields"]
+
+
+def test_diff_skips_fields_the_model_left_unchanged() -> None:
+    # `fields` is computed by diffing input vs output — fields the model
+    # echoed back unchanged should NOT appear in the list. Pins the
+    # authoritative-diff behavior.
+    from agents.semantic_graph_enricher import _diff_enriched_fields
+
+    inp = {"nodes": [{"id": "V", "type": "scalar", "label": "V", "unit": "m/s"}], "edges": []}
+    out = {
+        "nodes": [{"id": "V", "type": "scalar", "label": "V",
+                   "unit": "m/s", "quantity": "velocity"}],
+        "edges": [],
+    }
+    paths = _diff_enriched_fields(inp, out)
+    assert paths == ["nodes.V.quantity"]  # label/unit unchanged → not listed
 
 
 def test_already_enriched_input_is_passthrough() -> None:

@@ -275,15 +275,52 @@ def _build_critique_payload(
     )
 
 
-def _stamp_enriched(graph: Dict[str, Any]) -> Dict[str, Any]:
-    """Mark a graph as enriched. Used as the gate for skip-on-second-call
-    deduplication on both server and client. Preserves any ``reasoning``
-    the model already filled in on the ``enrichment`` block. Mutates and
-    returns the dict."""
-    existing = graph.get("enrichment")
-    if not isinstance(existing, dict):
-        graph["enrichment"] = {}
-    return graph
+def _diff_enriched_fields(
+    input_graph: Dict[str, Any],
+    output_graph: Dict[str, Any],
+) -> List[str]:
+    """Authoritative list of dotted JSON-ish paths the enricher added or
+    changed. Computed by diffing input vs output (the model would
+    self-report unreliably). Graph-level fields appear as bare names like
+    ``"domain"``; per-node fields use ``"nodes.<id>.<field>"`` form."""
+    paths: List[str] = []
+    # Top-level diff: domain is the only graph-level field the enricher
+    # writes; classification is preserved verbatim per prompt.
+    if (input_graph.get("domain") or "") != (output_graph.get("domain") or ""):
+        paths.append("domain")
+    in_nodes = {
+        n.get("id"): n
+        for n in (input_graph.get("nodes") or [])
+        if isinstance(n, dict) and n.get("id")
+    }
+    for out_node in output_graph.get("nodes") or []:
+        if not isinstance(out_node, dict):
+            continue
+        node_id = out_node.get("id")
+        in_node = in_nodes.get(node_id) or {}
+        for key, val in sorted(out_node.items()):
+            # ``id`` and ``type`` are structural — never enriched. Skip.
+            if key in ("id", "type"):
+                continue
+            if in_node.get(key) != val:
+                paths.append(f"nodes.{node_id}.{key}")
+    return paths
+
+
+def _stamp_enriched(
+    input_graph: Dict[str, Any],
+    output_graph: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Mark a graph as enriched and attach the authoritative diff. Used as
+    the gate for skip-on-second-call deduplication on both server and
+    client. Preserves any ``reasoning`` the model already filled in on the
+    ``enrichment`` block. Mutates and returns ``output_graph``."""
+    block = output_graph.get("enrichment")
+    if not isinstance(block, dict):
+        block = {}
+        output_graph["enrichment"] = block
+    block["fields"] = _diff_enriched_fields(input_graph, output_graph)
+    return output_graph
 
 
 def _enrichment_reasoning(graph: Dict[str, Any]) -> Optional[str]:
@@ -373,21 +410,25 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
 
         def _log_done(stage: str, g: Dict[str, Any]) -> None:
             reason = _enrichment_reasoning(g)
+            field_count = len(_diff_enriched_fields(graph, g))
             tail = f"  reasoning={reason!r}" if reason else ""
-            print(f"[enrich] {stage}  nodes={node_count}{tail}", flush=True)
+            print(
+                f"[enrich] {stage}  nodes={node_count} filled={field_count}{tail}",
+                flush=True,
+            )
 
         node_count = len(graph.get("nodes") or [])
         enriched = await self._first_pass(graph, context)
         if not context:
             _log_done("first-pass ok ctx=n (no critique)", enriched)
-            return _stamp_enriched(enriched)
+            return _stamp_enriched(graph, enriched)
         verdict = await self._critique(context, enriched)
         if verdict is None:
             _log_done("first-pass ok critic=unavailable", enriched)
-            return _stamp_enriched(enriched)
+            return _stamp_enriched(graph, enriched)
         if verdict.ok:
             _log_done("first-pass ok critic=ok", enriched)
-            return _stamp_enriched(enriched)
+            return _stamp_enriched(graph, enriched)
         if not verdict.feedback:
             print(
                 f"[enrich] critic flagged {verdict.mismatched_node_ids!r} "
@@ -395,7 +436,7 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
                 flush=True,
             )
             _log_done("kept first pass", enriched)
-            return _stamp_enriched(enriched)
+            return _stamp_enriched(graph, enriched)
         # If the first pass inferred a domain that the input graph didn't
         # carry, stamp that domain onto a shallow copy of the graph for the
         # retry — the graph is the source of truth for `domain`, and the
@@ -415,7 +456,10 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
         )
         retried = await self._first_pass(retry_graph, retry_context)
         _log_done("retry ok", retried)
-        return _stamp_enriched(retried)
+        # Diff against the ORIGINAL input graph, not ``retry_graph`` — we
+        # want the user-visible list of fields the agent actually filled,
+        # which includes the domain it inferred on the first pass.
+        return _stamp_enriched(graph, retried)
 
     def enrich(
         self,

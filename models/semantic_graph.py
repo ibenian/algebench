@@ -111,11 +111,16 @@ class Enrichment(BaseModel):
     skipping redundant Gemini calls. ``reasoning`` is a one-or-two-sentence
     explanation of the enricher's domain / disambiguation choices, logged
     server-side so we can audit decisions without enabling DEBUG_MODE.
+    ``fields`` is the authoritative list of paths the enricher added or
+    changed (computed by diffing input vs output) — graph-level fields
+    appear as bare names like ``"domain"`` and per-node fields use
+    ``"nodes.<id>.<field>"`` form, e.g. ``"nodes.V.quantity"``.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     reasoning: Optional[str] = Field(default=None, max_length=300, pattern=_NO_HTML)
+    fields: Optional[List[str]] = Field(default=None)
 
 
 class SemanticGraph(BaseModel):
