@@ -54,7 +54,11 @@ class SemanticGraphNode(BaseModel):
     id: str = Field(min_length=1, max_length=80, pattern=_NO_HTML)
     type: NodeType
     label: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
-    emoji: Optional[str] = Field(default=None, max_length=4)
+    # Cap is generous (not 1-2 chars) because Gemini occasionally returns a
+    # word in this field by mistake (e.g. ``"ускорение"``). Better to accept
+    # the value and strip it post-hoc than to fail the whole enrichment via
+    # exhausted retries. Real emoji values are 1–4 codepoints.
+    emoji: Optional[str] = Field(default=None, max_length=40)
     latex: Optional[str] = Field(default=None, max_length=200)
     op: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     exponent: Optional[str] = Field(default=None, max_length=20, pattern=_NO_HTML)
@@ -119,7 +123,11 @@ class Enrichment(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    reasoning: Optional[str] = Field(default=None, max_length=300, pattern=_NO_HTML)
+    # ``reasoning`` is logged server-side, never injected into HTML, so the
+    # ``_NO_HTML`` guard isn't needed — it would just reject natural model
+    # output like "V < V_t until terminal velocity is reached" and force a
+    # full retry-exhausted failure of the entire enrichment.
+    reasoning: Optional[str] = Field(default=None, max_length=300)
     fields: Optional[List[str]] = Field(default=None)
 
 

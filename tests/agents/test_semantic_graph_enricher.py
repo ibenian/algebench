@@ -466,6 +466,32 @@ def test_diff_skips_fields_the_model_left_unchanged() -> None:
     assert paths == ["nodes.V.quantity"]  # label/unit unchanged → not listed
 
 
+def test_non_emoji_text_in_emoji_field_is_stripped() -> None:
+    # Gemini sometimes returns a word in the `emoji` field by mistake
+    # (e.g. "ускорение" / "acceleration"). The schema cap is generous so
+    # this doesn't blow up the whole enrichment via retry exhaustion, but
+    # we strip the bad value server-side so the user never sees the junk.
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [
+                {"id": "a", "type": "vector", "label": "a",
+                 "emoji": "ускорение"},  # not an emoji
+                {"id": "V", "type": "scalar", "label": "V",
+                 "emoji": "💨"},          # legit
+            ],
+            "edges": [],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    out = enricher.enrich(
+        {"nodes": [{"id": "a", "type": "vector"}, {"id": "V", "type": "scalar"}], "edges": []},
+        context=_ATMOSPHERIC_CONTEXT,
+    )
+    by_id = {n["id"]: n for n in out["nodes"]}
+    assert "emoji" not in by_id["a"]    # word stripped
+    assert by_id["V"]["emoji"] == "💨"  # real emoji survives
+
+
 def test_diff_reports_field_removals() -> None:
     # Now that the prompt forbids enriching `color`, the model may strip
     # a color the input had. The diff must walk the union of input/output

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import unicodedata
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -314,6 +315,44 @@ def _diff_enriched_fields(
     return paths
 
 
+def _looks_like_emoji(s: str) -> bool:
+    """True iff ``s`` plausibly is a single emoji glyph (one or two
+    pictographic codepoints + optional modifiers). Any letter character
+    from any alphabet — Latin, Cyrillic, Greek, CJK, etc. — disqualifies.
+    Gemini sometimes puts a translated word ("ускорение", "加速度") into
+    the emoji field; we want to catch all of those, not just ASCII text."""
+    if not s:
+        return False
+    for ch in s:
+        cat = unicodedata.category(ch)
+        # ``L*`` = letters of any script; ``Z*`` = whitespace separators.
+        # Real emojis sit in ``So`` (other symbol) plus joiners (``Cf``)
+        # and a handful of variation selectors (``Mn``).
+        if cat[0] == "L" or cat[0] == "Z":
+            return False
+    return True
+
+
+def _strip_bad_emojis(graph: Dict[str, Any]) -> None:
+    """Remove ``emoji`` fields that are clearly not a single emoji glyph.
+
+    Gemini occasionally fills ``emoji`` with a word in some language
+    (Russian "ускорение", Chinese "加速度", English "acceleration") instead
+    of a glyph. The schema cap is intentionally generous so a bad value
+    doesn't blow up the whole enrichment via pydantic-ai retry
+    exhaustion — but we shouldn't ship the junk to the user."""
+    nodes = graph.get("nodes")
+    if not isinstance(nodes, list):
+        return
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        emoji = node.get("emoji")
+        if isinstance(emoji, str) and not _looks_like_emoji(emoji):
+            print(f"[enrich] dropping non-emoji value on {node.get('id')!r}: {emoji!r}", flush=True)
+            node.pop("emoji", None)
+
+
 def _stamp_enriched(
     input_graph: Dict[str, Any],
     output_graph: Dict[str, Any],
@@ -322,6 +361,7 @@ def _stamp_enriched(
     the gate for skip-on-second-call deduplication on both server and
     client. Preserves any ``reasoning`` the model already filled in on the
     ``enrichment`` block. Mutates and returns ``output_graph``."""
+    _strip_bad_emojis(output_graph)
     block = output_graph.get("enrichment")
     if not isinstance(block, dict):
         block = {}
