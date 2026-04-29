@@ -728,7 +728,8 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
     def repl(m: re.Match) -> str:
         prefix_cmd = m.group(1)  # e.g. "\Delta"
         operand = m.group(2)     # e.g. "t" or "\theta"
-        compound = f"{prefix_cmd} {operand}"
+        suffix = m.group(3) or ""  # e.g. "_0", "^{2n}", or ""
+        compound = f"{prefix_cmd} {operand}{suffix}"
         if compound not in seen:
             idx = len(seen)
             seen[compound] = idx
@@ -750,12 +751,25 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
         r"Mu|Nu|Xi|Omicron|Pi|Rho|Sigma|Tau|Upsilon|Phi|Chi|Psi|Omega|"
         r"ell|hbar"
     )
+    # Optional trailing sub/superscript chain to absorb into the placeholder,
+    # so ``\Delta t_0`` collapses to a single ``\Theta_{N}`` instead of
+    # leaving a dangling ``_0`` after the prefix collapse (which would emit
+    # invalid double-subscripted LaTeX). Each ``_`` / ``^`` consumes either a
+    # braced group (``_{ij}``, ``^{2n}``) or a single atom (``_0``, ``^t``,
+    # ``^\theta``). Mirrors ``consume_sub_sup`` in
+    # ``server.py::_rewrite_dot_derivatives``.
+    sub_sup_atom = r"(?:\{[^{}]*\}|\\[A-Za-z]+|[A-Za-z0-9])"
+    sub_sup_chain = rf"(?:[_^]{sub_sup_atom})*"
+    # ``\b`` after the Greek alternation fails when followed by ``_`` (a
+    # regex word character), which would prevent ``\Delta\theta_0`` from
+    # collapsing. Use ``(?![A-Za-z])`` instead — same intent, but tolerant
+    # of subscript and superscript markers.
     pattern = (
         r"(\\(?:Delta|delta|nabla))"           # prefix command
         r"\s*"                                   # optional whitespace
-        rf"(\\(?:{greek_operands})\b|[A-Za-z])" # operand: whitelisted Greek
-                                                  # command or single letter
-        r"(?![A-Za-z])"                          # no trailing letter
+        rf"(\\(?:{greek_operands})(?![A-Za-z])|[A-Za-z])"  # operand
+        r"(?![A-Za-z])"                          # operand isn't a word fragment
+        rf"({sub_sup_chain})"                    # optional sub/sup tail
     )
     rewritten = re.sub(pattern, repl, latex)
     return rewritten, overrides

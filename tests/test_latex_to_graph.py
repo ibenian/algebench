@@ -1128,6 +1128,45 @@ class TestCompoundSymbols:
             "\\Delta\\theta should collapse to a single Δθ node"
         )
 
+    def test_delta_with_letter_subscript(self):
+        """``\\Delta t_0`` collapses with the subscript absorbed into the
+        placeholder, not left dangling as ``\\Theta_{N}_0`` (invalid).
+        """
+        g = latex_to_semantic_graph(r"v = \Delta t_0")
+        compound = _find_node(g, latex=r"\Delta t_0")
+        assert compound is not None, (
+            "\\Delta t_0 should collapse to a single node, "
+            "with the subscript absorbed into the compound"
+        )
+        # No spurious standalone Delta/t/0 nodes.
+        assert not _find_nodes(g, latex=r"\Delta")
+
+    def test_delta_with_greek_subscript(self):
+        """``\\Delta\\theta_0`` collapses despite the trailing subscript —
+        regression for the ``\\b`` boundary that previously prevented
+        Greek-operand matches when followed by ``_``.
+        """
+        g = latex_to_semantic_graph(r"v = \Delta\theta_0")
+        compound = _find_node(g, latex=r"\Delta \theta_0")
+        assert compound is not None, (
+            "\\Delta\\theta_0 should collapse — the regex must allow a "
+            "trailing subscript after a Greek operand"
+        )
+
+    def test_delta_with_braced_subscript(self):
+        """``\\Delta\\theta_{ij}`` collapses with the braced subscript
+        absorbed into the compound.
+        """
+        g = latex_to_semantic_graph(r"v = \Delta\theta_{ij}")
+        compound = _find_node(g, latex=r"\Delta \theta_{ij}")
+        assert compound is not None
+
+    def test_delta_with_superscript(self):
+        """``\\Delta\\theta^2`` collapses with the superscript absorbed."""
+        g = latex_to_semantic_graph(r"v = \Delta\theta^2")
+        compound = _find_node(g, latex=r"\Delta \theta^2")
+        assert compound is not None
+
     def test_user_override_does_not_corrupt_text_macros(self):
         """User-supplied overrides keyed on a real symbol (e.g. ``t``)
         must NOT bleed into ``\\text{...}``, ``\\tan``, ``\\left``, etc.
