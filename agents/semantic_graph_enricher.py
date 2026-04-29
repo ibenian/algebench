@@ -394,6 +394,50 @@ def _drop_phantom_nodes_and_edges(
         output_graph["edges"] = kept_edges
 
 
+_STRUCTURAL_NODE_FIELDS = (
+    "subexpr",
+    "latex",
+    "type",
+    "op",
+    "exponent",
+    "with_respect_to",
+)
+
+
+def _restore_structural_fields(
+    input_graph: Dict[str, Any],
+    output_graph: Dict[str, Any],
+) -> None:
+    """Copy structural / parser-derived fields from input nodes to output.
+
+    ``subexpr`` and ``latex`` are deterministic LaTeX strings produced by
+    ``scripts/latex_to_graph.py`` — the enricher should never rewrite them.
+    Gemini in JSON mode occasionally double-escapes backslashes (e.g.
+    ``\\frac`` → ``\\\\frac``), which mangles the rendered tooltip and chat
+    expression display (issue #182). Other structural fields (``type``,
+    ``op``, ``exponent``, ``with_respect_to``) are also parser-owned, not
+    semantic enrichment, so we restore them verbatim too.
+    """
+    in_by_id: Dict[str, Dict[str, Any]] = {}
+    for n in input_graph.get("nodes") or []:
+        if isinstance(n, dict) and isinstance(n.get("id"), str):
+            in_by_id[n["id"]] = n
+    out_nodes = output_graph.get("nodes")
+    if not isinstance(out_nodes, list):
+        return
+    for node in out_nodes:
+        if not isinstance(node, dict):
+            continue
+        src = in_by_id.get(node.get("id"))
+        if not isinstance(src, dict):
+            continue
+        for field in _STRUCTURAL_NODE_FIELDS:
+            if field in src:
+                node[field] = src[field]
+            else:
+                node.pop(field, None)
+
+
 def _strip_bad_emojis(graph: Dict[str, Any]) -> None:
     """Remove ``emoji`` fields that are clearly not a single emoji glyph.
 
@@ -423,6 +467,7 @@ def _stamp_enriched(
     client. Preserves any ``reasoning`` the model already filled in on the
     ``enrichment`` block. Mutates and returns ``output_graph``."""
     _drop_phantom_nodes_and_edges(input_graph, output_graph)
+    _restore_structural_fields(input_graph, output_graph)
     _strip_bad_emojis(output_graph)
     block = output_graph.get("enrichment")
     if not isinstance(block, dict):
