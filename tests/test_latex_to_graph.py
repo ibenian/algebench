@@ -1167,6 +1167,77 @@ class TestCompoundSymbols:
         compound = _find_node(g, latex=r"\Delta \theta^2")
         assert compound is not None
 
+    def test_nabla_does_not_collapse_function_application(self):
+        """``\\nabla f(x,y)`` keeps the gradient operator + function shape;
+        ``\\nabla`` must not be collapsed onto the following identifier.
+
+        Regression for the ``gradient-descent-terrain`` scene cluster,
+        which uses ``\\nabla f(...)`` throughout — collapsing would make
+        ``f(x,y)`` parse as a function call on the compound symbol
+        ``\\nabla f`` instead of the gradient operator applied to ``f``
+        evaluated at ``(x, y)``.
+        """
+        g = latex_to_semantic_graph(r"\nabla f(x,y)")
+        # No compound placeholder should be created — ``\nabla`` stands alone.
+        thetas = [n for n in g["nodes"]
+                  if isinstance(n.get("id"), str) and n["id"].startswith("Theta_{")]
+        assert not thetas, (
+            "\\nabla must not be collapsed onto its operand; got "
+            f"placeholder nodes {thetas!r}"
+        )
+        # ``\nabla`` should still appear as its own node.
+        nabla = _find_node(g, latex=r"\nabla")
+        assert nabla is not None, "\\nabla should remain a standalone node"
+
+    def test_compound_in_power_atomicity(self):
+        """``(\\Delta t)^2`` must render with the compound braced — the
+        exponent has to bind to the whole ``\\Delta t``, not to ``t`` alone.
+
+        SymPy emits ``\\Theta_{0}^{2}`` for the Pow node's subexpr; the
+        restoration step needs to wrap the multi-token replacement in
+        braces so the result reads as ``(Δt)²`` rather than ``Δ(t²)``.
+        """
+        g = latex_to_semantic_graph(r"y = (\Delta t)^2")
+        power_subexprs = [
+            n.get("subexpr", "") for n in g["nodes"]
+            if n.get("op") == "power"
+        ]
+        assert power_subexprs, "expected a power node in the graph"
+        for s in power_subexprs:
+            assert r"{\Delta t}" in s, (
+                "the compound symbol inside a power must be braced for "
+                f"correct precedence, got subexpr={s!r}"
+            )
+            assert r"\Delta t^" not in s, (
+                "unbraced ``\\Delta t^...`` reads as ``Δ(t^...)`` in "
+                "LaTeX — exponent must apply to the whole compound"
+            )
+
+    def test_compound_with_thin_space_macro(self):
+        """``\\Delta\\,t`` — physics typographic spacing — collapses
+        identically to ``\\Delta t``.
+
+        Regression for an authoring pattern where the typesetter inserts
+        a thin space between the prefix and operand; without macro-aware
+        whitespace handling, the regex doesn't fire and SymPy falls back
+        to the implicit-multiplication split.
+        """
+        g = latex_to_semantic_graph(r"v = \Delta\,t")
+        compound = _find_node(g, latex=r"\Delta t")
+        assert compound is not None, (
+            "\\Delta\\,t should collapse to a single \\Delta t node — "
+            "spacing macros must not block the compound-symbol rule"
+        )
+        assert not _find_nodes(g, type="operator", op="multiply"), (
+            "\\Delta\\,t must not produce an implicit-multiplication node"
+        )
+
+    def test_compound_with_quad_macro(self):
+        """``\\Delta \\quad t`` — collapses despite the wide spacing macro."""
+        g = latex_to_semantic_graph(r"v = \Delta \quad t")
+        compound = _find_node(g, latex=r"\Delta t")
+        assert compound is not None
+
     def test_user_override_does_not_corrupt_text_macros(self):
         """User-supplied overrides keyed on a real symbol (e.g. ``t``)
         must NOT bleed into ``\\text{...}``, ``\\tan``, ``\\left``, etc.

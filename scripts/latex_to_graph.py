@@ -406,13 +406,32 @@ class SemanticGraphBuilder:
             real = attrs.get("latex")
             if not real:
                 continue
+            # Preserve atomicity when the placeholder sits inside a
+            # SymPy-rendered construct (powers, fractions, sub/superscripts).
+            # ``\Theta_{0}^{2}`` substituted naively to ``\Delta t^{2}``
+            # binds ``^`` only to ``t`` per LaTeX precedence — i.e. it
+            # renders as ``Δ(t²)`` instead of ``(Δt)²``. Wrap multi-token
+            # replacements in braces so the exponent applies to the whole
+            # compound. Already-grouped replacements (``{...}``, ``(...)``)
+            # are left alone to avoid double-wrapping.
+            stripped = real.strip()
+            if (
+                re.search(r"\s", real)
+                and not (
+                    (stripped.startswith("{") and stripped.endswith("}"))
+                    or (stripped.startswith("(") and stripped.endswith(")"))
+                )
+            ):
+                replacement = "{" + real + "}"
+            else:
+                replacement = real
             # ``sympy.latex`` renders ``Symbol("Theta_{1}")`` as
             # ``\Theta_{1}`` (Greek-letter name) or as the bare name for
             # symbols whose head isn't a recognized macro. Try both forms
             # so the placeholder is replaced regardless of how SymPy
             # rendered it.
-            latex = latex.replace("\\" + name, real)
-            latex = latex.replace(name, real)
+            latex = latex.replace("\\" + name, replacement)
+            latex = latex.replace(name, replacement)
         return latex
 
     def _set_subexpr(self, node_id: str, expr: sympy.Basic) -> None:
@@ -706,11 +725,13 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
 
     - ``\Delta`` (finite change), ``\delta`` (variation) — e.g. ``\Delta t``,
       ``\delta x``
-    - ``\nabla`` followed by a letter (less common, but treated the same)
 
-    ``\partial`` is intentionally *not* collapsed: SymPy's grammar treats
-    ``\frac{\partial u}{\partial x}`` as a partial derivative and would
-    lose that semantic if the operands were pre-merged.
+    ``\partial`` and ``\nabla`` are intentionally *not* collapsed: they
+    are operator-like, applied to a following function. SymPy's grammar
+    treats ``\frac{\partial u}{\partial x}`` as a partial derivative,
+    and gradient scenes (``scenes/gradient-descent-terrain.json``) use
+    ``\nabla f(x,y)`` where ``f`` is the gradient's argument — collapsing
+    would destroy the operator/argument structure.
 
     Pattern: a recognized prefix command immediately followed (after
     optional whitespace) by either a single ASCII letter or another
@@ -760,16 +781,21 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
     # ``server.py::_rewrite_dot_derivatives``.
     sub_sup_atom = r"(?:\{[^{}]*\}|\\[A-Za-z]+|[A-Za-z0-9])"
     sub_sup_chain = rf"(?:[_^]{sub_sup_atom})*"
+    # Whitespace between prefix and operand: regular whitespace plus the
+    # LaTeX spacing macros physics authors typically use to typeset
+    # ``\Delta\,t`` (\,, \;, \!, \:, \quad, \qquad). Without this,
+    # ``\Delta\,t`` falls back to the implicit-multiplication split.
+    spacing = r"(?:\s|\\,|\\;|\\!|\\:|\\quad|\\qquad)*"
     # ``\b`` after the Greek alternation fails when followed by ``_`` (a
     # regex word character), which would prevent ``\Delta\theta_0`` from
     # collapsing. Use ``(?![A-Za-z])`` instead — same intent, but tolerant
     # of subscript and superscript markers.
     pattern = (
-        r"(\\(?:Delta|delta|nabla))"           # prefix command
-        r"\s*"                                   # optional whitespace
-        rf"(\\(?:{greek_operands})(?![A-Za-z])|[A-Za-z])"  # operand
-        r"(?![A-Za-z])"                          # operand isn't a word fragment
-        rf"({sub_sup_chain})"                    # optional sub/sup tail
+        r"(\\(?:Delta|delta))"                   # prefix command
+        + spacing                                  # optional whitespace
+        + rf"(\\(?:{greek_operands})(?![A-Za-z])|[A-Za-z])"  # operand
+        + r"(?![A-Za-z])"                          # operand isn't a word fragment
+        + rf"({sub_sup_chain})"                    # optional sub/sup tail
     )
     rewritten = re.sub(pattern, repl, latex)
     return rewritten, overrides
