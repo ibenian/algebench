@@ -119,6 +119,12 @@ OPERATOR_MAP: dict[type, str] = {
     Eq: "equals",
 }
 
+# Synthetic placeholder names emitted by ``_collapse_compound_symbols`` and
+# ``_collapse_text_commands``. Used to gate placeholder restoration so user
+# overrides keyed on real symbol names can never hit the substring-replace
+# path that would otherwise corrupt unrelated macros (\text, \tan, \left).
+_PLACEHOLDER_NAME_RE = re.compile(r"^(?:Theta|Xi)_\{\d+\}$")
+
 # FUNCTION_MAP removed — the SymPy class name (``sin``, ``cos``, ``Abs``,
 # ``asin``, …) is used directly as the ``op`` field. Renames only mattered
 # for display, and the renderer / enricher handle the raw names fine.
@@ -388,7 +394,15 @@ class SemanticGraphBuilder:
         """
         if not self._overrides:
             return latex
+        # Gate on the synthetic-placeholder *name shape* — ``Theta_{N}`` or
+        # ``Xi_{N}`` for digits N. User-supplied overrides (e.g.
+        # ``--var t:latex=\mathrm{t}``) keyed on real symbol names must not
+        # reach the substring replace below, or they'd corrupt every
+        # incidental letter inside unrelated macros (``\text``, ``\tan``,
+        # ``\left``, …).
         for name, attrs in self._overrides.items():
+            if not _PLACEHOLDER_NAME_RE.fullmatch(name):
+                continue
             real = attrs.get("latex")
             if not real:
                 continue
@@ -397,10 +411,7 @@ class SemanticGraphBuilder:
             # symbols whose head isn't a recognized macro. Try both forms
             # so the placeholder is replaced regardless of how SymPy
             # rendered it.
-            if name.startswith("Theta_{"):
-                latex = latex.replace("\\" + name, real)
-            elif name.startswith("Xi_{"):
-                latex = latex.replace("\\" + name, real)
+            latex = latex.replace("\\" + name, real)
             latex = latex.replace(name, real)
         return latex
 

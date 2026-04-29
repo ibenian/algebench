@@ -1128,6 +1128,36 @@ class TestCompoundSymbols:
             "\\Delta\\theta should collapse to a single Δθ node"
         )
 
+    def test_user_override_does_not_corrupt_text_macros(self):
+        """User-supplied overrides keyed on a real symbol (e.g. ``t``)
+        must NOT bleed into ``\\text{...}``, ``\\tan``, ``\\left``, etc.
+
+        Regression for the placeholder-restoration over-reach: the old
+        loop ran ``str.replace`` for every override regardless of whether
+        the key was a synthetic ``Theta_{N}``/``Xi_{N}`` sentinel, which
+        meant overriding a single letter would silently chew matching
+        characters out of unrelated LaTeX macros.
+        """
+        g = latex_to_semantic_graph(
+            r"\text{const} + t",
+            overrides={"t": {"latex": r"\mathrm{t}"}},
+        )
+        # No node's latex/subexpr should contain the corrupted form
+        # ``\ex`` (what's left after a ``\mathrm{t}`` ate the ``t`` of
+        # ``\text``). Check both the override is honored *and* \text
+        # survives intact.
+        const = _find_node(g, latex=r"\text{const}")
+        assert const is not None, (
+            "user override on 't' must not corrupt \\text{const}"
+        )
+        for node in g["nodes"]:
+            for field in ("latex", "subexpr"):
+                value = node.get(field)
+                if isinstance(value, str):
+                    assert r"\ex" not in value or r"\text" in value, (
+                        f"\\text macro corrupted in {field}={value!r}"
+                    )
+
     def test_explicit_product_not_collapsed(self):
         """``\\Delta \\cdot t`` and ``\\Delta \\times t`` mean Δ * t —
         the explicit operator must defeat the compound-symbol heuristic.
