@@ -1064,3 +1064,85 @@ class TestCommaSeparatedClauses:
         assert has_deriv and has_const, (
             f"each clause should own a distinct subexpr, got {subexprs!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Compound symbols (\Delta t, \Delta x, etc.) — regression for #179
+# ---------------------------------------------------------------------------
+
+class TestCompoundSymbols:
+    def test_delta_t_is_single_symbol(self):
+        """``\\Delta t`` must collapse to one node, not Δ multiplied by t."""
+        g = latex_to_semantic_graph(r"v = \Delta t")
+        # No multiply operator should appear — Δt is one identifier.
+        muls = _find_nodes(g, type="operator", op="multiply")
+        assert not muls, (
+            f"\\Delta t should not produce a multiply node, got {muls!r}"
+        )
+        # No standalone Delta or t node — only the compound and v.
+        delta_nodes = _find_nodes(g, latex=r"\Delta")
+        assert not delta_nodes, "\\Delta must not be split off as its own node"
+        # The compound symbol's latex field should be the original LaTeX.
+        compound = _find_node(g, latex=r"\Delta t")
+        assert compound is not None, "expected a node with latex = '\\Delta t'"
+        assert compound.get("subexpr") == r"\Delta t"
+
+    def test_delta_x_over_delta_t(self):
+        """``\\Delta x / \\Delta t`` produces two compound nodes, no split."""
+        g = latex_to_semantic_graph(r"v = \frac{\Delta x}{\Delta t}")
+        compounds = sorted(
+            n.get("latex") for n in g["nodes"]
+            if n.get("latex") in (r"\Delta x", r"\Delta t")
+        )
+        assert compounds == [r"\Delta t", r"\Delta x"], (
+            f"both \\Delta x and \\Delta t should be present as compounds, "
+            f"got {compounds!r}"
+        )
+        # No standalone Δ or stray t/x sharing the name with the compound.
+        assert not _find_nodes(g, latex=r"\Delta")
+
+    def test_lone_delta_unchanged(self):
+        """Bare ``\\Delta`` (e.g. discriminant) must remain a single Δ."""
+        g = latex_to_semantic_graph(r"\Delta = b^2 - 4ac")
+        delta = _find_node(g, latex=r"\Delta")
+        assert delta is not None, "bare \\Delta should still produce a Δ node"
+        # And no compound-collapsing should have triggered.
+        thetas = [n for n in g["nodes"]
+                  if isinstance(n.get("id"), str) and n["id"].startswith("Theta_{")]
+        assert not thetas, "no compound placeholder should be created for lone \\Delta"
+
+    def test_partial_derivative_still_parses(self):
+        """``\\partial`` must NOT be collapsed — derivatives still need it."""
+        g = latex_to_semantic_graph(r"\frac{\partial u}{\partial x} = 0")
+        derivs = _find_nodes(g, type="operator", op="derivative")
+        assert derivs, (
+            "\\partial u / \\partial x should still be recognized as a "
+            "derivative, not a fraction of compound symbols"
+        )
+
+    def test_delta_with_greek_operand(self):
+        """``\\Delta\\theta`` collapses to one node with the right LaTeX."""
+        g = latex_to_semantic_graph(r"\Delta\theta = 5")
+        compound = _find_node(g, latex=r"\Delta \theta")
+        assert compound is not None, (
+            "\\Delta\\theta should collapse to a single Δθ node"
+        )
+
+    def test_explicit_product_not_collapsed(self):
+        """``\\Delta \\cdot t`` and ``\\Delta \\times t`` mean Δ * t —
+        the explicit operator must defeat the compound-symbol heuristic.
+
+        This is the disambiguation contract: adjacency = single symbol,
+        ``\\cdot`` / ``\\times`` = explicit multiplication.
+        """
+        for op_latex in (r"\cdot", r"\times"):
+            g = latex_to_semantic_graph(rf"v = \Delta {op_latex} t")
+            assert _find_nodes(g, type="operator", op="multiply"), (
+                f"\\Delta {op_latex} t should produce a multiply node"
+            )
+            assert _find_node(g, latex=r"\Delta") is not None, (
+                f"\\Delta {op_latex} t must keep \\Delta as its own node"
+            )
+            assert _find_node(g, latex="t") is not None, (
+                f"\\Delta {op_latex} t must keep t as its own node"
+            )
