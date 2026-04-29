@@ -497,7 +497,7 @@ def test_phantom_nodes_added_by_model_are_dropped() -> None:
     assert out["nodes"][0]["quantity"] == "acceleration"
 
 
-def test_structural_fields_restored_from_input(monkeypatch) -> None:
+def test_structural_fields_restored_from_input() -> None:
     # Gemini in JSON mode occasionally double-escapes backslashes in
     # ``subexpr`` (``\frac`` → ``\\frac``), which breaks the rendered
     # tooltip and chat "Expression:" line — both feed the value to
