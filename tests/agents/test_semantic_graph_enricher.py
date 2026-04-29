@@ -497,6 +497,56 @@ def test_phantom_nodes_added_by_model_are_dropped() -> None:
     assert out["nodes"][0]["quantity"] == "acceleration"
 
 
+def test_structural_fields_restored_from_input() -> None:
+    # Gemini in JSON mode occasionally double-escapes backslashes in
+    # ``subexpr`` (``\frac`` → ``\\frac``), which breaks the rendered
+    # tooltip and chat "Expression:" line — both feed the value to
+    # KaTeX, where ``\\`` is a line break and the rest renders as raw
+    # letters. Issue #182. Structural fields (``subexpr``, ``latex``,
+    # ``type``, ``op``, ``exponent``, ``with_respect_to``) are
+    # parser-derived and must be restored verbatim from the input.
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [
+                {
+                    "id": "__power_7",
+                    "type": "operator",
+                    "op": "power",
+                    "exponent": "-1",
+                    # Mangled by the model:
+                    "subexpr": "\\\\frac{1}{\\\\rho A C_{d}}",
+                    "description": "Inverse of the drag factors.",
+                    "dimension": "M⁻¹·L",
+                    "unit": "m/kg",
+                },
+            ],
+            "edges": [],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    input_graph = {
+        "nodes": [
+            {
+                "id": "__power_7",
+                "type": "operator",
+                "op": "power",
+                "exponent": "-1",
+                "subexpr": "\\frac{1}{\\rho A C_{d}}",
+            },
+        ],
+        "edges": [],
+    }
+    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
+    node = out["nodes"][0]
+    # Parser-owned fields are restored verbatim — no double backslashes.
+    assert node["subexpr"] == "\\frac{1}{\\rho A C_{d}}"
+    assert node["op"] == "power"
+    assert node["exponent"] == "-1"
+    # The semantic enrichment fields the model contributed survive.
+    assert node["description"] == "Inverse of the drag factors."
+    assert node["unit"] == "m/kg"
+
+
 def test_non_emoji_text_in_emoji_field_is_stripped() -> None:
     # Gemini sometimes returns a word in the `emoji` field by mistake
     # (e.g. "ускорение" / "acceleration"). The schema cap is generous so
