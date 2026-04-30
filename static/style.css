@@ -2412,7 +2412,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 #step-caption:active { cursor: grabbing; }
 #step-caption.hidden { opacity: 0; }
-#step-caption .katex { color: rgba(224, 208, 255, 0.9); font-size: 0.95em; }
+#step-caption .katex { color: rgba(224, 208, 255, 0.9); font-size: 1.5em; }
 .caption-ai-btn {
     position: absolute;
     top: 50%;
@@ -2728,7 +2728,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     color: #d9deff;
 }
 .msg-body strong { color: #f4f6ff; }
-.msg-body .katex { color: #e0d0ff; font-size: 0.92em; }
+.msg-body .katex { color: #e0d0ff; font-size: 1.3em; }
 
 /* Per-message speak button */
 .msg-speak-btn {

@@ -119,6 +119,12 @@ OPERATOR_MAP: dict[type, str] = {
     Eq: "equals",
 }
 
+# Synthetic placeholder names emitted by ``_collapse_compound_symbols`` and
+# ``_collapse_text_commands``. Used to gate placeholder restoration so user
+# overrides keyed on real symbol names can never hit the substring-replace
+# path that would otherwise corrupt unrelated macros (\text, \tan, \left).
+_PLACEHOLDER_NAME_RE = re.compile(r"^(?:Theta|Xi)_\{\d+\}$")
+
 # FUNCTION_MAP removed — the SymPy class name (``sin``, ``cos``, ``Abs``,
 # ``asin``, …) is used directly as the ``op`` field. Renames only mattered
 # for display, and the renderer / enricher handle the raw names fine.
@@ -318,6 +324,14 @@ class SemanticGraphBuilder:
 
     def _subexpr_ordered(self, expr: sympy.Basic) -> str:
         """Like ``sympy.latex(expr)`` but with terms in authorial order."""
+        # Atomic placeholder symbols (compound symbols and \text{...})
+        # carry their real LaTeX in the override map. Render that instead
+        # of the synthetic ``\Theta_{N}`` / ``\Xi_{N}`` placeholder name.
+        if isinstance(expr, Symbol):
+            name = expr.name
+            if name in self._overrides and self._overrides[name].get("latex"):
+                if name.startswith("Theta_{") or name.startswith("Xi_{"):
+                    return self._overrides[name]["latex"]
         if not self._original_latex:
             return sympy.latex(expr)
 
@@ -366,7 +380,59 @@ class SemanticGraphBuilder:
                 parts.append(s)
             return " ".join(parts)
 
-        return sympy.latex(expr)
+        return self._restore_placeholders(sympy.latex(expr))
+
+    def _restore_placeholders(self, latex: str) -> str:
+        """Substitute ``\\Theta_{N}`` / ``\\Xi_{N}`` back to the LaTeX they
+        stand in for.
+
+        ``sympy.latex`` is used as the fallback renderer for sub-expressions
+        we don't restructure ourselves (powers, function calls, etc.). Those
+        outputs still carry the synthetic placeholder names that
+        ``_collapse_compound_symbols`` and ``_collapse_text_commands``
+        introduced upstream, which would otherwise leak into ``subexpr``.
+        """
+        if not self._overrides:
+            return latex
+        # Gate on the synthetic-placeholder *name shape* — ``Theta_{N}`` or
+        # ``Xi_{N}`` for digits N. User-supplied overrides (e.g.
+        # ``--var t:latex=\mathrm{t}``) keyed on real symbol names must not
+        # reach the substring replace below, or they'd corrupt every
+        # incidental letter inside unrelated macros (``\text``, ``\tan``,
+        # ``\left``, …).
+        for name, attrs in self._overrides.items():
+            if not _PLACEHOLDER_NAME_RE.fullmatch(name):
+                continue
+            real = attrs.get("latex")
+            if not real:
+                continue
+            # Preserve atomicity when the placeholder sits inside a
+            # SymPy-rendered construct (powers, fractions, sub/superscripts).
+            # ``\Theta_{0}^{2}`` substituted naively to ``\Delta t^{2}``
+            # binds ``^`` only to ``t`` per LaTeX precedence — i.e. it
+            # renders as ``Δ(t²)`` instead of ``(Δt)²``. Wrap multi-token
+            # replacements in braces so the exponent applies to the whole
+            # compound. Already-grouped replacements (``{...}``, ``(...)``)
+            # are left alone to avoid double-wrapping.
+            stripped = real.strip()
+            if (
+                re.search(r"\s", real)
+                and not (
+                    (stripped.startswith("{") and stripped.endswith("}"))
+                    or (stripped.startswith("(") and stripped.endswith(")"))
+                )
+            ):
+                replacement = "{" + real + "}"
+            else:
+                replacement = real
+            # ``sympy.latex`` renders ``Symbol("Theta_{1}")`` as
+            # ``\Theta_{1}`` (Greek-letter name) or as the bare name for
+            # symbols whose head isn't a recognized macro. Try both forms
+            # so the placeholder is replaced regardless of how SymPy
+            # rendered it.
+            latex = latex.replace("\\" + name, replacement)
+            latex = latex.replace(name, replacement)
+        return latex
 
     def _set_subexpr(self, node_id: str, expr: sympy.Basic) -> None:
         """Annotate a node with the LaTeX sub-expression it represents."""
@@ -423,6 +489,17 @@ class SemanticGraphBuilder:
             # (label, unit, ai_prompt, etc.) explicitly via ``\overrides{…}``.
             if name in self._overrides:
                 attrs.update(self._overrides[name])
+            # For placeholder symbols whose override carries the real LaTeX
+            # (e.g. compound symbols like ``\Delta t`` collapsed to
+            # ``\Theta_{N}``), prefer the override's latex as the subexpr so
+            # the node doesn't display its synthetic placeholder name.
+            if (
+                "subexpr" not in attrs
+                and name in self._overrides
+                and self._overrides[name].get("latex")
+                and (name.startswith("Theta_{") or name.startswith("Xi_{"))
+            ):
+                attrs["subexpr"] = self._overrides[name]["latex"]
             self._add_node(node_id, **attrs)
             self._seen_symbols[name] = node_id
             return node_id
@@ -635,6 +712,92 @@ def _collapse_text_commands(latex: str) -> tuple[str, dict[str, dict[str, str]]]
         return rf"\Xi_{seen[content]}"
 
     rewritten = re.sub(r"\\text\{([^}]+)\}", repl, latex)
+    return rewritten, overrides
+
+
+def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str]]]:
+    r"""Replace compound math identifiers like ``\Delta t`` with placeholder
+    symbols so SymPy's ``parse_latex`` doesn't split them into
+    ``Delta * t`` via implicit multiplication.
+
+    Targets the conventional physics/calculus prefixes that combine with
+    the *next* identifier to form a single named quantity:
+
+    - ``\Delta`` (finite change), ``\delta`` (variation) — e.g. ``\Delta t``,
+      ``\delta x``
+
+    ``\partial`` and ``\nabla`` are intentionally *not* collapsed: they
+    are operator-like, applied to a following function. SymPy's grammar
+    treats ``\frac{\partial u}{\partial x}`` as a partial derivative,
+    and gradient scenes (``scenes/gradient-descent-terrain.json``) use
+    ``\nabla f(x,y)`` where ``f`` is the gradient's argument — collapsing
+    would destroy the operator/argument structure.
+
+    Pattern: a recognized prefix command immediately followed (after
+    optional whitespace) by either a single ASCII letter or another
+    backslash-command identifier (``\Delta\theta``). Each match is
+    replaced with a unique ``\Theta_{N}`` placeholder; the original LaTeX
+    is recorded as the placeholder's ``latex`` override so the symbol
+    renders correctly downstream.
+
+    Returns ``(rewritten_latex, overrides)`` parallel to
+    ``_collapse_text_commands``.
+    """
+    overrides: dict[str, dict[str, str]] = {}
+    seen: dict[str, int] = {}
+
+    def repl(m: re.Match) -> str:
+        prefix_cmd = m.group(1)  # e.g. "\Delta"
+        operand = m.group(2)     # e.g. "t" or "\theta"
+        suffix = m.group(3) or ""  # e.g. "_0", "^{2n}", or ""
+        compound = f"{prefix_cmd} {operand}{suffix}"
+        if compound not in seen:
+            idx = len(seen)
+            seen[compound] = idx
+            overrides[f"Theta_{{{idx}}}"] = {
+                "latex": compound,
+                "type": "scalar",
+            }
+        return rf"\Theta_{{{seen[compound]}}}"
+
+    # Operand whitelist: Greek-letter / identifier commands only. Operators
+    # like ``\cdot``, ``\times``, ``\div``, ``\pm``, ``\ast`` MUST NOT be
+    # absorbed — they signal an explicit multiplication and the author who
+    # writes ``\Delta \cdot t`` *means* Δ multiplied by t, not Δt.
+    greek_operands = (
+        r"alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|"
+        r"iota|kappa|lambda|mu|nu|xi|pi|varpi|rho|varrho|sigma|varsigma|tau|"
+        r"upsilon|phi|varphi|chi|psi|omega|"
+        r"Alpha|Beta|Gamma|Delta|Epsilon|Zeta|Eta|Theta|Iota|Kappa|Lambda|"
+        r"Mu|Nu|Xi|Omicron|Pi|Rho|Sigma|Tau|Upsilon|Phi|Chi|Psi|Omega|"
+        r"ell|hbar"
+    )
+    # Optional trailing sub/superscript chain to absorb into the placeholder,
+    # so ``\Delta t_0`` collapses to a single ``\Theta_{N}`` instead of
+    # leaving a dangling ``_0`` after the prefix collapse (which would emit
+    # invalid double-subscripted LaTeX). Each ``_`` / ``^`` consumes either a
+    # braced group (``_{ij}``, ``^{2n}``) or a single atom (``_0``, ``^t``,
+    # ``^\theta``). Mirrors ``consume_sub_sup`` in
+    # ``server.py::_rewrite_dot_derivatives``.
+    sub_sup_atom = r"(?:\{[^{}]*\}|\\[A-Za-z]+|[A-Za-z0-9])"
+    sub_sup_chain = rf"(?:[_^]{sub_sup_atom})*"
+    # Whitespace between prefix and operand: regular whitespace plus the
+    # LaTeX spacing macros physics authors typically use to typeset
+    # ``\Delta\,t`` (\,, \;, \!, \:, \quad, \qquad). Without this,
+    # ``\Delta\,t`` falls back to the implicit-multiplication split.
+    spacing = r"(?:\s|\\,|\\;|\\!|\\:|\\quad|\\qquad)*"
+    # ``\b`` after the Greek alternation fails when followed by ``_`` (a
+    # regex word character), which would prevent ``\Delta\theta_0`` from
+    # collapsing. Use ``(?![A-Za-z])`` instead — same intent, but tolerant
+    # of subscript and superscript markers.
+    pattern = (
+        r"(\\(?:Delta|delta))"                   # prefix command
+        + spacing                                  # optional whitespace
+        + rf"(\\(?:{greek_operands})(?![A-Za-z])|[A-Za-z])"  # operand
+        + r"(?![A-Za-z])"                          # operand isn't a word fragment
+        + rf"({sub_sup_chain})"                    # optional sub/sup tail
+    )
+    rewritten = re.sub(pattern, repl, latex)
     return rewritten, overrides
 
 
@@ -906,7 +1069,7 @@ def _build_comma_separated_graph(
                 return nid
             if nid.startswith("__"):
                 return p + nid
-            if nid.startswith("Xi_{"):
+            if nid.startswith("Xi_{") or nid.startswith("Theta_{"):
                 return p + nid
             return nid
 
@@ -990,12 +1153,17 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
             clauses, overrides=overrides, domain=domain,
         )
 
-    collapsed, text_overrides = _collapse_text_commands(latex)
+    compound_collapsed, compound_overrides = _collapse_compound_symbols(latex)
+    collapsed, text_overrides = _collapse_text_commands(compound_collapsed)
     preprocessed = _preprocess_latex(collapsed)
     latex_commands = _extract_latex_commands(latex)
     # User-supplied overrides take precedence over auto-derived ones for
     # the same symbol name.
-    merged_overrides: dict[str, dict[str, str]] = {**text_overrides, **(overrides or {})}
+    merged_overrides: dict[str, dict[str, str]] = {
+        **compound_overrides,
+        **text_overrides,
+        **(overrides or {}),
+    }
     overrides = merged_overrides
 
     # Check for relation operators that parse_latex cannot handle.
@@ -1013,9 +1181,9 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         rhs_id = builder._walk(rhs_expr)
         for node in builder.nodes:
             if node["id"] == lhs_id:
-                node["subexpr"] = lhs_latex.strip()
+                node["subexpr"] = builder._restore_placeholders(lhs_latex.strip())
             elif node["id"] == rhs_id:
-                node["subexpr"] = rhs_latex.strip()
+                node["subexpr"] = builder._restore_placeholders(rhs_latex.strip())
         rel_id = builder._next_id(rel_meta["op"])
         builder._add_node(rel_id, type="relation", subexpr=latex.strip(), **rel_meta)
         builder._add_edge(lhs_id, rel_id)
