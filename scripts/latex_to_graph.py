@@ -1181,9 +1181,9 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         rhs_id = builder._walk(rhs_expr)
         for node in builder.nodes:
             if node["id"] == lhs_id:
-                node["subexpr"] = lhs_latex.strip()
+                node["subexpr"] = builder._restore_placeholders(lhs_latex.strip())
             elif node["id"] == rhs_id:
-                node["subexpr"] = rhs_latex.strip()
+                node["subexpr"] = builder._restore_placeholders(rhs_latex.strip())
         rel_id = builder._next_id(rel_meta["op"])
         builder._add_node(rel_id, type="relation", subexpr=latex.strip(), **rel_meta)
         builder._add_edge(lhs_id, rel_id)

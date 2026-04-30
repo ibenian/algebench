@@ -1286,3 +1286,17 @@ class TestCompoundSymbols:
             assert _find_node(g, latex="t") is not None, (
                 f"\\Delta {op_latex} t must keep t as its own node"
             )
+
+    def test_compound_in_relation_subexpr(self):
+        """``\\Delta t \\propto x`` must not leak placeholder tokens
+        (``\\Theta_{0}``) into the LHS root node's ``subexpr``."""
+        g = latex_to_semantic_graph(r"\Delta t \propto x")
+        rel = _find_node(g, type="relation")
+        assert rel is not None, "should produce a relation node"
+        for node in g["nodes"]:
+            for field in ("latex", "subexpr"):
+                value = node.get(field)
+                if isinstance(value, str):
+                    assert "Theta" not in value, (
+                        f"placeholder leaked into {field}={value!r}"
+                    )
