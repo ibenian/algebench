@@ -918,16 +918,15 @@ function _runEnrichmentFetch(graph, keyAtFetch, stepAtFetch) {
         const enriched = data && data.enriched;
         if (!enriched || !Array.isArray(enriched.nodes)) return;
 
-        // Mark the original graph too, so if the user navigates away and back
-        // we don't refetch — the response is cached server-side anyway, but
-        // skipping the round trip is cheaper.
+        // Persist the enriched graph onto the step regardless of current focus
+        // — otherwise navigating away mid-fetch silently drops the response.
+        markEnriched(enriched);
+        if (stepAtFetch && stepAtFetch.semanticGraph) {
+            stepAtFetch.semanticGraph.graph = enriched;
+        }
         markEnriched(graph);
 
-        const nowStep = currentProofStep();
-        if (nowStep !== stepAtFetch) return;
-        if (!nowStep || !nowStep.semanticGraph) return;
-        markEnriched(enriched);
-        nowStep.semanticGraph.graph = enriched;
+        if (currentProofStep() !== stepAtFetch) return;
         // Force re-render so the enriched fields propagate through Mermaid
         // and the side panel.
         _currentSemanticKey = null;
