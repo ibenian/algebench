@@ -497,6 +497,354 @@ def test_phantom_nodes_added_by_model_are_dropped() -> None:
     assert out["nodes"][0]["quantity"] == "acceleration"
 
 
+def test_validator_raises_modelretry_when_input_ids_dropped() -> None:
+    # The dropped-node retry now rides on pydantic-ai's max_retries budget
+    # via an output validator. When the model returns an output that omits
+    # input ids, ``_validate_no_dropped_nodes`` raises ``ModelRetry`` with
+    # the missing ids; pydantic-ai feeds that message back as a follow-up
+    # turn. This test exercises the validator directly — the ``_StubAgent``
+    # used elsewhere doesn't honour the decorator, so safety-net tests
+    # below cover the post-hoc restoration path instead.
+    from pydantic_ai import ModelRetry
+    from agents.semantic_graph_enricher import (
+        _current_input_node_ids,
+        _validate_no_dropped_nodes,
+    )
+
+    output = SemanticGraph.model_validate({
+        "nodes": [
+            {"id": "__deriv_5", "type": "operator", "op": "derivative",
+             "with_respect_to": "t"},
+            # ``q_{\text{LEO}}`` deliberately absent.
+        ],
+        "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
+    })
+    token = _current_input_node_ids.set(
+        frozenset({"q_{\\text{LEO}}", "__deriv_5"})
+    )
+    try:
+        with pytest.raises(ModelRetry) as excinfo:
+            _validate_no_dropped_nodes(output)
+    finally:
+        _current_input_node_ids.reset(token)
+
+    msg = str(excinfo.value)
+    # The message names the missing id, asks for verbatim preservation,
+    # and does NOT prescribe ``color`` (which the system prompt forbids
+    # — calling it out in retry feedback would contradict the prompt).
+    assert "q_{\\text{LEO}}" in msg
+    assert "verbatim" in msg.lower()
+    assert "color" not in msg.lower()
+
+
+def test_validator_passes_through_when_output_complete() -> None:
+    # Sanity: when the model returns every input id, the validator must
+    # not raise — no extra retry, no extra Gemini call.
+    from agents.semantic_graph_enricher import (
+        _current_input_node_ids,
+        _validate_no_dropped_nodes,
+    )
+
+    output = SemanticGraph.model_validate({
+        "nodes": [
+            {"id": "x", "type": "scalar", "label": "x"},
+            {"id": "y", "type": "scalar", "label": "y"},
+        ],
+        "edges": [],
+    })
+    token = _current_input_node_ids.set(frozenset({"x", "y"}))
+    try:
+        result = _validate_no_dropped_nodes(output)
+    finally:
+        _current_input_node_ids.reset(token)
+    # Validator returns the output unchanged — pydantic-ai uses this
+    # as the agent's success path.
+    assert result is output
+
+
+def test_validator_caps_escalations_so_safety_net_can_repair() -> None:
+    # Critical (Codex review P1): if the model stubbornly drops the same
+    # id every retry, the validator must NOT escalate forever. Otherwise
+    # pydantic-ai exhausts ``max_retries`` and raises
+    # ``UnexpectedModelBehavior`` — which propagates to the FastAPI
+    # handler as a 502 and bypasses ``_stamp_enriched`` (and therefore
+    # ``_restore_dropped_nodes``). The whole layered defense relies on
+    # the *last* model output flowing through to the safety net.
+    from pydantic_ai import ModelRetry
+    from agents.semantic_graph_enricher import (
+        _VALIDATOR_MAX_ESCALATIONS,
+        _current_input_node_ids,
+        _validator_escalation_count,
+        _validate_no_dropped_nodes,
+    )
+
+    output = SemanticGraph.model_validate({
+        "nodes": [{"id": "__deriv_5", "type": "operator"}],
+        "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
+    })
+    ids_token = _current_input_node_ids.set(
+        frozenset({"q_{\\text{LEO}}", "__deriv_5"})
+    )
+    count_token = _validator_escalation_count.set(0)
+    try:
+        # First N escalations raise — model gets a chance to fix.
+        for attempt in range(_VALIDATOR_MAX_ESCALATIONS):
+            with pytest.raises(ModelRetry):
+                _validate_no_dropped_nodes(output)
+        # Counter should now be at the cap.
+        assert _validator_escalation_count.get() == _VALIDATOR_MAX_ESCALATIONS
+        # The next call (over the cap) must NOT raise — instead it
+        # returns the dropped-node output unchanged so the safety net
+        # downstream can repair it. This is the exact path that turned
+        # 502s into restored graphs.
+        result = _validate_no_dropped_nodes(output)
+        assert result is output
+    finally:
+        _current_input_node_ids.reset(ids_token)
+        _validator_escalation_count.reset(count_token)
+
+
+def test_validator_is_noop_when_no_input_set_bound() -> None:
+    # The ``_StubAgent`` and any direct callers that bypass the agent
+    # don't set the ContextVar; the validator must degrade to a pass-
+    # through in that case rather than failing every test that uses
+    # the stub.
+    from agents.semantic_graph_enricher import (
+        _current_input_node_ids,
+        _validate_no_dropped_nodes,
+    )
+
+    output = SemanticGraph.model_validate({
+        "nodes": [{"id": "z", "type": "scalar"}],
+        "edges": [],
+    })
+    # Confirm no token has been set (default state).
+    assert _current_input_node_ids.get() is None
+    assert _validate_no_dropped_nodes(output) is output
+
+
+def test_safety_net_rejects_input_nodes_with_unknown_fields() -> None:
+    # Codex review P2: ``GraphEnrichRequest.graph`` is an unvalidated dict
+    # by API contract, so the input we restore from could carry extra
+    # properties the agent's output schema (``SemanticGraphNode``,
+    # ``extra='forbid'``) would reject. The restore path must filter
+    # through the schema rather than copy raw, otherwise the cached
+    # post-enrichment graph loses the ``extra='forbid'`` invariant.
+    from agents.semantic_graph_enricher import _restore_dropped_nodes
+
+    input_graph = {
+        "nodes": [
+            {
+                "id": "good",
+                "type": "scalar",
+                "latex": "x",
+            },
+            {
+                # Schema-violating extra property — must NOT make it into
+                # the restored output.
+                "id": "evil",
+                "type": "scalar",
+                "latex": "y",
+                "script": "<malicious>",
+            },
+        ],
+        "edges": [],
+    }
+    output_graph: dict = {"nodes": [], "edges": []}
+    _restore_dropped_nodes(input_graph, output_graph)
+    ids = [n["id"] for n in output_graph["nodes"]]
+    # Schema-clean node was restored; the one with a forbidden extra
+    # was dropped from the restore path. (The dangling-edge symptom
+    # this would cause is recoverable downstream — the renderer falls
+    # back to a placeholder for an undeclared id — but persisting an
+    # unsafe field through the cache is not.)
+    assert ids == ["good"]
+    assert all("script" not in n for n in output_graph["nodes"])
+
+
+def test_safety_net_strips_none_fields_when_restoring() -> None:
+    # Smoke test for the schema-validate-then-dump round trip: ``None``
+    # values on the input dict (e.g. an unset ``label``) are excluded
+    # from the restored entry via ``exclude_none=True``, matching how
+    # the agent's own output is normalised.
+    from agents.semantic_graph_enricher import _restore_dropped_nodes
+
+    input_graph = {
+        "nodes": [
+            {
+                "id": "x",
+                "type": "scalar",
+                "latex": "x",
+                "label": None,
+                "description": None,
+            },
+        ],
+        "edges": [],
+    }
+    output_graph: dict = {"nodes": [], "edges": []}
+    _restore_dropped_nodes(input_graph, output_graph)
+    assert output_graph["nodes"][0]["id"] == "x"
+    assert "label" not in output_graph["nodes"][0]
+    assert "description" not in output_graph["nodes"][0]
+
+
+def test_dropped_node_safety_net_restores_when_validator_exhausts() -> None:
+    # When pydantic-ai's retry budget is exhausted and the model still
+    # omits input ids, the ``_restore_dropped_nodes`` safety net inside
+    # ``_stamp_enriched`` re-inserts them verbatim. The integrity invariant
+    # (every edge endpoint has a matching node) must hold even on a worst-
+    # case-failure path. The stub here simulates that worst case by
+    # returning the same dropped-node graph regardless of "retries".
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [{"id": "__deriv_5", "type": "operator"}],
+            "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    input_graph = {
+        "nodes": [
+            {"id": "q_{\\text{LEO}}", "type": "scalar",
+             "latex": "q_{\\text{LEO}}"},
+            {"id": "__deriv_5", "type": "operator"},
+        ],
+        "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
+    }
+    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
+    ids = {n["id"] for n in out["nodes"]}
+    assert ids == {"q_{\\text{LEO}}", "__deriv_5"}
+    by_id = {n["id"]: n for n in out["nodes"]}
+    assert by_id["q_{\\text{LEO}}"]["latex"] == "q_{\\text{LEO}}"
+
+
+def test_dropped_input_nodes_are_restored_from_input() -> None:
+    # Inverse of the phantom-node case (issue #192): Gemini sometimes
+    # *omits* an input node (commonly variables with ``\text{...}``
+    # subscripts) while leaving the edges that reference its id. Without
+    # restoration, downstream Mermaid emits a dangling edge and renders
+    # a placeholder node labelled with the *sanitized* id (``q__\text_LEO__``).
+    # The agent must take the input ids as authoritative and re-insert any
+    # missing ones with the parser-owned record verbatim.
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [
+                # Note: ``q_{\text{LEO}}`` is conspicuously absent; only the
+                # __deriv_5 operator survives the model's response.
+                {"id": "__deriv_5", "type": "operator", "op": "derivative",
+                 "with_respect_to": "t",
+                 "description": "Time derivative of the LEO heat-rate."},
+            ],
+            "edges": [
+                {"from": "q_{\\text{LEO}}", "to": "__deriv_5"},
+            ],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    input_graph = {
+        "nodes": [
+            {
+                "id": "q_{\\text{LEO}}",
+                "type": "scalar",
+                "latex": "q_{\\text{LEO}}",
+                "subexpr": "q_{\\text{LEO}}",
+            },
+            {
+                "id": "__deriv_5",
+                "type": "operator",
+                "op": "derivative",
+                "with_respect_to": "t",
+            },
+        ],
+        "edges": [
+            {"from": "q_{\\text{LEO}}", "to": "__deriv_5"},
+        ],
+    }
+    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
+
+    out_ids = [n["id"] for n in out["nodes"]]
+    # Both input nodes survive — the dropped one was re-inserted.
+    assert "q_{\\text{LEO}}" in out_ids
+    assert "__deriv_5" in out_ids
+
+    # Restored node carries the parser-owned fields verbatim.
+    by_id = {n["id"]: n for n in out["nodes"]}
+    restored = by_id["q_{\\text{LEO}}"]
+    assert restored["latex"] == "q_{\\text{LEO}}"
+    assert restored["subexpr"] == "q_{\\text{LEO}}"
+    assert restored["type"] == "scalar"
+
+    # Edge that previously dangled still resolves to a real node, and the
+    # surviving node retained its enrichment.
+    assert {"from": "q_{\\text{LEO}}", "to": "__deriv_5"} in out["edges"]
+    assert by_id["__deriv_5"]["description"].startswith("Time derivative")
+
+
+def test_dropped_node_restoration_is_independent_of_phantom_drop() -> None:
+    # When the model both drops a real input node *and* invents a phantom,
+    # the agent should restore the missing one and remove the phantom in
+    # the same pass. This stresses the ordering inside ``_stamp_enriched``.
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [
+                {"id": "g", "type": "scalar", "label": "g",
+                 "quantity": "acceleration"},
+                # Phantom: not in input.
+                {"id": "g_phantom", "type": "scalar",
+                 "label": "gravitational acceleration emoji"},
+                # Note: input node ``\theta`` is deliberately absent.
+            ],
+            "edges": [
+                # Phantom edge that touches the phantom node — should go.
+                {"from": "g_phantom", "to": "g"},
+                # Real edge involving the dropped input node — must survive.
+                {"from": "\\theta", "to": "g"},
+            ],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    input_graph = {
+        "nodes": [
+            {"id": "g", "type": "scalar"},
+            {"id": "\\theta", "type": "scalar", "latex": "\\theta"},
+        ],
+        "edges": [
+            {"from": "\\theta", "to": "g"},
+        ],
+    }
+    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
+
+    ids = sorted(n["id"] for n in out["nodes"])
+    assert ids == ["\\theta", "g"]                  # phantom dropped, theta restored
+    assert {"from": "\\theta", "to": "g"} in out["edges"]
+    assert {"from": "g_phantom", "to": "g"} not in out["edges"]
+
+
+def test_no_dropped_nodes_means_no_changes_to_node_set() -> None:
+    # Sanity: when the model returns every input id, the restoration
+    # pass must not mutate the node list (no duplicates, ordering of the
+    # model's response preserved). Guards against overshooting the fix.
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [
+                {"id": "x", "type": "scalar", "label": "x",
+                 "description": "position"},
+                {"id": "y", "type": "scalar", "label": "y",
+                 "description": "vertical position"},
+            ],
+            "edges": [],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    out = enricher.enrich(
+        {"nodes": [{"id": "x", "type": "scalar"},
+                   {"id": "y", "type": "scalar"}],
+         "edges": []},
+        context=_ATMOSPHERIC_CONTEXT,
+    )
+    ids = [n["id"] for n in out["nodes"]]
+    assert ids == ["x", "y"]                          # no duplicates, order kept
+
+
 def test_structural_fields_restored_from_input() -> None:
     # Gemini in JSON mode occasionally double-escapes backslashes in
     # ``subexpr`` (``\frac`` → ``\\frac``), which breaks the rendered
