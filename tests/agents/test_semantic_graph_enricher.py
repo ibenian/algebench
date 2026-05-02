@@ -152,7 +152,14 @@ def test_enrichment_preserves_ids_and_edges() -> None:
     for symbol in ("P", "V", "T"):
         assert by_id[symbol].description
         assert by_id[symbol].emoji
-        assert (by_id[symbol].color or "").startswith("#")
+    # ``color`` is now in ``_STRUCTURAL_NODE_FIELDS`` (parser-owned), so
+    # any color the agent invented for a node whose input had no color
+    # gets stripped during the merge. The system prompt already forbade
+    # the agent from setting color (rule #3); the merge layer now
+    # enforces it. Test fixture's input has no color → output has no
+    # color, regardless of what the agent returned.
+    for symbol in ("P", "V", "T"):
+        assert by_id[symbol].color is None
 
 
 @pytest.mark.parametrize(
@@ -697,6 +704,75 @@ def test_restore_dropped_nodes_excludes_none_fields() -> None:
     dumped = output_graph.nodes[0].model_dump(by_alias=True, exclude_none=True)
     assert "label" not in dumped
     assert "description" not in dumped
+
+
+def test_parser_owned_color_and_highlight_are_restored_from_input() -> None:
+    # Issue #195: ``color`` / ``highlight`` are author-set semantic markers
+    # tied to ``htmlClass{hl-cube}``-style highlights — the parser emits
+    # them and the renderer / theme resolves them. The system prompt tells
+    # Gemini not to modify ``color`` (rule #3), but in production we've
+    # seen it strip the field anyway. Adding both to ``_STRUCTURAL_NODE_FIELDS``
+    # makes the merge layer enforce the parser's intent regardless of what
+    # the agent returns.
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [
+                # Agent strips both color and highlight from the response.
+                {"id": "__num_6", "type": "number", "label": "2.81",
+                 "description": "Heating ratio."},
+            ],
+            "edges": [],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    out = enricher.enrich(
+        _g({
+            "nodes": [
+                {"id": "__num_6", "type": "number", "label": "2.81",
+                 "color": "red", "highlight": "result"},
+            ],
+            "edges": [],
+        }),
+        context=_ATMOSPHERIC_CONTEXT,
+    )
+    by_id = {n.id: n for n in out.nodes}
+    # Parser-set markers survive — the merge layer restored them from
+    # the input even though Gemini's response omitted both.
+    assert by_id["__num_6"].color == "red"
+    assert by_id["__num_6"].highlight == "result"
+    # The agent's enrichment fields still land on the same node.
+    assert by_id["__num_6"].description == "Heating ratio."
+
+
+def test_parser_owned_color_overwrites_agent_modifications() -> None:
+    # Even if the agent *modifies* a parser-owned field rather than
+    # stripping it, the merge layer reverts to the input value. Otherwise
+    # a model that thinks it knows better could rewrite ``color: "red"``
+    # as ``color: "#ff0000"`` (or worse, a hex that doesn't match the
+    # theme's resolution).
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [
+                {"id": "__num_6", "type": "number", "label": "2.81",
+                 "color": "blue", "highlight": "hijacked"},
+            ],
+            "edges": [],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    out = enricher.enrich(
+        _g({
+            "nodes": [
+                {"id": "__num_6", "type": "number", "label": "2.81",
+                 "color": "red", "highlight": "result"},
+            ],
+            "edges": [],
+        }),
+        context=_ATMOSPHERIC_CONTEXT,
+    )
+    by_id = {n.id: n for n in out.nodes}
+    assert by_id["__num_6"].color == "red"          # not "blue"
+    assert by_id["__num_6"].highlight == "result"   # not "hijacked"
 
 
 def test_dropped_node_safety_net_restores_when_validator_exhausts() -> None:

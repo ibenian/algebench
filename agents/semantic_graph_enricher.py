@@ -535,6 +535,22 @@ def _restore_dropped_nodes(
         )
 
 
+# Fields the parser owns and the enricher must not modify. Anything here
+# is restored verbatim from the input node during ``_stamp_enriched``,
+# regardless of what the model returned. The system prompt already tells
+# the agent to leave most of these alone (``color`` rule #3, structural
+# fields by default), but we enforce it here so the rendered graph
+# matches the parser's intent even when Gemini gets distracted.
+#
+# Subscripts:
+# - ``subexpr`` / ``latex``: deterministic LaTeX strings — issue #182
+#   (Gemini sometimes double-escapes backslashes).
+# - ``type`` / ``op`` / ``exponent`` / ``with_respect_to``: structural
+#   parser output, never a semantic enrichment target.
+# - ``color`` / ``highlight``: author-set semantic markers tied to
+#   ``htmlClass{hl-cube}``-style highlights. The parser emits CSS named
+#   colors (``"red"``/``"yellow"``); the renderer / theme resolves them
+#   alongside the agent's enrichment fields.
 _STRUCTURAL_NODE_FIELDS = (
     "subexpr",
     "latex",
@@ -542,6 +558,8 @@ _STRUCTURAL_NODE_FIELDS = (
     "op",
     "exponent",
     "with_respect_to",
+    "color",
+    "highlight",
 )
 
 
