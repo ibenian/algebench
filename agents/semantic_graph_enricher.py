@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from .base import BaseAgent
-from models import SemanticGraph
+from models import SemanticGraph, SemanticGraphNode
 
 
 # Per-task input-node id set, threaded into the pydantic-ai output validator
@@ -26,6 +26,18 @@ from models import SemanticGraph
 # itself is a process-wide singleton in ``server.py``.
 _current_input_node_ids: contextvars.ContextVar[Optional[frozenset[str]]] = (
     contextvars.ContextVar("_current_input_node_ids", default=None)
+)
+
+# Per-task counter for how many times ``_validate_no_dropped_nodes`` has
+# escalated via ``ModelRetry`` on the current ``_first_pass`` call. Caps
+# escalations so the *last* model output flows through to the safety-net
+# restore in ``_stamp_enriched`` instead of pydantic-ai raising
+# ``UnexpectedModelBehavior`` on retry exhaustion (which would skip the
+# safety net entirely and surface as a 502 to the client). See the
+# validator's docstring for the full rationale.
+_VALIDATOR_MAX_ESCALATIONS = 1
+_validator_escalation_count: contextvars.ContextVar[int] = (
+    contextvars.ContextVar("_validator_escalation_count", default=0)
 )
 
 
@@ -412,17 +424,29 @@ def _validate_no_dropped_nodes(output: SemanticGraph) -> SemanticGraph:
     with ``\\text{...}`` subscripts) while leaving edges that reference
     them, which leaves the renderer with dangling edge endpoints. This
     validator runs *inside* pydantic-ai's retry loop: when drops are
-    detected it raises ``ModelRetry`` with the missing ids, and the
-    framework feeds that message back to the model as a follow-up turn,
-    consuming a slot of ``BaseAgent.max_retries``. The model then sees its
-    own previous (incomplete) response in context plus our error, which is
-    a stronger correction signal than re-prompting from scratch.
+    detected on the *first* model output it raises ``ModelRetry`` with
+    the missing ids, and the framework feeds that message back to the
+    model as a follow-up turn, consuming a slot of
+    ``BaseAgent.max_retries``. The model then sees its own previous
+    (incomplete) response in context plus our error, which is a stronger
+    correction signal than re-prompting from scratch.
+
+    Critical: the validator caps its escalations at
+    ``_VALIDATOR_MAX_ESCALATIONS`` (default 1). On any subsequent model
+    output that *still* drops ids, the validator returns the output as-is
+    rather than raising. This is intentional — without the cap, a model
+    that stubbornly drops the same id every retry would exhaust
+    ``max_retries``, and pydantic-ai would raise
+    ``UnexpectedModelBehavior``. That exception escapes ``_first_pass``
+    and propagates to the FastAPI handler, which returns a 502 — bypassing
+    ``_stamp_enriched`` and therefore the ``_restore_dropped_nodes``
+    safety net. The whole point of the layered defense is that the
+    integrity invariant (every edge endpoint exists in nodes) holds even
+    in the worst case; falling through here lets the safety net repair
+    the response instead of failing the request.
 
     No-op when no input set is bound (test stubs that bypass the agent
-    don't set the ContextVar) or when the output is complete. The
-    ``_restore_dropped_nodes`` safety net inside ``_stamp_enriched``
-    handles the rare case where retries exhaust and the model still
-    drops the same ids.
+    don't set the ContextVar) or when the output is complete.
 
     Note: the feedback intentionally avoids prescribing fields that the
     system prompt forbids (e.g. ``color``, which is theme-driven, not
@@ -440,6 +464,19 @@ def _validate_no_dropped_nodes(output: SemanticGraph) -> SemanticGraph:
     missing = sorted(i for i in expected if i not in out_ids)
     if not missing:
         return output
+    # Cap escalations so the safety net in ``_stamp_enriched`` always gets
+    # a chance to repair the response. Without this, exhausted retries
+    # would surface as a 502 instead of a verbatim-restored graph.
+    escalations = _validator_escalation_count.get()
+    if escalations >= _VALIDATOR_MAX_ESCALATIONS:
+        print(
+            f"[enrich] validator: {len(missing)} dropped id(s) after "
+            f"{escalations} escalation(s); returning output for safety-net "
+            f"repair (missing={missing!r})",
+            flush=True,
+        )
+        return output
+    _validator_escalation_count.set(escalations + 1)
     quoted = ", ".join(f"`{i}`" for i in missing)
     # Lazy import — pydantic_ai may be unavailable in some test environments.
     from pydantic_ai import ModelRetry
@@ -490,10 +527,28 @@ def _restore_dropped_nodes(
         sid = src.get("id")
         if not isinstance(sid, str) or sid in out_ids:
             continue
-        # Shallow-copy so later passes mutating the output don't touch the
-        # input graph (which the FastAPI handler may still hand to the cache
-        # hash builder).
-        out_nodes.append(dict(src))
+        # Validate the source node through the agent's schema before
+        # appending so the post-enrichment graph honours the same
+        # ``extra="forbid"`` invariant pydantic-ai enforces on the model
+        # output. The input dict comes from the unvalidated
+        # ``GraphEnrichRequest.graph: dict`` field; without this guard a
+        # caller could smuggle unknown properties into the cached graph
+        # via the restore path. Drop the node entirely on validation
+        # failure — the dangling-edge symptom is recoverable later
+        # (renderer falls back to a placeholder), but a schema-violating
+        # node persisted to the cache is not.
+        try:
+            validated = SemanticGraphNode.model_validate(src).model_dump(
+                by_alias=True, exclude_none=True
+            )
+        except Exception as exc:
+            print(
+                f"[enrich] skipping restore of {sid!r} — input node "
+                f"failed schema validation: {exc}",
+                flush=True,
+            )
+            continue
+        out_nodes.append(validated)
         print(
             f"[enrich] restoring dropped input node {sid!r} "
             f"(label={src.get('label')!r})",
@@ -656,19 +711,21 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
         graph: Dict[str, Any],
         context: Optional[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        # Bind the input node ids for ``_validate_no_dropped_nodes`` (which
-        # runs inside pydantic-ai's retry loop). Reset on exit so a later
-        # call with a different input doesn't see stale state.
+        # Bind the input node ids for ``_validate_no_dropped_nodes`` and
+        # reset its escalation counter for this call. Reset both on exit
+        # so a later call with a different input doesn't see stale state.
         expected = frozenset(
             n["id"]
             for n in (graph.get("nodes") or [])
             if isinstance(n, dict) and isinstance(n.get("id"), str)
         )
-        token = _current_input_node_ids.set(expected)
+        ids_token = _current_input_node_ids.set(expected)
+        count_token = _validator_escalation_count.set(0)
         try:
             result = await self.arun(_build_payload(graph, context))
         finally:
-            _current_input_node_ids.reset(token)
+            _current_input_node_ids.reset(ids_token)
+            _validator_escalation_count.reset(count_token)
         assert isinstance(result, SemanticGraph)
         return result.model_dump(by_alias=True, exclude_none=True)
 

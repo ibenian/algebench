@@ -562,6 +562,48 @@ def test_validator_passes_through_when_output_complete() -> None:
     assert result is output
 
 
+def test_validator_caps_escalations_so_safety_net_can_repair() -> None:
+    # Critical (Codex review P1): if the model stubbornly drops the same
+    # id every retry, the validator must NOT escalate forever. Otherwise
+    # pydantic-ai exhausts ``max_retries`` and raises
+    # ``UnexpectedModelBehavior`` — which propagates to the FastAPI
+    # handler as a 502 and bypasses ``_stamp_enriched`` (and therefore
+    # ``_restore_dropped_nodes``). The whole layered defense relies on
+    # the *last* model output flowing through to the safety net.
+    from pydantic_ai import ModelRetry
+    from agents.semantic_graph_enricher import (
+        _VALIDATOR_MAX_ESCALATIONS,
+        _current_input_node_ids,
+        _validator_escalation_count,
+        _validate_no_dropped_nodes,
+    )
+
+    output = SemanticGraph.model_validate({
+        "nodes": [{"id": "__deriv_5", "type": "operator"}],
+        "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
+    })
+    ids_token = _current_input_node_ids.set(
+        frozenset({"q_{\\text{LEO}}", "__deriv_5"})
+    )
+    count_token = _validator_escalation_count.set(0)
+    try:
+        # First N escalations raise — model gets a chance to fix.
+        for attempt in range(_VALIDATOR_MAX_ESCALATIONS):
+            with pytest.raises(ModelRetry):
+                _validate_no_dropped_nodes(output)
+        # Counter should now be at the cap.
+        assert _validator_escalation_count.get() == _VALIDATOR_MAX_ESCALATIONS
+        # The next call (over the cap) must NOT raise — instead it
+        # returns the dropped-node output unchanged so the safety net
+        # downstream can repair it. This is the exact path that turned
+        # 502s into restored graphs.
+        result = _validate_no_dropped_nodes(output)
+        assert result is output
+    finally:
+        _current_input_node_ids.reset(ids_token)
+        _validator_escalation_count.reset(count_token)
+
+
 def test_validator_is_noop_when_no_input_set_bound() -> None:
     # The ``_StubAgent`` and any direct callers that bypass the agent
     # don't set the ContextVar; the validator must degrade to a pass-
@@ -579,6 +621,71 @@ def test_validator_is_noop_when_no_input_set_bound() -> None:
     # Confirm no token has been set (default state).
     assert _current_input_node_ids.get() is None
     assert _validate_no_dropped_nodes(output) is output
+
+
+def test_safety_net_rejects_input_nodes_with_unknown_fields() -> None:
+    # Codex review P2: ``GraphEnrichRequest.graph`` is an unvalidated dict
+    # by API contract, so the input we restore from could carry extra
+    # properties the agent's output schema (``SemanticGraphNode``,
+    # ``extra='forbid'``) would reject. The restore path must filter
+    # through the schema rather than copy raw, otherwise the cached
+    # post-enrichment graph loses the ``extra='forbid'`` invariant.
+    from agents.semantic_graph_enricher import _restore_dropped_nodes
+
+    input_graph = {
+        "nodes": [
+            {
+                "id": "good",
+                "type": "scalar",
+                "latex": "x",
+            },
+            {
+                # Schema-violating extra property — must NOT make it into
+                # the restored output.
+                "id": "evil",
+                "type": "scalar",
+                "latex": "y",
+                "script": "<malicious>",
+            },
+        ],
+        "edges": [],
+    }
+    output_graph: dict = {"nodes": [], "edges": []}
+    _restore_dropped_nodes(input_graph, output_graph)
+    ids = [n["id"] for n in output_graph["nodes"]]
+    # Schema-clean node was restored; the one with a forbidden extra
+    # was dropped from the restore path. (The dangling-edge symptom
+    # this would cause is recoverable downstream — the renderer falls
+    # back to a placeholder for an undeclared id — but persisting an
+    # unsafe field through the cache is not.)
+    assert ids == ["good"]
+    assert all("script" not in n for n in output_graph["nodes"])
+
+
+def test_safety_net_strips_none_fields_when_restoring() -> None:
+    # Smoke test for the schema-validate-then-dump round trip: ``None``
+    # values on the input dict (e.g. an unset ``label``) are excluded
+    # from the restored entry via ``exclude_none=True``, matching how
+    # the agent's own output is normalised.
+    from agents.semantic_graph_enricher import _restore_dropped_nodes
+
+    input_graph = {
+        "nodes": [
+            {
+                "id": "x",
+                "type": "scalar",
+                "latex": "x",
+                "label": None,
+                "description": None,
+            },
+        ],
+        "edges": [],
+    }
+    output_graph: dict = {"nodes": [], "edges": []}
+    _restore_dropped_nodes(input_graph, output_graph)
+    assert output_graph["nodes"][0]["id"] == "x"
+    assert "label" not in output_graph["nodes"][0]
+    assert "description" not in output_graph["nodes"][0]
 
 
 def test_dropped_node_safety_net_restores_when_validator_exhausts() -> None:
