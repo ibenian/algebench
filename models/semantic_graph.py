@@ -43,7 +43,14 @@ ClassificationKind = Literal["algebraic", "ODE", "PDE", "statements"]
 
 
 _NO_HTML = r"^[^<>]*$"
-_HEX_COLOR = r"^#[0-9A-Fa-f]{3,8}$"
+# Accept either hex (``#fa0``, ``#0d47a1``, ``#ff8800aa``) or a CSS named
+# color keyword (``red``, ``yellow``, ``cornflowerblue``). Both are
+# author-set semantic highlights (``htmlClass{hl-cube}``-style markers
+# that the parser emits with named colors); the renderer / theme
+# resolves both forms. The ``[a-zA-Z]+`` arm is constrained to letters
+# only so it can't smuggle ``javascript:`` or ``url(...)`` payloads — the
+# original prompt-injection rejection still holds.
+_COLOR = r"^(#[0-9A-Fa-f]{3,8}|[a-zA-Z]+)$"
 
 
 class SemanticGraphNode(BaseModel):
@@ -70,7 +77,7 @@ class SemanticGraphNode(BaseModel):
     unit: Optional[str] = Field(default=None, max_length=30, pattern=_NO_HTML)
     value: Optional[Union[float, int, str]] = Field(default=None)
     role: Optional[Role] = None
-    color: Optional[str] = Field(default=None, pattern=_HEX_COLOR)
+    color: Optional[str] = Field(default=None, pattern=_COLOR)
     highlight: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     variant: Optional[EdgeSemantic] = None
 
