@@ -8,6 +8,7 @@ role/dimension/unit/quantity fields. Ids and edges are preserved verbatim.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import unicodedata
 from typing import Any, Dict, List, Optional
@@ -16,6 +17,16 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .base import BaseAgent
 from models import SemanticGraph
+
+
+# Per-task input-node id set, threaded into the pydantic-ai output validator
+# (registered in ``SemanticGraphEnrichmentAgent.__init__``). Set right before
+# each ``_first_pass`` call and reset on exit. ``contextvars`` semantics make
+# this safe under FastAPI's per-request task model even though the enricher
+# itself is a process-wide singleton in ``server.py``.
+_current_input_node_ids: contextvars.ContextVar[Optional[frozenset[str]]] = (
+    contextvars.ContextVar("_current_input_node_ids", default=None)
+)
 
 
 _SYSTEM_PROMPT = """\
@@ -394,45 +405,50 @@ def _drop_phantom_nodes_and_edges(
         output_graph["edges"] = kept_edges
 
 
-def _dropped_node_ids(
-    input_graph: Dict[str, Any],
-    output_graph: Dict[str, Any],
-) -> List[str]:
-    """Return the input node ids that don't appear in *output_graph*'s ``nodes``.
+def _validate_no_dropped_nodes(output: SemanticGraph) -> SemanticGraph:
+    """pydantic-ai output validator — retry when the model omits input ids.
 
-    Used to drive the dropped-node retry path (issue #192) so we can give
-    the model a second chance to enrich the missing nodes. Order is
-    preserved so retry feedback matches the original parser ordering and
-    log lines remain stable.
+    Issue #192: Gemini occasionally drops input nodes (commonly variables
+    with ``\\text{...}`` subscripts) while leaving edges that reference
+    them, which leaves the renderer with dangling edge endpoints. This
+    validator runs *inside* pydantic-ai's retry loop: when drops are
+    detected it raises ``ModelRetry`` with the missing ids, and the
+    framework feeds that message back to the model as a follow-up turn,
+    consuming a slot of ``BaseAgent.max_retries``. The model then sees its
+    own previous (incomplete) response in context plus our error, which is
+    a stronger correction signal than re-prompting from scratch.
+
+    No-op when no input set is bound (test stubs that bypass the agent
+    don't set the ContextVar) or when the output is complete. The
+    ``_restore_dropped_nodes`` safety net inside ``_stamp_enriched``
+    handles the rare case where retries exhaust and the model still
+    drops the same ids.
+
+    Note: the feedback intentionally avoids prescribing fields that the
+    system prompt forbids (e.g. ``color``, which is theme-driven, not
+    per-node). We tell the model to preserve the node set; the existing
+    system-prompt rules still apply to *which* fields are populated.
     """
-    out_ids: set = set()
-    for n in output_graph.get("nodes") or []:
-        if isinstance(n, dict) and isinstance(n.get("id"), str):
-            out_ids.add(n["id"])
-    missing: List[str] = []
-    for src in input_graph.get("nodes") or []:
-        if not isinstance(src, dict):
-            continue
-        sid = src.get("id")
-        if isinstance(sid, str) and sid not in out_ids and sid not in missing:
-            missing.append(sid)
-    return missing
-
-
-def _format_dropped_node_feedback(missing_ids: List[str]) -> str:
-    """Phrase a retry hint that calls out the dropped ids by name.
-
-    Kept short and instructional — the retry context already carries the
-    full original prompt, so this just nudges the model to include the
-    listed ids with full enrichment fields.
-    """
-    quoted = ", ".join(f"`{i}`" for i in missing_ids)
-    return (
-        "Your previous response omitted these node id(s) from `nodes`: "
+    expected = _current_input_node_ids.get()
+    if not expected:
+        return output
+    out_ids: set[str] = set()
+    for node in output.nodes:
+        nid = getattr(node, "id", None)
+        if isinstance(nid, str):
+            out_ids.add(nid)
+    missing = sorted(i for i in expected if i not in out_ids)
+    if not missing:
+        return output
+    quoted = ", ".join(f"`{i}`" for i in missing)
+    # Lazy import — pydantic_ai may be unavailable in some test environments.
+    from pydantic_ai import ModelRetry
+    raise ModelRetry(
+        f"Your previous response omitted these node id(s) from `nodes`: "
         f"{quoted}. The node set must be preserved verbatim — every input "
-        "id must appear in `nodes` with the appropriate enrichment fields "
-        "(description, emoji, color, quantity, dimension, unit). Edges are "
-        "fine; just fill the missing entries this time."
+        f"id must appear in `nodes` exactly once. Edges are fine; just "
+        f"include the missing entries with the appropriate enrichment "
+        f"fields per the original instructions."
     )
 
 
@@ -627,43 +643,34 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
                 critic = None
         self._critic = critic
 
+        # Register the dropped-node validator on the underlying pydantic-ai
+        # agent so retries ride on the existing ``max_retries`` budget. Skip
+        # for test stubs (``agent`` injected) — they don't honour the
+        # validator decorator anyway, and tests for the safety-net behaviour
+        # exercise ``_restore_dropped_nodes`` directly.
+        if agent is None and hasattr(self._agent, "output_validator"):
+            self._agent.output_validator(_validate_no_dropped_nodes)
+
     async def _first_pass(
         self,
         graph: Dict[str, Any],
         context: Optional[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        result = await self.arun(_build_payload(graph, context))
+        # Bind the input node ids for ``_validate_no_dropped_nodes`` (which
+        # runs inside pydantic-ai's retry loop). Reset on exit so a later
+        # call with a different input doesn't see stale state.
+        expected = frozenset(
+            n["id"]
+            for n in (graph.get("nodes") or [])
+            if isinstance(n, dict) and isinstance(n.get("id"), str)
+        )
+        token = _current_input_node_ids.set(expected)
+        try:
+            result = await self.arun(_build_payload(graph, context))
+        finally:
+            _current_input_node_ids.reset(token)
         assert isinstance(result, SemanticGraph)
         return result.model_dump(by_alias=True, exclude_none=True)
-
-    async def _first_pass_with_failure_retry(
-        self,
-        graph: Dict[str, Any],
-        context: Optional[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        """``_first_pass`` plus one retry on exception.
-
-        Pydantic-AI's ``Agent`` already does internal retries
-        (``max_retries = 2``), so an exception escaping ``arun`` represents
-        an exhausted-retry, network, or schema-validation failure. Wrap
-        with one outer retry so a transient blip on one call doesn't kill
-        the whole enrichment — the user otherwise falls back to seeing
-        the unenriched graph forever (the cache short-circuits future
-        attempts at the same key on a successful return).
-
-        If the retry also fails, the exception propagates; the FastAPI
-        handler turns ``AgentError`` into 502 and other exceptions into
-        500, same as before.
-        """
-        try:
-            return await self._first_pass(graph, context)
-        except Exception as exc:
-            print(
-                f"[enrich] first-pass error → retrying once: "
-                f"{type(exc).__name__}: {exc}",
-                flush=True,
-            )
-            return await self._first_pass(graph, context)
 
     async def _critique(
         self,
@@ -678,65 +685,6 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
             print(f"[enrich] critic error (skipping): {exc}", flush=True)
             return None
         return verdict if isinstance(verdict, _CoherenceVerdict) else None
-
-    async def _retry_for_dropped_nodes(
-        self,
-        graph: Dict[str, Any],
-        context: Optional[Dict[str, Any]],
-        candidate: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        """One-shot retry when the candidate is missing input nodes.
-
-        ``_restore_dropped_nodes`` (called inside ``_stamp_enriched``) is
-        the integrity safety net — guarantees every input id ends up in
-        the output. But a verbatim restore brings the parser-owned record
-        back without enrichment fields (no description, emoji, color,
-        unit, …), so the user sees a bare node next to fully-enriched
-        siblings. Retrying with explicit feedback gives Gemini a second
-        chance to *enrich* the missing ids; the safety net then handles
-        the rare case where the retry still drops them.
-
-        Returns the original candidate when nothing was dropped, the
-        retry's output when fewer ids are missing, or the original
-        candidate if the retry didn't actually improve coverage (so we
-        don't trade good enrichment fields for fewer drops in error).
-        """
-        missing = _dropped_node_ids(graph, candidate)
-        if not missing:
-            return candidate
-        feedback = _format_dropped_node_feedback(missing)
-        retry_context = _context_with_feedback(context, feedback)
-        # Stamp the inferred domain onto a shallow copy of the input so
-        # the retry doesn't re-infer from prose (same trick as the
-        # critic-driven retry).
-        retry_graph = graph
-        inferred_domain = _graph_domain(candidate)
-        if inferred_domain and not _graph_domain(graph):
-            retry_graph = {**graph, "domain": inferred_domain}
-        print(
-            f"[enrich] dropped nodes {missing!r} → retry  feedback={feedback!r}",
-            flush=True,
-        )
-        try:
-            retried = await self._first_pass_with_failure_retry(retry_graph, retry_context)
-        except Exception as exc:
-            print(f"[enrich] dropped-node retry failed (keeping first pass): {exc}", flush=True)
-            return candidate
-        retried_missing = _dropped_node_ids(graph, retried)
-        if len(retried_missing) >= len(missing):
-            print(
-                f"[enrich] retry didn't improve coverage "
-                f"(missing {len(retried_missing)} vs {len(missing)}) — "
-                f"keeping first pass",
-                flush=True,
-            )
-            return candidate
-        print(
-            f"[enrich] retry recovered {len(missing) - len(retried_missing)} "
-            f"of {len(missing)} dropped nodes (still missing: {retried_missing!r})",
-            flush=True,
-        )
-        return retried
 
     async def aenrich(
         self,
@@ -761,29 +709,31 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
                 flush=True,
             )
 
-        async def _finalize(stage: str, candidate: Dict[str, Any]) -> Dict[str, Any]:
-            """One-shot dropped-node retry, then stamp. Shared exit path so
-            every return site gets the same defensive treatment."""
-            candidate = await self._retry_for_dropped_nodes(graph, context, candidate)
+        def _finalize(stage: str, candidate: Dict[str, Any]) -> Dict[str, Any]:
+            """Log + stamp. Dropped-node retries happen *inside* pydantic-ai's
+            loop via ``_validate_no_dropped_nodes``; ``_stamp_enriched``
+            then runs the safety-net merge passes (restore-dropped /
+            drop-phantoms / restore-structural-fields).
+            """
             _log_done(stage, candidate)
             return _stamp_enriched(graph, candidate)
 
         node_count = len(graph.get("nodes") or [])
-        enriched = await self._first_pass_with_failure_retry(graph, context)
+        enriched = await self._first_pass(graph, context)
         if not context:
-            return await _finalize("first-pass ok ctx=n (no critique)", enriched)
+            return _finalize("first-pass ok ctx=n (no critique)", enriched)
         verdict = await self._critique(context, enriched)
         if verdict is None:
-            return await _finalize("first-pass ok critic=unavailable", enriched)
+            return _finalize("first-pass ok critic=unavailable", enriched)
         if verdict.ok:
-            return await _finalize("first-pass ok critic=ok", enriched)
+            return _finalize("first-pass ok critic=ok", enriched)
         if not verdict.feedback:
             print(
                 f"[enrich] critic flagged {verdict.mismatched_node_ids!r} "
                 f"but no feedback — keeping first pass",
                 flush=True,
             )
-            return await _finalize("kept first pass", enriched)
+            return _finalize("kept first pass", enriched)
         # If the first pass inferred a domain that the input graph didn't
         # carry, stamp that domain onto a shallow copy of the graph for the
         # retry — the graph is the source of truth for `domain`, and the
@@ -801,11 +751,11 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
             f"feedback={verdict.feedback!r}",
             flush=True,
         )
-        retried = await self._first_pass_with_failure_retry(retry_graph, retry_context)
+        retried = await self._first_pass(retry_graph, retry_context)
         # Diff against the ORIGINAL input graph, not ``retry_graph`` — we
         # want the user-visible list of fields the agent actually filled,
         # which includes the domain it inferred on the first pass.
-        return await _finalize("retry ok", retried)
+        return _finalize("retry ok", retried)
 
     def enrich(
         self,

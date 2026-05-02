@@ -497,138 +497,102 @@ def test_phantom_nodes_added_by_model_are_dropped() -> None:
     assert out["nodes"][0]["quantity"] == "acceleration"
 
 
-def test_first_pass_failure_triggers_retry_with_same_payload() -> None:
-    # Pydantic-AI's internal retries already cover transient model errors
-    # (the agent has max_retries=2), but a hard exception escaping ``arun``
-    # — exhausted retries, network blip, schema-validation failure on the
-    # last attempt — used to bubble straight to the caller. Now a single
-    # failure-retry wraps the call so the user gets enrichment instead of
-    # a stuck unenriched graph cached forever.
-    enricher = _build_agent_with(
-        test_output=[
-            # First call raises; retry returns a clean enriched graph.
-            RuntimeError("simulated transient agent error"),
-            {
-                "nodes": [
-                    {"id": "x", "type": "scalar", "label": "x",
-                     "description": "position", "emoji": "📐"},
-                ],
-                "edges": [],
-            },
-        ],
-        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+def test_validator_raises_modelretry_when_input_ids_dropped() -> None:
+    # The dropped-node retry now rides on pydantic-ai's max_retries budget
+    # via an output validator. When the model returns an output that omits
+    # input ids, ``_validate_no_dropped_nodes`` raises ``ModelRetry`` with
+    # the missing ids; pydantic-ai feeds that message back as a follow-up
+    # turn. This test exercises the validator directly — the ``_StubAgent``
+    # used elsewhere doesn't honour the decorator, so safety-net tests
+    # below cover the post-hoc restoration path instead.
+    from pydantic_ai import ModelRetry
+    from agents.semantic_graph_enricher import (
+        _current_input_node_ids,
+        _validate_no_dropped_nodes,
     )
-    out = enricher.enrich(
-        {"nodes": [{"id": "x", "type": "scalar"}], "edges": []},
-        context=_ATMOSPHERIC_CONTEXT,
-    )
-    # Both calls landed (idx advanced past 1).
-    assert enricher._agent._idx == 2
-    # Retry's enrichment is what reached the user.
-    assert out["nodes"][0].get("description") == "position"
-    assert out["nodes"][0].get("emoji") == "📐"
 
-
-def test_first_pass_double_failure_propagates() -> None:
-    # When BOTH the first call and its failure-retry raise, the exception
-    # propagates so the FastAPI handler can return 502/500 — the cache is
-    # never poisoned with a half-built graph.
-    enricher = _build_agent_with(
-        test_output=[
-            RuntimeError("first call failure"),
-            RuntimeError("retry also failed"),
-        ],
-        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
-    )
-    with pytest.raises(RuntimeError, match="retry also failed"):
-        enricher.enrich(
-            {"nodes": [{"id": "x", "type": "scalar"}], "edges": []},
-            context=_ATMOSPHERIC_CONTEXT,
-        )
-    # Two attempts, then propagation.
-    assert enricher._agent._idx == 2
-
-
-def test_dropped_node_retry_succeeds_and_carries_enrichment() -> None:
-    # When Gemini omits an input id from its first pass, the agent should
-    # retry with explicit feedback listing the missing id(s). If the retry
-    # returns a complete node set with enrichment fields, the user gets
-    # the *enriched* version — not the bare verbatim restore. This is the
-    # whole reason the retry exists; verbatim restore is only the safety
-    # net for the rare case where the retry also fails.
-    enricher = _build_agent_with(
-        test_output=[
-            # First pass: drops q_{\text{LEO}}, leaves the dangling edge.
-            {
-                "nodes": [
-                    {"id": "__deriv_5", "type": "operator", "op": "derivative",
-                     "with_respect_to": "t",
-                     "description": "Time derivative of the LEO heat-rate."},
-                ],
-                "edges": [
-                    {"from": "q_{\\text{LEO}}", "to": "__deriv_5"},
-                ],
-            },
-            # Retry: full node set with enrichment on the previously dropped one.
-            {
-                "nodes": [
-                    {"id": "__deriv_5", "type": "operator", "op": "derivative",
-                     "with_respect_to": "t",
-                     "description": "Time derivative of the LEO heat-rate."},
-                    {"id": "q_{\\text{LEO}}", "type": "scalar",
-                     "label": "q̇ LEO", "emoji": "🛰️",
-                     "description": "Aerodynamic heating rate for a LEO return.",
-                     "quantity": "heating rate", "unit": "W/m²"},
-                ],
-                "edges": [
-                    {"from": "q_{\\text{LEO}}", "to": "__deriv_5"},
-                ],
-            },
-        ],
-        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
-    )
-    input_graph = {
+    output = SemanticGraph.model_validate({
         "nodes": [
-            {"id": "q_{\\text{LEO}}", "type": "scalar",
-             "latex": "q_{\\text{LEO}}", "subexpr": "q_{\\text{LEO}}"},
             {"id": "__deriv_5", "type": "operator", "op": "derivative",
              "with_respect_to": "t"},
+            # ``q_{\text{LEO}}`` deliberately absent.
         ],
-        "edges": [
-            {"from": "q_{\\text{LEO}}", "to": "__deriv_5"},
+        "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
+    })
+    token = _current_input_node_ids.set(
+        frozenset({"q_{\\text{LEO}}", "__deriv_5"})
+    )
+    try:
+        with pytest.raises(ModelRetry) as excinfo:
+            _validate_no_dropped_nodes(output)
+    finally:
+        _current_input_node_ids.reset(token)
+
+    msg = str(excinfo.value)
+    # The message names the missing id, asks for verbatim preservation,
+    # and does NOT prescribe ``color`` (which the system prompt forbids
+    # — calling it out in retry feedback would contradict the prompt).
+    assert "q_{\\text{LEO}}" in msg
+    assert "verbatim" in msg.lower()
+    assert "color" not in msg.lower()
+
+
+def test_validator_passes_through_when_output_complete() -> None:
+    # Sanity: when the model returns every input id, the validator must
+    # not raise — no extra retry, no extra Gemini call.
+    from agents.semantic_graph_enricher import (
+        _current_input_node_ids,
+        _validate_no_dropped_nodes,
+    )
+
+    output = SemanticGraph.model_validate({
+        "nodes": [
+            {"id": "x", "type": "scalar", "label": "x"},
+            {"id": "y", "type": "scalar", "label": "y"},
         ],
-    }
-    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
-
-    by_id = {n["id"]: n for n in out["nodes"]}
-    # Retry's enrichment fields landed on the formerly-dropped node.
-    restored = by_id["q_{\\text{LEO}}"]
-    assert restored.get("description") == "Aerodynamic heating rate for a LEO return."
-    assert restored.get("emoji") == "🛰️"
-    assert restored.get("unit") == "W/m²"
-    # Parser-owned fields are still preserved by the structural-fields pass.
-    assert restored["latex"] == "q_{\\text{LEO}}"
-    assert restored["subexpr"] == "q_{\\text{LEO}}"
+        "edges": [],
+    })
+    token = _current_input_node_ids.set(frozenset({"x", "y"}))
+    try:
+        result = _validate_no_dropped_nodes(output)
+    finally:
+        _current_input_node_ids.reset(token)
+    # Validator returns the output unchanged — pydantic-ai uses this
+    # as the agent's success path.
+    assert result is output
 
 
-def test_dropped_node_retry_falls_back_to_verbatim_on_repeat_drop() -> None:
-    # If the retry *also* drops the same node(s), the safety net inside
-    # ``_stamp_enriched`` re-inserts them verbatim from the input. The
-    # agent should never return a graph that violates the
-    # every-edge-endpoint-must-exist invariant, even when Gemini fails
-    # twice in a row.
+def test_validator_is_noop_when_no_input_set_bound() -> None:
+    # The ``_StubAgent`` and any direct callers that bypass the agent
+    # don't set the ContextVar; the validator must degrade to a pass-
+    # through in that case rather than failing every test that uses
+    # the stub.
+    from agents.semantic_graph_enricher import (
+        _current_input_node_ids,
+        _validate_no_dropped_nodes,
+    )
+
+    output = SemanticGraph.model_validate({
+        "nodes": [{"id": "z", "type": "scalar"}],
+        "edges": [],
+    })
+    # Confirm no token has been set (default state).
+    assert _current_input_node_ids.get() is None
+    assert _validate_no_dropped_nodes(output) is output
+
+
+def test_dropped_node_safety_net_restores_when_validator_exhausts() -> None:
+    # When pydantic-ai's retry budget is exhausted and the model still
+    # omits input ids, the ``_restore_dropped_nodes`` safety net inside
+    # ``_stamp_enriched`` re-inserts them verbatim. The integrity invariant
+    # (every edge endpoint has a matching node) must hold even on a worst-
+    # case-failure path. The stub here simulates that worst case by
+    # returning the same dropped-node graph regardless of "retries".
     enricher = _build_agent_with(
-        test_output=[
-            # Both passes return the same dropped-node graph.
-            {
-                "nodes": [{"id": "__deriv_5", "type": "operator"}],
-                "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
-            },
-            {
-                "nodes": [{"id": "__deriv_5", "type": "operator"}],
-                "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
-            },
-        ],
+        test_output={
+            "nodes": [{"id": "__deriv_5", "type": "operator"}],
+            "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
+        },
         critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
     )
     input_graph = {
@@ -641,47 +605,9 @@ def test_dropped_node_retry_falls_back_to_verbatim_on_repeat_drop() -> None:
     }
     out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
     ids = {n["id"] for n in out["nodes"]}
-    # Verbatim restore brought the dropped node back, so the integrity
-    # invariant holds even though both Gemini passes failed to include it.
     assert ids == {"q_{\\text{LEO}}", "__deriv_5"}
     by_id = {n["id"]: n for n in out["nodes"]}
     assert by_id["q_{\\text{LEO}}"]["latex"] == "q_{\\text{LEO}}"
-
-
-def test_dropped_node_retry_skipped_when_first_pass_complete() -> None:
-    # Sanity: if the first pass already includes every input id, no
-    # retry should fire (no extra Gemini call). Cheap guard against
-    # adding latency / cost to the happy path.
-    enricher = _build_agent_with(
-        # Single output — _StubAgent reuses the last item if it's called
-        # again, so an unintended retry would silently succeed. Detect it
-        # by checking `output_advanced_count` via call-counting attribute.
-        test_output={
-            "nodes": [
-                {"id": "x", "type": "scalar", "label": "x",
-                 "description": "position"},
-                {"id": "y", "type": "scalar", "label": "y",
-                 "description": "vertical position"},
-            ],
-            "edges": [],
-        },
-        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
-    )
-    out = enricher.enrich(
-        {"nodes": [{"id": "x", "type": "scalar"},
-                   {"id": "y", "type": "scalar"}],
-         "edges": []},
-        context=_ATMOSPHERIC_CONTEXT,
-    )
-    # Exactly one enrichment call was made — _StubAgent's _idx tracks
-    # how many times .run() was invoked. The first call burns idx 0,
-    # so _idx after a single first-pass should be 1; a second call (the
-    # retry) would have advanced it to 2.
-    assert enricher._agent._idx == 1, (
-        f"unexpected dropped-node retry fired (calls={enricher._agent._idx})"
-    )
-    ids = [n["id"] for n in out["nodes"]]
-    assert ids == ["x", "y"]
 
 
 def test_dropped_input_nodes_are_restored_from_input() -> None:
