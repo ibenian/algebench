@@ -654,6 +654,31 @@ def test_validator_is_noop_when_no_input_set_bound() -> None:
     assert _validate_no_dropped_nodes(output) is output
 
 
+def test_already_enriched_input_still_validates_at_boundary() -> None:
+    # Codex review #1 on PR #196: schema validation must run BEFORE the
+    # ``enrichment is not None`` short-circuit, otherwise a caller can
+    # smuggle a schema-violating graph through by including any
+    # ``"enrichment": {...}`` blob. Even though the agent runs through
+    # ``aenrich`` (which checks ``enrichment is not None`` directly on the
+    # validated model), this test pins the boundary order — the validated
+    # input is what the short-circuit returns, not the raw dict.
+    from models.semantic_graph import Enrichment
+
+    pre_with_extra = {
+        "enrichment": {"reasoning": "previously enriched"},
+        "nodes": [
+            # Schema-violating extra property — must trip the boundary
+            # even on the already-enriched fast path.
+            {"id": "evil", "type": "scalar", "script": "<malicious>"},
+        ],
+        "edges": [],
+    }
+    # ``_g`` mirrors the FastAPI handler's call to ``SemanticGraph.model_validate``.
+    # The boundary rejects the input regardless of the enrichment marker.
+    with pytest.raises(ValidationError, match="extra_forbidden|script"):
+        SemanticGraph.model_validate(pre_with_extra)
+
+
 def test_input_with_unknown_node_fields_rejected_at_boundary() -> None:
     # Issue #195: with the typed pipeline, the API boundary (FastAPI handler
     # for ``/api/graph/enrich``, plus this very test helper ``_g``) calls
@@ -1004,8 +1029,13 @@ def test_non_emoji_text_in_emoji_field_is_stripped() -> None:
         context=_ATMOSPHERIC_CONTEXT,
     )
     by_id = {n.id: n for n in out.nodes}
-    assert "emoji" not in by_id["a"]    # word stripped
-    assert by_id["V"].emoji == "💨"  # real emoji survives
+    # ``by_id["a"]`` is a ``SemanticGraphNode``, not a dict — ``"emoji"
+    # in model`` checks against the field-tuple iterator, never matches
+    # the bare string, and would always pass even if ``_strip_bad_emojis``
+    # did nothing. Use attribute access instead so the assertion actually
+    # exercises the helper. (Codex review on PR #196.)
+    assert by_id["a"].emoji is None     # word stripped
+    assert by_id["V"].emoji == "💨"     # real emoji survives
 
 
 def test_diff_reports_field_removals() -> None:
