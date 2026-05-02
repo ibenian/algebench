@@ -497,6 +497,58 @@ def test_phantom_nodes_added_by_model_are_dropped() -> None:
     assert out["nodes"][0]["quantity"] == "acceleration"
 
 
+def test_first_pass_failure_triggers_retry_with_same_payload() -> None:
+    # Pydantic-AI's internal retries already cover transient model errors
+    # (the agent has max_retries=2), but a hard exception escaping ``arun``
+    # — exhausted retries, network blip, schema-validation failure on the
+    # last attempt — used to bubble straight to the caller. Now a single
+    # failure-retry wraps the call so the user gets enrichment instead of
+    # a stuck unenriched graph cached forever.
+    enricher = _build_agent_with(
+        test_output=[
+            # First call raises; retry returns a clean enriched graph.
+            RuntimeError("simulated transient agent error"),
+            {
+                "nodes": [
+                    {"id": "x", "type": "scalar", "label": "x",
+                     "description": "position", "emoji": "📐"},
+                ],
+                "edges": [],
+            },
+        ],
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    out = enricher.enrich(
+        {"nodes": [{"id": "x", "type": "scalar"}], "edges": []},
+        context=_ATMOSPHERIC_CONTEXT,
+    )
+    # Both calls landed (idx advanced past 1).
+    assert enricher._agent._idx == 2
+    # Retry's enrichment is what reached the user.
+    assert out["nodes"][0].get("description") == "position"
+    assert out["nodes"][0].get("emoji") == "📐"
+
+
+def test_first_pass_double_failure_propagates() -> None:
+    # When BOTH the first call and its failure-retry raise, the exception
+    # propagates so the FastAPI handler can return 502/500 — the cache is
+    # never poisoned with a half-built graph.
+    enricher = _build_agent_with(
+        test_output=[
+            RuntimeError("first call failure"),
+            RuntimeError("retry also failed"),
+        ],
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    with pytest.raises(RuntimeError, match="retry also failed"):
+        enricher.enrich(
+            {"nodes": [{"id": "x", "type": "scalar"}], "edges": []},
+            context=_ATMOSPHERIC_CONTEXT,
+        )
+    # Two attempts, then propagation.
+    assert enricher._agent._idx == 2
+
+
 def test_dropped_node_retry_succeeds_and_carries_enrichment() -> None:
     # When Gemini omits an input id from its first pass, the agent should
     # retry with explicit feedback listing the missing id(s). If the retry

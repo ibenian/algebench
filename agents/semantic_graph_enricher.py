@@ -636,6 +636,35 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
         assert isinstance(result, SemanticGraph)
         return result.model_dump(by_alias=True, exclude_none=True)
 
+    async def _first_pass_with_failure_retry(
+        self,
+        graph: Dict[str, Any],
+        context: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """``_first_pass`` plus one retry on exception.
+
+        Pydantic-AI's ``Agent`` already does internal retries
+        (``max_retries = 2``), so an exception escaping ``arun`` represents
+        an exhausted-retry, network, or schema-validation failure. Wrap
+        with one outer retry so a transient blip on one call doesn't kill
+        the whole enrichment — the user otherwise falls back to seeing
+        the unenriched graph forever (the cache short-circuits future
+        attempts at the same key on a successful return).
+
+        If the retry also fails, the exception propagates; the FastAPI
+        handler turns ``AgentError`` into 502 and other exceptions into
+        500, same as before.
+        """
+        try:
+            return await self._first_pass(graph, context)
+        except Exception as exc:
+            print(
+                f"[enrich] first-pass error → retrying once: "
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            return await self._first_pass(graph, context)
+
     async def _critique(
         self,
         context: Dict[str, Any],
@@ -689,7 +718,7 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
             flush=True,
         )
         try:
-            retried = await self._first_pass(retry_graph, retry_context)
+            retried = await self._first_pass_with_failure_retry(retry_graph, retry_context)
         except Exception as exc:
             print(f"[enrich] dropped-node retry failed (keeping first pass): {exc}", flush=True)
             return candidate
@@ -740,7 +769,7 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
             return _stamp_enriched(graph, candidate)
 
         node_count = len(graph.get("nodes") or [])
-        enriched = await self._first_pass(graph, context)
+        enriched = await self._first_pass_with_failure_retry(graph, context)
         if not context:
             return await _finalize("first-pass ok ctx=n (no critique)", enriched)
         verdict = await self._critique(context, enriched)
@@ -772,7 +801,7 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
             f"feedback={verdict.feedback!r}",
             flush=True,
         )
-        retried = await self._first_pass(retry_graph, retry_context)
+        retried = await self._first_pass_with_failure_retry(retry_graph, retry_context)
         # Diff against the ORIGINAL input graph, not ``retry_graph`` — we
         # want the user-visible list of fields the agent actually filled,
         # which includes the domain it inferred on the first pass.
