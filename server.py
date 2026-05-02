@@ -2256,26 +2256,51 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
         global _graph_enricher
 
+        from pydantic import ValidationError as _ValidationError
+        from models import SemanticGraph as _SemanticGraph
+
         try:
             graph_in = req.graph or {}
             context_in = req.context or None
             node_count = len(graph_in.get("nodes", []) or [])
             domain = graph_in.get("domain") or (context_in or {}).get("domain") or "?"
 
+            # Validate the wire-format dict at the API boundary BEFORE any
+            # short-circuit. Otherwise a caller could include any
+            # ``"enrichment": {...}`` blob in their request and bypass the
+            # ``extra="forbid"`` schema invariant entirely (see Codex review
+            # on PR #196). Catch ``ValidationError`` specifically — anything
+            # else falls through to the outer ``except`` that returns a 500
+            # with a stack trace, instead of misclassifying server bugs as
+            # client validation failures and echoing internal exception text.
+            try:
+                graph_model = _SemanticGraph.model_validate(graph_in)
+            except _ValidationError as exc:
+                print(f"[enrich] input failed validation: {exc}", flush=True)
+                return JSONResponse(
+                    {"error": f"input graph failed schema validation: {exc}"},
+                    status_code=400,
+                )
+
             # Short-circuit: a graph that already carries an ``enrichment``
             # block has been through the agent before. Skip the cache lookup
-            # and the Gemini calls entirely and echo the input back. The
-            # client uses the same marker to skip even sending the request,
-            # so this is mostly a backstop for direct API callers.
+            # and the Gemini calls entirely and echo the (now-validated)
+            # input back. The client uses the same marker to skip even
+            # sending the request, so this is mostly a backstop for direct
+            # API callers.
             #
             # ``cached: false`` here on purpose — the response did NOT come
             # from ``_graph_enrich_cache``; we just echoed the request body.
             # ``skipped: true`` is the signal that the Gemini call was
             # avoided. Keeping ``cached`` honest matters for any caller
             # that uses it for metrics.
-            if isinstance(graph_in.get("enrichment"), dict):
+            if graph_model.enrichment is not None:
                 print(f"[enrich] input already enriched  nodes={node_count} domain={domain!r}", flush=True)
-                return JSONResponse({"enriched": graph_in, "cached": False, "skipped": True})
+                return JSONResponse({
+                    "enriched": graph_model.model_dump(by_alias=True, exclude_none=True),
+                    "cached": False,
+                    "skipped": True,
+                })
 
             cache_payload = {"graph": graph_in, "context": context_in}
             key = hashlib.sha256(
@@ -2304,11 +2329,15 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                     return JSONResponse({"error": str(e)}, status_code=503)
 
             try:
-                enriched = await _graph_enricher.aenrich(graph_in, context_in)
+                enriched_model = await _graph_enricher.aenrich(graph_model, context_in)
             except AgentError as e:
                 print(f"[enrich] agent error: {e}", flush=True)
                 return JSONResponse({"error": str(e)}, status_code=502)
 
+            # Serialize back to the wire format for the cache and JSON
+            # response — keeps the cache hit path returning dicts so the
+            # ``cached`` shape is identical regardless of how it was built.
+            enriched = enriched_model.model_dump(by_alias=True, exclude_none=True)
             _graph_enrich_cache[key] = enriched
             print(f"[enrich] ok  cached  key={key[:8]}", flush=True)
             if DEBUG_MODE:

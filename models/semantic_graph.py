@@ -43,7 +43,14 @@ ClassificationKind = Literal["algebraic", "ODE", "PDE", "statements"]
 
 
 _NO_HTML = r"^[^<>]*$"
-_HEX_COLOR = r"^#[0-9A-Fa-f]{3,8}$"
+# Accept either hex (``#fa0``, ``#0d47a1``, ``#ff8800aa``) or a CSS named
+# color keyword (``red``, ``yellow``, ``cornflowerblue``). Both are
+# author-set semantic highlights (``htmlClass{hl-cube}``-style markers
+# that the parser emits with named colors); the renderer / theme
+# resolves both forms. The ``[a-zA-Z]+`` arm is constrained to letters
+# only so it can't smuggle ``javascript:`` or ``url(...)`` payloads — the
+# original prompt-injection rejection still holds.
+_COLOR = r"^(#[0-9A-Fa-f]{3,8}|[a-zA-Z]+)$"
 
 
 class SemanticGraphNode(BaseModel):
@@ -70,7 +77,11 @@ class SemanticGraphNode(BaseModel):
     unit: Optional[str] = Field(default=None, max_length=30, pattern=_NO_HTML)
     value: Optional[Union[float, int, str]] = Field(default=None)
     role: Optional[Role] = None
-    color: Optional[str] = Field(default=None, pattern=_HEX_COLOR)
+    # ``max_length=30`` caps both the hex form (longest is ``#`` + 8 hex
+    # digits = 9 chars) and the named-keyword form (the longest CSS named
+    # color, ``lightgoldenrodyellow``, is 21 chars). 30 leaves a small
+    # margin for unusual values without permitting unbounded payloads.
+    color: Optional[str] = Field(default=None, pattern=_COLOR, max_length=30)
     highlight: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     variant: Optional[EdgeSemantic] = None
 

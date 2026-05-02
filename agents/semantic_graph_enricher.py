@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .base import BaseAgent
 from models import SemanticGraph, SemanticGraphNode
+from models.semantic_graph import Enrichment
 
 
 # Per-task input-node id set, threaded into the pydantic-ai output validator
@@ -181,10 +182,11 @@ _CONTEXT_FIELDS = (
 )
 
 
-def _graph_domain(graph: Optional[Dict[str, Any]]) -> Optional[str]:
-    if not isinstance(graph, dict):
+def _graph_domain(graph: Optional[SemanticGraph]) -> Optional[str]:
+    """Extract the (stripped, non-empty) ``domain`` field from a graph, or ``None``."""
+    if graph is None:
         return None
-    val = graph.get("domain")
+    val = graph.domain
     if isinstance(val, str) and val.strip():
         return val.strip()
     return None
@@ -192,7 +194,7 @@ def _graph_domain(graph: Optional[Dict[str, Any]]) -> Optional[str]:
 
 def _render_context(
     context: Optional[Dict[str, Any]],
-    graph: Optional[Dict[str, Any]] = None,
+    graph: Optional[SemanticGraph] = None,
 ) -> str:
     """Render the prose preamble. ``graph.domain`` (if set) appears at the
     very top as the authoritative domain hint — strongest signal we have."""
@@ -219,10 +221,21 @@ def _render_context(
     return "\n".join(lines)
 
 
-def _build_payload(graph: Dict[str, Any], context: Optional[Dict[str, Any]]) -> str:
+def _build_payload(graph: SemanticGraph, context: Optional[Dict[str, Any]]) -> str:
+    """Serialize the typed graph for the agent prompt.
+
+    ``model_dump_json(by_alias=True, exclude_none=True)`` round-trips through
+    the wire-format keys (``"from"`` not ``"from_"``) and drops nulls — same
+    shape we'd hand-build via ``json.dumps``, but validated. ``sort_keys`` is
+    applied via parse-then-redump because pydantic doesn't expose a sort
+    option directly; deterministic ordering matters for cache stability.
+    """
+    raw = graph.model_dump_json(by_alias=True, exclude_none=True)
+    # Sort keys for deterministic output (matches pre-refactor json.dumps).
+    sorted_json = json.dumps(json.loads(raw), sort_keys=True)
     return (
         f"{_render_context(context, graph)}\n\n"
-        f"## Graph\n{json.dumps(graph, sort_keys=True)}"
+        f"## Graph\n{sorted_json}"
     )
 
 
@@ -301,20 +314,29 @@ class SemanticGraphCoherenceCritic(BaseAgent):
 
 def _build_critique_payload(
     context: Optional[Dict[str, Any]],
-    enriched: Dict[str, Any],
+    enriched: SemanticGraph,
 ) -> str:
+    raw = enriched.model_dump_json(by_alias=True, exclude_none=True)
+    sorted_json = json.dumps(json.loads(raw), sort_keys=True)
     return (
         f"{_render_context(context, enriched)}\n\n"
-        f"## Enriched graph\n{json.dumps(enriched, sort_keys=True)}"
+        f"## Enriched graph\n{sorted_json}"
     )
 
 
 _MISSING = object()
 
 
+def _node_field_dict(node: SemanticGraphNode) -> Dict[str, Any]:
+    """Project a node to its set fields (excludes None, uses wire-format
+    keys). Used by diff/restore helpers that compare input vs output
+    fields without re-validating the whole node."""
+    return node.model_dump(by_alias=True, exclude_none=True)
+
+
 def _diff_enriched_fields(
-    input_graph: Dict[str, Any],
-    output_graph: Dict[str, Any],
+    input_graph: SemanticGraph,
+    output_graph: SemanticGraph,
 ) -> List[str]:
     """Authoritative list of dotted JSON-ish paths the enricher added,
     changed, or removed. Computed by diffing input vs output (the model
@@ -327,23 +349,20 @@ def _diff_enriched_fields(
     paths: List[str] = []
     # Top-level diff: domain is the only graph-level field the enricher
     # writes; classification is preserved verbatim per prompt.
-    if (input_graph.get("domain") or "") != (output_graph.get("domain") or ""):
+    if (input_graph.domain or "") != (output_graph.domain or ""):
         paths.append("domain")
-    in_nodes = {
-        n.get("id"): n
-        for n in (input_graph.get("nodes") or [])
-        if isinstance(n, dict) and n.get("id")
+    in_nodes: Dict[str, Dict[str, Any]] = {
+        n.id: _node_field_dict(n) for n in input_graph.nodes
     }
-    for out_node in output_graph.get("nodes") or []:
-        if not isinstance(out_node, dict):
-            continue
-        node_id = out_node.get("id")
-        in_node = in_nodes.get(node_id) or {}
+    for out_node in output_graph.nodes:
+        node_id = out_node.id
+        in_dict = in_nodes.get(node_id) or {}
+        out_dict = _node_field_dict(out_node)
         # Union of keys: catches additions, modifications, AND removals.
         # ``id`` / ``type`` are structural — never enriched.
-        keys = (set(in_node.keys()) | set(out_node.keys())) - {"id", "type"}
+        keys = (set(in_dict.keys()) | set(out_dict.keys())) - {"id", "type"}
         for key in sorted(keys):
-            if in_node.get(key, _MISSING) != out_node.get(key, _MISSING):
+            if in_dict.get(key, _MISSING) != out_dict.get(key, _MISSING):
                 paths.append(f"nodes.{node_id}.{key}")
     return paths
 
@@ -367,8 +386,8 @@ def _looks_like_emoji(s: str) -> bool:
 
 
 def _drop_phantom_nodes_and_edges(
-    input_graph: Dict[str, Any],
-    output_graph: Dict[str, Any],
+    input_graph: SemanticGraph,
+    output_graph: SemanticGraph,
 ) -> None:
     """Drop nodes the model invented, plus any edges that reference them.
 
@@ -377,44 +396,29 @@ def _drop_phantom_nodes_and_edges(
     emoji" box with no connections). Treat the input ids as authoritative —
     any output node whose id wasn't in the input gets removed, and any edge
     that touches a removed id goes with it."""
-    in_ids = {
-        n.get("id")
-        for n in (input_graph.get("nodes") or [])
-        if isinstance(n, dict) and isinstance(n.get("id"), str)
-    }
-    nodes = output_graph.get("nodes")
-    if isinstance(nodes, list):
-        kept_nodes = []
-        for n in nodes:
-            if isinstance(n, dict) and n.get("id") in in_ids:
-                kept_nodes.append(n)
-            elif isinstance(n, dict):
-                print(
-                    f"[enrich] dropping phantom node {n.get('id')!r} "
-                    f"(label={n.get('label')!r})",
-                    flush=True,
-                )
-        output_graph["nodes"] = kept_nodes
-    edges = output_graph.get("edges")
-    if isinstance(edges, list):
-        # Edge schema uses ``from_`` / ``to`` after Pydantic; the dump uses
-        # ``from`` (alias) on the wire. Handle both just in case.
-        def _edge_endpoints(e: Dict[str, Any]) -> tuple[Any, Any]:
-            return (e.get("from") or e.get("from_"), e.get("to"))
+    in_ids = {n.id for n in input_graph.nodes}
+    kept_nodes: List[SemanticGraphNode] = []
+    for n in output_graph.nodes:
+        if n.id in in_ids:
+            kept_nodes.append(n)
+        else:
+            print(
+                f"[enrich] dropping phantom node {n.id!r} "
+                f"(label={n.label!r})",
+                flush=True,
+            )
+    output_graph.nodes = kept_nodes
 
-        kept_edges = []
-        for e in edges:
-            if not isinstance(e, dict):
-                continue
-            src, dst = _edge_endpoints(e)
-            if src in in_ids and dst in in_ids:
-                kept_edges.append(e)
-            else:
-                print(
-                    f"[enrich] dropping phantom edge {src!r}→{dst!r}",
-                    flush=True,
-                )
-        output_graph["edges"] = kept_edges
+    kept_edges = []
+    for e in output_graph.edges:
+        if e.from_ in in_ids and e.to in in_ids:
+            kept_edges.append(e)
+        else:
+            print(
+                f"[enrich] dropping phantom edge {e.from_!r}→{e.to!r}",
+                flush=True,
+            )
+    output_graph.edges = kept_edges
 
 
 def _validate_no_dropped_nodes(output: SemanticGraph) -> SemanticGraph:
@@ -490,8 +494,8 @@ def _validate_no_dropped_nodes(output: SemanticGraph) -> SemanticGraph:
 
 
 def _restore_dropped_nodes(
-    input_graph: Dict[str, Any],
-    output_graph: Dict[str, Any],
+    input_graph: SemanticGraph,
+    output_graph: SemanticGraph,
 ) -> None:
     """Re-insert input nodes the model omitted from its response.
 
@@ -509,53 +513,44 @@ def _restore_dropped_nodes(
     output gets re-added with the parser-owned record verbatim so that
     ``_restore_structural_fields`` (which only patches *existing* output
     nodes) and the renderer both find a real entry under the id.
+
+    With the typed pipeline the input nodes are already validated
+    ``SemanticGraphNode`` instances — ``extra="forbid"`` was enforced at
+    ``aenrich``'s entry boundary, so a node that would smuggle an
+    unknown property would have been rejected before this helper ran.
+    No per-node revalidation needed here.
     """
-    out_nodes = output_graph.get("nodes")
-    if not isinstance(out_nodes, list):
-        return
-    out_ids = {
-        n.get("id")
-        for n in out_nodes
-        if isinstance(n, dict) and isinstance(n.get("id"), str)
-    }
-    in_nodes = input_graph.get("nodes")
-    if not isinstance(in_nodes, list):
-        return
-    for src in in_nodes:
-        if not isinstance(src, dict):
+    out_ids = {n.id for n in output_graph.nodes}
+    for src in input_graph.nodes:
+        if src.id in out_ids:
             continue
-        sid = src.get("id")
-        if not isinstance(sid, str) or sid in out_ids:
-            continue
-        # Validate the source node through the agent's schema before
-        # appending so the post-enrichment graph honours the same
-        # ``extra="forbid"`` invariant pydantic-ai enforces on the model
-        # output. The input dict comes from the unvalidated
-        # ``GraphEnrichRequest.graph: dict`` field; without this guard a
-        # caller could smuggle unknown properties into the cached graph
-        # via the restore path. Drop the node entirely on validation
-        # failure — the dangling-edge symptom is recoverable later
-        # (renderer falls back to a placeholder), but a schema-violating
-        # node persisted to the cache is not.
-        try:
-            validated = SemanticGraphNode.model_validate(src).model_dump(
-                by_alias=True, exclude_none=True
-            )
-        except Exception as exc:
-            print(
-                f"[enrich] skipping restore of {sid!r} — input node "
-                f"failed schema validation: {exc}",
-                flush=True,
-            )
-            continue
-        out_nodes.append(validated)
+        # Deep copy so later passes (e.g. ``_restore_structural_fields``)
+        # mutating the output node don't bleed back into the input graph,
+        # which the FastAPI handler may still reference for cache hashing.
+        output_graph.nodes.append(src.model_copy(deep=True))
         print(
-            f"[enrich] restoring dropped input node {sid!r} "
-            f"(label={src.get('label')!r})",
+            f"[enrich] restoring dropped input node {src.id!r} "
+            f"(label={src.label!r})",
             flush=True,
         )
 
 
+# Fields the parser owns and the enricher must not modify. Anything here
+# is restored verbatim from the input node during ``_stamp_enriched``,
+# regardless of what the model returned. The system prompt already tells
+# the agent to leave most of these alone (``color`` rule #3, structural
+# fields by default), but we enforce it here so the rendered graph
+# matches the parser's intent even when Gemini gets distracted.
+#
+# Subscripts:
+# - ``subexpr`` / ``latex``: deterministic LaTeX strings — issue #182
+#   (Gemini sometimes double-escapes backslashes).
+# - ``type`` / ``op`` / ``exponent`` / ``with_respect_to``: structural
+#   parser output, never a semantic enrichment target.
+# - ``color`` / ``highlight``: author-set semantic markers tied to
+#   ``htmlClass{hl-cube}``-style highlights. The parser emits CSS named
+#   colors (``"red"``/``"yellow"``); the renderer / theme resolves them
+#   alongside the agent's enrichment fields.
 _STRUCTURAL_NODE_FIELDS = (
     "subexpr",
     "latex",
@@ -563,12 +558,14 @@ _STRUCTURAL_NODE_FIELDS = (
     "op",
     "exponent",
     "with_respect_to",
+    "color",
+    "highlight",
 )
 
 
 def _restore_structural_fields(
-    input_graph: Dict[str, Any],
-    output_graph: Dict[str, Any],
+    input_graph: SemanticGraph,
+    output_graph: SemanticGraph,
 ) -> None:
     """Copy structural / parser-derived fields from input nodes to output.
 
@@ -580,27 +577,19 @@ def _restore_structural_fields(
     ``op``, ``exponent``, ``with_respect_to``) are also parser-owned, not
     semantic enrichment, so we restore them verbatim too.
     """
-    in_by_id: Dict[str, Dict[str, Any]] = {}
-    for n in input_graph.get("nodes") or []:
-        if isinstance(n, dict) and isinstance(n.get("id"), str):
-            in_by_id[n["id"]] = n
-    out_nodes = output_graph.get("nodes")
-    if not isinstance(out_nodes, list):
-        return
-    for node in out_nodes:
-        if not isinstance(node, dict):
-            continue
-        src = in_by_id.get(node.get("id"))
-        if not isinstance(src, dict):
+    in_by_id: Dict[str, SemanticGraphNode] = {n.id: n for n in input_graph.nodes}
+    for node in output_graph.nodes:
+        src = in_by_id.get(node.id)
+        if src is None:
             continue
         for field in _STRUCTURAL_NODE_FIELDS:
-            if field in src:
-                node[field] = src[field]
-            else:
-                node.pop(field, None)
+            # Mirror the input value exactly: assign present fields, clear
+            # absent ones. Both sides have these declared with
+            # ``Optional[...] = None`` defaults, so attribute access is safe.
+            setattr(node, field, getattr(src, field, None))
 
 
-def _strip_bad_emojis(graph: Dict[str, Any]) -> None:
+def _strip_bad_emojis(graph: SemanticGraph) -> None:
     """Remove ``emoji`` fields that are clearly not a single emoji glyph.
 
     Gemini occasionally fills ``emoji`` with a word in some language
@@ -608,22 +597,17 @@ def _strip_bad_emojis(graph: Dict[str, Any]) -> None:
     of a glyph. The schema cap is intentionally generous so a bad value
     doesn't blow up the whole enrichment via pydantic-ai retry
     exhaustion — but we shouldn't ship the junk to the user."""
-    nodes = graph.get("nodes")
-    if not isinstance(nodes, list):
-        return
-    for node in nodes:
-        if not isinstance(node, dict):
-            continue
-        emoji = node.get("emoji")
+    for node in graph.nodes:
+        emoji = node.emoji
         if isinstance(emoji, str) and not _looks_like_emoji(emoji):
-            print(f"[enrich] dropping non-emoji value on {node.get('id')!r}: {emoji!r}", flush=True)
-            node.pop("emoji", None)
+            print(f"[enrich] dropping non-emoji value on {node.id!r}: {emoji!r}", flush=True)
+            node.emoji = None
 
 
 def _stamp_enriched(
-    input_graph: Dict[str, Any],
-    output_graph: Dict[str, Any],
-) -> Dict[str, Any]:
+    input_graph: SemanticGraph,
+    output_graph: SemanticGraph,
+) -> SemanticGraph:
     """Mark a graph as enriched and attach the authoritative diff. Used as
     the gate for skip-on-second-call deduplication on both server and
     client. Preserves any ``reasoning`` the model already filled in on the
@@ -639,21 +623,25 @@ def _stamp_enriched(
     _drop_phantom_nodes_and_edges(input_graph, output_graph)
     _restore_structural_fields(input_graph, output_graph)
     _strip_bad_emojis(output_graph)
-    block = output_graph.get("enrichment")
-    if not isinstance(block, dict):
-        block = {}
-        output_graph["enrichment"] = block
-    block["fields"] = _diff_enriched_fields(input_graph, output_graph)
+    fields = _diff_enriched_fields(input_graph, output_graph)
+    if output_graph.enrichment is None:
+        output_graph.enrichment = Enrichment(fields=fields)
+    else:
+        # Preserve any ``reasoning`` the model filled in; just refresh the
+        # authoritative field list.
+        output_graph.enrichment = output_graph.enrichment.model_copy(
+            update={"fields": fields}
+        )
     return output_graph
 
 
-def _enrichment_reasoning(graph: Dict[str, Any]) -> Optional[str]:
+def _enrichment_reasoning(graph: SemanticGraph) -> Optional[str]:
     """Pull the model's domain / disambiguation rationale off an enriched
     graph for logging. ``None`` if the model didn't supply one."""
-    block = graph.get("enrichment") if isinstance(graph, dict) else None
-    if not isinstance(block, dict):
+    block = graph.enrichment
+    if block is None:
         return None
-    val = block.get("reasoning")
+    val = block.reasoning
     return val.strip() if isinstance(val, str) and val.strip() else None
 
 
@@ -708,17 +696,13 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
 
     async def _first_pass(
         self,
-        graph: Dict[str, Any],
+        graph: SemanticGraph,
         context: Optional[Dict[str, Any]],
-    ) -> Dict[str, Any]:
+    ) -> SemanticGraph:
         # Bind the input node ids for ``_validate_no_dropped_nodes`` and
         # reset its escalation counter for this call. Reset both on exit
         # so a later call with a different input doesn't see stale state.
-        expected = frozenset(
-            n["id"]
-            for n in (graph.get("nodes") or [])
-            if isinstance(n, dict) and isinstance(n.get("id"), str)
-        )
+        expected = frozenset(n.id for n in graph.nodes)
         ids_token = _current_input_node_ids.set(expected)
         count_token = _validator_escalation_count.set(0)
         try:
@@ -727,12 +711,12 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
             _current_input_node_ids.reset(ids_token)
             _validator_escalation_count.reset(count_token)
         assert isinstance(result, SemanticGraph)
-        return result.model_dump(by_alias=True, exclude_none=True)
+        return result
 
     async def _critique(
         self,
         context: Dict[str, Any],
-        enriched: Dict[str, Any],
+        enriched: SemanticGraph,
     ) -> Optional[_CoherenceVerdict]:
         if self._critic is None:
             return None
@@ -745,38 +729,52 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
 
     async def aenrich(
         self,
-        graph: Dict[str, Any],
+        graph: SemanticGraph,
         context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+    ) -> SemanticGraph:
+        """Enrich a parser-produced ``SemanticGraph`` with descriptions,
+        emoji, dimensions, etc. via Gemini. Returns the enriched graph as
+        a typed model.
+
+        Caller (FastAPI handler / CLI / tests) is responsible for the
+        wire-format dict ↔ ``SemanticGraph`` conversion at its own
+        boundary. Keeping this signature typed means every internal
+        pass — the dropped-node validator, the merge helpers, the diff
+        computation — operates on validated models throughout.
+        """
         # Idempotency: if the input graph is already enriched (carries the
         # ``enrichment`` block), return it unchanged — both Gemini calls
         # (enrichment + critic) are skipped. The server does the same
         # short-circuit higher up; this keeps direct callers (CLI / scripts
         # / tests) consistent.
-        if isinstance(graph, dict) and isinstance(graph.get("enrichment"), dict):
+        if graph.enrichment is not None:
             print(f"[enrich] input already enriched — returning unchanged", flush=True)
             return graph
 
-        def _log_done(stage: str, g: Dict[str, Any]) -> None:
+        input_model = graph
+
+        def _log_done(stage: str, g: SemanticGraph) -> None:
             reason = _enrichment_reasoning(g)
-            field_count = len(_diff_enriched_fields(graph, g))
+            field_count = len(_diff_enriched_fields(input_model, g))
             tail = f"  reasoning={reason!r}" if reason else ""
             print(
                 f"[enrich] {stage}  nodes={node_count} filled={field_count}{tail}",
                 flush=True,
             )
 
-        def _finalize(stage: str, candidate: Dict[str, Any]) -> Dict[str, Any]:
+        def _finalize(stage: str, candidate: SemanticGraph) -> SemanticGraph:
             """Log + stamp. Dropped-node retries happen *inside* pydantic-ai's
             loop via ``_validate_no_dropped_nodes``; ``_stamp_enriched``
-            then runs the safety-net merge passes (restore-dropped /
-            drop-phantoms / restore-structural-fields).
+            runs the safety-net merge passes (restore-dropped /
+            drop-phantoms / restore-structural-fields) and attaches the
+            ``enrichment`` block. The caller serializes for the cache /
+            wire format.
             """
             _log_done(stage, candidate)
-            return _stamp_enriched(graph, candidate)
+            return _stamp_enriched(input_model, candidate)
 
-        node_count = len(graph.get("nodes") or [])
-        enriched = await self._first_pass(graph, context)
+        node_count = len(input_model.nodes)
+        enriched = await self._first_pass(input_model, context)
         if not context:
             return _finalize("first-pass ok ctx=n (no critique)", enriched)
         verdict = await self._critique(context, enriched)
@@ -797,10 +795,10 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
         # render path picks it up from there. Without it, the retry would
         # re-infer from prose alone and might land on the same wrong answer
         # the critic just rejected.
-        retry_graph = graph
+        retry_graph = input_model
         inferred_domain = _graph_domain(enriched)
-        if inferred_domain and not _graph_domain(graph):
-            retry_graph = {**graph, "domain": inferred_domain}
+        if inferred_domain and not _graph_domain(input_model):
+            retry_graph = input_model.model_copy(update={"domain": inferred_domain})
             print(f"[enrich] using first-pass inferred domain={inferred_domain!r}", flush=True)
         retry_context = _context_with_feedback(context, verdict.feedback)
         print(
@@ -816,9 +814,9 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
 
     def enrich(
         self,
-        graph: Dict[str, Any],
+        graph: SemanticGraph,
         context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+    ) -> SemanticGraph:
         """Sync wrapper around :meth:`aenrich` for CLI / script / sync-test callers.
 
         Production goes through ``aenrich`` directly from the FastAPI handler.
