@@ -497,6 +497,141 @@ def test_phantom_nodes_added_by_model_are_dropped() -> None:
     assert out["nodes"][0]["quantity"] == "acceleration"
 
 
+def test_dropped_node_retry_succeeds_and_carries_enrichment() -> None:
+    # When Gemini omits an input id from its first pass, the agent should
+    # retry with explicit feedback listing the missing id(s). If the retry
+    # returns a complete node set with enrichment fields, the user gets
+    # the *enriched* version — not the bare verbatim restore. This is the
+    # whole reason the retry exists; verbatim restore is only the safety
+    # net for the rare case where the retry also fails.
+    enricher = _build_agent_with(
+        test_output=[
+            # First pass: drops q_{\text{LEO}}, leaves the dangling edge.
+            {
+                "nodes": [
+                    {"id": "__deriv_5", "type": "operator", "op": "derivative",
+                     "with_respect_to": "t",
+                     "description": "Time derivative of the LEO heat-rate."},
+                ],
+                "edges": [
+                    {"from": "q_{\\text{LEO}}", "to": "__deriv_5"},
+                ],
+            },
+            # Retry: full node set with enrichment on the previously dropped one.
+            {
+                "nodes": [
+                    {"id": "__deriv_5", "type": "operator", "op": "derivative",
+                     "with_respect_to": "t",
+                     "description": "Time derivative of the LEO heat-rate."},
+                    {"id": "q_{\\text{LEO}}", "type": "scalar",
+                     "label": "q̇ LEO", "emoji": "🛰️",
+                     "description": "Aerodynamic heating rate for a LEO return.",
+                     "quantity": "heating rate", "unit": "W/m²"},
+                ],
+                "edges": [
+                    {"from": "q_{\\text{LEO}}", "to": "__deriv_5"},
+                ],
+            },
+        ],
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    input_graph = {
+        "nodes": [
+            {"id": "q_{\\text{LEO}}", "type": "scalar",
+             "latex": "q_{\\text{LEO}}", "subexpr": "q_{\\text{LEO}}"},
+            {"id": "__deriv_5", "type": "operator", "op": "derivative",
+             "with_respect_to": "t"},
+        ],
+        "edges": [
+            {"from": "q_{\\text{LEO}}", "to": "__deriv_5"},
+        ],
+    }
+    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
+
+    by_id = {n["id"]: n for n in out["nodes"]}
+    # Retry's enrichment fields landed on the formerly-dropped node.
+    restored = by_id["q_{\\text{LEO}}"]
+    assert restored.get("description") == "Aerodynamic heating rate for a LEO return."
+    assert restored.get("emoji") == "🛰️"
+    assert restored.get("unit") == "W/m²"
+    # Parser-owned fields are still preserved by the structural-fields pass.
+    assert restored["latex"] == "q_{\\text{LEO}}"
+    assert restored["subexpr"] == "q_{\\text{LEO}}"
+
+
+def test_dropped_node_retry_falls_back_to_verbatim_on_repeat_drop() -> None:
+    # If the retry *also* drops the same node(s), the safety net inside
+    # ``_stamp_enriched`` re-inserts them verbatim from the input. The
+    # agent should never return a graph that violates the
+    # every-edge-endpoint-must-exist invariant, even when Gemini fails
+    # twice in a row.
+    enricher = _build_agent_with(
+        test_output=[
+            # Both passes return the same dropped-node graph.
+            {
+                "nodes": [{"id": "__deriv_5", "type": "operator"}],
+                "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
+            },
+            {
+                "nodes": [{"id": "__deriv_5", "type": "operator"}],
+                "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
+            },
+        ],
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    input_graph = {
+        "nodes": [
+            {"id": "q_{\\text{LEO}}", "type": "scalar",
+             "latex": "q_{\\text{LEO}}"},
+            {"id": "__deriv_5", "type": "operator"},
+        ],
+        "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
+    }
+    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
+    ids = {n["id"] for n in out["nodes"]}
+    # Verbatim restore brought the dropped node back, so the integrity
+    # invariant holds even though both Gemini passes failed to include it.
+    assert ids == {"q_{\\text{LEO}}", "__deriv_5"}
+    by_id = {n["id"]: n for n in out["nodes"]}
+    assert by_id["q_{\\text{LEO}}"]["latex"] == "q_{\\text{LEO}}"
+
+
+def test_dropped_node_retry_skipped_when_first_pass_complete() -> None:
+    # Sanity: if the first pass already includes every input id, no
+    # retry should fire (no extra Gemini call). Cheap guard against
+    # adding latency / cost to the happy path.
+    enricher = _build_agent_with(
+        # Single output — _StubAgent reuses the last item if it's called
+        # again, so an unintended retry would silently succeed. Detect it
+        # by checking `output_advanced_count` via call-counting attribute.
+        test_output={
+            "nodes": [
+                {"id": "x", "type": "scalar", "label": "x",
+                 "description": "position"},
+                {"id": "y", "type": "scalar", "label": "y",
+                 "description": "vertical position"},
+            ],
+            "edges": [],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    out = enricher.enrich(
+        {"nodes": [{"id": "x", "type": "scalar"},
+                   {"id": "y", "type": "scalar"}],
+         "edges": []},
+        context=_ATMOSPHERIC_CONTEXT,
+    )
+    # Exactly one enrichment call was made — _StubAgent's _idx tracks
+    # how many times .run() was invoked. The first call burns idx 0,
+    # so _idx after a single first-pass should be 1; a second call (the
+    # retry) would have advanced it to 2.
+    assert enricher._agent._idx == 1, (
+        f"unexpected dropped-node retry fired (calls={enricher._agent._idx})"
+    )
+    ids = [n["id"] for n in out["nodes"]]
+    assert ids == ["x", "y"]
+
+
 def test_dropped_input_nodes_are_restored_from_input() -> None:
     # Inverse of the phantom-node case (issue #192): Gemini sometimes
     # *omits* an input node (commonly variables with ``\text{...}``

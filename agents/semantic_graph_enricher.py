@@ -394,6 +394,48 @@ def _drop_phantom_nodes_and_edges(
         output_graph["edges"] = kept_edges
 
 
+def _dropped_node_ids(
+    input_graph: Dict[str, Any],
+    output_graph: Dict[str, Any],
+) -> List[str]:
+    """Return the input node ids that don't appear in *output_graph*'s ``nodes``.
+
+    Used to drive the dropped-node retry path (issue #192) so we can give
+    the model a second chance to enrich the missing nodes. Order is
+    preserved so retry feedback matches the original parser ordering and
+    log lines remain stable.
+    """
+    out_ids: set = set()
+    for n in output_graph.get("nodes") or []:
+        if isinstance(n, dict) and isinstance(n.get("id"), str):
+            out_ids.add(n["id"])
+    missing: List[str] = []
+    for src in input_graph.get("nodes") or []:
+        if not isinstance(src, dict):
+            continue
+        sid = src.get("id")
+        if isinstance(sid, str) and sid not in out_ids and sid not in missing:
+            missing.append(sid)
+    return missing
+
+
+def _format_dropped_node_feedback(missing_ids: List[str]) -> str:
+    """Phrase a retry hint that calls out the dropped ids by name.
+
+    Kept short and instructional — the retry context already carries the
+    full original prompt, so this just nudges the model to include the
+    listed ids with full enrichment fields.
+    """
+    quoted = ", ".join(f"`{i}`" for i in missing_ids)
+    return (
+        "Your previous response omitted these node id(s) from `nodes`: "
+        f"{quoted}. The node set must be preserved verbatim — every input "
+        "id must appear in `nodes` with the appropriate enrichment fields "
+        "(description, emoji, color, quantity, dimension, unit). Edges are "
+        "fine; just fill the missing entries this time."
+    )
+
+
 def _restore_dropped_nodes(
     input_graph: Dict[str, Any],
     output_graph: Dict[str, Any],
@@ -608,6 +650,65 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
             return None
         return verdict if isinstance(verdict, _CoherenceVerdict) else None
 
+    async def _retry_for_dropped_nodes(
+        self,
+        graph: Dict[str, Any],
+        context: Optional[Dict[str, Any]],
+        candidate: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """One-shot retry when the candidate is missing input nodes.
+
+        ``_restore_dropped_nodes`` (called inside ``_stamp_enriched``) is
+        the integrity safety net — guarantees every input id ends up in
+        the output. But a verbatim restore brings the parser-owned record
+        back without enrichment fields (no description, emoji, color,
+        unit, …), so the user sees a bare node next to fully-enriched
+        siblings. Retrying with explicit feedback gives Gemini a second
+        chance to *enrich* the missing ids; the safety net then handles
+        the rare case where the retry still drops them.
+
+        Returns the original candidate when nothing was dropped, the
+        retry's output when fewer ids are missing, or the original
+        candidate if the retry didn't actually improve coverage (so we
+        don't trade good enrichment fields for fewer drops in error).
+        """
+        missing = _dropped_node_ids(graph, candidate)
+        if not missing:
+            return candidate
+        feedback = _format_dropped_node_feedback(missing)
+        retry_context = _context_with_feedback(context, feedback)
+        # Stamp the inferred domain onto a shallow copy of the input so
+        # the retry doesn't re-infer from prose (same trick as the
+        # critic-driven retry).
+        retry_graph = graph
+        inferred_domain = _graph_domain(candidate)
+        if inferred_domain and not _graph_domain(graph):
+            retry_graph = {**graph, "domain": inferred_domain}
+        print(
+            f"[enrich] dropped nodes {missing!r} → retry  feedback={feedback!r}",
+            flush=True,
+        )
+        try:
+            retried = await self._first_pass(retry_graph, retry_context)
+        except Exception as exc:
+            print(f"[enrich] dropped-node retry failed (keeping first pass): {exc}", flush=True)
+            return candidate
+        retried_missing = _dropped_node_ids(graph, retried)
+        if len(retried_missing) >= len(missing):
+            print(
+                f"[enrich] retry didn't improve coverage "
+                f"(missing {len(retried_missing)} vs {len(missing)}) — "
+                f"keeping first pass",
+                flush=True,
+            )
+            return candidate
+        print(
+            f"[enrich] retry recovered {len(missing) - len(retried_missing)} "
+            f"of {len(missing)} dropped nodes (still missing: {retried_missing!r})",
+            flush=True,
+        )
+        return retried
+
     async def aenrich(
         self,
         graph: Dict[str, Any],
@@ -631,26 +732,29 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
                 flush=True,
             )
 
+        async def _finalize(stage: str, candidate: Dict[str, Any]) -> Dict[str, Any]:
+            """One-shot dropped-node retry, then stamp. Shared exit path so
+            every return site gets the same defensive treatment."""
+            candidate = await self._retry_for_dropped_nodes(graph, context, candidate)
+            _log_done(stage, candidate)
+            return _stamp_enriched(graph, candidate)
+
         node_count = len(graph.get("nodes") or [])
         enriched = await self._first_pass(graph, context)
         if not context:
-            _log_done("first-pass ok ctx=n (no critique)", enriched)
-            return _stamp_enriched(graph, enriched)
+            return await _finalize("first-pass ok ctx=n (no critique)", enriched)
         verdict = await self._critique(context, enriched)
         if verdict is None:
-            _log_done("first-pass ok critic=unavailable", enriched)
-            return _stamp_enriched(graph, enriched)
+            return await _finalize("first-pass ok critic=unavailable", enriched)
         if verdict.ok:
-            _log_done("first-pass ok critic=ok", enriched)
-            return _stamp_enriched(graph, enriched)
+            return await _finalize("first-pass ok critic=ok", enriched)
         if not verdict.feedback:
             print(
                 f"[enrich] critic flagged {verdict.mismatched_node_ids!r} "
                 f"but no feedback — keeping first pass",
                 flush=True,
             )
-            _log_done("kept first pass", enriched)
-            return _stamp_enriched(graph, enriched)
+            return await _finalize("kept first pass", enriched)
         # If the first pass inferred a domain that the input graph didn't
         # carry, stamp that domain onto a shallow copy of the graph for the
         # retry — the graph is the source of truth for `domain`, and the
@@ -669,11 +773,10 @@ class SemanticGraphEnrichmentAgent(BaseAgent):
             flush=True,
         )
         retried = await self._first_pass(retry_graph, retry_context)
-        _log_done("retry ok", retried)
         # Diff against the ORIGINAL input graph, not ``retry_graph`` — we
         # want the user-visible list of fields the agent actually filled,
         # which includes the domain it inferred on the first pass.
-        return _stamp_enriched(graph, retried)
+        return await _finalize("retry ok", retried)
 
     def enrich(
         self,
