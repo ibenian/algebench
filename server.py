@@ -376,6 +376,23 @@ def _normalize_frac_derivatives(latex: str) -> str:
 _ORDER_TO_ACCENT: dict[int, str] = {1: "dot", 2: "ddot", 3: "dddot", 4: "ddddot"}
 
 
+def _re_sub_literal(pattern: str, replacement: str, text: str) -> str:
+    """``re.sub`` variant that treats *replacement* as a literal string.
+
+    Plain ``re.sub(pattern, replacement_str, text)`` interprets backslash
+    escapes in the replacement: ``\\t`` becomes TAB, ``\\n`` becomes
+    newline, ``\\1``/``\\g<name>`` become back-references, etc. That is a
+    footgun for any code that builds replacement strings out of LaTeX
+    (``\\text{...}``, ``\\dot{...}``, ``\\frac{...}``), where backslashes
+    are content rather than syntax. Wrapping the replacement in a callable
+    bypasses the mini-language entirely — the return value is written
+    verbatim. Use this whenever the replacement is built from non-trivial
+    data; reserve plain ``re.sub`` with a string replacement for the cases
+    where ``\\1`` / ``\\g<name>`` back-references are *intended*.
+    """
+    return re.sub(pattern, lambda _m, r=replacement: r, text)
+
+
 def _restore_dot_notation(
     latex: str,
     dotted_vars: dict[str, int],
@@ -408,8 +425,13 @@ def _restore_dot_notation(
                 rf"\\frac\{{d\^\{{{order}\}}\}}"
                 rf"\{{d\s*t\^\{{{order}\}}\}}\s*{escaped_var}"
             ]
+        # The replacement embeds raw LaTeX (``var`` may contain
+        # ``\text{...}``); use ``_re_sub_literal`` so backslash escapes in
+        # the replacement string aren't interpreted by ``re.sub`` (e.g.
+        # ``\t`` of ``\text`` → TAB). See the helper's docstring.
+        replacement = f"\\{accent}{{{var}}}"
         for pattern in patterns:
-            latex = re.sub(pattern, rf"\\{accent}{{{var}}}", latex)
+            latex = _re_sub_literal(pattern, replacement, latex)
     return latex
 
 
