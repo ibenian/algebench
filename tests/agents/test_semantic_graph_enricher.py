@@ -497,6 +497,134 @@ def test_phantom_nodes_added_by_model_are_dropped() -> None:
     assert out["nodes"][0]["quantity"] == "acceleration"
 
 
+def test_dropped_input_nodes_are_restored_from_input() -> None:
+    # Inverse of the phantom-node case (issue #192): Gemini sometimes
+    # *omits* an input node (commonly variables with ``\text{...}``
+    # subscripts) while leaving the edges that reference its id. Without
+    # restoration, downstream Mermaid emits a dangling edge and renders
+    # a placeholder node labelled with the *sanitized* id (``q__\text_LEO__``).
+    # The agent must take the input ids as authoritative and re-insert any
+    # missing ones with the parser-owned record verbatim.
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [
+                # Note: ``q_{\text{LEO}}`` is conspicuously absent; only the
+                # __deriv_5 operator survives the model's response.
+                {"id": "__deriv_5", "type": "operator", "op": "derivative",
+                 "with_respect_to": "t",
+                 "description": "Time derivative of the LEO heat-rate."},
+            ],
+            "edges": [
+                {"from": "q_{\\text{LEO}}", "to": "__deriv_5"},
+            ],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    input_graph = {
+        "nodes": [
+            {
+                "id": "q_{\\text{LEO}}",
+                "type": "scalar",
+                "latex": "q_{\\text{LEO}}",
+                "subexpr": "q_{\\text{LEO}}",
+            },
+            {
+                "id": "__deriv_5",
+                "type": "operator",
+                "op": "derivative",
+                "with_respect_to": "t",
+            },
+        ],
+        "edges": [
+            {"from": "q_{\\text{LEO}}", "to": "__deriv_5"},
+        ],
+    }
+    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
+
+    out_ids = [n["id"] for n in out["nodes"]]
+    # Both input nodes survive — the dropped one was re-inserted.
+    assert "q_{\\text{LEO}}" in out_ids
+    assert "__deriv_5" in out_ids
+
+    # Restored node carries the parser-owned fields verbatim.
+    by_id = {n["id"]: n for n in out["nodes"]}
+    restored = by_id["q_{\\text{LEO}}"]
+    assert restored["latex"] == "q_{\\text{LEO}}"
+    assert restored["subexpr"] == "q_{\\text{LEO}}"
+    assert restored["type"] == "scalar"
+
+    # Edge that previously dangled still resolves to a real node, and the
+    # surviving node retained its enrichment.
+    assert {"from": "q_{\\text{LEO}}", "to": "__deriv_5"} in out["edges"]
+    assert by_id["__deriv_5"]["description"].startswith("Time derivative")
+
+
+def test_dropped_node_restoration_is_independent_of_phantom_drop() -> None:
+    # When the model both drops a real input node *and* invents a phantom,
+    # the agent should restore the missing one and remove the phantom in
+    # the same pass. This stresses the ordering inside ``_stamp_enriched``.
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [
+                {"id": "g", "type": "scalar", "label": "g",
+                 "quantity": "acceleration"},
+                # Phantom: not in input.
+                {"id": "g_phantom", "type": "scalar",
+                 "label": "gravitational acceleration emoji"},
+                # Note: input node ``\theta`` is deliberately absent.
+            ],
+            "edges": [
+                # Phantom edge that touches the phantom node — should go.
+                {"from": "g_phantom", "to": "g"},
+                # Real edge involving the dropped input node — must survive.
+                {"from": "\\theta", "to": "g"},
+            ],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    input_graph = {
+        "nodes": [
+            {"id": "g", "type": "scalar"},
+            {"id": "\\theta", "type": "scalar", "latex": "\\theta"},
+        ],
+        "edges": [
+            {"from": "\\theta", "to": "g"},
+        ],
+    }
+    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
+
+    ids = sorted(n["id"] for n in out["nodes"])
+    assert ids == ["\\theta", "g"]                  # phantom dropped, theta restored
+    assert {"from": "\\theta", "to": "g"} in out["edges"]
+    assert {"from": "g_phantom", "to": "g"} not in out["edges"]
+
+
+def test_no_dropped_nodes_means_no_changes_to_node_set() -> None:
+    # Sanity: when the model returns every input id, the restoration
+    # pass must not mutate the node list (no duplicates, ordering of the
+    # model's response preserved). Guards against overshooting the fix.
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [
+                {"id": "x", "type": "scalar", "label": "x",
+                 "description": "position"},
+                {"id": "y", "type": "scalar", "label": "y",
+                 "description": "vertical position"},
+            ],
+            "edges": [],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    out = enricher.enrich(
+        {"nodes": [{"id": "x", "type": "scalar"},
+                   {"id": "y", "type": "scalar"}],
+         "edges": []},
+        context=_ATMOSPHERIC_CONTEXT,
+    )
+    ids = [n["id"] for n in out["nodes"]]
+    assert ids == ["x", "y"]                          # no duplicates, order kept
+
+
 def test_structural_fields_restored_from_input() -> None:
     # Gemini in JSON mode occasionally double-escapes backslashes in
     # ``subexpr`` (``\frac`` → ``\\frac``), which breaks the rendered

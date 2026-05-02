@@ -394,6 +394,55 @@ def _drop_phantom_nodes_and_edges(
         output_graph["edges"] = kept_edges
 
 
+def _restore_dropped_nodes(
+    input_graph: Dict[str, Any],
+    output_graph: Dict[str, Any],
+) -> None:
+    """Re-insert input nodes the model omitted from its response.
+
+    Mirror of :func:`_drop_phantom_nodes_and_edges` for the *inverse* failure
+    mode: the prompt tells Gemini to preserve the node set verbatim, but it
+    occasionally drops a label node (commonly variables with ``\\text{...}``
+    subscripts like ``q_{\\text{LEO}}``) while leaving the edges that
+    reference them intact. Downstream, ``scripts/graph_to_mermaid.py`` then
+    emits an edge to an undeclared id, and Mermaid implicitly creates a
+    placeholder node whose label is the *sanitized* id (e.g.
+    ``q__\\text_LEO__``). The graph also fails the
+    ``every-edge-endpoint-must-exist`` integrity invariant — see issue #192.
+
+    Treat the input ids as authoritative. Any input id missing from the
+    output gets re-added with the parser-owned record verbatim so that
+    ``_restore_structural_fields`` (which only patches *existing* output
+    nodes) and the renderer both find a real entry under the id.
+    """
+    out_nodes = output_graph.get("nodes")
+    if not isinstance(out_nodes, list):
+        return
+    out_ids = {
+        n.get("id")
+        for n in out_nodes
+        if isinstance(n, dict) and isinstance(n.get("id"), str)
+    }
+    in_nodes = input_graph.get("nodes")
+    if not isinstance(in_nodes, list):
+        return
+    for src in in_nodes:
+        if not isinstance(src, dict):
+            continue
+        sid = src.get("id")
+        if not isinstance(sid, str) or sid in out_ids:
+            continue
+        # Shallow-copy so later passes mutating the output don't touch the
+        # input graph (which the FastAPI handler may still hand to the cache
+        # hash builder).
+        out_nodes.append(dict(src))
+        print(
+            f"[enrich] restoring dropped input node {sid!r} "
+            f"(label={src.get('label')!r})",
+            flush=True,
+        )
+
+
 _STRUCTURAL_NODE_FIELDS = (
     "subexpr",
     "latex",
@@ -466,6 +515,14 @@ def _stamp_enriched(
     the gate for skip-on-second-call deduplication on both server and
     client. Preserves any ``reasoning`` the model already filled in on the
     ``enrichment`` block. Mutates and returns ``output_graph``."""
+    # Order matters:
+    #   1. Restore input nodes the model dropped (issue #192) so the
+    #      structural-field pass sees them.
+    #   2. Drop nodes the model invented and any edges touching them.
+    #   3. Patch parser-owned structural fields back onto every surviving
+    #      node (no-op for the ones we just restored — they already carry
+    #      the parser values verbatim).
+    _restore_dropped_nodes(input_graph, output_graph)
     _drop_phantom_nodes_and_edges(input_graph, output_graph)
     _restore_structural_fields(input_graph, output_graph)
     _strip_bad_emojis(output_graph)
