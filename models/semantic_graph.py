@@ -77,7 +77,11 @@ class SemanticGraphNode(BaseModel):
     unit: Optional[str] = Field(default=None, max_length=30, pattern=_NO_HTML)
     value: Optional[Union[float, int, str]] = Field(default=None)
     role: Optional[Role] = None
-    color: Optional[str] = Field(default=None, pattern=_COLOR)
+    # ``max_length=30`` caps both the hex form (longest is ``#`` + 8 hex
+    # digits = 9 chars) and the named-keyword form (the longest CSS named
+    # color, ``lightgoldenrodyellow``, is 21 chars). 30 leaves a small
+    # margin for unusual values without permitting unbounded payloads.
+    color: Optional[str] = Field(default=None, pattern=_COLOR, max_length=30)
     highlight: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     variant: Optional[EdgeSemantic] = None
 
