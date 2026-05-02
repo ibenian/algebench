@@ -16,6 +16,17 @@ from models import SemanticGraph
 from agents.semantic_graph_enricher import SemanticGraphEnrichmentAgent
 
 
+def _g(payload: dict) -> SemanticGraph:
+    """Test helper — wrap a wire-format dict into a ``SemanticGraph``.
+
+    The agent's public surface is now strictly typed (issue #195), so
+    fixtures that read naturally as dict literals get explicitly validated
+    before being passed in. Mirrors what the FastAPI handler does at the
+    HTTP boundary in production.
+    """
+    return SemanticGraph.model_validate(payload)
+
+
 _INPUT_GRAPH = {
     "domain": "thermodynamics",
     "nodes": [
@@ -125,19 +136,23 @@ def test_enrichment_preserves_ids_and_edges() -> None:
     }
     enricher = _build_agent_with(enriched_payload)
 
-    out = enricher.enrich(_INPUT_GRAPH)
+    out = enricher.enrich(_g(_INPUT_GRAPH))
 
     in_ids = {n["id"] for n in _INPUT_GRAPH["nodes"]}
-    out_ids = {n["id"] for n in out["nodes"]}
+    out_ids = {n.id for n in out.nodes}
     assert in_ids == out_ids
 
-    assert out["edges"] == _INPUT_GRAPH["edges"]
+    # Edges round-trip through the wire format for deep-equality
+    # comparison with the dict fixture (the model itself doesn't compare
+    # equal to a list of dicts).
+    out_edges = [e.model_dump(by_alias=True, exclude_none=True) for e in out.edges]
+    assert out_edges == _INPUT_GRAPH["edges"]
 
-    by_id = {n["id"]: n for n in out["nodes"]}
+    by_id = {n.id: n for n in out.nodes}
     for symbol in ("P", "V", "T"):
-        assert by_id[symbol].get("description")
-        assert by_id[symbol].get("emoji")
-        assert by_id[symbol].get("color", "").startswith("#")
+        assert by_id[symbol].description
+        assert by_id[symbol].emoji
+        assert (by_id[symbol].color or "").startswith("#")
 
 
 @pytest.mark.parametrize(
@@ -226,17 +241,17 @@ def test_critic_triggers_retry_with_corrected_output() -> None:
     )
 
     out = enricher.enrich(
-        {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
+        _g({"nodes": [{"id": "V", "type": "scalar"}], "edges": []}),
         context=_ATMOSPHERIC_CONTEXT,
     )
 
-    node = out["nodes"][0]
-    assert node["quantity"] == "velocity"
-    assert node["unit"] == "m/s"
-    assert node["emoji"] == "🚀"
+    node = out.nodes[0]
+    assert node.quantity == "velocity"
+    assert node.unit == "m/s"
+    assert node.emoji == "🚀"
     # The first-pass-inferred domain should be preserved on the retry's
     # output too — it's now part of the canonical enriched graph.
-    assert out.get("domain") == "classical_mechanics"
+    assert out.domain == "classical_mechanics"
 
 
 def test_critic_accepts_coherent_first_pass() -> None:
@@ -248,10 +263,10 @@ def test_critic_accepts_coherent_first_pass() -> None:
     )
 
     out = enricher.enrich(
-        {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
+        _g({"nodes": [{"id": "V", "type": "scalar"}], "edges": []}),
         context=_ATMOSPHERIC_CONTEXT,
     )
-    assert out["nodes"][0]["quantity"] == "velocity"
+    assert out.nodes[0].quantity == "velocity"
 
 
 def test_critic_skipped_when_no_context() -> None:
@@ -264,9 +279,9 @@ def test_critic_skipped_when_no_context() -> None:
             {"ok": False, "mismatched_node_ids": ["V"], "feedback": "x"},
         ],
     )
-    out = enricher.enrich({"nodes": [{"id": "V", "type": "scalar"}], "edges": []})
+    out = enricher.enrich(_g({"nodes": [{"id": "V", "type": "scalar"}], "edges": []}))
     # Voltage survives because there's no context to reject it against.
-    assert out["nodes"][0]["quantity"] == "voltage"
+    assert out.nodes[0].quantity == "voltage"
 
 
 def test_circuits_lesson_keeps_voltage() -> None:
@@ -277,14 +292,14 @@ def test_circuits_lesson_keeps_voltage() -> None:
         critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
     )
     out = enricher.enrich(
-        {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
+        _g({"nodes": [{"id": "V", "type": "scalar"}], "edges": []}),
         context={
             "lessonTitle": "RC Circuits",
             "stepExplanation": "The capacitor charges through the resistor; voltage rises.",
         },
     )
-    assert out["nodes"][0]["quantity"] == "voltage"
-    assert out["nodes"][0]["unit"] == "V"
+    assert out.nodes[0].quantity == "voltage"
+    assert out.nodes[0].unit == "V"
 
 
 def test_critic_failure_falls_back_to_first_pass() -> None:
@@ -295,11 +310,11 @@ def test_critic_failure_falls_back_to_first_pass() -> None:
         critic_outputs=[RuntimeError("simulated critic outage")],
     )
     out = enricher.enrich(
-        {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
+        _g({"nodes": [{"id": "V", "type": "scalar"}], "edges": []}),
         context=_ATMOSPHERIC_CONTEXT,
     )
     # First-pass output passes through unchanged when the critic blows up.
-    assert out["nodes"][0]["quantity"] == "voltage"
+    assert out.nodes[0].quantity == "voltage"
 
 
 def test_user_payload_renders_context_as_prose() -> None:
@@ -308,7 +323,7 @@ def test_user_payload_renders_context_as_prose() -> None:
     from agents.semantic_graph_enricher import _build_payload
 
     payload = _build_payload(
-        {"nodes": [], "edges": []},
+        SemanticGraph.model_validate({"nodes": [], "edges": []}),
         context=_ATMOSPHERIC_CONTEXT,
     )
     assert payload.startswith("## Context")
@@ -328,7 +343,10 @@ def test_feedback_renders_in_retry_payload() -> None:
         _ATMOSPHERIC_CONTEXT,
         "Lesson is atmospheric entry; V is velocity, not voltage.",
     )
-    payload = _build_payload({"nodes": [], "edges": []}, context=retry_ctx)
+    payload = _build_payload(
+        SemanticGraph.model_validate({"nodes": [], "edges": []}),
+        context=retry_ctx,
+    )
     assert "Coherence feedback" in payload
     assert "V is velocity, not voltage" in payload
 
@@ -340,7 +358,9 @@ def test_graph_domain_surfaces_in_payload() -> None:
     # enrichment and critic payloads.
     from agents.semantic_graph_enricher import _build_payload, _build_critique_payload
 
-    graph = {"domain": "classical_mechanics", "nodes": [], "edges": []}
+    graph = SemanticGraph.model_validate(
+        {"domain": "classical_mechanics", "nodes": [], "edges": []}
+    )
 
     payload = _build_payload(graph, context=_ATMOSPHERIC_CONTEXT)
     domain_line = "- Graph domain (authoritative, from parser): classical_mechanics"
@@ -358,7 +378,9 @@ def test_graph_domain_surfaces_without_context() -> None:
     # should still surface that domain — it's all we have to go on.
     from agents.semantic_graph_enricher import _build_payload
 
-    graph = {"domain": "quantum_mechanics", "nodes": [], "edges": []}
+    graph = SemanticGraph.model_validate(
+        {"domain": "quantum_mechanics", "nodes": [], "edges": []}
+    )
     payload = _build_payload(graph, context=None)
     assert "Graph domain (authoritative, from parser): quantum_mechanics" in payload
 
@@ -368,7 +390,7 @@ def test_no_domain_no_authoritative_line() -> None:
     # line — the model would treat it as authoritative if we did.
     from agents.semantic_graph_enricher import _build_payload
 
-    graph = {"nodes": [], "edges": []}
+    graph = SemanticGraph.model_validate({"nodes": [], "edges": []})
     payload = _build_payload(graph, context=_ATMOSPHERIC_CONTEXT)
     assert "Graph domain" not in payload
 
@@ -387,13 +409,13 @@ def test_enrichment_marker_stamped_on_first_pass_ok() -> None:
         critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
     )
     out = enricher.enrich(
-        {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
+        _g({"nodes": [{"id": "V", "type": "scalar"}], "edges": []}),
         context=_ATMOSPHERIC_CONTEXT,
     )
-    block = out.get("enrichment")
-    assert isinstance(block, dict)
-    assert "velocity" in block["reasoning"]
-    fields = block.get("fields")
+    block = out.enrichment
+    assert block is not None
+    assert "velocity" in block.reasoning
+    fields = block.fields
     assert isinstance(fields, list) and fields
     # The diff records both top-level (`domain`) and per-node changes, the
     # latter as `nodes.<id>.<field>` paths.
@@ -412,12 +434,12 @@ def test_enrichment_marker_stamped_when_model_omits_block() -> None:
         critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
     )
     out = enricher.enrich(
-        {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
+        _g({"nodes": [{"id": "V", "type": "scalar"}], "edges": []}),
         context=_ATMOSPHERIC_CONTEXT,
     )
-    block = out.get("enrichment")
-    assert isinstance(block, dict)
-    assert isinstance(block.get("fields"), list) and block["fields"]
+    block = out.enrichment
+    assert block is not None
+    assert isinstance(block.fields, list) and block.fields
 
 
 def test_enrichment_marker_stamped_after_retry() -> None:
@@ -436,18 +458,18 @@ def test_enrichment_marker_stamped_after_retry() -> None:
         ],
     )
     out = enricher.enrich(
-        {"nodes": [{"id": "V", "type": "scalar"}], "edges": []},
+        _g({"nodes": [{"id": "V", "type": "scalar"}], "edges": []}),
         context=_ATMOSPHERIC_CONTEXT,
     )
-    block = out.get("enrichment")
-    assert isinstance(block, dict)
-    assert block["reasoning"] == "Corrected: V is velocity, not voltage."
-    assert out["nodes"][0]["quantity"] == "velocity"
+    block = out.enrichment
+    assert block is not None
+    assert block.reasoning == "Corrected: V is velocity, not voltage."
+    assert out.nodes[0].quantity == "velocity"
     # Even though the inferred domain came from the first pass and was
     # re-asserted by the retry, the diff against the original input still
     # reports it.
-    assert "domain" in block["fields"]
-    assert "nodes.V.quantity" in block["fields"]
+    assert "domain" in block.fields
+    assert "nodes.V.quantity" in block.fields
 
 
 def test_diff_skips_fields_the_model_left_unchanged() -> None:
@@ -456,12 +478,14 @@ def test_diff_skips_fields_the_model_left_unchanged() -> None:
     # authoritative-diff behavior.
     from agents.semantic_graph_enricher import _diff_enriched_fields
 
-    inp = {"nodes": [{"id": "V", "type": "scalar", "label": "V", "unit": "m/s"}], "edges": []}
-    out = {
+    inp = SemanticGraph.model_validate(
+        {"nodes": [{"id": "V", "type": "scalar", "label": "V", "unit": "m/s"}], "edges": []}
+    )
+    out = SemanticGraph.model_validate({
         "nodes": [{"id": "V", "type": "scalar", "label": "V",
                    "unit": "m/s", "quantity": "velocity"}],
         "edges": [],
-    }
+    })
     paths = _diff_enriched_fields(inp, out)
     assert paths == ["nodes.V.quantity"]  # label/unit unchanged → not listed
 
@@ -487,14 +511,14 @@ def test_phantom_nodes_added_by_model_are_dropped() -> None:
         critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
     )
     out = enricher.enrich(
-        {"nodes": [{"id": "g", "type": "scalar"}], "edges": []},
+        _g({"nodes": [{"id": "g", "type": "scalar"}], "edges": []}),
         context=_ATMOSPHERIC_CONTEXT,
     )
-    ids = [n["id"] for n in out["nodes"]]
+    ids = [n.id for n in out.nodes]
     assert ids == ["g"]                       # phantom dropped
-    assert out["edges"] == []                 # phantom edge dropped too
+    assert out.edges == []                 # phantom edge dropped too
     # Real node still got its enrichment.
-    assert out["nodes"][0]["quantity"] == "acceleration"
+    assert out.nodes[0].quantity == "acceleration"
 
 
 def test_validator_raises_modelretry_when_input_ids_dropped() -> None:
@@ -623,69 +647,56 @@ def test_validator_is_noop_when_no_input_set_bound() -> None:
     assert _validate_no_dropped_nodes(output) is output
 
 
-def test_safety_net_rejects_input_nodes_with_unknown_fields() -> None:
-    # Codex review P2: ``GraphEnrichRequest.graph`` is an unvalidated dict
-    # by API contract, so the input we restore from could carry extra
-    # properties the agent's output schema (``SemanticGraphNode``,
-    # ``extra='forbid'``) would reject. The restore path must filter
-    # through the schema rather than copy raw, otherwise the cached
-    # post-enrichment graph loses the ``extra='forbid'`` invariant.
-    from agents.semantic_graph_enricher import _restore_dropped_nodes
-
-    input_graph = {
+def test_input_with_unknown_node_fields_rejected_at_boundary() -> None:
+    # Issue #195: with the typed pipeline, the API boundary (FastAPI handler
+    # for ``/api/graph/enrich``, plus this very test helper ``_g``) calls
+    # ``SemanticGraph.model_validate`` to convert wire-format dicts into
+    # typed graphs. ``SemanticGraphNode`` carries ``extra="forbid"``, so
+    # any node with a schema-violating extra property is rejected *before*
+    # reaching the agent, the merge layer, or the cache. Pre-refactor,
+    # ``GraphEnrichRequest.graph: dict`` accepted any shape and the merge
+    # helpers had to re-validate individual nodes inside
+    # ``_restore_dropped_nodes`` to preserve the ``extra="forbid"`` invariant
+    # (see the surgical fix in PR #194). Now the boundary is the only place
+    # validation happens.
+    poisoned_input = {
         "nodes": [
-            {
-                "id": "good",
-                "type": "scalar",
-                "latex": "x",
-            },
-            {
-                # Schema-violating extra property — must NOT make it into
-                # the restored output.
-                "id": "evil",
-                "type": "scalar",
-                "latex": "y",
-                "script": "<malicious>",
-            },
+            {"id": "good", "type": "scalar", "latex": "x"},
+            # Schema-violating extra property — must trip the boundary.
+            {"id": "evil", "type": "scalar", "latex": "y", "script": "<malicious>"},
         ],
         "edges": [],
     }
-    output_graph: dict = {"nodes": [], "edges": []}
-    _restore_dropped_nodes(input_graph, output_graph)
-    ids = [n["id"] for n in output_graph["nodes"]]
-    # Schema-clean node was restored; the one with a forbidden extra
-    # was dropped from the restore path. (The dangling-edge symptom
-    # this would cause is recoverable downstream — the renderer falls
-    # back to a placeholder for an undeclared id — but persisting an
-    # unsafe field through the cache is not.)
-    assert ids == ["good"]
-    assert all("script" not in n for n in output_graph["nodes"])
+    with pytest.raises(ValidationError, match="extra_forbidden|script"):
+        SemanticGraph.model_validate(poisoned_input)
 
 
-def test_safety_net_strips_none_fields_when_restoring() -> None:
-    # Smoke test for the schema-validate-then-dump round trip: ``None``
-    # values on the input dict (e.g. an unset ``label``) are excluded
-    # from the restored entry via ``exclude_none=True``, matching how
-    # the agent's own output is normalised.
+def test_restore_dropped_nodes_excludes_none_fields() -> None:
+    # Smoke test for the typed restore: nodes are ``SemanticGraphNode``
+    # instances with ``Optional[...] = None`` fields. When we serialize
+    # the post-enrichment graph at the API boundary via
+    # ``model_dump(exclude_none=True)``, fields the parser left as ``None``
+    # are dropped — matching how the agent's own output is normalised.
     from agents.semantic_graph_enricher import _restore_dropped_nodes
+    from models.semantic_graph import SemanticGraphNode
 
-    input_graph = {
-        "nodes": [
-            {
-                "id": "x",
-                "type": "scalar",
-                "latex": "x",
-                "label": None,
-                "description": None,
-            },
+    input_graph = SemanticGraph(
+        nodes=[
+            SemanticGraphNode(id="x", type="scalar", latex="x"),
         ],
-        "edges": [],
-    }
-    output_graph: dict = {"nodes": [], "edges": []}
+        edges=[],
+    )
+    output_graph = SemanticGraph(nodes=[], edges=[])
     _restore_dropped_nodes(input_graph, output_graph)
-    assert output_graph["nodes"][0]["id"] == "x"
-    assert "label" not in output_graph["nodes"][0]
-    assert "description" not in output_graph["nodes"][0]
+    assert len(output_graph.nodes) == 1
+    assert output_graph.nodes[0].id == "x"
+    # ``label`` and ``description`` weren't set on the input — they stay
+    # as ``None`` on the model and disappear from the wire-format dump.
+    assert output_graph.nodes[0].label is None
+    assert output_graph.nodes[0].description is None
+    dumped = output_graph.nodes[0].model_dump(by_alias=True, exclude_none=True)
+    assert "label" not in dumped
+    assert "description" not in dumped
 
 
 def test_dropped_node_safety_net_restores_when_validator_exhausts() -> None:
@@ -710,11 +721,11 @@ def test_dropped_node_safety_net_restores_when_validator_exhausts() -> None:
         ],
         "edges": [{"from": "q_{\\text{LEO}}", "to": "__deriv_5"}],
     }
-    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
-    ids = {n["id"] for n in out["nodes"]}
+    out = enricher.enrich(_g(input_graph), context=_ATMOSPHERIC_CONTEXT)
+    ids = {n.id for n in out.nodes}
     assert ids == {"q_{\\text{LEO}}", "__deriv_5"}
-    by_id = {n["id"]: n for n in out["nodes"]}
-    assert by_id["q_{\\text{LEO}}"]["latex"] == "q_{\\text{LEO}}"
+    by_id = {n.id: n for n in out.nodes}
+    assert by_id["q_{\\text{LEO}}"].latex == "q_{\\text{LEO}}"
 
 
 def test_dropped_input_nodes_are_restored_from_input() -> None:
@@ -759,24 +770,24 @@ def test_dropped_input_nodes_are_restored_from_input() -> None:
             {"from": "q_{\\text{LEO}}", "to": "__deriv_5"},
         ],
     }
-    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
+    out = enricher.enrich(_g(input_graph), context=_ATMOSPHERIC_CONTEXT)
 
-    out_ids = [n["id"] for n in out["nodes"]]
+    out_ids = [n.id for n in out.nodes]
     # Both input nodes survive — the dropped one was re-inserted.
     assert "q_{\\text{LEO}}" in out_ids
     assert "__deriv_5" in out_ids
 
     # Restored node carries the parser-owned fields verbatim.
-    by_id = {n["id"]: n for n in out["nodes"]}
+    by_id = {n.id: n for n in out.nodes}
     restored = by_id["q_{\\text{LEO}}"]
-    assert restored["latex"] == "q_{\\text{LEO}}"
-    assert restored["subexpr"] == "q_{\\text{LEO}}"
-    assert restored["type"] == "scalar"
+    assert restored.latex == "q_{\\text{LEO}}"
+    assert restored.subexpr == "q_{\\text{LEO}}"
+    assert restored.type == "scalar"
 
     # Edge that previously dangled still resolves to a real node, and the
     # surviving node retained its enrichment.
-    assert {"from": "q_{\\text{LEO}}", "to": "__deriv_5"} in out["edges"]
-    assert by_id["__deriv_5"]["description"].startswith("Time derivative")
+    assert any(e.model_dump(by_alias=True, exclude_none=True) == {"from": "q_{\\text{LEO}}", "to": "__deriv_5"} for e in out.edges)
+    assert by_id["__deriv_5"].description.startswith("Time derivative")
 
 
 def test_dropped_node_restoration_is_independent_of_phantom_drop() -> None:
@@ -811,12 +822,12 @@ def test_dropped_node_restoration_is_independent_of_phantom_drop() -> None:
             {"from": "\\theta", "to": "g"},
         ],
     }
-    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
+    out = enricher.enrich(_g(input_graph), context=_ATMOSPHERIC_CONTEXT)
 
-    ids = sorted(n["id"] for n in out["nodes"])
+    ids = sorted(n.id for n in out.nodes)
     assert ids == ["\\theta", "g"]                  # phantom dropped, theta restored
-    assert {"from": "\\theta", "to": "g"} in out["edges"]
-    assert {"from": "g_phantom", "to": "g"} not in out["edges"]
+    assert any(e.model_dump(by_alias=True, exclude_none=True) == {"from": "\\theta", "to": "g"} for e in out.edges)
+    assert not any(e.model_dump(by_alias=True, exclude_none=True) == {"from": "g_phantom", "to": "g"} for e in out.edges)
 
 
 def test_no_dropped_nodes_means_no_changes_to_node_set() -> None:
@@ -836,12 +847,12 @@ def test_no_dropped_nodes_means_no_changes_to_node_set() -> None:
         critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
     )
     out = enricher.enrich(
-        {"nodes": [{"id": "x", "type": "scalar"},
+        _g({"nodes": [{"id": "x", "type": "scalar"},
                    {"id": "y", "type": "scalar"}],
-         "edges": []},
+         "edges": []}),
         context=_ATMOSPHERIC_CONTEXT,
     )
-    ids = [n["id"] for n in out["nodes"]]
+    ids = [n.id for n in out.nodes]
     assert ids == ["x", "y"]                          # no duplicates, order kept
 
 
@@ -884,15 +895,15 @@ def test_structural_fields_restored_from_input() -> None:
         ],
         "edges": [],
     }
-    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
-    node = out["nodes"][0]
+    out = enricher.enrich(_g(input_graph), context=_ATMOSPHERIC_CONTEXT)
+    node = out.nodes[0]
     # Parser-owned fields are restored verbatim — no double backslashes.
-    assert node["subexpr"] == "\\frac{1}{\\rho A C_{d}}"
-    assert node["op"] == "power"
-    assert node["exponent"] == "-1"
+    assert node.subexpr == "\\frac{1}{\\rho A C_{d}}"
+    assert node.op == "power"
+    assert node.exponent == "-1"
     # The semantic enrichment fields the model contributed survive.
-    assert node["description"] == "Inverse of the drag factors."
-    assert node["unit"] == "m/kg"
+    assert node.description == "Inverse of the drag factors."
+    assert node.unit == "m/kg"
 
 
 def test_non_emoji_text_in_emoji_field_is_stripped() -> None:
@@ -913,12 +924,12 @@ def test_non_emoji_text_in_emoji_field_is_stripped() -> None:
         critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
     )
     out = enricher.enrich(
-        {"nodes": [{"id": "a", "type": "vector"}, {"id": "V", "type": "scalar"}], "edges": []},
+        _g({"nodes": [{"id": "a", "type": "vector"}, {"id": "V", "type": "scalar"}], "edges": []}),
         context=_ATMOSPHERIC_CONTEXT,
     )
-    by_id = {n["id"]: n for n in out["nodes"]}
+    by_id = {n.id: n for n in out.nodes}
     assert "emoji" not in by_id["a"]    # word stripped
-    assert by_id["V"]["emoji"] == "💨"  # real emoji survives
+    assert by_id["V"].emoji == "💨"  # real emoji survives
 
 
 def test_diff_reports_field_removals() -> None:
@@ -927,15 +938,15 @@ def test_diff_reports_field_removals() -> None:
     # keys per node so removals show up too.
     from agents.semantic_graph_enricher import _diff_enriched_fields
 
-    inp = {
+    inp = SemanticGraph.model_validate({
         "nodes": [{"id": "V", "type": "scalar", "label": "V", "color": "#cccccc"}],
         "edges": [],
-    }
-    out = {
+    })
+    out = SemanticGraph.model_validate({
         "nodes": [{"id": "V", "type": "scalar", "label": "V",
                    "quantity": "velocity"}],  # color is gone
         "edges": [],
-    }
+    })
     paths = _diff_enriched_fields(inp, out)
     assert "nodes.V.color" in paths       # removal listed
     assert "nodes.V.quantity" in paths    # addition listed
@@ -961,9 +972,13 @@ def test_already_enriched_input_is_passthrough() -> None:
     enricher._agent = _ExplodingAgent()
     enricher._critic = None
 
-    out = enricher.enrich(pre, context=_ATMOSPHERIC_CONTEXT)
-    assert out is pre  # unchanged, same object
-    assert out["enrichment"]["reasoning"] == "previous run"
+    pre_model = _g(pre)
+    out = enricher.enrich(pre_model, context=_ATMOSPHERIC_CONTEXT)
+    # The validated input model is returned unchanged — same object,
+    # no copy / re-stamp on the already-enriched fast path.
+    assert out is pre_model
+    assert out.enrichment is not None
+    assert out.enrichment.reasoning == "previous run"
 
 
 def test_inferred_domain_threads_into_retry_payload() -> None:
@@ -974,9 +989,12 @@ def test_inferred_domain_threads_into_retry_payload() -> None:
     # graph directly.
     from agents.semantic_graph_enricher import _build_payload
 
-    input_graph = {"nodes": [], "edges": []}  # no domain
-    retry_graph = {**input_graph, "domain": "classical_mechanics"}
+    input_graph = SemanticGraph.model_validate(
+        {"nodes": [], "edges": []}  # no domain
+    )
+    retry_graph = input_graph.model_copy(update={"domain": "classical_mechanics"})
     payload = _build_payload(retry_graph, context=_ATMOSPHERIC_CONTEXT)
     assert "Graph domain (authoritative, from parser): classical_mechanics" in payload
-    # The original input graph is not mutated.
-    assert "domain" not in input_graph
+    # The original input graph is not mutated — ``model_copy`` returns
+    # a fresh instance.
+    assert input_graph.domain is None

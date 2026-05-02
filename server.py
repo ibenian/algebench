@@ -2303,12 +2303,31 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                 except AgentError as e:
                     return JSONResponse({"error": str(e)}, status_code=503)
 
+            # Validate the wire-format dict into a typed ``SemanticGraph``
+            # at the API boundary — the enricher operates on models from
+            # here on (issue #195). A schema-violating input becomes a 400
+            # so the caller sees the validation error instead of getting a
+            # silent fallback to the unenriched graph.
+            from models import SemanticGraph as _SemanticGraph
             try:
-                enriched = await _graph_enricher.aenrich(graph_in, context_in)
+                graph_model = _SemanticGraph.model_validate(graph_in)
+            except Exception as exc:
+                print(f"[enrich] input failed validation: {exc}", flush=True)
+                return JSONResponse(
+                    {"error": f"input graph failed schema validation: {exc}"},
+                    status_code=400,
+                )
+
+            try:
+                enriched_model = await _graph_enricher.aenrich(graph_model, context_in)
             except AgentError as e:
                 print(f"[enrich] agent error: {e}", flush=True)
                 return JSONResponse({"error": str(e)}, status_code=502)
 
+            # Serialize back to the wire format for the cache and JSON
+            # response — keeps the cache hit path returning dicts so the
+            # ``cached`` shape is identical regardless of how it was built.
+            enriched = enriched_model.model_dump(by_alias=True, exclude_none=True)
             _graph_enrich_cache[key] = enriched
             print(f"[enrich] ok  cached  key={key[:8]}", flush=True)
             if DEBUG_MODE:
