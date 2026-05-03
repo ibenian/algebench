@@ -322,6 +322,31 @@ class SemanticGraphBuilder:
         """Return the position of *sym_name* in the original LaTeX."""
         return self._symbol_order.get(sym_name, len(self._original_latex))
 
+    def _symbol_latex(self, name: str) -> str | None:
+        """LaTeX form for a Symbol *name*, applying the same Greek-letter
+        and Leibniz-differential reconstruction as ``_walk_inner``.
+
+        Returns ``None`` when the bare name carries no LaTeX command (so
+        the caller can fall back to ``sympy.latex``). SymPy's own
+        ``latex()`` doesn't know that the Symbol named ``rho_{0}`` came
+        from ``\\rho_0`` — so without this, ``subexpr`` ends up as
+        ``rho_{0}`` while ``latex`` is ``\\rho_{0}``, and KaTeX renders
+        the tooltip as plain text instead of ρ₀.
+        """
+        if name in self._latex_commands:
+            return self._latex_commands[name]
+        if "_" in name:
+            base = name.split("_")[0]
+            if base in self._latex_commands:
+                return self._latex_commands[base] + name[len(base):]
+        if (
+            len(name) > 1
+            and name[0] == "d"
+            and name[1:] in self._latex_commands
+        ):
+            return r"\mathrm{d}" + self._latex_commands[name[1:]]
+        return None
+
     def _subexpr_ordered(self, expr: sympy.Basic) -> str:
         """Like ``sympy.latex(expr)`` but with terms in authorial order."""
         # Atomic placeholder symbols (compound symbols and \text{...})
@@ -332,6 +357,9 @@ class SemanticGraphBuilder:
             if name in self._overrides and self._overrides[name].get("latex"):
                 if name.startswith("Theta_{") or name.startswith("Xi_{"):
                     return self._overrides[name]["latex"]
+            sym_latex = self._symbol_latex(name)
+            if sym_latex is not None:
+                return sym_latex
         if not self._original_latex:
             return sympy.latex(expr)
 
@@ -457,24 +485,11 @@ class SemanticGraphBuilder:
                 return self._seen_symbols[name]
             meta = KNOWN_VARIABLES.get(name, {})
             node_id = name
-            latex_fallback = self._latex_commands.get(name)
-            if latex_fallback is None:
-                base = name.split("_")[0] if "_" in name else None
-                if base and base in self._latex_commands:
-                    suffix = name[len(base):]
-                    latex_fallback = self._latex_commands[base] + suffix
-                elif (
-                    len(name) > 1
-                    and name[0] == "d"
-                    and name[1:] in self._latex_commands
-                ):
-                    # Leibniz differential: SymPy's parse_latex merges `d\rho`
-                    # into a single symbol `drho` (losing the macro). Emit
-                    # `\mathrm{d}\rho` — upright d per ISO 80000-2 — so KaTeX
-                    # renders `dρ` instead of the literal identifier `drho`.
-                    latex_fallback = r"\mathrm{d}" + self._latex_commands[name[1:]]
-                else:
-                    latex_fallback = name
+            # Leibniz differential note: SymPy's parse_latex merges `d\rho`
+            # into a single symbol `drho` (losing the macro). The helper
+            # emits `\mathrm{d}\rho` — upright d per ISO 80000-2 — so KaTeX
+            # renders `dρ` instead of the literal identifier `drho`.
+            latex_fallback = self._symbol_latex(name) or name
             # Parser emits structural fields only — ``type`` (scalar /
             # vector / constant) and ``latex`` (Greek-letter command etc.).
             # All semantic metadata (label, emoji, quantity, dimension,

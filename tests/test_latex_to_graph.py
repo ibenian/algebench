@@ -115,6 +115,16 @@ class TestKnownVariables:
         x_nodes = _find_nodes(g, id="x")
         assert len(x_nodes) == 1
 
+    def test_subscripted_greek_subexpr_keeps_latex_command(self):
+        # Regression for gh-197: hover tooltip rendered \rho_0 as plain
+        # text "rho_0" because the node's `subexpr` came straight from
+        # `sympy.latex(Symbol("rho_{0}"))`, which drops the backslash.
+        # The subexpr must carry the same LaTeX command as `latex`.
+        g = latex_to_semantic_graph(r"\rho_0 + 1")
+        node = _find_node(g, id="rho_{0}")
+        assert node["latex"] == r"\rho_{0}"
+        assert node["subexpr"] == r"\rho_{0}"
+
 
 # ---------------------------------------------------------------------------
 # Numbers and constants
