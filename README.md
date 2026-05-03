@@ -2,6 +2,8 @@
 
 **Math you can rotate, pause, and ask questions to.**
 
+> **AI for human understanding — not for outsourcing thought.**
+
 Interactive 3D lessons with a live AI narrator. Spin up a scene, listen to it explain itself, then interrupt and ask *why* — the narrator answers in real time and the visualization responds.
 
 **Made for:** self-taught learners, students, and educators who think math makes more sense when you can see it move.
@@ -35,6 +37,18 @@ Built on [MathBox](https://github.com/unconed/mathbox) / [Three.js](https://gith
 ## Vision
 
 My ultimate goal is to create an agentic system that can genuinely engage in the tangible learning process — fostering that explorative, experimental mindset, willing and courageous enough to ask daring questions freely, supported by an infinitely patient tutor that can meet you exactly where you are and take you wherever you want to go.
+
+The motto guides every design choice:
+
+> **AI for human understanding — not for outsourcing thought.**
+
+The AI's job is to set the table — pick what's worth showing, build the apparatus, prepare the ground — so the learner can do the seeing, the playing, and the understanding for themselves. Computation, plotting, axis-picking, and sensible defaults are scut work the AI is happy to do. Understanding is non-transferable; only the learner can do it, and they do it by interacting with the apparatus.
+
+**Active design proposals** (in [docs/proposals/](docs/proposals/)):
+- [Parametric Analysis Visualization](docs/proposals/parametric-analysis-proposal.md) — AI-assisted, multi-dimensional response charts with sliders, animation drivers, and dimension-pickers, built on top of the semantic graph.
+- [Proof Structure v2](docs/proposals/proof-structure-v2-proposal.md) — branching proofs, hypotheses, and proof techniques.
+- [Lesson Builder Agents](docs/proposals/lesson-builder-agents-proposal.md) — multi-agent pipeline for authoring full lessons.
+- [Citations](docs/proposals/citations-proposal.md) — academic-paper-grade source attribution.
 
 ---
 
