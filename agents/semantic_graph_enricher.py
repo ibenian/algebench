@@ -95,6 +95,12 @@ Your job:
    delimiters using LaTeX (e.g. "Ballistic coefficient, $\\beta = m / (C_d A)$.").
    Never use ASCII math like `m/(C_d*A)` or `x^2` — always emit `$m / (C_d A)$`,
    `$x^{2}$`, `$\\dot{m}$`, etc.
+   Use a SINGLE backslash for every LaTeX command. Do NOT double-escape:
+   emit `$\\bar{a}$`, `$\\hat{n}$`, `$\\frac{1}{2}$` — never `$\\\\bar{a}$`,
+   `$\\\\hat{n}$`, or any `\\\\<command>` form. The JSON layer adds its own
+   escape; write the LaTeX as-is. The doubled form `\\\\bar{a}` is parsed by
+   the renderer as `\\` + `bar{a}` and prints the literal word "bara"
+   instead of the intended `ā`.
 2. Add or refine `emoji` — a single Unicode emoji character (e.g. "🚀",
    "⚡", "💨"). Must be a real emoji glyph, not a Font Awesome icon code,
    not a private-use codepoint. Skip `emoji` for operator nodes unless an
