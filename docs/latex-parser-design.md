@@ -148,6 +148,207 @@ SemanticGraphBuilder._walk() ← recursive tree walk
 
 Generated IDs use a `__` prefix to avoid collision with symbol names.
 
+### Node Display Fields: `latex` vs `subexpr`
+
+Each node carries up to two LaTeX-bearing fields, which look redundant on a
+leaf symbol but are not interchangeable:
+
+| Field | Domain | Set on | Source |
+|---|---|---|---|
+| `latex` | LaTeX for *this node's name* | Leaf symbols (and override placeholders) | Reconstructed from input via `_latex_commands` |
+| `subexpr` | LaTeX for *the entire sub-expression rooted at this node* | Every node | Either raw input LaTeX (root, relations, override placeholders) or `_subexpr_ordered` (everything else) |
+
+For a leaf like `\rho_0`, the two collapse to the same string. For a compound
+node — a `Mul`, `Pow`, function, equation root — `subexpr` is bigger than any
+single symbol's `latex` and is the only field that exists.
+
+Frontend consumers pick whichever fits:
+
+- **Mermaid node body** (the green circle): uses `label` if the enricher set
+  one, else `latex`.
+- **Node Details panel title**: prefers `latex`, falls back to `subexpr`.
+- **Hover tooltip**: uses `subexpr` unconditionally — no fallback.
+
+The fields must therefore *agree* on a leaf symbol, even though they're
+populated by different code paths. See "SymPy Round-Trip and `_latex_commands`"
+below for why agreement isn't automatic and what keeps them in sync.
+
+### SymPy Round-Trip and `_latex_commands`
+
+SymPy's `parse_latex` → SymPy expression tree → `sympy.latex` round-trip is
+**lossy for symbol names that came from LaTeX macros** (`\rho`, `\beta`,
+`\hat{n}`, etc.).
+
+The chain:
+
+1. Author writes `\rho_0`.
+2. `parse_latex` normalizes the subscript and produces `Symbol("rho_{0}")`
+   — a Symbol whose `.name` is the literal six-character string `rho_{0}`,
+   braces and all. The backslash is gone; the macro is now an identifier.
+3. `sympy.latex(Symbol("rho_{0}"))` returns the bare string `"rho_{0}"`.
+   SymPy's printer recognizes Greek-letter names by matching the raw name
+   against a fixed table (`alpha`, `beta`, `rho`, …) and splits subscripts
+   on the *digit suffix* form (`alpha_0` → `\alpha_{0}`). Neither matches
+   the *brace-included* form `parse_latex` emits, so the backslash is not
+   restored. The name is printed verbatim.
+
+The two halves of SymPy's own round-trip don't agree on canonical naming.
+That's the seam where the backslash falls out.
+
+We don't fix this inside SymPy. Instead, the parser does its **own
+pre-parse scan** of the original LaTeX source and builds a `_latex_commands:
+dict[str, str]` map of every backslash macro it sees, mapping the SymPy-style
+identifier name to its original LaTeX command (`{"rho": "\\rho", "beta":
+"\\beta", ...}`). This is built by `_extract_latex_commands` *before* SymPy
+parses anything.
+
+When the builder needs LaTeX for a Symbol, the helper `_symbol_latex(name)`
+consults this map:
+
+1. Direct hit: `name in _latex_commands` → use the command.
+2. Subscript hit: split on `_`, look up the base (`rho_{0}` → `rho` →
+   `\rho`), reattach the subscript suffix (`\rho_{0}`).
+3. Leibniz-d hit: `drho` → `\mathrm{d}\rho` (handles SymPy's habit of
+   merging `d\rho` into a single identifier).
+4. None of the above: use the raw name (e.g. `x`, `m`, `Cd` — plain
+   variables that have no LaTeX form to recover).
+
+`_symbol_latex` is shared by both `_walk_inner` (which sets the node's
+`latex` field) and `_subexpr_ordered` (which sets `subexpr`), so the two
+fields are guaranteed to agree on a leaf. **They diverge whenever
+`_subexpr_ordered` falls through to `sympy.latex(expr)` on a non-Symbol
+sub-tree** — at which point the round-trip leak reappears inside compound
+`subexpr` strings (e.g. `\frac{H rho_{0}}{...}` instead of `\frac{H
+\rho_{0}}{...}`). That's a known residual issue: the leak is contained to
+compound nodes' `subexpr` fields and doesn't affect any node's `latex`.
+
+#### Why not just prepend `\` to every Symbol name?
+
+The set of valid LaTeX commands is a fixed, finite vocabulary; symbol names
+are arbitrary strings chosen by the lesson author. There's no rule saying
+"any name is a macro." `Symbol("x")` → `\x` is a KaTeX error. We need to
+distinguish `rho` (a real macro) from `mass` (a plain variable), and the
+only reliable signal is whether the original input contained `\rho`. That's
+exactly what `_latex_commands` records.
+
+#### Why not subclass `Symbol` to carry the original LaTeX?
+
+Tried mentally; not worth it. SymPy `Symbol` uses `__slots__` and is
+interned (`Symbol("x") is Symbol("x")` returns `True`), so you can't attach
+attributes directly. A `TaggedSymbol(Symbol)` subclass works, but
+`TaggedSymbol("rho") != Symbol("rho")`, which breaks SymPy internals,
+`parse_latex` output (which always returns plain `Symbol`), and any code
+path that compares against bare `Symbol`. An external map keyed by name —
+which is what `_latex_commands` is — gives us the same "extra info attached
+to a Symbol" semantics without fighting interning or equality.
+
+## Graph Enrichment via Pydantic AI
+
+The parser produces a structurally-correct graph but deliberately leaves
+**semantic** fields blank: `label`, `emoji`, `quantity`, `dimension`, `unit`,
+`description`, `role`. Hardcoding those in the parser was tried and
+abandoned — a symbol named `F` is "force" in mechanics, "free energy" in
+thermodynamics, and "field strength" in electromagnetism. There's no
+domain-free correct answer.
+
+Enrichment is therefore a **second pass**, performed by a Gemini model
+behind a [`pydantic-ai`](https://ai.pydantic.dev) wrapper, with the lesson
+context as input.
+
+### Pipeline
+
+```
+Parser graph (structural only)
+    │
+    ▼
+SemanticGraphEnrichmentAgent.arun(graph + context)   ← Gemini 2.5 Pro
+    │      └── pydantic-ai validates output against SemanticGraph schema
+    │           and retries up to max_retries=2 on validation failure
+    ▼
+Enriched graph (label, emoji, quantity, unit, description, …)
+    │
+    ▼
+SemanticGraphCoherenceCritic.arun(context + enriched)  ← Gemini 2.5 Pro
+    │      └── verdict: ok? mismatched_node_ids? feedback?
+    ▼
+   ok ─────────────► return enriched
+   mismatch ──────► fold critic feedback into context, re-run enricher once
+```
+
+Both agents inherit from a thin `BaseAgent` ([agents/base.py](../agents/base.py))
+that owns the `pydantic_ai.Agent` instance, model selection (env-overridable
+via `GEMINI_MODEL`), retry budget, and the `AgentError` failure boundary.
+Subclasses just declare four class attributes — `name`, `system_prompt`,
+`result_type` (a Pydantic model), `model` — and call `arun(input_data)`.
+
+### Why pydantic-ai
+
+The agent loop has to enforce **two** invariants on the model's output:
+
+1. **Schema correctness** — the response must parse as the
+   `SemanticGraphNode` Pydantic model (capped string lengths, regex on
+   color/no-HTML fields, enum values for `role` and `EdgeSemantic`, etc.).
+2. **Structural preservation** — the enricher must return the *same set of
+   node ids and edges* as the input. It's editing fields, not redesigning
+   the graph.
+
+`pydantic-ai` gives us (1) for free: it validates each model response against
+`SemanticGraph` and, on `ValidationError`, sends the validator's complaint
+back to the model as a follow-up message, asking for a corrected response.
+We get up to `max_retries=2` of self-correction without writing any of the
+"please fix this field" prompt logic ourselves.
+
+For (2), we register a custom **output validator** with pydantic-ai
+(`_validate_no_dropped_nodes`, [agents/semantic_graph_enricher.py:424](../agents/semantic_graph_enricher.py#L424))
+that raises `pydantic_ai.ModelRetry` when input ids are missing from the
+output. Same retry loop, same budget — pydantic-ai treats our validator's
+`ModelRetry` exactly like a schema failure. Issue [#192](https://github.com/ibenian/algebench/issues/192)
+documents the failure mode this guards against (Gemini occasionally drops
+small variable nodes during enrichment).
+
+A small set of **post-validation cleanups** ([agents/semantic_graph_enricher.py:543](../agents/semantic_graph_enricher.py#L543))
+runs after pydantic-ai succeeds — they handle quirks too narrow to retry on
+(double-escaped backslashes in JSON-mode output, foreign-language words
+mistakenly placed in the `emoji` field, etc.). Anything that *should* trigger
+a retry stays in the validator path; anything that's just cosmetic gets
+quietly fixed.
+
+### The coherence critic
+
+Schema-valid enrichment is not the same as *correct* enrichment. Gemini
+will happily annotate a node `V` as "voltage" in an atmospheric-entry lesson
+where `V` is velocity. Both are well-formed; only one matches the lesson.
+
+`SemanticGraphCoherenceCritic` is a separate `BaseAgent` whose `result_type`
+is `_CoherenceVerdict { ok, mismatched_node_ids, feedback }`. After every
+enrichment, we hand it the lesson context plus the enriched graph and ask:
+*does any node's claimed physical quantity belong to a different physical
+domain than the lesson?* The prompt explicitly instructs it to be
+conservative — only flag clear cross-domain contradictions, not stylistic
+issues.
+
+If the critic returns `ok = false`, we fold its `feedback` string into the
+enrichment context and re-run the enricher once. The re-run sees the
+critic's note and typically picks the right reading on the second pass.
+
+We avoid hand-coded keyword tables (e.g. "if context mentions 'velocity',
+reject 'voltage'") deliberately — the critic generalizes to any domain the
+model can reason about, which is far broader than any list we could
+maintain.
+
+### What pydantic-ai is *not* doing here
+
+- **Tool use / function calling**: the enricher takes the graph as input
+  and returns the graph as output. There are no tools registered.
+- **Multi-turn conversation**: each enrichment is a single
+  `agent.run(prompt)`. The retry loop is internal to one call; there's no
+  user-visible chat history.
+- **Streaming**: the result is a structured object, not free text. We need
+  the whole thing before we can validate or render.
+
+The pydantic-ai value-add is narrow but exactly right for this shape of
+problem: *take a typed input, return a typed output, retry until valid*.
+
 ## Current Shortcomings
 
 ### Matrices and Linear Algebra

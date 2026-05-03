@@ -115,6 +115,38 @@ class TestKnownVariables:
         x_nodes = _find_nodes(g, id="x")
         assert len(x_nodes) == 1
 
+    def test_subscripted_greek_subexpr_keeps_latex_command(self):
+        # Regression for gh-197: hover tooltip rendered \rho_0 as plain
+        # text "rho_0" because the node's `subexpr` came straight from
+        # `sympy.latex(Symbol("rho_{0}"))`, which drops the backslash.
+        # The subexpr must carry the same LaTeX command as `latex`.
+        g = latex_to_semantic_graph(r"\rho_0 + 1")
+        node = _find_node(g, id="rho_{0}")
+        assert node["latex"] == r"\rho_{0}"
+        assert node["subexpr"] == r"\rho_{0}"
+
+    def test_compound_mul_subexpr_recovers_greek_command(self):
+        # Regression for gh-197: a non-root Mul containing a Greek-named
+        # Symbol must propagate the backslash through `_subexpr_ordered`'s
+        # per-factor recursion. Pre-fix, factors fell through to
+        # `sympy.latex(Symbol("rho_{0}"))` and joined the compound string
+        # as bare `rho_{0}`. The Mul must not be the root — root nodes
+        # get `subexpr` from the original input verbatim, masking the bug.
+        g = latex_to_semantic_graph(r"\rho_0 V + 1")
+        muls = _find_nodes(g, type="operator", op="multiply")
+        assert muls
+        sub = muls[0].get("subexpr", "")
+        assert r"\rho_{0}" in sub, sub
+        assert "rho_{0}" not in sub.replace(r"\rho_{0}", ""), sub
+
+    def test_non_greek_subscripted_symbol_not_falsely_prefixed(self):
+        # Negative case: `x_0` is a plain ASCII variable, not a LaTeX
+        # macro. `_symbol_latex` must NOT invent a `\x` command for it.
+        g = latex_to_semantic_graph(r"x_0 + 1")
+        node = _find_node(g, id="x_{0}")
+        assert node["latex"] == "x_{0}"
+        assert node["subexpr"] == "x_{0}"
+
 
 # ---------------------------------------------------------------------------
 # Numbers and constants
