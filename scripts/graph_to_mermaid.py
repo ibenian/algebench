@@ -345,10 +345,12 @@ def _format_label(
 # ---------------------------------------------------------------------------
 
 def _sanitize_id(node_id: str) -> str:
-    """Make a node ID safe for Mermaid (no special chars)."""
-    out = node_id
+    """Make a node ID safe for Mermaid (no special chars or numeric start)."""
+    out = str(node_id)
     for ch in "-. {}()*":
         out = out.replace(ch, "_")
+    if not out or not re.match(r"^[A-Za-z_]", out):
+        out = f"n_{out}"
     return out
 
 
