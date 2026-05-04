@@ -526,8 +526,9 @@ export class SemanticGraphPanel {
   /* ------------------------------------------------------------------ */
 
   static sanitizeId(nodeId) {
-    let out = nodeId;
+    let out = String(nodeId);
     for (const ch of "-. {}()*") out = out.replaceAll(ch, "_");
+    if (!out || !/^[A-Za-z_]/.test(out)) out = `n_${out}`;
     return out;
   }
 }

@@ -148,6 +148,12 @@ class TestSanitizeId:
     def test_dots(self):
         assert _sanitize_id("node.1") == "node_1"
 
+    def test_numeric_scientific_notation_like_id_gets_prefixed(self):
+        assert _sanitize_id("01e") == "n_01e"
+
+    def test_empty_id_gets_prefixed(self):
+        assert _sanitize_id("") == "n_"
+
 
 # ---------------------------------------------------------------------------
 # Mermaid escaping
@@ -237,6 +243,24 @@ class TestSemanticGraphToMermaid:
         result = semantic_graph_to_mermaid(SIMPLE_GRAPH)
         assert 'x[' in result or 'x(' in result
         assert '__multiply_1' in result
+
+    def test_scientific_notation_like_node_id_does_not_leak_into_label(self):
+        graph = {
+            "nodes": [
+                {
+                    "id": "01e",
+                    "label": "acceleration",
+                    "type": "vector",
+                    "latex": "a",
+                },
+            ],
+            "edges": [],
+        }
+        result = semantic_graph_to_mermaid(graph, label_mode="latex")
+        lines = {line.strip() for line in result.splitlines()}
+        assert 'n_01e["$a$"]:::vector' in lines
+        assert '01e["$a$"]:::vector' not in lines
+        assert "01e a" not in result
 
     def test_edges_present(self):
         result = semantic_graph_to_mermaid(SIMPLE_GRAPH)
