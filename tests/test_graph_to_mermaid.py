@@ -179,7 +179,9 @@ class TestLabelFormatting:
         }
         assert _format_label(node, "emoji") == "🔁"
 
-    def test_relation_no_emoji_no_op_falls_back_to_label(self):
+    def test_relation_unknown_op_no_emoji_falls_back_to_label(self):
+        # Op is set but not in RELATION_SYMBOLS, and emoji is missing →
+        # last-resort fallback is the node's ``label``.
         node = {"id": "__rel_1", "type": "relation", "op": "weird", "label": "weird"}
         assert _format_label(node, "emoji") == "weird"
 
