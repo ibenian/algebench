@@ -133,6 +133,56 @@ class TestLabelFormatting:
         node = {"id": "z", "label": "z", "type": "scalar"}
         assert _format_label(node, "emoji") == "$z$"
 
+    def test_relation_uses_canonical_glyph_not_emoji_field(self):
+        # Issue #170: the enricher (Gemini) sometimes overwrites the
+        # parser-supplied ``emoji`` for an ``implies`` relation node with a
+        # emoji-presentation codepoint such as ``➡️`` (U+27A1 + U+FE0F).
+        # KaTeX parses that as ``➡`` text + a phantom ``\R`` accent, which
+        # rendered as a garbled ``→ⓡ`` glyph in the diamond. The renderer
+        # must lock known relation ops to their canonical math glyph.
+        node = {
+            "id": "__implies_1",
+            "type": "relation",
+            "op": "implies",
+            "emoji": "➡️",
+            "label": "implies",
+        }
+        # Plain Unicode glyph — NOT wrapped in ``$...$``. Mermaid's HTML
+        # label renders the codepoint directly with the page font.
+        assert _format_label(node, "emoji") == "⟹"
+
+    def test_relation_canonical_glyph_for_each_known_op(self):
+        # Lock the expected glyph for every relation op the parser emits
+        # via ``RELATION_MAP`` (see ``scripts/latex_to_graph.py``).
+        cases = {
+            "implies": "⟹",
+            "iff": "⟺",
+            "proportional": "∝",
+            "approximately": "≈",
+            "maps_to": "→",
+        }
+        for op_name, glyph in cases.items():
+            node = {"id": f"__{op_name}_1", "type": "relation", "op": op_name}
+            assert _format_label(node, "emoji") == glyph, (
+                f"relation op {op_name!r} should render as {glyph!r}"
+            )
+
+    def test_relation_unknown_op_falls_back_to_emoji(self):
+        # An unknown relation op (hand-authored or future addition) still
+        # gets its ``emoji`` rendered — but as plain Unicode text, never
+        # wrapped in ``$...$`` so KaTeX doesn't mangle emoji glyphs.
+        node = {
+            "id": "__custom_1",
+            "type": "relation",
+            "op": "custom_op",
+            "emoji": "🔁",
+        }
+        assert _format_label(node, "emoji") == "🔁"
+
+    def test_relation_no_emoji_no_op_falls_back_to_label(self):
+        node = {"id": "__rel_1", "type": "relation", "op": "weird", "label": "weird"}
+        assert _format_label(node, "emoji") == "weird"
+
 
 # ---------------------------------------------------------------------------
 # ID sanitization
