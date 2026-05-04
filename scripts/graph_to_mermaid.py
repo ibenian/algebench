@@ -146,6 +146,21 @@ DEFAULT_WEIGHT_BASE_PX = 2.0  # when the theme doesn't define a
 # than confusing it for yet another operand flowing into an operator.
 _LOGICAL_CONNECTIVE_OPS = frozenset({"implies", "iff"})
 
+# Canonical glyph for each relation ``op`` the parser emits (see
+# ``scripts/latex_to_graph.RELATION_MAP``). Used by ``_format_label`` so
+# the renderer always shows a clean math glyph for known connectives even
+# when the enricher has overwritten ``emoji`` with something inappropriate
+# (e.g. Gemini occasionally returns ``➡️`` U+27A1 + U+FE0F for ``implies``,
+# which KaTeX parses as ``➡`` text + a phantom ``\R`` accent and renders
+# as a garbled ``→ⓡ`` artifact — see issue #170).
+RELATION_SYMBOLS: dict[str, str] = {
+    "implies": "⟹",
+    "iff": "⟺",
+    "proportional": "∝",
+    "approximately": "≈",
+    "maps_to": "→",
+}
+
 
 def _resolve_edge_width(
     semantic: str | None,
@@ -262,13 +277,20 @@ def _format_label(
 
     if node_type == "relation":
         # Render the relation glyph as plain Unicode text — NOT wrapped in
-        # ``$...$``. The parser sets ``emoji`` from RELATION_MAP (e.g. ``⟹``
-        # for ``implies``); Mermaid's HTML labels render the codepoint
-        # directly with the page font. Routing through KaTeX is fragile —
-        # KaTeX mis-parses emoji-presentation codepoints like ``➡️``
-        # (U+27A1 + U+FE0F) as text plus a phantom accent, producing the
-        # garbled ``→ⓡ`` artifact from issue #170.
-        return node.get("emoji") or node.get("label", op)
+        # ``$...$``. These are arrow/relation glyphs (``⟹``, ``⟺``, ``∝``…)
+        # that Mermaid's HTML labels render directly with the page font.
+        # Routing them through KaTeX is fragile: KaTeX produces poor output
+        # for emoji-style codepoints (e.g. ``➡️`` U+27A1 + U+FE0F renders as
+        # ``➡`` with a phantom ``\R`` accent), and the enricher occasionally
+        # rewrites ``emoji`` to such a codepoint. Prefer the canonical glyph
+        # for the known ``op`` so the visual stays stable regardless.
+        sym = RELATION_SYMBOLS.get(op)
+        if sym:
+            return sym
+        rel_emoji = node.get("emoji", "")
+        if rel_emoji:
+            return rel_emoji
+        return node.get("label", op)
 
     # --- Symbol / number nodes ---
     # ``node.id`` is a machine identifier, never a display symbol — it may
