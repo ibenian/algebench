@@ -1153,21 +1153,7 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     independent statement in the same graph — no forced parent or
     relation node. Shared variables across clauses dedup to one node.
     """
-    # Step 1: detect whether a top-level comma is acting as a statement
-    # separator. Run this before preprocessing so brace/paren depth
-    # reflects the original LaTeX structure (``\text{a, b}`` and
-    # ``f(x, y)`` must not split).
-    clauses = _split_on_top_level_comma(latex)
-    if len(clauses) > 1:
-        # Step 2: build one subgraph per clause and return them together
-        # as independent roots in the same graph — no parent or
-        # ``comma`` / ``and`` relation node is emitted. The graph is
-        # multi-rooted; clauses connect only through organically shared
-        # variables.
-        return _build_comma_separated_graph(
-            clauses, overrides=overrides, domain=domain,
-        )
-
+    user_overrides = overrides
     compound_collapsed, compound_overrides = _collapse_compound_symbols(latex)
     collapsed, text_overrides = _collapse_text_commands(compound_collapsed)
     preprocessed = _preprocess_latex(collapsed)
@@ -1177,43 +1163,107 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     merged_overrides: dict[str, dict[str, str]] = {
         **compound_overrides,
         **text_overrides,
-        **(overrides or {}),
+        **(user_overrides or {}),
     }
     overrides = merged_overrides
 
-    # Check for relation operators that parse_latex cannot handle.
+    # Check for a top-level relation operator FIRST (before the comma
+    # split). When a relation is present, comma-joined clauses on either
+    # side are operand-level conjunctions — the comma scopes inside the
+    # connective's operand, not above it. See #208: previously the comma
+    # split ran first and orphaned the second RHS clause from the
+    # ``\implies`` node.
     rel = _split_on_relation(preprocessed)
     if rel is not None:
         lhs_latex, rel_meta, rhs_latex = rel
+        builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands, original_latex=latex)
+
+        def _walk_relation_side(side_latex: str) -> tuple[str, sympy.Basic | None]:
+            """Walk a relation operand. Returns ``(root_id, expr)`` where
+            ``expr`` is the parsed SymPy expression for the side, or
+            ``None`` when the side is a comma-joined conjunction (no
+            single SymPy expression — each clause is parsed
+            independently and joined under a synthetic ``and`` relation
+            node)."""
+            side_clauses = _split_on_top_level_comma(side_latex)
+            if len(side_clauses) <= 1:
+                expr = parse_latex(side_latex)
+                return builder._walk(expr), expr
+
+            _leading_space = re.compile(r"^\s*(?:\\(?:quad|qquad|,|;|!|:)\s*)+")
+            clause_roots: list[str] = []
+            for clause in side_clauses:
+                cleaned = _leading_space.sub("", clause).strip()
+                sub_expr = parse_latex(cleaned)
+                cid = builder._walk(sub_expr)
+                for node in builder.nodes:
+                    if node["id"] == cid:
+                        node["subexpr"] = builder._restore_placeholders(cleaned)
+                        break
+                clause_roots.append(cid)
+            conj_id = builder._next_id("and")
+            builder._add_node(
+                conj_id,
+                type="relation",
+                op="and",
+                label="and",
+                emoji=",",
+                subexpr=builder._restore_placeholders(side_latex.strip()),
+            )
+            for cid in clause_roots:
+                builder._add_edge(cid, conj_id)
+            return conj_id, None
+
         try:
-            lhs_expr = parse_latex(lhs_latex)
-            rhs_expr = parse_latex(rhs_latex)
+            lhs_id, lhs_expr = _walk_relation_side(lhs_latex)
+            rhs_id, rhs_expr = _walk_relation_side(rhs_latex)
         except Exception as exc:
             raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
 
-        builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands, original_latex=latex)
-        lhs_id = builder._walk(lhs_expr)
-        rhs_id = builder._walk(rhs_expr)
+        # Restore subexpr on the side root nodes when they are *not*
+        # synthetic conjunction nodes (those already carry the full side
+        # latex from creation; per-clause subexprs were set per-clause
+        # above). For single-expression sides, the SymPy walk leaves an
+        # internal subexpr — overwrite with the raw side latex so the
+        # tooltip matches the original LaTeX exactly.
         for node in builder.nodes:
-            if node["id"] == lhs_id:
+            if node["id"] == lhs_id and not (lhs_expr is None):
                 node["subexpr"] = builder._restore_placeholders(lhs_latex.strip())
-            elif node["id"] == rhs_id:
+            elif node["id"] == rhs_id and not (rhs_expr is None):
                 node["subexpr"] = builder._restore_placeholders(rhs_latex.strip())
         rel_id = builder._next_id(rel_meta["op"])
         builder._add_node(rel_id, type="relation", subexpr=latex.strip(), **rel_meta)
         builder._add_edge(lhs_id, rel_id)
         builder._add_edge(rhs_id, rel_id)
         graph = {"nodes": builder.nodes, "edges": builder.edges}
-        # Classify based on both sides combined.  Relational expressions
-        # (inequalities, Eq) don't support arithmetic, so fall back gracefully.
-        try:
-            combined = lhs_expr - rhs_expr
-        except TypeError:
-            combined = lhs_expr
-        graph["classification"] = _classify_expression(combined)
+        # Classify based on both sides combined when both are single
+        # SymPy expressions. Relational expressions (inequalities, Eq)
+        # don't support arithmetic, so fall back gracefully. When either
+        # side is a comma-joined conjunction we have no single
+        # expression to classify, so default to algebraic.
+        if lhs_expr is not None and rhs_expr is not None:
+            try:
+                combined = lhs_expr - rhs_expr
+            except TypeError:
+                combined = lhs_expr
+            graph["classification"] = _classify_expression(combined)
+        else:
+            graph["classification"] = {"kind": "algebraic"}
         if domain:
             graph["domain"] = domain
         return graph
+
+    # No top-level relation. A top-level comma now acts as a statement
+    # separator (preserves existing ``a = 1, b = 2`` behavior — multiple
+    # independent rooted statements, no synthetic ``and`` node). Pass
+    # only the user-supplied overrides; the recursive call re-derives
+    # text/compound placeholders per clause so they don't collide with
+    # parent-scoped ``Xi_{N}`` ids.
+    clauses = _split_on_top_level_comma(latex)
+    if len(clauses) > 1:
+        return _build_comma_separated_graph(
+            clauses, overrides=user_overrides, domain=domain,
+        )
 
     try:
         expr = parse_latex(preprocessed)
