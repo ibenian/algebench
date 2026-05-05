@@ -1224,8 +1224,13 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         # synthetic conjunction nodes (those already carry the full side
         # latex from creation; per-clause subexprs were set per-clause
         # above). For single-expression sides, the SymPy walk leaves an
-        # internal subexpr — overwrite with the raw side latex so the
-        # tooltip matches the original LaTeX exactly.
+        # internal subexpr — overwrite with the side slice so the
+        # tooltip reflects the side string we actually parsed.
+        # ``lhs_latex``/``rhs_latex`` come from
+        # ``_split_on_relation(preprocessed)``, so they are the
+        # preprocessed/cleaned side LaTeX (e.g. ``x_i`` brace-canonicalized
+        # to ``x_{i}``, spacing macros stripped). This matches the
+        # pre-existing convention for relation-side ``subexpr`` values.
         for node in builder.nodes:
             if node["id"] == lhs_id and not (lhs_expr is None):
                 node["subexpr"] = builder._restore_placeholders(lhs_latex.strip())
