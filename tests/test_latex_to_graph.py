@@ -368,6 +368,88 @@ class TestRelations:
         assert rel is not None
 
 
+class TestRelationOperandComma:
+    """Comma inside an \\implies / \\iff operand groups as a conjunction
+    on that side, not as a top-level statement separator (#208).
+
+    Previously the comma split ran before relation detection, so
+    ``A \\implies B, C`` parsed as two parallel rooted clauses
+    (``A \\implies B`` and ``C``) — the second consequent was orphaned
+    from the implies node entirely.
+    """
+
+    def _reaches(self, graph, src, dst):
+        """Return True iff a directed edge path exists from *src* to *dst*."""
+        adj: dict[str, list[str]] = {}
+        for e in graph["edges"]:
+            adj.setdefault(e["from"], []).append(e["to"])
+        seen = {src}
+        stack = [src]
+        while stack:
+            cur = stack.pop()
+            if cur == dst:
+                return True
+            for nxt in adj.get(cur, []):
+                if nxt not in seen:
+                    seen.add(nxt)
+                    stack.append(nxt)
+        return False
+
+    def test_implies_with_comma_rhs_groups_as_conjunction(self):
+        g = latex_to_semantic_graph(r"x > 0 \implies y = 1, z = 2")
+        impl = _find_node(g, type="relation", op="implies")
+        assert impl is not None
+        # Both consequent clauses must reach the implies node.
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert len(equals_nodes) == 2
+        for eq in equals_nodes:
+            assert self._reaches(g, eq["id"], impl["id"]), (
+                f"clause {eq.get('subexpr')!r} does not reach implies"
+            )
+        # And they reach it through a synthetic ``and`` conjunction node.
+        conj = _find_node(g, type="relation", op="and")
+        assert conj is not None
+        assert self._reaches(g, conj["id"], impl["id"])
+
+    def test_iff_with_comma_rhs_groups_as_conjunction(self):
+        g = latex_to_semantic_graph(r"P \iff A, B")
+        iff = _find_node(g, type="relation", op="iff")
+        conj = _find_node(g, type="relation", op="and")
+        assert iff is not None and conj is not None
+        assert self._reaches(g, conj["id"], iff["id"])
+        assert self._reaches(g, "A", iff["id"])
+        assert self._reaches(g, "B", iff["id"])
+
+    def test_implies_with_comma_lhs_groups_as_conjunction(self):
+        """Comma on the LHS of an implication groups the antecedents."""
+        g = latex_to_semantic_graph(r"A, B \implies C")
+        impl = _find_node(g, type="relation", op="implies")
+        conj = _find_node(g, type="relation", op="and")
+        assert impl is not None and conj is not None
+        assert self._reaches(g, "A", conj["id"])
+        assert self._reaches(g, "B", conj["id"])
+        assert self._reaches(g, conj["id"], impl["id"])
+        assert self._reaches(g, "C", impl["id"])
+
+    def test_function_arg_comma_inside_implies_unaffected(self):
+        """Comma inside a function-argument group ``f(x, y)`` stays a
+        function arg — it's not at top level on the side, so no
+        conjunction node is emitted."""
+        g = latex_to_semantic_graph(r"x = 1 \implies f(x, y) = 0")
+        # No ``and`` conjunction should appear — comma is depth>0.
+        assert _find_node(g, type="relation", op="and") is None
+        impl = _find_node(g, type="relation", op="implies")
+        assert impl is not None
+
+    def test_top_level_comma_without_relation_unchanged(self):
+        """Without a top-level relation, comma still acts as a statement
+        separator — no synthetic ``and`` node."""
+        g = latex_to_semantic_graph(r"a = 1, b = 2")
+        assert _find_node(g, type="relation", op="and") is None
+        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert len(equals_nodes) == 2
+
+
 class TestTextCommand:
     """\\text{NAME} should become a single text node, not decomposed into
     per-character multiplications (SymPy's parse_latex default behavior)."""
