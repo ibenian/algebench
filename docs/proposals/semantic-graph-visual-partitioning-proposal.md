@@ -562,7 +562,12 @@ The Math dock can expose 2–3 of these as user-facing toggles in the controls b
 
 The graph carries enough information to be **interactively foldable** at two granularities — and both are worth shipping together, because the underlying mechanism is the same.
 
-**The interaction in one sentence:** click any operator node (or swimlane title) to fold its descendants into a single tile rendering its `subexpr` as KaTeX; click the tile to reveal the structure again. The fold/unfold chevron (`▾` for expanded, `▸` for collapsed) appears only on hover, in the node's top-right corner — keeping the diagram clean by default. Mermaid supports this natively via its `click` directive plus a re-render — no custom renderer needed (sketch below). A standalone HTML proof of concept exercising the full cycle was built and validated locally before this proposal landed.
+**The interaction in one sentence:** click any operator node (or swimlane title) to fold its descendants into a single tile rendering its `subexpr` as KaTeX; click the tile to reveal the structure again. The fold/unfold chevron (`▾` for expanded, `▸` for collapsed) appears only on hover, in the node's top-right corner — keeping the diagram clean by default.
+
+Two standalone proof-of-concept files accompany this proposal:
+
+- [`visual-partitioning-poc.html`](visual-partitioning-poc.html) — Mermaid-based version. Good for proving the data model, click handling, and docs/static export path. Because Mermaid rerenders the full SVG, animation is intentionally limited to an overlapping old/new crossfade plus a small fade/scale on newly visible nodes.
+- [`visual-partitioning-d3-poc.html`](visual-partitioning-d3-poc.html) — D3-only version. Renders the same semantic graph directly from structured data with keyed enter/update/exit joins. Persistent nodes move to new positions, entering nodes fade/scale in, and exiting nodes fade/scale out. This is the preferred direction for the app's high-fidelity interactive renderer.
 
 ### Two collapse targets
 
@@ -597,9 +602,9 @@ flowchart TD
 
 The collapsed tile keeps its **outgoing** edges (to its parent operator) intact — that's what preserves the topology when a subtree is hidden. From the parent's perspective, nothing changed except that one operand became opaque.
 
-### Implementation: yes, Mermaid is enough
+### Implementation paths: Mermaid for static, D3 for interactive
 
-Mermaid's [`click` directive](https://mermaid.js.org/syntax/flowchart.html#interaction) lets each node register a JavaScript callback. Combined with re-rendering on state change, that's all we need — no custom renderer, no DOM-tree surgery. Sketch:
+Mermaid's [`click` directive](https://mermaid.js.org/syntax/flowchart.html#interaction) lets each node register a JavaScript callback. Combined with re-rendering on state change, that is enough for the static/documentation path and for a lightweight interactive proof of concept:
 
 ```javascript
 // Per node id, register a click callback in the emitted source:
@@ -614,7 +619,7 @@ window.handleNodeClick = (nodeId) => {
 };
 ```
 
-The renderer (`graph_to_mermaid.py` + the Math dock JS that calls it) does the bookkeeping:
+The Mermaid renderer (`graph_to_mermaid.py` + the Math dock JS that calls it) does the bookkeeping:
 
 1. Walk the graph. For each collapsed node id, emit it as a single rounded-rect tile labeled with its `subexpr` (KaTeX-rendered) instead of its operator glyph.
 2. Skip every node that's a descendant of any collapsed id — those are inside the folded region.
@@ -642,15 +647,35 @@ flowchart TD
 
 The `(·)⁻¹` subtree is folded into a tile labeled with its KaTeX `subexpr`. Click the tile → callback toggles the id out of `collapsedIds` → re-render → the `(·)⁻¹` operator and its `Δt`, `g`, `×` descendants come back.
 
-### Why not other approaches
+For the app's interactive renderer, use the D3 path instead of trying to coerce Mermaid into object-level animation. The D3 PoC keeps the semantic graph as the source of truth and uses stable ids for keyed joins:
+
+```text
+semantic graph JSON
+  -> visible graph reducer from collapse state
+  -> math-aware tree layout
+  -> D3 enter/update/exit render
+```
+
+That gives us the exact object model the interaction wants:
+
+- **Persistent nodes:** same semantic id before and after; transition to the new coordinates.
+- **Added nodes:** ids present after the reducer but absent before; fade/scale in from the clicked parent.
+- **Removed nodes:** ids present before the reducer but absent after; fade/scale out toward the clicked parent.
+- **Changed visual state:** same semantic id but different presentation, e.g. `inv:expanded` → `inv:collapsed`; can be treated as a replacement if we want the collapsed tile to animate separately from the operator glyph.
+
+The first D3 PoC intentionally uses a small custom expression-tree layout instead of Dagre/ELK. Generic graph layout engines are powerful, but semantic math graphs often want domain-specific placement: relation at the root, children grouped under parents, LHS/RHS spatial bias, and collapsed subtrees preserving parent identity. We can add a layout engine later if real proof graphs become large non-tree DAGs, but the renderer should not depend on one for the first version.
+
+Follow-up issue: [#216 Render semantic graphs with D3 and Dagre/ELK for smooth animation](https://github.com/ibenian/algebench/issues/216). Based on the D3 PoC, the issue should start with D3-only and treat Dagre/ELK as optional future layout engines rather than immediate dependencies.
+
+### Why not only Mermaid for high-fidelity interaction
 
 The earlier draft considered three approaches; with the click-directive route, only one is worth keeping:
 
-- **Re-render on click (above)** — clean, idiomatic Mermaid, full layout reflow keeps the diagram readable. The cost is that nodes can shift position when something folds; in practice this is acceptable because the user just took an action and expects the diagram to update.
+- **Re-render on click (above)** — clean, idiomatic Mermaid, full layout reflow keeps the diagram readable. This is the right static/docs implementation. The cost is that Mermaid replaces the whole SVG, so object-level animation is coarse: crossfades are reliable, but persistent-node movement is brittle.
 - *Rejected: post-render SVG manipulation* — would need to hide `<g>` elements and overlay a tile at the collapsed node's coordinates. Avoids reflow but leaves gaps, and breaks if Mermaid changes its SVG structure.
 - *Rejected: server-side virtualization* — emit a different graph from the backend depending on `collapsedIds`. Slowest round-trip, no benefit over client-side re-render.
 
-The recommendation is just: re-render on click, using Mermaid's own `click` directive. No custom renderer needed.
+The recommendation is therefore split: re-render on click for Mermaid exports and docs, but use D3 for the in-app interactive semantic graph.
 
 ### UI affordance
 
