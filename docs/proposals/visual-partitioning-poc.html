@@ -33,6 +33,20 @@
   #graph .edgeLabel { background: #131a2c !important; color: #cdd6e4 !important; }
   /* Chevron — injected per-node by JS, toggled visible via direct mouseenter/leave handlers (CSS :hover proved unreliable through Mermaid's nested SVG structure). */
   #graph .chevron { opacity: 0; transition: opacity 0.12s ease-out; pointer-events: none; font-size: 14px; font-weight: 600; }
+  /* Collapse/expand animation via the View Transitions API. Each node
+     gets a stable per-id ``view-transition-name`` (set in JS after render)
+     so persistent nodes morph between positions, vanished nodes fade out
+     where they were, and new nodes (the collapsed tile) fade in where they
+     land. The browser interpolates everything else.  Tuned slow + smooth
+     (320ms) since the structural change is the whole point of the
+     animation; the user wants to see the contraction. */
+  ::view-transition-group(*) {
+    animation-duration: 320ms;
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0.32, 1);
+  }
+  /* Fallback for browsers without View Transitions API: simple opacity dip. */
+  #graph { transition: opacity 160ms ease-in-out; }
+  #graph.rerendering { opacity: 0.3; }
 </style>
 </head>
 <body>
@@ -208,6 +222,21 @@
     rerender();
   };
 
+  // Tag every visible node with a stable view-transition-name based on the
+  // underlying graph node id. Nodes that exist in both the old and new SVG
+  // morph smoothly between positions; vanished/new nodes fade in place.
+  // Must be called after every render and before the next transition starts.
+  function tagViewTransitionNames(container) {
+    const svg = container.querySelector("svg");
+    if (!svg) return;
+    for (const n of graph.nodes) {
+      if (isHidden(n.id)) continue;
+      const nodeG = svg.querySelector(`g.node[id^="flowchart-${n.id}-"]`);
+      if (!nodeG) continue;
+      nodeG.style.viewTransitionName = `vt-${n.id}`;
+    }
+  }
+
   // Inject a chevron `<text>` SVG element into each foldable node. It stays
   // hidden via CSS opacity:0 and fades in only on hover of the parent <g>.
   function injectChevrons(container) {
@@ -245,7 +274,7 @@
     }
   }
 
-  async function rerender() {
+  async function doRender() {
     const src = renderSource();
     const container = document.getElementById("graph");
     container.innerHTML = "";
@@ -253,19 +282,33 @@
     try {
       const { svg, bindFunctions } = await mermaid.render(id, src);
       container.innerHTML = svg;
-      // Wire up Mermaid's click bindings (this is what calls handleNodeClick)
       if (bindFunctions) bindFunctions(container);
+      tagViewTransitionNames(container);   // must happen before the View Transitions snapshot is taken
       injectChevrons(container);
     } catch (e) {
       container.innerHTML = `<pre style="color:#ff7575">${e.message}</pre><pre style="color:#7a8aa0;font-size:11px">${src}</pre>`;
       return;
     }
-
-    // Update state display
     const state = collapsed.size === 0
       ? "(none collapsed)"
       : "collapsed = {" + [...collapsed].join(", ") + "}";
     document.getElementById("state-display").textContent = state;
+  }
+
+  async function rerender() {
+    // Use the View Transitions API if available — Chrome/Edge/Safari 18+
+    // give us a free cross-fade between the old and new SVG.
+    if (typeof document.startViewTransition === "function") {
+      const t = document.startViewTransition(() => doRender());
+      await t.finished.catch(() => {});
+      return;
+    }
+    // Fallback: opacity fade via the .rerendering class.
+    const container = document.getElementById("graph");
+    container.classList.add("rerendering");
+    await new Promise(r => setTimeout(r, 140));
+    await doRender();
+    container.classList.remove("rerendering");
   }
 
   rerender();
