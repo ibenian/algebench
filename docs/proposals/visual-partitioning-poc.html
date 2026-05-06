@@ -70,31 +70,28 @@
   });
 
   // --------- Graph data: V_t = (g · Δt)^{-1} ---------
-  // Modeled after the linalg-dark screenshot. Variables on leaves,
-  // operators in middle, equality at root.
+  // LHS of `=` is V_t; RHS is the inverse of (g × Δt).
   const graph = {
     nodes: [
-      { id: "Vt",   label: "V<sub>t</sub>", kind: "var" },
-      { id: "g",    label: "g",             kind: "var" },
-      { id: "dt",   label: "Δt",            kind: "var" },
-      { id: "mul1", label: "×",             kind: "op", subexpr: "V_t \\cdot (g \\cdot \\Delta t)^{-1}" },
-      { id: "mul2", label: "×",             kind: "op", subexpr: "g \\cdot \\Delta t" },
-      { id: "inv",  label: "(·)⁻¹",         kind: "op", subexpr: "(g \\cdot \\Delta t)^{-1}" },
-      { id: "eq",   label: "=",             kind: "op", subexpr: "V_t = (g \\cdot \\Delta t)^{-1}" },
+      { id: "Vt",  label: "V<sub>t</sub>", kind: "var" },
+      { id: "g",   label: "g",             kind: "var" },
+      { id: "dt",  label: "Δt",            kind: "var" },
+      { id: "mul", label: "×",             kind: "op", subexpr: "g \\cdot \\Delta t" },
+      { id: "inv", label: "(·)⁻¹",         kind: "op", subexpr: "(g \\cdot \\Delta t)^{-1}" },
+      { id: "eq",  label: "=",             kind: "op", subexpr: "V_t = (g \\cdot \\Delta t)^{-1}" },
     ],
     edges: [
-      { from: "Vt",   to: "mul1", semantic: "direct"  },
-      { from: "inv",  to: "mul1", semantic: "inverse" },
-      { from: "g",    to: "mul2", semantic: "direct"  },
-      { from: "dt",   to: "mul2", semantic: "direct"  },
-      { from: "mul2", to: "inv",  semantic: "neutral" },
-      { from: "mul1", to: "eq",   semantic: "neutral" },
+      { from: "Vt",  to: "eq",  semantic: "neutral" },   // LHS of =
+      { from: "g",   to: "mul", semantic: "direct"  },
+      { from: "dt",  to: "mul", semantic: "direct"  },
+      { from: "mul", to: "inv", semantic: "neutral" },
+      { from: "inv", to: "eq",  semantic: "inverse" },   // RHS of =
     ],
   };
 
   // The asymmetric-target rule: which destinations get arrows?
   const ASYMMETRIC_OPS = new Set(["inv"]);  // unary inverse is asymmetric
-  // mul1, mul2, eq are symmetric → plain lines
+  // mul, eq are symmetric → plain lines
 
   const collapsed = new Set();
 
