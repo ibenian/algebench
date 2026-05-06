@@ -566,8 +566,8 @@ The graph carries enough information to be **interactively foldable** at two gra
 
 Two standalone proof-of-concept files accompany this proposal:
 
-- [`visual-partitioning-poc.html`](visual-partitioning-poc.html) — Mermaid-based version. Good for proving the data model, click handling, and docs/static export path. Because Mermaid rerenders the full SVG, animation is intentionally limited to an overlapping old/new crossfade plus a small fade/scale on newly visible nodes.
-- [`visual-partitioning-d3-poc.html`](visual-partitioning-d3-poc.html) — D3-only version. Renders the same semantic graph directly from structured data with keyed enter/update/exit joins. Persistent nodes move to new positions, entering nodes fade/scale in, and exiting nodes fade/scale out. This is the preferred direction for the app's high-fidelity interactive renderer.
+- [`semantic-graph-partitioning-mermaid-poc.html`](semantic-graph-partitioning-mermaid-poc.html) — Mermaid-based version. Good for proving the data model, click handling, and docs/static export path. Because Mermaid rerenders the full SVG, animation is intentionally limited to an overlapping old/new crossfade plus a small fade/scale on newly visible nodes.
+- [`semantic-graph-partitioning-d3-poc.html`](semantic-graph-partitioning-d3-poc.html) — D3-only version. Renders the same semantic graph directly from structured data with keyed enter/update/exit joins. Persistent nodes move to new positions, entering nodes fade/scale in, and exiting nodes fade/scale out. This is the preferred direction for the app's high-fidelity interactive renderer.
 
 ### Two collapse targets
 
