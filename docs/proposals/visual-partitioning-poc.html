@@ -15,7 +15,7 @@
   h1 { font-size: 20px; margin: 0 0 4px; color: #fff; font-weight: 500; }
   p.lead { margin: 0; color: #9aa6b8; font-size: 14px; }
   p.lead code { background: #1a2440; padding: 2px 6px; border-radius: 3px; font-size: 12px; color: #a8c5ff; }
-  #graph { max-width: 880px; margin-top: 16px; padding: 24px; background: #131a2c; border: 1px solid #233055; border-radius: 8px; min-height: 360px; }
+  #graph { max-width: 880px; margin-top: 16px; padding: 24px; background: #131a2c; border: 1px solid #233055; border-radius: 8px; min-height: 360px; position: relative; overflow: visible; }
   #graph svg { display: block; margin: 0 auto; }
   .controls { max-width: 880px; margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
   .controls button { background: #1a2440; color: #dde6ff; border: 1px solid #3a4d80; padding: 6px 12px; border-radius: 4px; font-size: 13px; cursor: pointer; font-family: inherit; }
@@ -31,22 +31,19 @@
   /* Override Mermaid defaults for dark theme */
   #graph .node .label { color: #dde6ff !important; }
   #graph .edgeLabel { background: #131a2c !important; color: #cdd6e4 !important; }
+  #graph g.node {
+    will-change: opacity;
+  }
   /* Chevron — injected per-node by JS, toggled visible via direct mouseenter/leave handlers (CSS :hover proved unreliable through Mermaid's nested SVG structure). */
   #graph .chevron { opacity: 0; transition: opacity 0.12s ease-out; pointer-events: none; font-size: 14px; font-weight: 600; }
-  /* Collapse/expand animation via the View Transitions API. Each node
-     gets a stable per-id ``view-transition-name`` (set in JS after render)
-     so persistent nodes morph between positions, vanished nodes fade out
-     where they were, and new nodes (the collapsed tile) fade in where they
-     land. The browser interpolates everything else.  Tuned slow + smooth
-     (320ms) since the structural change is the whole point of the
-     animation; the user wants to see the contraction. */
-  ::view-transition-group(*) {
-    animation-duration: 320ms;
-    animation-timing-function: cubic-bezier(0.32, 0.72, 0.32, 1);
+  /* Mermaid owns layout. The PoC keeps animation intentionally lightweight:
+     crossfade the old/new Mermaid SVGs, then fade/scale newly visible nodes. */
+  #graph .crossfade-old {
+    position: absolute;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 2;
   }
-  /* Fallback for browsers without View Transitions API: simple opacity dip. */
-  #graph { transition: opacity 160ms ease-in-out; }
-  #graph.rerendering { opacity: 0.3; }
 </style>
 </head>
 <body>
@@ -222,19 +219,69 @@
     rerender();
   };
 
-  // Tag every visible node with a stable view-transition-name based on the
-  // underlying graph node id. Nodes that exist in both the old and new SVG
-  // morph smoothly between positions; vanished/new nodes fade in place.
-  // Must be called after every render and before the next transition starts.
-  function tagViewTransitionNames(container) {
-    const svg = container.querySelector("svg");
-    if (!svg) return;
+  function findRenderedNode(container, id) {
+    return container.querySelector(`g.node[id^="flowchart-${id}-"]`);
+  }
+
+  function renderedNodeIds(container) {
+    const ids = new Set();
     for (const n of graph.nodes) {
-      if (isHidden(n.id)) continue;
-      const nodeG = svg.querySelector(`g.node[id^="flowchart-${n.id}-"]`);
-      if (!nodeG) continue;
-      nodeG.style.viewTransitionName = `vt-${n.id}`;
+      if (findRenderedNode(container, n.id)) ids.add(n.id);
     }
+    return ids;
+  }
+
+  function animateNewNode(el) {
+    const baseTransform = el.getAttribute("transform") || "";
+    el.style.opacity = "0";
+    el.setAttribute("transform", `${baseTransform} scale(0.94)`);
+    el.getBoundingClientRect();
+    requestAnimationFrame(() => {
+      el.style.transition = "opacity 220ms ease-out";
+      el.style.opacity = "1";
+      el.setAttribute("transform", baseTransform);
+    });
+    window.setTimeout(() => {
+      el.style.transition = "";
+      el.style.opacity = "";
+      el.setAttribute("transform", baseTransform);
+    }, 260);
+  }
+
+  function captureOldSvgOverlay(container) {
+    const oldSvg = container.querySelector("svg");
+    if (!oldSvg) return null;
+
+    const containerRect = container.getBoundingClientRect();
+    const svgRect = oldSvg.getBoundingClientRect();
+    const overlay = oldSvg.cloneNode(true);
+    overlay.classList.add("crossfade-old");
+    overlay.style.left = `${svgRect.left - containerRect.left}px`;
+    overlay.style.top = `${svgRect.top - containerRect.top}px`;
+    overlay.style.width = `${svgRect.width}px`;
+    overlay.style.height = `${svgRect.height}px`;
+    return overlay;
+  }
+
+  function crossfadeSvgs(container, oldOverlay) {
+    const newSvg = container.querySelector("svg:not(.crossfade-old)");
+    if (!newSvg) return;
+
+    newSvg.style.opacity = oldOverlay ? "0" : "1";
+    newSvg.style.transition = "none";
+    if (oldOverlay) container.appendChild(oldOverlay);
+
+    newSvg.getBoundingClientRect();
+    requestAnimationFrame(() => {
+      newSvg.style.transition = "opacity 220ms ease-out";
+      newSvg.style.opacity = "1";
+
+      if (oldOverlay) {
+        oldOverlay.style.transition = "opacity 220ms ease-out";
+        oldOverlay.style.opacity = "0";
+        window.setTimeout(() => oldOverlay.remove(), 260);
+      }
+    });
   }
 
   // Inject a chevron `<text>` SVG element into each foldable node. It stays
@@ -274,41 +321,47 @@
     }
   }
 
-  async function doRender() {
+  let renderGeneration = 0;
+
+  async function doRender(generation) {
     const src = renderSource();
     const container = document.getElementById("graph");
-    container.innerHTML = "";
     const id = "g_" + Math.random().toString(36).slice(2, 8);
     try {
       const { svg, bindFunctions } = await mermaid.render(id, src);
+      if (generation !== renderGeneration) return false;
       container.innerHTML = svg;
       if (bindFunctions) bindFunctions(container);
-      tagViewTransitionNames(container);   // must happen before the View Transitions snapshot is taken
       injectChevrons(container);
     } catch (e) {
+      if (generation !== renderGeneration) return false;
       container.innerHTML = `<pre style="color:#ff7575">${e.message}</pre><pre style="color:#7a8aa0;font-size:11px">${src}</pre>`;
-      return;
+      return false;
     }
     const state = collapsed.size === 0
       ? "(none collapsed)"
       : "collapsed = {" + [...collapsed].join(", ") + "}";
     document.getElementById("state-display").textContent = state;
+    return true;
   }
 
   async function rerender() {
-    // Use the View Transitions API if available — Chrome/Edge/Safari 18+
-    // give us a free cross-fade between the old and new SVG.
-    if (typeof document.startViewTransition === "function") {
-      const t = document.startViewTransition(() => doRender());
-      await t.finished.catch(() => {});
-      return;
-    }
-    // Fallback: opacity fade via the .rerendering class.
+    const generation = ++renderGeneration;
     const container = document.getElementById("graph");
-    container.classList.add("rerendering");
-    await new Promise(r => setTimeout(r, 140));
-    await doRender();
-    container.classList.remove("rerendering");
+
+    const oldVisibleIds = renderedNodeIds(container);
+    const oldOverlay = captureOldSvgOverlay(container);
+
+    const rendered = await doRender(generation);
+    if (!rendered || generation !== renderGeneration) return;
+
+    crossfadeSvgs(container, oldOverlay);
+    const newVisibleIds = renderedNodeIds(container);
+    for (const id of newVisibleIds) {
+      if (oldVisibleIds.has(id)) continue;
+      const el = findRenderedNode(container, id);
+      if (el) animateNewNode(el);
+    }
   }
 
   rerender();
