@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Visual partitioning — collapsible-regions PoC</title>
+<style>
+  body {
+    margin: 0;
+    background: #0a0e1a;
+    color: #dde6ff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    padding: 24px 32px;
+  }
+  header { max-width: 880px; margin-bottom: 16px; }
+  h1 { font-size: 20px; margin: 0 0 4px; color: #fff; font-weight: 500; }
+  p.lead { margin: 0; color: #9aa6b8; font-size: 14px; }
+  p.lead code { background: #1a2440; padding: 2px 6px; border-radius: 3px; font-size: 12px; color: #a8c5ff; }
+  #graph { max-width: 880px; margin-top: 16px; padding: 24px; background: #131a2c; border: 1px solid #233055; border-radius: 8px; min-height: 360px; }
+  #graph svg { display: block; margin: 0 auto; }
+  .controls { max-width: 880px; margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .controls button { background: #1a2440; color: #dde6ff; border: 1px solid #3a4d80; padding: 6px 12px; border-radius: 4px; font-size: 13px; cursor: pointer; font-family: inherit; }
+  .controls button:hover { background: #243056; }
+  .controls .hint { color: #6a7a99; font-size: 12px; align-self: center; margin-left: auto; }
+  /* Operator nodes (hexagons) — make them obviously clickable */
+  #graph .node[id*="impl"] rect, #graph .node[id*="mul"] rect, #graph .node[id*="inv"] rect, #graph .node[id*="eq"] rect,
+  #graph .node[id*="impl"] polygon, #graph .node[id*="mul"] polygon, #graph .node[id*="inv"] polygon, #graph .node[id*="eq"] polygon {
+    cursor: pointer;
+    transition: filter 0.15s;
+  }
+  #graph .node:hover polygon, #graph .node:hover rect { filter: brightness(1.3); }
+  /* Override Mermaid defaults for dark theme */
+  #graph .node .label { color: #dde6ff !important; }
+  #graph .edgeLabel { background: #131a2c !important; color: #cdd6e4 !important; }
+  /* Chevron — injected per-node by JS, toggled visible via direct mouseenter/leave handlers (CSS :hover proved unreliable through Mermaid's nested SVG structure). */
+  #graph .chevron { opacity: 0; transition: opacity 0.12s ease-out; pointer-events: none; font-size: 14px; font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Collapsible regions — proof of concept</h1>
+  <p class="lead">Click any operator node (the hexagons: <code>×</code>, <code>(·)⁻¹</code>, <code>⇒</code>) to fold its descendants into a tile labeled with its <code>subexpr</code>. Click the tile (or anywhere on the collapsed region) to re-expand. Variable nodes (circles) aren't collapsible — they're leaves.</p>
+</header>
+
+<div id="graph"></div>
+
+<div class="controls">
+  <button onclick="resetGraph()">Reset (expand all)</button>
+  <button onclick="collapseAll()">Collapse all operators</button>
+  <span class="hint">State: <code id="state-display"></code></span>
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "loose",   // required for `click NODE callback` directives to fire
+    theme: "base",
+    themeVariables: {
+      darkMode: true,
+      background: "#131a2c",
+      primaryColor: "#1a2440",
+      primaryBorderColor: "#3a4d80",
+      primaryTextColor: "#dde6ff",
+      lineColor: "#5a6d8a",
+      secondaryColor: "#1f4d2a",
+      tertiaryColor: "#222a44",
+    },
+    flowchart: { curve: "basis", padding: 20 },
+  });
+
+  // --------- Graph data: V_t = (g · Δt)^{-1} ---------
+  // Modeled after the linalg-dark screenshot. Variables on leaves,
+  // operators in middle, equality at root.
+  const graph = {
+    nodes: [
+      { id: "Vt",   label: "V<sub>t</sub>", kind: "var" },
+      { id: "g",    label: "g",             kind: "var" },
+      { id: "dt",   label: "Δt",            kind: "var" },
+      { id: "mul1", label: "×",             kind: "op", subexpr: "V_t \\cdot (g \\cdot \\Delta t)^{-1}" },
+      { id: "mul2", label: "×",             kind: "op", subexpr: "g \\cdot \\Delta t" },
+      { id: "inv",  label: "(·)⁻¹",         kind: "op", subexpr: "(g \\cdot \\Delta t)^{-1}" },
+      { id: "eq",   label: "=",             kind: "op", subexpr: "V_t = (g \\cdot \\Delta t)^{-1}" },
+    ],
+    edges: [
+      { from: "Vt",   to: "mul1", semantic: "direct"  },
+      { from: "inv",  to: "mul1", semantic: "inverse" },
+      { from: "g",    to: "mul2", semantic: "direct"  },
+      { from: "dt",   to: "mul2", semantic: "direct"  },
+      { from: "mul2", to: "inv",  semantic: "neutral" },
+      { from: "mul1", to: "eq",   semantic: "neutral" },
+    ],
+  };
+
+  // The asymmetric-target rule: which destinations get arrows?
+  const ASYMMETRIC_OPS = new Set(["inv"]);  // unary inverse is asymmetric
+  // mul1, mul2, eq are symmetric → plain lines
+
+  const collapsed = new Set();
+
+  // Topology helpers
+  function descendantsOf(nodeId) {
+    // All ids reachable backwards from nodeId via incoming edges (i.e. its subtree).
+    const result = new Set();
+    const stack = [nodeId];
+    while (stack.length) {
+      const cur = stack.pop();
+      for (const e of graph.edges) {
+        if (e.to === cur && !result.has(e.from)) {
+          result.add(e.from);
+          stack.push(e.from);
+        }
+      }
+    }
+    return result;
+  }
+
+  function isHidden(nodeId) {
+    // A node is hidden iff it's a descendant of any collapsed ancestor.
+    for (const cid of collapsed) {
+      if (descendantsOf(cid).has(nodeId)) return true;
+    }
+    return false;
+  }
+
+  // Render Mermaid source from current state.
+  function renderSource() {
+    const lines = ["flowchart TD"];
+    const visibleNodeIds = new Set();
+
+    for (const n of graph.nodes) {
+      if (isHidden(n.id)) continue;
+      visibleNodeIds.add(n.id);
+
+      if (collapsed.has(n.id)) {
+        // Collapsed tile carries the subexpr. The "click to expand" chevron
+        // (▸) is added on hover by injectChevrons() after render.
+        const tex = (n.subexpr || n.label).replace(/"/g, "'");
+        lines.push(`  ${n.id}["${tex}"]:::tile`);
+      } else if (n.kind === "var") {
+        lines.push(`  ${n.id}(("${n.label}")):::var`);
+      } else {
+        // Operator hexagon — clean glyph, no chevron. ▾ added on hover.
+        lines.push(`  ${n.id}{{"${n.label}"}}:::op`);
+      }
+    }
+
+    for (const e of graph.edges) {
+      if (!visibleNodeIds.has(e.from) || !visibleNodeIds.has(e.to)) continue;
+
+      const isArrow = ASYMMETRIC_OPS.has(e.to) || (collapsed.has(e.to) === false && graph.nodes.find(n => n.id === e.to)?.kind === "op" && ASYMMETRIC_OPS.has(e.to));
+      // Simpler: arrow iff destination is in ASYMMETRIC_OPS
+      const arrow = ASYMMETRIC_OPS.has(e.to) ? "-->" : "---";
+      const label = e.semantic && e.semantic !== "neutral" ? `|${e.semantic}|` : "";
+      if (label) {
+        // Mermaid syntax: A ---|label| B  or  A -->|label| B
+        const op = arrow === "-->" ? "-->" : "---";
+        lines.push(`  ${e.from} ${op}${label} ${e.to}`);
+      } else {
+        lines.push(`  ${e.from} ${arrow} ${e.to}`);
+      }
+    }
+
+    // Click handlers — register every visible operator node (collapsed or not).
+    for (const id of visibleNodeIds) {
+      const n = graph.nodes.find(nn => nn.id === id);
+      if (n.kind === "op") {
+        lines.push(`  click ${id} handleNodeClick "Toggle collapse"`);
+      }
+    }
+
+    // Edge styling: red for direct, blue for inverse, grey for neutral.
+    let i = 0;
+    for (const e of graph.edges) {
+      if (!visibleNodeIds.has(e.from) || !visibleNodeIds.has(e.to)) continue;
+      if (e.semantic === "direct") {
+        lines.push(`  linkStyle ${i} stroke:#e74c3c,stroke-width:3px`);
+      } else if (e.semantic === "inverse") {
+        lines.push(`  linkStyle ${i} stroke:#5b8fc7,stroke-width:1.8px`);
+      } else {
+        lines.push(`  linkStyle ${i} stroke:#7e8aa3,stroke-width:1.5px`);
+      }
+      i++;
+    }
+
+    // Class definitions for styling
+    lines.push(`  classDef var fill:#1f4d2a,stroke:#3b8c52,color:#dffce4`);
+    lines.push(`  classDef op fill:#1a2440,stroke:#3a4d80,color:#dde6ff`);
+    lines.push(`  classDef tile fill:#222a44,stroke:#5a8aff,color:#dfe6ff,stroke-width:2px`);
+
+    return lines.join("\n");
+  }
+
+  // Click handler — toggle collapse and re-render.
+  window.handleNodeClick = (nodeId) => {
+    if (collapsed.has(nodeId)) collapsed.delete(nodeId);
+    else                       collapsed.add(nodeId);
+    rerender();
+  };
+
+  window.resetGraph = () => {
+    collapsed.clear();
+    rerender();
+  };
+
+  window.collapseAll = () => {
+    collapsed.clear();
+    for (const n of graph.nodes) {
+      if (n.kind === "op") collapsed.add(n.id);
+    }
+    rerender();
+  };
+
+  // Inject a chevron `<text>` SVG element into each foldable node. It stays
+  // hidden via CSS opacity:0 and fades in only on hover of the parent <g>.
+  function injectChevrons(container) {
+    const svg = container.querySelector("svg");
+    if (!svg) return;
+    const SVG_NS = "http://www.w3.org/2000/svg";
+
+    for (const n of graph.nodes) {
+      if (n.kind !== "op") continue;            // only operator nodes are foldable
+      if (isHidden(n.id)) continue;             // skip nodes inside a collapsed subtree
+
+      // Mermaid prefixes node ids in the SVG. Match flowchart-<id>-<num>.
+      const nodeG = svg.querySelector(`g.node[id^="flowchart-${n.id}-"]`);
+      if (!nodeG) continue;
+
+      // Find the bounding shape (rect for tiles, polygon for hexagons) so we
+      // can position the chevron at its top-right corner.
+      const shape = nodeG.querySelector("polygon, rect");
+      if (!shape) continue;
+      const bb = shape.getBBox();
+
+      const chevron = document.createElementNS(SVG_NS, "text");
+      chevron.setAttribute("class", "chevron");
+      chevron.setAttribute("x", String(bb.x + bb.width - 8));
+      chevron.setAttribute("y", String(bb.y + 14));
+      chevron.setAttribute("text-anchor", "end");
+      chevron.setAttribute("fill", collapsed.has(n.id) ? "#5b8fc7" : "#a8c5ff");
+      chevron.textContent = collapsed.has(n.id) ? "▸" : "▾";
+      nodeG.appendChild(chevron);
+
+      // Direct mouseenter/leave listeners — more reliable than CSS :hover
+      // through Mermaid's nested SVG groups.
+      nodeG.addEventListener("mouseenter", () => { chevron.style.opacity = "0.9"; });
+      nodeG.addEventListener("mouseleave", () => { chevron.style.opacity = "0"; });
+    }
+  }
+
+  async function rerender() {
+    const src = renderSource();
+    const container = document.getElementById("graph");
+    container.innerHTML = "";
+    const id = "g_" + Math.random().toString(36).slice(2, 8);
+    try {
+      const { svg, bindFunctions } = await mermaid.render(id, src);
+      container.innerHTML = svg;
+      // Wire up Mermaid's click bindings (this is what calls handleNodeClick)
+      if (bindFunctions) bindFunctions(container);
+      injectChevrons(container);
+    } catch (e) {
+      container.innerHTML = `<pre style="color:#ff7575">${e.message}</pre><pre style="color:#7a8aa0;font-size:11px">${src}</pre>`;
+      return;
+    }
+
+    // Update state display
+    const state = collapsed.size === 0
+      ? "(none collapsed)"
+      : "collapsed = {" + [...collapsed].join(", ") + "}";
+    document.getElementById("state-display").textContent = state;
+  }
+
+  rerender();
+</script>
+</body>
+</html>
