@@ -15,10 +15,8 @@ svg.d3-semantic-graph {
     overflow: visible;
 }
 
-/* Variable nodes: green circle */
+/* Variable nodes — fill/stroke set by theme via inline attributes */
 .d3sg-var-bg {
-    fill: #1f4d2a;
-    stroke: #3b8c52;
     stroke-width: 1.5px;
     transition: filter 0.12s ease-out;
 }
@@ -26,10 +24,8 @@ svg.d3-semantic-graph {
     filter: brightness(1.3);
 }
 
-/* Operator nodes: dark hexagon */
+/* Operator nodes — fill/stroke set by theme via inline attributes */
 .d3sg-op-bg {
-    fill: #1a2440;
-    stroke: #3a4d80;
     stroke-width: 1.5px;
     transition: filter 0.12s ease-out;
 }
@@ -37,10 +33,8 @@ svg.d3-semantic-graph {
     filter: brightness(1.3);
 }
 
-/* Collapsed tile */
+/* Collapsed tile — fill/stroke set by theme via inline attributes */
 .d3sg-tile-bg {
-    fill: #222a44;
-    stroke: #5a8aff;
     stroke-width: 2px;
     transition: filter 0.12s ease-out;
 }
