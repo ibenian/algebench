@@ -133,15 +133,33 @@ function graphToTree(graph) {
         edgeSemanticMap[`${e.from}->${e.to}`] = inferEdgeSemantic(e, nodeById);
     }
 
-    const visited = new Set();
+    const visiting = new Set();
+    let cloneSeq = 0;
     function buildTree(id) {
-        if (visited.has(id)) return null;
-        visited.add(id);
+        // Prevent infinite recursion on cycles, but allow DAG sharing:
+        // leaf nodes (no children) are cloned; interior nodes are skipped
+        // to avoid exponential blowup.
+        if (visiting.has(id)) return null;
         const node = nodeById[id];
         if (!node) return null;
-        const treeNode = { ...node, children: [], _edgeSemantic: null };
         const kids = childrenOf[id] || [];
+        const isLeaf = kids.length === 0;
+        if (!isLeaf && visiting.has(id)) return null;
+
+        visiting.add(id);
+        const treeNode = { ...node, children: [], _edgeSemantic: null };
         for (const kid of kids) {
+            const kidNode = nodeById[kid];
+            const kidKids = childrenOf[kid] || [];
+            const kidIsLeaf = kidKids.length === 0;
+            // Clone leaf nodes that were already placed elsewhere in the tree
+            if (kidIsLeaf && visiting.has(kid) && kidNode) {
+                const clone = { ...kidNode, id: `${kid}__clone${++cloneSeq}`,
+                    _cloneOf: kid, children: [], _edgeSemantic: null };
+                clone._edgeSemantic = edgeSemanticMap[`${kid}->${id}`] || 'neutral';
+                treeNode.children.push(clone);
+                continue;
+            }
             const child = buildTree(kid);
             if (child) {
                 child._edgeSemantic = edgeSemanticMap[`${kid}->${id}`] || 'neutral';
@@ -173,10 +191,12 @@ function getNodeLabel(node, labelMode) {
 function operatorGlyph(node) {
     const glyphs = {
         equals: '=', multiply: '×', add: '+', subtract: '−',
-        divide: '÷', power: '^', integral: '∫',
+        divide: '÷', integral: '∫',
         implies: '⇒', iff: '⇔', negate: '¬', conjunction: '∧',
         disjunction: '∨', sum: '∑', product: '∏', limit: 'lim',
-        factorial: '!', sqrt: '√', logarithm: 'log', function: 'f',
+        factorial: '!', sqrt: '√(·)', log: 'log', logarithm: 'log',
+        exp: 'exp', sin: 'sin', cos: 'cos', tan: 'tan',
+        Abs: '|·|', abs: '|·|', function: 'f',
     };
     if (node.op === 'derivative') return 'd·/d·';
     if (node.op === 'power') {
@@ -585,7 +605,7 @@ export class D3SemanticGraphRenderer {
     }
 
     _handleNodeClick(d) {
-        const nodeId = d.data.id;
+        const nodeId = d.data._cloneOf || d.data.id;
         if (this._activeNodeId === nodeId) {
             this._activeNodeId = null;
         } else {
