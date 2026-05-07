@@ -593,17 +593,26 @@ export class D3SemanticGraphRenderer {
         this._renderTree(nodeId);
     }
 
-    _chevronPos(isCollapsed) {
+    _chevronPos(isCollapsed, shape) {
         const glyph = isCollapsed ? '+' : '−';
+        const sz = 14, half = sz / 2;
         const dir = this.direction;
-        if (dir === 'left-right') return { glyph, x: 22, y: -18 };
-        if (dir === 'right-left') return { glyph, x: -34, y: -18 };
-        if (dir === 'bottom-up') return { glyph, x: -6, y: -24 };
-        return { glyph, x: -6, y: 20 };
+        if (shape.type === 'rect') {
+            if (dir === 'left-right')  return { glyph, x: shape.hw - half, y: -half };
+            if (dir === 'right-left')  return { glyph, x: -shape.hw - half, y: -half };
+            if (dir === 'bottom-up')   return { glyph, x: -half, y: -shape.hh - half };
+            return { glyph, x: -half, y: shape.hh - half };
+        }
+        const r = shape.r || 26;
+        if (dir === 'left-right')  return { glyph, x: r - half, y: -half };
+        if (dir === 'right-left')  return { glyph, x: -r - half, y: -half };
+        if (dir === 'bottom-up')   return { glyph, x: -half, y: -r - half };
+        return { glyph, x: -half, y: r - half };
     }
 
     _appendChevron(group, d, isCollapsed) {
-        const cp = this._chevronPos(isCollapsed);
+        const shape = this._nodeShape(d);
+        const cp = this._chevronPos(isCollapsed, shape);
         const self = this;
         const sz = 14;
         const g = group.append('g')
@@ -657,11 +666,7 @@ export class D3SemanticGraphRenderer {
 
             this._renderLabel(group, data, estimatedWidth, true, style);
 
-            const cp = this._chevronPos(true);
-            const cx = cp.x < 0 ? -estimatedWidth / 2 + 4 : estimatedWidth / 2 - 16;
-            const cy = cp.y < 0 ? -16 : 16;
-            this._appendChevron(group, d, true)
-                .attr('transform', `translate(${cx},${cy})`);
+            this._appendChevron(group, d, true);
             return;
         }
 
