@@ -404,10 +404,21 @@ export class D3SemanticGraphRenderer {
         const d3 = this._d3;
         if (interactionId) this._lastInteractionId = interactionId;
 
+        const oldPos = interactionId ? this._positionById.get(interactionId) : null;
+
         const layout = this._layoutGraph();
         if (!layout) return;
 
         const { nodes, edges: links } = layout;
+
+        if (oldPos && interactionId) {
+            const anchor = nodes.find(n => n.data.id === interactionId);
+            if (anchor) {
+                const dx = oldPos.x - anchor.x;
+                const dy = oldPos.y - anchor.y;
+                for (const n of nodes) { n.x += dx; n.y += dy; }
+            }
+        }
 
         const xs = nodes.map(n => n.x);
         const ys = nodes.map(n => n.y);
