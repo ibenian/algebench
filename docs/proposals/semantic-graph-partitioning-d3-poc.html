@@ -15,6 +15,7 @@
   h1 { font-size: 20px; margin: 0 0 4px; color: #fff; font-weight: 500; }
   p.lead { margin: 0; color: #9aa6b8; font-size: 14px; line-height: 1.45; }
   p.lead code { background: #1a2440; padding: 2px 6px; border-radius: 3px; font-size: 12px; color: #a8c5ff; }
+  .notice { max-width: 920px; margin-top: 10px; color: #d8b86f; font-size: 13px; }
   #graph {
     max-width: 920px;
     min-height: 420px;
@@ -92,6 +93,7 @@
 <header>
   <h1>D3 collapsible semantic graph - proof of concept</h1>
   <p class="lead">This version skips Mermaid and renders the same semantic graph directly with D3. Click operator nodes to collapse a subtree into a tile. Persistent nodes move, entering nodes fade/scale in, and exiting nodes fade/scale out toward the clicked operator.</p>
+  <p class="notice">Local proof of concept only. This is not production renderer code and must not be used with untrusted graph input.</p>
 </header>
 
 <div id="graph">
