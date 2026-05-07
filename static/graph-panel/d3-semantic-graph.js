@@ -589,18 +589,24 @@ export class D3SemanticGraphRenderer {
         const isOp = data.type === 'operator' || data.type === 'relation' || data.type === 'function';
         const style = this._nodeStyle(data.type);
 
+        const invisible = (!style.fill || style.fill === 'none') &&
+                           (!style.stroke || style.stroke === 'none');
+
         if (data._collapsed) {
             const label = data.subexpr || data.label || data.id;
             const estimatedWidth = Math.max(100, Math.min(260, label.length * 7 + 30));
-            group.append('rect')
-                .attr('class', 'd3sg-tile-bg')
+            const tile = group.append('rect')
+                .attr('class', invisible ? 'd3sg-hit-target' : 'd3sg-tile-bg')
                 .attr('x', -estimatedWidth / 2)
                 .attr('y', -24)
                 .attr('width', estimatedWidth)
                 .attr('height', 48)
-                .attr('rx', 6)
-                .attr('fill', style.fill || '')
-                .attr('stroke', style.stroke || '');
+                .attr('rx', 6);
+            if (invisible) {
+                tile.style('fill', 'transparent').style('stroke', 'none');
+            } else {
+                tile.attr('fill', style.fill || '').attr('stroke', style.stroke || '');
+            }
 
             this._renderLabel(group, data, estimatedWidth, true, style);
 
@@ -613,20 +619,17 @@ export class D3SemanticGraphRenderer {
             return;
         }
 
-        const invisible = (!style.fill || style.fill === 'none') &&
-                           (!style.stroke || style.stroke === 'none');
-
         if (invisible) {
             const bw = 56, bh = 36;
             group.append('rect')
-                .attr('class', isOp ? 'd3sg-op-bg' : 'd3sg-var-bg')
+                .attr('class', 'd3sg-hit-target')
                 .attr('x', -bw / 2)
                 .attr('y', -bh / 2)
                 .attr('width', bw)
                 .attr('height', bh)
                 .attr('rx', 4)
-                .attr('fill', 'transparent')
-                .attr('stroke', 'none');
+                .style('fill', 'transparent')
+                .style('stroke', 'none');
         } else if (isOp) {
             const r = 28;
             const points = Array.from({ length: 6 }, (_, i) => {

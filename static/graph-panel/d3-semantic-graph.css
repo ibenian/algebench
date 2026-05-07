@@ -81,6 +81,21 @@ svg.d3-semantic-graph {
     opacity: 0.85;
 }
 
+/* Invisible hit target for flat themes */
+.d3sg-hit-target {
+    transition: stroke 0.12s ease-out, stroke-opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-hit-target {
+    stroke: #7ea8ff !important;
+    stroke-width: 1.5px !important;
+    stroke-opacity: 0.45;
+}
+.d3sg-node.active .d3sg-hit-target {
+    stroke: #7ea8ff !important;
+    stroke-width: 1.5px !important;
+    stroke-opacity: 0.6;
+}
+
 /* Active node ring */
 .d3sg-node.active .d3sg-var-bg {
     stroke: #6df08e;
