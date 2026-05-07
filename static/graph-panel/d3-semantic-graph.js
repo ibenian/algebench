@@ -1,14 +1,16 @@
 /**
  * D3SemanticGraphRenderer — renders a semantic graph model directly with D3.
  *
- * Consumes the flat {nodes, edges} semantic graph model and converts it to a
- * tree for layout. Renders with D3 keyed joins (enter/update/exit), supporting
- * collapse/expand, KaTeX labels via foreignObject, and edge-semantic coloring.
+ * Consumes the flat {nodes, edges} semantic graph model and uses dagre for
+ * DAG layout (shared nodes appear once with multiple edges). Renders with
+ * D3 keyed joins (enter/update/exit), supporting collapse/expand, KaTeX
+ * labels via foreignObject, and edge-semantic coloring.
  *
  * This renderer does NOT touch the Mermaid path — it exists as an alternative.
  */
 
 const D3_CDN_URL = 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
+const DAGRE_CDN_URL = 'https://cdn.jsdelivr.net/npm/@dagrejs/dagre@1.1.4/dist/dagre.min.js';
 
 const SUPERSCRIPT_MAP = {
     '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
@@ -31,6 +33,28 @@ function loadD3() {
     });
     _d3LoadPromise.catch(() => { _d3LoadPromise = null; });
     return _d3LoadPromise;
+}
+
+let _dagre = null;
+let _dagreLoadPromise = null;
+
+function loadDagre() {
+    if (_dagre) return Promise.resolve(_dagre);
+    if (_dagreLoadPromise) return _dagreLoadPromise;
+    _dagreLoadPromise = new Promise((resolve, reject) => {
+        if (typeof window !== 'undefined' && window.dagre) {
+            _dagre = window.dagre;
+            resolve(_dagre);
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = DAGRE_CDN_URL;
+        script.onload = () => { _dagre = window.dagre; resolve(_dagre); };
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+    _dagreLoadPromise.catch(() => { _dagreLoadPromise = null; });
+    return _dagreLoadPromise;
 }
 
 // Default edge styles (fallback when theme has no edgeStyles)
@@ -93,84 +117,7 @@ function inferEdgeSemantic(edge, nodeById) {
     return 'neutral';
 }
 
-/**
- * Convert flat {nodes, edges} to a rooted tree for d3.hierarchy.
- * Finds the root (node with no incoming edges, or the first relation/equals
- * operator), then builds children arrays by following edges.
- */
-function graphToTree(graph) {
-    const nodes = graph.nodes || [];
-    const edges = graph.edges || [];
-    if (!nodes.length) return null;
-
-    const nodeById = Object.create(null);
-    for (const n of nodes) nodeById[n.id] = { ...n, children: [] };
-
-    // Edges flow from operands → operator (leaf → root), so the root is the
-    // node that never appears as an edge source (no outgoing edges).
-    const hasOutgoing = new Set();
-    for (const e of edges) hasOutgoing.add(e.from);
-
-    let rootId = null;
-    const candidates = nodes.filter(n => !hasOutgoing.has(n.id));
-    if (candidates.length) {
-        const relNode = candidates.find(n =>
-            n.type === 'relation' || n.op === 'equals' || n.op === 'implies' || n.op === 'iff');
-        rootId = relNode ? relNode.id : candidates[0].id;
-    } else {
-        const eq = nodes.find(n => n.op === 'equals');
-        rootId = eq ? eq.id : nodes[0].id;
-    }
-
-    // Build parent→child from edges (from→to means "from" is child of "to"
-    // in our model: edges point from operands toward the operator/root).
-    // So the children of a node are those that have edges pointing TO that node.
-    const childrenOf = Object.create(null);
-    const edgeSemanticMap = Object.create(null);
-    for (const e of edges) {
-        if (!childrenOf[e.to]) childrenOf[e.to] = [];
-        childrenOf[e.to].push(e.from);
-        edgeSemanticMap[`${e.from}->${e.to}`] = inferEdgeSemantic(e, nodeById);
-    }
-
-    const visiting = new Set();
-    let cloneSeq = 0;
-    function buildTree(id) {
-        // Prevent infinite recursion on cycles, but allow DAG sharing:
-        // leaf nodes (no children) are cloned; interior nodes are skipped
-        // to avoid exponential blowup.
-        if (visiting.has(id)) return null;
-        const node = nodeById[id];
-        if (!node) return null;
-        const kids = childrenOf[id] || [];
-        const isLeaf = kids.length === 0;
-        if (!isLeaf && visiting.has(id)) return null;
-
-        visiting.add(id);
-        const treeNode = { ...node, children: [], _edgeSemantic: null };
-        for (const kid of kids) {
-            const kidNode = nodeById[kid];
-            const kidKids = childrenOf[kid] || [];
-            const kidIsLeaf = kidKids.length === 0;
-            // Clone leaf nodes that were already placed elsewhere in the tree
-            if (kidIsLeaf && visiting.has(kid) && kidNode) {
-                const clone = { ...kidNode, id: `${kid}__clone${++cloneSeq}`,
-                    _cloneOf: kid, children: [], _edgeSemantic: null };
-                clone._edgeSemantic = edgeSemanticMap[`${kid}->${id}`] || 'neutral';
-                treeNode.children.push(clone);
-                continue;
-            }
-            const child = buildTree(kid);
-            if (child) {
-                child._edgeSemantic = edgeSemanticMap[`${kid}->${id}`] || 'neutral';
-                treeNode.children.push(child);
-            }
-        }
-        return treeNode;
-    }
-
-    return buildTree(rootId);
-}
+// No tree conversion needed — dagre handles DAG layout directly.
 
 /**
  * Get the display label for a node, respecting label detail level.
@@ -198,7 +145,11 @@ function operatorGlyph(node) {
         exp: 'exp', sin: 'sin', cos: 'cos', tan: 'tan',
         Abs: '|·|', abs: '|·|', function: 'f',
     };
-    if (node.op === 'derivative') return 'd·/d·';
+    if (node.op === 'derivative') {
+        if (node.with_respect_to && (!node._childIds || node._childIds.length <= 1))
+            return `d·/d${node.with_respect_to}`;
+        return 'd·/d·';
+    }
     if (node.op === 'power') {
         const exp = node.exponent || 'n';
         return `(·)${toSuperscript(exp)}`;
@@ -228,11 +179,11 @@ export class D3SemanticGraphRenderer {
         this.onBackgroundClick = opts.onBackgroundClick || null;
 
         this._graph = null;
-        this._tree = null;
         this._theme = null;
         this._collapsed = new Set();
         this._svg = null;
         this._d3 = null;
+        this._dagre = null;
         this._positionById = new Map();
         this._lastInteractionId = null;
         this._activeNodeId = null;
@@ -242,19 +193,20 @@ export class D3SemanticGraphRenderer {
     async render(graph) {
         if (this._destroyed) return;
         this._graph = graph;
-        this._d3 = await loadD3();
+        const [d3, dagre] = await Promise.all([loadD3(), loadDagre()]);
         if (this._destroyed) return;
+        this._d3 = d3;
+        this._dagre = dagre;
         this._theme = await fetchTheme(this.themeName);
         if (this._destroyed) return;
 
-        this._tree = graphToTree(graph);
-        if (!this._tree) {
-            this.container.innerHTML = '<div style="color:#7e8aa3;padding:2rem;text-align:center;">No renderable tree structure.</div>';
+        if (!graph.nodes || !graph.nodes.length) {
+            this.container.innerHTML = '<div style="color:#7e8aa3;padding:2rem;text-align:center;">No renderable graph structure.</div>';
             return;
         }
-        this._lastInteractionId = this._tree.id;
+        this._lastInteractionId = graph.nodes[0].id;
         this._setupSvg();
-        this._renderTree();
+        this._renderGraph();
     }
 
     async update(opts = {}) {
@@ -264,8 +216,8 @@ export class D3SemanticGraphRenderer {
             this.themeName = opts.theme;
             this._theme = await fetchTheme(this.themeName);
         }
-        if (this._d3 && this._tree) {
-            this._renderTree();
+        if (this._d3 && this._dagre && this._graph) {
+            this._renderGraph();
         }
     }
 
@@ -288,7 +240,6 @@ export class D3SemanticGraphRenderer {
         this.container.innerHTML = '';
         this._svg = null;
         this._graph = null;
-        this._tree = null;
         this._positionById.clear();
     }
 
@@ -347,50 +298,117 @@ export class D3SemanticGraphRenderer {
         });
     }
 
-    _cloneVisible(node) {
-        const isCollapsed = this._collapsed.has(node.id);
-        return {
-            ...node,
-            _collapsed: isCollapsed,
-            children: isCollapsed ? [] : (node.children || []).map(c => this._cloneVisible(c)),
-        };
-    }
-
     _isHorizontal() {
         return this.direction === 'left-right' || this.direction === 'right-left';
     }
 
-    _isReversed() {
-        return this.direction === 'right-left' || this.direction === 'bottom-up';
+    _layoutGraph() {
+        const dagre = this._dagre;
+        const graph = this._graph;
+        const nodes = graph.nodes || [];
+        const edges = graph.edges || [];
+
+        const nodeById = Object.create(null);
+        for (const n of nodes) nodeById[n.id] = n;
+
+        const childrenOf = Object.create(null);
+        for (const e of edges) {
+            if (!childrenOf[e.to]) childrenOf[e.to] = [];
+            childrenOf[e.to].push(e.from);
+        }
+
+        // BFS from roots to find visible nodes (stop at collapsed)
+        const hasOutgoing = new Set(edges.map(e => e.from));
+        const roots = nodes.filter(n => !hasOutgoing.has(n.id));
+
+        const visible = new Set();
+        const queue = roots.map(r => r.id);
+        while (queue.length) {
+            const id = queue.shift();
+            if (visible.has(id)) continue;
+            visible.add(id);
+            if (this._collapsed.has(id)) continue;
+            for (const child of (childrenOf[id] || [])) queue.push(child);
+        }
+
+        const rankdir = this.direction === 'top-down' ? 'TB' :
+                        this.direction === 'bottom-up' ? 'BT' :
+                        this.direction === 'left-right' ? 'LR' : 'RL';
+
+        const g = new dagre.graphlib.Graph({ multigraph: true });
+        g.setGraph({ rankdir, nodesep: 60, ranksep: 80, marginx: 40, marginy: 40 });
+        g.setDefaultEdgeLabel(() => ({}));
+
+        for (const n of nodes) {
+            if (!visible.has(n.id)) continue;
+            const isCollapsed = this._collapsed.has(n.id);
+            const isOp = n.type === 'operator' || n.type === 'relation' || n.type === 'function';
+            let w, h;
+            if (isCollapsed) {
+                const label = n.subexpr || n.label || n.id || '';
+                w = Math.max(100, Math.min(260, label.length * 7 + 30));
+                h = 48;
+            } else if (isOp) {
+                w = 56; h = 56;
+            } else {
+                w = 52; h = 52;
+            }
+            g.setNode(n.id, { width: w, height: h });
+        }
+
+        const edgeSemanticMap = Object.create(null);
+        for (const e of edges) {
+            if (!visible.has(e.from) || !visible.has(e.to)) continue;
+            const key = `${e.from}->${e.to}`;
+            edgeSemanticMap[key] = inferEdgeSemantic(e, nodeById);
+            g.setEdge(e.to, e.from, {}, key);
+        }
+
+        dagre.layout(g);
+
+        const nodeWrappers = Object.create(null);
+        const layoutNodes = [];
+        for (const id of g.nodes()) {
+            const pos = g.node(id);
+            const wrapper = {
+                data: {
+                    ...nodeById[id],
+                    _collapsed: this._collapsed.has(id),
+                    _childIds: childrenOf[id] || [],
+                },
+                x: pos.x,
+                y: pos.y,
+            };
+            nodeWrappers[id] = wrapper;
+            layoutNodes.push(wrapper);
+        }
+
+        const layoutEdges = [];
+        for (const e of edges) {
+            if (!visible.has(e.from) || !visible.has(e.to)) continue;
+            const src = nodeWrappers[e.to];
+            const tgt = nodeWrappers[e.from];
+            if (!src || !tgt) continue;
+            layoutEdges.push({
+                source: src,
+                target: tgt,
+                id: `${e.from}->${e.to}`,
+                semantic: edgeSemanticMap[`${e.from}->${e.to}`] || 'neutral',
+            });
+        }
+
+        return { nodes: layoutNodes, edges: layoutEdges };
     }
 
-    _renderTree(interactionId) {
+    _renderGraph(interactionId) {
         const d3 = this._d3;
         if (interactionId) this._lastInteractionId = interactionId;
 
-        const visibleRoot = this._cloneVisible(this._tree);
-        const root = d3.hierarchy(visibleRoot);
+        const layout = this._layoutGraph();
+        if (!layout) return;
 
-        const horizontal = this._isHorizontal();
-        const nodeSpacing = horizontal ? [80, 180] : [160, 100];
-        const layout = d3.tree()
-            .nodeSize(nodeSpacing)
-            .separation((a, b) => a.parent === b.parent ? 1 : 1.15);
-        layout(root);
+        const { nodes, edges: links } = layout;
 
-        const nodes = root.descendants();
-        const links = root.links().map(link => ({
-            ...link,
-            id: `${link.source.data.id}--${link.target.data.id}`,
-            semantic: link.target.data._edgeSemantic || 'neutral',
-        }));
-
-        // Flip axes for horizontal layout and compute bounding box
-        if (horizontal) {
-            for (const n of nodes) { const tmp = n.x; n.x = n.y; n.y = tmp; }
-        }
-
-        // Center the graph within a viewBox
         const xs = nodes.map(n => n.x);
         const ys = nodes.map(n => n.y);
         const minX = Math.min(...xs) - 100;
@@ -399,11 +417,6 @@ export class D3SemanticGraphRenderer {
         const maxY = Math.max(...ys) + 60;
         const width = Math.max(maxX - minX, 300);
         const height = Math.max(maxY - minY, 200);
-
-        if (this._isReversed()) {
-            const midX = (minX + maxX) / 2;
-            for (const n of nodes) n.x = midX - (n.x - midX);
-        }
 
         this._svg.attr('viewBox', `${minX} ${minY} ${width} ${height}`);
 
@@ -414,7 +427,6 @@ export class D3SemanticGraphRenderer {
         this._renderEdgeLabels(links, transition, d3);
         this._renderNodes(nodes, transition, d3);
 
-        // Store positions for enter/exit animations
         for (const n of nodes) this._positionById.set(n.data.id, { x: n.x, y: n.y });
     }
 
@@ -601,11 +613,11 @@ export class D3SemanticGraphRenderer {
     _isCollapsible(d) {
         const kind = d.data.type;
         return (kind === 'operator' || kind === 'relation' || kind === 'function') &&
-            (d.data.children && d.data.children.length > 0);
+            (d.data._childIds && d.data._childIds.length > 0);
     }
 
     _handleNodeClick(d) {
-        const nodeId = d.data._cloneOf || d.data.id;
+        const nodeId = d.data.id;
         if (this._activeNodeId === nodeId) {
             this._activeNodeId = null;
         } else {
@@ -622,7 +634,7 @@ export class D3SemanticGraphRenderer {
         } else {
             this._collapsed.add(nodeId);
         }
-        this._renderTree(nodeId);
+        this._renderGraph(nodeId);
     }
 
     _chevronPos(isCollapsed, shape) {
@@ -734,7 +746,7 @@ export class D3SemanticGraphRenderer {
 
         this._renderLabel(group, data, invisible ? 56 : (isOp ? 56 : 52), false, style);
 
-        if (isOp && data.children && data.children.length > 0) {
+        if (isOp && data._childIds && data._childIds.length > 0) {
             this._appendChevron(group, d, false);
         }
     }
