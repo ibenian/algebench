@@ -19,12 +19,17 @@
 import { state } from '/state.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer } from '/graph-panel/d3-semantic-graph.js';
+import { makeAiAskButton } from '/labels.js';
 
 let _currentGraphPanel = null;
 let _currentSemanticKey = null;
 let _activeStepForPanel = null;
 let _initDone = false;
 let _currentD3Renderer = null;
+let _d3NodeAskBtn = null;
+let _d3NodeAskHideTimer = null;
+let _d3HoveredNodeId = null;
+let _d3ActiveGraph = null;
 
 // Persisted user preferences. localStorage keys are versioned with an
 // `algebench.graph.` prefix so future format changes can be migrated without
@@ -656,6 +661,8 @@ async function _renderWithD3(container, graph, step, key) {
     const infoHost = document.getElementById('graph-info-panel-host');
     if (infoHost) infoHost.innerHTML = '';
 
+    _d3ActiveGraph = graph;
+
     // Reuse or create D3 renderer
     if (!_currentD3Renderer || _currentD3Renderer._destroyed) {
         _currentD3Renderer = new D3SemanticGraphRenderer(container, {
@@ -664,11 +671,18 @@ async function _renderWithD3(container, graph, step, key) {
             labels: _currentLabels,
             theme: _currentTheme,
             onNodeClick: (nodeId, nodeData) => {
-                _activeStepForPanel = step;
-                _showD3InfoPanel(nodeId, nodeData, graph);
+                _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
             },
             onBackgroundClick: () => {
                 _hideD3InfoPanel();
+            },
+            onNodeHover: (nodeId, nodeData, nodeEl) => {
+                if (nodeId && nodeEl) {
+                    _d3HoveredNodeId = nodeId;
+                    _showD3NodeAskBtn(nodeEl);
+                } else {
+                    _hideD3NodeAskBtn();
+                }
             },
         });
     } else {
@@ -686,6 +700,74 @@ async function _renderWithD3(container, graph, step, key) {
     enrichGraphInBackground(graph, key, step);
 }
 
+function _buildD3NodeAskMessage(nodeId, graph) {
+    if (!nodeId || !graph) return 'Explain this graph node.';
+    const node = (graph.nodes || []).find(n => n.id === nodeId);
+    if (!node) return 'Explain this graph node.';
+    const lines = ['Explain this semantic graph node:'];
+    if (node.label) lines.push(`Label: ${node.label}`);
+    if (node.type) lines.push(`Type: ${node.type}`);
+    if (node.role) lines.push(`Role: ${node.role}`);
+    if (node.quantity) lines.push(`Quantity: ${node.quantity}`);
+    if (node.dimension) lines.push(`Dimension: ${node.dimension}`);
+    if (node.unit) lines.push(`Unit: ${node.unit}`);
+    if (node.value !== undefined) lines.push(`Value: ${node.value}`);
+    if (node.op) lines.push(`Operation: ${node.op}`);
+    if (node.subexpr) lines.push(`Expression: $${node.subexpr}$`);
+    if (node.description) lines.push(`Description: ${node.description}`);
+    const incoming = [], outgoing = [];
+    for (const e of (graph.edges || [])) {
+        if (e.to === nodeId && e.from !== nodeId) incoming.push(e.from);
+        if (e.from === nodeId && e.to !== nodeId) outgoing.push(e.to);
+    }
+    if (incoming.length) lines.push(`Incoming: ${incoming.join(', ')}`);
+    if (outgoing.length) lines.push(`Outgoing: ${outgoing.join(', ')}`);
+    return lines.join('\n');
+}
+
+function _ensureD3NodeAskBtn() {
+    if (_d3NodeAskBtn) return _d3NodeAskBtn;
+    const btn = makeAiAskButton(
+        'ai-ask-btn graph-node-ai-btn',
+        'Ask AI about this node',
+        () => _buildD3NodeAskMessage(_d3HoveredNodeId, _d3ActiveGraph),
+    );
+    btn.style.position = 'fixed';
+    btn.style.opacity = '0';
+    btn.style.pointerEvents = 'none';
+    btn.style.zIndex = '950';
+    btn.addEventListener('mouseenter', () => {
+        if (_d3NodeAskHideTimer) { clearTimeout(_d3NodeAskHideTimer); _d3NodeAskHideTimer = null; }
+    });
+    btn.addEventListener('mouseleave', () => _hideD3NodeAskBtn());
+    document.body.appendChild(btn);
+    _d3NodeAskBtn = btn;
+    return btn;
+}
+
+function _showD3NodeAskBtn(nodeEl) {
+    const btn = _ensureD3NodeAskBtn();
+    if (_d3NodeAskHideTimer) { clearTimeout(_d3NodeAskHideTimer); _d3NodeAskHideTimer = null; }
+    const shape = nodeEl.querySelector('polygon, circle, rect');
+    const r = (shape || nodeEl).getBoundingClientRect();
+    const btnW = btn.offsetWidth || 24;
+    const btnH = btn.offsetHeight || 24;
+    btn.style.left = (r.right - btnW / 2) + 'px';
+    btn.style.top = (r.top - btnH / 2) + 'px';
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+}
+
+function _hideD3NodeAskBtn() {
+    if (!_d3NodeAskBtn) return;
+    if (_d3NodeAskHideTimer) { clearTimeout(_d3NodeAskHideTimer); _d3NodeAskHideTimer = null; }
+    const btn = _d3NodeAskBtn;
+    _d3NodeAskHideTimer = setTimeout(() => {
+        btn.style.opacity = '0';
+        btn.style.pointerEvents = 'none';
+    }, 220);
+}
+
 function _showD3InfoPanel(nodeId, nodeData, graph) {
     const infoHost = document.getElementById('graph-info-panel-host');
     if (!infoHost) return;
@@ -696,6 +778,21 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
     infoHost.innerHTML = '';
     const panel = buildInlineInfoPanel(infoHost);
     if (!panel) return;
+
+    // Inject AI ask button into panel header
+    const h3 = panel.querySelector('h3');
+    if (h3 && !panel.querySelector('.graph-panel-ai-btn')) {
+        const header = document.createElement('div');
+        header.className = 'gp-header';
+        h3.replaceWith(header);
+        header.appendChild(h3);
+        const askBtn = makeAiAskButton(
+            'ai-ask-btn graph-panel-ai-btn',
+            'Ask AI about this node',
+            () => _buildD3NodeAskMessage(nodeId, graph),
+        );
+        header.appendChild(askBtn);
+    }
 
     // Populate the inline panel
     const symbolEl = panel.querySelector('.gp-symbol');

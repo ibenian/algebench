@@ -165,7 +165,7 @@ export class D3SemanticGraphRenderer {
      * @param {'top-down'|'left-right'|'right-left'|'bottom-up'} [opts.direction]
      * @param {'minimal'|'description'|'full'} [opts.labels]
      * @param {Function} [opts.onNodeClick] — callback(nodeId, nodeData)
-     * @param {Function} [opts.onNodeHover] — callback(nodeId|null, nodeData|null, event)
+     * @param {Function} [opts.onNodeHover] — callback(nodeId|null, nodeData|null, nodeEl|null)
      * @param {Function} [opts.onBackgroundClick] — callback()
      */
     constructor(container, opts = {}) {
@@ -570,10 +570,10 @@ export class D3SemanticGraphRenderer {
                 self._handleNodeClick(d);
             })
             .on('mouseenter', function (event, d) {
-                if (self.onNodeHover) self.onNodeHover(d.data.id, d.data, event);
+                if (self.onNodeHover) self.onNodeHover(d.data.id, d.data, this);
             })
-            .on('mouseleave', function (event) {
-                if (self.onNodeHover) self.onNodeHover(null, null, event);
+            .on('mouseleave', function () {
+                if (self.onNodeHover) self.onNodeHover(null, null, null);
             });
 
         nodeEnter.each(function (d) { self._drawNode(d3.select(this), d); });
