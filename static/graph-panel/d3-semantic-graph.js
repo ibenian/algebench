@@ -152,15 +152,13 @@ function graphToTree(graph) {
  */
 function getNodeLabel(node, labelMode) {
     if (node.type === 'operator' || node.type === 'relation' || node.type === 'function') {
-        const glyph = operatorGlyph(node);
-        if (labelMode === 'minimal') return glyph;
-        if (node.description && labelMode !== 'minimal') return glyph;
-        return glyph;
+        return operatorGlyph(node);
     }
-    if (labelMode === 'minimal') {
-        return node.emoji || node.latex || node.label || node.id;
-    }
-    return node.latex || node.label || node.id;
+    const base = (labelMode === 'minimal')
+        ? (node.emoji || node.latex || node.label || node.id)
+        : (node.latex || node.label || node.id);
+    if (node.emoji && base !== node.emoji) return node.emoji + ' ' + base;
+    return base;
 }
 
 function operatorGlyph(node) {
@@ -735,6 +733,12 @@ export class D3SemanticGraphRenderer {
             const span = document.createElement('span');
             try {
                 this.katex.render(latex, span, { throwOnError: false, displayMode: false });
+                if (data.emoji) {
+                    const emojiSpan = document.createElement('span');
+                    emojiSpan.textContent = data.emoji;
+                    emojiSpan.style.marginRight = '4px';
+                    div.node().appendChild(emojiSpan);
+                }
                 div.node().appendChild(span);
             } catch (_) {
                 div.text(data.label || data.id);
