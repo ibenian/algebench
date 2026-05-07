@@ -386,33 +386,45 @@ export class D3SemanticGraphRenderer {
         for (const n of nodes) this._positionById.set(n.data.id, { x: n.x, y: n.y });
     }
 
-    _nodeRadius(d) {
-        if (!d || !d.data) return 26;
-        if (d.data._collapsed) return 24;
+    _nodeShape(d) {
+        if (!d || !d.data) return { type: 'circle', r: 26 };
         const style = this._nodeStyle(d.data.type);
         const invisible = (!style.fill || style.fill === 'none') &&
                            (!style.stroke || style.stroke === 'none');
-        if (invisible) return 18;
+        if (d.data._collapsed) {
+            const label = d.data.subexpr || d.data.label || d.data.id || '';
+            const w = Math.max(100, Math.min(260, label.length * 7 + 30));
+            return { type: 'rect', hw: w / 2, hh: 24 };
+        }
+        if (invisible) return { type: 'rect', hw: 28, hh: 18 };
         const kind = d.data.type;
-        if (kind === 'operator' || kind === 'relation' || kind === 'function') return 28;
-        return 26;
+        if (kind === 'operator' || kind === 'relation' || kind === 'function') return { type: 'circle', r: 28 };
+        return { type: 'circle', r: 26 };
     }
 
-    _shortenPoint(point, other, radius) {
-        const dx = other.x - point.x;
-        const dy = other.y - point.y;
+    _boundaryPoint(center, other, shape) {
+        const dx = other.x - center.x;
+        const dy = other.y - center.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 1) return { x: point.x, y: point.y };
-        const ratio = radius / dist;
-        return { x: point.x + dx * ratio, y: point.y + dy * ratio };
+        if (dist < 1) return { x: center.x, y: center.y };
+
+        if (shape.type === 'rect') {
+            const nx = dx / dist, ny = dy / dist;
+            const tx = shape.hw / Math.max(Math.abs(nx), 1e-6);
+            const ty = shape.hh / Math.max(Math.abs(ny), 1e-6);
+            const t = Math.min(tx, ty);
+            return { x: center.x + nx * t, y: center.y + ny * t };
+        }
+        const ratio = shape.r / dist;
+        return { x: center.x + dx * ratio, y: center.y + dy * ratio };
     }
 
     _diagonal(d3, source, target, sourceNode, targetNode) {
-        const sr = sourceNode ? this._nodeRadius(sourceNode) : 0;
-        const tr = targetNode ? this._nodeRadius(targetNode) : 0;
+        const ss = sourceNode ? this._nodeShape(sourceNode) : null;
+        const ts = targetNode ? this._nodeShape(targetNode) : null;
 
-        const s = sr ? this._shortenPoint(source, target, sr) : source;
-        const t = tr ? this._shortenPoint(target, source, tr) : target;
+        const s = ss ? this._boundaryPoint(source, target, ss) : source;
+        const t = ts ? this._boundaryPoint(target, source, ts) : target;
 
         const horizontal = this._isHorizontal();
         if (horizontal) {
