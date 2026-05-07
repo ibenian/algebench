@@ -166,11 +166,12 @@ function getNodeLabel(node, labelMode) {
 function operatorGlyph(node) {
     const glyphs = {
         equals: '=', multiply: '×', add: '+', subtract: '−',
-        divide: '÷', power: '^', derivative: 'd/d', integral: '∫',
+        divide: '÷', power: '^', integral: '∫',
         implies: '⇒', iff: '⇔', negate: '¬', conjunction: '∧',
         disjunction: '∨', sum: '∑', product: '∏', limit: 'lim',
         factorial: '!', sqrt: '√', logarithm: 'log', function: 'f',
     };
+    if (node.op === 'derivative') return 'd·/d·';
     return glyphs[node.op] || node.op || node.label || '?';
 }
 
