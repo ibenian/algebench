@@ -574,18 +574,6 @@ export class D3SemanticGraphRenderer {
 
     _handleNodeClick(d) {
         const nodeId = d.data.id;
-
-        // Toggle collapse for operator nodes
-        if (this._isCollapsible(d) || d.data._collapsed) {
-            if (this._collapsed.has(nodeId)) {
-                this._collapsed.delete(nodeId);
-            } else {
-                this._collapsed.add(nodeId);
-            }
-            this._renderTree(nodeId);
-        }
-
-        // Selection
         if (this._activeNodeId === nodeId) {
             this._activeNodeId = null;
         } else {
@@ -593,6 +581,53 @@ export class D3SemanticGraphRenderer {
         }
         this._applyHighlight();
         if (this.onNodeClick) this.onNodeClick(nodeId, d.data);
+    }
+
+    _handleChevronClick(d) {
+        const nodeId = d.data.id;
+        if (this._collapsed.has(nodeId)) {
+            this._collapsed.delete(nodeId);
+        } else {
+            this._collapsed.add(nodeId);
+        }
+        this._renderTree(nodeId);
+    }
+
+    _chevronPos(isCollapsed) {
+        const glyph = isCollapsed ? '+' : '−';
+        const dir = this.direction;
+        if (dir === 'left-right') return { glyph, x: 22, y: -18 };
+        if (dir === 'right-left') return { glyph, x: -34, y: -18 };
+        if (dir === 'bottom-up') return { glyph, x: -6, y: -24 };
+        return { glyph, x: -6, y: 20 };
+    }
+
+    _appendChevron(group, d, isCollapsed) {
+        const cp = this._chevronPos(isCollapsed);
+        const self = this;
+        const sz = 14;
+        const g = group.append('g')
+            .attr('class', 'd3sg-chevron')
+            .attr('transform', `translate(${cp.x},${cp.y})`)
+            .on('click', function (event) {
+                event.stopPropagation();
+                self._handleChevronClick(d);
+            });
+        g.append('rect')
+            .attr('x', 0).attr('y', 0)
+            .attr('width', sz).attr('height', sz)
+            .attr('rx', 2)
+            .attr('fill', '#1a2440')
+            .attr('stroke', '#a8c5ff')
+            .attr('stroke-width', 1);
+        g.append('text')
+            .attr('x', sz / 2).attr('y', sz / 2 + 1)
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'middle')
+            .attr('font-size', '11px')
+            .attr('fill', '#a8c5ff')
+            .text(cp.glyph);
+        return g;
     }
 
     _drawNode(group, d) {
@@ -622,12 +657,11 @@ export class D3SemanticGraphRenderer {
 
             this._renderLabel(group, data, estimatedWidth, true, style);
 
-            group.append('text')
-                .attr('class', 'd3sg-chevron')
-                .attr('x', estimatedWidth / 2 - 14)
-                .attr('y', -12)
-                .attr('font-size', '11px')
-                .text('▶');
+            const cp = this._chevronPos(true);
+            const cx = cp.x < 0 ? -estimatedWidth / 2 + 4 : estimatedWidth / 2 - 16;
+            const cy = cp.y < 0 ? -16 : 16;
+            this._appendChevron(group, d, true)
+                .attr('transform', `translate(${cx},${cy})`);
             return;
         }
 
@@ -664,12 +698,7 @@ export class D3SemanticGraphRenderer {
         this._renderLabel(group, data, invisible ? 56 : (isOp ? 56 : 52), false, style);
 
         if (isOp && data.children && data.children.length > 0) {
-            group.append('text')
-                .attr('class', 'd3sg-chevron')
-                .attr('x', 20)
-                .attr('y', -16)
-                .attr('font-size', '11px')
-                .text('▼');
+            this._appendChevron(group, d, false);
         }
     }
 
