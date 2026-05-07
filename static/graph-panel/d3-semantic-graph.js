@@ -386,14 +386,41 @@ export class D3SemanticGraphRenderer {
         for (const n of nodes) this._positionById.set(n.data.id, { x: n.x, y: n.y });
     }
 
-    _diagonal(d3, source, target) {
+    _nodeRadius(d) {
+        if (!d || !d.data) return 26;
+        if (d.data._collapsed) return 24;
+        const style = this._nodeStyle(d.data.type);
+        const invisible = (!style.fill || style.fill === 'none') &&
+                           (!style.stroke || style.stroke === 'none');
+        if (invisible) return 18;
+        const kind = d.data.type;
+        if (kind === 'operator' || kind === 'relation' || kind === 'function') return 28;
+        return 26;
+    }
+
+    _shortenPoint(point, other, radius) {
+        const dx = other.x - point.x;
+        const dy = other.y - point.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 1) return { x: point.x, y: point.y };
+        const ratio = radius / dist;
+        return { x: point.x + dx * ratio, y: point.y + dy * ratio };
+    }
+
+    _diagonal(d3, source, target, sourceNode, targetNode) {
+        const sr = sourceNode ? this._nodeRadius(sourceNode) : 0;
+        const tr = targetNode ? this._nodeRadius(targetNode) : 0;
+
+        const s = sr ? this._shortenPoint(source, target, sr) : source;
+        const t = tr ? this._shortenPoint(target, source, tr) : target;
+
         const horizontal = this._isHorizontal();
         if (horizontal) {
-            const midX = (source.x + target.x) / 2;
-            return `M${source.x},${source.y} C${midX},${source.y} ${midX},${target.y} ${target.x},${target.y}`;
+            const midX = (s.x + t.x) / 2;
+            return `M${s.x},${s.y} C${midX},${s.y} ${midX},${t.y} ${t.x},${t.y}`;
         }
-        const midY = (source.y + target.y) / 2;
-        return `M${source.x},${source.y} C${source.x},${midY} ${target.x},${midY} ${target.x},${target.y}`;
+        const midY = (s.y + t.y) / 2;
+        return `M${s.x},${s.y} C${s.x},${midY} ${t.x},${midY} ${t.x},${t.y}`;
     }
 
     _startPos(id) {
@@ -415,26 +442,26 @@ export class D3SemanticGraphRenderer {
             .attr('stroke-linecap', 'round')
             .attr('d', d => {
                 const p = this._startPos(d.target.data.id);
-                return this._diagonal(d3, p, p);
+                return this._diagonal(d3, p, p, null, null);
             })
             .style('opacity', 0)
             .transition(transition)
             .style('opacity', 1)
-            .attr('d', d => this._diagonal(d3, d.source, d.target));
+            .attr('d', d => this._diagonal(d3, d.source, d.target, d.source, d.target));
 
         link.transition(transition)
             .attr('class', d => `d3sg-link d3sg-edge-${d.semantic}`)
             .attr('stroke', d => this._edgeColor(d.semantic))
             .attr('stroke-width', d => this._edgeWidth(d.semantic))
             .style('opacity', 1)
-            .attr('d', d => this._diagonal(d3, d.source, d.target));
+            .attr('d', d => this._diagonal(d3, d.source, d.target, d.source, d.target));
 
         link.exit()
             .transition(transition)
             .style('opacity', 0)
             .attr('d', () => {
                 const p = this._startPos(this._lastInteractionId);
-                return this._diagonal(d3, p, p);
+                return this._diagonal(d3, p, p, null, null);
             })
             .remove();
     }
@@ -586,7 +613,21 @@ export class D3SemanticGraphRenderer {
             return;
         }
 
-        if (isOp) {
+        const invisible = (!style.fill || style.fill === 'none') &&
+                           (!style.stroke || style.stroke === 'none');
+
+        if (invisible) {
+            const bw = 56, bh = 36;
+            group.append('rect')
+                .attr('class', isOp ? 'd3sg-op-bg' : 'd3sg-var-bg')
+                .attr('x', -bw / 2)
+                .attr('y', -bh / 2)
+                .attr('width', bw)
+                .attr('height', bh)
+                .attr('rx', 4)
+                .attr('fill', 'transparent')
+                .attr('stroke', 'none');
+        } else if (isOp) {
             const r = 28;
             const points = Array.from({ length: 6 }, (_, i) => {
                 const angle = (Math.PI / 3) * i - Math.PI / 6;
@@ -605,7 +646,7 @@ export class D3SemanticGraphRenderer {
                 .attr('stroke', style.stroke || '');
         }
 
-        this._renderLabel(group, data, isOp ? 56 : 52, false, style);
+        this._renderLabel(group, data, invisible ? 56 : (isOp ? 56 : 52), false, style);
 
         if (isOp && data.children && data.children.length > 0) {
             group.append('text')
