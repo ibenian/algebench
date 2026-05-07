@@ -564,10 +564,10 @@ The graph carries enough information to be **interactively foldable** at two gra
 
 **The interaction in one sentence:** click any operator node (or swimlane title) to fold its descendants into a single tile rendering its `subexpr` as KaTeX; click the tile to reveal the structure again. The fold/unfold chevron (`▾` for expanded, `▸` for collapsed) appears only on hover, in the node's top-right corner — keeping the diagram clean by default.
 
-Two standalone proof-of-concept files accompany this proposal:
+Two standalone proof-of-concept files are split into a follow-up PR so this proposal can stay design-focused:
 
-- [`semantic-graph-partitioning-mermaid-poc.html`](semantic-graph-partitioning-mermaid-poc.html) — Mermaid-based version. Good for proving the data model, click handling, and docs/static export path. Because Mermaid rerenders the full SVG, animation is intentionally limited to an overlapping old/new crossfade plus a small fade/scale on newly visible nodes.
-- [`semantic-graph-partitioning-d3-poc.html`](semantic-graph-partitioning-d3-poc.html) — D3-only version. Renders the same semantic graph directly from structured data with keyed enter/update/exit joins. Persistent nodes move to new positions, entering nodes fade/scale in, and exiting nodes fade/scale out. This is the preferred direction for the app's high-fidelity interactive renderer.
+- **Mermaid-based PoC** — good for proving the data model, click handling, and docs/static export path. Because Mermaid rerenders the full SVG, animation is intentionally limited to an overlapping old/new crossfade plus a small fade/scale on newly visible nodes.
+- **D3-only PoC** — renders the same semantic graph directly from structured data with keyed enter/update/exit joins. Persistent nodes move to new positions, entering nodes fade/scale in, and exiting nodes fade/scale out. This is the preferred direction for the app's high-fidelity interactive renderer.
 
 ### Two collapse targets
 
