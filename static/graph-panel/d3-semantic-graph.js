@@ -745,7 +745,7 @@ export class D3SemanticGraphRenderer {
                 .attr('class', 'd3sg-label')
                 .attr('text-anchor', 'middle')
                 .attr('dominant-baseline', 'middle')
-                .attr('font-size', isCollapsed ? '12px' : '14px')
+                .attr('font-size', isCollapsed ? '14px' : '17px')
                 .text(text);
             if (textColor) label.attr('fill', textColor);
         }
