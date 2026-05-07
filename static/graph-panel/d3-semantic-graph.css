@@ -1,0 +1,102 @@
+/* D3 Semantic Graph Renderer — dark theme styles */
+
+.d3-graph-card {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+svg.d3-semantic-graph {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+/* Variable nodes: green circle */
+.d3sg-var-bg {
+    fill: #1f4d2a;
+    stroke: #3b8c52;
+    stroke-width: 1.5px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-var-bg {
+    filter: brightness(1.3);
+}
+
+/* Operator nodes: dark hexagon */
+.d3sg-op-bg {
+    fill: #1a2440;
+    stroke: #3a4d80;
+    stroke-width: 1.5px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-op-bg {
+    filter: brightness(1.3);
+}
+
+/* Collapsed tile */
+.d3sg-tile-bg {
+    fill: #222a44;
+    stroke: #5a8aff;
+    stroke-width: 2px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-tile-bg {
+    filter: brightness(1.25);
+}
+
+/* Node labels */
+.d3sg-label {
+    fill: #dde6ff;
+    pointer-events: none;
+    user-select: none;
+}
+
+.d3sg-katex-host {
+    color: #dde6ff;
+    font-size: 14px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.d3sg-katex-host .katex {
+    font-size: 0.9em;
+}
+
+/* Edge labels */
+.d3sg-edge-label {
+    fill: #aebbd1;
+    font-size: 11px;
+    paint-order: stroke;
+    stroke: #131a2c;
+    stroke-width: 4px;
+    pointer-events: none;
+}
+
+/* Chevron (collapse/expand indicator) */
+.d3sg-chevron {
+    fill: #a8c5ff;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-chevron {
+    opacity: 0.85;
+}
+
+/* Active node ring */
+.d3sg-node.active .d3sg-var-bg {
+    stroke: #6df08e;
+    stroke-width: 2.5px;
+}
+.d3sg-node.active .d3sg-op-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+}
+.d3sg-node.active .d3sg-tile-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+}

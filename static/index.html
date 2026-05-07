@@ -19,6 +19,7 @@
      bundle off the critical path for users who stay in the 3D view. -->
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/graph-panel/graph-panel.css">
+<link rel="stylesheet" href="/graph-panel/d3-semantic-graph.css">
 </head>
 <body data-debug-mode="__DEBUG_MODE__">
 <div id="app">
@@ -84,6 +85,11 @@
                     </select>
                 </div>
                 <div id="graph-controls-right" class="graph-controls">
+                    <label for="graph-renderer-select" class="graph-ctrl-label">Renderer</label>
+                    <select id="graph-renderer-select" class="graph-ctrl-select">
+                        <option value="mermaid" selected>Mermaid</option>
+                        <option value="d3">D3</option>
+                    </select>
                     <button id="graph-show-json" class="graph-ctrl-btn" title="Show semantic graph in JSON browser" aria-label="Show semantic graph JSON" disabled>{ }</button>
                     <div id="graph-zoom-controls">
                         <button id="graph-zoom-out" class="graph-ctrl-btn" title="Zoom out" aria-label="Zoom out">&minus;</button>
