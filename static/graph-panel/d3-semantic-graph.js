@@ -24,18 +24,46 @@ function loadD3() {
     return _d3LoadPromise;
 }
 
-// Edge semantic → stroke color (dark theme)
-const EDGE_COLORS = {
+// Default edge styles (fallback when theme has no edgeStyles)
+const DEFAULT_EDGE_COLORS = {
     direct: '#e74c3c',
     inverse: '#5b8fc7',
     neutral: '#7e8aa3',
 };
 
-const EDGE_WIDTHS = {
+const DEFAULT_EDGE_WIDTHS = {
     direct: 2.5,
     inverse: 1.8,
     neutral: 1.4,
 };
+
+// Default node styles (fallback when theme has no nodeStyles)
+const DEFAULT_NODE_STYLES = {
+    scalar:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
+    vector:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
+    constant: { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
+    number:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
+    operator: { fill: '#0f2540', stroke: '#42a5f5', color: '#bbdefb' },
+    function: { fill: '#0f2540', stroke: '#42a5f5', color: '#bbdefb' },
+    relation: { fill: '#2e1b33', stroke: '#ab47bc', color: '#e1bee7' },
+    expression: { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
+    text:     { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
+};
+
+let _themeCache = Object.create(null);
+
+async function fetchTheme(name) {
+    if (_themeCache[name]) return _themeCache[name];
+    try {
+        const res = await fetch(`/api/graph/theme/${encodeURIComponent(name)}`);
+        if (!res.ok) return null;
+        const theme = await res.json();
+        _themeCache[name] = theme;
+        return theme;
+    } catch {
+        return null;
+    }
+}
 
 // Infer edge semantic from graph structure when not explicitly tagged
 function inferEdgeSemantic(edge, nodeById) {
@@ -162,12 +190,14 @@ export class D3SemanticGraphRenderer {
         this.katex = opts.katex || (typeof window !== 'undefined' && window.katex);
         this.direction = opts.direction || 'left-right';
         this.labels = opts.labels || 'description';
+        this.themeName = opts.theme || 'default-dark';
         this.onNodeClick = opts.onNodeClick || null;
         this.onNodeHover = opts.onNodeHover || null;
         this.onBackgroundClick = opts.onBackgroundClick || null;
 
         this._graph = null;
         this._tree = null;
+        this._theme = null;
         this._collapsed = new Set();
         this._svg = null;
         this._d3 = null;
@@ -182,6 +212,8 @@ export class D3SemanticGraphRenderer {
         this._graph = graph;
         this._d3 = await loadD3();
         if (this._destroyed) return;
+        this._theme = await fetchTheme(this.themeName);
+        if (this._destroyed) return;
 
         this._tree = graphToTree(graph);
         if (!this._tree) {
@@ -193,9 +225,13 @@ export class D3SemanticGraphRenderer {
         this._renderTree();
     }
 
-    update(opts = {}) {
+    async update(opts = {}) {
         if (opts.direction) this.direction = opts.direction;
         if (opts.labels) this.labels = opts.labels;
+        if (opts.theme && opts.theme !== this.themeName) {
+            this.themeName = opts.theme;
+            this._theme = await fetchTheme(this.themeName);
+        }
         if (this._d3 && this._tree) {
             this._renderTree();
         }
@@ -222,6 +258,30 @@ export class D3SemanticGraphRenderer {
         this._graph = null;
         this._tree = null;
         this._positionById.clear();
+    }
+
+    // ─── Theme helpers ─────────────────────────────────────────────────
+
+    _nodeStyle(nodeType) {
+        const ts = this._theme?.nodeStyles;
+        if (ts && ts[nodeType]) return ts[nodeType];
+        return DEFAULT_NODE_STYLES[nodeType] || DEFAULT_NODE_STYLES.scalar;
+    }
+
+    _edgeColor(semantic) {
+        const es = this._theme?.edgeStyles;
+        if (es && es[semantic]) return es[semantic].stroke;
+        const single = this._theme?.edgeStyle;
+        if (single?.stroke && !this._theme?.paintBySemantic) return single.stroke;
+        return DEFAULT_EDGE_COLORS[semantic] || DEFAULT_EDGE_COLORS.neutral;
+    }
+
+    _edgeWidth(semantic) {
+        const es = this._theme?.edgeStyles;
+        if (es && es[semantic]) return es[semantic].strokeWidth || DEFAULT_EDGE_WIDTHS.neutral;
+        const single = this._theme?.edgeStyle;
+        if (single?.strokeWidth && !this._theme?.paintBySemantic) return single.strokeWidth;
+        return DEFAULT_EDGE_WIDTHS[semantic] || DEFAULT_EDGE_WIDTHS.neutral;
     }
 
     // ─── Private ──────────────────────────────────────────────────────
@@ -350,8 +410,8 @@ export class D3SemanticGraphRenderer {
             .append('path')
             .attr('class', d => `d3sg-link d3sg-edge-${d.semantic}`)
             .attr('fill', 'none')
-            .attr('stroke', d => EDGE_COLORS[d.semantic] || EDGE_COLORS.neutral)
-            .attr('stroke-width', d => EDGE_WIDTHS[d.semantic] || 1.4)
+            .attr('stroke', d => this._edgeColor(d.semantic))
+            .attr('stroke-width', d => this._edgeWidth(d.semantic))
             .attr('stroke-linecap', 'round')
             .attr('d', d => {
                 const p = this._startPos(d.target.data.id);
@@ -364,8 +424,8 @@ export class D3SemanticGraphRenderer {
 
         link.transition(transition)
             .attr('class', d => `d3sg-link d3sg-edge-${d.semantic}`)
-            .attr('stroke', d => EDGE_COLORS[d.semantic] || EDGE_COLORS.neutral)
-            .attr('stroke-width', d => EDGE_WIDTHS[d.semantic] || 1.4)
+            .attr('stroke', d => this._edgeColor(d.semantic))
+            .attr('stroke-width', d => this._edgeWidth(d.semantic))
             .style('opacity', 1)
             .attr('d', d => this._diagonal(d3, d.source, d.target));
 
@@ -500,9 +560,9 @@ export class D3SemanticGraphRenderer {
         group.selectAll('*').remove();
         const data = d.data;
         const isOp = data.type === 'operator' || data.type === 'relation' || data.type === 'function';
+        const style = this._nodeStyle(data.type);
 
         if (data._collapsed) {
-            // Collapsed tile: rounded rect with subexpr label
             const label = data.subexpr || data.label || data.id;
             const estimatedWidth = Math.max(100, Math.min(260, label.length * 7 + 30));
             group.append('rect')
@@ -511,11 +571,12 @@ export class D3SemanticGraphRenderer {
                 .attr('y', -24)
                 .attr('width', estimatedWidth)
                 .attr('height', 48)
-                .attr('rx', 6);
+                .attr('rx', 6)
+                .attr('fill', style.fill || '')
+                .attr('stroke', style.stroke || '');
 
-            this._renderLabel(group, data, estimatedWidth, true);
+            this._renderLabel(group, data, estimatedWidth, true, style);
 
-            // Expand chevron
             group.append('text')
                 .attr('class', 'd3sg-chevron')
                 .attr('x', estimatedWidth / 2 - 14)
@@ -526,7 +587,6 @@ export class D3SemanticGraphRenderer {
         }
 
         if (isOp) {
-            // Hexagon for operators
             const r = 28;
             const points = Array.from({ length: 6 }, (_, i) => {
                 const angle = (Math.PI / 3) * i - Math.PI / 6;
@@ -534,17 +594,19 @@ export class D3SemanticGraphRenderer {
             }).join(' ');
             group.append('polygon')
                 .attr('class', 'd3sg-op-bg')
-                .attr('points', points);
+                .attr('points', points)
+                .attr('fill', style.fill || '')
+                .attr('stroke', style.stroke || '');
         } else {
-            // Circle for variables/scalars/vectors/constants
             group.append('circle')
                 .attr('class', 'd3sg-var-bg')
-                .attr('r', 26);
+                .attr('r', 26)
+                .attr('fill', style.fill || '')
+                .attr('stroke', style.stroke || '');
         }
 
-        this._renderLabel(group, data, isOp ? 56 : 52, false);
+        this._renderLabel(group, data, isOp ? 56 : 52, false, style);
 
-        // Collapse chevron for operators with children
         if (isOp && data.children && data.children.length > 0) {
             group.append('text')
                 .attr('class', 'd3sg-chevron')
@@ -555,10 +617,11 @@ export class D3SemanticGraphRenderer {
         }
     }
 
-    _renderLabel(group, data, maxWidth, isCollapsed) {
+    _renderLabel(group, data, maxWidth, isCollapsed, style = {}) {
         const latex = isCollapsed
             ? (data.subexpr || data.latex || null)
             : (data.latex || null);
+        const textColor = style.color || null;
 
         if (latex && this.katex) {
             const fo = group.append('foreignObject')
@@ -576,6 +639,7 @@ export class D3SemanticGraphRenderer {
                 .style('width', '100%')
                 .style('height', '100%')
                 .style('overflow', 'hidden');
+            if (textColor) div.style('color', textColor);
 
             const span = document.createElement('span');
             try {
@@ -585,14 +649,14 @@ export class D3SemanticGraphRenderer {
                 div.text(data.label || data.id);
             }
         } else {
-            // Plain text label
             const text = getNodeLabel(data, this.labels);
-            group.append('text')
+            const label = group.append('text')
                 .attr('class', 'd3sg-label')
                 .attr('text-anchor', 'middle')
                 .attr('dominant-baseline', 'middle')
                 .attr('font-size', isCollapsed ? '12px' : '14px')
                 .text(text);
+            if (textColor) label.attr('fill', textColor);
         }
     }
 

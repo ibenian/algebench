@@ -662,6 +662,7 @@ async function _renderWithD3(container, graph, step, key) {
             katex: window.katex,
             direction: _currentDirection,
             labels: _currentLabels,
+            theme: _currentTheme,
             onNodeClick: (nodeId, nodeData) => {
                 _activeStepForPanel = step;
                 _showD3InfoPanel(nodeId, nodeData, graph);
@@ -671,7 +672,7 @@ async function _renderWithD3(container, graph, step, key) {
             },
         });
     } else {
-        _currentD3Renderer.update({ direction: _currentDirection, labels: _currentLabels });
+        await _currentD3Renderer.update({ direction: _currentDirection, labels: _currentLabels, theme: _currentTheme });
     }
 
     await _currentD3Renderer.render(graph);
