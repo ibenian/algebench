@@ -10,6 +10,15 @@
 
 const D3_CDN_URL = 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 
+const SUPERSCRIPT_MAP = {
+    '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+    '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+    '+': '⁺', '-': '⁻', '−': '⁻', 'n': 'ⁿ', 'i': 'ⁱ',
+};
+function toSuperscript(s) {
+    return String(s).split('').map(c => SUPERSCRIPT_MAP[c] || c).join('');
+}
+
 let _d3 = null;
 let _d3LoadPromise = null;
 
@@ -170,6 +179,10 @@ function operatorGlyph(node) {
         factorial: '!', sqrt: '√', logarithm: 'log', function: 'f',
     };
     if (node.op === 'derivative') return 'd·/d·';
+    if (node.op === 'power') {
+        const exp = node.exponent || 'n';
+        return `(·)${toSuperscript(exp)}`;
+    }
     return glyphs[node.op] || node.op || node.label || '?';
 }
 
