@@ -235,6 +235,22 @@ export class D3SemanticGraphRenderer {
         return this._activeNodeId;
     }
 
+    saveState() {
+        return {
+            collapsed: new Set(this._collapsed),
+            activeNodeId: this._activeNodeId,
+            positionById: new Map(this._positionById),
+        };
+    }
+
+    restoreState(snapshot) {
+        if (!snapshot) return;
+        this._collapsed = new Set(snapshot.collapsed);
+        this._activeNodeId = snapshot.activeNodeId;
+        this._positionById = new Map(snapshot.positionById);
+        if (this._svg) this._applyHighlight();
+    }
+
     destroy() {
         this._destroyed = true;
         this.container.innerHTML = '';
@@ -814,6 +830,9 @@ export class D3SemanticGraphRenderer {
     _applyHighlight() {
         if (!this._svg) return;
         const activeId = this._activeNodeId;
+
+        this._nodeLayer.selectAll('g.d3sg-node')
+            .attr('class', d => this._nodeClass(d));
 
         if (!activeId) {
             // Clear all dimming

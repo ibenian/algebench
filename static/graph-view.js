@@ -30,6 +30,8 @@ let _d3NodeAskBtn = null;
 let _d3NodeAskHideTimer = null;
 let _d3HoveredNodeId = null;
 let _d3ActiveGraph = null;
+let _d3StepStates = new Map();
+let _d3LastStepKey = null;
 
 // Persisted user preferences. localStorage keys are versioned with an
 // `algebench.graph.` prefix so future format changes can be migrated without
@@ -599,6 +601,7 @@ function clearGraph() {
     if (_currentD3Renderer) {
         try { _currentD3Renderer.destroy(); } catch {}
         _currentD3Renderer = null;
+        _d3LastStepKey = null;
     }
     if (_d3NodeAskBtn && _d3NodeAskBtn.parentNode) _d3NodeAskBtn.remove();
     _d3NodeAskBtn = null;
@@ -694,7 +697,18 @@ async function _renderWithD3(container, graph, step, key) {
         await _currentD3Renderer.update({ direction: _currentDirection, labels: _currentLabels, theme: _currentTheme });
     }
 
+    const stepKey = stableStepKey(step);
+    if (_currentD3Renderer && _d3LastStepKey && _d3LastStepKey !== stepKey) {
+        _d3StepStates.set(_d3LastStepKey, _currentD3Renderer.saveState());
+    }
+
+    const saved = _d3StepStates.get(stepKey);
+    if (saved) {
+        _currentD3Renderer.restoreState(saved);
+    }
+
     await _currentD3Renderer.render(graph);
+    _d3LastStepKey = stepKey;
     _currentSemanticKey = key;
 
     // Apply zoom to the D3 card
@@ -1487,6 +1501,8 @@ function onStepChange() {
 }
 
 function onProofLoad() {
+    _d3StepStates.clear();
+    _d3LastStepKey = null;
     rebuildProofTree();
     onStepChange();
 }
