@@ -831,6 +831,9 @@ export class D3SemanticGraphRenderer {
         if (!this._svg) return;
         const activeId = this._activeNodeId;
 
+        this._nodeLayer.selectAll('g.d3sg-node')
+            .attr('class', d => this._nodeClass(d));
+
         if (!activeId) {
             // Clear all dimming
             this._nodeLayer.selectAll('g.d3sg-node').style('opacity', 1);
