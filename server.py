@@ -2204,6 +2204,9 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/api/graph/theme/{name}")
     async def get_graph_theme(name: str):
         """Return the full JSON for a single semantic-graph theme."""
+        import re
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+            return JSONResponse({"error": "invalid theme name"}, status_code=400)
         try:
             g2m = _load_script_module("scripts/graph_to_mermaid.py", "graph_to_mermaid")
             theme = g2m.load_theme(name)

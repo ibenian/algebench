@@ -600,6 +600,11 @@ function clearGraph() {
         try { _currentD3Renderer.destroy(); } catch {}
         _currentD3Renderer = null;
     }
+    if (_d3NodeAskBtn && _d3NodeAskBtn.parentNode) _d3NodeAskBtn.remove();
+    _d3NodeAskBtn = null;
+    if (_d3NodeAskHideTimer) { clearTimeout(_d3NodeAskHideTimer); _d3NodeAskHideTimer = null; }
+    _d3HoveredNodeId = null;
+    _d3ActiveGraph = null;
     const infoHost = document.getElementById('graph-info-panel-host');
     if (infoHost) infoHost.innerHTML = '';
     const legend = document.getElementById('graph-edge-legend');
