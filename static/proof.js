@@ -941,6 +941,13 @@ function _setupProofTabs() {
     });
 }
 
+// ---- Refresh (re-render current step without changing state) ----
+
+export function refreshProofPanel() {
+    if (!_activeProof()) return;
+    navigateProof(state.proofStepIndex);
+}
+
 // ---- Setup (called once on DOMContentLoaded) ----
 
 export function setupProofPanel() {

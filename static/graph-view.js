@@ -521,28 +521,33 @@ function handleTreeStepClick(entry, stepIdx) {
     const step = proof && proof.steps && proof.steps[stepIdx];
     if (!step) return;
 
-    const sceneStep = step.sceneStep;
-    if (sceneStep != null && typeof window.navigateTo === 'function') {
-        if (typeof sceneStep === 'string' && sceneStep.includes(':')) {
-            const [si, sti] = sceneStep.split(':').map(Number);
-            if (!Number.isNaN(si) && !Number.isNaN(sti)) {
-                window.navigateTo(si, sti);
-                // after navigate, ensure the right proof/step is active
+    state._graphSyncInProgress = true;
+    try {
+        const sceneStep = step.sceneStep;
+        if (sceneStep != null && typeof window.navigateTo === 'function') {
+            if (typeof sceneStep === 'string' && sceneStep.includes(':')) {
+                const [si, sti] = sceneStep.split(':').map(Number);
+                if (!Number.isNaN(si) && !Number.isNaN(sti)) {
+                    window.navigateTo(si, sti);
+                    _forceActivateProofStep(entry, stepIdx);
+                    return;
+                }
+            } else if (entry.sceneIndex != null) {
+                window.navigateTo(entry.sceneIndex, Number(sceneStep));
                 _forceActivateProofStep(entry, stepIdx);
                 return;
             }
-        } else if (entry.sceneIndex != null) {
-            window.navigateTo(entry.sceneIndex, Number(sceneStep));
-            _forceActivateProofStep(entry, stepIdx);
-            return;
         }
+        // Fallback: scene-level navigation, then activate the proof step directly
+        if (entry.sceneIndex != null && typeof window.navigateTo === 'function' &&
+            entry.sceneIndex !== state.currentSceneIndex) {
+            window.navigateTo(entry.sceneIndex, state.currentStepIndex);
+        }
+        _forceActivateProofStep(entry, stepIdx);
+    } finally {
+        state._graphSyncInProgress = false;
+        if (isGraphModeActive()) renderCurrentStepGraph();
     }
-    // Fallback: scene-level navigation, then activate the proof step directly
-    if (entry.sceneIndex != null && typeof window.navigateTo === 'function' &&
-        entry.sceneIndex !== state.currentSceneIndex) {
-        window.navigateTo(entry.sceneIndex, state.currentStepIndex);
-    }
-    _forceActivateProofStep(entry, stepIdx);
 }
 
 function _forceActivateProofStep(entry, stepIdx) {
@@ -1497,7 +1502,16 @@ function escapeHtml(s) {
 function onStepChange() {
     updateTreeHighlight();
     updateShowJsonButtonState();
+    if (state._graphSyncInProgress) return;
     if (isGraphModeActive()) renderCurrentStepGraph();
+}
+
+function onGraphSelectionChange(e) {
+    if (state._graphSyncInProgress) return;
+    if (!e.detail || !e.detail.activeNode) return;
+    // The graph is rendered for the current proof step, so selection
+    // doesn't require navigation. Guard is checked above to prevent
+    // loops when renderCurrentStepGraph preserves a prior selection.
 }
 
 function onProofLoad() {
@@ -1714,6 +1728,7 @@ function init() {
     setupControlsOverflowWatcher();
     window.addEventListener('algebench:stepchange', onStepChange);
     window.addEventListener('algebench:proofload', onProofLoad);
+    window.addEventListener('algebench:graphselectionchange', onGraphSelectionChange);
 }
 
 if (document.readyState === 'loading') {

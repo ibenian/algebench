@@ -90,6 +90,9 @@ export function setupExplainToggle() {
         const isHidden = panel.classList.toggle('hidden');
         toggle.classList.toggle('active', !isHidden);
         handle.style.display = isHidden ? 'none' : 'block';
+        if (!isHidden && typeof window.refreshProofPanel === 'function') {
+            window.refreshProofPanel();
+        }
         setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
     });
 

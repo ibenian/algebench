@@ -261,6 +261,7 @@ function switchPanelTab(tabName) {
     });
     // Focus input and greet only when chat history is empty
     if (tabName === 'chat') {
+        if (typeof refreshProofPanel === 'function') refreshProofPanel();
         const input = document.getElementById('chat-input');
         if (input) setTimeout(() => input.focus(), 50);
         if (chatAvailable && !welcomeInFlight && !shouldSkipWelcome()) {
