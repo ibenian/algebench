@@ -3814,6 +3814,15 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     padding-left: 0;
     padding-right: 0;
     text-align: center;
+    flex-shrink: 0;
+}
+#graph-show-json {
+    width: 36px;
+    min-width: 36px;
+    padding-left: 0;
+    padding-right: 0;
+    text-align: center;
+    flex-shrink: 0;
 }
 
 /* Edge-semantics legend — painted from the active theme's ``edgeStyles``
