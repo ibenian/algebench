@@ -248,6 +248,7 @@ export class D3SemanticGraphRenderer {
         this._collapsed = new Set(snapshot.collapsed);
         this._activeNodeId = snapshot.activeNodeId;
         this._positionById = new Map(snapshot.positionById);
+        if (this._svg) this._applyHighlight();
     }
 
     destroy() {

@@ -601,6 +601,7 @@ function clearGraph() {
     if (_currentD3Renderer) {
         try { _currentD3Renderer.destroy(); } catch {}
         _currentD3Renderer = null;
+        _d3LastStepKey = null;
     }
     if (_d3NodeAskBtn && _d3NodeAskBtn.parentNode) _d3NodeAskBtn.remove();
     _d3NodeAskBtn = null;
@@ -701,13 +702,12 @@ async function _renderWithD3(container, graph, step, key) {
         _d3StepStates.set(_d3LastStepKey, _currentD3Renderer.saveState());
     }
 
-    await _currentD3Renderer.render(graph);
-
     const saved = _d3StepStates.get(stepKey);
     if (saved) {
         _currentD3Renderer.restoreState(saved);
-        await _currentD3Renderer.update({});
     }
+
+    await _currentD3Renderer.render(graph);
     _d3LastStepKey = stepKey;
     _currentSemanticKey = key;
 
