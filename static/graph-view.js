@@ -18,11 +18,18 @@
 
 import { state } from '/state.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
+import { D3SemanticGraphRenderer } from '/graph-panel/d3-semantic-graph.js';
+import { makeAiAskButton } from '/labels.js';
 
 let _currentGraphPanel = null;
 let _currentSemanticKey = null;
 let _activeStepForPanel = null;
 let _initDone = false;
+let _currentD3Renderer = null;
+let _d3NodeAskBtn = null;
+let _d3NodeAskHideTimer = null;
+let _d3HoveredNodeId = null;
+let _d3ActiveGraph = null;
 
 // Persisted user preferences. localStorage keys are versioned with an
 // `algebench.graph.` prefix so future format changes can be migrated without
@@ -33,6 +40,7 @@ const LS_KEYS = {
     direction: 'algebench.graph.direction',
     labels: 'algebench.graph.labels',
     zoom: 'algebench.graph.zoom',
+    renderer: 'algebench.graph.renderer',
 };
 const _lsGet = (key, fallback) => {
     try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
@@ -98,6 +106,8 @@ const LABEL_PRESETS = {
 };
 let _currentLabels = _lsGet(LS_KEYS.labels, 'description');
 if (!(_currentLabels in LABEL_PRESETS)) _currentLabels = 'description';
+let _currentRenderer = _lsGet(LS_KEYS.renderer, 'mermaid');
+if (_currentRenderer !== 'mermaid' && _currentRenderer !== 'd3') _currentRenderer = 'mermaid';
 // Authoritative list of available themes, populated from /api/graph/themes.
 // Each entry: { name, mode }. Used to filter the dropdown by current mode.
 let _allThemes = [];
@@ -586,6 +596,15 @@ function clearGraph() {
         try { _currentGraphPanel.destroy(); } catch {}
         _currentGraphPanel = null;
     }
+    if (_currentD3Renderer) {
+        try { _currentD3Renderer.destroy(); } catch {}
+        _currentD3Renderer = null;
+    }
+    if (_d3NodeAskBtn && _d3NodeAskBtn.parentNode) _d3NodeAskBtn.remove();
+    _d3NodeAskBtn = null;
+    if (_d3NodeAskHideTimer) { clearTimeout(_d3NodeAskHideTimer); _d3NodeAskHideTimer = null; }
+    _d3HoveredNodeId = null;
+    _d3ActiveGraph = null;
     const infoHost = document.getElementById('graph-info-panel-host');
     if (infoHost) infoHost.innerHTML = '';
     const legend = document.getElementById('graph-edge-legend');
@@ -632,6 +651,213 @@ function hideErrorState() {
     if (empty) empty.style.display = '';
 }
 
+async function _renderWithD3(container, graph, step, key) {
+    const viewport = document.getElementById('graph-viewport');
+    if (viewport) {
+        viewport.classList.toggle('gv-theme-light', false);
+        viewport.classList.toggle('gv-theme-dark', true);
+    }
+
+    // Destroy previous Mermaid panel if it existed
+    if (_currentGraphPanel) {
+        try { _currentGraphPanel.destroy(); } catch {}
+        _currentGraphPanel = null;
+    }
+    const infoHost = document.getElementById('graph-info-panel-host');
+    if (infoHost) infoHost.innerHTML = '';
+
+    _d3ActiveGraph = graph;
+
+    // Reuse or create D3 renderer
+    if (!_currentD3Renderer || _currentD3Renderer._destroyed) {
+        _currentD3Renderer = new D3SemanticGraphRenderer(container, {
+            katex: window.katex,
+            direction: _currentDirection,
+            labels: _currentLabels,
+            theme: _currentTheme,
+            onNodeClick: (nodeId, nodeData) => {
+                _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
+            },
+            onBackgroundClick: () => {
+                _hideD3InfoPanel();
+            },
+            onNodeHover: (nodeId, nodeData, nodeEl) => {
+                if (nodeId && nodeEl) {
+                    _d3HoveredNodeId = nodeId;
+                    _showD3NodeAskBtn(nodeEl);
+                } else {
+                    _hideD3NodeAskBtn();
+                }
+            },
+        });
+    } else {
+        await _currentD3Renderer.update({ direction: _currentDirection, labels: _currentLabels, theme: _currentTheme });
+    }
+
+    await _currentD3Renderer.render(graph);
+    _currentSemanticKey = key;
+
+    // Apply zoom to the D3 card
+    const card = container.querySelector('.d3-graph-card');
+    if (card) card.style.transform = `scale(${(ZOOM_BASELINE * _zoom).toFixed(3)})`;
+
+    // Background enrichment (shared with Mermaid path)
+    enrichGraphInBackground(graph, key, step);
+}
+
+function _buildD3NodeAskMessage(nodeId, graph) {
+    if (!nodeId || !graph) return 'Explain this graph node.';
+    const node = (graph.nodes || []).find(n => n.id === nodeId);
+    if (!node) return 'Explain this graph node.';
+    const lines = ['Explain this semantic graph node:'];
+    if (node.label) lines.push(`Label: ${node.label}`);
+    if (node.type) lines.push(`Type: ${node.type}`);
+    if (node.role) lines.push(`Role: ${node.role}`);
+    if (node.quantity) lines.push(`Quantity: ${node.quantity}`);
+    if (node.dimension) lines.push(`Dimension: ${node.dimension}`);
+    if (node.unit) lines.push(`Unit: ${node.unit}`);
+    if (node.value !== undefined) lines.push(`Value: ${node.value}`);
+    if (node.op) lines.push(`Operation: ${node.op}`);
+    if (node.subexpr) lines.push(`Expression: $${node.subexpr}$`);
+    if (node.description) lines.push(`Description: ${node.description}`);
+    const incoming = [], outgoing = [];
+    for (const e of (graph.edges || [])) {
+        if (e.to === nodeId && e.from !== nodeId) incoming.push(e.from);
+        if (e.from === nodeId && e.to !== nodeId) outgoing.push(e.to);
+    }
+    if (incoming.length) lines.push(`Incoming: ${incoming.join(', ')}`);
+    if (outgoing.length) lines.push(`Outgoing: ${outgoing.join(', ')}`);
+    return lines.join('\n');
+}
+
+function _ensureD3NodeAskBtn() {
+    if (_d3NodeAskBtn) return _d3NodeAskBtn;
+    const btn = makeAiAskButton(
+        'ai-ask-btn graph-node-ai-btn',
+        'Ask AI about this node',
+        () => _buildD3NodeAskMessage(_d3HoveredNodeId, _d3ActiveGraph),
+    );
+    btn.style.position = 'fixed';
+    btn.style.opacity = '0';
+    btn.style.pointerEvents = 'none';
+    btn.style.zIndex = '950';
+    btn.addEventListener('mouseenter', () => {
+        if (_d3NodeAskHideTimer) { clearTimeout(_d3NodeAskHideTimer); _d3NodeAskHideTimer = null; }
+    });
+    btn.addEventListener('mouseleave', () => _hideD3NodeAskBtn());
+    document.body.appendChild(btn);
+    _d3NodeAskBtn = btn;
+    return btn;
+}
+
+function _showD3NodeAskBtn(nodeEl) {
+    const btn = _ensureD3NodeAskBtn();
+    if (_d3NodeAskHideTimer) { clearTimeout(_d3NodeAskHideTimer); _d3NodeAskHideTimer = null; }
+    const shape = nodeEl.querySelector('polygon, circle, rect');
+    const r = (shape || nodeEl).getBoundingClientRect();
+    const btnW = btn.offsetWidth || 24;
+    const btnH = btn.offsetHeight || 24;
+    btn.style.left = (r.right - btnW / 2) + 'px';
+    btn.style.top = (r.top - btnH / 2) + 'px';
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+}
+
+function _hideD3NodeAskBtn() {
+    if (!_d3NodeAskBtn) return;
+    if (_d3NodeAskHideTimer) { clearTimeout(_d3NodeAskHideTimer); _d3NodeAskHideTimer = null; }
+    const btn = _d3NodeAskBtn;
+    _d3NodeAskHideTimer = setTimeout(() => {
+        btn.style.opacity = '0';
+        btn.style.pointerEvents = 'none';
+    }, 220);
+}
+
+function _showD3InfoPanel(nodeId, nodeData, graph) {
+    const infoHost = document.getElementById('graph-info-panel-host');
+    if (!infoHost) return;
+    if (!nodeId) { _hideD3InfoPanel(); return; }
+
+    // Find the full node from graph model
+    const fullNode = (graph.nodes || []).find(n => n.id === nodeId) || nodeData;
+    infoHost.innerHTML = '';
+    const panel = buildInlineInfoPanel(infoHost);
+    if (!panel) return;
+
+    // Inject AI ask button into panel header
+    const h3 = panel.querySelector('h3');
+    if (h3 && !panel.querySelector('.graph-panel-ai-btn')) {
+        const header = document.createElement('div');
+        header.className = 'gp-header';
+        h3.replaceWith(header);
+        header.appendChild(h3);
+        const askBtn = makeAiAskButton(
+            'ai-ask-btn graph-panel-ai-btn',
+            'Ask AI about this node',
+            () => _buildD3NodeAskMessage(nodeId, graph),
+        );
+        header.appendChild(askBtn);
+    }
+
+    // Populate the inline panel
+    const symbolEl = panel.querySelector('.gp-symbol');
+    const fieldsEl = panel.querySelector('.gp-fields');
+    if (!symbolEl || !fieldsEl) return;
+
+    const latex = fullNode.latex || fullNode.subexpr;
+    if (latex && window.katex) {
+        try {
+            const span = document.createElement('span');
+            window.katex.render(latex, span, { displayMode: false, throwOnError: false });
+            symbolEl.innerHTML = '';
+            if (fullNode.emoji) symbolEl.appendChild(document.createTextNode(fullNode.emoji + ' '));
+            symbolEl.appendChild(span);
+        } catch (_) {
+            symbolEl.textContent = (fullNode.emoji || '') + ' ' + (fullNode.label || fullNode.id);
+        }
+    } else {
+        symbolEl.textContent = (fullNode.emoji || '') + ' ' + (fullNode.label || fullNode.id);
+    }
+    symbolEl.style.opacity = '1';
+    symbolEl.style.fontSize = '';
+
+    const FIELDS = [
+        ['label', 'Label'], ['type', 'Type'], ['role', 'Role'],
+        ['quantity', 'Quantity'], ['dimension', 'Dimension'],
+        ['unit', 'Unit'], ['value', 'Value'], ['op', 'Operation'],
+    ];
+    fieldsEl.innerHTML = '';
+    for (const [fkey, flabel] of FIELDS) {
+        if (!fullNode[fkey]) continue;
+        const row = document.createElement('div');
+        row.className = 'gp-field';
+        const k = document.createElement('span');
+        k.className = 'gp-key';
+        k.textContent = flabel;
+        const v = document.createElement('span');
+        v.className = 'gp-val';
+        v.textContent = fullNode[fkey];
+        row.append(k, v);
+        fieldsEl.appendChild(row);
+    }
+    if (fullNode.description) {
+        const desc = document.createElement('div');
+        desc.className = 'gp-description';
+        if (typeof window.renderKaTeX === 'function') {
+            desc.innerHTML = window.renderKaTeX(fullNode.description, false);
+        } else {
+            desc.textContent = fullNode.description;
+        }
+        fieldsEl.appendChild(desc);
+    }
+}
+
+function _hideD3InfoPanel() {
+    const infoHost = document.getElementById('graph-info-panel-host');
+    if (!infoHost) return;
+    infoHost.innerHTML = '';
+}
+
 async function renderCurrentStepGraph(force = false) {
     const container = document.getElementById('graph-mermaid-container');
     if (!container) return;
@@ -651,9 +877,16 @@ async function renderCurrentStepGraph(force = false) {
     }
 
     const key = stableStepKey(step) + '|' + _currentTheme + '|' +
-                _currentDirection + '|' + _currentLabels;
+                _currentDirection + '|' + _currentLabels + '|' + _currentRenderer;
     if (key === _currentSemanticKey && !force) return;
 
+    // ── D3 renderer path ──────────────────────────────────────────────
+    if (_currentRenderer === 'd3') {
+        await _renderWithD3(container, graph, step, key);
+        return;
+    }
+
+    // ── Mermaid renderer path (existing) ──────────────────────────────
     // Live regeneration from graph JSON so theme/direction/labels apply.
     let mermaidCode;
     let mode = 'dark';
@@ -1380,6 +1613,16 @@ async function setupGraphControls() {
             _currentLabels = labelsSel.value in LABEL_PRESETS
                 ? labelsSel.value : 'description';
             _lsSet(LS_KEYS.labels, _currentLabels);
+            renderCurrentStepGraph(true);
+        });
+    }
+    const rendererSel = document.getElementById('graph-renderer-select');
+    if (rendererSel) {
+        rendererSel.value = _currentRenderer;
+        rendererSel.addEventListener('change', () => {
+            _currentRenderer = rendererSel.value === 'd3' ? 'd3' : 'mermaid';
+            _lsSet(LS_KEYS.renderer, _currentRenderer);
+            clearGraph();
             renderCurrentStepGraph(true);
         });
     }

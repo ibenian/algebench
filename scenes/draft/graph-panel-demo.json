@@ -6,25 +6,73 @@
       "description": "Demonstrates the semantic graph dock view.",
       "markdown": "## Semantic Graph Demo\n\nSwitch to the **Graph** tab in the left dock to view interactive Mermaid diagrams for each proof step. Each equation appears in both its canonical form and a physically-equivalent alternate form, so you can see how the semantic graph reshapes as the algebra is rewritten.",
       "range": [
-        [-5, 5],
-        [-5, 5],
-        [-5, 5]
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ]
       ],
       "camera": {
-        "position": [6, 4, 6],
-        "target": [0, 0, 0]
+        "position": [
+          6,
+          4,
+          6
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
       },
       "elements": [],
       "steps": [
-        { "title": "Newton's Second Law", "description": "$F = m \\cdot a$" },
-        { "title": "Newton's Second Law (momentum form)", "description": "$F = \\dfrac{dp}{dt}$" },
-        { "title": "Mass-energy equivalence", "description": "$E = m c^2$" },
-        { "title": "Relativistic energy-momentum", "description": "$E^2 = (pc)^2 + (mc^2)^2$" },
-        { "title": "Uniform acceleration (velocity)", "description": "$v = v_0 + a t$" },
-        { "title": "Uniform acceleration (position)", "description": "$x = x_0 + v_0 t + \\tfrac{1}{2} a t^2$" },
-        { "title": "Schrödinger equation (compact)", "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = \\hat{H}\\,\\psi$" },
-        { "title": "Schrödinger equation (expanded)", "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = -\\dfrac{\\hbar^2}{2m}\\nabla^2 \\psi + V\\psi$" },
-        { "title": "Higher powers and a quotient (^3, ^4, ^n, ^-3, ^-4, ^-n, a/b)", "description": "$y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n} + \\frac{a}{b}$" }
+        {
+          "title": "Newton's Second Law",
+          "description": "$F = m \\cdot a$"
+        },
+        {
+          "title": "Newton's Second Law (momentum form)",
+          "description": "$F = \\dfrac{dp}{dt}$"
+        },
+        {
+          "title": "Mass-energy equivalence",
+          "description": "$E = m c^2$"
+        },
+        {
+          "title": "Relativistic energy-momentum",
+          "description": "$E^2 = (pc)^2 + (mc^2)^2$"
+        },
+        {
+          "title": "Uniform acceleration (velocity)",
+          "description": "$v = v_0 + a t$"
+        },
+        {
+          "title": "Uniform acceleration (position)",
+          "description": "$x = x_0 + v_0 t + \\tfrac{1}{2} a t^2$"
+        },
+        {
+          "title": "Schrödinger equation (compact)",
+          "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = \\hat{H}\\,\\psi$"
+        },
+        {
+          "title": "Schrödinger equation (expanded)",
+          "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = -\\dfrac{\\hbar^2}{2m}\\nabla^2 \\psi + V\\psi$"
+        },
+        {
+          "title": "Partial derivatives — 2D transport equation",
+          "description": "$\\dfrac{\\partial \\rho}{\\partial t} + u\\,\\dfrac{\\partial \\rho}{\\partial x} + v\\,\\dfrac{\\partial \\rho}{\\partial y} = 0$"
+        },
+        {
+          "title": "Higher powers and a quotient (^3, ^4, ^n, ^-3, ^-4, ^-n, a/b)",
+          "description": "$y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n} + \\frac{a}{b}$"
+        }
       ],
       "proof": {
         "id": "physics-equations-demo",
@@ -54,7 +102,7 @@
                     "id": "F",
                     "label": "force",
                     "description": "Net force: the vector sum of all forces acting on the object. Measured in newtons (N = kg·m/s²). In this law, force is the *cause* — the external push or pull that changes the object's motion.",
-                    "emoji": "\ud83c\udff9",
+                    "emoji": "🏹",
                     "type": "vector",
                     "latex": "F",
                     "quantity": "force",
@@ -74,7 +122,7 @@
                     "id": "m",
                     "label": "mass",
                     "description": "Inertial mass: the object's resistance to changes in its motion. A larger mass means a smaller acceleration for the same applied force. Treated as a positive, time-independent scalar parameter.",
-                    "emoji": "\u2696\ufe0f",
+                    "emoji": "⚖️",
                     "type": "scalar",
                     "latex": "m",
                     "quantity": "mass",
@@ -87,7 +135,7 @@
                     "id": "a",
                     "label": "acceleration",
                     "description": "Acceleration: the time rate of change of velocity, dv/dt. A vector quantity — both the magnitude (how quickly speed changes) and direction (which way velocity is changing) matter. Responds linearly to applied force.",
-                    "emoji": "\ud83e\udded",
+                    "emoji": "🧭",
                     "type": "vector",
                     "latex": "a",
                     "quantity": "acceleration",
@@ -98,12 +146,26 @@
                   }
                 ],
                 "edges": [
-                  { "from": "F", "to": "__equals_1" },
-                  { "from": "m", "to": "__multiply_2" },
-                  { "from": "a", "to": "__multiply_2" },
-                  { "from": "__multiply_2", "to": "__equals_1" }
+                  {
+                    "from": "F",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "m",
+                    "to": "__multiply_2"
+                  },
+                  {
+                    "from": "a",
+                    "to": "__multiply_2"
+                  },
+                  {
+                    "from": "__multiply_2",
+                    "to": "__equals_1"
+                  }
                 ],
-                "classification": { "kind": "algebraic" }
+                "classification": {
+                  "kind": "algebraic"
+                }
               }
             }
           },
@@ -129,7 +191,7 @@
                     "id": "F",
                     "label": "force",
                     "description": "Net force on the system. Identical conceptually to the F in F = m·a, but here it is defined as *whatever it takes* to change the system's momentum — a definition that survives into relativistic mechanics.",
-                    "emoji": "\ud83c\udff9",
+                    "emoji": "🏹",
                     "type": "vector",
                     "latex": "F",
                     "quantity": "force",
@@ -150,7 +212,7 @@
                     "id": "p",
                     "label": "momentum",
                     "description": "Linear momentum, p = m·v. The primary conserved quantity of translation symmetry — total p of an isolated system is constant (Noether's theorem). Vector; points in the direction of motion.",
-                    "emoji": "\ud83d\ude80",
+                    "emoji": "🚀",
                     "type": "vector",
                     "latex": "p",
                     "quantity": "momentum",
@@ -163,7 +225,7 @@
                     "id": "t",
                     "label": "time",
                     "description": "Time: the independent variable with respect to which momentum evolves. Treated as the universal Newtonian parameter (same for all observers) — relativity modifies this later.",
-                    "emoji": "\u23f1\ufe0f",
+                    "emoji": "⏱️",
                     "type": "scalar",
                     "latex": "t",
                     "quantity": "time",
@@ -174,16 +236,32 @@
                   }
                 ],
                 "edges": [
-                  { "from": "F", "to": "__equals_1" },
-                  { "from": "p", "to": "__derivative_p_t" },
-                  { "from": "t", "to": "__derivative_p_t" },
-                  { "from": "__derivative_p_t", "to": "__equals_1" }
+                  {
+                    "from": "F",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "p",
+                    "to": "__derivative_p_t"
+                  },
+                  {
+                    "from": "t",
+                    "to": "__derivative_p_t"
+                  },
+                  {
+                    "from": "__derivative_p_t",
+                    "to": "__equals_1"
+                  }
                 ],
                 "classification": {
                   "kind": "ODE",
                   "order": 1,
-                  "dependent_variables": ["p"],
-                  "independent_variables": ["t"]
+                  "dependent_variables": [
+                    "p"
+                  ],
+                  "independent_variables": [
+                    "t"
+                  ]
                 }
               }
             }
@@ -210,7 +288,7 @@
                     "id": "E",
                     "label": "energy",
                     "description": "Rest energy: the intrinsic energy an object carries by virtue of its mass alone (i.e. at zero momentum in its own rest frame). Equivalent to about 9 × 10¹⁶ J per kilogram — enormous, because c² is enormous.",
-                    "emoji": "\u26a1",
+                    "emoji": "⚡",
                     "type": "scalar",
                     "latex": "E",
                     "quantity": "energy",
@@ -230,7 +308,7 @@
                     "id": "m",
                     "label": "mass",
                     "description": "Rest mass (invariant mass): the mass measured in the object's own rest frame. Unlike the obsolete 'relativistic mass', rest mass is a Lorentz invariant — every observer agrees on its value.",
-                    "emoji": "\u2696\ufe0f",
+                    "emoji": "⚖️",
                     "type": "scalar",
                     "latex": "m",
                     "quantity": "mass",
@@ -251,7 +329,7 @@
                     "id": "c",
                     "label": "speed of light",
                     "description": "Speed of light in vacuum: a universal constant, exactly 299,792,458 m/s by definition. It is the maximum signal speed, the conversion factor between space and time coordinates, and the scale on which mass-energy equivalence operates.",
-                    "emoji": "\ud83d\udca1",
+                    "emoji": "💡",
                     "type": "scalar",
                     "latex": "c",
                     "quantity": "velocity",
@@ -263,13 +341,30 @@
                   }
                 ],
                 "edges": [
-                  { "from": "E", "to": "__equals_1" },
-                  { "from": "m", "to": "__multiply_2" },
-                  { "from": "c", "to": "__power_3" },
-                  { "from": "__power_3", "to": "__multiply_2" },
-                  { "from": "__multiply_2", "to": "__equals_1" }
+                  {
+                    "from": "E",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "m",
+                    "to": "__multiply_2"
+                  },
+                  {
+                    "from": "c",
+                    "to": "__power_3"
+                  },
+                  {
+                    "from": "__power_3",
+                    "to": "__multiply_2"
+                  },
+                  {
+                    "from": "__multiply_2",
+                    "to": "__equals_1"
+                  }
                 ],
-                "classification": { "kind": "algebraic" }
+                "classification": {
+                  "kind": "algebraic"
+                }
               }
             }
           },
@@ -303,7 +398,7 @@
                     "id": "E",
                     "label": "energy",
                     "description": "Total relativistic energy: includes both the rest energy (mc²) and the kinetic contribution from motion. For a particle at rest this collapses to E = mc²; for a photon (m = 0) it collapses to E = pc.",
-                    "emoji": "\u26a1",
+                    "emoji": "⚡",
                     "type": "scalar",
                     "latex": "E",
                     "quantity": "energy",
@@ -338,7 +433,7 @@
                     "id": "p",
                     "label": "momentum",
                     "description": "Relativistic momentum: p = γ·m·v where γ is the Lorentz factor. For massless particles (photons) momentum is defined purely by p = E/c — mass is not required to carry momentum.",
-                    "emoji": "\ud83d\ude80",
+                    "emoji": "🚀",
                     "type": "vector",
                     "latex": "p",
                     "quantity": "momentum",
@@ -351,7 +446,7 @@
                     "id": "c",
                     "label": "speed of light",
                     "description": "Universal constant that couples space and time. Exactly 299,792,458 m/s by definition of the metre. Shared between the pc and mc² terms because it's the same fundamental conversion factor in both.",
-                    "emoji": "\ud83d\udca1",
+                    "emoji": "💡",
                     "type": "scalar",
                     "latex": "c",
                     "quantity": "velocity",
@@ -388,7 +483,7 @@
                     "id": "m",
                     "label": "mass",
                     "description": "Rest (invariant) mass. Same quantity as in E = mc² — a Lorentz scalar that every observer agrees on, unrelated to the particle's velocity.",
-                    "emoji": "\u2696\ufe0f",
+                    "emoji": "⚖️",
                     "type": "scalar",
                     "latex": "m",
                     "quantity": "mass",
@@ -399,20 +494,58 @@
                   }
                 ],
                 "edges": [
-                  { "from": "E", "to": "__power_E" },
-                  { "from": "__power_E", "to": "__equals_1" },
-                  { "from": "p", "to": "__multiply_pc" },
-                  { "from": "c", "to": "__multiply_pc" },
-                  { "from": "__multiply_pc", "to": "__power_pc" },
-                  { "from": "__power_pc", "to": "__add_rhs" },
-                  { "from": "c", "to": "__power_c2" },
-                  { "from": "__power_c2", "to": "__multiply_mc2" },
-                  { "from": "m", "to": "__multiply_mc2" },
-                  { "from": "__multiply_mc2", "to": "__power_mc" },
-                  { "from": "__power_mc", "to": "__add_rhs" },
-                  { "from": "__add_rhs", "to": "__equals_1" }
+                  {
+                    "from": "E",
+                    "to": "__power_E"
+                  },
+                  {
+                    "from": "__power_E",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "p",
+                    "to": "__multiply_pc"
+                  },
+                  {
+                    "from": "c",
+                    "to": "__multiply_pc"
+                  },
+                  {
+                    "from": "__multiply_pc",
+                    "to": "__power_pc"
+                  },
+                  {
+                    "from": "__power_pc",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "c",
+                    "to": "__power_c2"
+                  },
+                  {
+                    "from": "__power_c2",
+                    "to": "__multiply_mc2"
+                  },
+                  {
+                    "from": "m",
+                    "to": "__multiply_mc2"
+                  },
+                  {
+                    "from": "__multiply_mc2",
+                    "to": "__power_mc"
+                  },
+                  {
+                    "from": "__power_mc",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "__add_rhs",
+                    "to": "__equals_1"
+                  }
                 ],
-                "classification": { "kind": "algebraic" }
+                "classification": {
+                  "kind": "algebraic"
+                }
               }
             }
           },
@@ -438,7 +571,7 @@
                     "id": "v",
                     "label": "velocity",
                     "description": "Final velocity at time t. A vector: direction matters. For straight-line motion with constant a it evolves linearly in time; for curved motion the equation applies component-wise.",
-                    "emoji": "\ud83d\udca8",
+                    "emoji": "💨",
                     "type": "vector",
                     "latex": "v",
                     "quantity": "velocity",
@@ -458,7 +591,7 @@
                     "id": "v_{0}",
                     "label": "initial velocity",
                     "description": "Initial velocity at t = 0: the boundary condition fixing where the velocity trajectory begins. Vector quantity, same units as v.",
-                    "emoji": "\ud83d\udd23",
+                    "emoji": "🔣",
                     "type": "scalar",
                     "latex": "v_{0}",
                     "quantity": "velocity",
@@ -478,7 +611,7 @@
                     "id": "a",
                     "label": "acceleration",
                     "description": "Constant acceleration over the motion. The uniform-a assumption is what makes this equation linear; general motion requires integrating a(t).",
-                    "emoji": "\ud83e\udded",
+                    "emoji": "🧭",
                     "type": "vector",
                     "latex": "a",
                     "quantity": "acceleration",
@@ -491,7 +624,7 @@
                     "id": "t",
                     "label": "time",
                     "description": "Elapsed time since the initial moment t = 0. The independent variable — plotting v versus t yields a straight line with slope a and intercept v₀.",
-                    "emoji": "\u23f1\ufe0f",
+                    "emoji": "⏱️",
                     "type": "scalar",
                     "latex": "t",
                     "quantity": "time",
@@ -502,14 +635,34 @@
                   }
                 ],
                 "edges": [
-                  { "from": "v", "to": "__equals_1" },
-                  { "from": "v_{0}", "to": "__add_2" },
-                  { "from": "a", "to": "__multiply_3" },
-                  { "from": "t", "to": "__multiply_3" },
-                  { "from": "__multiply_3", "to": "__add_2" },
-                  { "from": "__add_2", "to": "__equals_1" }
+                  {
+                    "from": "v",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "v_{0}",
+                    "to": "__add_2"
+                  },
+                  {
+                    "from": "a",
+                    "to": "__multiply_3"
+                  },
+                  {
+                    "from": "t",
+                    "to": "__multiply_3"
+                  },
+                  {
+                    "from": "__multiply_3",
+                    "to": "__add_2"
+                  },
+                  {
+                    "from": "__add_2",
+                    "to": "__equals_1"
+                  }
                 ],
-                "classification": { "kind": "algebraic" }
+                "classification": {
+                  "kind": "algebraic"
+                }
               }
             }
           },
@@ -535,7 +688,7 @@
                     "id": "x",
                     "label": "position",
                     "description": "Position at time t. A vector in general; its time evolution is quadratic under constant acceleration, producing the familiar parabolic trajectories of projectiles.",
-                    "emoji": "\ud83d\udccd",
+                    "emoji": "📍",
                     "type": "vector",
                     "latex": "x",
                     "quantity": "length",
@@ -555,7 +708,7 @@
                     "id": "x_{0}",
                     "label": "initial position",
                     "description": "Initial position at t = 0 — the fixed starting point of the trajectory. Boundary condition: changes the intercept but not the shape of the x(t) curve.",
-                    "emoji": "\ud83d\udea9",
+                    "emoji": "🚩",
                     "type": "vector",
                     "latex": "x_{0}",
                     "quantity": "length",
@@ -575,7 +728,7 @@
                     "id": "v_{0}",
                     "label": "initial velocity",
                     "description": "Initial velocity at t = 0. Unlike the velocity form, here it multiplies t directly (no acceleration coupling) — it accounts for whatever motion was already underway when the clock started.",
-                    "emoji": "\ud83d\udd23",
+                    "emoji": "🔣",
                     "type": "vector",
                     "latex": "v_{0}",
                     "quantity": "velocity",
@@ -595,7 +748,7 @@
                     "id": "__num_half",
                     "label": "one half",
                     "description": "The rational constant ½, produced by integrating t with respect to t. Dimensionless.",
-                    "emoji": "\ud83d\udd22",
+                    "emoji": "🔢",
                     "type": "number",
                     "latex": "\\tfrac{1}{2}",
                     "value": 0.5,
@@ -606,7 +759,7 @@
                     "id": "a",
                     "label": "acceleration",
                     "description": "Constant acceleration vector. Assumed time-independent in this kinematic family of equations — relaxing this assumption breaks the simple quadratic form.",
-                    "emoji": "\ud83e\udded",
+                    "emoji": "🧭",
                     "type": "vector",
                     "latex": "a",
                     "quantity": "acceleration",
@@ -627,7 +780,7 @@
                     "id": "t",
                     "label": "time",
                     "description": "Elapsed time since t = 0. Same independent variable as in the velocity form; appears linearly (in the v₀t term) and quadratically (in the ½at² term).",
-                    "emoji": "\u23f1\ufe0f",
+                    "emoji": "⏱️",
                     "type": "scalar",
                     "latex": "t",
                     "quantity": "time",
@@ -638,19 +791,54 @@
                   }
                 ],
                 "edges": [
-                  { "from": "x", "to": "__equals_1" },
-                  { "from": "x_{0}", "to": "__add_rhs" },
-                  { "from": "v_{0}", "to": "__mult_v0t" },
-                  { "from": "t", "to": "__mult_v0t" },
-                  { "from": "__mult_v0t", "to": "__add_rhs" },
-                  { "from": "__num_half", "to": "__mult_half_at2" },
-                  { "from": "a", "to": "__mult_half_at2" },
-                  { "from": "t", "to": "__power_t2" },
-                  { "from": "__power_t2", "to": "__mult_half_at2" },
-                  { "from": "__mult_half_at2", "to": "__add_rhs" },
-                  { "from": "__add_rhs", "to": "__equals_1" }
+                  {
+                    "from": "x",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "x_{0}",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "v_{0}",
+                    "to": "__mult_v0t"
+                  },
+                  {
+                    "from": "t",
+                    "to": "__mult_v0t"
+                  },
+                  {
+                    "from": "__mult_v0t",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "__num_half",
+                    "to": "__mult_half_at2"
+                  },
+                  {
+                    "from": "a",
+                    "to": "__mult_half_at2"
+                  },
+                  {
+                    "from": "t",
+                    "to": "__power_t2"
+                  },
+                  {
+                    "from": "__power_t2",
+                    "to": "__mult_half_at2"
+                  },
+                  {
+                    "from": "__mult_half_at2",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "__add_rhs",
+                    "to": "__equals_1"
+                  }
                 ],
-                "classification": { "kind": "algebraic" }
+                "classification": {
+                  "kind": "algebraic"
+                }
               }
             }
           },
@@ -683,7 +871,7 @@
                     "id": "i",
                     "label": "imaginary unit",
                     "description": "The imaginary unit, i = √(−1). Pulls the time derivative into the complex plane — without it, ∂/∂t would describe diffusion (real-valued decay); with it, we get oscillatory wavefunctions and interference.",
-                    "emoji": "\ud83d\udd35",
+                    "emoji": "🔵",
                     "type": "constant",
                     "latex": "i",
                     "quantity": "dimensionless",
@@ -696,7 +884,7 @@
                     "id": "hbar",
                     "label": "reduced Planck constant",
                     "description": "ℏ = h/(2π) ≈ 1.054 × 10⁻³⁴ J·s. Sets the scale of quantum effects — actions much larger than ℏ behave classically; actions of order ℏ require quantum mechanics.",
-                    "emoji": "\ud83d\udcd0",
+                    "emoji": "📐",
                     "type": "constant",
                     "latex": "\\hbar",
                     "quantity": "action",
@@ -718,7 +906,7 @@
                     "id": "psi",
                     "label": "wavefunction",
                     "description": "Quantum state (wavefunction). A complex-valued function of position and time whose squared modulus |ψ|² gives the probability density. Normalized such that ∫|ψ|² dV = 1.",
-                    "emoji": "\ud83c\udf0a",
+                    "emoji": "🌊",
                     "type": "scalar",
                     "latex": "\\psi",
                     "quantity": "probability_amplitude",
@@ -731,7 +919,7 @@
                     "id": "Hhat",
                     "label": "Hamiltonian",
                     "description": "Hamiltonian operator Ĥ — the total-energy operator of the system. Typically Ĥ = T̂ + V̂ (kinetic plus potential). Hermitian (real eigenvalues = allowed energies), and it generates time translation via the Schrödinger equation. When ψ feeds in, the output is Ĥψ — the *action* of the operator on the state, not a product.",
-                    "emoji": "\ud83d\udd2e",
+                    "emoji": "🔮",
                     "type": "operator",
                     "op": "hamiltonian",
                     "latex": "\\hat{H}",
@@ -743,19 +931,44 @@
                   }
                 ],
                 "edges": [
-                  { "from": "i", "to": "__mult_lhs" },
-                  { "from": "hbar", "to": "__mult_lhs" },
-                  { "from": "psi", "to": "__deriv_psi_t" },
-                  { "from": "__deriv_psi_t", "to": "__mult_lhs" },
-                  { "from": "__mult_lhs", "to": "__equals_1" },
-                  { "from": "psi", "to": "Hhat" },
-                  { "from": "Hhat", "to": "__equals_1" }
+                  {
+                    "from": "i",
+                    "to": "__mult_lhs"
+                  },
+                  {
+                    "from": "hbar",
+                    "to": "__mult_lhs"
+                  },
+                  {
+                    "from": "psi",
+                    "to": "__deriv_psi_t"
+                  },
+                  {
+                    "from": "__deriv_psi_t",
+                    "to": "__mult_lhs"
+                  },
+                  {
+                    "from": "__mult_lhs",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "psi",
+                    "to": "Hhat"
+                  },
+                  {
+                    "from": "Hhat",
+                    "to": "__equals_1"
+                  }
                 ],
                 "classification": {
                   "kind": "PDE",
                   "order": 1,
-                  "dependent_variables": ["psi"],
-                  "independent_variables": ["t"]
+                  "dependent_variables": [
+                    "psi"
+                  ],
+                  "independent_variables": [
+                    "t"
+                  ]
                 }
               }
             }
@@ -789,7 +1002,7 @@
                     "id": "i",
                     "label": "imaginary unit",
                     "description": "The imaginary unit i = √(−1). Essential: without i, ∂/∂t would describe diffusion; with i, probability is conserved and we get unitary evolution.",
-                    "emoji": "\ud83d\udd35",
+                    "emoji": "🔵",
                     "type": "constant",
                     "latex": "i",
                     "quantity": "dimensionless",
@@ -801,7 +1014,7 @@
                     "id": "hbar",
                     "label": "reduced Planck constant",
                     "description": "ℏ ≈ 1.054 × 10⁻³⁴ J·s. Sets the scale where quantum effects matter. Appears squared in the kinetic term — a direct consequence of quantizing p = -iℏ∇ and then forming p²/(2m).",
-                    "emoji": "\ud83d\udcd0",
+                    "emoji": "📐",
                     "type": "constant",
                     "latex": "\\hbar",
                     "quantity": "action",
@@ -823,7 +1036,7 @@
                     "id": "psi",
                     "label": "wavefunction",
                     "description": "Complex-valued wavefunction ψ(r, t). |ψ|² gives probability density; phase matters too (interference). Shared across the time derivative, the Laplacian, and the potential multiplication.",
-                    "emoji": "\ud83c\udf0a",
+                    "emoji": "🌊",
                     "type": "scalar",
                     "latex": "\\psi",
                     "quantity": "probability_amplitude",
@@ -850,7 +1063,7 @@
                     "id": "__num_neg_1",
                     "label": "negative one",
                     "description": "The numerical constant −1, standing in for the explicit minus sign on the kinetic term.",
-                    "emoji": "\u2796",
+                    "emoji": "➖",
                     "type": "number",
                     "latex": "-1",
                     "value": -1,
@@ -884,7 +1097,7 @@
                     "id": "__num_2",
                     "label": "two",
                     "description": "The numerical constant 2, from the classical kinetic-energy formula p²/(2m).",
-                    "emoji": "\ud83d\udd22",
+                    "emoji": "🔢",
                     "type": "number",
                     "latex": "2",
                     "value": 2,
@@ -895,7 +1108,7 @@
                     "id": "m",
                     "label": "mass",
                     "description": "Mass of the quantum particle. Determines how strongly the kinetic operator smooths / spreads the wavefunction — lighter particles exhibit more pronounced quantum behavior.",
-                    "emoji": "\u2696\ufe0f",
+                    "emoji": "⚖️",
                     "type": "scalar",
                     "latex": "m",
                     "quantity": "mass",
@@ -924,7 +1137,7 @@
                     "id": "V",
                     "label": "potential energy",
                     "description": "Potential energy function V(r) — an external scalar field (e.g. electrostatic for hydrogen, harmonic for an oscillator, infinite walls for a box). Shapes the Hamiltonian's spectrum and the geometry of stationary states.",
-                    "emoji": "\ud83c\udfd4\ufe0f",
+                    "emoji": "🏔️",
                     "type": "scalar",
                     "latex": "V",
                     "quantity": "energy",
@@ -935,31 +1148,97 @@
                   }
                 ],
                 "edges": [
-                  { "from": "i", "to": "__mult_lhs" },
-                  { "from": "hbar", "to": "__mult_lhs" },
-                  { "from": "psi", "to": "__deriv_psi_t" },
-                  { "from": "__deriv_psi_t", "to": "__mult_lhs" },
-                  { "from": "__mult_lhs", "to": "__equals_1" },
-                  { "from": "hbar", "to": "__power_hbar2" },
-                  { "from": "__num_2", "to": "__mult_2m" },
-                  { "from": "m", "to": "__mult_2m" },
-                  { "from": "__power_hbar2", "to": "__div_coef", "semantic": "direct" },
-                  { "from": "__mult_2m", "to": "__div_coef", "semantic": "inverse" },
-                  { "from": "psi", "to": "__laplacian_psi" },
-                  { "from": "__num_neg_1", "to": "__mult_kinetic" },
-                  { "from": "__div_coef", "to": "__mult_kinetic" },
-                  { "from": "__laplacian_psi", "to": "__mult_kinetic" },
-                  { "from": "__mult_kinetic", "to": "__add_rhs" },
-                  { "from": "V", "to": "__mult_potential" },
-                  { "from": "psi", "to": "__mult_potential" },
-                  { "from": "__mult_potential", "to": "__add_rhs" },
-                  { "from": "__add_rhs", "to": "__equals_1" }
+                  {
+                    "from": "i",
+                    "to": "__mult_lhs"
+                  },
+                  {
+                    "from": "hbar",
+                    "to": "__mult_lhs"
+                  },
+                  {
+                    "from": "psi",
+                    "to": "__deriv_psi_t"
+                  },
+                  {
+                    "from": "__deriv_psi_t",
+                    "to": "__mult_lhs"
+                  },
+                  {
+                    "from": "__mult_lhs",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "hbar",
+                    "to": "__power_hbar2"
+                  },
+                  {
+                    "from": "__num_2",
+                    "to": "__mult_2m"
+                  },
+                  {
+                    "from": "m",
+                    "to": "__mult_2m"
+                  },
+                  {
+                    "from": "__power_hbar2",
+                    "to": "__div_coef",
+                    "semantic": "direct"
+                  },
+                  {
+                    "from": "__mult_2m",
+                    "to": "__div_coef",
+                    "semantic": "inverse"
+                  },
+                  {
+                    "from": "psi",
+                    "to": "__laplacian_psi"
+                  },
+                  {
+                    "from": "__num_neg_1",
+                    "to": "__mult_kinetic"
+                  },
+                  {
+                    "from": "__div_coef",
+                    "to": "__mult_kinetic"
+                  },
+                  {
+                    "from": "__laplacian_psi",
+                    "to": "__mult_kinetic"
+                  },
+                  {
+                    "from": "__mult_kinetic",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "V",
+                    "to": "__mult_potential"
+                  },
+                  {
+                    "from": "psi",
+                    "to": "__mult_potential"
+                  },
+                  {
+                    "from": "__mult_potential",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "__add_rhs",
+                    "to": "__equals_1"
+                  }
                 ],
                 "classification": {
                   "kind": "PDE",
                   "order": 2,
-                  "dependent_variables": ["psi"],
-                  "independent_variables": ["t", "x", "y", "z"]
+                  "dependent_variables": [
+                    "psi"
+                  ],
+                  "independent_variables": [
+                    "t",
+                    "x",
+                    "y",
+                    "z"
+                  ]
                 }
               }
             }
@@ -967,10 +1246,247 @@
           {
             "id": "proof-step-8",
             "type": "step",
+            "label": "Partial derivatives — 2D transport equation",
+            "math": "\\frac{\\partial \\rho}{\\partial t} + u\\,\\frac{\\partial \\rho}{\\partial x} + v\\,\\frac{\\partial \\rho}{\\partial y} = 0",
+            "justification": "The 2D advection (transport) equation: density ρ is carried along by a velocity field (u, v) without diffusion. Each partial derivative operator differentiates with respect to a different independent variable — t, x, or y — so the D3 renderer shows d·/dt, d·/dx, and d·/dy on distinct operator nodes.",
+            "sceneStep": 8,
+            "semanticGraph": {
+              "graph": {
+                "domain": "fluid_dynamics",
+                "nodes": [
+                  {
+                    "id": "__equals_1",
+                    "type": "operator",
+                    "op": "equals",
+                    "description": "Equates the sum of partial derivatives to zero — stating that ρ is conserved along fluid trajectories.",
+                    "subexpr": "\\frac{\\partial \\rho}{\\partial t} + u \\frac{\\partial \\rho}{\\partial x} + v \\frac{\\partial \\rho}{\\partial y} = 0"
+                  },
+                  {
+                    "id": "__add_lhs",
+                    "type": "operator",
+                    "op": "add",
+                    "description": "Three-term sum: the local time rate of change plus the two advective flux contributions.",
+                    "subexpr": "\\frac{\\partial \\rho}{\\partial t} + u \\frac{\\partial \\rho}{\\partial x} + v \\frac{\\partial \\rho}{\\partial y}"
+                  },
+                  {
+                    "id": "__deriv_rho_t",
+                    "type": "operator",
+                    "op": "derivative",
+                    "with_respect_to": "t",
+                    "description": "Partial time derivative of density: how ρ changes at a fixed spatial point.",
+                    "subexpr": "\\frac{\\partial \\rho}{\\partial t}"
+                  },
+                  {
+                    "id": "__mult_u_drho_x",
+                    "type": "operator",
+                    "op": "multiply",
+                    "description": "Advective flux in x: the horizontal velocity u times the spatial gradient ∂ρ/∂x.",
+                    "subexpr": "u \\frac{\\partial \\rho}{\\partial x}"
+                  },
+                  {
+                    "id": "u_vel",
+                    "label": "x-velocity",
+                    "description": "Horizontal component of the velocity field. Determines how fast ρ is carried in the x direction.",
+                    "emoji": "➡️",
+                    "type": "scalar",
+                    "latex": "u",
+                    "quantity": "velocity",
+                    "dimension": "L·T⁻¹",
+                    "unit": "m/s",
+                    "role": "parameter",
+                    "subexpr": "u"
+                  },
+                  {
+                    "id": "__deriv_rho_x",
+                    "type": "operator",
+                    "op": "derivative",
+                    "with_respect_to": "x",
+                    "description": "Partial x-derivative of density: the spatial gradient of ρ in the horizontal direction.",
+                    "subexpr": "\\frac{\\partial \\rho}{\\partial x}"
+                  },
+                  {
+                    "id": "__mult_v_drho_y",
+                    "type": "operator",
+                    "op": "multiply",
+                    "description": "Advective flux in y: the vertical velocity v times the spatial gradient ∂ρ/∂y.",
+                    "subexpr": "v \\frac{\\partial \\rho}{\\partial y}"
+                  },
+                  {
+                    "id": "v_vel",
+                    "label": "y-velocity",
+                    "description": "Vertical component of the velocity field. Determines how fast ρ is carried in the y direction.",
+                    "emoji": "⬆️",
+                    "type": "scalar",
+                    "latex": "v",
+                    "quantity": "velocity",
+                    "dimension": "L·T⁻¹",
+                    "unit": "m/s",
+                    "role": "parameter",
+                    "subexpr": "v"
+                  },
+                  {
+                    "id": "__deriv_rho_y",
+                    "type": "operator",
+                    "op": "derivative",
+                    "with_respect_to": "y",
+                    "description": "Partial y-derivative of density: the spatial gradient of ρ in the vertical direction.",
+                    "subexpr": "\\frac{\\partial \\rho}{\\partial y}"
+                  },
+                  {
+                    "id": "rho",
+                    "label": "density",
+                    "description": "Scalar density field ρ(x, y, t). The quantity being transported by the velocity field without sources or sinks.",
+                    "emoji": "🌫️",
+                    "type": "scalar",
+                    "latex": "\\rho",
+                    "quantity": "density",
+                    "dimension": "M·L⁻³",
+                    "unit": "kg/m³",
+                    "role": "state_variable",
+                    "subexpr": "\\rho"
+                  },
+                  {
+                    "id": "__num_0",
+                    "label": "0",
+                    "description": "Zero on the right-hand side — no sources or sinks.",
+                    "emoji": "🔢",
+                    "type": "number",
+                    "value": 0,
+                    "role": "constant",
+                    "subexpr": "0"
+                  },
+                  {
+                    "id": "var_t",
+                    "label": "time",
+                    "description": "Independent variable: time coordinate.",
+                    "emoji": "🕐",
+                    "type": "scalar",
+                    "latex": "t",
+                    "quantity": "time",
+                    "dimension": "T",
+                    "unit": "s",
+                    "role": "independent_variable",
+                    "subexpr": "t"
+                  },
+                  {
+                    "id": "var_x",
+                    "label": "x-position",
+                    "description": "Independent variable: horizontal spatial coordinate.",
+                    "emoji": "📏",
+                    "type": "scalar",
+                    "latex": "x",
+                    "quantity": "length",
+                    "dimension": "L",
+                    "unit": "m",
+                    "role": "independent_variable",
+                    "subexpr": "x"
+                  },
+                  {
+                    "id": "var_y",
+                    "label": "y-position",
+                    "description": "Independent variable: vertical spatial coordinate.",
+                    "emoji": "📐",
+                    "type": "scalar",
+                    "latex": "y",
+                    "quantity": "length",
+                    "dimension": "L",
+                    "unit": "m",
+                    "role": "independent_variable",
+                    "subexpr": "y"
+                  }
+                ],
+                "edges": [
+                  {
+                    "from": "rho",
+                    "to": "__deriv_rho_t"
+                  },
+                  {
+                    "from": "var_t",
+                    "to": "__deriv_rho_t"
+                  },
+                  {
+                    "from": "rho",
+                    "to": "__deriv_rho_x"
+                  },
+                  {
+                    "from": "var_x",
+                    "to": "__deriv_rho_x"
+                  },
+                  {
+                    "from": "rho",
+                    "to": "__deriv_rho_y"
+                  },
+                  {
+                    "from": "var_y",
+                    "to": "__deriv_rho_y"
+                  },
+                  {
+                    "from": "__deriv_rho_t",
+                    "to": "__add_lhs"
+                  },
+                  {
+                    "from": "u_vel",
+                    "to": "__mult_u_drho_x",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "__deriv_rho_x",
+                    "to": "__mult_u_drho_x",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "__mult_u_drho_x",
+                    "to": "__add_lhs"
+                  },
+                  {
+                    "from": "v_vel",
+                    "to": "__mult_v_drho_y",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "__deriv_rho_y",
+                    "to": "__mult_v_drho_y",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "__mult_v_drho_y",
+                    "to": "__add_lhs"
+                  },
+                  {
+                    "from": "__add_lhs",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "__num_0",
+                    "to": "__equals_1"
+                  }
+                ],
+                "classification": {
+                  "kind": "PDE",
+                  "order": 1,
+                  "dependent_variables": [
+                    "rho"
+                  ],
+                  "independent_variables": [
+                    "t",
+                    "x",
+                    "y"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": "proof-step-9",
+            "type": "step",
             "label": "Higher powers and a quotient — ^3, ^4, ^n, ^-3, ^-4, ^-n, a/b",
             "math": "y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n} + \\frac{a}{b}",
             "justification": "Positive integer exponents read as direct (red) at increasing widths; negative integer exponents read as inverse (blue) at the same widths. The symbolic −n is also tagged inverse with default weight 1 — the renderer can read sign from the leading minus even without a magnitude. Only the positive symbolic n stays neutral. The quotient a/b shows the multiply-with-denominator pattern: the numerator's edge from a paints direct (factor); the edge from the inverse-power (b^-1) paints inverse — the multiply combiner no longer overrides the renderer's power-source inference.",
-            "sceneStep": 8,
+            "sceneStep": 9,
             "semanticGraph": {
               "graph": {
                 "domain": "algebra",
@@ -1090,31 +1606,89 @@
                   }
                 ],
                 "edges": [
-                  { "from": "y", "to": "__equals_1" },
-                  { "from": "x", "to": "__power_x3" },
-                  { "from": "x", "to": "__power_x4" },
-                  { "from": "x", "to": "__power_xn" },
-                  { "from": "x", "to": "__power_x_neg3" },
-                  { "from": "x", "to": "__power_x_neg4" },
-                  { "from": "x", "to": "__power_x_negn" },
-                  { "from": "__power_x3", "to": "__add_rhs" },
-                  { "from": "__power_x4", "to": "__add_rhs" },
-                  { "from": "__power_xn", "to": "__add_rhs" },
-                  { "from": "__power_x_neg3", "to": "__add_rhs" },
-                  { "from": "__power_x_neg4", "to": "__add_rhs" },
-                  { "from": "__power_x_negn", "to": "__add_rhs" },
-                  { "from": "a", "to": "__multiply_div", "semantic": "direct", "weight": 1.0 },
-                  { "from": "b", "to": "__power_b_neg1" },
-                  { "from": "__power_b_neg1", "to": "__multiply_div" },
-                  { "from": "__multiply_div", "to": "__add_rhs" },
-                  { "from": "__add_rhs", "to": "__equals_1" }
+                  {
+                    "from": "y",
+                    "to": "__equals_1"
+                  },
+                  {
+                    "from": "x",
+                    "to": "__power_x3"
+                  },
+                  {
+                    "from": "x",
+                    "to": "__power_x4"
+                  },
+                  {
+                    "from": "x",
+                    "to": "__power_xn"
+                  },
+                  {
+                    "from": "x",
+                    "to": "__power_x_neg3"
+                  },
+                  {
+                    "from": "x",
+                    "to": "__power_x_neg4"
+                  },
+                  {
+                    "from": "x",
+                    "to": "__power_x_negn"
+                  },
+                  {
+                    "from": "__power_x3",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "__power_x4",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "__power_xn",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "__power_x_neg3",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "__power_x_neg4",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "__power_x_negn",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "a",
+                    "to": "__multiply_div",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "b",
+                    "to": "__power_b_neg1"
+                  },
+                  {
+                    "from": "__power_b_neg1",
+                    "to": "__multiply_div"
+                  },
+                  {
+                    "from": "__multiply_div",
+                    "to": "__add_rhs"
+                  },
+                  {
+                    "from": "__add_rhs",
+                    "to": "__equals_1"
+                  }
                 ],
-                "classification": { "kind": "algebraic" }
+                "classification": {
+                  "kind": "algebraic"
+                }
               }
             }
           },
           {
-            "id": "proof-step-9",
+            "id": "proof-step-10",
             "type": "given",
             "label": "Disconnected statements — comma-separated clauses (issue #144)",
             "math": "a = 1, \\quad b = 2",
@@ -1175,12 +1749,27 @@
                   }
                 ],
                 "edges": [
-                  { "from": "a", "to": "c0___equals_1" },
-                  { "from": "c0___num_2", "to": "c0___equals_1" },
-                  { "from": "b", "to": "c1___equals_1" },
-                  { "from": "c1___num_2", "to": "c1___equals_1" }
+                  {
+                    "from": "a",
+                    "to": "c0___equals_1"
+                  },
+                  {
+                    "from": "c0___num_2",
+                    "to": "c0___equals_1"
+                  },
+                  {
+                    "from": "b",
+                    "to": "c1___equals_1"
+                  },
+                  {
+                    "from": "c1___num_2",
+                    "to": "c1___equals_1"
+                  }
                 ],
-                "classification": { "kind": "statements", "count": 2 }
+                "classification": {
+                  "kind": "statements",
+                  "count": 2
+                }
               }
             }
           }

@@ -2201,6 +2201,21 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         except Exception as e:
             return JSONResponse({"error": str(e), "themes": []}, status_code=500)
 
+    @fastapp.get("/api/graph/theme/{name}")
+    async def get_graph_theme(name: str):
+        """Return the full JSON for a single semantic-graph theme."""
+        import re
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+            return JSONResponse({"error": "invalid theme name"}, status_code=400)
+        try:
+            g2m = _load_script_module("scripts/graph_to_mermaid.py", "graph_to_mermaid")
+            theme = g2m.load_theme(name)
+            return JSONResponse(theme)
+        except FileNotFoundError:
+            return JSONResponse({"error": f"theme '{name}' not found"}, status_code=404)
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
+
     class MermaidRenderRequest(BaseModel):
         graph: dict = {}
         theme: str = "default-light"

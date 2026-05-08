@@ -1,0 +1,109 @@
+/* D3 Semantic Graph Renderer — dark theme styles */
+
+.d3-graph-card {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+svg.d3-semantic-graph {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+/* Variable nodes — fill/stroke set by theme via inline attributes */
+.d3sg-var-bg {
+    stroke-width: 1.5px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-var-bg {
+    filter: brightness(1.3);
+}
+
+/* Operator nodes — fill/stroke set by theme via inline attributes */
+.d3sg-op-bg {
+    stroke-width: 1.5px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-op-bg {
+    filter: brightness(1.3);
+}
+
+/* Collapsed tile — fill/stroke set by theme via inline attributes */
+.d3sg-tile-bg {
+    stroke-width: 2px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-tile-bg {
+    filter: brightness(1.25);
+}
+
+/* Node labels */
+.d3sg-label {
+    fill: #dde6ff;
+    pointer-events: none;
+    user-select: none;
+}
+
+.d3sg-katex-host {
+    color: #dde6ff;
+    font-size: 17px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.d3sg-katex-host .katex {
+    font-size: 0.9em;
+}
+
+/* Edge labels */
+.d3sg-edge-label {
+    fill: #aebbd1;
+    font-size: 11px;
+    paint-order: stroke;
+    stroke: #131a2c;
+    stroke-width: 4px;
+    pointer-events: none;
+}
+
+/* Chevron (collapse/expand button) */
+.d3sg-chevron {
+    opacity: 0;
+    cursor: pointer;
+    pointer-events: all;
+    transition: opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-chevron {
+    opacity: 0.7;
+}
+.d3sg-chevron:hover {
+    opacity: 1 !important;
+}
+
+/* Invisible hit target for flat themes */
+.d3sg-hit-target {
+    transition: stroke 0.12s ease-out, stroke-opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-hit-target {
+    stroke: #7ea8ff !important;
+    stroke-width: 1.5px !important;
+    stroke-opacity: 0.4;
+}
+
+/* Active node ring */
+.d3sg-node.active .d3sg-var-bg {
+    stroke: #6df08e;
+    stroke-width: 2.5px;
+}
+.d3sg-node.active .d3sg-op-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+}
+.d3sg-node.active .d3sg-tile-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+}

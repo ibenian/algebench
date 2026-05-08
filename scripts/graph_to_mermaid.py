@@ -221,7 +221,9 @@ def validate_graph(graph: dict[str, Any]) -> list[str]:
 def load_theme(name: str, theme_dir: Path | None = None) -> dict[str, Any]:
     """Load a theme JSON file by name from the semantic-graph theme directory."""
     d = theme_dir or THEME_DIR
-    path = d / f"{name}.json"
+    path = (d / f"{name}.json").resolve()
+    if not path.is_relative_to(d.resolve()):
+        raise FileNotFoundError(f"Theme {name!r} not found in {d}.")
     if not path.exists():
         available = sorted(p.stem for p in d.glob("*.json"))
         raise FileNotFoundError(
