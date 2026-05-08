@@ -3814,6 +3814,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     padding-left: 0;
     padding-right: 0;
     text-align: center;
+    flex-shrink: 0;
 }
 #graph-show-json {
     width: 36px;
