@@ -1,6 +1,6 @@
 # AlgeBench
 
-**Math you can rotate, pause, and ask questions to.**
+**See and touch the math, and think with an AI.**
 
 > **AI for human understanding — not for outsourcing thought.**
 
