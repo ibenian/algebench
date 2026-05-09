@@ -109,7 +109,7 @@ const LABEL_PRESETS = {
 let _currentLabels = _lsGet(LS_KEYS.labels, 'description');
 if (!(_currentLabels in LABEL_PRESETS)) _currentLabels = 'description';
 let _currentRenderer = _lsGet(LS_KEYS.renderer, 'd3');
-if (_currentRenderer !== 'mermaid' && _currentRenderer !== 'd3') _currentRenderer = 'mermaid';
+if (_currentRenderer !== 'mermaid' && _currentRenderer !== 'd3') _currentRenderer = 'd3';
 // Authoritative list of available themes, populated from /api/graph/themes.
 // Each entry: { name, mode }. Used to filter the dropdown by current mode.
 let _allThemes = [];
@@ -1654,6 +1654,7 @@ async function setupGraphControls() {
         rendererSel.addEventListener('change', () => {
             _currentRenderer = rendererSel.value === 'd3' ? 'd3' : 'mermaid';
             _lsSet(LS_KEYS.renderer, _currentRenderer);
+            _updateFitControls();
             clearGraph();
             renderCurrentStepGraph(true);
         });
@@ -1678,6 +1679,20 @@ function applyZoom() {
     if (target) target.style.transform = `scale(${(ZOOM_BASELINE * _zoom).toFixed(3)})`;
     const label = document.getElementById('graph-zoom-level');
     if (label) label.textContent = `${Math.round(_zoom * 100)}%`;
+}
+
+function _updateFitControls() {
+    const isD3 = _currentRenderer === 'd3';
+    const fitBtn = document.getElementById('graph-zoom-fit');
+    const zoomLabel = document.getElementById('graph-zoom-level');
+    if (fitBtn) {
+        fitBtn.disabled = !isD3;
+        fitBtn.title = isD3 ? 'Zoom to fit' : 'Zoom to fit (D3 only)';
+    }
+    if (zoomLabel) {
+        zoomLabel.style.cursor = isD3 ? 'pointer' : 'default';
+        zoomLabel.title = isD3 ? 'Double-click to fit' : '';
+    }
 }
 
 function setupZoomControls() {
@@ -1714,6 +1729,7 @@ function setupZoomControls() {
         }
     });
     applyZoom();
+    _updateFitControls();
 }
 
 /**
