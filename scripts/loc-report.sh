@@ -27,6 +27,8 @@ BRANCH="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)"
 {
   echo "# Lines of Code Report"
   echo ""
+  echo "> **Auto-generated** by [\`scripts/loc-report.sh\`](scripts/loc-report.sh) — do not edit manually."
+  echo ""
   echo "| Field | Value |"
   echo "|---|---|"
   echo "| **Branch** | \`$BRANCH\` |"

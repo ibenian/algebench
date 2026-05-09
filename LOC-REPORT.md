@@ -1,10 +1,12 @@
 # Lines of Code Report
 
+> **Auto-generated** by [`scripts/loc-report.sh`](scripts/loc-report.sh) — do not edit manually.
+
 | Field | Value |
 |---|---|
 | **Branch** | `ci/tokei-loc-report` |
-| **Commit** | `d379120` |
-| **Date** | 2026-05-08 23:07:46 -0400 |
+| **Commit** | `3f0bfd1` |
+| **Date** | 2026-05-08 23:15:29 -0400 |
 
 ## Language Breakdown
 
@@ -15,7 +17,7 @@
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "JavaScript", "Python", "CSS", "HTML", "Shell", "BASH"]
-  bar [45631, 14798, 10527, 3989, 386, 135, 33]
+  bar [45631, 14798, 10527, 3989, 386, 137, 33]
 ```
 
 ## Summary by Language
@@ -28,7 +30,7 @@ xychart-beta horizontal
  JavaScript               46        17068        14798          887         1383
  Python                   29        13620        10527         1507         1586
  CSS                       3         4320         3989          154          177
- Shell                     2          170          135           14           21
+ Shell                     2          172          137           14           21
  BASH                      1           41           33            4            4
  Plain Text                1            9            0            9            0
 ─────────────────────────────────────────────────────────────────────────────────
@@ -37,14 +39,14 @@ xychart-beta horizontal
  |- JavaScript             2          580          513           11           56
  (Total)                             1107         1018           23           66
 ─────────────────────────────────────────────────────────────────────────────────
- Markdown                 55        10428            0         7852         2576
+ Markdown                 54        10254            0         7734         2520
  |- BASH                  13          142          120           14            8
  |- JavaScript             1           10            6            3            1
  |- JSON                  33         1318         1318            0            0
  |- Python                 2           38           30            2            6
- (Total)                            11936         1474         7871         2591
+ (Total)                            11762         1474         7753         2535
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   180        93903        77605        10469         5829
+ Total                   179        93731        77607        10351         5773
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -93,8 +95,8 @@ xychart-beta horizontal
  |tatic/objects/ellipsoid.js           74           66            0            8
  |ic/objects/vector-field.js           72           64            0            8
  |nch/static/objects/axis.js           62           56            0            6
- |ch/static/objects/index.js           54           53            0            1
  |algebench/static/coords.js           71           53           13            5
+ |ch/static/objects/index.js           54           53            0            1
  |/static/objects/surface.js           52           48            0            4
  |ch/static/objects/plane.js           50           43            0            7
  |nch/static/objects/text.js           48           40            1            7
