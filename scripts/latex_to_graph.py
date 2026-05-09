@@ -627,9 +627,9 @@ class SemanticGraphBuilder:
             self._add_edge(base_id, node_id)
             return node_id
 
-        # --- Unary negation (Mul(-1, X)) — emit a single-input ``negate``
+        # --- Unary negation (Mul(-1, X)) — emit a single-input ``negation``
         # operator instead of the noisy ``× (-1)`` pair. The renderer
-        # gives ``negate`` an inverted-triangle default shape via
+        # gives ``negation`` an inverted-triangle default shape via
         # ``graph_to_mermaid.OP_DEFAULT_SHAPES`` so the flip reads at a
         # glance; no shape lives on the node itself (graph schema is
         # semantic-only).
@@ -639,11 +639,11 @@ class SemanticGraphBuilder:
             and expr.args[0] == sympy.S.NegativeOne
         ):
             rest = expr.args[1:]
-            node_id = self._next_id("negate")
+            node_id = self._next_id("negation")
             self._add_node(
                 node_id,
                 type="operator",
-                op="negate",
+                op="negation",
             )
             if len(rest) == 1:
                 child_id = self._walk(rest[0])

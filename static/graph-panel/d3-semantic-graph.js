@@ -139,7 +139,7 @@ function operatorGlyph(node) {
     const glyphs = {
         equals: '=', multiply: '×', add: '+', subtract: '−',
         divide: '÷', integral: '∫',
-        implies: '⇒', iff: '⇔', negate: '¬', conjunction: '∧',
+        implies: '⇒', iff: '⇔', negation: '−', not: '¬', logical_not: '¬', conjunction: '∧',
         disjunction: '∨', sum: '∑', product: '∏', limit: 'lim',
         factorial: '!', sqrt: '√(·)', log: 'log', logarithm: 'log',
         exp: 'exp', sin: 'sin', cos: 'cos', tan: 'tan',

@@ -73,7 +73,7 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "subtract": "−",
     "multiply": "×",
     "divide": "÷",
-    "negate": "−",
+    "negation": "−",
     "power": "(·)ⁿ",
     "equals": "=",
     "derivative": "d/dt",
@@ -98,7 +98,7 @@ OPERATOR_LATEX: dict[str, str] = {
     "subtract": "-",
     "multiply": r"\times",
     "divide": r"\div",
-    "negate": "-",
+    "negation": "-",
     "power": r"(\cdot)^n",
     "equals": "=",
     "derivative": r"\frac{d}{dt}",
@@ -120,11 +120,11 @@ OPERATOR_LATEX: dict[str, str] = {
 # (``additionalProperties: false`` at the node level), so authors can't
 # pin a shape on a node directly. Instead, the renderer gives certain
 # operators a characteristic shape so the visual reads at a glance —
-# e.g. unary ``negate`` as a flipped triangle. Themes can still override
+# e.g. unary ``negation`` as a flipped triangle. Themes can still override
 # the type-level default via ``nodeStyles.operator.shape``; entries here
 # only apply when the theme hasn't set one.
 OP_DEFAULT_SHAPES: dict[str, str] = {
-    "negate": "inv_triangle",
+    "negation": "inv_triangle",
 }
 
 
@@ -563,7 +563,7 @@ def semantic_graph_to_mermaid(
         ns = node_styles.get(ntype, {})
         # Shape resolution order:
         #   1. op-specific default (``OP_DEFAULT_SHAPES[op]``) —
-        #      e.g. unary ``negate`` always renders as an inverted
+        #      e.g. unary ``negation`` always renders as an inverted
         #      triangle, since "unary vs. binary" is a semantic
         #      distinction any theme should preserve
         #   2. theme's type-level shape (``nodeStyles.<type>.shape``)
