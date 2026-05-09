@@ -1,0 +1,34 @@
+name: Lines of Code Report
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  loc-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tokei
+        run: |
+          curl -sL https://github.com/XAMPPRocky/tokei/releases/latest/download/tokei-x86_64-unknown-linux-gnu.tar.gz \
+            | tar xz -C /usr/local/bin
+
+      - name: Generate report
+        run: ./scripts/loc-report.sh LOC-REPORT.md
+
+      - name: Post summary
+        run: cat LOC-REPORT.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit report if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add LOC-REPORT.md
+          git diff --cached --quiet || git commit -m "docs: update lines-of-code report [skip ci]"
+          git push
