@@ -362,6 +362,10 @@ export class D3SemanticGraphRenderer {
         }
     }
 
+    resetZoom() {
+        this._currentTransform = null;
+    }
+
     zoomBy(factor) {
         if (!this._svg || !this._zoomBehavior || !this._d3) return;
         this._svg.transition().duration(200)
