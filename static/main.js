@@ -20,7 +20,7 @@ import { navigateTo, setupSceneDock, loadScene, loadLesson, isLessonFormat,
 import { buildSceneTree } from '/context-browser.js';
 import { setupJsonViewer, setupContextStatusPopup } from '/json-browser.js';
 import { renderMarkdown, renderKaTeX } from '/labels.js';
-import { setupProofPanel, navigateProof, loadProof, getProofContext } from '/proof.js';
+import { setupProofPanel, navigateProof, loadProof, getProofContext, refreshProofPanel } from '/proof.js';
 
 // Domain library registry — scripts under static/domains/<name>/index.js self-register here.
 window.AlgeBenchDomains = window.AlgeBenchDomains || {
@@ -91,6 +91,7 @@ window.worldCameraToData = worldCameraToData;
 window.navigateProof = navigateProof;
 window.loadProof = loadProof;
 window.getProofContext = getProofContext;
+window.refreshProofPanel = refreshProofPanel;
 
 // State proxies — chat.js reads lessonSpec, currentSpec, currentSceneIndex,
 // currentStepIndex, sceneSliders, and CAMERA_VIEWS as bare globals.

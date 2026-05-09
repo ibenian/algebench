@@ -108,7 +108,8 @@ export const state = {
     proofViewMode: 'slide',       // 'list' | 'slide'
     proofSyncEnabled: true,       // bidirectional sceneStep linking
     proofExpanded: false,         // whether proof panel is expanded in chat tab
-    _proofSyncInProgress: false,  // guard against infinite sync loops
+    _proofSyncInProgress: false,  // guard against infinite proof↔scene sync loops
+    _graphSyncInProgress: false,  // guard against infinite graph↔proof sync loops
     _proofTabMode: 'context',    // 'context' | 'all' — which proof tab is active
     _proofPreRendered: null,      // cached pre-rendered step HTML nodes (per active proof)
     _proofPreRenderedAll: {},     // cached pre-rendered step HTML nodes keyed by proof id
