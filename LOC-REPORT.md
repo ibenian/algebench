@@ -5,8 +5,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `ci/tokei-loc-report` |
-| **Commit** | `3f0bfd1` |
-| **Date** | 2026-05-08 23:15:29 -0400 |
+| **Commit** | `0ee07ce` |
+| **Date** | 2026-05-08 23:27:00 -0400 |
 
 ## Language Breakdown
 
@@ -50,7 +50,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-## Frontend JavaScript (per file)
+## Frontend Assets (per file)
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -95,8 +95,8 @@ xychart-beta horizontal
  |tatic/objects/ellipsoid.js           74           66            0            8
  |ic/objects/vector-field.js           72           64            0            8
  |nch/static/objects/axis.js           62           56            0            6
- |algebench/static/coords.js           71           53           13            5
  |ch/static/objects/index.js           54           53            0            1
+ |algebench/static/coords.js           71           53           13            5
  |/static/objects/surface.js           52           48            0            4
  |ch/static/objects/plane.js           50           43            0            7
  |nch/static/objects/text.js           48           40            1            7
@@ -172,5 +172,5 @@ xychart-beta horizontal
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
 | JavaScript (frontend) | 14798 | 58% |
-| Python (backend) | 10527 | 41% |
+| Python (backend) | 10527 | 42% |
 | **Total** | **25325** | **100%** |

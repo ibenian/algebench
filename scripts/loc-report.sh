@@ -77,7 +77,7 @@ print('\`\`\`')
   echo '```'
   echo ""
 
-  echo "## Frontend JavaScript (per file)"
+  echo "## Frontend Assets (per file)"
   echo ""
   echo '```'
   tokei "$REPO_ROOT/static" --files --sort code
@@ -111,7 +111,7 @@ print(py.get('code', 0) if isinstance(py, dict) else 0)
   total=$((js_lines + py_lines))
   if [ "$total" -gt 0 ]; then
     js_pct=$((js_lines * 100 / total))
-    py_pct=$((py_lines * 100 / total))
+    py_pct=$((100 - js_pct))
   else
     js_pct=0
     py_pct=0
