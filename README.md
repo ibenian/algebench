@@ -4,7 +4,7 @@
 
 > **AI for human understanding — not for outsourcing thought.**
 
-Interactive 3D lessons with a live AI narrator. Spin up a scene, listen to it explain itself, then interrupt and ask *why* — the narrator answers in real time and the visualization responds.
+Interactive 3D lessons with a live AI narrator. Spin up a scene, listen to it explain itself, then interrupt and ask *what*, *how* and the *why* — the narrator answers in real time and the visualization responds.
 
 Step-by-step **proofs** walk through derivations alongside the 3D scene — each step shows the math, the justification, and highlighted regions you can click to see what changed. A **semantic graph** parses the current expression into an interactive flowchart of variables, operators, and relationships, so you can see the *structure* of an equation, not just its symbols. Proofs and the graph stay in sync: advance a proof step and the graph and 3D view update together.
 
