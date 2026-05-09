@@ -108,7 +108,7 @@ const LABEL_PRESETS = {
 };
 let _currentLabels = _lsGet(LS_KEYS.labels, 'description');
 if (!(_currentLabels in LABEL_PRESETS)) _currentLabels = 'description';
-let _currentRenderer = _lsGet(LS_KEYS.renderer, 'mermaid');
+let _currentRenderer = _lsGet(LS_KEYS.renderer, 'd3');
 if (_currentRenderer !== 'mermaid' && _currentRenderer !== 'd3') _currentRenderer = 'mermaid';
 // Authoritative list of available themes, populated from /api/graph/themes.
 // Each entry: { name, mode }. Used to filter the dropdown by current mode.
