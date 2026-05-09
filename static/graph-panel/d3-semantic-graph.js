@@ -178,10 +178,16 @@ export class D3SemanticGraphRenderer {
         this.onNodeHover = opts.onNodeHover || null;
         this.onBackgroundClick = opts.onBackgroundClick || null;
 
+        this.onZoomChange = opts.onZoomChange || null;
+
         this._graph = null;
         this._theme = null;
         this._collapsed = new Set();
         this._svg = null;
+        this._viewport = null;
+        this._zoomBehavior = null;
+        this._currentTransform = null;
+        this._needsInitialFit = true;
         this._d3 = null;
         this._dagre = null;
         this._positionById = new Map();
@@ -240,6 +246,7 @@ export class D3SemanticGraphRenderer {
             collapsed: new Set(this._collapsed),
             activeNodeId: this._activeNodeId,
             positionById: new Map(this._positionById),
+            zoomTransform: this._currentTransform,
         };
     }
 
@@ -248,13 +255,20 @@ export class D3SemanticGraphRenderer {
         this._collapsed = new Set(snapshot.collapsed);
         this._activeNodeId = snapshot.activeNodeId;
         this._positionById = new Map(snapshot.positionById);
+        if (snapshot.zoomTransform) this._currentTransform = snapshot.zoomTransform;
+        this._needsInitialFit = false;
         if (this._svg) this._applyHighlight();
     }
 
     destroy() {
         this._destroyed = true;
+        if (this._svg && this._zoomBehavior) {
+            this._svg.on('.zoom', null);
+        }
         this.container.innerHTML = '';
         this._svg = null;
+        this._viewport = null;
+        this._zoomBehavior = null;
         this._graph = null;
         this._positionById.clear();
     }
@@ -297,21 +311,101 @@ export class D3SemanticGraphRenderer {
             .append('svg')
             .attr('class', 'd3-semantic-graph')
             .attr('width', '100%')
-            .attr('height', '100%')
-            .attr('preserveAspectRatio', 'xMidYMid meet');
+            .attr('height', '100%');
 
-        this._linkLayer = this._svg.append('g').attr('class', 'd3sg-links');
-        this._labelLayer = this._svg.append('g').attr('class', 'd3sg-edge-labels');
-        this._nodeLayer = this._svg.append('g').attr('class', 'd3sg-nodes');
+        this._viewport = this._svg.append('g').attr('class', 'd3sg-viewport');
+        this._linkLayer = this._viewport.append('g').attr('class', 'd3sg-links');
+        this._labelLayer = this._viewport.append('g').attr('class', 'd3sg-edge-labels');
+        this._nodeLayer = this._viewport.append('g').attr('class', 'd3sg-nodes');
 
-        // Background click
+        this._setupZoom(d3);
+
+        // Background click — only fire when not panning
         this._svg.on('click', (event) => {
+            if (event.defaultPrevented) return;
             if (event.target === this._svg.node() || event.target.tagName === 'svg') {
                 this._activeNodeId = null;
                 this._applyHighlight();
                 if (this.onBackgroundClick) this.onBackgroundClick();
             }
         });
+
+        // Double-click on background → zoom to fit
+        this._svg.on('dblclick.zoom', null);
+        this._svg.on('dblclick', (event) => {
+            if (event.target === this._svg.node() || event.target.tagName === 'svg') {
+                event.preventDefault();
+                this.zoomToFit();
+            }
+        });
+    }
+
+    _setupZoom(d3) {
+        const ZOOM_MIN = 0.15;
+        const ZOOM_MAX = 5;
+
+        this._zoomBehavior = d3.zoom()
+            .scaleExtent([ZOOM_MIN, ZOOM_MAX])
+            .on('zoom', (event) => {
+                this._currentTransform = event.transform;
+                this._viewport.attr('transform', event.transform);
+                if (this.onZoomChange) {
+                    this.onZoomChange(Math.round(event.transform.k * 100));
+                }
+            });
+
+        this._svg.call(this._zoomBehavior);
+
+        // Restore saved transform if switching back to a step that had one
+        if (this._currentTransform) {
+            const t = this._currentTransform;
+            this._svg.call(this._zoomBehavior.transform,
+                d3.zoomIdentity.translate(t.x, t.y).scale(t.k));
+        }
+    }
+
+    resetZoom() {
+        this._currentTransform = null;
+        this._needsInitialFit = true;
+    }
+
+    zoomBy(factor) {
+        if (!this._svg || !this._zoomBehavior || !this._d3) return;
+        this._svg.transition().duration(200)
+            .call(this._zoomBehavior.scaleBy, factor);
+    }
+
+    zoomToFit(animate = true) {
+        if (!this._svg || !this._zoomBehavior || !this._d3) return;
+        const d3 = this._d3;
+        const svgNode = this._svg.node();
+        const { width: svgW, height: svgH } = svgNode.getBoundingClientRect();
+        if (!svgW || !svgH) return;
+
+        const vpNode = this._viewport.node();
+        const bbox = vpNode.getBBox();
+        if (!bbox.width || !bbox.height) return;
+
+        const pad = 40;
+        const scale = Math.min(
+            (svgW - pad * 2) / bbox.width,
+            (svgH - pad * 2) / bbox.height,
+            5
+        );
+        const tx = svgW / 2 - scale * (bbox.x + bbox.width / 2);
+        const ty = svgH / 2 - scale * (bbox.y + bbox.height / 2);
+
+        const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
+        if (animate) {
+            this._svg.transition().duration(400).ease(d3.easeCubicOut)
+                .call(this._zoomBehavior.transform, t);
+        } else {
+            this._svg.call(this._zoomBehavior.transform, t);
+        }
+    }
+
+    get zoomLevel() {
+        return this._currentTransform ? Math.round(this._currentTransform.k * 100) : 100;
     }
 
     _isHorizontal() {
@@ -436,18 +530,10 @@ export class D3SemanticGraphRenderer {
             }
         }
 
-        const xs = nodes.map(n => n.x);
-        const ys = nodes.map(n => n.y);
-        const minX = Math.min(...xs) - 100;
-        const maxX = Math.max(...xs) + 100;
-        const minY = Math.min(...ys) - 60;
-        const maxY = Math.max(...ys) + 60;
-        const width = Math.max(maxX - minX, 300);
-        const height = Math.max(maxY - minY, 200);
+        const initialFit = this._needsInitialFit;
+        if (initialFit) this._needsInitialFit = false;
 
-        this._svg.attr('viewBox', `${minX} ${minY} ${width} ${height}`);
-
-        const duration = 360;
+        const duration = initialFit ? 0 : 360;
         const transition = this._svg.transition().duration(duration).ease(d3.easeCubicOut);
 
         this._renderLinks(links, transition, d3);
@@ -455,6 +541,10 @@ export class D3SemanticGraphRenderer {
         this._renderNodes(nodes, transition, d3);
 
         for (const n of nodes) this._positionById.set(n.data.id, { x: n.x, y: n.y });
+
+        if (initialFit) {
+            requestAnimationFrame(() => this.zoomToFit(false));
+        }
     }
 
     _nodeShape(d) {

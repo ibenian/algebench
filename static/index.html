@@ -87,14 +87,15 @@
                 <div id="graph-controls-right" class="graph-controls">
                     <label for="graph-renderer-select" class="graph-ctrl-label">Renderer</label>
                     <select id="graph-renderer-select" class="graph-ctrl-select">
-                        <option value="mermaid" selected>Mermaid</option>
-                        <option value="d3">D3</option>
+                        <option value="mermaid">Mermaid</option>
+                        <option value="d3" selected>D3</option>
                     </select>
                     <button id="graph-show-json" class="graph-ctrl-btn" title="Show semantic graph in JSON browser" aria-label="Show semantic graph JSON" disabled>{ }</button>
                     <div id="graph-zoom-controls">
                         <button id="graph-zoom-out" class="graph-ctrl-btn" title="Zoom out" aria-label="Zoom out">&minus;</button>
-                        <span id="graph-zoom-level" class="graph-ctrl-label" aria-live="polite">100%</span>
+                        <span id="graph-zoom-level" class="graph-ctrl-label" style="cursor:pointer" title="Double-click to fit" aria-live="polite">100%</span>
                         <button id="graph-zoom-in" class="graph-ctrl-btn" title="Zoom in" aria-label="Zoom in">+</button>
+                        <button id="graph-zoom-fit" class="graph-ctrl-btn" title="Zoom to fit" aria-label="Zoom to fit">⊡</button>
                     </div>
                     <label for="graph-direction-select" class="graph-ctrl-label">Direction</label>
                     <select id="graph-direction-select" class="graph-ctrl-select">
