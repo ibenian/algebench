@@ -944,8 +944,14 @@ function _setupProofTabs() {
 // ---- Refresh (re-render current step without changing state) ----
 
 export function refreshProofPanel() {
-    if (!_activeProof()) return;
-    navigateProof(state.proofStepIndex);
+    if (!_activeProof() || !state.proofExpanded) return;
+    if (state.proofViewMode === 'list') {
+        _renderList();
+    } else {
+        _renderSlide();
+    }
+    _updateCounter();
+    _updateNavButtons();
 }
 
 // ---- Setup (called once on DOMContentLoaded) ----
