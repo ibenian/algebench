@@ -697,6 +697,10 @@ async function _renderWithD3(container, graph, step, key) {
                     _hideD3NodeAskBtn();
                 }
             },
+            onZoomChange: (pct) => {
+                const label = document.getElementById('graph-zoom-level');
+                if (label) label.textContent = `${pct}%`;
+            },
         });
     } else {
         await _currentD3Renderer.update({ direction: _currentDirection, labels: _currentLabels, theme: _currentTheme });
@@ -715,10 +719,6 @@ async function _renderWithD3(container, graph, step, key) {
     await _currentD3Renderer.render(graph);
     _d3LastStepKey = stepKey;
     _currentSemanticKey = key;
-
-    // Apply zoom to the D3 card
-    const card = container.querySelector('.d3-graph-card');
-    if (card) card.style.transform = `scale(${(ZOOM_BASELINE * _zoom).toFixed(3)})`;
 
     // Background enrichment (shared with Mermaid path)
     enrichGraphInBackground(graph, key, step);
@@ -1664,9 +1664,13 @@ function prettyThemeName(name) {
 }
 
 function applyZoom() {
-    // Scale the ``.gv-card`` wrapper so the card (bg/rounded/shadow) zooms
-    // together with the SVG. Fall back to the SVG itself if the wrapper is
-    // not present yet (first render / legacy path).
+    if (_currentD3Renderer && !_currentD3Renderer._destroyed) {
+        // D3 renderer manages its own zoom — just sync the label
+        const label = document.getElementById('graph-zoom-level');
+        if (label) label.textContent = `${_currentD3Renderer.zoomLevel}%`;
+        return;
+    }
+    // Mermaid fallback: CSS scale on the card wrapper
     const card = document.querySelector('#graph-mermaid-container .gv-card');
     const target = card || document.querySelector('#graph-mermaid-container svg');
     if (target) target.style.transform = `scale(${(ZOOM_BASELINE * _zoom).toFixed(3)})`;
@@ -1677,15 +1681,35 @@ function applyZoom() {
 function setupZoomControls() {
     const inBtn = document.getElementById('graph-zoom-in');
     const outBtn = document.getElementById('graph-zoom-out');
+    const fitBtn = document.getElementById('graph-zoom-fit');
     if (inBtn) inBtn.addEventListener('click', () => {
+        if (_currentD3Renderer && !_currentD3Renderer._destroyed) {
+            _currentD3Renderer.zoomBy(1.2);
+            return;
+        }
         _zoom = Math.min(ZOOM_MAX, +(_zoom + ZOOM_STEP).toFixed(2));
         _lsSet(LS_KEYS.zoom, String(_zoom));
         applyZoom();
     });
     if (outBtn) outBtn.addEventListener('click', () => {
+        if (_currentD3Renderer && !_currentD3Renderer._destroyed) {
+            _currentD3Renderer.zoomBy(1 / 1.2);
+            return;
+        }
         _zoom = Math.max(ZOOM_MIN, +(_zoom - ZOOM_STEP).toFixed(2));
         _lsSet(LS_KEYS.zoom, String(_zoom));
         applyZoom();
+    });
+    if (fitBtn) fitBtn.addEventListener('click', () => {
+        if (_currentD3Renderer && !_currentD3Renderer._destroyed) {
+            _currentD3Renderer.zoomToFit();
+        }
+    });
+    const zoomLabel = document.getElementById('graph-zoom-level');
+    if (zoomLabel) zoomLabel.addEventListener('dblclick', () => {
+        if (_currentD3Renderer && !_currentD3Renderer._destroyed) {
+            _currentD3Renderer.zoomToFit();
+        }
     });
     applyZoom();
 }
@@ -1776,7 +1800,9 @@ function getGraphPanelState() {
         theme: _currentTheme,
         labelMode: _currentLabels,
         direction: _currentDirection,
-        zoom: Math.round(_zoom * 100),
+        zoom: (_currentD3Renderer && !_currentD3Renderer._destroyed)
+            ? _currentD3Renderer.zoomLevel
+            : Math.round(_zoom * 100),
         nodeCount: nodes.length,
         edgeCount: edges.length,
     };
