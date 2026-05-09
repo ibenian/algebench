@@ -802,7 +802,7 @@ class TestEdgeSemantics:
         assert len(incoming) == 1
         assert incoming[0]["from"] == "x"
         # And no negate/exponent helper nodes leaked through.
-        assert not _find_nodes(g, type="operator", op="negate")
+        assert not _find_nodes(g, type="operator", op="negation")
 
 
 # ---------------------------------------------------------------------------

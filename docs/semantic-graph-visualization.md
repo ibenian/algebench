@@ -62,7 +62,7 @@ and by the HTTP API.
 Key responsibilities:
 
 - **Shape resolution** — three-level fallback: op-specific shape
-  (e.g. `negate` → `inv_triangle`) → theme's `nodeStyles.<type>.shape` →
+  (e.g. `negation` → `inv_triangle`) → theme's `nodeStyles.<type>.shape` →
   `rect`. The graph schema is semantic-only; shape never leaks into the
   graph JSON.
 - **Class emission** — each referenced node type / role / variant becomes
