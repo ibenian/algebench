@@ -714,7 +714,7 @@ async function _renderWithD3(container, graph, step, key) {
     const saved = _d3StepStates.get(stepKey);
     if (saved) {
         _currentD3Renderer.restoreState(saved);
-    } else {
+    } else if (_d3LastStepKey !== stepKey) {
         _currentD3Renderer.resetZoom();
     }
 

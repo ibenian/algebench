@@ -187,6 +187,7 @@ export class D3SemanticGraphRenderer {
         this._viewport = null;
         this._zoomBehavior = null;
         this._currentTransform = null;
+        this._needsInitialFit = true;
         this._d3 = null;
         this._dagre = null;
         this._positionById = new Map();
@@ -255,6 +256,7 @@ export class D3SemanticGraphRenderer {
         this._activeNodeId = snapshot.activeNodeId;
         this._positionById = new Map(snapshot.positionById);
         if (snapshot.zoomTransform) this._currentTransform = snapshot.zoomTransform;
+        this._needsInitialFit = false;
         if (this._svg) this._applyHighlight();
     }
 
@@ -364,6 +366,7 @@ export class D3SemanticGraphRenderer {
 
     resetZoom() {
         this._currentTransform = null;
+        this._needsInitialFit = true;
     }
 
     zoomBy(factor) {
@@ -372,7 +375,7 @@ export class D3SemanticGraphRenderer {
             .call(this._zoomBehavior.scaleBy, factor);
     }
 
-    zoomToFit() {
+    zoomToFit(animate = true) {
         if (!this._svg || !this._zoomBehavior || !this._d3) return;
         const d3 = this._d3;
         const svgNode = this._svg.node();
@@ -392,9 +395,13 @@ export class D3SemanticGraphRenderer {
         const tx = svgW / 2 - scale * (bbox.x + bbox.width / 2);
         const ty = svgH / 2 - scale * (bbox.y + bbox.height / 2);
 
-        this._svg.transition().duration(400).ease(d3.easeCubicOut)
-            .call(this._zoomBehavior.transform,
-                d3.zoomIdentity.translate(tx, ty).scale(scale));
+        const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
+        if (animate) {
+            this._svg.transition().duration(400).ease(d3.easeCubicOut)
+                .call(this._zoomBehavior.transform, t);
+        } else {
+            this._svg.call(this._zoomBehavior.transform, t);
+        }
     }
 
     get zoomLevel() {
@@ -523,7 +530,10 @@ export class D3SemanticGraphRenderer {
             }
         }
 
-        const duration = 360;
+        const initialFit = this._needsInitialFit;
+        if (initialFit) this._needsInitialFit = false;
+
+        const duration = initialFit ? 0 : 360;
         const transition = this._svg.transition().duration(duration).ease(d3.easeCubicOut);
 
         this._renderLinks(links, transition, d3);
@@ -532,8 +542,8 @@ export class D3SemanticGraphRenderer {
 
         for (const n of nodes) this._positionById.set(n.data.id, { x: n.x, y: n.y });
 
-        if (!this._currentTransform) {
-            setTimeout(() => this.zoomToFit(), duration + 50);
+        if (initialFit) {
+            requestAnimationFrame(() => this.zoomToFit(false));
         }
     }
 
