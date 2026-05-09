@@ -34,6 +34,40 @@ BRANCH="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)"
   echo "| **Date** | $COMMIT_DATE |"
   echo ""
 
+  echo "## Language Breakdown"
+  echo ""
+  tokei "$REPO_ROOT" "${EXCLUDE[@]}" --output json 2>/dev/null | python3 -c "
+import sys, json
+
+data = json.load(sys.stdin)
+langs = []
+for lang, stats in data.items():
+    if lang == 'Total':
+        continue
+    if isinstance(stats, dict) and 'code' in stats:
+        code = stats['code']
+        comments = stats.get('comments', 0)
+        blanks = stats.get('blanks', 0)
+        if code > 0:
+            langs.append((lang, code, comments, blanks))
+
+langs.sort(key=lambda x: x[1], reverse=True)
+
+# Mermaid xychart
+names = ', '.join(f'\"{l[0]}\"' for l in langs)
+values = ', '.join(str(l[1]) for l in langs)
+print('> [!NOTE]')
+print('> Chart renders on GitHub and in Mermaid-compatible viewers.')
+print()
+print('\`\`\`mermaid')
+print('xychart-beta horizontal')
+print('  title \"Lines of Code by Language\"')
+print(f'  x-axis [{names}]')
+print(f'  bar [{values}]')
+print('\`\`\`')
+"
+  echo ""
+
   echo "## Summary by Language"
   echo ""
   echo '```'
