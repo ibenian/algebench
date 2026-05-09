@@ -5,7 +5,7 @@ set -euo pipefail
 # Generates a detailed breakdown by language, file, and category.
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-REPORT_FILE="${1:-loc-report.md}"
+REPORT_FILE="${1:-LOC-REPORT.md}"
 EXCLUDE=(-e .venv -e node_modules -e __pycache__)
 
 if ! command -v tokei &>/dev/null; then
