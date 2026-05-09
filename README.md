@@ -1,6 +1,7 @@
 # AlgeBench
 
-**See and touch the math, and think with an AI.**
+**See and touch the math.**
+**Think with an AI.**
 
 > **AI for human understanding — not for outsourcing thought.**
 
