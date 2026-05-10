@@ -273,6 +273,9 @@ export class D3SemanticGraphRenderer {
         this._destroyed = true;
         if (this._svg && this._zoomBehavior) {
             this._svg.on('.zoom', null);
+            if (this._wheelPanHandler) {
+                this._svg.node().removeEventListener('wheel', this._wheelPanHandler);
+            }
         }
         this.container.innerHTML = '';
         this._svg = null;
@@ -340,6 +343,8 @@ export class D3SemanticGraphRenderer {
 
         this._setupZoom(d3);
 
+        this._svg.on('contextmenu', (event) => event.preventDefault());
+
         // Background click — only fire when not panning
         this._svg.on('click', (event) => {
             if (event.defaultPrevented) return;
@@ -366,6 +371,12 @@ export class D3SemanticGraphRenderer {
 
         this._zoomBehavior = d3.zoom()
             .scaleExtent([ZOOM_MIN, ZOOM_MAX])
+            .filter((event) => {
+                // Trackpad two-finger scroll (deltaMode 0) → handled separately as pan; let mouse wheel + pinch through
+                if (event.type === 'wheel') return event.ctrlKey || event.deltaMode !== 0;
+                // Allow touch/pointer events (button is 0 or undefined) and right-click (button 2)
+                return !event.ctrlKey && (event.button == null || event.button === 0 || event.button === 2);
+            })
             .on('zoom', (event) => {
                 this._currentTransform = event.transform;
                 this._viewport.attr('transform', event.transform);
@@ -375,6 +386,16 @@ export class D3SemanticGraphRenderer {
             });
 
         this._svg.call(this._zoomBehavior);
+
+        // Two-finger scroll → pan (pinch-to-zoom is handled by D3 zoom above)
+        this._wheelPanHandler = (event) => {
+            if (event.ctrlKey || event.deltaMode !== 0) return;
+            event.preventDefault();
+            const t = this._currentTransform || d3.zoomIdentity;
+            const nt = d3.zoomIdentity.translate(t.x - event.deltaX, t.y - event.deltaY).scale(t.k);
+            this._svg.call(this._zoomBehavior.transform, nt);
+        };
+        this._svg.node().addEventListener('wheel', this._wheelPanHandler, { passive: false });
 
         // Restore saved transform if switching back to a step that had one
         if (this._currentTransform) {
