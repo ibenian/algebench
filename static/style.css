@@ -4076,6 +4076,11 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 #graph-info-panel-host .graph-panel-info .gp-key {
     color: rgba(163, 172, 220, 0.6);
 }
+#graph-info-panel-host .graph-panel-info .gp-separator {
+    border: none;
+    border-top: 1px solid rgba(140, 155, 220, 0.2);
+    margin: 0.5rem 0;
+}
 #graph-info-panel-host .graph-panel-info .gp-close {
     color: rgba(176, 186, 229, 0.7);
 }

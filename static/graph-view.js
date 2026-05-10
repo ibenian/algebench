@@ -970,26 +970,54 @@ function _showD3MultiInfoPanel(selectedIds, graph) {
     symbolEl.style.fontSize = '0.9em';
 
     fieldsEl.innerHTML = '';
-    for (const node of nodes) {
-        const row = document.createElement('div');
-        row.className = 'gp-field';
-        const k = document.createElement('span');
-        k.className = 'gp-key';
+    for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        if (i > 0) {
+            const sep = document.createElement('hr');
+            sep.className = 'gp-separator';
+            fieldsEl.appendChild(sep);
+        }
+        const symLine = document.createElement('div');
+        symLine.className = 'gp-symbol';
         const latex = node.latex || node.subexpr;
         if (latex && window.katex) {
             try {
-                window.katex.render(latex, k, { displayMode: false, throwOnError: false });
+                window.katex.render(latex, symLine, { displayMode: false, throwOnError: false });
             } catch (_) {
-                k.textContent = node.label || node.id;
+                symLine.textContent = node.label || node.id;
             }
         } else {
-            k.textContent = node.label || node.id;
+            symLine.textContent = node.label || node.id;
         }
-        const v = document.createElement('span');
-        v.className = 'gp-val';
-        v.textContent = [node.type, node.description].filter(Boolean).join(' — ');
-        row.append(k, v);
-        fieldsEl.appendChild(row);
+        fieldsEl.appendChild(symLine);
+        const FIELDS = [
+            ['label', 'Label'], ['type', 'Type'], ['role', 'Role'],
+            ['quantity', 'Quantity'], ['dimension', 'Dimension'],
+            ['unit', 'Unit'], ['value', 'Value'], ['op', 'Operation'],
+        ];
+        for (const [fkey, flabel] of FIELDS) {
+            if (!node[fkey]) continue;
+            const row = document.createElement('div');
+            row.className = 'gp-field';
+            const k = document.createElement('span');
+            k.className = 'gp-key';
+            k.textContent = flabel;
+            const v = document.createElement('span');
+            v.className = 'gp-val';
+            v.textContent = node[fkey];
+            row.append(k, v);
+            fieldsEl.appendChild(row);
+        }
+        if (node.description) {
+            const desc = document.createElement('div');
+            desc.className = 'gp-description';
+            if (typeof window.renderKaTeX === 'function') {
+                desc.innerHTML = window.renderKaTeX(node.description, false);
+            } else {
+                desc.textContent = node.description;
+            }
+            fieldsEl.appendChild(desc);
+        }
     }
 }
 
