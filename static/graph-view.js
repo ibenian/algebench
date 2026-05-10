@@ -683,8 +683,14 @@ async function _renderWithD3(container, graph, step, key) {
             direction: _currentDirection,
             labels: _currentLabels,
             theme: _currentTheme,
-            onNodeClick: (nodeId, nodeData) => {
-                _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
+            onNodeClick: (nodeId, nodeData, selectedIds) => {
+                if (!selectedIds || selectedIds.size === 0) {
+                    _hideD3InfoPanel();
+                } else if (selectedIds.size > 1) {
+                    _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph);
+                } else {
+                    _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
+                }
             },
             onBackgroundClick: () => {
                 _hideD3InfoPanel();
@@ -726,7 +732,7 @@ async function _renderWithD3(container, graph, step, key) {
     enrichGraphInBackground(graph, key, step);
 }
 
-function _buildD3NodeAskMessage(nodeId, graph) {
+function _buildD3NodeAskMessage(nodeId, graph, otherSelectedIds) {
     if (!nodeId || !graph) return 'Explain this graph node.';
     const node = (graph.nodes || []).find(n => n.id === nodeId);
     if (!node) return 'Explain this graph node.';
@@ -748,7 +754,30 @@ function _buildD3NodeAskMessage(nodeId, graph) {
     }
     if (incoming.length) lines.push(`Incoming: ${incoming.join(', ')}`);
     if (outgoing.length) lines.push(`Outgoing: ${outgoing.join(', ')}`);
+    if (otherSelectedIds && otherSelectedIds.length) {
+        const others = (graph.nodes || []).filter(n => otherSelectedIds.includes(n.id));
+        lines.push('');
+        lines.push('Also selected in the graph:');
+        for (const o of others) {
+            const parts = [`- ${o.label || o.id}`];
+            if (o.type) parts.push(`(${o.type})`);
+            if (o.description) parts.push(`— ${o.description}`);
+            lines.push(parts.join(' '));
+        }
+        lines.push('');
+        lines.push('Explain this node and how it relates to the other selected nodes.');
+    }
     return lines.join('\n');
+}
+
+function _getOtherContextNodes(targetNodeId) {
+    const selected = _currentD3Renderer?.selectedNodes;
+    if (selected && selected.size > 1) {
+        return [...selected].filter(id => id !== targetNodeId);
+    }
+    const active = _currentD3Renderer?.activeNode;
+    if (active && active !== targetNodeId) return [active];
+    return [];
 }
 
 function _ensureD3NodeAskBtn() {
@@ -756,7 +785,10 @@ function _ensureD3NodeAskBtn() {
     const btn = makeAiAskButton(
         'ai-ask-btn graph-node-ai-btn',
         'Ask AI about this node',
-        () => _buildD3NodeAskMessage(_d3HoveredNodeId, _d3ActiveGraph),
+        () => {
+            const others = _getOtherContextNodes(_d3HoveredNodeId);
+            return _buildD3NodeAskMessage(_d3HoveredNodeId, _d3ActiveGraph, others);
+        },
     );
     btn.style.position = 'fixed';
     btn.style.opacity = '0';
@@ -815,7 +847,10 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
         const askBtn = makeAiAskButton(
             'ai-ask-btn graph-panel-ai-btn',
             'Ask AI about this node',
-            () => _buildD3NodeAskMessage(nodeId, graph),
+            () => {
+                const others = _getOtherContextNodes(nodeId);
+                return _buildD3NodeAskMessage(nodeId, graph, others);
+            },
         );
         header.appendChild(askBtn);
     }
@@ -877,6 +912,113 @@ function _hideD3InfoPanel() {
     const infoHost = document.getElementById('graph-info-panel-host');
     if (!infoHost) return;
     infoHost.innerHTML = '';
+}
+
+function _buildD3MultiNodeAskMessage(selectedIds, graph) {
+    if (!selectedIds || !selectedIds.size || !graph) return 'Explain these graph nodes.';
+    const nodes = (graph.nodes || []).filter(n => selectedIds.has(n.id));
+    if (!nodes.length) return 'Explain these graph nodes.';
+    const lines = [`Explain the relationship between these ${nodes.length} semantic graph nodes:`];
+    for (const node of nodes) {
+        const parts = [`- ${node.label || node.id}`];
+        if (node.type) parts.push(`(${node.type})`);
+        if (node.description) parts.push(`— ${node.description}`);
+        lines.push(parts.join(' '));
+    }
+    const connected = [];
+    for (const e of (graph.edges || [])) {
+        if (selectedIds.has(e.from) && selectedIds.has(e.to)) {
+            connected.push(`${e.from} → ${e.to}`);
+        }
+    }
+    if (connected.length) {
+        lines.push('Direct connections: ' + connected.join(', '));
+    }
+    return lines.join('\n');
+}
+
+function _showD3MultiInfoPanel(selectedIds, graph) {
+    const infoHost = document.getElementById('graph-info-panel-host');
+    if (!infoHost) return;
+    if (!selectedIds || !selectedIds.size) { _hideD3InfoPanel(); return; }
+
+    const nodes = (graph.nodes || []).filter(n => selectedIds.has(n.id));
+    infoHost.innerHTML = '';
+    const panel = buildInlineInfoPanel(infoHost);
+    if (!panel) return;
+
+    const h3 = panel.querySelector('h3');
+    if (h3 && !panel.querySelector('.graph-panel-ai-btn')) {
+        const header = document.createElement('div');
+        header.className = 'gp-header';
+        h3.replaceWith(header);
+        header.appendChild(h3);
+        const askBtn = makeAiAskButton(
+            'ai-ask-btn graph-panel-ai-btn',
+            'Ask AI about selected nodes',
+            () => _buildD3MultiNodeAskMessage(selectedIds, graph),
+        );
+        header.appendChild(askBtn);
+    }
+
+    const symbolEl = panel.querySelector('.gp-symbol');
+    const fieldsEl = panel.querySelector('.gp-fields');
+    if (!symbolEl || !fieldsEl) return;
+
+    symbolEl.textContent = `${nodes.length} nodes selected`;
+    symbolEl.style.opacity = '0.8';
+    symbolEl.style.fontSize = '0.9em';
+
+    fieldsEl.innerHTML = '';
+    for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        if (i > 0) {
+            const sep = document.createElement('hr');
+            sep.className = 'gp-separator';
+            fieldsEl.appendChild(sep);
+        }
+        const symLine = document.createElement('div');
+        symLine.className = 'gp-symbol';
+        const latex = node.latex || node.subexpr;
+        if (latex && window.katex) {
+            try {
+                window.katex.render(latex, symLine, { displayMode: false, throwOnError: false });
+            } catch (_) {
+                symLine.textContent = node.label || node.id;
+            }
+        } else {
+            symLine.textContent = node.label || node.id;
+        }
+        fieldsEl.appendChild(symLine);
+        const FIELDS = [
+            ['label', 'Label'], ['type', 'Type'], ['role', 'Role'],
+            ['quantity', 'Quantity'], ['dimension', 'Dimension'],
+            ['unit', 'Unit'], ['value', 'Value'], ['op', 'Operation'],
+        ];
+        for (const [fkey, flabel] of FIELDS) {
+            if (!node[fkey]) continue;
+            const row = document.createElement('div');
+            row.className = 'gp-field';
+            const k = document.createElement('span');
+            k.className = 'gp-key';
+            k.textContent = flabel;
+            const v = document.createElement('span');
+            v.className = 'gp-val';
+            v.textContent = node[fkey];
+            row.append(k, v);
+            fieldsEl.appendChild(row);
+        }
+        if (node.description) {
+            const desc = document.createElement('div');
+            desc.className = 'gp-description';
+            if (typeof window.renderKaTeX === 'function') {
+                desc.innerHTML = window.renderKaTeX(node.description, false);
+            } else {
+                desc.textContent = node.description;
+            }
+            fieldsEl.appendChild(desc);
+        }
+    }
 }
 
 async function renderCurrentStepGraph(force = false) {

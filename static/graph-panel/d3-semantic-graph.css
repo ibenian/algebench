@@ -108,6 +108,28 @@ svg.d3-semantic-graph {
     stroke-width: 2.5px;
 }
 
+/* Multi-selected node ring */
+.d3sg-node.selected .d3sg-var-bg {
+    stroke: #6df08e;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(109, 240, 142, 0.5));
+}
+.d3sg-node.selected .d3sg-op-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(126, 168, 255, 0.5));
+}
+.d3sg-node.selected .d3sg-tile-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(126, 168, 255, 0.5));
+}
+.d3sg-node.selected .d3sg-hit-target {
+    stroke: #7ea8ff !important;
+    stroke-width: 2px !important;
+    stroke-opacity: 0.6;
+}
+
 /* Annotation overlay — stacked at bottom of graph viewport */
 .d3sg-annotation-overlay {
     position: absolute;
