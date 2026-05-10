@@ -202,6 +202,7 @@ export class D3SemanticGraphRenderer {
         this._positionById = new Map();
         this._lastInteractionId = null;
         this._activeNodeId = null;
+        this._selectedNodeIds = new Set();
         this._destroyed = false;
     }
 
@@ -238,11 +239,14 @@ export class D3SemanticGraphRenderer {
 
     selectNode(nodeId) {
         this._activeNodeId = nodeId;
+        this._selectedNodeIds.clear();
+        if (nodeId) this._selectedNodeIds.add(nodeId);
         this._applyHighlight();
     }
 
     clearSelection() {
         this._activeNodeId = null;
+        this._selectedNodeIds.clear();
         this._applyHighlight();
     }
 
@@ -250,10 +254,15 @@ export class D3SemanticGraphRenderer {
         return this._activeNodeId;
     }
 
+    get selectedNodes() {
+        return new Set(this._selectedNodeIds);
+    }
+
     saveState() {
         return {
             collapsed: new Set(this._collapsed),
             activeNodeId: this._activeNodeId,
+            selectedNodeIds: new Set(this._selectedNodeIds),
             positionById: new Map(this._positionById),
             zoomTransform: this._currentTransform,
         };
@@ -263,6 +272,7 @@ export class D3SemanticGraphRenderer {
         if (!snapshot) return;
         this._collapsed = new Set(snapshot.collapsed);
         this._activeNodeId = snapshot.activeNodeId;
+        this._selectedNodeIds = new Set(snapshot.selectedNodeIds || []);
         this._positionById = new Map(snapshot.positionById);
         if (snapshot.zoomTransform) this._currentTransform = snapshot.zoomTransform;
         this._needsInitialFit = false;
@@ -350,6 +360,7 @@ export class D3SemanticGraphRenderer {
             if (event.defaultPrevented) return;
             if (event.target === this._svg.node() || event.target.tagName === 'svg') {
                 this._activeNodeId = null;
+                this._selectedNodeIds.clear();
                 this._applyHighlight();
                 if (this.onBackgroundClick) this.onBackgroundClick();
             }
@@ -732,7 +743,7 @@ export class D3SemanticGraphRenderer {
             .style('cursor', d => this._isCollapsible(d) ? 'pointer' : 'default')
             .on('click', function (event, d) {
                 event.stopPropagation();
-                self._handleNodeClick(d);
+                self._handleNodeClick(d, event);
             })
             .on('mouseenter', function (event, d) {
                 if (self.onNodeHover) self.onNodeHover(d.data.id, d.data, this);
@@ -890,8 +901,9 @@ export class D3SemanticGraphRenderer {
         const isOp = kind === 'operator' || kind === 'relation' || kind === 'function';
         const base = isOp ? 'op' : 'var';
         const collapsed = d.data._collapsed ? ' collapsed' : '';
+        const selected = this._selectedNodeIds.has(d.data.id) ? ' selected' : '';
         const active = d.data.id === this._activeNodeId ? ' active' : '';
-        return `d3sg-node d3sg-${base}${collapsed}${active}`;
+        return `d3sg-node d3sg-${base}${collapsed}${selected}${active}`;
     }
 
     _isCollapsible(d) {
@@ -900,15 +912,34 @@ export class D3SemanticGraphRenderer {
             (d.data._childIds && d.data._childIds.length > 0);
     }
 
-    _handleNodeClick(d) {
+    _handleNodeClick(d, event) {
         const nodeId = d.data.id;
-        if (this._activeNodeId === nodeId) {
-            this._activeNodeId = null;
+        const multiSelect = event && (event.metaKey || event.ctrlKey);
+
+        if (multiSelect) {
+            if (this._selectedNodeIds.has(nodeId)) {
+                this._selectedNodeIds.delete(nodeId);
+                this._activeNodeId = this._selectedNodeIds.size
+                    ? [...this._selectedNodeIds].at(-1) : null;
+            } else {
+                this._selectedNodeIds.add(nodeId);
+                this._activeNodeId = nodeId;
+            }
         } else {
-            this._activeNodeId = nodeId;
+            if (this._selectedNodeIds.size <= 1 && this._activeNodeId === nodeId) {
+                this._activeNodeId = null;
+                this._selectedNodeIds.clear();
+            } else {
+                this._activeNodeId = nodeId;
+                this._selectedNodeIds.clear();
+                this._selectedNodeIds.add(nodeId);
+            }
         }
+
         this._applyHighlight();
-        if (this.onNodeClick) this.onNodeClick(nodeId, d.data);
+        if (this.onNodeClick) {
+            this.onNodeClick(nodeId, d.data, this._selectedNodeIds);
+        }
     }
 
     _handleChevronClick(d) {
@@ -1086,21 +1117,21 @@ export class D3SemanticGraphRenderer {
 
     _applyHighlight() {
         if (!this._svg) return;
-        const activeId = this._activeNodeId;
 
         this._nodeLayer.selectAll('g.d3sg-node')
             .attr('class', d => this._nodeClass(d));
 
-        if (!activeId) {
-            // Clear all dimming
+        if (!this._selectedNodeIds.size) {
             this._nodeLayer.selectAll('g.d3sg-node').style('opacity', 1);
             this._linkLayer.selectAll('path.d3sg-link').style('opacity', 1);
             this._labelLayer.selectAll('text.d3sg-edge-label').style('opacity', 1);
             return;
         }
 
-        // Find upstream nodes from active
-        const upstream = this._getUpstream(activeId);
+        const upstream = new Set();
+        for (const id of this._selectedNodeIds) {
+            for (const n of this._getUpstream(id)) upstream.add(n);
+        }
 
         this._nodeLayer.selectAll('g.d3sg-node').style('opacity', d =>
             upstream.has(d.data.id) ? 1 : 0.15

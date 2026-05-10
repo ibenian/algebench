@@ -683,8 +683,12 @@ async function _renderWithD3(container, graph, step, key) {
             direction: _currentDirection,
             labels: _currentLabels,
             theme: _currentTheme,
-            onNodeClick: (nodeId, nodeData) => {
-                _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
+            onNodeClick: (nodeId, nodeData, selectedIds) => {
+                if (selectedIds && selectedIds.size > 1) {
+                    _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph);
+                } else {
+                    _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
+                }
             },
             onBackgroundClick: () => {
                 _hideD3InfoPanel();
@@ -877,6 +881,85 @@ function _hideD3InfoPanel() {
     const infoHost = document.getElementById('graph-info-panel-host');
     if (!infoHost) return;
     infoHost.innerHTML = '';
+}
+
+function _buildD3MultiNodeAskMessage(selectedIds, graph) {
+    if (!selectedIds || !selectedIds.size || !graph) return 'Explain these graph nodes.';
+    const nodes = (graph.nodes || []).filter(n => selectedIds.has(n.id));
+    if (!nodes.length) return 'Explain these graph nodes.';
+    const lines = [`Explain the relationship between these ${nodes.length} semantic graph nodes:`];
+    for (const node of nodes) {
+        const parts = [`- ${node.label || node.id}`];
+        if (node.type) parts.push(`(${node.type})`);
+        if (node.description) parts.push(`— ${node.description}`);
+        lines.push(parts.join(' '));
+    }
+    const connected = [];
+    for (const e of (graph.edges || [])) {
+        if (selectedIds.has(e.from) && selectedIds.has(e.to)) {
+            connected.push(`${e.from} → ${e.to}`);
+        }
+    }
+    if (connected.length) {
+        lines.push('Direct connections: ' + connected.join(', '));
+    }
+    return lines.join('\n');
+}
+
+function _showD3MultiInfoPanel(selectedIds, graph) {
+    const infoHost = document.getElementById('graph-info-panel-host');
+    if (!infoHost) return;
+    if (!selectedIds || !selectedIds.size) { _hideD3InfoPanel(); return; }
+
+    const nodes = (graph.nodes || []).filter(n => selectedIds.has(n.id));
+    infoHost.innerHTML = '';
+    const panel = buildInlineInfoPanel(infoHost);
+    if (!panel) return;
+
+    const h3 = panel.querySelector('h3');
+    if (h3 && !panel.querySelector('.graph-panel-ai-btn')) {
+        const header = document.createElement('div');
+        header.className = 'gp-header';
+        h3.replaceWith(header);
+        header.appendChild(h3);
+        const askBtn = makeAiAskButton(
+            'ai-ask-btn graph-panel-ai-btn',
+            'Ask AI about selected nodes',
+            () => _buildD3MultiNodeAskMessage(selectedIds, graph),
+        );
+        header.appendChild(askBtn);
+    }
+
+    const symbolEl = panel.querySelector('.gp-symbol');
+    const fieldsEl = panel.querySelector('.gp-fields');
+    if (!symbolEl || !fieldsEl) return;
+
+    symbolEl.textContent = `${nodes.length} nodes selected`;
+    symbolEl.style.opacity = '0.8';
+    symbolEl.style.fontSize = '0.9em';
+
+    fieldsEl.innerHTML = '';
+    for (const node of nodes) {
+        const row = document.createElement('div');
+        row.className = 'gp-field';
+        const k = document.createElement('span');
+        k.className = 'gp-key';
+        const latex = node.latex || node.subexpr;
+        if (latex && window.katex) {
+            try {
+                window.katex.render(latex, k, { displayMode: false, throwOnError: false });
+            } catch (_) {
+                k.textContent = node.label || node.id;
+            }
+        } else {
+            k.textContent = node.label || node.id;
+        }
+        const v = document.createElement('span');
+        v.className = 'gp-val';
+        v.textContent = node.type + (node.description ? ' — ' + node.description : '');
+        row.append(k, v);
+        fieldsEl.appendChild(row);
+    }
 }
 
 async function renderCurrentStepGraph(force = false) {
