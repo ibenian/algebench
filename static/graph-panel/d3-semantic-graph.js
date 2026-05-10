@@ -372,9 +372,10 @@ export class D3SemanticGraphRenderer {
         this._zoomBehavior = d3.zoom()
             .scaleExtent([ZOOM_MIN, ZOOM_MAX])
             .filter((event) => {
-                // Pinch (wheel + ctrlKey) → zoom; plain wheel (two-finger scroll) → handled separately as pan
-                if (event.type === 'wheel') return event.ctrlKey;
-                return !event.ctrlKey && (event.button === 0 || event.button === 2);
+                // Trackpad two-finger scroll (deltaMode 0) → handled separately as pan; let mouse wheel + pinch through
+                if (event.type === 'wheel') return event.ctrlKey || event.deltaMode !== 0;
+                // Allow touch/pointer events (button is 0 or undefined) and right-click (button 2)
+                return !event.ctrlKey && (event.button == null || event.button === 0 || event.button === 2);
             })
             .on('zoom', (event) => {
                 this._currentTransform = event.transform;
@@ -388,7 +389,7 @@ export class D3SemanticGraphRenderer {
 
         // Two-finger scroll → pan (pinch-to-zoom is handled by D3 zoom above)
         this._wheelPanHandler = (event) => {
-            if (event.ctrlKey) return;
+            if (event.ctrlKey || event.deltaMode !== 0) return;
             event.preventDefault();
             const t = this._currentTransform || d3.zoomIdentity;
             const nt = d3.zoomIdentity.translate(t.x - event.deltaX, t.y - event.deltaY).scale(t.k);
