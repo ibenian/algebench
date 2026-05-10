@@ -1134,15 +1134,15 @@ export class D3SemanticGraphRenderer {
         }
 
         this._nodeLayer.selectAll('g.d3sg-node').style('opacity', d =>
-            upstream.has(d.data.id) ? 1 : 0.15
+            upstream.has(d.data.id) ? 1 : 0.30
         );
 
         this._linkLayer.selectAll('path.d3sg-link').style('opacity', d =>
-            upstream.has(d.source.data.id) && upstream.has(d.target.data.id) ? 1 : 0.1
+            upstream.has(d.source.data.id) && upstream.has(d.target.data.id) ? 1 : 0.25
         );
 
         this._labelLayer.selectAll('text.d3sg-edge-label').style('opacity', d =>
-            upstream.has(d.source.data.id) && upstream.has(d.target.data.id) ? 1 : 0.1
+            upstream.has(d.source.data.id) && upstream.has(d.target.data.id) ? 1 : 0.25
         );
     }
 
