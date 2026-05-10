@@ -5,8 +5,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `feat/236-right-click-pan` |
-| **Commit** | `9f1c6c5` |
-| **Date** | 2026-05-09 22:45:08 -0400 |
+| **Commit** | `d936824` |
+| **Date** | 2026-05-09 23:04:17 -0400 |
 
 ## Language Breakdown
 
@@ -27,7 +27,7 @@ xychart-beta horizontal
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  JSON                     40        45736        45735            0            1
- JavaScript               46        17234        14943          889         1402
+ JavaScript               46        17235        14943          890         1402
  Python                   29        13813        10689         1520         1604
  CSS                       3         4471         4130          156          185
  Shell                     2          172          137           14           21
@@ -46,7 +46,7 @@ xychart-beta horizontal
  |- Python                 2           38           30            2            6
  (Total)                            11945         1474         7878         2593
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   180        94528        78159        10493         5876
+ Total                   180        94529        78159        10494         5876
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -56,14 +56,14 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- JavaScript               46        17234        14943          889         1402
+ JavaScript               46        17235        14943          890         1402
 ─────────────────────────────────────────────────────────────────────────────────
  |bench/static/graph-view.js         1869         1415          319          135
  |nch/static/json-browser.js         1403         1361            5           37
  |h/algebench/static/chat.js         1425         1160          113          152
  |lgebench/static/overlay.js         1168         1101           29           38
  |/algebench/static/proof.js         1109         1040           33           36
- |panel/d3-semantic-graph.js         1134          949           44          141
+ |panel/d3-semantic-graph.js         1135          949           45          141
  |nch/static/scene-loader.js          939          798           46           95
  |algebench/static/camera.js          760          646           20           94
  |cislunar-dynamics/index.js          611          546            8           57
@@ -121,7 +121,7 @@ xychart-beta horizontal
  |islunar-dynamics/docs.json          122          122            0            0
  |tmospheric-entry/docs.json           41           41            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                    53        22371        19728         1052         1591
+ Total                    53        22372        19728         1053         1591
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
