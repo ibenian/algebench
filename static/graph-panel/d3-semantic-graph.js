@@ -447,6 +447,8 @@ export class D3SemanticGraphRenderer {
             childrenOf[e.to].push(e.from);
         }
 
+        const annoIds = new Set(nodes.filter(n => n.type === 'annotation').map(n => n.id));
+
         // BFS from roots to find visible nodes (stop at collapsed)
         const hasOutgoing = new Set(edges.map(e => e.from));
         const roots = nodes.filter(n => !hasOutgoing.has(n.id));
@@ -456,6 +458,7 @@ export class D3SemanticGraphRenderer {
         while (queue.length) {
             const id = queue.shift();
             if (visible.has(id)) continue;
+            if (annoIds.has(id)) continue;
             visible.add(id);
             if (this._collapsed.has(id)) continue;
             for (const child of (childrenOf[id] || [])) queue.push(child);

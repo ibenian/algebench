@@ -831,8 +831,10 @@ def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, 
     optional LaTeX spacing (``\quad``, ``\qquad``, whitespace).
 
     Returns ``(cleaned_latex, annotations)`` where each annotation dict
-    has ``latex`` (the full parenthetical including parens) and ``label``
-    (a plain-text rendering suitable for the graph node).
+    has ``latex`` (the inner content without surrounding parens), ``label``
+    (a plain-text rendering suitable for the overlay card), and ``type``
+    (always ``"annotation"``).  Annotations are returned in source order
+    (left-to-right).
     """
     annotations: list[dict[str, str]] = []
     spacing = r"(?:\s|\\quad|\\qquad|\\,|\\;|\\!|\\:)*"
@@ -854,6 +856,7 @@ def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, 
             "type": "annotation",
         })
         latex = latex[:m.start()].rstrip()
+    annotations.reverse()
     return latex, annotations
 
 

@@ -25,5 +25,6 @@
     "neutral":  { "stroke": "#777",    "strokeWidth": 2, "arrow": "-->" },
     "logical":  { "stroke": "#ab47bc", "strokeWidth": 2, "arrow": "-.->" }
   },
+  "paintBySemantic": true,
   "fontSize": 15
 }

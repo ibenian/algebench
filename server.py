@@ -2322,13 +2322,13 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             # Re-attached to the enriched result before returning.
             all_nodes = list(graph_in.get("nodes") or [])
             anno_nodes = [n for n in all_nodes if n.get("type") == "annotation"]
-            anno_ids = {n["id"] for n in anno_nodes}
+            anno_ids = {n.get("id") for n in anno_nodes} - {None}
             if anno_nodes:
                 graph_in = dict(graph_in)
                 graph_in["nodes"] = [n for n in all_nodes if n.get("type") != "annotation"]
-                all_edges = list(graph_in.get("edges") or [])
-                anno_edges = [e for e in all_edges if e.get("from") in anno_ids or e.get("to") in anno_ids]
-                graph_in["edges"] = [e for e in all_edges if e not in anno_edges]
+                orig_edges = list(graph_in.get("edges") or [])
+                anno_edges = [e for e in orig_edges if e.get("from") in anno_ids or e.get("to") in anno_ids]
+                graph_in["edges"] = [e for e in orig_edges if e.get("from") not in anno_ids and e.get("to") not in anno_ids]
             else:
                 anno_edges = []
 

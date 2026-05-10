@@ -168,7 +168,8 @@ svg.d3-semantic-graph {
     transition: opacity 0.15s, background 0.15s, color 0.15s;
 }
 
-.d3sg-anno-card:hover .d3sg-anno-ai-btn {
+.d3sg-anno-card:hover .d3sg-anno-ai-btn,
+.d3sg-anno-card:focus-within .d3sg-anno-ai-btn {
     opacity: 1;
 }
 

@@ -1798,7 +1798,7 @@
             "type": "given",
             "label": "Annotation: constant exhaust velocity",
             "math": "F = \\dot{m} \\cdot v_e \\quad (v_e \\text{ constant})",
-            "justification": "Rocket thrust with a parenthetical annotation indicating the exhaust velocity is constant. The annotation should appear as a separate rounded-rectangle node with dashed border.",
+            "justification": "Rocket thrust with a parenthetical annotation indicating the exhaust velocity is constant. The annotation appears as a themed overlay card below the graph.",
             "sceneStep": 0
           },
           {
@@ -1806,7 +1806,7 @@
             "type": "given",
             "label": "Annotation: two assumptions",
             "math": "P V = n R T \\quad (T \\text{ constant}) \\quad (n \\text{ fixed})",
-            "justification": "Ideal gas law with two parenthetical annotations — constant temperature and fixed amount of substance. Both should appear as separate annotation nodes.",
+            "justification": "Ideal gas law with two parenthetical annotations — constant temperature and fixed amount of substance. Both appear as themed overlay cards below the graph.",
             "sceneStep": 0
           },
           {
