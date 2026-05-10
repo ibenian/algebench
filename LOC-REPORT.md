@@ -4,9 +4,9 @@
 
 | Field | Value |
 |---|---|
-| **Branch** | `docs/readme-proofs-and-graphs` |
-| **Commit** | `1080119` |
-| **Date** | 2026-05-09 00:01:10 -0400 |
+| **Branch** | `fix/234-annotation-node-style` |
+| **Commit** | `ca9ae74` |
+| **Date** | 2026-05-09 21:08:56 -0400 |
 
 ## Language Breakdown
 
@@ -17,7 +17,7 @@
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "JavaScript", "Python", "CSS", "HTML", "Shell", "BASH"]
-  bar [45631, 14798, 10527, 3989, 386, 137, 33]
+  bar [45734, 14925, 10686, 4129, 386, 137, 33]
 ```
 
 ## Summary by Language
@@ -26,10 +26,10 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- JSON                     40        45632        45631            0            1
- JavaScript               46        17068        14798          887         1383
- Python                   29        13620        10527         1507         1586
- CSS                       3         4320         3989          154          177
+ JSON                     40        45735        45734            0            1
+ JavaScript               46        17211        14925          887         1399
+ Python                   29        13810        10686         1520         1604
+ CSS                       3         4470         4129          156          185
  Shell                     2          172          137           14           21
  BASH                      1           41           33            4            4
  Plain Text                1            9            0            9            0
@@ -39,14 +39,14 @@ xychart-beta horizontal
  |- JavaScript             2          580          513           11           56
  (Total)                             1107         1018           23           66
 ─────────────────────────────────────────────────────────────────────────────────
- Markdown                 55        10436            0         7858         2578
+ Markdown                 55        10437            0         7859         2578
  |- BASH                  13          142          120           14            8
  |- JavaScript             1           10            6            3            1
  |- JSON                  33         1318         1318            0            0
  |- Python                 2           38           30            2            6
- (Total)                            11944         1474         7877         2593
+ (Total)                            11945         1474         7878         2593
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   180        93913        77607        10475         5831
+ Total                   180        94500        78136        10491         5873
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -56,14 +56,14 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- JavaScript               46        17068        14798          887         1383
+ JavaScript               46        17211        14925          887         1399
 ─────────────────────────────────────────────────────────────────────────────────
  |bench/static/graph-view.js         1869         1415          319          135
  |nch/static/json-browser.js         1403         1361            5           37
  |h/algebench/static/chat.js         1425         1160          113          152
  |lgebench/static/overlay.js         1168         1101           29           38
  |/algebench/static/proof.js         1109         1040           33           36
- |panel/d3-semantic-graph.js          968          804           42          122
+ |panel/d3-semantic-graph.js         1111          931           42          138
  |nch/static/scene-loader.js          939          798           46           95
  |algebench/static/camera.js          760          646           20           94
  |cislunar-dynamics/index.js          611          546            8           57
@@ -105,11 +105,11 @@ xychart-beta horizontal
  |/static/objects/vectors.js           23           19            0            4
  |ch/static/objects/point.js           23           18            0            5
 ─────────────────────────────────────────────────────────────────────────────────
- CSS                       3         4320         3989          154          177
+ CSS                       3         4470         4129          156          185
 ─────────────────────────────────────────────────────────────────────────────────
  |algebench/static/style.css         4097         3793          144          160
+ |anel/d3-semantic-graph.css          259          228           11           20
  |raph-panel/graph-panel.css          114          108            1            5
- |anel/d3-semantic-graph.css          109           88            9           12
 ─────────────────────────────────────────────────────────────────────────────────
  HTML                      1          347          336            7            4
 ─────────────────────────────────────────────────────────────────────────────────
@@ -121,7 +121,7 @@ xychart-beta horizontal
  |islunar-dynamics/docs.json          122          122            0            0
  |tmospheric-entry/docs.json           41           41            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                    53        22054        19442         1048         1564
+ Total                    53        22347        19709         1050         1588
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -131,11 +131,11 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Python                   29        13620        10527         1507         1586
+ Python                   29        13810        10686         1520         1604
 ─────────────────────────────────────────────────────────────────────────────────
- |ebench/algebench/server.py         2872         2302          327          243
- |sts/test_latex_to_graph.py         1416         1096          140          180
- |/scripts/latex_to_graph.py         1327          986          228          113
+ |ebench/algebench/server.py         2931         2349          337          245
+ |sts/test_latex_to_graph.py         1491         1156          143          192
+ |/scripts/latex_to_graph.py         1382         1037          228          117
  |semantic_graph_enricher.py         1106          762          214          130
  |semantic_graph_enricher.py          833          658          106           69
  |cripts/graph_to_mermaid.py          851          594          174           83
@@ -152,7 +152,7 @@ xychart-beta horizontal
  |/tests/test_render_math.py          177          124           18           35
  |graph_highlight_overlay.py          163          120           11           32
  |h/algebench/agents/base.py          124          105            0           19
- |h/models/semantic_graph.py          154          103           19           32
+ |h/models/semantic_graph.py          155          104           19           32
  |st_dot_notation_restore.py          146           99           19           28
  |ents/test_schema_parity.py           75           57            0           18
  |t_semantic_graph_themes.py           69           51            0           18
@@ -163,7 +163,7 @@ xychart-beta horizontal
  |lgebench/tests/__init__.py            0            0            0            0
  |h/tests/agents/__init__.py            0            0            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                    29        13620        10527         1507         1586
+ Total                    29        13810        10686         1520         1604
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -171,6 +171,6 @@ xychart-beta horizontal
 
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
-| JavaScript (frontend) | 14798 | 58% |
-| Python (backend) | 10527 | 42% |
-| **Total** | **25325** | **100%** |
+| JavaScript (frontend) | 14925 | 58% |
+| Python (backend) | 10686 | 42% |
+| **Total** | **25611** | **100%** |

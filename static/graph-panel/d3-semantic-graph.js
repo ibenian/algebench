@@ -9,6 +9,8 @@
  * This renderer does NOT touch the Mermaid path — it exists as an alternative.
  */
 
+import { makeAiAskButton } from '/labels.js';
+
 const D3_CDN_URL = 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 const DAGRE_CDN_URL = 'https://cdn.jsdelivr.net/npm/@dagrejs/dagre@1.1.4/dist/dagre.min.js';
 
@@ -64,6 +66,12 @@ const DEFAULT_EDGE_COLORS = {
     neutral: '#7e8aa3',
 };
 
+const EDGE_SEMANTIC_LABELS = [
+    ['direct',  'Proportional'],
+    ['inverse', 'Inversely proportional'],
+    ['neutral', 'Structural'],
+];
+
 const DEFAULT_EDGE_WIDTHS = {
     direct: 2.5,
     inverse: 1.8,
@@ -80,7 +88,8 @@ const DEFAULT_NODE_STYLES = {
     function: { fill: '#0f2540', stroke: '#42a5f5', color: '#bbdefb' },
     relation: { fill: '#2e1b33', stroke: '#ab47bc', color: '#e1bee7' },
     expression: { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
-    text:     { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
+    text:       { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
+    annotation: { fill: '#2a2518', stroke: '#8d6e63', color: '#d7ccc8' },
 };
 
 let _themeCache = Object.create(null);
@@ -305,6 +314,7 @@ export class D3SemanticGraphRenderer {
 
         const card = document.createElement('div');
         card.className = 'gv-card d3-graph-card';
+        card.style.position = 'relative';
         this.container.appendChild(card);
 
         this._svg = d3.select(card)
@@ -312,6 +322,16 @@ export class D3SemanticGraphRenderer {
             .attr('class', 'd3-semantic-graph')
             .attr('width', '100%')
             .attr('height', '100%');
+
+        const overlay = document.createElement('div');
+        overlay.className = 'd3sg-annotation-overlay';
+        card.appendChild(overlay);
+        this._annotationOverlay = overlay;
+
+        const legend = document.createElement('div');
+        legend.className = 'd3sg-edge-legend hidden';
+        card.appendChild(legend);
+        this._edgeLegend = legend;
 
         this._viewport = this._svg.append('g').attr('class', 'd3sg-viewport');
         this._linkLayer = this._viewport.append('g').attr('class', 'd3sg-links');
@@ -427,6 +447,8 @@ export class D3SemanticGraphRenderer {
             childrenOf[e.to].push(e.from);
         }
 
+        const annoIds = new Set(nodes.filter(n => n.type === 'annotation').map(n => n.id));
+
         // BFS from roots to find visible nodes (stop at collapsed)
         const hasOutgoing = new Set(edges.map(e => e.from));
         const roots = nodes.filter(n => !hasOutgoing.has(n.id));
@@ -436,6 +458,7 @@ export class D3SemanticGraphRenderer {
         while (queue.length) {
             const id = queue.shift();
             if (visible.has(id)) continue;
+            if (annoIds.has(id)) continue;
             visible.add(id);
             if (this._collapsed.has(id)) continue;
             for (const child of (childrenOf[id] || [])) queue.push(child);
@@ -451,6 +474,7 @@ export class D3SemanticGraphRenderer {
 
         for (const n of nodes) {
             if (!visible.has(n.id)) continue;
+            if (n.type === 'annotation') continue;
             const isCollapsed = this._collapsed.has(n.id);
             const isOp = n.type === 'operator' || n.type === 'relation' || n.type === 'function';
             let w, h;
@@ -539,6 +563,8 @@ export class D3SemanticGraphRenderer {
         this._renderLinks(links, transition, d3);
         this._renderEdgeLabels(links, transition, d3);
         this._renderNodes(nodes, transition, d3);
+        this._renderAnnotationOverlay();
+        this._renderEdgeLegend(layout.edges);
 
         for (const n of nodes) this._positionById.set(n.data.id, { x: n.x, y: n.y });
 
@@ -560,6 +586,7 @@ export class D3SemanticGraphRenderer {
         if (invisible) return { type: 'rect', hw: 28, hh: 18 };
         const kind = d.data.type;
         if (kind === 'operator' || kind === 'relation' || kind === 'function') return { type: 'circle', r: 28 };
+        if (kind === 'annotation') return { type: 'rect', hw: 28, hh: 18 };
         return { type: 'circle', r: 26 };
     }
 
@@ -716,6 +743,125 @@ export class D3SemanticGraphRenderer {
             })
             .style('opacity', 0)
             .remove();
+    }
+
+    _groupKatexWords(base) {
+        const text = base.textContent;
+        base.innerHTML = '';
+        const parts = text.split(/(\s+)/);
+        for (const part of parts) {
+            if (/^\s+$/.test(part)) {
+                base.appendChild(document.createTextNode(' '));
+            } else if (part) {
+                const span = document.createElement('span');
+                span.textContent = part;
+                span.style.whiteSpace = 'nowrap';
+                base.appendChild(span);
+            }
+        }
+    }
+
+    _renderAnnotationOverlay() {
+        const el = this._annotationOverlay;
+        if (!el) return;
+        el.innerHTML = '';
+        const graph = this._graph;
+        if (!graph || !graph.nodes) return;
+        const annotations = graph.nodes.filter(n => n.type === 'annotation');
+        if (!annotations.length) return;
+        const style = this._nodeStyle('annotation');
+        for (const ann of annotations) {
+            const card = document.createElement('div');
+            card.className = 'd3sg-anno-card';
+            card.style.background = style.fill || 'rgba(42,37,24,0.85)';
+            card.style.borderColor = style.stroke || '#8d6e63';
+            card.style.color = style.color || '#d7ccc8';
+            if (style.strokeWidth) card.style.borderWidth = style.strokeWidth + 'px';
+            if (style.fontSize) card.style.fontSize = style.fontSize + 'px';
+            const latex = ann.latex || ann.label || '';
+            const content = document.createElement('span');
+            content.className = 'd3sg-anno-content';
+            if (this.katex && latex) {
+                try {
+                    this.katex.render(latex, content, { throwOnError: false, displayMode: false });
+                    content.querySelectorAll('.katex-html').forEach(h => {
+                        h.style.whiteSpace = 'normal';
+                        h.style.display = 'block';
+                        h.style.textAlign = 'center';
+                    });
+                    content.querySelectorAll('.base').forEach(base => {
+                        base.style.display = 'inline';
+                        base.style.whiteSpace = 'normal';
+                        this._groupKatexWords(base);
+                    });
+                } catch (_) {
+                    content.textContent = latex;
+                }
+            } else {
+                content.textContent = latex;
+            }
+            card.appendChild(content);
+            const aiBtn = makeAiAskButton('d3sg-anno-ai-btn', 'Ask AI about this annotation',
+                () => 'Can you explain this annotation:\n' + latex);
+            card.appendChild(aiBtn);
+            el.appendChild(card);
+        }
+    }
+
+    _renderEdgeLegend(layoutEdges) {
+        const el = this._edgeLegend;
+        if (!el) return;
+        el.innerHTML = '';
+
+        const theme = this._theme;
+        const styled = theme?.edgeStyles && typeof theme.edgeStyles === 'object'
+            ? theme.edgeStyles : {};
+
+        const present = new Set();
+        for (const e of layoutEdges || []) {
+            if (e.semantic) present.add(e.semantic);
+        }
+
+        const rows = [];
+        for (const [semantic, label] of EDGE_SEMANTIC_LABELS) {
+            const s = styled[semantic];
+            if (!s) continue;
+            if (present.size > 0 && !present.has(semantic)) continue;
+            rows.push({ semantic, label, style: s });
+        }
+
+        if (!rows.length) {
+            el.classList.add('hidden');
+            return;
+        }
+
+        const title = document.createElement('div');
+        title.className = 'd3sg-edge-legend-title';
+        title.textContent = 'Edges';
+        el.appendChild(title);
+
+        for (const row of rows) {
+            const item = document.createElement('div');
+            item.className = 'd3sg-edge-legend-item';
+
+            const swatch = document.createElement('span');
+            swatch.className = 'd3sg-edge-legend-swatch';
+            const stroke = row.style.stroke || 'currentColor';
+            const width = Number(row.style.strokeWidth || 2);
+            const arrow = row.style.arrow || '-->';
+            swatch.style.setProperty('--legend-stroke', stroke);
+            swatch.style.setProperty('--legend-stroke-width', `${width}px`);
+            swatch.dataset.arrow = arrow;
+            item.appendChild(swatch);
+
+            const lbl = document.createElement('span');
+            lbl.className = 'd3sg-edge-legend-label';
+            lbl.textContent = row.label;
+            item.appendChild(lbl);
+
+            el.appendChild(item);
+        }
+        el.classList.remove('hidden');
     }
 
     _nodeClass(d) {

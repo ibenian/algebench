@@ -14,6 +14,8 @@ from scripts.latex_to_graph import (
     parse_var_overrides,
     _preprocess_latex,
     _split_on_top_level_comma,
+    _extract_parenthetical_annotations,
+    _inject_annotations,
 )
 
 
@@ -456,7 +458,7 @@ class TestTextCommand:
 
     def test_text_becomes_single_constant(self):
         g = latex_to_semantic_graph(r"T = \text{const}")
-        node = _find_node(g, type="text", label="const")
+        node = _find_node(g, type="annotation", label="const")
         assert node is not None
         assert node["latex"] == r"\text{const}"
         # No stray per-character symbols (c, o, n, s) should appear.
@@ -469,7 +471,7 @@ class TestTextCommand:
         g = latex_to_semantic_graph(
             r"T = \text{const} \implies dP = \frac{k_B T}{m}\, d\rho"
         )
-        assert _find_node(g, type="text", label="const") is not None
+        assert _find_node(g, type="annotation", label="const") is not None
         assert _find_node(g, type="relation", op="implies") is not None
         # Two equals nodes: one per side of the implication.
         equals_nodes = [n for n in g["nodes"]
@@ -480,9 +482,9 @@ class TestTextCommand:
         """Same \\text{...} content should map to one node, not duplicate."""
         g = latex_to_semantic_graph(r"\text{foo} + \text{foo} = \text{bar}")
         foo_nodes = [n for n in g["nodes"]
-                     if n.get("type") == "text" and n.get("label") == "foo"]
+                     if n.get("type") == "annotation" and n.get("label") == "foo"]
         assert len(foo_nodes) == 1
-        assert _find_node(g, type="text", label="bar") is not None
+        assert _find_node(g, type="annotation", label="bar") is not None
 
 
 # ---------------------------------------------------------------------------
@@ -1136,7 +1138,7 @@ class TestCommaSeparatedClauses:
         placeholders, the merge step would incorrectly dedup them into
         a single text node — clause 1's ``bar`` would disappear."""
         g = latex_to_semantic_graph(r"x = \text{foo}, y = \text{bar}")
-        text_nodes = _find_nodes(g, type="text")
+        text_nodes = _find_nodes(g, type="annotation")
         labels = sorted(n.get("label") for n in text_nodes)
         assert labels == ["bar", "foo"], (
             f"expected two distinct text nodes (foo, bar), got {labels!r} "
@@ -1151,7 +1153,7 @@ class TestCommaSeparatedClauses:
         distinct text nodes — each clause is an independent statement
         and text placeholders are per-clause, not globally shared."""
         g = latex_to_semantic_graph(r"x = \text{foo}, y = \text{foo}")
-        text_nodes = _find_nodes(g, type="text", label="foo")
+        text_nodes = _find_nodes(g, type="annotation", label="foo")
         assert len(text_nodes) == 2, (
             f"expected two independent 'foo' text nodes (one per clause), "
             f"got {len(text_nodes)}"
@@ -1414,3 +1416,76 @@ class TestCompoundSymbols:
                     assert "Theta" not in value, (
                         f"placeholder leaked into {field}={value!r}"
                     )
+
+
+# ---------------------------------------------------------------------------
+# Parenthetical annotation extraction
+# ---------------------------------------------------------------------------
+
+class TestParentheticalAnnotations:
+    """Tests for _extract_parenthetical_annotations and annotation node injection."""
+
+    def test_simple_text_annotation(self):
+        latex = r"F = m \cdot a \quad (v_e \text{ constant})"
+        cleaned, anns = _extract_parenthetical_annotations(latex)
+        assert cleaned == r"F = m \cdot a"
+        assert len(anns) == 1
+        assert anns[0]["type"] == "annotation"
+        assert "constant" in anns[0]["label"]
+        assert r"\text" in anns[0]["latex"]
+
+    def test_no_annotation(self):
+        latex = r"x^2 + y^2 = r^2"
+        cleaned, anns = _extract_parenthetical_annotations(latex)
+        assert cleaned == latex
+        assert anns == []
+
+    def test_plain_math_parentheses_not_extracted(self):
+        latex = r"(a + b)^2 = a^2 + 2ab + b^2"
+        cleaned, anns = _extract_parenthetical_annotations(latex)
+        assert cleaned == latex
+        assert anns == []
+
+    def test_qquad_spacing(self):
+        latex = r"E = mc^2 \qquad (c \text{ speed of light})"
+        cleaned, anns = _extract_parenthetical_annotations(latex)
+        assert cleaned == r"E = mc^2"
+        assert len(anns) == 1
+        assert "speed of light" in anns[0]["label"]
+
+    def test_multiple_annotations(self):
+        latex = r"a = b \quad (x \text{ pos}) \quad (y \text{ neg})"
+        cleaned, anns = _extract_parenthetical_annotations(latex)
+        assert cleaned == r"a = b"
+        assert len(anns) == 2
+
+    def test_inject_annotations_adds_nodes(self):
+        graph = {"nodes": [{"id": "x", "type": "variable"}], "edges": []}
+        anns = [
+            {"latex": r"v_e \text{ constant}", "label": "v_e constant", "type": "annotation"},
+        ]
+        _inject_annotations(graph, anns)
+        assert len(graph["nodes"]) == 2
+        anno = graph["nodes"][1]
+        assert anno["id"] == "__annotation_0"
+        assert anno["type"] == "annotation"
+        assert anno["label"] == "v_e constant"
+
+    def test_inject_empty_annotations(self):
+        graph = {"nodes": [{"id": "x", "type": "variable"}], "edges": []}
+        _inject_annotations(graph, [])
+        assert len(graph["nodes"]) == 1
+
+    def test_end_to_end_annotation_in_graph(self):
+        g = latex_to_semantic_graph(r"F = m a \quad (m \text{ constant})")
+        anno = _find_node(g, type="annotation")
+        assert anno is not None, "annotation node should be in graph"
+        assert anno["id"] == "__annotation_0"
+        assert "constant" in anno["label"]
+
+    def test_annotation_does_not_break_equation_parsing(self):
+        g = latex_to_semantic_graph(r"v = v_0 + a t \quad (a \text{ constant})")
+        eq = _find_node(g, op="equals")
+        assert eq is not None, "equation should still parse correctly"
+        anno = _find_node(g, type="annotation")
+        assert anno is not None

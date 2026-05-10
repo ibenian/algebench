@@ -11,8 +11,14 @@
     "operator": { "shape": "circle",  "fill": "#0f2540", "stroke": "#42a5f5", "color": "#bbdefb" },
     "function": { "shape": "hexagon", "fill": "#0f2540", "stroke": "#42a5f5", "color": "#bbdefb" },
     "relation": { "shape": "diamond", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2" },
-    "result":   { "shape": "stadium", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2" }
+    "result":     { "shape": "stadium", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2" },
+    "annotation": { "shape": "circle",  "fill": "#131a2c", "stroke": "#4a5580", "color": "#b0bcd0" }
   },
-  "edgeStyle": { "stroke": "#aaa", "strokeWidth": 2 },
+  "edgeStyles": {
+    "direct":  { "stroke": "#ef5350", "strokeWidth": 3 },
+    "inverse": { "stroke": "#42a5f5", "strokeWidth": 1, "arrow": "-.->" },
+    "neutral": { "stroke": "#aaa",    "strokeWidth": 2 }
+  },
+  "paintBySemantic": true,
   "fontSize": 15
 }

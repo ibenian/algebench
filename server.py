@@ -814,13 +814,26 @@ def _derive_equation_chain_graph(latex: str) -> dict | None:
     """
     if not isinstance(latex, str) or not latex:
         return None
+    # Strip parenthetical annotations *before* any splitting — annotations
+    # may contain ``=`` (e.g. ``(\nabla \times F = 0)``) which would confuse
+    # the equation-chain splitter.
+    early_annotations: list[dict] = []
+    try:
+        _l2g = _load_script_module("scripts/latex_to_graph.py", "latex_to_graph")
+        if _l2g is not None:
+            latex, early_annotations = _l2g._extract_parenthetical_annotations(latex)
+    except Exception:
+        pass
     # Logical connectives (``\implies``, ``\iff``, …) bind looser than ``=``.
     # Splitting on ``=`` across one would collapse two distinct equations onto
     # a single central ``=`` node and bury the implication. Hand the whole
     # string to the single-expression parser instead — SymPy knows how to make
     # ``implies`` the root with the two ``=`` relations as its operands.
     if _has_top_level_logical_connective(latex):
-        return _derive_semantic_graph(latex)
+        graph = _derive_semantic_graph(latex)
+        if graph and early_annotations:
+            _l2g._inject_annotations(graph, early_annotations)
+        return graph
     # Top-level commas are statement separators (issue #144) and bind even
     # looser than ``=``. Splitting on ``=`` first would mangle a comma-
     # separated pair like ``a = b, c = d`` into three garbled sides
@@ -828,12 +841,21 @@ def _derive_equation_chain_graph(latex: str) -> dict | None:
     # single-expression parser, which knows how to split on top-level
     # commas and emit each clause as an independent statement.
     if _has_top_level_statement_comma(latex):
-        return _derive_semantic_graph(latex)
+        graph = _derive_semantic_graph(latex)
+        if graph and early_annotations:
+            _l2g._inject_annotations(graph, early_annotations)
+        return graph
     sides = _split_equation_chain_sides(latex)
     if len(sides) <= 1:
-        return _derive_semantic_graph(latex)
+        graph = _derive_semantic_graph(latex)
+        if graph and early_annotations:
+            _l2g._inject_annotations(graph, early_annotations)
+        return graph
     if len(sides) == 2:
-        return _derive_semantic_graph(f"{sides[0]} = {sides[1]}")
+        graph = _derive_semantic_graph(f"{sides[0]} = {sides[1]}")
+        if graph and early_annotations:
+            _l2g._inject_annotations(graph, early_annotations)
+        return graph
 
     try:
         l2g = _load_script_module("scripts/latex_to_graph.py", "latex_to_graph")
@@ -851,7 +873,14 @@ def _derive_equation_chain_graph(latex: str) -> dict | None:
     # to know about all of them regardless of which side introduced them.
     dotted_vars: dict[str, int] = {}
 
+    all_annotations: list[dict] = []
+
     for si, side in enumerate(sides):
+        # Strip trailing parenthetical annotations (e.g. ``(v_e \text{ constant})``)
+        # before the multichar-subscript pass replaces ``\text{…}`` with Greek
+        # placeholders — after that the regex can no longer detect them.
+        side, side_annotations = l2g._extract_parenthetical_annotations(side)
+        all_annotations.extend(side_annotations)
         # Lift ``\dot{m}`` → ``\frac{d m}{d t}`` (SymPy doesn't understand
         # overhead-dot notation natively but does produce ``Derivative``
         # nodes from the fraction form). Then peel visual accents
@@ -927,11 +956,13 @@ def _derive_equation_chain_graph(latex: str) -> dict | None:
         if r:
             merged_edges.append({"from": r, "to": equals_id})
 
-    return {
+    graph = {
         "nodes": list(merged_nodes.values()),
         "edges": merged_edges,
         "classification": {"kind": "algebraic"},
     }
+    l2g._inject_annotations(graph, all_annotations)
+    return graph
 
 
 def _derive_semantic_graph(
@@ -956,6 +987,10 @@ def _derive_semantic_graph(
     # (\vec, \hat, \mathbf, …) that SymPy can't parse, then swap multi-char
     # subscripts (\text{prop}, _{sp}, …) with Greek placeholders so SymPy
     # treats them as atomic symbols, then restore.
+    l2g = _load_script_module("scripts/latex_to_graph.py", "latex_to_graph")
+    annotations: list[dict] = []
+    if l2g is not None:
+        math_src, annotations = l2g._extract_parenthetical_annotations(math_src)
     dotted_vars: dict[str, int] = {}
     deriv_src = _rewrite_dot_derivatives(math_src, dotted_vars)
     deriv_src = _normalize_frac_derivatives(deriv_src)
@@ -963,7 +998,6 @@ def _derive_semantic_graph(
     stripped = _strip_accent_commands(deriv_src, accent_map)
     rewritten, mapping = _substitute_multichar_subscripts(stripped)
     try:
-        l2g = _load_script_module("scripts/latex_to_graph.py", "latex_to_graph")
         if l2g is None:
             graph = None
         elif domain:
@@ -987,6 +1021,8 @@ def _derive_semantic_graph(
             _restore_subscripts_in_graph(graph, mapping)
             _restore_accents_in_graph(graph, accent_map)
             _restore_dot_notation_in_graph(graph, dotted_vars)
+            if l2g is not None and annotations:
+                l2g._inject_annotations(graph, annotations)
     _latex_graph_cache[key] = graph
     return graph
 
@@ -2280,6 +2316,22 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             node_count = len(graph_in.get("nodes", []) or [])
             domain = graph_in.get("domain") or (context_in or {}).get("domain") or "?"
 
+            # Strip annotation nodes before validation and enrichment —
+            # they carry free-text labels that can exceed Pydantic field
+            # limits, and they aren't meaningful to the Gemini enricher.
+            # Re-attached to the enriched result before returning.
+            all_nodes = list(graph_in.get("nodes") or [])
+            anno_nodes = [n for n in all_nodes if n.get("type") == "annotation"]
+            anno_ids = {n.get("id") for n in anno_nodes} - {None}
+            if anno_nodes:
+                graph_in = dict(graph_in)
+                graph_in["nodes"] = [n for n in all_nodes if n.get("type") != "annotation"]
+                orig_edges = list(graph_in.get("edges") or [])
+                anno_edges = [e for e in orig_edges if e.get("from") in anno_ids or e.get("to") in anno_ids]
+                graph_in["edges"] = [e for e in orig_edges if e.get("from") not in anno_ids and e.get("to") not in anno_ids]
+            else:
+                anno_edges = []
+
             # Validate the wire-format dict at the API boundary BEFORE any
             # short-circuit. Otherwise a caller could include any
             # ``"enrichment": {...}`` blob in their request and bypass the
@@ -2310,9 +2362,13 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             # avoided. Keeping ``cached`` honest matters for any caller
             # that uses it for metrics.
             if graph_model.enrichment is not None:
+                enriched_out = graph_model.model_dump(by_alias=True, exclude_none=True)
+                if anno_nodes:
+                    enriched_out["nodes"].extend(anno_nodes)
+                    enriched_out["edges"].extend(anno_edges)
                 print(f"[enrich] input already enriched  nodes={node_count} domain={domain!r}", flush=True)
                 return JSONResponse({
-                    "enriched": graph_model.model_dump(by_alias=True, exclude_none=True),
+                    "enriched": enriched_out,
                     "cached": False,
                     "skipped": True,
                 })
@@ -2353,6 +2409,9 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             # response — keeps the cache hit path returning dicts so the
             # ``cached`` shape is identical regardless of how it was built.
             enriched = enriched_model.model_dump(by_alias=True, exclude_none=True)
+            if anno_nodes:
+                enriched["nodes"].extend(anno_nodes)
+                enriched["edges"].extend(anno_edges)
             _graph_enrich_cache[key] = enriched
             print(f"[enrich] ok  cached  key={key[:8]}", flush=True)
             if DEBUG_MODE:
