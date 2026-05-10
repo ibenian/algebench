@@ -730,7 +730,7 @@ async function _renderWithD3(container, graph, step, key) {
     enrichGraphInBackground(graph, key, step);
 }
 
-function _buildD3NodeAskMessage(nodeId, graph) {
+function _buildD3NodeAskMessage(nodeId, graph, otherSelectedIds) {
     if (!nodeId || !graph) return 'Explain this graph node.';
     const node = (graph.nodes || []).find(n => n.id === nodeId);
     if (!node) return 'Explain this graph node.';
@@ -752,6 +752,19 @@ function _buildD3NodeAskMessage(nodeId, graph) {
     }
     if (incoming.length) lines.push(`Incoming: ${incoming.join(', ')}`);
     if (outgoing.length) lines.push(`Outgoing: ${outgoing.join(', ')}`);
+    if (otherSelectedIds && otherSelectedIds.length) {
+        const others = (graph.nodes || []).filter(n => otherSelectedIds.includes(n.id));
+        lines.push('');
+        lines.push('Also selected in the graph:');
+        for (const o of others) {
+            const parts = [`- ${o.label || o.id}`];
+            if (o.type) parts.push(`(${o.type})`);
+            if (o.description) parts.push(`— ${o.description}`);
+            lines.push(parts.join(' '));
+        }
+        lines.push('');
+        lines.push('Explain this node and how it relates to the other selected nodes.');
+    }
     return lines.join('\n');
 }
 
@@ -760,7 +773,13 @@ function _ensureD3NodeAskBtn() {
     const btn = makeAiAskButton(
         'ai-ask-btn graph-node-ai-btn',
         'Ask AI about this node',
-        () => _buildD3NodeAskMessage(_d3HoveredNodeId, _d3ActiveGraph),
+        () => {
+            const selected = _currentD3Renderer?.selectedNodes;
+            const others = selected && selected.size > 1
+                ? [...selected].filter(id => id !== _d3HoveredNodeId)
+                : [];
+            return _buildD3NodeAskMessage(_d3HoveredNodeId, _d3ActiveGraph, others);
+        },
     );
     btn.style.position = 'fixed';
     btn.style.opacity = '0';
@@ -819,7 +838,13 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
         const askBtn = makeAiAskButton(
             'ai-ask-btn graph-panel-ai-btn',
             'Ask AI about this node',
-            () => _buildD3NodeAskMessage(nodeId, graph),
+            () => {
+                const selected = _currentD3Renderer?.selectedNodes;
+                const others = selected && selected.size > 1
+                    ? [...selected].filter(id => id !== nodeId)
+                    : [];
+                return _buildD3NodeAskMessage(nodeId, graph, others);
+            },
         );
         header.appendChild(askBtn);
     }
