@@ -72,6 +72,26 @@
         {
           "title": "Higher powers and a quotient (^3, ^4, ^n, ^-3, ^-4, ^-n, a/b)",
           "description": "$y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n} + \\frac{a}{b}$"
+        },
+        {
+          "title": "Annotation: constant velocity",
+          "description": "$F = \\dot{m} \\cdot v_e \\quad (v_e \\text{ constant})$"
+        },
+        {
+          "title": "Annotation: two assumptions",
+          "description": "$P V = n R T \\quad (T \\text{ constant}) \\quad (n \\text{ fixed})$"
+        },
+        {
+          "title": "Annotation: small angle",
+          "description": "$\\sin\\theta \\approx \\theta \\quad (\\theta \\text{ small})$"
+        },
+        {
+          "title": "Annotation: long latex annotation",
+          "description": "$W = \\int F \\, dx \\quad (F \\text{ conservative, } \\nabla \\times F = 0)$"
+        },
+        {
+          "title": "Annotation: paragraph-length",
+          "description": "$\\Delta S \\geq 0 \\quad (\\text{holds for isolated systems undergoing irreversible processes where no heat exchange with surroundings occurs})$"
         }
       ],
       "proof": {
@@ -1772,6 +1792,46 @@
                 }
               }
             }
+          },
+          {
+            "id": "proof-step-11",
+            "type": "given",
+            "label": "Annotation: constant exhaust velocity",
+            "math": "F = \\dot{m} \\cdot v_e \\quad (v_e \\text{ constant})",
+            "justification": "Rocket thrust with a parenthetical annotation indicating the exhaust velocity is constant. The annotation should appear as a separate rounded-rectangle node with dashed border.",
+            "sceneStep": 0
+          },
+          {
+            "id": "proof-step-12",
+            "type": "given",
+            "label": "Annotation: two assumptions",
+            "math": "P V = n R T \\quad (T \\text{ constant}) \\quad (n \\text{ fixed})",
+            "justification": "Ideal gas law with two parenthetical annotations — constant temperature and fixed amount of substance. Both should appear as separate annotation nodes.",
+            "sceneStep": 0
+          },
+          {
+            "id": "proof-step-13",
+            "type": "given",
+            "label": "Annotation: small angle approximation",
+            "math": "\\sin\\theta \\approx \\theta \\quad (\\theta \\text{ small})",
+            "justification": "Small-angle approximation with a single annotation. Tests that annotations work alongside the ≈ relation operator.",
+            "sceneStep": 0
+          },
+          {
+            "id": "proof-step-14",
+            "type": "given",
+            "label": "Annotation: long latex annotation",
+            "math": "W = \\int F \\, dx \\quad (F \\text{ conservative, } \\nabla \\times F = 0)",
+            "justification": "Work integral with a longer annotation containing both text and LaTeX symbols. Tests that the rounded rectangle sizes properly for longer content.",
+            "sceneStep": 0
+          },
+          {
+            "id": "proof-step-15",
+            "type": "given",
+            "label": "Annotation: paragraph-length",
+            "math": "\\Delta S \\geq 0 \\quad (\\text{holds for isolated systems undergoing irreversible processes where no heat exchange with surroundings occurs})",
+            "justification": "Entropy inequality with a paragraph-length annotation. Tests that the annotation rectangle expands vertically and wraps text across multiple lines.",
+            "sceneStep": 0
           }
         ]
       }

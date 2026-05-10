@@ -722,7 +722,7 @@ def _collapse_text_commands(latex: str) -> tuple[str, dict[str, dict[str, str]]]
             overrides[f"Xi_{{{idx}}}"] = {
                 "label": content,
                 "latex": r"\text{" + content + "}",
-                "type": "text",
+                "type": "annotation",
             }
         return rf"\Xi_{seen[content]}"
 
@@ -814,6 +814,47 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
     )
     rewritten = re.sub(pattern, repl, latex)
     return rewritten, overrides
+
+
+def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, str]]]:
+    r"""Strip trailing parenthetical annotations from LaTeX.
+
+    Patterns like ``\quad (v_e \text{ constant})`` are common in physics
+    notation — they annotate an assumption about a variable rather than
+    contribute to the equation's mathematical structure.  SymPy cannot
+    parse these because the parenthesised content mixes free variables
+    with ``\text{...}`` prose, producing a juxtaposition that has no
+    operator between terms.
+
+    Detection heuristic: a parenthesised group at the *end* of the
+    string that contains at least one ``\text{...}`` and is preceded by
+    optional LaTeX spacing (``\quad``, ``\qquad``, whitespace).
+
+    Returns ``(cleaned_latex, annotations)`` where each annotation dict
+    has ``latex`` (the full parenthetical including parens) and ``label``
+    (a plain-text rendering suitable for the graph node).
+    """
+    annotations: list[dict[str, str]] = []
+    spacing = r"(?:\s|\\quad|\\qquad|\\,|\\;|\\!|\\:)*"
+    pattern = re.compile(
+        spacing + r"\(([^()]*\\text\{[^}]+\}[^()]*)\)\s*$"
+    )
+    while True:
+        m = pattern.search(latex)
+        if not m:
+            break
+        inner = m.group(1).strip()
+        label = re.sub(r"\\text\{([^}]+)\}", r"\1", inner)
+        label = re.sub(r"\\[A-Za-z]+\s*", "", label)
+        label = re.sub(r"[{}]", "", label)
+        label = re.sub(r"\s+", " ", label).strip()
+        annotations.append({
+            "latex": inner,
+            "label": label,
+            "type": "annotation",
+        })
+        latex = latex[:m.start()].rstrip()
+    return latex, annotations
 
 
 def _preprocess_latex(latex: str) -> str:
@@ -1154,6 +1195,7 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     relation node. Shared variables across clauses dedup to one node.
     """
     user_overrides = overrides
+    latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
     compound_collapsed, compound_overrides = _collapse_compound_symbols(latex)
     collapsed, text_overrides = _collapse_text_commands(compound_collapsed)
     preprocessed = _preprocess_latex(collapsed)
@@ -1256,6 +1298,7 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
             graph["classification"] = {"kind": "algebraic"}
         if domain:
             graph["domain"] = domain
+        _inject_annotations(graph, parenthetical_annotations)
         return graph
 
     # No top-level relation. A top-level comma now acts as a statement
@@ -1266,9 +1309,11 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     # parent-scoped ``Xi_{N}`` ids.
     clauses = _split_on_top_level_comma(latex)
     if len(clauses) > 1:
-        return _build_comma_separated_graph(
+        graph = _build_comma_separated_graph(
             clauses, overrides=user_overrides, domain=domain,
         )
+        _inject_annotations(graph, parenthetical_annotations)
+        return graph
 
     try:
         expr = parse_latex(preprocessed)
@@ -1281,7 +1326,17 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     graph["classification"] = classification
     if domain:
         graph["domain"] = domain
+    _inject_annotations(graph, parenthetical_annotations)
     return graph
+
+
+def _inject_annotations(graph: dict, annotations: list[dict[str, str]]) -> None:
+    """Append parenthetical annotation nodes to the graph."""
+    for i, ann in enumerate(annotations):
+        node_id = f"__annotation_{i}"
+        node: dict[str, Any] = {"id": node_id}
+        node.update(ann)
+        graph.setdefault("nodes", []).append(node)
 
 
 # ---------------------------------------------------------------------------

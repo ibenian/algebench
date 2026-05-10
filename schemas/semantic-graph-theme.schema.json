@@ -35,10 +35,11 @@
         "constant": { "$ref": "#/$defs/nodeStyle" },
         "operator": { "$ref": "#/$defs/nodeStyle" },
         "function": { "$ref": "#/$defs/nodeStyle" },
-        "relation": { "$ref": "#/$defs/nodeStyle" },
-        "result":   { "$ref": "#/$defs/nodeStyle" },
-        "set":      { "$ref": "#/$defs/nodeStyle" },
-        "boolean":  { "$ref": "#/$defs/nodeStyle" }
+        "relation":   { "$ref": "#/$defs/nodeStyle" },
+        "result":     { "$ref": "#/$defs/nodeStyle" },
+        "set":        { "$ref": "#/$defs/nodeStyle" },
+        "boolean":    { "$ref": "#/$defs/nodeStyle" },
+        "annotation": { "$ref": "#/$defs/nodeStyle" }
       }
     },
     "operatorVariants": {

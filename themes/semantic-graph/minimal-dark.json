@@ -11,7 +11,8 @@
     "operator": { "shape": "circle", "fill": "#2a2a3a", "stroke": "#555", "color": "#ccc" },
     "function": { "shape": "circle", "fill": "#2a2a3a", "stroke": "#555", "color": "#ccc" },
     "relation": { "shape": "diamond","fill": "#2a2a3a", "stroke": "#555", "color": "#ccc" },
-    "result":   { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" }
+    "result":   { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" },
+    "annotation": { "shape": "circle",  "fill": "#1a1a28", "stroke": "#505060", "color": "#aaa" }
   },
   "edgeStyles": {
     "direct":   { "stroke": "#ef5350", "strokeWidth": 4 },

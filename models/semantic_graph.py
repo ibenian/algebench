@@ -23,6 +23,7 @@ NodeType = Literal[
     "relation",
     "expression",
     "text",
+    "annotation",
 ]
 
 Role = Literal[
