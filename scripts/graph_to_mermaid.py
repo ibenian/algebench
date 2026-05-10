@@ -690,8 +690,10 @@ def semantic_graph_to_mermaid(
         if is_logical_edge and edge_styles and "logical" in edge_styles:
             arrow = edge_styles["logical"].get("arrow", arrow)
 
-        if edge_label:
-            lines.append(f"  {src} {arrow}|{edge_label}| {dst}")
+        edge_role = edge.get("role", "")
+        display_label = edge_label or edge_role
+        if display_label:
+            lines.append(f"  {src} {arrow}|{display_label}| {dst}")
         else:
             lines.append(f"  {src} {arrow} {dst}")
 

@@ -92,6 +92,30 @@
         {
           "title": "Annotation: paragraph-length",
           "description": "$\\Delta S \\geq 0 \\quad (\\text{holds for isolated systems undergoing irreversible processes where no heat exchange with surroundings occurs})$"
+        },
+        {
+          "title": "Comparison: strict greater-than",
+          "description": "$x > 0$"
+        },
+        {
+          "title": "Comparison: strict less-than",
+          "description": "$x < 5$"
+        },
+        {
+          "title": "Comparison: greater-or-equal",
+          "description": "$x \\geq y + 1$"
+        },
+        {
+          "title": "Comparison: less-or-equal",
+          "description": "$a \\leq b$"
+        },
+        {
+          "title": "Comparison: constraint after equation",
+          "description": "$f(x) = x^2, x > 0$"
+        },
+        {
+          "title": "Comparison: domain restriction",
+          "description": "$\\sin\\theta = \\theta, 0 \\leq \\theta$"
         }
       ],
       "proof": {
@@ -1831,6 +1855,54 @@
             "label": "Annotation: paragraph-length",
             "math": "\\Delta S \\geq 0 \\quad (\\text{holds for isolated systems undergoing irreversible processes where no heat exchange with surroundings occurs})",
             "justification": "Entropy inequality with a paragraph-length annotation. Tests that the annotation rectangle expands vertically and wraps text across multiple lines.",
+            "sceneStep": 0
+          },
+          {
+            "id": "proof-step-16",
+            "type": "given",
+            "label": "Comparison: strict greater-than",
+            "math": "x > 0",
+            "justification": "Strict greater-than inequality. The semantic graph should show x and 0 connected through a greater_than operator node rendered as >.",
+            "sceneStep": 0
+          },
+          {
+            "id": "proof-step-17",
+            "type": "given",
+            "label": "Comparison: strict less-than",
+            "math": "x < 5",
+            "justification": "Strict less-than inequality. The semantic graph should show x and 5 connected through a less_than operator node rendered as <.",
+            "sceneStep": 0
+          },
+          {
+            "id": "proof-step-18",
+            "type": "given",
+            "label": "Comparison: greater-or-equal",
+            "math": "x \\geq y + 1",
+            "justification": "Greater-or-equal inequality with an additive expression on the right side. The graph should show a greater_equal operator (≥) with x on one side and an add operator combining y and 1 on the other.",
+            "sceneStep": 0
+          },
+          {
+            "id": "proof-step-19",
+            "type": "given",
+            "label": "Comparison: less-or-equal",
+            "math": "a \\leq b",
+            "justification": "Less-or-equal inequality between two variables. The semantic graph should show a and b connected through a less_equal operator node rendered as ≤.",
+            "sceneStep": 0
+          },
+          {
+            "id": "proof-step-20",
+            "type": "given",
+            "label": "Comparison: constraint after equation",
+            "math": "f(x) = x^2, x > 0",
+            "justification": "Equation with a comma-separated comparison constraint. The graph should produce two independent rooted structures: an equals operator for f(x) = x² and a greater_than operator for x > 0, sharing the x node.",
+            "sceneStep": 0
+          },
+          {
+            "id": "proof-step-21",
+            "type": "given",
+            "label": "Comparison: domain restriction",
+            "math": "\\sin\\theta = \\theta, 0 \\leq \\theta",
+            "justification": "Small-angle approximation with a domain restriction. Two clauses: sin(θ) = θ and 0 ≤ θ, sharing the θ node.",
             "sceneStep": 0
           }
         ]

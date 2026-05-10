@@ -124,6 +124,10 @@ OPERATOR_MAP: dict[type, str] = {
     LessThan: "less_equal",
 }
 
+_ASYMMETRIC_OPS: set[str] = {
+    "greater_than", "less_than", "greater_equal", "less_equal",
+}
+
 # Synthetic placeholder names emitted by ``_collapse_compound_symbols`` and
 # ``_collapse_text_commands``. Used to gate placeholder restoration so user
 # overrides keyed on real symbol names can never hit the substring-replace
@@ -260,6 +264,7 @@ class SemanticGraphBuilder:
         *,
         semantic: str | None = None,
         weight: float | None = None,
+        role: str | None = None,
     ) -> None:
         """Append an edge. ``semantic`` — when provided — must be one of
         ``direct`` / ``inverse`` / ``neutral`` (enum from the graph schema).
@@ -274,12 +279,18 @@ class SemanticGraphBuilder:
         relationship (e.g. the absolute exponent for a base→power edge).
         Renderers multiply this by a base stroke width and clamp to a
         safe range ``[1, 8]`` so ``x^100`` stays visually legible.
+
+        ``role`` — ``lhs`` or ``rhs`` — tags the operand position for
+        asymmetric operators (comparisons).  Renderers use this to draw
+        directed arrows distinguishing left from right.
         """
         edge: dict[str, Any] = {"from": src, "to": dst}
         if semantic:
             edge["semantic"] = semantic
         if weight is not None:
             edge["weight"] = weight
+        if role:
+            edge["role"] = role
         self.edges.append(edge)
 
     def build(self, expr: sympy.Basic, original_latex: str | None = None) -> dict:
@@ -660,7 +671,7 @@ class SemanticGraphBuilder:
             self._add_edge(child_id, node_id)
             return node_id
 
-        # --- Binary/n-ary operators (Add, Mul, Pow, Eq) ---
+        # --- Binary/n-ary operators (Add, Mul, Pow, Eq, comparisons) ---
         op_name = OPERATOR_MAP.get(type(expr))
         if op_name is not None:
             node_id = self._next_id(op_name)
@@ -674,7 +685,8 @@ class SemanticGraphBuilder:
             # than multiplicatively — so those stay untagged.
             edge_semantic = "direct" if op_name == "multiply" else None
             edge_weight = 1.0 if op_name == "multiply" else None
-            for arg in expr.args:
+            asymmetric = op_name in _ASYMMETRIC_OPS
+            for i, arg in enumerate(expr.args):
                 # Denominators arrive here as ``Pow(_, -k)`` (literal) or
                 # ``Pow(_, -n)`` (symbolic) — leave those edges plain so
                 # the renderer's power-source inference paints them
@@ -685,11 +697,13 @@ class SemanticGraphBuilder:
                     child_semantic = None
                     child_weight = None
                 child_id = self._walk(arg)
+                edge_role = ("lhs" if i == 0 else "rhs") if asymmetric else None
                 self._add_edge(
                     child_id,
                     node_id,
                     semantic=child_semantic,
                     weight=child_weight,
+                    role=edge_role,
                 )
             return node_id
 
@@ -1291,8 +1305,9 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
                 node["subexpr"] = builder._restore_placeholders(rhs_latex.strip())
         rel_id = builder._next_id(rel_meta["op"])
         builder._add_node(rel_id, type="relation", subexpr=latex.strip(), **rel_meta)
-        builder._add_edge(lhs_id, rel_id)
-        builder._add_edge(rhs_id, rel_id)
+        rel_asymmetric = rel_meta["op"] in _ASYMMETRIC_OPS
+        builder._add_edge(lhs_id, rel_id, role="lhs" if rel_asymmetric else None)
+        builder._add_edge(rhs_id, rel_id, role="rhs" if rel_asymmetric else None)
         graph = {"nodes": builder.nodes, "edges": builder.edges}
         # Classify based on both sides combined when both are single
         # SymPy expressions. Relational expressions (inequalities, Eq)

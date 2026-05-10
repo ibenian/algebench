@@ -149,6 +149,11 @@
           "type": "number",
           "minimum": 0,
           "description": "Strength of the relationship. For a base→power edge, this is the absolute value of the exponent (e.g. 2 for x², 3 for x⁻³). Renderers multiply this by a base stroke width and clamp to [1, 8] so very large exponents stay visually sane. Omit for edges where strength is undefined (addition, structural)."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["lhs", "rhs"],
+          "description": "Operand position for asymmetric operators (comparisons). 'lhs' is the left operand, 'rhs' is the right operand. Omit for symmetric operators (add, multiply, equals)."
         }
       }
     },

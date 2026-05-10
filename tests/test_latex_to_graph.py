@@ -423,6 +423,30 @@ class TestComparisonOperators:
         incoming = [e for e in g["edges"] if e["to"] == op["id"]]
         assert len(incoming) == 2
 
+    def test_comparison_edges_have_lhs_rhs_roles(self):
+        g = latex_to_semantic_graph(r"x > 0")
+        op = _find_node(g, type="operator", op="greater_than")
+        edges = [e for e in g["edges"] if e["to"] == op["id"]]
+        roles = {e["role"] for e in edges}
+        assert roles == {"lhs", "rhs"}
+        lhs_edge = next(e for e in edges if e["role"] == "lhs")
+        assert lhs_edge["from"] == "x"
+
+    def test_equals_edges_have_no_roles(self):
+        """Symmetric operators should not have role tags."""
+        g = latex_to_semantic_graph(r"x = 0")
+        op = _find_node(g, type="operator", op="equals")
+        edges = [e for e in g["edges"] if e["to"] == op["id"]]
+        assert all("role" not in e for e in edges)
+
+    def test_relation_map_comparison_edges_have_roles(self):
+        """\\gt routed through RELATION_MAP should also get lhs/rhs roles."""
+        g = latex_to_semantic_graph(r"x \gt 0")
+        rel = _find_node(g, type="relation", op="greater_than")
+        edges = [e for e in g["edges"] if e["to"] == rel["id"]]
+        roles = {e["role"] for e in edges}
+        assert roles == {"lhs", "rhs"}
+
 
 class TestRelationOperandComma:
     """Comma inside an \\implies / \\iff operand groups as a conjunction
