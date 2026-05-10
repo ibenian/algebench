@@ -146,7 +146,9 @@ function getNodeLabel(node, labelMode) {
 
 function operatorGlyph(node) {
     const glyphs = {
-        equals: '=', multiply: '×', add: '+', subtract: '−',
+        equals: '=', greater_than: '>', less_than: '<',
+        greater_equal: '≥', less_equal: '≤', not_equal: '≠',
+        multiply: '×', add: '+', subtract: '−',
         divide: '÷', integral: '∫',
         implies: '⇒', iff: '⇔', negation: '−', not: '¬', logical_not: '¬', conjunction: '∧',
         disjunction: '∨', sum: '∑', product: '∏', limit: 'lim',

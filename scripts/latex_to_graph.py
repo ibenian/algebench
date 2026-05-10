@@ -38,6 +38,7 @@ try:
     from sympy import (
         Symbol, Function, Number, Rational, Integer, Float,
         Add, Mul, Pow, Eq, Abs,
+        StrictGreaterThan, StrictLessThan, GreaterThan, LessThan,
         sin, cos, tan, log, exp, sqrt,
         Derivative, Integral, Sum, Product,
         pi, E, I, oo,
@@ -117,6 +118,10 @@ OPERATOR_MAP: dict[type, str] = {
     Mul: "multiply",
     Pow: "power",
     Eq: "equals",
+    StrictGreaterThan: "greater_than",
+    StrictLessThan: "less_than",
+    GreaterThan: "greater_equal",
+    LessThan: "less_equal",
 }
 
 # Synthetic placeholder names emitted by ``_collapse_compound_symbols`` and
@@ -156,6 +161,9 @@ RELATION_MAP: list[tuple[str, dict[str, str]]] = [
     (r"\iff", {"op": "iff", "label": "if and only if", "emoji": "⇔"}),
     (r"\to", {"op": "maps_to", "label": "maps to", "emoji": "→"}),
     (r"\rightarrow", {"op": "maps_to", "label": "maps to", "emoji": "→"}),
+    (r"\neq", {"op": "not_equal", "label": "not equal to", "emoji": "≠"}),
+    (r"\gt", {"op": "greater_than", "label": "greater than", "emoji": ">"}),
+    (r"\lt", {"op": "less_than", "label": "less than", "emoji": "<"}),
 ]
 
 
