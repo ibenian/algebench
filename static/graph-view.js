@@ -684,7 +684,9 @@ async function _renderWithD3(container, graph, step, key) {
             labels: _currentLabels,
             theme: _currentTheme,
             onNodeClick: (nodeId, nodeData, selectedIds) => {
-                if (selectedIds && selectedIds.size > 1) {
+                if (!selectedIds || selectedIds.size === 0) {
+                    _hideD3InfoPanel();
+                } else if (selectedIds.size > 1) {
                     _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph);
                 } else {
                     _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
@@ -981,7 +983,7 @@ function _showD3MultiInfoPanel(selectedIds, graph) {
         }
         const v = document.createElement('span');
         v.className = 'gp-val';
-        v.textContent = node.type + (node.description ? ' — ' + node.description : '');
+        v.textContent = [node.type, node.description].filter(Boolean).join(' — ');
         row.append(k, v);
         fieldsEl.appendChild(row);
     }
