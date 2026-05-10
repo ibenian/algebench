@@ -176,3 +176,84 @@ svg.d3-semantic-graph {
     background: rgba(100, 110, 255, 0.35);
     color: #c0c8ff;
 }
+
+/* Edge semantics legend — bottom-left of graph viewport */
+.d3sg-edge-legend {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    background: rgba(10, 12, 26, 0.75);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 6px;
+    font-size: 0.72rem;
+    color: rgba(210, 218, 245, 0.92);
+    letter-spacing: 0.02em;
+    z-index: 2;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    pointer-events: none;
+    user-select: none;
+}
+.d3sg-edge-legend.hidden { display: none; }
+.d3sg-edge-legend-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.65;
+    margin-bottom: 2px;
+}
+.d3sg-edge-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.d3sg-edge-legend-swatch {
+    --legend-stroke: currentColor;
+    --legend-stroke-width: 2px;
+    position: relative;
+    display: inline-block;
+    width: 30px;
+    height: 12px;
+    flex-shrink: 0;
+}
+.d3sg-edge-legend-swatch::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 22px;
+    height: var(--legend-stroke-width);
+    background: var(--legend-stroke);
+    transform: translateY(-50%);
+}
+.d3sg-edge-legend-swatch[data-arrow="-.->"]::before,
+.d3sg-edge-legend-swatch[data-arrow="-.-"]::before {
+    background: none;
+    border-top: var(--legend-stroke-width) dotted var(--legend-stroke);
+    height: 0;
+}
+.d3sg-edge-legend-swatch[data-arrow="==>"]::before,
+.d3sg-edge-legend-swatch[data-arrow="==="]::before {
+    box-shadow: 0 -2px 0 var(--legend-stroke), 0 2px 0 var(--legend-stroke);
+}
+.d3sg-edge-legend-swatch::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid var(--legend-stroke);
+    transform: translateY(-50%);
+}
+.d3sg-edge-legend-swatch[data-arrow="---"]::after,
+.d3sg-edge-legend-swatch[data-arrow="==="]::after,
+.d3sg-edge-legend-swatch[data-arrow="-.-"]::after {
+    display: none;
+}

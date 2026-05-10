@@ -66,6 +66,12 @@ const DEFAULT_EDGE_COLORS = {
     neutral: '#7e8aa3',
 };
 
+const EDGE_SEMANTIC_LABELS = [
+    ['direct',  'Proportional'],
+    ['inverse', 'Inversely proportional'],
+    ['neutral', 'Structural'],
+];
+
 const DEFAULT_EDGE_WIDTHS = {
     direct: 2.5,
     inverse: 1.8,
@@ -322,6 +328,11 @@ export class D3SemanticGraphRenderer {
         card.appendChild(overlay);
         this._annotationOverlay = overlay;
 
+        const legend = document.createElement('div');
+        legend.className = 'd3sg-edge-legend hidden';
+        card.appendChild(legend);
+        this._edgeLegend = legend;
+
         this._viewport = this._svg.append('g').attr('class', 'd3sg-viewport');
         this._linkLayer = this._viewport.append('g').attr('class', 'd3sg-links');
         this._labelLayer = this._viewport.append('g').attr('class', 'd3sg-edge-labels');
@@ -550,6 +561,7 @@ export class D3SemanticGraphRenderer {
         this._renderEdgeLabels(links, transition, d3);
         this._renderNodes(nodes, transition, d3);
         this._renderAnnotationOverlay();
+        this._renderEdgeLegend(layout.edges);
 
         for (const n of nodes) this._positionById.set(n.data.id, { x: n.x, y: n.y });
 
@@ -791,6 +803,62 @@ export class D3SemanticGraphRenderer {
             card.appendChild(aiBtn);
             el.appendChild(card);
         }
+    }
+
+    _renderEdgeLegend(layoutEdges) {
+        const el = this._edgeLegend;
+        if (!el) return;
+        el.innerHTML = '';
+
+        const theme = this._theme;
+        const styled = theme?.edgeStyles && typeof theme.edgeStyles === 'object'
+            ? theme.edgeStyles : {};
+
+        const present = new Set();
+        for (const e of layoutEdges || []) {
+            if (e.semantic) present.add(e.semantic);
+        }
+
+        const rows = [];
+        for (const [semantic, label] of EDGE_SEMANTIC_LABELS) {
+            const s = styled[semantic];
+            if (!s) continue;
+            if (present.size > 0 && !present.has(semantic)) continue;
+            rows.push({ semantic, label, style: s });
+        }
+
+        if (!rows.length) {
+            el.classList.add('hidden');
+            return;
+        }
+
+        const title = document.createElement('div');
+        title.className = 'd3sg-edge-legend-title';
+        title.textContent = 'Edges';
+        el.appendChild(title);
+
+        for (const row of rows) {
+            const item = document.createElement('div');
+            item.className = 'd3sg-edge-legend-item';
+
+            const swatch = document.createElement('span');
+            swatch.className = 'd3sg-edge-legend-swatch';
+            const stroke = row.style.stroke || 'currentColor';
+            const width = Number(row.style.strokeWidth || 2);
+            const arrow = row.style.arrow || '-->';
+            swatch.style.setProperty('--legend-stroke', stroke);
+            swatch.style.setProperty('--legend-stroke-width', `${width}px`);
+            swatch.dataset.arrow = arrow;
+            item.appendChild(swatch);
+
+            const lbl = document.createElement('span');
+            lbl.className = 'd3sg-edge-legend-label';
+            lbl.textContent = row.label;
+            item.appendChild(lbl);
+
+            el.appendChild(item);
+        }
+        el.classList.remove('hidden');
     }
 
     _nodeClass(d) {
