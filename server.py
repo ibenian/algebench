@@ -2316,6 +2316,22 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             node_count = len(graph_in.get("nodes", []) or [])
             domain = graph_in.get("domain") or (context_in or {}).get("domain") or "?"
 
+            # Strip annotation nodes before validation and enrichment —
+            # they carry free-text labels that can exceed Pydantic field
+            # limits, and they aren't meaningful to the Gemini enricher.
+            # Re-attached to the enriched result before returning.
+            all_nodes = list(graph_in.get("nodes") or [])
+            anno_nodes = [n for n in all_nodes if n.get("type") == "annotation"]
+            anno_ids = {n["id"] for n in anno_nodes}
+            if anno_nodes:
+                graph_in = dict(graph_in)
+                graph_in["nodes"] = [n for n in all_nodes if n.get("type") != "annotation"]
+                all_edges = list(graph_in.get("edges") or [])
+                anno_edges = [e for e in all_edges if e.get("from") in anno_ids or e.get("to") in anno_ids]
+                graph_in["edges"] = [e for e in all_edges if e not in anno_edges]
+            else:
+                anno_edges = []
+
             # Validate the wire-format dict at the API boundary BEFORE any
             # short-circuit. Otherwise a caller could include any
             # ``"enrichment": {...}`` blob in their request and bypass the
@@ -2346,9 +2362,13 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             # avoided. Keeping ``cached`` honest matters for any caller
             # that uses it for metrics.
             if graph_model.enrichment is not None:
+                enriched_out = graph_model.model_dump(by_alias=True, exclude_none=True)
+                if anno_nodes:
+                    enriched_out["nodes"].extend(anno_nodes)
+                    enriched_out["edges"].extend(anno_edges)
                 print(f"[enrich] input already enriched  nodes={node_count} domain={domain!r}", flush=True)
                 return JSONResponse({
-                    "enriched": graph_model.model_dump(by_alias=True, exclude_none=True),
+                    "enriched": enriched_out,
                     "cached": False,
                     "skipped": True,
                 })
@@ -2389,6 +2409,9 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             # response — keeps the cache hit path returning dicts so the
             # ``cached`` shape is identical regardless of how it was built.
             enriched = enriched_model.model_dump(by_alias=True, exclude_none=True)
+            if anno_nodes:
+                enriched["nodes"].extend(anno_nodes)
+                enriched["edges"].extend(anno_edges)
             _graph_enrich_cache[key] = enriched
             print(f"[enrich] ok  cached  key={key[:8]}", flush=True)
             if DEBUG_MODE:

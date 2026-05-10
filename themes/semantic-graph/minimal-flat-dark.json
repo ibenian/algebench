@@ -14,6 +14,11 @@
     "result":   { "shape": "rect", "fill": "none", "stroke": "none", "color": "#bbb" },
     "annotation": { "shape": "circle",  "fill": "#14141e", "stroke": "#3a3a4a", "color": "#888" }
   },
-  "edgeStyle": { "stroke": "#aaa", "strokeWidth": 1 },
+  "edgeStyles": {
+    "direct":  { "stroke": "#c06060", "strokeWidth": 1.5 },
+    "inverse": { "stroke": "#6090b0", "strokeWidth": 1, "arrow": "-.->" },
+    "neutral": { "stroke": "#888",    "strokeWidth": 1 }
+  },
+  "paintBySemantic": true,
   "fontSize": 16
 }

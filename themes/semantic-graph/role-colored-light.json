@@ -14,6 +14,11 @@
     "result":   { "shape": "stadium", "fill": "#fff8e1", "stroke": "#ffa726", "color": "#e65100" },
     "annotation": { "shape": "circle",  "fill": "#eef1f8", "stroke": "#7888a8", "color": "#3a4560" }
   },
-  "edgeStyle": { "stroke": "#777", "strokeWidth": 2 },
+  "edgeStyles": {
+    "direct":  { "stroke": "#ef5350", "strokeWidth": 3 },
+    "inverse": { "stroke": "#42a5f5", "strokeWidth": 1, "arrow": "-.->" },
+    "neutral": { "stroke": "#777",    "strokeWidth": 2 }
+  },
+  "paintBySemantic": true,
   "fontSize": 15
 }
