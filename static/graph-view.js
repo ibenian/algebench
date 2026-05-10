@@ -770,16 +770,23 @@ function _buildD3NodeAskMessage(nodeId, graph, otherSelectedIds) {
     return lines.join('\n');
 }
 
+function _getOtherContextNodes(targetNodeId) {
+    const selected = _currentD3Renderer?.selectedNodes;
+    if (selected && selected.size > 1) {
+        return [...selected].filter(id => id !== targetNodeId);
+    }
+    const active = _currentD3Renderer?.activeNode;
+    if (active && active !== targetNodeId) return [active];
+    return [];
+}
+
 function _ensureD3NodeAskBtn() {
     if (_d3NodeAskBtn) return _d3NodeAskBtn;
     const btn = makeAiAskButton(
         'ai-ask-btn graph-node-ai-btn',
         'Ask AI about this node',
         () => {
-            const selected = _currentD3Renderer?.selectedNodes;
-            const others = selected && selected.size > 1
-                ? [...selected].filter(id => id !== _d3HoveredNodeId)
-                : [];
+            const others = _getOtherContextNodes(_d3HoveredNodeId);
             return _buildD3NodeAskMessage(_d3HoveredNodeId, _d3ActiveGraph, others);
         },
     );
@@ -841,10 +848,7 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
             'ai-ask-btn graph-panel-ai-btn',
             'Ask AI about this node',
             () => {
-                const selected = _currentD3Renderer?.selectedNodes;
-                const others = selected && selected.size > 1
-                    ? [...selected].filter(id => id !== nodeId)
-                    : [];
+                const others = _getOtherContextNodes(nodeId);
                 return _buildD3NodeAskMessage(nodeId, graph, others);
             },
         );
