@@ -1,0 +1,1217 @@
+{
+  "title": "Photons, Wavelength, and Energy: The Quantized Ripple",
+  "scenes": [
+    {
+      "title": "Light as a Wave: $c=f\\lambda$",
+      "description": "Start with the classical wave picture: stretching wavelength lowers frequency when the wave speed is fixed.",
+      "markdown": "# Light as a Wave\n\nClassical electromagnetism treats light as a wave moving at speed $c$ in vacuum. The basic kinematic link is\n\n$$c=f\\lambda.$$\n\nIf $c$ is fixed, wavelength and frequency must trade off:\n\n$$f=\\frac{c}{\\lambda}.$$\n\nA longer wavelength means fewer crests pass a point each second. This part is continuous: in free space, a photon can have any wavelength allowed by the source and propagation conditions.\n\n## The historical pressure\n\nAt the turn of the twentieth century, classical blackbody theory led to the ultraviolet catastrophe: it predicted runaway short-wavelength emission. Planck's resolution was to make exchange of energy discrete, in units proportional to frequency. That idea became the first step toward quantum mechanics.\n\nReferences: https://en.wikipedia.org/wiki/Quantum and https://en.wikipedia.org/wiki/Photon_energy",
+      "prompt": "Teach the wave kinematics first. Keep the distinction clear: c = f lambda is a wave relation, while E = hf is the quantum energy relation introduced next. Emphasize that stretching wavelength lowers frequency for fixed c.",
+      "range": [
+        [-6, 6],
+        [-2.8, 2.8],
+        [-2.8, 2.8]
+      ],
+      "camera": {
+        "position": [0, 0, 9],
+        "target": [0, 0, 0]
+      },
+      "views": [
+        {
+          "name": "Wave",
+          "position": [0, 0, 9],
+          "target": [0, 0, 0],
+          "description": "Face-on wave view"
+        },
+        {
+          "name": "Iso",
+          "position": [6, 4, 7],
+          "target": [0, 0, 0],
+          "description": "Three-dimensional context"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s0_x_axis",
+          "type": "axis",
+          "axis": "x",
+          "range": [-6, 6],
+          "color": "#d04f4f",
+          "width": 1.5,
+          "label": "$x$"
+        },
+        {
+          "id": "s0_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [-6, 6],
+          "color": [0.28, 0.32, 0.38],
+          "opacity": 0.16,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "A travelling ripple",
+          "description": "A sinusoidal wave gives the first mental model: a spatially spread disturbance with a wavelength $\\lambda$.",
+          "prompt": "Introduce wavelength as crest-to-crest spacing. Do not talk about photons as tiny balls.",
+          "sliders": [
+            {
+              "id": "lambda",
+              "label": "$\\lambda$",
+              "min": 1,
+              "max": 5,
+              "step": 0.1,
+              "default": 2.4
+            }
+          ],
+          "add": [
+            {
+              "id": "s0_wave",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "sin(2*pi*t/lambda)",
+              "z": "0",
+              "range": [-6, 6],
+              "samples": 240,
+              "color": "#2f9e9b",
+              "width": 4,
+              "label": "$\\text{electric-field ripple}$"
+            },
+            {
+              "id": "s0_lambda_span",
+              "type": "animated_line",
+              "points": [
+                ["-lambda/2", "-1.55", "0"],
+                ["lambda/2", "-1.55", "0"]
+              ],
+              "color": "#f0b84b",
+              "width": 5,
+              "label": "$\\lambda$"
+            },
+            {
+              "id": "s0_lambda_label",
+              "type": "text",
+              "text": "$\\lambda$",
+              "position": [0, -1.9, 0],
+              "color": "#f0b84b",
+              "label": "$\\lambda$",
+              "size": 18
+            }
+          ],
+          "info": [
+            {
+              "id": "s0_wave_info",
+              "position": "top-right",
+              "content": "$$c=f\\lambda$$\nFor fixed $c$, increasing $\\lambda$ decreases $f$."
+            }
+          ]
+        },
+        {
+          "title": "Frequency falls as wavelength grows",
+          "description": "With $c$ fixed, the frequency scales like $1/\\lambda$. The same speed is carried by wider or tighter ripples.",
+          "prompt": "Use the slider to compare short and long wavelengths. Ask the learner what happens to f when lambda doubles.",
+          "add": [
+            {
+              "id": "s0_freq_bar_bg",
+              "type": "line",
+              "points": [
+                [4.5, -1.8, 0],
+                [4.5, 1.8, 0]
+              ],
+              "color": "#3b4652",
+              "width": 10
+            },
+            {
+              "id": "s0_freq_bar",
+              "type": "animated_line",
+              "points": [
+                ["4.5", "-1.8", "0"],
+                ["4.5", "-1.8 + 3.6/lambda", "0"]
+              ],
+              "color": "#6ec6ff",
+              "width": 10,
+              "label": "$f\\propto 1/\\lambda$"
+            },
+            {
+              "id": "s0_freq_label",
+              "type": "text",
+              "text": "$f=c/\\lambda$",
+              "position": [3.35, 2.05, 0],
+              "color": "#6ec6ff",
+              "label": "$f\\propto 1/\\lambda$",
+              "size": 16
+            }
+          ],
+          "info": [
+            {
+              "id": "s0_kinematic_info",
+              "position": "bottom-right",
+              "content": "**Kinematic link**\n\nStretch the wave: fewer peaks pass per second.\n\n$$f=\\frac{c}{\\lambda}$$"
+            }
+          ]
+        },
+        {
+          "title": "The crisis of the infinite",
+          "description": "Classical theory could treat wavelengths continuously, but blackbody radiation forced a deeper idea: energy exchange is quantized.",
+          "prompt": "Frame the ultraviolet catastrophe as the reason the energy rule had to change. Avoid overclaiming: Planck quantized exchange of energy, not simply spatial wavelength.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [
+            {
+              "id": "s0_uv_warning",
+              "type": "text",
+              "text": "Classical prediction: short wavelengths run away",
+              "position": [-3.5, 2.1, 0],
+              "color": "#ff6b6b",
+              "size": 16
+            },
+            {
+              "id": "s0_planck_text",
+              "type": "text",
+              "text": "Planck: energy comes in quanta",
+              "position": [-3.5, 1.62, 0],
+              "color": "#f0b84b",
+              "size": 16
+            }
+          ],
+          "info": [
+            {
+              "id": "s0_planck_info",
+              "position": "top-right",
+              "content": "**Planck's move**\n\nEnergy exchange is not arbitrary:\n\n$$E=hf$$\n\nThis is the bridge from the wave picture to photons."
+            }
+          ]
+        }
+      ],
+      "proof": {
+        "id": "wave_kinematics",
+        "title": "Why $f=c/\\lambda$",
+        "technique": "derivation",
+        "goal": "Show that a wave moving at speed $c$ with wavelength $\\lambda$ has frequency $f=c/\\lambda$.",
+        "prompt": "Keep this proof short and physical: speed is distance per time, and one period advances one wavelength.",
+        "steps": [
+          {
+            "id": "period_distance",
+            "type": "given",
+            "label": "One period",
+            "math": "\\text{distance in one period}=\\lambda",
+            "justification": "By definition, one period carries one crest spacing past a fixed point.",
+            "explanation": "A crest advances by exactly one wavelength in one full cycle.",
+            "prompt": "Tie the algebra to the moving crest.",
+            "sceneStep": 0
+          },
+          {
+            "id": "speed_period",
+            "type": "step",
+            "label": "Speed",
+            "math": "c=\\frac{\\lambda}{T}",
+            "justification": "Speed equals distance divided by time.",
+            "explanation": "The wave travels one wavelength in one period $T$.",
+            "prompt": "Ask what happens if T is small.",
+            "sceneStep": 1
+          },
+          {
+            "id": "frequency_result",
+            "type": "conclusion",
+            "label": "Frequency",
+            "math": "f=\\frac{1}{T}=\\frac{c}{\\lambda}",
+            "justification": "Frequency is the reciprocal of period.",
+            "explanation": "This gives the kinematic relation $c=f\\lambda$.",
+            "prompt": "Connect the result to the wavelength slider.",
+            "sceneStep": 1
+          }
+        ]
+      }
+    },
+    {
+      "title": "One Photon Energy vs Light Intensity",
+      "description": "The energy of one photon depends on frequency; intensity depends on how many photons arrive.",
+      "markdown": "# Photon Energy\n\nThe Planck-Einstein relation is\n\n$$E=hf=\\frac{hc}{\\lambda}.$$\n\nA shorter-wavelength blue photon has more energy than a longer-wavelength red photon. But that statement is about **one photon**.\n\nA beam's total delivered energy also depends on photon count:\n\n$$E_{\\text{total}}=Nhf.$$\n\nSo the useful correction is:\n\n- Blue photon: higher energy per photon than red.\n- Many red photons: can carry more total energy than one blue photon.\n- Intensity: mainly photon number flux.\n- Color/frequency: energy per photon.",
+      "prompt": "Correct the common misconception directly. Say: one blue photon has more energy than one red photon, but many red photons can carry more total energy. Separate energy per photon from photon count/intensity.",
+      "range": [
+        [-5, 5],
+        [-1, 7],
+        [-3, 3]
+      ],
+      "camera": {
+        "position": [0, 0, 10],
+        "target": [0, 3, 0]
+      },
+      "views": [
+        {
+          "name": "Bars",
+          "position": [0, 0, 10],
+          "target": [0, 3, 0],
+          "description": "Energy comparison"
+        },
+        {
+          "name": "Iso",
+          "position": [6, 5, 8],
+          "target": [0, 2.5, 0],
+          "description": "Perspective view"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s1_y_axis",
+          "type": "axis",
+          "axis": "y",
+          "range": [0, 7],
+          "color": "#9aa4ad",
+          "width": 1.2,
+          "label": "$E$"
+        },
+        {
+          "id": "s1_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [-5, 7],
+          "color": [0.25, 0.29, 0.34],
+          "opacity": 0.14,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "Energy per photon",
+          "description": "Set red photon energy to 1 unit and blue photon energy to 2.5 units. The blue photon is larger per photon because $E=hf$.",
+          "prompt": "Introduce this as scaled units, not real electron-volts. Keep the proportional relationship central.",
+          "add": [
+            {
+              "id": "s1_red_bar",
+              "type": "polygon",
+              "vertices": [
+                [-3.4, 0, 0],
+                [-2.4, 0, 0],
+                [-2.4, 1, 0],
+                [-3.4, 1, 0]
+              ],
+              "color": "#d84a3a",
+              "opacity": 0.75,
+              "outlineColor": "#ff9a8f",
+              "outlineWidth": 1.2,
+              "label": "one red photon"
+            },
+            {
+              "id": "s1_blue_bar",
+              "type": "polygon",
+              "vertices": [
+                [1.8, 0, 0],
+                [2.8, 0, 0],
+                [2.8, 2.5, 0],
+                [1.8, 2.5, 0]
+              ],
+              "color": "#3c8cff",
+              "opacity": 0.75,
+              "outlineColor": "#9dccff",
+              "outlineWidth": 1.2,
+              "label": "one blue photon"
+            },
+            {
+              "id": "s1_red_label",
+              "type": "text",
+              "text": "$E_R=hf_R$",
+              "position": [-3.75, 1.35, 0],
+              "color": "#ff9a8f",
+              "size": 15
+            },
+            {
+              "id": "s1_blue_label",
+              "type": "text",
+              "text": "$E_B=hf_B$",
+              "position": [1.45, 2.85, 0],
+              "color": "#9dccff",
+              "size": 15
+            }
+          ],
+          "info": [
+            {
+              "id": "s1_per_photon_info",
+              "position": "top-right",
+              "content": "$$E_B>E_R$$\nwhen $f_B>f_R$.\n\nThis compares **one photon to one photon**."
+            }
+          ]
+        },
+        {
+          "title": "Photon count changes total energy",
+          "description": "Use the red photon count slider. Many lower-energy photons can exceed the energy of one higher-energy photon.",
+          "prompt": "Let the learner move N_red. Emphasize that intensity is count per area per time, while frequency sets energy per photon.",
+          "remove": [
+            {
+              "id": "s1_per_photon_info"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "Nred",
+              "label": "$N_{red}$",
+              "min": 1,
+              "max": 6,
+              "step": 1,
+              "default": 4
+            }
+          ],
+          "add": [
+            {
+              "id": "s1_red_total",
+              "type": "animated_polygon",
+              "vertices": [
+                ["-0.6", "0", "0"],
+                ["0.4", "0", "0"],
+                ["0.4", "Nred", "0"],
+                ["-0.6", "Nred", "0"]
+              ],
+              "color": "#d84a3a",
+              "opacity": 0.45,
+              "outlineColor": "#ffd0ca",
+              "outlineWidth": 1.3,
+              "label": "$N_{red}E_R$"
+            },
+            {
+              "id": "s1_total_label",
+              "type": "text",
+              "text": "$E_{total}=Nhf$",
+              "position": [-0.9, 6.35, 0],
+              "color": "#f0b84b",
+              "size": 16
+            }
+          ],
+          "info": [
+            {
+              "id": "s1_count_info",
+              "position": "top-right",
+              "content": "**Correct comparison**\n\nA blue photon has more energy than a red photon.\n\nBut $N$ red photons carry\n\n$$E_{total}=Nhf_R.$$\n\nFor large enough $N$, that total can exceed one blue photon."
+            }
+          ]
+        },
+        {
+          "title": "Color is not brightness",
+          "description": "Frequency controls energy per photon. Photon number controls intensity. The two knobs are different.",
+          "prompt": "Finish by separating two axes: frequency/color and intensity/count. Mention that real beams also involve area and time.",
+          "add": [
+            {
+              "id": "s1_frequency_axis_text",
+              "type": "text",
+              "text": "frequency: energy per photon",
+              "position": [-4.45, 5.8, 0],
+              "color": "#6ec6ff",
+              "size": 15
+            },
+            {
+              "id": "s1_intensity_axis_text",
+              "type": "text",
+              "text": "intensity: photon arrival rate",
+              "position": [-4.45, 5.35, 0],
+              "color": "#7bd389",
+              "size": 15
+            }
+          ],
+          "info": [
+            {
+              "id": "s1_distinction_info",
+              "position": "bottom-right",
+              "content": "| Quantity | Meaning |\n|---|---|\n| $f$ | energy per photon |\n| $N$ | number of photons |\n| intensity | photon flux and total power |"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "When Wavelengths Become Discrete",
+      "description": "Free waves can vary continuously; constrained waves must fit boundary conditions.",
+      "markdown": "# Continuous vs Discrete Wavelengths\n\nFree photons in open space can have a continuous range of wavelengths. Discrete spectra appear when a system is constrained.\n\nThe simplest analogy is a standing wave in a box of length $L$. If the wave must vanish at both walls, only waves that fit are allowed:\n\n$$L=n\\frac{\\lambda}{2},\\qquad n=1,2,3,\\ldots$$\n\nFor a nonrelativistic particle in a box, the energy levels scale as\n\n$$E_n=\\frac{n^2h^2}{8mL^2}.$$\n\nSo a useful correction is: the allowed wavelengths scale like $1/n$, but the particle-in-a-box energies scale like $n^2$, not like $n$.\n\nAtoms are more complicated than a literal box, but the same structural idea survives: boundary conditions and allowed quantum states produce discrete emission lines.",
+      "prompt": "Teach quantization as a boundary-condition effect. Make clear that free photons are not forced into a discrete wavelength ladder; confinement or bound-state structure creates discreteness.",
+      "range": [
+        [-0.5, 6.5],
+        [-2.5, 3.5],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [3, 0.4, 9],
+        "target": [3, 0.2, 0]
+      },
+      "views": [
+        {
+          "name": "Box",
+          "position": [3, 0.4, 9],
+          "target": [3, 0.2, 0],
+          "description": "Standing-wave view"
+        },
+        {
+          "name": "Energy",
+          "position": [6, 4, 8],
+          "target": [3, 1, 0],
+          "description": "Energy-level view"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s2_box_axis",
+          "type": "axis",
+          "axis": "x",
+          "range": [0, 6],
+          "color": "#d04f4f",
+          "width": 1.5,
+          "label": "$x$"
+        },
+        {
+          "id": "s2_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [-1, 6],
+          "color": [0.25, 0.29, 0.34],
+          "opacity": 0.14,
+          "divisions": 12
+        },
+        {
+          "id": "s2_left_wall",
+          "type": "line",
+          "points": [
+            [0, -2, 0],
+            [0, 2, 0]
+          ],
+          "color": "#d8dee9",
+          "width": 5,
+          "label": "wall"
+        },
+        {
+          "id": "s2_right_wall",
+          "type": "line",
+          "points": [
+            [6, -2, 0],
+            [6, 2, 0]
+          ],
+          "color": "#d8dee9",
+          "width": 5,
+          "legendGroup": "wall"
+        }
+      ],
+      "steps": [
+        {
+          "title": "A free spectrum is continuous",
+          "description": "Without boundary conditions selecting modes, wavelength can vary continuously.",
+          "prompt": "Start from the contrast: free space permits a continuum. Bound systems create a ladder.",
+          "add": [
+            {
+              "id": "s2_spectrum_line",
+              "type": "line",
+              "points": [
+                [0.4, 2.6, 0],
+                [5.6, 2.6, 0]
+              ],
+              "color": "#8bd3dd",
+              "width": 8,
+              "label": "continuous spectrum"
+            },
+            {
+              "id": "s2_spectrum_label",
+              "type": "text",
+              "text": "free photons: continuum",
+              "position": [1.55, 3.0, 0],
+              "color": "#8bd3dd",
+              "size": 15
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_continuum_info",
+              "position": "top-right",
+              "content": "**Free system**\n\nNo wall condition forces a specific wavelength ladder.\n\nWavelength is continuous in the ideal free-space model."
+            }
+          ]
+        },
+        {
+          "title": "Boundary conditions pick standing waves",
+          "description": "The wave must have nodes at both walls, so only integer half-wavelengths fit: $L=n\\lambda/2$.",
+          "prompt": "Use the n slider to show exactly fitting waves. The walls require zero amplitude at both ends.",
+          "remove": [
+            {
+              "id": "s2_continuum_info"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "n",
+              "label": "$n$",
+              "min": 1,
+              "max": 5,
+              "step": 1,
+              "default": 2
+            }
+          ],
+          "add": [
+            {
+              "id": "s2_standing_wave",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "1.25*sin(n*pi*t/6)",
+              "z": "0",
+              "range": [0, 6],
+              "samples": 240,
+              "color": "#f0b84b",
+              "width": 4,
+              "label": "$\\psi_n(x)$"
+            },
+            {
+              "id": "s2_fit_text",
+              "type": "text",
+              "text": "$L=n\\lambda/2$",
+              "position": [0.5, -2.25, 0],
+              "color": "#f0b84b",
+              "size": 16
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_fit_info",
+              "position": "top-right",
+              "content": "**Allowed wavelengths**\n\n$$L=n\\frac{\\lambda}{2}$$\n\n$$\\lambda_n=\\frac{2L}{n}$$"
+            }
+          ]
+        },
+        {
+          "title": "Energy scales as $n^2$",
+          "description": "For the particle-in-a-box model, the energy ladder is quadratic: $E_n\\propto n^2$.",
+          "prompt": "Correct the linear-energy misconception. Explain that momentum scales like n, and kinetic energy goes like p^2.",
+          "add": [
+            {
+              "id": "s2_e1",
+              "type": "line",
+              "points": [
+                [4.2, 0.25, 0],
+                [5.7, 0.25, 0]
+              ],
+              "color": "#7bd389",
+              "width": 3,
+              "label": "$E_1$"
+            },
+            {
+              "id": "s2_e2",
+              "type": "line",
+              "points": [
+                [4.2, 1.0, 0],
+                [5.7, 1.0, 0]
+              ],
+              "color": "#7bd389",
+              "width": 3,
+              "label": "$E_2=4E_1$"
+            },
+            {
+              "id": "s2_e3",
+              "type": "line",
+              "points": [
+                [4.2, 2.25, 0],
+                [5.7, 2.25, 0]
+              ],
+              "color": "#7bd389",
+              "width": 3,
+              "label": "$E_3=9E_1$"
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_energy_info",
+              "position": "bottom-right",
+              "content": "**Correction**\n\nNot $E_n=nhc/(2L)$ for a massive particle in a box.\n\nInstead:\n\n$$E_n=\\frac{n^2h^2}{8mL^2}$$"
+            }
+          ]
+        },
+        {
+          "title": "Emission lines are energy differences",
+          "description": "Atoms emit photons when electrons move between allowed energy levels: $E_{photon}=E_{high}-E_{low}$.",
+          "prompt": "Use this as the bridge from box analogy to atomic spectra. Avoid saying atoms are literal boxes.",
+          "add": [
+            {
+              "id": "s2_transition",
+              "type": "vector",
+              "from": [5.95, 2.25, 0],
+              "to": [5.95, 0.25, 0],
+              "color": "#ff7b72",
+              "width": 4,
+              "label": "$E_{photon}$"
+            },
+            {
+              "id": "s2_photon_line",
+              "type": "parametric_curve",
+              "x": "0.35*t + 0.4",
+              "y": "-1.15 + 0.25*sin(2*pi*t)",
+              "z": "0",
+              "range": [0, 10],
+              "samples": 160,
+              "color": "#6ec6ff",
+              "width": 3,
+              "label": "emitted photon"
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_atomic_info",
+              "position": "top-right",
+              "content": "**Atomic emission**\n\n$$E_{photon}=E_{high}-E_{low}$$\n\nDiscrete energy levels create spectral lines."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Spreading Is Not Stretching",
+      "description": "A wave packet can spread through space while each photon's energy stays fixed; redshift changes energy per photon.",
+      "markdown": "# Spreading vs Stretching\n\nThis is the most important distinction in the lesson.\n\n## Spreading\n\nA beam or wave packet expands over a larger area. The same photon energy is distributed across a larger cross-section, so intensity drops. Energy per photon stays the same.\n\n## Stretching\n\nThe wavelength itself grows. Since\n\n$$E=\\frac{hc}{\\lambda},$$\n\nstretching the wavelength lowers the energy per photon.\n\nRedshift is a stretching effect. Doppler redshift comes from relative motion. Gravitational redshift comes from climbing out of a gravitational field. Cosmological redshift is described by\n\n$$\\lambda_{obs}=\\lambda_{em}(1+z).$$\n\nIn expanding spacetime, local conservation laws still hold, but a single global total energy for the universe is not generally well-defined.",
+      "prompt": "Make the distinction crisp: spreading changes intensity, stretching changes photon energy. For cosmological redshift, say global total energy is not generally well-defined in GR rather than saying energy disappears.",
+      "range": [
+        [-5, 5],
+        [-3, 4],
+        [-3, 3]
+      ],
+      "camera": {
+        "position": [0, 0, 10],
+        "target": [0, 0.5, 0]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [0, 0, 10],
+          "target": [0, 0.5, 0],
+          "description": "Compare spreading and stretching"
+        },
+        {
+          "name": "Iso",
+          "position": [5, 4, 8],
+          "target": [0, 0.5, 0],
+          "description": "Perspective view"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s3_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [-5, 5],
+          "color": [0.25, 0.29, 0.34],
+          "opacity": 0.14,
+          "divisions": 10
+        },
+        {
+          "id": "s3_midline",
+          "type": "line",
+          "points": [
+            [0, -3, 0],
+            [0, 4, 0]
+          ],
+          "color": "#4b5563",
+          "width": 2
+        }
+      ],
+      "steps": [
+        {
+          "title": "Spreading dims the beam",
+          "description": "Move the radius slider. The footprint grows, so intensity drops, but the photon energy label stays unchanged.",
+          "prompt": "Explain inverse-area intuition without over-formalizing it. Energy per photon is unchanged by spreading alone.",
+          "sliders": [
+            {
+              "id": "R",
+              "label": "$R$",
+              "min": 0.8,
+              "max": 2.6,
+              "step": 0.1,
+              "default": 1.5
+            }
+          ],
+          "add": [
+            {
+              "id": "s3_spread_circle",
+              "type": "parametric_curve",
+              "x": "-2.5 + R*cos(t)",
+              "y": "0.2 + R*sin(t)",
+              "z": "0",
+              "range": [0, 6.283185307179586],
+              "samples": 160,
+              "color": "#7bd389",
+              "width": 3,
+              "label": "beam footprint"
+            },
+            {
+              "id": "s3_spread_center",
+              "type": "animated_point",
+              "expr": ["-2.5", "0.2", "0"],
+              "color": "#7bd389",
+              "size": 10,
+              "label": "$E=hf$"
+            },
+            {
+              "id": "s3_spread_text",
+              "type": "text",
+              "text": "spreading: dimmer",
+              "position": [-4.6, 3.25, 0],
+              "color": "#7bd389",
+              "size": 16
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_spread_info",
+              "position": "top-left",
+              "content": "**Spreading**\n\nBigger footprint means lower intensity.\n\nEnergy per photon remains $E=hf$."
+            }
+          ]
+        },
+        {
+          "title": "Stretching lowers photon energy",
+          "description": "Redshift increases wavelength. The wave becomes longer and $E=hc/\\lambda$ decreases.",
+          "prompt": "Use the z slider to show wavelength stretching. Emphasize energy per photon, not photon count.",
+          "sliders": [
+            {
+              "id": "zshift",
+              "label": "$z$",
+              "min": 0,
+              "max": 2,
+              "step": 0.05,
+              "default": 0.6
+            }
+          ],
+          "add": [
+            {
+              "id": "s3_redshift_wave",
+              "type": "parametric_curve",
+              "x": "1.1 + 0.7*t",
+              "y": "0.2 + 0.55*sin(2*pi*t/(1+zshift))",
+              "z": "0",
+              "range": [0, 6],
+              "samples": 200,
+              "color": "#ff7b72",
+              "width": 4,
+              "label": "$\\lambda_{obs}=\\lambda_{em}(1+z)$"
+            },
+            {
+              "id": "s3_energy_bar_bg",
+              "type": "line",
+              "points": [
+                [4.25, -2.2, 0],
+                [4.25, 2.2, 0]
+              ],
+              "color": "#3b4652",
+              "width": 9
+            },
+            {
+              "id": "s3_energy_bar",
+              "type": "animated_line",
+              "points": [
+                ["4.25", "-2.2", "0"],
+                ["4.25", "-2.2 + 4.4/(1+zshift)", "0"]
+              ],
+              "color": "#f0b84b",
+              "width": 9,
+              "label": "$E\\propto 1/(1+z)$"
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_stretch_info",
+              "position": "top-right",
+              "content": "**Stretching**\n\n$$\\lambda_{obs}=\\lambda_{em}(1+z)$$\n\n$$E_{obs}=\\frac{E_{em}}{1+z}$$"
+            }
+          ]
+        },
+        {
+          "title": "Cosmological caution",
+          "description": "In expanding spacetime, local conservation remains meaningful. A global total energy for the whole universe is not generally well-defined.",
+          "prompt": "State the GR caveat carefully. Avoid saying the energy simply disappears.",
+          "add": [
+            {
+              "id": "s3_gr_note",
+              "type": "text",
+              "text": "local conservation: yes",
+              "position": [-4.55, -2.15, 0],
+              "color": "#7bd389",
+              "size": 15
+            },
+            {
+              "id": "s3_global_note",
+              "type": "text",
+              "text": "global total energy: not generally defined",
+              "position": [-4.55, -2.55, 0],
+              "color": "#f0b84b",
+              "size": 15
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_energy_conservation_info",
+              "position": "bottom-right",
+              "content": "**Better statement**\n\nNot: energy disappears.\n\nInstead: in general relativity, a global total energy for an expanding universe is not generally well-defined."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Photon as Wave Packet and Detection Event",
+      "description": "A photon is a quantum excitation: spread out in possibility, localized in interaction.",
+      "markdown": "# What Is a Photon?\n\nA photon is a quantized excitation of the electromagnetic field. It is not a tiny classical ball and not a classical water wave.\n\nThe useful synthesis is a wave packet:\n\n$$\\Psi(x,t)=\\int A(k)e^{i(kx-\\omega t)}\\,dk.$$\n\nBefore detection, the quantum state can be spatially spread out. Detection is localized and all-or-nothing: a detector either records an interaction or it does not.\n\nA careful wording is:\n\n- Before measurement: spread-out quantum state or probability amplitude.\n- At measurement: localized detection event.\n- Measurement updates the quantum state description.\n\nThis avoids the misleading picture of a physical classical wave instantly collapsing across the universe.",
+      "prompt": "Use cautious quantum language. Say the photon is a quantized field excitation, described by a state that can be spatially spread out, with localized detection. Avoid implying a classical physical wave literally collapses.",
+      "range": [
+        [-6, 6],
+        [-2.8, 2.8],
+        [-2.8, 2.8]
+      ],
+      "camera": {
+        "position": [0, 0, 9],
+        "target": [0, 0, 0]
+      },
+      "views": [
+        {
+          "name": "Packet",
+          "position": [0, 0, 9],
+          "target": [0, 0, 0],
+          "description": "Wave-packet view"
+        },
+        {
+          "name": "Iso",
+          "position": [6, 4, 7],
+          "target": [0, 0, 0],
+          "description": "Perspective view"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s4_x_axis",
+          "type": "axis",
+          "axis": "x",
+          "range": [-6, 6],
+          "color": "#d04f4f",
+          "width": 1.2,
+          "label": "$x$"
+        },
+        {
+          "id": "s4_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [-6, 6],
+          "color": [0.25, 0.29, 0.34],
+          "opacity": 0.14,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "A localized packet is built from many waves",
+          "description": "A packet is made by superposing many wave numbers $k$. Narrower packets require a broader spread of wavelengths.",
+          "prompt": "Introduce superposition qualitatively. This is a conceptual visualization, not a full photon field calculation.",
+          "sliders": [
+            {
+              "id": "sigma",
+              "label": "$\\sigma$",
+              "min": 0.8,
+              "max": 2.6,
+              "step": 0.1,
+              "default": 1.4
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_packet",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "exp(-(t*t)/(2*sigma*sigma))*cos(7*t)",
+              "z": "0",
+              "range": [-6, 6],
+              "samples": 320,
+              "color": "#6ec6ff",
+              "width": 4,
+              "label": "$\\Psi(x)$"
+            },
+            {
+              "id": "s4_envelope_pos",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "exp(-(t*t)/(2*sigma*sigma))",
+              "z": "0",
+              "range": [-6, 6],
+              "samples": 240,
+              "color": "#f0b84b",
+              "width": 2,
+              "opacity": 0.65,
+              "label": "packet envelope"
+            },
+            {
+              "id": "s4_envelope_neg",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "-exp(-(t*t)/(2*sigma*sigma))",
+              "z": "0",
+              "range": [-6, 6],
+              "samples": 240,
+              "color": "#f0b84b",
+              "width": 2,
+              "opacity": 0.65,
+              "legendGroup": "packet envelope"
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_packet_info",
+              "position": "top-right",
+              "content": "$$\\Psi(x,t)=\\int A(k)e^{i(kx-\\omega t)}\\,dk$$\n\nA packet is spread out, but not infinitely uniform."
+            }
+          ]
+        },
+        {
+          "title": "Detection is localized",
+          "description": "The spread-out state predicts probabilities. The detector records a localized event.",
+          "prompt": "Use the detector point to distinguish state description from detection event.",
+          "add": [
+            {
+              "id": "s4_detector",
+              "type": "line",
+              "points": [
+                [2.6, -2.1, 0],
+                [2.6, 2.1, 0]
+              ],
+              "color": "#ff7b72",
+              "width": 5,
+              "label": "detector"
+            },
+            {
+              "id": "s4_click",
+              "type": "point",
+              "position": [2.6, 0.25, 0],
+              "color": "#ff7b72",
+              "size": 18,
+              "label": "click"
+            },
+            {
+              "id": "s4_detection_text",
+              "type": "text",
+              "text": "localized interaction",
+              "position": [2.85, 1.85, 0],
+              "color": "#ff7b72",
+              "size": 15
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_detection_info",
+              "position": "bottom-right",
+              "content": "**Photon detection**\n\nSpread-out state.\n\nLocalized interaction.\n\nAll-or-nothing detector click."
+            }
+          ]
+        },
+        {
+          "title": "The final mental model",
+          "description": "A photon is spread out in possibility and localized in interaction. Wave and particle are incomplete classical metaphors.",
+          "prompt": "Close the lesson with the core insight. Invite questions about particle in a box, atomic orbitals, or black holes as next topics.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_summary_1",
+              "type": "text",
+              "text": "quantized excitation",
+              "position": [-5.2, 2.2, 0],
+              "color": "#6ec6ff",
+              "size": 16
+            },
+            {
+              "id": "s4_summary_2",
+              "type": "text",
+              "text": "continuous wavelength in free space",
+              "position": [-5.2, 1.75, 0],
+              "color": "#8bd3dd",
+              "size": 16
+            },
+            {
+              "id": "s4_summary_3",
+              "type": "text",
+              "text": "discrete spectra from constraints",
+              "position": [-5.2, 1.3, 0],
+              "color": "#7bd389",
+              "size": 16
+            },
+            {
+              "id": "s4_summary_4",
+              "type": "text",
+              "text": "$E=hf=hc/\\lambda$",
+              "position": [-5.2, 0.85, 0],
+              "color": "#f0b84b",
+              "size": 18
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_summary_info",
+              "position": "top-right",
+              "content": "**Core insight**\n\nA photon is not a tiny ball flying through space.\n\nIt is a quantum entity: spread out in possibility, localized in interaction."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Where Intuition Breaks: Black Holes",
+      "description": "Extreme gravity sharpens the lesson: photon energy depends on observer and spacetime, and singularities require unfinished physics.",
+      "markdown": "# Black Holes and the Limits of the Picture\n\nNear a black hole, intuition based on ordinary wave packets becomes unreliable.\n\nCorrect statements:\n\n- Falling photons can blueshift for local observers.\n- Photon energy contributes to the black hole's mass-energy when absorbed.\n- Photons do not become little classical balls compressed to a mathematical point.\n- Singularities are not fully described by established quantum theory and general relativity together.\n\nThe honest ending is that black holes point toward quantum gravity, which remains unsolved.",
+      "prompt": "Use this as a careful epilogue. State what is known without pretending the lesson solves quantum gravity. Correct the idea that photons literally collapse into a point.",
+      "range": [
+        [-5, 5],
+        [-4, 4],
+        [-4, 4]
+      ],
+      "camera": {
+        "position": [0, 2, 9],
+        "target": [0, 0, 0]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [0, 2, 9],
+          "target": [0, 0, 0],
+          "description": "Black-hole sketch"
+        },
+        {
+          "name": "Iso",
+          "position": [5, 4, 8],
+          "target": [0, 0, 0],
+          "description": "Perspective view"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s5_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [-5, 5],
+          "color": [0.18, 0.2, 0.25],
+          "opacity": 0.14,
+          "divisions": 10
+        },
+        {
+          "id": "s5_horizon",
+          "type": "parametric_curve",
+          "x": "1.3*cos(t)",
+          "y": "1.3*sin(t)",
+          "z": "0",
+          "range": [0, 6.283185307179586],
+          "samples": 180,
+          "color": "#9aa4ad",
+          "width": 4,
+          "label": "event horizon"
+        },
+        {
+          "id": "s5_dark_core",
+          "type": "sphere",
+          "center": [0, 0, 0],
+          "radius": 1.2,
+          "color": "#050507",
+          "opacity": 0.92,
+          "label": "black hole"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Falling light blueshifts locally",
+          "description": "A falling photon can be measured with increasing frequency by local observers deeper in the gravitational field.",
+          "prompt": "State observer dependence. Do not imply there is one universal photon energy in curved spacetime.",
+          "add": [
+            {
+              "id": "s5_photon_path",
+              "type": "parametric_curve",
+              "x": "-4 + 4*t",
+              "y": "2.4 - 2.1*t + 0.25*sin(8*pi*t)",
+              "z": "0",
+              "range": [0, 1],
+              "samples": 160,
+              "color": "#6ec6ff",
+              "width": 4,
+              "label": "incoming photon"
+            },
+            {
+              "id": "s5_blue_note",
+              "type": "text",
+              "text": "falling: local blueshift",
+              "position": [-4.55, 3.15, 0],
+              "color": "#6ec6ff",
+              "size": 16
+            }
+          ],
+          "info": [
+            {
+              "id": "s5_blueshift_info",
+              "position": "top-right",
+              "content": "**Near strong gravity**\n\nObserved photon frequency depends on observer and spacetime geometry.\n\nFalling photons can blueshift locally."
+            }
+          ]
+        },
+        {
+          "title": "Absorbed energy changes the black hole",
+          "description": "If the photon is absorbed, its energy contributes to the black hole's mass-energy.",
+          "prompt": "Make this conservative: absorbed energy contributes to mass-energy. Avoid details of horizon thermodynamics.",
+          "add": [
+            {
+              "id": "s5_mass_ring",
+              "type": "parametric_curve",
+              "x": "1.55*cos(t)",
+              "y": "1.55*sin(t)",
+              "z": "0",
+              "range": [0, 6.283185307179586],
+              "samples": 180,
+              "color": "#f0b84b",
+              "width": 2,
+              "label": "mass-energy increases"
+            },
+            {
+              "id": "s5_energy_note",
+              "type": "text",
+              "text": "$\\Delta M=E/c^2$",
+              "position": [1.9, -1.9, 0],
+              "color": "#f0b84b",
+              "size": 17
+            }
+          ],
+          "info": [
+            {
+              "id": "s5_absorb_info",
+              "position": "bottom-right",
+              "content": "**Absorption**\n\nPhoton energy is not ignored.\n\nAbsorbed energy contributes to black-hole mass-energy."
+            }
+          ]
+        },
+        {
+          "title": "Do not overextend the picture",
+          "description": "Photons do not literally collapse into a classical point. The singularity problem needs quantum gravity.",
+          "prompt": "Close by acknowledging the unsolved part. Use this as a boundary on the model, not a mystery flourish.",
+          "add": [
+            {
+              "id": "s5_limit_text",
+              "type": "text",
+              "text": "singularity physics: unresolved",
+              "position": [-4.45, -3.05, 0],
+              "color": "#ff7b72",
+              "size": 16
+            },
+            {
+              "id": "s5_qg_text",
+              "type": "text",
+              "text": "requires quantum gravity",
+              "position": [-4.45, -3.5, 0],
+              "color": "#f0b84b",
+              "size": 16
+            }
+          ],
+          "info": [
+            {
+              "id": "s5_limits_info",
+              "position": "top-left",
+              "content": "**Model boundary**\n\nNot: photons collapse into one physical point.\n\nBetter: established physics becomes incomplete at singularities."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
