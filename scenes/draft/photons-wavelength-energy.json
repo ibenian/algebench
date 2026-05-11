@@ -92,15 +92,6 @@
               "color": "#f0b84b",
               "width": 5,
               "label": "$\\lambda$"
-            },
-            {
-              "id": "s0_lambda_label",
-              "type": "text",
-              "text": "$\\lambda$",
-              "position": [0, -1.9, 0],
-              "color": "#f0b84b",
-              "legendGroup": "$\\lambda$",
-              "size": 18
             }
           ],
           "info": [
