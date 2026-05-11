@@ -146,7 +146,9 @@ function getNodeLabel(node, labelMode) {
 
 function operatorGlyph(node) {
     const glyphs = {
-        equals: '=', multiply: '×', add: '+', subtract: '−',
+        equals: '=', greater_than: '>', less_than: '<',
+        greater_equal: '≥', less_equal: '≤', not_equal: '≠',
+        multiply: '×', add: '+', subtract: '−',
         divide: '÷', integral: '∫',
         implies: '⇒', iff: '⇔', negation: '−', not: '¬', logical_not: '¬', conjunction: '∧',
         disjunction: '∨', sum: '∑', product: '∏', limit: 'lim',
@@ -345,6 +347,17 @@ export class D3SemanticGraphRenderer {
         legend.className = 'd3sg-edge-legend hidden';
         card.appendChild(legend);
         this._edgeLegend = legend;
+
+        const defs = this._svg.append('defs');
+        defs.append('marker')
+            .attr('id', 'd3sg-arrow-role')
+            .attr('viewBox', '0 0 10 10')
+            .attr('refX', 8).attr('refY', 5)
+            .attr('markerWidth', 6).attr('markerHeight', 6)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M0,0 L10,5 L0,10 Z')
+            .attr('fill', 'var(--d3sg-role-arrow, #888)');
 
         this._viewport = this._svg.append('g').attr('class', 'd3sg-viewport');
         this._linkLayer = this._viewport.append('g').attr('class', 'd3sg-links');
@@ -560,6 +573,7 @@ export class D3SemanticGraphRenderer {
                 target: tgt,
                 id: `${e.from}->${e.to}`,
                 semantic: edgeSemanticMap[`${e.from}->${e.to}`] || 'neutral',
+                role: e.role || null,
             });
         }
 
@@ -662,16 +676,26 @@ export class D3SemanticGraphRenderer {
     }
 
     _renderLinks(links, transition, d3) {
+        const showArrows = this._theme?.paintBySemantic;
+        const markerEnd = d => (showArrows && d.role) ? 'url(#d3sg-arrow-role)' : null;
+        const linkPath = d => {
+            if (d.role === 'lhs') {
+                return this._diagonal(d3, d.target, d.source, d.target, d.source);
+            }
+            return this._diagonal(d3, d.source, d.target, d.source, d.target);
+        };
+
         const link = this._linkLayer.selectAll('path.d3sg-link')
             .data(links, d => d.id);
 
         link.enter()
             .append('path')
-            .attr('class', d => `d3sg-link d3sg-edge-${d.semantic}`)
+            .attr('class', d => `d3sg-link d3sg-edge-${d.semantic}${d.role ? ` d3sg-role-${d.role}` : ''}`)
             .attr('fill', 'none')
             .attr('stroke', d => this._edgeColor(d.semantic))
             .attr('stroke-width', d => this._edgeWidth(d.semantic))
             .attr('stroke-linecap', 'round')
+            .attr('marker-end', markerEnd)
             .attr('d', d => {
                 const p = this._startPos(d.target.data.id);
                 return this._diagonal(d3, p, p, null, null);
@@ -679,14 +703,15 @@ export class D3SemanticGraphRenderer {
             .style('opacity', 0)
             .transition(transition)
             .style('opacity', 1)
-            .attr('d', d => this._diagonal(d3, d.source, d.target, d.source, d.target));
+            .attr('d', linkPath);
 
         link.transition(transition)
-            .attr('class', d => `d3sg-link d3sg-edge-${d.semantic}`)
+            .attr('class', d => `d3sg-link d3sg-edge-${d.semantic}${d.role ? ` d3sg-role-${d.role}` : ''}`)
             .attr('stroke', d => this._edgeColor(d.semantic))
             .attr('stroke-width', d => this._edgeWidth(d.semantic))
+            .attr('marker-end', markerEnd)
             .style('opacity', 1)
-            .attr('d', d => this._diagonal(d3, d.source, d.target, d.source, d.target));
+            .attr('d', linkPath);
 
         link.exit()
             .transition(transition)
@@ -699,20 +724,29 @@ export class D3SemanticGraphRenderer {
     }
 
     _renderEdgeLabels(links, transition, d3) {
-        const labeled = links.filter(d => d.semantic && d.semantic !== 'neutral');
+        const showSemantic = this._theme?.paintBySemantic;
+        const labeled = links.filter(d =>
+            (d.semantic && d.semantic !== 'neutral') || (showSemantic && d.role)
+        );
+        const labelText = d => {
+            const parts = [];
+            if (d.role) parts.push(d.role);
+            if (d.semantic && d.semantic !== 'neutral') parts.push(d.semantic);
+            return parts.join(' · ');
+        };
 
         const label = this._labelLayer.selectAll('text.d3sg-edge-label')
             .data(labeled, d => d.id);
 
         label.enter()
             .append('text')
-            .attr('class', 'd3sg-edge-label')
+            .attr('class', d => `d3sg-edge-label${d.role ? ' d3sg-role-label' : ''}`)
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'middle')
             .attr('x', d => this._startPos(d.target.data.id).x)
             .attr('y', d => this._startPos(d.target.data.id).y)
             .style('opacity', 0)
-            .text(d => d.semantic)
+            .text(labelText)
             .transition(transition)
             .style('opacity', 1)
             .attr('x', d => (d.source.x + d.target.x) / 2)
@@ -722,7 +756,7 @@ export class D3SemanticGraphRenderer {
             .style('opacity', 1)
             .attr('x', d => (d.source.x + d.target.x) / 2)
             .attr('y', d => (d.source.y + d.target.y) / 2 - 8)
-            .text(d => d.semantic);
+            .text(labelText);
 
         label.exit().transition(transition).style('opacity', 0).remove();
     }

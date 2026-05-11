@@ -69,6 +69,15 @@ svg.d3-semantic-graph {
     stroke-width: 4px;
     pointer-events: none;
 }
+.d3sg-role-label {
+    fill: #8fa8c8;
+    font-size: 10px;
+    font-style: italic;
+}
+.d3sg-role-lhs,
+.d3sg-role-rhs {
+    stroke-dasharray: none;
+}
 
 /* Chevron (collapse/expand button) */
 .d3sg-chevron {

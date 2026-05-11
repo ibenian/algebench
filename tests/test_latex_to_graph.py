@@ -370,6 +370,84 @@ class TestRelations:
         assert rel is not None
 
 
+class TestComparisonOperators:
+    """Asymmetric comparison operators (>, <, >=, <=) — issue #242."""
+
+    def test_greater_than(self):
+        g = latex_to_semantic_graph(r"x > 0")
+        op = _find_node(g, type="operator", op="greater_than")
+        assert op is not None
+        assert _find_node(g, id="x")
+
+    def test_less_than(self):
+        g = latex_to_semantic_graph(r"x < 5")
+        op = _find_node(g, type="operator", op="less_than")
+        assert op is not None
+        assert _find_node(g, id="x")
+
+    def test_geq(self):
+        g = latex_to_semantic_graph(r"x \geq y + 1")
+        op = _find_node(g, type="operator", op="greater_equal")
+        assert op is not None
+
+    def test_leq(self):
+        g = latex_to_semantic_graph(r"a \leq b")
+        op = _find_node(g, type="operator", op="less_equal")
+        assert op is not None
+        assert _find_node(g, id="a")
+        assert _find_node(g, id="b")
+
+    def test_gt_latex_command(self):
+        """\\gt is not handled by SymPy — routed through RELATION_MAP."""
+        g = latex_to_semantic_graph(r"x \gt 0")
+        rel = _find_node(g, type="relation", op="greater_than")
+        assert rel is not None
+
+    def test_lt_latex_command(self):
+        """\\lt is not handled by SymPy — routed through RELATION_MAP."""
+        g = latex_to_semantic_graph(r"x \lt 5")
+        rel = _find_node(g, type="relation", op="less_than")
+        assert rel is not None
+
+    def test_comparison_in_comma_constraint(self):
+        """Comparison as a constraint clause after comma."""
+        g = latex_to_semantic_graph(r"f(x) = x^2, x > 0")
+        gt = _find_node(g, type="operator", op="greater_than")
+        eq = _find_node(g, type="operator", op="equals")
+        assert gt is not None
+        assert eq is not None
+
+    def test_comparison_has_two_children(self):
+        g = latex_to_semantic_graph(r"x > 0")
+        op = _find_node(g, type="operator", op="greater_than")
+        incoming = [e for e in g["edges"] if e["to"] == op["id"]]
+        assert len(incoming) == 2
+
+    def test_comparison_edges_have_lhs_rhs_roles(self):
+        g = latex_to_semantic_graph(r"x > 0")
+        op = _find_node(g, type="operator", op="greater_than")
+        edges = [e for e in g["edges"] if e["to"] == op["id"]]
+        roles = {e["role"] for e in edges}
+        assert roles == {"lhs", "rhs"}
+        lhs_edge = next(e for e in edges if e["role"] == "lhs")
+        assert lhs_edge["from"] == "x"
+
+    def test_equals_edges_have_no_roles(self):
+        """Symmetric operators should not have role tags."""
+        g = latex_to_semantic_graph(r"x = 0")
+        op = _find_node(g, type="operator", op="equals")
+        edges = [e for e in g["edges"] if e["to"] == op["id"]]
+        assert all("role" not in e for e in edges)
+
+    def test_relation_map_comparison_edges_have_roles(self):
+        """\\gt routed through RELATION_MAP should also get lhs/rhs roles."""
+        g = latex_to_semantic_graph(r"x \gt 0")
+        rel = _find_node(g, type="relation", op="greater_than")
+        edges = [e for e in g["edges"] if e["to"] == rel["id"]]
+        roles = {e["role"] for e in edges}
+        assert roles == {"lhs", "rhs"}
+
+
 class TestRelationOperandComma:
     """Comma inside an \\implies / \\iff operand groups as a conjunction
     on that side, not as a top-level statement separator (#208).

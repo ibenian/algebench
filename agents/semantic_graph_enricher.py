@@ -595,6 +595,25 @@ def _restore_structural_fields(
             setattr(node, field, getattr(src, field, None))
 
 
+def _restore_edge_roles(
+    input_graph: SemanticGraph,
+    output_graph: SemanticGraph,
+) -> None:
+    """Carry ``role`` tags (lhs/rhs) from input edges to output edges.
+
+    The enricher prompt tells Gemini to preserve edges verbatim, but Gemini
+    doesn't know about the ``role`` field and will drop it. We restore it
+    by matching edges on (from, to) pairs."""
+    in_roles: Dict[tuple, str] = {}
+    for e in input_graph.edges:
+        if e.role:
+            in_roles[(e.from_, e.to)] = e.role
+    for e in output_graph.edges:
+        role = in_roles.get((e.from_, e.to))
+        if role and not e.role:
+            e.role = role
+
+
 def _strip_bad_emojis(graph: SemanticGraph) -> None:
     """Remove ``emoji`` fields that are clearly not a single emoji glyph.
 
@@ -628,6 +647,7 @@ def _stamp_enriched(
     _restore_dropped_nodes(input_graph, output_graph)
     _drop_phantom_nodes_and_edges(input_graph, output_graph)
     _restore_structural_fields(input_graph, output_graph)
+    _restore_edge_roles(input_graph, output_graph)
     _strip_bad_emojis(output_graph)
     fields = _diff_enriched_fields(input_graph, output_graph)
     if output_graph.enrichment is None:

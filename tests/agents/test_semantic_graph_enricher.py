@@ -1104,3 +1104,41 @@ def test_inferred_domain_threads_into_retry_payload() -> None:
     # The original input graph is not mutated — ``model_copy`` returns
     # a fresh instance.
     assert input_graph.domain is None
+
+
+def test_restore_edge_roles_after_enrichment() -> None:
+    """Edge role tags (lhs/rhs) survive Gemini enrichment round-trip.
+
+    Gemini doesn't know about the ``role`` field and strips it.
+    ``_restore_edge_roles`` re-applies roles from the input graph by
+    matching on (from, to) pairs."""
+    enricher = _build_agent_with(
+        test_output={
+            "nodes": [
+                {"id": "x", "type": "scalar", "label": "x",
+                 "description": "variable"},
+                {"id": "0", "type": "number", "label": "0"},
+                {"id": "__gt_1", "type": "operator", "op": "greater_than"},
+            ],
+            "edges": [
+                {"from": "x", "to": "__gt_1"},
+                {"from": "0", "to": "__gt_1"},
+            ],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    input_graph = _g({
+        "nodes": [
+            {"id": "x", "type": "scalar"},
+            {"id": "0", "type": "number"},
+            {"id": "__gt_1", "type": "operator", "op": "greater_than"},
+        ],
+        "edges": [
+            {"from": "x", "to": "__gt_1", "role": "lhs"},
+            {"from": "0", "to": "__gt_1", "role": "rhs"},
+        ],
+    })
+    out = enricher.enrich(input_graph, context=_ATMOSPHERIC_CONTEXT)
+    edge_roles = {(e.from_, e.to): e.role for e in out.edges}
+    assert edge_roles[("x", "__gt_1")] == "lhs"
+    assert edge_roles[("0", "__gt_1")] == "rhs"

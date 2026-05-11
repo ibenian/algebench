@@ -40,6 +40,8 @@ Role = Literal[
 
 EdgeSemantic = Literal["direct", "inverse", "neutral"]
 
+EdgeRole = Literal["lhs", "rhs"]
+
 ClassificationKind = Literal["algebraic", "ODE", "PDE", "statements"]
 
 
@@ -97,6 +99,7 @@ class SemanticGraphEdge(BaseModel):
     label: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     semantic: Optional[EdgeSemantic] = None
     weight: Optional[float] = Field(default=None, ge=0)
+    role: Optional[EdgeRole] = None
 
 
 class Classification(BaseModel):

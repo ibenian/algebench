@@ -76,6 +76,10 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "negation": "−",
     "power": "(·)ⁿ",
     "equals": "=",
+    "greater_than": ">",
+    "less_than": "<",
+    "greater_equal": "≥",
+    "less_equal": "≤",
     "derivative": "d/dt",
     "integral": "∫",
     "sum": "Σ",
@@ -101,6 +105,10 @@ OPERATOR_LATEX: dict[str, str] = {
     "negation": "-",
     "power": r"(\cdot)^n",
     "equals": "=",
+    "greater_than": ">",
+    "less_than": "<",
+    "greater_equal": r"\geq",
+    "less_equal": r"\leq",
     "derivative": r"\frac{d}{dt}",
     "integral": r"\int",
     "sum": r"\sum",
@@ -682,8 +690,10 @@ def semantic_graph_to_mermaid(
         if is_logical_edge and edge_styles and "logical" in edge_styles:
             arrow = edge_styles["logical"].get("arrow", arrow)
 
-        if edge_label:
-            lines.append(f"  {src} {arrow}|{edge_label}| {dst}")
+        edge_role = edge.get("role", "")
+        display_label = edge_label or edge_role
+        if display_label:
+            lines.append(f"  {src} {arrow}|{display_label}| {dst}")
         else:
             lines.append(f"  {src} {arrow} {dst}")
 
