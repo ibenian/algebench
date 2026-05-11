@@ -36,6 +36,12 @@
       "runtimeExecutable": "./algebench",
       "runtimeArgs": ["scenes/draft/quantum-states.json", "--port", "5735", "--debug", "--server-only"],
       "port": 5735
+    },
+    {
+      "name": "photons",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": ["scenes/draft/photons-wavelength-energy.json", "--port", "5736", "--debug", "--server-only"],
+      "port": 5736
     }
   ]
 }
