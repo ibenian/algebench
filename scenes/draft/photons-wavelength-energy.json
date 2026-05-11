@@ -6,11 +6,16 @@
       "description": "Start with the classical wave picture: stretching wavelength lowers frequency when the wave speed is fixed.",
       "markdown": "# Light as a Wave\n\nClassical electromagnetism treats light as a wave moving at speed $c$ in vacuum. The basic kinematic link is\n\n$$c=f\\lambda.$$\n\nIf $c$ is fixed, wavelength and frequency must trade off:\n\n$$f=\\frac{c}{\\lambda}.$$\n\nA longer wavelength means fewer crests pass a point each second. This part is continuous: in free space, a photon can have any wavelength allowed by the source and propagation conditions.\n\n## The historical pressure\n\nAt the turn of the twentieth century, classical blackbody theory led to the ultraviolet catastrophe: it predicted runaway short-wavelength emission. Planck's resolution was to make exchange of energy discrete, in units proportional to frequency. That idea became the first step toward quantum mechanics.\n\nReferences: https://en.wikipedia.org/wiki/Quantum and https://en.wikipedia.org/wiki/Photon_energy",
       "prompt": "Teach the wave kinematics first. Keep the distinction clear: c = f lambda is a wave relation, while E = hf is the quantum energy relation introduced next. Emphasize that stretching wavelength lowers frequency for fixed c.",
+      "functions": [
+        {"name": "photonEnergy", "args": ["lambda"], "expr": "1/lambda"},
+        {"name": "freq", "args": ["lambda"], "expr": "1/lambda"}
+      ],
       "range": [
         [-6, 6],
-        [-2.8, 2.8],
-        [-2.8, 2.8]
+        [-6, 6],
+        [-6, 6]
       ],
+      "scale": [1, 1, 1],
       "camera": {
         "position": [0, 0, 9],
         "target": [0, 0, 0]
@@ -94,7 +99,7 @@
               "text": "$\\lambda$",
               "position": [0, -1.9, 0],
               "color": "#f0b84b",
-              "label": "$\\lambda$",
+              "legendGroup": "$\\lambda$",
               "size": 18
             }
           ],
@@ -119,14 +124,15 @@
                 [4.5, 1.8, 0]
               ],
               "color": "#3b4652",
-              "width": 10
+              "width": 10,
+              "legendGroup": "$f\\propto 1/\\lambda$"
             },
             {
               "id": "s0_freq_bar",
               "type": "animated_line",
               "points": [
                 ["4.5", "-1.8", "0"],
-                ["4.5", "-1.8 + 3.6/lambda", "0"]
+                ["4.5", "-1.8 + 3.6*(1/lambda)/(1/1)", "0"]
               ],
               "color": "#6ec6ff",
               "width": 10,
@@ -197,7 +203,10 @@
             "id": "period_distance",
             "type": "given",
             "label": "One period",
-            "math": "\\text{distance in one period}=\\lambda",
+            "math": "\\text{distance in one period}=\\htmlClass{hl-wavelength}{\\lambda}",
+            "highlights": {
+              "wavelength": {"color": "cyan", "label": "Crest-to-crest spacing"}
+            },
             "justification": "By definition, one period carries one crest spacing past a fixed point.",
             "explanation": "A crest advances by exactly one wavelength in one full cycle.",
             "prompt": "Tie the algebra to the moving crest.",
@@ -207,7 +216,12 @@
             "id": "speed_period",
             "type": "step",
             "label": "Speed",
-            "math": "c=\\frac{\\lambda}{T}",
+            "math": "\\htmlClass{hl-speed}{c}=\\frac{\\htmlClass{hl-wavelength}{\\lambda}}{\\htmlClass{hl-period}{T}}",
+            "highlights": {
+              "speed": {"color": "orange", "label": "Wave speed (fixed)"},
+              "wavelength": {"color": "cyan", "label": "Wavelength"},
+              "period": {"color": "yellow", "label": "Period"}
+            },
             "justification": "Speed equals distance divided by time.",
             "explanation": "The wave travels one wavelength in one period $T$.",
             "prompt": "Ask what happens if T is small.",
@@ -217,7 +231,13 @@
             "id": "frequency_result",
             "type": "conclusion",
             "label": "Frequency",
-            "math": "f=\\frac{1}{T}=\\frac{c}{\\lambda}",
+            "math": "\\htmlClass{hl-freq}{f}=\\frac{1}{\\htmlClass{hl-period}{T}}=\\frac{\\htmlClass{hl-speed}{c}}{\\htmlClass{hl-wavelength}{\\lambda}}",
+            "highlights": {
+              "freq": {"color": "green", "label": "Frequency"},
+              "period": {"color": "yellow", "label": "Period"},
+              "speed": {"color": "orange", "label": "Wave speed"},
+              "wavelength": {"color": "cyan", "label": "Wavelength"}
+            },
             "justification": "Frequency is the reciprocal of period.",
             "explanation": "This gives the kinematic relation $c=f\\lambda$.",
             "prompt": "Connect the result to the wavelength slider.",
@@ -417,7 +437,53 @@
             }
           ]
         }
-      ]
+      ],
+      "proof": {
+        "id": "total_energy",
+        "title": "Total energy of $N$ photons",
+        "technique": "derivation",
+        "goal": "Show that $N$ identical photons of frequency $f$ carry total energy $E_{total}=Nhf$.",
+        "prompt": "Keep this derivation simple. The key insight is linearity: each photon independently carries $hf$.",
+        "steps": [
+          {
+            "id": "single_photon",
+            "type": "given",
+            "label": "Single photon energy",
+            "math": "\\htmlClass{hl-energy}{E}=\\htmlClass{hl-planck}{h}\\htmlClass{hl-freq}{f}",
+            "highlights": {
+              "energy": {"color": "orange", "label": "Energy of one photon"},
+              "planck": {"color": "yellow", "label": "Planck constant"},
+              "freq": {"color": "cyan", "label": "Frequency"}
+            },
+            "justification": "Planck-Einstein relation.",
+            "explanation": "Each photon carries energy proportional to its frequency.",
+            "sceneStep": 0
+          },
+          {
+            "id": "n_photons",
+            "type": "step",
+            "label": "N identical photons",
+            "math": "\\htmlClass{hl-total}{E_{total}}=\\htmlClass{hl-count}{N}\\cdot\\htmlClass{hl-energy}{hf}",
+            "highlights": {
+              "total": {"color": "green", "label": "Total beam energy"},
+              "count": {"color": "magenta", "label": "Photon count"},
+              "energy": {"color": "orange", "label": "Energy per photon"}
+            },
+            "justification": "Photon energies add independently.",
+            "explanation": "Total energy scales linearly with photon count.",
+            "sceneStep": 1
+          },
+          {
+            "id": "intensity_distinction",
+            "type": "conclusion",
+            "label": "Intensity vs color",
+            "math": "\\text{intensity}\\propto N,\\quad \\text{color}\\propto f",
+            "justification": "Frequency sets energy per photon; count sets total energy.",
+            "explanation": "Brightness and color are independent controls.",
+            "sceneStep": 2
+          }
+        ]
+      }
     },
     {
       "title": "When Wavelengths Become Discrete",
@@ -479,10 +545,10 @@
         },
         {
           "id": "s2_right_wall",
-          "type": "line",
+          "type": "animated_line",
           "points": [
-            [6, -2, 0],
-            [6, 2, 0]
+            ["L", "-2", "0"],
+            ["L", "2", "0"]
           ],
           "color": "#d8dee9",
           "width": 5,
@@ -540,6 +606,14 @@
               "max": 5,
               "step": 1,
               "default": 2
+            },
+            {
+              "id": "L",
+              "label": "$L$ (box length)",
+              "min": 3,
+              "max": 6,
+              "step": 0.5,
+              "default": 6
             }
           ],
           "add": [
@@ -547,7 +621,7 @@
               "id": "s2_standing_wave",
               "type": "parametric_curve",
               "x": "t",
-              "y": "1.25*sin(n*pi*t/6)",
+              "y": "1.25*sin(n*pi*t/L)",
               "z": "0",
               "range": [0, 6],
               "samples": 240,
@@ -663,9 +737,10 @@
       "prompt": "Make the distinction crisp: spreading changes intensity, stretching changes photon energy. For cosmological redshift, say global total energy is not generally well-defined in GR rather than saying energy disappears.",
       "range": [
         [-5, 5],
-        [-3, 4],
-        [-3, 3]
+        [-5, 5],
+        [-5, 5]
       ],
+      "scale": [1, 1, 1],
       "camera": {
         "position": [0, 0, 10],
         "target": [0, 0.5, 0]
@@ -713,7 +788,7 @@
           "sliders": [
             {
               "id": "R",
-              "label": "$R$",
+              "label": "$R$ (beam radius)",
               "min": 0.8,
               "max": 2.6,
               "step": 0.1,
@@ -793,7 +868,8 @@
                 [4.25, 2.2, 0]
               ],
               "color": "#3b4652",
-              "width": 9
+              "width": 9,
+              "legendGroup": "$E\\propto 1/(1+z)$"
             },
             {
               "id": "s3_energy_bar",
@@ -845,7 +921,59 @@
             }
           ]
         }
-      ]
+      ],
+      "proof": {
+        "id": "redshift_energy",
+        "title": "Redshifted photon energy",
+        "technique": "derivation",
+        "goal": "Show that cosmological redshift reduces photon energy: $E_{obs}=E_{em}/(1+z)$.",
+        "prompt": "Derive from the wavelength relation and E = hc/lambda. Keep it algebraic.",
+        "steps": [
+          {
+            "id": "redshift_def",
+            "type": "given",
+            "label": "Redshift relation",
+            "math": "\\htmlClass{hl-obs}{\\lambda_{obs}}=\\htmlClass{hl-em}{\\lambda_{em}}(1+\\htmlClass{hl-z}{z})",
+            "highlights": {
+              "obs": {"color": "orange", "label": "Observed wavelength"},
+              "em": {"color": "cyan", "label": "Emitted wavelength"},
+              "z": {"color": "yellow", "label": "Redshift parameter"}
+            },
+            "justification": "Definition of cosmological redshift.",
+            "explanation": "Space expansion stretches the wavelength by a factor $(1+z)$.",
+            "sceneStep": 1
+          },
+          {
+            "id": "energy_substitution",
+            "type": "step",
+            "label": "Substitute into $E=hc/\\lambda$",
+            "math": "\\htmlClass{hl-eobs}{E_{obs}}=\\frac{hc}{\\htmlClass{hl-obs}{\\lambda_{obs}}}=\\frac{hc}{\\htmlClass{hl-em}{\\lambda_{em}}(1+\\htmlClass{hl-z}{z})}",
+            "highlights": {
+              "eobs": {"color": "green", "label": "Observed energy"},
+              "obs": {"color": "orange", "label": "Observed wavelength"},
+              "em": {"color": "cyan", "label": "Emitted wavelength"},
+              "z": {"color": "yellow", "label": "Redshift parameter"}
+            },
+            "justification": "Replace $\\lambda_{obs}$ with the redshift expression.",
+            "explanation": "The longer wavelength means less energy per photon.",
+            "sceneStep": 1
+          },
+          {
+            "id": "energy_result",
+            "type": "conclusion",
+            "label": "Redshifted energy",
+            "math": "\\htmlClass{hl-eobs}{E_{obs}}=\\frac{\\htmlClass{hl-eem}{E_{em}}}{1+\\htmlClass{hl-z}{z}}",
+            "highlights": {
+              "eobs": {"color": "green", "label": "Observed energy"},
+              "eem": {"color": "cyan", "label": "Emitted energy"},
+              "z": {"color": "yellow", "label": "Redshift parameter"}
+            },
+            "justification": "Recognize $hc/\\lambda_{em}=E_{em}$.",
+            "explanation": "Stretching lowers energy per photon by exactly the redshift factor.",
+            "sceneStep": 1
+          }
+        ]
+      }
     },
     {
       "title": "Photon as Wave Packet and Detection Event",
@@ -854,9 +982,10 @@
       "prompt": "Use cautious quantum language. Say the photon is a quantized field excitation, described by a state that can be spatially spread out, with localized detection. Avoid implying a classical physical wave literally collapses.",
       "range": [
         [-6, 6],
-        [-2.8, 2.8],
-        [-2.8, 2.8]
+        [-6, 6],
+        [-6, 6]
       ],
+      "scale": [1, 1, 1],
       "camera": {
         "position": [0, 0, 9],
         "target": [0, 0, 0]
@@ -1059,9 +1188,10 @@
       "prompt": "Use this as a careful epilogue. State what is known without pretending the lesson solves quantum gravity. Correct the idea that photons literally collapse into a point.",
       "range": [
         [-5, 5],
-        [-4, 4],
-        [-4, 4]
+        [-5, 5],
+        [-5, 5]
       ],
+      "scale": [1, 1, 1],
       "camera": {
         "position": [0, 2, 9],
         "target": [0, 0, 0]
@@ -1117,15 +1247,25 @@
           "title": "Falling light blueshifts locally",
           "description": "A falling photon can be measured with increasing frequency by local observers deeper in the gravitational field.",
           "prompt": "State observer dependence. Do not imply there is one universal photon energy in curved spacetime.",
+          "sliders": [
+            {
+              "id": "grav",
+              "label": "$g$ (gravity strength)",
+              "min": 1,
+              "max": 4,
+              "step": 0.1,
+              "default": 2
+            }
+          ],
           "add": [
             {
               "id": "s5_photon_path",
               "type": "parametric_curve",
               "x": "-4 + 4*t",
-              "y": "2.4 - 2.1*t + 0.25*sin(8*pi*t)",
+              "y": "2.4 - 2.1*t + 0.25*sin((4+grav*4)*pi*t)",
               "z": "0",
               "range": [0, 1],
-              "samples": 160,
+              "samples": 200,
               "color": "#6ec6ff",
               "width": 4,
               "label": "incoming photon"
