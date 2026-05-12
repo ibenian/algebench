@@ -38,7 +38,7 @@
       "port": 5735
     },
     {
-      "name": "photons",
+      "name": "photons-wavelength-energy",
       "runtimeExecutable": "./algebench",
       "runtimeArgs": ["scenes/draft/photons-wavelength-energy.json", "--port", "5736", "--debug", "--server-only"],
       "port": 5736

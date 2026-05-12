@@ -17,32 +17,31 @@
       ],
       "scale": [1, 1, 1],
       "camera": {
-        "position": [0, 0, 9],
-        "target": [0, 0, 0]
+        "position": [0, 1, 12],
+        "target": [0, 1, 0]
       },
       "views": [
         {
           "name": "Wave",
-          "position": [0, 0, 9],
-          "target": [0, 0, 0],
+          "position": [0, 1, 12],
+          "target": [0, 1, 0],
           "description": "Face-on wave view"
         },
         {
           "name": "Iso",
-          "position": [6, 4, 7],
-          "target": [0, 0, 0],
+          "position": [6, 5, 10],
+          "target": [0, 1, 0],
           "description": "Three-dimensional context"
         }
       ],
       "elements": [
         {
-          "id": "s0_x_axis",
-          "type": "axis",
-          "axis": "x",
-          "range": [-6, 6],
-          "color": "#d04f4f",
-          "width": 1.5,
-          "label": "$x$"
+          "id": "s0_wave_axis",
+          "type": "line",
+          "points": [[0, 0, 0], [6, 0, 0]],
+          "color": "#555e6a",
+          "width": 1,
+          "legendGroup": "$\\text{EM wave}$"
         },
         {
           "id": "s0_grid",
@@ -50,14 +49,14 @@
           "plane": "xy",
           "range": [-6, 6],
           "color": [0.28, 0.32, 0.38],
-          "opacity": 0.16,
+          "opacity": 0.12,
           "divisions": 12
         }
       ],
       "steps": [
         {
-          "title": "A travelling ripple",
-          "description": "A sinusoidal wave gives the first mental model: a spatially spread disturbance with a wavelength $\\lambda$.",
+          "title": "A travelling EM wave",
+          "description": "A sinusoidal electromagnetic wave gives the first mental model: a spatially spread disturbance with a wavelength $\\lambda$.",
           "prompt": "Introduce wavelength as crest-to-crest spacing. Do not talk about photons as tiny balls.",
           "sliders": [
             {
@@ -76,22 +75,55 @@
               "x": "t",
               "y": "sin(2*pi*t/lambda)",
               "z": "0",
-              "range": [-6, 6],
-              "samples": 240,
+              "range": [0, 6],
+              "samples": 200,
               "color": "#2f9e9b",
               "width": 4,
-              "label": "$\\text{electric-field ripple}$"
+              "legendGroup": "$\\text{EM wave}$"
             },
             {
               "id": "s0_lambda_span",
               "type": "animated_line",
               "points": [
-                ["-lambda/2", "-1.55", "0"],
-                ["lambda/2", "-1.55", "0"]
+                ["lambda/2", "0", "0"],
+                ["lambda/2 + lambda", "0", "0"]
               ],
               "color": "#f0b84b",
               "width": 5,
               "label": "$\\lambda$"
+            },
+            {
+              "id": "s0_tick_left",
+              "type": "animated_line",
+              "points": [
+                ["lambda/2", "-1.6", "0"],
+                ["lambda/2", "1.6", "0"]
+              ],
+              "color": "#f0b84b",
+              "width": 1,
+              "opacity": 0.35,
+              "legendGroup": "$\\lambda$"
+            },
+            {
+              "id": "s0_tick_right",
+              "type": "animated_line",
+              "points": [
+                ["lambda/2 + lambda", "-1.6", "0"],
+                ["lambda/2 + lambda", "1.6", "0"]
+              ],
+              "color": "#f0b84b",
+              "width": 1,
+              "opacity": 0.35,
+              "legendGroup": "$\\lambda$"
+            },
+            {
+              "id": "s0_wave_title",
+              "type": "text",
+              "text": "$\\text{EM wave}$",
+              "position": [3, -0.6, 0],
+              "color": "#2f9e9b",
+              "size": 15,
+              "label": "$\\text{EM wave}$"
             }
           ],
           "info": [
@@ -104,39 +136,94 @@
         },
         {
           "title": "Frequency falls as wavelength grows",
-          "description": "With $c$ fixed, the frequency scales like $1/\\lambda$. The same speed is carried by wider or tighter ripples.",
+          "description": "With $c$ fixed, the frequency scales like $1/\\lambda$. The same speed is carried by wider or tighter waves.",
           "prompt": "Use the slider to compare short and long wavelengths. Ask the learner what happens to f when lambda doubles.",
           "add": [
             {
-              "id": "s0_freq_bar_bg",
+              "id": "s0_chart_lambda_axis",
               "type": "line",
-              "points": [
-                [4.5, -1.8, 0],
-                [4.5, 1.8, 0]
-              ],
-              "color": "#3b4652",
-              "width": 10,
-              "legendGroup": "$f\\propto 1/\\lambda$"
+              "points": [[-5.5, 0, 0], [-0.5, 0, 0]],
+              "color": "#555e6a",
+              "width": 1,
+              "legendGroup": "$f=c/\\lambda$"
             },
             {
-              "id": "s0_freq_bar",
+              "id": "s0_chart_f_axis",
+              "type": "line",
+              "points": [[-5.5, 0, 0], [-5.5, 3.5, 0]],
+              "color": "#555e6a",
+              "width": 1,
+              "legendGroup": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_chart_label_lambda",
+              "type": "text",
+              "text": "$\\lambda$",
+              "position": [-0.3, -0.3, 0],
+              "color": "#f0b84b",
+              "size": 16,
+              "legendGroup": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_chart_label_f",
+              "type": "text",
+              "text": "$f$",
+              "position": [-5.9, 3.6, 0],
+              "color": "#6ec6ff",
+              "size": 16,
+              "legendGroup": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_chart_curve",
+              "type": "parametric_curve",
+              "x": "t - 6",
+              "y": "3/t",
+              "z": "0",
+              "range": [0.8, 5.5],
+              "samples": 120,
+              "color": "#6ec6ff",
+              "width": 3,
+              "legendGroup": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_chart_dot",
+              "type": "animated_point",
+              "positionExpr": ["lambda - 6", "3/lambda", "0"],
+              "color": "#ffffff",
+              "radius": 0.12
+            },
+            {
+              "id": "s0_chart_vline",
               "type": "animated_line",
               "points": [
-                ["4.5", "-1.8", "0"],
-                ["4.5", "-1.8 + 3.6*(1/lambda)/(1/1)", "0"]
+                ["lambda - 6", "0", "0"],
+                ["lambda - 6", "3/lambda", "0"]
               ],
-              "color": "#6ec6ff",
-              "width": 10,
-              "label": "$f\\propto 1/\\lambda$"
+              "color": "#f0b84b",
+              "width": 1,
+              "opacity": 0.3,
+              "legendGroup": "$f=c/\\lambda$"
             },
             {
-              "id": "s0_freq_label",
+              "id": "s0_chart_hline",
+              "type": "animated_line",
+              "points": [
+                ["-5.5", "3/lambda", "0"],
+                ["lambda - 6", "3/lambda", "0"]
+              ],
+              "color": "#6ec6ff",
+              "width": 1,
+              "opacity": 0.3,
+              "legendGroup": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_chart_title",
               "type": "text",
               "text": "$f=c/\\lambda$",
-              "position": [3.35, 2.05, 0],
+              "position": [-3, -0.6, 0],
               "color": "#6ec6ff",
-              "label": "$f\\propto 1/\\lambda$",
-              "size": 16
+              "size": 15,
+              "label": "$f=c/\\lambda$"
             }
           ],
           "info": [
@@ -185,53 +272,70 @@
       ],
       "proof": {
         "id": "wave_kinematics",
-        "title": "Why $f=c/\\lambda$",
+        "title": "From $x=vt$ to $c=f\\lambda$",
         "technique": "derivation",
-        "goal": "Show that a wave moving at speed $c$ with wavelength $\\lambda$ has frequency $f=c/\\lambda$.",
-        "prompt": "Keep this proof short and physical: speed is distance per time, and one period advances one wavelength.",
+        "goal": "Derive the wave relation $c=f\\lambda$ starting from the basic kinematic equation $x=vt$.",
+        "prompt": "Start from x=vt which every learner knows. Apply it to one wave cycle to get c=f*lambda. Emphasize this is the same formula, not a new law.",
         "steps": [
           {
-            "id": "period_distance",
+            "id": "basic_kinematics",
             "type": "given",
-            "label": "One period",
-            "math": "\\text{distance in one period}=\\htmlClass{hl-wavelength}{\\lambda}",
+            "label": "Basic kinematics",
+            "math": "\\htmlClass{hl-dist}{x}=\\htmlClass{hl-speed}{v}\\cdot {}\\htmlClass{hl-time}{t}",
             "highlights": {
-              "wavelength": {"color": "cyan", "label": "Crest-to-crest spacing"}
+              "dist": {"color": "cyan", "label": "Distance travelled"},
+              "speed": {"color": "orange", "label": "Speed"},
+              "time": {"color": "yellow", "label": "Elapsed time"}
             },
-            "justification": "By definition, one period carries one crest spacing past a fixed point.",
-            "explanation": "A crest advances by exactly one wavelength in one full cycle.",
-            "prompt": "Tie the algebra to the moving crest.",
+            "justification": "The fundamental kinematic relation for constant speed.",
+            "explanation": "Distance equals speed times time — the starting point for all wave relations.",
+            "prompt": "Start from the most basic formula the learner already knows.",
             "sceneStep": 0
           },
           {
-            "id": "speed_period",
+            "id": "one_period",
             "type": "step",
-            "label": "Speed",
-            "math": "\\htmlClass{hl-speed}{c}=\\frac{\\htmlClass{hl-wavelength}{\\lambda}}{\\htmlClass{hl-period}{T}}",
+            "label": "One period of a wave",
+            "math": "\\htmlClass{hl-wavelength}{\\lambda}=\\htmlClass{hl-speed}{c}\\cdot {}\\htmlClass{hl-period}{T}",
             "highlights": {
-              "speed": {"color": "orange", "label": "Wave speed (fixed)"},
-              "wavelength": {"color": "cyan", "label": "Wavelength"},
-              "period": {"color": "yellow", "label": "Period"}
+              "wavelength": {"color": "cyan", "label": "One wavelength (crest-to-crest)"},
+              "speed": {"color": "orange", "label": "Wave speed (fixed at c)"},
+              "period": {"color": "yellow", "label": "Period (time for one cycle)"}
             },
-            "justification": "Speed equals distance divided by time.",
-            "explanation": "The wave travels one wavelength in one period $T$.",
-            "prompt": "Ask what happens if T is small.",
-            "sceneStep": 1
+            "justification": "In one period $T$, the wave advances exactly one wavelength $\\lambda$. Set $x=\\lambda$, $v=c$, $t=T$.",
+            "explanation": "A crest travels one full wavelength in one period, so $\\lambda = c \\cdot T$.",
+            "prompt": "Connect x=vt to the wave: x becomes lambda, v becomes c, t becomes T.",
+            "sceneStep": 0
           },
           {
-            "id": "frequency_result",
-            "type": "conclusion",
-            "label": "Frequency",
+            "id": "solve_for_f",
+            "type": "step",
+            "label": "Solve for frequency",
             "math": "\\htmlClass{hl-freq}{f}=\\frac{1}{\\htmlClass{hl-period}{T}}=\\frac{\\htmlClass{hl-speed}{c}}{\\htmlClass{hl-wavelength}{\\lambda}}",
             "highlights": {
-              "freq": {"color": "green", "label": "Frequency"},
+              "freq": {"color": "green", "label": "Frequency (cycles per second)"},
               "period": {"color": "yellow", "label": "Period"},
               "speed": {"color": "orange", "label": "Wave speed"},
               "wavelength": {"color": "cyan", "label": "Wavelength"}
             },
-            "justification": "Frequency is the reciprocal of period.",
-            "explanation": "This gives the kinematic relation $c=f\\lambda$.",
-            "prompt": "Connect the result to the wavelength slider.",
+            "justification": "Frequency is the reciprocal of period: $f=1/T$. Substitute $T=\\lambda/c$.",
+            "explanation": "Rearranging gives the wave relation: frequency equals speed divided by wavelength.",
+            "prompt": "Show the algebra step by step: T = lambda/c, so f = 1/T = c/lambda.",
+            "sceneStep": 1
+          },
+          {
+            "id": "wave_equation",
+            "type": "conclusion",
+            "label": "The wave equation",
+            "math": "\\htmlClass{hl-speed}{c}=\\htmlClass{hl-freq}{f}\\,\\htmlClass{hl-wavelength}{\\lambda}",
+            "highlights": {
+              "speed": {"color": "orange", "label": "Wave speed"},
+              "freq": {"color": "green", "label": "Frequency"},
+              "wavelength": {"color": "cyan", "label": "Wavelength"}
+            },
+            "justification": "Multiply both sides of $f=c/\\lambda$ by $\\lambda$.",
+            "explanation": "This is just $x=vt$ applied to one cycle: speed equals frequency times wavelength.",
+            "prompt": "Emphasize that c = f lambda is not a new law — it is x = v t for one wave cycle.",
             "sceneStep": 1
           }
         ]
@@ -454,7 +558,7 @@
             "id": "n_photons",
             "type": "step",
             "label": "N identical photons",
-            "math": "\\htmlClass{hl-total}{E_{total}}=\\htmlClass{hl-count}{N}\\cdot\\htmlClass{hl-energy}{hf}",
+            "math": "\\htmlClass{hl-total}{E_{total}}=\\htmlClass{hl-count}{N}\\cdot {}\\htmlClass{hl-energy}{hf}",
             "highlights": {
               "total": {"color": "green", "label": "Total beam energy"},
               "count": {"color": "magenta", "label": "Photon count"},

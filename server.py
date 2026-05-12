@@ -629,10 +629,12 @@ def _restore_subscripts_in_graph(graph: dict, mapping: dict[str, str]) -> None:
         for greek_name, original in items:
             # latex form: \xi → original
             s = s.replace(f"\\{greek_name}", original)
-            # sympy id form: bare name → original. Scope to subscript
-            # context to avoid matching unrelated substrings in operator
-            # subexprs.
+            # sympy id form (braced): {alpha} → {obs}
             s = s.replace(f"{{{greek_name}}}", f"{{{original}}}")
+            # sympy id form (bare subscript): _alpha → _obs
+            # SymPy strips braces from subscripts, so lambda_{\alpha}
+            # becomes lambda_alpha in symbol names.
+            s = s.replace(f"_{greek_name}", f"_{original}")
         return s
 
     # Derive a human-readable display name from each placeholder's original
