@@ -1218,7 +1218,7 @@
           ],
           "color": "#9aa4ad",
           "width": 1.2,
-          "label": "$E$"
+          "label": "$E\\;(\\text{eV})$"
         },
         {
           "id": "s1_grid",
@@ -1240,8 +1240,8 @@
       "steps": [
         {
           "title": "Energy per photon",
-          "description": "Set red photon energy to 1 unit and blue photon energy to 2.5 units. The blue photon is larger per photon because $E=hf$.",
-          "prompt": "Introduce this as scaled units, not real electron-volts. Keep the proportional relationship central.",
+          "description": "A red photon ($\\lambda=700$ nm) carries $1.77$ eV; a blue photon ($\\lambda=450$ nm) carries $2.76$ eV. The blue photon has more energy because $E=hf$.",
+          "prompt": "Emphasize that energy per photon is set by frequency. Use the eV numbers on the bars to ground the comparison.",
           "add": [
             {
               "id": "s1_red_bar",
@@ -1259,12 +1259,12 @@
                 ],
                 [
                   -2.4,
-                  1,
+                  1.77,
                   0
                 ],
                 [
                   -3.4,
-                  1,
+                  1.77,
                   0
                 ]
               ],
@@ -1290,12 +1290,12 @@
                 ],
                 [
                   2.8,
-                  2.5,
+                  2.76,
                   0
                 ],
                 [
                   1.8,
-                  2.5,
+                  2.76,
                   0
                 ]
               ],
@@ -1311,11 +1311,35 @@
               "text": "$E_R=hf_R$",
               "position": [
                 -3.75,
-                1.35,
+                2.15,
                 0
               ],
               "color": "#ff9a8f",
               "size": 15
+            },
+            {
+              "id": "s1_red_ev",
+              "type": "text",
+              "text": "$1.77\\;\\text{eV}$",
+              "position": [
+                -3.5,
+                0.85,
+                0
+              ],
+              "color": "#ff9a8f",
+              "size": 14
+            },
+            {
+              "id": "s1_red_wl",
+              "type": "text",
+              "text": "$\\lambda=700\\;\\text{nm}$",
+              "position": [
+                -3.55,
+                -0.45,
+                0
+              ],
+              "color": "#ff9a8f",
+              "size": 12
             },
             {
               "id": "s1_blue_label",
@@ -1323,11 +1347,35 @@
               "text": "$E_B=hf_B$",
               "position": [
                 1.45,
-                2.85,
+                3.15,
                 0
               ],
               "color": "#9dccff",
               "size": 15
+            },
+            {
+              "id": "s1_blue_ev",
+              "type": "text",
+              "text": "$2.76\\;\\text{eV}$",
+              "position": [
+                1.7,
+                1.35,
+                0
+              ],
+              "color": "#9dccff",
+              "size": 14
+            },
+            {
+              "id": "s1_blue_wl",
+              "type": "text",
+              "text": "$\\lambda=450\\;\\text{nm}$",
+              "position": [
+                1.65,
+                -0.45,
+                0
+              ],
+              "color": "#9dccff",
+              "size": 12
             }
           ],
           "info": [
@@ -1352,9 +1400,9 @@
               "id": "Nred",
               "label": "$N_{red}$",
               "min": 1,
-              "max": 6,
+              "max": 4,
               "step": 1,
-              "default": 4
+              "default": 2
             }
           ],
           "add": [
@@ -1374,12 +1422,12 @@
                 ],
                 [
                   "0.4",
-                  "Nred",
+                  "Nred * 1.77",
                   "0"
                 ],
                 [
                   "-0.6",
-                  "Nred",
+                  "Nred * 1.77",
                   "0"
                 ]
               ],
