@@ -7,30 +7,79 @@
       "markdown": "# Light as a Wave\n\nClassical electromagnetism treats light as a wave moving at speed $c$ in vacuum. The basic kinematic link is\n\n$$c=f\\lambda.$$\n\nIf $c$ is fixed, wavelength and frequency must trade off:\n\n$$f=\\frac{c}{\\lambda}.$$\n\nA longer wavelength means fewer crests pass a point each second. This part is continuous: in free space, a photon can have any wavelength allowed by the source and propagation conditions.\n\n## The historical pressure\n\nAt the turn of the twentieth century, classical blackbody theory led to the ultraviolet catastrophe: it predicted runaway short-wavelength emission. Planck's resolution was to make exchange of energy discrete, in units proportional to frequency. That idea became the first step toward quantum mechanics.\n\nReferences: https://en.wikipedia.org/wiki/Quantum and https://en.wikipedia.org/wiki/Photon_energy",
       "prompt": "Teach the wave kinematics first. Keep the distinction clear: c = f lambda is a wave relation, while E = hf is the quantum energy relation introduced next. Emphasize that stretching wavelength lowers frequency for fixed c.",
       "functions": [
-        {"name": "photonEnergy", "args": ["lambda"], "expr": "1/lambda"},
-        {"name": "freq", "args": ["lambda"], "expr": "1/lambda"}
+        {
+          "name": "photonEnergy",
+          "args": [
+            "lambda"
+          ],
+          "expr": "1/lambda"
+        },
+        {
+          "name": "freq",
+          "args": [
+            "lambda"
+          ],
+          "expr": "1/lambda"
+        }
       ],
       "range": [
-        [-6, 6],
-        [-6, 6],
-        [-6, 6]
+        [
+          -6,
+          6
+        ],
+        [
+          -6,
+          6
+        ],
+        [
+          -6,
+          6
+        ]
       ],
-      "scale": [1, 1, 1],
+      "scale": [
+        1,
+        1,
+        1
+      ],
       "camera": {
-        "position": [0, 1, 12],
-        "target": [0, 1, 0]
+        "position": [
+          -1,
+          1,
+          13
+        ],
+        "target": [
+          -1,
+          1,
+          0
+        ]
       },
       "views": [
         {
           "name": "Wave",
-          "position": [0, 1, 12],
-          "target": [0, 1, 0],
+          "position": [
+            0,
+            1,
+            12
+          ],
+          "target": [
+            0,
+            1,
+            0
+          ],
           "description": "Face-on wave view"
         },
         {
           "name": "Iso",
-          "position": [6, 5, 10],
-          "target": [0, 1, 0],
+          "position": [
+            6,
+            5,
+            10
+          ],
+          "target": [
+            0,
+            1,
+            0
+          ],
           "description": "Three-dimensional context"
         }
       ],
@@ -38,7 +87,18 @@
         {
           "id": "s0_wave_axis",
           "type": "line",
-          "points": [[0, 0, 0], [6, 0, 0]],
+          "points": [
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              6,
+              0,
+              0
+            ]
+          ],
           "color": "#555e6a",
           "width": 1,
           "legendGroup": "$\\text{EM wave}$"
@@ -47,8 +107,15 @@
           "id": "s0_grid",
           "type": "grid",
           "plane": "xy",
-          "range": [-6, 6],
-          "color": [0.28, 0.32, 0.38],
+          "range": [
+            -6,
+            6
+          ],
+          "color": [
+            0.28,
+            0.32,
+            0.38
+          ],
           "opacity": 0.12,
           "divisions": 12
         }
@@ -62,10 +129,10 @@
             {
               "id": "lambda",
               "label": "$\\lambda$",
-              "min": 1,
-              "max": 5,
+              "min": 0.8,
+              "max": 10,
               "step": 0.1,
-              "default": 2.4
+              "default": 2
             }
           ],
           "add": [
@@ -75,7 +142,10 @@
               "x": "t",
               "y": "sin(2*pi*t/lambda)",
               "z": "0",
-              "range": [0, 6],
+              "range": [
+                0,
+                6
+              ],
               "samples": 200,
               "color": "#2f9e9b",
               "width": 4,
@@ -85,8 +155,16 @@
               "id": "s0_lambda_span",
               "type": "animated_line",
               "points": [
-                ["lambda/2", "0", "0"],
-                ["lambda/2 + lambda", "0", "0"]
+                [
+                  "lambda/2",
+                  "0",
+                  "0"
+                ],
+                [
+                  "lambda/2 + lambda",
+                  "0",
+                  "0"
+                ]
               ],
               "color": "#f0b84b",
               "width": 5,
@@ -96,8 +174,16 @@
               "id": "s0_tick_left",
               "type": "animated_line",
               "points": [
-                ["lambda/2", "-1.6", "0"],
-                ["lambda/2", "1.6", "0"]
+                [
+                  "lambda/2",
+                  "-1.6",
+                  "0"
+                ],
+                [
+                  "lambda/2",
+                  "1.6",
+                  "0"
+                ]
               ],
               "color": "#f0b84b",
               "width": 1,
@@ -108,8 +194,16 @@
               "id": "s0_tick_right",
               "type": "animated_line",
               "points": [
-                ["lambda/2 + lambda", "-1.6", "0"],
-                ["lambda/2 + lambda", "1.6", "0"]
+                [
+                  "lambda/2 + lambda",
+                  "-1.6",
+                  "0"
+                ],
+                [
+                  "lambda/2 + lambda",
+                  "1.6",
+                  "0"
+                ]
               ],
               "color": "#f0b84b",
               "width": 1,
@@ -120,7 +214,11 @@
               "id": "s0_wave_title",
               "type": "text",
               "text": "$\\text{EM wave}$",
-              "position": [3, -0.6, 0],
+              "position": [
+                3,
+                -0.6,
+                0
+              ],
               "color": "#2f9e9b",
               "size": 15,
               "label": "$\\text{EM wave}$"
@@ -142,7 +240,18 @@
             {
               "id": "s0_chart_lambda_axis",
               "type": "line",
-              "points": [[-5.5, 0, 0], [-0.5, 0, 0]],
+              "points": [
+                [
+                  -5.5,
+                  0,
+                  0
+                ],
+                [
+                  -0.5,
+                  0,
+                  0
+                ]
+              ],
               "color": "#555e6a",
               "width": 1,
               "legendGroup": "$f=c/\\lambda$"
@@ -150,7 +259,18 @@
             {
               "id": "s0_chart_f_axis",
               "type": "line",
-              "points": [[-5.5, 0, 0], [-5.5, 3.5, 0]],
+              "points": [
+                [
+                  -5.5,
+                  0,
+                  0
+                ],
+                [
+                  -5.5,
+                  3.5,
+                  0
+                ]
+              ],
               "color": "#555e6a",
               "width": 1,
               "legendGroup": "$f=c/\\lambda$"
@@ -159,7 +279,11 @@
               "id": "s0_chart_label_lambda",
               "type": "text",
               "text": "$\\lambda$",
-              "position": [-0.3, -0.3, 0],
+              "position": [
+                -0.3,
+                -0.3,
+                0
+              ],
               "color": "#f0b84b",
               "size": 16,
               "legendGroup": "$f=c/\\lambda$"
@@ -168,7 +292,11 @@
               "id": "s0_chart_label_f",
               "type": "text",
               "text": "$f$",
-              "position": [-5.9, 3.6, 0],
+              "position": [
+                -5.9,
+                3.6,
+                0
+              ],
               "color": "#6ec6ff",
               "size": 16,
               "legendGroup": "$f=c/\\lambda$"
@@ -176,10 +304,13 @@
             {
               "id": "s0_chart_curve",
               "type": "parametric_curve",
-              "x": "t - 6",
+              "x": "t * 0.5 - 5.5",
               "y": "3/t",
               "z": "0",
-              "range": [0.8, 5.5],
+              "range": [
+                0.8,
+                10
+              ],
               "samples": 120,
               "color": "#6ec6ff",
               "width": 3,
@@ -188,7 +319,11 @@
             {
               "id": "s0_chart_dot",
               "type": "animated_point",
-              "positionExpr": ["lambda - 6", "3/lambda", "0"],
+              "positionExpr": [
+                "lambda * 0.5 - 5.5",
+                "3/lambda",
+                "0"
+              ],
               "color": "#ffffff",
               "radius": 0.12
             },
@@ -196,8 +331,16 @@
               "id": "s0_chart_vline",
               "type": "animated_line",
               "points": [
-                ["lambda - 6", "0", "0"],
-                ["lambda - 6", "3/lambda", "0"]
+                [
+                  "lambda * 0.5 - 5.5",
+                  "0",
+                  "0"
+                ],
+                [
+                  "lambda * 0.5 - 5.5",
+                  "3/lambda",
+                  "0"
+                ]
               ],
               "color": "#f0b84b",
               "width": 1,
@@ -208,8 +351,16 @@
               "id": "s0_chart_hline",
               "type": "animated_line",
               "points": [
-                ["-5.5", "3/lambda", "0"],
-                ["lambda - 6", "3/lambda", "0"]
+                [
+                  "-5.5",
+                  "3/lambda",
+                  "0"
+                ],
+                [
+                  "lambda * 0.5 - 5.5",
+                  "3/lambda",
+                  "0"
+                ]
               ],
               "color": "#6ec6ff",
               "width": 1,
@@ -220,7 +371,11 @@
               "id": "s0_chart_title",
               "type": "text",
               "text": "$f=c/\\lambda$",
-              "position": [-3, -0.6, 0],
+              "position": [
+                -3,
+                -0.6,
+                0
+              ],
               "color": "#6ec6ff",
               "size": 15,
               "label": "$f=c/\\lambda$"
@@ -236,7 +391,7 @@
         },
         {
           "title": "The crisis of the infinite",
-          "description": "Classical prediction: short wavelengths run away. Planck's resolution: energy comes in quanta. Blackbody radiation forced a deeper idea — energy exchange is quantized.",
+          "description": "Classical prediction: short wavelengths run away. Planck's resolution: energy comes in quanta. Blackbody radiation forced a deeper idea \u2014 energy exchange is quantized.",
           "prompt": "Frame the ultraviolet catastrophe as the reason the energy rule had to change. Avoid overclaiming: Planck quantized exchange of energy, not simply spatial wavelength.",
           "remove": [
             {
@@ -265,97 +420,469 @@
             {
               "id": "s0_spec_01",
               "type": "polygon",
-              "vertices": [[-6.1,0,0],[-5.7,0,0],[-5.7,0.35,0],[-6.1,0.35,0]],
+              "vertices": [
+                [
+                  -7.3,
+                  0.0,
+                  0
+                ],
+                [
+                  -6.9,
+                  0.0,
+                  0
+                ],
+                [
+                  -6.9,
+                  0.35,
+                  0
+                ],
+                [
+                  -7.3,
+                  0.35,
+                  0
+                ]
+              ],
               "color": "#990000",
               "opacity": 0.9,
-              "shader": {"shininess": 40, "emissive": "#220000"},
+              "shader": {
+                "shininess": 40,
+                "emissive": "#220000"
+              },
               "legendGroup": "visible spectrum"
             },
             {
               "id": "s0_spec_02",
               "type": "polygon",
-              "vertices": [[-6.1,0.35,0],[-5.7,0.35,0],[-5.7,0.7,0],[-6.1,0.7,0]],
+              "vertices": [
+                [
+                  -7.3,
+                  0.35,
+                  0
+                ],
+                [
+                  -6.9,
+                  0.35,
+                  0
+                ],
+                [
+                  -6.9,
+                  0.7,
+                  0
+                ],
+                [
+                  -7.3,
+                  0.7,
+                  0
+                ]
+              ],
               "color": "#CC1100",
               "opacity": 0.9,
-              "shader": {"shininess": 40, "emissive": "#2a0400"},
+              "shader": {
+                "shininess": 40,
+                "emissive": "#2a0400"
+              },
               "legendGroup": "visible spectrum"
             },
             {
               "id": "s0_spec_03",
               "type": "polygon",
-              "vertices": [[-6.1,0.7,0],[-5.7,0.7,0],[-5.7,1.05,0],[-6.1,1.05,0]],
+              "vertices": [
+                [
+                  -7.3,
+                  0.7,
+                  0
+                ],
+                [
+                  -6.9,
+                  0.7,
+                  0
+                ],
+                [
+                  -6.9,
+                  1.05,
+                  0
+                ],
+                [
+                  -7.3,
+                  1.05,
+                  0
+                ]
+              ],
               "color": "#FF5500",
               "opacity": 0.9,
-              "shader": {"shininess": 40, "emissive": "#331100"},
+              "shader": {
+                "shininess": 40,
+                "emissive": "#331100"
+              },
               "legendGroup": "visible spectrum"
             },
             {
               "id": "s0_spec_04",
               "type": "polygon",
-              "vertices": [[-6.1,1.05,0],[-5.7,1.05,0],[-5.7,1.4,0],[-6.1,1.4,0]],
+              "vertices": [
+                [
+                  -7.3,
+                  1.05,
+                  0
+                ],
+                [
+                  -6.9,
+                  1.05,
+                  0
+                ],
+                [
+                  -6.9,
+                  1.4,
+                  0
+                ],
+                [
+                  -7.3,
+                  1.4,
+                  0
+                ]
+              ],
               "color": "#FFAA00",
               "opacity": 0.9,
-              "shader": {"shininess": 40, "emissive": "#332200"},
+              "shader": {
+                "shininess": 40,
+                "emissive": "#332200"
+              },
               "legendGroup": "visible spectrum"
             },
             {
               "id": "s0_spec_05",
               "type": "polygon",
-              "vertices": [[-6.1,1.4,0],[-5.7,1.4,0],[-5.7,1.75,0],[-6.1,1.75,0]],
+              "vertices": [
+                [
+                  -7.3,
+                  1.4,
+                  0
+                ],
+                [
+                  -6.9,
+                  1.4,
+                  0
+                ],
+                [
+                  -6.9,
+                  1.75,
+                  0
+                ],
+                [
+                  -7.3,
+                  1.75,
+                  0
+                ]
+              ],
               "color": "#CCDD00",
               "opacity": 0.9,
-              "shader": {"shininess": 40, "emissive": "#2a2d00"},
+              "shader": {
+                "shininess": 40,
+                "emissive": "#2a2d00"
+              },
               "legendGroup": "visible spectrum"
             },
             {
               "id": "s0_spec_06",
               "type": "polygon",
-              "vertices": [[-6.1,1.75,0],[-5.7,1.75,0],[-5.7,2.1,0],[-6.1,2.1,0]],
+              "vertices": [
+                [
+                  -7.3,
+                  1.75,
+                  0
+                ],
+                [
+                  -6.9,
+                  1.75,
+                  0
+                ],
+                [
+                  -6.9,
+                  2.1,
+                  0
+                ],
+                [
+                  -7.3,
+                  2.1,
+                  0
+                ]
+              ],
               "color": "#22CC44",
               "opacity": 0.9,
-              "shader": {"shininess": 40, "emissive": "#062a0e"},
+              "shader": {
+                "shininess": 40,
+                "emissive": "#062a0e"
+              },
               "legendGroup": "visible spectrum"
             },
             {
               "id": "s0_spec_07",
               "type": "polygon",
-              "vertices": [[-6.1,2.1,0],[-5.7,2.1,0],[-5.7,2.45,0],[-6.1,2.45,0]],
+              "vertices": [
+                [
+                  -7.3,
+                  2.1,
+                  0
+                ],
+                [
+                  -6.9,
+                  2.1,
+                  0
+                ],
+                [
+                  -6.9,
+                  2.45,
+                  0
+                ],
+                [
+                  -7.3,
+                  2.45,
+                  0
+                ]
+              ],
               "color": "#00BBCC",
               "opacity": 0.9,
-              "shader": {"shininess": 40, "emissive": "#00262a"},
+              "shader": {
+                "shininess": 40,
+                "emissive": "#00262a"
+              },
               "legendGroup": "visible spectrum"
             },
             {
               "id": "s0_spec_08",
               "type": "polygon",
-              "vertices": [[-6.1,2.45,0],[-5.7,2.45,0],[-5.7,2.8,0],[-6.1,2.8,0]],
+              "vertices": [
+                [
+                  -7.3,
+                  2.45,
+                  0
+                ],
+                [
+                  -6.9,
+                  2.45,
+                  0
+                ],
+                [
+                  -6.9,
+                  2.8,
+                  0
+                ],
+                [
+                  -7.3,
+                  2.8,
+                  0
+                ]
+              ],
               "color": "#0066FF",
               "opacity": 0.9,
-              "shader": {"shininess": 40, "emissive": "#001533"},
+              "shader": {
+                "shininess": 40,
+                "emissive": "#001533"
+              },
               "legendGroup": "visible spectrum"
             },
             {
               "id": "s0_spec_09",
               "type": "polygon",
-              "vertices": [[-6.1,2.8,0],[-5.7,2.8,0],[-5.7,3.15,0],[-6.1,3.15,0]],
+              "vertices": [
+                [
+                  -7.3,
+                  2.8,
+                  0
+                ],
+                [
+                  -6.9,
+                  2.8,
+                  0
+                ],
+                [
+                  -6.9,
+                  3.15,
+                  0
+                ],
+                [
+                  -7.3,
+                  3.15,
+                  0
+                ]
+              ],
               "color": "#4400DD",
               "opacity": 0.9,
-              "shader": {"shininess": 40, "emissive": "#0e002e"},
+              "shader": {
+                "shininess": 40,
+                "emissive": "#0e002e"
+              },
               "legendGroup": "visible spectrum"
             },
             {
               "id": "s0_spec_10",
               "type": "polygon",
-              "vertices": [[-6.1,3.15,0],[-5.7,3.15,0],[-5.7,3.5,0],[-6.1,3.5,0]],
+              "vertices": [
+                [
+                  -7.3,
+                  3.15,
+                  0
+                ],
+                [
+                  -6.9,
+                  3.15,
+                  0
+                ],
+                [
+                  -6.9,
+                  3.5,
+                  0
+                ],
+                [
+                  -7.3,
+                  3.5,
+                  0
+                ]
+              ],
               "color": "#8B00FF",
               "opacity": 0.9,
-              "shader": {"shininess": 40, "emissive": "#1c0033"},
+              "shader": {
+                "shininess": 40,
+                "emissive": "#1c0033"
+              },
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_gradient",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -6.8,
+                  0.0,
+                  0
+                ],
+                [
+                  -6.4,
+                  0.0,
+                  0
+                ],
+                [
+                  -6.4,
+                  3.5,
+                  0
+                ],
+                [
+                  -6.8,
+                  3.5,
+                  0
+                ]
+              ],
+              "opacity": 0.95,
+              "shader": {
+                "type": "basic"
+              },
+              "gradient": {
+                "direction": "y",
+                "stops": [
+                  {
+                    "t": 0.0,
+                    "color": "#990000"
+                  },
+                  {
+                    "t": 0.05,
+                    "color": "#990000"
+                  },
+                  {
+                    "t": 0.1,
+                    "color": "#CC1100"
+                  },
+                  {
+                    "t": 0.15,
+                    "color": "#CC1100"
+                  },
+                  {
+                    "t": 0.2,
+                    "color": "#FF5500"
+                  },
+                  {
+                    "t": 0.25,
+                    "color": "#FF5500"
+                  },
+                  {
+                    "t": 0.3,
+                    "color": "#FFAA00"
+                  },
+                  {
+                    "t": 0.35,
+                    "color": "#FFAA00"
+                  },
+                  {
+                    "t": 0.4,
+                    "color": "#CCDD00"
+                  },
+                  {
+                    "t": 0.45,
+                    "color": "#CCDD00"
+                  },
+                  {
+                    "t": 0.5,
+                    "color": "#22CC44"
+                  },
+                  {
+                    "t": 0.55,
+                    "color": "#22CC44"
+                  },
+                  {
+                    "t": 0.6,
+                    "color": "#00BBCC"
+                  },
+                  {
+                    "t": 0.65,
+                    "color": "#00BBCC"
+                  },
+                  {
+                    "t": 0.7,
+                    "color": "#0066FF"
+                  },
+                  {
+                    "t": 0.75,
+                    "color": "#0066FF"
+                  },
+                  {
+                    "t": 0.8,
+                    "color": "#4400DD"
+                  },
+                  {
+                    "t": 0.85,
+                    "color": "#4400DD"
+                  },
+                  {
+                    "t": 0.9,
+                    "color": "#8B00FF"
+                  },
+                  {
+                    "t": 0.95,
+                    "color": "#8B00FF"
+                  },
+                  {
+                    "t": 1.0,
+                    "color": "#8B00FF"
+                  }
+                ],
+                "segments": 70
+              },
               "legendGroup": "visible spectrum"
             },
             {
               "id": "s0_spec_indicator",
               "type": "animated_line",
-              "points": [["-6.25","3/lambda","0"],["-5.55","3/lambda","0"]],
+              "points": [
+                [
+                  "-7.45",
+                  "3/lambda",
+                  "0.1"
+                ],
+                [
+                  "-6.25",
+                  "3/lambda",
+                  "0.1"
+                ]
+              ],
               "color": "#ffffff",
               "width": 3,
               "label": "current $f$"
@@ -363,7 +890,11 @@
             {
               "id": "s0_spec_dot",
               "type": "animated_point",
-              "positionExpr": ["-5.9", "3/lambda", "0"],
+              "positionExpr": [
+                "-7.1",
+                "3/lambda",
+                "0.1"
+              ],
               "color": "#ffffff",
               "radius": 0.1,
               "legendGroup": "current $f$"
@@ -372,7 +903,11 @@
               "id": "s0_clabel_red",
               "type": "text",
               "text": "red",
-              "position": [-6.55, 0.17, 0],
+              "position": [
+                -7.75,
+                0.17,
+                0
+              ],
               "color": "#CC1100",
               "size": 10,
               "legendGroup": "visible spectrum"
@@ -381,7 +916,11 @@
               "id": "s0_clabel_orange",
               "type": "text",
               "text": "orange",
-              "position": [-6.55, 0.87, 0],
+              "position": [
+                -7.75,
+                0.87,
+                0
+              ],
               "color": "#FF5500",
               "size": 10,
               "legendGroup": "visible spectrum"
@@ -390,7 +929,11 @@
               "id": "s0_clabel_yellow",
               "type": "text",
               "text": "yellow",
-              "position": [-6.55, 1.22, 0],
+              "position": [
+                -7.75,
+                1.22,
+                0
+              ],
               "color": "#FFAA00",
               "size": 10,
               "legendGroup": "visible spectrum"
@@ -399,7 +942,11 @@
               "id": "s0_clabel_green",
               "type": "text",
               "text": "green",
-              "position": [-6.55, 1.92, 0],
+              "position": [
+                -7.75,
+                1.92,
+                0
+              ],
               "color": "#22CC44",
               "size": 10,
               "legendGroup": "visible spectrum"
@@ -408,7 +955,11 @@
               "id": "s0_clabel_cyan",
               "type": "text",
               "text": "cyan",
-              "position": [-6.55, 2.27, 0],
+              "position": [
+                -7.75,
+                2.27,
+                0
+              ],
               "color": "#00BBCC",
               "size": 10,
               "legendGroup": "visible spectrum"
@@ -417,7 +968,11 @@
               "id": "s0_clabel_blue",
               "type": "text",
               "text": "blue",
-              "position": [-6.55, 2.62, 0],
+              "position": [
+                -7.75,
+                2.62,
+                0
+              ],
               "color": "#0066FF",
               "size": 10,
               "legendGroup": "visible spectrum"
@@ -426,27 +981,39 @@
               "id": "s0_clabel_violet",
               "type": "text",
               "text": "violet",
-              "position": [-6.55, 3.32, 0],
+              "position": [
+                -7.75,
+                3.32,
+                0
+              ],
               "color": "#8B00FF",
               "size": 10,
               "legendGroup": "visible spectrum"
             },
             {
               "id": "s0_nm_red",
-              "type": "text",
               "text": "$700\\,\\text{nm}$",
-              "position": [-6.55, -0.25, 0],
+              "position": [
+                -7.75,
+                -0.25,
+                0
+              ],
               "color": "#CC1100",
               "size": 11,
+              "type": "text",
               "legendGroup": "visible spectrum"
             },
             {
               "id": "s0_nm_violet",
-              "type": "text",
               "text": "$380\\,\\text{nm}$",
-              "position": [-6.55, 3.6, 0],
+              "position": [
+                -7.75,
+                3.6,
+                0
+              ],
               "color": "#8B00FF",
               "size": 11,
+              "type": "text",
               "legendGroup": "visible spectrum"
             }
           ],
@@ -464,7 +1031,7 @@
             {
               "id": "s0_wavelength_info",
               "position": "top-left",
-              "content": "**Wavelength → frequency**\n\n$$f=\\frac{c}{\\lambda}$$\n\n| $\\lambda$ (nm) | $f$ (THz) | Color |\n|---|---|---|\n| 380 | 789 | violet |\n| 480 | 625 | cyan |\n| 550 | 545 | green |\n| 600 | 500 | orange |\n| 700 | 428 | red |"
+              "content": "**Wavelength \u2192 frequency**\n\n$$f=\\frac{c}{\\lambda}$$\n\n| $\\lambda$ (nm) | $f$ (THz) | Color |\n|---|---|---|\n| 380 | 789 | violet |\n| 480 | 625 | cyan |\n| 550 | 545 | green |\n| 600 | 500 | orange |\n| 700 | 428 | red |"
             }
           ]
         }
@@ -482,12 +1049,21 @@
             "label": "Basic kinematics",
             "math": "\\htmlClass{hl-dist}{x}=\\htmlClass{hl-speed}{v}\\cdot {}\\htmlClass{hl-time}{t}",
             "highlights": {
-              "dist": {"color": "cyan", "label": "Distance travelled"},
-              "speed": {"color": "orange", "label": "Speed"},
-              "time": {"color": "yellow", "label": "Elapsed time"}
+              "dist": {
+                "color": "cyan",
+                "label": "Distance travelled"
+              },
+              "speed": {
+                "color": "orange",
+                "label": "Speed"
+              },
+              "time": {
+                "color": "yellow",
+                "label": "Elapsed time"
+              }
             },
             "justification": "The fundamental kinematic relation for constant speed.",
-            "explanation": "Distance equals speed times time — the starting point for all wave relations.",
+            "explanation": "Distance equals speed times time \u2014 the starting point for all wave relations.",
             "prompt": "Start from the most basic formula the learner already knows.",
             "sceneStep": 0
           },
@@ -497,9 +1073,18 @@
             "label": "One period of a wave",
             "math": "\\htmlClass{hl-wavelength}{\\lambda}=\\htmlClass{hl-speed}{c}\\cdot {}\\htmlClass{hl-period}{T}",
             "highlights": {
-              "wavelength": {"color": "cyan", "label": "One wavelength (crest-to-crest)"},
-              "speed": {"color": "orange", "label": "Wave speed (fixed at c)"},
-              "period": {"color": "yellow", "label": "Period (time for one cycle)"}
+              "wavelength": {
+                "color": "cyan",
+                "label": "One wavelength (crest-to-crest)"
+              },
+              "speed": {
+                "color": "orange",
+                "label": "Wave speed (fixed at c)"
+              },
+              "period": {
+                "color": "yellow",
+                "label": "Period (time for one cycle)"
+              }
             },
             "justification": "In one period $T$, the wave advances exactly one wavelength $\\lambda$. Set $x=\\lambda$, $v=c$, $t=T$.",
             "explanation": "A crest travels one full wavelength in one period, so $\\lambda = c \\cdot T$.",
@@ -512,10 +1097,22 @@
             "label": "Solve for frequency",
             "math": "\\htmlClass{hl-freq}{f}=\\frac{1}{\\htmlClass{hl-period}{T}}=\\frac{\\htmlClass{hl-speed}{c}}{\\htmlClass{hl-wavelength}{\\lambda}}",
             "highlights": {
-              "freq": {"color": "green", "label": "Frequency (cycles per second)"},
-              "period": {"color": "yellow", "label": "Period"},
-              "speed": {"color": "orange", "label": "Wave speed"},
-              "wavelength": {"color": "cyan", "label": "Wavelength"}
+              "freq": {
+                "color": "green",
+                "label": "Frequency (cycles per second)"
+              },
+              "period": {
+                "color": "yellow",
+                "label": "Period"
+              },
+              "speed": {
+                "color": "orange",
+                "label": "Wave speed"
+              },
+              "wavelength": {
+                "color": "cyan",
+                "label": "Wavelength"
+              }
             },
             "justification": "Frequency is the reciprocal of period: $f=1/T$. Substitute $T=\\lambda/c$.",
             "explanation": "Rearranging gives the wave relation: frequency equals speed divided by wavelength.",
@@ -528,13 +1125,22 @@
             "label": "The wave equation",
             "math": "\\htmlClass{hl-speed}{c}=\\htmlClass{hl-freq}{f}\\,\\htmlClass{hl-wavelength}{\\lambda}",
             "highlights": {
-              "speed": {"color": "orange", "label": "Wave speed"},
-              "freq": {"color": "green", "label": "Frequency"},
-              "wavelength": {"color": "cyan", "label": "Wavelength"}
+              "speed": {
+                "color": "orange",
+                "label": "Wave speed"
+              },
+              "freq": {
+                "color": "green",
+                "label": "Frequency"
+              },
+              "wavelength": {
+                "color": "cyan",
+                "label": "Wavelength"
+              }
             },
             "justification": "Multiply both sides of $f=c/\\lambda$ by $\\lambda$.",
             "explanation": "This is just $x=vt$ applied to one cycle: speed equals frequency times wavelength.",
-            "prompt": "Emphasize that c = f lambda is not a new law — it is x = v t for one wave cycle.",
+            "prompt": "Emphasize that c = f lambda is not a new law \u2014 it is x = v t for one wave cycle.",
             "sceneStep": 1
           }
         ]
@@ -546,25 +1152,58 @@
       "markdown": "# Photon Energy\n\nThe Planck-Einstein relation is\n\n$$E=hf=\\frac{hc}{\\lambda}.$$\n\nA shorter-wavelength blue photon has more energy than a longer-wavelength red photon. But that statement is about **one photon**.\n\nA beam's total delivered energy also depends on photon count:\n\n$$E_{\\text{total}}=Nhf.$$\n\nSo the useful correction is:\n\n- Blue photon: higher energy per photon than red.\n- Many red photons: can carry more total energy than one blue photon.\n- Intensity: mainly photon number flux.\n- Color/frequency: energy per photon.",
       "prompt": "Correct the common misconception directly. Say: one blue photon has more energy than one red photon, but many red photons can carry more total energy. Separate energy per photon from photon count/intensity.",
       "range": [
-        [-5, 5],
-        [-1, 7],
-        [-3, 3]
+        [
+          -5,
+          5
+        ],
+        [
+          -1,
+          7
+        ],
+        [
+          -3,
+          3
+        ]
       ],
       "camera": {
-        "position": [0, 0, 10],
-        "target": [0, 3, 0]
+        "position": [
+          0,
+          0,
+          10
+        ],
+        "target": [
+          0,
+          3,
+          0
+        ]
       },
       "views": [
         {
           "name": "Bars",
-          "position": [0, 0, 10],
-          "target": [0, 3, 0],
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            3,
+            0
+          ],
           "description": "Energy comparison"
         },
         {
           "name": "Iso",
-          "position": [6, 5, 8],
-          "target": [0, 2.5, 0],
+          "position": [
+            6,
+            5,
+            8
+          ],
+          "target": [
+            0,
+            2.5,
+            0
+          ],
           "description": "Perspective view"
         }
       ],
@@ -573,7 +1212,10 @@
           "id": "s1_y_axis",
           "type": "axis",
           "axis": "y",
-          "range": [0, 7],
+          "range": [
+            0,
+            7
+          ],
           "color": "#9aa4ad",
           "width": 1.2,
           "label": "$E$"
@@ -582,8 +1224,15 @@
           "id": "s1_grid",
           "type": "grid",
           "plane": "xy",
-          "range": [-5, 7],
-          "color": [0.25, 0.29, 0.34],
+          "range": [
+            -5,
+            7
+          ],
+          "color": [
+            0.25,
+            0.29,
+            0.34
+          ],
           "opacity": 0.14,
           "divisions": 12
         }
@@ -598,10 +1247,26 @@
               "id": "s1_red_bar",
               "type": "polygon",
               "vertices": [
-                [-3.4, 0, 0],
-                [-2.4, 0, 0],
-                [-2.4, 1, 0],
-                [-3.4, 1, 0]
+                [
+                  -3.4,
+                  0,
+                  0
+                ],
+                [
+                  -2.4,
+                  0,
+                  0
+                ],
+                [
+                  -2.4,
+                  1,
+                  0
+                ],
+                [
+                  -3.4,
+                  1,
+                  0
+                ]
               ],
               "color": "#d84a3a",
               "opacity": 0.75,
@@ -613,10 +1278,26 @@
               "id": "s1_blue_bar",
               "type": "polygon",
               "vertices": [
-                [1.8, 0, 0],
-                [2.8, 0, 0],
-                [2.8, 2.5, 0],
-                [1.8, 2.5, 0]
+                [
+                  1.8,
+                  0,
+                  0
+                ],
+                [
+                  2.8,
+                  0,
+                  0
+                ],
+                [
+                  2.8,
+                  2.5,
+                  0
+                ],
+                [
+                  1.8,
+                  2.5,
+                  0
+                ]
               ],
               "color": "#3c8cff",
               "opacity": 0.75,
@@ -628,7 +1309,11 @@
               "id": "s1_red_label",
               "type": "text",
               "text": "$E_R=hf_R$",
-              "position": [-3.75, 1.35, 0],
+              "position": [
+                -3.75,
+                1.35,
+                0
+              ],
               "color": "#ff9a8f",
               "size": 15
             },
@@ -636,7 +1321,11 @@
               "id": "s1_blue_label",
               "type": "text",
               "text": "$E_B=hf_B$",
-              "position": [1.45, 2.85, 0],
+              "position": [
+                1.45,
+                2.85,
+                0
+              ],
               "color": "#9dccff",
               "size": 15
             }
@@ -673,10 +1362,26 @@
               "id": "s1_red_total",
               "type": "animated_polygon",
               "vertices": [
-                ["-0.6", "0", "0"],
-                ["0.4", "0", "0"],
-                ["0.4", "Nred", "0"],
-                ["-0.6", "Nred", "0"]
+                [
+                  "-0.6",
+                  "0",
+                  "0"
+                ],
+                [
+                  "0.4",
+                  "0",
+                  "0"
+                ],
+                [
+                  "0.4",
+                  "Nred",
+                  "0"
+                ],
+                [
+                  "-0.6",
+                  "Nred",
+                  "0"
+                ]
               ],
               "color": "#d84a3a",
               "opacity": 0.45,
@@ -688,7 +1393,11 @@
               "id": "s1_total_label",
               "type": "text",
               "text": "$E_{total}=Nhf$",
-              "position": [-0.9, 6.35, 0],
+              "position": [
+                -0.9,
+                6.35,
+                0
+              ],
               "color": "#f0b84b",
               "size": 16
             }
@@ -710,7 +1419,11 @@
               "id": "s1_frequency_axis_text",
               "type": "text",
               "text": "frequency: energy per photon",
-              "position": [-4.45, 5.8, 0],
+              "position": [
+                -4.45,
+                5.8,
+                0
+              ],
               "color": "#6ec6ff",
               "size": 15
             },
@@ -718,7 +1431,11 @@
               "id": "s1_intensity_axis_text",
               "type": "text",
               "text": "intensity: photon arrival rate",
-              "position": [-4.45, 5.35, 0],
+              "position": [
+                -4.45,
+                5.35,
+                0
+              ],
               "color": "#7bd389",
               "size": 15
             }
@@ -745,9 +1462,18 @@
             "label": "Single photon energy",
             "math": "\\htmlClass{hl-energy}{E}=\\htmlClass{hl-planck}{h}\\htmlClass{hl-freq}{f}",
             "highlights": {
-              "energy": {"color": "orange", "label": "Energy of one photon"},
-              "planck": {"color": "yellow", "label": "Planck constant"},
-              "freq": {"color": "cyan", "label": "Frequency"}
+              "energy": {
+                "color": "orange",
+                "label": "Energy of one photon"
+              },
+              "planck": {
+                "color": "yellow",
+                "label": "Planck constant"
+              },
+              "freq": {
+                "color": "cyan",
+                "label": "Frequency"
+              }
             },
             "justification": "Planck-Einstein relation.",
             "explanation": "Each photon carries energy proportional to its frequency.",
@@ -759,9 +1485,18 @@
             "label": "N identical photons",
             "math": "\\htmlClass{hl-total}{E_{total}}=\\htmlClass{hl-count}{N}\\cdot {}\\htmlClass{hl-energy}{hf}",
             "highlights": {
-              "total": {"color": "green", "label": "Total beam energy"},
-              "count": {"color": "magenta", "label": "Photon count"},
-              "energy": {"color": "orange", "label": "Energy per photon"}
+              "total": {
+                "color": "green",
+                "label": "Total beam energy"
+              },
+              "count": {
+                "color": "magenta",
+                "label": "Photon count"
+              },
+              "energy": {
+                "color": "orange",
+                "label": "Energy per photon"
+              }
             },
             "justification": "Photon energies add independently.",
             "explanation": "Total energy scales linearly with photon count.",
@@ -785,25 +1520,58 @@
       "markdown": "# Continuous vs Discrete Wavelengths\n\nFree photons in open space can have a continuous range of wavelengths. Discrete spectra appear when a system is constrained.\n\nThe simplest analogy is a standing wave in a box of length $L$. If the wave must vanish at both walls, only waves that fit are allowed:\n\n$$L=n\\frac{\\lambda}{2},\\qquad n=1,2,3,\\ldots$$\n\nFor a nonrelativistic particle in a box, the energy levels scale as\n\n$$E_n=\\frac{n^2h^2}{8mL^2}.$$\n\nSo a useful correction is: the allowed wavelengths scale like $1/n$, but the particle-in-a-box energies scale like $n^2$, not like $n$.\n\nAtoms are more complicated than a literal box, but the same structural idea survives: boundary conditions and allowed quantum states produce discrete emission lines.",
       "prompt": "Teach quantization as a boundary-condition effect. Make clear that free photons are not forced into a discrete wavelength ladder; confinement or bound-state structure creates discreteness.",
       "range": [
-        [-0.5, 6.5],
-        [-2.5, 3.5],
-        [-2, 2]
+        [
+          -0.5,
+          6.5
+        ],
+        [
+          -2.5,
+          3.5
+        ],
+        [
+          -2,
+          2
+        ]
       ],
       "camera": {
-        "position": [3, 0.4, 9],
-        "target": [3, 0.2, 0]
+        "position": [
+          3,
+          0.4,
+          9
+        ],
+        "target": [
+          3,
+          0.2,
+          0
+        ]
       },
       "views": [
         {
           "name": "Box",
-          "position": [3, 0.4, 9],
-          "target": [3, 0.2, 0],
+          "position": [
+            3,
+            0.4,
+            9
+          ],
+          "target": [
+            3,
+            0.2,
+            0
+          ],
           "description": "Standing-wave view"
         },
         {
           "name": "Energy",
-          "position": [6, 4, 8],
-          "target": [3, 1, 0],
+          "position": [
+            6,
+            4,
+            8
+          ],
+          "target": [
+            3,
+            1,
+            0
+          ],
           "description": "Energy-level view"
         }
       ],
@@ -812,7 +1580,10 @@
           "id": "s2_box_axis",
           "type": "axis",
           "axis": "x",
-          "range": [0, 6],
+          "range": [
+            0,
+            6
+          ],
           "color": "#d04f4f",
           "width": 1.5,
           "label": "$x$"
@@ -821,8 +1592,15 @@
           "id": "s2_grid",
           "type": "grid",
           "plane": "xy",
-          "range": [-1, 6],
-          "color": [0.25, 0.29, 0.34],
+          "range": [
+            -1,
+            6
+          ],
+          "color": [
+            0.25,
+            0.29,
+            0.34
+          ],
           "opacity": 0.14,
           "divisions": 12
         },
@@ -830,8 +1608,16 @@
           "id": "s2_left_wall",
           "type": "line",
           "points": [
-            [0, -2, 0],
-            [0, 2, 0]
+            [
+              0,
+              -2,
+              0
+            ],
+            [
+              0,
+              2,
+              0
+            ]
           ],
           "color": "#d8dee9",
           "width": 5,
@@ -841,8 +1627,16 @@
           "id": "s2_right_wall",
           "type": "animated_line",
           "points": [
-            ["L", "-2", "0"],
-            ["L", "2", "0"]
+            [
+              "L",
+              "-2",
+              "0"
+            ],
+            [
+              "L",
+              "2",
+              "0"
+            ]
           ],
           "color": "#d8dee9",
           "width": 5,
@@ -859,8 +1653,16 @@
               "id": "s2_spectrum_line",
               "type": "line",
               "points": [
-                [0.4, 2.6, 0],
-                [5.6, 2.6, 0]
+                [
+                  0.4,
+                  2.6,
+                  0
+                ],
+                [
+                  5.6,
+                  2.6,
+                  0
+                ]
               ],
               "color": "#8bd3dd",
               "width": 8,
@@ -870,7 +1672,11 @@
               "id": "s2_spectrum_label",
               "type": "text",
               "text": "free photons: continuum",
-              "position": [1.55, 3.0, 0],
+              "position": [
+                1.55,
+                3.0,
+                0
+              ],
               "color": "#8bd3dd",
               "size": 15
             }
@@ -917,7 +1723,10 @@
               "x": "t",
               "y": "1.25*sin(n*pi*t/L)",
               "z": "0",
-              "range": [0, 6],
+              "range": [
+                0,
+                6
+              ],
               "samples": 240,
               "color": "#f0b84b",
               "width": 4,
@@ -927,7 +1736,11 @@
               "id": "s2_fit_text",
               "type": "text",
               "text": "$L=n\\lambda/2$",
-              "position": [0.5, -2.25, 0],
+              "position": [
+                0.5,
+                -2.25,
+                0
+              ],
               "color": "#f0b84b",
               "size": 16
             }
@@ -949,8 +1762,16 @@
               "id": "s2_e1",
               "type": "line",
               "points": [
-                [4.2, 0.25, 0],
-                [5.7, 0.25, 0]
+                [
+                  4.2,
+                  0.25,
+                  0
+                ],
+                [
+                  5.7,
+                  0.25,
+                  0
+                ]
               ],
               "color": "#7bd389",
               "width": 3,
@@ -960,8 +1781,16 @@
               "id": "s2_e2",
               "type": "line",
               "points": [
-                [4.2, 1.0, 0],
-                [5.7, 1.0, 0]
+                [
+                  4.2,
+                  1.0,
+                  0
+                ],
+                [
+                  5.7,
+                  1.0,
+                  0
+                ]
               ],
               "color": "#7bd389",
               "width": 3,
@@ -971,8 +1800,16 @@
               "id": "s2_e3",
               "type": "line",
               "points": [
-                [4.2, 2.25, 0],
-                [5.7, 2.25, 0]
+                [
+                  4.2,
+                  2.25,
+                  0
+                ],
+                [
+                  5.7,
+                  2.25,
+                  0
+                ]
               ],
               "color": "#7bd389",
               "width": 3,
@@ -995,8 +1832,16 @@
             {
               "id": "s2_transition",
               "type": "vector",
-              "from": [5.95, 2.25, 0],
-              "to": [5.95, 0.25, 0],
+              "from": [
+                5.95,
+                2.25,
+                0
+              ],
+              "to": [
+                5.95,
+                0.25,
+                0
+              ],
               "color": "#ff7b72",
               "width": 4,
               "label": "$E_{photon}$"
@@ -1007,7 +1852,10 @@
               "x": "0.35*t + 0.4",
               "y": "-1.15 + 0.25*sin(2*pi*t)",
               "z": "0",
-              "range": [0, 10],
+              "range": [
+                0,
+                10
+              ],
               "samples": 160,
               "color": "#6ec6ff",
               "width": 3,
@@ -1030,26 +1878,63 @@
       "markdown": "# Spreading vs Stretching\n\nThis is the most important distinction in the lesson.\n\n## Spreading\n\nA beam or wave packet expands over a larger area. The same photon energy is distributed across a larger cross-section, so intensity drops. Energy per photon stays the same.\n\n## Stretching\n\nThe wavelength itself grows. Since\n\n$$E=\\frac{hc}{\\lambda},$$\n\nstretching the wavelength lowers the energy per photon.\n\nRedshift is a stretching effect. Doppler redshift comes from relative motion. Gravitational redshift comes from climbing out of a gravitational field. Cosmological redshift is described by\n\n$$\\lambda_{obs}=\\lambda_{em}(1+z).$$\n\nIn expanding spacetime, local conservation laws still hold, but a single global total energy for the universe is not generally well-defined.",
       "prompt": "Make the distinction crisp: spreading changes intensity, stretching changes photon energy. For cosmological redshift, say global total energy is not generally well-defined in GR rather than saying energy disappears.",
       "range": [
-        [-5, 5],
-        [-5, 5],
-        [-5, 5]
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ]
       ],
-      "scale": [1, 1, 1],
+      "scale": [
+        1,
+        1,
+        1
+      ],
       "camera": {
-        "position": [0, 0, 10],
-        "target": [0, 0.5, 0]
+        "position": [
+          0,
+          0,
+          10
+        ],
+        "target": [
+          0,
+          0.5,
+          0
+        ]
       },
       "views": [
         {
           "name": "Face On",
-          "position": [0, 0, 10],
-          "target": [0, 0.5, 0],
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            0.5,
+            0
+          ],
           "description": "Compare spreading and stretching"
         },
         {
           "name": "Iso",
-          "position": [5, 4, 8],
-          "target": [0, 0.5, 0],
+          "position": [
+            5,
+            4,
+            8
+          ],
+          "target": [
+            0,
+            0.5,
+            0
+          ],
           "description": "Perspective view"
         }
       ],
@@ -1058,8 +1943,15 @@
           "id": "s3_grid",
           "type": "grid",
           "plane": "xy",
-          "range": [-5, 5],
-          "color": [0.25, 0.29, 0.34],
+          "range": [
+            -5,
+            5
+          ],
+          "color": [
+            0.25,
+            0.29,
+            0.34
+          ],
           "opacity": 0.14,
           "divisions": 10
         },
@@ -1067,8 +1959,16 @@
           "id": "s3_midline",
           "type": "line",
           "points": [
-            [0, -3, 0],
-            [0, 4, 0]
+            [
+              0,
+              -3,
+              0
+            ],
+            [
+              0,
+              4,
+              0
+            ]
           ],
           "color": "#4b5563",
           "width": 2
@@ -1096,7 +1996,10 @@
               "x": "-2.5 + R*cos(t)",
               "y": "0.2 + R*sin(t)",
               "z": "0",
-              "range": [0, 6.283185307179586],
+              "range": [
+                0,
+                6.283185307179586
+              ],
               "samples": 160,
               "color": "#7bd389",
               "width": 3,
@@ -1105,7 +2008,11 @@
             {
               "id": "s3_spread_center",
               "type": "animated_point",
-              "expr": ["-2.5", "0.2", "0"],
+              "expr": [
+                "-2.5",
+                "0.2",
+                "0"
+              ],
               "color": "#7bd389",
               "size": 10,
               "label": "$E=hf$"
@@ -1114,7 +2021,11 @@
               "id": "s3_spread_text",
               "type": "text",
               "text": "spreading: dimmer",
-              "position": [-4.6, 3.25, 0],
+              "position": [
+                -4.6,
+                3.25,
+                0
+              ],
               "color": "#7bd389",
               "size": 16
             }
@@ -1148,7 +2059,10 @@
               "x": "1.1 + 0.7*t",
               "y": "0.2 + 0.55*sin(2*pi*t/(1+zshift))",
               "z": "0",
-              "range": [0, 6],
+              "range": [
+                0,
+                6
+              ],
               "samples": 200,
               "color": "#ff7b72",
               "width": 4,
@@ -1158,8 +2072,16 @@
               "id": "s3_energy_bar_bg",
               "type": "line",
               "points": [
-                [4.25, -2.2, 0],
-                [4.25, 2.2, 0]
+                [
+                  4.25,
+                  -2.2,
+                  0
+                ],
+                [
+                  4.25,
+                  2.2,
+                  0
+                ]
               ],
               "color": "#3b4652",
               "width": 9,
@@ -1169,8 +2091,16 @@
               "id": "s3_energy_bar",
               "type": "animated_line",
               "points": [
-                ["4.25", "-2.2", "0"],
-                ["4.25", "-2.2 + 4.4/(1+zshift)", "0"]
+                [
+                  "4.25",
+                  "-2.2",
+                  "0"
+                ],
+                [
+                  "4.25",
+                  "-2.2 + 4.4/(1+zshift)",
+                  "0"
+                ]
               ],
               "color": "#f0b84b",
               "width": 9,
@@ -1194,7 +2124,11 @@
               "id": "s3_gr_note",
               "type": "text",
               "text": "local conservation: yes",
-              "position": [-4.55, -2.15, 0],
+              "position": [
+                -4.55,
+                -2.15,
+                0
+              ],
               "color": "#7bd389",
               "size": 15
             },
@@ -1202,7 +2136,11 @@
               "id": "s3_global_note",
               "type": "text",
               "text": "global total energy: not generally defined",
-              "position": [-4.55, -2.55, 0],
+              "position": [
+                -4.55,
+                -2.55,
+                0
+              ],
               "color": "#f0b84b",
               "size": 15
             }
@@ -1229,9 +2167,18 @@
             "label": "Redshift relation",
             "math": "\\htmlClass{hl-obs}{\\lambda_{obs}}=\\htmlClass{hl-em}{\\lambda_{em}}(1+\\htmlClass{hl-z}{z})",
             "highlights": {
-              "obs": {"color": "orange", "label": "Observed wavelength"},
-              "em": {"color": "cyan", "label": "Emitted wavelength"},
-              "z": {"color": "yellow", "label": "Redshift parameter"}
+              "obs": {
+                "color": "orange",
+                "label": "Observed wavelength"
+              },
+              "em": {
+                "color": "cyan",
+                "label": "Emitted wavelength"
+              },
+              "z": {
+                "color": "yellow",
+                "label": "Redshift parameter"
+              }
             },
             "justification": "Definition of cosmological redshift.",
             "explanation": "Space expansion stretches the wavelength by a factor $(1+z)$.",
@@ -1243,10 +2190,22 @@
             "label": "Substitute into $E=hc/\\lambda$",
             "math": "\\htmlClass{hl-eobs}{E_{obs}}=\\frac{hc}{\\htmlClass{hl-obs}{\\lambda_{obs}}}=\\frac{hc}{\\htmlClass{hl-em}{\\lambda_{em}}(1+\\htmlClass{hl-z}{z})}",
             "highlights": {
-              "eobs": {"color": "green", "label": "Observed energy"},
-              "obs": {"color": "orange", "label": "Observed wavelength"},
-              "em": {"color": "cyan", "label": "Emitted wavelength"},
-              "z": {"color": "yellow", "label": "Redshift parameter"}
+              "eobs": {
+                "color": "green",
+                "label": "Observed energy"
+              },
+              "obs": {
+                "color": "orange",
+                "label": "Observed wavelength"
+              },
+              "em": {
+                "color": "cyan",
+                "label": "Emitted wavelength"
+              },
+              "z": {
+                "color": "yellow",
+                "label": "Redshift parameter"
+              }
             },
             "justification": "Replace $\\lambda_{obs}$ with the redshift expression.",
             "explanation": "The longer wavelength means less energy per photon.",
@@ -1258,9 +2217,18 @@
             "label": "Redshifted energy",
             "math": "\\htmlClass{hl-eobs}{E_{obs}}=\\frac{\\htmlClass{hl-eem}{E_{em}}}{1+\\htmlClass{hl-z}{z}}",
             "highlights": {
-              "eobs": {"color": "green", "label": "Observed energy"},
-              "eem": {"color": "cyan", "label": "Emitted energy"},
-              "z": {"color": "yellow", "label": "Redshift parameter"}
+              "eobs": {
+                "color": "green",
+                "label": "Observed energy"
+              },
+              "eem": {
+                "color": "cyan",
+                "label": "Emitted energy"
+              },
+              "z": {
+                "color": "yellow",
+                "label": "Redshift parameter"
+              }
             },
             "justification": "Recognize $hc/\\lambda_{em}=E_{em}$.",
             "explanation": "Stretching lowers energy per photon by exactly the redshift factor.",
@@ -1275,26 +2243,63 @@
       "markdown": "# What Is a Photon?\n\nA photon is a quantized excitation of the electromagnetic field. It is not a tiny classical ball and not a classical water wave.\n\nThe useful synthesis is a wave packet:\n\n$$\\Psi(x,t)=\\int A(k)e^{i(kx-\\omega t)}\\,dk.$$\n\nBefore detection, the quantum state can be spatially spread out. Detection is localized and all-or-nothing: a detector either records an interaction or it does not.\n\nA careful wording is:\n\n- Before measurement: spread-out quantum state or probability amplitude.\n- At measurement: localized detection event.\n- Measurement updates the quantum state description.\n\nThis avoids the misleading picture of a physical classical wave instantly collapsing across the universe.",
       "prompt": "Use cautious quantum language. Say the photon is a quantized field excitation, described by a state that can be spatially spread out, with localized detection. Avoid implying a classical physical wave literally collapses.",
       "range": [
-        [-6, 6],
-        [-6, 6],
-        [-6, 6]
+        [
+          -6,
+          6
+        ],
+        [
+          -6,
+          6
+        ],
+        [
+          -6,
+          6
+        ]
       ],
-      "scale": [1, 1, 1],
+      "scale": [
+        1,
+        1,
+        1
+      ],
       "camera": {
-        "position": [0, 0, 9],
-        "target": [0, 0, 0]
+        "position": [
+          0,
+          0,
+          9
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
       },
       "views": [
         {
           "name": "Packet",
-          "position": [0, 0, 9],
-          "target": [0, 0, 0],
+          "position": [
+            0,
+            0,
+            9
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
           "description": "Wave-packet view"
         },
         {
           "name": "Iso",
-          "position": [6, 4, 7],
-          "target": [0, 0, 0],
+          "position": [
+            6,
+            4,
+            7
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
           "description": "Perspective view"
         }
       ],
@@ -1303,7 +2308,10 @@
           "id": "s4_x_axis",
           "type": "axis",
           "axis": "x",
-          "range": [-6, 6],
+          "range": [
+            -6,
+            6
+          ],
           "color": "#d04f4f",
           "width": 1.2,
           "label": "$x$"
@@ -1312,8 +2320,15 @@
           "id": "s4_grid",
           "type": "grid",
           "plane": "xy",
-          "range": [-6, 6],
-          "color": [0.25, 0.29, 0.34],
+          "range": [
+            -6,
+            6
+          ],
+          "color": [
+            0.25,
+            0.29,
+            0.34
+          ],
           "opacity": 0.14,
           "divisions": 12
         }
@@ -1340,7 +2355,10 @@
               "x": "t",
               "y": "exp(-(t*t)/(2*sigma*sigma))*cos(7*t)",
               "z": "0",
-              "range": [-6, 6],
+              "range": [
+                -6,
+                6
+              ],
               "samples": 320,
               "color": "#6ec6ff",
               "width": 4,
@@ -1352,7 +2370,10 @@
               "x": "t",
               "y": "exp(-(t*t)/(2*sigma*sigma))",
               "z": "0",
-              "range": [-6, 6],
+              "range": [
+                -6,
+                6
+              ],
               "samples": 240,
               "color": "#f0b84b",
               "width": 2,
@@ -1365,7 +2386,10 @@
               "x": "t",
               "y": "-exp(-(t*t)/(2*sigma*sigma))",
               "z": "0",
-              "range": [-6, 6],
+              "range": [
+                -6,
+                6
+              ],
               "samples": 240,
               "color": "#f0b84b",
               "width": 2,
@@ -1390,8 +2414,16 @@
               "id": "s4_detector",
               "type": "line",
               "points": [
-                [2.6, -2.1, 0],
-                [2.6, 2.1, 0]
+                [
+                  2.6,
+                  -2.1,
+                  0
+                ],
+                [
+                  2.6,
+                  2.1,
+                  0
+                ]
               ],
               "color": "#ff7b72",
               "width": 5,
@@ -1400,7 +2432,11 @@
             {
               "id": "s4_click",
               "type": "point",
-              "position": [2.6, 0.25, 0],
+              "position": [
+                2.6,
+                0.25,
+                0
+              ],
               "color": "#ff7b72",
               "size": 18,
               "label": "click"
@@ -1409,7 +2445,11 @@
               "id": "s4_detection_text",
               "type": "text",
               "text": "localized interaction",
-              "position": [2.85, 1.85, 0],
+              "position": [
+                2.85,
+                1.85,
+                0
+              ],
               "color": "#ff7b72",
               "size": 15
             }
@@ -1436,7 +2476,11 @@
               "id": "s4_summary_1",
               "type": "text",
               "text": "quantized excitation",
-              "position": [-5.2, 2.2, 0],
+              "position": [
+                -5.2,
+                2.2,
+                0
+              ],
               "color": "#6ec6ff",
               "size": 16
             },
@@ -1444,7 +2488,11 @@
               "id": "s4_summary_2",
               "type": "text",
               "text": "continuous wavelength in free space",
-              "position": [-5.2, 1.75, 0],
+              "position": [
+                -5.2,
+                1.75,
+                0
+              ],
               "color": "#8bd3dd",
               "size": 16
             },
@@ -1452,7 +2500,11 @@
               "id": "s4_summary_3",
               "type": "text",
               "text": "discrete spectra from constraints",
-              "position": [-5.2, 1.3, 0],
+              "position": [
+                -5.2,
+                1.3,
+                0
+              ],
               "color": "#7bd389",
               "size": 16
             },
@@ -1460,7 +2512,11 @@
               "id": "s4_summary_4",
               "type": "text",
               "text": "$E=hf=hc/\\lambda$",
-              "position": [-5.2, 0.85, 0],
+              "position": [
+                -5.2,
+                0.85,
+                0
+              ],
               "color": "#f0b84b",
               "size": 18
             }
@@ -1481,26 +2537,63 @@
       "markdown": "# Black Holes and the Limits of the Picture\n\nNear a black hole, intuition based on ordinary wave packets becomes unreliable.\n\nCorrect statements:\n\n- Falling photons can blueshift for local observers.\n- Photon energy contributes to the black hole's mass-energy when absorbed.\n- Photons do not become little classical balls compressed to a mathematical point.\n- Singularities are not fully described by established quantum theory and general relativity together.\n\nThe honest ending is that black holes point toward quantum gravity, which remains unsolved.",
       "prompt": "Use this as a careful epilogue. State what is known without pretending the lesson solves quantum gravity. Correct the idea that photons literally collapse into a point.",
       "range": [
-        [-5, 5],
-        [-5, 5],
-        [-5, 5]
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ]
       ],
-      "scale": [1, 1, 1],
+      "scale": [
+        1,
+        1,
+        1
+      ],
       "camera": {
-        "position": [0, 2, 9],
-        "target": [0, 0, 0]
+        "position": [
+          0,
+          2,
+          9
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
       },
       "views": [
         {
           "name": "Face On",
-          "position": [0, 2, 9],
-          "target": [0, 0, 0],
+          "position": [
+            0,
+            2,
+            9
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
           "description": "Black-hole sketch"
         },
         {
           "name": "Iso",
-          "position": [5, 4, 8],
-          "target": [0, 0, 0],
+          "position": [
+            5,
+            4,
+            8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
           "description": "Perspective view"
         }
       ],
@@ -1509,8 +2602,15 @@
           "id": "s5_grid",
           "type": "grid",
           "plane": "xy",
-          "range": [-5, 5],
-          "color": [0.18, 0.2, 0.25],
+          "range": [
+            -5,
+            5
+          ],
+          "color": [
+            0.18,
+            0.2,
+            0.25
+          ],
           "opacity": 0.14,
           "divisions": 10
         },
@@ -1520,7 +2620,10 @@
           "x": "1.3*cos(t)",
           "y": "1.3*sin(t)",
           "z": "0",
-          "range": [0, 6.283185307179586],
+          "range": [
+            0,
+            6.283185307179586
+          ],
           "samples": 180,
           "color": "#9aa4ad",
           "width": 4,
@@ -1529,7 +2632,11 @@
         {
           "id": "s5_dark_core",
           "type": "sphere",
-          "center": [0, 0, 0],
+          "center": [
+            0,
+            0,
+            0
+          ],
           "radius": 1.2,
           "color": "#050507",
           "opacity": 0.92,
@@ -1558,7 +2665,10 @@
               "x": "-4 + 4*t",
               "y": "2.4 - 2.1*t + 0.25*sin((4+grav*4)*pi*t)",
               "z": "0",
-              "range": [0, 1],
+              "range": [
+                0,
+                1
+              ],
               "samples": 200,
               "color": "#6ec6ff",
               "width": 4,
@@ -1568,7 +2678,11 @@
               "id": "s5_blue_note",
               "type": "text",
               "text": "falling: local blueshift",
-              "position": [-4.55, 3.15, 0],
+              "position": [
+                -4.55,
+                3.15,
+                0
+              ],
               "color": "#6ec6ff",
               "size": 16
             }
@@ -1592,7 +2706,10 @@
               "x": "1.55*cos(t)",
               "y": "1.55*sin(t)",
               "z": "0",
-              "range": [0, 6.283185307179586],
+              "range": [
+                0,
+                6.283185307179586
+              ],
               "samples": 180,
               "color": "#f0b84b",
               "width": 2,
@@ -1602,7 +2719,11 @@
               "id": "s5_energy_note",
               "type": "text",
               "text": "$\\Delta M=E/c^2$",
-              "position": [1.9, -1.9, 0],
+              "position": [
+                1.9,
+                -1.9,
+                0
+              ],
               "color": "#f0b84b",
               "size": 17
             }
@@ -1624,7 +2745,11 @@
               "id": "s5_limit_text",
               "type": "text",
               "text": "singularity physics: unresolved",
-              "position": [-4.45, -3.05, 0],
+              "position": [
+                -4.45,
+                -3.05,
+                0
+              ],
               "color": "#ff7b72",
               "size": 16
             },
@@ -1632,7 +2757,11 @@
               "id": "s5_qg_text",
               "type": "text",
               "text": "requires quantum gravity",
-              "position": [-4.45, -3.5, 0],
+              "position": [
+                -4.45,
+                -3.5,
+                0
+              ],
               "color": "#f0b84b",
               "size": 16
             }

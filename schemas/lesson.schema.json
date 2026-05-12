@@ -462,6 +462,45 @@
           "$ref": "#/$defs/regularPolygon",
           "description": "Regular polygon configuration. When present, generates vertices automatically instead of using explicit vertices array."
         },
+        "gradient": {
+          "type": "object",
+          "description": "Gradient fill for polygons. Interpolates vertex colors along an axis. Supports simple from/to or multi-stop gradients.",
+          "properties": {
+            "direction": {
+              "type": "string",
+              "enum": ["x", "y", "z"],
+              "default": "y",
+              "description": "Axis along which to interpolate colors. Default: 'y'."
+            },
+            "from": {
+              "$ref": "#/$defs/color",
+              "description": "Start color (t=0) for simple two-color gradient."
+            },
+            "to": {
+              "$ref": "#/$defs/color",
+              "description": "End color (t=1) for simple two-color gradient."
+            },
+            "stops": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "t": { "type": "number", "minimum": 0, "maximum": 1, "description": "Position along the gradient (0=start, 1=end)." },
+                  "color": { "$ref": "#/$defs/color", "description": "Color at this stop." }
+                },
+                "required": ["t", "color"]
+              },
+              "description": "Array of color stops for multi-color gradients. Each stop has a position t (0-1) and a color."
+            },
+            "segments": {
+              "type": "integer",
+              "minimum": 2,
+              "default": 64,
+              "description": "Number of tessellation segments for smooth gradient rendering. Default: 64."
+            }
+          },
+          "additionalProperties": false
+        },
         "outlineColor": {
           "$ref": "#/$defs/color",
           "description": "Outline color for polygons. Defaults to the element color."

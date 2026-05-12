@@ -51,6 +51,126 @@ function _computePlaneUVs(wVerts, normal) {
     return proj.map(([u, v]) => [(u - minU) / scale, (v - minV) / scale]);
 }
 
+// ── Gradient support: per-vertex color interpolation along an axis ──
+
+function _buildGradientColorFn(gradient) {
+    if (gradient.stops && gradient.stops.length > 0) {
+        const stops = gradient.stops.slice().sort((a, b) => a.t - b.t);
+        const parsed = stops.map(s => ({ t: s.t, c: parseColor(s.color) }));
+        return (t) => {
+            if (t <= parsed[0].t) return parsed[0].c.slice();
+            if (t >= parsed[parsed.length - 1].t) return parsed[parsed.length - 1].c.slice();
+            for (let i = 0; i < parsed.length - 1; i++) {
+                if (t <= parsed[i + 1].t) {
+                    const f = (t - parsed[i].t) / (parsed[i + 1].t - parsed[i].t);
+                    return [
+                        parsed[i].c[0] + f * (parsed[i + 1].c[0] - parsed[i].c[0]),
+                        parsed[i].c[1] + f * (parsed[i + 1].c[1] - parsed[i].c[1]),
+                        parsed[i].c[2] + f * (parsed[i + 1].c[2] - parsed[i].c[2]),
+                    ];
+                }
+            }
+            return parsed[parsed.length - 1].c.slice();
+        };
+    }
+    const c0 = parseColor(gradient.from || '#ff0000');
+    const c1 = parseColor(gradient.to || '#0000ff');
+    return (t) => [
+        c0[0] + t * (c1[0] - c0[0]),
+        c0[1] + t * (c1[1] - c0[1]),
+        c0[2] + t * (c1[2] - c0[2]),
+    ];
+}
+
+function _buildGradientSlab(wVerts, gradient, halfThick, normal) {
+    const dir = gradient.direction || 'y';
+    const axis = dir === 'x' ? 0 : dir === 'z' ? 2 : 1;
+    const segments = gradient.segments || 64;
+    const getColor = _buildGradientColorFn(gradient);
+
+    const tValues = wVerts.map(v => v[axis]);
+    const tMin = Math.min(...tValues);
+    const tMax = Math.max(...tValues);
+    const tRange = tMax - tMin || 1;
+
+    const n = wVerts.length;
+    const edges = [];
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        edges.push({
+            w0: wVerts[i], w1: wVerts[j],
+            t0: (tValues[i] - tMin) / tRange,
+            t1: (tValues[j] - tMin) / tRange,
+        });
+    }
+
+    function sliceAt(t) {
+        const pts = [];
+        for (const e of edges) {
+            const lo = Math.min(e.t0, e.t1), hi = Math.max(e.t0, e.t1);
+            if (t < lo - 1e-9 || t > hi + 1e-9) continue;
+            const dt = e.t1 - e.t0;
+            if (Math.abs(dt) < 1e-9) {
+                pts.push(e.w0.slice(), e.w1.slice());
+            } else {
+                const f = (t - e.t0) / dt;
+                pts.push([
+                    e.w0[0] + f * (e.w1[0] - e.w0[0]),
+                    e.w0[1] + f * (e.w1[1] - e.w0[1]),
+                    e.w0[2] + f * (e.w1[2] - e.w0[2]),
+                ]);
+            }
+        }
+        const unique = [];
+        for (const p of pts) {
+            if (!unique.some(u =>
+                Math.abs(u[0]-p[0]) < 1e-9 &&
+                Math.abs(u[1]-p[1]) < 1e-9 &&
+                Math.abs(u[2]-p[2]) < 1e-9))
+                unique.push(p);
+        }
+        const sa = axis === 0 ? 1 : 0;
+        unique.sort((a, b) => a[sa] - b[sa]);
+        return unique;
+    }
+
+    const positions = [];
+    const vertColors = [];
+    const off = (v, s) => [
+        v[0] + normal.x * halfThick * s,
+        v[1] + normal.y * halfThick * s,
+        v[2] + normal.z * halfThick * s,
+    ];
+
+    for (let s = 0; s < segments; s++) {
+        const tBot = s / segments;
+        const tTop = (s + 1) / segments;
+        const bp = sliceAt(tBot);
+        const tp = sliceAt(tTop);
+        if (bp.length < 2 || tp.length < 2) continue;
+
+        const cB = getColor(tBot);
+        const cT = getColor(tTop);
+        const bL = bp[0], bR = bp[bp.length - 1];
+        const tL = tp[0], tR = tp[tp.length - 1];
+
+        for (const sign of [1, -1]) {
+            const o = (v) => off(v, sign);
+            if (sign === 1) {
+                positions.push(...o(bL), ...o(bR), ...o(tR));
+                positions.push(...o(bL), ...o(tR), ...o(tL));
+            } else {
+                positions.push(...o(bL), ...o(tR), ...o(bR));
+                positions.push(...o(bL), ...o(tL), ...o(tR));
+            }
+            vertColors.push(...cB, ...cB, ...cT);
+            vertColors.push(...cB, ...cT, ...cT);
+        }
+    }
+
+    return { positions, colors: vertColors };
+}
+
 export function renderPolygon(el, view) {
     const color = parseColor(el.color || '#aa66ff');
     const opacity = el.opacity !== undefined ? el.opacity : 0.5;
@@ -118,18 +238,27 @@ export function renderPolygon(el, view) {
     }
 
     const geom = new THREE.BufferGeometry();
-    const { positions, uvData } = buildSlabGeometry(baseHalf * state.displayParams.planeScale);
-    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    if (uvData) geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvData, 2));
+    const hasGradient = !!el.gradient;
+    if (hasGradient) {
+        const { positions: gPos, colors: gCol } = _buildGradientSlab(
+            wVerts, el.gradient, baseHalf * state.displayParams.planeScale, normal);
+        geom.setAttribute('position', new THREE.Float32BufferAttribute(gPos, 3));
+        geom.setAttribute('color', new THREE.Float32BufferAttribute(gCol, 3));
+    } else {
+        const { positions, uvData } = buildSlabGeometry(baseHalf * state.displayParams.planeScale);
+        geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        if (uvData) geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvData, 2));
+    }
     geom.computeVertexNormals();
 
     const baseMatOpts = {
-        color: new THREE.Color(...color),
+        color: hasGradient ? new THREE.Color(1, 1, 1) : new THREE.Color(...color),
         opacity: state.displayParams.planeOpacity,
         transparent: true,
         side: THREE.DoubleSide,
         depthWrite: false,
     };
+    if (hasGradient) baseMatOpts.vertexColors = true;
 
     let mat;
     if (sh.type === 'basic') {
@@ -159,7 +288,9 @@ export function renderPolygon(el, view) {
     mesh.userData.baseHalf = baseHalf;
     mesh.userData.wVerts = wVerts;
     mesh.userData.normal = normal.clone();
-    mesh.userData.buildSlab = (halfThick) => buildSlabGeometry(halfThick).positions;
+    mesh.userData.buildSlab = hasGradient
+        ? (halfThick) => _buildGradientSlab(wVerts, el.gradient, halfThick, normal).positions
+        : (halfThick) => buildSlabGeometry(halfThick).positions;
     const _serial = el.renderOrder !== undefined ? el.renderOrder : state._planeMeshSerial++;
     mesh.renderOrder = _serial;
     mesh.position.z = el.depthZ !== undefined ? el.depthZ : _serial * 0.0002;
