@@ -236,8 +236,26 @@
         },
         {
           "title": "The crisis of the infinite",
-          "description": "Classical theory could treat wavelengths continuously, but blackbody radiation forced a deeper idea: energy exchange is quantized.",
+          "description": "Classical prediction: short wavelengths run away. Planck's resolution: energy comes in quanta. Blackbody radiation forced a deeper idea — energy exchange is quantized.",
           "prompt": "Frame the ultraviolet catastrophe as the reason the energy rule had to change. Avoid overclaiming: Planck quantized exchange of energy, not simply spatial wavelength.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [],
+          "info": [
+            {
+              "id": "s0_planck_info",
+              "position": "top-right",
+              "content": "**Planck's move**\n\nEnergy exchange is not arbitrary:\n\n$$E=hf$$\n\nThis is the bridge from the wave picture to photons."
+            }
+          ]
+        },
+        {
+          "title": "Visible light: real wavelengths",
+          "description": "Map the abstract $\\lambda$ to real wavelengths. The vertical spectrum bar shows how frequency maps to color.",
+          "prompt": "Show how the abstract wavelength maps to visible light. The vertical color bar next to the f-axis shows the direct mapping: higher frequency means shorter wavelength and bluer color. Emphasize that our eyes only see a tiny slice of the full EM spectrum.",
           "remove": [
             {
               "type": "info"
@@ -245,27 +263,208 @@
           ],
           "add": [
             {
-              "id": "s0_uv_warning",
-              "type": "text",
-              "text": "Classical prediction: short wavelengths run away",
-              "position": [-3.5, 2.1, 0],
-              "color": "#ff6b6b",
-              "size": 16
+              "id": "s0_spec_01",
+              "type": "polygon",
+              "vertices": [[-6.1,0,0],[-5.7,0,0],[-5.7,0.35,0],[-6.1,0.35,0]],
+              "color": "#990000",
+              "opacity": 0.9,
+              "shader": {"shininess": 40, "emissive": "#220000"},
+              "legendGroup": "visible spectrum"
             },
             {
-              "id": "s0_planck_text",
+              "id": "s0_spec_02",
+              "type": "polygon",
+              "vertices": [[-6.1,0.35,0],[-5.7,0.35,0],[-5.7,0.7,0],[-6.1,0.7,0]],
+              "color": "#CC1100",
+              "opacity": 0.9,
+              "shader": {"shininess": 40, "emissive": "#2a0400"},
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_03",
+              "type": "polygon",
+              "vertices": [[-6.1,0.7,0],[-5.7,0.7,0],[-5.7,1.05,0],[-6.1,1.05,0]],
+              "color": "#FF5500",
+              "opacity": 0.9,
+              "shader": {"shininess": 40, "emissive": "#331100"},
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_04",
+              "type": "polygon",
+              "vertices": [[-6.1,1.05,0],[-5.7,1.05,0],[-5.7,1.4,0],[-6.1,1.4,0]],
+              "color": "#FFAA00",
+              "opacity": 0.9,
+              "shader": {"shininess": 40, "emissive": "#332200"},
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_05",
+              "type": "polygon",
+              "vertices": [[-6.1,1.4,0],[-5.7,1.4,0],[-5.7,1.75,0],[-6.1,1.75,0]],
+              "color": "#CCDD00",
+              "opacity": 0.9,
+              "shader": {"shininess": 40, "emissive": "#2a2d00"},
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_06",
+              "type": "polygon",
+              "vertices": [[-6.1,1.75,0],[-5.7,1.75,0],[-5.7,2.1,0],[-6.1,2.1,0]],
+              "color": "#22CC44",
+              "opacity": 0.9,
+              "shader": {"shininess": 40, "emissive": "#062a0e"},
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_07",
+              "type": "polygon",
+              "vertices": [[-6.1,2.1,0],[-5.7,2.1,0],[-5.7,2.45,0],[-6.1,2.45,0]],
+              "color": "#00BBCC",
+              "opacity": 0.9,
+              "shader": {"shininess": 40, "emissive": "#00262a"},
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_08",
+              "type": "polygon",
+              "vertices": [[-6.1,2.45,0],[-5.7,2.45,0],[-5.7,2.8,0],[-6.1,2.8,0]],
+              "color": "#0066FF",
+              "opacity": 0.9,
+              "shader": {"shininess": 40, "emissive": "#001533"},
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_09",
+              "type": "polygon",
+              "vertices": [[-6.1,2.8,0],[-5.7,2.8,0],[-5.7,3.15,0],[-6.1,3.15,0]],
+              "color": "#4400DD",
+              "opacity": 0.9,
+              "shader": {"shininess": 40, "emissive": "#0e002e"},
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_10",
+              "type": "polygon",
+              "vertices": [[-6.1,3.15,0],[-5.7,3.15,0],[-5.7,3.5,0],[-6.1,3.5,0]],
+              "color": "#8B00FF",
+              "opacity": 0.9,
+              "shader": {"shininess": 40, "emissive": "#1c0033"},
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_indicator",
+              "type": "animated_line",
+              "points": [["-6.25","3/lambda","0"],["-5.55","3/lambda","0"]],
+              "color": "#ffffff",
+              "width": 3,
+              "label": "current $f$"
+            },
+            {
+              "id": "s0_spec_dot",
+              "type": "animated_point",
+              "positionExpr": ["-5.9", "3/lambda", "0"],
+              "color": "#ffffff",
+              "radius": 0.1,
+              "legendGroup": "current $f$"
+            },
+            {
+              "id": "s0_clabel_red",
               "type": "text",
-              "text": "Planck: energy comes in quanta",
-              "position": [-3.5, 1.62, 0],
-              "color": "#f0b84b",
-              "size": 16
+              "text": "red",
+              "position": [-6.55, 0.17, 0],
+              "color": "#CC1100",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_clabel_orange",
+              "type": "text",
+              "text": "orange",
+              "position": [-6.55, 0.87, 0],
+              "color": "#FF5500",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_clabel_yellow",
+              "type": "text",
+              "text": "yellow",
+              "position": [-6.55, 1.22, 0],
+              "color": "#FFAA00",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_clabel_green",
+              "type": "text",
+              "text": "green",
+              "position": [-6.55, 1.92, 0],
+              "color": "#22CC44",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_clabel_cyan",
+              "type": "text",
+              "text": "cyan",
+              "position": [-6.55, 2.27, 0],
+              "color": "#00BBCC",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_clabel_blue",
+              "type": "text",
+              "text": "blue",
+              "position": [-6.55, 2.62, 0],
+              "color": "#0066FF",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_clabel_violet",
+              "type": "text",
+              "text": "violet",
+              "position": [-6.55, 3.32, 0],
+              "color": "#8B00FF",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_nm_red",
+              "type": "text",
+              "text": "$700\\,\\text{nm}$",
+              "position": [-6.55, -0.25, 0],
+              "color": "#CC1100",
+              "size": 11,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_nm_violet",
+              "type": "text",
+              "text": "$380\\,\\text{nm}$",
+              "position": [-6.55, 3.6, 0],
+              "color": "#8B00FF",
+              "size": 11,
+              "legendGroup": "visible spectrum"
             }
           ],
           "info": [
             {
-              "id": "s0_planck_info",
+              "id": "s0_spectrum_info",
               "position": "top-right",
-              "content": "**Planck's move**\n\nEnergy exchange is not arbitrary:\n\n$$E=hf$$\n\nThis is the bridge from the wave picture to photons."
+              "content": "**Visible spectrum**\n\n$$\\lambda_{real}=(300+80\\lambda)\\;\\text{nm}$$\n\n$$f=\\frac{c}{\\lambda_{real}}=\\frac{3\\times10^{8}}{\\lambda_{real}}\\;\\text{Hz}$$\n\nViolet: $380\\,\\text{nm}$, $789\\,\\text{THz}$\n\nRed: $700\\,\\text{nm}$, $428\\,\\text{THz}$"
+            },
+            {
+              "id": "s0_constants_info",
+              "position": "bottom-right",
+              "content": "**Physical constants**\n\n$c=3\\times10^{8}\\;\\text{m/s}$\n\n$h=6.626\\times10^{-34}\\;\\text{J}\\!\\cdot\\!\\text{s}$"
+            },
+            {
+              "id": "s0_wavelength_info",
+              "position": "top-left",
+              "content": "**Wavelength → frequency**\n\n$$f=\\frac{c}{\\lambda}$$\n\n| $\\lambda$ (nm) | $f$ (THz) | Color |\n|---|---|---|\n| 380 | 789 | violet |\n| 480 | 625 | cyan |\n| 550 | 545 | green |\n| 600 | 500 | orange |\n| 700 | 428 | red |"
             }
           ]
         }
