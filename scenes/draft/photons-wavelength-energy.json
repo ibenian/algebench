@@ -94,7 +94,7 @@
               0
             ],
             [
-              6,
+              12,
               0,
               0
             ]
@@ -144,9 +144,9 @@
               "z": "0",
               "range": [
                 0,
-                6
+                12
               ],
-              "samples": 200,
+              "samples": 300,
               "color": "#2f9e9b",
               "width": 4,
               "legendGroup": "$\\text{EM wave}$"
