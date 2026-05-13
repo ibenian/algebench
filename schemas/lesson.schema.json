@@ -464,6 +464,10 @@
           "default": "center",
           "description": "Horizontal alignment of text labels. 'right' anchors the right edge at the position (text draws leftward). Default: 'center'."
         },
+        "cssClass": {
+          "type": "string",
+          "description": "Additional CSS class applied to text labels for custom styling. Example: \"label-highlight\"."
+        },
         "trail": {
           "$ref": "#/$defs/trail",
           "description": "Trail effect configuration for animated_vector. Shows a fading trail behind the moving tip."

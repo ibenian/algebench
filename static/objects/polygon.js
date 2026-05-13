@@ -91,7 +91,13 @@ function _buildGradientSlab(wVerts, gradient, halfThick, normal) {
     const tValues = wVerts.map(v => v[axis]);
     const tMin = Math.min(...tValues);
     const tMax = Math.max(...tValues);
-    const tRange = tMax - tMin || 1;
+
+    // All vertices share the same coordinate on the gradient axis —
+    // slicing would produce empty geometry.  Fall back to a solid fill
+    // using the color at t=0.
+    if (tMax - tMin < 1e-9) return null;
+
+    const tRange = tMax - tMin;
 
     const n = wVerts.length;
     const edges = [];
@@ -238,12 +244,13 @@ export function renderPolygon(el, view) {
     }
 
     const geom = new THREE.BufferGeometry();
-    const hasGradient = !!el.gradient;
+    const gradResult = el.gradient
+        ? _buildGradientSlab(wVerts, el.gradient, baseHalf * state.displayParams.planeScale, normal)
+        : null;
+    const hasGradient = !!gradResult;
     if (hasGradient) {
-        const { positions: gPos, colors: gCol } = _buildGradientSlab(
-            wVerts, el.gradient, baseHalf * state.displayParams.planeScale, normal);
-        geom.setAttribute('position', new THREE.Float32BufferAttribute(gPos, 3));
-        geom.setAttribute('color', new THREE.Float32BufferAttribute(gCol, 3));
+        geom.setAttribute('position', new THREE.Float32BufferAttribute(gradResult.positions, 3));
+        geom.setAttribute('color', new THREE.Float32BufferAttribute(gradResult.colors, 3));
     } else {
         const { positions, uvData } = buildSlabGeometry(baseHalf * state.displayParams.planeScale);
         geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -289,7 +296,10 @@ export function renderPolygon(el, view) {
     mesh.userData.wVerts = wVerts;
     mesh.userData.normal = normal.clone();
     mesh.userData.buildSlab = hasGradient
-        ? (halfThick) => _buildGradientSlab(wVerts, el.gradient, halfThick, normal).positions
+        ? (halfThick) => {
+            const g = _buildGradientSlab(wVerts, el.gradient, halfThick, normal);
+            return g ? g.positions : buildSlabGeometry(halfThick).positions;
+        }
         : (halfThick) => buildSlabGeometry(halfThick).positions;
     const _serial = el.renderOrder !== undefined ? el.renderOrder : state._planeMeshSerial++;
     mesh.renderOrder = _serial;

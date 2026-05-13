@@ -44,6 +44,7 @@ export function renderText(el, view) {
                 if (textExprFn) {
                     try {
                         const raw = evalExpr(textExprFn, tSec);
+                        if (!Number.isFinite(raw)) return;
                         const rounded = Math.round(raw);
                         if (rounded !== prevTextVal) {
                             prevTextVal = rounded;

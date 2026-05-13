@@ -366,6 +366,23 @@ class SemanticGraphBuilder:
             return r"\mathrm{d}" + self._latex_commands[name[1:]]
         return None
 
+    def _is_partial_derivative(self, expr) -> bool:
+        """Check whether *expr* (a ``Derivative``) uses partial notation.
+
+        Instead of a global ``\\partial in _original_latex`` check that
+        would mis-classify mixed ordinary+partial expressions, we look
+        for ``\\partial <var>`` where ``<var>`` is one of this specific
+        derivative's variables.
+        """
+        if not self._original_latex:
+            return False
+        for v, _ in expr.variable_count:
+            v_name = str(v)
+            # Match  \partial t  or  \partial{t}  in the original LaTeX
+            if re.search(rf"\\partial\s*\\?\{{?{re.escape(v_name)}\b", self._original_latex):
+                return True
+        return False
+
     def _subexpr_ordered(self, expr: sympy.Basic) -> str:
         """Like ``sympy.latex(expr)`` but with terms in authorial order."""
         # Atomic placeholder symbols (compound symbols and \text{...})
@@ -415,18 +432,26 @@ class SemanticGraphBuilder:
             # ``\nabla E``.  Restore the explicit operator when the
             # original LaTeX used one of these between nabla and the
             # next factor.
-            if (self._original_latex
-                    and any(isinstance(f, Symbol) and f.name == "nabla" for f in factors)):
-                if r"\nabla\times" in self._original_latex or r"\nabla \times" in self._original_latex:
-                    for i, f in enumerate(factors):
-                        if isinstance(f, Symbol) and f.name == "nabla" and i + 1 < len(parts):
-                            parts[i] = parts[i] + r" \times"
-                            break
-                elif r"\nabla\cdot" in self._original_latex or r"\nabla \cdot" in self._original_latex:
-                    for i, f in enumerate(factors):
-                        if isinstance(f, Symbol) and f.name == "nabla" and i + 1 < len(parts):
-                            parts[i] = parts[i] + r" \cdot"
-                            break
+            #
+            # The detection is *per-Mul*: we find the companion symbol
+            # adjacent to nabla in *this* product and look for that
+            # specific ``\nabla\times <sym>`` or ``\nabla\cdot <sym>``
+            # pattern in the original LaTeX.  This avoids mis-labelling
+            # when the full expression mixes both operators.
+            if self._original_latex:
+                for i, f in enumerate(factors):
+                    if not (isinstance(f, Symbol) and f.name == "nabla"):
+                        continue
+                    if i + 1 >= len(factors):
+                        break
+                    companion = str(factors[i + 1])
+                    cross_pat = rf"\\nabla\s*\\times\s*\\?{re.escape(companion)}\b"
+                    dot_pat = rf"\\nabla\s*\\cdot\s*\\?{re.escape(companion)}\b"
+                    if re.search(cross_pat, self._original_latex):
+                        parts[i] = parts[i] + r" \times"
+                    elif re.search(dot_pat, self._original_latex):
+                        parts[i] = parts[i] + r" \cdot"
+                    break
             return " ".join(parts)
 
         if isinstance(expr, Add):
@@ -445,8 +470,10 @@ class SemanticGraphBuilder:
             return " ".join(parts)
 
         # SymPy always renders Derivative with "d" — restore "\partial" when
-        # the original LaTeX used it.
-        if isinstance(expr, Derivative) and r"\partial" in self._original_latex:
+        # the original LaTeX used it.  Check per-derivative by looking for
+        # ``\partial <var>`` for one of this derivative's variables, so
+        # mixed ordinary+partial expressions are handled correctly.
+        if isinstance(expr, Derivative) and self._is_partial_derivative(expr):
             func_latex = self._subexpr_ordered(expr.expr)
             var_parts = []
             for v, count in expr.variable_count:
@@ -616,8 +643,7 @@ class SemanticGraphBuilder:
         if isinstance(expr, Derivative):
             node_id = self._next_id("deriv")
             dep_vars = [str(v) for v, _ in expr.variable_count]
-            is_partial = r"\partial" in self._original_latex
-            op_name = "partial_derivative" if is_partial else "derivative"
+            op_name = "partial_derivative" if self._is_partial_derivative(expr) else "derivative"
             self._add_node(node_id, type="operator", op=op_name,
                            with_respect_to=", ".join(dep_vars))
             child_id = self._walk(expr.expr)
