@@ -888,6 +888,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     will-change: transform, opacity;
 }
 
+.label-3d.label-right { transform: translate(-100%, -50%); }
 .label-3d .katex { font-size: 1em; }
 .label-axis { font-size: 18px; font-weight: bold; }
 

@@ -420,6 +420,21 @@
               "legendGroup": "scale"
             },
             {
+              "id": "s0_scale_lambda_nm",
+              "type": "text",
+              "text": "$200\\;\\text{nm}$",
+              "position": [
+                "lambda + 0.6",
+                "-1.6",
+                "0"
+              ],
+              "color": "#f0b84b",
+              "size": 12,
+              "textExpr": "lambda * 100",
+              "textFormat": "$%d\\;\\text{nm}$",
+              "legendGroup": "scale"
+            },
+            {
               "id": "s0_scale_origin_tick",
               "type": "line",
               "points": [
@@ -482,12 +497,13 @@
               "type": "text",
               "text": "influenza virus $\\sim\\!100$ nm",
               "position": [
-                1.3,
+                -0.15,
                 -2.2,
                 0
               ],
               "color": "#e85d75",
-              "size": 11,
+              "size": 10,
+              "cssClass": "label-3d label-right",
               "legendGroup": "scale"
             },
             {
@@ -533,12 +549,13 @@
               "type": "text",
               "text": "bacteriophage $\\sim\\!200$ nm",
               "position": [
-                2.3,
+                -0.15,
                 -2.8,
                 0
               ],
               "color": "#7fba5c",
-              "size": 11,
+              "size": 10,
+              "cssClass": "label-3d label-right",
               "legendGroup": "scale"
             },
             {
@@ -584,12 +601,13 @@
               "type": "text",
               "text": "Mycoplasma $\\sim\\!300$ nm",
               "position": [
-                3.3,
+                -0.15,
                 -3.4,
                 0
               ],
               "color": "#5cb8e8",
-              "size": 11,
+              "size": 10,
+              "cssClass": "label-3d label-right",
               "legendGroup": "scale"
             },
             {
@@ -635,12 +653,13 @@
               "type": "text",
               "text": "$\\textit{E.\\,coli}$ width $\\sim\\!500$ nm",
               "position": [
-                5.3,
+                -0.15,
                 -4.0,
                 0
               ],
               "color": "#c49be8",
-              "size": 11,
+              "size": 10,
+              "cssClass": "label-3d label-right",
               "legendGroup": "scale"
             }
           ],

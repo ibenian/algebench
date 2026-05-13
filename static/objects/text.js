@@ -1,4 +1,4 @@
-import { parseColor, addLabel3D } from '/labels.js';
+import { parseColor, addLabel3D, renderKaTeX } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { state } from '/state.js';
 
@@ -20,8 +20,17 @@ export function renderText(el, view) {
             return null;
         }
 
-        const labelEl = addLabel3D(text, initPos, color);
+        const cssClass = el.cssClass || undefined;
+        const labelEl = addLabel3D(text, initPos, color, cssClass);
         const startTime = state.sceneStartTime;
+
+        let textExprFn = null;
+        const textFormat = el.textFormat || '%d';
+        if (el.textExpr) {
+            try { textExprFn = compileExpr(el.textExpr); } catch (_e) { /* ignore */ }
+        }
+        let prevTextVal = null;
+
         state.activeAnimUpdaters.push({
             animState: { stopped: false },
             updateFrame(nowMs) {
@@ -31,8 +40,17 @@ export function renderText(el, view) {
                     labelEl.dataPos[0] = p[0];
                     labelEl.dataPos[1] = p[1];
                     labelEl.dataPos[2] = p[2];
-                } catch (_err) {
-                    // keep previous label position on evaluation failure
+                } catch (_err) {}
+                if (textExprFn) {
+                    try {
+                        const raw = evalExpr(textExprFn, tSec);
+                        const rounded = Math.round(raw);
+                        if (rounded !== prevTextVal) {
+                            prevTextVal = rounded;
+                            const formatted = textFormat.replace('%d', rounded);
+                            labelEl.el.innerHTML = renderKaTeX(formatted, false);
+                        }
+                    } catch (_err) {}
                 }
             },
         });
@@ -42,7 +60,8 @@ export function renderText(el, view) {
 
     const position = el.position || el.at || [0, 0, 0];
 
-    addLabel3D(text, position, color);
+    const cssClass = el.cssClass || undefined;
+    addLabel3D(text, position, color, cssClass);
 
     return { type: 'text', color, label: text };
 }
