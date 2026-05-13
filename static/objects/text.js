@@ -20,8 +20,8 @@ export function renderText(el, view) {
             return null;
         }
 
-        const cssClass = el.cssClass || undefined;
-        const labelEl = addLabel3D(text, initPos, color, cssClass);
+        const labelOpts = { align: el.align };
+        const labelEl = addLabel3D(text, initPos, color, labelOpts);
         const startTime = state.sceneStartTime;
 
         let textExprFn = null;
@@ -60,8 +60,8 @@ export function renderText(el, view) {
 
     const position = el.position || el.at || [0, 0, 0];
 
-    const cssClass = el.cssClass || undefined;
-    addLabel3D(text, position, color, cssClass);
+    const labelOpts = { align: el.align };
+    addLabel3D(text, position, color, labelOpts);
 
     return { type: 'text', color, label: text };
 }

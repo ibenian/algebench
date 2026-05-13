@@ -450,6 +450,20 @@
           "type": "string",
           "description": "Text content for 'text' type elements. Example: \"Direction changed!\"."
         },
+        "textExpr": {
+          "type": "string",
+          "description": "Math.js expression for dynamic text content. Evaluated each frame; the rounded integer result replaces '%d' in textFormat. Example: \"lambda * 100\"."
+        },
+        "textFormat": {
+          "type": "string",
+          "description": "Format string for textExpr output. Use '%d' as placeholder for the evaluated integer. Supports KaTeX. Example: \"$%d\\\\;\\\\text{nm}$\". Default: \"%d\"."
+        },
+        "align": {
+          "type": "string",
+          "enum": ["left", "center", "right"],
+          "default": "center",
+          "description": "Horizontal alignment of text labels. 'right' anchors the right edge at the position (text draws leftward). Default: 'center'."
+        },
         "trail": {
           "$ref": "#/$defs/trail",
           "description": "Trail effect configuration for animated_vector. Shows a fading trail behind the moving tip."
