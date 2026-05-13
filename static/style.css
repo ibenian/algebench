@@ -3520,7 +3520,6 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.14em;
-    text-transform: uppercase;
     color: rgba(176, 186, 229, 0.6);
     padding: 6px 4px;
 }
