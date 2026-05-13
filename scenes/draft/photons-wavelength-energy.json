@@ -4,7 +4,7 @@
     {
       "title": "Light as a Wave: $c=f\\lambda$",
       "description": "Start with the classical wave picture: stretching wavelength lowers frequency when the wave speed is fixed.",
-      "markdown": "# Light as a Wave\n\nClassical electromagnetism treats light as a wave moving at speed $c$ in vacuum. The basic kinematic link is\n\n$$c=f\\lambda.$$\n\nIf $c$ is fixed, wavelength and frequency must trade off:\n\n$$f=\\frac{c}{\\lambda}.$$\n\nA longer wavelength means fewer crests pass a point each second. This part is continuous: in free space, a photon can have any wavelength allowed by the source and propagation conditions.\n\n## The historical pressure\n\nAt the turn of the twentieth century, classical blackbody theory led to the ultraviolet catastrophe: it predicted runaway short-wavelength emission. Planck's resolution was to make exchange of energy discrete, in units proportional to frequency. That idea became the first step toward quantum mechanics.\n\nReferences: https://en.wikipedia.org/wiki/Quantum and https://en.wikipedia.org/wiki/Photon_energy",
+      "markdown": "# Light as a Wave\n\nClassical electromagnetism treats light as a wave moving at speed $c$ in vacuum. The basic kinematic link is\n\n$$c=f\\lambda.$$\n\nIf $c$ is fixed, wavelength and frequency must trade off:\n\n$$f=\\frac{c}{\\lambda}.$$\n\nA longer wavelength means fewer crests pass a point each second. This part is continuous: in free space, a photon can have any wavelength allowed by the source and propagation conditions.\n\n## What this wave is — and what it is not\n\nThe sine wave shown here represents the **electric field** component of a classical electromagnetic wave: $E_y(x,t)=A\\sin(kx-\\omega t)$, described by Maxwell's equations.\n\nA real EM wave has **two fields** oscillating in phase, perpendicular to each other and to the propagation direction:\n\n- **Electric field** $\\vec{E}$: shown here as the sine wave in the $y$-direction.\n- **Magnetic field** $\\vec{B}$: oscillates in the $z$-direction (perpendicular to the screen), with magnitude $B=E/c$.\n\nWe show only the electric field because it is the component that does most of the work on charged matter — it drives electron oscillations, photoelectric ejection, and detector responses. The magnetic component is always present but $c$ times smaller in SI units.\n\nThis wave does not depict a single photon. In quantum terms it corresponds to a **coherent state** — a huge number of photons all sharing the same frequency, direction, and phase, like a laser beam or a radio signal. The amplitude $A$ is the peak electric field strength. A brighter beam has a larger $A$, which means more photons per second, not more energetic photons.\n\nA single photon is one quantum excitation of the field mode. It has definite energy $E=hf$ and momentum $p=h/\\lambda$, but it does not have a definite classical electric field value. To depict a single photon, you would show a localized **wave packet** — a few oscillations that taper off — not an infinite plane wave.\n\nThe quantum content of this scene is the relation $E=hf$: the wave's energy is not continuous but comes in discrete packets, each carrying energy proportional to frequency. The wave picture gives wavelength and frequency; quantization gives the energy rule.\n\n## The historical pressure\n\nAt the turn of the twentieth century, classical blackbody theory led to the ultraviolet catastrophe: it predicted runaway short-wavelength emission. Planck's resolution was to make exchange of energy discrete, in units proportional to frequency. That idea became the first step toward quantum mechanics.\n\nReferences: https://en.wikipedia.org/wiki/Quantum and https://en.wikipedia.org/wiki/Photon_energy",
       "prompt": "Teach the wave kinematics first. Keep the distinction clear: c = f lambda is a wave relation, while E = hf is the quantum energy relation introduced next. Emphasize that stretching wavelength lowers frequency for fixed c.",
       "functions": [
         {
@@ -1314,6 +1314,73 @@
               "id": "s0_wavelength_info",
               "position": "top-left",
               "content": "**Wavelength \u2192 frequency**\n\n$$f=\\frac{c}{\\lambda}$$\n\n| $\\lambda$ (nm) | $f$ (THz) | Color |\n|---|---|---|\n| 380 | 789 | violet |\n| 480 | 625 | cyan |\n| 550 | 545 | green |\n| 600 | 500 | orange |\n| 700 | 428 | red |"
+            }
+          ]
+        },
+        {
+          "title": "The full picture: $\\vec{E}$ and $\\vec{B}$",
+          "description": "An electromagnetic wave has two perpendicular oscillating fields. Until now we showed only the electric field $\\vec{E}$ (in $y$). The magnetic field $\\vec{B}$ oscillates in $z$, perpendicular to both $\\vec{E}$ and the propagation direction. Switch to the Iso view to see both components in 3D.",
+          "prompt": "Reveal the magnetic field component oscillating in the z-direction. Explain that every EM wave has both E and B perpendicular to each other and to the propagation direction. We showed only E because it dominates interactions with charged matter. Note B = E/c in SI units; we exaggerate B visually for clarity.",
+          "camera": {
+            "position": [6, 5, 10],
+            "target": [0, 1, 0]
+          },
+          "remove": [
+            { "type": "info" },
+            { "id": "s0_wave_title" }
+          ],
+          "add": [
+            {
+              "id": "s0_B_wave",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "0",
+              "z": "sin(2*pi*t/lambda)",
+              "range": [0, 12],
+              "samples": 300,
+              "color": "#e85d75",
+              "width": 4,
+              "label": "$\\vec{B}$ (magnetic)"
+            },
+            {
+              "id": "s0_z_ref",
+              "type": "line",
+              "points": [[0, 0, 0], [0, 0, 2]],
+              "color": "#555e6a",
+              "width": 1,
+              "opacity": 0.4,
+              "legendGroup": "$\\vec{B}$ (magnetic)"
+            },
+            {
+              "id": "s0_E_field_label",
+              "type": "text",
+              "text": "$\\vec{E}$ (electric)",
+              "position": [1, 1.4, 0],
+              "color": "#2f9e9b",
+              "size": 16
+            },
+            {
+              "id": "s0_B_field_label",
+              "type": "text",
+              "text": "$\\vec{B}$ (magnetic)",
+              "position": [1, 0, 1.4],
+              "color": "#e85d75",
+              "size": 16
+            },
+            {
+              "id": "s0_prop_label",
+              "type": "text",
+              "text": "propagation $\\rightarrow$",
+              "position": [10, -0.5, 0],
+              "color": "#9aa4ad",
+              "size": 14
+            }
+          ],
+          "info": [
+            {
+              "id": "s0_eb_info",
+              "position": "top-right",
+              "content": "**Complete EM wave**\n\n$$\\vec{E}=E_0\\sin(kx-\\omega t)\\,\\hat{y}$$\n\n$$\\vec{B}=\\frac{E_0}{c}\\sin(kx-\\omega t)\\,\\hat{z}$$\n\n$\\vec{E}\\perp\\vec{B}\\perp\\hat{x}$\n\nPrevious steps showed only $\\vec{E}$ because it dominates interactions with charged matter."
             }
           ]
         }
