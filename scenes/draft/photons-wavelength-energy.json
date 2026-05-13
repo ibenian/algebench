@@ -234,8 +234,8 @@
         },
         {
           "title": "Frequency falls as wavelength grows",
-          "description": "With $c$ fixed, the frequency scales like $1/\\lambda$. The same speed is carried by wider or tighter waves.",
-          "prompt": "Use the slider to compare short and long wavelengths. Ask the learner what happens to f when lambda doubles.",
+          "description": "With $c$ fixed, the frequency scales like $1/\\lambda$. The scale bars below compare $\\lambda$ to nanoscale objects: visible light wavelengths are on the order of viruses and bacteria.",
+          "prompt": "Use the slider to compare short and long wavelengths. Ask the learner what happens to f when lambda doubles. Draw attention to the scale bars: when lambda is around 1, the wavelength is about the size of a flu virus; at lambda 5, it matches the width of an E. coli bacterium. Visible light lives in this extraordinary nanoscale world.",
           "add": [
             {
               "id": "s0_chart_lambda_axis",
@@ -379,6 +379,269 @@
               "color": "#6ec6ff",
               "size": 15,
               "label": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_scale_lambda",
+              "type": "animated_line",
+              "points": [
+                [
+                  "0",
+                  "-1.6",
+                  "0"
+                ],
+                [
+                  "lambda",
+                  "-1.6",
+                  "0"
+                ]
+              ],
+              "color": "#f0b84b",
+              "width": 5,
+              "label": "$\\lambda$",
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_lambda_tick",
+              "type": "animated_line",
+              "points": [
+                [
+                  "lambda",
+                  "-1.4",
+                  "0"
+                ],
+                [
+                  "lambda",
+                  "-1.8",
+                  "0"
+                ]
+              ],
+              "color": "#f0b84b",
+              "width": 2,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_origin_tick",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -1.4,
+                  0
+                ],
+                [
+                  0,
+                  -4.0,
+                  0
+                ]
+              ],
+              "color": "#666666",
+              "width": 1,
+              "opacity": 0.4,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_flu",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -2.2,
+                  0
+                ],
+                [
+                  1,
+                  -2.2,
+                  0
+                ]
+              ],
+              "color": "#e85d75",
+              "width": 4,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_flu_tick",
+              "type": "line",
+              "points": [
+                [
+                  1,
+                  -2.05,
+                  0
+                ],
+                [
+                  1,
+                  -2.35,
+                  0
+                ]
+              ],
+              "color": "#e85d75",
+              "width": 2,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_flu_label",
+              "type": "text",
+              "text": "influenza virus $\\sim\\!100$ nm",
+              "position": [
+                1.3,
+                -2.2,
+                0
+              ],
+              "color": "#e85d75",
+              "size": 11,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_phage",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -2.8,
+                  0
+                ],
+                [
+                  2,
+                  -2.8,
+                  0
+                ]
+              ],
+              "color": "#7fba5c",
+              "width": 4,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_phage_tick",
+              "type": "line",
+              "points": [
+                [
+                  2,
+                  -2.65,
+                  0
+                ],
+                [
+                  2,
+                  -2.95,
+                  0
+                ]
+              ],
+              "color": "#7fba5c",
+              "width": 2,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_phage_label",
+              "type": "text",
+              "text": "bacteriophage $\\sim\\!200$ nm",
+              "position": [
+                2.3,
+                -2.8,
+                0
+              ],
+              "color": "#7fba5c",
+              "size": 11,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_myco",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -3.4,
+                  0
+                ],
+                [
+                  3,
+                  -3.4,
+                  0
+                ]
+              ],
+              "color": "#5cb8e8",
+              "width": 4,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_myco_tick",
+              "type": "line",
+              "points": [
+                [
+                  3,
+                  -3.25,
+                  0
+                ],
+                [
+                  3,
+                  -3.55,
+                  0
+                ]
+              ],
+              "color": "#5cb8e8",
+              "width": 2,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_myco_label",
+              "type": "text",
+              "text": "Mycoplasma $\\sim\\!300$ nm",
+              "position": [
+                3.3,
+                -3.4,
+                0
+              ],
+              "color": "#5cb8e8",
+              "size": 11,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_ecoli",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -4.0,
+                  0
+                ],
+                [
+                  5,
+                  -4.0,
+                  0
+                ]
+              ],
+              "color": "#c49be8",
+              "width": 4,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_ecoli_tick",
+              "type": "line",
+              "points": [
+                [
+                  5,
+                  -3.85,
+                  0
+                ],
+                [
+                  5,
+                  -4.15,
+                  0
+                ]
+              ],
+              "color": "#c49be8",
+              "width": 2,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_ecoli_label",
+              "type": "text",
+              "text": "$\\textit{E.\\,coli}$ width $\\sim\\!500$ nm",
+              "position": [
+                5.3,
+                -4.0,
+                0
+              ],
+              "color": "#c49be8",
+              "size": 11,
+              "legendGroup": "scale"
             }
           ],
           "info": [
@@ -409,8 +672,8 @@
         },
         {
           "title": "Visible light: real wavelengths",
-          "description": "Map the abstract $\\lambda$ to real wavelengths. The vertical spectrum bar shows how frequency maps to color.",
-          "prompt": "Show how the abstract wavelength maps to visible light. The vertical color bar next to the f-axis shows the direct mapping: higher frequency means shorter wavelength and bluer color. Emphasize that our eyes only see a tiny slice of the full EM spectrum.",
+          "description": "Map the abstract $\\lambda$ to real wavelengths. The vertical spectrum bar shows how frequency maps to color. Note: the wave's amplitude represents the peak electric field strength, not its energy or wavelength\u2014amplitude depends on intensity (how many photons), not on color.",
+          "prompt": "Show how the abstract wavelength maps to visible light. The vertical color bar next to the f-axis shows the direct mapping: higher frequency means shorter wavelength and bluer color. Emphasize that our eyes only see a tiny slice of the full EM spectrum. Point out that the amplitude of the wave is the electric field strength and is independent of wavelength\u2014it depends on the light's intensity, not its color. A dim blue beam and a dim red beam have the same small amplitude; a bright red beam has a large amplitude.",
           "remove": [
             {
               "type": "info"
