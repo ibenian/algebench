@@ -1385,115 +1385,583 @@
           ]
         }
       ],
-      "proof": {
-        "id": "wave_kinematics",
-        "title": "From $x=vt$ to $c=f\\lambda$",
-        "technique": "derivation",
-        "goal": "Derive the wave relation $c=f\\lambda$ starting from the basic kinematic equation $x=vt$.",
-        "prompt": "Start from x=vt which every learner knows. Apply it to one wave cycle to get c=f*lambda. Emphasize this is the same formula, not a new law.",
-        "steps": [
-          {
-            "id": "basic_kinematics",
-            "type": "given",
-            "label": "Basic kinematics",
-            "math": "\\htmlClass{hl-dist}{x}=\\htmlClass{hl-speed}{v}\\cdot {}\\htmlClass{hl-time}{t}",
-            "highlights": {
-              "dist": {
-                "color": "cyan",
-                "label": "Distance travelled"
+      "proof": [
+        {
+          "id": "wave_kinematics",
+          "title": "From $x=vt$ to $c=f\\lambda$",
+          "technique": "derivation",
+          "goal": "Derive the wave relation $c=f\\lambda$ starting from the basic kinematic equation $x=vt$.",
+          "prompt": "Start from x=vt which every learner knows. Apply it to one wave cycle to get c=f*lambda. Emphasize this is the same formula, not a new law.",
+          "steps": [
+            {
+              "id": "basic_kinematics",
+              "type": "given",
+              "label": "Basic kinematics",
+              "math": "\\htmlClass{hl-dist}{x}=\\htmlClass{hl-speed}{v}\\cdot {}\\htmlClass{hl-time}{t}",
+              "highlights": {
+                "dist": {
+                  "color": "cyan",
+                  "label": "Distance travelled"
+                },
+                "speed": {
+                  "color": "orange",
+                  "label": "Speed"
+                },
+                "time": {
+                  "color": "yellow",
+                  "label": "Elapsed time"
+                }
               },
-              "speed": {
-                "color": "orange",
-                "label": "Speed"
-              },
-              "time": {
-                "color": "yellow",
-                "label": "Elapsed time"
-              }
+              "justification": "The fundamental kinematic relation for constant speed.",
+              "explanation": "Distance equals speed times time \u2014 the starting point for all wave relations.",
+              "prompt": "Start from the most basic formula the learner already knows.",
+              "sceneStep": 0
             },
-            "justification": "The fundamental kinematic relation for constant speed.",
-            "explanation": "Distance equals speed times time \u2014 the starting point for all wave relations.",
-            "prompt": "Start from the most basic formula the learner already knows.",
-            "sceneStep": 0
-          },
-          {
-            "id": "one_period",
-            "type": "step",
-            "label": "One period of a wave",
-            "math": "\\htmlClass{hl-wavelength}{\\lambda}=\\htmlClass{hl-speed}{c}\\cdot {}\\htmlClass{hl-period}{T}",
-            "highlights": {
-              "wavelength": {
-                "color": "cyan",
-                "label": "One wavelength (crest-to-crest)"
+            {
+              "id": "one_period",
+              "type": "step",
+              "label": "One period of a wave",
+              "math": "\\htmlClass{hl-wavelength}{\\lambda}=\\htmlClass{hl-speed}{c}\\cdot {}\\htmlClass{hl-period}{T}",
+              "highlights": {
+                "wavelength": {
+                  "color": "cyan",
+                  "label": "One wavelength (crest-to-crest)"
+                },
+                "speed": {
+                  "color": "orange",
+                  "label": "Wave speed (fixed at c)"
+                },
+                "period": {
+                  "color": "yellow",
+                  "label": "Period (time for one cycle)"
+                }
               },
-              "speed": {
-                "color": "orange",
-                "label": "Wave speed (fixed at c)"
-              },
-              "period": {
-                "color": "yellow",
-                "label": "Period (time for one cycle)"
-              }
+              "justification": "In one period $T$, the wave advances exactly one wavelength $\\lambda$. Set $x=\\lambda$, $v=c$, $t=T$.",
+              "explanation": "A crest travels one full wavelength in one period, so $\\lambda = c \\cdot T$.",
+              "prompt": "Connect x=vt to the wave: x becomes lambda, v becomes c, t becomes T.",
+              "sceneStep": 0
             },
-            "justification": "In one period $T$, the wave advances exactly one wavelength $\\lambda$. Set $x=\\lambda$, $v=c$, $t=T$.",
-            "explanation": "A crest travels one full wavelength in one period, so $\\lambda = c \\cdot T$.",
-            "prompt": "Connect x=vt to the wave: x becomes lambda, v becomes c, t becomes T.",
-            "sceneStep": 0
-          },
-          {
-            "id": "solve_for_f",
-            "type": "step",
-            "label": "Solve for frequency",
-            "math": "\\htmlClass{hl-freq}{f}=\\frac{1}{\\htmlClass{hl-period}{T}}=\\frac{\\htmlClass{hl-speed}{c}}{\\htmlClass{hl-wavelength}{\\lambda}}",
-            "highlights": {
-              "freq": {
-                "color": "green",
-                "label": "Frequency (cycles per second)"
+            {
+              "id": "solve_for_f",
+              "type": "step",
+              "label": "Solve for frequency",
+              "math": "\\htmlClass{hl-freq}{f}=\\frac{1}{\\htmlClass{hl-period}{T}}=\\frac{\\htmlClass{hl-speed}{c}}{\\htmlClass{hl-wavelength}{\\lambda}}",
+              "highlights": {
+                "freq": {
+                  "color": "green",
+                  "label": "Frequency (cycles per second)"
+                },
+                "period": {
+                  "color": "yellow",
+                  "label": "Period"
+                },
+                "speed": {
+                  "color": "orange",
+                  "label": "Wave speed"
+                },
+                "wavelength": {
+                  "color": "cyan",
+                  "label": "Wavelength"
+                }
               },
-              "period": {
-                "color": "yellow",
-                "label": "Period"
-              },
-              "speed": {
-                "color": "orange",
-                "label": "Wave speed"
-              },
-              "wavelength": {
-                "color": "cyan",
-                "label": "Wavelength"
-              }
+              "justification": "Frequency is the reciprocal of period: $f=1/T$. Substitute $T=\\lambda/c$.",
+              "explanation": "Rearranging gives the wave relation: frequency equals speed divided by wavelength.",
+              "prompt": "Show the algebra step by step: T = lambda/c, so f = 1/T = c/lambda.",
+              "sceneStep": 1
             },
-            "justification": "Frequency is the reciprocal of period: $f=1/T$. Substitute $T=\\lambda/c$.",
-            "explanation": "Rearranging gives the wave relation: frequency equals speed divided by wavelength.",
-            "prompt": "Show the algebra step by step: T = lambda/c, so f = 1/T = c/lambda.",
-            "sceneStep": 1
-          },
-          {
-            "id": "wave_equation",
-            "type": "conclusion",
-            "label": "The wave equation",
-            "math": "\\htmlClass{hl-speed}{c}=\\htmlClass{hl-freq}{f}\\,\\htmlClass{hl-wavelength}{\\lambda}",
-            "highlights": {
-              "speed": {
-                "color": "orange",
-                "label": "Wave speed"
+            {
+              "id": "wave_equation",
+              "type": "conclusion",
+              "label": "The wave equation",
+              "math": "\\htmlClass{hl-speed}{c}=\\htmlClass{hl-freq}{f}\\,\\htmlClass{hl-wavelength}{\\lambda}",
+              "highlights": {
+                "speed": {
+                  "color": "orange",
+                  "label": "Wave speed"
+                },
+                "freq": {
+                  "color": "green",
+                  "label": "Frequency"
+                },
+                "wavelength": {
+                  "color": "cyan",
+                  "label": "Wavelength"
+                }
               },
-              "freq": {
-                "color": "green",
-                "label": "Frequency"
+              "justification": "Multiply both sides of $f=c/\\lambda$ by $\\lambda$.",
+              "explanation": "This is just $x=vt$ applied to one cycle: speed equals frequency times wavelength.",
+              "prompt": "Emphasize that c = f lambda is not a new law \u2014 it is x = v t for one wave cycle.",
+              "sceneStep": 1
+            }
+          ]
+        },
+        {
+          "id": "em_wave_equation",
+          "title": "Maxwell to $\\vec{E}=E_0\\sin(kx-\\omega t)\\,\\hat{y}$",
+          "technique": "derivation",
+          "goal": "Derive the electromagnetic wave equation from Maxwell's equations and show that a sinusoidal $\\vec{E}$ field is a solution.",
+          "prompt": "Start from Maxwell's curl equations in free space. Take the curl of Faraday's law and use the vector identity to get the wave equation. Show the sinusoidal solution and extract the dispersion relation omega = ck.",
+          "steps": [
+            {
+              "id": "maxwell_faraday",
+              "type": "given",
+              "label": "Faraday's law (free space)",
+              "math": "\\htmlClass{hl-curl}{\\nabla\\times}\\htmlClass{hl-E}{\\vec{E}}=-\\htmlClass{hl-dtB}{\\frac{\\partial\\vec{B}}{\\partial t}}",
+              "highlights": {
+                "curl": {
+                  "color": "purple",
+                  "label": "Curl operator"
+                },
+                "E": {
+                  "color": "cyan",
+                  "label": "Electric field"
+                },
+                "dtB": {
+                  "color": "pink",
+                  "label": "Time rate of change of B"
+                }
               },
-              "wavelength": {
-                "color": "cyan",
-                "label": "Wavelength"
-              }
+              "justification": "One of Maxwell's four equations: a changing magnetic field induces a curling electric field.",
+              "explanation": "Faraday's law says a time-varying magnetic field creates a circulating electric field.",
+              "prompt": "Introduce Faraday's law as the starting point. This is one of Maxwell's four equations.",
+              "sceneStep": 0
             },
-            "justification": "Multiply both sides of $f=c/\\lambda$ by $\\lambda$.",
-            "explanation": "This is just $x=vt$ applied to one cycle: speed equals frequency times wavelength.",
-            "prompt": "Emphasize that c = f lambda is not a new law \u2014 it is x = v t for one wave cycle.",
-            "sceneStep": 1
-          }
-        ]
-      }
+            {
+              "id": "maxwell_ampere",
+              "type": "given",
+              "label": "Amp\u00e8re\u2013Maxwell law (free space)",
+              "math": "\\htmlClass{hl-curl}{\\nabla\\times}\\htmlClass{hl-B}{\\vec{B}}=\\htmlClass{hl-mu}{\\mu_0}\\htmlClass{hl-eps}{\\epsilon_0}\\htmlClass{hl-dtE}{\\frac{\\partial\\vec{E}}{\\partial t}}",
+              "highlights": {
+                "curl": {
+                  "color": "purple",
+                  "label": "Curl operator"
+                },
+                "B": {
+                  "color": "pink",
+                  "label": "Magnetic field"
+                },
+                "mu": {
+                  "color": "orange",
+                  "label": "Permeability of free space"
+                },
+                "eps": {
+                  "color": "yellow",
+                  "label": "Permittivity of free space"
+                },
+                "dtE": {
+                  "color": "cyan",
+                  "label": "Time rate of change of E"
+                }
+              },
+              "justification": "In free space (no currents), Amp\u00e8re's law with Maxwell's displacement current term.",
+              "explanation": "A time-varying electric field creates a curling magnetic field \u2014 Maxwell's crucial addition to Amp\u00e8re's law.",
+              "prompt": "Present the second curl equation. Note Maxwell's displacement current term is what makes waves possible.",
+              "sceneStep": 0
+            },
+            {
+              "id": "curl_of_curl",
+              "type": "step",
+              "label": "Take the curl of Faraday's law",
+              "math": "\\htmlClass{hl-curl}{\\nabla\\times(\\nabla\\times}\\htmlClass{hl-E}{\\vec{E}}\\htmlClass{hl-curl}{)}=-\\frac{\\partial}{\\partial t}(\\htmlClass{hl-curl}{\\nabla\\times}\\htmlClass{hl-B}{\\vec{B}})=-\\htmlClass{hl-mu}{\\mu_0}\\htmlClass{hl-eps}{\\epsilon_0}\\htmlClass{hl-d2E}{\\frac{\\partial^2\\vec{E}}{\\partial t^2}}",
+              "highlights": {
+                "curl": {
+                  "color": "purple",
+                  "label": "Curl operator"
+                },
+                "E": {
+                  "color": "cyan",
+                  "label": "Electric field"
+                },
+                "B": {
+                  "color": "pink",
+                  "label": "Magnetic field"
+                },
+                "mu": {
+                  "color": "orange",
+                  "label": "Permeability of free space"
+                },
+                "eps": {
+                  "color": "yellow",
+                  "label": "Permittivity of free space"
+                },
+                "d2E": {
+                  "color": "cyan",
+                  "label": "Second time derivative of E"
+                }
+              },
+              "justification": "Apply $\\nabla\\times$ to Faraday's law; on the right side, swap $\\nabla\\times$ with $\\partial/\\partial t$ and substitute Amp\u00e8re\u2013Maxwell.",
+              "explanation": "Taking the curl of both sides of Faraday's law and substituting the Amp\u00e8re\u2013Maxwell law eliminates $\\vec{B}$, leaving an equation in $\\vec{E}$ alone.",
+              "prompt": "This is the key step: curl of curl on the left, and on the right we substitute Amp\u00e8re\u2013Maxwell to eliminate B entirely.",
+              "sceneStep": 0
+            },
+            {
+              "id": "vector_identity",
+              "type": "step",
+              "label": "Apply the vector identity",
+              "math": "\\htmlClass{hl-grad}{\\nabla(\\underbrace{\\nabla\\cdot\\vec{E}}_{=\\,0})}-\\htmlClass{hl-lap}{\\nabla^2\\vec{E}}=-\\htmlClass{hl-mu}{\\mu_0}\\htmlClass{hl-eps}{\\epsilon_0}\\htmlClass{hl-d2E}{\\frac{\\partial^2\\vec{E}}{\\partial t^2}}",
+              "highlights": {
+                "grad": {
+                  "color": "green",
+                  "label": "Gradient of divergence (vanishes in free space)"
+                },
+                "lap": {
+                  "color": "cyan",
+                  "label": "Laplacian of E"
+                },
+                "mu": {
+                  "color": "orange",
+                  "label": "Permeability"
+                },
+                "eps": {
+                  "color": "yellow",
+                  "label": "Permittivity"
+                },
+                "d2E": {
+                  "color": "cyan",
+                  "label": "Second time derivative"
+                }
+              },
+              "justification": "The identity $\\nabla\\times(\\nabla\\times\\vec{E})=\\nabla(\\nabla\\cdot\\vec{E})-\\nabla^2\\vec{E}$. Gauss's law in free space gives $\\nabla\\cdot\\vec{E}=0$.",
+              "explanation": "The double-curl simplifies because in free space there are no charges, so the divergence of $\\vec{E}$ is zero.",
+              "prompt": "Use the standard vector identity. Gauss's law kills the first term, leaving just the Laplacian.",
+              "sceneStep": 0
+            },
+            {
+              "id": "wave_eq",
+              "type": "step",
+              "label": "The electromagnetic wave equation",
+              "math": "\\htmlClass{hl-lap}{\\nabla^2}\\htmlClass{hl-E}{\\vec{E}}=\\frac{1}{\\htmlClass{hl-c}{c}^2}\\htmlClass{hl-d2E}{\\frac{\\partial^2\\vec{E}}{\\partial t^2}},\\qquad \\htmlClass{hl-c}{c}=\\frac{1}{\\sqrt{\\htmlClass{hl-mu}{\\mu_0}\\htmlClass{hl-eps}{\\epsilon_0}}}",
+              "highlights": {
+                "lap": {
+                  "color": "purple",
+                  "label": "Laplacian (spatial second derivative)"
+                },
+                "E": {
+                  "color": "cyan",
+                  "label": "Electric field"
+                },
+                "c": {
+                  "color": "orange",
+                  "label": "Speed of light"
+                },
+                "d2E": {
+                  "color": "cyan",
+                  "label": "Second time derivative"
+                },
+                "mu": {
+                  "color": "orange",
+                  "label": "Permeability"
+                },
+                "eps": {
+                  "color": "yellow",
+                  "label": "Permittivity"
+                }
+              },
+              "justification": "Define $c^2=1/(\\mu_0\\epsilon_0)$ and rearrange. This is the standard wave equation.",
+              "explanation": "Maxwell's equations predict that $\\vec{E}$ satisfies a wave equation with speed $c=1/\\sqrt{\\mu_0\\epsilon_0}\\approx 3\\times 10^8$ m/s \u2014 the speed of light.",
+              "prompt": "This is the historic result: Maxwell's equations predict electromagnetic waves travelling at the speed of light. Light IS an electromagnetic wave.",
+              "sceneStep": 0
+            },
+            {
+              "id": "sinusoidal_ansatz",
+              "type": "step",
+              "label": "Try a sinusoidal solution",
+              "math": "\\htmlClass{hl-E}{E_y}=\\htmlClass{hl-amp}{E_0}\\sin(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)",
+              "highlights": {
+                "E": {
+                  "color": "cyan",
+                  "label": "y-component of electric field"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Peak electric field amplitude"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number (k = 2\u03c0/\u03bb)"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency (\u03c9 = 2\u03c0f)"
+                }
+              },
+              "justification": "Substitute the simplest plane-wave ansatz propagating in the $x$-direction with $\\vec{E}$ polarized in $\\hat{y}$.",
+              "explanation": "We guess a sinusoidal form \u2014 a plane wave moving in the $x$-direction with the electric field oscillating in $y$.",
+              "prompt": "Try the simplest wave-like solution. The sine function naturally describes oscillations.",
+              "sceneStep": 0
+            },
+            {
+              "id": "dispersion",
+              "type": "step",
+              "label": "Dispersion relation",
+              "math": "\\htmlClass{hl-k}{k}^2=\\frac{\\htmlClass{hl-omega}{\\omega}^2}{\\htmlClass{hl-c}{c}^2}\\quad\\Longrightarrow\\quad \\htmlClass{hl-omega}{\\omega}=\\htmlClass{hl-c}{c}\\,\\htmlClass{hl-k}{k}",
+              "highlights": {
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency"
+                },
+                "c": {
+                  "color": "cyan",
+                  "label": "Speed of light"
+                }
+              },
+              "justification": "Substituting the ansatz: $\\partial^2 E_y/\\partial x^2=-k^2 E_y$ and $\\partial^2 E_y/\\partial t^2=-\\omega^2 E_y$. The wave equation gives $k^2=\\omega^2/c^2$.",
+              "explanation": "Plugging the sine into the wave equation forces $\\omega=ck$ \u2014 the frequency and wave number are locked together by the speed of light.",
+              "prompt": "Compute the second derivatives and substitute. The sine cancels, leaving the algebraic constraint omega = ck.",
+              "sceneStep": 0
+            },
+            {
+              "id": "E_solution",
+              "type": "conclusion",
+              "label": "The electric field of an EM wave",
+              "math": "\\htmlClass{hl-E}{\\vec{E}}=\\htmlClass{hl-amp}{E_0}\\sin(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)\\,\\htmlClass{hl-dir}{\\hat{y}}",
+              "highlights": {
+                "E": {
+                  "color": "cyan",
+                  "label": "Electric field vector"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Peak amplitude"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "k = 2\u03c0/\u03bb"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "\u03c9 = 2\u03c0f = ck"
+                },
+                "dir": {
+                  "color": "pink",
+                  "label": "Polarization direction"
+                }
+              },
+              "justification": "The sinusoidal ansatz satisfies Maxwell's wave equation provided $\\omega=ck$. This is the wave shown in the 3D view.",
+              "explanation": "A sinusoidal electric field oscillating in $\\hat{y}$ and propagating in $\\hat{x}$ is a valid electromagnetic wave \u2014 exactly what the teal curve shows.",
+              "prompt": "This is the equation behind the visualization. The teal curve is E_0 sin(kx - \u03c9t) in the y-direction.",
+              "sceneStep": 4
+            }
+          ]
+        },
+        {
+          "id": "B_from_E",
+          "title": "Faraday's law: $\\vec{B}$ from $\\vec{E}$",
+          "technique": "derivation",
+          "goal": "Derive the magnetic field $\\vec{B}=\\frac{E_0}{c}\\sin(kx-\\omega t)\\,\\hat{z}$ from the electric field using Faraday's law.",
+          "prompt": "Start from the known E field solution and apply Faraday's law to derive B. Compute the curl component by component, integrate in time, and use omega=ck to get B=E/c.",
+          "steps": [
+            {
+              "id": "start_from_E",
+              "type": "given",
+              "label": "The known $\\vec{E}$ field",
+              "math": "\\htmlClass{hl-E}{\\vec{E}}=\\htmlClass{hl-amp}{E_0}\\sin(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)\\,\\htmlClass{hl-yhat}{\\hat{y}}",
+              "highlights": {
+                "E": {
+                  "color": "cyan",
+                  "label": "Electric field"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Peak amplitude"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency"
+                },
+                "yhat": {
+                  "color": "cyan",
+                  "label": "y-direction (polarization)"
+                }
+              },
+              "justification": "From the previous proof: this $\\vec{E}$ solves Maxwell's wave equation.",
+              "explanation": "We start with the electric field we already derived \u2014 now we use it to find the magnetic field.",
+              "prompt": "Recall the E field solution from the previous proof. Now we will find B.",
+              "sceneStep": 4
+            },
+            {
+              "id": "faraday_applied",
+              "type": "given",
+              "label": "Faraday's law",
+              "math": "\\htmlClass{hl-curl}{\\nabla\\times}\\htmlClass{hl-E}{\\vec{E}}=-\\htmlClass{hl-dtB}{\\frac{\\partial\\vec{B}}{\\partial t}}",
+              "highlights": {
+                "curl": {
+                  "color": "purple",
+                  "label": "Curl operator"
+                },
+                "E": {
+                  "color": "cyan",
+                  "label": "Electric field"
+                },
+                "dtB": {
+                  "color": "pink",
+                  "label": "Time derivative of B"
+                }
+              },
+              "justification": "Faraday's law connects the spatial variation of $\\vec{E}$ to the time variation of $\\vec{B}$.",
+              "explanation": "If $\\vec{E}$ varies in space, Faraday's law tells us $\\vec{B}$ must be changing in time.",
+              "prompt": "Faraday's law is the bridge: given E, it tells us what B must be.",
+              "sceneStep": 4
+            },
+            {
+              "id": "compute_curl",
+              "type": "step",
+              "label": "Compute the curl",
+              "math": "(\\htmlClass{hl-curl}{\\nabla\\times\\vec{E}})_z=\\frac{\\partial \\htmlClass{hl-Ey}{E_y}}{\\partial x}=\\htmlClass{hl-amp}{E_0}\\htmlClass{hl-k}{k}\\cos(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)",
+              "highlights": {
+                "curl": {
+                  "color": "purple",
+                  "label": "z-component of curl"
+                },
+                "Ey": {
+                  "color": "cyan",
+                  "label": "y-component of E"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Amplitude"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency"
+                }
+              },
+              "justification": "Since $\\vec{E}$ has only a $y$-component that depends on $x$, the only nonzero curl component is $\\partial E_y/\\partial x$ in the $\\hat{z}$ direction.",
+              "explanation": "The curl picks out how the $y$-field changes along $x$ \u2014 and points it in the $z$-direction. This is why $\\vec{B}$ will be in $\\hat{z}$.",
+              "prompt": "Only one component of the curl survives: dEy/dx gives a z-component. This determines the direction of B.",
+              "sceneStep": 4
+            },
+            {
+              "id": "faraday_z",
+              "type": "step",
+              "label": "Faraday's law, $z$-component",
+              "math": "-\\htmlClass{hl-dtBz}{\\frac{\\partial B_z}{\\partial t}}=\\htmlClass{hl-amp}{E_0}\\htmlClass{hl-k}{k}\\cos(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)",
+              "highlights": {
+                "dtBz": {
+                  "color": "pink",
+                  "label": "Time derivative of Bz"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Amplitude"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency"
+                }
+              },
+              "justification": "Equate the $z$-component of the curl to $-\\partial B_z/\\partial t$.",
+              "explanation": "Faraday's law now gives us a simple equation: the time derivative of $B_z$ equals $-E_0 k\\cos(kx-\\omega t)$.",
+              "prompt": "Write out the z-component of Faraday's law explicitly.",
+              "sceneStep": 4
+            },
+            {
+              "id": "integrate",
+              "type": "step",
+              "label": "Integrate in time",
+              "math": "\\htmlClass{hl-Bz}{B_z}=\\frac{\\htmlClass{hl-amp}{E_0}\\htmlClass{hl-k}{k}}{\\htmlClass{hl-omega}{\\omega}}\\sin(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)",
+              "highlights": {
+                "Bz": {
+                  "color": "pink",
+                  "label": "z-component of magnetic field"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Amplitude"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency"
+                }
+              },
+              "justification": "Integrate $-\\partial B_z/\\partial t$ with respect to $t$. The integral of $\\cos(kx-\\omega t)$ with respect to $t$ is $\\frac{1}{\\omega}\\sin(kx-\\omega t)$.",
+              "explanation": "Integrating the cosine in time gives back a sine \u2014 the magnetic field oscillates in phase with the electric field, with amplitude $E_0 k/\\omega$.",
+              "prompt": "Integrate both sides with respect to time. The cosine integrates to sine, picking up a factor of 1/omega.",
+              "sceneStep": 4
+            },
+            {
+              "id": "use_dispersion",
+              "type": "step",
+              "label": "Apply $\\omega=ck$",
+              "math": "\\frac{\\htmlClass{hl-k}{k}}{\\htmlClass{hl-omega}{\\omega}}=\\frac{\\htmlClass{hl-k}{k}}{\\htmlClass{hl-c}{c}\\,\\htmlClass{hl-k}{k}}=\\frac{1}{\\htmlClass{hl-c}{c}}",
+              "highlights": {
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number (cancels)"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency"
+                },
+                "c": {
+                  "color": "cyan",
+                  "label": "Speed of light"
+                }
+              },
+              "justification": "The dispersion relation $\\omega=ck$ from the wave equation simplifies $k/\\omega$ to $1/c$.",
+              "explanation": "The ratio $k/\\omega$ collapses to $1/c$ \u2014 the wave number and frequency are locked together by the speed of light.",
+              "prompt": "This is where the dispersion relation omega=ck pays off. The k cancels beautifully.",
+              "sceneStep": 4
+            },
+            {
+              "id": "B_solution",
+              "type": "conclusion",
+              "label": "The magnetic field of an EM wave",
+              "math": "\\htmlClass{hl-B}{\\vec{B}}=\\frac{\\htmlClass{hl-amp}{E_0}}{\\htmlClass{hl-c}{c}}\\sin(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)\\,\\htmlClass{hl-zhat}{\\hat{z}}",
+              "highlights": {
+                "B": {
+                  "color": "pink",
+                  "label": "Magnetic field vector"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Electric field amplitude"
+                },
+                "c": {
+                  "color": "cyan",
+                  "label": "Speed of light"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "k = 2\u03c0/\u03bb"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "\u03c9 = 2\u03c0f"
+                },
+                "zhat": {
+                  "color": "pink",
+                  "label": "z-direction (\u22a5 to E and propagation)"
+                }
+              },
+              "justification": "Substitute $k/\\omega=1/c$. The magnetic field is perpendicular to $\\vec{E}$ and to the propagation direction, with magnitude $B_0=E_0/c$.",
+              "explanation": "$\\vec{B}$ oscillates in $\\hat{z}$, perpendicular to both $\\vec{E}$ (in $\\hat{y}$) and propagation (in $\\hat{x}$). Its amplitude is $E_0/c$ \u2014 about $3\\times 10^{-9}$ times smaller in SI units, which is why $\\vec{E}$ dominates interactions with matter.",
+              "prompt": "This is the red curve in the 3D view. B is perpendicular to E, in phase, and c times smaller. That's why we usually only need to think about E.",
+              "sceneStep": 4
+            }
+          ]
+        }
+      ]
     },
     {
       "title": "One Photon Energy vs Light Intensity",
