@@ -410,6 +410,23 @@ class SemanticGraphBuilder:
                 if isinstance(f, Add):
                     s = rf"\left({s}\right)"
                 parts.append(s)
+            # SymPy absorbs ``\times`` and ``\cdot`` into plain Mul, so
+            # ``\nabla\times E`` becomes ``nabla * E`` and renders as
+            # ``\nabla E``.  Restore the explicit operator when the
+            # original LaTeX used one of these between nabla and the
+            # next factor.
+            if (self._original_latex
+                    and any(isinstance(f, Symbol) and f.name == "nabla" for f in factors)):
+                if r"\nabla\times" in self._original_latex or r"\nabla \times" in self._original_latex:
+                    for i, f in enumerate(factors):
+                        if isinstance(f, Symbol) and f.name == "nabla" and i + 1 < len(parts):
+                            parts[i] = parts[i] + r" \times"
+                            break
+                elif r"\nabla\cdot" in self._original_latex or r"\nabla \cdot" in self._original_latex:
+                    for i, f in enumerate(factors):
+                        if isinstance(f, Symbol) and f.name == "nabla" and i + 1 < len(parts):
+                            parts[i] = parts[i] + r" \cdot"
+                            break
             return " ".join(parts)
 
         if isinstance(expr, Add):
@@ -426,6 +443,22 @@ class SemanticGraphBuilder:
                     s = "- " + s[1:].lstrip()
                 parts.append(s)
             return " ".join(parts)
+
+        # SymPy always renders Derivative with "d" — restore "\partial" when
+        # the original LaTeX used it.
+        if isinstance(expr, Derivative) and r"\partial" in self._original_latex:
+            func_latex = self._subexpr_ordered(expr.expr)
+            var_parts = []
+            for v, count in expr.variable_count:
+                v_latex = self._subexpr_ordered(v)
+                if int(count) > 1:
+                    var_parts.append(rf"\partial {v_latex}^{{{int(count)}}}")
+                else:
+                    var_parts.append(rf"\partial {v_latex}")
+            total_order = sum(int(c) for _, c in expr.variable_count)
+            num = rf"\partial^{{{total_order}}} {func_latex}" if total_order > 1 else rf"\partial {func_latex}"
+            den = " ".join(var_parts)
+            return rf"\frac{{{num}}}{{{den}}}"
 
         return self._restore_placeholders(sympy.latex(expr))
 
@@ -576,10 +609,16 @@ class SemanticGraphBuilder:
             return node_id
 
         # --- Derivative ---
+        # SymPy uses the same ``Derivative`` type for both ordinary and
+        # partial derivatives.  Distinguish them by checking whether the
+        # original LaTeX contained ``\partial``; the renderer uses ``∂``
+        # for ``partial_derivative`` and ``d`` for ``derivative``.
         if isinstance(expr, Derivative):
             node_id = self._next_id("deriv")
             dep_vars = [str(v) for v, _ in expr.variable_count]
-            self._add_node(node_id, type="operator", op="derivative",
+            is_partial = r"\partial" in self._original_latex
+            op_name = "partial_derivative" if is_partial else "derivative"
+            self._add_node(node_id, type="operator", op=op_name,
                            with_respect_to=", ".join(dep_vars))
             child_id = self._walk(expr.expr)
             self._add_edge(child_id, node_id)

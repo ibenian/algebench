@@ -513,6 +513,11 @@ def _strip_accent_commands(
                 "mathring", "acute", "grave",
             }:
                 accent_map.setdefault(clean_body, matched_cmd)
+        # Prevent token concatenation: ``\times\vec{E}`` strips to
+        # ``\timesE`` without a separator, which SymPy parses as a single
+        # symbol ``timesE`` instead of ``\times E`` (multiplication × E).
+        if out and out[-1] and out[-1][-1].isalpha() and clean_body and clean_body[0].isalpha():
+            out.append(" ")
         out.append(clean_body)
         i = j + 1
     return "".join(out)

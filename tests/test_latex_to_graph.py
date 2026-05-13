@@ -613,7 +613,7 @@ class TestComplexFormulas:
         g = latex_to_semantic_graph(
             r"\frac{\partial^2 u}{\partial t^2} = c^2 \frac{\partial^2 u}{\partial x^2}"
         )
-        derivs = _find_nodes(g, type="operator", op="derivative")
+        derivs = _find_nodes(g, type="operator", op="partial_derivative")
         assert len(derivs) == 2
         wrt_vars = {d["with_respect_to"] for d in derivs}
         assert "t" in wrt_vars
@@ -1308,7 +1308,7 @@ class TestCompoundSymbols:
     def test_partial_derivative_still_parses(self):
         """``\\partial`` must NOT be collapsed — derivatives still need it."""
         g = latex_to_semantic_graph(r"\frac{\partial u}{\partial x} = 0")
-        derivs = _find_nodes(g, type="operator", op="derivative")
+        derivs = _find_nodes(g, type="operator", op="partial_derivative")
         assert derivs, (
             "\\partial u / \\partial x should still be recognized as a "
             "derivative, not a fraction of compound symbols"
