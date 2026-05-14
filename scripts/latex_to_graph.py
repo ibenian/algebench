@@ -1475,8 +1475,14 @@ def _split_on_top_level_newline(latex: str) -> list[str]:
                 depth -= 1
             i += 1
         elif ch == "\\" and depth == 0:
+            # Look for ``\\`` (two backslashes) that is NOT part of a
+            # longer backslash-letter command.  We need exactly two
+            # consecutive backslashes NOT followed by another backslash
+            # or a letter (which would make it ``\\\cmd``).
             if i + 1 < n and latex[i + 1] == "\\":
                 end_of_bs = i + 2
+                # Skip optional ``[...]`` spacing arg after ``\\``,
+                # e.g. ``\\[6pt]``
                 after = end_of_bs
                 while after < n and latex[after] in " \t":
                     after += 1
@@ -1898,11 +1904,16 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         _inject_annotations(graph, parenthetical_annotations)
         return graph
 
-    # A top-level comma now acts as a statement separator (preserves
-    # existing ``a = 1, b = 2`` behavior — multiple independent rooted
-    # statements, no synthetic ``and`` node). Pass only the user-supplied
-    # overrides; the recursive call re-derives text/compound placeholders
-    # per clause so they don't collide with parent-scoped ``Xi_{N}`` ids.
+    # No top-level relation.  Check for ``\\`` (LaTeX newline) first —
+    # it's a stronger separator than comma.  Then fall through to comma.
+    newline_clauses = _split_on_top_level_newline(latex)
+    if len(newline_clauses) > 1:
+        graph = _build_comma_separated_graph(
+            newline_clauses, overrides=user_overrides, domain=domain,
+        )
+        _inject_annotations(graph, parenthetical_annotations)
+        return graph
+
     clauses = _split_on_top_level_comma(latex)
     if len(clauses) > 1:
         graph = _build_comma_separated_graph(
