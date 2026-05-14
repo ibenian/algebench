@@ -49,14 +49,50 @@ _JS_BUILTIN_FUNC_RE = re.compile(
     r'\b(toPrecision|toString|parseInt|parseFloat|isNaN|isFinite)\s*\('
 )
 
-# Fields actively scanned by _scanSpecForUnsafeJs in static/app.js.
-# Expressions found under these keys trigger the trust dialog when they
-# contain JS-only patterns.
+# ── Scanning landscape ──────────────────────────────────────────────────
+#
+# When adding a NEW field to the scene schema, classify it into exactly
+# one of the three buckets below:
+#
+# 1. SCANNED expression key  (goes into ``_SCANNED_KEYS``)
+#    - Value is compiled via ``compileExpr`` / math.js.
+#    - The browser-side trust scanner (``scanSpecForUnsafeJs`` in
+#      ``static/trust.js``) checks it for JS-only patterns and triggers
+#      the trust dialog if any are found.
+#    - trust.js explicitly lists: expr, x, y, z, expression, fx, fy, fz.
+#    - trust.js ALSO catches **any key ending in ``Expr``** via
+#      ``k.endsWith('Expr')``, so keys like ``textExpr``, ``visibleExpr``,
+#      ``positionExpr`` etc. are all scanned automatically — no explicit
+#      registration needed.
+#    - The audit classifies matches as ``js/covered`` (safe).
+#
+# 2. NON-EXPRESSION key  (goes into ``_NON_EXPR_KEYS``)
+#    - Value is never evaluated as an expression — it's a label, prose,
+#      format string, LaTeX display string, color, etc.
+#    - Examples: ``text``, ``label``, ``textFormat``, ``subexpr``.
+#    - The audit ignores these entirely.
+#
+# 3. UNSCANNED expression key  (goes into ``_UNSCANNED_EXPR_KEYS``)
+#    - Value IS compiled via ``compileExpr`` but is NOT checked by the
+#      browser trust scanner.
+#    - NOTE: Currently trust.js's ``endsWith('Expr')`` catch-all means
+#      all ``*Expr`` keys are actually scanned.  This bucket exists for
+#      any future non-``*Expr`` expression fields that might be added
+#      without updating trust.js.  The audit classifies matches as
+#      ``uncovered`` (a CI failure) to flag the gap.
+#
+# ─────────────────────────────────────────────────────────────────────────
+
+# Fields actively scanned by scanSpecForUnsafeJs in static/trust.js.
+# The trust scanner also catches any key ending in "Expr" via
+# endsWith('Expr'), so *Expr keys don't need to be listed here.
 _SCANNED_KEYS = frozenset({'expr', 'x', 'y', 'z', 'expression', 'fx', 'fy', 'fz'})
 
-# Additional expression-bearing keys that app.js compiles via compileExpr but
-# that _scanSpecForUnsafeJs does NOT currently scan.  Expressions found here
-# are classified as 'js_uncovered' when they match _JS_ONLY_RE.
+# Expression-bearing keys that compileExpr evaluates but that
+# scanSpecForUnsafeJs does NOT explicitly list.  Currently all *Expr
+# keys are caught by trust.js's endsWith('Expr') catch-all, so these
+# are effectively scanned.  Listed here so the audit knows they are
+# expression fields (vs prose/labels).
 _UNSCANNED_EXPR_KEYS = frozenset({
     'visibleExpr', 'radiusExpr', 'radiiExpr', 'centerExpr',
     'fromExpr', 'toExpr', 'positionExpr', 'valueExpr', 'labelExpr',
@@ -67,12 +103,13 @@ def _is_expr_key(k):
     return k in _SCANNED_KEYS or k in _UNSCANNED_EXPR_KEYS or (k.endswith('Expr') and k not in _NON_EXPR_KEYS)
 
 # Keys whose string values are never mathematical expressions — labels, ids,
-# documentation fields, etc.  Excluded from the dynamic discovery pass.
+# documentation fields, format strings, etc.  Excluded from the dynamic
+# discovery pass.  Add new non-expression string fields here.
 _NON_EXPR_KEYS = frozenset({
     'type', 'id', 'name', 'label', 'color', 'title', 'description',
     'doc', 'prompt', 'caption', 'content', 'format', 'unit',
     'axis', 'camera', 'range', 'theme',
-    'markdown', 'text', 'unsafeExplanation',
+    'markdown', 'text', 'textFormat', 'unsafeExplanation',
     'explanation', 'math', 'legendGroup', 'goal',
     # Prose fields on proof steps. Not evaluated as expressions.
     'justification',

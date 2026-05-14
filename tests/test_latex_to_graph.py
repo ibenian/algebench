@@ -285,6 +285,12 @@ class TestDerivatives:
         result = _preprocess_latex(r"\frac{\partial^{3} u}{\partial x^{3}}")
         assert result.count(r"\frac") == 3
 
+    def test_ordinary_derivative_not_partial(self):
+        """d/dt must stay op='derivative', not 'partial_derivative'."""
+        g = latex_to_semantic_graph(r"\frac{d v}{d t}")
+        assert _find_node(g, type="operator", op="derivative") is not None
+        assert _find_node(g, type="operator", op="partial_derivative") is None
+
 
 # ---------------------------------------------------------------------------
 # Relation operators (proportional, implies, iff, maps_to, approximately)
@@ -613,7 +619,7 @@ class TestComplexFormulas:
         g = latex_to_semantic_graph(
             r"\frac{\partial^2 u}{\partial t^2} = c^2 \frac{\partial^2 u}{\partial x^2}"
         )
-        derivs = _find_nodes(g, type="operator", op="derivative")
+        derivs = _find_nodes(g, type="operator", op="partial_derivative")
         assert len(derivs) == 2
         wrt_vars = {d["with_respect_to"] for d in derivs}
         assert "t" in wrt_vars
@@ -1308,7 +1314,7 @@ class TestCompoundSymbols:
     def test_partial_derivative_still_parses(self):
         """``\\partial`` must NOT be collapsed — derivatives still need it."""
         g = latex_to_semantic_graph(r"\frac{\partial u}{\partial x} = 0")
-        derivs = _find_nodes(g, type="operator", op="derivative")
+        derivs = _find_nodes(g, type="operator", op="partial_derivative")
         assert derivs, (
             "\\partial u / \\partial x should still be recognized as a "
             "derivative, not a fraction of compound symbols"

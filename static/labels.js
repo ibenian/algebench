@@ -201,14 +201,17 @@ export function colorToCSS(c) {
 
 // ----- Label system -----
 
-export function addLabel3D(text, dataPos, color, cssClass) {
+export function addLabel3D(text, dataPos, color, opts) {
+    if (typeof opts === 'string') opts = { cssClass: opts };
+    opts = opts || {};
     const container = document.getElementById('labels-container');
     const el = document.createElement('div');
-    el.className = cssClass || 'label-3d';
+    el.className = opts.cssClass || 'label-3d';
     el.innerHTML = renderKaTeX(text, false);
     if (color) el.style.color = colorToCSS(color);
     container.appendChild(el);
-    const entry = { el, dataPos: dataPos.slice(), screenX: null, screenY: null, forceHidden: false };
+    const align = opts.align || 'center';
+    const entry = { el, dataPos: dataPos.slice(), screenX: null, screenY: null, forceHidden: false, align };
     state.labels.push(entry);
     return entry;
 }
@@ -243,7 +246,8 @@ export function updateLabels() {
             lbl.screenY += (targetY - lbl.screenY) * alpha;
         }
         const s = state.displayParams.labelScale;
-        lbl.el.style.transform = `translate(${lbl.screenX}px, ${lbl.screenY}px) translate(-50%, -50%)${s !== 1 ? ' scale(' + s + ')' : ''}`;
+        const ax = lbl.align === 'right' ? '-100%' : lbl.align === 'left' ? '0%' : '-50%';
+        lbl.el.style.transform = `translate(${lbl.screenX}px, ${lbl.screenY}px) translate(${ax}, -50%)${s !== 1 ? ' scale(' + s + ')' : ''}`;
         lbl.el.style.opacity = visible ? state.displayParams.labelOpacity : '0';
     }
 }

@@ -513,6 +513,11 @@ def _strip_accent_commands(
                 "mathring", "acute", "grave",
             }:
                 accent_map.setdefault(clean_body, matched_cmd)
+        # Prevent token concatenation: ``\times\vec{E}`` strips to
+        # ``\timesE`` without a separator, which SymPy parses as a single
+        # symbol ``timesE`` instead of ``\times E`` (multiplication × E).
+        if out and out[-1] and out[-1][-1].isalpha() and clean_body and clean_body[0].isalpha():
+            out.append(" ")
         out.append(clean_body)
         i = j + 1
     return "".join(out)
@@ -629,10 +634,12 @@ def _restore_subscripts_in_graph(graph: dict, mapping: dict[str, str]) -> None:
         for greek_name, original in items:
             # latex form: \xi → original
             s = s.replace(f"\\{greek_name}", original)
-            # sympy id form: bare name → original. Scope to subscript
-            # context to avoid matching unrelated substrings in operator
-            # subexprs.
+            # sympy id form (braced): {alpha} → {obs}
             s = s.replace(f"{{{greek_name}}}", f"{{{original}}}")
+            # sympy id form (bare subscript): _alpha → _obs
+            # SymPy strips braces from subscripts, so lambda_{\alpha}
+            # becomes lambda_alpha in symbol names.
+            s = s.replace(f"_{greek_name}", f"_{original}")
         return s
 
     # Derive a human-readable display name from each placeholder's original

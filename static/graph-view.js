@@ -19,7 +19,7 @@
 import { state } from '/state.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer } from '/graph-panel/d3-semantic-graph.js';
-import { makeAiAskButton } from '/labels.js';
+import { makeAiAskButton, renderKaTeX } from '/labels.js';
 
 let _currentGraphPanel = null;
 let _currentSemanticKey = null;
@@ -433,7 +433,7 @@ function rebuildProofTree() {
         if (multiScene) {
             const ttl = document.createElement('div');
             ttl.className = 'gp-tree-scene-title';
-            ttl.textContent = group.sceneTitle;
+            ttl.innerHTML = renderKaTeX(group.sceneTitle, false);
             groupEl.appendChild(ttl);
         }
         group.entries.forEach((entry) => {
@@ -448,7 +448,7 @@ function rebuildProofTree() {
             arrow.className = 'gp-tree-proof-arrow';
             arrow.textContent = '▶';
             const title = document.createElement('span');
-            title.textContent = proof.title || proof.id || 'Proof';
+            title.innerHTML = renderKaTeX(proof.title || proof.id || 'Proof', false);
             header.append(arrow, title);
             proofEl.appendChild(header);
 
@@ -473,7 +473,7 @@ function rebuildProofTree() {
                 idxEl.textContent = String(sIdx + 1);
                 const labelEl = document.createElement('span');
                 labelEl.className = 'gp-tree-step-label';
-                labelEl.textContent = stripLatex(step.label || step.justification || step.math || `Step ${sIdx + 1}`);
+                labelEl.innerHTML = renderKaTeX(step.label || step.justification || step.math || `Step ${sIdx + 1}`, false);
                 stepEl.append(idxEl, labelEl);
                 if (hasGraph) {
                     const dot = document.createElement('span');

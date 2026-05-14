@@ -156,10 +156,11 @@ function operatorGlyph(node) {
         exp: 'exp', sin: 'sin', cos: 'cos', tan: 'tan',
         Abs: '|·|', abs: '|·|', function: 'f',
     };
-    if (node.op === 'derivative') {
+    if (node.op === 'derivative' || node.op === 'partial_derivative') {
+        const d = node.op === 'partial_derivative' ? '∂' : 'd';
         if (node.with_respect_to && (!node._childIds || node._childIds.length <= 1))
-            return `d·/d${node.with_respect_to}`;
-        return 'd·/d·';
+            return `${d}·/${d}${node.with_respect_to}`;
+        return `${d}·/${d}·`;
     }
     if (node.op === 'power') {
         const exp = node.exponent || 'n';
