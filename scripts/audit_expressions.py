@@ -60,7 +60,6 @@ _SCANNED_KEYS = frozenset({'expr', 'x', 'y', 'z', 'expression', 'fx', 'fy', 'fz'
 _UNSCANNED_EXPR_KEYS = frozenset({
     'visibleExpr', 'radiusExpr', 'radiiExpr', 'centerExpr',
     'fromExpr', 'toExpr', 'positionExpr', 'valueExpr', 'labelExpr',
-    'textExpr',
 })
 
 def _is_expr_key(k):
