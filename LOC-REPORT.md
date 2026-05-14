@@ -5,8 +5,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `codex/photons-wavelength-energy-draft` |
-| **Commit** | `ae2d72c` |
-| **Date** | 2026-05-13 20:00:00 -0400 |
+| **Commit** | `e8cfff6` |
+| **Date** | 2026-05-13 20:04:55 -0400 |
 
 ## Language Breakdown
 
@@ -17,7 +17,7 @@
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "JavaScript", "Python", "CSS", "HTML", "Shell", "BASH"]
-  bar [49520, 15287, 10888, 4163, 386, 137, 33]
+  bar [49520, 15287, 10889, 4163, 386, 137, 33]
 ```
 
 ## Summary by Language
@@ -28,7 +28,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  JSON                     41        49521        49520            0            1
  JavaScript               46        17608        15287          891         1430
- Python                   29        14057        10888         1544         1625
+ Python                   29        14058        10889         1544         1625
  CSS                       3         4506         4163          157          186
  Shell                     2          172          137           14           21
  BASH                      1           41           33            4            4
@@ -46,7 +46,7 @@ xychart-beta horizontal
  |- Python                 2           38           30            2            6
  (Total)                            11945         1474         7878         2593
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   181        98966        82520        10520         5926
+ Total                   181        98967        82521        10520         5926
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -131,7 +131,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Python                   29        14057        10888         1544         1625
+ Python                   29        14058        10889         1544         1625
 ─────────────────────────────────────────────────────────────────────────────────
  |ebench/algebench/server.py         2938         2352          341          245
  |sts/test_latex_to_graph.py         1569         1221          143          205
@@ -140,7 +140,7 @@ xychart-beta horizontal
  |semantic_graph_enricher.py          853          676          106           71
  |cripts/graph_to_mermaid.py          861          604          174           83
  |h/algebench/agent_tools.py          610          522           35           53
- |ripts/audit_expressions.py          660          515           54           91
+ |ripts/audit_expressions.py          661          516           54           91
  |nch/scripts/render_math.py          509          469            4           36
  |cripts/validate_content.py          602          453           42          107
  |s/test_graph_to_mermaid.py          613          441           89           83
@@ -163,7 +163,7 @@ xychart-beta horizontal
  |lgebench/tests/__init__.py            0            0            0            0
  |h/tests/agents/__init__.py            0            0            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                    29        14057        10888         1544         1625
+ Total                    29        14058        10889         1544         1625
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -172,5 +172,5 @@ xychart-beta horizontal
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
 | JavaScript (frontend) | 15287 | 58% |
-| Python (backend) | 10888 | 42% |
-| **Total** | **26175** | **100%** |
+| Python (backend) | 10889 | 42% |
+| **Total** | **26176** | **100%** |
