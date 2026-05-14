@@ -60,6 +60,7 @@ _SCANNED_KEYS = frozenset({'expr', 'x', 'y', 'z', 'expression', 'fx', 'fy', 'fz'
 _UNSCANNED_EXPR_KEYS = frozenset({
     'visibleExpr', 'radiusExpr', 'radiiExpr', 'centerExpr',
     'fromExpr', 'toExpr', 'positionExpr', 'valueExpr', 'labelExpr',
+    'textExpr',
 })
 
 def _is_expr_key(k):
@@ -72,7 +73,7 @@ _NON_EXPR_KEYS = frozenset({
     'type', 'id', 'name', 'label', 'color', 'title', 'description',
     'doc', 'prompt', 'caption', 'content', 'format', 'unit',
     'axis', 'camera', 'range', 'theme',
-    'markdown', 'text', 'unsafeExplanation',
+    'markdown', 'text', 'textFormat', 'unsafeExplanation',
     'explanation', 'math', 'legendGroup', 'goal',
     # Prose fields on proof steps. Not evaluated as expressions.
     'justification',
