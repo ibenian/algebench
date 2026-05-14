@@ -15,7 +15,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from server import _re_sub_literal, _restore_dot_notation, _derive_semantic_graph  # noqa: E402
+from server import _re_sub_literal, _restore_dot_notation, _derive_semantic_graph, _strip_accent_commands  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +129,16 @@ class TestIssue185Repro:
         ids = {node["id"] for node in g["nodes"]}
         assert r"q_{\text{lunar}}" in ids
         assert r"q_{\text{LEO}}" in ids
+
+    def test_accent_strip_prevents_token_concatenation(self):
+        """``\\times\\vec{E}`` must strip to ``\\times E``, not ``\\timesE``."""
+        result = _strip_accent_commands(r"\times\vec{E}")
+        assert result == r"\times E"
+
+    def test_accent_strip_no_space_after_non_alpha(self):
+        """No extra space when preceding char is not alphabetic."""
+        result = _strip_accent_commands(r"(\vec{F})")
+        assert result == "(F)"
 
     def test_dotted_subexprs_use_dot_command(self):
         g = _derive_semantic_graph(self.LATEX)

@@ -20,7 +20,7 @@ export function renderText(el, view) {
             return null;
         }
 
-        const labelOpts = { align: el.align };
+        const labelOpts = { align: el.align, cssClass: el.cssClass };
         const labelEl = addLabel3D(text, initPos, color, labelOpts);
         const startTime = state.sceneStartTime;
 
@@ -61,7 +61,7 @@ export function renderText(el, view) {
 
     const position = el.position || el.at || [0, 0, 0];
 
-    const labelOpts = { align: el.align };
+    const labelOpts = { align: el.align, cssClass: el.cssClass };
     addLabel3D(text, position, color, labelOpts);
 
     return { type: 'text', color, label: text };

@@ -285,6 +285,12 @@ class TestDerivatives:
         result = _preprocess_latex(r"\frac{\partial^{3} u}{\partial x^{3}}")
         assert result.count(r"\frac") == 3
 
+    def test_ordinary_derivative_not_partial(self):
+        """d/dt must stay op='derivative', not 'partial_derivative'."""
+        g = latex_to_semantic_graph(r"\frac{d v}{d t}")
+        assert _find_node(g, type="operator", op="derivative") is not None
+        assert _find_node(g, type="operator", op="partial_derivative") is None
+
 
 # ---------------------------------------------------------------------------
 # Relation operators (proportional, implies, iff, maps_to, approximately)
