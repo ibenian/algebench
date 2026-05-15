@@ -1031,6 +1031,19 @@ class TestNewlineSplit:
     def test_leading_newline_no_empty_clause(self):
         assert _split_on_top_level_newline(r"\\ b = 2") == ["b = 2"]
 
+    def test_newline_inside_begin_cases_not_split(self):
+        latex = r"\begin{cases} a \\ b \end{cases}"
+        assert _split_on_top_level_newline(latex) == [latex]
+
+    def test_newline_inside_nested_environments_not_split(self):
+        latex = r"\begin{cases} \begin{matrix} x \\ y \end{matrix} \\ z \end{cases}"
+        assert _split_on_top_level_newline(latex) == [latex]
+
+    def test_newline_after_environment_does_split(self):
+        assert _split_on_top_level_newline(
+            r"\begin{cases} a \\ b \end{cases} \\ c = 1"
+        ) == [r"\begin{cases} a \\ b \end{cases}", "c = 1"]
+
 
 class TestNewlineSeparatedClauses:
     r"""Full graph behaviour for ``\\``-separated statements (issue #253)."""

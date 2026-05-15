@@ -1451,17 +1451,17 @@ def _split_on_top_level_newline(latex: str) -> list[str]:
     as **statement separators**.
 
     A ``\\`` is treated as a separator only when it sits at brace / paren /
-    bracket depth 0 — i.e. outside every ``{...}``, ``(...)``, ``[...]``
-    group.  Inside environments like ``\begin{cases}`` or matrices the
-    double-backslash is a row separator, not a statement separator, but
-    those environments are already wrapped in braces so the depth check
-    handles them automatically.
+    bracket depth 0 **and** outside any ``\begin{…}``/``\end{…}``
+    environment.  Inside environments like ``\begin{cases}``, matrices, or
+    ``align`` blocks the double-backslash is a row separator, not a
+    statement separator.
 
     Returns a list of trimmed, non-empty sub-expressions.  A single-element
     list means no top-level ``\\`` was found.
     """
     parts: list[str] = []
     depth = 0
+    env_depth = 0
     i = 0
     start = 0
     n = len(latex)
@@ -1474,7 +1474,19 @@ def _split_on_top_level_newline(latex: str) -> list[str]:
             if depth > 0:
                 depth -= 1
             i += 1
-        elif ch == "\\" and depth == 0:
+        elif ch == "\\" and i + 1 < n and latex[i + 1] != "\\":
+            # Check for \begin{...} / \end{...} to track environment depth.
+            rest = latex[i:]
+            if rest.startswith("\\begin{"):
+                env_depth += 1
+                i += 1
+            elif rest.startswith("\\end{"):
+                if env_depth > 0:
+                    env_depth -= 1
+                i += 1
+            else:
+                i += 1
+        elif ch == "\\" and depth == 0 and env_depth == 0:
             # Look for ``\\`` (two backslashes) that is NOT part of a
             # longer backslash-letter command.  We need exactly two
             # consecutive backslashes NOT followed by another backslash
