@@ -16,6 +16,7 @@
  */
 
 import { makeAiAskButton } from "/labels.js";
+import { nodeLongLabel } from "/graph-panel/d3-semantic-graph.js";
 
 const PANEL_FIELDS = [
   ["label", "Label"],
@@ -82,8 +83,12 @@ export class SemanticGraphPanel {
     for (const node of this.graph.nodes || []) {
       const sid = sanitize(node.id);
       const info = {};
+      // ``subexpr`` is included so ``nodeLongLabel(info)`` can resolve
+      // it; ``exponent`` / ``with_respect_to`` so ``operatorGlyph`` can
+      // synthesize ``(·)²`` / ``∂·/∂x`` short labels.
       for (const key of ["id", "type", "label", "description", "emoji", "op", "quantity",
-                          "dimension", "unit", "value", "role", "latex"]) {
+                          "dimension", "unit", "value", "role", "latex",
+                          "subexpr", "exponent", "with_respect_to"]) {
         if (node[key] !== undefined && node[key] !== null) info[key] = node[key];
       }
       this._nodeData[sid] = info;
@@ -231,7 +236,10 @@ export class SemanticGraphPanel {
     const emoji = data.emoji || "";
     const expr = this._subexprs[nodeId];
     const hasOwnLatex = !!data.latex;
-    const titleLatex = data.latex || (expr ? expr : null);
+    // Details panel shows the *long label* — the full applied form
+    // (``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``).  ``nodeLongLabel``
+    // encapsulates the precedence (``subexpr → latex → short``).
+    const titleLatex = nodeLongLabel(data) || null;
     const titleText = data.id || "";
     const showEmoji = emoji && hasOwnLatex;
 

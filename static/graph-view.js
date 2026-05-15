@@ -18,7 +18,7 @@
 
 import { state } from '/state.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
-import { D3SemanticGraphRenderer } from '/graph-panel/d3-semantic-graph.js';
+import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
 import { makeAiAskButton, renderKaTeX } from '/labels.js';
 
 let _currentGraphPanel = null;
@@ -860,7 +860,10 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
     const fieldsEl = panel.querySelector('.gp-fields');
     if (!symbolEl || !fieldsEl) return;
 
-    const latex = fullNode.latex || fullNode.subexpr;
+    // Details panel shows the *long label* — full applied form
+    // (``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``).  ``nodeLongLabel``
+    // encapsulates the precedence (``subexpr → latex → short``).
+    const latex = nodeLongLabel(fullNode);
     if (latex && window.katex) {
         try {
             const span = document.createElement('span');
@@ -979,7 +982,7 @@ function _showD3MultiInfoPanel(selectedIds, graph) {
         }
         const symLine = document.createElement('div');
         symLine.className = 'gp-symbol';
-        const latex = node.latex || node.subexpr;
+        const latex = nodeLongLabel(node);
         if (latex && window.katex) {
             try {
                 window.katex.render(latex, symLine, { displayMode: false, throwOnError: false });

@@ -78,7 +78,20 @@ const DEFAULT_EDGE_WIDTHS = {
     neutral: 1.4,
 };
 
-// Default node styles (fallback when theme has no nodeStyles)
+// Default node styles (fallback when theme has no nodeStyles).
+// Color families:
+//   green  — data (scalar / vector / constant / number / expression / text)
+//   blue   — computation (operator / function)
+//   purple — statements (relation)
+//   brown  — meta (annotation)
+//
+// Per-op variants (``sin`` vs ``cos``, ``inner_product`` vs ``+``,
+// etc.) are not styled here — they all inherit their type's colour.
+// Themes that want per-op distinction should add op-keyed entries to
+// their own ``nodeStyles`` block; those theme overrides take priority
+// in ``_nodeStyle``.  This keeps the default palette taxonomy-driven
+// (operator vs function vs data) and avoids singling out individual
+// ops in the built-in defaults.
 const DEFAULT_NODE_STYLES = {
     scalar:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
     vector:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
@@ -128,45 +141,92 @@ function inferEdgeSemantic(edge, nodeById) {
 
 // No tree conversion needed — dagre handles DAG layout directly.
 
-/**
- * Get the display label for a node, respecting label detail level.
- * @param {Object} node
- * @param {'minimal'|'description'|'full'} labelMode
- */
-function getNodeLabel(node, labelMode) {
-    if (node.type === 'operator' || node.type === 'relation' || node.type === 'function') {
-        return operatorGlyph(node);
-    }
-    const base = (labelMode === 'minimal')
-        ? (node.emoji || node.latex || node.label || node.id)
-        : (node.latex || node.label || node.id);
-    if (node.emoji && base !== node.emoji) return node.emoji + ' ' + base;
-    return base;
-}
+// ---------------------------------------------------------------------------
+// Two-form display convention — mirrors ``node_short_label`` /
+// ``node_long_label`` in ``scripts/latex_to_graph.py``.  Keep in sync.
+//
+// short (op/rel/fn):  node.latex →  glyph(op, …)  →  op  →  id
+// short (data):       node.latex →  node.label    →  id
+// long  (any):        node.subexpr → node.latex   →  short label
+//
+// Operator-glyph map mirrors ``_OPERATOR_GLYPHS`` in the Python parser.
+// ---------------------------------------------------------------------------
+
+const OPERATOR_GLYPHS = {
+    equals: '=', greater_than: '>', less_than: '<',
+    greater_equal: '≥', less_equal: '≤', not_equal: '≠',
+    multiply: '×', add: '+', subtract: '−',
+    divide: '÷', integral: '∫',
+    implies: '⇒', iff: '⇔',
+    negation: '−', not: '¬', logical_not: '¬',
+    conjunction: '∧', disjunction: '∨',
+    sum: '∑', product: '∏', limit: 'lim',
+    factorial: '!', sqrt: '√(·)',
+    log: 'log', logarithm: 'log', exp: 'exp',
+    sin: 'sin', cos: 'cos', tan: 'tan',
+    Abs: '|·|', abs: '|·|',
+    function: 'f',
+};
+
+const OP_KINDS = new Set(['operator', 'relation', 'function']);
 
 function operatorGlyph(node) {
-    const glyphs = {
-        equals: '=', greater_than: '>', less_than: '<',
-        greater_equal: '≥', less_equal: '≤', not_equal: '≠',
-        multiply: '×', add: '+', subtract: '−',
-        divide: '÷', integral: '∫',
-        implies: '⇒', iff: '⇔', negation: '−', not: '¬', logical_not: '¬', conjunction: '∧',
-        disjunction: '∨', sum: '∑', product: '∏', limit: 'lim',
-        factorial: '!', sqrt: '√(·)', log: 'log', logarithm: 'log',
-        exp: 'exp', sin: 'sin', cos: 'cos', tan: 'tan',
-        Abs: '|·|', abs: '|·|', function: 'f',
-    };
-    if (node.op === 'derivative' || node.op === 'partial_derivative') {
-        const d = node.op === 'partial_derivative' ? '∂' : 'd';
+    if (!node) return null;
+    const op = node.op;
+    if (!op) return null;
+    if (op === 'power') {
+        return `(·)${toSuperscript(node.exponent || 'n')}`;
+    }
+    if (op === 'derivative' || op === 'partial_derivative') {
+        const d = op === 'partial_derivative' ? '∂' : 'd';
         if (node.with_respect_to && (!node._childIds || node._childIds.length <= 1))
             return `${d}·/${d}${node.with_respect_to}`;
         return `${d}·/${d}·`;
     }
-    if (node.op === 'power') {
-        const exp = node.exponent || 'n';
-        return `(·)${toSuperscript(exp)}`;
+    return OPERATOR_GLYPHS[op] || null;
+}
+
+/**
+ * Compact symbol shown on the graph node itself.
+ * ``\cos``, ``⟨0|·⟩``, ``|·|``, ``(·)²``, ``+``, ``=``…
+ */
+export function nodeShortLabel(node) {
+    if (!node) return '';
+    if (OP_KINDS.has(node.type)) {
+        if (node.latex) return node.latex;
+        const g = operatorGlyph(node);
+        if (g) return g;
+        return node.op || node.id || '';
     }
-    return glyphs[node.op] || node.op || node.label || '?';
+    return node.latex || node.label || node.id || '';
+}
+
+/**
+ * Full applied form shown in the details panel / hover / TTS.
+ * ``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``…
+ */
+export function nodeLongLabel(node) {
+    if (!node) return '';
+    return node.subexpr || node.latex || nodeShortLabel(node);
+}
+
+/**
+ * Get the display label for a node, respecting label detail level.
+ * Thin wrapper around ``nodeShortLabel`` that adds the emoji prefix
+ * for ``minimal`` label mode on data nodes.
+ *
+ * @param {Object} node
+ * @param {'minimal'|'description'|'full'} labelMode
+ */
+function getNodeLabel(node, labelMode) {
+    const short = nodeShortLabel(node);
+    if (OP_KINDS.has(node.type)) return short;
+    // Data nodes can prefix with emoji in minimal mode.
+    if (labelMode === 'minimal' && node.emoji) {
+        return short === node.emoji ? node.emoji : node.emoji + ' ' + short;
+    }
+    if (node.emoji && short !== node.emoji) return node.emoji + ' ' + short;
+    return short;
 }
 
 export class D3SemanticGraphRenderer {
@@ -300,8 +360,19 @@ export class D3SemanticGraphRenderer {
 
     // ─── Theme helpers ─────────────────────────────────────────────────
 
-    _nodeStyle(nodeType) {
+    _nodeStyle(nodeOrType) {
+        // Accept either a bare type string (legacy callers) or a full
+        // node data object.  Defaults are taxonomy-driven only
+        // (operator / function / scalar / …) — no per-op specials.
+        // Themes that want per-op distinction (e.g. ``sin`` warmer
+        // than ``cos``) can opt in by adding op-keyed entries to
+        // their own ``nodeStyles`` block; we honour those when the
+        // node carries an ``op`` field.
+        const isNode = nodeOrType && typeof nodeOrType === 'object';
+        const nodeType = isNode ? nodeOrType.type : nodeOrType;
+        const op = isNode ? nodeOrType.op : null;
         const ts = this._theme?.nodeStyles;
+        if (op && ts && ts[op]) return ts[op];
         if (ts && ts[nodeType]) return ts[nodeType];
         return DEFAULT_NODE_STYLES[nodeType] || DEFAULT_NODE_STYLES.scalar;
     }
@@ -622,7 +693,7 @@ export class D3SemanticGraphRenderer {
 
     _nodeShape(d) {
         if (!d || !d.data) return { type: 'circle', r: 26 };
-        const style = this._nodeStyle(d.data.type);
+        const style = this._nodeStyle(d.data);
         const invisible = (!style.fill || style.fill === 'none') &&
                            (!style.stroke || style.stroke === 'none');
         if (d.data._collapsed) {
@@ -1037,7 +1108,7 @@ export class D3SemanticGraphRenderer {
         group.selectAll('*').remove();
         const data = d.data;
         const isOp = data.type === 'operator' || data.type === 'relation' || data.type === 'function';
-        const style = this._nodeStyle(data.type);
+        const style = this._nodeStyle(data);
 
         const invisible = (!style.fill || style.fill === 'none') &&
                            (!style.stroke || style.stroke === 'none');

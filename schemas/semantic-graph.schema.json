@@ -29,8 +29,8 @@
   "$defs": {
     "nodeType": {
       "type": "string",
-      "enum": ["scalar", "vector", "constant", "number", "operator", "function", "relation", "expression", "text", "annotation"],
-      "description": "The semantic role of the node."
+      "enum": ["scalar", "vector", "constant", "number", "operator", "function", "relation", "expression", "text", "annotation", "ket", "bra", "braket"],
+      "description": "The semantic role of the node. ``ket`` / ``bra`` are Dirac-notation state vectors (``|ψ⟩`` / ``⟨ψ|``); ``braket`` is reserved for legacy graphs — newer parses emit inner products as ``type=operator`` with ``op=inner_product``."
     },
     "operatorOp": {
       "type": "string",
@@ -38,7 +38,8 @@
         "add", "subtract", "multiply", "divide", "power", "equals", "negation",
         "derivative", "integral", "sum", "product",
         "sin", "cos", "tan", "log", "exp", "sqrt", "abs",
-        "arcsin", "arccos", "arctan"
+        "arcsin", "arccos", "arctan",
+        "inner_product"
       ],
       "description": "The mathematical operation this operator or function performs."
     },

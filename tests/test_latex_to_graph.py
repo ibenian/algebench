@@ -16,6 +16,7 @@ from scripts.latex_to_graph import (
     _split_on_top_level_comma,
     _extract_parenthetical_annotations,
     _inject_annotations,
+    _collapse_braket_notation,
 )
 
 
@@ -1573,3 +1574,217 @@ class TestParentheticalAnnotations:
         assert eq is not None, "equation should still parse correctly"
         anno = _find_node(g, type="annotation")
         assert anno is not None
+
+
+# ---------------------------------------------------------------------------
+# Dirac bra-ket notation (issue #211)
+# ---------------------------------------------------------------------------
+
+class TestBraketCollapse:
+    """Unit tests for _collapse_braket_notation()."""
+
+    def test_braket_inner_product(self):
+        rewritten, overrides = _collapse_braket_notation(r"\langle\phi|\psi\rangle")
+        assert len(overrides) == 1
+        key = list(overrides.keys())[0]
+        assert key.startswith("Phi_{")
+        # The inner product is an *operator* (like ``+`` or ``=``)
+        # with ``op="inner_product"`` — not a separate type.
+        assert overrides[key]["type"] == "operator"
+        assert overrides[key]["op"] == "inner_product"
+        # ``latex`` is the compact skeleton (node display label);
+        # ``original_latex`` is the full ⟨bra|ket⟩ used as the node's
+        # subexpr and as the substitution payload for upstream wrappers.
+        assert overrides[key]["latex"] == r"\langle \cdot\,|\,\cdot\rangle"
+        assert overrides[key]["original_latex"] == r"\langle\phi|\psi\rangle"
+        assert overrides[key]["bra_content"] == r"\phi"
+        assert overrides[key]["ket_content"] == r"\psi"
+
+    def test_braket_constant_kept_in_skeleton(self):
+        """Numeric basis labels stay verbatim in the operator skeleton."""
+        _, overrides = _collapse_braket_notation(r"\langle 0|\psi\rangle")
+        key = list(overrides.keys())[0]
+        # Bra is constant ``0`` (kept in label), ket is symbolic ``\psi`` (slot).
+        assert overrides[key]["latex"] == r"\langle 0\,|\,\cdot\rangle"
+        assert overrides[key]["original_latex"] == r"\langle 0|\psi\rangle"
+
+    def test_braket_with_numbers(self):
+        rewritten, overrides = _collapse_braket_notation(r"\langle 0|1\rangle")
+        assert len(overrides) == 1
+        assert r"\Phi_{0}" in rewritten
+
+    def test_braket_dedup(self):
+        rewritten, overrides = _collapse_braket_notation(
+            r"\langle\phi|\psi\rangle + \langle\phi|\psi\rangle"
+        )
+        assert len(overrides) == 1, "same braket should dedup"
+
+    def test_no_braket_no_change(self):
+        latex = r"x + y = z"
+        rewritten, overrides = _collapse_braket_notation(latex)
+        assert rewritten == latex
+        assert len(overrides) == 0
+
+    def test_ket_not_collapsed(self):
+        """Standalone kets should NOT be collapsed — SymPy handles them."""
+        latex = r"|\psi\rangle"
+        rewritten, overrides = _collapse_braket_notation(latex)
+        assert rewritten == latex
+        assert len(overrides) == 0
+
+    def test_braket_inside_equation(self):
+        rewritten, overrides = _collapse_braket_notation(
+            r"\langle\phi|\psi\rangle = 0"
+        )
+        assert len(overrides) == 1
+        assert "= 0" in rewritten
+
+
+class TestDiracNotation:
+    """Integration tests for ket/bra/braket in semantic graphs."""
+
+    def test_issue_211_ket_equation(self):
+        """The exact LaTeX from issue #211 — kets should be atomic nodes."""
+        g = latex_to_semantic_graph(
+            r"|\psi\rangle = e^{i\gamma_\alpha}\left(r_\alpha|0\rangle "
+            r"+ r_\beta e^{i(\gamma_\beta - \gamma_\alpha)}|1\rangle\right)"
+        )
+        kets = [n for n in g["nodes"] if n["type"] == "ket"]
+        assert len(kets) == 3, f"expected 3 kets, got {len(kets)}"
+        eq = _find_node(g, op="equals")
+        assert eq is not None, "equation root should exist"
+        add = _find_node(g, op="add")
+        assert add is not None, "addition should exist"
+
+    def test_simple_ket(self):
+        g = latex_to_semantic_graph(r"|\psi\rangle")
+        kets = [n for n in g["nodes"] if n["type"] == "ket"]
+        assert len(kets) == 1
+        assert r"\rangle" in kets[0]["latex"]
+
+    def test_ket_addition(self):
+        g = latex_to_semantic_graph(r"|0\rangle + |1\rangle")
+        kets = [n for n in g["nodes"] if n["type"] == "ket"]
+        assert len(kets) == 2
+        add = _find_node(g, op="add")
+        assert add is not None
+
+    def test_bra_standalone(self):
+        g = latex_to_semantic_graph(r"\langle\phi|")
+        bras = [n for n in g["nodes"] if n["type"] == "bra"]
+        assert len(bras) == 1
+        assert r"\langle" in bras[0]["latex"]
+
+    def test_braket_inner_product_equation(self):
+        g = latex_to_semantic_graph(r"\langle\phi|\psi\rangle = 0")
+        # Inner product is an operator with ``op="inner_product"`` —
+        # filter by op so we don't pick up ``=`` or ``+`` operators.
+        brakets = [n for n in g["nodes"] if n.get("op") == "inner_product"]
+        assert len(brakets) == 1, "one inner product → one operator node"
+        # Symbolic operands are wired in via edges, not baked into the label.
+        bk = brakets[0]
+        assert bk["type"] == "operator"
+        bk_id = bk["id"]
+        operand_ids = {e["from"] for e in g["edges"] if e["to"] == bk_id}
+        assert "phi" in operand_ids and "psi" in operand_ids
+        eq = _find_node(g, op="equals")
+        assert eq is not None
+
+    def test_braket_constant_bra_is_baked_in(self):
+        """``⟨0|ψ⟩`` — the ``0`` stays in the operator label, not as an edge."""
+        g = latex_to_semantic_graph(r"\langle 0|\psi\rangle = c")
+        brakets = [n for n in g["nodes"] if n.get("op") == "inner_product"]
+        assert len(brakets) == 1
+        assert brakets[0]["type"] == "operator"
+        bk_id = brakets[0]["id"]
+        operand_ids = {e["from"] for e in g["edges"] if e["to"] == bk_id}
+        # Only ψ flows in. The constant ``0`` lives in the operator label.
+        assert operand_ids == {"psi"}, f"expected only psi, got {operand_ids}"
+
+    def test_braket_shared_psi_across_clauses(self):
+        """``⟨0|ψ⟩`` and ``⟨1|ψ⟩`` in two clauses share one ψ node."""
+        g = latex_to_semantic_graph(
+            r"a = \langle 0|\psi\rangle \\ b = \langle 1|\psi\rangle"
+        )
+        psi_nodes = [n for n in g["nodes"] if n["id"] == "psi"]
+        assert len(psi_nodes) == 1, "ψ should be a single shared node"
+        psi_edges = [e for e in g["edges"] if e["from"] == "psi"]
+        assert len(psi_edges) == 2, "ψ should connect to both brakets"
+
+    def test_braket_node_latex_is_compact_skeleton(self):
+        """Node label is the compact skeleton; subexpr carries the full form.
+
+        Mirrors how ``cos`` works: the node displays a compact operator
+        symbol (``\\cos``, ``⟨0|·⟩``) while ``subexpr`` carries the full
+        applied form (``\\cos(θ/2)``, ``⟨0|ψ⟩``) for the details panel
+        and TTS narration.  Putting the full applied form in ``latex``
+        bloats the node label and breaks visual consistency with all
+        the other operators (``cos``, ``|·|``, ``(·)²``).
+        """
+        g = latex_to_semantic_graph(r"\langle 0|\psi\rangle = c")
+        bk = next(n for n in g["nodes"] if n.get("op") == "inner_product")
+        # Compact skeleton on the node label.
+        assert bk["latex"] == r"\langle 0\,|\,\cdot\rangle"
+        # Full applied form in subexpr — what the details panel shows.
+        assert bk["subexpr"] == r"\langle 0|\psi\rangle"
+
+    def test_braket_upstream_subexpr_has_full_braket(self):
+        """``|⟨0|ψ⟩|²`` — Abs / power / equals subexprs contain the full braket.
+
+        Regression: ``_restore_placeholders`` previously substituted a
+        skeleton (``⟨0|·⟩``) into upstream LaTeX, making parents read
+        ``|⟨0|·⟩|²`` instead of real math.
+        """
+        g = latex_to_semantic_graph(
+            r"p = \lvert\langle 0|\psi\rangle\rvert^2"
+        )
+        # Every operator/function whose subexpr involves the braket
+        # must contain the full ``\psi``, never a ``\cdot`` placeholder.
+        wrappers = [
+            n for n in g["nodes"]
+            if "langle" in (n.get("subexpr") or "")
+        ]
+        assert wrappers, "expected at least one wrapper node referencing the braket"
+        for n in wrappers:
+            sx = n["subexpr"]
+            assert r"\psi" in sx, f"node {n['id']} subexpr lost ψ: {sx!r}"
+            assert r"\cdot" not in sx, (
+                f"node {n['id']} subexpr leaks operator skeleton: {sx!r}"
+            )
+
+    def test_braket_edge_roles(self):
+        """Bra-side operands get ``role='lhs'``, ket-side ``role='rhs'``."""
+        g = latex_to_semantic_graph(r"\langle\phi|\psi\rangle = 0")
+        bk_id = next(n["id"] for n in g["nodes"] if n.get("op") == "inner_product")
+        edges = {e["from"]: e.get("role") for e in g["edges"] if e["to"] == bk_id}
+        assert edges.get("phi") == "lhs", f"phi should be bra (lhs): {edges}"
+        assert edges.get("psi") == "rhs", f"psi should be ket (rhs): {edges}"
+
+    def test_braket_pure_constants_have_no_operand_edges(self):
+        """``⟨0|1⟩`` — both sides constant → no operand edges into the braket."""
+        g = latex_to_semantic_graph(r"\langle 0|1\rangle = c")
+        bk_id = next(n["id"] for n in g["nodes"] if n.get("op") == "inner_product")
+        # Only the upstream ``=`` edge points away from the braket; nothing
+        # symbolic flows in.  Edges *to* the braket must be empty.
+        in_edges = [e for e in g["edges"] if e["to"] == bk_id]
+        assert in_edges == [], f"expected no operand edges, got {in_edges}"
+
+    def test_ket_equation_has_equals(self):
+        g = latex_to_semantic_graph(r"|\psi\rangle = |0\rangle")
+        eq = _find_node(g, op="equals")
+        assert eq is not None
+        kets = [n for n in g["nodes"] if n["type"] == "ket"]
+        assert len(kets) == 2
+
+    def test_ket_with_subscript(self):
+        g = latex_to_semantic_graph(r"|\psi_n\rangle")
+        kets = [n for n in g["nodes"] if n["type"] == "ket"]
+        assert len(kets) == 1
+
+    def test_ket_coefficient_multiply(self):
+        """Coefficient × ket should produce multiply node."""
+        g = latex_to_semantic_graph(r"\alpha|0\rangle + \beta|1\rangle")
+        kets = [n for n in g["nodes"] if n["type"] == "ket"]
+        assert len(kets) == 2
+        muls = [n for n in g["nodes"] if n.get("op") == "multiply"]
+        assert len(muls) >= 2, "each coefficient×ket should be a multiply"

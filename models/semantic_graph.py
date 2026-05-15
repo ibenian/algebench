@@ -24,6 +24,9 @@ NodeType = Literal[
     "expression",
     "text",
     "annotation",
+    "ket",
+    "bra",
+    "braket",
 ]
 
 Role = Literal[
