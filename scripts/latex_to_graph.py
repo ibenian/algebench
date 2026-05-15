@@ -57,6 +57,9 @@ except ImportError:
           file=sys.stderr)
     sys.exit(1)
 
+from sympy.physics.quantum.state import Ket, Bra, KetBase, BraBase
+from sympy.physics.quantum import InnerProduct
+
 
 # ---------------------------------------------------------------------------
 # SI base dimensions
@@ -128,11 +131,12 @@ _ASYMMETRIC_OPS: set[str] = {
     "greater_than", "less_than", "greater_equal", "less_equal",
 }
 
-# Synthetic placeholder names emitted by ``_collapse_compound_symbols`` and
-# ``_collapse_text_commands``. Used to gate placeholder restoration so user
-# overrides keyed on real symbol names can never hit the substring-replace
-# path that would otherwise corrupt unrelated macros (\text, \tan, \left).
-_PLACEHOLDER_NAME_RE = re.compile(r"^(?:Theta|Xi)_\{\d+\}$")
+# Synthetic placeholder names emitted by ``_collapse_compound_symbols``,
+# ``_collapse_text_commands``, and ``_collapse_braket_notation``. Used to
+# gate placeholder restoration so user overrides keyed on real symbol names
+# can never hit the substring-replace path that would otherwise corrupt
+# unrelated macros (\text, \tan, \left).
+_PLACEHOLDER_NAME_RE = re.compile(r"^(?:Theta|Xi|Phi)_\{\d+\}$")
 
 # FUNCTION_MAP removed — the SymPy class name (``sin``, ``cos``, ``Abs``,
 # ``asin``, …) is used directly as the ``op`` field. Renames only mattered
@@ -582,7 +586,17 @@ class SemanticGraphBuilder:
             # User overrides still win — authors can pin any property
             # (label, unit, ai_prompt, etc.) explicitly via ``\overrides{…}``.
             if name in self._overrides:
-                attrs.update(self._overrides[name])
+                # ``bra_content`` / ``ket_content`` / ``original_latex``
+                # are internal metadata for braket operator construction
+                # — not valid graph-node attributes, so filter them out
+                # before merging.
+                _INTERNAL_OVERRIDE_KEYS = {
+                    "bra_content", "ket_content", "original_latex",
+                }
+                attrs.update({
+                    k: v for k, v in self._overrides[name].items()
+                    if k not in _INTERNAL_OVERRIDE_KEYS
+                })
             # For placeholder symbols whose override carries the real LaTeX
             # (e.g. compound symbols like ``\Delta t`` collapsed to
             # ``\Theta_{N}``), prefer the override's latex as the subexpr so
@@ -596,6 +610,49 @@ class SemanticGraphBuilder:
                 attrs["subexpr"] = self._overrides[name]["latex"]
             self._add_node(node_id, **attrs)
             self._seen_symbols[name] = node_id
+
+            # --- Wire symbolic operands into braket operator nodes ---
+            # The braket ``⟨bra|ket⟩`` is modeled as an *operator* node
+            # whose label (``\langle 0|\cdot\rangle``) shows constant
+            # basis labels verbatim and uses ``\cdot`` as a placeholder
+            # for symbolic slots.  Symbolic operands (``\psi``, ``x``)
+            # become child nodes wired in by edges; pure numeric
+            # operands (``0``, ``1``) stay baked into the label and have
+            # no edge.  Real variable names are NOT renamed by
+            # ``_build_comma_separated_graph._rename``, so a shared
+            # ``ψ`` that appears in both ``⟨0|ψ⟩`` and ``⟨1|ψ⟩`` across
+            # newline-separated clauses collapses into a single node —
+            # the cross-clause link the user expects.
+            if (
+                name.startswith("Phi_{")
+                and name in self._overrides
+                and self._overrides[name].get("op") == "inner_product"
+            ):
+                ovr = self._overrides[name]
+                # Preserve the original full LaTeX in subexpr so hover /
+                # details show ``⟨0|ψ⟩`` not ``⟨0|·⟩``.
+                for n in self.nodes:
+                    if n["id"] == node_id:
+                        original = ovr.get("original_latex")
+                        if original:
+                            n["subexpr"] = original
+                        break
+                for part_key, edge_role in (
+                    ("bra_content", "lhs"),
+                    ("ket_content", "rhs"),
+                ):
+                    content = ovr.get(part_key, "").strip()
+                    if not content or _is_braket_constant_side(content):
+                        continue
+                    # Parse the content through SymPy so existing dedup
+                    # (``_seen_symbols``) handles cross-braket sharing.
+                    try:
+                        inner_expr = parse_latex(content)
+                        child_id = self._walk(inner_expr)
+                        self._add_edge(child_id, node_id, role=edge_role)
+                    except Exception:
+                        pass  # graceful degradation — braket still works
+
             return node_id
 
         # --- Constants (pi, e, i, ∞) — check before Number since some are NumberSymbol ---
@@ -772,6 +829,66 @@ class SemanticGraphBuilder:
                 )
             return node_id
 
+        # --- Dirac notation: ket |ψ⟩, bra ⟨ψ|, inner product ⟨φ|ψ⟩ ---
+        if isinstance(expr, KetBase):
+            label_arg = expr.args[0] if expr.args else ""
+            label_latex = sympy.latex(label_arg)
+            node_id = self._next_id("ket")
+            ket_latex = rf"\left|{label_latex}\right\rangle"
+            self._add_node(
+                node_id,
+                type="ket",
+                latex=ket_latex,
+                subexpr=ket_latex,
+            )
+            return node_id
+
+        if isinstance(expr, BraBase):
+            label_arg = expr.args[0] if expr.args else ""
+            label_latex = sympy.latex(label_arg)
+            node_id = self._next_id("bra")
+            bra_latex = rf"\left\langle {label_latex}\right|"
+            self._add_node(
+                node_id,
+                type="bra",
+                latex=bra_latex,
+                subexpr=bra_latex,
+            )
+            return node_id
+
+        if isinstance(expr, InnerProduct):
+            node_id = self._next_id("braket")
+            bra_arg = expr.args[0]
+            ket_arg = expr.args[1]
+            bra_label = sympy.latex(bra_arg.args[0]) if bra_arg.args else ""
+            ket_label = sympy.latex(ket_arg.args[0]) if ket_arg.args else ""
+            # The inner product is an *operator* like ``+`` or ``=`` —
+            # ``op="inner_product"`` distinguishes it from other
+            # operators without inventing a separate type.  Skeleton
+            # uses ``\cdot`` for symbolic slots; the original full
+            # ``⟨bra|ket⟩`` lives in ``subexpr`` for hover/details.
+            skeleton = _braket_skeleton_latex(bra_label, ket_label)
+            full_latex = rf"\left\langle {bra_label}\middle|{ket_label}\right\rangle"
+            self._add_node(
+                node_id,
+                type="operator",
+                op="inner_product",
+                latex=skeleton,
+                subexpr=full_latex,
+            )
+            for inner_arg, edge_role in (
+                (bra_arg, "lhs"),
+                (ket_arg, "rhs"),
+            ):
+                if not inner_arg.args:
+                    continue
+                inner_label = inner_arg.args[0]
+                if isinstance(inner_label, Number):
+                    continue
+                child_id = self._walk(inner_label)
+                self._add_edge(child_id, node_id, role=edge_role)
+            return node_id
+
         # --- Fallback: treat as a generic node with children ---
         node_id = self._next_id("expr")
         self._add_node(node_id, type="expression", op=type(expr).__name__)
@@ -814,6 +931,99 @@ def _collapse_text_commands(latex: str) -> tuple[str, dict[str, dict[str, str]]]
         return rf"\Xi_{seen[content]}"
 
     rewritten = re.sub(r"\\text\{([^}]+)\}", repl, latex)
+    return rewritten, overrides
+
+
+def _is_braket_constant_side(content: str) -> bool:
+    """Decide whether the bra/ket content is a *constant* basis label
+    (``0``, ``1``, ``-1``) versus a *symbolic* operand (``\\psi``, ``x``).
+
+    Constants are baked into the braket operator's identity (its label
+    distinguishes ``\\langle 0|\\cdot\\rangle`` from ``\\langle 1|\\cdot\\rangle``);
+    symbolic operands become input nodes with edges flowing into the
+    operator. See the inner-product handling in ``_walk_inner``.
+    """
+    s = content.strip()
+    if not s:
+        return False
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+
+def _braket_skeleton_latex(bra_content: str, ket_content: str) -> str:
+    r"""Build the braket *operator* LaTeX where symbolic slots show ``\cdot``
+    and constant slots show the constant verbatim.
+
+    Uses a plain ``|`` (not ``\middle|``) since the skeleton is rendered
+    without an enclosing ``\left … \right`` pair — KaTeX rejects bare
+    ``\middle`` outside such a pair and falls back to displaying the raw
+    source.
+
+    Examples:
+        ``⟨0|ψ⟩``  → ``\langle 0\,|\,\cdot\rangle``
+        ``⟨ψ|0⟩``  → ``\langle \cdot\,|\,0\rangle``
+        ``⟨x|y⟩``  → ``\langle \cdot\,|\,\cdot\rangle``
+        ``⟨0|1⟩``  → ``\langle 0\,|\,1\rangle``
+    """
+    bra_disp = bra_content if _is_braket_constant_side(bra_content) else r"\cdot"
+    ket_disp = ket_content if _is_braket_constant_side(ket_content) else r"\cdot"
+    return rf"\langle {bra_disp}\,|\,{ket_disp}\rangle"
+
+
+def _collapse_braket_notation(latex: str) -> tuple[str, dict[str, dict[str, str]]]:
+    r"""Replace Dirac bra-ket notation with placeholder symbols before SymPy
+    parsing.
+
+    SymPy's ``parse_latex`` handles simple kets (``|\psi\rangle``) natively by
+    producing ``Ket`` objects, so those are left alone and handled in
+    ``_walk_inner``.  However inner products (``\langle\phi|\psi\rangle``) are
+    mis-parsed as ``Bra * Symbol`` — the closing ket is lost.
+
+    This function collapses braket inner-product patterns into ``\Phi_{N}``
+    placeholders so they survive parsing as atomic symbols.  The original LaTeX
+    is recorded as the placeholder's override for downstream rendering.
+
+    Returns ``(rewritten_latex, overrides)`` parallel to
+    ``_collapse_text_commands``.
+    """
+    overrides: dict[str, dict[str, str]] = {}
+    seen: dict[str, int] = {}
+
+    def _repl_braket(m: re.Match) -> str:
+        full = m.group(0)
+        if full not in seen:
+            idx = len(seen)
+            seen[full] = idx
+            bra_content = m.group(1).strip()
+            ket_content = m.group(2).strip()
+            # The braket is an operator: its ``latex`` is the *operator
+            # skeleton* (``⟨0|·⟩``, ``⟨·|·⟩``, etc.) — symbolic operands
+            # appear as separate input nodes wired in by edges.  The
+            # original full LaTeX (``⟨0|ψ⟩``) is preserved in
+            # ``original_latex`` for the node's ``subexpr``.
+            overrides[f"Phi_{{{idx}}}"] = {
+                "latex": _braket_skeleton_latex(bra_content, ket_content),
+                "type": "operator",
+                "op": "inner_product",
+                "bra_content": bra_content,
+                "ket_content": ket_content,
+                "original_latex": full,
+            }
+        return rf"\Phi_{{{seen[full]}}}"
+
+    # Inner product: \langle ... | ... \rangle  (with optional \left/\right)
+    # Content between delimiters: anything except unescaped pipe at depth 0.
+    braket_pat = (
+        r"(?:\\left\s*)?\\langle\s*"   # opening ⟨
+        r"([^|]*?)"                     # bra content (non-greedy)
+        r"\s*\|\s*"                     # middle |
+        r"([^|]*?)"                     # ket content (non-greedy)
+        r"\s*\\rangle(?:\s*\\right\s*\.)?"  # closing ⟩
+    )
+    rewritten = re.sub(braket_pat, _repl_braket, latex)
     return rewritten, overrides
 
 
@@ -947,6 +1157,62 @@ def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, 
     return latex, annotations
 
 
+def _normalize_latex(latex: str) -> str:
+    r"""Normalize LaTeX constructs that are valid LaTeX but alien to SymPy's
+    ``parse_latex``.
+
+    Runs **first** in the pipeline — before braket collapse, compound-symbol
+    collapse, text-command collapse, and preprocessing.  Transformations here
+    must be safe to apply unconditionally and must not depend on later stages.
+
+    Covers:
+
+    - ``\htmlClass{cls}{content}`` → ``content`` (KaTeX highlighting wrappers)
+    - ``\lvert``, ``\rvert``, ``\vert`` → ``|`` (SymPy only understands bare
+      pipe for absolute-value / bra-ket delimiters)
+    """
+    # Strip \htmlClass{...}{content} → content  (and \htmlId, \htmlData, \htmlStyle).
+    # Uses brace-balanced matching so nested braces in content are preserved.
+    _html_cmd = re.compile(r"\\html[A-Za-z]+")
+    parts: list[str] = []
+    i = 0
+    while i < len(latex):
+        m = _html_cmd.match(latex, i)
+        if m:
+            j = m.end()
+            # Skip first brace group {cls}
+            if j < len(latex) and latex[j] == "{":
+                depth = 1
+                j += 1
+                while j < len(latex) and depth > 0:
+                    if latex[j] == "{": depth += 1
+                    elif latex[j] == "}": depth -= 1
+                    j += 1
+            # Extract second brace group {content}, preserving nested braces
+            if j < len(latex) and latex[j] == "{":
+                depth = 1
+                j += 1
+                start = j
+                while j < len(latex) and depth > 0:
+                    if latex[j] == "{": depth += 1
+                    elif latex[j] == "}": depth -= 1
+                    j += 1
+                parts.append(latex[start:j - 1])
+            i = j
+        else:
+            parts.append(latex[i])
+            i += 1
+    latex = "".join(parts)
+
+    # Normalize vertical-bar commands to bare pipe so downstream stages
+    # (braket collapse, SymPy Abs parsing) see a uniform delimiter.
+    # Order matters: \lvert / \rvert first (longer), then \vert.
+    latex = re.sub(r"\\[lr]vert\b", "|", latex)
+    latex = re.sub(r"\\vert\b", "|", latex)
+
+    return latex
+
+
 def _preprocess_latex(latex: str) -> str:
     """Rewrite LaTeX patterns that SymPy's parse_latex doesn't handle natively.
 
@@ -1062,6 +1328,60 @@ def _classify_expression(expr: sympy.Basic) -> dict[str, Any]:
     return meta
 
 
+def _split_on_top_level_newline(latex: str) -> list[str]:
+    r"""Split *latex* on top-level ``\\`` (LaTeX line-break) tokens that act
+    as **statement separators**.
+
+    A ``\\`` is treated as a separator only when it sits at brace / paren /
+    bracket depth 0 — i.e. outside every ``{...}``, ``(...)``, ``[...]``
+    group.  Inside environments like ``\begin{cases}`` or matrices the
+    double-backslash is a row separator, not a statement separator, but
+    those environments are already wrapped in braces so the depth check
+    handles them automatically.
+
+    Returns a list of trimmed, non-empty sub-expressions.  A single-element
+    list means no top-level ``\\`` was found.
+    """
+    parts: list[str] = []
+    depth = 0
+    i = 0
+    start = 0
+    n = len(latex)
+    while i < n:
+        ch = latex[i]
+        if ch in "{([":
+            depth += 1
+            i += 1
+        elif ch in "})]":
+            if depth > 0:
+                depth -= 1
+            i += 1
+        elif ch == "\\" and depth == 0:
+            if i + 1 < n and latex[i + 1] == "\\":
+                end_of_bs = i + 2
+                after = end_of_bs
+                while after < n and latex[after] in " \t":
+                    after += 1
+                if after < n and latex[after] == "[":
+                    bracket_end = latex.find("]", after + 1)
+                    if bracket_end != -1:
+                        after = bracket_end + 1
+                    else:
+                        after = end_of_bs
+                else:
+                    after = end_of_bs
+                parts.append(latex[start:i])
+                start = after
+                i = after
+            else:
+                i += 1
+        else:
+            i += 1
+    parts.append(latex[start:])
+    nonempty = [p.strip() for p in parts if p.strip()]
+    return nonempty if nonempty else [latex]
+
+
 def _split_on_top_level_comma(latex: str) -> list[str]:
     r"""Detect whether any commas in *latex* act as **statement separators**
     and, if so, split the input into its separate statements.
@@ -1116,20 +1436,73 @@ def _split_on_top_level_comma(latex: str) -> list[str]:
 
 
 def _split_on_relation(latex: str) -> tuple[str, dict[str, str], str] | None:
-    """If *latex* contains a relation operator from RELATION_MAP, return
-    ``(lhs_latex, relation_meta, rhs_latex)``.  Returns ``None`` when no
-    relation is found."""
+    """If *latex* contains a top-level relation operator from RELATION_MAP,
+    return ``(lhs_latex, relation_meta, rhs_latex)``.  Returns ``None``
+    when no relation is found.
+
+    Only matches at brace/paren/bracket depth 0 so that operators
+    inside subscripts or fractions are ignored.
+    """
     best: tuple[int, str, dict[str, str]] | None = None
+    # Build depth map: depth[i] = nesting depth at position i.
+    n = len(latex)
+    depth = [0] * n
+    d = 0
+    for i in range(n):
+        if latex[i] in "{([":
+            d += 1
+        depth[i] = d
+        if latex[i] in "})]" and d > 0:
+            d -= 1
+            depth[i] = d
     for cmd, meta in RELATION_MAP:
-        idx = latex.find(cmd)
-        if idx != -1 and (best is None or idx < best[0]):
-            best = (idx, cmd, meta)
+        clen = len(cmd)
+        idx = 0
+        while idx <= n - clen:
+            pos = latex.find(cmd, idx)
+            if pos == -1:
+                break
+            if depth[pos] == 0:
+                if best is None or pos < best[0]:
+                    best = (pos, cmd, meta)
+                break
+            idx = pos + 1
     if best is not None:
         idx, cmd, meta = best
         lhs = latex[:idx].strip()
         rhs = latex[idx + len(cmd):].strip()
         if lhs and rhs:
             return lhs, meta, rhs
+    return None
+
+
+def _split_chained_equals(latex: str) -> tuple[str, dict[str, str], str] | None:
+    r"""Split on first ``=`` only when 2+ bare ``=`` exist at depth 0.
+
+    A single ``a = b`` is fine for SymPy (``Eq(a, b)``), but chained
+    ``a = b = c`` produces ``Eq(Eq(a, b), c)`` which evaluates to
+    ``BooleanFalse``.  Splitting on the first ``=`` yields LHS ``a``
+    and RHS ``b = c``; the RHS is parsed recursively as ``Eq(b, c)``.
+    """
+    n = len(latex)
+    d = 0
+    eq_positions: list[int] = []
+    for i in range(n):
+        ch = latex[i]
+        if ch in "{([":
+            d += 1
+        elif ch in "})]" and d > 0:
+            d -= 1
+        elif ch == "=" and d == 0:
+            eq_positions.append(i)
+    if len(eq_positions) < 2:
+        return None
+    first = eq_positions[0]
+    lhs = latex[:first].strip()
+    rhs = latex[first + 1:].strip()
+    if lhs and rhs:
+        meta = {"op": "equals", "label": "equals", "emoji": "="}
+        return lhs, meta, rhs
     return None
 
 
@@ -1215,7 +1588,7 @@ def _build_comma_separated_graph(
                 return nid
             if nid.startswith("__"):
                 return p + nid
-            if nid.startswith("Xi_{") or nid.startswith("Theta_{"):
+            if nid.startswith("Xi_{") or nid.startswith("Theta_{") or nid.startswith("Phi_{"):
                 return p + nid
             return nid
 
@@ -1285,23 +1658,38 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     relation node. Shared variables across clauses dedup to one node.
     """
     user_overrides = overrides
+    latex = _normalize_latex(latex)
     latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
-    compound_collapsed, compound_overrides = _collapse_compound_symbols(latex)
+
+    # ``\\`` (LaTeX newline) is the strongest separator — check before
+    # any other splitting or SymPy parsing.  Each clause is parsed
+    # independently via recursive ``latex_to_semantic_graph`` calls.
+    newline_clauses = _split_on_top_level_newline(latex)
+    if len(newline_clauses) > 1:
+        graph = _build_comma_separated_graph(
+            newline_clauses, overrides=user_overrides, domain=domain,
+        )
+        _inject_annotations(graph, parenthetical_annotations)
+        return graph
+
+    braket_collapsed, braket_overrides = _collapse_braket_notation(latex)
+    compound_collapsed, compound_overrides = _collapse_compound_symbols(braket_collapsed)
     collapsed, text_overrides = _collapse_text_commands(compound_collapsed)
     preprocessed = _preprocess_latex(collapsed)
     latex_commands = _extract_latex_commands(latex)
     # User-supplied overrides take precedence over auto-derived ones for
     # the same symbol name.
     merged_overrides: dict[str, dict[str, str]] = {
+        **braket_overrides,
         **compound_overrides,
         **text_overrides,
         **(user_overrides or {}),
     }
     overrides = merged_overrides
 
-    # Check for a top-level relation operator FIRST (before the comma
-    # split). When a relation is present, comma-joined clauses on either
-    # side are operand-level conjunctions — the comma scopes inside the
+    # Check for a top-level relation operator (before the comma split).
+    # When a relation is present, comma-joined clauses on either side are
+    # operand-level conjunctions — the comma scopes inside the
     # connective's operand, not above it. See #208: previously the comma
     # split ran first and orphaned the second RHS clause from the
     # ``\implies`` node.
@@ -1392,17 +1780,51 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         _inject_annotations(graph, parenthetical_annotations)
         return graph
 
-    # No top-level relation. A top-level comma now acts as a statement
-    # separator (preserves existing ``a = 1, b = 2`` behavior — multiple
-    # independent rooted statements, no synthetic ``and`` node). Pass
-    # only the user-supplied overrides; the recursive call re-derives
-    # text/compound placeholders per clause so they don't collide with
-    # parent-scoped ``Xi_{N}`` ids.
+    # A top-level comma now acts as a statement separator (preserves
+    # existing ``a = 1, b = 2`` behavior — multiple independent rooted
+    # statements, no synthetic ``and`` node). Pass only the user-supplied
+    # overrides; the recursive call re-derives text/compound placeholders
+    # per clause so they don't collide with parent-scoped ``Xi_{N}`` ids.
     clauses = _split_on_top_level_comma(latex)
     if len(clauses) > 1:
         graph = _build_comma_separated_graph(
             clauses, overrides=user_overrides, domain=domain,
         )
+        _inject_annotations(graph, parenthetical_annotations)
+        return graph
+
+    # Chained equals (``a = b = c``): SymPy produces
+    # ``Eq(Eq(a, b), c)`` → ``BooleanFalse``.  Split on the first ``=``
+    # only when 2+ bare ``=`` exist at depth 0.  Runs after comma split
+    # so ``a = 1, b = 2`` is correctly handled as independent clauses.
+    chained = _split_chained_equals(preprocessed)
+    if chained is not None:
+        lhs_latex, rel_meta, rhs_latex = chained
+        builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands, original_latex=latex)
+        lhs_expr = parse_latex(lhs_latex)
+        lhs_id = builder._walk(lhs_expr)
+        rhs_expr = parse_latex(rhs_latex)
+        rhs_id = builder._walk(rhs_expr)
+        for node in builder.nodes:
+            if node["id"] == lhs_id:
+                node["subexpr"] = builder._restore_placeholders(lhs_latex.strip())
+            elif node["id"] == rhs_id:
+                node["subexpr"] = builder._restore_placeholders(rhs_latex.strip())
+        rel_id = builder._next_id(rel_meta["op"])
+        builder._add_node(rel_id, type="relation", subexpr=latex.strip(), **rel_meta)
+        builder._add_edge(lhs_id, rel_id)
+        builder._add_edge(rhs_id, rel_id)
+        graph = {"nodes": builder.nodes, "edges": builder.edges}
+        if lhs_expr is not None and rhs_expr is not None:
+            try:
+                combined = lhs_expr - rhs_expr
+            except TypeError:
+                combined = lhs_expr
+            graph["classification"] = _classify_expression(combined)
+        else:
+            graph["classification"] = {"kind": "algebraic"}
+        if domain:
+            graph["domain"] = domain
         _inject_annotations(graph, parenthetical_annotations)
         return graph
 

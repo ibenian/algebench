@@ -852,6 +852,16 @@ def _derive_equation_chain_graph(latex: str) -> dict | None:
         if graph and early_annotations:
             _l2g._inject_annotations(graph, early_annotations)
         return graph
+    # ``\\`` (LaTeX newline) is a stronger separator than ``=``. If the
+    # expression contains top-level ``\\``, delegate to the single-expression
+    # parser whose pipeline splits on newlines first and handles each clause
+    # independently — otherwise the chain splitter would merge both clauses
+    # into one ``__equals`` node.
+    if r"\\" in latex:
+        graph = _derive_semantic_graph(latex)
+        if graph and early_annotations:
+            _l2g._inject_annotations(graph, early_annotations)
+        return graph
     sides = _split_equation_chain_sides(latex)
     if len(sides) <= 1:
         graph = _derive_semantic_graph(latex)

@@ -78,7 +78,20 @@ const DEFAULT_EDGE_WIDTHS = {
     neutral: 1.4,
 };
 
-// Default node styles (fallback when theme has no nodeStyles)
+// Default node styles (fallback when theme has no nodeStyles).
+// Color families:
+//   green  — data (scalar / vector / constant / number / expression / text)
+//   blue   — computation (operator / function)
+//   purple — statements (relation)
+//   brown  — meta (annotation)
+//
+// Per-op variants (``sin`` vs ``cos``, ``inner_product`` vs ``+``,
+// etc.) are not styled here — they all inherit their type's colour.
+// Themes that want per-op distinction should add op-keyed entries to
+// their own ``nodeStyles`` block; those theme overrides take priority
+// in ``_nodeStyle``.  This keeps the default palette taxonomy-driven
+// (operator vs function vs data) and avoids singling out individual
+// ops in the built-in defaults.
 const DEFAULT_NODE_STYLES = {
     scalar:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
     vector:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
@@ -300,8 +313,19 @@ export class D3SemanticGraphRenderer {
 
     // ─── Theme helpers ─────────────────────────────────────────────────
 
-    _nodeStyle(nodeType) {
+    _nodeStyle(nodeOrType) {
+        // Accept either a bare type string (legacy callers) or a full
+        // node data object.  Defaults are taxonomy-driven only
+        // (operator / function / scalar / …) — no per-op specials.
+        // Themes that want per-op distinction (e.g. ``sin`` warmer
+        // than ``cos``) can opt in by adding op-keyed entries to
+        // their own ``nodeStyles`` block; we honour those when the
+        // node carries an ``op`` field.
+        const isNode = nodeOrType && typeof nodeOrType === 'object';
+        const nodeType = isNode ? nodeOrType.type : nodeOrType;
+        const op = isNode ? nodeOrType.op : null;
         const ts = this._theme?.nodeStyles;
+        if (op && ts && ts[op]) return ts[op];
         if (ts && ts[nodeType]) return ts[nodeType];
         return DEFAULT_NODE_STYLES[nodeType] || DEFAULT_NODE_STYLES.scalar;
     }
@@ -622,7 +646,7 @@ export class D3SemanticGraphRenderer {
 
     _nodeShape(d) {
         if (!d || !d.data) return { type: 'circle', r: 26 };
-        const style = this._nodeStyle(d.data.type);
+        const style = this._nodeStyle(d.data);
         const invisible = (!style.fill || style.fill === 'none') &&
                            (!style.stroke || style.stroke === 'none');
         if (d.data._collapsed) {
@@ -1037,7 +1061,7 @@ export class D3SemanticGraphRenderer {
         group.selectAll('*').remove();
         const data = d.data;
         const isOp = data.type === 'operator' || data.type === 'relation' || data.type === 'function';
-        const style = this._nodeStyle(data.type);
+        const style = this._nodeStyle(data);
 
         const invisible = (!style.fill || style.fill === 'none') &&
                            (!style.stroke || style.stroke === 'none');
