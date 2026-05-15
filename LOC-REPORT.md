@@ -4,9 +4,9 @@
 
 | Field | Value |
 |---|---|
-| **Branch** | `codex/photons-wavelength-energy-draft` |
-| **Commit** | `88baeed` |
-| **Date** | 2026-05-13 22:10:07 -0400 |
+| **Branch** | `dependabot-config-inactive` |
+| **Commit** | `95297f6` |
+| **Date** | 2026-05-14 20:16:00 -0400 |
 
 ## Language Breakdown
 
