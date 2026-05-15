@@ -1592,11 +1592,21 @@ class TestBraketCollapse:
         # with ``op="inner_product"`` — not a separate type.
         assert overrides[key]["type"] == "operator"
         assert overrides[key]["op"] == "inner_product"
-        # ``latex`` is the full ``⟨bra|ket⟩`` so the node renders as
-        # real math (not an operator skeleton with ``\cdot`` slots).
-        assert overrides[key]["latex"] == r"\langle\phi|\psi\rangle"
+        # ``latex`` is the compact skeleton (node display label);
+        # ``original_latex`` is the full ⟨bra|ket⟩ used as the node's
+        # subexpr and as the substitution payload for upstream wrappers.
+        assert overrides[key]["latex"] == r"\langle \cdot\,|\,\cdot\rangle"
+        assert overrides[key]["original_latex"] == r"\langle\phi|\psi\rangle"
         assert overrides[key]["bra_content"] == r"\phi"
         assert overrides[key]["ket_content"] == r"\psi"
+
+    def test_braket_constant_kept_in_skeleton(self):
+        """Numeric basis labels stay verbatim in the operator skeleton."""
+        _, overrides = _collapse_braket_notation(r"\langle 0|\psi\rangle")
+        key = list(overrides.keys())[0]
+        # Bra is constant ``0`` (kept in label), ket is symbolic ``\psi`` (slot).
+        assert overrides[key]["latex"] == r"\langle 0\,|\,\cdot\rangle"
+        assert overrides[key]["original_latex"] == r"\langle 0|\psi\rangle"
 
     def test_braket_with_numbers(self):
         rewritten, overrides = _collapse_braket_notation(r"\langle 0|1\rangle")
@@ -1701,21 +1711,22 @@ class TestDiracNotation:
         psi_edges = [e for e in g["edges"] if e["from"] == "psi"]
         assert len(psi_edges) == 2, "ψ should connect to both brakets"
 
-    def test_braket_node_latex_is_full_form(self):
-        """The braket operator's ``latex`` is the full ``⟨bra|ket⟩``.
+    def test_braket_node_latex_is_compact_skeleton(self):
+        """Node label is the compact skeleton; subexpr carries the full form.
 
-        Regression: an earlier design rendered an "operator skeleton"
-        (``⟨0|·⟩``) on the node and stashed the full form elsewhere.
-        Two-form rendering forced upstream subexprs to know about a
-        separate ``original_latex`` field and made the node visually
-        disagree with its own description.  Now ``latex`` and
-        ``subexpr`` agree on the full braket.
+        Mirrors how ``cos`` works: the node displays a compact operator
+        symbol (``\\cos``, ``⟨0|·⟩``) while ``subexpr`` carries the full
+        applied form (``\\cos(θ/2)``, ``⟨0|ψ⟩``) for the details panel
+        and TTS narration.  Putting the full applied form in ``latex``
+        bloats the node label and breaks visual consistency with all
+        the other operators (``cos``, ``|·|``, ``(·)²``).
         """
         g = latex_to_semantic_graph(r"\langle 0|\psi\rangle = c")
         bk = next(n for n in g["nodes"] if n.get("op") == "inner_product")
-        assert bk["latex"] == r"\langle 0|\psi\rangle"
+        # Compact skeleton on the node label.
+        assert bk["latex"] == r"\langle 0\,|\,\cdot\rangle"
+        # Full applied form in subexpr — what the details panel shows.
         assert bk["subexpr"] == r"\langle 0|\psi\rangle"
-        assert "\\cdot" not in bk["latex"], "no operator-skeleton placeholders"
 
     def test_braket_upstream_subexpr_has_full_braket(self):
         """``|⟨0|ψ⟩|²`` — Abs / power / equals subexprs contain the full braket.

@@ -227,6 +227,118 @@ def _is_inverse_pow(expr: sympy.Basic) -> bool:
     return False
 
 
+# ---------------------------------------------------------------------------
+# Two-form display convention
+# ---------------------------------------------------------------------------
+# Every node carries two display forms:
+#
+#   * **short label** — compact symbol shown on the graph node itself
+#     (``\cos``, ``⟨0|·⟩``, ``|·|``, ``(·)²``, ``+``, ``=``).  Computed
+#     by ``node_short_label(node)``.
+#
+#   * **long label** — full applied form shown in the details panel,
+#     hover tooltip, TTS narration, and AI-enrichment context
+#     (``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``).  Computed by
+#     ``node_long_label(node)``.
+#
+# Source-of-truth precedence:
+#
+#   short (op/rel/fn):  node.latex →  glyph(op, …)  →  op  →  id
+#   short (data):       node.latex →  node.label    →  id
+#   long  (any):        node.subexpr → node.latex   →  short label
+#
+# Both helpers are pure functions of the node dict — no UI logic
+# lives in the renderer; it just calls these.
+
+# Mirrors ``operatorGlyph`` in static/graph-panel/d3-semantic-graph.js.
+# Keep in sync.
+_OPERATOR_GLYPHS: dict[str, str] = {
+    "equals": "=", "greater_than": ">", "less_than": "<",
+    "greater_equal": "≥", "less_equal": "≤", "not_equal": "≠",
+    "multiply": "×", "add": "+", "subtract": "−",
+    "divide": "÷", "integral": "∫",
+    "implies": "⇒", "iff": "⇔",
+    "negation": "−", "not": "¬", "logical_not": "¬",
+    "conjunction": "∧", "disjunction": "∨",
+    "sum": "∑", "product": "∏", "limit": "lim",
+    "factorial": "!", "sqrt": "√(·)",
+    "log": "log", "logarithm": "log", "exp": "exp",
+    "sin": "sin", "cos": "cos", "tan": "tan",
+    "Abs": "|·|", "abs": "|·|",
+    "function": "f",
+}
+
+_SUPERSCRIPT_MAP: dict[str, str] = {
+    "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴",
+    "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
+    "+": "⁺", "-": "⁻", "−": "⁻", "n": "ⁿ", "i": "ⁱ",
+}
+
+
+def _to_superscript(s: str) -> str:
+    return "".join(_SUPERSCRIPT_MAP.get(c, c) for c in str(s))
+
+
+def _operator_glyph(node: dict) -> str | None:
+    """Synthesize the compact glyph for an operator node from its ``op``.
+
+    Returns ``None`` when there is no derivable glyph (caller should
+    fall back to ``op`` or ``id``).
+    """
+    op = node.get("op")
+    if not op:
+        return None
+    if op == "power":
+        return f"(·){_to_superscript(node.get('exponent', 'n'))}"
+    if op in ("derivative", "partial_derivative"):
+        d = "∂" if op == "partial_derivative" else "d"
+        wrt = node.get("with_respect_to")
+        return f"{d}·/{d}{wrt}" if wrt else f"{d}·/{d}·"
+    return _OPERATOR_GLYPHS.get(op)
+
+
+_OP_KINDS: frozenset[str] = frozenset({"operator", "relation", "function"})
+
+
+def node_short_label(node: dict) -> str:
+    """Return the SHORT label — compact symbol for the graph node.
+
+    Operator / relation / function nodes resolve through the op-glyph
+    map (``=``, ``×``, ``(·)²``, ``|·|``, ``\\cos``…), with an
+    explicit parser-set ``latex`` taking precedence (e.g. ``⟨0|·⟩``
+    inner-product skeleton, ``|ψ⟩`` ket).  Data nodes (scalars,
+    vectors, numbers, constants…) use ``latex`` then ``label``.
+    Mirrors the structure of ``getNodeLabel`` in the JS renderer.
+
+    Precedence:
+        op/rel/fn:  latex → glyph(op, …) → op → id
+        data:       latex → label → id
+    """
+    if node.get("type") in _OP_KINDS:
+        if node.get("latex"):
+            return node["latex"]
+        glyph = _operator_glyph(node)
+        if glyph:
+            return glyph
+        return node.get("op") or node.get("id", "")
+    # Data nodes
+    if node.get("latex"):
+        return node["latex"]
+    if node.get("label"):
+        return node["label"]
+    return node.get("id", "")
+
+
+def node_long_label(node: dict) -> str:
+    """Return the LONG label — full applied form for the details panel.
+
+    Precedence: ``subexpr`` (full applied form set by parser via
+    ``_set_subexpr``) → ``latex`` (short label as fallback for
+    atomic symbols where the two coincide) → short label.
+    """
+    return node.get("subexpr") or node.get("latex") or node_short_label(node)
+
+
 class SemanticGraphBuilder:
     """Walks a SymPy expression tree and emits nodes + edges."""
 
@@ -514,7 +626,13 @@ class SemanticGraphBuilder:
         for name, attrs in self._overrides.items():
             if not _PLACEHOLDER_NAME_RE.fullmatch(name):
                 continue
-            real = attrs.get("latex")
+            # Prefer ``original_latex`` when present — only braket
+            # overrides set it.  Their ``latex`` is the compact
+            # skeleton (``⟨0|·⟩``) used as the node's display label,
+            # but upstream subexprs (``|⟨0|ψ⟩|^2``, ``=`` chains)
+            # need the full applied form so parents read as real
+            # mathematics.
+            real = attrs.get("original_latex") or attrs.get("latex")
             if not real:
                 continue
             # Preserve atomicity when the placeholder sits inside a
@@ -586,11 +704,13 @@ class SemanticGraphBuilder:
             # User overrides still win — authors can pin any property
             # (label, unit, ai_prompt, etc.) explicitly via ``\overrides{…}``.
             if name in self._overrides:
-                # ``bra_content`` / ``ket_content`` are internal
-                # metadata for braket operand-wiring decisions — not
-                # valid graph-node attributes, so filter them out
+                # ``bra_content`` / ``ket_content`` / ``original_latex``
+                # are internal metadata for braket operator construction
+                # — not valid graph-node attributes, so filter them out
                 # before merging.
-                _INTERNAL_OVERRIDE_KEYS = {"bra_content", "ket_content"}
+                _INTERNAL_OVERRIDE_KEYS = {
+                    "bra_content", "ket_content", "original_latex",
+                }
                 attrs.update({
                     k: v for k, v in self._overrides[name].items()
                     if k not in _INTERNAL_OVERRIDE_KEYS
@@ -627,13 +747,13 @@ class SemanticGraphBuilder:
                 and self._overrides[name].get("op") == "inner_product"
             ):
                 ovr = self._overrides[name]
-                # The braket's ``latex`` field already holds the full
-                # ``⟨bra|ket⟩`` — copy it to ``subexpr`` so upstream
-                # walkers and the details panel agree on what this
-                # node represents.
+                # ``latex`` on the node is the compact skeleton
+                # (``⟨0|·⟩``); set ``subexpr`` to the full
+                # ``⟨0|ψ⟩`` so the details panel / TTS / hover
+                # show the actual mathematics.
                 for n in self.nodes:
                     if n["id"] == node_id:
-                        n["subexpr"] = ovr["latex"]
+                        n["subexpr"] = ovr.get("original_latex", ovr["latex"])
                         break
                 for part_key, edge_role in (
                     ("bra_content", "lhs"),
@@ -862,14 +982,15 @@ class SemanticGraphBuilder:
             ket_label = sympy.latex(ket_arg.args[0]) if ket_arg.args else ""
             # The inner product is an *operator* like ``+`` or ``=`` —
             # ``op="inner_product"`` distinguishes it from other
-            # operators.  ``latex`` is the full ``⟨bra|ket⟩`` so the
-            # node and every upstream subexpression read as real math.
+            # operators.  ``latex`` is the compact skeleton (display
+            # label); ``subexpr`` is the full applied form (details).
+            skeleton = _braket_skeleton_latex(bra_label, ket_label)
             full_latex = rf"\left\langle {bra_label}\middle|{ket_label}\right\rangle"
             self._add_node(
                 node_id,
                 type="operator",
                 op="inner_product",
-                latex=full_latex,
+                latex=skeleton,
                 subexpr=full_latex,
             )
             for inner_arg, edge_role in (
@@ -949,6 +1070,24 @@ def _is_braket_constant_side(content: str) -> bool:
         return False
 
 
+def _braket_skeleton_latex(bra_content: str, ket_content: str) -> str:
+    r"""Build a *compact* braket label where symbolic slots show ``\cdot``.
+
+    Mirrors the convention used for ``|·|`` (Abs) and ``(·)²`` (power):
+    a compact operator-only form for the node label.  The full applied
+    form (``⟨0|ψ⟩``) lives in ``subexpr`` for hover / details / TTS.
+
+    Examples:
+        ``⟨0|ψ⟩``  → ``\langle 0\,|\,\cdot\rangle``   (constant bra, slot ket)
+        ``⟨ψ|0⟩``  → ``\langle \cdot\,|\,0\rangle``
+        ``⟨x|y⟩``  → ``\langle \cdot\,|\,\cdot\rangle``
+        ``⟨0|1⟩``  → ``\langle 0\,|\,1\rangle``       (both constant)
+    """
+    bra_disp = bra_content if _is_braket_constant_side(bra_content) else r"\cdot"
+    ket_disp = ket_content if _is_braket_constant_side(ket_content) else r"\cdot"
+    return rf"\langle {bra_disp}\,|\,{ket_disp}\rangle"
+
+
 def _collapse_braket_notation(latex: str) -> tuple[str, dict[str, dict[str, str]]]:
     r"""Replace Dirac bra-ket notation with placeholder symbols before SymPy
     parsing.
@@ -975,20 +1114,21 @@ def _collapse_braket_notation(latex: str) -> tuple[str, dict[str, dict[str, str]
             seen[full] = idx
             bra_content = m.group(1).strip()
             ket_content = m.group(2).strip()
-            # The braket is an operator with ``op="inner_product"`` —
-            # ``latex`` is the *full* original ``⟨bra|ket⟩`` so the
-            # node and every upstream subexpression read as real
-            # mathematics (``|⟨0|ψ⟩|²``, not ``|⟨0|·⟩|²``).
-            # ``bra_content`` / ``ket_content`` are kept so the
-            # placeholder-resolution path can decide which operands
-            # become input edges (symbolic) versus stay baked into
-            # the node label (constants like ``0``, ``1``).
+            # Two-form storage, mirroring how ``cos`` works: ``latex``
+            # is the compact operator-only skeleton (``⟨0|·⟩``) used
+            # as the node's display label; ``original_latex`` is the
+            # full ``⟨0|ψ⟩`` used both as the node's ``subexpr`` and
+            # as the substitution payload when upstream wrappers
+            # (``|⟨0|ψ⟩|²``, ``=``, …) reference this placeholder.
+            # ``bra_content`` / ``ket_content`` drive the constant-vs-
+            # symbolic edge-wiring decision in ``_walk_inner``.
             overrides[f"Phi_{{{idx}}}"] = {
-                "latex": full,
+                "latex": _braket_skeleton_latex(bra_content, ket_content),
                 "type": "operator",
                 "op": "inner_product",
                 "bra_content": bra_content,
                 "ket_content": ket_content,
+                "original_latex": full,
             }
         return rf"\Phi_{{{seen[full]}}}"
 
