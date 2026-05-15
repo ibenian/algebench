@@ -514,7 +514,13 @@ class SemanticGraphBuilder:
         for name, attrs in self._overrides.items():
             if not _PLACEHOLDER_NAME_RE.fullmatch(name):
                 continue
-            real = attrs.get("latex")
+            # Prefer ``original_latex`` when present — only braket
+            # overrides set it.  Their ``latex`` is the *operator
+            # skeleton* (``\langle 0|\cdot\rangle``) used as the
+            # operator's own visual identity, but upstream subexprs
+            # (``|⟨0|ψ⟩|^2``, ``cos²(θ/2)``) need the full original
+            # form so the parent context reads as real mathematics.
+            real = attrs.get("original_latex") or attrs.get("latex")
             if not real:
                 continue
             # Preserve atomicity when the placeholder sits inside a
