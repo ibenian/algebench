@@ -97,8 +97,6 @@ const DEFAULT_NODE_STYLES = {
     vector:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
     constant: { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
     number:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
-    operator: { fill: '#0f2540', stroke: '#42a5f5', color: '#bbdefb' },
-    function: { fill: '#0f2540', stroke: '#42a5f5', color: '#bbdefb' },
     relation: { fill: '#2e1b33', stroke: '#ab47bc', color: '#e1bee7' },
     expression: { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
     text:       { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
@@ -170,6 +168,55 @@ const OPERATOR_GLYPHS = {
 
 const OP_KINDS = new Set(['operator', 'relation', 'function']);
 
+// Operator-kind classification — mirrors ``_OPERATOR_KINDS`` in
+// ``scripts/latex_to_graph.py``.  Each kind gets a distinct cool-palette
+// tint via ``OPERATOR_KIND_STYLES`` so different semantic categories
+// read at a glance while remaining recognizably "operator family".
+//   arithmetic — basic combiners (+, −, ×, ÷, ^, negate)
+//   function   — named functions (sin, cos, log, exp, |·|, √, !)
+//   comparison — value comparators (=, ≠, <, ≤, >, ≥)
+//   logical    — proposition connectives (⇒, ⇔, ¬, ∧, ∨)
+//   aggregate  — variable-binding reducers (Σ, ∏, ∫, lim, d/dx, ∂/∂x)
+//   quantum    — Dirac/linalg operators (⟨·|·⟩, future outer/expect.)
+const OPERATOR_KINDS = {
+    add: 'arithmetic', subtract: 'arithmetic', multiply: 'arithmetic',
+    divide: 'arithmetic', power: 'arithmetic', negation: 'arithmetic',
+    Abs: 'function', abs: 'function', sqrt: 'function',
+    factorial: 'function',
+    sin: 'function', cos: 'function', tan: 'function',
+    log: 'function', logarithm: 'function', exp: 'function',
+    equals: 'comparison', not_equal: 'comparison',
+    greater_than: 'comparison', less_than: 'comparison',
+    greater_equal: 'comparison', less_equal: 'comparison',
+    implies: 'logical', iff: 'logical',
+    not: 'logical', logical_not: 'logical',
+    conjunction: 'logical', disjunction: 'logical',
+    sum: 'aggregate', product: 'aggregate',
+    integral: 'aggregate', limit: 'aggregate',
+    derivative: 'aggregate', partial_derivative: 'aggregate',
+    inner_product: 'quantum',
+};
+
+// Per-kind tint variants (cool-palette — distinct enough to
+// glance-discriminate but unified as "operator").
+const OPERATOR_KIND_STYLES = {
+    arithmetic: { fill: '#0f2540', stroke: '#42a5f5', color: '#bbdefb' },
+    function:   { fill: '#0f3340', stroke: '#29b6f6', color: '#b3e5fc' },
+    comparison: { fill: '#1a2240', stroke: '#7e57c2', color: '#d1c4e9' },
+    logical:    { fill: '#0f2a30', stroke: '#26c6da', color: '#b2ebf2' },
+    aggregate:  { fill: '#1d2540', stroke: '#5c6bc0', color: '#c5cae9' },
+    quantum:    { fill: '#2d1530', stroke: '#ab47bc', color: '#e1bee7' },
+};
+
+export function operatorKind(node) {
+    if (!node || !OP_KINDS.has(node.type)) return null;
+    const op = node.op;
+    if (op && OPERATOR_KINDS[op]) return OPERATOR_KINDS[op];
+    // Default by type: named-function nodes → ``function`` kind,
+    // everything else (operators / relations) → ``arithmetic``.
+    return node.type === 'function' ? 'function' : 'arithmetic';
+}
+
 function operatorGlyph(node) {
     if (!node) return null;
     const op = node.op;
@@ -221,9 +268,9 @@ export function nodeLongLabel(node) {
 function getNodeLabel(node, labelMode) {
     const short = nodeShortLabel(node);
     if (OP_KINDS.has(node.type)) return short;
-    // Data nodes can prefix with emoji in minimal mode.
+    // Data nodes show only the emoji in minimal mode.
     if (labelMode === 'minimal' && node.emoji) {
-        return short === node.emoji ? node.emoji : node.emoji + ' ' + short;
+        return node.emoji;
     }
     if (node.emoji && short !== node.emoji) return node.emoji + ' ' + short;
     return short;
@@ -362,18 +409,32 @@ export class D3SemanticGraphRenderer {
 
     _nodeStyle(nodeOrType) {
         // Accept either a bare type string (legacy callers) or a full
-        // node data object.  Defaults are taxonomy-driven only
-        // (operator / function / scalar / …) — no per-op specials.
-        // Themes that want per-op distinction (e.g. ``sin`` warmer
-        // than ``cos``) can opt in by adding op-keyed entries to
-        // their own ``nodeStyles`` block; we honour those when the
-        // node carries an ``op`` field.
+        // node data object.  Precedence:
+        //   1. theme.nodeStyles[op]      — theme op-specific override
+        //      (most specific — wins over everything below)
+        //   2. theme.nodeStyles[kind]    — theme kind-level override
+        //      (kinds: arithmetic, function, comparison, logical,
+        //      aggregate, quantum)
+        //   3. theme.nodeStyles[type]    — theme type-level override
+        //      (a theme that uniformly styles ``operator`` opts OUT
+        //      of per-kind tints by setting this)
+        //   4. OPERATOR_KIND_STYLES[k]   — built-in per-kind tint
+        //      (gives kind variation when the theme is silent)
+        //   5. DEFAULT_NODE_STYLES[type] — built-in type-level default
+        //
+        // Themes that want the kind variation: don't set ``operator``
+        // (let levels 1–2 + 4 paint it).  Themes that want uniform
+        // operator coloring: set ``operator`` to wash over kinds.
+        // Themes that want both: set ``operator`` AND specific kinds.
         const isNode = nodeOrType && typeof nodeOrType === 'object';
         const nodeType = isNode ? nodeOrType.type : nodeOrType;
         const op = isNode ? nodeOrType.op : null;
         const ts = this._theme?.nodeStyles;
         if (op && ts && ts[op]) return ts[op];
+        const kind = isNode ? operatorKind(nodeOrType) : null;
+        if (kind && ts && ts[kind]) return ts[kind];
         if (ts && ts[nodeType]) return ts[nodeType];
+        if (kind && OPERATOR_KIND_STYLES[kind]) return OPERATOR_KIND_STYLES[kind];
         return DEFAULT_NODE_STYLES[nodeType] || DEFAULT_NODE_STYLES.scalar;
     }
 

@@ -274,6 +274,72 @@ _SUPERSCRIPT_MAP: dict[str, str] = {
     "+": "⁺", "-": "⁻", "−": "⁻", "n": "ⁿ", "i": "ⁱ",
 }
 
+# Node types that belong to the operator family — they share the
+# operator render path (hex glyph, blue palette) but differ by kind.
+_OP_KINDS: frozenset[str] = frozenset({"operator", "relation", "function"})
+
+# ---------------------------------------------------------------------------
+# Operator kinds — visual sub-classification for the operator family
+# ---------------------------------------------------------------------------
+# All operator/relation/function nodes share the same general shape and
+# behavior, but render with a distinct *tint* per kind so different
+# semantic categories read at a glance.  Mirrored as ``OPERATOR_KINDS``
+# in ``static/graph-panel/d3-semantic-graph.js``.  Keep in sync.
+#
+#   arithmetic  — basic combiners (+, −, ×, ÷, ^, negate)
+#   function    — named functions (sin, cos, log, exp, |·|, √, !)
+#   comparison  — value comparators (=, ≠, <, ≤, >, ≥)
+#   logical     — proposition connectives (⇒, ⇔, ¬, ∧, ∨)
+#   aggregate   — variable-binding reducers (Σ, ∏, ∫, lim, d/dx, ∂/∂x)
+#   quantum     — Dirac/linalg operators (⟨·|·⟩, future outer/expect.)
+#
+# Op-name takes precedence over node type when assigning kinds.  For
+# ops not in the map, ``operator_kind`` falls back to ``function`` for
+# ``type=function`` nodes and ``arithmetic`` for everything else.
+_OPERATOR_KINDS: dict[str, str] = {
+    # arithmetic — symbolic combiners
+    "add": "arithmetic", "subtract": "arithmetic", "multiply": "arithmetic",
+    "divide": "arithmetic", "power": "arithmetic", "negation": "arithmetic",
+    # function — named mathematical functions (parser emits these with
+    # ``type=function``, but we tag by op so the kind is correct even
+    # when the same op surfaces under a different type)
+    "Abs": "function", "abs": "function", "sqrt": "function",
+    "factorial": "function",
+    "sin": "function", "cos": "function", "tan": "function",
+    "log": "function", "logarithm": "function", "exp": "function",
+    # comparison
+    "equals": "comparison", "not_equal": "comparison",
+    "greater_than": "comparison", "less_than": "comparison",
+    "greater_equal": "comparison", "less_equal": "comparison",
+    # logical
+    "implies": "logical", "iff": "logical",
+    "not": "logical", "logical_not": "logical",
+    "conjunction": "logical", "disjunction": "logical",
+    # aggregate (binders + calculus)
+    "sum": "aggregate", "product": "aggregate",
+    "integral": "aggregate", "limit": "aggregate",
+    "derivative": "aggregate", "partial_derivative": "aggregate",
+    # quantum
+    "inner_product": "quantum",
+}
+
+
+def operator_kind(node: dict) -> str | None:
+    """Return the operator-kind tag for a node, or ``None`` for non-ops.
+
+    Used by the renderer to pick a per-kind tint; also useful for TTS
+    grouping ("comparison operators", "binders", …) and AI-enrichment
+    context.
+    """
+    if node.get("type") not in _OP_KINDS:
+        return None
+    op = node.get("op")
+    if op and op in _OPERATOR_KINDS:
+        return _OPERATOR_KINDS[op]
+    # Default by node type: named-function nodes → ``function`` kind,
+    # everything else (operators / relations) → ``arithmetic``.
+    return "function" if node.get("type") == "function" else "arithmetic"
+
 
 def _to_superscript(s: str) -> str:
     return "".join(_SUPERSCRIPT_MAP.get(c, c) for c in str(s))
@@ -295,9 +361,6 @@ def _operator_glyph(node: dict) -> str | None:
         wrt = node.get("with_respect_to")
         return f"{d}·/{d}{wrt}" if wrt else f"{d}·/{d}·"
     return _OPERATOR_GLYPHS.get(op)
-
-
-_OP_KINDS: frozenset[str] = frozenset({"operator", "relation", "function"})
 
 
 def node_short_label(node: dict) -> str:
@@ -1451,17 +1514,17 @@ def _split_on_top_level_newline(latex: str) -> list[str]:
     as **statement separators**.
 
     A ``\\`` is treated as a separator only when it sits at brace / paren /
-    bracket depth 0 **and** outside any ``\begin{…}``/``\end{…}``
-    environment.  Inside environments like ``\begin{cases}``, matrices, or
-    ``align`` blocks the double-backslash is a row separator, not a
-    statement separator.
+    bracket depth 0 — i.e. outside every ``{...}``, ``(...)``, ``[...]``
+    group.  Inside environments like ``\begin{cases}`` or matrices the
+    double-backslash is a row separator, not a statement separator, but
+    those environments are already wrapped in braces so the depth check
+    handles them automatically.
 
     Returns a list of trimmed, non-empty sub-expressions.  A single-element
     list means no top-level ``\\`` was found.
     """
     parts: list[str] = []
     depth = 0
-    env_depth = 0
     i = 0
     start = 0
     n = len(latex)
@@ -1474,27 +1537,9 @@ def _split_on_top_level_newline(latex: str) -> list[str]:
             if depth > 0:
                 depth -= 1
             i += 1
-        elif ch == "\\" and i + 1 < n and latex[i + 1] != "\\":
-            # Check for \begin{...} / \end{...} to track environment depth.
-            rest = latex[i:]
-            if rest.startswith("\\begin{"):
-                env_depth += 1
-                i += 1
-            elif rest.startswith("\\end{"):
-                if env_depth > 0:
-                    env_depth -= 1
-                i += 1
-            else:
-                i += 1
-        elif ch == "\\" and depth == 0 and env_depth == 0:
-            # Look for ``\\`` (two backslashes) that is NOT part of a
-            # longer backslash-letter command.  We need exactly two
-            # consecutive backslashes NOT followed by another backslash
-            # or a letter (which would make it ``\\\cmd``).
+        elif ch == "\\" and depth == 0:
             if i + 1 < n and latex[i + 1] == "\\":
                 end_of_bs = i + 2
-                # Skip optional ``[...]`` spacing arg after ``\\``,
-                # e.g. ``\\[6pt]``
                 after = end_of_bs
                 while after < n and latex[after] in " \t":
                     after += 1
@@ -1916,16 +1961,11 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         _inject_annotations(graph, parenthetical_annotations)
         return graph
 
-    # No top-level relation.  Check for ``\\`` (LaTeX newline) first —
-    # it's a stronger separator than comma.  Then fall through to comma.
-    newline_clauses = _split_on_top_level_newline(latex)
-    if len(newline_clauses) > 1:
-        graph = _build_comma_separated_graph(
-            newline_clauses, overrides=user_overrides, domain=domain,
-        )
-        _inject_annotations(graph, parenthetical_annotations)
-        return graph
-
+    # A top-level comma now acts as a statement separator (preserves
+    # existing ``a = 1, b = 2`` behavior — multiple independent rooted
+    # statements, no synthetic ``and`` node). Pass only the user-supplied
+    # overrides; the recursive call re-derives text/compound placeholders
+    # per clause so they don't collide with parent-scoped ``Xi_{N}`` ids.
     clauses = _split_on_top_level_comma(latex)
     if len(clauses) > 1:
         graph = _build_comma_separated_graph(
