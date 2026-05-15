@@ -1701,6 +1701,63 @@ class TestDiracNotation:
         psi_edges = [e for e in g["edges"] if e["from"] == "psi"]
         assert len(psi_edges) == 2, "ψ should connect to both brakets"
 
+    def test_braket_node_latex_is_full_form(self):
+        """The braket operator's ``latex`` is the full ``⟨bra|ket⟩``.
+
+        Regression: an earlier design rendered an "operator skeleton"
+        (``⟨0|·⟩``) on the node and stashed the full form elsewhere.
+        Two-form rendering forced upstream subexprs to know about a
+        separate ``original_latex`` field and made the node visually
+        disagree with its own description.  Now ``latex`` and
+        ``subexpr`` agree on the full braket.
+        """
+        g = latex_to_semantic_graph(r"\langle 0|\psi\rangle = c")
+        bk = next(n for n in g["nodes"] if n.get("op") == "inner_product")
+        assert bk["latex"] == r"\langle 0|\psi\rangle"
+        assert bk["subexpr"] == r"\langle 0|\psi\rangle"
+        assert "\\cdot" not in bk["latex"], "no operator-skeleton placeholders"
+
+    def test_braket_upstream_subexpr_has_full_braket(self):
+        """``|⟨0|ψ⟩|²`` — Abs / power / equals subexprs contain the full braket.
+
+        Regression: ``_restore_placeholders`` previously substituted a
+        skeleton (``⟨0|·⟩``) into upstream LaTeX, making parents read
+        ``|⟨0|·⟩|²`` instead of real math.
+        """
+        g = latex_to_semantic_graph(
+            r"p = \lvert\langle 0|\psi\rangle\rvert^2"
+        )
+        # Every operator/function whose subexpr involves the braket
+        # must contain the full ``\psi``, never a ``\cdot`` placeholder.
+        wrappers = [
+            n for n in g["nodes"]
+            if "langle" in (n.get("subexpr") or "")
+        ]
+        assert wrappers, "expected at least one wrapper node referencing the braket"
+        for n in wrappers:
+            sx = n["subexpr"]
+            assert r"\psi" in sx, f"node {n['id']} subexpr lost ψ: {sx!r}"
+            assert r"\cdot" not in sx, (
+                f"node {n['id']} subexpr leaks operator skeleton: {sx!r}"
+            )
+
+    def test_braket_edge_roles(self):
+        """Bra-side operands get ``role='lhs'``, ket-side ``role='rhs'``."""
+        g = latex_to_semantic_graph(r"\langle\phi|\psi\rangle = 0")
+        bk_id = next(n["id"] for n in g["nodes"] if n.get("op") == "inner_product")
+        edges = {e["from"]: e.get("role") for e in g["edges"] if e["to"] == bk_id}
+        assert edges.get("phi") == "lhs", f"phi should be bra (lhs): {edges}"
+        assert edges.get("psi") == "rhs", f"psi should be ket (rhs): {edges}"
+
+    def test_braket_pure_constants_have_no_operand_edges(self):
+        """``⟨0|1⟩`` — both sides constant → no operand edges into the braket."""
+        g = latex_to_semantic_graph(r"\langle 0|1\rangle = c")
+        bk_id = next(n["id"] for n in g["nodes"] if n.get("op") == "inner_product")
+        # Only the upstream ``=`` edge points away from the braket; nothing
+        # symbolic flows in.  Edges *to* the braket must be empty.
+        in_edges = [e for e in g["edges"] if e["to"] == bk_id]
+        assert in_edges == [], f"expected no operand edges, got {in_edges}"
+
     def test_ket_equation_has_equals(self):
         g = latex_to_semantic_graph(r"|\psi\rangle = |0\rangle")
         eq = _find_node(g, op="equals")
