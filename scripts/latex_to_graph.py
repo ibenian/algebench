@@ -514,13 +514,7 @@ class SemanticGraphBuilder:
         for name, attrs in self._overrides.items():
             if not _PLACEHOLDER_NAME_RE.fullmatch(name):
                 continue
-            # Prefer ``original_latex`` when present — only braket
-            # overrides set it.  Their ``latex`` is the *operator
-            # skeleton* (``\langle 0|\cdot\rangle``) used as the
-            # operator's own visual identity, but upstream subexprs
-            # (``|⟨0|ψ⟩|^2``, ``cos²(θ/2)``) need the full original
-            # form so the parent context reads as real mathematics.
-            real = attrs.get("original_latex") or attrs.get("latex")
+            real = attrs.get("latex")
             if not real:
                 continue
             # Preserve atomicity when the placeholder sits inside a
@@ -592,13 +586,11 @@ class SemanticGraphBuilder:
             # User overrides still win — authors can pin any property
             # (label, unit, ai_prompt, etc.) explicitly via ``\overrides{…}``.
             if name in self._overrides:
-                # ``bra_content`` / ``ket_content`` / ``original_latex``
-                # are internal metadata for braket operator construction
-                # — not valid graph-node attributes, so filter them out
+                # ``bra_content`` / ``ket_content`` are internal
+                # metadata for braket operand-wiring decisions — not
+                # valid graph-node attributes, so filter them out
                 # before merging.
-                _INTERNAL_OVERRIDE_KEYS = {
-                    "bra_content", "ket_content", "original_latex",
-                }
+                _INTERNAL_OVERRIDE_KEYS = {"bra_content", "ket_content"}
                 attrs.update({
                     k: v for k, v in self._overrides[name].items()
                     if k not in _INTERNAL_OVERRIDE_KEYS
@@ -635,13 +627,13 @@ class SemanticGraphBuilder:
                 and self._overrides[name].get("op") == "inner_product"
             ):
                 ovr = self._overrides[name]
-                # Preserve the original full LaTeX in subexpr so hover /
-                # details show ``⟨0|ψ⟩`` not ``⟨0|·⟩``.
+                # The braket's ``latex`` field already holds the full
+                # ``⟨bra|ket⟩`` — copy it to ``subexpr`` so upstream
+                # walkers and the details panel agree on what this
+                # node represents.
                 for n in self.nodes:
                     if n["id"] == node_id:
-                        original = ovr.get("original_latex")
-                        if original:
-                            n["subexpr"] = original
+                        n["subexpr"] = ovr["latex"]
                         break
                 for part_key, edge_role in (
                     ("bra_content", "lhs"),
@@ -870,16 +862,14 @@ class SemanticGraphBuilder:
             ket_label = sympy.latex(ket_arg.args[0]) if ket_arg.args else ""
             # The inner product is an *operator* like ``+`` or ``=`` —
             # ``op="inner_product"`` distinguishes it from other
-            # operators without inventing a separate type.  Skeleton
-            # uses ``\cdot`` for symbolic slots; the original full
-            # ``⟨bra|ket⟩`` lives in ``subexpr`` for hover/details.
-            skeleton = _braket_skeleton_latex(bra_label, ket_label)
+            # operators.  ``latex`` is the full ``⟨bra|ket⟩`` so the
+            # node and every upstream subexpression read as real math.
             full_latex = rf"\left\langle {bra_label}\middle|{ket_label}\right\rangle"
             self._add_node(
                 node_id,
                 type="operator",
                 op="inner_product",
-                latex=skeleton,
+                latex=full_latex,
                 subexpr=full_latex,
             )
             for inner_arg, edge_role in (
@@ -959,26 +949,6 @@ def _is_braket_constant_side(content: str) -> bool:
         return False
 
 
-def _braket_skeleton_latex(bra_content: str, ket_content: str) -> str:
-    r"""Build the braket *operator* LaTeX where symbolic slots show ``\cdot``
-    and constant slots show the constant verbatim.
-
-    Uses a plain ``|`` (not ``\middle|``) since the skeleton is rendered
-    without an enclosing ``\left … \right`` pair — KaTeX rejects bare
-    ``\middle`` outside such a pair and falls back to displaying the raw
-    source.
-
-    Examples:
-        ``⟨0|ψ⟩``  → ``\langle 0\,|\,\cdot\rangle``
-        ``⟨ψ|0⟩``  → ``\langle \cdot\,|\,0\rangle``
-        ``⟨x|y⟩``  → ``\langle \cdot\,|\,\cdot\rangle``
-        ``⟨0|1⟩``  → ``\langle 0\,|\,1\rangle``
-    """
-    bra_disp = bra_content if _is_braket_constant_side(bra_content) else r"\cdot"
-    ket_disp = ket_content if _is_braket_constant_side(ket_content) else r"\cdot"
-    return rf"\langle {bra_disp}\,|\,{ket_disp}\rangle"
-
-
 def _collapse_braket_notation(latex: str) -> tuple[str, dict[str, dict[str, str]]]:
     r"""Replace Dirac bra-ket notation with placeholder symbols before SymPy
     parsing.
@@ -1005,18 +975,20 @@ def _collapse_braket_notation(latex: str) -> tuple[str, dict[str, dict[str, str]
             seen[full] = idx
             bra_content = m.group(1).strip()
             ket_content = m.group(2).strip()
-            # The braket is an operator: its ``latex`` is the *operator
-            # skeleton* (``⟨0|·⟩``, ``⟨·|·⟩``, etc.) — symbolic operands
-            # appear as separate input nodes wired in by edges.  The
-            # original full LaTeX (``⟨0|ψ⟩``) is preserved in
-            # ``original_latex`` for the node's ``subexpr``.
+            # The braket is an operator with ``op="inner_product"`` —
+            # ``latex`` is the *full* original ``⟨bra|ket⟩`` so the
+            # node and every upstream subexpression read as real
+            # mathematics (``|⟨0|ψ⟩|²``, not ``|⟨0|·⟩|²``).
+            # ``bra_content`` / ``ket_content`` are kept so the
+            # placeholder-resolution path can decide which operands
+            # become input edges (symbolic) versus stay baked into
+            # the node label (constants like ``0``, ``1``).
             overrides[f"Phi_{{{idx}}}"] = {
-                "latex": _braket_skeleton_latex(bra_content, ket_content),
+                "latex": full,
                 "type": "operator",
                 "op": "inner_product",
                 "bra_content": bra_content,
                 "ket_content": ket_content,
-                "original_latex": full,
             }
         return rf"\Phi_{{{seen[full]}}}"
 

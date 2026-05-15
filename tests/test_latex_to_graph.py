@@ -1592,19 +1592,11 @@ class TestBraketCollapse:
         # with ``op="inner_product"`` — not a separate type.
         assert overrides[key]["type"] == "operator"
         assert overrides[key]["op"] == "inner_product"
-        # ``latex`` is the *operator skeleton* with ``\cdot`` for symbolic
-        # slots — the original full braket lives in ``original_latex``.
-        assert overrides[key]["latex"] == r"\langle \cdot\,|\,\cdot\rangle"
-        assert overrides[key]["original_latex"] == r"\langle\phi|\psi\rangle"
+        # ``latex`` is the full ``⟨bra|ket⟩`` so the node renders as
+        # real math (not an operator skeleton with ``\cdot`` slots).
+        assert overrides[key]["latex"] == r"\langle\phi|\psi\rangle"
         assert overrides[key]["bra_content"] == r"\phi"
         assert overrides[key]["ket_content"] == r"\psi"
-
-    def test_braket_constant_kept_in_skeleton(self):
-        """Numeric basis labels stay verbatim in the operator skeleton."""
-        _, overrides = _collapse_braket_notation(r"\langle 0|\psi\rangle")
-        key = list(overrides.keys())[0]
-        # Bra is constant ``0`` (kept), ket is symbolic ``\psi`` (slot).
-        assert overrides[key]["latex"] == r"\langle 0\,|\,\cdot\rangle"
 
     def test_braket_with_numbers(self):
         rewritten, overrides = _collapse_braket_notation(r"\langle 0|1\rangle")
