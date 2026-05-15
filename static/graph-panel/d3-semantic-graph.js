@@ -141,45 +141,92 @@ function inferEdgeSemantic(edge, nodeById) {
 
 // No tree conversion needed — dagre handles DAG layout directly.
 
-/**
- * Get the display label for a node, respecting label detail level.
- * @param {Object} node
- * @param {'minimal'|'description'|'full'} labelMode
- */
-function getNodeLabel(node, labelMode) {
-    if (node.type === 'operator' || node.type === 'relation' || node.type === 'function') {
-        return operatorGlyph(node);
-    }
-    const base = (labelMode === 'minimal')
-        ? (node.emoji || node.latex || node.label || node.id)
-        : (node.latex || node.label || node.id);
-    if (node.emoji && base !== node.emoji) return node.emoji + ' ' + base;
-    return base;
-}
+// ---------------------------------------------------------------------------
+// Two-form display convention — mirrors ``node_short_label`` /
+// ``node_long_label`` in ``scripts/latex_to_graph.py``.  Keep in sync.
+//
+// short (op/rel/fn):  node.latex →  glyph(op, …)  →  op  →  id
+// short (data):       node.latex →  node.label    →  id
+// long  (any):        node.subexpr → node.latex   →  short label
+//
+// Operator-glyph map mirrors ``_OPERATOR_GLYPHS`` in the Python parser.
+// ---------------------------------------------------------------------------
+
+const OPERATOR_GLYPHS = {
+    equals: '=', greater_than: '>', less_than: '<',
+    greater_equal: '≥', less_equal: '≤', not_equal: '≠',
+    multiply: '×', add: '+', subtract: '−',
+    divide: '÷', integral: '∫',
+    implies: '⇒', iff: '⇔',
+    negation: '−', not: '¬', logical_not: '¬',
+    conjunction: '∧', disjunction: '∨',
+    sum: '∑', product: '∏', limit: 'lim',
+    factorial: '!', sqrt: '√(·)',
+    log: 'log', logarithm: 'log', exp: 'exp',
+    sin: 'sin', cos: 'cos', tan: 'tan',
+    Abs: '|·|', abs: '|·|',
+    function: 'f',
+};
+
+const OP_KINDS = new Set(['operator', 'relation', 'function']);
 
 function operatorGlyph(node) {
-    const glyphs = {
-        equals: '=', greater_than: '>', less_than: '<',
-        greater_equal: '≥', less_equal: '≤', not_equal: '≠',
-        multiply: '×', add: '+', subtract: '−',
-        divide: '÷', integral: '∫',
-        implies: '⇒', iff: '⇔', negation: '−', not: '¬', logical_not: '¬', conjunction: '∧',
-        disjunction: '∨', sum: '∑', product: '∏', limit: 'lim',
-        factorial: '!', sqrt: '√(·)', log: 'log', logarithm: 'log',
-        exp: 'exp', sin: 'sin', cos: 'cos', tan: 'tan',
-        Abs: '|·|', abs: '|·|', function: 'f',
-    };
-    if (node.op === 'derivative' || node.op === 'partial_derivative') {
-        const d = node.op === 'partial_derivative' ? '∂' : 'd';
+    if (!node) return null;
+    const op = node.op;
+    if (!op) return null;
+    if (op === 'power') {
+        return `(·)${toSuperscript(node.exponent || 'n')}`;
+    }
+    if (op === 'derivative' || op === 'partial_derivative') {
+        const d = op === 'partial_derivative' ? '∂' : 'd';
         if (node.with_respect_to && (!node._childIds || node._childIds.length <= 1))
             return `${d}·/${d}${node.with_respect_to}`;
         return `${d}·/${d}·`;
     }
-    if (node.op === 'power') {
-        const exp = node.exponent || 'n';
-        return `(·)${toSuperscript(exp)}`;
+    return OPERATOR_GLYPHS[op] || null;
+}
+
+/**
+ * Compact symbol shown on the graph node itself.
+ * ``\cos``, ``⟨0|·⟩``, ``|·|``, ``(·)²``, ``+``, ``=``…
+ */
+export function nodeShortLabel(node) {
+    if (!node) return '';
+    if (OP_KINDS.has(node.type)) {
+        if (node.latex) return node.latex;
+        const g = operatorGlyph(node);
+        if (g) return g;
+        return node.op || node.id || '';
     }
-    return glyphs[node.op] || node.op || node.label || '?';
+    return node.latex || node.label || node.id || '';
+}
+
+/**
+ * Full applied form shown in the details panel / hover / TTS.
+ * ``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``…
+ */
+export function nodeLongLabel(node) {
+    if (!node) return '';
+    return node.subexpr || node.latex || nodeShortLabel(node);
+}
+
+/**
+ * Get the display label for a node, respecting label detail level.
+ * Thin wrapper around ``nodeShortLabel`` that adds the emoji prefix
+ * for ``minimal`` label mode on data nodes.
+ *
+ * @param {Object} node
+ * @param {'minimal'|'description'|'full'} labelMode
+ */
+function getNodeLabel(node, labelMode) {
+    const short = nodeShortLabel(node);
+    if (OP_KINDS.has(node.type)) return short;
+    // Data nodes can prefix with emoji in minimal mode.
+    if (labelMode === 'minimal' && node.emoji) {
+        return short === node.emoji ? node.emoji : node.emoji + ' ' + short;
+    }
+    if (node.emoji && short !== node.emoji) return node.emoji + ' ' + short;
+    return short;
 }
 
 export class D3SemanticGraphRenderer {
