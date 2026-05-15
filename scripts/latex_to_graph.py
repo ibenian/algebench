@@ -57,7 +57,7 @@ except ImportError:
           file=sys.stderr)
     sys.exit(1)
 
-from sympy.physics.quantum.state import Ket, Bra, KetBase, BraBase
+from sympy.physics.quantum.state import KetBase, BraBase
 from sympy.physics.quantum import InnerProduct
 
 
@@ -1919,10 +1919,17 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     if chained is not None:
         lhs_latex, rel_meta, rhs_latex = chained
         builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands, original_latex=latex)
-        lhs_expr = parse_latex(lhs_latex)
-        lhs_id = builder._walk(lhs_expr)
-        rhs_expr = parse_latex(rhs_latex)
-        rhs_id = builder._walk(rhs_expr)
+        # Mirror the controlled-error pattern used by the relation
+        # branch above (line ~1858).  An unparsable side here would
+        # otherwise bubble up an opaque SymPy/ANTLR exception instead
+        # of the ``ValueError`` callers expect from this entry point.
+        try:
+            lhs_expr = parse_latex(lhs_latex)
+            lhs_id = builder._walk(lhs_expr)
+            rhs_expr = parse_latex(rhs_latex)
+            rhs_id = builder._walk(rhs_expr)
+        except Exception as exc:
+            raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
         for node in builder.nodes:
             if node["id"] == lhs_id:
                 node["subexpr"] = builder._restore_placeholders(lhs_latex.strip())
