@@ -1887,7 +1887,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     flex-shrink: 0;
     margin-left: 8px;
 }
-#follow-angle-lock-toggle { right: 48px; }
+#follow-angle-lock-toggle { position: absolute; top: 12px; right: 48px; }
 #follow-angle-lock-toggle:hover { color: rgba(200, 200, 255, 1); background: rgba(30, 30, 60, 0.8); }
 #follow-angle-lock-toggle.active { color: rgba(140, 160, 255, 1); background: rgba(30, 30, 60, 0.8); }
 #explain-toggle:hover { color: rgba(242, 245, 255, 1); background: rgba(30, 30, 60, 0.8); }
@@ -3888,9 +3888,11 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     background: rgba(100, 100, 255, 0.35);
 }
 
-/* Light-theme variants for docked mode */
-#graph-viewport.gv-theme-light ~ #graph-dock-resize-handle:hover,
-#graph-viewport.gv-theme-light ~ #graph-dock-resize-handle.dragging {
+/* Light-theme variants for docked mode.
+   The resize handle precedes #graph-viewport in the DOM, so we use :has()
+   to look ahead at the following sibling instead of the ~ combinator. */
+#graph-dock-resize-handle:has(~ #graph-viewport.gv-theme-light):hover,
+#graph-dock-resize-handle:has(~ #graph-viewport.gv-theme-light).dragging {
     background: rgba(80, 80, 200, 0.25);
 }
 #viewport.graph-docked #graph-viewport.gv-theme-light {

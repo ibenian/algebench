@@ -99,7 +99,11 @@ if (_currentRenderer !== 'mermaid' && _currentRenderer !== 'd3') _currentRendere
 let _docked = _lsGet(LS_KEYS.docked, 'false') === 'true';
 let _dockRatio = (() => {
     const v = Number(_lsGet(LS_KEYS.dockRatio, '0.5'));
-    return Number.isFinite(v) && v >= 0.15 && v <= 0.85 ? v : 0.5;
+    // Accept any finite ratio in (0,1). The drag handler enforces tighter
+    // pixel-based limits (160px min 3D pane, 200px min graph pane) which
+    // vary by viewport width, so the persisted value can legitimately fall
+    // outside a hardcoded 0.15–0.85 band on wider/narrower screens.
+    return Number.isFinite(v) && v > 0 && v < 1 ? v : 0.5;
 })();
 // Authoritative list of available themes, populated from /api/graph/themes.
 // Each entry: { name, mode }. Used to filter the dropdown by current mode.
