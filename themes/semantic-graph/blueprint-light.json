@@ -7,8 +7,10 @@
     "scalar":   { "shape": "rect",     "fill": "#e8f0f4", "stroke": "#37778a", "color": "#1a4e5e" },
     "vector":   { "shape": "rect",     "fill": "#e8f0f4", "stroke": "#37778a", "color": "#1a4e5e" },
     "constant": { "shape": "rect",     "fill": "#e8f0f4", "stroke": "#37778a", "color": "#1a4e5e" },
-    "number":   { "shape": "rect",     "fill": "#e8f0f4", "stroke": "#37778a", "color": "#1a4e5e" },
-    "relation": { "shape": "diamond",  "fill": "#ede7f6", "stroke": "#5e35b1", "color": "#311b92" },
+    "number":     { "shape": "rect",     "fill": "#e8f0f4", "stroke": "#37778a", "color": "#1a4e5e" },
+    "expression": { "shape": "rect",     "fill": "#e8f0f4", "stroke": "#37778a", "color": "#1a4e5e" },
+    "text":       { "shape": "rect",     "fill": "#e8f0f4", "stroke": "#37778a", "color": "#1a4e5e" },
+    "relation":   { "shape": "diamond",  "fill": "#ede7f6", "stroke": "#5e35b1", "color": "#311b92" },
     "result":   { "shape": "stadium",  "fill": "#e0f2f1", "stroke": "#00897b", "color": "#004d40" },
     "annotation": { "shape": "circle", "fill": "#eef1f8", "stroke": "#7888a8", "color": "#3a4560" }
   },
