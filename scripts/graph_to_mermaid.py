@@ -10,7 +10,7 @@ Usage:
     ./run.sh scripts/graph_to_mermaid.py graph.json
 
     # With a named theme
-    ./run.sh scripts/graph_to_mermaid.py --theme role-colored-light graph.json
+    ./run.sh scripts/graph_to_mermaid.py --theme textbook-light graph.json
 
     # Pipe from latex_to_graph
     ./run.sh scripts/latex_to_graph.py "F = m \\cdot a" | ./run.sh scripts/graph_to_mermaid.py -
@@ -44,7 +44,15 @@ SHAPE_WRAPPERS: dict[str, tuple[str, str]] = {
     "circle":  ("((", "))"),
     "stadium": ("([", "])"),
     "hexagon": ("{{", "}}"),
+    "octagon": ("{{", "}}"),
     "diamond": ("{",   "}"),
+}
+
+TYPE_DEFAULT_SHAPES: dict[str, str] = {
+    "operator": "hexagon",
+    "function": "hexagon",
+    "relation": "diamond",
+    "result":   "stadium",
 }
 
 # Mermaid 11+ extended shape library (typed-shape syntax:
@@ -579,7 +587,7 @@ def semantic_graph_to_mermaid(
         # The node itself doesn't carry a ``shape`` field — the graph
         # schema is semantic-only.
         op_default = OP_DEFAULT_SHAPES.get(node.get("op"))
-        shape = op_default or ns.get("shape") or "rect"
+        shape = op_default or ns.get("shape") or TYPE_DEFAULT_SHAPES.get(ntype, "rect")
         label = _format_label(node, lm, show=show)
         node_def = _wrap_shape(nid, label, shape)
         # ``operatorVariants`` styling only applies to operator-like nodes.

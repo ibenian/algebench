@@ -32,13 +32,18 @@
         "matrix":   { "$ref": "#/$defs/nodeStyle" },
         "tensor":   { "$ref": "#/$defs/nodeStyle" },
         "number":   { "$ref": "#/$defs/nodeStyle" },
-        "constant": { "$ref": "#/$defs/nodeStyle" },
-        "operator": { "$ref": "#/$defs/nodeStyle" },
-        "function": { "$ref": "#/$defs/nodeStyle" },
+        "constant":   { "$ref": "#/$defs/nodeStyle" },
+        "expression": { "$ref": "#/$defs/nodeStyle" },
+        "text":       { "$ref": "#/$defs/nodeStyle" },
+        "operator":   { "$ref": "#/$defs/nodeStyle" },
+        "function":   { "$ref": "#/$defs/nodeStyle" },
         "relation":   { "$ref": "#/$defs/nodeStyle" },
         "result":     { "$ref": "#/$defs/nodeStyle" },
         "set":        { "$ref": "#/$defs/nodeStyle" },
         "boolean":    { "$ref": "#/$defs/nodeStyle" },
+        "ket":        { "$ref": "#/$defs/nodeStyle" },
+        "bra":        { "$ref": "#/$defs/nodeStyle" },
+        "braket":     { "$ref": "#/$defs/nodeStyle" },
         "annotation": { "$ref": "#/$defs/nodeStyle" }
       }
     },
@@ -93,7 +98,7 @@
     },
     "shape": {
       "enum": [
-        "rect", "circle", "stadium", "hexagon", "diamond",
+        "rect", "circle", "stadium", "hexagon", "diamond", "octagon",
         "triangle", "inv_triangle", "trap_top", "trap_bot",
         "framed_circle", "framed_rect", "double_circle",
         "lean_right", "lean_left", "hourglass", "notched_rect",

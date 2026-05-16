@@ -97,8 +97,6 @@ const DEFAULT_NODE_STYLES = {
     vector:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
     constant: { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
     number:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
-    operator: { fill: '#0f2540', stroke: '#42a5f5', color: '#bbdefb' },
-    function: { fill: '#0f2540', stroke: '#42a5f5', color: '#bbdefb' },
     relation: { fill: '#2e1b33', stroke: '#ab47bc', color: '#e1bee7' },
     expression: { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
     text:       { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
@@ -168,7 +166,75 @@ const OPERATOR_GLYPHS = {
     function: 'f',
 };
 
+// LaTeX equivalents for operator glyphs — used when rendering operator
+// labels through KaTeX (nodes without an explicit ``latex`` field).
+const OPERATOR_LATEX = {
+    equals: '=', greater_than: '>', less_than: '<',
+    greater_equal: '\\geq', less_equal: '\\leq', not_equal: '\\neq',
+    multiply: '\\times', add: '+', subtract: '-',
+    divide: '\\div', integral: '\\int',
+    implies: '\\Rightarrow', iff: '\\Leftrightarrow',
+    negation: '-', not: '\\lnot', logical_not: '\\lnot',
+    conjunction: '\\land', disjunction: '\\lor',
+    sum: '\\sum', product: '\\prod', limit: '\\lim',
+    factorial: '!', sqrt: '\\sqrt{\\cdot}',
+    log: '\\log', logarithm: '\\log', exp: '\\exp',
+    sin: '\\sin', cos: '\\cos', tan: '\\tan',
+    Abs: '\\lvert\\cdot\\rvert', abs: '\\lvert\\cdot\\rvert',
+    function: 'f',
+};
+
 const OP_KINDS = new Set(['operator', 'relation', 'function']);
+
+// Operator-kind classification — mirrors ``_OPERATOR_KINDS`` in
+// ``scripts/latex_to_graph.py``.  Each kind gets a distinct cool-palette
+// tint via ``OPERATOR_KIND_STYLES`` so different semantic categories
+// read at a glance while remaining recognizably "operator family".
+//   arithmetic — basic combiners (+, −, ×, ÷, ^, negate)
+//   function   — named functions (sin, cos, log, exp, |·|, √, !)
+//   comparison — value comparators (=, ≠, <, ≤, >, ≥)
+//   logical    — proposition connectives (⇒, ⇔, ¬, ∧, ∨)
+//   aggregate  — variable-binding reducers (Σ, ∏, ∫, lim, d/dx, ∂/∂x)
+//   quantum    — Dirac/linalg operators (⟨·|·⟩, future outer/expect.)
+// Keep in sync with _OPERATOR_KINDS in scripts/latex_to_graph.py
+const OPERATOR_KINDS = {
+    add: 'arithmetic', subtract: 'arithmetic', multiply: 'arithmetic',
+    divide: 'arithmetic', power: 'arithmetic', negation: 'arithmetic',
+    Abs: 'function', abs: 'function', sqrt: 'function',
+    factorial: 'function',
+    sin: 'function', cos: 'function', tan: 'function',
+    log: 'function', logarithm: 'function', exp: 'function',
+    equals: 'comparison', not_equal: 'comparison',
+    greater_than: 'comparison', less_than: 'comparison',
+    greater_equal: 'comparison', less_equal: 'comparison',
+    implies: 'logical', iff: 'logical',
+    not: 'logical', logical_not: 'logical',
+    conjunction: 'logical', disjunction: 'logical',
+    sum: 'aggregate', product: 'aggregate',
+    integral: 'aggregate', limit: 'aggregate',
+    derivative: 'aggregate', partial_derivative: 'aggregate',
+    inner_product: 'quantum',
+};
+
+// Per-kind tint variants (cool-palette — distinct enough to
+// glance-discriminate but unified as "operator").
+const OPERATOR_KIND_STYLES = {
+    arithmetic: { fill: '#0f2540', stroke: '#42a5f5', color: '#bbdefb' },
+    function:   { fill: '#0f3340', stroke: '#29b6f6', color: '#b3e5fc' },
+    comparison: { fill: '#1a2240', stroke: '#7e57c2', color: '#d1c4e9' },
+    logical:    { fill: '#0f2a30', stroke: '#26c6da', color: '#b2ebf2' },
+    aggregate:  { fill: '#1d2540', stroke: '#5c6bc0', color: '#c5cae9' },
+    quantum:    { fill: '#2d1530', stroke: '#ab47bc', color: '#e1bee7' },
+};
+
+export function operatorKind(node) {
+    if (!node || !OP_KINDS.has(node.type)) return null;
+    const op = node.op;
+    if (op && OPERATOR_KINDS[op]) return OPERATOR_KINDS[op];
+    // Default by type: named-function nodes → ``function`` kind,
+    // everything else (operators / relations) → ``arithmetic``.
+    return node.type === 'function' ? 'function' : 'arithmetic';
+}
 
 function operatorGlyph(node) {
     if (!node) return null;
@@ -221,9 +287,9 @@ export function nodeLongLabel(node) {
 function getNodeLabel(node, labelMode) {
     const short = nodeShortLabel(node);
     if (OP_KINDS.has(node.type)) return short;
-    // Data nodes can prefix with emoji in minimal mode.
+    // Data nodes show only the emoji in minimal mode.
     if (labelMode === 'minimal' && node.emoji) {
-        return short === node.emoji ? node.emoji : node.emoji + ' ' + short;
+        return node.emoji;
     }
     if (node.emoji && short !== node.emoji) return node.emoji + ' ' + short;
     return short;
@@ -362,18 +428,32 @@ export class D3SemanticGraphRenderer {
 
     _nodeStyle(nodeOrType) {
         // Accept either a bare type string (legacy callers) or a full
-        // node data object.  Defaults are taxonomy-driven only
-        // (operator / function / scalar / …) — no per-op specials.
-        // Themes that want per-op distinction (e.g. ``sin`` warmer
-        // than ``cos``) can opt in by adding op-keyed entries to
-        // their own ``nodeStyles`` block; we honour those when the
-        // node carries an ``op`` field.
+        // node data object.  Precedence:
+        //   1. theme.nodeStyles[op]      — theme op-specific override
+        //      (most specific — wins over everything below)
+        //   2. theme.nodeStyles[kind]    — theme kind-level override
+        //      (kinds: arithmetic, function, comparison, logical,
+        //      aggregate, quantum)
+        //   3. theme.nodeStyles[type]    — theme type-level override
+        //      (a theme that uniformly styles ``operator`` opts OUT
+        //      of per-kind tints by setting this)
+        //   4. OPERATOR_KIND_STYLES[k]   — built-in per-kind tint
+        //      (gives kind variation when the theme is silent)
+        //   5. DEFAULT_NODE_STYLES[type] — built-in type-level default
+        //
+        // Themes that want the kind variation: don't set ``operator``
+        // (let levels 1–2 + 4 paint it).  Themes that want uniform
+        // operator coloring: set ``operator`` to wash over kinds.
+        // Themes that want both: set ``operator`` AND specific kinds.
         const isNode = nodeOrType && typeof nodeOrType === 'object';
         const nodeType = isNode ? nodeOrType.type : nodeOrType;
         const op = isNode ? nodeOrType.op : null;
         const ts = this._theme?.nodeStyles;
         if (op && ts && ts[op]) return ts[op];
+        const kind = isNode ? operatorKind(nodeOrType) : null;
+        if (kind && ts && ts[kind]) return ts[kind];
         if (ts && ts[nodeType]) return ts[nodeType];
+        if (kind && OPERATOR_KIND_STYLES[kind]) return OPERATOR_KIND_STYLES[kind];
         return DEFAULT_NODE_STYLES[nodeType] || DEFAULT_NODE_STYLES.scalar;
     }
 
@@ -702,10 +782,25 @@ export class D3SemanticGraphRenderer {
             return { type: 'rect', hw: w / 2, hh: 24 };
         }
         if (invisible) return { type: 'rect', hw: 28, hh: 18 };
-        const kind = d.data.type;
-        if (kind === 'operator' || kind === 'relation' || kind === 'function') return { type: 'circle', r: 28 };
-        if (kind === 'annotation') return { type: 'rect', hw: 28, hh: 18 };
-        return { type: 'circle', r: 26 };
+
+        const isOp = d.data.type === 'operator' || d.data.type === 'relation' || d.data.type === 'function';
+        const fallback = isOp ? 'hexagon' : 'circle';
+        const shape = style.shape || fallback;
+
+        switch (shape) {
+            case 'rect': case 'rectangle':
+                return { type: 'rect', hw: 32, hh: 22 };
+            case 'stadium':
+                return { type: 'stadium', hw: 36, hh: 20 };
+            case 'diamond':
+                return { type: 'diamond', r: 32 };
+            case 'octagon':
+                return { type: 'polygon', r: 28 };
+            case 'hexagon':
+                return { type: 'polygon', r: 28 };
+            case 'circle': default:
+                return { type: 'circle', r: isOp ? 28 : 26 };
+        }
     }
 
     _boundaryPoint(center, other, shape) {
@@ -714,14 +809,20 @@ export class D3SemanticGraphRenderer {
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < 1) return { x: center.x, y: center.y };
 
-        if (shape.type === 'rect') {
+        if (shape.type === 'rect' || shape.type === 'stadium') {
             const nx = dx / dist, ny = dy / dist;
             const tx = shape.hw / Math.max(Math.abs(nx), 1e-6);
             const ty = shape.hh / Math.max(Math.abs(ny), 1e-6);
             const t = Math.min(tx, ty);
             return { x: center.x + nx * t, y: center.y + ny * t };
         }
-        const ratio = shape.r / dist;
+        if (shape.type === 'diamond') {
+            const nx = dx / dist, ny = dy / dist;
+            const t = shape.r / Math.max(Math.abs(nx) + Math.abs(ny), 1e-6);
+            return { x: center.x + nx * t, y: center.y + ny * t };
+        }
+        const r = shape.r || 26;
+        const ratio = r / dist;
         return { x: center.x + dx * ratio, y: center.y + dy * ratio };
     }
 
@@ -1062,7 +1163,7 @@ export class D3SemanticGraphRenderer {
         const glyph = isCollapsed ? '+' : '−';
         const sz = 14, half = sz / 2;
         const dir = this.direction;
-        if (shape.type === 'rect') {
+        if (shape.type === 'rect' || shape.type === 'stadium') {
             if (dir === 'left-right')  return { glyph, x: shape.hw - half, y: -half };
             if (dir === 'right-left')  return { glyph, x: -shape.hw - half, y: -half };
             if (dir === 'bottom-up')   return { glyph, x: -half, y: -shape.hh - half };
@@ -1135,6 +1236,8 @@ export class D3SemanticGraphRenderer {
             return;
         }
 
+        let labelWidth = 52;
+
         if (invisible) {
             const bw = 56, bh = 36;
             group.append('rect')
@@ -1146,37 +1249,114 @@ export class D3SemanticGraphRenderer {
                 .attr('rx', 4)
                 .style('fill', 'transparent')
                 .style('stroke', 'none');
-        } else if (isOp) {
-            const r = 28;
-            const points = Array.from({ length: 6 }, (_, i) => {
-                const angle = (Math.PI / 3) * i - Math.PI / 6;
-                return `${r * Math.cos(angle)},${r * Math.sin(angle)}`;
-            }).join(' ');
-            group.append('polygon')
-                .attr('class', 'd3sg-op-bg')
-                .attr('points', points)
-                .attr('fill', style.fill || '')
-                .attr('stroke', style.stroke || '');
+            labelWidth = 56;
         } else {
-            group.append('circle')
-                .attr('class', 'd3sg-var-bg')
-                .attr('r', 26)
-                .attr('fill', style.fill || '')
-                .attr('stroke', style.stroke || '');
+            const shapeName = style.shape || (isOp ? 'hexagon' : 'circle');
+            this._drawShape(group, shapeName, style, isOp);
+            labelWidth = (shapeName === 'rect' || shapeName === 'rectangle') ? 60
+                       : shapeName === 'stadium' ? 68
+                       : 56;
         }
 
-        this._renderLabel(group, data, invisible ? 56 : (isOp ? 56 : 52), false, style);
+        this._renderLabel(group, data, labelWidth, false, style);
 
         if (isOp && data._childIds && data._childIds.length > 0) {
             this._appendChevron(group, d, false);
         }
     }
 
+    _drawShape(group, shapeName, style, isOp) {
+        const fill = style.fill || '';
+        const stroke = style.stroke || '';
+        const cls = isOp ? 'd3sg-op-bg' : 'd3sg-var-bg';
+
+        switch (shapeName) {
+            case 'hexagon': {
+                const r = 28;
+                const pts = Array.from({ length: 6 }, (_, i) => {
+                    const a = (Math.PI / 3) * i - Math.PI / 6;
+                    return `${r * Math.cos(a)},${r * Math.sin(a)}`;
+                }).join(' ');
+                group.append('polygon').attr('class', cls)
+                    .attr('points', pts).attr('fill', fill).attr('stroke', stroke);
+                break;
+            }
+            case 'octagon': {
+                const r = 28;
+                const pts = Array.from({ length: 8 }, (_, i) => {
+                    const a = (Math.PI / 4) * i - Math.PI / 8;
+                    return `${r * Math.cos(a)},${r * Math.sin(a)}`;
+                }).join(' ');
+                group.append('polygon').attr('class', cls)
+                    .attr('points', pts).attr('fill', fill).attr('stroke', stroke);
+                break;
+            }
+            case 'diamond': {
+                const r = 32;
+                const pts = `0,${-r} ${r},0 0,${r} ${-r},0`;
+                group.append('polygon').attr('class', cls)
+                    .attr('points', pts).attr('fill', fill).attr('stroke', stroke);
+                break;
+            }
+            case 'rect': case 'rectangle': {
+                const hw = 32, hh = 22;
+                group.append('rect').attr('class', cls)
+                    .attr('x', -hw).attr('y', -hh)
+                    .attr('width', hw * 2).attr('height', hh * 2)
+                    .attr('rx', 4)
+                    .attr('fill', fill).attr('stroke', stroke);
+                break;
+            }
+            case 'stadium': {
+                const hw = 36, hh = 20;
+                group.append('rect').attr('class', cls)
+                    .attr('x', -hw).attr('y', -hh)
+                    .attr('width', hw * 2).attr('height', hh * 2)
+                    .attr('rx', hh)
+                    .attr('fill', fill).attr('stroke', stroke);
+                break;
+            }
+            case 'circle': default: {
+                const r = isOp ? 28 : 26;
+                group.append('circle').attr('class', cls)
+                    .attr('r', r).attr('fill', fill).attr('stroke', stroke);
+                break;
+            }
+        }
+    }
+
+    _operatorLatex(data) {
+        const op = data.op;
+        if (!op) return `\\text{${data.id || '?'}}`;
+        if (OPERATOR_LATEX[op]) return OPERATOR_LATEX[op];
+        if (op === 'power') {
+            const exp = data.exponent || 'n';
+            return `(\\cdot)^{${exp}}`;
+        }
+        if (op === 'derivative' || op === 'partial_derivative') {
+            const d = op === 'partial_derivative' ? '\\partial' : 'd';
+            const wrt = data.with_respect_to;
+            if (wrt && (!data._childIds || data._childIds.length <= 1))
+                return `\\frac{${d}}{${d}${wrt}}`;
+            return `\\frac{${d}}{${d}\\cdot}`;
+        }
+        return `\\text{${op}}`;
+    }
+
     _renderLabel(group, data, maxWidth, isCollapsed, style = {}) {
-        const latex = isCollapsed
+        let latex = isCollapsed
             ? (data.subexpr || data.latex || null)
             : (data.latex || null);
         const textColor = style.color || null;
+        const isOp = OP_KINDS.has(data.type);
+
+        // Operator/function nodes always render via KaTeX for consistent
+        // color handling.  Use OPERATOR_LATEX for proper LaTeX commands;
+        // generate dynamic LaTeX for power/derivative; fall back to the
+        // plain op name wrapped in \text{} only as a last resort.
+        if (!latex && isOp && this.katex) {
+            latex = this._operatorLatex(data);
+        }
 
         if (latex && this.katex) {
             const fo = group.append('foreignObject')
@@ -1199,7 +1379,7 @@ export class D3SemanticGraphRenderer {
             const span = document.createElement('span');
             try {
                 this.katex.render(latex, span, { throwOnError: false, displayMode: false });
-                if (data.emoji) {
+                if (data.emoji && !isOp) {
                     const emojiSpan = document.createElement('span');
                     emojiSpan.textContent = data.emoji;
                     emojiSpan.style.marginRight = '4px';

@@ -51,23 +51,7 @@ const _lsSet = (key, value) => {
     try { localStorage.setItem(key, value); } catch {}
 };
 
-// Migrate legacy theme names — every theme now ends in ``-light`` or
-// ``-dark`` so the alternative variant is easy to spot in listings. A user
-// with a stored preference from before the rename would otherwise get
-// bounced to a fallback by refreshThemeDropdown — this table preserves
-// their choice instead.
-const LEGACY_THEME_RENAME = {
-    'default': 'default-light',
-    'minimal-flat': 'minimal-flat-light',
-    'power-direction': 'power-direction-light',
-    'power-flow': 'power-flow-light',
-    'role-colored': 'role-colored-light',
-};
 let _currentTheme = _lsGet(LS_KEYS.theme, 'linalg-dark');
-if (_currentTheme in LEGACY_THEME_RENAME) {
-    _currentTheme = LEGACY_THEME_RENAME[_currentTheme];
-    _lsSet(LS_KEYS.theme, _currentTheme);
-}
 // Mode is derived from the theme's declared ``mode`` once themes are loaded.
 // Until then we bootstrap from localStorage (or 'dark' as the historical default).
 let _currentMode = _lsGet(LS_KEYS.mode, 'dark');
@@ -1407,9 +1391,8 @@ const LEGEND_DEFAULT_ARROW = '-->';
  * (b) appear in the current graph — no point telling the user about
  * "inversely proportional" when nothing in the diagram is tagged that way.
  * If neither condition holds for any semantic, the legend is hidden. This
- * keeps the viewport uncluttered on the majority of themes
- * (``default-*``, ``role-colored-*``, ``minimal-flat-*``) that don't
- * differentiate edge semantics visually.
+ * keeps the viewport uncluttered on themes that don't differentiate
+ * edge semantics visually.
  */
 function renderEdgeLegend(edgeStyles, graph) {
     const host = document.getElementById('graph-edge-legend');

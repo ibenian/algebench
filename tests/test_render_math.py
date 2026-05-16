@@ -43,7 +43,7 @@ class TestMathRendererHTML:
         assert "flowchart" in html
 
     def test_theme_applied(self):
-        r = MathRenderer("x + y", show_mermaid=True, graph_theme="role-colored-light")
+        r = MathRenderer("x + y", show_mermaid=True, graph_theme="textbook-light")
         html = r.render_html()
         assert "flowchart TB" in html
 

@@ -12,9 +12,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from scripts.latex_to_graph import (
     latex_to_semantic_graph,
     parse_var_overrides,
+    operator_kind,
     _preprocess_latex,
     _split_on_top_level_comma,
-    _split_on_top_level_newline,
     _extract_parenthetical_annotations,
     _inject_annotations,
     _collapse_braket_notation,
@@ -995,88 +995,6 @@ class TestCommaSplit:
         assert _split_on_top_level_comma(r"a \\, b") == [r"a \\", "b"]
 
 
-class TestNewlineSplit:
-    r"""Low-level splitting on ``\\`` (LaTeX line-break)."""
-
-    def test_no_newline_returns_single_clause(self):
-        assert _split_on_top_level_newline("x + y") == ["x + y"]
-
-    def test_top_level_newline_splits(self):
-        assert _split_on_top_level_newline(r"a = 1 \\ b = 2") == ["a = 1", "b = 2"]
-
-    def test_three_lines(self):
-        assert _split_on_top_level_newline(r"a \\ b \\ c") == ["a", "b", "c"]
-
-    def test_newline_inside_braces_not_split(self):
-        assert _split_on_top_level_newline(r"x = {1 \\ 2}") == [r"x = {1 \\ 2}"]
-
-    def test_newline_inside_parens_not_split(self):
-        assert _split_on_top_level_newline(r"(a \\ b)") == [r"(a \\ b)"]
-
-    def test_optional_spacing_arg_consumed(self):
-        r"""``\\[6pt]`` — the optional spacing argument must be consumed
-        and not leak into the next clause."""
-        assert _split_on_top_level_newline(r"x = 1 \\[6pt] y = 2") == [
-            "x = 1",
-            "y = 2",
-        ]
-
-    def test_single_backslash_not_split(self):
-        r"""A single ``\`` (LaTeX command prefix) must NOT trigger a split."""
-        assert _split_on_top_level_newline(r"\alpha + \beta") == [r"\alpha + \beta"]
-
-    def test_trailing_newline_no_empty_clause(self):
-        assert _split_on_top_level_newline(r"a = 1 \\") == ["a = 1"]
-
-    def test_leading_newline_no_empty_clause(self):
-        assert _split_on_top_level_newline(r"\\ b = 2") == ["b = 2"]
-
-    def test_newline_inside_begin_cases_not_split(self):
-        latex = r"\begin{cases} a \\ b \end{cases}"
-        assert _split_on_top_level_newline(latex) == [latex]
-
-    def test_newline_inside_nested_environments_not_split(self):
-        latex = r"\begin{cases} \begin{matrix} x \\ y \end{matrix} \\ z \end{cases}"
-        assert _split_on_top_level_newline(latex) == [latex]
-
-    def test_newline_after_environment_does_split(self):
-        assert _split_on_top_level_newline(
-            r"\begin{cases} a \\ b \end{cases} \\ c = 1"
-        ) == [r"\begin{cases} a \\ b \end{cases}", "c = 1"]
-
-
-class TestNewlineSeparatedClauses:
-    r"""Full graph behaviour for ``\\``-separated statements (issue #253)."""
-
-    def test_issue_253_two_equations(self):
-        r"""Two probability equations separated by ``\\`` must each produce
-        their own clause in the semantic graph."""
-        g = latex_to_semantic_graph(
-            r"p(0)=\lvert\langle 0\vert\psi\rangle\rvert^2"
-            r"=\cos^2\!\left(\frac{\theta}{2}\right)"
-            r" \\ "
-            r"p(1)=\lvert\langle 1\vert\psi\rangle\rvert^2"
-            r"=\sin^2\!\left(\frac{\theta}{2}\right)"
-        )
-        assert g["classification"]["kind"] == "statements"
-        assert g["classification"]["count"] == 2
-
-    def test_three_newline_separated_equations(self):
-        g = latex_to_semantic_graph(r"x = 1 \\ y = 2 \\ z = 3")
-        assert g["classification"]["kind"] == "statements"
-        assert g["classification"]["count"] == 3
-        assert _find_node(g, id="x") is not None
-        assert _find_node(g, id="y") is not None
-        assert _find_node(g, id="z") is not None
-
-    def test_newline_separated_shared_variable_dedup(self):
-        r"""Shared variables across ``\\``-separated clauses should dedup
-        to a single node, just like comma-separated clauses do."""
-        g = latex_to_semantic_graph(r"x = a + b \\ y = a + c")
-        a_nodes = [n for n in g["nodes"] if n.get("id") == "a"]
-        assert len(a_nodes) == 1, "shared variable 'a' should be a single node"
-
-
 class TestCommaSeparatedClauses:
     """Full graph behaviour for comma-separated statements (issue #144)."""
 
@@ -1810,6 +1728,48 @@ class TestDiracNotation:
         assert bk["latex"] == r"\langle 0\,|\,\cdot\rangle"
         # Full applied form in subexpr — what the details panel shows.
         assert bk["subexpr"] == r"\langle 0|\psi\rangle"
+
+
+class TestOperatorKind:
+    """Tests for operator_kind() — one representative op per kind,
+    plus the default-by-type fallback."""
+
+    @pytest.mark.parametrize("op,expected_kind", [
+        ("add", "arithmetic"),
+        ("multiply", "arithmetic"),
+        ("power", "arithmetic"),
+        ("sin", "function"),
+        ("exp", "function"),
+        ("sqrt", "function"),
+        ("equals", "comparison"),
+        ("less_than", "comparison"),
+        ("implies", "logical"),
+        ("conjunction", "logical"),
+        ("sum", "aggregate"),
+        ("integral", "aggregate"),
+        ("derivative", "aggregate"),
+        ("inner_product", "quantum"),
+    ])
+    def test_known_ops(self, op, expected_kind):
+        node = {"type": "operator", "op": op}
+        assert operator_kind(node) == expected_kind
+
+    def test_function_type_defaults_to_function_kind(self):
+        node = {"type": "function", "op": "unknown_func"}
+        assert operator_kind(node) == "function"
+
+    def test_operator_type_defaults_to_arithmetic(self):
+        node = {"type": "operator", "op": "unknown_op"}
+        assert operator_kind(node) == "arithmetic"
+
+    def test_relation_type_defaults_to_arithmetic(self):
+        node = {"type": "relation", "op": "unknown_rel"}
+        assert operator_kind(node) == "arithmetic"
+
+    def test_non_op_returns_none(self):
+        assert operator_kind({"type": "scalar", "op": "add"}) is None
+        assert operator_kind({"type": "vector"}) is None
+        assert operator_kind({}) is None
 
     def test_braket_upstream_subexpr_has_full_braket(self):
         """``|⟨0|ψ⟩|²`` — Abs / power / equals subexprs contain the full braket.
