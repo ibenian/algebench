@@ -3749,7 +3749,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
    to its own row below the left one. */
 .graph-controls {
     position: absolute;
-    top: 4px;
+    top: 12px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -3801,7 +3801,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     color: #e8eeff;
     border: 1px solid rgba(110, 124, 180, 0.45);
     border-radius: 6px;
-    padding: 2px 10px;
+    padding: 4px 7px;
     font-size: 1rem;
     line-height: 1;
     cursor: pointer;
@@ -3838,7 +3838,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     justify-content: center;
     width: 36px;
     min-width: 36px;
-    padding: 3px 0;
+    padding: 5px 0;
     flex-shrink: 0;
 }
 #graph-dock-toggle svg { display: block; }
