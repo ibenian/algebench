@@ -71,45 +71,8 @@
             </div>
         </div>
         <div id="viewport">
+            <div id="mathbox-wrapper">
             <div id="mathbox-container"></div>
-            <div id="graph-viewport" class="hidden">
-                <div id="graph-controls-left" class="graph-controls">
-                    <button id="graph-mode-toggle" class="graph-ctrl-btn" title="Switch between dark and light themes" aria-label="Theme mode">&#x263E;&#xFE0E;</button>
-                    <label for="graph-theme-select" class="graph-ctrl-label">Theme</label>
-                    <select id="graph-theme-select" class="graph-ctrl-select"></select>
-                    <label for="graph-labels-select" class="graph-ctrl-label">Labels</label>
-                    <select id="graph-labels-select" class="graph-ctrl-select">
-                        <option value="minimal">Symbol only</option>
-                        <option value="description" selected>Description</option>
-                        <option value="full">Full details</option>
-                    </select>
-                </div>
-                <div id="graph-controls-right" class="graph-controls">
-                    <label for="graph-renderer-select" class="graph-ctrl-label">Renderer</label>
-                    <select id="graph-renderer-select" class="graph-ctrl-select">
-                        <option value="mermaid">Mermaid</option>
-                        <option value="d3" selected>D3</option>
-                    </select>
-                    <button id="graph-show-json" class="graph-ctrl-btn" title="Show semantic graph in JSON browser" aria-label="Show semantic graph JSON" disabled>{ }</button>
-                    <div id="graph-zoom-controls">
-                        <button id="graph-zoom-out" class="graph-ctrl-btn" title="Zoom out" aria-label="Zoom out">&minus;</button>
-                        <span id="graph-zoom-level" class="graph-ctrl-label" style="cursor:pointer" title="Double-click to fit" aria-live="polite">100%</span>
-                        <button id="graph-zoom-in" class="graph-ctrl-btn" title="Zoom in" aria-label="Zoom in">+</button>
-                        <button id="graph-zoom-fit" class="graph-ctrl-btn" title="Zoom to fit" aria-label="Zoom to fit">⊡</button>
-                    </div>
-                    <label for="graph-direction-select" class="graph-ctrl-label">Direction</label>
-                    <select id="graph-direction-select" class="graph-ctrl-select">
-                        <option value="top-down">Top-Down</option>
-                        <option value="left-right" selected>Left-Right</option>
-                        <option value="right-left">Right-Left</option>
-                        <option value="bottom-up">Bottom-Up</option>
-                    </select>
-                </div>
-                <div id="graph-mermaid-container"></div>
-                <div id="graph-edge-legend" class="graph-edge-legend hidden" aria-label="Edge semantics legend"></div>
-                <div id="graph-empty-state">Select a proof step with a semantic graph to view it here.</div>
-                <div id="graph-error-state" class="hidden" role="alert" aria-live="polite"></div>
-            </div>
             <div id="camera-buttons"></div>
             <div id="viewport-top-left">
                 <div id="settings-toggle" title="Display settings">&#9881;</div>
@@ -160,6 +123,52 @@
                 <button id="nav-prev" class="nav-btn" title="Previous (&#8593;)">&lsaquo;</button>
                 <button id="nav-play" class="nav-btn" title="Play (Space)">&#9654;</button>
                 <button id="nav-next" class="nav-btn" title="Next (&#8595;)">&rsaquo;</button>
+            </div>
+            </div><!-- /mathbox-wrapper -->
+            <div id="graph-dock-resize-handle"></div>
+            <div id="graph-viewport" class="hidden">
+                <div id="graph-controls-left" class="graph-controls">
+                    <button id="graph-dock-toggle" class="graph-ctrl-btn" title="Dock graph alongside 3D viewport (D)" aria-label="Toggle docked split view">
+                        <svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                            <rect x="1" y="1" width="14" height="12" rx="1.5"/>
+                            <line x1="8" y1="1" x2="8" y2="13"/>
+                        </svg>
+                    </button>
+                    <button id="graph-mode-toggle" class="graph-ctrl-btn" title="Switch between dark and light themes" aria-label="Theme mode">&#x263E;&#xFE0E;</button>
+                    <label for="graph-theme-select" class="graph-ctrl-label">Theme</label>
+                    <select id="graph-theme-select" class="graph-ctrl-select"></select>
+                    <label for="graph-labels-select" class="graph-ctrl-label">Labels</label>
+                    <select id="graph-labels-select" class="graph-ctrl-select">
+                        <option value="minimal">Symbol only</option>
+                        <option value="description" selected>Description</option>
+                        <option value="full">Full details</option>
+                    </select>
+                </div>
+                <div id="graph-controls-right" class="graph-controls">
+                    <label for="graph-renderer-select" class="graph-ctrl-label">Renderer</label>
+                    <select id="graph-renderer-select" class="graph-ctrl-select">
+                        <option value="mermaid">Mermaid</option>
+                        <option value="d3" selected>D3</option>
+                    </select>
+                    <button id="graph-show-json" class="graph-ctrl-btn" title="Show semantic graph in JSON browser" aria-label="Show semantic graph JSON" disabled>{ }</button>
+                    <div id="graph-zoom-controls">
+                        <button id="graph-zoom-out" class="graph-ctrl-btn" title="Zoom out" aria-label="Zoom out">&minus;</button>
+                        <span id="graph-zoom-level" class="graph-ctrl-label" style="cursor:pointer" title="Double-click to fit" aria-live="polite">100%</span>
+                        <button id="graph-zoom-in" class="graph-ctrl-btn" title="Zoom in" aria-label="Zoom in">+</button>
+                        <button id="graph-zoom-fit" class="graph-ctrl-btn" title="Zoom to fit" aria-label="Zoom to fit">⊡</button>
+                    </div>
+                    <label for="graph-direction-select" class="graph-ctrl-label">Direction</label>
+                    <select id="graph-direction-select" class="graph-ctrl-select">
+                        <option value="top-down">Top-Down</option>
+                        <option value="left-right" selected>Left-Right</option>
+                        <option value="right-left">Right-Left</option>
+                        <option value="bottom-up">Bottom-Up</option>
+                    </select>
+                </div>
+                <div id="graph-mermaid-container"></div>
+                <div id="graph-edge-legend" class="graph-edge-legend hidden" aria-label="Edge semantics legend"></div>
+                <div id="graph-empty-state">Select a proof step with a semantic graph to view it here.</div>
+                <div id="graph-error-state" class="hidden" role="alert" aria-live="polite"></div>
             </div>
         </div>
         <div id="panel-resize-handle"></div>
