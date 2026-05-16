@@ -43,6 +43,8 @@ const LS_KEYS = {
     labels: 'algebench.graph.labels',
     zoom: 'algebench.graph.zoom',
     renderer: 'algebench.graph.renderer',
+    docked: 'algebench.graph.docked',
+    dockRatio: 'algebench.graph.dockRatio',
 };
 const _lsGet = (key, fallback) => {
     try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
@@ -94,6 +96,15 @@ let _currentLabels = _lsGet(LS_KEYS.labels, 'description');
 if (!(_currentLabels in LABEL_PRESETS)) _currentLabels = 'description';
 let _currentRenderer = _lsGet(LS_KEYS.renderer, 'd3');
 if (_currentRenderer !== 'mermaid' && _currentRenderer !== 'd3') _currentRenderer = 'd3';
+let _docked = _lsGet(LS_KEYS.docked, 'false') === 'true';
+let _dockRatio = (() => {
+    const v = Number(_lsGet(LS_KEYS.dockRatio, '0.5'));
+    // Accept any finite ratio in (0,1). The drag handler enforces tighter
+    // pixel-based limits (160px min 3D pane, 200px min graph pane) which
+    // vary by viewport width, so the persisted value can legitimately fall
+    // outside a hardcoded 0.15–0.85 band on wider/narrower screens.
+    return Number.isFinite(v) && v > 0 && v < 1 ? v : 0.5;
+})();
 // Authoritative list of available themes, populated from /api/graph/themes.
 // Each entry: { name, mode }. Used to filter the dropdown by current mode.
 let _allThemes = [];
@@ -343,23 +354,142 @@ function setDockTab(name) {
     });
 
     const graphVp = document.getElementById('graph-viewport');
-    const mathVp = document.getElementById('mathbox-container');
-    if (!graphVp || !mathVp) return;
+    const mathWrap = document.getElementById('mathbox-wrapper');
+    if (!graphVp || !mathWrap) return;
 
     if (name === 'graph') {
         graphVp.classList.remove('hidden');
-        // Keep mathbox mounted — just hide it.
-        mathVp.style.visibility = 'hidden';
-        // Kick off the Mermaid bundle download now so it can run in parallel
-        // with the /api/graph/mermaid fetch that renderCurrentStepGraph
-        // triggers below. ensureMermaid() will await the same promise.
+        if (_docked) {
+            _applyDockedLayout();
+        } else {
+            mathWrap.style.visibility = 'hidden';
+        }
         loadMermaidLib().catch(() => { /* error surfaced at render time */ });
         rebuildProofTree();
         renderCurrentStepGraph(true);
     } else {
         graphVp.classList.add('hidden');
-        mathVp.style.visibility = '';
+        mathWrap.style.visibility = '';
+        _removeDockedLayout();
     }
+    _syncDockButton();
+}
+
+/* ------------------------------------------------------------------ */
+/* Docked split view (issue #279)                                     */
+/* ------------------------------------------------------------------ */
+
+function _applyDockedLayout() {
+    const viewport = document.getElementById('viewport');
+    const mathWrap = document.getElementById('mathbox-wrapper');
+    if (!viewport) return;
+    viewport.classList.add('graph-docked');
+    if (mathWrap) mathWrap.style.visibility = '';
+    _applyDockRatio();
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+        if (_currentD3Renderer && !_currentD3Renderer._destroyed) {
+            _currentD3Renderer.zoomToFit();
+        }
+    }, 80);
+}
+
+function _removeDockedLayout() {
+    const viewport = document.getElementById('viewport');
+    if (!viewport) return;
+    viewport.classList.remove('graph-docked');
+    const wrapper = document.getElementById('mathbox-wrapper');
+    if (wrapper) wrapper.style.width = '';
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+        if (_currentD3Renderer && !_currentD3Renderer._destroyed) {
+            _currentD3Renderer.zoomToFit();
+        }
+    }, 80);
+}
+
+function _applyDockRatio() {
+    const wrapper = document.getElementById('mathbox-wrapper');
+    if (!wrapper) return;
+    wrapper.style.width = (_dockRatio * 100).toFixed(1) + '%';
+}
+
+function _syncDockButton() {
+    const btn = document.getElementById('graph-dock-toggle');
+    if (!btn) return;
+    const active = _docked && isGraphModeActive();
+    btn.classList.toggle('active', active);
+    btn.title = active
+        ? 'Undock graph to full viewport (D)'
+        : 'Dock graph alongside 3D viewport (D)';
+}
+
+function toggleDockMode(forceDocked) {
+    const next = typeof forceDocked === 'boolean' ? forceDocked : !_docked;
+    if (next === _docked) return;
+    _docked = next;
+    _lsSet(LS_KEYS.docked, String(_docked));
+
+    if (!isGraphModeActive()) {
+        _syncDockButton();
+        return;
+    }
+
+    const mathWrap = document.getElementById('mathbox-wrapper');
+    if (_docked) {
+        _applyDockedLayout();
+    } else {
+        _removeDockedLayout();
+        if (mathWrap) mathWrap.style.visibility = 'hidden';
+    }
+    _syncDockButton();
+}
+
+function setupDockToggle() {
+    const btn = document.getElementById('graph-dock-toggle');
+    if (!btn) return;
+    btn.addEventListener('click', () => toggleDockMode());
+    _syncDockButton();
+}
+
+function setupDockResize() {
+    const handle = document.getElementById('graph-dock-resize-handle');
+    const viewport = document.getElementById('viewport');
+    if (!handle || !viewport) return;
+    let dragging = false;
+    let startX, startWidth, startRatio;
+
+    handle.addEventListener('mousedown', (e) => {
+        if (!viewport.classList.contains('graph-docked')) return;
+        e.preventDefault();
+        dragging = true;
+        startX = e.clientX;
+        startWidth = viewport.offsetWidth;
+        startRatio = _dockRatio;
+        handle.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - startX;
+        const minPx = 160;
+        const raw = (startWidth * startRatio) + dx;
+        const clamped = Math.max(minPx, Math.min(startWidth - 200, raw));
+        _dockRatio = clamped / startWidth;
+        _applyDockRatio();
+        window.dispatchEvent(new Event('resize'));
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false;
+        handle.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        _lsSet(LS_KEYS.dockRatio, _dockRatio.toFixed(4));
+    });
 }
 
 /* ------------------------------------------------------------------ */
@@ -1895,10 +2025,21 @@ function init() {
     setupGraphControls();
     setupZoomControls();
     setupShowJsonButton();
+    setupDockToggle();
+    setupDockResize();
     setupControlsOverflowWatcher();
     window.addEventListener('algebench:stepchange', onStepChange);
     window.addEventListener('algebench:proofload', onProofLoad);
     window.addEventListener('algebench:graphselectionchange', onGraphSelectionChange);
+
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        if (e.key === 'd' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            if (isGraphModeActive()) {
+                toggleDockMode();
+            }
+        }
+    });
 }
 
 if (document.readyState === 'loading') {
@@ -1912,6 +2053,7 @@ window.graphView = {
     setDockTab,
     rebuildProofTree,
     renderCurrentStepGraph,
+    toggleDockMode,
 };
 
 /**
@@ -1939,6 +2081,7 @@ function getGraphPanelState() {
 
     const out = {
         open: dockActive,
+        docked: _docked && dockActive,
         hasGraph: !!graph,
         source: graph ? 'step-embedded' : null,
         stepNumber: (state && typeof state.proofStepIndex === 'number')

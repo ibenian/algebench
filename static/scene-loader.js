@@ -799,10 +799,13 @@ export function navigateTo(sceneIdx, stepIdx) {
 
 export function updateDockVisibility() {
     const dock = document.getElementById('scene-dock');
+    const toggle = document.getElementById('scene-dock-toggle');
     if (state.lessonSpec) {
         dock.classList.add('visible');
+        if (toggle) toggle.style.display = '';
     } else {
         dock.classList.remove('visible');
+        if (toggle) toggle.style.display = 'none';
     }
 }
 

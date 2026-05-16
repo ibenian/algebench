@@ -57,7 +57,7 @@ html, body {
 }
 #scene-title-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 8px;
 }
 #scene-source-file {
@@ -780,6 +780,12 @@ html, body {
 
 #viewport canvas { display: block; }
 
+#mathbox-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
 #mathbox-container { width: 100%; height: 100%; cursor: grab; }
 #mathbox-container canvas { cursor: grab; }
 /* Closed-fist grabbing cursor while rotating — overrides MathBox cursor plugin */
@@ -1665,29 +1671,24 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     display: flex;
 }
 #scene-dock-toggle {
-    width: 42px;
-    background:
-        linear-gradient(180deg, rgba(20, 22, 42, 0.96), rgba(13, 15, 31, 0.98));
-    border-right: 1px solid rgba(112, 124, 214, 0.12);
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding-top: 14px;
     cursor: pointer;
     color: rgba(192, 199, 235, 0.82);
     font-size: 17px;
     user-select: none;
-    transition: color 0.2s, background 0.2s, border-color 0.2s;
+    transition: color 0.2s, background 0.2s;
+    background: rgba(10, 10, 25, 0.6);
+    border-radius: 6px;
+    padding: 4px 7px;
+    line-height: 1;
     flex-shrink: 0;
 }
 #scene-dock-toggle:hover {
     color: rgba(242, 245, 255, 1);
-    background:
-        linear-gradient(180deg, rgba(28, 31, 58, 0.98), rgba(18, 21, 41, 0.99));
-    border-right-color: rgba(140, 156, 248, 0.2);
+    background: rgba(30, 30, 60, 0.8);
 }
 #scene-dock-toggle.active {
     color: rgba(163, 177, 255, 0.98);
+    background: rgba(30, 30, 60, 0.8);
 }
 #scene-dock-panel {
     width: 0;
@@ -1873,27 +1874,24 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 /* Top-right action toggles */
 #follow-angle-lock-toggle,
 #explain-toggle {
-    position: absolute;
-    top: 12px;
-    z-index: 100;
     cursor: pointer;
-    font-size: 18px;
-    color: rgba(180, 180, 220, 0.8);
+    font-size: 17px;
+    color: rgba(192, 199, 235, 0.82);
     user-select: none;
-    transition: color 0.2s;
+    transition: color 0.2s, background 0.2s;
     background: rgba(10, 10, 25, 0.6);
-    border: 1px solid rgba(100, 100, 255, 0.2);
     border-radius: 6px;
     padding: 4px 7px;
     line-height: 1;
     display: none;
+    flex-shrink: 0;
+    margin-left: 8px;
 }
-#explain-toggle { right: 12px; }
-#follow-angle-lock-toggle { right: 48px; }
-#follow-angle-lock-toggle:hover,
-#explain-toggle:hover { color: rgba(200, 200, 255, 1); background: rgba(30, 30, 60, 0.8); }
-#follow-angle-lock-toggle.active,
-#explain-toggle.active { color: rgba(140, 160, 255, 1); background: rgba(30, 30, 60, 0.8); }
+#follow-angle-lock-toggle { position: absolute; top: 12px; right: 48px; }
+#follow-angle-lock-toggle:hover { color: rgba(200, 200, 255, 1); background: rgba(30, 30, 60, 0.8); }
+#follow-angle-lock-toggle.active { color: rgba(140, 160, 255, 1); background: rgba(30, 30, 60, 0.8); }
+#explain-toggle:hover { color: rgba(242, 245, 255, 1); background: rgba(30, 30, 60, 0.8); }
+#explain-toggle.active { color: rgba(163, 177, 255, 0.98); background: rgba(30, 30, 60, 0.8); }
 #follow-angle-lock-toggle.cam-active { border-color: rgba(120, 170, 255, 0.35); }
 
 /* Panel Resize Handle */
@@ -3743,7 +3741,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
    to its own row below the left one. */
 .graph-controls {
     position: absolute;
-    top: 4px;
+    top: 12px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -3795,7 +3793,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     color: #e8eeff;
     border: 1px solid rgba(110, 124, 180, 0.45);
     border-radius: 6px;
-    padding: 2px 10px;
+    padding: 4px 7px;
     font-size: 1rem;
     line-height: 1;
     cursor: pointer;
@@ -3822,6 +3820,83 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     padding-right: 0;
     text-align: center;
     flex-shrink: 0;
+}
+
+/* Dock toggle button — shows a split-pane icon. Active state uses a
+   highlighted background so the user can see docked mode is engaged. */
+#graph-dock-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    min-width: 36px;
+    padding: 5px 0;
+    flex-shrink: 0;
+}
+#graph-dock-toggle svg { display: block; }
+#graph-dock-toggle.active {
+    background: rgba(80, 80, 200, 0.45);
+    border-color: rgba(140, 160, 255, 0.7);
+    color: #fff;
+}
+
+/* ---- Docked split view (issue #279) ---- */
+
+/* When docked, #viewport becomes a horizontal flex container so the
+   3D canvas and graph sit side by side. */
+#viewport.graph-docked {
+    display: flex;
+    flex-direction: row;
+}
+
+#viewport.graph-docked #mathbox-wrapper {
+    flex: none;
+    width: 50%;
+    min-width: 160px;
+}
+
+/* Override the full-viewport absolute overlay — in docked mode the graph
+   is a regular flex child positioned alongside the 3D pane. */
+#viewport.graph-docked #graph-viewport {
+    position: relative;
+    inset: auto;
+    flex: 1;
+    min-width: 200px;
+    z-index: 0;
+    border-left: 1px solid rgba(112, 124, 214, 0.2);
+}
+#viewport.graph-docked #graph-viewport.hidden {
+    display: none;
+}
+
+/* Resize divider between the two panes. Hidden by default — only visible
+   when docked mode is active. */
+#graph-dock-resize-handle {
+    display: none;
+    width: 5px;
+    cursor: col-resize;
+    background: transparent;
+    transition: background 0.15s;
+    flex-shrink: 0;
+    z-index: 1;
+}
+#viewport.graph-docked #graph-dock-resize-handle {
+    display: block;
+}
+#graph-dock-resize-handle:hover,
+#graph-dock-resize-handle.dragging {
+    background: rgba(100, 100, 255, 0.35);
+}
+
+/* Light-theme variants for docked mode.
+   The resize handle precedes #graph-viewport in the DOM, so we use :has()
+   to look ahead at the following sibling instead of the ~ combinator. */
+#graph-dock-resize-handle:has(~ #graph-viewport.gv-theme-light):hover,
+#graph-dock-resize-handle:has(~ #graph-viewport.gv-theme-light).dragging {
+    background: rgba(80, 80, 200, 0.25);
+}
+#viewport.graph-docked #graph-viewport.gv-theme-light {
+    border-left-color: rgba(80, 80, 160, 0.2);
 }
 
 /* Edge-semantics legend — painted from the active theme's ``edgeStyles``
