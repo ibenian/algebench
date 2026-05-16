@@ -1379,7 +1379,7 @@ export class D3SemanticGraphRenderer {
             const span = document.createElement('span');
             try {
                 this.katex.render(latex, span, { throwOnError: false, displayMode: false });
-                if (data.emoji) {
+                if (data.emoji && !isOp) {
                     const emojiSpan = document.createElement('span');
                     emojiSpan.textContent = data.emoji;
                     emojiSpan.style.marginRight = '4px';
