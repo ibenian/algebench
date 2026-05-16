@@ -1186,9 +1186,6 @@ def _apply_highlights_to_graph(
         matched.setdefault("highlight", class_key)
 
 
-# Match any `\htmlClass{...}{body}` wrapper (may be nested) and peel it off.
-_HTML_CLASS_RE = re.compile(r"\\htmlClass\{[^}]*\}\{")
-
 def _strip_html_class(latex: str) -> str:
     """Remove `\\htmlClass{...}{...}` wrappers, keeping only the inner body.
 
@@ -1200,14 +1197,27 @@ def _strip_html_class(latex: str) -> str:
         return latex
     out = []
     i = 0
+    prefix = "\\htmlClass{"
     while i < len(latex):
-        m = _HTML_CLASS_RE.match(latex, i)
-        if not m:
+        # Keep this parser regex-free; CodeQL #31 flagged repeated regex
+        # matching here as a potential ReDoS risk.
+        # https://github.com/ibenian/algebench/security/code-scanning/31
+        if not latex.startswith(prefix, i):
             out.append(latex[i])
             i += 1
             continue
         # We're at `\htmlClass{class}{` — find matching `}` for the body.
-        i = m.end()
+        class_start = i + len(prefix)
+        class_end = latex.find("}", class_start)
+        if (
+            class_end == -1
+            or class_end + 1 >= len(latex)
+            or latex[class_end + 1] != "{"
+        ):
+            out.append(latex[i])
+            i += 1
+            continue
+        i = class_end + 2
         depth = 1
         while i < len(latex) and depth > 0:
             c = latex[i]

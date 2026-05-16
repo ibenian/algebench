@@ -24,6 +24,7 @@ from server import (  # noqa: E402  (path manipulation above)
     _apply_highlights_to_graph,
     _autofill_semantic_graphs,
     _extract_htmlclass_pairs,
+    _strip_html_class,
 )
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -161,3 +162,22 @@ def test_highlight_overlay_noop_when_no_highlights():
         assert "highlight" not in node
         # "color" may legitimately appear if role-based palettes ever attach
         # one, but the overlay itself should contribute nothing here.
+
+
+def test_strip_html_class_removes_wrappers_from_middle_of_math():
+    assert (
+        _strip_html_class(r"E = \htmlClass{hl-m}{m} \htmlClass{hl-c}{c}^2")
+        == r"E = m c^2"
+    )
+
+
+def test_strip_html_class_preserves_nested_latex_body():
+    assert (
+        _strip_html_class(r"E = \htmlClass{hl-kinetic}{\frac{1}{2} m v^2}")
+        == r"E = \frac{1}{2} m v^2"
+    )
+
+
+def test_strip_html_class_handles_malformed_wrapper_without_regex_backtracking():
+    bad = "\\htmlClass{" * 2000 + "x"
+    assert _strip_html_class(bad) == bad
