@@ -71,10 +71,9 @@ class TestThemeLoading:
         # opposite-mode variant is immediately discoverable.
         assert "default-light" in names
         assert "minimal-flat-light" in names
-        assert "role-colored-light" in names
-        assert "power-direction-light" in names
-        assert "power-direction-dark" in names
-        assert "power-flow-light" in names
+        assert "blueprint-light" in names
+        assert "neon-dark" in names
+        assert "textbook-dark" in names
         assert "minimal-dark" in names
         assert "linalg-dark" in names
         for name in names:
@@ -326,7 +325,7 @@ class TestSemanticGraphToMermaid:
         assert ":::scalar" in result
 
     def test_custom_direction(self):
-        theme = load_theme("role-colored-light")
+        theme = load_theme("textbook-light")
         result = semantic_graph_to_mermaid(SIMPLE_GRAPH, theme=theme)
         assert result.startswith("flowchart TB\n")
 
@@ -348,7 +347,7 @@ class TestSemanticGraphToMermaid:
 
     def test_operator_variant_styling(self):
         """``node.variant`` + theme.operatorVariants drives a per-variant class."""
-        theme = load_theme("power-direction-dark")
+        theme = load_theme("blueprint-dark")
         graph = {
             "nodes": [
                 {"id": "a", "label": "a", "type": "scalar"},
@@ -378,7 +377,7 @@ class TestSemanticGraphToMermaid:
 
     def test_variant_ignored_on_non_operator_nodes(self):
         """``variant`` on a scalar/relation node should not override its class."""
-        theme = load_theme("power-direction-dark")
+        theme = load_theme("blueprint-dark")
         graph = {
             "nodes": [
                 # Pathological: scalar with a variant should still render as
@@ -429,9 +428,9 @@ class TestSemanticGraphToMermaid:
 
     def test_edge_weight_scales_width(self):
         # ``weight`` multiplies the semantic's base strokeWidth. With
-        # the power-direction-dark theme, ``direct`` has base 4; a
+        # the blueprint-dark theme, ``direct`` has base 4; a
         # weight of 1.5 should produce 6px.
-        theme = load_theme("power-direction-dark")
+        theme = load_theme("blueprint-dark")
         graph = {
             "nodes": [
                 {"id": "a", "type": "scalar"},
@@ -446,7 +445,7 @@ class TestSemanticGraphToMermaid:
 
     def test_edge_weight_clamped_to_max(self):
         # An ``x^100`` edge would naively produce 400px — clamp to 8px.
-        theme = load_theme("power-direction-dark")
+        theme = load_theme("blueprint-dark")
         graph = {
             "nodes": [
                 {"id": "a", "type": "scalar"},
@@ -466,7 +465,7 @@ class TestSemanticGraphToMermaid:
         # relationship is actually carried into the rest of the
         # expression. The renderer reads ``exponent`` off the source
         # power node and tags the downstream edge accordingly.
-        theme = load_theme("power-direction-dark")
+        theme = load_theme("blueprint-dark")
         graph = {
             "nodes": [
                 {"id": "c", "type": "scalar"},
@@ -498,7 +497,7 @@ class TestSemanticGraphToMermaid:
         # node should not be overridden by the renderer's structural
         # inference (which would otherwise tag it ``direct`` for
         # ``exponent=2``).
-        theme = load_theme("power-direction-dark")
+        theme = load_theme("blueprint-dark")
         graph = {
             "nodes": [
                 {"id": "c", "type": "scalar"},
@@ -529,7 +528,7 @@ class TestSemanticGraphToMermaid:
         # whose magnitude isn't known at render time. The renderer
         # should still tag the outgoing edge ``inverse`` (with default
         # weight 1) so the visual reads correctly.
-        theme = load_theme("power-direction-dark")
+        theme = load_theme("blueprint-dark")
         graph = {
             "nodes": [
                 {"id": "x", "type": "scalar"},
@@ -552,7 +551,7 @@ class TestSemanticGraphToMermaid:
 
     def test_edge_weight_clamped_to_min(self):
         # Tiny weights still yield visible edges (MIN = 1px).
-        theme = load_theme("power-direction-dark")
+        theme = load_theme("blueprint-dark")
         graph = {
             "nodes": [
                 {"id": "a", "type": "scalar"},

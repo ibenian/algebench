@@ -93,7 +93,7 @@
     },
     "shape": {
       "enum": [
-        "rect", "circle", "stadium", "hexagon", "diamond",
+        "rect", "circle", "stadium", "hexagon", "diamond", "octagon",
         "triangle", "inv_triangle", "trap_top", "trap_bot",
         "framed_circle", "framed_rect", "double_circle",
         "lean_right", "lean_left", "hourglass", "notched_rect",

@@ -59,9 +59,15 @@ const _lsSet = (key, value) => {
 const LEGACY_THEME_RENAME = {
     'default': 'default-light',
     'minimal-flat': 'minimal-flat-light',
-    'power-direction': 'power-direction-light',
-    'power-flow': 'power-flow-light',
-    'role-colored': 'role-colored-light',
+    'power-direction': 'blueprint-light',
+    'power-direction-light': 'blueprint-light',
+    'power-direction-dark': 'blueprint-dark',
+    'power-flow': 'neon-light',
+    'power-flow-light': 'neon-light',
+    'power-flow-dark': 'neon-dark',
+    'role-colored': 'textbook-light',
+    'role-colored-light': 'textbook-light',
+    'role-colored-dark': 'textbook-dark',
 };
 let _currentTheme = _lsGet(LS_KEYS.theme, 'linalg-dark');
 if (_currentTheme in LEGACY_THEME_RENAME) {
@@ -1407,9 +1413,8 @@ const LEGEND_DEFAULT_ARROW = '-->';
  * (b) appear in the current graph — no point telling the user about
  * "inversely proportional" when nothing in the diagram is tagged that way.
  * If neither condition holds for any semantic, the legend is hidden. This
- * keeps the viewport uncluttered on the majority of themes
- * (``default-*``, ``role-colored-*``, ``minimal-flat-*``) that don't
- * differentiate edge semantics visually.
+ * keeps the viewport uncluttered on themes that don't differentiate
+ * edge semantics visually.
  */
 function renderEdgeLegend(edgeStyles, graph) {
     const host = document.getElementById('graph-edge-legend');

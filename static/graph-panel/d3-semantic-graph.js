@@ -178,6 +178,7 @@ const OP_KINDS = new Set(['operator', 'relation', 'function']);
 //   logical    — proposition connectives (⇒, ⇔, ¬, ∧, ∨)
 //   aggregate  — variable-binding reducers (Σ, ∏, ∫, lim, d/dx, ∂/∂x)
 //   quantum    — Dirac/linalg operators (⟨·|·⟩, future outer/expect.)
+// Keep in sync with _OPERATOR_KINDS in scripts/latex_to_graph.py
 const OPERATOR_KINDS = {
     add: 'arithmetic', subtract: 'arithmetic', multiply: 'arithmetic',
     divide: 'arithmetic', power: 'arithmetic', negation: 'arithmetic',
@@ -763,10 +764,25 @@ export class D3SemanticGraphRenderer {
             return { type: 'rect', hw: w / 2, hh: 24 };
         }
         if (invisible) return { type: 'rect', hw: 28, hh: 18 };
-        const kind = d.data.type;
-        if (kind === 'operator' || kind === 'relation' || kind === 'function') return { type: 'circle', r: 28 };
-        if (kind === 'annotation') return { type: 'rect', hw: 28, hh: 18 };
-        return { type: 'circle', r: 26 };
+
+        const isOp = d.data.type === 'operator' || d.data.type === 'relation' || d.data.type === 'function';
+        const fallback = isOp ? 'hexagon' : 'circle';
+        const shape = style.shape || fallback;
+
+        switch (shape) {
+            case 'rect': case 'rectangle':
+                return { type: 'rect', hw: 32, hh: 22 };
+            case 'stadium':
+                return { type: 'stadium', hw: 36, hh: 20 };
+            case 'diamond':
+                return { type: 'diamond', r: 32 };
+            case 'octagon':
+                return { type: 'polygon', r: 28 };
+            case 'hexagon':
+                return { type: 'polygon', r: 28 };
+            case 'circle': default:
+                return { type: 'circle', r: isOp ? 28 : 26 };
+        }
     }
 
     _boundaryPoint(center, other, shape) {
@@ -775,14 +791,20 @@ export class D3SemanticGraphRenderer {
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < 1) return { x: center.x, y: center.y };
 
-        if (shape.type === 'rect') {
+        if (shape.type === 'rect' || shape.type === 'stadium') {
             const nx = dx / dist, ny = dy / dist;
             const tx = shape.hw / Math.max(Math.abs(nx), 1e-6);
             const ty = shape.hh / Math.max(Math.abs(ny), 1e-6);
             const t = Math.min(tx, ty);
             return { x: center.x + nx * t, y: center.y + ny * t };
         }
-        const ratio = shape.r / dist;
+        if (shape.type === 'diamond') {
+            const nx = dx / dist, ny = dy / dist;
+            const t = shape.r / Math.max(Math.abs(nx) + Math.abs(ny), 1e-6);
+            return { x: center.x + nx * t, y: center.y + ny * t };
+        }
+        const r = shape.r || 26;
+        const ratio = r / dist;
         return { x: center.x + dx * ratio, y: center.y + dy * ratio };
     }
 
@@ -1123,7 +1145,7 @@ export class D3SemanticGraphRenderer {
         const glyph = isCollapsed ? '+' : '−';
         const sz = 14, half = sz / 2;
         const dir = this.direction;
-        if (shape.type === 'rect') {
+        if (shape.type === 'rect' || shape.type === 'stadium') {
             if (dir === 'left-right')  return { glyph, x: shape.hw - half, y: -half };
             if (dir === 'right-left')  return { glyph, x: -shape.hw - half, y: -half };
             if (dir === 'bottom-up')   return { glyph, x: -half, y: -shape.hh - half };
@@ -1196,6 +1218,8 @@ export class D3SemanticGraphRenderer {
             return;
         }
 
+        let labelWidth = 52;
+
         if (invisible) {
             const bw = 56, bh = 36;
             group.append('rect')
@@ -1207,29 +1231,79 @@ export class D3SemanticGraphRenderer {
                 .attr('rx', 4)
                 .style('fill', 'transparent')
                 .style('stroke', 'none');
-        } else if (isOp) {
-            const r = 28;
-            const points = Array.from({ length: 6 }, (_, i) => {
-                const angle = (Math.PI / 3) * i - Math.PI / 6;
-                return `${r * Math.cos(angle)},${r * Math.sin(angle)}`;
-            }).join(' ');
-            group.append('polygon')
-                .attr('class', 'd3sg-op-bg')
-                .attr('points', points)
-                .attr('fill', style.fill || '')
-                .attr('stroke', style.stroke || '');
+            labelWidth = 56;
         } else {
-            group.append('circle')
-                .attr('class', 'd3sg-var-bg')
-                .attr('r', 26)
-                .attr('fill', style.fill || '')
-                .attr('stroke', style.stroke || '');
+            const shapeName = style.shape || (isOp ? 'hexagon' : 'circle');
+            this._drawShape(group, shapeName, style, isOp);
+            labelWidth = (shapeName === 'rect' || shapeName === 'rectangle') ? 60
+                       : shapeName === 'stadium' ? 68
+                       : 56;
         }
 
-        this._renderLabel(group, data, invisible ? 56 : (isOp ? 56 : 52), false, style);
+        this._renderLabel(group, data, labelWidth, false, style);
 
         if (isOp && data._childIds && data._childIds.length > 0) {
             this._appendChevron(group, d, false);
+        }
+    }
+
+    _drawShape(group, shapeName, style, isOp) {
+        const fill = style.fill || '';
+        const stroke = style.stroke || '';
+        const cls = isOp ? 'd3sg-op-bg' : 'd3sg-var-bg';
+
+        switch (shapeName) {
+            case 'hexagon': {
+                const r = 28;
+                const pts = Array.from({ length: 6 }, (_, i) => {
+                    const a = (Math.PI / 3) * i - Math.PI / 6;
+                    return `${r * Math.cos(a)},${r * Math.sin(a)}`;
+                }).join(' ');
+                group.append('polygon').attr('class', cls)
+                    .attr('points', pts).attr('fill', fill).attr('stroke', stroke);
+                break;
+            }
+            case 'octagon': {
+                const r = 28;
+                const pts = Array.from({ length: 8 }, (_, i) => {
+                    const a = (Math.PI / 4) * i - Math.PI / 8;
+                    return `${r * Math.cos(a)},${r * Math.sin(a)}`;
+                }).join(' ');
+                group.append('polygon').attr('class', cls)
+                    .attr('points', pts).attr('fill', fill).attr('stroke', stroke);
+                break;
+            }
+            case 'diamond': {
+                const r = 32;
+                const pts = `0,${-r} ${r},0 0,${r} ${-r},0`;
+                group.append('polygon').attr('class', cls)
+                    .attr('points', pts).attr('fill', fill).attr('stroke', stroke);
+                break;
+            }
+            case 'rect': case 'rectangle': {
+                const hw = 32, hh = 22;
+                group.append('rect').attr('class', cls)
+                    .attr('x', -hw).attr('y', -hh)
+                    .attr('width', hw * 2).attr('height', hh * 2)
+                    .attr('rx', 4)
+                    .attr('fill', fill).attr('stroke', stroke);
+                break;
+            }
+            case 'stadium': {
+                const hw = 36, hh = 20;
+                group.append('rect').attr('class', cls)
+                    .attr('x', -hw).attr('y', -hh)
+                    .attr('width', hw * 2).attr('height', hh * 2)
+                    .attr('rx', hh)
+                    .attr('fill', fill).attr('stroke', stroke);
+                break;
+            }
+            case 'circle': default: {
+                const r = isOp ? 28 : 26;
+                group.append('circle').attr('class', cls)
+                    .attr('r', r).attr('fill', fill).attr('stroke', stroke);
+                break;
+            }
         }
     }
 

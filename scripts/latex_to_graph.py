@@ -296,6 +296,7 @@ _OP_KINDS: frozenset[str] = frozenset({"operator", "relation", "function"})
 # Op-name takes precedence over node type when assigning kinds.  For
 # ops not in the map, ``operator_kind`` falls back to ``function`` for
 # ``type=function`` nodes and ``arithmetic`` for everything else.
+# Keep in sync with OPERATOR_KINDS in static/graph-panel/d3-semantic-graph.js
 _OPERATOR_KINDS: dict[str, str] = {
     # arithmetic — symbolic combiners
     "add": "arithmetic", "subtract": "arithmetic", "multiply": "arithmetic",
@@ -449,7 +450,7 @@ class SemanticGraphBuilder:
         ``direct`` / ``inverse`` / ``neutral`` (enum from the graph schema).
 
         Edges without a semantic are rendered as the theme default
-        (generally ``neutral``). Themes like ``power-direction-*`` style
+        (generally ``neutral``). Themes like ``blueprint-*`` style
         the three values differently (thick red / dotted blue / plain
         gray), which lets the diagram communicate proportionality at a
         glance when the emitter has enough information to tag the edge.

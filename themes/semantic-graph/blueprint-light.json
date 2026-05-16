@@ -1,0 +1,22 @@
+{
+  "name": "blueprint-light",
+  "mode": "light",
+  "direction": "LR",
+  "labelMode": "emoji",
+  "nodeStyles": {
+    "scalar":   { "shape": "rect",     "fill": "#e8f0f4", "stroke": "#37778a", "color": "#1a4e5e" },
+    "vector":   { "shape": "rect",     "fill": "#e8f0f4", "stroke": "#37778a", "color": "#1a4e5e" },
+    "constant": { "shape": "rect",     "fill": "#e8f0f4", "stroke": "#37778a", "color": "#1a4e5e" },
+    "number":   { "shape": "rect",     "fill": "#e8f0f4", "stroke": "#37778a", "color": "#1a4e5e" },
+    "relation": { "shape": "diamond",  "fill": "#ede7f6", "stroke": "#5e35b1", "color": "#311b92" },
+    "result":   { "shape": "stadium",  "fill": "#e0f2f1", "stroke": "#00897b", "color": "#004d40" },
+    "annotation": { "shape": "circle", "fill": "#eef1f8", "stroke": "#7888a8", "color": "#3a4560" }
+  },
+  "edgeStyles": {
+    "direct":  { "stroke": "#e64a19", "strokeWidth": 3 },
+    "inverse": { "stroke": "#37778a", "strokeWidth": 1, "arrow": "-.->" },
+    "neutral": { "stroke": "#90a4ae", "strokeWidth": 2 }
+  },
+  "paintBySemantic": true,
+  "fontSize": 15
+}
