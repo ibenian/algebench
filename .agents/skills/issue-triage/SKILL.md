@@ -1,11 +1,11 @@
 ---
 name: issue-triage
-description: Triage the GitHub issue backlog for the current repo — list, filter, prioritize, and pick issues. Supports --type filtering by label, --prioritize to mark issues as high priority, and --pick to select and set up a branch for the top issue.
+description: Triage the GitHub issue backlog and code scanning alerts for the current repo — list, filter, prioritize, and pick issues or alerts. Supports --type filtering by label, --code-scanning for CodeQL/security alerts, --prioritize to mark issues as high priority, and --pick to select and set up a branch for the top item.
 ---
 
 # Issue Triage
 
-Triage the GitHub issue backlog — list, filter, prioritize, and pick issues to work on.
+Triage the GitHub issue backlog and code scanning alerts — list, filter, prioritize, and pick issues or alerts to work on.
 
 **This skill is opinionated.** It does not simply dump a list and wait. It actively reads the backlog, forms a judgment about what matters most *right now*, and proposes a recommendation the user can accept, override, or challenge. Passive listing without a proposal is a failure mode — always take a stance.
 
@@ -15,6 +15,7 @@ Triage the GitHub issue backlog — list, filter, prioritize, and pick issues to
 
 ```
 /issue-triage [--type <label>[,<label>...]] [--top <N>] [--prioritize] [--pick]
+/issue-triage --code-scanning [--top <N>] [--pick]
 ```
 
 ### Flags
@@ -22,11 +23,13 @@ Triage the GitHub issue backlog — list, filter, prioritize, and pick issues to
 | Flag | Description |
 |------|-------------|
 | `--type <label>` | Filter issues by GitHub label(s). Comma-separated for multiple. Examples: `bug`, `enhancement`, `semantic-graph`, `ui` |
-| `--top <N>` | Show the top N issues (default: **5**). All `high`-labeled issues are always shown in addition to the top N candidates. |
+| `--code-scanning` | Triage open GitHub code scanning alerts instead of issues. Focuses on CodeQL/security alerts and links to the alert URL. |
+| `--top <N>` | Show the top N issues or code scanning alerts (default: **5**). For issue triage, all `high`-labeled issues are always shown in addition to the top N candidates. |
 | `--prioritize` | After listing, prompt the user to approve marking specific issues with the `high` label |
-| `--pick` | Automatically pick the highest-priority issue, sync main, create a branch, and prepare to work on it |
+| `--pick` | Automatically pick the highest-priority issue or code scanning alert, sync main, create a branch, and prepare to work on it |
 
-Flags can be combined: `/issue-triage --type bug --prioritize --pick`
+Issue-triage flags can be combined: `/issue-triage --type bug --prioritize --pick`
+Use `/issue-triage --code-scanning` for CodeQL/code scanning alert triage. `--code-scanning` is mutually exclusive with `--type`, because it triages alerts instead of issues. `--prioritize` does not apply to `--code-scanning`; if both are provided, ignore `--prioritize` and say alerts do not have issue labels.
 
 ---
 
@@ -34,21 +37,101 @@ Flags can be combined: `/issue-triage --type bug --prioritize --pick`
 
 ### Default (no flags)
 
-1. Run `gh issue list --state open --limit 100` to fetch all open issues.
-2. Display a **Stats** summary first (see [Stats Summary](#stats-summary) below).
+1. Fetch the issue list and the quick high-severity code scanning preflight **in parallel**. Use `multi_tool_use.parallel` when available; otherwise start both shell commands before waiting on either result.
+   Issue command:
+   ```bash
+   gh issue list --state open --limit 100
+   ```
+   Security preflight command:
+   ```bash
+   gh api --paginate --method GET -F per_page=100 repos/:owner/:repo/code-scanning/alerts --jq '.[] | select(.state=="open" and (.rule.security_severity_level=="critical" or .rule.security_severity_level=="high")) | {
+     number,
+     rule: .rule.id,
+     severity: .rule.security_severity_level,
+     description: .rule.description,
+     path: .most_recent_instance.location.path,
+     line: .most_recent_instance.location.start_line,
+     url: .html_url
+   }'
+   ```
+   After fetching the complete high/critical alert set, rank the results with the same code-scanning ranking rules and show only the top 5 in a compact **Security Alerts** block. Do not rely on API order or first-page order for this block. Include a one-line prompt: `Security alerts are open. Say --code-scanning to triage them fully.`
+2. After both parallel fetches complete, display results in this order:
+   - **Security Alerts** block first, only if high/critical alerts exist
+   - Issue **Stats** summary next (see [Stats Summary](#stats-summary) below)
+   - Top issue table after the stats
 3. Then display **only the top issues that should be considered first** — not the full list:
    - All issues with the `high` label (always shown)
    - Plus top candidates up to **N** total (where N is `--top <N>`, default **5**)
    - Ranking: `high` first, then bugs before enhancements, then newer before older (recency signals active pain)
 4. **Always close with a Recommendation block** (see [Recommendation](#recommendation) below) — name one issue you'd pick next, give a 1–2 sentence rationale, and invite the user to accept or redirect. Never end a triage turn without a proposal.
-5. If there are more issues not shown, end with a one-liner: `… and N more open issues. Use --type <label> to filter or --top <N> to show more.`
+5. If the preflight found no high/critical code scanning alerts, offer to check all code scanning alerts as a separate follow-up: `Say --code-scanning to also triage CodeQL/security alerts.`
+6. If there are more issues not shown, end with a one-liner: `… and N more open issues. Use --type <label> to filter or --top <N> to show more.`
 
 ### With `--type <label>`
 
-1. Run `gh issue list --state open --label "<label>" --limit 100` for each specified label.
-2. Display the **Stats** summary scoped to the filtered set.
-3. Display only the top **N** issues from the filtered set (default 5, overridable with `--top <N>`) using the same ranking rules.
-4. If multiple labels are given (comma-separated), combine results and deduplicate by issue number.
+1. Fetch the filtered issue list(s) and the same paginated high-severity code scanning preflight from the default flow **in parallel**. Use `multi_tool_use.parallel` when available; otherwise start the issue query/query set and security preflight before waiting on either result. If any high/critical alerts exist, rank the complete preflight result set and show the compact **Security Alerts** block before the filtered issue stats.
+2. Run `gh issue list --state open --label "<label>" --limit 100` for each specified label as the issue-side parallel work.
+3. Display the **Stats** summary scoped to the filtered set.
+4. Display only the top **N** issues from the filtered set (default 5, overridable with `--top <N>`) using the same ranking rules.
+5. If multiple labels are given (comma-separated), combine results and deduplicate by issue number.
+6. If the preflight found no high/critical code scanning alerts, offer to check all code scanning alerts as a separate follow-up: `Say --code-scanning to also triage CodeQL/security alerts.`
+
+### With `--code-scanning`
+
+1. Triage code scanning alerts instead of GitHub issues. Do not mix issue rows and alert rows in the same table unless the user explicitly asks for both.
+2. Fetch open alerts with:
+   ```bash
+   gh api --paginate --method GET -F per_page=100 repos/:owner/:repo/code-scanning/alerts --jq '.[] | select(.state=="open") | {
+     number,
+     rule: .rule.id,
+     severity: .rule.security_severity_level,
+     description: .rule.description,
+     tool: .tool.name,
+     path: .most_recent_instance.location.path,
+     line: .most_recent_instance.location.start_line,
+     url: .html_url,
+     created_at,
+     updated_at
+   }'
+   ```
+3. If `:owner/:repo` expansion is unavailable in the current shell/context, resolve it with:
+   ```bash
+   gh repo view --json nameWithOwner --jq .nameWithOwner
+   ```
+   then call `gh api --paginate --method GET -F per_page=100 repos/<owner>/<repo>/code-scanning/alerts`.
+4. Display a **Code Scanning Stats** block before the alert table:
+   ```text
+   🔒 Open Code Scanning Alerts: 30 total
+      • High: 20 · Medium: 10 · Low/Other: 0
+      • By rule: py/path-injection (18), py/stack-trace-exposure (10), js/xss-through-dom (1)
+      • By file: server.py (29), static/chat.js (1)
+   ```
+5. Display only the top **N** alerts (default 5), ranked:
+   - `critical` before `high`, then `medium`, then `low`, then unset/unknown
+   - Injection/XSS/path traversal/code execution/auth bypass before DoS/performance findings
+   - Alerts in exposed request/response paths before offline tooling
+   - Newer alerts before older alerts as a tiebreaker
+6. Use this display format:
+   ```text
+   🔒 Top 5 code scanning alerts to consider first:
+
+   | Alert | Severity | Rule | Location | Summary |
+   |-------|----------|------|----------|---------|
+   | #32 | high | js/xss-through-dom | static/chat.js:724 | DOM text reinterpreted as HTML |
+   ```
+7. End with exactly one **Recommendation** for the alert to fix next. Link to the alert URL and explain why it outranks the other alerts.
+8. Do **not** use `Closes #<number>` for code scanning alerts. GitHub issue-closing keywords do not close code scanning alerts. Use phrasing like:
+   ```markdown
+   Addresses [Code scanning #31](https://github.com/OWNER/REPO/security/code-scanning/31).
+   ```
+   GitHub closes a code scanning alert automatically after the fix is merged into the scanned branch and the next CodeQL/code scanning run no longer reports that finding.
+9. `--prioritize` does not apply to code scanning alerts because alerts do not have issue labels. If the user asks to prioritize code scanning alerts, rank them in the table and recommendation only.
+10. If `--pick --code-scanning` is used, pick the highest-ranked alert, show its details, propose a fix, then wait for user approval before implementing. Branch naming should use:
+   ```bash
+   git checkout main
+   git pull --ff-only origin main
+   git checkout -b fix/code-scanning-<alert-number>-<short-slug>
+   ```
 
 ### With `--prioritize`
 
@@ -98,6 +181,8 @@ Flags can be combined: `/issue-triage --type bug --prioritize --pick`
 9. Report results: what was done, test status, and any remaining concerns.
 10. **Do NOT auto-commit.** Wait for the user to say "commit" or similar.
 
+If `--pick` is combined with `--code-scanning`, use the code scanning ranking and branch naming rules from the `--code-scanning` section instead of issue labels/issue numbers.
+
 ---
 
 ## Label Management
@@ -128,7 +213,7 @@ Compute counts from the fetched issue list. When `--type` is used, stats are sco
 
 ## Recommendation
 
-**Always** end the default / `--type` flows with an opinionated recommendation. Pick **one** issue (not three, not a menu) and defend the choice briefly. Example:
+**Always** end the default / `--type` / `--code-scanning` flows with an opinionated recommendation. Pick **one** issue or alert (not three, not a menu) and defend the choice briefly. Example:
 
 ```
 💡 Recommendation: tackle #144 next.
@@ -140,9 +225,10 @@ Compute counts from the fetched issue list. When `--type` is used, stats are sco
 ```
 
 Rules:
-- Exactly **one** recommended issue per turn.
-- Rationale must reference the *specific* issue — not generic platitudes.
+- Exactly **one** recommended issue or alert per turn.
+- Rationale must reference the *specific* issue or alert — not generic platitudes.
 - Weigh: correctness > UX > polish; silent failures > loud failures; blockers > leaves; recency as a tiebreaker.
+- For code scanning alerts, weigh exploitability and exposure first: XSS/injection/path traversal/code execution/auth bypass > sensitive data exposure > denial of service > diagnostics/noise.
 - If the user's `--type` filter narrows things such that the recommendation feels weak, say so honestly ("nothing here feels urgent — consider dropping the filter").
 - Never hedge with "it depends" or "you could pick any of these." Take a stance.
 
