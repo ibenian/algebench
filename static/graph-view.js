@@ -51,29 +51,7 @@ const _lsSet = (key, value) => {
     try { localStorage.setItem(key, value); } catch {}
 };
 
-// Migrate legacy theme names — every theme now ends in ``-light`` or
-// ``-dark`` so the alternative variant is easy to spot in listings. A user
-// with a stored preference from before the rename would otherwise get
-// bounced to a fallback by refreshThemeDropdown — this table preserves
-// their choice instead.
-const LEGACY_THEME_RENAME = {
-    'default': 'default-light',
-    'minimal-flat': 'minimal-flat-light',
-    'power-direction': 'blueprint-light',
-    'power-direction-light': 'blueprint-light',
-    'power-direction-dark': 'blueprint-dark',
-    'power-flow': 'neon-light',
-    'power-flow-light': 'neon-light',
-    'power-flow-dark': 'neon-dark',
-    'role-colored': 'textbook-light',
-    'role-colored-light': 'textbook-light',
-    'role-colored-dark': 'textbook-dark',
-};
 let _currentTheme = _lsGet(LS_KEYS.theme, 'linalg-dark');
-if (_currentTheme in LEGACY_THEME_RENAME) {
-    _currentTheme = LEGACY_THEME_RENAME[_currentTheme];
-    _lsSet(LS_KEYS.theme, _currentTheme);
-}
 // Mode is derived from the theme's declared ``mode`` once themes are loaded.
 // Until then we bootstrap from localStorage (or 'dark' as the historical default).
 let _currentMode = _lsGet(LS_KEYS.mode, 'dark');
