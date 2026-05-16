@@ -166,6 +166,24 @@ const OPERATOR_GLYPHS = {
     function: 'f',
 };
 
+// LaTeX equivalents for operator glyphs — used when rendering operator
+// labels through KaTeX (nodes without an explicit ``latex`` field).
+const OPERATOR_LATEX = {
+    equals: '=', greater_than: '>', less_than: '<',
+    greater_equal: '\\geq', less_equal: '\\leq', not_equal: '\\neq',
+    multiply: '\\times', add: '+', subtract: '-',
+    divide: '\\div', integral: '\\int',
+    implies: '\\Rightarrow', iff: '\\Leftrightarrow',
+    negation: '-', not: '\\lnot', logical_not: '\\lnot',
+    conjunction: '\\land', disjunction: '\\lor',
+    sum: '\\sum', product: '\\prod', limit: '\\lim',
+    factorial: '!', sqrt: '\\sqrt{\\cdot}',
+    log: '\\log', logarithm: '\\log', exp: '\\exp',
+    sin: '\\sin', cos: '\\cos', tan: '\\tan',
+    Abs: '\\lvert\\cdot\\rvert', abs: '\\lvert\\cdot\\rvert',
+    function: 'f',
+};
+
 const OP_KINDS = new Set(['operator', 'relation', 'function']);
 
 // Operator-kind classification — mirrors ``_OPERATOR_KINDS`` in
@@ -1307,11 +1325,38 @@ export class D3SemanticGraphRenderer {
         }
     }
 
+    _operatorLatex(data) {
+        const op = data.op;
+        if (!op) return `\\text{${data.id || '?'}}`;
+        if (OPERATOR_LATEX[op]) return OPERATOR_LATEX[op];
+        if (op === 'power') {
+            const exp = data.exponent || 'n';
+            return `(\\cdot)^{${exp}}`;
+        }
+        if (op === 'derivative' || op === 'partial_derivative') {
+            const d = op === 'partial_derivative' ? '\\partial' : 'd';
+            const wrt = data.with_respect_to;
+            if (wrt && (!data._childIds || data._childIds.length <= 1))
+                return `\\frac{${d}}{${d}${wrt}}`;
+            return `\\frac{${d}}{${d}\\cdot}`;
+        }
+        return `\\text{${op}}`;
+    }
+
     _renderLabel(group, data, maxWidth, isCollapsed, style = {}) {
-        const latex = isCollapsed
+        let latex = isCollapsed
             ? (data.subexpr || data.latex || null)
             : (data.latex || null);
         const textColor = style.color || null;
+        const isOp = OP_KINDS.has(data.type);
+
+        // Operator/function nodes always render via KaTeX for consistent
+        // color handling.  Use OPERATOR_LATEX for proper LaTeX commands;
+        // generate dynamic LaTeX for power/derivative; fall back to the
+        // plain op name wrapped in \text{} only as a last resort.
+        if (!latex && isOp && this.katex) {
+            latex = this._operatorLatex(data);
+        }
 
         if (latex && this.katex) {
             const fo = group.append('foreignObject')
