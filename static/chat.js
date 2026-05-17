@@ -721,9 +721,13 @@ function addChatMessage(role, content, toolCalls) {
     const body = document.createElement('div');
     body.className = 'msg-body';
 
-    body.innerHTML = role === 'user'
-        ? (typeof renderKaTeX === 'function' ? renderKaTeX(content, false) : content)
-        : (typeof renderMarkdown === 'function' ? renderMarkdown(content) : content);
+    if (typeof renderKaTeX === 'function' && typeof renderMarkdown === 'function') {
+        body.innerHTML = role === 'user'
+            ? renderKaTeX(content, false)
+            : renderMarkdown(content);
+    } else {
+        body.textContent = content;
+    }
     body.dataset.markdown = content;
     msgDiv.appendChild(body);
 
