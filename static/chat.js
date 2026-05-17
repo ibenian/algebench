@@ -18,6 +18,12 @@ let selectedTtsMode = 'read';
 
 const CHAT_HISTORY_MAX = Infinity;
 
+function _escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
 let _presetPrompts = [];
 
 // Track which surface the user last interacted with so chat context can
@@ -878,7 +884,8 @@ function renderToolCallChip(tc) {
     chip.className = 'chat-tool-call';
     const rawArgs = tc.rawArgs || tc.args;
 
-    let friendlyText = tc.name;
+    const e = _escHtml;
+    let friendlyText = e(tc.name);
     if (tc.name === 'navigate_to') {
         const reason = tc.args.reason || '';
         const agentScene = Math.round(Number(tc.args.scene) || 1);  // 1-based
@@ -896,18 +903,18 @@ function renderToolCallChip(tc) {
                 }
             }
         }
-        friendlyText = '📍 Navigated to "' + sceneTitle + '"';
-        if (stepTitle) friendlyText += ', ' + stepTitle;
-        if (reason) friendlyText += ' — ' + reason;
+        friendlyText = '📍 Navigated to "' + e(sceneTitle) + '"';
+        if (stepTitle) friendlyText += ', ' + e(stepTitle);
+        if (reason) friendlyText += ' — ' + e(reason);
     } else if (tc.name === 'set_camera') {
         const reason = tc.args.reason || 'better viewing angle';
-        const viewLabel = tc.args.view ? ' (' + tc.args.view + ')' : '';
-        friendlyText = '🎥 Camera adjusted' + viewLabel + ' — ' + reason;
+        const viewLabel = tc.args.view ? ' (' + e(tc.args.view) + ')' : '';
+        friendlyText = '🎥 Camera adjusted' + viewLabel + ' — ' + e(reason);
     } else if (tc.name === 'add_scene') {
-        friendlyText = '🎬 New scene added — ' + (tc.args.title || tc.args.parsedScene?.title || 'new visualization');
+        friendlyText = '🎬 New scene added — ' + e(tc.args.title || tc.args.parsedScene?.title || 'new visualization');
     } else if (tc.name === 'set_sliders') {
         const vals = tc.args.values || {};
-        const parts = Object.entries(vals).map(([id, v]) => id + '→' + v);
+        const parts = Object.entries(vals).map(([id, v]) => e(id) + '→' + e(String(v)));
         friendlyText = '🎚️ Set ' + (parts.length > 0 ? parts.join(', ') : 'sliders');
     } else if (tc.name === 'eval_math') {
         const expr = tc.args.expression || '';
@@ -915,15 +922,15 @@ function renderToolCallChip(tc) {
         const storedAs = tc.result && tc.result.stored_as;
         const err = tc.result && tc.result.error;
         if (err) {
-            friendlyText = '🧮 eval: ' + expr + ' → ❌ ' + err;
+            friendlyText = '🧮 eval: ' + e(expr) + ' → ❌ ' + e(err);
         } else if (storedAs) {
             const summary = (tc.result && tc.result.summary) || '';
-            friendlyText = '🧮 ' + expr + ' → 💾 memory[\'' + storedAs + '\'] ' + summary;
+            friendlyText = '🧮 ' + e(expr) + ' → 💾 memory[\'' + e(storedAs) + '\'] ' + e(summary);
         } else if (Array.isArray(result) && result.length > 3) {
-            friendlyText = '🧮 ' + expr + ' → [' + result.length + ' points]';
+            friendlyText = '🧮 ' + e(expr) + ' → [' + result.length + ' points]';
         } else {
             const val = typeof result === 'number' ? (Number.isInteger(result) ? result : +result.toFixed(6)) : JSON.stringify(result);
-            friendlyText = '🧮 ' + expr + ' = ' + val;
+            friendlyText = '🧮 ' + e(expr) + ' = ' + e(String(val));
         }
     } else if (tc.name === 'mem_get') {
         const key = tc.args.key || '';
@@ -931,21 +938,21 @@ function renderToolCallChip(tc) {
         if (key === '?') {
             const keys = tc.result && tc.result.keys;
             const keyList = keys && typeof keys === 'object' ? Object.keys(keys).join(', ') : '(empty)';
-            friendlyText = '🗂️ memory keys: ' + keyList;
+            friendlyText = '🗂️ memory keys: ' + e(keyList);
         } else if (err) {
-            friendlyText = '🗂️ memory[\'' + key + '\'] → ❌ not found';
+            friendlyText = '🗂️ memory[\'' + e(key) + '\'] → ❌ not found';
         } else {
             const summary = (tc.result && tc.result.summary) || '';
-            friendlyText = '🗂️ memory[\'' + key + '\'] → ' + summary;
+            friendlyText = '🗂️ memory[\'' + e(key) + '\'] → ' + e(summary);
         }
     } else if (tc.name === 'mem_set') {
         const key = tc.args.key || '';
         const err = tc.result && tc.result.error;
         if (err) {
-            friendlyText = '💾 mem_set[\'' + key + '\'] → ❌ ' + err;
+            friendlyText = '💾 mem_set[\'' + e(key) + '\'] → ❌ ' + e(err);
         } else {
             const summary = (tc.result && tc.result.summary) || '';
-            friendlyText = '💾 memory[\'' + key + '\'] = ' + summary;
+            friendlyText = '💾 memory[\'' + e(key) + '\'] = ' + e(summary);
         }
     } else if (tc.name === 'set_preset_prompts') {
         const count = (tc.args.prompts || []).length;
@@ -958,14 +965,14 @@ function renderToolCallChip(tc) {
         } else {
             const id = tc.args.id || 'overlay';
             const pos = tc.args.position || 'top-left';
-            friendlyText = '🖼️ Info overlay "' + id + '" @ ' + pos;
+            friendlyText = '🖼️ Info overlay "' + e(id) + '" @ ' + e(pos);
         }
     } else if (tc.name === 'navigate_proof') {
         const step = tc.args.step || 0;
         const reason = tc.args.reason || '';
         friendlyText = step === 0
             ? '📐 Proof: showing goal overview'
-            : '📐 Proof: step ' + step + (reason ? ' — ' + reason : '');
+            : '📐 Proof: step ' + step + (reason ? ' — ' + e(reason) : '');
     }
 
     const header = document.createElement('div');
@@ -975,7 +982,11 @@ function renderToolCallChip(tc) {
     const summary = document.createElement('div');
     summary.className = 'tool-call-summary';
     summary.style.flex = '1';
-    summary.innerHTML = typeof renderMarkdown === 'function' ? renderMarkdown(friendlyText) : friendlyText;
+    if (typeof renderMarkdown === 'function') {
+        summary.innerHTML = renderMarkdown(friendlyText);
+    } else {
+        summary.textContent = friendlyText;
+    }
     header.appendChild(summary);
 
     // Tiny icon: opens popup with resolved exec args/result.
@@ -993,6 +1004,7 @@ function renderToolCallChip(tc) {
     chip.appendChild(details);
 
     const resultPreview = document.createElement('div');
+    resultPreview.className = 'tool-call-details hidden';
     resultPreview.style.cssText = 'margin-top:4px;font-size:11px;color:#7f8790;';
     const r = tc.result || {};
     if (typeof r.message === 'string' && r.message.trim()) {
@@ -1003,8 +1015,6 @@ function renderToolCallChip(tc) {
         resultPreview.textContent = r.summary.trim();
     } else if (r.status) {
         resultPreview.textContent = 'Status: ' + r.status;
-    } else {
-        resultPreview.textContent = 'Click summary to view raw tool call';
     }
     chip.appendChild(resultPreview);
 
@@ -1038,6 +1048,7 @@ function renderToolCallChip(tc) {
 
     summary.addEventListener('click', () => {
         details.classList.toggle('hidden');
+        resultPreview.classList.toggle('hidden');
     });
 
     const hideResolvedPopup = () => { resolvedBackdrop.style.display = 'none'; };

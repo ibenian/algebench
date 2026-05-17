@@ -233,20 +233,27 @@ export function buildLegend(elements) {
         return;
     }
     legend.classList.remove('hidden');
-    legend.innerHTML = items.map(it => {
+    legend.innerHTML = '';
+    for (const it of items) {
         const clickableIds = (it.ids || []).filter(id => state.elementRegistry[id]);
         const hidden = clickableIds.length > 0 && clickableIds.every(id => state.legendToggledOff.has(id));
-        const cls = 'legend-item' + (clickableIds.length ? ' legend-clickable' : '') + (hidden ? ' legend-hidden' : '');
-        const dataAttr = clickableIds.length ? ` data-element-ids="${clickableIds.join(',')}"` : '';
-        const swatchStyle = hidden
-            ? `background:${colorToCSS(it.color)}; opacity:0.3`
-            : `background:${colorToCSS(it.color)}`;
-        return `
-        <div class="${cls}"${dataAttr}>
-            <div class="legend-swatch" style="${swatchStyle}"></div>
-            <span>${renderKaTeX(it.label, false)}</span>
-        </div>`;
-    }).join('');
+
+        const div = document.createElement('div');
+        div.className = 'legend-item' + (clickableIds.length ? ' legend-clickable' : '') + (hidden ? ' legend-hidden' : '');
+        if (clickableIds.length) div.dataset.elementIds = clickableIds.join(',');
+
+        const swatch = document.createElement('div');
+        swatch.className = 'legend-swatch';
+        swatch.style.background = colorToCSS(it.color);
+        if (hidden) swatch.style.opacity = '0.3';
+        div.appendChild(swatch);
+
+        const span = document.createElement('span');
+        span.innerHTML = renderKaTeX(it.label, false);
+        div.appendChild(span);
+
+        legend.appendChild(div);
+    }
 
     // Attach click handlers (only for elements currently in the registry)
     for (const div of legend.querySelectorAll('.legend-clickable')) {
