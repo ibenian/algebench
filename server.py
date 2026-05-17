@@ -1443,7 +1443,9 @@ def load_builtin_scene(name):
         return None
     resolved_root = scenes_dir.resolve()
     path = (resolved_root / f"{normalized}.json").resolve()
-    if not str(path).startswith(str(resolved_root) + os.sep):
+    try:
+        path.relative_to(resolved_root)
+    except ValueError:
         return None
     if path.exists():
         with open(path, 'r') as f:
