@@ -1253,6 +1253,9 @@ def _normalize_proofs(proof_field: object) -> list[dict]:
 def _autofill_semantic_graphs(scene: dict) -> dict:
     """Walk a scene spec and populate missing ``semanticGraph`` fields in-place.
 
+    Clears ``_latex_graph_cache`` first so edits to the source JSON are always
+    reflected without restarting the server.
+
     For each proof step that has ``math`` but no ``semanticGraph``, attempt to
     derive a graph via ``scripts/latex_to_graph.py`` and attach it under the
     standard ``{"graph": {...}}`` wrapper.
@@ -1265,6 +1268,7 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
     Returns the same dict for chaining. Silently skips anything that doesn't
     look like a scene with proofs — safe to call on any JSON.
     """
+    _latex_graph_cache.clear()
     if not isinstance(scene, dict):
         return scene
     scenes_list = scene.get('scenes')
@@ -2171,6 +2175,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         tts_stream_kwargs['output_path'] = tts_output_file
 
     current_spec = [None]
+    current_spec_path = [initial_scene_path]
     if initial_scene_path:
         try:
             with open(initial_scene_path) as f:
@@ -2679,6 +2684,14 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     @fastapp.get("/api/scene")
     async def get_current_scene():
+        if current_spec_path[0]:
+            try:
+                with open(current_spec_path[0]) as f:
+                    spec = json.load(f)
+                _autofill_semantic_graphs(spec)
+                current_spec[0] = spec
+            except Exception:
+                pass
         return JSONResponse(current_spec[0] if current_spec[0] else {})
 
     @fastapp.get("/shutdown")
