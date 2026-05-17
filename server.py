@@ -1469,6 +1469,8 @@ def resolve_scene_path_safe(scene_arg):
 
     Only permits paths that resolve inside scenes_dir or script_dir,
     preventing arbitrary local file reads via the HTTP API.
+    Absolute paths are allowed if they fall within the allowed roots
+    (needed for --scene startup and frontend refresh flows).
     """
     if not scene_arg:
         return None
@@ -1476,10 +1478,15 @@ def resolve_scene_path_safe(scene_arg):
     if raw.startswith('~'):
         return None
     candidate = Path(raw)
+    allowed_roots = (scenes_dir.resolve(), script_dir.resolve())
     if candidate.is_absolute():
+        resolved = candidate.resolve()
+        if not any(resolved == root or str(resolved).startswith(str(root) + '/') for root in allowed_roots):
+            return None
+        if resolved.exists() and resolved.is_file():
+            return resolved
         return None
     candidates = [script_dir / candidate, scenes_dir / candidate]
-    allowed_roots = (scenes_dir.resolve(), script_dir.resolve())
     for path in candidates:
         resolved = path.resolve()
         if not any(resolved == root or str(resolved).startswith(str(root) + '/') for root in allowed_roots):
