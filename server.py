@@ -1367,6 +1367,20 @@ index_html_path = static_dir / "index.html"
 style_css_path  = static_dir / "style.css"
 
 # ---------------------------------------------------------------------------
+def _load_scene(source) -> dict:
+    """Load a scene from a file path or dict, autofill semantic graphs, return spec.
+
+    Raises on I/O or parse errors — callers decide how to handle.
+    """
+    if isinstance(source, dict):
+        spec = source
+    else:
+        with open(source, 'r') as f:
+            spec = json.load(f)
+    _autofill_semantic_graphs(spec)
+    return spec
+
+
 # Agent session memory — persists across turns within one server session.
 # Stores eval_math results (and anything else) under agent-chosen keys.
 # Cleared on server start; agents control what's stored via store_as param.
@@ -1459,8 +1473,7 @@ def load_builtin_scene(name):
     if not str(path).startswith(str(resolved_root) + os.sep):
         return None
     if path.exists():
-        with open(path, 'r') as f:
-            return json.load(f)
+        return _load_scene(path)
     return None
 
 
@@ -2178,9 +2191,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     current_spec_path = [initial_scene_path]
     if initial_scene_path:
         try:
-            with open(initial_scene_path) as f:
-                current_spec[0] = json.load(f)
-            _autofill_semantic_graphs(current_spec[0])
+            current_spec[0] = _load_scene(initial_scene_path)
         except Exception as e:
             print(f"   ⚠️  failed to pre-load {initial_scene_path}: {e}")
 
@@ -2614,9 +2625,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         if not resolved_path:
             return JSONResponse({"error": "Scene file not found"}, status_code=404)
         try:
-            with open(resolved_path, 'r') as f:
-                scene = json.load(f)
-            _autofill_semantic_graphs(scene)
+            scene = _load_scene(resolved_path)
             return JSONResponse({"spec": scene, "path": str(resolved_path),
                                  "label": resolved_path.name})
         except json.JSONDecodeError:
@@ -2678,7 +2687,6 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     async def get_scene(name: str):
         scene = load_builtin_scene(name)
         if scene:
-            _autofill_semantic_graphs(scene)
             return JSONResponse(scene)
         return Response(content=b'Scene not found', status_code=404)
 
@@ -2686,10 +2694,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     async def get_current_scene():
         if current_spec_path[0]:
             try:
-                with open(current_spec_path[0]) as f:
-                    spec = json.load(f)
-                _autofill_semantic_graphs(spec)
-                current_spec[0] = spec
+                current_spec[0] = _load_scene(current_spec_path[0])
             except Exception:
                 pass
         return JSONResponse(current_spec[0] if current_spec[0] else {})
@@ -2817,8 +2822,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         body = await request.body()
         try:
             new_spec = json.loads(body)
-            _autofill_semantic_graphs(new_spec)
-            current_spec[0] = new_spec
+            current_spec[0] = _load_scene(new_spec)
             return JSONResponse({"status": "loaded"})
         except json.JSONDecodeError:
             return JSONResponse({"error": "Invalid JSON"}, status_code=400)
