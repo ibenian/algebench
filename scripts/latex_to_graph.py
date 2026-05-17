@@ -179,6 +179,8 @@ _STYLE_SYMBOL_COMMAND_RE = re.compile(
     r"\{(?P<body>[^{}]+)\}"
 )
 _SIMPLE_STYLED_SYMBOL_RE = re.compile(
+    # Intentionally single-token only (letter or command with optional
+    # one-level sub/superscript). Nested brace bodies are left untouched.
     r"(?:\\[a-zA-Z]+|[a-zA-Z])"
     r"(?:_(?:\{[^{}]+\}|[a-zA-Z0-9]+))?"
     r"(?:\^(?:\{[^{}]+\}|[a-zA-Z0-9]+))?"
@@ -204,6 +206,8 @@ def _extract_latex_commands(latex: str) -> dict[str, str]:
         body = m.group("body").strip()
         if not _SIMPLE_STYLED_SYMBOL_RE.fullmatch(body):
             continue
+        # Keep the exact token spelling that parse_latex uses for Symbol names
+        # in these single-token cases (e.g., ``\alpha`` -> ``alpha``).
         sym_name = body[1:] if body.startswith("\\") else body
         commands[sym_name] = m.group(0)
     return commands
