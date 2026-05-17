@@ -4,9 +4,9 @@
 
 | Field | Value |
 |---|---|
-| **Branch** | `fix/code-scanning-stack-trace-exposure` |
-| **Commit** | `f58ec65` |
-| **Date** | 2026-05-16 23:27:20 -0400 |
+| **Branch** | `fix/loc-report-fork-prs` |
+| **Commit** | `4abb87c` |
+| **Date** | 2026-05-17 14:53:36 -0400 |
 
 ## Language Breakdown
 
