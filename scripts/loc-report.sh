@@ -22,7 +22,7 @@ fi
 
 COMMIT_SHA="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"
 COMMIT_DATE="$(git -C "$REPO_ROOT" log -1 --format=%ci)"
-BRANCH="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)"
+BRANCH="${GITHUB_HEAD_REF:-$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)}"
 
 {
   echo "# Lines of Code Report"
