@@ -1304,7 +1304,14 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
                     print(f"   ⚠️  auto-graph crashed for {math_src!r}: {e}")
                     graph = None
                     error_reason = 'parse_crashed'
-                    error_message = 'Parser crashed while processing this expression'
+                    details = str(e).strip()
+                    if details:
+                        error_message = (
+                            'Parser crashed while processing this expression: '
+                            f'{details}'
+                        )
+                    else:
+                        error_message = 'Parser crashed while processing this expression'
                 if graph:
                     _apply_highlights_to_graph(
                         graph, hl_pairs, step.get('highlights') or {},
