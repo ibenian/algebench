@@ -5,8 +5,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `fix/path-injection-hardening` |
-| **Commit** | `dc54729` |
-| **Date** | 2026-05-16 22:28:22 -0400 |
+| **Commit** | `9dac3c4` |
+| **Date** | 2026-05-17 02:28:26 +0000 |
 
 ## Language Breakdown
 
