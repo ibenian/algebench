@@ -1304,7 +1304,7 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
                     print(f"   ⚠️  auto-graph crashed for {math_src!r}: {e}")
                     graph = None
                     error_reason = 'parse_crashed'
-                    error_message = str(e) or e.__class__.__name__
+                    error_message = 'Parser crashed while processing this expression'
                 if graph:
                     _apply_highlights_to_graph(
                         graph, hl_pairs, step.get('highlights') or {},
@@ -1728,7 +1728,8 @@ def call_gemini_chat(message, history, context):
                 config=config,
             )
         except Exception as e:
-            return f"Gemini API error: {str(e)}", [], debug_info
+            print(f"   ❌ Gemini API error: {e}", flush=True)
+            return "Sorry, I encountered an error processing your request. Please try again.", [], debug_info
 
         # Log finish reason for debugging
         finish = None
@@ -2336,10 +2337,13 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         try:
             graph = _derive_semantic_graph(req.latex, domain=req.domain)
             return JSONResponse({"graph": graph})
+        except (ValueError, SyntaxError, KeyError) as e:
+            print(f"   ⚠️ /api/graph/from-latex parse error: {e}", flush=True)
+            return JSONResponse({"error": "failed to derive semantic graph from LaTeX"}, status_code=400)
         except Exception as e:
             import traceback
             print(f"   ❌ /api/graph/from-latex: {e}\n{traceback.format_exc()}")
-            return JSONResponse({"error": "failed to derive semantic graph from LaTeX"}, status_code=400)
+            return JSONResponse({"error": "internal error processing LaTeX"}, status_code=500)
 
     class GraphEnrichRequest(BaseModel):
         graph: dict
@@ -2688,8 +2692,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             )
             if DEBUG_MODE:
                 print(f"   💬 Response ({len(response_text)} chars): {response_text}")
-            return JSONResponse({"response": response_text, "toolCalls": tool_calls,
-                                 "debug": debug_info})
+            result = {"response": response_text, "toolCalls": tool_calls}
+            if DEBUG_MODE:
+                result["debug"] = debug_info
+            return JSONResponse(result)
         except Exception as e:
             import traceback
             print(f"   ❌ /api/chat error: {e}\n{traceback.format_exc()}")
