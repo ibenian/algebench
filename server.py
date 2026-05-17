@@ -1375,7 +1375,11 @@ def _load_scene(source) -> dict:
     if isinstance(source, dict):
         spec = source
     else:
-        with open(source, 'r') as f:
+        resolved = Path(source).resolve()
+        allowed_roots = (scenes_dir.resolve(), script_dir.resolve())
+        if not any(str(resolved).startswith(str(root)) for root in allowed_roots):
+            raise ValueError(f"Path outside allowed directories: {source}")
+        with open(resolved, 'r') as f:
             spec = json.load(f)
     _autofill_semantic_graphs(spec)
     return spec
