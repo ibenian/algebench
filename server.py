@@ -1439,9 +1439,7 @@ def list_builtin_scenes():
 def load_builtin_scene(name):
     """Load a built-in scene JSON by name."""
     path = (scenes_dir / f"{name}.json").resolve()
-    try:
-        path.relative_to(scenes_dir.resolve())
-    except ValueError:
+    if not path.is_relative_to(scenes_dir.resolve()):
         return None
     if path.exists():
         with open(path, 'r') as f:
@@ -1461,6 +1459,35 @@ def resolve_scene_path(scene_arg):
     for path in candidates:
         if path.exists() and path.is_file():
             return path.resolve()
+    return None
+
+
+def resolve_scene_path_safe(scene_arg):
+    """Resolve scene path restricted to scenes_dir (for API use).
+
+    Only permits paths that resolve inside scenes_dir, preventing
+    arbitrary local file reads via the HTTP API.
+    """
+    if not scene_arg:
+        return None
+    raw = str(scene_arg)
+    if raw.startswith('~'):
+        return None
+    candidate = Path(raw)
+    if candidate.is_absolute():
+        return None
+    scenes_root = scenes_dir.resolve()
+    candidates = [scenes_dir / candidate]
+    if not raw.startswith('scenes/') and not raw.startswith('scenes\\'):
+        candidates.append(scenes_dir / candidate)
+    else:
+        candidates.append(script_dir / candidate)
+    for path in candidates:
+        resolved = path.resolve()
+        if not resolved.is_relative_to(scenes_root):
+            continue
+        if resolved.exists() and resolved.is_file():
+            return resolved
     return None
 
 
@@ -2224,10 +2251,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         ``/graph-panel/{path:path}``.
         """
         objects_root = (static_dir / "objects").resolve()
-        try:
-            path = (objects_root / filename).resolve()
-            path.relative_to(objects_root)
-        except (OSError, ValueError):
+        path = (objects_root / filename).resolve()
+        if not path.is_relative_to(objects_root):
             return Response(status_code=404)
         if not path.is_file() or path.suffix != '.js':
             return Response(status_code=404)
@@ -2487,10 +2512,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         subtree. Matches the pattern used by ``/domains/{path:path}``.
         """
         panel_root = (static_dir / "graph-panel").resolve()
-        try:
-            path = (static_dir / "graph-panel" / filename).resolve()
-            path.relative_to(panel_root)
-        except (OSError, ValueError):
+        path = (panel_root / filename).resolve()
+        if not path.is_relative_to(panel_root):
             return Response(status_code=404)
         if not path.is_file():
             return Response(status_code=404)
@@ -2511,7 +2534,9 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         """Serve any top-level ES module from the static directory."""
         if name not in _TOP_LEVEL_MODULES:
             return Response(status_code=404)
-        path = static_dir / f"{name}.js"
+        path = (static_dir / f"{name}.js").resolve()
+        if not path.is_relative_to(static_dir.resolve()):
+            return Response(status_code=404)
         if not path.is_file():
             return Response(status_code=404)
         with open(path, 'r') as f:
@@ -2558,7 +2583,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/api/scene_file")
     async def get_scene_file(request: Request):
         requested = request.query_params.get('path', '')
-        resolved_path = resolve_scene_path(requested)
+        resolved_path = resolve_scene_path_safe(requested)
         if not resolved_path:
             return JSONResponse({"error": "Scene file not found"}, status_code=404)
         try:
@@ -2595,13 +2620,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/api/domains/{name}")
     async def get_domain_docs(name: str):
         domains_root = (static_dir / 'domains').resolve()
-        docs_path = (static_dir / 'domains' / name / 'docs.json').resolve()
-        try:
-            docs_path.relative_to(domains_root)
-            safe = True
-        except ValueError:
-            safe = False
-        if safe and docs_path.exists():
+        docs_path = (domains_root / name / 'docs.json').resolve()
+        if not docs_path.is_relative_to(domains_root):
+            return Response(content=b'Domain not found', status_code=404)
+        if docs_path.exists():
             with open(docs_path, 'rb') as f:
                 return Response(content=f.read(), media_type="application/json")
         return Response(content=b'Domain not found', status_code=404)
@@ -2609,13 +2631,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/domains/{path:path}")
     async def get_domain_file(path: str):
         domains_root = (static_dir / 'domains').resolve()
-        domain_path = (static_dir / 'domains' / path).resolve()
-        try:
-            domain_path.relative_to(domains_root)
-            safe = True
-        except ValueError:
-            safe = False
-        if safe and domain_path.exists() and domain_path.is_file():
+        domain_path = (domains_root / path).resolve()
+        if not domain_path.is_relative_to(domains_root):
+            return Response(content=b'Domain not found', status_code=404)
+        if domain_path.exists() and domain_path.is_file():
             with open(domain_path, 'rb') as f:
                 return Response(content=f.read(), media_type="application/javascript")
         return Response(content=b'Domain not found', status_code=404)
