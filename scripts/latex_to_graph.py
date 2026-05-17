@@ -174,6 +174,18 @@ RELATION_MAP: list[tuple[str, dict[str, str]]] = [
     (r"\lt", {"op": "less_than", "label": "less than", "emoji": "<"}),
 ]
 
+_STYLE_SYMBOL_COMMAND_RE = re.compile(
+    r"\\(?P<style>mathbb|mathbf|mathcal|mathfrak|mathscr|mathrm)\s*"
+    r"\{(?P<body>[^{}]+)\}"
+)
+_SIMPLE_STYLED_SYMBOL_RE = re.compile(
+    # Intentionally single-token only (letter or command with optional
+    # one-level sub/superscript). Nested brace bodies are left untouched.
+    r"(?:\\[a-zA-Z]+|[a-zA-Z])"
+    r"(?:_(?:\{[^{}]+\}|[a-zA-Z0-9]+))?"
+    r"(?:\^(?:\{[^{}]+\}|[a-zA-Z0-9]+))?"
+)
+
 
 # ---------------------------------------------------------------------------
 # Graph builder
@@ -186,7 +198,37 @@ def _extract_latex_commands(latex: str) -> dict[str, str]:
     SymPy strips backslashes (``\hbar`` → Symbol ``"hbar"``), so we
     capture them here and map them back after parsing.
     """
-    return {m.group(1): m.group(0) for m in re.finditer(r"\\([a-zA-Z]+)", latex)}
+    commands = {m.group(1): m.group(0) for m in re.finditer(r"\\([a-zA-Z]+)", latex)}
+    # Font/style wrappers like ``\mathbb{C}`` are parsed by SymPy as an
+    # implicit product (``mathbb * C``). Track the wrapped symbol's LaTeX
+    # so we can restore it after unwrapping before parse.
+    for m in _STYLE_SYMBOL_COMMAND_RE.finditer(latex):
+        body = m.group("body").strip()
+        if not _SIMPLE_STYLED_SYMBOL_RE.fullmatch(body):
+            continue
+        # Keep the exact token spelling that parse_latex uses for Symbol names
+        # in these single-token cases (e.g., ``\alpha`` -> ``alpha``).
+        sym_name = body[1:] if body.startswith("\\") else body
+        commands[sym_name] = m.group(0)
+    return commands
+
+
+def _strip_symbol_font_commands(latex: str) -> str:
+    r"""Unwrap symbol-only style commands before SymPy parsing.
+
+    ``parse_latex`` treats forms like ``\mathbb{C}`` as ``mathbb * C``.
+    For symbol-like bodies, replace the wrapper with its inner symbol
+    (``C``), while preserving the original style via ``_extract_latex_commands``.
+    """
+    def _repl(m: re.Match) -> str:
+        body = m.group("body").strip()
+        if not _SIMPLE_STYLED_SYMBOL_RE.fullmatch(body):
+            return m.group(0)
+        # Keep braces so neighboring commands (e.g. ``\in\mathbb{C}``) do
+        # not fuse into a single token like ``\inC`` after unwrapping.
+        return "{" + body + "}"
+
+    return _STYLE_SYMBOL_COMMAND_RE.sub(_repl, latex)
 
 
 def parse_var_overrides(var_specs: list[str] | None) -> dict[str, dict[str, str]]:
@@ -1857,7 +1899,8 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     braket_collapsed, braket_overrides = _collapse_braket_notation(latex)
     compound_collapsed, compound_overrides = _collapse_compound_symbols(braket_collapsed)
     collapsed, text_overrides = _collapse_text_commands(compound_collapsed)
-    preprocessed = _preprocess_latex(collapsed)
+    font_unwrapped = _strip_symbol_font_commands(collapsed)
+    preprocessed = _preprocess_latex(font_unwrapped)
     latex_commands = _extract_latex_commands(latex)
     # User-supplied overrides take precedence over auto-derived ones for
     # the same symbol name.

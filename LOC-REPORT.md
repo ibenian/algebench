@@ -4,9 +4,9 @@
 
 | Field | Value |
 |---|---|
-| **Branch** | `fix/83-sanitize-innerhtml-interpolations` |
-| **Commit** | `49191b2` |
-| **Date** | 2026-05-17 15:31:36 -0400 |
+| **Branch** | `copilot/fix-semantic-graph-mathbb-rendering` |
+| **Commit** | `ec21bdf` |
+| **Date** | 2026-05-17 18:03:52 -0400 |
 
 ## Language Breakdown
 
@@ -17,7 +17,7 @@
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "JavaScript", "Python", "CSS", "HTML", "Shell", "BASH"]
-  bar [49536, 15585, 11751, 4219, 395, 137, 33]
+  bar [49613, 15585, 11800, 4219, 395, 137, 33]
 ```
 
 ## Summary by Language
@@ -26,9 +26,9 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- JSON                     41        49537        49536            0            1
+ JSON                     41        49614        49613            0            1
  JavaScript               46        18021        15585          971         1465
- Python                   31        15224        11751         1724         1749
+ Python                   31        15288        11800         1733         1755
  CSS                       3         4581         4219          169          193
  Shell                     2          172          137           14           21
  BASH                      1           41           33            4            4
@@ -47,7 +47,7 @@ xychart-beta horizontal
  |- Python                 2           38           30            2            6
  (Total)                            12036         1501         7938         2597
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   183       100737        83789        10852         6096
+ Total                   183       100878        83915        10861         6102
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -132,11 +132,11 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Python                   31        15224        11751         1724         1749
+ Python                   31        15288        11800         1733         1755
 ─────────────────────────────────────────────────────────────────────────────────
- |ebench/algebench/server.py         3002         2408          348          246
- |/scripts/latex_to_graph.py         2084         1557          366          161
- |sts/test_latex_to_graph.py         1833         1432          162          239
+ |ebench/algebench/server.py         3009         2415          348          246
+ |/scripts/latex_to_graph.py         2127         1587          375          165
+ |sts/test_latex_to_graph.py         1847         1444          162          241
  |semantic_graph_enricher.py         1144          798          214          132
  |semantic_graph_enricher.py          853          676          106           71
  |cripts/graph_to_mermaid.py          869          611          174           84
@@ -166,7 +166,7 @@ xychart-beta horizontal
  |lgebench/tests/__init__.py            0            0            0            0
  |h/tests/agents/__init__.py            0            0            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                    31        15224        11751         1724         1749
+ Total                    31        15288        11800         1733         1755
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -174,6 +174,6 @@ xychart-beta horizontal
 
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
-| JavaScript (frontend) | 15585 | 57% |
-| Python (backend) | 11751 | 43% |
-| **Total** | **27336** | **100%** |
+| JavaScript (frontend) | 15585 | 56% |
+| Python (backend) | 11800 | 44% |
+| **Total** | **27385** | **100%** |

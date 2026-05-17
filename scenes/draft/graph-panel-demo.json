@@ -58,15 +58,15 @@
           "description": "$x = x_0 + v_0 t + \\tfrac{1}{2} a t^2$"
         },
         {
-          "title": "Schrödinger equation (compact)",
+          "title": "Schr\u00f6dinger equation (compact)",
           "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = \\hat{H}\\,\\psi$"
         },
         {
-          "title": "Schrödinger equation (expanded)",
+          "title": "Schr\u00f6dinger equation (expanded)",
           "description": "$i\\hbar\\,\\dfrac{\\partial \\psi}{\\partial t} = -\\dfrac{\\hbar^2}{2m}\\nabla^2 \\psi + V\\psi$"
         },
         {
-          "title": "Partial derivatives — 2D transport equation",
+          "title": "Partial derivatives \u2014 2D transport equation",
           "description": "$\\dfrac{\\partial \\rho}{\\partial t} + u\\,\\dfrac{\\partial \\rho}{\\partial x} + v\\,\\dfrac{\\partial \\rho}{\\partial y} = 0$"
         },
         {
@@ -116,11 +116,15 @@
         {
           "title": "Comparison: domain restriction",
           "description": "$\\sin\\theta = \\theta, 0 \\leq \\theta$"
+        },
+        {
+          "title": "Domain constraint: \u03b1 \u2208 \u2102",
+          "description": "\u03b1 \u2208 \u2102 \u2014 styled symbol correctly parsed"
         }
       ],
       "proof": {
         "id": "physics-equations-demo",
-        "title": "Physics Equations: Classical → Relativistic → Quantum",
+        "title": "Physics Equations: Classical \u2192 Relativistic \u2192 Quantum",
         "technique": "derivation",
         "goal": "Inspect semantic graphs for canonical physics equations, each shown in two equivalent forms",
         "steps": [
@@ -129,7 +133,7 @@
             "type": "given",
             "label": "Newton's Second Law",
             "math": "F = m \\cdot a",
-            "justification": "The canonical form of Newton's Second Law: net force equals inertial mass times acceleration. This is the workhorse of classical mechanics — a statement that the same push produces less acceleration on a heavier object, making mass the measure of inertia.",
+            "justification": "The canonical form of Newton's Second Law: net force equals inertial mass times acceleration. This is the workhorse of classical mechanics \u2014 a statement that the same push produces less acceleration on a heavier object, making mass the measure of inertia.",
             "sceneStep": 0,
             "semanticGraph": {
               "graph": {
@@ -139,18 +143,18 @@
                     "id": "__equals_1",
                     "type": "operator",
                     "op": "equals",
-                    "description": "Equality relating the resulting force on the left to the product of mass and acceleration on the right — the root of the semantic graph.",
+                    "description": "Equality relating the resulting force on the left to the product of mass and acceleration on the right \u2014 the root of the semantic graph.",
                     "subexpr": "F = m \\cdot a"
                   },
                   {
                     "id": "F",
                     "label": "force",
-                    "description": "Net force: the vector sum of all forces acting on the object. Measured in newtons (N = kg·m/s²). In this law, force is the *cause* — the external push or pull that changes the object's motion.",
-                    "emoji": "🏹",
+                    "description": "Net force: the vector sum of all forces acting on the object. Measured in newtons (N = kg\u00b7m/s\u00b2). In this law, force is the *cause* \u2014 the external push or pull that changes the object's motion.",
+                    "emoji": "\ud83c\udff9",
                     "type": "vector",
                     "latex": "F",
                     "quantity": "force",
-                    "dimension": "M·L·T⁻²",
+                    "dimension": "M\u00b7L\u00b7T\u207b\u00b2",
                     "unit": "N",
                     "role": "dependent",
                     "subexpr": "F"
@@ -166,7 +170,7 @@
                     "id": "m",
                     "label": "mass",
                     "description": "Inertial mass: the object's resistance to changes in its motion. A larger mass means a smaller acceleration for the same applied force. Treated as a positive, time-independent scalar parameter.",
-                    "emoji": "⚖️",
+                    "emoji": "\u2696\ufe0f",
                     "type": "scalar",
                     "latex": "m",
                     "quantity": "mass",
@@ -178,13 +182,13 @@
                   {
                     "id": "a",
                     "label": "acceleration",
-                    "description": "Acceleration: the time rate of change of velocity, dv/dt. A vector quantity — both the magnitude (how quickly speed changes) and direction (which way velocity is changing) matter. Responds linearly to applied force.",
-                    "emoji": "🧭",
+                    "description": "Acceleration: the time rate of change of velocity, dv/dt. A vector quantity \u2014 both the magnitude (how quickly speed changes) and direction (which way velocity is changing) matter. Responds linearly to applied force.",
+                    "emoji": "\ud83e\udded",
                     "type": "vector",
                     "latex": "a",
                     "quantity": "acceleration",
-                    "dimension": "L·T⁻²",
-                    "unit": "m/s²",
+                    "dimension": "L\u00b7T\u207b\u00b2",
+                    "unit": "m/s\u00b2",
                     "role": "dependent",
                     "subexpr": "a"
                   }
@@ -218,7 +222,7 @@
             "type": "step",
             "label": "Newton's Second Law (momentum form)",
             "math": "F = \\frac{dp}{dt}",
-            "justification": "The more general form of Newton's Second Law: force equals the time rate of change of momentum. This reduces to F = m·a when mass is constant, but correctly handles variable-mass systems (rockets, raindrops) and serves as the natural bridge to relativistic mechanics.",
+            "justification": "The more general form of Newton's Second Law: force equals the time rate of change of momentum. This reduces to F = m\u00b7a when mass is constant, but correctly handles variable-mass systems (rockets, raindrops) and serves as the natural bridge to relativistic mechanics.",
             "sceneStep": 1,
             "semanticGraph": {
               "graph": {
@@ -228,18 +232,18 @@
                     "id": "__equals_1",
                     "type": "operator",
                     "op": "equals",
-                    "description": "Equates force to the time derivative of momentum. In this form, force is exactly the quantity that changes momentum — the cleaner statement Newton actually wrote.",
+                    "description": "Equates force to the time derivative of momentum. In this form, force is exactly the quantity that changes momentum \u2014 the cleaner statement Newton actually wrote.",
                     "subexpr": "F = \\frac{dp}{dt}"
                   },
                   {
                     "id": "F",
                     "label": "force",
-                    "description": "Net force on the system. Identical conceptually to the F in F = m·a, but here it is defined as *whatever it takes* to change the system's momentum — a definition that survives into relativistic mechanics.",
-                    "emoji": "🏹",
+                    "description": "Net force on the system. Identical conceptually to the F in F = m\u00b7a, but here it is defined as *whatever it takes* to change the system's momentum \u2014 a definition that survives into relativistic mechanics.",
+                    "emoji": "\ud83c\udff9",
                     "type": "vector",
                     "latex": "F",
                     "quantity": "force",
-                    "dimension": "M·L·T⁻²",
+                    "dimension": "M\u00b7L\u00b7T\u207b\u00b2",
                     "unit": "N",
                     "role": "dependent",
                     "subexpr": "F"
@@ -249,27 +253,27 @@
                     "type": "operator",
                     "op": "derivative",
                     "with_respect_to": "t",
-                    "description": "Time derivative of momentum, dp/dt. Measures how rapidly the system's momentum changes. Equal to m·a for constant-mass systems; non-trivially different when dm/dt ≠ 0.",
+                    "description": "Time derivative of momentum, dp/dt. Measures how rapidly the system's momentum changes. Equal to m\u00b7a for constant-mass systems; non-trivially different when dm/dt \u2260 0.",
                     "subexpr": "\\frac{dp}{dt}"
                   },
                   {
                     "id": "p",
                     "label": "momentum",
-                    "description": "Linear momentum, p = m·v. The primary conserved quantity of translation symmetry — total p of an isolated system is constant (Noether's theorem). Vector; points in the direction of motion.",
-                    "emoji": "🚀",
+                    "description": "Linear momentum, p = m\u00b7v. The primary conserved quantity of translation symmetry \u2014 total p of an isolated system is constant (Noether's theorem). Vector; points in the direction of motion.",
+                    "emoji": "\ud83d\ude80",
                     "type": "vector",
                     "latex": "p",
                     "quantity": "momentum",
-                    "dimension": "M·L·T⁻¹",
-                    "unit": "kg·m/s",
+                    "dimension": "M\u00b7L\u00b7T\u207b\u00b9",
+                    "unit": "kg\u00b7m/s",
                     "role": "state_variable",
                     "subexpr": "p"
                   },
                   {
                     "id": "t",
                     "label": "time",
-                    "description": "Time: the independent variable with respect to which momentum evolves. Treated as the universal Newtonian parameter (same for all observers) — relativity modifies this later.",
-                    "emoji": "⏱️",
+                    "description": "Time: the independent variable with respect to which momentum evolves. Treated as the universal Newtonian parameter (same for all observers) \u2014 relativity modifies this later.",
+                    "emoji": "\u23f1\ufe0f",
                     "type": "scalar",
                     "latex": "t",
                     "quantity": "time",
@@ -325,18 +329,18 @@
                     "id": "__equals_1",
                     "type": "operator",
                     "op": "equals",
-                    "description": "Equality declaring that rest energy and the quantity m·c² are the same physical thing — not merely proportional, but literally equal.",
+                    "description": "Equality declaring that rest energy and the quantity m\u00b7c\u00b2 are the same physical thing \u2014 not merely proportional, but literally equal.",
                     "subexpr": "E = m c^2"
                   },
                   {
                     "id": "E",
                     "label": "energy",
-                    "description": "Rest energy: the intrinsic energy an object carries by virtue of its mass alone (i.e. at zero momentum in its own rest frame). Equivalent to about 9 × 10¹⁶ J per kilogram — enormous, because c² is enormous.",
-                    "emoji": "⚡",
+                    "description": "Rest energy: the intrinsic energy an object carries by virtue of its mass alone (i.e. at zero momentum in its own rest frame). Equivalent to about 9 \u00d7 10\u00b9\u2076 J per kilogram \u2014 enormous, because c\u00b2 is enormous.",
+                    "emoji": "\u26a1",
                     "type": "scalar",
                     "latex": "E",
                     "quantity": "energy",
-                    "dimension": "M·L²·T⁻²",
+                    "dimension": "M\u00b7L\u00b2\u00b7T\u207b\u00b2",
                     "unit": "J",
                     "role": "state_variable",
                     "subexpr": "E"
@@ -345,14 +349,14 @@
                     "id": "__multiply_2",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Multiplies rest mass by c². The factor c² is the conversion rate between the two ways nature accounts for inertia — mass units and energy units.",
+                    "description": "Multiplies rest mass by c\u00b2. The factor c\u00b2 is the conversion rate between the two ways nature accounts for inertia \u2014 mass units and energy units.",
                     "subexpr": "m c^{2}"
                   },
                   {
                     "id": "m",
                     "label": "mass",
-                    "description": "Rest mass (invariant mass): the mass measured in the object's own rest frame. Unlike the obsolete 'relativistic mass', rest mass is a Lorentz invariant — every observer agrees on its value.",
-                    "emoji": "⚖️",
+                    "description": "Rest mass (invariant mass): the mass measured in the object's own rest frame. Unlike the obsolete 'relativistic mass', rest mass is a Lorentz invariant \u2014 every observer agrees on its value.",
+                    "emoji": "\u2696\ufe0f",
                     "type": "scalar",
                     "latex": "m",
                     "quantity": "mass",
@@ -366,18 +370,18 @@
                     "type": "operator",
                     "op": "power",
                     "exponent": "2",
-                    "description": "Squares the speed of light. The square arises from relativity's spacetime metric, which mixes time with space using an interval of the form (c·t)² − x². Whenever energy appears, c² is its natural companion.",
+                    "description": "Squares the speed of light. The square arises from relativity's spacetime metric, which mixes time with space using an interval of the form (c\u00b7t)\u00b2 \u2212 x\u00b2. Whenever energy appears, c\u00b2 is its natural companion.",
                     "subexpr": "c^{2}"
                   },
                   {
                     "id": "c",
                     "label": "speed of light",
                     "description": "Speed of light in vacuum: a universal constant, exactly 299,792,458 m/s by definition. It is the maximum signal speed, the conversion factor between space and time coordinates, and the scale on which mass-energy equivalence operates.",
-                    "emoji": "💡",
+                    "emoji": "\ud83d\udca1",
                     "type": "scalar",
                     "latex": "c",
                     "quantity": "velocity",
-                    "dimension": "L·T⁻¹",
+                    "dimension": "L\u00b7T\u207b\u00b9",
                     "unit": "m/s",
                     "value": 299792458,
                     "role": "constant",
@@ -417,7 +421,7 @@
             "type": "step",
             "label": "Relativistic energy-momentum relation",
             "math": "E^2 = (p c)^2 + (m c^2)^2",
-            "justification": "The full Lorentz-invariant energy relation. It reduces to E = mc² at rest (p = 0) and to E = pc for massless particles (m = 0, such as photons). Forms a Pythagorean triangle whose legs are momentum-energy and rest-energy; the hypotenuse is total energy.",
+            "justification": "The full Lorentz-invariant energy relation. It reduces to E = mc\u00b2 at rest (p = 0) and to E = pc for massless particles (m = 0, such as photons). Forms a Pythagorean triangle whose legs are momentum-energy and rest-energy; the hypotenuse is total energy.",
             "sceneStep": 3,
             "semanticGraph": {
               "graph": {
@@ -441,12 +445,12 @@
                   {
                     "id": "E",
                     "label": "energy",
-                    "description": "Total relativistic energy: includes both the rest energy (mc²) and the kinetic contribution from motion. For a particle at rest this collapses to E = mc²; for a photon (m = 0) it collapses to E = pc.",
-                    "emoji": "⚡",
+                    "description": "Total relativistic energy: includes both the rest energy (mc\u00b2) and the kinetic contribution from motion. For a particle at rest this collapses to E = mc\u00b2; for a photon (m = 0) it collapses to E = pc.",
+                    "emoji": "\u26a1",
                     "type": "scalar",
                     "latex": "E",
                     "quantity": "energy",
-                    "dimension": "M·L²·T⁻²",
+                    "dimension": "M\u00b7L\u00b2\u00b7T\u207b\u00b2",
                     "unit": "J",
                     "role": "state_variable",
                     "subexpr": "E"
@@ -455,7 +459,7 @@
                     "id": "__add_rhs",
                     "type": "operator",
                     "op": "add",
-                    "description": "Pythagorean sum of the momentum-energy contribution (pc)² and the rest-energy contribution (mc²)². Geometrically, E is the hypotenuse of a right triangle with legs pc and mc².",
+                    "description": "Pythagorean sum of the momentum-energy contribution (pc)\u00b2 and the rest-energy contribution (mc\u00b2)\u00b2. Geometrically, E is the hypotenuse of a right triangle with legs pc and mc\u00b2.",
                     "subexpr": "(p c)^{2} + (m c^{2})^{2}"
                   },
                   {
@@ -470,31 +474,31 @@
                     "id": "__multiply_pc",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Product of momentum and the speed of light — pc has units of energy and represents the 'motion portion' of relativistic energy.",
+                    "description": "Product of momentum and the speed of light \u2014 pc has units of energy and represents the 'motion portion' of relativistic energy.",
                     "subexpr": "p c"
                   },
                   {
                     "id": "p",
                     "label": "momentum",
-                    "description": "Relativistic momentum: p = γ·m·v where γ is the Lorentz factor. For massless particles (photons) momentum is defined purely by p = E/c — mass is not required to carry momentum.",
-                    "emoji": "🚀",
+                    "description": "Relativistic momentum: p = \u03b3\u00b7m\u00b7v where \u03b3 is the Lorentz factor. For massless particles (photons) momentum is defined purely by p = E/c \u2014 mass is not required to carry momentum.",
+                    "emoji": "\ud83d\ude80",
                     "type": "vector",
                     "latex": "p",
                     "quantity": "momentum",
-                    "dimension": "M·L·T⁻¹",
-                    "unit": "kg·m/s",
+                    "dimension": "M\u00b7L\u00b7T\u207b\u00b9",
+                    "unit": "kg\u00b7m/s",
                     "role": "state_variable",
                     "subexpr": "p"
                   },
                   {
                     "id": "c",
                     "label": "speed of light",
-                    "description": "Universal constant that couples space and time. Exactly 299,792,458 m/s by definition of the metre. Shared between the pc and mc² terms because it's the same fundamental conversion factor in both.",
-                    "emoji": "💡",
+                    "description": "Universal constant that couples space and time. Exactly 299,792,458 m/s by definition of the metre. Shared between the pc and mc\u00b2 terms because it's the same fundamental conversion factor in both.",
+                    "emoji": "\ud83d\udca1",
                     "type": "scalar",
                     "latex": "c",
                     "quantity": "velocity",
-                    "dimension": "L·T⁻¹",
+                    "dimension": "L\u00b7T\u207b\u00b9",
                     "unit": "m/s",
                     "value": 299792458,
                     "role": "constant",
@@ -505,14 +509,14 @@
                     "type": "operator",
                     "op": "power",
                     "exponent": "2",
-                    "description": "Squares the rest energy mc². This term contributes the invariant mass-energy floor — the energy a particle has even at rest.",
+                    "description": "Squares the rest energy mc\u00b2. This term contributes the invariant mass-energy floor \u2014 the energy a particle has even at rest.",
                     "subexpr": "(m c^{2})^{2}"
                   },
                   {
                     "id": "__multiply_mc2",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Forms mc², the rest energy, before it is squared. The same object that appears alone in the low-momentum Einstein equation E = mc².",
+                    "description": "Forms mc\u00b2, the rest energy, before it is squared. The same object that appears alone in the low-momentum Einstein equation E = mc\u00b2.",
                     "subexpr": "m c^{2}"
                   },
                   {
@@ -520,14 +524,14 @@
                     "type": "operator",
                     "op": "power",
                     "exponent": "2",
-                    "description": "Inner c² in the rest-energy leg. Squaring c arises from the Minkowski metric's time component, the same way it does in E = mc².",
+                    "description": "Inner c\u00b2 in the rest-energy leg. Squaring c arises from the Minkowski metric's time component, the same way it does in E = mc\u00b2.",
                     "subexpr": "c^{2}"
                   },
                   {
                     "id": "m",
                     "label": "mass",
-                    "description": "Rest (invariant) mass. Same quantity as in E = mc² — a Lorentz scalar that every observer agrees on, unrelated to the particle's velocity.",
-                    "emoji": "⚖️",
+                    "description": "Rest (invariant) mass. Same quantity as in E = mc\u00b2 \u2014 a Lorentz scalar that every observer agrees on, unrelated to the particle's velocity.",
+                    "emoji": "\u2696\ufe0f",
                     "type": "scalar",
                     "latex": "m",
                     "quantity": "mass",
@@ -615,11 +619,11 @@
                     "id": "v",
                     "label": "velocity",
                     "description": "Final velocity at time t. A vector: direction matters. For straight-line motion with constant a it evolves linearly in time; for curved motion the equation applies component-wise.",
-                    "emoji": "💨",
+                    "emoji": "\ud83d\udca8",
                     "type": "vector",
                     "latex": "v",
                     "quantity": "velocity",
-                    "dimension": "L·T⁻¹",
+                    "dimension": "L\u00b7T\u207b\u00b9",
                     "unit": "m/s",
                     "role": "state_variable",
                     "subexpr": "v"
@@ -635,11 +639,11 @@
                     "id": "v_{0}",
                     "label": "initial velocity",
                     "description": "Initial velocity at t = 0: the boundary condition fixing where the velocity trajectory begins. Vector quantity, same units as v.",
-                    "emoji": "🔣",
+                    "emoji": "\ud83d\udd23",
                     "type": "scalar",
                     "latex": "v_{0}",
                     "quantity": "velocity",
-                    "dimension": "L·T⁻¹",
+                    "dimension": "L\u00b7T\u207b\u00b9",
                     "unit": "m/s",
                     "role": "parameter",
                     "subexpr": "v_{0}"
@@ -655,20 +659,20 @@
                     "id": "a",
                     "label": "acceleration",
                     "description": "Constant acceleration over the motion. The uniform-a assumption is what makes this equation linear; general motion requires integrating a(t).",
-                    "emoji": "🧭",
+                    "emoji": "\ud83e\udded",
                     "type": "vector",
                     "latex": "a",
                     "quantity": "acceleration",
-                    "dimension": "L·T⁻²",
-                    "unit": "m/s²",
+                    "dimension": "L\u00b7T\u207b\u00b2",
+                    "unit": "m/s\u00b2",
                     "role": "parameter",
                     "subexpr": "a"
                   },
                   {
                     "id": "t",
                     "label": "time",
-                    "description": "Elapsed time since the initial moment t = 0. The independent variable — plotting v versus t yields a straight line with slope a and intercept v₀.",
-                    "emoji": "⏱️",
+                    "description": "Elapsed time since the initial moment t = 0. The independent variable \u2014 plotting v versus t yields a straight line with slope a and intercept v\u2080.",
+                    "emoji": "\u23f1\ufe0f",
                     "type": "scalar",
                     "latex": "t",
                     "quantity": "time",
@@ -715,7 +719,7 @@
             "type": "step",
             "label": "Uniform acceleration (position form)",
             "math": "x = x_0 + v_0 t + \\tfrac{1}{2} a t^2",
-            "justification": "Second kinematic equation — integrating v(t) = v₀ + a·t with respect to time yields a quadratic-in-t position law. The ½ factor emerges from the integral ∫t dt = ½t².",
+            "justification": "Second kinematic equation \u2014 integrating v(t) = v\u2080 + a\u00b7t with respect to time yields a quadratic-in-t position law. The \u00bd factor emerges from the integral \u222bt dt = \u00bdt\u00b2.",
             "sceneStep": 5,
             "semanticGraph": {
               "graph": {
@@ -732,7 +736,7 @@
                     "id": "x",
                     "label": "position",
                     "description": "Position at time t. A vector in general; its time evolution is quadratic under constant acceleration, producing the familiar parabolic trajectories of projectiles.",
-                    "emoji": "📍",
+                    "emoji": "\ud83d\udccd",
                     "type": "vector",
                     "latex": "x",
                     "quantity": "length",
@@ -751,8 +755,8 @@
                   {
                     "id": "x_{0}",
                     "label": "initial position",
-                    "description": "Initial position at t = 0 — the fixed starting point of the trajectory. Boundary condition: changes the intercept but not the shape of the x(t) curve.",
-                    "emoji": "🚩",
+                    "description": "Initial position at t = 0 \u2014 the fixed starting point of the trajectory. Boundary condition: changes the intercept but not the shape of the x(t) curve.",
+                    "emoji": "\ud83d\udea9",
                     "type": "vector",
                     "latex": "x_{0}",
                     "quantity": "length",
@@ -765,18 +769,18 @@
                     "id": "__mult_v0t",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Linear drift term v₀·t: the distance covered by inertial motion at the initial velocity, if there were no acceleration.",
+                    "description": "Linear drift term v\u2080\u00b7t: the distance covered by inertial motion at the initial velocity, if there were no acceleration.",
                     "subexpr": "v_{0} t"
                   },
                   {
                     "id": "v_{0}",
                     "label": "initial velocity",
-                    "description": "Initial velocity at t = 0. Unlike the velocity form, here it multiplies t directly (no acceleration coupling) — it accounts for whatever motion was already underway when the clock started.",
-                    "emoji": "🔣",
+                    "description": "Initial velocity at t = 0. Unlike the velocity form, here it multiplies t directly (no acceleration coupling) \u2014 it accounts for whatever motion was already underway when the clock started.",
+                    "emoji": "\ud83d\udd23",
                     "type": "vector",
                     "latex": "v_{0}",
                     "quantity": "velocity",
-                    "dimension": "L·T⁻¹",
+                    "dimension": "L\u00b7T\u207b\u00b9",
                     "unit": "m/s",
                     "role": "parameter",
                     "subexpr": "v_{0}"
@@ -785,14 +789,14 @@
                     "id": "__mult_half_at2",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Quadratic drift term ½·a·t² — the additional displacement produced by constant acceleration. The ½ is the integral of t, not a physical coefficient.",
+                    "description": "Quadratic drift term \u00bd\u00b7a\u00b7t\u00b2 \u2014 the additional displacement produced by constant acceleration. The \u00bd is the integral of t, not a physical coefficient.",
                     "subexpr": "\\tfrac{1}{2} a t^{2}"
                   },
                   {
                     "id": "__num_half",
                     "label": "one half",
-                    "description": "The rational constant ½, produced by integrating t with respect to t. Dimensionless.",
-                    "emoji": "🔢",
+                    "description": "The rational constant \u00bd, produced by integrating t with respect to t. Dimensionless.",
+                    "emoji": "\ud83d\udd22",
                     "type": "number",
                     "latex": "\\tfrac{1}{2}",
                     "value": 0.5,
@@ -802,13 +806,13 @@
                   {
                     "id": "a",
                     "label": "acceleration",
-                    "description": "Constant acceleration vector. Assumed time-independent in this kinematic family of equations — relaxing this assumption breaks the simple quadratic form.",
-                    "emoji": "🧭",
+                    "description": "Constant acceleration vector. Assumed time-independent in this kinematic family of equations \u2014 relaxing this assumption breaks the simple quadratic form.",
+                    "emoji": "\ud83e\udded",
                     "type": "vector",
                     "latex": "a",
                     "quantity": "acceleration",
-                    "dimension": "L·T⁻²",
-                    "unit": "m/s²",
+                    "dimension": "L\u00b7T\u207b\u00b2",
+                    "unit": "m/s\u00b2",
                     "role": "parameter",
                     "subexpr": "a"
                   },
@@ -817,14 +821,14 @@
                     "type": "operator",
                     "op": "power",
                     "exponent": "2",
-                    "description": "Squares time. Its presence is what makes free-fall trajectories parabolas — the displacement-vs-time curve under constant a.",
+                    "description": "Squares time. Its presence is what makes free-fall trajectories parabolas \u2014 the displacement-vs-time curve under constant a.",
                     "subexpr": "t^{2}"
                   },
                   {
                     "id": "t",
                     "label": "time",
-                    "description": "Elapsed time since t = 0. Same independent variable as in the velocity form; appears linearly (in the v₀t term) and quadratically (in the ½at² term).",
-                    "emoji": "⏱️",
+                    "description": "Elapsed time since t = 0. Same independent variable as in the velocity form; appears linearly (in the v\u2080t term) and quadratically (in the \u00bdat\u00b2 term).",
+                    "emoji": "\u23f1\ufe0f",
                     "type": "scalar",
                     "latex": "t",
                     "quantity": "time",
@@ -889,9 +893,9 @@
           {
             "id": "proof-step-6",
             "type": "step",
-            "label": "Schrödinger equation (compact Hamiltonian form)",
+            "label": "Schr\u00f6dinger equation (compact Hamiltonian form)",
             "math": "i\\hbar \\frac{\\partial \\psi}{\\partial t} = \\hat{H} \\psi",
-            "justification": "The time-dependent Schrödinger equation in abstract form: the quantum state ψ evolves in time at the rate set by the Hamiltonian operator Ĥ. The complex factor iℏ on the left is what makes quantum evolution unitary (probability-preserving) rather than diffusive.",
+            "justification": "The time-dependent Schr\u00f6dinger equation in abstract form: the quantum state \u03c8 evolves in time at the rate set by the Hamiltonian operator \u0124. The complex factor i\u210f on the left is what makes quantum evolution unitary (probability-preserving) rather than diffusive.",
             "sceneStep": 6,
             "semanticGraph": {
               "graph": {
@@ -901,21 +905,21 @@
                     "id": "__equals_1",
                     "type": "operator",
                     "op": "equals",
-                    "description": "Governing equation of non-relativistic quantum mechanics. Determines how the state vector ψ evolves given the system's Hamiltonian (total-energy operator).",
+                    "description": "Governing equation of non-relativistic quantum mechanics. Determines how the state vector \u03c8 evolves given the system's Hamiltonian (total-energy operator).",
                     "subexpr": "i\\hbar \\frac{\\partial \\psi}{\\partial t} = \\hat{H} \\psi"
                   },
                   {
                     "id": "__mult_lhs",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Combines i, ℏ, and the partial time derivative of ψ into the left-hand side. The ordering of these scalar multiplications is commutative, but the imaginary i is what ensures wave-like (rather than dissipative) dynamics.",
+                    "description": "Combines i, \u210f, and the partial time derivative of \u03c8 into the left-hand side. The ordering of these scalar multiplications is commutative, but the imaginary i is what ensures wave-like (rather than dissipative) dynamics.",
                     "subexpr": "i \\hbar \\frac{\\partial \\psi}{\\partial t}"
                   },
                   {
                     "id": "i",
                     "label": "imaginary unit",
-                    "description": "The imaginary unit, i = √(−1). Pulls the time derivative into the complex plane — without it, ∂/∂t would describe diffusion (real-valued decay); with it, we get oscillatory wavefunctions and interference.",
-                    "emoji": "🔵",
+                    "description": "The imaginary unit, i = \u221a(\u22121). Pulls the time derivative into the complex plane \u2014 without it, \u2202/\u2202t would describe diffusion (real-valued decay); with it, we get oscillatory wavefunctions and interference.",
+                    "emoji": "\ud83d\udd35",
                     "type": "constant",
                     "latex": "i",
                     "quantity": "dimensionless",
@@ -927,13 +931,13 @@
                   {
                     "id": "hbar",
                     "label": "reduced Planck constant",
-                    "description": "ℏ = h/(2π) ≈ 1.054 × 10⁻³⁴ J·s. Sets the scale of quantum effects — actions much larger than ℏ behave classically; actions of order ℏ require quantum mechanics.",
-                    "emoji": "📐",
+                    "description": "\u210f = h/(2\u03c0) \u2248 1.054 \u00d7 10\u207b\u00b3\u2074 J\u00b7s. Sets the scale of quantum effects \u2014 actions much larger than \u210f behave classically; actions of order \u210f require quantum mechanics.",
+                    "emoji": "\ud83d\udcd0",
                     "type": "constant",
                     "latex": "\\hbar",
                     "quantity": "action",
-                    "dimension": "M·L²·T⁻¹",
-                    "unit": "J·s",
+                    "dimension": "M\u00b7L\u00b2\u00b7T\u207b\u00b9",
+                    "unit": "J\u00b7s",
                     "value": "1.054571817e-34",
                     "role": "constant",
                     "subexpr": "\\hbar"
@@ -943,32 +947,32 @@
                     "type": "operator",
                     "op": "derivative",
                     "with_respect_to": "t",
-                    "description": "Partial time derivative of the wavefunction. Measures how rapidly ψ changes in time at a fixed spatial point — the object the Schrödinger equation prescribes.",
+                    "description": "Partial time derivative of the wavefunction. Measures how rapidly \u03c8 changes in time at a fixed spatial point \u2014 the object the Schr\u00f6dinger equation prescribes.",
                     "subexpr": "\\frac{\\partial \\psi}{\\partial t}"
                   },
                   {
                     "id": "psi",
                     "label": "wavefunction",
-                    "description": "Quantum state (wavefunction). A complex-valued function of position and time whose squared modulus |ψ|² gives the probability density. Normalized such that ∫|ψ|² dV = 1.",
-                    "emoji": "🌊",
+                    "description": "Quantum state (wavefunction). A complex-valued function of position and time whose squared modulus |\u03c8|\u00b2 gives the probability density. Normalized such that \u222b|\u03c8|\u00b2 dV = 1.",
+                    "emoji": "\ud83c\udf0a",
                     "type": "scalar",
                     "latex": "\\psi",
                     "quantity": "probability_amplitude",
-                    "dimension": "L⁻³ᐟ²",
-                    "unit": "m⁻³ᐟ²",
+                    "dimension": "L\u207b\u00b3\u141f\u00b2",
+                    "unit": "m\u207b\u00b3\u141f\u00b2",
                     "role": "state_variable",
                     "subexpr": "\\psi"
                   },
                   {
                     "id": "Hhat",
                     "label": "Hamiltonian",
-                    "description": "Hamiltonian operator Ĥ — the total-energy operator of the system. Typically Ĥ = T̂ + V̂ (kinetic plus potential). Hermitian (real eigenvalues = allowed energies), and it generates time translation via the Schrödinger equation. When ψ feeds in, the output is Ĥψ — the *action* of the operator on the state, not a product.",
-                    "emoji": "🔮",
+                    "description": "Hamiltonian operator \u0124 \u2014 the total-energy operator of the system. Typically \u0124 = T\u0302 + V\u0302 (kinetic plus potential). Hermitian (real eigenvalues = allowed energies), and it generates time translation via the Schr\u00f6dinger equation. When \u03c8 feeds in, the output is \u0124\u03c8 \u2014 the *action* of the operator on the state, not a product.",
+                    "emoji": "\ud83d\udd2e",
                     "type": "operator",
                     "op": "hamiltonian",
                     "latex": "\\hat{H}",
                     "quantity": "energy",
-                    "dimension": "M·L²·T⁻²",
+                    "dimension": "M\u00b7L\u00b2\u00b7T\u207b\u00b2",
                     "unit": "J",
                     "role": "observable",
                     "subexpr": "\\hat{H} \\psi"
@@ -1020,9 +1024,9 @@
           {
             "id": "proof-step-7",
             "type": "step",
-            "label": "Schrödinger equation (expanded)",
+            "label": "Schr\u00f6dinger equation (expanded)",
             "math": "i\\hbar \\frac{\\partial \\psi}{\\partial t} = -\\frac{\\hbar^2}{2m}\\nabla^2 \\psi + V \\psi",
-            "justification": "The Schrödinger equation with the Hamiltonian spelled out as kinetic + potential. The kinetic term -ℏ²/(2m)·∇² arises from quantizing p²/(2m) via p̂ = -iℏ∇. This is the PDE that is actually solved in textbooks — hydrogen atom, particle in a box, harmonic oscillator.",
+            "justification": "The Schr\u00f6dinger equation with the Hamiltonian spelled out as kinetic + potential. The kinetic term -\u210f\u00b2/(2m)\u00b7\u2207\u00b2 arises from quantizing p\u00b2/(2m) via p\u0302 = -i\u210f\u2207. This is the PDE that is actually solved in textbooks \u2014 hydrogen atom, particle in a box, harmonic oscillator.",
             "sceneStep": 7,
             "semanticGraph": {
               "graph": {
@@ -1032,21 +1036,21 @@
                     "id": "__equals_1",
                     "type": "operator",
                     "op": "equals",
-                    "description": "Equates the time evolution of ψ (left) to the sum of kinetic and potential contributions (right) — the Hamiltonian in position representation.",
+                    "description": "Equates the time evolution of \u03c8 (left) to the sum of kinetic and potential contributions (right) \u2014 the Hamiltonian in position representation.",
                     "subexpr": "i\\hbar \\frac{\\partial \\psi}{\\partial t} = -\\frac{\\hbar^2}{2m}\\nabla^2 \\psi + V \\psi"
                   },
                   {
                     "id": "__mult_lhs",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Forms i·ℏ·∂ψ/∂t — same left-hand side as in the compact form.",
+                    "description": "Forms i\u00b7\u210f\u00b7\u2202\u03c8/\u2202t \u2014 same left-hand side as in the compact form.",
                     "subexpr": "i \\hbar \\frac{\\partial \\psi}{\\partial t}"
                   },
                   {
                     "id": "i",
                     "label": "imaginary unit",
-                    "description": "The imaginary unit i = √(−1). Essential: without i, ∂/∂t would describe diffusion; with i, probability is conserved and we get unitary evolution.",
-                    "emoji": "🔵",
+                    "description": "The imaginary unit i = \u221a(\u22121). Essential: without i, \u2202/\u2202t would describe diffusion; with i, probability is conserved and we get unitary evolution.",
+                    "emoji": "\ud83d\udd35",
                     "type": "constant",
                     "latex": "i",
                     "quantity": "dimensionless",
@@ -1057,13 +1061,13 @@
                   {
                     "id": "hbar",
                     "label": "reduced Planck constant",
-                    "description": "ℏ ≈ 1.054 × 10⁻³⁴ J·s. Sets the scale where quantum effects matter. Appears squared in the kinetic term — a direct consequence of quantizing p = -iℏ∇ and then forming p²/(2m).",
-                    "emoji": "📐",
+                    "description": "\u210f \u2248 1.054 \u00d7 10\u207b\u00b3\u2074 J\u00b7s. Sets the scale where quantum effects matter. Appears squared in the kinetic term \u2014 a direct consequence of quantizing p = -i\u210f\u2207 and then forming p\u00b2/(2m).",
+                    "emoji": "\ud83d\udcd0",
                     "type": "constant",
                     "latex": "\\hbar",
                     "quantity": "action",
-                    "dimension": "M·L²·T⁻¹",
-                    "unit": "J·s",
+                    "dimension": "M\u00b7L\u00b2\u00b7T\u207b\u00b9",
+                    "unit": "J\u00b7s",
                     "value": "1.054571817e-34",
                     "role": "constant",
                     "subexpr": "\\hbar"
@@ -1073,19 +1077,19 @@
                     "type": "operator",
                     "op": "derivative",
                     "with_respect_to": "t",
-                    "description": "Partial time derivative of ψ: how the wavefunction changes instantaneously at each point in space.",
+                    "description": "Partial time derivative of \u03c8: how the wavefunction changes instantaneously at each point in space.",
                     "subexpr": "\\frac{\\partial \\psi}{\\partial t}"
                   },
                   {
                     "id": "psi",
                     "label": "wavefunction",
-                    "description": "Complex-valued wavefunction ψ(r, t). |ψ|² gives probability density; phase matters too (interference). Shared across the time derivative, the Laplacian, and the potential multiplication.",
-                    "emoji": "🌊",
+                    "description": "Complex-valued wavefunction \u03c8(r, t). |\u03c8|\u00b2 gives probability density; phase matters too (interference). Shared across the time derivative, the Laplacian, and the potential multiplication.",
+                    "emoji": "\ud83c\udf0a",
                     "type": "scalar",
                     "latex": "\\psi",
                     "quantity": "probability_amplitude",
-                    "dimension": "L⁻³ᐟ²",
-                    "unit": "m⁻³ᐟ²",
+                    "dimension": "L\u207b\u00b3\u141f\u00b2",
+                    "unit": "m\u207b\u00b3\u141f\u00b2",
                     "role": "state_variable",
                     "subexpr": "\\psi"
                   },
@@ -1093,21 +1097,21 @@
                     "id": "__add_rhs",
                     "type": "operator",
                     "op": "add",
-                    "description": "Hamiltonian in position representation: kinetic energy operator applied to ψ plus potential energy times ψ.",
+                    "description": "Hamiltonian in position representation: kinetic energy operator applied to \u03c8 plus potential energy times \u03c8.",
                     "subexpr": "-\\frac{\\hbar^2}{2m}\\nabla^2 \\psi + V \\psi"
                   },
                   {
                     "id": "__mult_kinetic",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Assembles the kinetic term: (−1) · [ℏ²/(2m)] · ∇²ψ. The minus sign is absorbed via a literal −1 multiplier.",
+                    "description": "Assembles the kinetic term: (\u22121) \u00b7 [\u210f\u00b2/(2m)] \u00b7 \u2207\u00b2\u03c8. The minus sign is absorbed via a literal \u22121 multiplier.",
                     "subexpr": "-\\frac{\\hbar^2}{2m}\\nabla^2 \\psi"
                   },
                   {
                     "id": "__num_neg_1",
                     "label": "negative one",
-                    "description": "The numerical constant −1, standing in for the explicit minus sign on the kinetic term.",
-                    "emoji": "➖",
+                    "description": "The numerical constant \u22121, standing in for the explicit minus sign on the kinetic term.",
+                    "emoji": "\u2796",
                     "type": "number",
                     "latex": "-1",
                     "value": -1,
@@ -1119,7 +1123,7 @@
                     "type": "operator",
                     "op": "divide",
                     "variant": "inverse",
-                    "description": "Divides ℏ² by 2m to produce the kinetic coefficient. Larger mass → smaller coefficient → weaker quantum-kinetic spreading.",
+                    "description": "Divides \u210f\u00b2 by 2m to produce the kinetic coefficient. Larger mass \u2192 smaller coefficient \u2192 weaker quantum-kinetic spreading.",
                     "subexpr": "\\frac{\\hbar^2}{2m}"
                   },
                   {
@@ -1127,21 +1131,21 @@
                     "type": "operator",
                     "op": "power",
                     "exponent": "2",
-                    "description": "Squares ℏ. The ℏ² factor arises because the kinetic operator is p̂²/(2m) and p̂ carries one factor of ℏ.",
+                    "description": "Squares \u210f. The \u210f\u00b2 factor arises because the kinetic operator is p\u0302\u00b2/(2m) and p\u0302 carries one factor of \u210f.",
                     "subexpr": "\\hbar^{2}"
                   },
                   {
                     "id": "__mult_2m",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Forms 2m — the denominator of the kinetic coefficient, same factor that appears in the classical expression p²/(2m).",
+                    "description": "Forms 2m \u2014 the denominator of the kinetic coefficient, same factor that appears in the classical expression p\u00b2/(2m).",
                     "subexpr": "2 m"
                   },
                   {
                     "id": "__num_2",
                     "label": "two",
-                    "description": "The numerical constant 2, from the classical kinetic-energy formula p²/(2m).",
-                    "emoji": "🔢",
+                    "description": "The numerical constant 2, from the classical kinetic-energy formula p\u00b2/(2m).",
+                    "emoji": "\ud83d\udd22",
                     "type": "number",
                     "latex": "2",
                     "value": 2,
@@ -1151,8 +1155,8 @@
                   {
                     "id": "m",
                     "label": "mass",
-                    "description": "Mass of the quantum particle. Determines how strongly the kinetic operator smooths / spreads the wavefunction — lighter particles exhibit more pronounced quantum behavior.",
-                    "emoji": "⚖️",
+                    "description": "Mass of the quantum particle. Determines how strongly the kinetic operator smooths / spreads the wavefunction \u2014 lighter particles exhibit more pronounced quantum behavior.",
+                    "emoji": "\u2696\ufe0f",
                     "type": "scalar",
                     "latex": "m",
                     "quantity": "mass",
@@ -1167,25 +1171,25 @@
                     "op": "laplacian",
                     "label": "Laplacian",
                     "latex": "\\nabla^{2}",
-                    "description": "Laplacian operator ∇² applied to ψ: ∇²ψ = ∂²ψ/∂x² + ∂²ψ/∂y² + ∂²ψ/∂z². Measures the local curvature of the wavefunction; wavefunctions with sharper spatial variations carry more kinetic energy. Like Ĥ, ∇² is an operator that acts on ψ — not a multiplication.",
+                    "description": "Laplacian operator \u2207\u00b2 applied to \u03c8: \u2207\u00b2\u03c8 = \u2202\u00b2\u03c8/\u2202x\u00b2 + \u2202\u00b2\u03c8/\u2202y\u00b2 + \u2202\u00b2\u03c8/\u2202z\u00b2. Measures the local curvature of the wavefunction; wavefunctions with sharper spatial variations carry more kinetic energy. Like \u0124, \u2207\u00b2 is an operator that acts on \u03c8 \u2014 not a multiplication.",
                     "subexpr": "\\nabla^{2} \\psi"
                   },
                   {
                     "id": "__mult_potential",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Pointwise product V(r)·ψ(r,t). The potential acts as a multiplicative operator in the position representation.",
+                    "description": "Pointwise product V(r)\u00b7\u03c8(r,t). The potential acts as a multiplicative operator in the position representation.",
                     "subexpr": "V \\psi"
                   },
                   {
                     "id": "V",
                     "label": "potential energy",
-                    "description": "Potential energy function V(r) — an external scalar field (e.g. electrostatic for hydrogen, harmonic for an oscillator, infinite walls for a box). Shapes the Hamiltonian's spectrum and the geometry of stationary states.",
-                    "emoji": "🏔️",
+                    "description": "Potential energy function V(r) \u2014 an external scalar field (e.g. electrostatic for hydrogen, harmonic for an oscillator, infinite walls for a box). Shapes the Hamiltonian's spectrum and the geometry of stationary states.",
+                    "emoji": "\ud83c\udfd4\ufe0f",
                     "type": "scalar",
                     "latex": "V",
                     "quantity": "energy",
-                    "dimension": "M·L²·T⁻²",
+                    "dimension": "M\u00b7L\u00b2\u00b7T\u207b\u00b2",
                     "unit": "J",
                     "role": "parameter",
                     "subexpr": "V"
@@ -1290,9 +1294,9 @@
           {
             "id": "proof-step-8",
             "type": "step",
-            "label": "Partial derivatives — 2D transport equation",
+            "label": "Partial derivatives \u2014 2D transport equation",
             "math": "\\frac{\\partial \\rho}{\\partial t} + u\\,\\frac{\\partial \\rho}{\\partial x} + v\\,\\frac{\\partial \\rho}{\\partial y} = 0",
-            "justification": "The 2D advection (transport) equation: density ρ is carried along by a velocity field (u, v) without diffusion. Each partial derivative operator differentiates with respect to a different independent variable — t, x, or y — so the D3 renderer shows d·/dt, d·/dx, and d·/dy on distinct operator nodes.",
+            "justification": "The 2D advection (transport) equation: density \u03c1 is carried along by a velocity field (u, v) without diffusion. Each partial derivative operator differentiates with respect to a different independent variable \u2014 t, x, or y \u2014 so the D3 renderer shows d\u00b7/dt, d\u00b7/dx, and d\u00b7/dy on distinct operator nodes.",
             "sceneStep": 8,
             "semanticGraph": {
               "graph": {
@@ -1302,7 +1306,7 @@
                     "id": "__equals_1",
                     "type": "operator",
                     "op": "equals",
-                    "description": "Equates the sum of partial derivatives to zero — stating that ρ is conserved along fluid trajectories.",
+                    "description": "Equates the sum of partial derivatives to zero \u2014 stating that \u03c1 is conserved along fluid trajectories.",
                     "subexpr": "\\frac{\\partial \\rho}{\\partial t} + u \\frac{\\partial \\rho}{\\partial x} + v \\frac{\\partial \\rho}{\\partial y} = 0"
                   },
                   {
@@ -1317,25 +1321,25 @@
                     "type": "operator",
                     "op": "derivative",
                     "with_respect_to": "t",
-                    "description": "Partial time derivative of density: how ρ changes at a fixed spatial point.",
+                    "description": "Partial time derivative of density: how \u03c1 changes at a fixed spatial point.",
                     "subexpr": "\\frac{\\partial \\rho}{\\partial t}"
                   },
                   {
                     "id": "__mult_u_drho_x",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Advective flux in x: the horizontal velocity u times the spatial gradient ∂ρ/∂x.",
+                    "description": "Advective flux in x: the horizontal velocity u times the spatial gradient \u2202\u03c1/\u2202x.",
                     "subexpr": "u \\frac{\\partial \\rho}{\\partial x}"
                   },
                   {
                     "id": "u_vel",
                     "label": "x-velocity",
-                    "description": "Horizontal component of the velocity field. Determines how fast ρ is carried in the x direction.",
-                    "emoji": "➡️",
+                    "description": "Horizontal component of the velocity field. Determines how fast \u03c1 is carried in the x direction.",
+                    "emoji": "\u27a1\ufe0f",
                     "type": "scalar",
                     "latex": "u",
                     "quantity": "velocity",
-                    "dimension": "L·T⁻¹",
+                    "dimension": "L\u00b7T\u207b\u00b9",
                     "unit": "m/s",
                     "role": "parameter",
                     "subexpr": "u"
@@ -1345,25 +1349,25 @@
                     "type": "operator",
                     "op": "derivative",
                     "with_respect_to": "x",
-                    "description": "Partial x-derivative of density: the spatial gradient of ρ in the horizontal direction.",
+                    "description": "Partial x-derivative of density: the spatial gradient of \u03c1 in the horizontal direction.",
                     "subexpr": "\\frac{\\partial \\rho}{\\partial x}"
                   },
                   {
                     "id": "__mult_v_drho_y",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Advective flux in y: the vertical velocity v times the spatial gradient ∂ρ/∂y.",
+                    "description": "Advective flux in y: the vertical velocity v times the spatial gradient \u2202\u03c1/\u2202y.",
                     "subexpr": "v \\frac{\\partial \\rho}{\\partial y}"
                   },
                   {
                     "id": "v_vel",
                     "label": "y-velocity",
-                    "description": "Vertical component of the velocity field. Determines how fast ρ is carried in the y direction.",
-                    "emoji": "⬆️",
+                    "description": "Vertical component of the velocity field. Determines how fast \u03c1 is carried in the y direction.",
+                    "emoji": "\u2b06\ufe0f",
                     "type": "scalar",
                     "latex": "v",
                     "quantity": "velocity",
-                    "dimension": "L·T⁻¹",
+                    "dimension": "L\u00b7T\u207b\u00b9",
                     "unit": "m/s",
                     "role": "parameter",
                     "subexpr": "v"
@@ -1373,27 +1377,27 @@
                     "type": "operator",
                     "op": "derivative",
                     "with_respect_to": "y",
-                    "description": "Partial y-derivative of density: the spatial gradient of ρ in the vertical direction.",
+                    "description": "Partial y-derivative of density: the spatial gradient of \u03c1 in the vertical direction.",
                     "subexpr": "\\frac{\\partial \\rho}{\\partial y}"
                   },
                   {
                     "id": "rho",
                     "label": "density",
-                    "description": "Scalar density field ρ(x, y, t). The quantity being transported by the velocity field without sources or sinks.",
-                    "emoji": "🌫️",
+                    "description": "Scalar density field \u03c1(x, y, t). The quantity being transported by the velocity field without sources or sinks.",
+                    "emoji": "\ud83c\udf2b\ufe0f",
                     "type": "scalar",
                     "latex": "\\rho",
                     "quantity": "density",
-                    "dimension": "M·L⁻³",
-                    "unit": "kg/m³",
+                    "dimension": "M\u00b7L\u207b\u00b3",
+                    "unit": "kg/m\u00b3",
                     "role": "state_variable",
                     "subexpr": "\\rho"
                   },
                   {
                     "id": "__num_0",
                     "label": "0",
-                    "description": "Zero on the right-hand side — no sources or sinks.",
-                    "emoji": "🔢",
+                    "description": "Zero on the right-hand side \u2014 no sources or sinks.",
+                    "emoji": "\ud83d\udd22",
                     "type": "number",
                     "value": 0,
                     "role": "constant",
@@ -1403,7 +1407,7 @@
                     "id": "var_t",
                     "label": "time",
                     "description": "Independent variable: time coordinate.",
-                    "emoji": "🕐",
+                    "emoji": "\ud83d\udd50",
                     "type": "scalar",
                     "latex": "t",
                     "quantity": "time",
@@ -1416,7 +1420,7 @@
                     "id": "var_x",
                     "label": "x-position",
                     "description": "Independent variable: horizontal spatial coordinate.",
-                    "emoji": "📏",
+                    "emoji": "\ud83d\udccf",
                     "type": "scalar",
                     "latex": "x",
                     "quantity": "length",
@@ -1429,7 +1433,7 @@
                     "id": "var_y",
                     "label": "y-position",
                     "description": "Independent variable: vertical spatial coordinate.",
-                    "emoji": "📐",
+                    "emoji": "\ud83d\udcd0",
                     "type": "scalar",
                     "latex": "y",
                     "quantity": "length",
@@ -1527,9 +1531,9 @@
           {
             "id": "proof-step-9",
             "type": "step",
-            "label": "Higher powers and a quotient — ^3, ^4, ^n, ^-3, ^-4, ^-n, a/b",
+            "label": "Higher powers and a quotient \u2014 ^3, ^4, ^n, ^-3, ^-4, ^-n, a/b",
             "math": "y = x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n} + \\frac{a}{b}",
-            "justification": "Positive integer exponents read as direct (red) at increasing widths; negative integer exponents read as inverse (blue) at the same widths. The symbolic −n is also tagged inverse with default weight 1 — the renderer can read sign from the leading minus even without a magnitude. Only the positive symbolic n stays neutral. The quotient a/b shows the multiply-with-denominator pattern: the numerator's edge from a paints direct (factor); the edge from the inverse-power (b^-1) paints inverse — the multiply combiner no longer overrides the renderer's power-source inference.",
+            "justification": "Positive integer exponents read as direct (red) at increasing widths; negative integer exponents read as inverse (blue) at the same widths. The symbolic \u2212n is also tagged inverse with default weight 1 \u2014 the renderer can read sign from the leading minus even without a magnitude. Only the positive symbolic n stays neutral. The quotient a/b shows the multiply-with-denominator pattern: the numerator's edge from a paints direct (factor); the edge from the inverse-power (b^-1) paints inverse \u2014 the multiply combiner no longer overrides the renderer's power-source inference.",
             "sceneStep": 9,
             "semanticGraph": {
               "graph": {
@@ -1545,7 +1549,7 @@
                   {
                     "id": "y",
                     "label": "y",
-                    "description": "Dependent variable — its value is determined by x, a, and b once the seven terms are summed.",
+                    "description": "Dependent variable \u2014 its value is determined by x, a, and b once the seven terms are summed.",
                     "type": "scalar",
                     "latex": "y",
                     "role": "dependent",
@@ -1572,7 +1576,7 @@
                   {
                     "id": "b",
                     "label": "b",
-                    "description": "Denominator of the quotient term. Its edge into the inverse-power node is plain — the proportionality semantics live on the *outgoing* edge from the power.",
+                    "description": "Denominator of the quotient term. Its edge into the inverse-power node is plain \u2014 the proportionality semantics live on the *outgoing* edge from the power.",
                     "type": "scalar",
                     "latex": "b",
                     "role": "independent",
@@ -1582,7 +1586,7 @@
                     "id": "__add_rhs",
                     "type": "operator",
                     "op": "add",
-                    "description": "Sums the seven terms (six monomials + the a/b quotient). Addition edges are structural — they don't carry proportionality semantics.",
+                    "description": "Sums the seven terms (six monomials + the a/b quotient). Addition edges are structural \u2014 they don't carry proportionality semantics.",
                     "subexpr": "x^3 + x^4 + x^n + x^{-3} + x^{-4} + x^{-n} + \\frac{a}{b}"
                   },
                   {
@@ -1598,7 +1602,7 @@
                     "type": "operator",
                     "op": "power",
                     "exponent": "4",
-                    "description": "Raises x to the fourth power. Outgoing edge tagged direct, weight 4 — saturates the clamp on themes with a base direct-stroke ≥ 2.",
+                    "description": "Raises x to the fourth power. Outgoing edge tagged direct, weight 4 \u2014 saturates the clamp on themes with a base direct-stroke \u2265 2.",
                     "subexpr": "x^{4}"
                   },
                   {
@@ -1614,7 +1618,7 @@
                     "type": "operator",
                     "op": "power",
                     "exponent": "-3",
-                    "description": "Raises x to the −3 power (i.e. 1/x³). The negative literal exponent tags the *outgoing* edge as inverse with weight 3, painted in the inverse stroke from the active theme.",
+                    "description": "Raises x to the \u22123 power (i.e. 1/x\u00b3). The negative literal exponent tags the *outgoing* edge as inverse with weight 3, painted in the inverse stroke from the active theme.",
                     "subexpr": "x^{-3}"
                   },
                   {
@@ -1622,7 +1626,7 @@
                     "type": "operator",
                     "op": "power",
                     "exponent": "-4",
-                    "description": "Raises x to the −4 power (i.e. 1/x⁴). Outgoing edge tagged inverse, weight 4.",
+                    "description": "Raises x to the \u22124 power (i.e. 1/x\u2074). Outgoing edge tagged inverse, weight 4.",
                     "subexpr": "x^{-4}"
                   },
                   {
@@ -1630,7 +1634,7 @@
                     "type": "operator",
                     "op": "power",
                     "exponent": "-n",
-                    "description": "Raises x to the symbolic −n power. The leading minus tells the renderer the relationship is inverse; magnitude is unknown, so it defaults to weight 1 (thin blue stroke).",
+                    "description": "Raises x to the symbolic \u2212n power. The leading minus tells the renderer the relationship is inverse; magnitude is unknown, so it defaults to weight 1 (thin blue stroke).",
                     "subexpr": "x^{-n}"
                   },
                   {
@@ -1638,14 +1642,14 @@
                     "type": "operator",
                     "op": "power",
                     "exponent": "-1",
-                    "description": "Reciprocal of b — i.e. 1/b. SymPy represents division `a/b` as `Mul(a, Pow(b, -1))`, so the quotient enters the diagram via this inverse-power node. Its outgoing edge into the multiply combiner is tagged inverse, weight 1.",
+                    "description": "Reciprocal of b \u2014 i.e. 1/b. SymPy represents division `a/b` as `Mul(a, Pow(b, -1))`, so the quotient enters the diagram via this inverse-power node. Its outgoing edge into the multiply combiner is tagged inverse, weight 1.",
                     "subexpr": "\\frac{1}{b}"
                   },
                   {
                     "id": "__multiply_div",
                     "type": "operator",
                     "op": "multiply",
-                    "description": "Combines the numerator a with the inverse-power b^{-1} to form the quotient a·(1/b). Factor edges from regular operands are tagged direct; the edge from an inverse-power child is left plain so the renderer's power-source inference paints it inverse instead of overriding it.",
+                    "description": "Combines the numerator a with the inverse-power b^{-1} to form the quotient a\u00b7(1/b). Factor edges from regular operands are tagged direct; the edge from an inverse-power child is left plain so the renderer's power-source inference paints it inverse instead of overriding it.",
                     "subexpr": "a \\cdot \\frac{1}{b}"
                   }
                 ],
@@ -1734,9 +1738,9 @@
           {
             "id": "proof-step-10",
             "type": "given",
-            "label": "Disconnected statements — comma-separated clauses (issue #144)",
+            "label": "Disconnected statements \u2014 comma-separated clauses (issue #144)",
             "math": "a = 1, \\quad b = 2",
-            "justification": "Top-level commas are detected as statement separators (not logical operators, not tuple separators). Each clause is parsed into its own independent subtree with no parent relation node joining them. With no shared variables between the two clauses, the resulting graph has two truly disconnected components — the renderer lays them out side-by-side. Shared variables across clauses (for example γ appearing in both dh/dt = -V sin γ and γ = const) would still dedup organically through the variable node.",
+            "justification": "Top-level commas are detected as statement separators (not logical operators, not tuple separators). Each clause is parsed into its own independent subtree with no parent relation node joining them. With no shared variables between the two clauses, the resulting graph has two truly disconnected components \u2014 the renderer lays them out side-by-side. Shared variables across clauses (for example \u03b3 appearing in both dh/dt = -V sin \u03b3 and \u03b3 = const) would still dedup organically through the variable node.",
             "sceneStep": 0,
             "semanticGraph": {
               "graph": {
@@ -1745,13 +1749,13 @@
                     "id": "c0___equals_1",
                     "type": "operator",
                     "op": "equals",
-                    "description": "First statement's equality — the root of clause 0's subtree. Parsed independently from clause 1 after the top-level comma was detected as a statement separator.",
+                    "description": "First statement's equality \u2014 the root of clause 0's subtree. Parsed independently from clause 1 after the top-level comma was detected as a statement separator.",
                     "subexpr": "a = 1"
                   },
                   {
                     "id": "a",
                     "label": "a",
-                    "emoji": "🔤",
+                    "emoji": "\ud83d\udd24",
                     "type": "scalar",
                     "latex": "a",
                     "description": "Free symbol declared in the first statement. No semantic connection to clause 1's b.",
@@ -1761,7 +1765,7 @@
                   {
                     "id": "c0___num_2",
                     "label": "1",
-                    "emoji": "🔢",
+                    "emoji": "\ud83d\udd22",
                     "type": "number",
                     "description": "Numeric literal on the RHS of clause 0.",
                     "subexpr": "1"
@@ -1770,13 +1774,13 @@
                     "id": "c1___equals_1",
                     "type": "operator",
                     "op": "equals",
-                    "description": "Second statement's equality — the root of clause 1's subtree. Note the c1_ id prefix: operator/relation ids are scoped per-clause so the two __equals_1 nodes don't collide in the merged graph.",
+                    "description": "Second statement's equality \u2014 the root of clause 1's subtree. Note the c1_ id prefix: operator/relation ids are scoped per-clause so the two __equals_1 nodes don't collide in the merged graph.",
                     "subexpr": "b = 2"
                   },
                   {
                     "id": "b",
                     "label": "b",
-                    "emoji": "🔤",
+                    "emoji": "\ud83d\udd24",
                     "type": "scalar",
                     "latex": "b",
                     "description": "Free symbol declared in the second statement. Because it shares no name with clause 0's a, the two clause subtrees remain genuinely disconnected components of the graph.",
@@ -1786,7 +1790,7 @@
                   {
                     "id": "c1___num_2",
                     "label": "2",
-                    "emoji": "🔢",
+                    "emoji": "\ud83d\udd22",
                     "type": "number",
                     "description": "Numeric literal on the RHS of clause 1.",
                     "subexpr": "2"
@@ -1830,7 +1834,7 @@
             "type": "given",
             "label": "Annotation: two assumptions",
             "math": "P V = n R T \\quad (T \\text{ constant}) \\quad (n \\text{ fixed})",
-            "justification": "Ideal gas law with two parenthetical annotations — constant temperature and fixed amount of substance. Both appear as themed overlay cards below the graph.",
+            "justification": "Ideal gas law with two parenthetical annotations \u2014 constant temperature and fixed amount of substance. Both appear as themed overlay cards below the graph.",
             "sceneStep": 0
           },
           {
@@ -1838,7 +1842,7 @@
             "type": "given",
             "label": "Annotation: small angle approximation",
             "math": "\\sin\\theta \\approx \\theta \\quad (\\theta \\text{ small})",
-            "justification": "Small-angle approximation with a single annotation. Tests that annotations work alongside the ≈ relation operator.",
+            "justification": "Small-angle approximation with a single annotation. Tests that annotations work alongside the \u2248 relation operator.",
             "sceneStep": 0
           },
           {
@@ -1878,7 +1882,7 @@
             "type": "given",
             "label": "Comparison: greater-or-equal",
             "math": "x \\geq y + 1",
-            "justification": "Greater-or-equal inequality with an additive expression on the right side. The graph should show a greater_equal operator (≥) with x on one side and an add operator combining y and 1 on the other.",
+            "justification": "Greater-or-equal inequality with an additive expression on the right side. The graph should show a greater_equal operator (\u2265) with x on one side and an add operator combining y and 1 on the other.",
             "sceneStep": 0
           },
           {
@@ -1886,7 +1890,7 @@
             "type": "given",
             "label": "Comparison: less-or-equal",
             "math": "a \\leq b",
-            "justification": "Less-or-equal inequality between two variables. The semantic graph should show a and b connected through a less_equal operator node rendered as ≤.",
+            "justification": "Less-or-equal inequality between two variables. The semantic graph should show a and b connected through a less_equal operator node rendered as \u2264.",
             "sceneStep": 0
           },
           {
@@ -1894,7 +1898,7 @@
             "type": "given",
             "label": "Comparison: constraint after equation",
             "math": "f(x) = x^2, x > 0",
-            "justification": "Equation with a comma-separated comparison constraint. The graph should produce two independent rooted structures: an equals operator for f(x) = x² and a greater_than operator for x > 0, sharing the x node.",
+            "justification": "Equation with a comma-separated comparison constraint. The graph should produce two independent rooted structures: an equals operator for f(x) = x\u00b2 and a greater_than operator for x > 0, sharing the x node.",
             "sceneStep": 0
           },
           {
@@ -1902,8 +1906,81 @@
             "type": "given",
             "label": "Comparison: domain restriction",
             "math": "\\sin\\theta = \\theta, 0 \\leq \\theta",
-            "justification": "Small-angle approximation with a domain restriction. Two clauses: sin(θ) = θ and 0 ≤ θ, sharing the θ node.",
+            "justification": "Small-angle approximation with a domain restriction. Two clauses: sin(\u03b8) = \u03b8 and 0 \u2264 \u03b8, sharing the \u03b8 node.",
             "sceneStep": 0
+          },
+          {
+            "id": "proof-step-22",
+            "type": "given",
+            "label": "Domain constraint: α ∈ ℂ",
+            "math": "\\alpha \\in \\mathbb{C}",
+            "justification": "Node C has latex=mathbb{C} with no spurious mathbb node \u2014 the fix from PR #296.",
+            "sceneStep": 21,
+            "semanticGraph": {
+              "graph": {
+                "nodes": [
+                  {
+                    "id": "__multiply_1",
+                    "type": "operator",
+                    "op": "multiply",
+                    "subexpr": "\\alpha \\in \\mathbb{C}"
+                  },
+                  {
+                    "id": "alpha",
+                    "type": "scalar",
+                    "latex": "\\alpha",
+                    "subexpr": "\\alpha"
+                  },
+                  {
+                    "id": "__multiply_2",
+                    "type": "operator",
+                    "op": "multiply",
+                    "subexpr": "\\in \\mathbb{C}"
+                  },
+                  {
+                    "id": "in",
+                    "type": "scalar",
+                    "latex": "\\in",
+                    "subexpr": "\\in"
+                  },
+                  {
+                    "id": "C",
+                    "type": "scalar",
+                    "latex": "\\mathbb{C}",
+                    "subexpr": "\\mathbb{C}"
+                  }
+                ],
+                "edges": [
+                  {
+                    "from": "alpha",
+                    "to": "__multiply_1",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "in",
+                    "to": "__multiply_2",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "C",
+                    "to": "__multiply_2",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  },
+                  {
+                    "from": "__multiply_2",
+                    "to": "__multiply_1",
+                    "semantic": "direct",
+                    "weight": 1.0
+                  }
+                ],
+                "classification": {
+                  "kind": "algebraic"
+                }
+              }
+            }
           }
         ]
       }
