@@ -1464,6 +1464,38 @@ def resolve_scene_path(scene_arg):
     return None
 
 
+def resolve_scene_path_safe(scene_arg):
+    """Resolve scene path restricted to allowed roots (for API use).
+
+    Only permits paths that resolve inside scenes_dir or script_dir,
+    preventing arbitrary local file reads via the HTTP API.
+    Absolute paths are allowed if they fall within the allowed roots
+    (needed for --scene startup and frontend refresh flows).
+    """
+    if not scene_arg:
+        return None
+    raw = str(scene_arg)
+    if raw.startswith('~'):
+        return None
+    candidate = Path(raw)
+    allowed_roots = (scenes_dir.resolve(), script_dir.resolve())
+    if candidate.is_absolute():
+        resolved = candidate.resolve()
+        if not any(resolved == root or str(resolved).startswith(str(root) + '/') for root in allowed_roots):
+            return None
+        if resolved.exists() and resolved.is_file():
+            return resolved
+        return None
+    candidates = [script_dir / candidate, scenes_dir / candidate]
+    for path in candidates:
+        resolved = path.resolve()
+        if not any(resolved == root or str(resolved).startswith(str(root) + '/') for root in allowed_roots):
+            continue
+        if resolved.exists() and resolved.is_file():
+            return resolved
+    return None
+
+
 FAVICON_SVG = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
 <rect width="100" height="100" rx="15" fill="#1a1a2e"/>
 <line x1="20" y1="75" x2="80" y2="75" stroke="#ff4444" stroke-width="4"/>
@@ -2558,7 +2590,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/api/scene_file")
     async def get_scene_file(request: Request):
         requested = request.query_params.get('path', '')
-        resolved_path = resolve_scene_path(requested)
+        resolved_path = resolve_scene_path_safe(requested)
         if not resolved_path:
             return JSONResponse({"error": "Scene file not found"}, status_code=404)
         try:
