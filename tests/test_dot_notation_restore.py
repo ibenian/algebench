@@ -154,3 +154,32 @@ class TestIssue185Repro:
             assert r"\dot{" in sub
             assert r"\text{" in sub
             assert "\t" not in sub
+
+
+class TestIssue263AccentSubexprs:
+    """Accents stripped before SymPy parsing must be restored in subexprs."""
+
+    def test_vector_accents_are_restored_in_operator_subexprs(self):
+        g = _derive_semantic_graph(
+            r"\nabla \times \vec{E} = -\frac{\partial \vec{B}}{\partial t}"
+        )
+        subexprs = [
+            node.get("subexpr", "")
+            for node in g["nodes"]
+            if isinstance(node.get("subexpr"), str)
+        ]
+
+        curl_subs = [s for s in subexprs if r"\nabla \times" in s]
+        deriv_subs = [s for s in subexprs if r"\partial" in s and "B" in s]
+
+        assert curl_subs, "expected a curl subexpr containing \\nabla \\times"
+        assert deriv_subs, "expected a partial derivative subexpr containing B"
+        assert all(r"\vec{E}" in s for s in curl_subs), curl_subs
+        assert all(r"\vec{B}" in s for s in deriv_subs), deriv_subs
+
+    def test_accent_restore_does_not_prefix_plain_subscript_siblings(self):
+        g = _derive_semantic_graph(r"\vec{E} + E_0")
+        e0 = next(node for node in g["nodes"] if node.get("id") == "E_{0}")
+
+        assert e0["latex"] == "E_{0}"
+        assert e0["subexpr"] == "E_{0}"

@@ -523,46 +523,97 @@ def _strip_accent_commands(
     return "".join(out)
 
 
+def _brace_single_char_scripts(latex: str) -> str:
+    """Canonicalize ``E_0``/``x^2`` to SymPy's ``E_{0}``/``x^{2}`` form."""
+    if not isinstance(latex, str):
+        return latex
+    latex = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", latex)
+    return re.sub(r"\^([A-Za-z0-9])(?![A-Za-z0-9_{])", r"^{\1}", latex)
+
+
+def _accent_body_variants(body: str) -> list[str]:
+    """Return literal forms a stripped accent body may have in graph output."""
+    variants: list[str] = []
+    for candidate in (body, _brace_single_char_scripts(body)):
+        if candidate and candidate not in variants:
+            variants.append(candidate)
+    return variants
+
+
+def _restore_accented_symbol_in_latex(text: str, body: str, accent: str) -> str:
+    """Replace standalone ``body`` occurrences in a LaTeX snippet.
+
+    Subexpressions are reconstructed from the stripped SymPy tree, so they may
+    contain bare ``E``/``B`` even though the authored expression used
+    ``\\vec{E}``/``\\vec{B}``. Replace only standalone symbol occurrences:
+    ``E`` in ``\\nabla \\times E`` is safe, while ``E`` in ``E_{0}`` is not.
+    """
+    if not isinstance(text, str) or not text or not body or body not in text:
+        return text
+
+    pattern = re.compile(re.escape(body))
+    replacement = f"\\{accent}{{{body}}}"
+    already_prefix = f"\\{accent}{{"
+
+    def repl(match: re.Match) -> str:
+        start, end = match.span()
+        prev = text[start - 1] if start > 0 else ""
+        nxt = text[end] if end < len(text) else ""
+        if prev and (prev.isalnum() or prev in r"\_^"):
+            return match.group(0)
+        if nxt and (nxt.isalnum() or nxt in "_^"):
+            return match.group(0)
+        if text[max(0, start - len(already_prefix)):start] == already_prefix and nxt == "}":
+            return match.group(0)
+        return replacement
+
+    return pattern.sub(repl, text)
+
+
 def _restore_accents_in_graph(
     graph: dict | None,
     accent_map: dict[str, str],
 ) -> None:
-    """Re-wrap stripped accents in each node's display ``latex`` field.
+    """Re-wrap stripped accents in node display latex and subexpr fields.
 
-    For every ``{body: accent}`` in *accent_map*, find nodes whose latex is
-    a bare ``body`` or ``body`` plus a subscript/superscript, and restore
-    ``\\accent{body}`` at the front so the graph still shows ``\\vec{F}``
-    rather than a plain ``F``.
+    For every ``{body: accent}`` in *accent_map*, restore leaf nodes whose
+    ``latex`` is exactly that stripped body. Then rewrite standalone body
+    occurrences inside every node's ``subexpr`` so tooltips/labels keep the
+    same visual accents as the original LaTeX. Exact leaf matching avoids
+    accidentally turning a separate plain subscripted symbol like ``E_{0}``
+    into ``\\vec{E}_{0}`` just because ``\\vec{E}`` appeared elsewhere.
     """
     if not graph or not accent_map:
         return
     nodes = graph.get("nodes") or []
+    accent_items = [
+        (variant, accent)
+        for body, accent in accent_map.items()
+        for variant in _accent_body_variants(body)
+    ]
+    accent_items.sort(key=lambda item: -len(item[0]))
+
     for node in nodes:
         if not isinstance(node, dict):
             continue
+
+        subexpr = node.get("subexpr")
+        if isinstance(subexpr, str) and subexpr:
+            for body, accent in accent_items:
+                subexpr = _restore_accented_symbol_in_latex(subexpr, body, accent)
+            node["subexpr"] = subexpr
+
         if node.get("type") in ("operator", "relation"):
             continue
         latex = node.get("latex")
         if not isinstance(latex, str) or not latex:
             continue
-        for body, accent in accent_map.items():
-            # Match either ``body`` exactly or ``body<boundary>...`` where
-            # boundary is ``_``/``^`` (subscript / superscript). Skip if the
-            # accent is already present (e.g. authored graphs).
-            if f"\\{accent}{{{body}}}" in latex:
-                continue
-            if latex == body:
+        for body, accent in accent_items:
+            if latex == body and f"\\{accent}{{{body}}}" not in latex:
                 node["latex"] = f"\\{accent}{{{body}}}"
                 if accent == "vec":
                     node["type"] = "vector"
                 break
-            if latex.startswith(body) and len(latex) > len(body):
-                tail = latex[len(body):]
-                if tail[0] in "_^":
-                    node["latex"] = f"\\{accent}{{{body}}}{tail}"
-                    if accent == "vec":
-                        node["type"] = "vector"
-                    break
 
 
 def _substitute_multichar_subscripts(latex: str) -> tuple[str, dict[str, str]]:
