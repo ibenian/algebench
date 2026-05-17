@@ -2530,6 +2530,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/{name}.js")
     async def get_module_js(name: str):
         """Serve any top-level ES module from the static directory."""
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+            return Response(status_code=404)
         if name not in _TOP_LEVEL_MODULES:
             return Response(status_code=404)
         static_root = static_dir.resolve()
