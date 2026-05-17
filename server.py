@@ -2506,8 +2506,16 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             return JSONResponse({"error": str(e)}, status_code=500)
 
     @fastapp.get("/graph-panel/{filename:path}")
-    async def get_graph_panel_file(filename: str):
-        """Serve files from static/graph-panel/ subdirectory."""
+        normalized = os.path.normpath(filename).replace("\\", "/")
+        # Reject absolute/traversal and malformed path segments early.
+        if (
+            not normalized
+            or os.path.isabs(normalized)
+            or normalized.startswith("..")
+            or "/.." in normalized
+            or any(part in ("", ".", "..") for part in normalized.split("/"))
+            or not re.fullmatch(r"[A-Za-z0-9._\-/]+", normalized)
+        ):
         normalized = os.path.normpath(filename)
         if os.path.isabs(normalized) or normalized.startswith('..'):
             return Response(status_code=404)
