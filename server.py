@@ -2250,6 +2250,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/objects/{filename:path}")
     async def get_objects_js(filename: str):
         """Serve ES module files from static/objects/ subdirectory."""
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+\.js", filename):
+            return Response(status_code=404)
         normalized = os.path.normpath(filename)
         if os.path.isabs(normalized) or normalized.startswith('..'):
             return Response(status_code=404)
@@ -2259,7 +2261,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             return Response(status_code=404)
         if not path.is_file() or path.suffix != '.js':
             return Response(status_code=404)
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             js = f.read()
         return Response(content=js.encode('utf-8'), media_type="application/javascript",
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
