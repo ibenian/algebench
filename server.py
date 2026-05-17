@@ -1463,10 +1463,12 @@ def resolve_scene_path(scene_arg):
 
 
 def resolve_scene_path_safe(scene_arg):
-    """Resolve scene path restricted to scenes_dir (for API use).
+    """Resolve scene path restricted to allowed roots (for API use).
 
-    Only permits paths that resolve inside scenes_dir, preventing
-    arbitrary local file reads via the HTTP API.
+    Only permits paths that resolve inside scenes_dir or script_dir,
+    preventing arbitrary local file reads via the HTTP API.
+    Absolute paths are allowed if they fall within the allowed roots
+    (needed for --scene startup and frontend refresh flows).
     """
     if not scene_arg:
         return None
@@ -1474,17 +1476,18 @@ def resolve_scene_path_safe(scene_arg):
     if raw.startswith('~'):
         return None
     candidate = Path(raw)
+    allowed_roots = (scenes_dir.resolve(), script_dir.resolve())
     if candidate.is_absolute():
+        resolved = candidate.resolve()
+        if not any(resolved.is_relative_to(root) for root in allowed_roots):
+            return None
+        if resolved.exists() and resolved.is_file():
+            return resolved
         return None
-    scenes_root = scenes_dir.resolve()
-    candidates = [scenes_dir / candidate]
-    if not raw.startswith('scenes/') and not raw.startswith('scenes\\'):
-        candidates.append(scenes_dir / candidate)
-    else:
-        candidates.append(script_dir / candidate)
+    candidates = [script_dir / candidate, scenes_dir / candidate]
     for path in candidates:
         resolved = path.resolve()
-        if not resolved.is_relative_to(scenes_root):
+        if not any(resolved.is_relative_to(root) for root in allowed_roots):
             continue
         if resolved.exists() and resolved.is_file():
             return resolved
