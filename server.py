@@ -2633,11 +2633,19 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/domains/{path:path}")
     async def get_domain_file(path: str):
         normalized = os.path.normpath(path)
-        if os.path.isabs(normalized) or normalized.startswith('..'):
+        if (
+            not normalized
+            or normalized == '.'
+            or os.path.isabs(normalized)
+            or normalized.startswith('..')
+            or '\\' in path
+        ):
             return Response(content=b'Domain not found', status_code=404)
         domains_root = (static_dir / 'domains').resolve()
         domain_path = (domains_root / normalized).resolve()
-        if not str(domain_path).startswith(str(domains_root) + os.sep):
+        try:
+            domain_path.relative_to(domains_root)
+        except ValueError:
             return Response(content=b'Domain not found', status_code=404)
         if domain_path.exists() and domain_path.is_file():
             with open(domain_path, 'rb') as f:
