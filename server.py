@@ -2646,6 +2646,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     @fastapp.get("/domains/{path:path}")
     async def get_domain_file(path: str):
+        if not re.fullmatch(r"[A-Za-z0-9_\-./]+", path or ""):
+            return Response(content=b'Domain not found', status_code=404)
         normalized = os.path.normpath(path)
         if (
             not normalized
