@@ -717,7 +717,7 @@ export function setupJsonViewer() {
         if (imports.length > 0 && importsBar) {
             importsBar.innerHTML = '<span class="imports-label">Imports</span>' +
                 imports.map(name =>
-                    `<a href="/api/domains/${encodeURIComponent(name)}" target="_blank" rel="noopener">${name} ↗</a>`
+                    `<a href="/api/domains/${encodeURIComponent(name)}" target="_blank" rel="noopener">${_escHtml(name)} ↗</a>`
                 ).join('');
             importsBar.classList.remove('hidden');
         } else if (importsBar) {

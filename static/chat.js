@@ -975,7 +975,11 @@ function renderToolCallChip(tc) {
     const summary = document.createElement('div');
     summary.className = 'tool-call-summary';
     summary.style.flex = '1';
-    summary.innerHTML = typeof renderMarkdown === 'function' ? renderMarkdown(friendlyText) : friendlyText;
+    if (typeof renderMarkdown === 'function') {
+        summary.innerHTML = renderMarkdown(friendlyText);
+    } else {
+        summary.textContent = friendlyText;
+    }
     header.appendChild(summary);
 
     // Tiny icon: opens popup with resolved exec args/result.

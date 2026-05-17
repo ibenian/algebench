@@ -4,7 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { renderMarkdown, renderKaTeX, parseColor, colorToCSS, injectAskButtons, makeAiAskButton } from '/labels.js';
+import { renderMarkdown, renderKaTeX, parseColor, colorToCSS, escapeHtml, injectAskButtons, makeAiAskButton } from '/labels.js';
 import { compileExpr, evalExpr, _getMathNamesAndValues, EXTENSION_NAMES } from '/expr.js';
 import { getSliderIds, syncSliderState } from '/sliders.js';
 import { worldCameraToData } from '/coords.js';
@@ -237,7 +237,7 @@ export function buildLegend(elements) {
         const clickableIds = (it.ids || []).filter(id => state.elementRegistry[id]);
         const hidden = clickableIds.length > 0 && clickableIds.every(id => state.legendToggledOff.has(id));
         const cls = 'legend-item' + (clickableIds.length ? ' legend-clickable' : '') + (hidden ? ' legend-hidden' : '');
-        const dataAttr = clickableIds.length ? ` data-element-ids="${clickableIds.join(',')}"` : '';
+        const dataAttr = clickableIds.length ? ` data-element-ids="${escapeHtml(clickableIds.join(','))}"` : '';
         const swatchStyle = hidden
             ? `background:${colorToCSS(it.color)}; opacity:0.3`
             : `background:${colorToCSS(it.color)}`;
