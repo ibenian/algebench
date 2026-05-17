@@ -2623,7 +2623,9 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             return Response(content=b'Domain not found', status_code=404)
         domains_root = (static_dir / 'domains').resolve()
         docs_path = (domains_root / normalized / 'docs.json').resolve()
-        if not str(docs_path).startswith(str(domains_root) + os.sep):
+        try:
+            docs_path.relative_to(domains_root)
+        except ValueError:
             return Response(content=b'Domain not found', status_code=404)
         if docs_path.exists():
             with open(docs_path, 'rb') as f:
