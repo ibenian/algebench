@@ -4,9 +4,9 @@
 
 | Field | Value |
 |---|---|
-| **Branch** | `fix/path-injection-hardening` |
-| **Commit** | `bcf4662` |
-| **Date** | 2026-05-16 22:36:07 -0400 |
+| **Branch** | `fix/code-scanning-32-xss-dom` |
+| **Commit** | `083b049` |
+| **Date** | 2026-05-16 22:54:56 -0400 |
 
 ## Language Breakdown
 
@@ -17,7 +17,7 @@
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "JavaScript", "Python", "CSS", "HTML", "Shell", "BASH"]
-  bar [49536, 15568, 11740, 4219, 395, 137, 33]
+  bar [49536, 15572, 11740, 4219, 395, 137, 33]
 ```
 
 ## Summary by Language
@@ -27,7 +27,7 @@ xychart-beta horizontal
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  JSON                     41        49537        49536            0            1
- JavaScript               46        17999        15568          971         1460
+ JavaScript               46        18003        15572          971         1460
  Python                   31        15213        11740         1724         1749
  CSS                       3         4581         4219          169          193
  Shell                     2          172          137           14           21
@@ -47,7 +47,7 @@ xychart-beta horizontal
  |- Python                 2           38           30            2            6
  (Total)                            12036         1501         7938         2597
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   183       100704        83761        10852         6091
+ Total                   183       100708        83765        10852         6091
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -57,12 +57,12 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- JavaScript               46        17999        15568          971         1460
+ JavaScript               46        18003        15572          971         1460
 ─────────────────────────────────────────────────────────────────────────────────
  |bench/static/graph-view.js         2140         1664          319          157
  |nch/static/json-browser.js         1403         1361            5           37
  |panel/d3-semantic-graph.js         1452         1173          117          162
- |h/algebench/static/chat.js         1425         1160          113          152
+ |h/algebench/static/chat.js         1429         1164          113          152
  |lgebench/static/overlay.js         1168         1101           29           38
  |/algebench/static/proof.js         1109         1040           33           36
  |nch/static/scene-loader.js          942          801           46           95
@@ -122,7 +122,7 @@ xychart-beta horizontal
  |islunar-dynamics/docs.json          122          122            0            0
  |tmospheric-entry/docs.json           41           41            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                    53        23255        20451         1147         1657
+ Total                    53        23259        20455         1147         1657
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -174,6 +174,6 @@ xychart-beta horizontal
 
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
-| JavaScript (frontend) | 15568 | 57% |
+| JavaScript (frontend) | 15572 | 57% |
 | Python (backend) | 11740 | 43% |
-| **Total** | **27308** | **100%** |
+| **Total** | **27312** | **100%** |
