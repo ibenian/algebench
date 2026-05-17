@@ -174,6 +174,16 @@ RELATION_MAP: list[tuple[str, dict[str, str]]] = [
     (r"\lt", {"op": "less_than", "label": "less than", "emoji": "<"}),
 ]
 
+_STYLE_SYMBOL_COMMAND_RE = re.compile(
+    r"\\(?P<style>mathbb|mathbf|mathcal|mathfrak|mathscr|mathrm)\s*"
+    r"\{(?P<body>[^{}]+)\}"
+)
+_SIMPLE_STYLED_SYMBOL_RE = re.compile(
+    r"(?:\\[a-zA-Z]+|[a-zA-Z])"
+    r"(?:_(?:\{[^{}]+\}|[a-zA-Z0-9]+))?"
+    r"(?:\^(?:\{[^{}]+\}|[a-zA-Z0-9]+))?"
+)
+
 
 # ---------------------------------------------------------------------------
 # Graph builder
@@ -190,18 +200,9 @@ def _extract_latex_commands(latex: str) -> dict[str, str]:
     # Font/style wrappers like ``\mathbb{C}`` are parsed by SymPy as an
     # implicit product (``mathbb * C``). Track the wrapped symbol's LaTeX
     # so we can restore it after unwrapping before parse.
-    style_pat = re.compile(
-        r"\\(?P<style>mathbb|mathbf|mathcal|mathfrak|mathscr|mathrm)\s*"
-        r"\{(?P<body>[^{}]+)\}"
-    )
-    symbol_pat = re.compile(
-        r"(?:\\[a-zA-Z]+|[a-zA-Z])"
-        r"(?:_(?:\{[^{}]+\}|[a-zA-Z0-9]+))?"
-        r"(?:\^(?:\{[^{}]+\}|[a-zA-Z0-9]+))?"
-    )
-    for m in style_pat.finditer(latex):
+    for m in _STYLE_SYMBOL_COMMAND_RE.finditer(latex):
         body = m.group("body").strip()
-        if not symbol_pat.fullmatch(body):
+        if not _SIMPLE_STYLED_SYMBOL_RE.fullmatch(body):
             continue
         sym_name = body[1:] if body.startswith("\\") else body
         commands[sym_name] = m.group(0)
@@ -215,25 +216,15 @@ def _strip_symbol_font_commands(latex: str) -> str:
     For symbol-like bodies, replace the wrapper with its inner symbol
     (``C``), while preserving the original style via ``_extract_latex_commands``.
     """
-    style_pat = re.compile(
-        r"\\(?P<style>mathbb|mathbf|mathcal|mathfrak|mathscr|mathrm)\s*"
-        r"\{(?P<body>[^{}]+)\}"
-    )
-    symbol_pat = re.compile(
-        r"(?:\\[a-zA-Z]+|[a-zA-Z])"
-        r"(?:_(?:\{[^{}]+\}|[a-zA-Z0-9]+))?"
-        r"(?:\^(?:\{[^{}]+\}|[a-zA-Z0-9]+))?"
-    )
-
     def _repl(m: re.Match) -> str:
         body = m.group("body").strip()
-        if not symbol_pat.fullmatch(body):
+        if not _SIMPLE_STYLED_SYMBOL_RE.fullmatch(body):
             return m.group(0)
         # Keep braces so neighboring commands (e.g. ``\in\mathbb{C}``) do
         # not fuse into a single token like ``\inC`` after unwrapping.
         return "{" + body + "}"
 
-    return style_pat.sub(_repl, latex)
+    return _STYLE_SYMBOL_COMMAND_RE.sub(_repl, latex)
 
 
 def parse_var_overrides(var_specs: list[str] | None) -> dict[str, dict[str, str]]:
