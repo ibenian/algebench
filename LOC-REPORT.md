@@ -5,8 +5,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `copilot/fix-semantic-graph-mathbb-rendering` |
-| **Commit** | `23f4a6b` |
-| **Date** | 2026-05-17 20:49:07 +0000 |
+| **Commit** | `ec21bdf` |
+| **Date** | 2026-05-17 18:03:52 -0400 |
 
 ## Language Breakdown
 
@@ -17,7 +17,7 @@
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "JavaScript", "Python", "CSS", "HTML", "Shell", "BASH"]
-  bar [49536, 15585, 11800, 4219, 395, 137, 33]
+  bar [49613, 15585, 11800, 4219, 395, 137, 33]
 ```
 
 ## Summary by Language
@@ -26,7 +26,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- JSON                     41        49537        49536            0            1
+ JSON                     41        49614        49613            0            1
  JavaScript               46        18021        15585          971         1465
  Python                   31        15288        11800         1733         1755
  CSS                       3         4581         4219          169          193
@@ -47,7 +47,7 @@ xychart-beta horizontal
  |- Python                 2           38           30            2            6
  (Total)                            12036         1501         7938         2597
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   183       100801        83838        10861         6102
+ Total                   183       100878        83915        10861         6102
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
