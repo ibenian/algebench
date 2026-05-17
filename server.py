@@ -1438,14 +1438,14 @@ def list_builtin_scenes():
 
 def load_builtin_scene(name):
     """Load a built-in scene JSON by name."""
+    if not re.fullmatch(r"[A-Za-z0-9_.\-/]+", name or ""):
+        return None
     normalized = os.path.normpath(name)
     if os.path.isabs(normalized) or normalized.startswith('..'):
         return None
     resolved_root = scenes_dir.resolve()
     path = (resolved_root / f"{normalized}.json").resolve()
-    try:
-        path.relative_to(resolved_root)
-    except ValueError:
+    if not str(path).startswith(str(resolved_root) + os.sep):
         return None
     if path.exists():
         with open(path, 'r') as f:
@@ -2250,7 +2250,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/objects/{filename:path}")
     async def get_objects_js(filename: str):
         """Serve ES module files from static/objects/ subdirectory."""
-        if not re.fullmatch(r"[A-Za-z0-9_.-]+\.js", filename):
+        if not re.fullmatch(r"[A-Za-z0-9_.\-/]+", filename):
             return Response(status_code=404)
         normalized = os.path.normpath(filename)
         if os.path.isabs(normalized) or normalized.startswith('..'):
@@ -2261,7 +2261,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             return Response(status_code=404)
         if not path.is_file() or path.suffix != '.js':
             return Response(status_code=404)
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, 'r') as f:
             js = f.read()
         return Response(content=js.encode('utf-8'), media_type="application/javascript",
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
@@ -2508,16 +2508,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             return JSONResponse({"error": str(e)}, status_code=500)
 
     @fastapp.get("/graph-panel/{filename:path}")
-        normalized = os.path.normpath(filename).replace("\\", "/")
-        # Reject absolute/traversal and malformed path segments early.
-        if (
-            not normalized
-            or os.path.isabs(normalized)
-            or normalized.startswith("..")
-            or "/.." in normalized
-            or any(part in ("", ".", "..") for part in normalized.split("/"))
-            or not re.fullmatch(r"[A-Za-z0-9._\-/]+", normalized)
-        ):
+    async def get_graph_panel_file(filename: str):
+        """Serve files from static/graph-panel/ subdirectory."""
+        if not re.fullmatch(r"[A-Za-z0-9._\-/]+", filename):
+            return Response(status_code=404)
         normalized = os.path.normpath(filename)
         if os.path.isabs(normalized) or normalized.startswith('..'):
             return Response(status_code=404)
@@ -2632,16 +2626,11 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     @fastapp.get("/api/domains/{name}")
     async def get_domain_docs(name: str):
-        if not re.fullmatch(r'[A-Za-z0-9_-]+', name):
-            return Response(content=b'Domain not found', status_code=404)
-        normalized = os.path.normpath(name)
-        if os.path.isabs(normalized) or normalized.startswith('..'):
+        if not re.fullmatch(r'[A-Za-z0-9_\-]+', name):
             return Response(content=b'Domain not found', status_code=404)
         domains_root = (static_dir / 'domains').resolve()
-        docs_path = (domains_root / normalized / 'docs.json').resolve()
-        try:
-            docs_path.relative_to(domains_root)
-        except ValueError:
+        docs_path = (domains_root / name / 'docs.json').resolve()
+        if not str(docs_path).startswith(str(domains_root) + os.sep):
             return Response(content=b'Domain not found', status_code=404)
         if docs_path.exists():
             with open(docs_path, 'rb') as f:
@@ -2653,19 +2642,11 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         if not re.fullmatch(r"[A-Za-z0-9_\-./]+", path or ""):
             return Response(content=b'Domain not found', status_code=404)
         normalized = os.path.normpath(path)
-        if (
-            not normalized
-            or normalized == '.'
-            or os.path.isabs(normalized)
-            or normalized.startswith('..')
-            or '\\' in path
-        ):
+        if os.path.isabs(normalized) or normalized.startswith('..'):
             return Response(content=b'Domain not found', status_code=404)
         domains_root = (static_dir / 'domains').resolve()
         domain_path = (domains_root / normalized).resolve()
-        try:
-            domain_path.relative_to(domains_root)
-        except ValueError:
+        if not str(domain_path).startswith(str(domains_root) + os.sep):
             return Response(content=b'Domain not found', status_code=404)
         if domain_path.exists() and domain_path.is_file():
             with open(domain_path, 'rb') as f:
