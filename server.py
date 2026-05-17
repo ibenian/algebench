@@ -1304,7 +1304,7 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
                     print(f"   ⚠️  auto-graph crashed for {math_src!r}: {e}")
                     graph = None
                     error_reason = 'parse_crashed'
-                    error_message = str(e) or e.__class__.__name__
+                    error_message = 'Parser crashed while processing this expression'
                 if graph:
                     _apply_highlights_to_graph(
                         graph, hl_pairs, step.get('highlights') or {},
@@ -1728,7 +1728,8 @@ def call_gemini_chat(message, history, context):
                 config=config,
             )
         except Exception as e:
-            return f"Gemini API error: {str(e)}", [], debug_info
+            print(f"   ❌ Gemini API error: {e}", flush=True)
+            return "Sorry, I encountered an error processing your request. Please try again.", [], debug_info
 
         # Log finish reason for debugging
         finish = None
@@ -2292,7 +2293,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                     themes.append({"name": name, "mode": "light"})
             return JSONResponse({"themes": themes})
         except Exception as e:
-            return JSONResponse({"error": str(e), "themes": []}, status_code=500)
+            print(f"   ❌ /api/graph/themes: {e}", flush=True)
+            return JSONResponse({"error": "internal error loading themes", "themes": []}, status_code=500)
 
     @fastapp.get("/api/graph/theme/{name}")
     async def get_graph_theme(name: str):
@@ -2307,7 +2309,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         except FileNotFoundError:
             return JSONResponse({"error": f"theme '{name}' not found"}, status_code=404)
         except Exception as e:
-            return JSONResponse({"error": str(e)}, status_code=500)
+            print(f"   ❌ /api/graph/theme: {e}", flush=True)
+            return JSONResponse({"error": "internal error loading theme"}, status_code=500)
 
     class MermaidRenderRequest(BaseModel):
         graph: dict = {}
@@ -2334,10 +2337,13 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         try:
             graph = _derive_semantic_graph(req.latex, domain=req.domain)
             return JSONResponse({"graph": graph})
+        except (ValueError, SyntaxError, KeyError) as e:
+            print(f"   ⚠️ /api/graph/from-latex parse error: {e}", flush=True)
+            return JSONResponse({"error": "failed to derive semantic graph from LaTeX"}, status_code=400)
         except Exception as e:
             import traceback
             print(f"   ❌ /api/graph/from-latex: {e}\n{traceback.format_exc()}")
-            return JSONResponse({"error": str(e)}, status_code=400)
+            return JSONResponse({"error": "internal error processing LaTeX"}, status_code=500)
 
     class GraphEnrichRequest(BaseModel):
         graph: dict
@@ -2402,7 +2408,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             except _ValidationError as exc:
                 print(f"[enrich] input failed validation: {exc}", flush=True)
                 return JSONResponse(
-                    {"error": f"input graph failed schema validation: {exc}"},
+                    {"error": "input graph failed schema validation"},
                     status_code=400,
                 )
 
@@ -2448,19 +2454,21 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             try:
                 from agents import AgentError, SemanticGraphEnrichmentAgent
             except ImportError as e:
-                return JSONResponse({"error": f"agents package unavailable: {e}"}, status_code=503)
+                print(f"[enrich] import error: {e}", flush=True)
+                return JSONResponse({"error": "enrichment service unavailable"}, status_code=503)
 
             if _graph_enricher is None:
                 try:
                     _graph_enricher = SemanticGraphEnrichmentAgent()
                 except AgentError as e:
-                    return JSONResponse({"error": str(e)}, status_code=503)
+                    print(f"[enrich] agent init error: {e}", flush=True)
+                    return JSONResponse({"error": "enrichment service unavailable"}, status_code=503)
 
             try:
                 enriched_model = await _graph_enricher.aenrich(graph_model, context_in)
             except AgentError as e:
                 print(f"[enrich] agent error: {e}", flush=True)
-                return JSONResponse({"error": str(e)}, status_code=502)
+                return JSONResponse({"error": "enrichment failed"}, status_code=502)
 
             # Serialize back to the wire format for the cache and JSON
             # response — keeps the cache hit path returning dicts so the
@@ -2477,7 +2485,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         except Exception as e:
             import traceback
             print(f"   ❌ /api/graph/enrich: {e}\n{traceback.format_exc()}")
-            return JSONResponse({"error": str(e)}, status_code=500)
+            return JSONResponse({"error": "internal error during enrichment"}, status_code=500)
 
     @fastapp.post("/api/graph/mermaid")
     async def post_graph_mermaid(req: MermaidRenderRequest):
@@ -2500,12 +2508,12 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                                  "direction": theme.get("direction"),
                                  "mode": theme.get("mode", "dark"),
                                  "edgeStyles": theme.get("edgeStyles", {})})
-        except FileNotFoundError as e:
-            return JSONResponse({"error": str(e)}, status_code=404)
+        except FileNotFoundError:
+            return JSONResponse({"error": "theme not found"}, status_code=404)
         except Exception as e:
             import traceback
             print(f"   ❌ /api/graph/mermaid: {e}\n{traceback.format_exc()}")
-            return JSONResponse({"error": str(e)}, status_code=500)
+            return JSONResponse({"error": "internal error generating mermaid"}, status_code=500)
 
     @fastapp.get("/graph-panel/{filename:path}")
     async def get_graph_panel_file(filename: str):
@@ -2602,7 +2610,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         except json.JSONDecodeError:
             return JSONResponse({"error": "Invalid JSON in scene file"}, status_code=400)
         except Exception as e:
-            return JSONResponse({"error": str(e)}, status_code=500)
+            print(f"   ❌ /api/scene_file: {e}", flush=True)
+            return JSONResponse({"error": "internal error reading scene file"}, status_code=500)
 
     @fastapp.get("/api/domains")
     async def get_domains():
@@ -2683,12 +2692,14 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             )
             if DEBUG_MODE:
                 print(f"   💬 Response ({len(response_text)} chars): {response_text}")
-            return JSONResponse({"response": response_text, "toolCalls": tool_calls,
-                                 "debug": debug_info})
+            result = {"response": response_text, "toolCalls": tool_calls}
+            if DEBUG_MODE:
+                result["debug"] = debug_info
+            return JSONResponse(result)
         except Exception as e:
             import traceback
             print(f"   ❌ /api/chat error: {e}\n{traceback.format_exc()}")
-            return JSONResponse({"error": str(e)}, status_code=500)
+            return JSONResponse({"error": "internal error processing chat request"}, status_code=500)
 
     @fastapp.post("/api/tts/stream")
     async def api_tts_stream(req: TtsRequest, request: Request):
