@@ -2630,6 +2630,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     @fastapp.get("/api/domains/{name}")
     async def get_domain_docs(name: str):
+        if not re.fullmatch(r'[A-Za-z0-9_-]+', name):
+            return Response(content=b'Domain not found', status_code=404)
         normalized = os.path.normpath(name)
         if os.path.isabs(normalized) or normalized.startswith('..'):
             return Response(content=b'Domain not found', status_code=404)
