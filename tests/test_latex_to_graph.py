@@ -151,6 +151,20 @@ class TestKnownVariables:
         assert node["latex"] == "x_{0}"
         assert node["subexpr"] == "x_{0}"
 
+    def test_mathbb_symbol_unwrapped_without_leaking_command_node(self):
+        g = latex_to_semantic_graph(r"\alpha \in \mathbb{C}")
+        c = _find_node(g, id="C")
+        assert c is not None
+        assert c["latex"] == r"\mathbb{C}"
+        assert _find_node(g, id="mathbb") is None
+
+    def test_bold_symbol_unwrapped_without_leaking_command_node(self):
+        g = latex_to_semantic_graph(r"\mathbf{x} + 1")
+        x = _find_node(g, id="x")
+        assert x is not None
+        assert x["latex"] == r"\mathbf{x}"
+        assert _find_node(g, id="mathbf") is None
+
 
 # ---------------------------------------------------------------------------
 # Numbers and constants
