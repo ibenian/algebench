@@ -976,18 +976,20 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
     // (``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``).  ``nodeLongLabel``
     // encapsulates the precedence (``subexpr → latex → short``).
     const latex = nodeLongLabel(fullNode);
+    const isOp = fullNode.type === 'operator' || fullNode.type === 'relation' || fullNode.type === 'function';
+    const showEmoji = fullNode.emoji && !isOp;
     if (latex && window.katex) {
         try {
             const span = document.createElement('span');
             window.katex.render(latex, span, { displayMode: false, throwOnError: false });
             symbolEl.innerHTML = '';
-            if (fullNode.emoji) symbolEl.appendChild(document.createTextNode(fullNode.emoji + ' '));
+            if (showEmoji) symbolEl.appendChild(document.createTextNode(fullNode.emoji + ' '));
             symbolEl.appendChild(span);
         } catch (_) {
-            symbolEl.textContent = (fullNode.emoji || '') + ' ' + (fullNode.label || fullNode.id);
+            symbolEl.textContent = (showEmoji ? fullNode.emoji + ' ' : '') + (fullNode.label || fullNode.id);
         }
     } else {
-        symbolEl.textContent = (fullNode.emoji || '') + ' ' + (fullNode.label || fullNode.id);
+        symbolEl.textContent = (showEmoji ? fullNode.emoji + ' ' : '') + (fullNode.label || fullNode.id);
     }
     symbolEl.style.opacity = '1';
     symbolEl.style.fontSize = '';

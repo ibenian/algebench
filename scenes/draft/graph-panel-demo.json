@@ -1920,60 +1920,36 @@
               "graph": {
                 "nodes": [
                   {
-                    "id": "__multiply_1",
-                    "type": "operator",
-                    "op": "multiply",
-                    "subexpr": "\\alpha \\in \\mathbb{C}"
-                  },
-                  {
                     "id": "alpha",
                     "type": "scalar",
                     "latex": "\\alpha",
                     "subexpr": "\\alpha"
                   },
                   {
-                    "id": "__multiply_2",
-                    "type": "operator",
-                    "op": "multiply",
-                    "subexpr": "\\in \\mathbb{C}"
-                  },
-                  {
-                    "id": "in",
-                    "type": "scalar",
-                    "latex": "\\in",
-                    "subexpr": "\\in"
-                  },
-                  {
                     "id": "C",
                     "type": "scalar",
                     "latex": "\\mathbb{C}",
-                    "subexpr": "\\mathbb{C}"
+                    "subexpr": "{C}"
+                  },
+                  {
+                    "id": "__element_of_1",
+                    "type": "relation",
+                    "subexpr": "\\alpha \\in \\mathbb{C}",
+                    "op": "element_of",
+                    "label": "element of",
+                    "emoji": "∈"
                   }
                 ],
                 "edges": [
                   {
                     "from": "alpha",
-                    "to": "__multiply_1",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "in",
-                    "to": "__multiply_2",
-                    "semantic": "direct",
-                    "weight": 1.0
+                    "to": "__element_of_1",
+                    "role": "lhs"
                   },
                   {
                     "from": "C",
-                    "to": "__multiply_2",
-                    "semantic": "direct",
-                    "weight": 1.0
-                  },
-                  {
-                    "from": "__multiply_2",
-                    "to": "__multiply_1",
-                    "semantic": "direct",
-                    "weight": 1.0
+                    "to": "__element_of_1",
+                    "role": "rhs"
                   }
                 ],
                 "classification": {
