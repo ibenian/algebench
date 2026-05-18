@@ -129,6 +129,7 @@ OPERATOR_MAP: dict[type, str] = {
 
 _ASYMMETRIC_OPS: set[str] = {
     "greater_than", "less_than", "greater_equal", "less_equal",
+    "element_of", "not_element_of",
 }
 
 # Synthetic placeholder names emitted by ``_collapse_compound_symbols``,
@@ -170,6 +171,8 @@ RELATION_MAP: list[tuple[str, dict[str, str]]] = [
     (r"\to", {"op": "maps_to", "label": "maps to", "emoji": "→"}),
     (r"\rightarrow", {"op": "maps_to", "label": "maps to", "emoji": "→"}),
     (r"\neq", {"op": "not_equal", "label": "not equal to", "emoji": "≠"}),
+    (r"\notin", {"op": "not_element_of", "label": "not element of", "emoji": "∉"}),
+    (r"\in", {"op": "element_of", "label": "element of", "emoji": "∈"}),
     (r"\gt", {"op": "greater_than", "label": "greater than", "emoji": ">"}),
     (r"\lt", {"op": "less_than", "label": "less than", "emoji": "<"}),
 ]
@@ -354,6 +357,7 @@ _OPERATOR_KINDS: dict[str, str] = {
     "equals": "comparison", "not_equal": "comparison",
     "greater_than": "comparison", "less_than": "comparison",
     "greater_equal": "comparison", "less_equal": "comparison",
+    "element_of": "comparison", "not_element_of": "comparison",
     # logical
     "implies": "logical", "iff": "logical",
     "not": "logical", "logical_not": "logical",
