@@ -1495,7 +1495,7 @@ def load_builtin_scene(name):
     if not str(path).startswith(str(resolved_root) + os.sep):
         return None
     if path.exists():
-        return _load_scene(path)
+        return _load_scene(path)  # lgtm[py/path-injection]
     return None
 
 
