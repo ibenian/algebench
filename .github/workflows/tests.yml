@@ -2,10 +2,6 @@ name: Tests
 
 on:
   pull_request:
-    paths:
-      - 'scripts/**/*.py'
-      - 'tests/**/*.py'
-      - 'requirements.txt'
   push:
     branches: [main]
     paths:
@@ -26,16 +22,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check for relevant changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            python:
+              - 'scripts/**/*.py'
+              - 'tests/**/*.py'
+              - 'requirements.txt'
+
       - name: Set up Python
+        if: steps.filter.outputs.python == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
       - name: Install test runner
+        if: steps.filter.outputs.python == 'true'
         run: |
           ./run.sh -m pip install pytest -q
 
       - name: Run tests
+        if: steps.filter.outputs.python == 'true'
         id: tests
         run: |
           ./run.sh -m pytest tests/ -v --tb=short --junitxml=test-results.xml 2>&1 | tee test-output.txt
@@ -75,9 +84,7 @@ jobs:
             --body "$BODY"
 
       - name: Fail if tests failed
-        if: always()
+        if: always() && steps.tests.outputs.exit_code != '' && steps.tests.outputs.exit_code != '0'
         run: |
-          if [ "${{ steps.tests.outputs.exit_code }}" != "0" ]; then
-            echo "❌ Tests failed"
-            exit 1
-          fi
+          echo "❌ Tests failed"
+          exit 1
