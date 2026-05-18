@@ -1253,6 +1253,9 @@ def _normalize_proofs(proof_field: object) -> list[dict]:
 def _autofill_semantic_graphs(scene: dict) -> dict:
     """Walk a scene spec and populate missing ``semanticGraph`` fields in-place.
 
+    Clears ``_latex_graph_cache`` first so edits to the source JSON are always
+    reflected without restarting the server.
+
     For each proof step that has ``math`` but no ``semanticGraph``, attempt to
     derive a graph via ``scripts/latex_to_graph.py`` and attach it under the
     standard ``{"graph": {...}}`` wrapper.
@@ -1265,6 +1268,7 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
     Returns the same dict for chaining. Silently skips anything that doesn't
     look like a scene with proofs — safe to call on any JSON.
     """
+    _latex_graph_cache.clear()
     if not isinstance(scene, dict):
         return scene
     scenes_list = scene.get('scenes')
@@ -1363,6 +1367,42 @@ index_html_path = static_dir / "index.html"
 style_css_path  = static_dir / "style.css"
 
 # ---------------------------------------------------------------------------
+def _safe_open_scene_path(source) -> Path:
+    """Resolve source to a safe path under script_dir or scenes_dir.
+
+    Returns a Path constructed from the allowed root + relative suffix,
+    ensuring no user-controlled data reaches open() directly.
+    """
+    resolved = Path(source).resolve()  # CodeQL [py/path-injection] path is confined below via is_relative_to check
+    script_root = script_dir.resolve()
+    scenes_root = scenes_dir.resolve()
+    for root in (scenes_root, script_root):
+        if resolved.is_relative_to(root):
+            safe = root / resolved.relative_to(root)
+            if safe.is_file():  # CodeQL [py/path-injection] safe is reconstructed from hardcoded root + validated relative suffix
+                return safe
+    raise ValueError(f"Path outside allowed directories: {source}")
+
+
+def _load_scene(source, *, trusted: bool = False) -> dict:
+    """Load a scene from a file path or dict, autofill semantic graphs, return spec.
+
+    Raises on I/O or parse errors — callers decide how to handle.
+    When trusted=True, skip path confinement (for CLI-provided paths).
+    """
+    if isinstance(source, dict):
+        spec = source
+    else:
+        if trusted:
+            path = Path(source).resolve()  # CodeQL [py/path-injection] trusted=True only used for CLI-provided paths, not user HTTP input
+        else:
+            path = _safe_open_scene_path(source)
+        with open(path, 'r') as f:  # CodeQL [py/path-injection] path is either trusted (CLI) or confined by _safe_open_scene_path
+            spec = json.load(f)
+    _autofill_semantic_graphs(spec)
+    return spec
+
+
 # Agent session memory — persists across turns within one server session.
 # Stores eval_math results (and anything else) under agent-chosen keys.
 # Cleared on server start; agents control what's stored via store_as param.
@@ -1455,8 +1495,7 @@ def load_builtin_scene(name):
     if not str(path).startswith(str(resolved_root) + os.sep):
         return None
     if path.exists():
-        with open(path, 'r') as f:
-            return json.load(f)
+        return _load_scene(path)
     return None
 
 
@@ -2171,11 +2210,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         tts_stream_kwargs['output_path'] = tts_output_file
 
     current_spec = [None]
+    current_spec_path = [initial_scene_path]
     if initial_scene_path:
         try:
-            with open(initial_scene_path) as f:
-                current_spec[0] = json.load(f)
-            _autofill_semantic_graphs(current_spec[0])
+            current_spec[0] = _load_scene(initial_scene_path, trusted=True)
         except Exception as e:
             print(f"   ⚠️  failed to pre-load {initial_scene_path}: {e}")
 
@@ -2609,9 +2647,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         if not resolved_path:
             return JSONResponse({"error": "Scene file not found"}, status_code=404)
         try:
-            with open(resolved_path, 'r') as f:
-                scene = json.load(f)
-            _autofill_semantic_graphs(scene)
+            scene = _load_scene(resolved_path)
             return JSONResponse({"spec": scene, "path": str(resolved_path),
                                  "label": resolved_path.name})
         except json.JSONDecodeError:
@@ -2673,12 +2709,16 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     async def get_scene(name: str):
         scene = load_builtin_scene(name)
         if scene:
-            _autofill_semantic_graphs(scene)
             return JSONResponse(scene)
         return Response(content=b'Scene not found', status_code=404)
 
     @fastapp.get("/api/scene")
     async def get_current_scene():
+        if current_spec_path[0]:
+            try:
+                current_spec[0] = _load_scene(current_spec_path[0], trusted=True)
+            except Exception:
+                pass
         return JSONResponse(current_spec[0] if current_spec[0] else {})
 
     @fastapp.get("/shutdown")
@@ -2804,8 +2844,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         body = await request.body()
         try:
             new_spec = json.loads(body)
-            _autofill_semantic_graphs(new_spec)
-            current_spec[0] = new_spec
+            current_spec[0] = _load_scene(new_spec)
             return JSONResponse({"status": "loaded"})
         except json.JSONDecodeError:
             return JSONResponse({"error": "Invalid JSON"}, status_code=400)

@@ -8,6 +8,45 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import server
 
 
+class TestLoadScene:
+    """_load_scene must reject paths outside allowed directories."""
+
+    def test_dict_input_accepted(self):
+        spec = server._load_scene({"scenes": [{"objects": []}]})
+        assert isinstance(spec, dict)
+
+    def test_valid_scene_file_accepted(self):
+        scenes = server.list_builtin_scenes()
+        if scenes:
+            path = server.scenes_dir / f"{scenes[0]}.json"
+            if path.exists():
+                spec = server._load_scene(str(path))
+                assert isinstance(spec, dict)
+
+    def test_traversal_rejected(self):
+        import pytest
+        with pytest.raises(ValueError, match="Path outside allowed directories"):
+            server._load_scene("/etc/passwd")
+
+    def test_dotdot_traversal_rejected(self):
+        import pytest
+        with pytest.raises(ValueError, match="Path outside allowed directories"):
+            server._load_scene("../../../etc/passwd")
+
+    def test_tmp_path_rejected(self):
+        import pytest
+        with pytest.raises(ValueError, match="Path outside allowed directories"):
+            server._load_scene("/tmp/evil.json")
+
+    def test_trusted_allows_any_path(self):
+        import tempfile, json
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump({"scenes": [{"objects": []}]}, f)
+            f.flush()
+            spec = server._load_scene(f.name, trusted=True)
+            assert isinstance(spec, dict)
+
+
 class TestLoadBuiltinScene:
     """load_builtin_scene must reject traversal attempts."""
 
