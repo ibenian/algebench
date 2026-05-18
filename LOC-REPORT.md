@@ -4,9 +4,9 @@
 
 | Field | Value |
 |---|---|
-| **Branch** | `fix/297-scene-file-caching` |
-| **Commit** | `77cdce5` |
-| **Date** | 2026-05-17 20:13:17 -0400 |
+| **Branch** | `fix/65-codeql-path-injection-suppression` |
+| **Commit** | `3912716` |
+| **Date** | 2026-05-17 20:28:24 -0400 |
 
 ## Language Breakdown
 
