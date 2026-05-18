@@ -1384,16 +1384,20 @@ def _safe_open_scene_path(source) -> Path:
     raise ValueError(f"Path outside allowed directories: {source}")
 
 
-def _load_scene(source) -> dict:
+def _load_scene(source, *, trusted: bool = False) -> dict:
     """Load a scene from a file path or dict, autofill semantic graphs, return spec.
 
     Raises on I/O or parse errors — callers decide how to handle.
+    When trusted=True, skip path confinement (for CLI-provided paths).
     """
     if isinstance(source, dict):
         spec = source
     else:
-        safe_path = _safe_open_scene_path(source)
-        with open(safe_path, 'r') as f:
+        if trusted:
+            path = Path(source).resolve()
+        else:
+            path = _safe_open_scene_path(source)
+        with open(path, 'r') as f:
             spec = json.load(f)
     _autofill_semantic_graphs(spec)
     return spec
@@ -2209,7 +2213,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     current_spec_path = [initial_scene_path]
     if initial_scene_path:
         try:
-            current_spec[0] = _load_scene(initial_scene_path)
+            current_spec[0] = _load_scene(initial_scene_path, trusted=True)
         except Exception as e:
             print(f"   ⚠️  failed to pre-load {initial_scene_path}: {e}")
 
@@ -2712,7 +2716,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     async def get_current_scene():
         if current_spec_path[0]:
             try:
-                current_spec[0] = _load_scene(current_spec_path[0])
+                current_spec[0] = _load_scene(current_spec_path[0], trusted=True)
             except Exception:
                 pass
         return JSONResponse(current_spec[0] if current_spec[0] else {})

@@ -38,6 +38,14 @@ class TestLoadScene:
         with pytest.raises(ValueError, match="Path outside allowed directories"):
             server._load_scene("/tmp/evil.json")
 
+    def test_trusted_allows_any_path(self):
+        import tempfile, json
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump({"scenes": [{"objects": []}]}, f)
+            f.flush()
+            spec = server._load_scene(f.name, trusted=True)
+            assert isinstance(spec, dict)
+
 
 class TestLoadBuiltinScene:
     """load_builtin_scene must reject traversal attempts."""
