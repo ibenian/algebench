@@ -553,6 +553,8 @@ function rebuildProofTree() {
         group.entries.forEach((entry) => {
             const proof = entry.proof;
             if (!proof || !proof.steps) return;
+            const specIdx = state.proofSpec ? state.proofSpec.indexOf(entry) : -1;
+            entry._entryId = _proofEntryId(entry, specIdx);
             const proofEl = document.createElement('div');
             proofEl.className = 'gp-tree-proof';
 
@@ -579,7 +581,7 @@ function rebuildProofTree() {
                 const stepEl = document.createElement('div');
                 stepEl.className = cls;
                 stepEl.dataset.sceneIdx = entry.sceneIndex != null ? entry.sceneIndex : '';
-                stepEl.dataset.proofId = proof.id || '';
+                stepEl.dataset.proofId = entry._entryId;
                 stepEl.dataset.stepIdx = sIdx;
 
                 const idxEl = document.createElement('span');
@@ -614,7 +616,7 @@ function rebuildProofTree() {
             header.addEventListener('click', () => proofEl.classList.toggle('expanded'));
             proofEl.appendChild(stepsEl);
 
-            if (isActiveProofEntry(entry)) proofEl.classList.add('expanded');
+            if (specIdx === state.proofActiveIndex) proofEl.classList.add('expanded');
             groupEl.appendChild(proofEl);
         });
         root.appendChild(groupEl);
@@ -622,12 +624,11 @@ function rebuildProofTree() {
     updateTreeHighlight();
 }
 
-function isActiveProofEntry(entry) {
-    const active = state.proofSpec && state.proofSpec[state.proofActiveIndex];
-    if (!active || !active.proof) return false;
-    return entry.proof && entry.proof.id &&
-        entry.proof.id === active.proof.id &&
-        entry.sceneIndex === active.sceneIndex;
+/** Stable identifier for a proof spec entry — uses the real proof id when
+ *  present, otherwise synthesises one from the spec-array position so that
+ *  every entry is matchable even when the lesson JSON omits the id field. */
+function _proofEntryId(entry, specIdx) {
+    return (entry.proof && entry.proof.id) || `__proof_${specIdx}`;
 }
 
 function handleTreeStepClick(entry, stepIdx) {
@@ -667,8 +668,8 @@ function handleTreeStepClick(entry, stepIdx) {
 function _forceActivateProofStep(entry, stepIdx) {
     // Ensure the tree-clicked proof becomes the active proof, then navigate the step.
     if (!state.proofSpec) return;
-    const targetIdx = state.proofSpec.findIndex(e =>
-        e.proof && e.proof.id && entry.proof && entry.proof.id === e.proof.id &&
+    const targetIdx = state.proofSpec.findIndex((e, idx) =>
+        _proofEntryId(e, idx) === entry._entryId &&
         e.sceneIndex === entry.sceneIndex);
     if (targetIdx < 0) return;
     if (targetIdx !== state.proofActiveIndex) {
@@ -684,13 +685,10 @@ function _forceActivateProofStep(entry, stepIdx) {
 
 function updateTreeHighlight() {
     const activeEntry = state.proofSpec && state.proofSpec[state.proofActiveIndex];
-    const activeId = activeEntry && activeEntry.proof && activeEntry.proof.id;
-    const activeSceneIdx = activeEntry && activeEntry.sceneIndex;
+    const activeId = activeEntry ? _proofEntryId(activeEntry, state.proofActiveIndex) : null;
     const activeStep = state.proofStepIndex;
     document.querySelectorAll('#graph-proof-tree .gp-tree-step').forEach(el => {
-        const elScene = el.dataset.sceneIdx === '' ? null : Number(el.dataset.sceneIdx);
-        const match = el.dataset.proofId === (activeId || '') &&
-            elScene === activeSceneIdx &&
+        const match = el.dataset.proofId === activeId &&
             Number(el.dataset.stepIdx) === activeStep;
         el.classList.toggle('active', match);
         if (match) {
