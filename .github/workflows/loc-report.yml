@@ -30,11 +30,19 @@ jobs:
       - name: Post summary
         run: cat LOC-REPORT.md >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Commit report if changed
+      - name: Commit report if code lines changed
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add LOC-REPORT.md
-          git diff --cached --quiet || git commit -m "docs: update lines-of-code report [skip ci]"
-          git push
+          # Strip volatile metadata (Branch/Commit/Date) before comparing
+          # so only actual code-line changes trigger a commit.
+          strip_meta() { sed '/^| \*\*\(Branch\|Commit\|Date\)\*\*/d' "$1"; }
+          git show HEAD:LOC-REPORT.md > /tmp/old-report.md 2>/dev/null || true
+          if [ -f /tmp/old-report.md ] && diff -q <(strip_meta /tmp/old-report.md) <(strip_meta LOC-REPORT.md) >/dev/null 2>&1; then
+            echo "No code-line changes detected — skipping commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add LOC-REPORT.md
+            git diff --cached --quiet || git commit -m "docs: update lines-of-code report [skip ci]"
+            git push
+          fi
