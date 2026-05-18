@@ -235,13 +235,13 @@ export class SemanticGraphPanel {
     const fieldsEl = this.panel.querySelector(".gp-fields");
     const emoji = data.emoji || "";
     const expr = this._subexprs[nodeId];
-    const hasOwnLatex = !!data.latex;
+    const isOp = data.type === 'operator' || data.type === 'relation' || data.type === 'function';
     // Details panel shows the *long label* — the full applied form
     // (``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``).  ``nodeLongLabel``
     // encapsulates the precedence (``subexpr → latex → short``).
     const titleLatex = nodeLongLabel(data) || null;
     const titleText = data.id || "";
-    const showEmoji = emoji && hasOwnLatex;
+    const showEmoji = emoji && !isOp;
 
     if (titleLatex && this.katex) {
       try {

@@ -171,6 +171,7 @@ const OPERATOR_GLYPHS = {
 const OPERATOR_LATEX = {
     equals: '=', greater_than: '>', less_than: '<',
     greater_equal: '\\geq', less_equal: '\\leq', not_equal: '\\neq',
+    element_of: '\\in', not_element_of: '\\notin',
     multiply: '\\times', add: '+', subtract: '-',
     divide: '\\div', integral: '\\int',
     implies: '\\Rightarrow', iff: '\\Leftrightarrow',
@@ -207,6 +208,7 @@ const OPERATOR_KINDS = {
     equals: 'comparison', not_equal: 'comparison',
     greater_than: 'comparison', less_than: 'comparison',
     greater_equal: 'comparison', less_equal: 'comparison',
+    element_of: 'comparison', not_element_of: 'comparison',
     implies: 'logical', iff: 'logical',
     not: 'logical', logical_not: 'logical',
     conjunction: 'logical', disjunction: 'logical',

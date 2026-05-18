@@ -175,6 +175,8 @@ RELATION_SYMBOLS: dict[str, str] = {
     "proportional": "∝",
     "approximately": "≈",
     "maps_to": "→",
+    "element_of": "∈",
+    "not_element_of": "∉",
 }
 
 
