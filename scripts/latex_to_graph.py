@@ -132,6 +132,12 @@ _ASYMMETRIC_OPS: set[str] = {
     "element_of", "not_element_of",
 }
 
+# Relations that scope over commas: commas on either side are operand
+# conjunctions, not statement separators.  Other (object-level) relations
+# like ``\in`` or ``\leq`` do NOT scope over commas — the comma split
+# runs first and the relation is found per-clause.
+_META_RELATION_OPS: set[str] = {"implies", "iff"}
+
 # Synthetic placeholder names emitted by ``_collapse_compound_symbols``,
 # ``_collapse_text_commands``, and ``_collapse_braket_notation``. Used to
 # gate placeholder restoration so user overrides keyed on real symbol names
@@ -1663,6 +1669,125 @@ def _split_on_top_level_comma(latex: str) -> list[str]:
     return nonempty if nonempty else [latex]
 
 
+_QUAD_COMMA_RE = re.compile(r",\s*\\(?:quad|qquad)\b")
+
+
+def _split_on_quad_comma(latex: str) -> list[str]:
+    r"""Split on ``, \quad`` or ``, \qquad`` at brace depth 0.
+
+    In mathematical typesetting, ``\quad`` (1 em space) after a comma is
+    the conventional signal for a **statement boundary** — it separates
+    independent assertions on the same line.  A bare comma without
+    ``\quad`` typically groups items within the same assertion (function
+    arguments, subject lists like ``\alpha, \beta \in \mathbb{C}``).
+
+    Returns a list of trimmed, non-empty clauses.  A single-element list
+    means no ``\quad``-comma was found (caller should fall back to bare
+    comma splitting).
+    """
+    parts: list[str] = []
+    depth = 0
+    start = 0
+    i = 0
+    n = len(latex)
+    while i < n:
+        ch = latex[i]
+        if ch in "{([":
+            depth += 1
+        elif ch in "})]":
+            if depth > 0:
+                depth -= 1
+        elif ch == "," and depth == 0:
+            bs = 0
+            j = i - 1
+            while j >= 0 and latex[j] == "\\":
+                bs += 1
+                j -= 1
+            if bs % 2 == 1:
+                i += 1
+                continue
+            m = _QUAD_COMMA_RE.match(latex, i)
+            if m:
+                parts.append(latex[start:i])
+                start = m.end()
+                i = start
+                continue
+        i += 1
+    parts.append(latex[start:])
+    nonempty = [p.strip() for p in parts if p.strip()]
+    return nonempty if nonempty else [latex]
+
+
+_LEADING_SPACE_CMD_RE = re.compile(r"^\s*(?:\\(?:quad|qquad|,|;|!|:)\s*)+")
+
+
+def _is_bare_variable(clause: str) -> bool:
+    r"""Return ``True`` when *clause* looks like a bare variable/symbol.
+
+    A "bare variable" is a single symbol token — e.g. ``\alpha``,
+    ``x``, ``\hat{y}``, ``\mathbb{C}`` — with no operators.  Used by
+    :func:`_rejoin_subject_group_commas` to detect the subject-grouping
+    comma pattern ``\alpha, \beta \in \mathbb{C}``.
+    """
+    stripped = _LEADING_SPACE_CMD_RE.sub("", clause).strip()
+    if not stripped:
+        return False
+    if _split_on_relation(stripped) is not None:
+        return False
+    d = 0
+    for ch in stripped:
+        if ch in "{([":
+            d += 1
+        elif ch in "})]":
+            if d > 0:
+                d -= 1
+        elif d == 0 and ch in "=+":
+            return False
+    return True
+
+
+def _rejoin_subject_group_commas(clauses: list[str]) -> list[str]:
+    r"""Re-join comma-separated subject lists that precede a relation.
+
+    In mathematical notation ``\alpha, \beta \in \mathbb{C}`` means *both*
+    α and β belong to ℂ.  After :func:`_split_on_top_level_comma` this
+    becomes ``['\alpha', '\beta \in \mathbb{C}']`` — the bare ``\alpha``
+    clause should be re-joined with ``\beta \in \mathbb{C}`` to form the
+    composite expression ``\alpha, \beta \in \mathbb{C}``.
+
+    A bare-variable clause is re-joined with its successor when:
+
+    1. It contains no relation operator and no arithmetic operators
+       (``=``, ``+``) at depth 0 — see :func:`_is_bare_variable`.
+    2. The successor contains a relation operator from ``RELATION_MAP``.
+
+    The loop runs until no more re-joins are possible, handling chains
+    like ``x, y, z \in \mathbb{R}`` (three variables, one relation).
+    """
+    if len(clauses) <= 1:
+        return clauses
+    result = list(clauses)
+    changed = True
+    while changed:
+        changed = False
+        merged: list[str] = []
+        i = 0
+        while i < len(result):
+            if (
+                i + 1 < len(result)
+                and _is_bare_variable(result[i])
+                and _split_on_relation(result[i + 1]) is not None
+            ):
+                merged.append(result[i] + ", " + result[i + 1])
+                i += 2
+                changed = True
+            else:
+                merged.append(result[i])
+                i += 1
+        result = merged
+    return result
+
+
 def _split_on_relation(latex: str) -> tuple[str, dict[str, str], str] | None:
     """If *latex* contains a top-level relation operator from RELATION_MAP,
     return ``(lhs_latex, relation_meta, rhs_latex)``.  Returns ``None``
@@ -1685,11 +1810,16 @@ def _split_on_relation(latex: str) -> tuple[str, dict[str, str], str] | None:
             depth[i] = d
     for cmd, meta in RELATION_MAP:
         clen = len(cmd)
+        cmd_is_alpha = cmd[-1].isalpha()
         idx = 0
         while idx <= n - clen:
             pos = latex.find(cmd, idx)
             if pos == -1:
                 break
+            end = pos + clen
+            if cmd_is_alpha and end < n and latex[end].isalpha():
+                idx = end
+                continue
             if depth[pos] == 0:
                 if best is None or pos < best[0]:
                     best = (pos, cmd, meta)
@@ -1732,6 +1862,94 @@ def _split_chained_equals(latex: str) -> tuple[str, dict[str, str], str] | None:
         meta = {"op": "equals", "label": "equals", "emoji": "="}
         return lhs, meta, rhs
     return None
+
+
+def _build_relation_graph(
+    lhs_latex: str,
+    rel_meta: dict[str, str],
+    rhs_latex: str,
+    original_latex: str,
+    *,
+    overrides: dict[str, dict[str, str]] | None,
+    latex_commands: dict[str, str] | None = None,
+    parenthetical_annotations: list | None = None,
+    domain: str | None = None,
+) -> dict:
+    r"""Build a graph for a binary relation ``lhs <op> rhs``.
+
+    Handles comma-joined operand conjunctions on either side (e.g. the
+    LHS of ``\alpha, \beta \in \mathbb{C}`` becomes an ``and`` node
+    grouping α and β).  Classification falls back to ``algebraic`` when
+    either side is a conjunction.
+    """
+    builder = SemanticGraphBuilder(
+        overrides=overrides,
+        latex_commands=latex_commands or {},
+        original_latex=original_latex,
+    )
+
+    def _walk_relation_side(side_latex: str) -> tuple[str, sympy.Basic | None]:
+        side_clauses = _split_on_top_level_comma(side_latex)
+        if len(side_clauses) <= 1:
+            expr = parse_latex(side_latex)
+            return builder._walk(expr), expr
+
+        clause_roots: list[str] = []
+        for clause in side_clauses:
+            cleaned = _LEADING_SPACE_CMD_RE.sub("", clause).strip()
+            sub_expr = parse_latex(cleaned)
+            cid = builder._walk(sub_expr)
+            for node in builder.nodes:
+                if node["id"] == cid:
+                    node["subexpr"] = builder._restore_placeholders(cleaned)
+                    break
+            clause_roots.append(cid)
+        conj_id = builder._next_id("and")
+        builder._add_node(
+            conj_id,
+            type="relation",
+            op="and",
+            label="and",
+            emoji=",",
+            subexpr=builder._restore_placeholders(side_latex.strip()),
+        )
+        for cid in clause_roots:
+            builder._add_edge(cid, conj_id)
+        return conj_id, None
+
+    try:
+        lhs_id, lhs_expr = _walk_relation_side(lhs_latex)
+        rhs_id, rhs_expr = _walk_relation_side(rhs_latex)
+    except Exception as exc:
+        raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
+
+    for node in builder.nodes:
+        if node["id"] == lhs_id and lhs_expr is not None:
+            node["subexpr"] = builder._restore_placeholders(lhs_latex.strip())
+        elif node["id"] == rhs_id and rhs_expr is not None:
+            node["subexpr"] = builder._restore_placeholders(rhs_latex.strip())
+
+    rel_id = builder._next_id(rel_meta["op"])
+    builder._add_node(
+        rel_id, type="relation", subexpr=original_latex.strip(), **rel_meta,
+    )
+    rel_asymmetric = rel_meta["op"] in _ASYMMETRIC_OPS
+    builder._add_edge(lhs_id, rel_id, role="lhs" if rel_asymmetric else None)
+    builder._add_edge(rhs_id, rel_id, role="rhs" if rel_asymmetric else None)
+
+    graph: dict = {"nodes": builder.nodes, "edges": builder.edges}
+    if lhs_expr is not None and rhs_expr is not None:
+        try:
+            combined = lhs_expr - rhs_expr
+        except TypeError:
+            combined = lhs_expr
+        graph["classification"] = _classify_expression(combined)
+    else:
+        graph["classification"] = {"kind": "algebraic"}
+    if domain:
+        graph["domain"] = domain
+    _inject_annotations(graph, parenthetical_annotations or [])
+    return graph
 
 
 def _build_comma_separated_graph(
@@ -1916,110 +2134,50 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     }
     overrides = merged_overrides
 
-    # Check for a top-level relation operator (before the comma split).
-    # When a relation is present, comma-joined clauses on either side are
-    # operand-level conjunctions — the comma scopes inside the
-    # connective's operand, not above it. See #208: previously the comma
-    # split ran first and orphaned the second RHS clause from the
-    # ``\implies`` node.
+    # Detect the top-level relation once; reused by both the meta-first
+    # path and the deferred object-relation path below.
     rel = _split_on_relation(preprocessed)
-    if rel is not None:
+
+    # --- Meta relations (implies, iff) take priority over commas (#208) ---
+    # Commas on either side of a meta connective are operand-level
+    # conjunctions, not statement separators.
+    if rel is not None and rel[1]["op"] in _META_RELATION_OPS:
         lhs_latex, rel_meta, rhs_latex = rel
-        builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands, original_latex=latex)
-
-        def _walk_relation_side(side_latex: str) -> tuple[str, sympy.Basic | None]:
-            """Walk a relation operand. Returns ``(root_id, expr)`` where
-            ``expr`` is the parsed SymPy expression for the side, or
-            ``None`` when the side is a comma-joined conjunction (no
-            single SymPy expression — each clause is parsed
-            independently and joined under a synthetic ``and`` relation
-            node)."""
-            side_clauses = _split_on_top_level_comma(side_latex)
-            if len(side_clauses) <= 1:
-                expr = parse_latex(side_latex)
-                return builder._walk(expr), expr
-
-            _leading_space = re.compile(r"^\s*(?:\\(?:quad|qquad|,|;|!|:)\s*)+")
-            clause_roots: list[str] = []
-            for clause in side_clauses:
-                cleaned = _leading_space.sub("", clause).strip()
-                sub_expr = parse_latex(cleaned)
-                cid = builder._walk(sub_expr)
-                for node in builder.nodes:
-                    if node["id"] == cid:
-                        node["subexpr"] = builder._restore_placeholders(cleaned)
-                        break
-                clause_roots.append(cid)
-            conj_id = builder._next_id("and")
-            builder._add_node(
-                conj_id,
-                type="relation",
-                op="and",
-                label="and",
-                emoji=",",
-                subexpr=builder._restore_placeholders(side_latex.strip()),
-            )
-            for cid in clause_roots:
-                builder._add_edge(cid, conj_id)
-            return conj_id, None
-
-        try:
-            lhs_id, lhs_expr = _walk_relation_side(lhs_latex)
-            rhs_id, rhs_expr = _walk_relation_side(rhs_latex)
-        except Exception as exc:
-            raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
-
-        # Restore subexpr on the side root nodes when they are *not*
-        # synthetic conjunction nodes (those already carry the full side
-        # latex from creation; per-clause subexprs were set per-clause
-        # above). For single-expression sides, the SymPy walk leaves an
-        # internal subexpr — overwrite with the side slice so the
-        # tooltip reflects the side string we actually parsed.
-        # ``lhs_latex``/``rhs_latex`` come from
-        # ``_split_on_relation(preprocessed)``, so they are the
-        # preprocessed/cleaned side LaTeX (e.g. ``x_i`` brace-canonicalized
-        # to ``x_{i}``, spacing macros stripped). This matches the
-        # pre-existing convention for relation-side ``subexpr`` values.
-        for node in builder.nodes:
-            if node["id"] == lhs_id and not (lhs_expr is None):
-                node["subexpr"] = builder._restore_placeholders(lhs_latex.strip())
-            elif node["id"] == rhs_id and not (rhs_expr is None):
-                node["subexpr"] = builder._restore_placeholders(rhs_latex.strip())
-        rel_id = builder._next_id(rel_meta["op"])
-        builder._add_node(rel_id, type="relation", subexpr=latex.strip(), **rel_meta)
-        rel_asymmetric = rel_meta["op"] in _ASYMMETRIC_OPS
-        builder._add_edge(lhs_id, rel_id, role="lhs" if rel_asymmetric else None)
-        builder._add_edge(rhs_id, rel_id, role="rhs" if rel_asymmetric else None)
-        graph = {"nodes": builder.nodes, "edges": builder.edges}
-        # Classify based on both sides combined when both are single
-        # SymPy expressions. Relational expressions (inequalities, Eq)
-        # don't support arithmetic, so fall back gracefully. When either
-        # side is a comma-joined conjunction we have no single
-        # expression to classify, so default to algebraic.
-        if lhs_expr is not None and rhs_expr is not None:
-            try:
-                combined = lhs_expr - rhs_expr
-            except TypeError:
-                combined = lhs_expr
-            graph["classification"] = _classify_expression(combined)
-        else:
-            graph["classification"] = {"kind": "algebraic"}
-        if domain:
-            graph["domain"] = domain
-        _inject_annotations(graph, parenthetical_annotations)
+        graph = _build_relation_graph(
+            lhs_latex, rel_meta, rhs_latex, latex,
+            overrides=overrides, latex_commands=latex_commands,
+            parenthetical_annotations=parenthetical_annotations, domain=domain,
+        )
         return graph
 
-    # A top-level comma now acts as a statement separator (preserves
-    # existing ``a = 1, b = 2`` behavior — multiple independent rooted
-    # statements, no synthetic ``and`` node). Pass only the user-supplied
-    # overrides; the recursive call re-derives text/compound placeholders
-    # per clause so they don't collide with parent-scoped ``Xi_{N}`` ids.
-    clauses = _split_on_top_level_comma(latex)
+    # --- Comma split ---
+    # Prefer ``, \quad`` as the statement separator — it's the
+    # typographic convention for independent assertions on one line.
+    # Bare commas without ``\quad`` stay within their clause, naturally
+    # preserving subject-grouping commas like ``\alpha, \beta \in C``.
+    # Fall back to bare comma split + re-joining when no ``\quad`` is present.
+    clauses = _split_on_quad_comma(latex)
+    if len(clauses) <= 1:
+        clauses = _split_on_top_level_comma(latex)
+        if len(clauses) > 1:
+            clauses = _rejoin_subject_group_commas(clauses)
     if len(clauses) > 1:
         graph = _build_comma_separated_graph(
             clauses, overrides=user_overrides, domain=domain,
         )
         _inject_annotations(graph, parenthetical_annotations)
+        return graph
+
+    # --- Object-level relations (\in, \leq, etc.) ---
+    # Reached when the expression is a single clause (possibly after
+    # re-joining collapsed all commas back, e.g. ``α, β ∈ ℂ``).
+    if rel is not None:
+        lhs_latex, rel_meta, rhs_latex = rel
+        graph = _build_relation_graph(
+            lhs_latex, rel_meta, rhs_latex, latex,
+            overrides=overrides, latex_commands=latex_commands,
+            parenthetical_annotations=parenthetical_annotations, domain=domain,
+        )
         return graph
 
     # Chained equals (``a = b = c``): SymPy produces

@@ -552,6 +552,89 @@ class TestRelationOperandComma:
         assert len(equals_nodes) == 2
 
 
+class TestSubjectGroupComma:
+    r"""Subject-grouping commas: ``\alpha, \beta \in \mathbb{C}`` means both
+    α and β belong to ℂ.  The comma between α and β groups them as a
+    composite LHS for the ``\in`` relation, not as a statement separator."""
+
+    def _reaches(self, graph, src, dst):
+        adj: dict[str, list[str]] = {}
+        for e in graph["edges"]:
+            adj.setdefault(e["from"], []).append(e["to"])
+        seen = {src}
+        stack = [src]
+        while stack:
+            cur = stack.pop()
+            if cur == dst:
+                return True
+            for nxt in adj.get(cur, []):
+                if nxt not in seen:
+                    seen.add(nxt)
+                    stack.append(nxt)
+        return False
+
+    def test_alpha_beta_in_C(self):
+        r"""``\alpha, \beta \in \mathbb{C}`` produces an element_of relation
+        with a conjunction (and) LHS grouping α and β."""
+        g = latex_to_semantic_graph(r"\alpha, \beta \in \mathbb{C}")
+        elem = _find_node(g, type="relation", op="element_of")
+        assert elem is not None
+        conj = _find_node(g, type="relation", op="and")
+        assert conj is not None, "expected an 'and' conjunction for the composite LHS"
+        assert self._reaches(g, "alpha", conj["id"])
+        assert self._reaches(g, "beta", conj["id"])
+        assert self._reaches(g, conj["id"], elem["id"])
+        assert self._reaches(g, "C", elem["id"])
+
+    def test_three_variables_in_R(self):
+        r"""``x, y, z \in \mathbb{R}`` — chained subject grouping."""
+        g = latex_to_semantic_graph(r"x, y, z \in \mathbb{R}")
+        elem = _find_node(g, type="relation", op="element_of")
+        assert elem is not None
+        conj = _find_node(g, type="relation", op="and")
+        assert conj is not None
+        for var in ("x", "y", "z"):
+            assert self._reaches(g, var, elem["id"]), f"{var} should reach element_of"
+
+    def test_multi_statement_with_subject_group(self):
+        r"""``a = 1, \quad \alpha, \beta \in \mathbb{C}`` should produce
+        two independent statements: the equality and the element_of."""
+        g = latex_to_semantic_graph(
+            r"a = 1, \quad \alpha, \beta \in \mathbb{C}"
+        )
+        eq = _find_node(g, type="operator", op="equals")
+        elem = _find_node(g, type="relation", op="element_of")
+        assert eq is not None, "expected an equals node for a = 1"
+        assert elem is not None, "expected an element_of node for α, β ∈ ℂ"
+
+    def test_subject_group_does_not_merge_expressions(self):
+        r"""``x + 1, y \in S`` — the ``x + 1`` clause has operators,
+        so it should NOT be merged with ``y \in S``."""
+        g = latex_to_semantic_graph(r"x + 1, y \in S")
+        elem = _find_node(g, type="relation", op="element_of")
+        assert elem is not None
+        add = _find_node(g, type="operator", op="add")
+        assert add is not None, "x + 1 should parse as a separate clause with add"
+
+    def test_quad_comma_separates_statements(self):
+        r"""``\quad`` after a comma is the strongest statement boundary.
+        ``\alpha,\beta\in\mathbb{C}`` stays intact because the comma
+        between α and β has no ``\quad``."""
+        g = latex_to_semantic_graph(
+            r"a = 1, \quad \alpha,\beta\in\mathbb{C}, "
+            r"\quad |\alpha|^2 + |\beta|^2 = 1"
+        )
+        equals = _find_nodes(g, type="operator", op="equals")
+        elem = _find_node(g, type="relation", op="element_of")
+        assert len(equals) == 2, f"expected 2 equals nodes, got {len(equals)}"
+        assert elem is not None, "expected element_of for α,β ∈ ℂ"
+        conj = _find_node(g, type="relation", op="and")
+        assert conj is not None, "expected 'and' conjunction grouping α and β"
+        assert self._reaches(g, "alpha", conj["id"])
+        assert self._reaches(g, "beta", conj["id"])
+        assert self._reaches(g, conj["id"], elem["id"])
+
+
 class TestTextCommand:
     """\\text{NAME} should become a single text node, not decomposed into
     per-character multiplications (SymPy's parse_latex default behavior)."""
