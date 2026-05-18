@@ -1562,19 +1562,26 @@ def _classify_expression(expr: sympy.Basic) -> dict[str, Any]:
     return meta
 
 
-def _split_on_top_level_newline(latex: str) -> list[str]:
-    r"""Split *latex* on top-level ``\\`` (LaTeX line-break) tokens that act
-    as **statement separators**.
+_QUAD_COMMA_RE = re.compile(r",\s*\\(?:quad|qquad)\b")
 
-    A ``\\`` is treated as a separator only when it sits at brace / paren /
-    bracket depth 0 — i.e. outside every ``{...}``, ``(...)``, ``[...]``
-    group.  Inside environments like ``\begin{cases}`` or matrices the
-    double-backslash is a row separator, not a statement separator, but
-    those environments are already wrapped in braces so the depth check
-    handles them automatically.
 
-    Returns a list of trimmed, non-empty sub-expressions.  A single-element
-    list means no top-level ``\\`` was found.
+def _split_on_statement_separators(latex: str) -> list[str]:
+    r"""Split *latex* on **statement separators** at brace depth 0.
+
+    Two separator conventions are recognized in a single pass:
+
+    1. ``\\`` — LaTeX line-break.  The strongest separator.  An optional
+       spacing argument (``\\[6pt]``) is consumed and discarded.
+    2. ``, \quad`` / ``, \qquad`` — a comma immediately followed by a
+       ``\quad`` or ``\qquad`` spacing command.  The typographic
+       convention for separating independent assertions on one line.
+
+    Both are only matched at brace/paren/bracket depth 0, so they are
+    inert inside ``{...}``, ``(...)``, ``[...]`` groups (e.g. inside
+    ``\begin{cases}`` environments or matrices).
+
+    Returns a list of trimmed, non-empty sub-expressions.  A
+    single-element list means no separator was found.
     """
     parts: list[str] = []
     depth = 0
@@ -1591,6 +1598,7 @@ def _split_on_top_level_newline(latex: str) -> list[str]:
                 depth -= 1
             i += 1
         elif ch == "\\" and depth == 0:
+            # --- ``\\`` newline separator ---
             if i + 1 < n and latex[i + 1] == "\\":
                 end_of_bs = i + 2
                 after = end_of_bs
@@ -1609,6 +1617,23 @@ def _split_on_top_level_newline(latex: str) -> list[str]:
                 i = after
             else:
                 i += 1
+        elif ch == "," and depth == 0:
+            # --- ``, \quad`` / ``, \qquad`` separator ---
+            bs = 0
+            j = i - 1
+            while j >= 0 and latex[j] == "\\":
+                bs += 1
+                j -= 1
+            if bs % 2 == 1:
+                i += 1
+                continue
+            m = _QUAD_COMMA_RE.match(latex, i)
+            if m:
+                parts.append(latex[start:i])
+                start = m.end()
+                i = start
+                continue
+            i += 1
         else:
             i += 1
     parts.append(latex[start:])
@@ -1664,55 +1689,6 @@ def _split_on_top_level_comma(latex: str) -> list[str]:
                 continue
             parts.append(latex[start:i])
             start = i + 1
-    parts.append(latex[start:])
-    nonempty = [p.strip() for p in parts if p.strip()]
-    return nonempty if nonempty else [latex]
-
-
-_QUAD_COMMA_RE = re.compile(r",\s*\\(?:quad|qquad)\b")
-
-
-def _split_on_quad_comma(latex: str) -> list[str]:
-    r"""Split on ``, \quad`` or ``, \qquad`` at brace depth 0.
-
-    In mathematical typesetting, ``\quad`` (1 em space) after a comma is
-    the conventional signal for a **statement boundary** — it separates
-    independent assertions on the same line.  A bare comma without
-    ``\quad`` typically groups items within the same assertion (function
-    arguments, subject lists like ``\alpha, \beta \in \mathbb{C}``).
-
-    Returns a list of trimmed, non-empty clauses.  A single-element list
-    means no ``\quad``-comma was found (caller should fall back to bare
-    comma splitting).
-    """
-    parts: list[str] = []
-    depth = 0
-    start = 0
-    i = 0
-    n = len(latex)
-    while i < n:
-        ch = latex[i]
-        if ch in "{([":
-            depth += 1
-        elif ch in "})]":
-            if depth > 0:
-                depth -= 1
-        elif ch == "," and depth == 0:
-            bs = 0
-            j = i - 1
-            while j >= 0 and latex[j] == "\\":
-                bs += 1
-                j -= 1
-            if bs % 2 == 1:
-                i += 1
-                continue
-            m = _QUAD_COMMA_RE.match(latex, i)
-            if m:
-                parts.append(latex[start:i])
-                start = m.end()
-                i = start
-                continue
-        i += 1
     parts.append(latex[start:])
     nonempty = [p.strip() for p in parts if p.strip()]
     return nonempty if nonempty else [latex]
@@ -2107,13 +2083,13 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
     latex = _normalize_latex(latex)
     latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
 
-    # ``\\`` (LaTeX newline) is the strongest separator — check before
-    # any other splitting or SymPy parsing.  Each clause is parsed
-    # independently via recursive ``latex_to_semantic_graph`` calls.
-    newline_clauses = _split_on_top_level_newline(latex)
-    if len(newline_clauses) > 1:
+    # --- Strong statement separators (``\\`` and ``, \quad``) ---
+    # Both are checked in a single pass before any preprocessing.
+    # Each resulting clause is parsed independently via recursive calls.
+    strong_clauses = _split_on_statement_separators(latex)
+    if len(strong_clauses) > 1:
         graph = _build_comma_separated_graph(
-            newline_clauses, overrides=user_overrides, domain=domain,
+            strong_clauses, overrides=user_overrides, domain=domain,
         )
         _inject_annotations(graph, parenthetical_annotations)
         return graph
@@ -2150,17 +2126,14 @@ def latex_to_semantic_graph(latex: str, overrides: dict[str, dict[str, str]] | N
         )
         return graph
 
-    # --- Comma split ---
-    # Prefer ``, \quad`` as the statement separator — it's the
-    # typographic convention for independent assertions on one line.
-    # Bare commas without ``\quad`` stay within their clause, naturally
-    # preserving subject-grouping commas like ``\alpha, \beta \in C``.
-    # Fall back to bare comma split + re-joining when no ``\quad`` is present.
-    clauses = _split_on_quad_comma(latex)
-    if len(clauses) <= 1:
-        clauses = _split_on_top_level_comma(latex)
-        if len(clauses) > 1:
-            clauses = _rejoin_subject_group_commas(clauses)
+    # --- Bare-comma split (fallback) ---
+    # Strong separators (``\\``, ``, \quad``) were already handled above.
+    # Bare commas without ``\quad`` may still separate statements
+    # (e.g. ``a = 1, b = 2``).  Re-join subject-group commas so that
+    # ``\alpha, \beta \in \mathbb{C}`` stays as one clause.
+    clauses = _split_on_top_level_comma(latex)
+    if len(clauses) > 1:
+        clauses = _rejoin_subject_group_commas(clauses)
     if len(clauses) > 1:
         graph = _build_comma_separated_graph(
             clauses, overrides=user_overrides, domain=domain,
