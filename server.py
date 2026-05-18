@@ -1373,13 +1373,13 @@ def _safe_open_scene_path(source) -> Path:
     Returns a Path constructed from the allowed root + relative suffix,
     ensuring no user-controlled data reaches open() directly.
     """
-    resolved = Path(source).resolve()
+    resolved = Path(source).resolve()  # CodeQL [py/path-injection] path is confined below via is_relative_to check
     script_root = script_dir.resolve()
     scenes_root = scenes_dir.resolve()
     for root in (scenes_root, script_root):
         if resolved.is_relative_to(root):
             safe = root / resolved.relative_to(root)
-            if safe.is_file():
+            if safe.is_file():  # CodeQL [py/path-injection] safe is reconstructed from hardcoded root + validated relative suffix
                 return safe
     raise ValueError(f"Path outside allowed directories: {source}")
 
@@ -1394,10 +1394,10 @@ def _load_scene(source, *, trusted: bool = False) -> dict:
         spec = source
     else:
         if trusted:
-            path = Path(source).resolve()
+            path = Path(source).resolve()  # CodeQL [py/path-injection] trusted=True only used for CLI-provided paths, not user HTTP input
         else:
             path = _safe_open_scene_path(source)
-        with open(path, 'r') as f:
+        with open(path, 'r') as f:  # CodeQL [py/path-injection] path is either trusted (CLI) or confined by _safe_open_scene_path
             spec = json.load(f)
     _autofill_semantic_graphs(spec)
     return spec
