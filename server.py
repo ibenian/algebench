@@ -1367,6 +1367,23 @@ index_html_path = static_dir / "index.html"
 style_css_path  = static_dir / "style.css"
 
 # ---------------------------------------------------------------------------
+def _safe_open_scene_path(source) -> Path:
+    """Resolve source to a safe path under script_dir or scenes_dir.
+
+    Returns a Path constructed from the allowed root + relative suffix,
+    ensuring no user-controlled data reaches open() directly.
+    """
+    resolved = Path(source).resolve()
+    script_root = script_dir.resolve()
+    scenes_root = scenes_dir.resolve()
+    for root in (scenes_root, script_root):
+        if resolved.is_relative_to(root):
+            safe = root / resolved.relative_to(root)
+            if safe.is_file():
+                return safe
+    raise ValueError(f"Path outside allowed directories: {source}")
+
+
 def _load_scene(source) -> dict:
     """Load a scene from a file path or dict, autofill semantic graphs, return spec.
 
@@ -1375,11 +1392,8 @@ def _load_scene(source) -> dict:
     if isinstance(source, dict):
         spec = source
     else:
-        resolved = Path(source).resolve()
-        if not (resolved.is_relative_to(script_dir.resolve())
-                or resolved.is_relative_to(scenes_dir.resolve())):
-            raise ValueError(f"Path outside allowed directories: {source}")
-        with open(str(resolved), 'r') as f:
+        safe_path = _safe_open_scene_path(source)
+        with open(safe_path, 'r') as f:
             spec = json.load(f)
     _autofill_semantic_graphs(spec)
     return spec
