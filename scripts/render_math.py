@@ -32,11 +32,11 @@ import webbrowser
 from pathlib import Path
 from typing import Any
 
+from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
+
 try:
-    from latex_to_graph import latex_to_semantic_graph
     from graph_to_mermaid import semantic_graph_to_mermaid, load_theme, validate_graph
 except ImportError:
-    from scripts.latex_to_graph import latex_to_semantic_graph
     from scripts.graph_to_mermaid import semantic_graph_to_mermaid, load_theme, validate_graph
 
 _GRAPH_PANEL_DIR = Path(__file__).resolve().parent.parent / "static" / "graph-panel"

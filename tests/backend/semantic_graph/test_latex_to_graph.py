@@ -1,15 +1,10 @@
-"""Tests for scripts/latex_to_graph.py"""
+"""Tests for backend.semantic_graph.sympy_translator (end-to-end graph assertions)."""
 
 from __future__ import annotations
 
-import sys
-import os
 import pytest
 
-# Allow importing from scripts/
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from scripts.latex_to_graph import (
+from backend.semantic_graph.sympy_translator import (
     latex_to_semantic_graph,
     parse_var_overrides,
     operator_kind,

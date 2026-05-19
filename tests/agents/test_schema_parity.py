@@ -35,10 +35,8 @@ REPRESENTATIVE_LATEX = [
 
 
 def _import_latex_to_graph():
-    if str(SCRIPTS_DIR) not in sys.path:
-        sys.path.insert(0, str(SCRIPTS_DIR))
-    import latex_to_graph  # type: ignore
-    return latex_to_graph
+    from backend.semantic_graph import sympy_translator
+    return sympy_translator
 
 
 def _gather_inline_scene_graphs():
