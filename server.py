@@ -1498,7 +1498,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         global _graph_enricher
 
         from pydantic import ValidationError as _ValidationError
-        from models import SemanticGraph as _SemanticGraph
+        from backend.model import SemanticGraph as _SemanticGraph
 
         try:
             graph_in = req.graph or {}
@@ -1579,7 +1579,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                 print(f"[enrich] payload: {_json.dumps({'graph': graph_in, 'context': context_in}, indent=2)}", flush=True)
 
             try:
-                from agents import AgentError, SemanticGraphEnrichmentAgent
+                from backend.agents import AgentError, SemanticGraphEnrichmentAgent
             except ImportError as e:
                 print(f"[enrich] import error: {e}", flush=True)
                 return JSONResponse({"error": "enrichment service unavailable"}, status_code=503)

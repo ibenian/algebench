@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from models import SemanticGraph
+from backend.model import SemanticGraph
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

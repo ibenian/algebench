@@ -12,8 +12,8 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from models import SemanticGraph
-from agents.semantic_graph_enricher import SemanticGraphEnrichmentAgent
+from backend.model import SemanticGraph
+from backend.agents.semantic_graph_enricher import SemanticGraphEnrichmentAgent
 
 
 def _g(payload: dict) -> SemanticGraph:
@@ -90,7 +90,7 @@ def _build_agent_with(
     pass ``None`` to skip the critic entirely (no critic attached). Items may
     also be ``Exception`` instances to simulate a failure on that call.
     """
-    from agents.semantic_graph_enricher import (
+    from backend.agents.semantic_graph_enricher import (
         SemanticGraphCoherenceCritic,
         _CoherenceVerdict,
     )
@@ -327,7 +327,7 @@ def test_critic_failure_falls_back_to_first_pass() -> None:
 def test_user_payload_renders_context_as_prose() -> None:
     # The prompt input must surface lesson/scene context as a readable
     # preamble — burying it inside JSON is what let Gemini ignore it.
-    from agents.semantic_graph_enricher import _build_payload
+    from backend.agents.semantic_graph_enricher import _build_payload
 
     payload = _build_payload(
         SemanticGraph.model_validate({"nodes": [], "edges": []}),
@@ -344,7 +344,7 @@ def test_user_payload_renders_context_as_prose() -> None:
 def test_feedback_renders_in_retry_payload() -> None:
     # When the critic fires, its feedback is folded into the context that
     # gets sent on the retry — visible in the rendered prose preamble.
-    from agents.semantic_graph_enricher import _build_payload, _context_with_feedback
+    from backend.agents.semantic_graph_enricher import _build_payload, _context_with_feedback
 
     retry_ctx = _context_with_feedback(
         _ATMOSPHERIC_CONTEXT,
@@ -363,7 +363,7 @@ def test_graph_domain_surfaces_in_payload() -> None:
     # the strongest signal we have — it must appear at the top of the
     # rendered context preamble, marked as authoritative, in BOTH the
     # enrichment and critic payloads.
-    from agents.semantic_graph_enricher import _build_payload, _build_critique_payload
+    from backend.agents.semantic_graph_enricher import _build_payload, _build_critique_payload
 
     graph = SemanticGraph.model_validate(
         {"domain": "classical_mechanics", "nodes": [], "edges": []}
@@ -383,7 +383,7 @@ def test_graph_domain_surfaces_in_payload() -> None:
 def test_graph_domain_surfaces_without_context() -> None:
     # Even with no lesson context, a graph with a parser-asserted domain
     # should still surface that domain — it's all we have to go on.
-    from agents.semantic_graph_enricher import _build_payload
+    from backend.agents.semantic_graph_enricher import _build_payload
 
     graph = SemanticGraph.model_validate(
         {"domain": "quantum_mechanics", "nodes": [], "edges": []}
@@ -395,7 +395,7 @@ def test_graph_domain_surfaces_without_context() -> None:
 def test_no_domain_no_authoritative_line() -> None:
     # A graph without a domain field should not emit a fake "Graph domain"
     # line — the model would treat it as authoritative if we did.
-    from agents.semantic_graph_enricher import _build_payload
+    from backend.agents.semantic_graph_enricher import _build_payload
 
     graph = SemanticGraph.model_validate({"nodes": [], "edges": []})
     payload = _build_payload(graph, context=_ATMOSPHERIC_CONTEXT)
@@ -483,7 +483,7 @@ def test_diff_skips_fields_the_model_left_unchanged() -> None:
     # `fields` is computed by diffing input vs output — fields the model
     # echoed back unchanged should NOT appear in the list. Pins the
     # authoritative-diff behavior.
-    from agents.semantic_graph_enricher import _diff_enriched_fields
+    from backend.agents.semantic_graph_enricher import _diff_enriched_fields
 
     inp = SemanticGraph.model_validate(
         {"nodes": [{"id": "V", "type": "scalar", "label": "V", "unit": "m/s"}], "edges": []}
@@ -537,7 +537,7 @@ def test_validator_raises_modelretry_when_input_ids_dropped() -> None:
     # used elsewhere doesn't honour the decorator, so safety-net tests
     # below cover the post-hoc restoration path instead.
     from pydantic_ai import ModelRetry
-    from agents.semantic_graph_enricher import (
+    from backend.agents.semantic_graph_enricher import (
         _current_input_node_ids,
         _validate_no_dropped_nodes,
     )
@@ -571,7 +571,7 @@ def test_validator_raises_modelretry_when_input_ids_dropped() -> None:
 def test_validator_passes_through_when_output_complete() -> None:
     # Sanity: when the model returns every input id, the validator must
     # not raise — no extra retry, no extra Gemini call.
-    from agents.semantic_graph_enricher import (
+    from backend.agents.semantic_graph_enricher import (
         _current_input_node_ids,
         _validate_no_dropped_nodes,
     )
@@ -602,7 +602,7 @@ def test_validator_caps_escalations_so_safety_net_can_repair() -> None:
     # ``_restore_dropped_nodes``). The whole layered defense relies on
     # the *last* model output flowing through to the safety net.
     from pydantic_ai import ModelRetry
-    from agents.semantic_graph_enricher import (
+    from backend.agents.semantic_graph_enricher import (
         _VALIDATOR_MAX_ESCALATIONS,
         _current_input_node_ids,
         _validator_escalation_count,
@@ -640,7 +640,7 @@ def test_validator_is_noop_when_no_input_set_bound() -> None:
     # don't set the ContextVar; the validator must degrade to a pass-
     # through in that case rather than failing every test that uses
     # the stub.
-    from agents.semantic_graph_enricher import (
+    from backend.agents.semantic_graph_enricher import (
         _current_input_node_ids,
         _validate_no_dropped_nodes,
     )
@@ -662,7 +662,7 @@ def test_already_enriched_input_still_validates_at_boundary() -> None:
     # ``aenrich`` (which checks ``enrichment is not None`` directly on the
     # validated model), this test pins the boundary order — the validated
     # input is what the short-circuit returns, not the raw dict.
-    from models.semantic_graph import Enrichment
+    from backend.model.semantic_graph import Enrichment
 
     pre_with_extra = {
         "enrichment": {"reasoning": "previously enriched"},
@@ -709,8 +709,8 @@ def test_restore_dropped_nodes_excludes_none_fields() -> None:
     # the post-enrichment graph at the API boundary via
     # ``model_dump(exclude_none=True)``, fields the parser left as ``None``
     # are dropped — matching how the agent's own output is normalised.
-    from agents.semantic_graph_enricher import _restore_dropped_nodes
-    from models.semantic_graph import SemanticGraphNode
+    from backend.agents.semantic_graph_enricher import _restore_dropped_nodes
+    from backend.model.semantic_graph import SemanticGraphNode
 
     input_graph = SemanticGraph(
         nodes=[
@@ -1042,7 +1042,7 @@ def test_diff_reports_field_removals() -> None:
     # Now that the prompt forbids enriching `color`, the model may strip
     # a color the input had. The diff must walk the union of input/output
     # keys per node so removals show up too.
-    from agents.semantic_graph_enricher import _diff_enriched_fields
+    from backend.agents.semantic_graph_enricher import _diff_enriched_fields
 
     inp = SemanticGraph.model_validate({
         "nodes": [{"id": "V", "type": "scalar", "label": "V", "color": "#cccccc"}],
@@ -1062,7 +1062,7 @@ def test_diff_reports_field_removals() -> None:
 def test_already_enriched_input_is_passthrough() -> None:
     # An input graph that already carries an `enrichment` block skips both
     # Gemini calls. The exploding agent would raise if either call ran.
-    from agents.semantic_graph_enricher import SemanticGraphEnrichmentAgent
+    from backend.agents.semantic_graph_enricher import SemanticGraphEnrichmentAgent
 
     pre = {
         "enrichment": {"reasoning": "previous run"},
@@ -1093,7 +1093,7 @@ def test_inferred_domain_threads_into_retry_payload() -> None:
     # domain onto a shallow copy of the graph and surfacing it via the
     # standard render path. Verifies the mechanism by simulating the retry
     # graph directly.
-    from agents.semantic_graph_enricher import _build_payload
+    from backend.agents.semantic_graph_enricher import _build_payload
 
     input_graph = SemanticGraph.model_validate(
         {"nodes": [], "edges": []}  # no domain
