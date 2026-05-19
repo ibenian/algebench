@@ -231,7 +231,7 @@ def _collapse_text_commands(latex: str) -> tuple[str, dict[str, dict[str, str]]]
             }
         return rf"\Xi_{seen[content]}"
 
-    rewritten = re.sub(r"\\text\{([^}]+)\}", repl, latex)
+    rewritten = re.sub(r"\\text\{([^{}]+)\}", repl, latex)
     return rewritten, overrides
 
 
@@ -259,10 +259,10 @@ def _collapse_braket_notation(latex: str) -> tuple[str, dict[str, dict[str, str]
 
     braket_pat = (
         r"(?:\\left\s*)?\\langle\s*"
-        r"([^|]*?)"
-        r"\s*\|\s*"
-        r"([^|]*?)"
-        r"\s*\\rangle(?:\s*\\right\s*\.)?"
+        r"([^|]*)"
+        r"\|"
+        r"([^|]*)"
+        r"\\rangle(?:\s*\\right\s*\.)?"
     )
     rewritten = re.sub(braket_pat, _repl_braket, latex)
     return rewritten, overrides
@@ -314,14 +314,14 @@ def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, 
     annotations: list[dict[str, str]] = []
     spacing = r"(?:\s|\\quad|\\qquad|\\,|\\;|\\!|\\:)*"
     pattern = re.compile(
-        spacing + r"\(([^()]*\\text\{[^}]+\}[^()]*)\)\s*$"
+        spacing + r"\(([^()]*\\text\{[^{}]+\}[^()]*)\)\s*$"
     )
     while True:
         m = pattern.search(latex)
         if not m:
             break
         inner = m.group(1).strip()
-        label = re.sub(r"\\text\{([^}]+)\}", r"\1", inner)
+        label = re.sub(r"\\text\{([^{}]+)\}", r"\1", inner)
         label = re.sub(r"\\[A-Za-z]+\s*", "", label)
         label = re.sub(r"[{}]", "", label)
         label = re.sub(r"\s+", " ", label).strip()
@@ -349,12 +349,12 @@ def _preprocess_latex(latex: str) -> str:
         return wrapper * (order - 1) + core
 
     latex = re.sub(
-        r"\\frac\{(d|\\partial)\^(?:\{(\d+)\}|(\d+))\s*([^}]+)\}\{\1\s*([^}]+?)\s*\^(?:\{\d+\}|\d+)\}",
+        r"\\frac\{(d|\\partial)\^(?:\{(\d+)\}|(\d+))\s*([^{}]+)\}\{\1\s*([^{}\s]+)\s*\^(?:\{\d+\}|\d+)\}",
         _expand_higher_deriv,
         latex,
     )
-    latex = re.sub(r"\\ddot\{([^}]+)\}", r"\\frac{d}{dt}\\frac{d \1}{d t}", latex)
-    latex = re.sub(r"\\dot\{([^}]+)\}", r"\\frac{d \1}{d t}", latex)
+    latex = re.sub(r"\\ddot\{([^{}]+)\}", r"\\frac{d}{dt}\\frac{d \1}{d t}", latex)
+    latex = re.sub(r"\\dot\{([^{}]+)\}", r"\\frac{d \1}{d t}", latex)
     latex = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", latex)
     latex = re.sub(r"\\(?:quad|qquad|,|;|!)\s*", " ", latex)
     return latex

@@ -288,14 +288,14 @@ class LaTeXPreprocessor:
         annotations: list[dict[str, str]] = []
         spacing = r"(?:\s|\\quad|\\qquad|\\,|\\;|\\!|\\:)*"
         pattern = re.compile(
-            spacing + r"\(([^()]*\\text\{[^}]+\}[^()]*)\)\s*$"
+            spacing + r"\(([^()]*\\text\{[^{}]+\}[^()]*)\)\s*$"
         )
         while True:
             m = pattern.search(latex)
             if not m:
                 break
             inner = m.group(1).strip()
-            label = re.sub(r"\\text\{([^}]+)\}", r"\1", inner)
+            label = re.sub(r"\\text\{([^{}]+)\}", r"\1", inner)
             label = re.sub(r"\\[A-Za-z]+\s*", "", label)
             label = re.sub(r"[{}]", "", label)
             label = re.sub(r"\s+", " ", label).strip()
