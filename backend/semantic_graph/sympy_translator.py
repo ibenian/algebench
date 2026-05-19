@@ -258,7 +258,7 @@ def _collapse_braket_notation(latex: str) -> tuple[str, dict[str, dict[str, str]
         return rf"\Phi_{{{seen[full]}}}"
 
     braket_pat = (
-        r"(?:\\left\s*)?\\langle\s*"
+        r"(?:\\left\s*)?\\langle"
         r"([^|]*)"
         r"\|"
         r"([^|]*)"
@@ -340,8 +340,8 @@ def _preprocess_latex(latex: str) -> str:
     def _expand_higher_deriv(m: re.Match) -> str:
         op = m.group(1)
         order = int(m.group(2) or m.group(3))
-        func = m.group(4)
-        var = m.group(5)
+        func = m.group(4).strip()
+        var = m.group(5).strip()
         if order <= 1:
             return m.group(0)
         wrapper = r"\frac{%s}{%s %s}" % (op, op, var)
@@ -349,7 +349,7 @@ def _preprocess_latex(latex: str) -> str:
         return wrapper * (order - 1) + core
 
     latex = re.sub(
-        r"\\frac\{(d|\\partial)\^(?:\{(\d+)\}|(\d+))\s*([^{}]+)\}\{\1\s*([^{}\s]+)\s*\^(?:\{\d+\}|\d+)\}",
+        r"\\frac\{(d|\\partial)\^(?:\{(\d+)\}|(\d+))([^{}]+)\}\{\1\s*([^{}\s]+)\s*\^(?:\{\d+\}|\d+)\}",
         _expand_higher_deriv,
         latex,
     )
