@@ -1,14 +1,13 @@
-"""Re-export shim — canonical source is ``backend.agents``."""
+"""Agent framework — typed Pydantic-AI wrappers for one-shot LLM tasks."""
 
-from backend.agents import (  # noqa: F401
-    AgentError,
-    BaseAgent,
+from .base import AgentError, BaseAgent
+from backend.model import (
     Classification,
     SemanticGraph,
     SemanticGraphEdge,
     SemanticGraphNode,
-    SemanticGraphEnrichmentAgent,
 )
+from .semantic_graph_enricher import SemanticGraphEnrichmentAgent
 
 __all__ = [
     "AgentError",

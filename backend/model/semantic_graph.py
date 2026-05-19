@@ -1,0 +1,161 @@
+"""Pydantic models mirroring `schemas/semantic-graph.schema.json`.
+
+The JSON schema remains canonical for validating scene files on disk; these
+models exist so Pydantic-AI can enforce structured output from the LLM and
+reject prompt-injection-style payloads (HTML brackets, non-hex colors, etc.)
+before they reach the cache or the browser.
+"""
+
+from __future__ import annotations
+
+from typing import List, Literal, Optional, Union
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+NodeType = Literal[
+    "scalar",
+    "vector",
+    "constant",
+    "number",
+    "operator",
+    "function",
+    "relation",
+    "expression",
+    "text",
+    "annotation",
+    "ket",
+    "bra",
+    "braket",
+]
+
+Role = Literal[
+    "state_variable",
+    "parameter",
+    "constant",
+    "coefficient",
+    "index",
+    "dependent",
+    "independent",
+    "observable",
+    "field",
+]
+
+EdgeSemantic = Literal["direct", "inverse", "neutral"]
+
+EdgeRole = Literal["lhs", "rhs"]
+
+ClassificationKind = Literal["algebraic", "ODE", "PDE", "statements"]
+
+
+_NO_HTML = r"^[^<>]*$"
+# Accept either hex (``#fa0``, ``#0d47a1``, ``#ff8800aa``) or a CSS named
+# color keyword (``red``, ``yellow``, ``cornflowerblue``). Both are
+# author-set semantic highlights (``htmlClass{hl-cube}``-style markers
+# that the parser emits with named colors); the renderer / theme
+# resolves both forms. The ``[a-zA-Z]+`` arm is constrained to letters
+# only so it can't smuggle ``javascript:`` or ``url(...)`` payloads — the
+# original prompt-injection rejection still holds.
+_COLOR = r"^(#[0-9A-Fa-f]{3,8}|[a-zA-Z]+)$"
+
+
+class SemanticGraphNode(BaseModel):
+    """A node in the semantic graph. See `schemas/semantic-graph.schema.json`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1, max_length=80, pattern=_NO_HTML)
+    type: NodeType
+    label: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    # Cap is generous (not 1-2 chars) because Gemini occasionally returns a
+    # word in this field by mistake (e.g. ``"ускорение"``). Better to accept
+    # the value and strip it post-hoc than to fail the whole enrichment via
+    # exhausted retries. Real emoji values are 1–4 codepoints.
+    emoji: Optional[str] = Field(default=None, max_length=40)
+    latex: Optional[str] = Field(default=None, max_length=200)
+    op: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    exponent: Optional[str] = Field(default=None, max_length=20, pattern=_NO_HTML)
+    with_respect_to: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    subexpr: Optional[str] = Field(default=None, max_length=400)
+    description: Optional[str] = Field(default=None, max_length=200, pattern=_NO_HTML)
+    quantity: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    dimension: Optional[str] = Field(default=None, max_length=60)
+    unit: Optional[str] = Field(default=None, max_length=30, pattern=_NO_HTML)
+    value: Optional[Union[float, int, str]] = Field(default=None)
+    role: Optional[Role] = None
+    # ``max_length=30`` caps both the hex form (longest is ``#`` + 8 hex
+    # digits = 9 chars) and the named-keyword form (the longest CSS named
+    # color, ``lightgoldenrodyellow``, is 21 chars). 30 leaves a small
+    # margin for unusual values without permitting unbounded payloads.
+    color: Optional[str] = Field(default=None, pattern=_COLOR, max_length=30)
+    highlight: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    variant: Optional[EdgeSemantic] = None
+
+
+class SemanticGraphEdge(BaseModel):
+    """An edge in the semantic graph."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    from_: str = Field(alias="from", min_length=1, max_length=80, pattern=_NO_HTML)
+    to: str = Field(min_length=1, max_length=80, pattern=_NO_HTML)
+    label: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    semantic: Optional[EdgeSemantic] = None
+    weight: Optional[float] = Field(default=None, ge=0)
+    role: Optional[EdgeRole] = None
+
+
+class Classification(BaseModel):
+    """Optional classification block. Mirrors the `classification` $def."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: ClassificationKind
+    count: Optional[int] = Field(default=None, ge=2)
+    clauses: Optional[List["Classification"]] = None
+    order: Optional[int] = Field(default=None, ge=1)
+    dependent_variables: Optional[List[str]] = None
+    independent_variables: Optional[List[str]] = None
+    sympy_hints: Optional[List[str]] = None
+    linear: Optional[bool] = None
+    homogeneous: Optional[bool] = None
+    constant_coefficients: Optional[bool] = None
+
+
+Classification.model_rebuild()
+
+
+class Enrichment(BaseModel):
+    """Metadata about how / when this graph was enriched by the Gemini agent.
+
+    Presence of this field on a graph is the marker that it's been enriched
+    — both the server endpoint and the client gate short-circuit on it,
+    skipping redundant Gemini calls. ``reasoning`` is a one-or-two-sentence
+    explanation of the enricher's domain / disambiguation choices, logged
+    server-side so we can audit decisions without enabling DEBUG_MODE.
+    ``fields`` is the authoritative list of paths the enricher added or
+    changed (computed by diffing input vs output) — graph-level fields
+    appear as bare names like ``"domain"`` and per-node fields use
+    ``"nodes.<id>.<field>"`` form, e.g. ``"nodes.V.quantity"``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # ``reasoning`` is logged server-side, never injected into HTML, so the
+    # ``_NO_HTML`` guard isn't needed — it would just reject natural model
+    # output like "V < V_t until terminal velocity is reached" and force a
+    # full retry-exhausted failure of the entire enrichment.
+    reasoning: Optional[str] = Field(default=None, max_length=300)
+    fields: Optional[List[str]] = Field(default=None)
+
+
+class SemanticGraph(BaseModel):
+    """Top-level semantic graph object."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    nodes: List[SemanticGraphNode]
+    edges: List[SemanticGraphEdge]
+    classification: Optional[Classification] = None
+    domain: Optional[str] = Field(default=None, max_length=60, pattern=_NO_HTML)
+    enrichment: Optional[Enrichment] = None
