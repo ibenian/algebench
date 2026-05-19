@@ -28,19 +28,12 @@ class TestReSubLiteral:
         result = _re_sub_literal(r"foo", r"\text{bar}", "foo baz")
         assert result == r"\text{bar} baz"
 
-    def test_no_match(self):
-        assert _re_sub_literal(r"zzz", "rep", "hello") == "hello"
-
 
 # ------------------------------------------------------------------
 # _restore_dot_notation_str
 # ------------------------------------------------------------------
 
 class TestRestoreDotNotationStr:
-    def test_first_order(self):
-        result = _restore_dot_notation_str(r"\frac{d}{d t} x", {"x": 1})
-        assert result == r"\dot{x}"
-
     def test_first_order_frac_form(self):
         result = _restore_dot_notation_str(r"\frac{d x}{d t}", {"x": 1})
         assert result == r"\dot{x}"

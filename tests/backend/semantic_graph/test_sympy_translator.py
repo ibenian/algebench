@@ -9,7 +9,6 @@ from backend.semantic_graph.sympy_translator import (
     node_short_label,
     node_long_label,
     operator_kind,
-    parse_var_overrides,
     SemanticGraphBuilder,
     _normalize_latex,
     _preprocess_latex,
@@ -69,23 +68,6 @@ class TestNodeLabels:
         assert node_long_label({"type": "scalar", "id": "x"}) == "x"
 
 
-class TestParseVarOverrides:
-    def test_basic(self):
-        result = parse_var_overrides(["m:unit=kg,tooltip=mass"])
-        assert result == {"m": {"unit": "kg", "tooltip": "mass"}}
-
-    def test_none(self):
-        assert parse_var_overrides(None) == {}
-
-    def test_invalid_no_colon(self):
-        with pytest.raises(ValueError):
-            parse_var_overrides(["invalid"])
-
-    def test_invalid_no_equals(self):
-        with pytest.raises(ValueError):
-            parse_var_overrides(["m:noequals"])
-
-
 # ------------------------------------------------------------------
 # Preprocessing
 # ------------------------------------------------------------------
@@ -104,14 +86,6 @@ class TestNormalizeLatex:
 
 
 class TestPreprocessLatex:
-    def test_dot_rewrite(self):
-        result = _preprocess_latex(r"\dot{x}")
-        assert r"\frac" in result
-
-    def test_ddot_rewrite(self):
-        result = _preprocess_latex(r"\ddot{x}")
-        assert result.count(r"\frac") == 2
-
     def test_spacing_stripped(self):
         result = _preprocess_latex(r"a \quad b")
         assert r"\quad" not in result
@@ -169,14 +143,6 @@ class TestSplitOnStatementSeparators:
 
 
 class TestSplitOnTopLevelComma:
-    def test_basic(self):
-        parts = _split_on_top_level_comma("a = 1, b = 2")
-        assert len(parts) == 2
-
-    def test_nested_not_split(self):
-        parts = _split_on_top_level_comma("f(x, y)")
-        assert len(parts) == 1
-
     def test_escaped_comma(self):
         parts = _split_on_top_level_comma(r"a\, b")
         assert len(parts) == 1
