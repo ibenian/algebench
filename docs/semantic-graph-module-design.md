@@ -573,6 +573,14 @@ domain-specific constructs are **correctly represented** in the graph.
 | 18 | **Optics & waves** | `test_domain_waves.py` | `mechanics` | Wave equation, Snell's law, diffraction, interference |
 | 19 | **Chemistry** | `test_domain_chemistry.py` | `None` | Rate laws, equilibrium, Nernst equation, Arrhenius |
 | 20 | **Multi-statement & structural** | `test_domain_structural.py` | `None` | Chained equals, statement separators, piecewise, systems of equations |
+| 21 | **Abstract algebra** | `test_domain_abstract_algebra.py` | `None` | Groups, rings, fields, homomorphisms, quotient groups, isomorphisms |
+| 22 | **Differential geometry** | `test_domain_diffgeo.py` | `None` | Christoffel symbols, covariant derivatives, wedge products, tensor index notation |
+| 23 | **Fourier & transforms** | `test_domain_transforms.py` | `None` | Fourier, Laplace, Z-transforms, convolution, calligraphic operators |
+| 24 | **Optimization** | `test_domain_optimization.py` | `None` | argmin/argmax, constraints, Lagrange multipliers, KKT conditions |
+| 25 | **Discrete math & combinatorics** | `test_domain_combinatorics.py` | `None` | Binomial coefficients, recurrences, graph theory, summation bounds |
+| 26 | **Functional analysis** | `test_domain_functional.py` | `None` | Norms, inner products, operator notation, Hilbert/Banach space membership |
+| 27 | **Information theory** | `test_domain_information.py` | `None` | Entropy, KL divergence, mutual information, channel capacity |
+| 28 | **Control theory** | `test_domain_control.py` | `None` | Transfer functions, Laplace domain, feedback loops, stability criteria |
 
 #### Representative expressions per suite
 
@@ -746,6 +754,125 @@ EXPRESSIONS = [
 ]
 ```
 
+**Abstract algebra**
+```python
+EXPRESSIONS = [
+    ("quotient_group",     r"G / N"),
+    ("homomorphism",       r"\phi : G \to H"),
+    ("isomorphism",        r"G \cong H"),
+    ("direct_product",     r"G \times H"),
+    ("kernel",             r"\ker(\phi) = \{ e \}"),
+    ("image",              r"\text{Im}(\phi) = H"),
+    ("normal_subgroup",    r"N \trianglelefteq G"),
+    ("order",              r"|G| = n"),
+    ("coset",              r"gN = \{ gn : n \in N \}"),
+    ("first_iso_thm",      r"G / \ker(\phi) \cong \text{Im}(\phi)"),
+]
+```
+
+**Differential geometry**
+```python
+EXPRESSIONS = [
+    ("christoffel",        r"\Gamma^{i}_{jk}"),
+    ("covariant_deriv",    r"\nabla_{\mu} V^{\nu}"),
+    ("wedge_product",      r"\omega \wedge \eta"),
+    ("metric_tensor",      r"ds^2 = g_{\mu\nu} dx^{\mu} dx^{\nu}"),
+    ("riemann_tensor",     r"R^{\rho}_{\ \sigma\mu\nu}"),
+    ("ricci_scalar",       r"R = g^{\mu\nu} R_{\mu\nu}"),
+    ("exterior_deriv",     r"d\omega = 0"),
+    ("lie_bracket",        r"[X, Y] = XY - YX"),
+    ("parallel_transport", r"\nabla_{\dot{\gamma}} V = 0"),
+    ("geodesic_eq",        r"\ddot{x}^{\mu} + \Gamma^{\mu}_{\alpha\beta} \dot{x}^{\alpha} \dot{x}^{\beta} = 0"),
+]
+```
+
+**Fourier & transforms**
+```python
+EXPRESSIONS = [
+    ("fourier_hat",        r"\hat{f}(\xi) = \int_{-\infty}^{\infty} f(x) e^{-2\pi i x \xi} dx"),
+    ("laplace",            r"\mathcal{L}\{f(t)\} = F(s)"),
+    ("inverse_laplace",    r"f(t) = \mathcal{L}^{-1}\{F(s)\}"),
+    ("convolution",        r"(f * g)(t) = \int_0^t f(\tau) g(t - \tau) d\tau"),
+    ("z_transform",        r"X(z) = \sum_{n=0}^{\infty} x[n] z^{-n}"),
+    ("parseval",           r"\int |f(x)|^2 dx = \int |\hat{f}(\xi)|^2 d\xi"),
+    ("dft",                r"X_k = \sum_{n=0}^{N-1} x_n e^{-i 2\pi k n / N}"),
+    ("transfer_fn",        r"H(s) = \frac{Y(s)}{X(s)}"),
+]
+```
+
+**Optimization**
+```python
+EXPRESSIONS = [
+    ("argmin",             r"\arg\min_{x} f(x)"),
+    ("argmax",             r"\arg\max_{\theta} \mathcal{L}(\theta)"),
+    ("constrained",        r"\min_{x} f(x) \quad \text{s.t.} \quad g(x) \leq 0"),
+    ("lagrangian",         r"L(x, \lambda) = f(x) + \lambda g(x)"),
+    ("kkt_stationarity",   r"\nabla f(x^*) + \lambda \nabla g(x^*) = 0"),
+    ("gradient_descent",   r"x_{k+1} = x_k - \alpha \nabla f(x_k)"),
+    ("dual_problem",       r"\max_{\lambda \geq 0} \min_{x} L(x, \lambda)"),
+    ("sup_inf",            r"\sup_{x \in S} \inf_{y \in T} f(x, y)"),
+]
+```
+
+**Discrete math & combinatorics**
+```python
+EXPRESSIONS = [
+    ("binomial_coeff",     r"\binom{n}{k} = \frac{n!}{k!(n-k)!}"),
+    ("recurrence",         r"a_n = a_{n-1} + a_{n-2}"),
+    ("sum_binomial",       r"\sum_{k=0}^{n} \binom{n}{k} = 2^n"),
+    ("stirling",           r"n! \approx \sqrt{2\pi n} \left(\frac{n}{e}\right)^n"),
+    ("pigeonhole",         r"\lceil n/k \rceil"),
+    ("generating_fn",      r"G(x) = \sum_{n=0}^{\infty} a_n x^n"),
+    ("catalan",            r"C_n = \frac{1}{n+1} \binom{2n}{n}"),
+    ("inclusion_exclusion", r"|A \cup B| = |A| + |B| - |A \cap B|"),
+    ("graph_handshake",    r"\sum_{v \in V} \deg(v) = 2|E|"),
+]
+```
+
+**Functional analysis**
+```python
+EXPRESSIONS = [
+    ("norm",               r"\| x \| = \sqrt{\langle x, x \rangle}"),
+    ("inner_product",      r"\langle f, g \rangle = \int_a^b f(x) \overline{g(x)} dx"),
+    ("triangle_ineq",      r"\| x + y \| \leq \| x \| + \| y \|"),
+    ("operator_norm",      r"\| T \| = \sup_{\| x \| = 1} \| Tx \|"),
+    ("hilbert_membership", r"f \in L^2(\mathbb{R})"),
+    ("cauchy_schwarz",     r"|\langle x, y \rangle| \leq \| x \| \cdot \| y \|"),
+    ("dual_space",         r"X^* = \mathcal{B}(X, \mathbb{R})"),
+    ("weak_convergence",   r"x_n \rightharpoonup x"),
+    ("compact_operator",   r"T : X \to Y"),
+]
+```
+
+**Information theory**
+```python
+EXPRESSIONS = [
+    ("entropy",            r"H(X) = -\sum_{x} p(x) \log p(x)"),
+    ("kl_divergence",      r"D_{\text{KL}}(P \| Q) = \sum_x P(x) \log \frac{P(x)}{Q(x)}"),
+    ("mutual_info",        r"I(X; Y) = H(X) - H(X | Y)"),
+    ("channel_capacity",   r"C = \max_{p(x)} I(X; Y)"),
+    ("joint_entropy",      r"H(X, Y) = -\sum_{x,y} p(x,y) \log p(x,y)"),
+    ("conditional_entropy", r"H(X | Y) = H(X, Y) - H(Y)"),
+    ("data_processing",    r"I(X; Y) \geq I(X; Z)"),
+    ("rate_distortion",    r"R(D) = \min_{p(\hat{x}|x)} I(X; \hat{X})"),
+]
+```
+
+**Control theory**
+```python
+EXPRESSIONS = [
+    ("transfer_function",  r"G(s) = \frac{Y(s)}{U(s)}"),
+    ("closed_loop",        r"T(s) = \frac{G(s)}{1 + G(s)H(s)}"),
+    ("pid_controller",     r"u(t) = K_p e(t) + K_i \int_0^t e(\tau) d\tau + K_d \frac{de}{dt}"),
+    ("state_space",        r"\dot{x} = Ax + Bu"),
+    ("output_eq",          r"y = Cx + Du"),
+    ("characteristic_eq",  r"\det(sI - A) = 0"),
+    ("routh_criterion",    r"s^3 + 2s^2 + 3s + 4 = 0"),
+    ("nyquist",            r"|G(j\omega)| = 1"),
+    ("laplace_step",       r"Y(s) = G(s) \cdot \frac{1}{s}"),
+]
+```
+
 ### 8.3 Suite-level invariants
 
 Each suite asserts both **universal invariants** (must hold for every
@@ -777,6 +904,14 @@ for the domain's characteristic constructs).
 | **Complex analysis** | Imaginary unit `i` not misclassified as a variable |
 | **Calculus** | Derivative/integral structures produce expected operator nodes |
 | **Electromagnetism** | Vector fields have `type: vector` after accent restoration |
+| **Abstract algebra** | Relation nodes with `op` in `{isomorphic, maps_to, normal_subgroup_of}` |
+| **Differential geometry** | Multi-level index stacking preserved in `subexpr`; Christoffel notation intact |
+| **Fourier & transforms** | Calligraphic `\mathcal{L}`, `\mathcal{F}` recognized as transform operators |
+| **Optimization** | `\arg\min`, `\arg\max` produce function-type nodes; constraint text not lost |
+| **Combinatorics** | `\binom{n}{k}` produces a function node; factorials handled |
+| **Functional analysis** | Norms `\| \|` and inner products `\langle \rangle` not mismatched as delimiters |
+| **Information theory** | `H(X)`, `I(X;Y)` produce function nodes; subscript `\text{KL}` restored |
+| **Control theory** | Laplace-domain expressions `G(s)` produce function nodes; dot notation restored |
 
 ### 8.4 Parametric cross-product generators
 
@@ -832,10 +967,28 @@ tests/backend/semantic_graph/
 │   ├── test_domain_fluids.py
 │   ├── test_domain_waves.py
 │   ├── test_domain_chemistry.py
-│   └── test_domain_structural.py
+│   ├── test_domain_structural.py
+│   ├── test_domain_abstract_algebra.py
+│   ├── test_domain_diffgeo.py
+│   ├── test_domain_transforms.py
+│   ├── test_domain_optimization.py
+│   ├── test_domain_combinatorics.py
+│   ├── test_domain_functional.py
+│   ├── test_domain_information.py
+│   └── test_domain_control.py
 │
 ├── test_coverage_exhaustive.py   # structure × relation × decoration
-└── test_coverage_sampled.py      # random-seed full cross-product
+├── test_coverage_sampled.py      # random-seed full cross-product
+├── test_property_based.py        # Hypothesis property-based tests
+├── test_boundary_values.py       # boundary value analysis (length, depth, count)
+├── test_fuzzing.py               # grammar-aware LaTeX fuzzer
+│
+├── golden/                       # snapshot golden files (JSON)
+│   ├── arithmetic/
+│   ├── algebra/
+│   └── ...
+│
+└── conftest.py                   # shared fixtures, golden-file loader, Hypothesis profiles
 ```
 
 ### 8.6 Expected outcome per suite
@@ -872,8 +1025,9 @@ Coverage dashboard (target: 80% PASS per suite)
 |-------|-------|--------|------|
 | **Phase 1** | Core math suites | arithmetic, algebra, calculus, ODE, multi-statement | After this PR merges |
 | **Phase 2** | Physics suites | mechanics, EM, thermo, waves | Next sprint |
-| **Phase 3** | Advanced math | PDE, linalg, complex, logic, number theory, probability | Follow-up PR |
-| **Phase 4** | Frontier | quantum, relativity, fluids, chemistry | Ongoing |
+| **Phase 3** | Advanced math | PDE, linalg, complex, logic, number theory, probability, combinatorics | Follow-up PR |
+| **Phase 4** | Frontier physics & specialized | quantum, relativity, fluids, chemistry, control theory | Ongoing |
+| **Phase 4b** | Advanced structures | abstract algebra, differential geometry, transforms, optimization, functional analysis, information theory | Ongoing |
 | **Phase 5** | Cross-product generators | exhaustive + sampled | Parallel with phase 2 |
 
 Phase 1 targets suites where the parser is already strong — the goal is to
@@ -892,6 +1046,114 @@ create a roadmap for parser improvements.
   `ExprTemplate` that failed, printable as a pytest CLI invocation.
 - The `XFAIL` → `PASS` flip rate is tracked per suite to measure parser
   improvement over time.
+
+### 8.9 Test data generation techniques
+
+Beyond hand-curated expressions and parametric cross-products, leverage
+automated test data generation to uncover edge cases the curated suites
+miss.
+
+#### Hypothesis (property-based testing)
+
+Use [Hypothesis](https://hypothesis.readthedocs.io/) to generate
+random but structurally valid LaTeX expressions and verify invariants:
+
+```python
+from hypothesis import given, strategies as st
+
+SYMBOLS = st.sampled_from(["x", "y", "z", r"\alpha", r"\beta", r"\theta"])
+BINOPS = st.sampled_from(["+", "-", r"\cdot", r"\times"])
+RELATIONS = st.sampled_from(["=", r"\approx", r"\leq", r"\geq", r"\neq"])
+
+@st.composite
+def latex_equation(draw):
+    lhs = draw(SYMBOLS)
+    op = draw(BINOPS)
+    rhs = draw(SYMBOLS)
+    rel = draw(RELATIONS)
+    return f"{lhs} {rel} {draw(SYMBOLS)} {op} {rhs}"
+
+@given(latex=latex_equation())
+def test_parser_never_crashes(latex):
+    """Parser may return None but must never raise an unhandled exception."""
+    try:
+        graph = latex_to_semantic_graph(latex)
+    except ValueError:
+        pass  # known rejection (empty input, etc.)
+    else:
+        if graph is not None:
+            assert "nodes" in graph
+            assert "edges" in graph
+```
+
+Key strategies:
+- **Composite strategies** build nested LaTeX (fractions inside
+  subscripts, accented variables inside sums) to stress nesting depth.
+- **Shrinking** automatically minimizes failing examples to the
+  smallest reproducer.
+- **Database replay** re-runs previously failing examples on every CI
+  push, preventing regressions without maintaining fixtures manually.
+
+#### Mutation testing
+
+Use [mutmut](https://mutmut.readthedocs.io/) or
+[cosmic-ray](https://cosmic-ray.readthedocs.io/) to verify test
+effectiveness:
+
+- Mutate constants (`RELATION_MAP` entries, regex patterns, operator
+  mappings) and verify at least one test fails for each mutation.
+- Target modules: `constants.py`, `preprocessor.py`, `sympy_translator.py`.
+- Mutation score target: **≥ 85%** for core modules.
+
+#### Fuzzing with grammar-aware generators
+
+Build a LaTeX grammar that produces syntactically valid but
+semantically diverse expressions:
+
+| Generator | Output example | Tests |
+|-----------|----------------|-------|
+| **Nested fractions** | `\frac{\frac{a}{b}}{c + d}` | Deep nesting doesn't crash or corrupt subexpr |
+| **Decorated variables** | `\dot{\vec{x}}_{\text{cm}}` | Stacked accents + subscripts compose correctly |
+| **Multi-relation chains** | `a \leq b < c \neq d` | Each relation detected at top level |
+| **Mixed delimiters** | `\left( \frac{a}{\lvert b \rvert} \right)` | Delimiter normalization handles mixing |
+| **Annotation combos** | `F = ma \quad (\text{Newton}, v \text{ const})` | Multiple parenthetical annotations extracted |
+
+#### Snapshot / golden-file testing
+
+For complex expressions where exact graph structure matters:
+
+- Serialize the output graph to JSON and store as a golden file.
+- On each run, compare output against the golden file.
+- Use `--update-snapshots` flag to regenerate after intentional changes.
+- Complements invariant-based testing: invariants catch structural
+  violations, snapshots catch silent semantic drift.
+
+#### Boundary value analysis
+
+Systematically test at parser boundaries:
+
+| Boundary | Min | Max | Edge cases |
+|----------|-----|-----|------------|
+| **Expression length** | 1 char (`x`) | 500+ chars (nested sums) | Empty string, whitespace-only |
+| **Nesting depth** | 0 (bare variable) | 5+ (nested fracs) | `\frac{\frac{\frac{...}{...}}{...}}{...}` |
+| **Statement count** | 1 | 20+ (`\\`-separated) | Adjacent separators, trailing separator |
+| **Subscript depth** | 0 | 3+ (`x_{a_{b_{c}}}`) | Empty subscript `x_{}` |
+| **Unicode** | ASCII only | Mixed with LaTeX commands | Raw Unicode symbols vs `\alpha` equivalents |
+
+#### pytest parametrize + fixtures
+
+All generation techniques feed into pytest via `@pytest.mark.parametrize`
+or custom fixtures, keeping the test runner standard:
+
+```python
+@pytest.fixture(params=load_golden_files("domains/arithmetic/*.json"))
+def golden_case(request):
+    return request.param
+
+def test_golden(golden_case):
+    graph = latex_to_semantic_graph(golden_case["latex"])
+    assert graph == golden_case["expected"]
+```
 
 ---
 
