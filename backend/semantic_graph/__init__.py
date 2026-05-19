@@ -1,0 +1,71 @@
+"""Semantic graph package — LaTeX to semantic graph pipeline.
+
+Public API::
+
+    from backend.semantic_graph import SemanticGraphService
+
+    svc = SemanticGraphService()
+    graph = svc.derive("F = ma", domain="physics")
+"""
+
+from __future__ import annotations
+
+from .cache import GraphCache, _MISS
+from .equation_chain import derive_equation_chain_graph
+from .postprocessor import GraphPostprocessor
+from .preprocessor import LaTeXPreprocessor
+from .sympy_translator import (
+    latex_to_semantic_graph,
+    node_short_label,
+    node_long_label,
+    operator_kind,
+)
+
+__all__ = [
+    "SemanticGraphService",
+    "node_short_label",
+    "node_long_label",
+    "operator_kind",
+]
+
+
+class SemanticGraphService:
+    """Orchestrator that wires cache, preprocessor, translator, and postprocessor."""
+
+    def __init__(self) -> None:
+        self._cache = GraphCache()
+        self._preprocessor = LaTeXPreprocessor()
+        self._postprocessor = GraphPostprocessor()
+
+    def derive(self, latex: str, domain: str | None = None) -> dict | None:
+        """Parse *latex* and return a semantic graph dict, or None on failure.
+
+        Results are memoized by (latex, domain).
+        """
+        if not isinstance(latex, str) or not latex:
+            return None
+
+        cached = self._cache.get(latex, domain)
+        if cached is not _MISS:
+            return cached
+
+        graph = derive_equation_chain_graph(latex)
+        if graph is not None:
+            if domain:
+                graph["domain"] = domain
+            self._cache.put(latex, domain, graph)
+            return graph
+
+        result = self._preprocessor.preprocess(latex)
+        try:
+            raw = latex_to_semantic_graph(result.cleaned_latex, domain=domain)
+        except Exception:
+            raw = None
+        graph = self._postprocessor.postprocess(raw, result)
+
+        self._cache.put(latex, domain, graph)
+        return graph
+
+    def clear_cache(self) -> None:
+        """Drop all cached graphs."""
+        self._cache.clear()
