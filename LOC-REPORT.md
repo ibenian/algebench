@@ -5,8 +5,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `feat/303-semantic-graph-module` |
-| **Commit** | `3bb00d0` |
-| **Date** | 2026-05-19 17:39:25 -0400 |
+| **Commit** | `9f41bb4` |
+| **Date** | 2026-05-19 19:39:00 -0400 |
 
 ## Language Breakdown
 
@@ -17,7 +17,7 @@
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "JavaScript", "Python", "CSS", "HTML", "Shell", "BASH"]
-  bar [49589, 15584, 12851, 4219, 395, 137, 33]
+  bar [49589, 15584, 12851, 4219, 395, 138, 33]
 ```
 
 ## Summary by Language
@@ -30,7 +30,7 @@ xychart-beta horizontal
  JavaScript               46        18023        15584          974         1465
  Python                   53        16292        12851         1306         2135
  CSS                       3         4581         4219          169          193
- Shell                     2          172          137           14           21
+ Shell                     2          176          138           16           22
  BASH                      1           41           33            4            4
  Plain Text                1            9            0            9            0
 ─────────────────────────────────────────────────────────────────────────────────
@@ -47,7 +47,7 @@ xychart-beta horizontal
  |- Python                 3          441          407            4           30
  (Total)                            13209         1878         8548         2783
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   206       103033        85318        11047         6668
+ Total                   206       103037        85319        11049         6669
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -136,7 +136,7 @@ xychart-beta horizontal
 ─────────────────────────────────────────────────────────────────────────────────
  |ebench/algebench/server.py         2055         1735          133          187
  |aph/test_latex_to_graph.py         1983         1569          161          253
- |_graph/sympy_translator.py         1404         1211           49          144
+ |_graph/sympy_translator.py         1405         1212           49          144
  |semantic_graph_enricher.py         1144          798          214          132
  |semantic_graph_enricher.py          853          676          106           71
  |cripts/graph_to_mermaid.py          871          613          174           84
@@ -175,7 +175,7 @@ xychart-beta horizontal
  |/agents/test_base_agent.py           71           47            0           24
  |/semantic_graph/service.py           51           40            0           11
  |/test_preprocess_result.py           44           37            0            7
- |/backend/model/__init__.py           32           30            0            2
+ |/backend/model/__init__.py           31           29            0            2
  |nd/semantic_graph/cache.py           39           28            0           11
  |semantic_graph/__init__.py           25           22            0            3
  |backend/agents/__init__.py           20           18            0            2
