@@ -5,8 +5,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `feat/303-semantic-graph-module` |
-| **Commit** | `911fa1b` |
-| **Date** | 2026-05-18 23:54:53 -0400 |
+| **Commit** | `3bb00d0` |
+| **Date** | 2026-05-19 17:39:25 -0400 |
 
 ## Language Breakdown
 
@@ -17,7 +17,7 @@
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "JavaScript", "Python", "CSS", "HTML", "Shell", "BASH"]
-  bar [49589, 15584, 12816, 4219, 395, 137, 33]
+  bar [49589, 15584, 12851, 4219, 395, 137, 33]
 ```
 
 ## Summary by Language
@@ -28,7 +28,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  JSON                     41        49590        49589            0            1
  JavaScript               46        18023        15584          974         1465
- Python                   53        16259        12816         1306         2137
+ Python                   53        16292        12851         1306         2135
  CSS                       3         4581         4219          169          193
  Shell                     2          172          137           14           21
  BASH                      1           41           33            4            4
@@ -47,7 +47,7 @@ xychart-beta horizontal
  |- Python                 3          441          407            4           30
  (Total)                            13209         1878         8548         2783
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   206       103000        85283        11047         6670
+ Total                   206       103033        85318        11047         6668
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -132,11 +132,11 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Python                   53        16259        12816         1306         2137
+ Python                   53        16292        12851         1306         2135
 ─────────────────────────────────────────────────────────────────────────────────
  |ebench/algebench/server.py         2055         1735          133          187
  |aph/test_latex_to_graph.py         1983         1569          161          253
- |_graph/sympy_translator.py         1371         1176           49          146
+ |_graph/sympy_translator.py         1404         1211           49          144
  |semantic_graph_enricher.py         1144          798          214          132
  |semantic_graph_enricher.py          853          676          106           71
  |cripts/graph_to_mermaid.py          871          613          174           84
@@ -188,7 +188,7 @@ xychart-beta horizontal
  |/backend/model/__init__.py            0            0            0            0
  |lgebench/tests/__init__.py            0            0            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                    53        16259        12816         1306         2137
+ Total                    53        16292        12851         1306         2135
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -197,5 +197,5 @@ xychart-beta horizontal
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
 | JavaScript (frontend) | 15584 | 54% |
-| Python (backend) | 12816 | 46% |
-| **Total** | **28400** | **100%** |
+| Python (backend) | 12851 | 46% |
+| **Total** | **28435** | **100%** |
