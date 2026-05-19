@@ -1,8 +1,7 @@
 """Pydantic models used as ``output_type`` by agents.
 
-The canonical source for model definitions. The top-level ``models/``
-package is a re-export shim that will be removed once all callers
-migrate to ``backend.model``.
+The canonical source for model definitions.  Import from
+``backend.model`` in all new code.
 """
 
 from .semantic_graph import (

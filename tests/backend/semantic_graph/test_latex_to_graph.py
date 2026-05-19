@@ -694,7 +694,7 @@ class TestTextCommand:
 
     def test_text_becomes_single_constant(self):
         g = latex_to_semantic_graph(r"T = \text{const}")
-        node = _find_node(g, type="annotation", label="const")
+        node = _find_node(g, type="text", label="const")
         assert node is not None
         assert node["latex"] == r"\text{const}"
         # No stray per-character symbols (c, o, n, s) should appear.
@@ -707,7 +707,7 @@ class TestTextCommand:
         g = latex_to_semantic_graph(
             r"T = \text{const} \implies dP = \frac{k_B T}{m}\, d\rho"
         )
-        assert _find_node(g, type="annotation", label="const") is not None
+        assert _find_node(g, type="text", label="const") is not None
         assert _find_node(g, type="relation", op="implies") is not None
         # Two equals nodes: one per side of the implication.
         equals_nodes = [n for n in g["nodes"]
@@ -718,9 +718,9 @@ class TestTextCommand:
         """Same \\text{...} content should map to one node, not duplicate."""
         g = latex_to_semantic_graph(r"\text{foo} + \text{foo} = \text{bar}")
         foo_nodes = [n for n in g["nodes"]
-                     if n.get("type") == "annotation" and n.get("label") == "foo"]
+                     if n.get("type") == "text" and n.get("label") == "foo"]
         assert len(foo_nodes) == 1
-        assert _find_node(g, type="annotation", label="bar") is not None
+        assert _find_node(g, type="text", label="bar") is not None
 
 
 # ---------------------------------------------------------------------------
@@ -1374,7 +1374,7 @@ class TestCommaSeparatedClauses:
         placeholders, the merge step would incorrectly dedup them into
         a single text node — clause 1's ``bar`` would disappear."""
         g = latex_to_semantic_graph(r"x = \text{foo}, y = \text{bar}")
-        text_nodes = _find_nodes(g, type="annotation")
+        text_nodes = _find_nodes(g, type="text")
         labels = sorted(n.get("label") for n in text_nodes)
         assert labels == ["bar", "foo"], (
             f"expected two distinct text nodes (foo, bar), got {labels!r} "
@@ -1389,7 +1389,7 @@ class TestCommaSeparatedClauses:
         distinct text nodes — each clause is an independent statement
         and text placeholders are per-clause, not globally shared."""
         g = latex_to_semantic_graph(r"x = \text{foo}, y = \text{foo}")
-        text_nodes = _find_nodes(g, type="annotation", label="foo")
+        text_nodes = _find_nodes(g, type="text", label="foo")
         assert len(text_nodes) == 2, (
             f"expected two independent 'foo' text nodes (one per clause), "
             f"got {len(text_nodes)}"

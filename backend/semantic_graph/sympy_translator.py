@@ -23,6 +23,7 @@ from sympy.parsing.latex import parse_latex
 from sympy.physics.quantum.state import KetBase, BraBase
 from sympy.physics.quantum import InnerProduct
 
+from .preprocessor import LaTeXPreprocessor
 from .constants import (
     KNOWN_VARIABLES,
     OPERATOR_MAP,
@@ -227,9 +228,9 @@ def _collapse_text_commands(latex: str) -> tuple[str, dict[str, dict[str, str]]]
             overrides[f"Xi_{{{idx}}}"] = {
                 "label": content,
                 "latex": r"\text{" + content + "}",
-                "type": "annotation",
+                "type": "text",
             }
-        return rf"\Xi_{seen[content]}"
+        return rf"\Xi_{{{seen[content]}}}"
 
     rewritten = re.sub(r"\\text\{([^{}]+)\}", repl, latex)
     return rewritten, overrides
@@ -386,8 +387,8 @@ def _preprocess_latex(latex: str) -> str:
         _expand_higher_deriv,
         latex,
     )
-    latex = re.sub(r"\\ddot\{([^{}]+)\}", r"\\frac{d}{dt}\\frac{d \1}{d t}", latex)
-    latex = re.sub(r"\\dot\{([^{}]+)\}", r"\\frac{d \1}{d t}", latex)
+    latex = LaTeXPreprocessor.rewrite_dot_derivatives(latex)
+    latex = LaTeXPreprocessor.normalize_frac_derivatives(latex)
     latex = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", latex)
     latex = re.sub(r"\\(?:quad|qquad|,|;|!)\s*", " ", latex)
     return latex
