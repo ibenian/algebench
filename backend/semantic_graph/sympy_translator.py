@@ -238,15 +238,56 @@ def _collapse_text_commands(latex: str) -> tuple[str, dict[str, dict[str, str]]]
 def _collapse_braket_notation(latex: str) -> tuple[str, dict[str, dict[str, str]]]:
     r"""Replace Dirac braket inner products with ``\Phi_{N}`` placeholders."""
     overrides: dict[str, dict[str, str]] = {}
+    if "|" not in latex:
+        return latex, overrides
     seen: dict[str, int] = {}
-
-    def _repl_braket(m: re.Match) -> str:
-        full = m.group(0)
+    out: list[str] = []
+    i = 0
+    n = len(latex)
+    while i < n:
+        start = i
+        pos = i
+        if latex[pos:pos + 5] == "\\left":
+            tmp = pos + 5
+            while tmp < n and latex[tmp] in " \t":
+                tmp += 1
+            if latex[tmp:tmp + 7] == "\\langle":
+                pos = tmp
+        if latex[pos:pos + 7] != "\\langle":
+            out.append(latex[i])
+            i += 1
+            continue
+        content_start = pos + 7
+        pipe_pos = latex.find("|", content_start)
+        if pipe_pos == -1:
+            out.append(latex[i])
+            i += 1
+            continue
+        rangle_pos = latex.find("\\rangle", pipe_pos + 1)
+        if rangle_pos == -1:
+            out.append(latex[i])
+            i += 1
+            continue
+        if latex.find("|", pipe_pos + 1, rangle_pos) != -1:
+            out.append(latex[i])
+            i += 1
+            continue
+        bra_content = latex[content_start:pipe_pos].strip()
+        ket_content = latex[pipe_pos + 1:rangle_pos].strip()
+        end = rangle_pos + 7
+        j = end
+        while j < n and latex[j] in " \t":
+            j += 1
+        if latex[j:j + 6] == "\\right":
+            k = j + 6
+            while k < n and latex[k] in " \t":
+                k += 1
+            if k < n and latex[k] == ".":
+                end = k + 1
+        full = latex[start:end]
         if full not in seen:
             idx = len(seen)
             seen[full] = idx
-            bra_content = m.group(1).strip()
-            ket_content = m.group(2).strip()
             overrides[f"Phi_{{{idx}}}"] = {
                 "latex": _braket_skeleton_latex(bra_content, ket_content),
                 "type": "operator",
@@ -255,17 +296,9 @@ def _collapse_braket_notation(latex: str) -> tuple[str, dict[str, dict[str, str]
                 "ket_content": ket_content,
                 "original_latex": full,
             }
-        return rf"\Phi_{{{seen[full]}}}"
-
-    braket_pat = (
-        r"(?:\\left\s*)?\\langle"
-        r"([^|]*)"
-        r"\|"
-        r"([^|]*)"
-        r"\\rangle(?:\s*\\right\s*\.)?"
-    )
-    rewritten = re.sub(braket_pat, _repl_braket, latex)
-    return rewritten, overrides
+        out.append(rf"\Phi_{{{seen[full]}}}")
+        i = end
+    return "".join(out), overrides
 
 
 def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str]]]:
@@ -349,7 +382,7 @@ def _preprocess_latex(latex: str) -> str:
         return wrapper * (order - 1) + core
 
     latex = re.sub(
-        r"\\frac\{(d|\\partial)\^(?:\{(\d+)\}|(\d+))([^{}]+)\}\{\1\s*([^{}\s]+)\s*\^(?:\{\d+\}|\d+)\}",
+        r"\\frac\{(d|\\partial)\^(?:\{(\d+)\}|(\d+))([^{}\d][^{}]*)\}\{\1\s*([^{}\s]+)\s*\^(?:\{\d+\}|\d+)\}",
         _expand_higher_deriv,
         latex,
     )
