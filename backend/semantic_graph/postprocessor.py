@@ -1,0 +1,204 @@
+"""Graph postprocessor — reverses preprocessing transformations after SymPy parsing."""
+
+from __future__ import annotations
+
+import re
+from typing import Any
+
+from .constants import _ORDER_TO_ACCENT
+
+
+def _re_sub_literal(pattern: str, replacement: str, text: str) -> str:
+    """``re.sub`` that treats *replacement* as a literal string."""
+    return re.sub(pattern, lambda _m, r=replacement: r, text)
+
+
+class GraphPostprocessor:
+    """Stateless postprocessor: each method mutates a graph dict in-place."""
+
+    # ------------------------------------------------------------------
+    # Public orchestrator
+    # ------------------------------------------------------------------
+
+    def postprocess(
+        self,
+        graph: dict | None,
+        result: Any,
+    ) -> dict | None:
+        """Run all postprocessing passes on *graph* using *result* metadata.
+
+        *result* is a ``PreprocessResult`` (or any object with the same attrs).
+        Returns ``None`` when the graph is degenerate or absent.
+        """
+        if graph is None:
+            return None
+        if self.reject_degenerate(graph):
+            return None
+        self.restore_subscripts(graph, result.subscript_map)
+        self.restore_accents(graph, result.accent_map)
+        self.restore_dot_notation(graph, result.dotted_vars)
+        if result.annotations:
+            self.inject_annotations(graph, result.annotations)
+        return graph
+
+    # ------------------------------------------------------------------
+    # Individual passes
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def reject_degenerate(graph: dict) -> bool:
+        """Return ``True`` if the graph is a single ``__expr_*`` placeholder."""
+        nodes = graph.get("nodes") or []
+        if (len(nodes) == 1 and isinstance(nodes[0], dict)
+                and isinstance(nodes[0].get("id"), str)
+                and nodes[0]["id"].startswith("__expr_")):
+            return True
+        return False
+
+    @staticmethod
+    def restore_dot_notation(
+        graph: dict,
+        dotted_vars: dict[str, int],
+    ) -> None:
+        """Walk every node's ``subexpr`` and restore ``\\dot`` notation."""
+        if not isinstance(graph, dict) or not dotted_vars:
+            return
+        for node in graph.get("nodes") or []:
+            if not isinstance(node, dict):
+                continue
+            sub = node.get("subexpr")
+            if isinstance(sub, str) and "\\frac" in sub:
+                node["subexpr"] = _restore_dot_notation_str(sub, dotted_vars)
+
+    @staticmethod
+    def restore_accents(
+        graph: dict | None,
+        accent_map: dict[str, str],
+    ) -> None:
+        """Re-wrap stripped accents in each node's display ``latex`` field."""
+        if not graph or not accent_map:
+            return
+        nodes = graph.get("nodes") or []
+        for node in nodes:
+            if not isinstance(node, dict):
+                continue
+            if node.get("type") in ("operator", "relation"):
+                continue
+            latex = node.get("latex")
+            if not isinstance(latex, str) or not latex:
+                continue
+            for body, accent in accent_map.items():
+                if f"\\{accent}{{{body}}}" in latex:
+                    continue
+                if latex == body:
+                    node["latex"] = f"\\{accent}{{{body}}}"
+                    if accent == "vec":
+                        node["type"] = "vector"
+                    break
+                if latex.startswith(body) and len(latex) > len(body):
+                    tail = latex[len(body):]
+                    if tail[0] in "_^":
+                        node["latex"] = f"\\{accent}{{{body}}}{tail}"
+                        if accent == "vec":
+                            node["type"] = "vector"
+                        break
+
+    @staticmethod
+    def restore_subscripts(graph: dict, mapping: dict[str, str]) -> None:
+        """Swap each Greek placeholder back to the original subscript body."""
+        if not mapping:
+            return
+        items = sorted(mapping.items(), key=lambda kv: -len(kv[0]))
+
+        def rewrite(s: str) -> str:
+            if not isinstance(s, str):
+                return s
+            for greek_name, original in items:
+                s = s.replace(f"\\{greek_name}", original)
+                s = s.replace(f"{{{greek_name}}}", f"{{{original}}}")
+                s = s.replace(f"_{greek_name}", f"_{original}")
+            return s
+
+        def _display_of(original: str) -> tuple[str, bool]:
+            if original.startswith("\\text{") and original.endswith("}"):
+                return original[len("\\text{"):-1], True
+            return original, False
+
+        _TEXT_POLLUTION_KEYS = ("emoji", "quantity", "dimension", "unit", "value", "role")
+
+        for node in graph.get("nodes") or []:
+            if not isinstance(node, dict):
+                continue
+            node_id = node.get("id")
+            if isinstance(node_id, str) and node_id in mapping:
+                original = mapping[node_id]
+                display, is_text = _display_of(original)
+                node["id"] = display
+                node["label"] = display
+                node["latex"] = original
+                if is_text:
+                    node["type"] = "text"
+                    for k in _TEXT_POLLUTION_KEYS:
+                        node.pop(k, None)
+                    node.pop("role", None)
+                if "subexpr" in node and isinstance(node["subexpr"], str):
+                    node["subexpr"] = rewrite(node["subexpr"])
+                continue
+            for field in ("id", "label", "latex", "subexpr"):
+                if field in node and isinstance(node[field], str):
+                    node[field] = rewrite(node[field])
+        for edge in graph.get("edges") or []:
+            if not isinstance(edge, dict):
+                continue
+            for field in ("from", "to"):
+                if field in edge and isinstance(edge[field], str):
+                    val = edge[field]
+                    if val in mapping:
+                        display, _ = _display_of(mapping[val])
+                        edge[field] = display
+                    else:
+                        edge[field] = rewrite(val)
+
+    @staticmethod
+    def inject_annotations(
+        graph: dict,
+        annotations: list[dict[str, str]],
+    ) -> None:
+        """Append parenthetical annotation nodes to the graph."""
+        for i, ann in enumerate(annotations):
+            node_id = f"__annotation_{i}"
+            node: dict[str, Any] = {"id": node_id}
+            node.update(ann)
+            graph.setdefault("nodes", []).append(node)
+
+
+# ------------------------------------------------------------------
+# String-level helpers (used by the graph-level methods above)
+# ------------------------------------------------------------------
+
+def _restore_dot_notation_str(
+    latex: str,
+    dotted_vars: dict[str, int],
+) -> str:
+    """Collapse ``\\frac{d[...]}{d t[...]} X`` back to ``\\dot{X}`` form."""
+    if not isinstance(latex, str) or not dotted_vars or "\\frac" not in latex:
+        return latex
+    for var, order in sorted(dotted_vars.items(), key=lambda kv: -kv[1]):
+        if order not in _ORDER_TO_ACCENT:
+            continue
+        accent = _ORDER_TO_ACCENT[order]
+        escaped_var = re.escape(var)
+        if order == 1:
+            patterns = [
+                rf"\\frac\{{d\}}\{{d\s*t\}}\s*{escaped_var}",
+                rf"\\frac\{{d\s*{escaped_var}\}}\{{d\s*t\}}",
+            ]
+        else:
+            patterns = [
+                rf"\\frac\{{d\^\{{{order}\}}\}}"
+                rf"\{{d\s*t\^\{{{order}\}}\}}\s*{escaped_var}"
+            ]
+        replacement = f"\\{accent}{{{var}}}"
+        for pattern in patterns:
+            latex = _re_sub_literal(pattern, replacement, latex)
+    return latex
