@@ -236,9 +236,8 @@ class TestArithmeticRegressions:
         r"""``\frac{a}{b}`` decomposes to multiply + power (b^-1)."""
         g = latex_to_semantic_graph(r"\frac{a}{b} = c")
         ops = operator_ops(g)
-        assert "multiply" in ops or "power" in ops, (
-            f"Fraction should produce multiply or power, got {ops}"
-        )
+        assert "multiply" in ops, f"Expected 'multiply' in ops, got {ops}"
+        assert "power" in ops, f"Expected 'power' in ops, got {ops}"
 
     def test_numeric_expression_has_classification(self):
         """Even pure numeric expressions should have a classification."""
