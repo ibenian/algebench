@@ -283,7 +283,7 @@ class MathRenderer:
 
     def _build_mermaid_card(self) -> tuple[str, dict]:
         graph = self._graph if self._graph else latex_to_semantic_graph(self.latex)
-        graph_dict = graph.model_dump(by_alias=True) if hasattr(graph, "model_dump") else graph
+        graph_dict = graph.model_dump(by_alias=True, exclude_none=True) if hasattr(graph, "model_dump") else graph
         if self.validate:
             errors = validate_graph(graph_dict)
             if errors:
