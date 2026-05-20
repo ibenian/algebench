@@ -585,7 +585,7 @@ class TestSemanticGraphToMermaid:
 
 class TestEndToEnd:
     def test_latex_to_mermaid_pipeline(self):
-        from scripts.latex_to_graph import latex_to_semantic_graph
+        from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
 
         graph = latex_to_semantic_graph(r"F = m \cdot a")
         result = semantic_graph_to_mermaid(graph)
@@ -595,7 +595,7 @@ class TestEndToEnd:
         assert len(lines) >= 3
 
     def test_emc2_pipeline(self):
-        from scripts.latex_to_graph import latex_to_semantic_graph
+        from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
 
         graph = latex_to_semantic_graph("E = mc^2")
         for theme_name in list_themes():
@@ -604,7 +604,7 @@ class TestEndToEnd:
             assert result.startswith("flowchart")
 
     def test_all_label_modes(self):
-        from scripts.latex_to_graph import latex_to_semantic_graph
+        from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
 
         graph = latex_to_semantic_graph(r"F = m \cdot a")
         for mode in ("emoji", "latex", "plain"):

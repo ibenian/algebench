@@ -10,12 +10,16 @@ escape (``\\t`` → TAB, ``\\n`` → newline, etc.).
 
 from __future__ import annotations
 
-import os
-import sys
+from backend.semantic_graph import SemanticGraphService
+from backend.semantic_graph.postprocessor import (
+    _re_sub_literal,
+    _restore_dot_notation_str as _restore_dot_notation,
+)
+from backend.semantic_graph.preprocessor import LaTeXPreprocessor
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from server import _re_sub_literal, _restore_dot_notation, _derive_semantic_graph, _strip_accent_commands  # noqa: E402
+_strip_accent_commands = LaTeXPreprocessor.strip_accent_commands
+_svc = SemanticGraphService()
+_derive_semantic_graph = _svc.derive
 
 
 # ---------------------------------------------------------------------------

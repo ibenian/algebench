@@ -1,7 +1,7 @@
 """Agent framework — typed Pydantic-AI wrappers for one-shot LLM tasks."""
 
 from .base import AgentError, BaseAgent
-from models import (
+from backend.model import (
     Classification,
     SemanticGraph,
     SemanticGraphEdge,

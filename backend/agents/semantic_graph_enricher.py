@@ -16,8 +16,8 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from .base import BaseAgent
-from models import SemanticGraph, SemanticGraphNode
-from models.semantic_graph import Enrichment
+from backend.model import SemanticGraph, SemanticGraphNode
+from backend.model.semantic_graph import Enrichment
 
 
 # Per-task input-node id set, threaded into the pydantic-ai output validator

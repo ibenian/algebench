@@ -8,7 +8,7 @@ from typing import ClassVar, Type
 import pytest
 from pydantic import BaseModel
 
-from agents.base import AgentError, BaseAgent
+from backend.agents.base import AgentError, BaseAgent
 
 
 class _Echo(BaseModel):

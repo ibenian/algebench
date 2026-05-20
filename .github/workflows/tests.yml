@@ -5,6 +5,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'backend/**/*.py'
       - 'scripts/**/*.py'
       - 'tests/**/*.py'
       - 'requirements.txt'
@@ -28,6 +29,7 @@ jobs:
         with:
           filters: |
             python:
+              - 'backend/**/*.py'
               - 'scripts/**/*.py'
               - 'tests/**/*.py'
               - 'requirements.txt'
