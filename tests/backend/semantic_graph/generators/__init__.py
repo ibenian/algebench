@@ -2,6 +2,9 @@
 
 from .expressions import ExprTemplate, exhaustive, sampled
 from .invariants import (
+    PASS,
+    XFAIL,
+    SKIP,
     assert_universal_invariants,
     assert_valid_graph,
     assert_no_placeholder_leak,
@@ -13,6 +16,9 @@ from .variables import (
 )
 
 __all__ = [
+    "PASS",
+    "XFAIL",
+    "SKIP",
     "ExprTemplate",
     "exhaustive",
     "sampled",

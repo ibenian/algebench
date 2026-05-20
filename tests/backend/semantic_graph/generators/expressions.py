@@ -80,9 +80,13 @@ class ExprTemplate:
     latex: str
 
     @property
-    def test_id(self) -> str:
+    def axis_id(self) -> str:
         rel_name = self.relation.replace("\\", "").replace("{", "").replace("}", "")
         return f"{self.structure}-{rel_name}-{self.var_style}-{self.operator}"
+
+    @property
+    def test_id(self) -> str:
+        return f"{self.axis_id} | {self.latex.replace(chr(92), '/')}"
 
 
 def _render(

@@ -12,6 +12,7 @@ import pytest
 from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
 from tests.backend.semantic_graph.generators.expressions import exhaustive
 from tests.backend.semantic_graph.generators.invariants import (
+    XFAIL,
     assert_valid_graph,
     assert_pydantic_validates,
     assert_no_placeholder_leak,
@@ -43,11 +44,8 @@ def _placeholder_params():
     params = []
     for t in _CASES:
         marks = []
-        if t.var_style in _PLACEHOLDER_LEAK_STYLES and t.test_id not in _COMPOUND_FIXED:
-            marks.append(pytest.mark.xfail(
-                strict=True,
-                reason="Compound symbol placeholders leak into node IDs",
-            ))
+        if t.var_style in _PLACEHOLDER_LEAK_STYLES and t.axis_id not in _COMPOUND_FIXED:
+            marks.append(XFAIL)
         params.append(pytest.param(t, id=t.test_id, marks=marks))
     return params
 
