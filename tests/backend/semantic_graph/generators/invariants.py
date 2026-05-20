@@ -3,6 +3,9 @@
 Every domain suite calls ``assert_universal_invariants`` on every expression.
 Suite-specific invariants are composed from the helpers in this module to build
 domain-tailored assertion functions.
+
+All helpers accept ``SemanticGraph`` (Pydantic model) — the parser's return type
+since the #309 refactor.
 """
 
 from __future__ import annotations
@@ -10,63 +13,64 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from backend.model.semantic_graph import SemanticGraph
+from backend.model.semantic_graph import (
+    SemanticGraph,
+    SemanticGraphNode,
+)
 
 
 _PLACEHOLDER_RE = re.compile(r"(?:Theta|Xi|Phi)_\{\d*\}")
 
 
-def assert_valid_graph(graph: dict[str, Any], *, latex: str = "") -> None:
+def assert_valid_graph(graph: SemanticGraph, *, latex: str = "") -> None:
     """Graph is non-null with at least one node and an edges list."""
     assert graph is not None, f"Parser returned None for: {latex!r}"
-    assert "nodes" in graph, f"Missing 'nodes' key for: {latex!r}"
-    assert "edges" in graph, f"Missing 'edges' key for: {latex!r}"
-    assert len(graph["nodes"]) >= 1, f"Empty nodes list for: {latex!r}"
+    assert len(graph.nodes) >= 1, f"Empty nodes list for: {latex!r}"
 
 
-def assert_classification_present(graph: dict[str, Any], *, latex: str = "") -> None:
+def assert_classification_present(graph: SemanticGraph, *, latex: str = "") -> None:
     """Classification block exists with a valid ``kind``."""
-    assert "classification" in graph, f"Missing classification for: {latex!r}"
-    kind = graph["classification"].get("kind")
+    assert graph.classification is not None, f"Missing classification for: {latex!r}"
+    kind = graph.classification.kind
     assert kind in {"algebraic", "ODE", "PDE", "statements"}, (
         f"Invalid classification kind {kind!r} for: {latex!r}"
     )
 
 
-def assert_pydantic_validates(graph: dict[str, Any], *, latex: str = "") -> None:
-    """Graph passes Pydantic model validation."""
+def assert_pydantic_validates(graph: SemanticGraph, *, latex: str = "") -> None:
+    """Graph round-trips through Pydantic model validation."""
     try:
-        SemanticGraph.model_validate(graph)
+        SemanticGraph.model_validate(graph.model_dump(by_alias=True))
     except Exception as exc:
         raise AssertionError(
             f"Pydantic validation failed for: {latex!r}\n{exc}"
         ) from exc
 
 
-def assert_no_placeholder_leak(graph: dict[str, Any], *, latex: str = "") -> None:
+def assert_no_placeholder_leak(graph: SemanticGraph, *, latex: str = "") -> None:
     """No internal placeholder tokens leak into node latex/label fields."""
-    for node in graph["nodes"]:
+    for node in graph.nodes:
         for field in ("latex", "label", "id"):
-            val = node.get(field, "")
+            val = getattr(node, field, None) or ""
             if val and _PLACEHOLDER_RE.search(str(val)):
                 raise AssertionError(
-                    f"Placeholder leak in node {node.get('id')!r}.{field}: "
+                    f"Placeholder leak in node {node.id!r}.{field}: "
                     f"{val!r} for: {latex!r}"
                 )
 
 
 def assert_domain_propagated(
-    graph: dict[str, Any], domain: str | None, *, latex: str = "",
+    graph: SemanticGraph, domain: str | None, *, latex: str = "",
 ) -> None:
     """When a domain is set on input, the graph carries it through."""
     if domain is not None:
-        assert graph.get("domain") == domain, (
-            f"Expected domain={domain!r}, got {graph.get('domain')!r} for: {latex!r}"
+        assert graph.domain == domain, (
+            f"Expected domain={domain!r}, got {graph.domain!r} for: {latex!r}"
         )
 
 
 def assert_universal_invariants(
-    graph: dict[str, Any],
+    graph: SemanticGraph,
     *,
     latex: str = "",
     domain: str | None = None,
@@ -82,79 +86,77 @@ def assert_universal_invariants(
 # ── Suite-specific helpers ──────────────────────────────────────────────
 
 
-def find_node(graph: dict[str, Any], **attrs: Any) -> dict[str, Any] | None:
+def find_node(graph: SemanticGraph, **attrs: Any) -> SemanticGraphNode | None:
     """Find the first node matching all given attribute values."""
-    for node in graph["nodes"]:
-        if all(node.get(k) == v for k, v in attrs.items()):
+    for node in graph.nodes:
+        if all(getattr(node, k, None) == v for k, v in attrs.items()):
             return node
     return None
 
 
-def find_nodes(graph: dict[str, Any], **attrs: Any) -> list[dict[str, Any]]:
+def find_nodes(graph: SemanticGraph, **attrs: Any) -> list[SemanticGraphNode]:
     """Find all nodes matching given attribute values."""
     return [
-        n for n in graph["nodes"]
-        if all(n.get(k) == v for k, v in attrs.items())
+        n for n in graph.nodes
+        if all(getattr(n, k, None) == v for k, v in attrs.items())
     ]
 
 
-def has_node_with(graph: dict[str, Any], **attrs: Any) -> bool:
+def has_node_with(graph: SemanticGraph, **attrs: Any) -> bool:
     """Check that at least one node matches."""
     return find_node(graph, **attrs) is not None
 
 
-def has_operator(graph: dict[str, Any], op: str) -> bool:
+def has_operator(graph: SemanticGraph, op: str) -> bool:
     """Check that the graph contains an operator node with the given op."""
     return has_node_with(graph, type="operator", op=op)
 
 
-def has_relation(graph: dict[str, Any], op: str) -> bool:
+def has_relation(graph: SemanticGraph, op: str) -> bool:
     """Check that the graph contains a relation node with the given op."""
     return has_node_with(graph, type="relation", op=op)
 
 
-def has_function(graph: dict[str, Any], op: str | None = None) -> bool:
+def has_function(graph: SemanticGraph, op: str | None = None) -> bool:
     """Check for a function node, optionally matching a specific op."""
     if op is not None:
         return has_node_with(graph, type="function", op=op)
     return has_node_with(graph, type="function")
 
 
-def operator_ops(graph: dict[str, Any]) -> set[str]:
+def operator_ops(graph: SemanticGraph) -> set[str]:
     """Return the set of all operator ``op`` values in the graph."""
     return {
-        n["op"] for n in graph["nodes"]
-        if n.get("type") == "operator" and n.get("op")
+        n.op for n in graph.nodes
+        if n.type == "operator" and n.op
     }
 
 
-def relation_ops(graph: dict[str, Any]) -> set[str]:
+def relation_ops(graph: SemanticGraph) -> set[str]:
     """Return the set of all relation ``op`` values in the graph."""
     return {
-        n["op"] for n in graph["nodes"]
-        if n.get("type") == "relation" and n.get("op")
+        n.op for n in graph.nodes
+        if n.type == "relation" and n.op
     }
 
 
-def node_types(graph: dict[str, Any]) -> set[str]:
+def node_types(graph: SemanticGraph) -> set[str]:
     """Return the set of all node types present."""
-    return {n["type"] for n in graph["nodes"]}
+    return {n.type for n in graph.nodes}
 
 
-def classification_kind(graph: dict[str, Any]) -> str | None:
+def classification_kind(graph: SemanticGraph) -> str | None:
     """Return the classification kind, or None."""
-    c = graph.get("classification")
-    return c.get("kind") if c else None
+    return graph.classification.kind if graph.classification else None
 
 
-def classification_count(graph: dict[str, Any]) -> int | None:
+def classification_count(graph: SemanticGraph) -> int | None:
     """Return the classification statement count, or None."""
-    c = graph.get("classification")
-    return c.get("count") if c else None
+    return graph.classification.count if graph.classification else None
 
 
 def assert_has_operator(
-    graph: dict[str, Any], op: str, *, latex: str = "",
+    graph: SemanticGraph, op: str, *, latex: str = "",
 ) -> None:
     """Assert the graph has an operator with the given ``op``."""
     assert has_operator(graph, op), (
@@ -164,7 +166,7 @@ def assert_has_operator(
 
 
 def assert_has_relation(
-    graph: dict[str, Any], op: str, *, latex: str = "",
+    graph: SemanticGraph, op: str, *, latex: str = "",
 ) -> None:
     """Assert the graph has a relation with the given ``op``."""
     assert has_relation(graph, op), (
@@ -174,7 +176,7 @@ def assert_has_relation(
 
 
 def assert_classification_kind_is(
-    graph: dict[str, Any], kind: str, *, latex: str = "",
+    graph: SemanticGraph, kind: str, *, latex: str = "",
 ) -> None:
     """Assert the classification kind matches."""
     actual = classification_kind(graph)
@@ -184,17 +186,17 @@ def assert_classification_kind_is(
 
 
 def assert_node_exists(
-    graph: dict[str, Any], *, latex: str = "", **attrs: Any,
+    graph: SemanticGraph, *, latex: str = "", **attrs: Any,
 ) -> None:
     """Assert at least one node matches the given attributes."""
     assert has_node_with(graph, **attrs), (
         f"No node matching {attrs} found for: {latex!r}\n"
-        f"  Nodes: {[{k: n.get(k) for k in ('id', 'type', 'op')} for n in graph['nodes']]}"
+        f"  Nodes: {[{'id': n.id, 'type': n.type, 'op': n.op} for n in graph.nodes]}"
     )
 
 
 def assert_operators_in(
-    graph: dict[str, Any], allowed: set[str], *, latex: str = "",
+    graph: SemanticGraph, allowed: set[str], *, latex: str = "",
 ) -> None:
     """Assert all operator ops are within the allowed set."""
     actual = operator_ops(graph)

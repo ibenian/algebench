@@ -243,7 +243,7 @@ class TestArithmeticRegressions:
     def test_numeric_expression_has_classification(self):
         """Even pure numeric expressions should have a classification."""
         g = latex_to_semantic_graph(r"2 + 3 = 5")
-        assert g["classification"]["kind"] == "algebraic"
+        assert g.classification.kind == "algebraic"
 
     def test_sqrt_becomes_power(self):
         r"""``\sqrt{x}`` should be represented as power (x^{1/2})."""
