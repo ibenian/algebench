@@ -16,22 +16,39 @@ jobs:
   loc-report:
     runs-on: ubuntu-latest
     steps:
+      - name: Skip if triggered by bot commit
+        id: guard
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA="${{ github.event.pull_request.head.sha }}"
+          LOGIN=$(gh api "repos/${{ github.repository }}/commits/${SHA}" --jq '.author.login // empty' 2>/dev/null || true)
+          if [ "$LOGIN" = "github-actions[bot]" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping — HEAD commit is from github-actions[bot]"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.guard.outputs.skip != 'true'
         with:
           ref: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || github.ref }}
 
       - uses: taiki-e/install-action@v2
+        if: steps.guard.outputs.skip != 'true'
         with:
           tool: tokei@14.0.0
 
       - name: Generate report
+        if: steps.guard.outputs.skip != 'true'
         run: ./scripts/loc-report.sh LOC-REPORT.md
 
       - name: Post summary
+        if: steps.guard.outputs.skip != 'true'
         run: cat LOC-REPORT.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit report if code lines changed
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: steps.guard.outputs.skip != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         run: |
           # Strip volatile metadata (Branch/Commit/Date) before comparing
           # so only actual code-line changes trigger a commit.
@@ -43,6 +60,6 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add LOC-REPORT.md
-            git diff --cached --quiet || git commit -m "docs: update lines-of-code report [skip ci]"
+            git diff --cached --quiet || git commit -m "docs: update lines-of-code report"
             git push
           fi
