@@ -95,7 +95,7 @@ class SemanticGraphNode(BaseModel):
 class SemanticGraphEdge(BaseModel):
     """An edge in the semantic graph."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     from_: str = Field(alias="from", min_length=1, max_length=80, pattern=_NO_HTML)
     to: str = Field(min_length=1, max_length=80, pattern=_NO_HTML)

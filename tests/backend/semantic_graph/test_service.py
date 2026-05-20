@@ -16,8 +16,8 @@ class TestDerive:
     def test_simple_equation(self, svc):
         graph = svc.derive("F = m a")
         assert graph is not None
-        assert "nodes" in graph
-        assert "edges" in graph
+        assert graph.nodes is not None
+        assert graph.edges is not None
 
     def test_returns_none_for_empty(self, svc):
         assert svc.derive("") is None
@@ -28,12 +28,12 @@ class TestDerive:
     def test_domain_carried(self, svc):
         graph = svc.derive("F = ma", domain="physics")
         assert graph is not None
-        assert graph.get("domain") == "physics"
+        assert graph.domain == "physics"
 
     def test_chained_equals(self, svc):
         graph = svc.derive("a = b = c")
         assert graph is not None
-        eq_nodes = [n for n in graph["nodes"] if n.get("op") == "equals"]
+        eq_nodes = [n for n in graph.nodes if n.op == "equals"]
         assert len(eq_nodes) >= 1
 
     def test_statement_separator(self, svc):
@@ -47,14 +47,14 @@ class TestDerive:
     def test_element_of(self, svc):
         graph = svc.derive(r"x \in \mathbb{R}")
         assert graph is not None
-        rel_nodes = [n for n in graph["nodes"] if n.get("op") == "element_of"]
+        rel_nodes = [n for n in graph.nodes if n.op == "element_of"]
         assert len(rel_nodes) == 1
 
     def test_annotation_preserved(self, svc):
         graph = svc.derive(r"F = ma \quad (v_e \text{ constant})")
         assert graph is not None
-        ann_nodes = [n for n in graph["nodes"]
-                     if n.get("id", "").startswith("__annotation_")]
+        ann_nodes = [n for n in graph.nodes
+                     if n.id.startswith("__annotation_")]
         assert len(ann_nodes) >= 1
 
     def test_compound_symbol(self, svc):

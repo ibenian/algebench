@@ -283,15 +283,16 @@ class MathRenderer:
 
     def _build_mermaid_card(self) -> tuple[str, dict]:
         graph = self._graph if self._graph else latex_to_semantic_graph(self.latex)
+        graph_dict = graph.model_dump(by_alias=True, exclude_none=True) if hasattr(graph, "model_dump") else graph
         if self.validate:
-            errors = validate_graph(graph)
+            errors = validate_graph(graph_dict)
             if errors:
                 raise ValueError(
                     "Graph failed schema validation:\n"
                     + "\n".join(f"  {e}" for e in errors)
                 )
         mermaid_src = semantic_graph_to_mermaid(
-            graph, theme=self.graph_theme, label_mode=self.label_mode,
+            graph_dict, theme=self.graph_theme, label_mode=self.label_mode,
             show=self.show, color_by=self.color_by,
         )
         card = (
@@ -300,11 +301,11 @@ class MathRenderer:
             f'  <pre class="mermaid">\n{mermaid_src}  </pre>\n'
             "</div>"
         )
-        return card, graph
+        return card, graph_dict
 
     @staticmethod
     def _build_hover_script(graph: dict) -> str:
-        if not graph.get("nodes"):
+        if not graph or not graph.get("nodes"):
             return ""
         graph_panel_js = _GRAPH_PANEL_JS
         graph_json = json.dumps(graph).replace("</", "<\\/")

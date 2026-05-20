@@ -4,7 +4,7 @@
 # Usage:
 #   ./run.sh schemas/validate.py scenes/*.json
 #   ./run.sh schemas/validate.py --check-schema
-#   ./run.sh server.py
+#   ./run.sh backend/server.py
 #   ./run.sh -m pytest tests/
 #
 # Handles venv creation and dependency install on first use.

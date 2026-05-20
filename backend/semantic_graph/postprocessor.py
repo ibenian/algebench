@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from backend.model.semantic_graph import SemanticGraph, SemanticGraphNode, SemanticGraphEdge
+
 from .constants import _ORDER_TO_ACCENT
 
 
@@ -14,7 +16,7 @@ def _re_sub_literal(pattern: str, replacement: str, text: str) -> str:
 
 
 class GraphPostprocessor:
-    """Stateless postprocessor: each method mutates a graph dict in-place."""
+    """Stateless postprocessor: each method mutates a ``SemanticGraph`` in-place."""
 
     # ------------------------------------------------------------------
     # Public orchestrator
@@ -22,9 +24,9 @@ class GraphPostprocessor:
 
     def postprocess(
         self,
-        graph: dict | None,
+        graph: SemanticGraph | None,
         result: Any,
-    ) -> dict | None:
+    ) -> SemanticGraph | None:
         """Run all postprocessing passes on *graph* using *result* metadata.
 
         *result* is a ``PreprocessResult`` (or any object with the same attrs).
@@ -46,65 +48,58 @@ class GraphPostprocessor:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def reject_degenerate(graph: dict) -> bool:
+    def reject_degenerate(graph: SemanticGraph) -> bool:
         """Return ``True`` if the graph is a single ``__expr_*`` placeholder."""
-        nodes = graph.get("nodes") or []
-        if (len(nodes) == 1 and isinstance(nodes[0], dict)
-                and isinstance(nodes[0].get("id"), str)
-                and nodes[0]["id"].startswith("__expr_")):
+        nodes = graph.nodes
+        if len(nodes) == 1 and nodes[0].id.startswith("__expr_"):
             return True
         return False
 
     @staticmethod
     def restore_dot_notation(
-        graph: dict,
+        graph: SemanticGraph,
         dotted_vars: dict[str, int],
     ) -> None:
         """Walk every node's ``subexpr`` and restore ``\\dot`` notation."""
-        if not isinstance(graph, dict) or not dotted_vars:
+        if not dotted_vars:
             return
-        for node in graph.get("nodes") or []:
-            if not isinstance(node, dict):
-                continue
-            sub = node.get("subexpr")
+        for node in graph.nodes:
+            sub = node.subexpr
             if isinstance(sub, str) and "\\frac" in sub:
-                node["subexpr"] = _restore_dot_notation_str(sub, dotted_vars)
+                node.subexpr = _restore_dot_notation_str(sub, dotted_vars)
 
     @staticmethod
     def restore_accents(
-        graph: dict | None,
+        graph: SemanticGraph | None,
         accent_map: dict[str, str],
     ) -> None:
         """Re-wrap stripped accents in each node's display ``latex`` field."""
         if not graph or not accent_map:
             return
-        nodes = graph.get("nodes") or []
-        for node in nodes:
-            if not isinstance(node, dict):
+        for node in graph.nodes:
+            if node.type in ("operator", "relation"):
                 continue
-            if node.get("type") in ("operator", "relation"):
-                continue
-            latex = node.get("latex")
+            latex = node.latex
             if not isinstance(latex, str) or not latex:
                 continue
             for body, accent in accent_map.items():
                 if f"\\{accent}{{{body}}}" in latex:
                     continue
                 if latex == body:
-                    node["latex"] = f"\\{accent}{{{body}}}"
+                    node.latex = f"\\{accent}{{{body}}}"
                     if accent == "vec":
-                        node["type"] = "vector"
+                        node.type = "vector"
                     break
                 if latex.startswith(body) and len(latex) > len(body):
                     tail = latex[len(body):]
                     if tail[0] in "_^":
-                        node["latex"] = f"\\{accent}{{{body}}}{tail}"
+                        node.latex = f"\\{accent}{{{body}}}{tail}"
                         if accent == "vec":
-                            node["type"] = "vector"
+                            node.type = "vector"
                         break
 
     @staticmethod
-    def restore_subscripts(graph: dict, mapping: dict[str, str]) -> None:
+    def restore_subscripts(graph: SemanticGraph, mapping: dict[str, str]) -> None:
         """Swap each Greek placeholder back to the original subscript body."""
         if not mapping:
             return
@@ -126,50 +121,51 @@ class GraphPostprocessor:
 
         _TEXT_POLLUTION_KEYS = ("emoji", "quantity", "dimension", "unit", "value", "role")
 
-        for node in graph.get("nodes") or []:
-            if not isinstance(node, dict):
-                continue
-            node_id = node.get("id")
-            if isinstance(node_id, str) and node_id in mapping:
+        for node in graph.nodes:
+            node_id = node.id
+            if node_id in mapping:
                 original = mapping[node_id]
                 display, is_text = _display_of(original)
-                node["id"] = display
-                node["label"] = display
-                node["latex"] = original
+                node.id = display
+                node.label = display
+                node.latex = original
                 if is_text:
-                    node["type"] = "text"
+                    node.type = "text"
                     for k in _TEXT_POLLUTION_KEYS:
-                        node.pop(k, None)
-                    node.pop("role", None)
-                if "subexpr" in node and isinstance(node["subexpr"], str):
-                    node["subexpr"] = rewrite(node["subexpr"])
+                        setattr(node, k, None)
+                    node.role = None
+                if node.subexpr is not None:
+                    node.subexpr = rewrite(node.subexpr)
                 continue
             for field in ("id", "label", "latex", "subexpr"):
-                if field in node and isinstance(node[field], str):
-                    node[field] = rewrite(node[field])
-        for edge in graph.get("edges") or []:
-            if not isinstance(edge, dict):
-                continue
-            for field in ("from", "to"):
-                if field in edge and isinstance(edge[field], str):
-                    val = edge[field]
+                val = getattr(node, field, None)
+                if isinstance(val, str):
+                    setattr(node, field, rewrite(val))
+        for edge in graph.edges:
+            for attr in ("from_", "to"):
+                val = getattr(edge, attr)
+                if isinstance(val, str):
                     if val in mapping:
                         display, _ = _display_of(mapping[val])
-                        edge[field] = display
+                        setattr(edge, attr, display)
                     else:
-                        edge[field] = rewrite(val)
+                        setattr(edge, attr, rewrite(val))
 
     @staticmethod
     def inject_annotations(
-        graph: dict,
+        graph: SemanticGraph,
         annotations: list[dict[str, str]],
     ) -> None:
         """Append parenthetical annotation nodes to the graph."""
         for i, ann in enumerate(annotations):
             node_id = f"__annotation_{i}"
-            node: dict[str, Any] = {"id": node_id}
-            node.update(ann)
-            graph.setdefault("nodes", []).append(node)
+            node = SemanticGraphNode(
+                id=node_id,
+                type=ann.get("type", "annotation"),
+                label=ann.get("label"),
+                latex=ann.get("latex"),
+            )
+            graph.nodes.append(node)
 
 
 # ------------------------------------------------------------------

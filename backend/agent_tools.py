@@ -307,7 +307,7 @@ def _make_tools(*exclude_names):
 
 def _load_agent_tools_reference():
     """Load the agent tools reference from the external markdown file."""
-    ref_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'agent-tools-reference.md')
+    ref_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'agent-tools-reference.md')
     try:
         with open(ref_path, 'r') as f:
             return f.read()
@@ -603,7 +603,7 @@ def build_system_prompt(context, agent_memory=None):
     for s in sections:
         if f"## {s}" in prompt_text:
             included.append(s)
-    import server as _srv
+    import backend.server as _srv
     if getattr(_srv, 'DEBUG_MODE', False):
         print(f"   📋 System prompt sections: {', '.join(included)} ({len(prompt_text)} chars)")
 

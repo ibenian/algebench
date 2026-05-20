@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from server import resolve_scene_path_safe, script_dir, scenes_dir
+from backend.server import resolve_scene_path_safe, script_dir, scenes_dir
 
 
 def test_rejects_absolute_path_outside_project():
