@@ -1053,46 +1053,27 @@ Beyond hand-curated expressions and parametric cross-products, leverage
 automated test data generation to uncover edge cases the curated suites
 miss.
 
-#### Hypothesis (property-based testing)
+#### Hypothesis (property-based testing) — deferred
 
-Use [Hypothesis](https://hypothesis.readthedocs.io/) to generate
-random but structurally valid LaTeX expressions and verify invariants:
+**Status: Evaluated and deferred.** After analysis, Hypothesis
+property-based testing is not a good fit for LaTeX parsing at this stage:
 
-```python
-from hypothesis import given, strategies as st
+1. **Random LaTeX is mostly invalid.** Composite strategies that
+   generate syntactically valid LaTeX essentially re-implement the
+   parametric cross-product generators (§8.4) with worse ergonomics.
+2. **The only meaningful invariant for random input is "don't crash"** —
+   the parser already handles this via `try/except`. Structural
+   assertions (node types, relation ops, classification kind) require
+   knowing what the input *means*, which random generation can't provide.
+3. **Shrinking adds little value** when the reproducer is a single LaTeX
+   string that can be pasted directly into a test case.
+4. **Better ROI** comes from curating more domain suite expressions
+   (§8.2) and expanding the parametric generators (§8.4), both of which
+   test *meaningful* LaTeX that students and textbooks actually write.
 
-SYMBOLS = st.sampled_from(["x", "y", "z", r"\alpha", r"\beta", r"\theta"])
-BINOPS = st.sampled_from(["+", "-", r"\cdot", r"\times"])
-RELATIONS = st.sampled_from(["=", r"\approx", r"\leq", r"\geq", r"\neq"])
-
-@st.composite
-def latex_equation(draw):
-    lhs = draw(SYMBOLS)
-    op = draw(BINOPS)
-    rhs = draw(SYMBOLS)
-    rel = draw(RELATIONS)
-    return f"{lhs} {rel} {draw(SYMBOLS)} {op} {rhs}"
-
-@given(latex=latex_equation())
-def test_parser_never_crashes(latex):
-    """Parser may return None but must never raise an unhandled exception."""
-    try:
-        graph = latex_to_semantic_graph(latex)
-    except ValueError:
-        pass  # known rejection (empty input, etc.)
-    else:
-        if graph is not None:
-            assert "nodes" in graph
-            assert "edges" in graph
-```
-
-Key strategies:
-- **Composite strategies** build nested LaTeX (fractions inside
-  subscripts, accented variables inside sums) to stress nesting depth.
-- **Shrinking** automatically minimizes failing examples to the
-  smallest reproducer.
-- **Database replay** re-runs previously failing examples on every CI
-  push, preventing regressions without maintaining fixtures manually.
+Hypothesis may be revisited in the future for fuzz-style "parser never
+crashes" smoke tests once the domain suites and generators are mature.
+The file layout reserves `test_property_based.py` for this purpose.
 
 #### Mutation testing
 

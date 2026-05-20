@@ -4,9 +4,9 @@
 
 | Field | Value |
 |---|---|
-| **Branch** | `feat/semantic-graph-model-return` |
-| **Commit** | `07ba759` |
-| **Date** | 2026-05-19 22:00:26 -0400 |
+| **Branch** | `feat/semantic-graph-domain-tests` |
+| **Commit** | `55cabb2` |
+| **Date** | 2026-05-19 23:29:16 -0400 |
 
 ## Language Breakdown
 
@@ -17,7 +17,7 @@
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "JavaScript", "Python", "CSS", "HTML", "Shell", "BASH"]
-  bar [49589, 15584, 12884, 4219, 395, 138, 34]
+  bar [49589, 15584, 13477, 4219, 395, 138, 34]
 ```
 
 ## Summary by Language
@@ -28,7 +28,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  JSON                     41        49590        49589            0            1
  JavaScript               46        18023        15584          974         1465
- Python                   53        16323        12884         1288         2151
+ Python                   61        17109        13477         1314         2318
  CSS                       3         4581         4219          169          193
  Shell                     2          176          138           16           22
  BASH                      1           42           34            4            4
@@ -39,15 +39,15 @@ xychart-beta horizontal
  |- JavaScript             2          580          513           11           56
  (Total)                             1116         1027           23           66
 ─────────────────────────────────────────────────────────────────────────────────
- Markdown                 56        11270            0         8526         2744
+ Markdown                 56        11276            0         8532         2744
  |- BASH                  13          169          147           14            8
  |- JavaScript             1           10            6            3            1
  |- JSON                  33         1318         1318            0            0
  |- Markdown               1            1            0            1            0
- |- Python                 3          441          407            4           30
- (Total)                            13209         1878         8548         2783
+ |- Python                 3          416          385            4           27
+ (Total)                            13190         1856         8554         2780
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   206       103069        85353        11031         6685
+ Total                   214       103836        85924        11063         6849
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -132,7 +132,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Python                   53        16323        12884         1288         2151
+ Python                   61        17109        13477         1314         2318
 ─────────────────────────────────────────────────────────────────────────────────
  |lgebench/backend/server.py         2037         1726          124          187
  |aph/test_latex_to_graph.py         1984         1570          161          253
@@ -152,8 +152,10 @@ xychart-beta horizontal
  |ripts/extract_structure.py          259          218            5           36
  |ic_graph/equation_chain.py          250          217            1           32
  |ench/scripts/lint_scene.py          236          185           14           37
+ |/test_domain_arithmetic.py          252          169           21           62
  |tic_graph/postprocessor.py          200          168            9           23
  |emantic_graph/constants.py          196          156           12           28
+ |h/generators/invariants.py          207          155            1           51
  |scripts/validate_schema.py          180          154            1           25
  |/scripts/assemble_scene.py          187          144            1           42
  |graph_highlight_overlay.py          178          137            2           39
@@ -164,9 +166,12 @@ xychart-beta horizontal
  |nd/model/semantic_graph.py          161          109           19           33
  |nch/backend/agents/base.py          124          105            0           19
  |ic_graph/test_constants.py          126          100            0           26
+ |/generators/expressions.py          118           98            0           20
  |/scripts/latex_to_graph.py          108           89            8           11
  |ests/test_path_security.py          109           83            0           26
  |ntic_graph/test_service.py           90           68            0           22
+ |ph/generators/variables.py           77           68            0            9
+ |est_coverage_exhaustive.py           84           62            4           18
  |resolve_scene_path_safe.py           81           61            0           20
  |mantic_graph/test_cache.py           70           57            0           13
  |ents/test_schema_parity.py           73           55            0           18
@@ -177,18 +182,21 @@ xychart-beta horizontal
  |/test_preprocess_result.py           44           37            0            7
  |nd/semantic_graph/cache.py           41           29            0           12
  |/backend/model/__init__.py           31           29            0            2
+ |aph/generators/__init__.py           25           23            0            2
  |semantic_graph/__init__.py           25           22            0            3
  |backend/agents/__init__.py           20           18            0            2
+ |semantic_graph/conftest.py           23           18            0            5
  |graph/preprocess_result.py           16           11            0            5
  |ebench/backend/__init__.py            1            1            0            0
  |ebench/scripts/__init__.py            0            0            0            0
  |/tests/backend/__init__.py            0            0            0            0
  |backend/agents/__init__.py            0            0            0            0
+ |_graph/domains/__init__.py            0            0            0            0
  |semantic_graph/__init__.py            0            0            0            0
  |/backend/model/__init__.py            0            0            0            0
  |lgebench/tests/__init__.py            0            0            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                    53        16323        12884         1288         2151
+ Total                    61        17109        13477         1314         2318
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -196,6 +204,6 @@ xychart-beta horizontal
 
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
-| JavaScript (frontend) | 15584 | 54% |
-| Python (backend) | 12884 | 46% |
-| **Total** | **28468** | **100%** |
+| JavaScript (frontend) | 15584 | 53% |
+| Python (backend) | 13477 | 47% |
+| **Total** | **29061** | **100%** |
