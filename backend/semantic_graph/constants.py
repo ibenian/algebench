@@ -69,11 +69,6 @@ DIMENSION_PATTERN: str = (
 )
 
 KNOWN_VARIABLES: dict[str, dict[str, str]] = {
-    "F": {"type": "vector", "latex": "F"},
-    "a": {"type": "vector", "latex": "a"},
-    "v": {"type": "vector", "latex": "v"},
-    "p": {"type": "vector", "latex": "p"},
-    "B": {"type": "vector", "latex": "B"},
     "alpha":   {"type": "scalar", "latex": "\\alpha"},
     "beta":    {"type": "scalar", "latex": "\\beta"},
     "gamma":   {"type": "scalar", "latex": "\\gamma"},

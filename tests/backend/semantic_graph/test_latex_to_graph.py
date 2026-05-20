@@ -62,12 +62,12 @@ class TestGraphStructure:
         # by the enricher, not pre-baked from a hardcoded symbol table.
         g = latex_to_semantic_graph("m \\cdot a")
         assert _find_node(g, id="m", type="scalar")
-        assert _find_node(g, id="a", type="vector")  # 'a' is in vector hints
+        assert _find_node(g, id="a", type="scalar")
         assert _find_node(g, type="operator", op="multiply")
 
     def test_equation(self):
         g = latex_to_semantic_graph("F = m \\cdot a")
-        assert _find_node(g, id="F", type="vector")
+        assert _find_node(g, id="F", type="scalar")
         assert _find_node(g, type="operator", op="equals")
 
     def test_power(self):
@@ -88,19 +88,24 @@ class TestGraphStructure:
 # ---------------------------------------------------------------------------
 
 class TestKnownVariables:
-    def test_known_vector_gets_type_hint_only(self):
-        # The parser used to bake in a hardcoded label/emoji/quantity/unit
-        # for ``F`` (force, 🏹, M·L·T⁻², N). That guess was misleading in
-        # other domains and is now the enricher's job. The parser emits
-        # only ``type`` (so the renderer picks the right node shape) and
-        # ``latex`` (so KaTeX renders the symbol nicely).
+    def test_bare_symbol_defaults_to_scalar(self):
         g = latex_to_semantic_graph("F")
         node = _find_node(g, id="F")
-        assert node.type == "vector"
+        assert node.type == "scalar"
         assert node.latex == "F"
-        # No semantic claims pre-filled — those wait for the enricher.
         for forbidden in ("label", "emoji", "quantity", "dimension", "unit", "role", "value"):
             assert getattr(node, forbidden, None) is None, f"{forbidden!r} should not be parser-set"
+
+    def test_vec_accent_assigns_vector_type(self):
+        from backend.semantic_graph import SemanticGraphService
+        svc = SemanticGraphService()
+        g = svc.derive(r"\vec{F} = m \vec{a}")
+        f_node = _find_node(g, id="F")
+        assert f_node.type == "vector"
+        assert f_node.latex == r"\vec{F}"
+        a_node = _find_node(g, id="a")
+        assert a_node.type == "vector"
+        assert a_node.latex == r"\vec{a}"
 
     def test_unknown_variable_gets_defaults(self):
         g = latex_to_semantic_graph("Q")
