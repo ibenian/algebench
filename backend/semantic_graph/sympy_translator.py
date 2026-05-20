@@ -23,6 +23,8 @@ from sympy.parsing.latex import parse_latex
 from sympy.physics.quantum.state import KetBase, BraBase
 from sympy.physics.quantum import InnerProduct
 
+from backend.model.semantic_graph import SemanticGraph
+
 from .preprocessor import LaTeXPreprocessor
 from .constants import (
     KNOWN_VARIABLES,
@@ -1224,7 +1226,7 @@ def _build_comma_separated_graph(
 
     for ci, clause in enumerate(cleaned_clauses):
         try:
-            sub = latex_to_semantic_graph(clause, overrides=overrides, domain=domain)
+            sub = _latex_to_semantic_graph_dict(clause, overrides=overrides, domain=domain)
         except Exception as exc:
             raise ValueError(
                 f"Failed to parse clause {ci + 1} ({clause!r}) of "
@@ -1288,12 +1290,12 @@ def _build_comma_separated_graph(
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def latex_to_semantic_graph(
+def _latex_to_semantic_graph_dict(
     latex: str,
     overrides: dict[str, dict[str, str]] | None = None,
     domain: str | None = None,
 ) -> dict:
-    """Parse a LaTeX string and return a semantic graph dict."""
+    """Parse a LaTeX string and return a semantic graph dict (internal)."""
     user_overrides = overrides
     latex = _normalize_latex(latex)
     latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
@@ -1403,3 +1405,13 @@ def latex_to_semantic_graph(
         graph["domain"] = domain
     _inject_annotations(graph, parenthetical_annotations)
     return graph
+
+
+def latex_to_semantic_graph(
+    latex: str,
+    overrides: dict[str, dict[str, str]] | None = None,
+    domain: str | None = None,
+) -> SemanticGraph:
+    """Parse a LaTeX string and return a ``SemanticGraph`` model instance."""
+    raw = _latex_to_semantic_graph_dict(latex, overrides=overrides, domain=domain)
+    return SemanticGraph.model_validate(raw)

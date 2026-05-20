@@ -121,16 +121,16 @@ class TestIssue185Repro:
 
     def test_no_subexpr_carries_a_tab(self):
         g = _derive_semantic_graph(self.LATEX)
-        for node in g["nodes"]:
-            sub = node.get("subexpr", "")
+        for node in g.nodes:
+            sub = node.subexpr or ""
             assert "\t" not in sub, (
-                f"Node {node.get('id')!r} subexpr still has TAB: {sub!r}"
+                f"Node {node.id!r} subexpr still has TAB: {sub!r}"
             )
 
     def test_q_label_nodes_render_text_command_literally(self):
         g = _derive_semantic_graph(self.LATEX)
         # Both label nodes must keep ``\text{...}`` intact.
-        ids = {node["id"] for node in g["nodes"]}
+        ids = {node.id for node in g.nodes}
         assert r"q_{\text{lunar}}" in ids
         assert r"q_{\text{LEO}}" in ids
 
@@ -149,9 +149,9 @@ class TestIssue185Repro:
         # The deriv-operator nodes' subexprs should contain ``\dot{...}``
         # with the original ``\text{...}`` subscript fully preserved.
         deriv_subs = [
-            node.get("subexpr", "")
-            for node in g["nodes"]
-            if node.get("id", "").startswith("__deriv_")
+            node.subexpr or ""
+            for node in g.nodes
+            if node.id.startswith("__deriv_")
         ]
         assert deriv_subs, "expected at least one __deriv_* node"
         for sub in deriv_subs:

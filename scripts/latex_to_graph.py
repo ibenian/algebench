@@ -94,7 +94,7 @@ def main() -> None:
         sys.exit(1)
 
     indent = 2 if args.pretty else None
-    result = json.dumps(graph, indent=indent, ensure_ascii=False)
+    result = json.dumps(graph.model_dump(by_alias=True, exclude_none=True), indent=indent, ensure_ascii=False)
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:

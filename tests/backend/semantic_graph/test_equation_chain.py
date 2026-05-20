@@ -111,8 +111,8 @@ class TestDeriveSingleExpression:
     def test_simple(self):
         graph = _derive_single_expression("F = m a")
         assert graph is not None
-        assert "nodes" in graph
-        assert "edges" in graph
+        assert graph.nodes is not None
+        assert graph.edges is not None
 
     def test_invalid(self):
         graph = _derive_single_expression("")
@@ -137,12 +137,12 @@ class TestDeriveEquationChainGraph:
     def test_simple_equation(self):
         graph = derive_equation_chain_graph("a = b")
         assert graph is not None
-        assert "nodes" in graph
+        assert graph.nodes is not None
 
     def test_chained_three_sides(self):
         graph = derive_equation_chain_graph("a = b = c")
         assert graph is not None
-        eq_nodes = [n for n in graph["nodes"] if n.get("op") == "equals"]
+        eq_nodes = [n for n in graph.nodes if n.op == "equals"]
         assert len(eq_nodes) >= 1
 
     def test_single_expression_no_equals(self):
@@ -166,12 +166,12 @@ class TestDeriveEquationChainGraph:
             r"F = ma \quad (v_e \text{ constant})"
         )
         assert graph is not None
-        ann_nodes = [n for n in graph["nodes"]
-                     if n.get("id", "").startswith("__annotation_")]
+        ann_nodes = [n for n in graph.nodes
+                     if n.id.startswith("__annotation_")]
         assert len(ann_nodes) >= 1
 
     def test_chain_merges_shared_variables(self):
         graph = derive_equation_chain_graph("x = y = x + 1")
         assert graph is not None
-        x_nodes = [n for n in graph["nodes"] if n.get("id") == "x"]
+        x_nodes = [n for n in graph.nodes if n.id == "x"]
         assert len(x_nodes) == 1

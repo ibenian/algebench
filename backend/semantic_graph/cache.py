@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend.model.semantic_graph import SemanticGraph
+
 _MISS = object()
 
 
@@ -11,9 +13,9 @@ class GraphCache:
     """Memoize parsed semantic graphs by (latex, domain) key."""
 
     def __init__(self) -> None:
-        self._store: dict[str | tuple[str, str | None], dict | None] = {}
+        self._store: dict[str | tuple[str, str | None], SemanticGraph | None] = {}
 
-    def get(self, latex: str, domain: str | None = None) -> dict | None | Any:
+    def get(self, latex: str, domain: str | None = None) -> SemanticGraph | None | Any:
         """Return the cached graph, or the *_MISS* sentinel if absent."""
         key = (latex, domain) if domain else latex
         return self._store.get(key, _MISS)
@@ -22,7 +24,7 @@ class GraphCache:
         self,
         latex: str,
         domain: str | None,
-        graph: dict | None,
+        graph: SemanticGraph | None,
     ) -> None:
         """Store *graph* under the (latex, domain) key."""
         key = (latex, domain) if domain else latex

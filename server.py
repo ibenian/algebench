@@ -38,6 +38,7 @@ scenes_dir = script_dir / "scenes"
 # ---------------------------------------------------------------------------
 # Semantic-graph auto-derivation for proof steps missing explicit graphs.
 # ---------------------------------------------------------------------------
+from backend.model.semantic_graph import SemanticGraph, SemanticGraphNode
 from backend.semantic_graph import SemanticGraphService
 from backend.semantic_graph.preprocessor import LaTeXPreprocessor
 from backend.semantic_graph.constants import _DOT_ACCENT_ORDERS
@@ -103,7 +104,7 @@ def _extract_htmlclass_pairs(latex: str) -> list[tuple[str, str]]:
 
 
 def _apply_highlights_to_graph(
-    graph: dict,
+    graph: SemanticGraph,
     hl_pairs: list[tuple[str, str]],
     highlights_meta: dict,
 ) -> None:
@@ -119,7 +120,7 @@ def _apply_highlights_to_graph(
     """
     if not graph or not hl_pairs or not isinstance(highlights_meta, dict):
         return
-    nodes = graph.get("nodes") or []
+    nodes = graph.nodes
 
     def _normalize(s: str) -> str:
         """Normalize LaTeX for comparison — peel visual accents (``\\vec``,
@@ -133,8 +134,6 @@ def _apply_highlights_to_graph(
         if not isinstance(s, str):
             return ""
         s = _strip_accent_commands(s)
-        # Repeatedly peel ``\dot{X}``/``\ddot{X}``/... → ``X`` (loop handles
-        # nested cases like ``\ddot{\vec{p}}`` after the accent strip above).
         prev = None
         while prev != s:
             prev = s
@@ -144,59 +143,42 @@ def _apply_highlights_to_graph(
         s = re.sub(r"\^([A-Za-z0-9])(?![A-Za-z0-9_{])", r"^{\1}", s)
         return s.replace(" ", "")
 
-    def _keys_for_node(n: dict) -> list[str]:
-        """Candidate normalized strings a highlight body might match against.
-
-        For leaf symbols, ``latex``/``id`` resolve to the symbol itself. For
-        intermediate operator/expression nodes, ``subexpr`` carries the
-        sympy-reconstructed LaTeX of the whole sub-tree — so a highlight
-        wrapping a sub-expression (e.g. ``\\htmlClass{hl-kinetic}{\\frac{1}{2}
-        m v^2}``) binds to the root operator of that sub-tree.
-        """
+    def _keys_for_node(n: SemanticGraphNode) -> list[str]:
+        """Candidate normalized strings a highlight body might match against."""
         keys: list[str] = []
         for f in ("latex", "id", "subexpr"):
-            v = n.get(f)
+            v = getattr(n, f, None)
             if isinstance(v, str):
                 keys.append(_normalize(v))
         return keys
 
-    # Also normalize body latex (strip surrounding whitespace; keep \text{}
-    # wrappers — restored subscripts should match).
     for class_key, body in hl_pairs:
         body = _normalize(body)
         meta = highlights_meta.get(class_key)
         if not isinstance(meta, dict):
             continue
-        # Prefer leaf symbols when the body is a bare symbol; fall back to
-        # operator/relation nodes (matched via ``subexpr``) when the body
-        # wraps an entire sub-expression.
-        matched: dict | None = None
+        matched = None
         for node in nodes:
-            if not isinstance(node, dict):
-                continue
-            if node.get("type") in ("operator", "relation"):
+            if node.type in ("operator", "relation"):
                 continue
             if body in _keys_for_node(node):
                 matched = node
                 break
         if matched is None:
             for node in nodes:
-                if not isinstance(node, dict):
-                    continue
-                if node.get("type") not in ("operator", "relation", "expression", "function"):
+                if node.type not in ("operator", "relation", "expression", "function"):
                     continue
                 if body in _keys_for_node(node):
                     matched = node
                     break
         if matched is None:
             continue
-        # Attach highlight metadata. Respect existing fields so hand-authored
-        # richness wins over auto-derived overlays.
-        if "color" in meta and not matched.get("color"):
-            matched["color"] = meta["color"]
-        if meta.get("label") and not matched.get("description"):
-            matched["description"] = meta["label"]
-        matched.setdefault("highlight", class_key)
+        if "color" in meta and not matched.color:
+            matched.color = meta["color"]
+        if meta.get("label") and not matched.description:
+            matched.description = meta["label"]
+        if not matched.highlight:
+            matched.highlight = class_key
 
 
 def _strip_html_class(latex: str) -> str:
@@ -329,7 +311,7 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
                     _apply_highlights_to_graph(
                         graph, hl_pairs, step.get('highlights') or {},
                     )
-                    step['semanticGraph'] = {'graph': graph}
+                    step['semanticGraph'] = {'graph': graph.model_dump(by_alias=True, exclude_none=True)}
                     filled += 1
                 else:
                     if error_reason is None:
@@ -1388,7 +1370,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         """
         try:
             graph = _graph_service.derive(req.latex, domain=req.domain)
-            return JSONResponse({"graph": graph})
+            return JSONResponse({"graph": graph.model_dump(by_alias=True, exclude_none=True) if graph else None})
         except (ValueError, SyntaxError, KeyError) as e:
             print(f"   ⚠️ /api/graph/from-latex parse error: {e}", flush=True)
             return JSONResponse({"error": "failed to derive semantic graph from LaTeX"}, status_code=400)

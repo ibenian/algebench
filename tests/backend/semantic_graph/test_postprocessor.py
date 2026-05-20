@@ -6,6 +6,11 @@ import copy
 
 import pytest
 
+from backend.model.semantic_graph import (
+    SemanticGraph,
+    SemanticGraphEdge,
+    SemanticGraphNode,
+)
 from backend.semantic_graph.postprocessor import (
     GraphPostprocessor,
     _re_sub_literal,
@@ -17,6 +22,22 @@ from backend.semantic_graph.preprocess_result import PreprocessResult
 @pytest.fixture
 def pp():
     return GraphPostprocessor()
+
+
+def _graph(nodes=(), edges=()):
+    """Shorthand to build a ``SemanticGraph`` from node/edge lists."""
+    return SemanticGraph(nodes=list(nodes), edges=list(edges))
+
+
+def _node(**kwargs):
+    """Shorthand to build a ``SemanticGraphNode`` with sensible defaults."""
+    kwargs.setdefault("type", "scalar")
+    return SemanticGraphNode(**kwargs)
+
+
+def _edge(from_, to, **kwargs):
+    """Shorthand to build a ``SemanticGraphEdge``."""
+    return SemanticGraphEdge(from_=from_, to=to, **kwargs)
 
 
 # ------------------------------------------------------------------
@@ -57,21 +78,21 @@ class TestRestoreDotNotationStr:
 
 class TestRejectDegenerate:
     def test_single_expr_node(self, pp):
-        graph = {"nodes": [{"id": "__expr_0", "type": "expression"}]}
+        graph = _graph(nodes=[_node(id="__expr_0", type="expression")])
         assert pp.reject_degenerate(graph) is True
 
     def test_normal_graph(self, pp):
-        graph = {"nodes": [{"id": "F", "type": "variable"}]}
+        graph = _graph(nodes=[_node(id="F", type="scalar")])
         assert pp.reject_degenerate(graph) is False
 
     def test_empty_nodes(self, pp):
-        assert pp.reject_degenerate({"nodes": []}) is False
+        assert pp.reject_degenerate(_graph()) is False
 
     def test_multiple_nodes(self, pp):
-        graph = {"nodes": [
-            {"id": "__expr_0", "type": "expression"},
-            {"id": "x", "type": "variable"},
-        ]}
+        graph = _graph(nodes=[
+            _node(id="__expr_0", type="expression"),
+            _node(id="x", type="scalar"),
+        ])
         assert pp.reject_degenerate(graph) is False
 
 
@@ -81,26 +102,28 @@ class TestRejectDegenerate:
 
 class TestRestoreDotNotationGraph:
     def test_restores_subexpr(self, pp):
-        graph = {"nodes": [
-            {"id": "eq", "subexpr": r"\frac{d}{d t} x = 0"},
-        ]}
+        graph = _graph(nodes=[
+            _node(id="eq", subexpr=r"\frac{d}{d t} x = 0"),
+        ])
         pp.restore_dot_notation(graph, {"x": 1})
-        assert graph["nodes"][0]["subexpr"] == r"\dot{x} = 0"
+        assert graph.nodes[0].subexpr == r"\dot{x} = 0"
 
     def test_no_frac_untouched(self, pp):
-        graph = {"nodes": [{"id": "a", "subexpr": "a + b"}]}
+        graph = _graph(nodes=[_node(id="a", subexpr="a + b")])
         pp.restore_dot_notation(graph, {"a": 1})
-        assert graph["nodes"][0]["subexpr"] == "a + b"
+        assert graph.nodes[0].subexpr == "a + b"
 
     def test_empty_dotted_vars(self, pp):
-        graph = {"nodes": [{"id": "a", "subexpr": r"\frac{d}{d t} a"}]}
+        graph = _graph(nodes=[_node(id="a", subexpr=r"\frac{d}{d t} a")])
         pp.restore_dot_notation(graph, {})
-        assert graph["nodes"][0]["subexpr"] == r"\frac{d}{d t} a"
+        assert graph.nodes[0].subexpr == r"\frac{d}{d t} a"
 
     def test_no_subexpr_field(self, pp):
-        graph = {"nodes": [{"id": "x", "latex": "x"}]}
+        graph = _graph(nodes=[_node(id="x", latex="x")])
         pp.restore_dot_notation(graph, {"x": 1})
-        assert graph["nodes"][0] == {"id": "x", "latex": "x"}
+        assert graph.nodes[0].id == "x"
+        assert graph.nodes[0].latex == "x"
+        assert graph.nodes[0].subexpr is None
 
 
 # ------------------------------------------------------------------
@@ -109,36 +132,36 @@ class TestRestoreDotNotationGraph:
 
 class TestRestoreAccents:
     def test_bare_body_restored(self, pp):
-        graph = {"nodes": [{"id": "F", "type": "variable", "latex": "F"}]}
+        graph = _graph(nodes=[_node(id="F", type="scalar", latex="F")])
         pp.restore_accents(graph, {"F": "vec"})
-        assert graph["nodes"][0]["latex"] == r"\vec{F}"
-        assert graph["nodes"][0]["type"] == "vector"
+        assert graph.nodes[0].latex == r"\vec{F}"
+        assert graph.nodes[0].type == "vector"
 
     def test_subscripted_body(self, pp):
-        graph = {"nodes": [{"id": "n_0", "type": "variable", "latex": "n_0"}]}
+        graph = _graph(nodes=[_node(id="n_0", type="scalar", latex="n_0")])
         pp.restore_accents(graph, {"n": "hat"})
-        assert graph["nodes"][0]["latex"] == r"\hat{n}_0"
+        assert graph.nodes[0].latex == r"\hat{n}_0"
 
     def test_already_accented_skip(self, pp):
-        graph = {"nodes": [{"id": "F", "type": "variable", "latex": r"\vec{F}"}]}
+        graph = _graph(nodes=[_node(id="F", type="scalar", latex=r"\vec{F}")])
         pp.restore_accents(graph, {"F": "vec"})
-        assert graph["nodes"][0]["latex"] == r"\vec{F}"
+        assert graph.nodes[0].latex == r"\vec{F}"
 
     def test_operator_skipped(self, pp):
-        graph = {"nodes": [{"id": "+", "type": "operator", "latex": "+"}]}
+        graph = _graph(nodes=[_node(id="+", type="operator", latex="+")])
         pp.restore_accents(graph, {"+": "hat"})
-        assert graph["nodes"][0]["latex"] == "+"
+        assert graph.nodes[0].latex == "+"
 
     def test_empty_accent_map(self, pp):
-        graph = {"nodes": [{"id": "F", "type": "variable", "latex": "F"}]}
+        graph = _graph(nodes=[_node(id="F", type="scalar", latex="F")])
         pp.restore_accents(graph, {})
-        assert graph["nodes"][0]["latex"] == "F"
+        assert graph.nodes[0].latex == "F"
 
     def test_non_vec_accent(self, pp):
-        graph = {"nodes": [{"id": "x", "type": "variable", "latex": "x"}]}
+        graph = _graph(nodes=[_node(id="x", type="scalar", latex="x")])
         pp.restore_accents(graph, {"x": "hat"})
-        assert graph["nodes"][0]["latex"] == r"\hat{x}"
-        assert graph["nodes"][0]["type"] == "variable"
+        assert graph.nodes[0].latex == r"\hat{x}"
+        assert graph.nodes[0].type == "scalar"
 
 
 # ------------------------------------------------------------------
@@ -147,65 +170,68 @@ class TestRestoreAccents:
 
 class TestRestoreSubscripts:
     def test_text_placeholder(self, pp):
-        graph = {
-            "nodes": [{"id": "alpha", "label": "alpha", "latex": r"\alpha", "subexpr": ""}],
-            "edges": [],
-        }
+        graph = _graph(
+            nodes=[_node(id="alpha", label="alpha", latex=r"\alpha", subexpr="")],
+            edges=[],
+        )
         pp.restore_subscripts(graph, {"alpha": r"\text{sp}"})
-        assert graph["nodes"][0]["id"] == "sp"
-        assert graph["nodes"][0]["label"] == "sp"
-        assert graph["nodes"][0]["latex"] == r"\text{sp}"
-        assert graph["nodes"][0]["type"] == "text"
+        assert graph.nodes[0].id == "sp"
+        assert graph.nodes[0].label == "sp"
+        assert graph.nodes[0].latex == r"\text{sp}"
+        assert graph.nodes[0].type == "text"
 
     def test_plain_subscript(self, pp):
-        graph = {
-            "nodes": [{"id": "alpha", "label": "alpha", "latex": r"\alpha", "subexpr": ""}],
-            "edges": [],
-        }
+        graph = _graph(
+            nodes=[_node(id="alpha", label="alpha", latex=r"\alpha", subexpr="")],
+            edges=[],
+        )
         pp.restore_subscripts(graph, {"alpha": "exhaust"})
-        assert graph["nodes"][0]["id"] == "exhaust"
-        assert graph["nodes"][0]["label"] == "exhaust"
-        assert graph["nodes"][0]["latex"] == "exhaust"
+        assert graph.nodes[0].id == "exhaust"
+        assert graph.nodes[0].label == "exhaust"
+        assert graph.nodes[0].latex == "exhaust"
 
     def test_edge_refs_remapped(self, pp):
-        graph = {
-            "nodes": [
-                {"id": "F", "label": "F", "latex": "F"},
-                {"id": "alpha", "label": "alpha", "latex": r"\alpha", "subexpr": ""},
+        graph = _graph(
+            nodes=[
+                _node(id="F", label="F", latex="F"),
+                _node(id="alpha", label="alpha", latex=r"\alpha", subexpr=""),
             ],
-            "edges": [{"from": "F", "to": "alpha"}],
-        }
+            edges=[_edge("F", "alpha")],
+        )
         pp.restore_subscripts(graph, {"alpha": r"\text{prop}"})
-        assert graph["edges"][0]["to"] == "prop"
+        assert graph.edges[0].to == "prop"
 
     def test_inline_replacement(self, pp):
-        graph = {
-            "nodes": [{"id": "v_alpha", "label": "v_alpha", "latex": r"v_{\alpha}", "subexpr": r"v_{\alpha}"}],
-            "edges": [],
-        }
+        graph = _graph(
+            nodes=[_node(id="v_alpha", label="v_alpha", latex=r"v_{\alpha}", subexpr=r"v_{\alpha}")],
+            edges=[],
+        )
         pp.restore_subscripts(graph, {"alpha": "exhaust"})
-        assert "exhaust" in graph["nodes"][0]["id"]
-        assert r"\alpha" not in graph["nodes"][0]["latex"]
+        assert "exhaust" in graph.nodes[0].id
+        assert r"\alpha" not in graph.nodes[0].latex
 
     def test_empty_mapping(self, pp):
-        graph = {"nodes": [{"id": "x", "label": "x", "latex": "x"}], "edges": []}
+        graph = _graph(
+            nodes=[_node(id="x", label="x", latex="x")],
+            edges=[],
+        )
         original = copy.deepcopy(graph)
         pp.restore_subscripts(graph, {})
         assert graph == original
 
     def test_text_pollution_keys_removed(self, pp):
-        graph = {
-            "nodes": [{
-                "id": "alpha", "label": "alpha", "latex": r"\alpha",
-                "subexpr": "", "emoji": "α", "quantity": "angle",
-                "dimension": "rad", "unit": "rad", "value": None, "role": "variable",
-            }],
-            "edges": [],
-        }
+        graph = _graph(
+            nodes=[_node(
+                id="alpha", label="alpha", latex=r"\alpha",
+                subexpr="", emoji="α", quantity="angle",
+                dimension="rad", unit="rad", value=None, role="parameter",
+            )],
+            edges=[],
+        )
         pp.restore_subscripts(graph, {"alpha": r"\text{const}"})
-        node = graph["nodes"][0]
+        node = graph.nodes[0]
         for k in ("emoji", "quantity", "dimension", "unit", "value", "role"):
-            assert k not in node
+            assert getattr(node, k) is None
 
 
 # ------------------------------------------------------------------
@@ -214,28 +240,27 @@ class TestRestoreSubscripts:
 
 class TestInjectAnnotations:
     def test_appends_nodes(self, pp):
-        graph = {"nodes": [{"id": "x"}]}
+        graph = _graph(nodes=[_node(id="x")])
         pp.inject_annotations(graph, [{"type": "annotation", "label": "constant"}])
-        assert len(graph["nodes"]) == 2
-        assert graph["nodes"][1]["id"] == "__annotation_0"
-        assert graph["nodes"][1]["type"] == "annotation"
+        assert len(graph.nodes) == 2
+        assert graph.nodes[1].id == "__annotation_0"
+        assert graph.nodes[1].type == "annotation"
 
     def test_multiple_annotations(self, pp):
-        graph = {"nodes": []}
+        graph = _graph()
         anns = [
             {"type": "annotation", "label": "a"},
             {"type": "annotation", "label": "b"},
         ]
         pp.inject_annotations(graph, anns)
-        assert len(graph["nodes"]) == 2
-        assert graph["nodes"][0]["id"] == "__annotation_0"
-        assert graph["nodes"][1]["id"] == "__annotation_1"
+        assert len(graph.nodes) == 2
+        assert graph.nodes[0].id == "__annotation_0"
+        assert graph.nodes[1].id == "__annotation_1"
 
-    def test_creates_nodes_key(self, pp):
-        graph: dict = {}
+    def test_creates_nodes_on_empty_graph(self, pp):
+        graph = _graph()
         pp.inject_annotations(graph, [{"type": "annotation", "label": "note"}])
-        assert "nodes" in graph
-        assert len(graph["nodes"]) == 1
+        assert len(graph.nodes) == 1
 
 
 # ------------------------------------------------------------------
@@ -259,32 +284,35 @@ class TestPostprocess:
         assert pp.postprocess(None, result) is None
 
     def test_degenerate_graph(self, pp):
-        graph = {"nodes": [{"id": "__expr_0"}]}
+        graph = _graph(nodes=[_node(id="__expr_0", type="expression")])
         result = self._make_result()
         assert pp.postprocess(graph, result) is None
 
     def test_full_pipeline(self, pp):
-        graph = {
-            "nodes": [
-                {"id": "F", "type": "variable", "latex": "F"},
-                {"id": "eq", "type": "relation", "latex": "=", "subexpr": r"\frac{d}{d t} x = F"},
+        graph = _graph(
+            nodes=[
+                _node(id="F", type="scalar", latex="F"),
+                _node(id="eq", type="relation", latex="=", subexpr=r"\frac{d}{d t} x = F"),
             ],
-            "edges": [],
-        }
+            edges=[],
+        )
         result = self._make_result(
             dotted_vars={"x": 1},
             accent_map={"F": "vec"},
         )
         out = pp.postprocess(graph, result)
         assert out is not None
-        assert out["nodes"][0]["latex"] == r"\vec{F}"
-        assert r"\dot{x}" in out["nodes"][1]["subexpr"]
+        assert out.nodes[0].latex == r"\vec{F}"
+        assert r"\dot{x}" in out.nodes[1].subexpr
 
     def test_annotations_injected(self, pp):
-        graph = {"nodes": [{"id": "x", "type": "variable", "latex": "x"}], "edges": []}
+        graph = _graph(
+            nodes=[_node(id="x", type="scalar", latex="x")],
+            edges=[],
+        )
         result = self._make_result(
             annotations=[{"type": "annotation", "label": "constant"}],
         )
         out = pp.postprocess(graph, result)
         assert out is not None
-        assert any(n["id"] == "__annotation_0" for n in out["nodes"])
+        assert any(n.id == "__annotation_0" for n in out.nodes)

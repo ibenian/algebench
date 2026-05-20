@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from backend.model.semantic_graph import (
+    SemanticGraph,
+    SemanticGraphNode,
+    SemanticGraphEdge,
+    Classification,
+)
+
 from .preprocessor import LaTeXPreprocessor
 from .postprocessor import GraphPostprocessor
 from .sympy_translator import latex_to_semantic_graph as _translate
@@ -109,7 +116,7 @@ def _split_equation_chain_sides(latex: str) -> list[str]:
     return [p for p in parts if p]
 
 
-def _derive_single_expression(latex: str) -> dict | None:
+def _derive_single_expression(latex: str) -> SemanticGraph | None:
     """Full pipeline for a single expression: preprocess -> translate -> postprocess."""
     if not isinstance(latex, str) or not latex:
         return None
@@ -121,7 +128,7 @@ def _derive_single_expression(latex: str) -> dict | None:
     return _postprocessor.postprocess(graph, result)
 
 
-def derive_equation_chain_graph(latex: str) -> dict | None:
+def derive_equation_chain_graph(latex: str) -> SemanticGraph | None:
     """Derive a semantic graph for a possibly-chained equation.
 
     For ``a = b = c = d`` each side is parsed as its own sub-graph, then
@@ -164,8 +171,8 @@ def derive_equation_chain_graph(latex: str) -> dict | None:
         return graph
 
     # --- Chain with 3+ sides: per-side preprocess, translate, merge ---
-    merged_nodes: dict[str, dict] = {}
-    merged_edges: list[dict] = []
+    merged_nodes: dict[str, SemanticGraphNode] = {}
+    merged_edges: list[SemanticGraphEdge] = []
     roots: list[str] = []
     dotted_vars: dict[str, int] = {}
     all_annotations: list[dict] = list(early_annotations)
@@ -183,7 +190,7 @@ def derive_equation_chain_graph(latex: str) -> dict | None:
             sub = _translate(rewritten)
         except Exception:
             return None
-        if not isinstance(sub, dict) or not sub.get("nodes"):
+        if not sub.nodes:
             return None
 
         _postprocessor.restore_subscripts(sub, mapping)
@@ -195,53 +202,49 @@ def derive_equation_chain_graph(latex: str) -> dict | None:
         def _rename(nid: str, p: str = prefix) -> str:
             return p + nid if nid.startswith("__") else nid
 
-        for n in sub.get("nodes") or []:
-            if not isinstance(n, dict):
-                continue
-            nid = n.get("id")
-            if not isinstance(nid, str):
-                continue
+        for n in sub.nodes:
+            nid = n.id
             new_id = _rename(nid)
-            cloned = dict(n)
-            cloned["id"] = new_id
+            cloned = n.model_copy(update={"id": new_id})
             if new_id not in merged_nodes:
                 merged_nodes[new_id] = cloned
             else:
                 existing = merged_nodes[new_id]
-                for k, v in cloned.items():
-                    existing.setdefault(k, v)
+                for field_name in type(n).model_fields:
+                    if field_name == "id":
+                        continue
+                    new_val = getattr(cloned, field_name)
+                    if new_val is not None and getattr(existing, field_name) is None:
+                        setattr(existing, field_name, new_val)
 
-        for e in sub.get("edges") or []:
-            merged_edges.append({
-                "from": _rename(e.get("from", "")),
-                "to": _rename(e.get("to", "")),
-            })
+        for e in sub.edges:
+            merged_edges.append(SemanticGraphEdge(
+                from_=_rename(e.from_),
+                to=_rename(e.to),
+            ))
 
-        out_set = {e.get("from") for e in sub.get("edges") or []}
-        root_candidates = [
-            n.get("id") for n in sub.get("nodes") or []
-            if isinstance(n, dict) and n.get("id") not in out_set
-        ]
+        out_set = {e.from_ for e in sub.edges}
+        root_candidates = [n.id for n in sub.nodes if n.id not in out_set]
         if root_candidates:
             roots.append(_rename(root_candidates[0]))
         else:
-            roots.append(_rename(sub["nodes"][0].get("id", "")))
+            roots.append(_rename(sub.nodes[0].id))
 
     equals_id = "__equals_1"
-    merged_nodes[equals_id] = {
-        "id": equals_id,
-        "type": "operator",
-        "op": "equals",
-        "subexpr": " = ".join(sides),
-    }
+    merged_nodes[equals_id] = SemanticGraphNode(
+        id=equals_id,
+        type="operator",
+        op="equals",
+        subexpr=" = ".join(sides),
+    )
     for r in roots:
         if r:
-            merged_edges.append({"from": r, "to": equals_id})
+            merged_edges.append(SemanticGraphEdge(from_=r, to=equals_id))
 
-    graph = {
-        "nodes": list(merged_nodes.values()),
-        "edges": merged_edges,
-        "classification": {"kind": "algebraic"},
-    }
+    graph = SemanticGraph(
+        nodes=list(merged_nodes.values()),
+        edges=merged_edges,
+        classification=Classification(kind="algebraic"),
+    )
     _postprocessor.inject_annotations(graph, all_annotations)
     return graph

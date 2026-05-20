@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from backend.model.semantic_graph import SemanticGraph, SemanticGraphNode
 from backend.semantic_graph.sympy_translator import (
     latex_to_semantic_graph,
     parse_var_overrides,
@@ -20,23 +21,23 @@ from backend.semantic_graph.sympy_translator import (
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _find_node(graph, **attrs):
+def _find_node(graph: SemanticGraph, **attrs) -> SemanticGraphNode | None:
     """Find a node in the graph matching all given attrs."""
-    for node in graph["nodes"]:
-        if all(node.get(k) == v for k, v in attrs.items()):
+    for node in graph.nodes:
+        if all(getattr(node, k, None) == v for k, v in attrs.items()):
             return node
     return None
 
 
-def _find_nodes(graph, **attrs):
+def _find_nodes(graph: SemanticGraph, **attrs) -> list[SemanticGraphNode]:
     """Find all nodes matching given attrs."""
-    return [n for n in graph["nodes"]
-            if all(n.get(k) == v for k, v in attrs.items())]
+    return [n for n in graph.nodes
+            if all(getattr(n, k, None) == v for k, v in attrs.items())]
 
 
-def _has_edge(graph, src, dst):
+def _has_edge(graph: SemanticGraph, src: str, dst: str) -> bool:
     """Check if an edge exists from src to dst."""
-    return {"from": src, "to": dst} in graph["edges"]
+    return any(e.from_ == src and e.to == dst for e in graph.edges)
 
 
 # ---------------------------------------------------------------------------
@@ -46,9 +47,9 @@ def _has_edge(graph, src, dst):
 class TestGraphStructure:
     def test_returns_nodes_and_edges(self):
         g = latex_to_semantic_graph("x + y")
-        assert "nodes" in g
-        assert "edges" in g
-        assert "classification" in g
+        assert g.nodes is not None
+        assert g.edges is not None
+        assert g.classification is not None
 
     def test_simple_addition(self):
         g = latex_to_semantic_graph("x + y")
@@ -78,8 +79,8 @@ class TestGraphStructure:
         g = latex_to_semantic_graph("x + y")
         add_node = _find_node(g, type="operator", op="add")
         assert add_node is not None
-        assert _has_edge(g, "x", add_node["id"])
-        assert _has_edge(g, "y", add_node["id"])
+        assert _has_edge(g, "x", add_node.id)
+        assert _has_edge(g, "y", add_node.id)
 
 
 # ---------------------------------------------------------------------------
@@ -95,19 +96,19 @@ class TestKnownVariables:
         # ``latex`` (so KaTeX renders the symbol nicely).
         g = latex_to_semantic_graph("F")
         node = _find_node(g, id="F")
-        assert node["type"] == "vector"
-        assert node["latex"] == "F"
+        assert node.type == "vector"
+        assert node.latex == "F"
         # No semantic claims pre-filled — those wait for the enricher.
         for forbidden in ("label", "emoji", "quantity", "dimension", "unit", "role", "value"):
-            assert forbidden not in node, f"{forbidden!r} should not be parser-set"
+            assert getattr(node, forbidden, None) is None, f"{forbidden!r} should not be parser-set"
 
     def test_unknown_variable_gets_defaults(self):
         g = latex_to_semantic_graph("Q")
         node = _find_node(g, id="Q")
         # Unknown symbols intentionally have no ``label`` — the SymPy
         # identifier would just duplicate the rendered ``latex`` field.
-        assert "label" not in node
-        assert node["type"] == "scalar"
+        assert node.label is None
+        assert node.type == "scalar"
 
     def test_symbol_deduplication(self):
         g = latex_to_semantic_graph("x + x")
@@ -121,8 +122,8 @@ class TestKnownVariables:
         # The subexpr must carry the same LaTeX command as `latex`.
         g = latex_to_semantic_graph(r"\rho_0 + 1")
         node = _find_node(g, id="rho_{0}")
-        assert node["latex"] == r"\rho_{0}"
-        assert node["subexpr"] == r"\rho_{0}"
+        assert node.latex == r"\rho_{0}"
+        assert node.subexpr == r"\rho_{0}"
 
     def test_compound_mul_subexpr_recovers_greek_command(self):
         # Regression for gh-197: a non-root Mul containing a Greek-named
@@ -134,7 +135,7 @@ class TestKnownVariables:
         g = latex_to_semantic_graph(r"\rho_0 V + 1")
         muls = _find_nodes(g, type="operator", op="multiply")
         assert muls
-        sub = muls[0].get("subexpr", "")
+        sub = muls[0].subexpr or ""
         assert r"\rho_{0}" in sub, sub
         assert "rho_{0}" not in sub.replace(r"\rho_{0}", ""), sub
 
@@ -143,21 +144,21 @@ class TestKnownVariables:
         # macro. `_symbol_latex` must NOT invent a `\x` command for it.
         g = latex_to_semantic_graph(r"x_0 + 1")
         node = _find_node(g, id="x_{0}")
-        assert node["latex"] == "x_{0}"
-        assert node["subexpr"] == "x_{0}"
+        assert node.latex == "x_{0}"
+        assert node.subexpr == "x_{0}"
 
     def test_mathbb_symbol_unwrapped_without_leaking_command_node(self):
         g = latex_to_semantic_graph(r"\alpha \in \mathbb{C}")
         c = _find_node(g, id="C")
         assert c is not None
-        assert c["latex"] == r"\mathbb{C}"
+        assert c.latex == r"\mathbb{C}"
         assert _find_node(g, id="mathbb") is None
 
     def test_bold_symbol_unwrapped_without_leaking_command_node(self):
         g = latex_to_semantic_graph(r"\mathbf{x} + 1")
         x = _find_node(g, id="x")
         assert x is not None
-        assert x["latex"] == r"\mathbf{x}"
+        assert x.latex == r"\mathbf{x}"
         assert _find_node(g, id="mathbf") is None
 
 
@@ -173,14 +174,14 @@ class TestNumbersAndConstants:
     def test_fraction(self):
         g = latex_to_semantic_graph("\\frac{1}{2}")
         # Should produce a number node or a division
-        assert len(g["nodes"]) > 0
+        assert len(g.nodes) > 0
 
     def test_float_label_no_precision_noise(self):
         """Regression: Float(7.2) label was '7.20000000000000' (gh-145)."""
         g = latex_to_semantic_graph("7.2 x")
         num = _find_node(g, type="number")
         assert num is not None
-        assert num["label"] == "7.2"
+        assert num.label == "7.2"
 
     def test_negative_integer_label_preserved(self):
         """Regression: -122 label should stay '-122', not be split (gh-145)."""
@@ -198,14 +199,14 @@ class TestNumbersAndConstants:
         g = latex_to_semantic_graph(r"e^{-122/7.2}")
         mul = _find_node(g, type="operator", op="multiply")
         assert mul is not None
-        assert "-1 122" not in mul.get("subexpr", "")
+        assert "-1 122" not in (mul.subexpr or "")
 
     def test_float_exponent_no_precision_noise(self):
         """Regression: x^{7.2} exponent was '7.20000000000000' (gh-145)."""
         g = latex_to_semantic_graph("x^{7.2}")
         pw = _find_node(g, type="operator", op="power")
         assert pw is not None
-        assert pw["exponent"] == "7.2"
+        assert pw.exponent == "7.2"
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +255,7 @@ class TestDerivatives:
         g = latex_to_semantic_graph("\\frac{d v}{d t}")
         deriv = _find_node(g, type="operator", op="derivative")
         assert deriv is not None
-        assert "t" in deriv.get("with_respect_to", "")
+        assert "t" in (deriv.with_respect_to or "")
 
     def test_dot_notation_preprocessed(self):
         result = _preprocess_latex(r"\dot{x}")
@@ -265,7 +266,7 @@ class TestDerivatives:
         g = latex_to_semantic_graph(r"\dot{x}")
         deriv = _find_node(g, type="operator", op="derivative")
         assert deriv is not None
-        assert "t" in deriv.get("with_respect_to", "")
+        assert "t" in (deriv.with_respect_to or "")
 
     def test_ddot_notation_preprocessed(self):
         result = _preprocess_latex(r"\ddot{x}")
@@ -276,7 +277,7 @@ class TestDerivatives:
         deriv = _find_node(g, type="operator", op="derivative")
         assert deriv is not None
         # SymPy collapses nested derivatives; ddot produces Derivative(x, t, t)
-        assert "t" in deriv.get("with_respect_to", "")
+        assert "t" in (deriv.with_respect_to or "")
 
     def test_higher_order_derivative(self):
         result = _preprocess_latex(r"\frac{d^2 y}{dy^2}")
@@ -286,7 +287,7 @@ class TestDerivatives:
         g = latex_to_semantic_graph(r"\frac{d^2 y}{d y^2}")
         deriv = _find_node(g, type="operator", op="derivative")
         assert deriv is not None
-        assert "y" in deriv.get("with_respect_to", "")
+        assert "y" in (deriv.with_respect_to or "")
 
     def test_higher_order_derivative_braced(self):
         result = _preprocess_latex(r"\frac{d^{2} y}{dy^{2}}")
@@ -314,8 +315,8 @@ class TestRelations:
         g = latex_to_semantic_graph(r"F \propto m a")
         rel = _find_node(g, type="relation", op="proportional")
         assert rel is not None
-        assert rel["label"] == "proportional to"
-        assert rel["emoji"] == "∝"
+        assert rel.label == "proportional to"
+        assert rel.emoji == "∝"
         assert _find_node(g, id="F")
         assert _find_node(g, type="operator", op="multiply")
 
@@ -323,27 +324,27 @@ class TestRelations:
         g = latex_to_semantic_graph(r"x > 0 \implies x^2 > 0")
         rel = _find_node(g, type="relation", op="implies")
         assert rel is not None
-        assert rel["label"] == "implies"
-        assert rel["emoji"] == "⇒"
+        assert rel.label == "implies"
+        assert rel.emoji == "⇒"
 
     def test_rightarrow_implies(self):
         g = latex_to_semantic_graph(r"x > 0 \Rightarrow x^2 > 0")
         rel = _find_node(g, type="relation", op="implies")
         assert rel is not None
-        assert rel["emoji"] == "⇒"
+        assert rel.emoji == "⇒"
 
     def test_iff(self):
         g = latex_to_semantic_graph(r"x = 0 \iff x^2 = 0")
         rel = _find_node(g, type="relation", op="iff")
         assert rel is not None
-        assert rel["label"] == "if and only if"
-        assert rel["emoji"] == "⇔"
+        assert rel.label == "if and only if"
+        assert rel.emoji == "⇔"
 
     def test_leftrightarrow_iff(self):
         g = latex_to_semantic_graph(r"A \Leftrightarrow B")
         rel = _find_node(g, type="relation", op="iff")
         assert rel is not None
-        assert rel["emoji"] == "⇔"
+        assert rel.emoji == "⇔"
         assert _find_node(g, id="A")
         assert _find_node(g, id="B")
 
@@ -351,8 +352,8 @@ class TestRelations:
         g = latex_to_semantic_graph(r"\pi \approx 3.14")
         rel = _find_node(g, type="relation", op="approximately")
         assert rel is not None
-        assert rel["label"] == "approximately equal"
-        assert rel["emoji"] == "≈"
+        assert rel.label == "approximately equal"
+        assert rel.emoji == "≈"
         # parse_latex emits ``\pi`` as a Symbol named ``pi`` (not the
         # sympy.pi NumberSymbol), so the parser routes it through the
         # symbol path — KNOWN_VARIABLES["pi"] still pins type=constant.
@@ -362,8 +363,8 @@ class TestRelations:
         g = latex_to_semantic_graph(r"x \to y")
         rel = _find_node(g, type="relation", op="maps_to")
         assert rel is not None
-        assert rel["label"] == "maps to"
-        assert rel["emoji"] == "→"
+        assert rel.label == "maps to"
+        assert rel.emoji == "→"
         assert _find_node(g, id="x")
         assert _find_node(g, id="y")
 
@@ -376,7 +377,7 @@ class TestRelations:
         """Every relation node should connect LHS and RHS."""
         g = latex_to_semantic_graph(r"F \propto m a")
         rel = _find_node(g, type="relation", op="proportional")
-        incoming = [e for e in g["edges"] if e["to"] == rel["id"]]
+        incoming = [e for e in g.edges if e.to == rel.id]
         assert len(incoming) == 2
 
     def test_leftmost_relation_wins(self):
@@ -437,31 +438,31 @@ class TestComparisonOperators:
     def test_comparison_has_two_children(self):
         g = latex_to_semantic_graph(r"x > 0")
         op = _find_node(g, type="operator", op="greater_than")
-        incoming = [e for e in g["edges"] if e["to"] == op["id"]]
+        incoming = [e for e in g.edges if e.to == op.id]
         assert len(incoming) == 2
 
     def test_comparison_edges_have_lhs_rhs_roles(self):
         g = latex_to_semantic_graph(r"x > 0")
         op = _find_node(g, type="operator", op="greater_than")
-        edges = [e for e in g["edges"] if e["to"] == op["id"]]
-        roles = {e["role"] for e in edges}
+        edges = [e for e in g.edges if e.to == op.id]
+        roles = {e.role for e in edges}
         assert roles == {"lhs", "rhs"}
-        lhs_edge = next(e for e in edges if e["role"] == "lhs")
-        assert lhs_edge["from"] == "x"
+        lhs_edge = next(e for e in edges if e.role == "lhs")
+        assert lhs_edge.from_ == "x"
 
     def test_equals_edges_have_no_roles(self):
         """Symmetric operators should not have role tags."""
         g = latex_to_semantic_graph(r"x = 0")
         op = _find_node(g, type="operator", op="equals")
-        edges = [e for e in g["edges"] if e["to"] == op["id"]]
-        assert all("role" not in e for e in edges)
+        edges = [e for e in g.edges if e.to == op.id]
+        assert all(e.role is None for e in edges)
 
     def test_relation_map_comparison_edges_have_roles(self):
         """\\gt routed through RELATION_MAP should also get lhs/rhs roles."""
         g = latex_to_semantic_graph(r"x \gt 0")
         rel = _find_node(g, type="relation", op="greater_than")
-        edges = [e for e in g["edges"] if e["to"] == rel["id"]]
-        roles = {e["role"] for e in edges}
+        edges = [e for e in g.edges if e.to == rel.id]
+        roles = {e.role for e in edges}
         assert roles == {"lhs", "rhs"}
 
 
@@ -475,11 +476,11 @@ class TestRelationOperandComma:
     from the implies node entirely.
     """
 
-    def _reaches(self, graph, src, dst):
+    def _reaches(self, graph: SemanticGraph, src: str, dst: str):
         """Return True iff a directed edge path exists from *src* to *dst*."""
         adj: dict[str, list[str]] = {}
-        for e in graph["edges"]:
-            adj.setdefault(e["from"], []).append(e["to"])
+        for e in graph.edges:
+            adj.setdefault(e.from_, []).append(e.to)
         seen = {src}
         stack = [src]
         while stack:
@@ -500,22 +501,22 @@ class TestRelationOperandComma:
         equals_nodes = _find_nodes(g, type="operator", op="equals")
         assert len(equals_nodes) == 2
         for eq in equals_nodes:
-            assert self._reaches(g, eq["id"], impl["id"]), (
-                f"clause {eq.get('subexpr')!r} does not reach implies"
+            assert self._reaches(g, eq.id, impl.id), (
+                f"clause {eq.subexpr!r} does not reach implies"
             )
         # And they reach it through a synthetic ``and`` conjunction node.
         conj = _find_node(g, type="relation", op="and")
         assert conj is not None
-        assert self._reaches(g, conj["id"], impl["id"])
+        assert self._reaches(g, conj.id, impl.id)
 
     def test_iff_with_comma_rhs_groups_as_conjunction(self):
         g = latex_to_semantic_graph(r"P \iff A, B")
         iff = _find_node(g, type="relation", op="iff")
         conj = _find_node(g, type="relation", op="and")
         assert iff is not None and conj is not None
-        assert self._reaches(g, conj["id"], iff["id"])
-        assert self._reaches(g, "A", iff["id"])
-        assert self._reaches(g, "B", iff["id"])
+        assert self._reaches(g, conj.id, iff.id)
+        assert self._reaches(g, "A", iff.id)
+        assert self._reaches(g, "B", iff.id)
 
     def test_implies_with_comma_lhs_groups_as_conjunction(self):
         """Comma on the LHS of an implication groups the antecedents."""
@@ -523,10 +524,10 @@ class TestRelationOperandComma:
         impl = _find_node(g, type="relation", op="implies")
         conj = _find_node(g, type="relation", op="and")
         assert impl is not None and conj is not None
-        assert self._reaches(g, "A", conj["id"])
-        assert self._reaches(g, "B", conj["id"])
-        assert self._reaches(g, conj["id"], impl["id"])
-        assert self._reaches(g, "C", impl["id"])
+        assert self._reaches(g, "A", conj.id)
+        assert self._reaches(g, "B", conj.id)
+        assert self._reaches(g, conj.id, impl.id)
+        assert self._reaches(g, "C", impl.id)
 
     def test_function_arg_comma_inside_implies_unaffected(self):
         """Comma inside a function-argument group ``f(x, y)`` stays a
@@ -552,10 +553,10 @@ class TestSubjectGroupComma:
     α and β belong to ℂ.  The comma between α and β groups them as a
     composite LHS for the ``\in`` relation, not as a statement separator."""
 
-    def _reaches(self, graph, src, dst):
+    def _reaches(self, graph: SemanticGraph, src: str, dst: str):
         adj: dict[str, list[str]] = {}
-        for e in graph["edges"]:
-            adj.setdefault(e["from"], []).append(e["to"])
+        for e in graph.edges:
+            adj.setdefault(e.from_, []).append(e.to)
         seen = {src}
         stack = [src]
         while stack:
@@ -576,10 +577,10 @@ class TestSubjectGroupComma:
         assert elem is not None
         conj = _find_node(g, type="relation", op="and")
         assert conj is not None, "expected an 'and' conjunction for the composite LHS"
-        assert self._reaches(g, "alpha", conj["id"])
-        assert self._reaches(g, "beta", conj["id"])
-        assert self._reaches(g, conj["id"], elem["id"])
-        assert self._reaches(g, "C", elem["id"])
+        assert self._reaches(g, "alpha", conj.id)
+        assert self._reaches(g, "beta", conj.id)
+        assert self._reaches(g, conj.id, elem.id)
+        assert self._reaches(g, "C", elem.id)
 
     def test_three_variables_in_R(self):
         r"""``x, y, z \in \mathbb{R}`` — chained subject grouping."""
@@ -589,7 +590,7 @@ class TestSubjectGroupComma:
         conj = _find_node(g, type="relation", op="and")
         assert conj is not None
         for var in ("x", "y", "z"):
-            assert self._reaches(g, var, elem["id"]), f"{var} should reach element_of"
+            assert self._reaches(g, var, elem.id), f"{var} should reach element_of"
 
     def test_multi_statement_with_subject_group(self):
         r"""``a = 1, \quad \alpha, \beta \in \mathbb{C}`` should produce
@@ -625,19 +626,19 @@ class TestSubjectGroupComma:
         assert elem is not None, "expected element_of for α,β ∈ ℂ"
         conj = _find_node(g, type="relation", op="and")
         assert conj is not None, "expected 'and' conjunction grouping α and β"
-        assert self._reaches(g, "alpha", conj["id"])
-        assert self._reaches(g, "beta", conj["id"])
-        assert self._reaches(g, conj["id"], elem["id"])
+        assert self._reaches(g, "alpha", conj.id)
+        assert self._reaches(g, "beta", conj.id)
+        assert self._reaches(g, conj.id, elem.id)
 
 
 class TestStatementSeparators:
     r"""Scene-level regression tests for the unified statement separator
     that handles both ``\\`` and ``, \quad`` in a single pass."""
 
-    def _reaches(self, graph, src, dst):
+    def _reaches(self, graph: SemanticGraph, src: str, dst: str):
         adj: dict[str, list[str]] = {}
-        for e in graph["edges"]:
-            adj.setdefault(e["from"], []).append(e["to"])
+        for e in graph.edges:
+            adj.setdefault(e.from_, []).append(e.to)
         seen = {src}
         stack = [src]
         while stack:
@@ -667,9 +668,9 @@ class TestStatementSeparators:
         assert elem is not None, "expected element_of for α,β ∈ ℂ"
         conj = _find_node(g, type="relation", op="and")
         assert conj is not None, "expected 'and' conjunction grouping α and β"
-        assert self._reaches(g, "alpha", conj["id"])
-        assert self._reaches(g, "beta", conj["id"])
-        assert self._reaches(g, conj["id"], elem["id"])
+        assert self._reaches(g, "alpha", conj.id)
+        assert self._reaches(g, "beta", conj.id)
+        assert self._reaches(g, conj.id, elem.id)
 
     def test_borns_rule_step(self):
         r"""'Apply Born's rule' scene step uses ``\\`` to separate two
@@ -696,7 +697,7 @@ class TestTextCommand:
         g = latex_to_semantic_graph(r"T = \text{const}")
         node = _find_node(g, type="text", label="const")
         assert node is not None
-        assert node["latex"] == r"\text{const}"
+        assert node.latex == r"\text{const}"
         # No stray per-character symbols (c, o, n, s) should appear.
         for letter in ("c", "o", "n", "s"):
             assert _find_node(g, id=letter) is None, f"stray {letter!r} symbol leaked"
@@ -710,15 +711,15 @@ class TestTextCommand:
         assert _find_node(g, type="text", label="const") is not None
         assert _find_node(g, type="relation", op="implies") is not None
         # Two equals nodes: one per side of the implication.
-        equals_nodes = [n for n in g["nodes"]
-                        if n.get("type") == "operator" and n.get("op") == "equals"]
+        equals_nodes = [n for n in g.nodes
+                        if n.type == "operator" and n.op == "equals"]
         assert len(equals_nodes) == 2
 
     def test_repeated_text_dedups(self):
         """Same \\text{...} content should map to one node, not duplicate."""
         g = latex_to_semantic_graph(r"\text{foo} + \text{foo} = \text{bar}")
-        foo_nodes = [n for n in g["nodes"]
-                     if n.get("type") == "text" and n.get("label") == "foo"]
+        foo_nodes = [n for n in g.nodes
+                     if n.type == "text" and n.label == "foo"]
         assert len(foo_nodes) == 1
         assert _find_node(g, type="text", label="bar") is not None
 
@@ -742,7 +743,7 @@ class TestComplexFormulas:
         assert _find_node(g, id="pi", type="constant")  # label/emoji are enricher's job
         assert _find_node(g, type="operator", op="power")
         assert _find_node(g, type="operator", op="add")
-        assert g["classification"]["kind"] == "algebraic"
+        assert g.classification.kind == "algebraic"
 
     def test_kinetic_energy(self):
         """K = 1/2 m v^2 — equation with fraction, multiplication, power."""
@@ -764,7 +765,7 @@ class TestComplexFormulas:
         assert _find_node(g, type="operator", op="integral")
         assert _find_node(g, type="operator", op="power")
         assert _find_node(g, id="x")
-        assert g["classification"]["kind"] == "algebraic"
+        assert g.classification.kind == "algebraic"
 
     def test_wave_equation_pde(self):
         """u_tt = c^2 u_xx — second-order PDE, partial derivatives."""
@@ -773,13 +774,13 @@ class TestComplexFormulas:
         )
         derivs = _find_nodes(g, type="operator", op="partial_derivative")
         assert len(derivs) == 2
-        wrt_vars = {d["with_respect_to"] for d in derivs}
+        wrt_vars = {d.with_respect_to for d in derivs}
         assert "t" in wrt_vars
         assert "x" in wrt_vars
-        c = g["classification"]
-        assert c["kind"] == "PDE"
-        assert c["order"] == 2
-        assert set(c["independent_variables"]) == {"t", "x"}
+        c = g.classification
+        assert c.kind == "PDE"
+        assert c.order == 2
+        assert set(c.independent_variables) == {"t", "x"}
 
     def test_harmonic_oscillator_ode(self):
         """x'' + omega^2 x = 0 — second-order linear ODE."""
@@ -788,10 +789,10 @@ class TestComplexFormulas:
         )
         assert _find_node(g, type="operator", op="derivative")
         assert _find_node(g, id="omega")  # label/quantity left for the enricher
-        c = g["classification"]
-        assert c["kind"] == "ODE"
-        assert c["order"] == 2
-        assert c.get("linear") is True
+        c = g.classification
+        assert c.kind == "ODE"
+        assert c.order == 2
+        assert c.linear is True
 
     def test_schrodinger_time_independent(self):
         """E psi = -(h^2/2m) psi'' + V psi — ODE with many operators."""
@@ -802,9 +803,9 @@ class TestComplexFormulas:
         assert _find_node(g, id="h")
         assert _find_node(g, type="operator", op="derivative")
         assert _find_node(g, type="operator", op="equals")
-        c = g["classification"]
-        assert c["kind"] == "ODE"
-        assert c["order"] == 2
+        c = g.classification
+        assert c.kind == "ODE"
+        assert c.order == 2
 
     def test_coulomb_law(self):
         """F = k q1 q2 / r^2 — subscripted variables, fractions."""
@@ -814,8 +815,8 @@ class TestComplexFormulas:
         assert _find_node(g, id="r")
         assert _find_node(g, type="operator", op="power")
         # q_1 and q_2 are distinct symbols
-        nodes = g["nodes"]
-        q_nodes = [n for n in nodes if n["id"].startswith("q_")]
+        nodes = g.nodes
+        q_nodes = [n for n in nodes if n.id.startswith("q_")]
         assert len(q_nodes) == 2
 
     def test_taylor_series_sin(self):
@@ -828,7 +829,7 @@ class TestComplexFormulas:
         assert _find_node(g, type="operator", op="equals")
         # Should have factorial node
         assert _find_node(g, op="factorial")
-        assert g["classification"]["kind"] == "algebraic"
+        assert g.classification.kind == "algebraic"
 
     def test_lorentz_factor(self):
         """gamma = 1/sqrt(1 - v^2/c^2) — nested fractions, sqrt via power."""
@@ -839,7 +840,7 @@ class TestComplexFormulas:
         assert _find_node(g, id="v")  # parser emits structural fields only
         assert _find_node(g, id="c")
         assert _find_node(g, type="operator", op="equals")
-        assert g["classification"]["kind"] == "algebraic"
+        assert g.classification.kind == "algebraic"
 
     def test_quadratic_formula(self):
         """x = (-b +/- sqrt(b^2 - 4ac)) / 2a — covers many node types."""
@@ -856,8 +857,8 @@ class TestComplexFormulas:
         assert _find_node(g, type="operator", op="multiply")
         assert _find_node(g, type="operator", op="power")
         # Graph should be non-trivial
-        assert len(g["nodes"]) >= 10
-        assert len(g["edges"]) >= 10
+        assert len(g.nodes) >= 10
+        assert len(g.edges) >= 10
 
 
 # ---------------------------------------------------------------------------
@@ -867,26 +868,26 @@ class TestComplexFormulas:
 class TestClassification:
     def test_algebraic_expression(self):
         g = latex_to_semantic_graph("x^2 + y^2")
-        assert g["classification"]["kind"] == "algebraic"
+        assert g.classification.kind == "algebraic"
 
     def test_ode_detected(self):
         g = latex_to_semantic_graph("\\frac{d v}{d t} = a")
-        c = g["classification"]
-        assert c["kind"] == "ODE"
-        assert c["order"] == 1
+        c = g.classification
+        assert c.kind == "ODE"
+        assert c.order == 1
 
     def test_algebraic_equation(self):
         g = latex_to_semantic_graph("E = m c^2")
-        assert g["classification"]["kind"] == "algebraic"
+        assert g.classification.kind == "algebraic"
 
     def test_mixed_partial_derivative_order(self):
         """Mixed partial d²u/(dx dt) should report order 2, not 1."""
         g = latex_to_semantic_graph(
             r"\frac{\partial}{\partial x}\frac{\partial u}{\partial t} = 0"
         )
-        c = g["classification"]
-        assert c["kind"] == "PDE"
-        assert c["order"] == 2
+        c = g.classification
+        assert c.kind == "PDE"
+        assert c.order == 2
 
 
 # ---------------------------------------------------------------------------
@@ -920,24 +921,24 @@ class TestOverrides:
     def test_overrides_applied_to_graph(self):
         # Overrides still win — authors can pin any field explicitly.
         # The parser no longer pre-fills ``label`` for ``m``, so the
-        # override is the only source of label / unit / tooltip metadata.
+        # override is the only source of label / unit metadata.
         g = latex_to_semantic_graph("F = m \\cdot a", overrides={
-            "m": {"label": "mass", "unit": "kg", "tooltip": "Inertial mass"},
+            "m": {"label": "mass", "unit": "kg", "description": "Inertial mass"},
         })
         m_node = _find_node(g, id="m")
-        assert m_node["unit"] == "kg"
-        assert m_node["tooltip"] == "Inertial mass"
-        assert m_node["label"] == "mass"
+        assert m_node.unit == "kg"
+        assert m_node.description == "Inertial mass"
+        assert m_node.label == "mass"
 
 
 # ---------------------------------------------------------------------------
 # Edge semantics (direct / inverse)
 # ---------------------------------------------------------------------------
 
-def _edge(graph, src, dst):
+def _edge(graph: SemanticGraph, src: str, dst: str):
     """Return the edge matching (src -> dst), or None."""
-    for e in graph["edges"]:
-        if e.get("from") == src and e.get("to") == dst:
+    for e in graph.edges:
+        if e.from_ == src and e.to == dst:
             return e
     return None
 
@@ -971,40 +972,40 @@ class TestEdgeSemantics:
             pow_nodes = _find_nodes(g, type="operator", op="power")
             assert pow_nodes, f"expected a power node for {latex_src!r}"
             for pn in pow_nodes:
-                incoming = [e for e in g["edges"] if e["to"] == pn["id"]]
+                incoming = [e for e in g.edges if e.to == pn.id]
                 assert incoming, "power node should have an incoming edge"
                 for edge in incoming:
-                    assert "semantic" not in edge, (
+                    assert edge.semantic is None, (
                         f"{latex_src!r}: pow incoming edge should not be tagged "
                         f"at parse time (got {edge})"
                     )
-                    assert "weight" not in edge, (
+                    assert edge.weight is None, (
                         f"{latex_src!r}: pow incoming edge should not have a "
                         f"weight at parse time (got {edge})"
                     )
 
     def test_addition_has_no_semantic_tags(self):
         g = latex_to_semantic_graph("y = a + b")
-        add_edges = [e for e in g["edges"] if e["to"].startswith("__add")]
+        add_edges = [e for e in g.edges if e.to.startswith("__add")]
         assert add_edges, "expected at least one add-edge"
         for edge in add_edges:
-            assert "semantic" not in edge
-            assert "weight" not in edge
+            assert edge.semantic is None
+            assert edge.weight is None
 
     def test_multiplication_tags_factors_as_direct(self):
         # ``a · t`` — both operands are linearly proportional to the
         # product, so every factor edge gets ``direct`` + weight 1.
         g = latex_to_semantic_graph(r"y = a \cdot t")
-        mul_edges = [e for e in g["edges"] if e["to"].startswith("__multiply")]
+        mul_edges = [e for e in g.edges if e.to.startswith("__multiply")]
         assert len(mul_edges) == 2
         for edge in mul_edges:
-            assert edge.get("semantic") == "direct"
-            assert edge.get("weight") == 1.0
+            assert edge.semantic == "direct"
+            assert edge.weight == 1.0
 
     def test_edge_weight_survives_schema_validation(self):
         from scripts.graph_to_mermaid import validate_graph
         g = latex_to_semantic_graph(r"v = \frac{x}{t^2}")
-        errs = validate_graph(g)
+        errs = validate_graph(g.model_dump(by_alias=True, exclude_none=True))
         assert errs == [], f"unexpected schema errors: {errs}"
 
     def test_multiply_skips_tagging_for_inverse_pow_children(self):
@@ -1015,16 +1016,16 @@ class TestEdgeSemantics:
         g = latex_to_semantic_graph(r"y = a / b")
         mul_node = _find_node(g, type="operator", op="multiply")
         assert mul_node is not None
-        a_edge = next(e for e in g["edges"]
-                      if e["to"] == mul_node["id"] and e["from"] == "a")
-        assert a_edge.get("semantic") == "direct"
-        assert a_edge.get("weight") == 1.0
-        pow_edge = next(e for e in g["edges"]
-                        if e["to"] == mul_node["id"] and e["from"].startswith("__power"))
-        assert "semantic" not in pow_edge, (
+        a_edge = next(e for e in g.edges
+                      if e.to == mul_node.id and e.from_ == "a")
+        assert a_edge.semantic == "direct"
+        assert a_edge.weight == 1.0
+        pow_edge = next(e for e in g.edges
+                        if e.to == mul_node.id and e.from_.startswith("__power"))
+        assert pow_edge.semantic is None, (
             f"inverse-pow → multiply edge must stay plain (got {pow_edge})"
         )
-        assert "weight" not in pow_edge
+        assert pow_edge.weight is None
 
     def test_symbolic_negative_pow_absorbs_exponent(self):
         # ``x^{-n}`` should produce a single power node with
@@ -1035,10 +1036,10 @@ class TestEdgeSemantics:
         pow_nodes = _find_nodes(g, type="operator", op="power")
         assert len(pow_nodes) == 1
         pn = pow_nodes[0]
-        assert pn.get("exponent") == "-n"
-        incoming = [e for e in g["edges"] if e["to"] == pn["id"]]
+        assert pn.exponent == "-n"
+        incoming = [e for e in g.edges if e.to == pn.id]
         assert len(incoming) == 1
-        assert incoming[0]["from"] == "x"
+        assert incoming[0].from_ == "x"
         # And no negate/exponent helper nodes leaked through.
         assert not _find_nodes(g, type="operator", op="negation")
 
@@ -1163,8 +1164,8 @@ class TestCommaSeparatedClauses:
             "second clause (γ = const) must survive — this is the bug"
         )
         # Graph carries two independent statements — no parent/relation node.
-        assert g["classification"]["kind"] == "statements"
-        assert g["classification"]["count"] == 2
+        assert g.classification.kind == "statements"
+        assert g.classification.count == 2
 
     def test_no_parent_relation_node_is_emitted(self):
         """Per author intent (issue #144 follow-up): the comma is a pure
@@ -1187,10 +1188,10 @@ class TestCommaSeparatedClauses:
         assert len(equals_nodes) == 2
         # The graph has exactly two roots (nodes with no outgoing edges
         # among the operator/relation nodes) — the two equals nodes.
-        out_set = {e["from"] for e in g["edges"]}
-        op_roots = [n for n in g["nodes"]
-                    if n.get("type") in ("operator", "relation")
-                    and n["id"] not in out_set]
+        out_set = {e.from_ for e in g.edges}
+        op_roots = [n for n in g.nodes
+                    if n.type in ("operator", "relation")
+                    and n.id not in out_set]
         assert len(op_roots) == 2, (
             f"expected two statement roots, got {len(op_roots)}: {op_roots}"
         )
@@ -1202,10 +1203,10 @@ class TestCommaSeparatedClauses:
         # Build undirected adjacency and check connected components.
         from collections import defaultdict
         adj = defaultdict(set)
-        for e in g["edges"]:
-            adj[e["from"]].add(e["to"])
-            adj[e["to"]].add(e["from"])
-        node_ids = {n["id"] for n in g["nodes"]}
+        for e in g.edges:
+            adj[e.from_].add(e.to)
+            adj[e.to].add(e.from_)
+        node_ids = {n.id for n in g.nodes}
         visited = set()
 
         def walk(start):
@@ -1243,7 +1244,7 @@ class TestCommaSeparatedClauses:
         g = latex_to_semantic_graph("a = 1, b = 2, c = 3")
         equals_nodes = _find_nodes(g, type="operator", op="equals")
         assert len(equals_nodes) == 3
-        assert g["classification"]["count"] == 3
+        assert g.classification.count == 3
 
     def test_classification_lists_per_clause_kinds(self):
         """Per-clause classifications are preserved under
@@ -1251,14 +1252,14 @@ class TestCommaSeparatedClauses:
         that clause 0 is algebraic and clause 1 is too, without walking
         the subtrees."""
         g = latex_to_semantic_graph("a = 1, b = 2")
-        cls = g["classification"]
-        assert cls["kind"] == "statements"
-        assert cls["count"] == 2
-        assert "clauses" in cls
-        assert len(cls["clauses"]) == 2
+        cls = g.classification
+        assert cls.kind == "statements"
+        assert cls.count == 2
+        assert cls.clauses is not None
+        assert len(cls.clauses) == 2
         # Every clause must have its own ``kind`` field populated.
-        for sub in cls["clauses"]:
-            assert "kind" in sub
+        for sub in cls.clauses:
+            assert sub.kind is not None
 
     def test_four_clauses_all_present(self):
         """Any number of commas — the splitter iterates, the builder
@@ -1267,9 +1268,9 @@ class TestCommaSeparatedClauses:
         g = latex_to_semantic_graph("a = 1, b = 2, c = 3, d = 4")
         equals_nodes = _find_nodes(g, type="operator", op="equals")
         assert len(equals_nodes) == 4
-        assert g["classification"]["count"] == 4
+        assert g.classification.count == 4
         # All four clause equals-node ids must be uniquely prefixed.
-        equals_ids = {n["id"] for n in equals_nodes}
+        equals_ids = {n.id for n in equals_nodes}
         assert equals_ids == {
             "c0___equals_1", "c1___equals_1", "c2___equals_1", "c3___equals_1",
         }
@@ -1280,14 +1281,14 @@ class TestCommaSeparatedClauses:
         connected components (clauses 0+1 glued through shared ``a``;
         clause 2 standalone)."""
         g = latex_to_semantic_graph("a = 1, a + b = 5, c = 3")
-        assert g["classification"]["count"] == 3
+        assert g.classification.count == 3
         # Count connected components via undirected traversal.
         from collections import defaultdict
         adj = defaultdict(set)
-        for e in g["edges"]:
-            adj[e["from"]].add(e["to"])
-            adj[e["to"]].add(e["from"])
-        node_ids = {n["id"] for n in g["nodes"]}
+        for e in g.edges:
+            adj[e.from_].add(e.to)
+            adj[e.to].add(e.from_)
+        node_ids = {n.id for n in g.nodes}
         visited = set()
 
         def walk(start):
@@ -1318,7 +1319,7 @@ class TestCommaSeparatedClauses:
         otherwise \text{a, b} would be broken into two bogus clauses."""
         g = latex_to_semantic_graph(r"x = \text{foo, bar}")
         # Single equation — not multi-statement.
-        assert g["classification"].get("kind") != "statements"
+        assert g.classification.kind != "statements"
         equals_nodes = _find_nodes(g, type="operator", op="equals")
         assert len(equals_nodes) == 1
 
@@ -1327,7 +1328,7 @@ class TestCommaSeparatedClauses:
         g = latex_to_semantic_graph("f(x, y)")
         # Single statement — the comma is a function-arg separator, not a
         # statement separator.
-        assert g["classification"].get("kind") != "statements"
+        assert g.classification.kind != "statements"
 
     def test_failed_clause_raises_not_silently_dropped(self):
         """Per issue #137: parse failures must surface, not silently drop.
@@ -1354,7 +1355,7 @@ class TestCommaSeparatedClauses:
             r"\frac{dh}{dt} = -V \sin \gamma, \quad \gamma = \text{const}"
         )
         equals_nodes = _find_nodes(g, type="operator", op="equals")
-        subexprs = {n.get("subexpr", "") for n in equals_nodes}
+        subexprs = {(n.subexpr or "") for n in equals_nodes}
         # Neither equals subexpr should start with a leading \quad/\qquad/etc.
         for s in subexprs:
             assert not s.lstrip().startswith("\\quad"), (
@@ -1375,7 +1376,7 @@ class TestCommaSeparatedClauses:
         a single text node — clause 1's ``bar`` would disappear."""
         g = latex_to_semantic_graph(r"x = \text{foo}, y = \text{bar}")
         text_nodes = _find_nodes(g, type="text")
-        labels = sorted(n.get("label") for n in text_nodes)
+        labels = sorted(n.label for n in text_nodes)
         assert labels == ["bar", "foo"], (
             f"expected two distinct text nodes (foo, bar), got {labels!r} "
             f"— Xi_{{N}} placeholder collision across clauses"
@@ -1403,7 +1404,7 @@ class TestCommaSeparatedClauses:
             r"\frac{dh}{dt} = -V \sin \gamma, \quad \gamma = \text{const}"
         )
         equals_nodes = _find_nodes(g, type="operator", op="equals")
-        subexprs = [n.get("subexpr", "") for n in equals_nodes]
+        subexprs = [(n.subexpr or "") for n in equals_nodes]
         # Neither subexpr should contain a comma (that would mean the
         # whole original expression leaked in).
         for s in subexprs:
@@ -1437,14 +1438,14 @@ class TestCompoundSymbols:
         # The compound symbol's latex field should be the original LaTeX.
         compound = _find_node(g, latex=r"\Delta t")
         assert compound is not None, "expected a node with latex = '\\Delta t'"
-        assert compound.get("subexpr") == r"\Delta t"
+        assert compound.subexpr == r"\Delta t"
 
     def test_delta_x_over_delta_t(self):
         """``\\Delta x / \\Delta t`` produces two compound nodes, no split."""
         g = latex_to_semantic_graph(r"v = \frac{\Delta x}{\Delta t}")
         compounds = sorted(
-            n.get("latex") for n in g["nodes"]
-            if n.get("latex") in (r"\Delta x", r"\Delta t")
+            n.latex for n in g.nodes
+            if n.latex in (r"\Delta x", r"\Delta t")
         )
         assert compounds == [r"\Delta t", r"\Delta x"], (
             f"both \\Delta x and \\Delta t should be present as compounds, "
@@ -1459,8 +1460,8 @@ class TestCompoundSymbols:
         delta = _find_node(g, latex=r"\Delta")
         assert delta is not None, "bare \\Delta should still produce a Δ node"
         # And no compound-collapsing should have triggered.
-        thetas = [n for n in g["nodes"]
-                  if isinstance(n.get("id"), str) and n["id"].startswith("Theta_{")]
+        thetas = [n for n in g.nodes
+                  if isinstance(n.id, str) and n.id.startswith("Theta_{")]
         assert not thetas, "no compound placeholder should be created for lone \\Delta"
 
     def test_partial_derivative_still_parses(self):
@@ -1531,8 +1532,8 @@ class TestCompoundSymbols:
         """
         g = latex_to_semantic_graph(r"\nabla f(x,y)")
         # No compound placeholder should be created — ``\nabla`` stands alone.
-        thetas = [n for n in g["nodes"]
-                  if isinstance(n.get("id"), str) and n["id"].startswith("Theta_{")]
+        thetas = [n for n in g.nodes
+                  if isinstance(n.id, str) and n.id.startswith("Theta_{")]
         assert not thetas, (
             "\\nabla must not be collapsed onto its operand; got "
             f"placeholder nodes {thetas!r}"
@@ -1551,8 +1552,8 @@ class TestCompoundSymbols:
         """
         g = latex_to_semantic_graph(r"y = (\Delta t)^2")
         power_subexprs = [
-            n.get("subexpr", "") for n in g["nodes"]
-            if n.get("op") == "power"
+            (n.subexpr or "") for n in g.nodes
+            if n.op == "power"
         ]
         assert power_subexprs, "expected a power node in the graph"
         for s in power_subexprs:
@@ -1612,9 +1613,9 @@ class TestCompoundSymbols:
         assert const is not None, (
             "user override on 't' must not corrupt \\text{const}"
         )
-        for node in g["nodes"]:
+        for node in g.nodes:
             for field in ("latex", "subexpr"):
-                value = node.get(field)
+                value = getattr(node, field, None)
                 if isinstance(value, str):
                     assert r"\ex" not in value or r"\text" in value, (
                         f"\\text macro corrupted in {field}={value!r}"
@@ -1645,9 +1646,9 @@ class TestCompoundSymbols:
         g = latex_to_semantic_graph(r"\Delta t \propto x")
         rel = _find_node(g, type="relation")
         assert rel is not None, "should produce a relation node"
-        for node in g["nodes"]:
+        for node in g.nodes:
             for field in ("latex", "subexpr"):
-                value = node.get(field)
+                value = getattr(node, field, None)
                 if isinstance(value, str):
                     assert "Theta" not in value, (
                         f"placeholder leaked into {field}={value!r}"
@@ -1716,8 +1717,8 @@ class TestParentheticalAnnotations:
         g = latex_to_semantic_graph(r"F = m a \quad (m \text{ constant})")
         anno = _find_node(g, type="annotation")
         assert anno is not None, "annotation node should be in graph"
-        assert anno["id"] == "__annotation_0"
-        assert "constant" in anno["label"]
+        assert anno.id == "__annotation_0"
+        assert "constant" in anno.label
 
     def test_annotation_does_not_break_equation_parsing(self):
         g = latex_to_semantic_graph(r"v = v_0 + a t \quad (a \text{ constant})")
@@ -1800,7 +1801,7 @@ class TestDiracNotation:
             r"|\psi\rangle = e^{i\gamma_\alpha}\left(r_\alpha|0\rangle "
             r"+ r_\beta e^{i(\gamma_\beta - \gamma_\alpha)}|1\rangle\right)"
         )
-        kets = [n for n in g["nodes"] if n["type"] == "ket"]
+        kets = [n for n in g.nodes if n.type == "ket"]
         assert len(kets) == 3, f"expected 3 kets, got {len(kets)}"
         eq = _find_node(g, op="equals")
         assert eq is not None, "equation root should exist"
@@ -1809,34 +1810,34 @@ class TestDiracNotation:
 
     def test_simple_ket(self):
         g = latex_to_semantic_graph(r"|\psi\rangle")
-        kets = [n for n in g["nodes"] if n["type"] == "ket"]
+        kets = [n for n in g.nodes if n.type == "ket"]
         assert len(kets) == 1
-        assert r"\rangle" in kets[0]["latex"]
+        assert r"\rangle" in kets[0].latex
 
     def test_ket_addition(self):
         g = latex_to_semantic_graph(r"|0\rangle + |1\rangle")
-        kets = [n for n in g["nodes"] if n["type"] == "ket"]
+        kets = [n for n in g.nodes if n.type == "ket"]
         assert len(kets) == 2
         add = _find_node(g, op="add")
         assert add is not None
 
     def test_bra_standalone(self):
         g = latex_to_semantic_graph(r"\langle\phi|")
-        bras = [n for n in g["nodes"] if n["type"] == "bra"]
+        bras = [n for n in g.nodes if n.type == "bra"]
         assert len(bras) == 1
-        assert r"\langle" in bras[0]["latex"]
+        assert r"\langle" in bras[0].latex
 
     def test_braket_inner_product_equation(self):
         g = latex_to_semantic_graph(r"\langle\phi|\psi\rangle = 0")
         # Inner product is an operator with ``op="inner_product"`` —
         # filter by op so we don't pick up ``=`` or ``+`` operators.
-        brakets = [n for n in g["nodes"] if n.get("op") == "inner_product"]
+        brakets = [n for n in g.nodes if n.op == "inner_product"]
         assert len(brakets) == 1, "one inner product → one operator node"
         # Symbolic operands are wired in via edges, not baked into the label.
         bk = brakets[0]
-        assert bk["type"] == "operator"
-        bk_id = bk["id"]
-        operand_ids = {e["from"] for e in g["edges"] if e["to"] == bk_id}
+        assert bk.type == "operator"
+        bk_id = bk.id
+        operand_ids = {e.from_ for e in g.edges if e.to == bk_id}
         assert "phi" in operand_ids and "psi" in operand_ids
         eq = _find_node(g, op="equals")
         assert eq is not None
@@ -1844,11 +1845,11 @@ class TestDiracNotation:
     def test_braket_constant_bra_is_baked_in(self):
         """``⟨0|ψ⟩`` — the ``0`` stays in the operator label, not as an edge."""
         g = latex_to_semantic_graph(r"\langle 0|\psi\rangle = c")
-        brakets = [n for n in g["nodes"] if n.get("op") == "inner_product"]
+        brakets = [n for n in g.nodes if n.op == "inner_product"]
         assert len(brakets) == 1
-        assert brakets[0]["type"] == "operator"
-        bk_id = brakets[0]["id"]
-        operand_ids = {e["from"] for e in g["edges"] if e["to"] == bk_id}
+        assert brakets[0].type == "operator"
+        bk_id = brakets[0].id
+        operand_ids = {e.from_ for e in g.edges if e.to == bk_id}
         # Only ψ flows in. The constant ``0`` lives in the operator label.
         assert operand_ids == {"psi"}, f"expected only psi, got {operand_ids}"
 
@@ -1857,9 +1858,9 @@ class TestDiracNotation:
         g = latex_to_semantic_graph(
             r"a = \langle 0|\psi\rangle \\ b = \langle 1|\psi\rangle"
         )
-        psi_nodes = [n for n in g["nodes"] if n["id"] == "psi"]
+        psi_nodes = [n for n in g.nodes if n.id == "psi"]
         assert len(psi_nodes) == 1, "ψ should be a single shared node"
-        psi_edges = [e for e in g["edges"] if e["from"] == "psi"]
+        psi_edges = [e for e in g.edges if e.from_ == "psi"]
         assert len(psi_edges) == 2, "ψ should connect to both brakets"
 
     def test_braket_node_latex_is_compact_skeleton(self):
@@ -1873,11 +1874,11 @@ class TestDiracNotation:
         the other operators (``cos``, ``|·|``, ``(·)²``).
         """
         g = latex_to_semantic_graph(r"\langle 0|\psi\rangle = c")
-        bk = next(n for n in g["nodes"] if n.get("op") == "inner_product")
+        bk = next(n for n in g.nodes if n.op == "inner_product")
         # Compact skeleton on the node label.
-        assert bk["latex"] == r"\langle 0\,|\,\cdot\rangle"
+        assert bk.latex == r"\langle 0\,|\,\cdot\rangle"
         # Full applied form in subexpr — what the details panel shows.
-        assert bk["subexpr"] == r"\langle 0|\psi\rangle"
+        assert bk.subexpr == r"\langle 0|\psi\rangle"
 
 
 class TestOperatorKind:
@@ -1934,50 +1935,50 @@ class TestOperatorKind:
         # Every operator/function whose subexpr involves the braket
         # must contain the full ``\psi``, never a ``\cdot`` placeholder.
         wrappers = [
-            n for n in g["nodes"]
-            if "langle" in (n.get("subexpr") or "")
+            n for n in g.nodes
+            if "langle" in (n.subexpr or "")
         ]
         assert wrappers, "expected at least one wrapper node referencing the braket"
         for n in wrappers:
-            sx = n["subexpr"]
-            assert r"\psi" in sx, f"node {n['id']} subexpr lost ψ: {sx!r}"
+            sx = n.subexpr
+            assert r"\psi" in sx, f"node {n.id} subexpr lost ψ: {sx!r}"
             assert r"\cdot" not in sx, (
-                f"node {n['id']} subexpr leaks operator skeleton: {sx!r}"
+                f"node {n.id} subexpr leaks operator skeleton: {sx!r}"
             )
 
     def test_braket_edge_roles(self):
         """Bra-side operands get ``role='lhs'``, ket-side ``role='rhs'``."""
         g = latex_to_semantic_graph(r"\langle\phi|\psi\rangle = 0")
-        bk_id = next(n["id"] for n in g["nodes"] if n.get("op") == "inner_product")
-        edges = {e["from"]: e.get("role") for e in g["edges"] if e["to"] == bk_id}
+        bk_id = next(n.id for n in g.nodes if n.op == "inner_product")
+        edges = {e.from_: e.role for e in g.edges if e.to == bk_id}
         assert edges.get("phi") == "lhs", f"phi should be bra (lhs): {edges}"
         assert edges.get("psi") == "rhs", f"psi should be ket (rhs): {edges}"
 
     def test_braket_pure_constants_have_no_operand_edges(self):
         """``⟨0|1⟩`` — both sides constant → no operand edges into the braket."""
         g = latex_to_semantic_graph(r"\langle 0|1\rangle = c")
-        bk_id = next(n["id"] for n in g["nodes"] if n.get("op") == "inner_product")
+        bk_id = next(n.id for n in g.nodes if n.op == "inner_product")
         # Only the upstream ``=`` edge points away from the braket; nothing
         # symbolic flows in.  Edges *to* the braket must be empty.
-        in_edges = [e for e in g["edges"] if e["to"] == bk_id]
+        in_edges = [e for e in g.edges if e.to == bk_id]
         assert in_edges == [], f"expected no operand edges, got {in_edges}"
 
     def test_ket_equation_has_equals(self):
         g = latex_to_semantic_graph(r"|\psi\rangle = |0\rangle")
         eq = _find_node(g, op="equals")
         assert eq is not None
-        kets = [n for n in g["nodes"] if n["type"] == "ket"]
+        kets = [n for n in g.nodes if n.type == "ket"]
         assert len(kets) == 2
 
     def test_ket_with_subscript(self):
         g = latex_to_semantic_graph(r"|\psi_n\rangle")
-        kets = [n for n in g["nodes"] if n["type"] == "ket"]
+        kets = [n for n in g.nodes if n.type == "ket"]
         assert len(kets) == 1
 
     def test_ket_coefficient_multiply(self):
         """Coefficient × ket should produce multiply node."""
         g = latex_to_semantic_graph(r"\alpha|0\rangle + \beta|1\rangle")
-        kets = [n for n in g["nodes"] if n["type"] == "ket"]
+        kets = [n for n in g.nodes if n.type == "ket"]
         assert len(kets) == 2
-        muls = [n for n in g["nodes"] if n.get("op") == "multiply"]
+        muls = [n for n in g.nodes if n.op == "multiply"]
         assert len(muls) >= 2, "each coefficient×ket should be a multiply"

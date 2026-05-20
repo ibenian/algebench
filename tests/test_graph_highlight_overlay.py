@@ -20,6 +20,8 @@ from jsonschema import Draft202012Validator
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from backend.model.semantic_graph import SemanticGraph
+
 from server import (  # noqa: E402  (path manipulation above)
     _apply_highlights_to_graph,
     _autofill_semantic_graphs,
@@ -50,7 +52,8 @@ def _build_scene(math: str, highlights: dict) -> dict:
     }
 
 
-def _graph(scene: dict) -> dict:
+def _graph_dict(scene: dict) -> dict:
+    """Extract the serialized graph dict from the scene."""
     return scene["scenes"][0]["proof"]["steps"][0]["semanticGraph"]["graph"]
 
 
@@ -64,7 +67,7 @@ def test_highlight_overlay_annotates_matched_nodes(graph_validator):
         },
     )
     _autofill_semantic_graphs(scene)
-    graph = _graph(scene)
+    graph = _graph_dict(scene)
 
     by_id = {n["id"]: n for n in graph["nodes"]}
     assert by_id["m"]["color"] == "#e91e63"
@@ -72,11 +75,8 @@ def test_highlight_overlay_annotates_matched_nodes(graph_validator):
     assert by_id["m"]["highlight"] == "m"
 
     assert by_id["c"]["color"] == "#3f51b5"
-    # Node already had a label-derived description; the overlay still wins
-    # via description-fallback only when the node had no description.
     assert by_id["c"]["highlight"] == "c"
 
-    # Bare highlight key — no "hl-" prefix leaks through.
     for node in graph["nodes"]:
         hl = node.get("highlight")
         if hl is not None:
@@ -95,7 +95,7 @@ def test_highlight_overlay_preserves_schema_validity(graph_validator):
         },
     )
     _autofill_semantic_graphs(scene)
-    graph = _graph(scene)
+    graph = _graph_dict(scene)
 
     errors = sorted(graph_validator.iter_errors(graph), key=lambda e: e.path)
     assert not errors, "\n".join(e.message for e in errors)
@@ -106,21 +106,22 @@ def test_highlight_overlay_idempotent_and_respects_existing_fields():
     math = r"y = \htmlClass{hl-x}{x}"
     highlights = {"x": {"color": "#ff0000", "label": "input"}}
 
-    # Pre-build the graph with an author-authored color, then run overlay.
     scene = _build_scene(math, highlights)
     _autofill_semantic_graphs(scene)
-    graph = _graph(scene)
-    by_id = {n["id"]: n for n in graph["nodes"]}
-    by_id["x"]["color"] = "#0000ff"  # author override
+    # Re-parse the serialized graph back into a SemanticGraph model,
+    # modify a field, then re-run the overlay.
+    graph_dict = _graph_dict(scene)
+    graph = SemanticGraph.model_validate(graph_dict)
+    by_id = {n.id: n for n in graph.nodes}
+    by_id["x"].color = "#0000ff"  # author override
 
     hl_pairs = _extract_htmlclass_pairs(math)
     _apply_highlights_to_graph(graph, hl_pairs, highlights)
 
-    assert by_id["x"]["color"] == "#0000ff", (
+    assert by_id["x"].color == "#0000ff", (
         "overlay must not clobber author-provided color"
     )
-    # The highlight name is still attached — it's informational metadata.
-    assert by_id["x"]["highlight"] == "x"
+    assert by_id["x"].highlight == "x"
 
 
 def test_highlight_overlay_binds_subexpression_to_root_operator(graph_validator):
@@ -130,25 +131,21 @@ def test_highlight_overlay_binds_subexpression_to_root_operator(graph_validator)
         highlights={"kinetic": {"color": "#ff9800", "label": "kinetic energy"}},
     )
     _autofill_semantic_graphs(scene)
-    graph = _graph(scene)
+    graph = _graph_dict(scene)
 
     annotated = [n for n in graph["nodes"] if n.get("highlight") == "kinetic"]
     assert len(annotated) == 1, "exactly one node should carry the highlight"
     root = annotated[0]
     assert root["type"] == "operator"
     assert root["op"] == "multiply"
-    # subexpr covers the entire highlighted body
     assert "v^{2}" in root["subexpr"]
     assert root["color"] == "#ff9800"
     assert root["description"] == "kinetic energy"
 
-    # Leaf children of the sub-expression are NOT tagged — the overlay
-    # marks only the sub-tree root.
     for leaf_id in ("m", "v"):
         leaf = next(n for n in graph["nodes"] if n["id"] == leaf_id)
-        assert "highlight" not in leaf
+        assert leaf.get("highlight") is None
 
-    # Still schema-valid with operator-level annotation.
     errors = sorted(graph_validator.iter_errors(graph), key=lambda e: e.path)
     assert not errors, "\n".join(e.message for e in errors)
 
@@ -157,11 +154,9 @@ def test_highlight_overlay_noop_when_no_highlights():
     """Math with no htmlClass spans and no highlights — graph stays clean."""
     scene = _build_scene(math=r"y = x^2", highlights={})
     _autofill_semantic_graphs(scene)
-    graph = _graph(scene)
+    graph = _graph_dict(scene)
     for node in graph["nodes"]:
-        assert "highlight" not in node
-        # "color" may legitimately appear if role-based palettes ever attach
-        # one, but the overlay itself should contribute nothing here.
+        assert node.get("highlight") is None
 
 
 def test_strip_html_class_removes_wrappers_from_middle_of_math():

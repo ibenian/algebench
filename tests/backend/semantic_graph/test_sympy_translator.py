@@ -269,45 +269,45 @@ class TestClassifyExpression:
 class TestLatexToSemanticGraph:
     def test_simple_equation(self):
         graph = latex_to_semantic_graph("F = m a")
-        assert "nodes" in graph
-        assert "edges" in graph
-        assert "classification" in graph
+        assert graph.nodes is not None
+        assert graph.edges is not None
+        assert graph.classification is not None
 
     def test_returns_equals_node(self):
         graph = latex_to_semantic_graph("F = m a")
-        eq_nodes = [n for n in graph["nodes"] if n.get("op") == "equals"]
+        eq_nodes = [n for n in graph.nodes if n.op == "equals"]
         assert len(eq_nodes) >= 1
 
     def test_quadratic(self):
         graph = latex_to_semantic_graph("E = mc^2")
-        ids = {n["id"] for n in graph["nodes"]}
+        ids = {n.id for n in graph.nodes}
         assert "E" in ids
 
     def test_domain_carried(self):
         graph = latex_to_semantic_graph("F = ma", domain="physics")
-        assert graph.get("domain") == "physics"
+        assert graph.domain == "physics"
 
     def test_chained_equals(self):
         graph = latex_to_semantic_graph("a = b = c")
-        eq_nodes = [n for n in graph["nodes"]
-                     if n.get("type") == "relation" and n.get("op") == "equals"]
+        eq_nodes = [n for n in graph.nodes
+                     if n.type == "relation" and n.op == "equals"]
         assert len(eq_nodes) >= 1
 
     def test_statement_separator(self):
         graph = latex_to_semantic_graph(r"a = 1 \\ b = 2")
-        assert graph["classification"]["kind"] == "statements"
-        assert graph["classification"]["count"] == 2
+        assert graph.classification.kind == "statements"
+        assert graph.classification.count == 2
 
     def test_relation_approx(self):
         graph = latex_to_semantic_graph(r"a \approx b")
-        rel_nodes = [n for n in graph["nodes"]
-                     if n.get("op") == "approximately"]
+        rel_nodes = [n for n in graph.nodes
+                     if n.op == "approximately"]
         assert len(rel_nodes) == 1
 
     def test_element_of_relation(self):
         graph = latex_to_semantic_graph(r"x \in \mathbb{R}")
-        rel_nodes = [n for n in graph["nodes"]
-                     if n.get("op") == "element_of"]
+        rel_nodes = [n for n in graph.nodes
+                     if n.op == "element_of"]
         assert len(rel_nodes) == 1
 
     def test_invalid_latex_raises(self):
@@ -316,18 +316,18 @@ class TestLatexToSemanticGraph:
 
     def test_parenthetical_annotation(self):
         graph = latex_to_semantic_graph(r"F = ma \quad (v_e \text{ constant})")
-        ann_nodes = [n for n in graph["nodes"]
-                     if n.get("id", "").startswith("__annotation_")]
+        ann_nodes = [n for n in graph.nodes
+                     if n.id.startswith("__annotation_")]
         assert len(ann_nodes) >= 1
 
     def test_compound_symbol(self):
         graph = latex_to_semantic_graph(r"\Delta t = 1")
-        node_latexes = [n.get("latex", "") for n in graph["nodes"]]
+        node_latexes = [(n.latex or "") for n in graph.nodes]
         assert any(r"\Delta t" in lt for lt in node_latexes)
 
     def test_text_command(self):
         graph = latex_to_semantic_graph(r"I_{\text{sp}} = 300")
         all_text = " ".join(
-            str(v) for n in graph["nodes"] for v in n.values()
+            str(v) for n in graph.nodes for v in n.model_dump().values()
         )
         assert "sp" in all_text

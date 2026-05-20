@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.model.semantic_graph import SemanticGraph
+
 from .cache import GraphCache, _MISS
 from .equation_chain import derive_equation_chain_graph
 from .postprocessor import GraphPostprocessor
@@ -17,8 +19,8 @@ class SemanticGraphService:
         self._preprocessor = LaTeXPreprocessor()
         self._postprocessor = GraphPostprocessor()
 
-    def derive(self, latex: str, domain: str | None = None) -> dict | None:
-        """Parse *latex* and return a semantic graph dict, or None on failure.
+    def derive(self, latex: str, domain: str | None = None) -> SemanticGraph | None:
+        """Parse *latex* and return a ``SemanticGraph``, or None on failure.
 
         Results are memoized by (latex, domain).
         """
@@ -32,7 +34,7 @@ class SemanticGraphService:
         graph = derive_equation_chain_graph(latex)
         if graph is not None:
             if domain:
-                graph["domain"] = domain
+                graph.domain = domain
             self._cache.put(latex, domain, graph)
             return graph
 
