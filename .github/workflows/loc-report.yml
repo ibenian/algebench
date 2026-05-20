@@ -23,7 +23,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           SHA="${{ github.event.pull_request.head.sha }}"
-          LOGIN=$(gh api "repos/${{ github.repository }}/commits/${SHA}" --jq '.author.login // empty')
+          LOGIN=$(gh api "repos/${{ github.repository }}/commits/${SHA}" --jq '.author.login // empty' 2>/dev/null || true)
           if [ "$LOGIN" = "github-actions[bot]" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "Skipping — HEAD commit is from github-actions[bot]"
