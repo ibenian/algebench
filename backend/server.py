@@ -32,7 +32,7 @@ import uvicorn
 from google import genai
 from google.genai import types
 
-script_dir = Path(__file__).parent.resolve()
+script_dir = Path(__file__).parent.parent.resolve()
 scenes_dir = script_dir / "scenes"
 
 # ---------------------------------------------------------------------------
@@ -551,7 +551,7 @@ def generate_html(debug=False):
     with open(index_html_path, 'r') as f:
         return f.read().replace('__DEBUG_MODE__', debug_mode_js)
 
-from agent_tools import (
+from backend.agent_tools import (
     ALL_TOOL_DECLS, _make_tools, build_system_prompt,
     NAVIGATE_TOOL_DECL, SET_CAMERA_TOOL_DECL, ADD_SCENE_TOOL_DECL,
     SET_SLIDERS_TOOL_DECL, EVAL_MATH_TOOL_DECL,

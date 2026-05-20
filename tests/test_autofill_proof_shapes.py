@@ -15,8 +15,8 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-import server  # noqa: E402
-from server import _autofill_semantic_graphs, _normalize_proofs  # noqa: E402
+import backend.server as server  # noqa: E402
+from backend.server import _autofill_semantic_graphs, _normalize_proofs  # noqa: E402
 
 
 REPO_ROOT = Path(__file__).parent.parent

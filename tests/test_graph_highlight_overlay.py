@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend.model.semantic_graph import SemanticGraph
 
-from server import (  # noqa: E402  (path manipulation above)
+from backend.server import (  # noqa: E402  (path manipulation above)
     _apply_highlights_to_graph,
     _autofill_semantic_graphs,
     _extract_htmlclass_pairs,

@@ -38,4 +38,5 @@ if [ -f "$DIR/.env.local" ]; then
     set +a
 fi
 
-exec "$VENV/bin/python3" "$DIR/server.py" "$@"
+export PYTHONPATH="${DIR}${PYTHONPATH:+:$PYTHONPATH}"
+exec "$VENV/bin/python3" "$DIR/backend/server.py" "$@"
