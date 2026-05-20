@@ -11,7 +11,7 @@ since the #309 refactor.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Callable
 
 import pytest
 
@@ -304,24 +304,58 @@ def assert_var_feeds_into(
 # ── Graph signature ──────────────────────────────────────────────────
 
 
-def _node_label(node: SemanticGraphNode) -> str:
+NodeLabeler = Callable[[SemanticGraphNode], str]
+
+_TYPE_PREFIX: dict[str, str] = {
+    "function":   "fn",
+    "relation":   "rel",
+    "vector":     "vec",
+    "constant":   "const",
+    "ket":        "ket",
+    "bra":        "bra",
+    "braket":     "braket",
+    "text":       "text",
+    "annotation": "ann",
+}
+
+
+def label_by_type(node: SemanticGraphNode) -> str:
+    """Type-aware label: ``fn:sin``, ``vec:a``, ``add``, ``num``."""
+    prefix = _TYPE_PREFIX.get(node.type, "")
     if node.op:
-        return node.op
+        return f"{prefix}:{node.op}" if prefix else node.op
     if node.type == "number":
         return "num"
     if node.type == "expression":
         return "expr"
+    return f"{prefix}:{node.id}" if prefix else node.id
+
+
+def label_by_id(node: SemanticGraphNode) -> str:
+    """Raw node id."""
     return node.id
 
 
-def graph_signature(graph: SemanticGraph) -> str:
+def label_by_op(node: SemanticGraphNode) -> str:
+    """Bare ``op`` when present, else node id."""
+    return node.op if node.op else node.id
+
+
+def graph_signature(
+    graph: SemanticGraph,
+    labeler: NodeLabeler | None = None,
+) -> str:
     """Deterministic string encoding of graph connectivity.
+
+    ``labeler`` controls how each node is rendered in the output string.
+    Defaults to ``label_by_type``.
 
     Format: ``"child1,child2 -> parent; ..."`` with groups sorted by
     (topological depth, parent label, sorted child labels).  The sort key
     is purely content-based — no dependency on node/edge iteration order —
     so the output is stable across parser refactors that preserve structure.
     """
+    label = labeler or label_by_type
     nmap = _node_map(graph)
 
     parent_children: dict[str, list[str]] = {}
@@ -346,8 +380,8 @@ def graph_signature(graph: SemanticGraph) -> str:
 
     groups: list[tuple[int, str, list[str]]] = []
     for pid, children in parent_children.items():
-        plabel = _node_label(nmap[pid])
-        clabels = sorted(_node_label(nmap[c]) for c in children)
+        plabel = label(nmap[pid])
+        clabels = sorted(label(nmap[c]) for c in children)
         groups.append((depths[pid], plabel, clabels))
 
     groups.sort(key=lambda g: (g[0], g[1], g[2]))
@@ -358,10 +392,14 @@ def graph_signature(graph: SemanticGraph) -> str:
 
 
 def assert_signature(
-    graph: SemanticGraph, expected: str, *, latex: str = "",
+    graph: SemanticGraph,
+    expected: str,
+    *,
+    labeler: NodeLabeler | None = None,
+    latex: str = "",
 ) -> None:
     """Assert that the graph's connectivity signature matches ``expected``."""
-    actual = graph_signature(graph)
+    actual = graph_signature(graph, labeler=labeler)
     assert actual == expected, (
         f"Signature mismatch for: {latex!r}\n"
         f"  expected: {expected}\n"
