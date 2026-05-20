@@ -13,6 +13,8 @@ import itertools
 import random
 from dataclasses import dataclass
 
+from tests.backend.semantic_graph.generators.variables import ALL_VAR_STYLES
+
 
 STRUCTURES: dict[str, str] = {
     "single":      "{lhs} {rel} {rhs}",
@@ -40,14 +42,31 @@ OPERATOR_TEMPLATES: dict[str, str] = {
     "sqrt":     r"\sqrt{{{a}}}",
 }
 
-VAR_STYLES: dict[str, tuple[str, ...]] = {
-    "plain":       ("x", "y", "z"),
-    "greek":       (r"\alpha", r"\beta", r"\theta"),
-    "accented":    (r"\vec{F}", r"\hat{n}", r"\bar{x}"),
-    "dot_deriv":   (r"\dot{x}", r"\ddot{x}"),
-    "subscripted": ("x_0", "C_d", "a_n"),
-    "compound":    (r"\Delta t", r"\Delta x"),
+# Derive VAR_STYLES from the canonical variables.py definitions.
+# Each entry selects specific labels from ALL_VAR_STYLES to keep the
+# cross-product small (~200 combos) while covering representative cases.
+# Key mapping preserves backward-compatible test IDs.
+_VAR_STYLE_SELECTIONS: dict[str, tuple[str, tuple[str, ...]]] = {
+    #  local_key:  (canon_key,       selected labels)
+    "plain":       ("plain",         ("x", "y", "z")),
+    "greek":       ("greek",         ("alpha", "beta", "theta")),
+    "accented":    ("accented",      ("vec_F", "hat_n", "bar_x")),
+    "dot_deriv":   ("dot_derivative", ("dot_x", "ddot_x")),
+    "subscripted": ("subscripted",   ("x_0", "C_d", "a_n")),
+    "compound":    ("compound",      ("Delta_t", "Delta_x")),
 }
+
+
+def _build_var_styles() -> dict[str, tuple[str, ...]]:
+    """Build VAR_STYLES by selecting labeled entries from variables.py."""
+    result = {}
+    for local_key, (canon_key, labels) in _VAR_STYLE_SELECTIONS.items():
+        lookup = {label: latex for label, latex in ALL_VAR_STYLES[canon_key]}
+        result[local_key] = tuple(lookup[lbl] for lbl in labels)
+    return result
+
+
+VAR_STYLES: dict[str, tuple[str, ...]] = _build_var_styles()
 
 
 @dataclass(frozen=True)

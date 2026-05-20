@@ -7,7 +7,10 @@ from .invariants import (
     assert_no_placeholder_leak,
     assert_pydantic_validates,
 )
-from .variables import VARIABLES, GREEK, ACCENTED, DOT_DERIVATIVES, SUBSCRIPTED
+from .variables import (
+    VARIABLES, GREEK, ACCENTED, DOT_DERIVATIVES, SUBSCRIPTED,
+    COMPOUND, STYLED, ALL_VAR_STYLES,
+)
 
 __all__ = [
     "ExprTemplate",
@@ -22,4 +25,7 @@ __all__ = [
     "ACCENTED",
     "DOT_DERIVATIVES",
     "SUBSCRIPTED",
+    "COMPOUND",
+    "STYLED",
+    "ALL_VAR_STYLES",
 ]

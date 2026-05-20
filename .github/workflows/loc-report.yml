@@ -48,7 +48,7 @@ jobs:
         run: cat LOC-REPORT.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Commit report if code lines changed
-        if: steps.guard.outputs.skip != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: steps.guard.outputs.skip != 'true' && github.event_name != 'pull_request'
         run: |
           # Strip volatile metadata (Branch/Commit/Date) before comparing
           # so only actual code-line changes trigger a commit.
