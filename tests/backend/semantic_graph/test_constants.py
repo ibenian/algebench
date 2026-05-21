@@ -72,7 +72,8 @@ class TestTranslatorConstants:
         assert not pat.match("XYZ")
 
     def test_known_variables(self):
-        assert "F" in KNOWN_VARIABLES
+        assert "alpha" in KNOWN_VARIABLES
+        assert KNOWN_VARIABLES["alpha"]["latex"] == "\\alpha"
         assert KNOWN_VARIABLES["pi"]["type"] == "constant"
 
     def test_operator_map_keys_are_types(self):
