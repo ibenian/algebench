@@ -1,0 +1,68 @@
+{
+  "classification": {
+    "clauses": null,
+    "constant_coefficients": null,
+    "count": null,
+    "dependent_variables": null,
+    "homogeneous": null,
+    "independent_variables": null,
+    "kind": "algebraic",
+    "linear": null,
+    "order": null,
+    "sympy_hints": null
+  },
+  "domain": null,
+  "edges": [
+    {
+      "from": "__num_2",
+      "label": null,
+      "role": null,
+      "semantic": null,
+      "to": "__power_1",
+      "weight": null
+    }
+  ],
+  "enrichment": null,
+  "nodes": [
+    {
+      "color": null,
+      "description": null,
+      "dimension": null,
+      "emoji": null,
+      "exponent": "-1",
+      "highlight": null,
+      "id": "__power_1",
+      "label": null,
+      "latex": null,
+      "op": "power",
+      "quantity": null,
+      "role": null,
+      "subexpr": "\\frac{1}{2}",
+      "type": "operator",
+      "unit": null,
+      "value": null,
+      "variant": null,
+      "with_respect_to": null
+    },
+    {
+      "color": null,
+      "description": null,
+      "dimension": null,
+      "emoji": null,
+      "exponent": null,
+      "highlight": null,
+      "id": "__num_2",
+      "label": "2",
+      "latex": null,
+      "op": null,
+      "quantity": null,
+      "role": null,
+      "subexpr": "2",
+      "type": "number",
+      "unit": null,
+      "value": null,
+      "variant": null,
+      "with_respect_to": null
+    }
+  ]
+}

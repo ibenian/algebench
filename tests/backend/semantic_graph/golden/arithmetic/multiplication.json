@@ -1,0 +1,96 @@
+{
+  "classification": {
+    "clauses": null,
+    "constant_coefficients": null,
+    "count": null,
+    "dependent_variables": null,
+    "homogeneous": null,
+    "independent_variables": null,
+    "kind": "algebraic",
+    "linear": null,
+    "order": null,
+    "sympy_hints": null
+  },
+  "domain": null,
+  "edges": [
+    {
+      "from": "__num_2",
+      "label": null,
+      "role": null,
+      "semantic": "direct",
+      "to": "__multiply_1",
+      "weight": 1.0
+    },
+    {
+      "from": "__num_3",
+      "label": null,
+      "role": null,
+      "semantic": "direct",
+      "to": "__multiply_1",
+      "weight": 1.0
+    }
+  ],
+  "enrichment": null,
+  "nodes": [
+    {
+      "color": null,
+      "description": null,
+      "dimension": null,
+      "emoji": null,
+      "exponent": null,
+      "highlight": null,
+      "id": "__multiply_1",
+      "label": null,
+      "latex": null,
+      "op": "multiply",
+      "quantity": null,
+      "role": null,
+      "subexpr": "3 \\cdot 5",
+      "type": "operator",
+      "unit": null,
+      "value": null,
+      "variant": null,
+      "with_respect_to": null
+    },
+    {
+      "color": null,
+      "description": null,
+      "dimension": null,
+      "emoji": null,
+      "exponent": null,
+      "highlight": null,
+      "id": "__num_2",
+      "label": "3",
+      "latex": null,
+      "op": null,
+      "quantity": null,
+      "role": null,
+      "subexpr": "3",
+      "type": "number",
+      "unit": null,
+      "value": null,
+      "variant": null,
+      "with_respect_to": null
+    },
+    {
+      "color": null,
+      "description": null,
+      "dimension": null,
+      "emoji": null,
+      "exponent": null,
+      "highlight": null,
+      "id": "__num_3",
+      "label": "5",
+      "latex": null,
+      "op": null,
+      "quantity": null,
+      "role": null,
+      "subexpr": "5",
+      "type": "number",
+      "unit": null,
+      "value": null,
+      "variant": null,
+      "with_respect_to": null
+    }
+  ]
+}
