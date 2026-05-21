@@ -120,6 +120,10 @@
         {
           "title": "Domain constraint: \u03b1 \u2208 \u2102",
           "description": "\u03b1 \u2208 \u2102 \u2014 styled symbol correctly parsed"
+        },
+        {
+          "title": "Bare symbols (formerly hardcoded vectors)",
+          "description": "$y = F + a \\cdot v - p + B$"
         }
       ],
       "proof": {
@@ -1957,6 +1961,14 @@
                 }
               }
             }
+          },
+          {
+            "id": "proof-step-23",
+            "type": "given",
+            "label": "Bare symbols (formerly hardcoded vectors)",
+            "math": "y = F + a \\cdot v - p + B",
+            "justification": "All five symbols (F, a, v, p, B) were previously hardcoded as vectors in KNOWN_VARIABLES. After PR #311 they should appear as scalars from the raw graph builder.",
+            "sceneStep": 22
           }
         ]
       }
