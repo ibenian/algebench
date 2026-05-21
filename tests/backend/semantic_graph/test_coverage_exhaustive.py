@@ -1,6 +1,6 @@
-"""Exhaustive cross-product generator: structure × relation × var_style.
+"""Exhaustive cross-product generator: structure × relation × var_style × nesting.
 
-~168 combinations covering the parser's feature matrix. Runs on every CI push.
+~500 combinations covering the parser's feature matrix. Runs on every CI push.
 Asserts universal invariants only — domain-specific assertions belong in the
 domain suite files.
 """
@@ -27,7 +27,11 @@ _PLACEHOLDER_LEAK_STYLES = {"compound"}
 
 # Compound cases where the parser no longer leaks placeholders.
 # Discovered via strict xfail — keep this set updated as more are fixed.
-_COMPOUND_FIXED = {"single-=-compound-add"}
+_COMPOUND_FIXED = {
+    "single-=-compound-add-bare",
+    "single-=-compound-add-parens",
+    "single-=-compound-add-left_right",
+}
 
 
 def _safe_parse(template):

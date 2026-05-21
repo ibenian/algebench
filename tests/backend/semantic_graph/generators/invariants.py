@@ -32,9 +32,43 @@ _PLACEHOLDER_RE = re.compile(r"(?:Theta|Xi|Phi)_\{\d*\}")
 
 
 def assert_valid_graph(graph: SemanticGraph, *, latex: str = "") -> None:
-    """Graph is non-null with at least one node and an edges list."""
+    """Graph is non-null, structurally sound, and acyclic."""
     assert graph is not None, f"Parser returned None for: {latex!r}"
     assert len(graph.nodes) >= 1, f"Empty nodes list for: {latex!r}"
+
+    node_ids = {n.id for n in graph.nodes}
+    assert len(node_ids) == len(graph.nodes), (
+        f"Duplicate node IDs for: {latex!r}"
+    )
+
+    for e in graph.edges:
+        assert e.from_ in node_ids, (
+            f"Dangling edge from={e.from_!r} not in nodes for: {latex!r}"
+        )
+        assert e.to in node_ids, (
+            f"Dangling edge to={e.to!r} not in nodes for: {latex!r}"
+        )
+
+    adj: dict[str, list[str]] = {nid: [] for nid in node_ids}
+    for e in graph.edges:
+        adj[e.from_].append(e.to)
+
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color: dict[str, int] = {nid: WHITE for nid in node_ids}
+
+    def _has_cycle(nid: str) -> bool:
+        color[nid] = GRAY
+        for neighbor in adj[nid]:
+            if color[neighbor] == GRAY:
+                return True
+            if color[neighbor] == WHITE and _has_cycle(neighbor):
+                return True
+        color[nid] = BLACK
+        return False
+
+    for nid in node_ids:
+        if color[nid] == WHITE:
+            assert not _has_cycle(nid), f"Cycle detected in graph for: {latex!r}"
 
 
 def assert_classification_present(graph: SemanticGraph, *, latex: str = "") -> None:
