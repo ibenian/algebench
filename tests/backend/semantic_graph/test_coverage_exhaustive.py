@@ -45,7 +45,7 @@ _COMPOUND_FIXED = {
 def _get_cases(config):
     if config.getoption("--exhaustive"):
         return exhaustive()
-    return sampled(n=int(config.getoption("--sampled")))
+    return sampled(n=config.getoption("--sampled"))
 
 
 def _safe_parse(template):

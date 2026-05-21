@@ -13,7 +13,8 @@ def pytest_addoption(parser):
     parser.addoption(
         "--sampled",
         action="store",
-        default="200",
+        type=int,
+        default=200,
         metavar="N",
         help="Sample N cases from the full cross-product (default: 200).",
     )

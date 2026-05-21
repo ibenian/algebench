@@ -431,12 +431,20 @@ def graph_signature(
         return ""
 
     depths: dict[str, int] = {}
+    visiting: set[str] = set()
 
     def _depth(nid: str) -> int:
         if nid in depths:
             return depths[nid]
+        if nid in visiting:
+            raise ValueError(
+                f"Cycle detected at node {nid!r} — "
+                "graph_signature requires an acyclic graph"
+            )
+        visiting.add(nid)
         children = parent_children.get(nid, [])
         depths[nid] = (max(_depth(c) for c in children) + 1) if children else 0
+        visiting.discard(nid)
         return depths[nid]
 
     for nid in nmap:
