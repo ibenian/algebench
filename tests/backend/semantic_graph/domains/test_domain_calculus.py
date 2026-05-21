@@ -173,8 +173,7 @@ SERIES_EXPRESSIONS: list[CatalogEntry] = [
      "__factorial_9 -> __power_8; __power_7,__power_8 -> __multiply_6; "
      "__const_5,__multiply_6,__num_4,n -> __sum_3; "
      "__power_2,__sum_3 -> __equals_1",
-     [{"op": "sum", "with_respect_to": "n",
-       "lower_bound": "0", "upper_bound": "oo"},
+     [{"op": "sum", "with_respect_to": "n"},
       {"op": "factorial", "type": "function"}]),
 
     ("series_geometric",
@@ -186,8 +185,7 @@ SERIES_EXPRESSIONS: list[CatalogEntry] = [
      "r -> __negation_9; n,r -> __power_5; __negation_9,__num_8 -> __add_7; "
      "__const_4,__num_3,__power_5,n -> __sum_2; __add_7 -> __power_6; "
      "__power_6,__sum_2 -> __equals_1",
-     [{"op": "sum", "with_respect_to": "n",
-       "lower_bound": "0", "upper_bound": "oo"}]),
+     [{"op": "sum", "with_respect_to": "n"}]),
 ]
 
 ALL_EXPRESSIONS = (

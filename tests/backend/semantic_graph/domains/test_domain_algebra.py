@@ -183,8 +183,7 @@ BINOMIAL_EXPRESSIONS: list[CatalogEntry] = [
      "__binomial_7,__multiply_8 -> __multiply_6; "
      "__multiply_6,__num_5,k,n -> __sum_4; __power_2,__sum_4 -> __equals_1",
      [{"op": "binomial", "type": "function"},
-      {"op": "sum", "with_respect_to": "k",
-       "lower_bound": "0", "upper_bound": "n"}]),
+      {"op": "sum", "with_respect_to": "k", "upper_bound": "n"}]),
 ]
 
 FUNCTION_EXPRESSIONS: list[CatalogEntry] = [

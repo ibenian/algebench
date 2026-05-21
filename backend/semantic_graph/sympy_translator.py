@@ -984,36 +984,39 @@ class SemanticGraphBuilder:
         # --- Derivative ---
         if isinstance(expr, Derivative):
             node_id = self._next_id("deriv")
-            dep_vars = [str(v) for v, _ in expr.variable_count]
             op_name = "partial_derivative" if self._is_partial_derivative(expr) else "derivative"
-            self._add_node(node_id, type="operator", op=op_name,
-                           with_respect_to=", ".join(dep_vars))
             child_id = self._walk(expr.expr)
             self._add_edge(child_id, node_id)
+            wrt_ids: list[str] = []
             for v, _ in expr.variable_count:
                 var_id = self._walk(v)
+                wrt_ids.append(var_id)
                 self._add_edge(var_id, node_id)
+            self._add_node(node_id, type="operator", op=op_name,
+                           with_respect_to=", ".join(wrt_ids))
             return node_id
 
         # --- Integral ---
         if isinstance(expr, Integral):
             node_id = self._next_id("integral")
-            wrt_vars: list[str] = []
+            wrt_ids: list[str] = []
+            lower_nid: str | None = None
+            upper_nid: str | None = None
             node_attrs: dict[str, str] = {"type": "operator", "op": "integral"}
             for limit_tuple in expr.limits:
-                var = limit_tuple[0]
-                wrt_vars.append(str(var))
-                var_id = self._walk(var)
+                var_id = self._walk(limit_tuple[0])
+                wrt_ids.append(var_id)
                 self._add_edge(var_id, node_id)
                 if len(limit_tuple) >= 3:
-                    lower_id = self._walk(limit_tuple[1])
-                    upper_id = self._walk(limit_tuple[2])
-                    self._add_edge(lower_id, node_id)
-                    self._add_edge(upper_id, node_id)
-            node_attrs["with_respect_to"] = ", ".join(wrt_vars)
-            if len(expr.limits) == 1 and len(expr.limits[0]) >= 3:
-                node_attrs["lower_bound"] = str(expr.limits[0][1])
-                node_attrs["upper_bound"] = str(expr.limits[0][2])
+                    lower_nid = self._walk(limit_tuple[1])
+                    upper_nid = self._walk(limit_tuple[2])
+                    self._add_edge(lower_nid, node_id)
+                    self._add_edge(upper_nid, node_id)
+            node_attrs["with_respect_to"] = ", ".join(wrt_ids)
+            if lower_nid is not None:
+                node_attrs["lower_bound"] = lower_nid
+            if upper_nid is not None:
+                node_attrs["upper_bound"] = upper_nid
             self._add_node(node_id, **node_attrs)
             child_id = self._walk(expr.function)
             self._add_edge(child_id, node_id)
@@ -1023,22 +1026,24 @@ class SemanticGraphBuilder:
         if isinstance(expr, (Sum, Product)):
             op_name = "sum" if isinstance(expr, Sum) else "product"
             node_id = self._next_id(op_name)
-            wrt_vars = []
+            wrt_ids = []
+            lower_nid = None
+            upper_nid = None
             node_attrs = {"type": "operator", "op": op_name}
             for limit_tuple in expr.limits:
-                var = limit_tuple[0]
-                wrt_vars.append(str(var))
-                var_id = self._walk(var)
+                var_id = self._walk(limit_tuple[0])
+                wrt_ids.append(var_id)
                 self._add_edge(var_id, node_id)
                 if len(limit_tuple) >= 3:
-                    lower_id = self._walk(limit_tuple[1])
-                    upper_id = self._walk(limit_tuple[2])
-                    self._add_edge(lower_id, node_id)
-                    self._add_edge(upper_id, node_id)
-            node_attrs["with_respect_to"] = ", ".join(wrt_vars)
-            if len(expr.limits) == 1 and len(expr.limits[0]) >= 3:
-                node_attrs["lower_bound"] = str(expr.limits[0][1])
-                node_attrs["upper_bound"] = str(expr.limits[0][2])
+                    lower_nid = self._walk(limit_tuple[1])
+                    upper_nid = self._walk(limit_tuple[2])
+                    self._add_edge(lower_nid, node_id)
+                    self._add_edge(upper_nid, node_id)
+            node_attrs["with_respect_to"] = ", ".join(wrt_ids)
+            if lower_nid is not None:
+                node_attrs["lower_bound"] = lower_nid
+            if upper_nid is not None:
+                node_attrs["upper_bound"] = upper_nid
             self._add_node(node_id, **node_attrs)
             child_id = self._walk(expr.function)
             self._add_edge(child_id, node_id)

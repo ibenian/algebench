@@ -77,15 +77,15 @@
         },
         "with_respect_to": {
           "type": "string",
-          "description": "Variable of operation for derivative, integral, sum, and product operators (e.g. \"t\" for d/dt, \"x\" for ∫…dx, \"k\" for Σ_k)."
+          "description": "Node ID of the variable of operation for derivative, integral, sum, and product operators (e.g. \"x\" for d/dx, ∫…dx, Σ_x). References a node in the graph."
         },
         "lower_bound": {
           "type": "string",
-          "description": "Lower bound for definite integrals, sums, and products (e.g. \"0\" for ∫₀, \"a\" for Σ_{k=a}). Present only when bounds are specified."
+          "description": "Node ID of the lower bound for definite integrals, sums, and products. References a node in the graph (e.g. \"a\" for a variable node, \"__num_4\" for a number node). Present only when bounds are specified."
         },
         "upper_bound": {
           "type": "string",
-          "description": "Upper bound for definite integrals, sums, and products (e.g. \"1\" for ∫¹, \"n\" for Σ^n). Present only when bounds are specified."
+          "description": "Node ID of the upper bound for definite integrals, sums, and products. References a node in the graph (e.g. \"b\" for a variable node, \"__const_5\" for an infinity node). Present only when bounds are specified."
         },
         "subexpr": {
           "type": "string",
