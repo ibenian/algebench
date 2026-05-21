@@ -998,20 +998,50 @@ class SemanticGraphBuilder:
         # --- Integral ---
         if isinstance(expr, Integral):
             node_id = self._next_id("integral")
-            self._add_node(node_id, type="operator", op="integral")
-            for arg in expr.args:
-                child_id = self._walk(arg)
-                self._add_edge(child_id, node_id)
+            wrt_vars: list[str] = []
+            node_attrs: dict[str, str] = {"type": "operator", "op": "integral"}
+            for limit_tuple in expr.limits:
+                var = limit_tuple[0]
+                wrt_vars.append(str(var))
+                var_id = self._walk(var)
+                self._add_edge(var_id, node_id)
+                if len(limit_tuple) >= 3:
+                    lower_id = self._walk(limit_tuple[1])
+                    upper_id = self._walk(limit_tuple[2])
+                    self._add_edge(lower_id, node_id)
+                    self._add_edge(upper_id, node_id)
+            node_attrs["with_respect_to"] = ", ".join(wrt_vars)
+            if len(expr.limits) == 1 and len(expr.limits[0]) >= 3:
+                node_attrs["lower_bound"] = str(expr.limits[0][1])
+                node_attrs["upper_bound"] = str(expr.limits[0][2])
+            self._add_node(node_id, **node_attrs)
+            child_id = self._walk(expr.function)
+            self._add_edge(child_id, node_id)
             return node_id
 
         # --- Sum / Product ---
         if isinstance(expr, (Sum, Product)):
-            op = "sum" if isinstance(expr, Sum) else "product"
-            node_id = self._next_id(op)
-            self._add_node(node_id, type="operator", op=op)
-            for arg in expr.args:
-                child_id = self._walk(arg)
-                self._add_edge(child_id, node_id)
+            op_name = "sum" if isinstance(expr, Sum) else "product"
+            node_id = self._next_id(op_name)
+            wrt_vars = []
+            node_attrs = {"type": "operator", "op": op_name}
+            for limit_tuple in expr.limits:
+                var = limit_tuple[0]
+                wrt_vars.append(str(var))
+                var_id = self._walk(var)
+                self._add_edge(var_id, node_id)
+                if len(limit_tuple) >= 3:
+                    lower_id = self._walk(limit_tuple[1])
+                    upper_id = self._walk(limit_tuple[2])
+                    self._add_edge(lower_id, node_id)
+                    self._add_edge(upper_id, node_id)
+            node_attrs["with_respect_to"] = ", ".join(wrt_vars)
+            if len(expr.limits) == 1 and len(expr.limits[0]) >= 3:
+                node_attrs["lower_bound"] = str(expr.limits[0][1])
+                node_attrs["upper_bound"] = str(expr.limits[0][2])
+            self._add_node(node_id, **node_attrs)
+            child_id = self._walk(expr.function)
+            self._add_edge(child_id, node_id)
             return node_id
 
         # --- Power with literal exponent ---

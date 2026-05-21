@@ -172,17 +172,19 @@ BINOMIAL_EXPRESSIONS: list[CatalogEntry] = [
     ("binomial_theorem",
      r"(x + y)^n = \sum_{k=0}^{n} \binom{n}{k} x^{n-k} y^k",
      PASS,
-     "k,n,num -> Tuple; x,y -> add; k,n -> fn:binomial; k -> negation; "
+     "x,y -> add; k,n -> fn:binomial; k -> negation; "
      "k,y -> power; n,negation -> add; add,n -> power; add,x -> power; "
      "power,power -> multiply; fn:binomial,multiply -> multiply; "
-     "Tuple,multiply -> sum; power,sum -> equals",
-     "x,y -> __add_3; k,n -> __binomial_6; __num_13,k,n -> __expr_12; "
-     "k -> __negation_10; k,y -> __power_11; __negation_10,n -> __add_9; "
-     "__add_3,n -> __power_2; __add_9,x -> __power_8; "
-     "__power_11,__power_8 -> __multiply_7; "
-     "__binomial_6,__multiply_7 -> __multiply_5; "
-     "__expr_12,__multiply_5 -> __sum_4; __power_2,__sum_4 -> __equals_1",
-     [{"op": "binomial", "type": "function"}]),
+     "k,multiply,n,num -> sum; power,sum -> equals",
+     "x,y -> __add_3; k,n -> __binomial_7; "
+     "k -> __negation_11; k,y -> __power_12; __negation_11,n -> __add_10; "
+     "__add_3,n -> __power_2; __add_10,x -> __power_9; "
+     "__power_12,__power_9 -> __multiply_8; "
+     "__binomial_7,__multiply_8 -> __multiply_6; "
+     "__multiply_6,__num_5,k,n -> __sum_4; __power_2,__sum_4 -> __equals_1",
+     [{"op": "binomial", "type": "function"},
+      {"op": "sum", "with_respect_to": "k",
+       "lower_bound": "0", "upper_bound": "n"}]),
 ]
 
 FUNCTION_EXPRESSIONS: list[CatalogEntry] = [

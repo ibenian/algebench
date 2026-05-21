@@ -34,7 +34,7 @@ from tests.backend.semantic_graph.generators.invariants import (
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
     "derivative", "integral", "sum", "function",
-    "Limit", "Tuple",
+    "Limit",
 }
 
 
@@ -130,61 +130,64 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("integral_power",
      r"\int x^n \, dx = \frac{x^{n+1}}{n+1} + C",
      PASS,
-     "x -> Tuple; n,num -> add; n,num -> add; n,x -> power; "
-     "Tuple,power -> integral; add -> power; add,x -> power; "
-     "power,power -> multiply; C,multiply -> add; add,integral -> equals",
-     "__num_12,n -> __add_11; __num_9,n -> __add_8; x -> __expr_4; "
-     "n,x -> __power_3; __expr_4,__power_3 -> __integral_2; "
-     "__add_11 -> __power_10; __add_8,x -> __power_7; "
-     "__power_10,__power_7 -> __multiply_6; C,__multiply_6 -> __add_5; "
-     "__add_5,__integral_2 -> __equals_1",
-     [{"op": "integral"}]),
+     "n,num -> add; n,num -> add; n,x -> power; power,x -> integral; "
+     "add -> power; add,x -> power; power,power -> multiply; "
+     "C,multiply -> add; add,integral -> equals",
+     "__num_11,n -> __add_10; __num_8,n -> __add_7; n,x -> __power_3; "
+     "__power_3,x -> __integral_2; __add_7,x -> __power_6; "
+     "__add_10 -> __power_9; __power_6,__power_9 -> __multiply_5; "
+     "C,__multiply_5 -> __add_4; __add_4,__integral_2 -> __equals_1",
+     [{"op": "integral", "with_respect_to": "x"}]),
 
     ("integral_definite",
      r"\int_a^b f(x) \, dx = F(b) - F(a)",
      PASS,
-     "a,b,x -> Tuple; a -> fn:F; b -> fn:F; x -> fn:f; "
-     "Tuple,fn:f -> integral; fn:F -> negation; fn:F,negation -> add; "
-     "add,integral -> equals",
-     "b -> __F_6; a -> __F_8; a,b,x -> __expr_4; x -> __f_3; "
-     "__expr_4,__f_3 -> __integral_2; __F_8 -> __negation_7; "
-     "__F_6,__negation_7 -> __add_5; __add_5,__integral_2 -> __equals_1",
-     [{"op": "integral"}]),
+     "a -> fn:F; b -> fn:F; x -> fn:f; a,b,fn:f,x -> integral; "
+     "fn:F -> negation; fn:F,negation -> add; add,integral -> equals",
+     "b -> __F_5; a -> __F_7; x -> __f_3; "
+     "__f_3,a,b,x -> __integral_2; __F_7 -> __negation_6; "
+     "__F_5,__negation_6 -> __add_4; __add_4,__integral_2 -> __equals_1",
+     [{"op": "integral", "with_respect_to": "x",
+       "lower_bound": "a", "upper_bound": "b"}]),
 
     ("ftc",
      r"\frac{d}{dx} \int_a^x f(t) \, dt = f(x)",
      PASS,
-     "a,t,x -> Tuple; t -> fn:f; x -> fn:f; Tuple,fn:f -> integral; "
+     "t -> fn:f; x -> fn:f; a,fn:f,t,x -> integral; "
      "integral,x -> derivative; derivative,fn:f -> equals",
-     "a,t,x -> __expr_5; t -> __f_4; x -> __f_6; "
-     "__expr_5,__f_4 -> __integral_3; __integral_3,x -> __deriv_2; "
-     "__deriv_2,__f_6 -> __equals_1",
-     [{"op": "integral"}, {"op": "derivative"}]),
+     "t -> __f_4; x -> __f_5; __f_4,a,t,x -> __integral_3; "
+     "__integral_3,x -> __deriv_2; __deriv_2,__f_5 -> __equals_1",
+     [{"op": "integral", "with_respect_to": "t",
+       "lower_bound": "a", "upper_bound": "x"},
+      {"op": "derivative"}]),
 ]
 
 SERIES_EXPRESSIONS: list[CatalogEntry] = [
     ("taylor_exp",
      r"e^x = \sum_{n=0}^{\infty} \frac{x^n}{n!}",
      PASS,
-     "const:__const_10,n,num -> Tuple; n -> fn:factorial; e,x -> power; "
-     "n,x -> power; fn:factorial -> power; power,power -> multiply; "
-     "Tuple,multiply -> sum; power,sum -> equals",
-     "__const_10,__num_9,n -> __expr_8; n -> __factorial_7; e,x -> __power_2; "
-     "n,x -> __power_5; __factorial_7 -> __power_6; "
-     "__power_5,__power_6 -> __multiply_4; __expr_8,__multiply_4 -> __sum_3; "
+     "n -> fn:factorial; e,x -> power; n,x -> power; "
+     "fn:factorial -> power; power,power -> multiply; "
+     "const:__const_5,multiply,n,num -> sum; power,sum -> equals",
+     "n -> __factorial_9; e,x -> __power_2; n,x -> __power_7; "
+     "__factorial_9 -> __power_8; __power_7,__power_8 -> __multiply_6; "
+     "__const_5,__multiply_6,__num_4,n -> __sum_3; "
      "__power_2,__sum_3 -> __equals_1",
-     [{"op": "sum"}, {"op": "factorial", "type": "function"}]),
+     [{"op": "sum", "with_respect_to": "n",
+       "lower_bound": "0", "upper_bound": "oo"},
+      {"op": "factorial", "type": "function"}]),
 
     ("series_geometric",
      r"\sum_{n=0}^{\infty} r^n = \frac{1}{1 - r}",
      PASS,
-     "const:__const_6,n,num -> Tuple; r -> negation; n,r -> power; "
-     "negation,num -> add; Tuple,power -> sum; add -> power; "
+     "r -> negation; n,r -> power; negation,num -> add; "
+     "const:__const_4,n,num,power -> sum; add -> power; "
      "power,sum -> equals",
-     "__const_6,__num_5,n -> __expr_4; r -> __negation_10; n,r -> __power_3; "
-     "__negation_10,__num_9 -> __add_8; __expr_4,__power_3 -> __sum_2; "
-     "__add_8 -> __power_7; __power_7,__sum_2 -> __equals_1",
-     [{"op": "sum"}]),
+     "r -> __negation_9; n,r -> __power_5; __negation_9,__num_8 -> __add_7; "
+     "__const_4,__num_3,__power_5,n -> __sum_2; __add_7 -> __power_6; "
+     "__power_6,__sum_2 -> __equals_1",
+     [{"op": "sum", "with_respect_to": "n",
+       "lower_bound": "0", "upper_bound": "oo"}]),
 ]
 
 ALL_EXPRESSIONS = (
