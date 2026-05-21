@@ -1,9 +1,9 @@
 """Parametric cross-product expression generator.
 
 Sweeps the parser's feature matrix across structure × relation × variable
-decoration × operator axes.  Two modes:
+decoration × operator × nesting axes.  Two modes:
 
-- ``exhaustive()`` — structure × relation × decoration (~200 combos, runs on CI)
+- ``exhaustive()`` — structure × relation × decoration × nesting (~500 combos, runs on CI)
 - ``sampled(seed, n)`` — random draw from the full cross-product
 """
 
@@ -42,6 +42,12 @@ OPERATOR_TEMPLATES: dict[str, str] = {
     "sqrt":     r"\sqrt{{{a}}}",
 }
 
+NESTINGS: dict[str, str] = {
+    "bare":       "{expr}",
+    "parens":     "({expr})",
+    "left_right": r"\left({expr}\right)",
+}
+
 # Derive VAR_STYLES from the canonical variables.py definitions.
 # Each entry selects specific labels from ALL_VAR_STYLES to keep the
 # cross-product small (~200 combos) while covering representative cases.
@@ -77,12 +83,17 @@ class ExprTemplate:
     relation: str
     var_style: str
     operator: str
+    nesting: str
     latex: str
 
     @property
-    def test_id(self) -> str:
+    def axis_id(self) -> str:
         rel_name = self.relation.replace("\\", "").replace("{", "").replace("}", "")
-        return f"{self.structure}-{rel_name}-{self.var_style}-{self.operator}"
+        return f"{self.structure}-{rel_name}-{self.var_style}-{self.operator}-{self.nesting}"
+
+    @property
+    def test_id(self) -> str:
+        return f"{self.axis_id} | {self.latex.replace(chr(92), '/')}"
 
 
 def _render(
@@ -90,13 +101,15 @@ def _render(
     relation: str,
     var_style: str,
     operator: str,
+    nesting: str = "bare",
 ) -> str:
     """Render a LaTeX string from the given axis values."""
     vars_ = VAR_STYLES[var_style]
     v = lambda i: vars_[i % len(vars_)]  # noqa: E731
+    wrap = NESTINGS[nesting].format
 
     op_tpl = OPERATOR_TEMPLATES[operator]
-    lhs = op_tpl.format(a=v(0), b=v(1))
+    lhs = wrap(expr=op_tpl.format(a=v(0), b=v(1)))
     rhs = op_tpl.format(a=v(1), b=v(2 % len(vars_)))
     mid = v(2 % len(vars_))
     lhs2 = op_tpl.format(a=v(2 % len(vars_)), b=v(0))
@@ -110,28 +123,28 @@ def _render(
 
 
 def exhaustive() -> list[ExprTemplate]:
-    """Structure × relation × var_style (~200 combos). CI-fast."""
+    """Structure × relation × var_style × nesting (~500 combos). CI-fast."""
     results = []
-    for struct, rel, vs in itertools.product(
-        STRUCTURES, RELATIONS, VAR_STYLES,
+    for struct, rel, vs, nest in itertools.product(
+        STRUCTURES, RELATIONS, VAR_STYLES, NESTINGS,
     ):
         op = "add"
-        latex = _render(struct, rel, vs, op)
-        results.append(ExprTemplate(struct, rel, vs, op, latex))
+        latex = _render(struct, rel, vs, op, nest)
+        results.append(ExprTemplate(struct, rel, vs, op, nest, latex))
     return results
 
 
 def sampled(seed: int = 42, n: int = 500) -> list[ExprTemplate]:
-    """Random draw from the full cross-product (all 5 axes)."""
+    """Random draw from the full cross-product (all 6 axes)."""
     rng = random.Random(seed)
     full = []
-    for struct, rel, vs, op in itertools.product(
-        STRUCTURES, RELATIONS, VAR_STYLES, OPERATOR_TEMPLATES,
+    for struct, rel, vs, op, nest in itertools.product(
+        STRUCTURES, RELATIONS, VAR_STYLES, OPERATOR_TEMPLATES, NESTINGS,
     ):
-        full.append((struct, rel, vs, op))
+        full.append((struct, rel, vs, op, nest))
 
     chosen = rng.sample(full, min(n, len(full)))
     return [
-        ExprTemplate(s, r, v, o, _render(s, r, v, o))
-        for s, r, v, o in chosen
+        ExprTemplate(s, r, v, o, n, _render(s, r, v, o, n))
+        for s, r, v, o, n in chosen
     ]

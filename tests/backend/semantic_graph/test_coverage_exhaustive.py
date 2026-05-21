@@ -1,8 +1,18 @@
-"""Exhaustive cross-product generator: structure × relation × var_style.
+"""Cross-product coverage: structure × relation × var_style × nesting.
 
-~168 combinations covering the parser's feature matrix. Runs on every CI push.
-Asserts universal invariants only — domain-specific assertions belong in the
-domain suite files.
+Defaults to a random sample (~200) for fast local iteration.
+CI passes ``--exhaustive`` for full coverage (~504 combos).
+
+Usage::
+
+    # Local default: sampled 200 from all 6 axes (~10s)
+    pytest tests/backend/semantic_graph/test_coverage_exhaustive.py
+
+    # Custom sample size
+    pytest tests/backend/semantic_graph/test_coverage_exhaustive.py --sampled 50
+
+    # CI: full exhaustive (~504 combos, ~45s)
+    pytest tests/backend/semantic_graph/test_coverage_exhaustive.py --exhaustive
 """
 
 from __future__ import annotations
@@ -10,15 +20,14 @@ from __future__ import annotations
 import pytest
 
 from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
-from tests.backend.semantic_graph.generators.expressions import exhaustive
+from tests.backend.semantic_graph.generators.expressions import exhaustive, sampled
 from tests.backend.semantic_graph.generators.invariants import (
+    XFAIL,
     assert_valid_graph,
     assert_pydantic_validates,
     assert_no_placeholder_leak,
 )
 
-
-_CASES = exhaustive()
 
 # Var styles where compound symbol placeholders leak into node IDs.
 # Tracked as a known parser gap — when fixed, strict xfail catches it.
@@ -26,7 +35,17 @@ _PLACEHOLDER_LEAK_STYLES = {"compound"}
 
 # Compound cases where the parser no longer leaks placeholders.
 # Discovered via strict xfail — keep this set updated as more are fixed.
-_COMPOUND_FIXED = {"single-=-compound-add"}
+_COMPOUND_FIXED = {
+    "single-=-compound-add-bare",
+    "single-=-compound-add-parens",
+    "single-=-compound-add-left_right",
+}
+
+
+def _get_cases(config):
+    if config.getoption("--exhaustive"):
+        return exhaustive()
+    return sampled(n=config.getoption("--sampled"))
 
 
 def _safe_parse(template):
@@ -38,25 +57,30 @@ def _safe_parse(template):
     return graph
 
 
-def _placeholder_params():
-    """Build parametrize params for placeholder leak tests with strict xfail marks."""
-    params = []
-    for t in _CASES:
-        marks = []
-        if t.var_style in _PLACEHOLDER_LEAK_STYLES and t.test_id not in _COMPOUND_FIXED:
-            marks.append(pytest.mark.xfail(
-                strict=True,
-                reason="Compound symbol placeholders leak into node IDs",
-            ))
-        params.append(pytest.param(t, id=t.test_id, marks=marks))
-    return params
+def _add_placeholder_marks(template):
+    """Return xfail mark list for placeholder leak tests."""
+    if template.var_style in _PLACEHOLDER_LEAK_STYLES and template.axis_id not in _COMPOUND_FIXED:
+        return [XFAIL]
+    return []
 
 
-@pytest.mark.parametrize(
-    "template",
-    _CASES,
-    ids=[t.test_id for t in _CASES],
-)
+def pytest_generate_tests(metafunc):
+    if "template" not in metafunc.fixturenames:
+        return
+
+    cases = _get_cases(metafunc.config)
+
+    if metafunc.function.__name__ == "test_no_placeholder_leak":
+        params = [
+            pytest.param(t, id=t.test_id, marks=_add_placeholder_marks(t))
+            for t in cases
+        ]
+    else:
+        params = [pytest.param(t, id=t.test_id) for t in cases]
+
+    metafunc.parametrize("template", params)
+
+
 class TestExhaustiveCoverage:
     """Universal invariants across the structure × relation × var_style matrix."""
 
@@ -73,7 +97,6 @@ class TestExhaustiveCoverage:
         assert_pydantic_validates(graph, latex=template.latex)
 
 
-@pytest.mark.parametrize("template", _placeholder_params())
 def test_no_placeholder_leak(template):
     """No internal placeholder tokens leak into node fields.
 
