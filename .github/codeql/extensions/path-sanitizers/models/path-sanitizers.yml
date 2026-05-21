@@ -1,0 +1,14 @@
+# Model _safe_open_scene_path and load_builtin_scene as path-injection
+# sanitizers. These functions validate that resolved paths stay within
+# allowed directory roots before returning, so taint does not propagate.
+
+extensions:
+  - addsTo:
+      pack: codeql/python-all
+      extensible: neutralModel
+    data:
+      # [type, path, kind]
+      # _safe_open_scene_path confines paths via is_relative_to + root reconstruction
+      - ["backend.server", "Member[_safe_open_scene_path]", "summary"]
+      # load_builtin_scene validates name via normpath + isabs + startswith
+      - ["backend.server", "Member[load_builtin_scene]", "summary"]
