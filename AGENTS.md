@@ -48,12 +48,19 @@ The server runs at `http://localhost:8785`.
 **Always use `./run.sh -m pytest` to run tests** — never invoke `pytest` or `python -m pytest` directly (the tests import `scripts.*` modules through the venv and fail outside it).
 
 ```bash
-./run.sh -m pytest tests/                      # run the full suite
+./run.sh -m pytest tests/                      # run the full suite (sampled mode, fast)
+./run.sh -m pytest tests/ --sampled 100        # quick check with 100 sampled combos
+./run.sh -m pytest tests/ --exhaustive         # full cross-product (~504 combos, CI mode)
 ./run.sh -m pytest tests/test_render_math.py   # one file
 ./run.sh -m pytest tests/ -k 'mermaid'         # filter by name
 ./run.sh -m pytest tests/ -v                   # verbose
 ./run.sh -m pytest tests/ --tb=short           # shorter tracebacks
 ```
+
+The semantic graph exhaustive test suite supports two modes via pytest flags:
+
+- **`--sampled N`** (default, N=200) — random sample from the full cross-product. Use `--sampled 100` for quick local checks.
+- **`--exhaustive`** — full structure × relation × var_style × nesting cross-product (~504 combos). **CI always runs exhaustive.** Only use locally if the user explicitly asks for it.
 
 Run the full suite before committing any change that touches `scripts/`, `server.py`, or theme JSON.
 
