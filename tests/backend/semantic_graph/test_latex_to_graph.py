@@ -91,6 +91,7 @@ class TestKnownVariables:
     def test_bare_symbol_defaults_to_scalar(self):
         g = latex_to_semantic_graph("F")
         node = _find_node(g, id="F")
+        assert node is not None
         assert node.type == "scalar"
         assert node.latex == "F"
         for forbidden in ("label", "emoji", "quantity", "dimension", "unit", "role", "value"):
@@ -101,9 +102,11 @@ class TestKnownVariables:
         svc = SemanticGraphService()
         g = svc.derive(r"\vec{F} = m \vec{a}")
         f_node = _find_node(g, id="F")
+        assert f_node is not None
         assert f_node.type == "vector"
         assert f_node.latex == r"\vec{F}"
         a_node = _find_node(g, id="a")
+        assert a_node is not None
         assert a_node.type == "vector"
         assert a_node.latex == r"\vec{a}"
 
