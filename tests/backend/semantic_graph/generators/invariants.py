@@ -250,6 +250,36 @@ def assert_operators_in(
     )
 
 
+def assert_node_properties(
+    graph: SemanticGraph,
+    checks: list[dict[str, Any]] | None,
+    *,
+    latex: str = "",
+) -> None:
+    """Assert that nodes matching the given attribute sets exist.
+
+    Each dict in ``checks`` specifies a set of attribute values that must
+    all be present on at least one node.  This lets test catalogs verify
+    fine-grained node properties — e.g. ``{"op": "power", "exponent": "2"}``
+    — beyond what connectivity signatures capture.
+    """
+    if not checks:
+        return
+    for attrs in checks:
+        if not has_node_with(graph, **attrs):
+            # Show the checked fields on every node for easy debugging
+            check_fields = set(attrs.keys())
+            relevant = []
+            for n in graph.nodes:
+                d = {k: getattr(n, k, None)
+                     for k in check_fields | {"id", "type", "op"}}
+                relevant.append({k: v for k, v in d.items() if v is not None})
+            raise AssertionError(
+                f"No node matching {attrs} found for: {latex!r}\n"
+                f"  Nodes: {relevant}"
+            )
+
+
 # ── Connectivity helpers ──────────────────────────────────────────────
 
 
