@@ -1,6 +1,6 @@
-# Model _safe_open_scene_path and load_builtin_scene as path-injection
-# sanitizers. These functions validate that resolved paths stay within
-# allowed directory roots before returning, so taint does not propagate.
+# Model sanitize_path as a path-injection sanitizer.  All file-serving
+# handlers funnel through this function, which validates that resolved
+# paths stay within the allowed directory root before returning.
 
 extensions:
   - addsTo:
@@ -8,7 +8,4 @@ extensions:
       extensible: neutralModel
     data:
       # [type, path, kind]
-      # _safe_open_scene_path confines paths via is_relative_to + root reconstruction
-      - ["backend.server", "Member[_safe_open_scene_path]", "summary"]
-      # load_builtin_scene validates name via normpath + isabs + startswith
-      - ["backend.server", "Member[load_builtin_scene]", "summary"]
+      - ["backend.server", "Member[sanitize_path]", "summary"]
