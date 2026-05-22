@@ -1,0 +1,11 @@
+# Mark sanitize_path return value as a path-injection barrier.
+# All file-serving handlers funnel through this function, which
+# validates that resolved paths stay within the allowed directory root.
+
+extensions:
+  - addsTo:
+      pack: codeql/python-all
+      extensible: barrierModel
+    data:
+      # [type, path, kind]
+      - ["backend.util.pathutil", "Member[sanitize_path].ReturnValue", "path-injection"]

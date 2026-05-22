@@ -358,20 +358,16 @@ index_html_path = static_dir / "index.html"
 style_css_path  = static_dir / "style.css"
 
 # ---------------------------------------------------------------------------
-def _safe_open_scene_path(source) -> Path:
-    """Resolve source to a safe path under script_dir or scenes_dir.
+from backend.util import sanitize_path  # noqa: E402 — after Path is defined
 
-    Returns a Path constructed from the allowed root + relative suffix,
-    ensuring no user-controlled data reaches open() directly.
-    """
-    resolved = Path(source).resolve()  # CodeQL [py/path-injection] path is confined below via is_relative_to check
-    script_root = script_dir.resolve()
-    scenes_root = scenes_dir.resolve()
-    for root in (scenes_root, script_root):
-        if resolved.is_relative_to(root):
-            safe = root / resolved.relative_to(root)
-            if safe.is_file():  # CodeQL [py/path-injection] safe is reconstructed from hardcoded root + validated relative suffix
-                return safe
+
+def _safe_open_scene_path(source) -> Path:
+    """Resolve source to a safe path under script_dir or scenes_dir."""
+    name = str(source)
+    for root in (scenes_dir, script_dir):
+        path = sanitize_path(root, name)
+        if path and path.is_file():
+            return path
     raise ValueError(f"Path outside allowed directories: {source}")
 
 
@@ -478,15 +474,9 @@ def load_builtin_scene(name):
     """Load a built-in scene JSON by name."""
     if not re.fullmatch(r"[A-Za-z0-9_.\-/]+", name or ""):
         return None
-    normalized = os.path.normpath(name)
-    if os.path.isabs(normalized) or normalized.startswith('..'):
-        return None
-    resolved_root = scenes_dir.resolve()
-    path = (resolved_root / f"{normalized}.json").resolve()
-    if not str(path).startswith(str(resolved_root) + os.sep):
-        return None
-    if path.exists():
-        return _load_scene(path)  # lgtm[py/path-injection]
+    path = sanitize_path(scenes_dir, f"{name}.json")
+    if path and path.is_file():
+        return _load_scene(path)
     return None
 
 
@@ -1289,14 +1279,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         """Serve ES module files from static/objects/ subdirectory."""
         if not re.fullmatch(r"[A-Za-z0-9_.\-/]+", filename):
             return Response(status_code=404)
-        normalized = os.path.normpath(filename)
-        if os.path.isabs(normalized) or normalized.startswith('..'):
-            return Response(status_code=404)
-        objects_root = (static_dir / "objects").resolve()
-        path = (objects_root / normalized).resolve()
-        if not str(path).startswith(str(objects_root) + os.sep):
-            return Response(status_code=404)
-        if not path.is_file() or path.suffix != '.js':
+        path = sanitize_path(static_dir / "objects", filename)
+        if not path or not path.is_file() or path.suffix != '.js':
             return Response(status_code=404)
         with open(path, 'r') as f:
             js = f.read()
@@ -1554,14 +1538,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         """Serve files from static/graph-panel/ subdirectory."""
         if not re.fullmatch(r"[A-Za-z0-9._\-/]+", filename):
             return Response(status_code=404)
-        normalized = os.path.normpath(filename)
-        if os.path.isabs(normalized) or normalized.startswith('..'):
-            return Response(status_code=404)
-        panel_root = (static_dir / "graph-panel").resolve()
-        path = (panel_root / normalized).resolve()
-        if not str(path).startswith(str(panel_root) + os.sep):
-            return Response(status_code=404)
-        if not path.is_file():
+        path = sanitize_path(static_dir / "graph-panel", filename)
+        if not path or not path.is_file():
             return Response(status_code=404)
         suffix = path.suffix
         if suffix == '.js':
@@ -1582,11 +1560,8 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             return Response(status_code=404)
         if name not in _TOP_LEVEL_MODULES:
             return Response(status_code=404)
-        static_root = static_dir.resolve()
-        path = (static_root / f"{name}.js").resolve()
-        if not str(path).startswith(str(static_root) + os.sep):
-            return Response(status_code=404)
-        if not path.is_file():
+        path = sanitize_path(static_dir, f"{name}.js")
+        if not path or not path.is_file():
             return Response(status_code=404)
         with open(path, 'r') as f:
             js = f.read()
@@ -1669,30 +1644,21 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     async def get_domain_docs(name: str):
         if not re.fullmatch(r'[A-Za-z0-9_\-]+', name):
             return Response(content=b'Domain not found', status_code=404)
-        domains_root = (static_dir / 'domains').resolve()
-        docs_path = (domains_root / name / 'docs.json').resolve()
-        if not str(docs_path).startswith(str(domains_root) + os.sep):
+        docs_path = sanitize_path(static_dir / 'domains', os.path.join(name, 'docs.json'))
+        if not docs_path or not docs_path.exists():
             return Response(content=b'Domain not found', status_code=404)
-        if docs_path.exists():
-            with open(docs_path, 'rb') as f:
-                return Response(content=f.read(), media_type="application/json")
-        return Response(content=b'Domain not found', status_code=404)
+        with open(docs_path, 'rb') as f:
+            return Response(content=f.read(), media_type="application/json")
 
     @fastapp.get("/domains/{path:path}")
     async def get_domain_file(path: str):
         if not re.fullmatch(r"[A-Za-z0-9_\-./]+", path or ""):
             return Response(content=b'Domain not found', status_code=404)
-        normalized = os.path.normpath(path)
-        if os.path.isabs(normalized) or normalized.startswith('..'):
+        domain_path = sanitize_path(static_dir / 'domains', path)
+        if not domain_path or not domain_path.is_file():
             return Response(content=b'Domain not found', status_code=404)
-        domains_root = (static_dir / 'domains').resolve()
-        domain_path = (domains_root / normalized).resolve()
-        if not str(domain_path).startswith(str(domains_root) + os.sep):
-            return Response(content=b'Domain not found', status_code=404)
-        if domain_path.exists() and domain_path.is_file():
-            with open(domain_path, 'rb') as f:
-                return Response(content=f.read(), media_type="application/javascript")
-        return Response(content=b'Domain not found', status_code=404)
+        with open(domain_path, 'rb') as f:
+            return Response(content=f.read(), media_type="application/javascript")
 
     @fastapp.get("/scenes/{name:path}")
     async def get_scene(name: str):
