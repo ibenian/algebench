@@ -19,48 +19,23 @@ jobs:
   loc-report:
     runs-on: ubuntu-latest
     steps:
-      - name: Skip if triggered by bot commit
-        id: guard
-        if: github.event_name != 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            SHA="${{ github.event.pull_request.head.sha }}"
-          else
-            SHA="${{ github.sha }}"
-          fi
-          LOGIN=$(gh api "repos/${{ github.repository }}/commits/${SHA}" --jq '.author.login // empty' 2>/dev/null || true)
-          if [ "$LOGIN" = "github-actions[bot]" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Skipping — HEAD commit is from github-actions[bot]"
-          fi
-
       - uses: actions/checkout@v4
-        if: steps.guard.outputs.skip != 'true'
-        with:
-          ref: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || github.ref }}
 
       - uses: actions/setup-python@v5
-        if: steps.guard.outputs.skip != 'true'
         with:
           python-version: '3.x'
 
       - uses: taiki-e/install-action@v2
-        if: steps.guard.outputs.skip != 'true'
         with:
           tool: tokei@14.0.0
 
       - name: Generate report
-        if: steps.guard.outputs.skip != 'true'
         run: ./scripts/loc-report.sh LOC-REPORT.md
 
       - name: Post summary
-        if: steps.guard.outputs.skip != 'true'
         run: cat LOC-REPORT.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Determine destination directory
-        if: steps.guard.outputs.skip != 'true'
         id: dest
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -70,13 +45,12 @@ jobs:
           fi
 
       - name: Generate HTML site
-        if: steps.guard.outputs.skip != 'true'
         run: |
           mkdir -p _site
           python3 scripts/loc_report_to_html.py LOC-REPORT.md --outdir _site
 
       - name: Deploy to GitHub Pages
-        if: steps.guard.outputs.skip != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -85,7 +59,7 @@ jobs:
           keep_files: true
 
       - name: Post preview URL
-        if: steps.guard.outputs.skip != 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -97,19 +71,4 @@ jobs:
             gh pr comment ${{ github.event.pull_request.number }} \
               --body "## 📊 LOC Report
 **Preview:** ${PREVIEW_URL}"
-          fi
-
-      - name: Commit report if code lines changed
-        if: steps.guard.outputs.skip != 'true' && github.event_name == 'push'
-        run: |
-          strip_meta() { sed '/^| \*\*\(Branch\|Commit\|Date\)\*\*/d' "$1"; }
-          git show HEAD:LOC-REPORT.md > /tmp/old-report.md 2>/dev/null || true
-          if [ -f /tmp/old-report.md ] && diff -q <(strip_meta /tmp/old-report.md) <(strip_meta LOC-REPORT.md) >/dev/null 2>&1; then
-            echo "No code-line changes detected — skipping commit."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add LOC-REPORT.md
-            git diff --cached --quiet || git commit -m "docs: update lines-of-code report"
-            git push
           fi
