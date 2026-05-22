@@ -8,4 +8,4 @@ extensions:
       extensible: barrierModel
     data:
       # [type, path, kind]
-      - ["backend.server", "Member[sanitize_path].ReturnValue", "path-injection"]
+      - ["backend.util.pathutil", "Member[sanitize_path].ReturnValue", "path-injection"]

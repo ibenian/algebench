@@ -358,20 +358,7 @@ index_html_path = static_dir / "index.html"
 style_css_path  = static_dir / "style.css"
 
 # ---------------------------------------------------------------------------
-def sanitize_path(root: Path, filename: str) -> Path | None:
-    """Confine *filename* under *root*; return the resolved Path or None."""
-    resolved_root = root.resolve()
-    resolved = Path(filename).resolve()
-    if resolved.is_relative_to(resolved_root):
-        safe = resolved_root / resolved.relative_to(resolved_root)
-        return safe
-    normalized = os.path.normpath(filename)
-    if os.path.isabs(normalized) or normalized.startswith('..'):
-        return None
-    path = (resolved_root / normalized).resolve()
-    if not str(path).startswith(str(resolved_root) + os.sep):
-        return None
-    return path
+from backend.util import sanitize_path  # noqa: E402 — after Path is defined
 
 
 def _safe_open_scene_path(source) -> Path:
@@ -488,7 +475,7 @@ def load_builtin_scene(name):
     if not re.fullmatch(r"[A-Za-z0-9_.\-/]+", name or ""):
         return None
     path = sanitize_path(scenes_dir, f"{name}.json")
-    if path and path.exists():
+    if path and path.is_file():
         return _load_scene(path)
     return None
 
