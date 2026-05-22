@@ -44,7 +44,8 @@ _mathjs.import({
 // \.([a-zA-Z_]\w*)\s*\( catches method calls like .toFixed( .constructor( —
 // prevents prototype-chain escapes (e.g. (0).constructor.constructor('return fetch(...)')()).
 // Decimal numbers (3.14) are safe because digits follow the dot, not letters.
-export const _JS_ONLY_RE = /\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\(|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\(/;
+// \[['"`] catches bracket-notation property access (e.g. obj['constructor']).
+export const _JS_ONLY_RE = /\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\(|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\(|\bnew\b|\bthis\b|\btypeof\b|\binstanceof\b|\bdelete\b|\bclass\b|\basync\b|\bawait\b|\byield\b|\bthrow\b|\btry\b|\bcatch\b|\bimport\b|\bdebugger\b|\[['"`]/;
 
 // Populated from _MATHJS_EXTENSIONS — do not add helpers here directly.
 const _EXPR_HELPERS = { ..._MATHJS_EXTENSIONS };
