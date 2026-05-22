@@ -175,13 +175,13 @@ BINOMIAL_EXPRESSIONS: list[CatalogEntry] = [
      "x,y -> add; k,n -> fn:binomial; k -> negation; "
      "k,y -> power; n,negation -> add; add,n -> power; add,x -> power; "
      "power,power -> multiply; fn:binomial,multiply -> multiply; "
-     "k,multiply,n,num -> sum; power,sum -> equals",
+     "multiply -> sum; power,sum -> equals",
      "x,y -> __add_3; k,n -> __binomial_7; "
      "k -> __negation_11; k,y -> __power_12; __negation_11,n -> __add_10; "
      "__add_3,n -> __power_2; __add_10,x -> __power_9; "
      "__power_12,__power_9 -> __multiply_8; "
      "__binomial_7,__multiply_8 -> __multiply_6; "
-     "__multiply_6,__num_5,k,n -> __sum_4; __power_2,__sum_4 -> __equals_1",
+     "__multiply_6 -> __sum_4; __power_2,__sum_4 -> __equals_1",
      [{"op": "binomial", "type": "function"},
       {"op": "sum", "with_respect_to": "k", "upper_bound": "n"}]),
 ]

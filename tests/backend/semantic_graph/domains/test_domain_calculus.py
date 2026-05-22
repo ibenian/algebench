@@ -33,8 +33,7 @@ from tests.backend.semantic_graph.generators.invariants import (
 
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
-    "derivative", "integral", "sum", "function",
-    "Limit",
+    "derivative", "integral", "limit", "tends_to", "sum", "function",
 }
 
 
@@ -56,34 +55,51 @@ LIMIT_EXPRESSIONS: list[CatalogEntry] = [
     ("limit_basic",
      r"\lim_{x \to 0} \frac{\sin x}{x} = 1",
      PASS,
-     "x -> fn:sin; x -> power; fn:sin,power -> multiply; "
-     "+-,multiply,num,x -> Limit; Limit,num -> equals",
-     "x -> __power_5; x -> __sin_4; __power_5,__sin_4 -> __multiply_3; "
-     "+-,__multiply_3,__num_6,x -> __expr_2; __expr_2,__num_7 -> __equals_1",
-     [{"op": "Limit", "type": "expression"}]),
+     "x -> fn:sin; x -> power; x -> tends_to; fn:sin,power -> multiply; "
+     "tends_to -> num; multiply,tends_to -> limit; limit,num -> equals",
+     "x -> __power_5; x -> __sin_4; x -> __tends_to_7; "
+     "__power_5,__sin_4 -> __multiply_3; __tends_to_7 -> __num_6; "
+     "__multiply_3,__tends_to_7 -> __limit_2; __limit_2,__num_8 -> __equals_1",
+     [{"op": "tends_to", "type": "operator",
+       "with_respect_to": "x", "limit_point": "__num_6"}]),
 
     ("lhopital",
      r"\lim_{x \to a} \frac{f(x)}{g(x)} = \lim_{x \to a} \frac{f'(x)}{g'(x)}",
      PASS,
-     "x -> fn:f; x -> fn:f'; x -> fn:g; x -> fn:g'; fn:g -> power; "
+     "x -> fn:f; x -> fn:f'; x -> fn:g; x -> fn:g'; x -> tends_to; "
+     "x -> tends_to; tends_to,tends_to -> a; fn:g -> power; "
      "fn:g' -> power; fn:f,power -> multiply; fn:f',power -> multiply; "
-     "+-,a,multiply,x -> Limit; +-,a,multiply,x -> Limit; "
-     "Limit,Limit -> equals",
-     "x -> __f'_9; x -> __f_4; x -> __g'_11; x -> __g_6; "
-     "__g'_11 -> __power_10; __g_6 -> __power_5; "
-     "__f_4,__power_5 -> __multiply_3; __f'_9,__power_10 -> __multiply_8; "
-     "+-,__multiply_3,a,x -> __expr_2; +-,__multiply_8,a,x -> __expr_7; "
-     "__expr_2,__expr_7 -> __equals_1",
-     [{"op": "Limit", "type": "expression"}]),
+     "multiply,tends_to -> limit; multiply,tends_to -> limit; "
+     "limit,limit -> equals",
+     "x -> __f'_10; x -> __f_4; x -> __g'_12; x -> __g_6; "
+     "x -> __tends_to_13; x -> __tends_to_7; "
+     "__g'_12 -> __power_11; __g_6 -> __power_5; "
+     "__tends_to_13,__tends_to_7 -> a; "
+     "__f_4,__power_5 -> __multiply_3; __f'_10,__power_11 -> __multiply_9; "
+     "__multiply_3,__tends_to_7 -> __limit_2; "
+     "__multiply_9,__tends_to_13 -> __limit_8; "
+     "__limit_2,__limit_8 -> __equals_1",
+     [{"op": "tends_to", "type": "operator"}]),
+
+    ("limit_infinity",
+     r"\lim_{x \to \infty} \frac{1}{x} = 0",
+     PASS,
+     "x -> power; x -> tends_to; tends_to -> const:__const_4; "
+     "power,tends_to -> limit; limit,num -> equals",
+     "x -> __power_3; x -> __tends_to_5; __tends_to_5 -> __const_4; "
+     "__power_3,__tends_to_5 -> __limit_2; __limit_2,__num_6 -> __equals_1",
+     [{"op": "tends_to", "type": "operator",
+       "with_respect_to": "x", "limit_point": "__const_4",
+       "limit_direction": "-"}]),
 ]
 
 DERIVATIVE_EXPRESSIONS: list[CatalogEntry] = [
     ("derivative_power",
      r"\frac{d}{dx} x^n = n x^{n-1}",
      PASS,
-     "n,num -> add; n,x -> power; power,x -> derivative; add,x -> power; "
+     "n,num -> add; n,x -> power; power -> derivative; add,x -> power; "
      "n,power -> multiply; derivative,multiply -> equals",
-     "__num_7,n -> __add_6; n,x -> __power_3; __power_3,x -> __deriv_2; "
+     "__num_7,n -> __add_6; n,x -> __power_3; __power_3 -> __deriv_2; "
      "__add_6,x -> __power_5; __power_5,n -> __multiply_4; "
      "__deriv_2,__multiply_4 -> __equals_1",
      [{"op": "derivative"}]),
@@ -91,9 +107,9 @@ DERIVATIVE_EXPRESSIONS: list[CatalogEntry] = [
     ("derivative_chain",
      r"\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}",
      PASS,
-     "u,x -> derivative; u,y -> derivative; x,y -> derivative; "
+     "u -> derivative; y -> derivative; y -> derivative; "
      "derivative,derivative -> multiply; derivative,multiply -> equals",
-     "x,y -> __deriv_2; u,y -> __deriv_4; u,x -> __deriv_5; "
+     "y -> __deriv_2; y -> __deriv_4; u -> __deriv_5; "
      "__deriv_4,__deriv_5 -> __multiply_3; "
      "__deriv_2,__multiply_3 -> __equals_1",
      [{"op": "derivative"}]),
@@ -130,11 +146,11 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("integral_power",
      r"\int x^n \, dx = \frac{x^{n+1}}{n+1} + C",
      PASS,
-     "n,num -> add; n,num -> add; n,x -> power; power,x -> integral; "
+     "n,num -> add; n,num -> add; n,x -> power; power -> integral; "
      "add -> power; add,x -> power; power,power -> multiply; "
      "C,multiply -> add; add,integral -> equals",
      "__num_11,n -> __add_10; __num_8,n -> __add_7; n,x -> __power_3; "
-     "__power_3,x -> __integral_2; __add_7,x -> __power_6; "
+     "__power_3 -> __integral_2; __add_7,x -> __power_6; "
      "__add_10 -> __power_9; __power_6,__power_9 -> __multiply_5; "
      "C,__multiply_5 -> __add_4; __add_4,__integral_2 -> __equals_1",
      [{"op": "integral", "with_respect_to": "x"}]),
@@ -142,10 +158,10 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("integral_definite",
      r"\int_a^b f(x) \, dx = F(b) - F(a)",
      PASS,
-     "a -> fn:F; b -> fn:F; x -> fn:f; a,b,fn:f,x -> integral; "
+     "a -> fn:F; b -> fn:F; x -> fn:f; fn:f -> integral; "
      "fn:F -> negation; fn:F,negation -> add; add,integral -> equals",
      "b -> __F_5; a -> __F_7; x -> __f_3; "
-     "__f_3,a,b,x -> __integral_2; __F_7 -> __negation_6; "
+     "__f_3 -> __integral_2; __F_7 -> __negation_6; "
      "__F_5,__negation_6 -> __add_4; __add_4,__integral_2 -> __equals_1",
      [{"op": "integral", "with_respect_to": "x",
        "lower_bound": "a", "upper_bound": "b"}]),
@@ -153,10 +169,10 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("ftc",
      r"\frac{d}{dx} \int_a^x f(t) \, dt = f(x)",
      PASS,
-     "t -> fn:f; x -> fn:f; a,fn:f,t,x -> integral; "
-     "integral,x -> derivative; derivative,fn:f -> equals",
-     "t -> __f_4; x -> __f_5; __f_4,a,t,x -> __integral_3; "
-     "__integral_3,x -> __deriv_2; __deriv_2,__f_5 -> __equals_1",
+     "t -> fn:f; x -> fn:f; fn:f -> integral; "
+     "integral -> derivative; derivative,fn:f -> equals",
+     "t -> __f_4; x -> __f_5; __f_4 -> __integral_3; "
+     "__integral_3 -> __deriv_2; __deriv_2,__f_5 -> __equals_1",
      [{"op": "integral", "with_respect_to": "t",
        "lower_bound": "a", "upper_bound": "x"},
       {"op": "derivative"}]),
@@ -168,10 +184,10 @@ SERIES_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "n -> fn:factorial; e,x -> power; n,x -> power; "
      "fn:factorial -> power; power,power -> multiply; "
-     "const:__const_5,multiply,n,num -> sum; power,sum -> equals",
+     "multiply -> sum; power,sum -> equals",
      "n -> __factorial_9; e,x -> __power_2; n,x -> __power_7; "
      "__factorial_9 -> __power_8; __power_7,__power_8 -> __multiply_6; "
-     "__const_5,__multiply_6,__num_4,n -> __sum_3; "
+     "__multiply_6 -> __sum_3; "
      "__power_2,__sum_3 -> __equals_1",
      [{"op": "sum", "with_respect_to": "n"},
       {"op": "factorial", "type": "function"}]),
@@ -180,10 +196,10 @@ SERIES_EXPRESSIONS: list[CatalogEntry] = [
      r"\sum_{n=0}^{\infty} r^n = \frac{1}{1 - r}",
      PASS,
      "r -> negation; n,r -> power; negation,num -> add; "
-     "const:__const_4,n,num,power -> sum; add -> power; "
+     "power -> sum; add -> power; "
      "power,sum -> equals",
      "r -> __negation_9; n,r -> __power_5; __negation_9,__num_8 -> __add_7; "
-     "__const_4,__num_3,__power_5,n -> __sum_2; __add_7 -> __power_6; "
+     "__power_5 -> __sum_2; __add_7 -> __power_6; "
      "__power_6,__sum_2 -> __equals_1",
      [{"op": "sum", "with_respect_to": "n"}]),
 ]

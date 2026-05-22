@@ -78,6 +78,8 @@ class SemanticGraphNode(BaseModel):
     with_respect_to: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     lower_bound: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     upper_bound: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    limit_point: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    limit_direction: Optional[str] = Field(default=None, pattern=r'^[+-]$')
     subexpr: Optional[str] = Field(default=None, max_length=400)
     description: Optional[str] = Field(default=None, max_length=200, pattern=_NO_HTML)
     quantity: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)

@@ -16,7 +16,7 @@ from sympy import (
     Add, Mul, Pow, Eq, Abs,
     StrictGreaterThan, StrictLessThan, GreaterThan, LessThan,
     sin, cos, tan, log, exp, sqrt,
-    Derivative, Integral, Sum, Product,
+    Derivative, Integral, Limit, Sum, Product,
     pi, E, I, oo,
 )
 from sympy.parsing.latex import parse_latex
@@ -981,6 +981,35 @@ class SemanticGraphBuilder:
                 self._add_edge(child_id, node_id)
             return node_id
 
+        # --- Limit ---
+        if isinstance(expr, Limit):
+            node_id = self._next_id("limit")
+            # Limit(expression, variable, point, direction)
+            child_id = self._walk(expr.args[0])
+            self._add_edge(child_id, node_id)
+            var_id = self._walk(expr.args[1])
+            point_id = self._walk(expr.args[2])
+
+            # "x → 0" is its own tends_to node: the approach
+            # specification that the limit operates on.
+            tends_id = self._next_id("tends_to")
+            self._add_edge(var_id, tends_id, role="lhs")
+            self._add_edge(tends_id, point_id, role="rhs")
+            tends_attrs: dict[str, str] = {
+                "type": "operator", "op": "tends_to",
+                "with_respect_to": var_id,
+                "limit_point": point_id,
+            }
+            if len(expr.args) > 3:
+                direction = str(expr.args[3])
+                if direction != "+-":  # omit default (bilateral)
+                    tends_attrs["limit_direction"] = direction
+            self._add_node(tends_id, **tends_attrs)
+
+            self._add_edge(tends_id, node_id)
+            self._add_node(node_id, type="operator", op="limit")
+            return node_id
+
         # --- Derivative ---
         if isinstance(expr, Derivative):
             node_id = self._next_id("deriv")
@@ -991,7 +1020,6 @@ class SemanticGraphBuilder:
             for v, _ in expr.variable_count:
                 var_id = self._walk(v)
                 wrt_ids.append(var_id)
-                self._add_edge(var_id, node_id)
             self._add_node(node_id, type="operator", op=op_name,
                            with_respect_to=", ".join(wrt_ids))
             return node_id
@@ -1006,12 +1034,9 @@ class SemanticGraphBuilder:
             for limit_tuple in expr.limits:
                 var_id = self._walk(limit_tuple[0])
                 wrt_ids.append(var_id)
-                self._add_edge(var_id, node_id)
                 if len(limit_tuple) >= 3:
                     lower_nid = self._walk(limit_tuple[1])
                     upper_nid = self._walk(limit_tuple[2])
-                    self._add_edge(lower_nid, node_id)
-                    self._add_edge(upper_nid, node_id)
             node_attrs["with_respect_to"] = ", ".join(wrt_ids)
             if lower_nid is not None:
                 node_attrs["lower_bound"] = lower_nid
@@ -1033,12 +1058,9 @@ class SemanticGraphBuilder:
             for limit_tuple in expr.limits:
                 var_id = self._walk(limit_tuple[0])
                 wrt_ids.append(var_id)
-                self._add_edge(var_id, node_id)
                 if len(limit_tuple) >= 3:
                     lower_nid = self._walk(limit_tuple[1])
                     upper_nid = self._walk(limit_tuple[2])
-                    self._add_edge(lower_nid, node_id)
-                    self._add_edge(upper_nid, node_id)
             node_attrs["with_respect_to"] = ", ".join(wrt_ids)
             if lower_nid is not None:
                 node_attrs["lower_bound"] = lower_nid
