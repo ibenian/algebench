@@ -18,13 +18,19 @@ on:
       - 'themes/semantic-graph/**'
   workflow_dispatch:
 
-jobs:
-  report:
-    name: Visual examination
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Generate reports
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,13 +44,24 @@ jobs:
         run: ./run.sh -m pip install pytest -q
 
       - name: Generate site
-        run: ./run.sh scripts/semantic_graph_report.py --outdir _site
+        run: |
+          mkdir -p _site/semantic-graph
+          ./run.sh scripts/semantic_graph_report.py --outdir _site/semantic-graph
 
-      - name: Deploy to GitHub Pages
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./_site
-          destination_dir: semantic-graph
-          keep_files: true
+          path: _site
+
+  deploy:
+    name: Deploy to Pages
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}semantic-graph/
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
