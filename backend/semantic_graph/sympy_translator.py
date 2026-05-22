@@ -979,6 +979,15 @@ class SemanticGraphBuilder:
                 self._add_node(node_id, **attrs)
                 return node_id
 
+        # --- Boolean literals (S.true / S.false) ---
+        # SymPy collapses tautologies like Eq(x,x) to BooleanTrue.
+        # Emit as a constant node, not an expression with op="BooleanTrue".
+        if expr is S.true or expr is S.false:
+            node_id = self._next_id("const")
+            label = "true" if expr is S.true else "false"
+            self._add_node(node_id, type="constant", label=label)
+            return node_id
+
         # --- Numbers ---
         if isinstance(expr, Number):
             node_id = self._next_id("num")
