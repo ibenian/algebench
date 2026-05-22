@@ -33,7 +33,8 @@ from tests.backend.semantic_graph.generators.invariants import (
 
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
-    "derivative", "integral", "limit", "tends_to", "sum", "function",
+    "derivative", "integral", "limit", "tends_to", "sum", "factorial",
+    "function",
 }
 
 
@@ -184,15 +185,15 @@ SERIES_EXPRESSIONS: list[CatalogEntry] = [
     ("taylor_exp",
      r"e^x = \sum_{n=0}^{\infty} \frac{x^n}{n!}",
      PASS,
-     "n -> fn:factorial; e,x -> power; n,x -> power; "
-     "fn:factorial -> power; power,power -> multiply; "
+     "n -> factorial; e,x -> power; n,x -> power; "
+     "factorial -> power; power,power -> multiply; "
      "multiply -> sum; power,sum -> equals",
      "n -> __factorial_9; e,x -> __power_2; n,x -> __power_7; "
      "__factorial_9 -> __power_8; __power_7,__power_8 -> __multiply_6; "
      "__multiply_6 -> __sum_3; "
      "__power_2,__sum_3 -> __equals_1",
      [{"op": "sum", "with_respect_to": "n"},
-      {"op": "factorial", "type": "function"},
+      {"op": "factorial", "type": "operator"},
       {"op": "power", "exponent": None, "_edge_roles": {"exp": 1}}]),
 
     ("series_geometric",

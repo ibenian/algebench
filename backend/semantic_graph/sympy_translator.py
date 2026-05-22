@@ -15,7 +15,7 @@ from sympy import (
     Symbol, Function, Number, Rational, Integer, Float,
     Add, Mul, Pow, Eq, Abs,
     StrictGreaterThan, StrictLessThan, GreaterThan, LessThan,
-    sin, cos, tan, log, exp, sqrt,
+    sin, cos, tan, log, exp, sqrt, factorial,
     Derivative, Integral, Limit, Sum, Product,
     pi, E, I, oo,
     S,
@@ -993,6 +993,14 @@ class SemanticGraphBuilder:
         if isinstance(expr, Number):
             node_id = self._next_id("num")
             self._add_node(node_id, label=self._fmt_number(expr), type="number")
+            return node_id
+
+        # --- Factorial (unary operator, not a function) ---
+        if isinstance(expr, factorial):
+            node_id = self._next_id("factorial")
+            self._add_node(node_id, type="operator", op="factorial")
+            child_id = self._walk(expr.args[0])
+            self._add_edge(child_id, node_id)
             return node_id
 
         # --- Functions ---

@@ -103,6 +103,7 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     # SymPy class names: the parser used to normalize these via
     # FUNCTION_MAP (``Abs`` → ``abs``), but since FUNCTION_MAP was
     "abs": "|·|",
+    "factorial": "(·)!",
     "choose": "(⋮)",
 }
 
@@ -131,6 +132,7 @@ OPERATOR_LATEX: dict[str, str] = {
     "exp": r"\exp",
     "sqrt": r"\sqrt{\cdot}",
     "abs": r"|\cdot|",
+    "factorial": r"(\cdot)!",
     "choose": r"\binom{\cdot}{\cdot}",
 }
 
