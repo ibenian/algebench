@@ -19,17 +19,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
+  contents: write
 
 jobs:
-  build:
-    name: Generate reports
+  build-and-deploy:
+    name: Generate & deploy reports
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -43,24 +37,32 @@ jobs:
       - name: Install dependencies
         run: ./run.sh -m pip install pytest -q
 
+      - name: Determine destination directory
+        id: dest
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "dir=semantic-graph/pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=semantic-graph" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Generate site
         run: |
-          mkdir -p _site/semantic-graph
-          ./run.sh scripts/semantic_graph_report.py --outdir _site/semantic-graph
+          mkdir -p _site
+          ./run.sh scripts/semantic_graph_report.py --outdir _site
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-  deploy:
-    name: Deploy to Pages
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}semantic-graph/
-    steps:
       - name: Deploy to GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v4
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          destination_dir: ${{ steps.dest.outputs.dir }}
+          keep_files: true
+
+      - name: Post preview URL
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "## 📊 Semantic Graph Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          OWNER="${{ github.repository_owner }}"
+          echo "Preview: https://${OWNER}.github.io/${{ github.event.repository.name }}/${{ steps.dest.outputs.dir }}/" >> "$GITHUB_STEP_SUMMARY"
