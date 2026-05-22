@@ -18,6 +18,7 @@ from sympy import (
     sin, cos, tan, log, exp, sqrt,
     Derivative, Integral, Limit, Sum, Product,
     pi, E, I, oo,
+    S,
 )
 from sympy.parsing.latex import parse_latex
 from sympy.physics.quantum.state import KetBase, BraBase
@@ -660,6 +661,23 @@ def _split_chained_equals(latex: str) -> tuple[str, dict[str, str], str] | None:
     if lhs and rhs:
         meta = {"op": "equals", "label": "equals", "emoji": "="}
         return lhs, meta, rhs
+    return None
+
+
+def _split_on_single_equals(latex: str) -> tuple[str, str] | None:
+    r"""Split on ``=`` at depth 0.  Returns ``(lhs, rhs)`` or ``None``."""
+    d = 0
+    for i, ch in enumerate(latex):
+        if ch in "{([":
+            d += 1
+        elif ch in "})]" and d > 0:
+            d -= 1
+        elif ch == "=" and d == 0:
+            lhs = latex[:i].strip()
+            rhs = latex[i + 1:].strip()
+            if lhs and rhs:
+                return lhs, rhs
+            return None
     return None
 
 
@@ -1453,6 +1471,46 @@ def _latex_to_semantic_graph_dict(
         expr = parse_latex(preprocessed)
     except Exception as exc:
         raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
+
+    # SymPy eagerly simplifies tautological equations — e.g.
+    # ``-(-x) = x`` → ``Eq(x, x)`` → ``BooleanTrue``.  When that
+    # happens and the original LaTeX contained ``=``, split on the
+    # equals sign and parse each side independently so the structural
+    # graph is preserved.
+    if expr is S.true or expr is S.false:
+        eq_split = _split_on_single_equals(preprocessed)
+        if eq_split is not None:
+            lhs_latex, rhs_latex = eq_split
+            builder = SemanticGraphBuilder(
+                overrides=overrides, latex_commands=latex_commands,
+                original_latex=latex,
+            )
+            try:
+                lhs_expr = parse_latex(lhs_latex)
+                rhs_expr = parse_latex(rhs_latex)
+            except Exception as exc2:
+                raise ValueError(f"Failed to parse LaTeX: {exc2}") from exc2
+            lhs_id = builder._walk(lhs_expr)
+            rhs_id = builder._walk(rhs_expr)
+            # Annotate each subtree root with original LaTeX
+            for n in builder.nodes:
+                if n["id"] == lhs_id:
+                    n["subexpr"] = builder._restore_placeholders(
+                        lhs_latex.strip())
+                elif n["id"] == rhs_id:
+                    n["subexpr"] = builder._restore_placeholders(
+                        rhs_latex.strip())
+            eq_id = builder._next_id("equals")
+            builder._add_node(eq_id, type="operator", op="equals",
+                              subexpr=latex.strip())
+            builder._add_edge(lhs_id, eq_id)
+            builder._add_edge(rhs_id, eq_id)
+            graph = {"nodes": builder.nodes, "edges": builder.edges}
+            graph["classification"] = {"kind": "algebraic"}
+            if domain:
+                graph["domain"] = domain
+            _inject_annotations(graph, parenthetical_annotations)
+            return graph
 
     classification = _classify_expression(expr)
     builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands, original_latex=latex)

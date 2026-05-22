@@ -120,7 +120,9 @@ VARIABLE_EXPRESSIONS: list[CatalogEntry] = [
 
     ("var_double_negation",
      r"-(-x) = x",
-     PASS, "", "",
+     PASS,
+     "x,x -> equals",
+     "x,x -> __equals_1",
      None),
 
     ("var_sqrt",
@@ -171,13 +173,53 @@ VARIABLE_EXPRESSIONS: list[CatalogEntry] = [
 
 # Expressions with only numeric literals — parser collapses to BooleanTrue
 NUMERIC_EXPRESSIONS: list[CatalogEntry] = [
-    ("num_addition",       r"2 + 3 = 5",                                       PASS, "", "", None),
-    ("num_subtraction",    r"7 - 4 = 3",                                       PASS, "", "", None),
-    ("num_multiplication", r"3 \times 4 = 12",                                 PASS, "", "", None),
-    ("num_division",       r"\frac{10}{2} = 5",                                PASS, "", "", None),
-    ("num_order_of_ops",   r"2 + 3 \times 4 = 14",                             PASS, "", "", None),
-    ("num_exponents",      r"2^3 = 8",                                         PASS, "", "", None),
-    ("num_mixed_fracs",    r"\frac{1}{2} + \frac{3}{4} = \frac{5}{4}",         PASS, "", "", None),
+    ("num_addition",
+     r"2 + 3 = 5",
+     PASS,
+     "num,num -> add; add,num -> equals",
+     "__num_2,__num_3 -> __add_1; __add_1,__num_4 -> __equals_5",
+     None),
+    ("num_subtraction",
+     r"7 - 4 = 3",
+     PASS,
+     "num,num -> add; add,num -> equals",
+     "__num_2,__num_3 -> __add_1; __add_1,__num_4 -> __equals_5",
+     None),
+    ("num_multiplication",
+     r"3 \times 4 = 12",
+     PASS,
+     "num,num -> multiply; multiply,num -> equals",
+     "__num_2,__num_3 -> __multiply_1; __multiply_1,__num_4 -> __equals_5",
+     None),
+    ("num_division",
+     r"\frac{10}{2} = 5",
+     PASS,
+     "num -> power; num,power -> multiply; multiply,num -> equals",
+     "__num_4 -> __power_3; __num_2,__power_3 -> __multiply_1; "
+     "__multiply_1,__num_5 -> __equals_6",
+     None),
+    ("num_order_of_ops",
+     r"2 + 3 \times 4 = 14",
+     PASS,
+     "num,num -> multiply; multiply,num -> add; add,num -> equals",
+     "__num_4,__num_5 -> __multiply_3; __multiply_3,__num_2 -> __add_1; "
+     "__add_1,__num_6 -> __equals_7",
+     None),
+    ("num_exponents",
+     r"2^3 = 8",
+     PASS,
+     "num -> power; num,power -> equals",
+     "__num_2 -> __power_1; __num_3,__power_1 -> __equals_4",
+     None),
+    ("num_mixed_fracs",
+     r"\frac{1}{2} + \frac{3}{4} = \frac{5}{4}",
+     PASS,
+     "num -> power; num -> power; num -> power; num,power -> multiply; "
+     "num,power -> multiply; multiply,power -> add; add,multiply -> equals",
+     "__num_11 -> __power_10; __num_3 -> __power_2; __num_7 -> __power_6; "
+     "__num_5,__power_6 -> __multiply_4; __num_9,__power_10 -> __multiply_8; "
+     "__multiply_4,__power_2 -> __add_1; __add_1,__multiply_8 -> __equals_12",
+     None),
 ]
 
 # Absolute value expressions
