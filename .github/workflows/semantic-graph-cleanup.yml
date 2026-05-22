@@ -1,0 +1,42 @@
+name: Semantic Graph Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    name: Remove PR preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check gh-pages branch exists
+        id: check
+        run: |
+          if git ls-remote --exit-code --heads "https://github.com/${{ github.repository }}.git" gh-pages >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout gh-pages
+        if: steps.check.outputs.exists == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Remove PR directory
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          PR_DIR="semantic-graph/pr-${{ github.event.pull_request.number }}"
+          if [ -d "$PR_DIR" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git rm -rf "$PR_DIR"
+            git commit -m "chore: clean up preview for PR #${{ github.event.pull_request.number }}"
+            git push
+          else
+            echo "No preview directory found for PR #${{ github.event.pull_request.number }}"
+          fi

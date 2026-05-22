@@ -1,0 +1,77 @@
+name: Semantic Graph Visual Report
+
+on:
+  pull_request:
+    paths:
+      - 'backend/semantic_graph/**'
+      - 'backend/model/semantic_graph.py'
+      - 'scripts/graph_to_mermaid.py'
+      - 'scripts/semantic_graph_report.py'
+      - 'themes/semantic-graph/**'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/semantic_graph/**'
+      - 'backend/model/semantic_graph.py'
+      - 'scripts/graph_to_mermaid.py'
+      - 'scripts/semantic_graph_report.py'
+      - 'themes/semantic-graph/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build-and-deploy:
+    name: Generate & deploy reports
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: ./run.sh -m pip install pytest -q
+
+      - name: Determine destination directory
+        id: dest
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "dir=semantic-graph/pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=semantic-graph" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate site
+        run: |
+          mkdir -p _site
+          ./run.sh scripts/semantic_graph_report.py --outdir _site
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          destination_dir: ${{ steps.dest.outputs.dir }}
+          keep_files: ${{ github.event_name == 'pull_request' }}
+
+      - name: Post preview URL
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PREVIEW_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ steps.dest.outputs.dir }}/"
+          echo "## 📊 Semantic Graph Visual Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "Preview: ${PREVIEW_URL}" >> "$GITHUB_STEP_SUMMARY"
+          EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '[.comments[] | select(.body | contains("Semantic Graph Visual Report"))] | length')
+          if [ "$EXISTING" = "0" ]; then
+            gh pr comment ${{ github.event.pull_request.number }} \
+              --body "## 📊 Semantic Graph Visual Report
+**Preview:** ${PREVIEW_URL}"
+          fi
