@@ -76,7 +76,8 @@ def _operator_glyph(node: dict) -> str | None:
     if not op:
         return None
     if op == "power":
-        return f"(·){_to_superscript(node.get('exponent', 'n'))}"
+        exp = node.get("exponent")
+        return f"(·){_to_superscript(exp)}" if exp else "(·)˙"
     if op in ("derivative", "partial_derivative"):
         d = "∂" if op == "partial_derivative" else "d"
         wrt = node.get("with_respect_to")

@@ -243,7 +243,7 @@ function operatorGlyph(node) {
     const op = node.op;
     if (!op) return null;
     if (op === 'power') {
-        return `(·)${toSuperscript(node.exponent || 'n')}`;
+        return node.exponent ? `(·)${toSuperscript(node.exponent)}` : '(·)˙';
     }
     if (op === 'derivative' || op === 'partial_derivative') {
         const d = op === 'partial_derivative' ? '∂' : 'd';
@@ -1339,8 +1339,8 @@ export class D3SemanticGraphRenderer {
         if (!op) return `\\text{${data.id || '?'}}`;
         if (OPERATOR_LATEX[op]) return OPERATOR_LATEX[op];
         if (op === 'power') {
-            const exp = data.exponent || 'n';
-            return `(\\cdot)^{${exp}}`;
+            const exp = data.exponent;
+            return exp ? `(\\cdot)^{${exp}}` : `(\\cdot)^{\\cdot}`;
         }
         if (op === 'derivative' || op === 'partial_derivative') {
             const d = op === 'partial_derivative' ? '\\partial' : 'd';
