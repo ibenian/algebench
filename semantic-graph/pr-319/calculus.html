@@ -179,7 +179,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-22 19:17 UTC &middot; theme: default-dark &middot; 13 expressions</div>
+<div class="report-meta">Generated 2026-05-22 22:49 UTC &middot; theme: default-dark &middot; 13 expressions</div>
 <div class="section-title">Calculus (13 expressions)</div>
 <div class="row">
   <div>
@@ -214,7 +214,7 @@
   __power_5 -.-&gt; __multiply_3
   __multiply_3 --&gt; __limit_2
   x --&gt;|lhs| __tends_to_7
-  __tends_to_7 --&gt;|rhs| __num_6
+  __num_6 --&gt;|rhs| __tends_to_7
   __tends_to_7 --&gt; __limit_2
   __limit_2 --&gt; __equals_1
   __num_8 --&gt; __equals_1
@@ -324,8 +324,8 @@
       "role": "lhs"
     },
     {
-      "from": "__tends_to_7",
-      "to": "__num_6",
+      "from": "__num_6",
+      "to": "__tends_to_7",
       "role": "rhs"
     },
     {
@@ -386,7 +386,7 @@
   __power_5 -.-&gt; __multiply_3
   __multiply_3 --&gt; __limit_2
   x --&gt;|lhs| __tends_to_7
-  __tends_to_7 --&gt;|rhs| a
+  a --&gt;|rhs| __tends_to_7
   __tends_to_7 --&gt; __limit_2
   __limit_2 --&gt; __equals_1
   x --&gt; __f'_10
@@ -396,7 +396,7 @@
   __power_11 -.-&gt; __multiply_9
   __multiply_9 --&gt; __limit_8
   x --&gt;|lhs| __tends_to_13
-  __tends_to_13 --&gt;|rhs| a
+  a --&gt;|rhs| __tends_to_13
   __tends_to_13 --&gt; __limit_8
   __limit_8 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -556,8 +556,8 @@
       "role": "lhs"
     },
     {
-      "from": "__tends_to_7",
-      "to": "a",
+      "from": "a",
+      "to": "__tends_to_7",
       "role": "rhs"
     },
     {
@@ -600,8 +600,8 @@
       "role": "lhs"
     },
     {
-      "from": "__tends_to_13",
-      "to": "a",
+      "from": "a",
+      "to": "__tends_to_13",
       "role": "rhs"
     },
     {
@@ -646,7 +646,7 @@
   x --&gt; __power_3
   __power_3 -.-&gt; __limit_2
   x --&gt;|lhs| __tends_to_5
-  __tends_to_5 --&gt;|rhs| __const_4
+  __const_4 --&gt;|rhs| __tends_to_5
   __tends_to_5 --&gt; __limit_2
   __limit_2 --&gt; __equals_1
   __num_6 --&gt; __equals_1
@@ -727,8 +727,8 @@
       "role": "lhs"
     },
     {
-      "from": "__tends_to_5",
-      "to": "__const_4",
+      "from": "__const_4",
+      "to": "__tends_to_5",
       "role": "rhs"
     },
     {
@@ -771,7 +771,7 @@
   __power_3(("$(\cdot)^n$")):::operator
   x["$x$"]:::scalar
   n["$n$"]:::scalar
-  __deriv_2(("$\frac{d}{dt}$")):::operator
+  __deriv_2(("$\frac{d}{dx}$")):::operator
   __multiply_4(("$\times$")):::operator
   __power_5(("$(\cdot)^n$")):::operator
   __add_6(("$+$")):::operator
@@ -779,6 +779,7 @@
   x --&gt; __power_3
   n --&gt; __power_3
   __power_3 --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
   n --&gt; __multiply_4
   x --&gt; __power_5
@@ -791,13 +792,14 @@
   linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -877,6 +879,11 @@
       "to": "__deriv_2"
     },
     {
+      "from": "x",
+      "to": "__deriv_2",
+      "role": "wrt"
+    },
+    {
       "from": "__deriv_2",
       "to": "__equals_1"
     },
@@ -944,25 +951,31 @@
   __equals_1(("$=$")):::operator
   y["$y$"]:::scalar
   x["$x$"]:::scalar
-  __deriv_2(("$\frac{d}{dt}$")):::operator
+  __deriv_2(("$\frac{d}{dx}$")):::operator
   __multiply_3(("$\times$")):::operator
   u["$u$"]:::scalar
-  __deriv_4(("$\frac{d}{dt}$")):::operator
-  __deriv_5(("$\frac{d}{dt}$")):::operator
+  __deriv_4(("$\frac{d}{du}$")):::operator
+  __deriv_5(("$\frac{d}{dx}$")):::operator
   y --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
   y --&gt; __deriv_4
+  u --&gt;|wrt| __deriv_4
   __deriv_4 --&gt; __multiply_3
   u --&gt; __deriv_5
+  x --&gt;|wrt| __deriv_5
   __deriv_5 --&gt; __multiply_3
   __multiply_3 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#ef5350,stroke-width:3px
   linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1030,12 +1043,22 @@
       "to": "__deriv_2"
     },
     {
+      "from": "x",
+      "to": "__deriv_2",
+      "role": "wrt"
+    },
+    {
       "from": "__deriv_2",
       "to": "__equals_1"
     },
     {
       "from": "y",
       "to": "__deriv_4"
+    },
+    {
+      "from": "u",
+      "to": "__deriv_4",
+      "role": "wrt"
     },
     {
       "from": "__deriv_4",
@@ -1046,6 +1069,11 @@
     {
       "from": "u",
       "to": "__deriv_5"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_5",
+      "role": "wrt"
     },
     {
       "from": "__deriv_5",
@@ -1463,7 +1491,7 @@
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1(("$=$")):::operator
   x["$x$"]:::scalar
-  __integral_2(("$\int$")):::operator
+  __integral_2(("$\int dx$")):::operator
   __power_3(("$(\cdot)^n$")):::operator
   n["$n$"]:::scalar
   __add_4(("$+$")):::operator
@@ -1698,7 +1726,7 @@
   x["$x$"]:::scalar
   a["$a$"]:::scalar
   b["$b$"]:::scalar
-  __integral_2(("$\int$")):::operator
+  __integral_2(("$\int_{a}^{b} dx$")):::operator
   __f_3{{"$f$"}}:::function
   __add_4(("$+$")):::operator
   __F_5{{"$F$"}}:::function
@@ -1861,13 +1889,14 @@
   t["$t$"]:::scalar
   a["$a$"]:::scalar
   x["$x$"]:::scalar
-  __integral_3(("$\int$")):::operator
+  __integral_3(("$\int_{a}^{x} dt$")):::operator
   __f_4{{"$f$"}}:::function
-  __deriv_2(("$\frac{d}{dt}$")):::operator
+  __deriv_2(("$\frac{d}{dx}$")):::operator
   __f_5{{"$f$"}}:::function
   t --&gt; __f_4
   __f_4 --&gt; __integral_3
   __integral_3 --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
   x --&gt; __f_5
   __f_5 --&gt; __equals_1
@@ -1877,6 +1906,7 @@
   linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1951,6 +1981,11 @@
     {
       "from": "__integral_3",
       "to": "__deriv_2"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_2",
+      "role": "wrt"
     },
     {
       "from": "__deriv_2",

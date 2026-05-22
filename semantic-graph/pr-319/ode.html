@@ -179,7 +179,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-22 19:17 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="report-meta">Generated 2026-05-22 22:49 UTC &middot; theme: default-dark &middot; 10 expressions</div>
 <div class="section-title">ODE (10 expressions)</div>
 <div class="row">
   <div>
@@ -202,19 +202,21 @@
   __equals_1(("$=$")):::operator
   y["$y$"]:::scalar
   x["$x$"]:::scalar
-  __deriv_2(("$\frac{d}{dt}$")):::operator
+  __deriv_2(("$\frac{d}{dx}$")):::operator
   __multiply_3(("$\times$")):::operator
   k["$k$"]:::scalar
   y --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
   k --&gt; __multiply_3
   y --&gt; __multiply_3
   __multiply_3 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -266,6 +268,11 @@
     {
       "from": "y",
       "to": "__deriv_2"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_2",
+      "role": "wrt"
     },
     {
       "from": "__deriv_2",
@@ -334,10 +341,11 @@
   __equals_1(("$=$")):::operator
   y["$y$"]:::scalar
   x["$x$"]:::scalar
-  __deriv_2(("$\frac{d}{dt}$")):::operator
+  __deriv_2(("$\frac{d}{dx}$")):::operator
   __multiply_3(("$\times$")):::operator
   __power_4(("${(\cdot)}^{-1}$")):::operator
   y --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
   x --&gt; __multiply_3
   y --&gt; __power_4
@@ -345,10 +353,11 @@
   __multiply_3 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#42a5f5,stroke-width:1px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#42a5f5,stroke-width:1px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -401,6 +410,11 @@
     {
       "from": "y",
       "to": "__deriv_2"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_2",
+      "role": "wrt"
     },
     {
       "from": "__deriv_2",
@@ -472,7 +486,7 @@
   __add_2(("$+$")):::operator
   y["$y$"]:::scalar
   x["$x$"]:::scalar
-  __deriv_3(("$\frac{d}{dt}$")):::operator
+  __deriv_3(("$\frac{d}{dx}$")):::operator
   __multiply_4(("$\times$")):::operator
   __P_5{{"$P$"}}:::function
   __multiply_6(("$\times$")):::operator
@@ -480,6 +494,7 @@
   __power_8(("$(\cdot)^n$")):::operator
   n["$n$"]:::scalar
   y --&gt; __deriv_3
+  x --&gt;|wrt| __deriv_3
   __deriv_3 --&gt; __add_2
   x --&gt; __P_5
   __P_5 --&gt; __multiply_4
@@ -495,16 +510,17 @@
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#ef5350,stroke-width:3px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#ef5350,stroke-width:3px
   linkStyle 10 stroke:#aaa,stroke-width:2px
-  linkStyle 11 stroke:#ef5350,stroke-width:3px
-  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#ef5350,stroke-width:3px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -586,6 +602,11 @@
     {
       "from": "y",
       "to": "__deriv_3"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_3",
+      "role": "wrt"
     },
     {
       "from": "__deriv_3",
@@ -878,12 +899,13 @@
   __add_2(("$+$")):::operator
   y["$y$"]:::scalar
   x["$x$"]:::scalar
-  __deriv_3(("$\frac{d}{dt}$")):::operator
+  __deriv_3(("$\frac{d}{dx}$")):::operator
   __multiply_4(("$\times$")):::operator
   __power_5(("${(\cdot)}^{2}$")):::operator
   omega["$\omega$"]:::scalar
   __num_6["$0$"]:::number
   y --&gt; __deriv_3
+  x --&gt;|wrt| __deriv_3
   __deriv_3 --&gt; __add_2
   omega --&gt; __power_5
   __power_5 --&gt; __multiply_4
@@ -894,11 +916,12 @@
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -969,6 +992,11 @@
     {
       "from": "y",
       "to": "__deriv_3"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_3",
+      "role": "wrt"
     },
     {
       "from": "__deriv_3",
@@ -1057,10 +1085,12 @@
   __num_9["$0$"]:::number
   m --&gt; __multiply_4
   x --&gt; __deriv_5
+  t --&gt;|wrt| __deriv_5
   __deriv_5 --&gt; __multiply_4
   __multiply_4 --&gt; __add_3
   c --&gt; __multiply_6
   x --&gt; __deriv_7
+  t --&gt;|wrt| __deriv_7
   __deriv_7 --&gt; __multiply_6
   __multiply_6 --&gt; __add_3
   __add_3 --&gt; __add_2
@@ -1071,18 +1101,20 @@
   __num_9 --&gt; __equals_1
   linkStyle 0 stroke:#ef5350,stroke-width:3px
   linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
-  linkStyle 10 stroke:#ef5350,stroke-width:3px
-  linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#ef5350,stroke-width:3px
+  linkStyle 12 stroke:#ef5350,stroke-width:3px
   linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1191,6 +1223,11 @@
       "to": "__deriv_5"
     },
     {
+      "from": "t",
+      "to": "__deriv_5",
+      "role": "wrt"
+    },
+    {
       "from": "__deriv_5",
       "to": "__multiply_4",
       "semantic": "direct",
@@ -1209,6 +1246,11 @@
     {
       "from": "x",
       "to": "__deriv_7"
+    },
+    {
+      "from": "t",
+      "to": "__deriv_7",
+      "role": "wrt"
     },
     {
       "from": "__deriv_7",
@@ -1304,6 +1346,7 @@
   c["$c$"]:::scalar
   dy["$dy$"]:::scalar
   x --&gt; c0___deriv_2
+  t --&gt;|wrt| c0___deriv_2
   c0___deriv_2 --&gt; c0___equals_1
   a --&gt; c0___multiply_4
   x --&gt; c0___multiply_4
@@ -1313,6 +1356,7 @@
   c0___multiply_5 --&gt; c0___add_3
   c0___add_3 --&gt; c0___equals_1
   y --&gt; c1___deriv_2
+  t --&gt;|wrt| c1___deriv_2
   c1___deriv_2 --&gt; c1___equals_1
   c --&gt; c1___multiply_4
   x --&gt; c1___multiply_4
@@ -1321,20 +1365,22 @@
   c1___add_3 --&gt; c1___equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
   linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
   linkStyle 8 stroke:#aaa,stroke-width:2px
   linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
-  linkStyle 11 stroke:#ef5350,stroke-width:3px
-  linkStyle 12 stroke:#ef5350,stroke-width:3px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
-  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#ef5350,stroke-width:3px
+  linkStyle 14 stroke:#ef5350,stroke-width:3px
   linkStyle 15 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 17 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1449,6 +1495,11 @@
       "to": "c0___deriv_2"
     },
     {
+      "from": "t",
+      "to": "c0___deriv_2",
+      "role": "wrt"
+    },
+    {
       "from": "c0___deriv_2",
       "to": "c0___equals_1"
     },
@@ -1491,6 +1542,11 @@
     {
       "from": "y",
       "to": "c1___deriv_2"
+    },
+    {
+      "from": "t",
+      "to": "c1___deriv_2",
+      "role": "wrt"
     },
     {
       "from": "c1___deriv_2",
