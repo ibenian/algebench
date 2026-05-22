@@ -2,10 +2,10 @@
 """Convert LOC-REPORT.md to a styled HTML page for GitHub Pages.
 
 Reads the markdown report and wraps it in an HTML template with
-client-side rendering via marked.js, Mermaid, and highlight.js.
+client-side rendering via marked.js and Mermaid.
 
 Usage:
-    python scripts/loc_report_to_html.py LOC-REPORT.md --outdir _site/loc-report
+    python scripts/loc_report_to_html.py LOC-REPORT.md --outdir _site
 """
 
 from __future__ import annotations
@@ -23,7 +23,6 @@ def _html_template() -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lines of Code Report — AlgeBench</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -61,7 +60,6 @@ def _html_template() -> str:
 <div id="content"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/core.min.js"></script>
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
   mermaid.initialize({ startOnLoad: false, theme: 'dark' });
