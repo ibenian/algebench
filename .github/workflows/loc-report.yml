@@ -3,10 +3,13 @@ name: Lines of Code Report
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: loc-report-${{ github.head_ref || github.ref }}
@@ -34,6 +37,11 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || github.ref }}
 
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          python-version: '3.x'
+
       - uses: taiki-e/install-action@v2
         if: steps.guard.outputs.skip != 'true'
         with:
@@ -47,11 +55,49 @@ jobs:
         if: steps.guard.outputs.skip != 'true'
         run: cat LOC-REPORT.md >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Commit report if code lines changed
-        if: steps.guard.outputs.skip != 'true' && github.event_name != 'pull_request'
+      - name: Determine destination directory
+        if: steps.guard.outputs.skip != 'true'
+        id: dest
         run: |
-          # Strip volatile metadata (Branch/Commit/Date) before comparing
-          # so only actual code-line changes trigger a commit.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "dir=loc-report/pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=loc-report" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate HTML site
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          mkdir -p _site
+          python3 scripts/loc_report_to_html.py LOC-REPORT.md --outdir _site
+
+      - name: Deploy to GitHub Pages
+        if: steps.guard.outputs.skip != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          destination_dir: ${{ steps.dest.outputs.dir }}
+          keep_files: ${{ github.event_name == 'pull_request' }}
+
+      - name: Post preview URL
+        if: steps.guard.outputs.skip != 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PREVIEW_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ steps.dest.outputs.dir }}/"
+          echo "## 📊 LOC Report Preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "Preview: ${PREVIEW_URL}" >> "$GITHUB_STEP_SUMMARY"
+          EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '[.comments[] | select(.body | contains("LOC Report"))] | length')
+          if [ "$EXISTING" = "0" ]; then
+            gh pr comment ${{ github.event.pull_request.number }} \
+              --body "## 📊 LOC Report
+**Preview:** ${PREVIEW_URL}"
+          fi
+
+      - name: Commit report if code lines changed
+        if: steps.guard.outputs.skip != 'true' && github.event_name == 'push'
+        run: |
           strip_meta() { sed '/^| \*\*\(Branch\|Commit\|Date\)\*\*/d' "$1"; }
           git show HEAD:LOC-REPORT.md > /tmp/old-report.md 2>/dev/null || true
           if [ -f /tmp/old-report.md ] && diff -q <(strip_meta /tmp/old-report.md) <(strip_meta LOC-REPORT.md) >/dev/null 2>&1; then

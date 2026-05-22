@@ -1,4 +1,4 @@
-name: Semantic Graph Cleanup
+name: PR Preview Cleanup
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   cleanup:
-    name: Remove PR preview
+    name: Remove PR previews
     runs-on: ubuntu-latest
     steps:
       - name: Check gh-pages branch exists
@@ -27,16 +27,22 @@ jobs:
         with:
           ref: gh-pages
 
-      - name: Remove PR directory
+      - name: Remove PR directories
         if: steps.check.outputs.exists == 'true'
         run: |
-          PR_DIR="semantic-graph/pr-${{ github.event.pull_request.number }}"
-          if [ -d "$PR_DIR" ]; then
+          PR_NUM="${{ github.event.pull_request.number }}"
+          REMOVED=false
+          for DIR in "semantic-graph/pr-${PR_NUM}" "loc-report/pr-${PR_NUM}"; do
+            if [ -d "$DIR" ]; then
+              git rm -rf "$DIR"
+              REMOVED=true
+            fi
+          done
+          if [ "$REMOVED" = "true" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git rm -rf "$PR_DIR"
-            git commit -m "chore: clean up preview for PR #${{ github.event.pull_request.number }}"
+            git commit -m "chore: clean up previews for PR #${PR_NUM}"
             git push
           else
-            echo "No preview directory found for PR #${{ github.event.pull_request.number }}"
+            echo "No preview directories found for PR #${PR_NUM}"
           fi
