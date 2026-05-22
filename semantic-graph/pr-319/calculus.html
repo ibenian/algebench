@@ -179,7 +179,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-22 22:49 UTC &middot; theme: default-dark &middot; 13 expressions</div>
+<div class="report-meta">Generated 2026-05-22 22:59 UTC &middot; theme: default-dark &middot; 13 expressions</div>
 <div class="section-title">Calculus (13 expressions)</div>
 <div class="row">
   <div>
@@ -768,24 +768,24 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1(("$=$")):::operator
-  __power_3(("$(\cdot)^n$")):::operator
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
   x["$x$"]:::scalar
   n["$n$"]:::scalar
   __deriv_2(("$\frac{d}{dx}$")):::operator
   __multiply_4(("$\times$")):::operator
-  __power_5(("$(\cdot)^n$")):::operator
+  __power_5(("$(\cdot)^{\cdot}$")):::operator
   __add_6(("$+$")):::operator
   __num_7["$-1$"]:::number
-  x --&gt; __power_3
-  n --&gt; __power_3
+  x --&gt;|lhs| __power_3
+  n --&gt;|rhs| __power_3
   __power_3 --&gt; __deriv_2
   x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
   n --&gt; __multiply_4
-  x --&gt; __power_5
+  x --&gt;|lhs| __power_5
   n --&gt; __add_6
   __num_7 --&gt; __add_6
-  __add_6 --&gt; __power_5
+  __add_6 --&gt;|rhs| __power_5
   __power_5 --&gt; __multiply_4
   __multiply_4 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -868,11 +868,13 @@
   "edges": [
     {
       "from": "x",
-      "to": "__power_3"
+      "to": "__power_3",
+      "role": "lhs"
     },
     {
       "from": "n",
-      "to": "__power_3"
+      "to": "__power_3",
+      "role": "rhs"
     },
     {
       "from": "__power_3",
@@ -895,7 +897,8 @@
     },
     {
       "from": "x",
-      "to": "__power_5"
+      "to": "__power_5",
+      "role": "lhs"
     },
     {
       "from": "n",
@@ -907,7 +910,8 @@
     },
     {
       "from": "__add_6",
-      "to": "__power_5"
+      "to": "__power_5",
+      "role": "rhs"
     },
     {
       "from": "__power_5",
@@ -1492,25 +1496,25 @@
   __equals_1(("$=$")):::operator
   x["$x$"]:::scalar
   __integral_2(("$\int dx$")):::operator
-  __power_3(("$(\cdot)^n$")):::operator
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
   n["$n$"]:::scalar
   __add_4(("$+$")):::operator
   __multiply_5(("$\times$")):::operator
-  __power_6(("$(\cdot)^n$")):::operator
+  __power_6(("$(\cdot)^{\cdot}$")):::operator
   __add_7(("$+$")):::operator
   __num_8["$1$"]:::number
   __power_9(("${(\cdot)}^{-1}$")):::operator
   __add_10(("$+$")):::operator
   __num_11["$1$"]:::number
   C["$C$"]:::scalar
-  x --&gt; __power_3
-  n --&gt; __power_3
+  x --&gt;|lhs| __power_3
+  n --&gt;|rhs| __power_3
   __power_3 --&gt; __integral_2
   __integral_2 --&gt; __equals_1
-  x --&gt; __power_6
+  x --&gt;|lhs| __power_6
   n --&gt; __add_7
   __num_8 --&gt; __add_7
-  __add_7 --&gt; __power_6
+  __add_7 --&gt;|rhs| __power_6
   __power_6 --&gt; __multiply_5
   n --&gt; __add_10
   __num_11 --&gt; __add_10
@@ -1634,11 +1638,13 @@
   "edges": [
     {
       "from": "x",
-      "to": "__power_3"
+      "to": "__power_3",
+      "role": "lhs"
     },
     {
       "from": "n",
-      "to": "__power_3"
+      "to": "__power_3",
+      "role": "rhs"
     },
     {
       "from": "__power_3",
@@ -1650,7 +1656,8 @@
     },
     {
       "from": "x",
-      "to": "__power_6"
+      "to": "__power_6",
+      "role": "lhs"
     },
     {
       "from": "n",
@@ -1662,7 +1669,8 @@
     },
     {
       "from": "__add_7",
-      "to": "__power_6"
+      "to": "__power_6",
+      "role": "rhs"
     },
     {
       "from": "__power_6",
@@ -2029,7 +2037,7 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1(("$=$")):::operator
-  __power_2(("$(\cdot)^n$")):::operator
+  __power_2(("$(\cdot)^{\cdot}$")):::operator
   e["$e$"]:::scalar
   x["$x$"]:::scalar
   n["$n$"]:::scalar
@@ -2037,14 +2045,14 @@
   __const_5["$\infty$"]:::constant
   __sum_3(("$\sum$")):::operator
   __multiply_6(("$\times$")):::operator
-  __power_7(("$(\cdot)^n$")):::operator
+  __power_7(("$(\cdot)^{\cdot}$")):::operator
   __power_8(("${(\cdot)}^{-1}$")):::operator
   __factorial_9{{"$factorial$"}}:::function
-  e --&gt; __power_2
-  x --&gt; __power_2
+  e --&gt;|lhs| __power_2
+  x --&gt;|rhs| __power_2
   __power_2 --&gt; __equals_1
-  x --&gt; __power_7
-  n --&gt; __power_7
+  x --&gt;|lhs| __power_7
+  n --&gt;|rhs| __power_7
   __power_7 --&gt; __multiply_6
   n --&gt; __factorial_9
   __factorial_9 --&gt; __power_8
@@ -2151,11 +2159,13 @@
   "edges": [
     {
       "from": "e",
-      "to": "__power_2"
+      "to": "__power_2",
+      "role": "lhs"
     },
     {
       "from": "x",
-      "to": "__power_2"
+      "to": "__power_2",
+      "role": "rhs"
     },
     {
       "from": "__power_2",
@@ -2163,11 +2173,13 @@
     },
     {
       "from": "x",
-      "to": "__power_7"
+      "to": "__power_7",
+      "role": "lhs"
     },
     {
       "from": "n",
-      "to": "__power_7"
+      "to": "__power_7",
+      "role": "rhs"
     },
     {
       "from": "__power_7",
@@ -2224,15 +2236,15 @@
   __num_3["$0$"]:::number
   __const_4["$\infty$"]:::constant
   __sum_2(("$\sum$")):::operator
-  __power_5(("$(\cdot)^n$")):::operator
+  __power_5(("$(\cdot)^{\cdot}$")):::operator
   r["$r$"]:::scalar
   __power_6(("${(\cdot)}^{-1}$")):::operator
   __add_7(("$+$")):::operator
   __num_8["$1$"]:::number
   __negation_9@{ shape: "flip-tri", label: "$-$" }
   class __negation_9 operator
-  r --&gt; __power_5
-  n --&gt; __power_5
+  r --&gt;|lhs| __power_5
+  n --&gt;|rhs| __power_5
   __power_5 --&gt; __sum_2
   __sum_2 --&gt; __equals_1
   __num_8 --&gt; __add_7
@@ -2332,11 +2344,13 @@
   "edges": [
     {
       "from": "r",
-      "to": "__power_5"
+      "to": "__power_5",
+      "role": "lhs"
     },
     {
       "from": "n",
-      "to": "__power_5"
+      "to": "__power_5",
+      "role": "rhs"
     },
     {
       "from": "__power_5",

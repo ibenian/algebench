@@ -179,7 +179,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-22 22:49 UTC &middot; theme: default-dark &middot; 12 expressions</div>
+<div class="report-meta">Generated 2026-05-22 22:59 UTC &middot; theme: default-dark &middot; 12 expressions</div>
 <div class="section-title">Algebra (12 expressions)</div>
 <div class="row">
   <div>
@@ -2241,7 +2241,7 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1(("$=$")):::operator
-  __power_2(("$(\cdot)^n$")):::operator
+  __power_2(("$(\cdot)^{\cdot}$")):::operator
   __add_3(("$+$")):::operator
   x["$x$"]:::scalar
   y["$y$"]:::scalar
@@ -2252,27 +2252,27 @@
   __multiply_6(("$\times$")):::operator
   __choose_7{{"$\binom{\cdot}{\cdot}$"}}:::function
   __multiply_8(("$\times$")):::operator
-  __power_9(("$(\cdot)^n$")):::operator
+  __power_9(("$(\cdot)^{\cdot}$")):::operator
   __add_10(("$+$")):::operator
   __negation_11@{ shape: "flip-tri", label: "$-$" }
-  __power_12(("$(\cdot)^n$")):::operator
+  __power_12(("$(\cdot)^{\cdot}$")):::operator
   class __negation_11 operator
   x --&gt; __add_3
   y --&gt; __add_3
-  __add_3 --&gt; __power_2
-  n --&gt; __power_2
+  __add_3 --&gt;|lhs| __power_2
+  n --&gt;|rhs| __power_2
   __power_2 --&gt; __equals_1
   n --&gt; __choose_7
   k --&gt; __choose_7
   __choose_7 --&gt; __multiply_6
-  x --&gt; __power_9
+  x --&gt;|lhs| __power_9
   n --&gt; __add_10
   k --&gt; __negation_11
   __negation_11 --&gt; __add_10
-  __add_10 --&gt; __power_9
+  __add_10 --&gt;|rhs| __power_9
   __power_9 --&gt; __multiply_8
-  y --&gt; __power_12
-  k --&gt; __power_12
+  y --&gt;|lhs| __power_12
+  k --&gt;|rhs| __power_12
   __power_12 --&gt; __multiply_8
   __multiply_8 --&gt; __multiply_6
   __multiply_6 --&gt; __sum_4
@@ -2417,11 +2417,13 @@
     },
     {
       "from": "__add_3",
-      "to": "__power_2"
+      "to": "__power_2",
+      "role": "lhs"
     },
     {
       "from": "n",
-      "to": "__power_2"
+      "to": "__power_2",
+      "role": "rhs"
     },
     {
       "from": "__power_2",
@@ -2443,7 +2445,8 @@
     },
     {
       "from": "x",
-      "to": "__power_9"
+      "to": "__power_9",
+      "role": "lhs"
     },
     {
       "from": "n",
@@ -2459,7 +2462,8 @@
     },
     {
       "from": "__add_10",
-      "to": "__power_9"
+      "to": "__power_9",
+      "role": "rhs"
     },
     {
       "from": "__power_9",
@@ -2469,11 +2473,13 @@
     },
     {
       "from": "y",
-      "to": "__power_12"
+      "to": "__power_12",
+      "role": "lhs"
     },
     {
       "from": "k",
-      "to": "__power_12"
+      "to": "__power_12",
+      "role": "rhs"
     },
     {
       "from": "__power_12",

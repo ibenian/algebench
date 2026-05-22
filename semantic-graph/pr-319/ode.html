@@ -179,7 +179,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-22 22:49 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="report-meta">Generated 2026-05-22 22:59 UTC &middot; theme: default-dark &middot; 10 expressions</div>
 <div class="section-title">ODE (10 expressions)</div>
 <div class="row">
   <div>
@@ -491,7 +491,7 @@
   __P_5{{"$P$"}}:::function
   __multiply_6(("$\times$")):::operator
   __Q_7{{"$Q$"}}:::function
-  __power_8(("$(\cdot)^n$")):::operator
+  __power_8(("$(\cdot)^{\cdot}$")):::operator
   n["$n$"]:::scalar
   y --&gt; __deriv_3
   x --&gt;|wrt| __deriv_3
@@ -503,8 +503,8 @@
   __add_2 --&gt; __equals_1
   x --&gt; __Q_7
   __Q_7 --&gt; __multiply_6
-  y --&gt; __power_8
-  n --&gt; __power_8
+  y --&gt;|lhs| __power_8
+  n --&gt;|rhs| __power_8
   __power_8 --&gt; __multiply_6
   __multiply_6 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -648,11 +648,13 @@
     },
     {
       "from": "y",
-      "to": "__power_8"
+      "to": "__power_8",
+      "role": "lhs"
     },
     {
       "from": "n",
-      "to": "__power_8"
+      "to": "__power_8",
+      "role": "rhs"
     },
     {
       "from": "__power_8",
