@@ -995,11 +995,17 @@ class SemanticGraphBuilder:
             return node_id
 
         # --- Functions ---
+        # Map SymPy class names to canonical operation names where they differ.
+        _FUNC_OP_MAP: dict[str, str] = {
+            "binomial": "choose",  # C(n,k) — "choose", not "binomial"
+        }
+
         if isinstance(expr, sympy.Function):
             func_name = type(expr).__name__
-            node_id = self._next_id(func_name)
+            op_name = _FUNC_OP_MAP.get(func_name, func_name)
+            node_id = self._next_id(op_name)
             func_latex = self._latex_commands.get(func_name)
-            func_attrs: dict[str, str] = {"type": "function", "op": func_name}
+            func_attrs: dict[str, str] = {"type": "function", "op": op_name}
             if func_latex:
                 func_attrs["latex"] = func_latex
             self._add_node(node_id, **func_attrs)

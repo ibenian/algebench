@@ -105,6 +105,7 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     # removed the parser emits the SymPy class name directly. Key the
     # entry on what the parser actually produces — no aliases needed.
     "Abs": "|·|",
+    "choose": "(⋮)",
 }
 
 OPERATOR_LATEX: dict[str, str] = {
@@ -134,6 +135,7 @@ OPERATOR_LATEX: dict[str, str] = {
     # SymPy class name (see OPERATOR_SYMBOLS comment). Parser emits
     # ``Abs``; nothing in the codebase produces a normalized ``abs``.
     "Abs": r"|\cdot|",
+    "choose": r"\binom{\cdot}{\cdot}",
 }
 
 # Op-specific shape defaults. The graph schema is semantic-only
