@@ -853,8 +853,15 @@ export class D3SemanticGraphRenderer {
     _renderLinks(links, transition, d3) {
         const showArrows = this._theme?.paintBySemantic;
         const markerEnd = d => (showArrows && d.role) ? 'url(#d3sg-arrow-role)' : null;
+        // Roles whose visual arrow points outward (reversed from the
+        // data-model direction). Data edges always flow inward
+        // (child → parent); these roles swap source/target at render
+        // time so the arrow reads naturally — e.g. "derivative →wrt→ x".
+        // ── Keep in sync with VISUAL_REVERSE_ROLES in
+        //    scripts/graph_to_mermaid.py ──
+        const VISUAL_REVERSE_ROLES = new Set([]);
         const linkPath = d => {
-            if (d.role === 'lhs') {
+            if (VISUAL_REVERSE_ROLES.has(d.role)) {
                 return this._diagonal(d3, d.target, d.source, d.target, d.source);
             }
             return this._diagonal(d3, d.source, d.target, d.source, d.target);

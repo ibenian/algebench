@@ -55,10 +55,10 @@ LIMIT_EXPRESSIONS: list[CatalogEntry] = [
     ("limit_basic",
      r"\lim_{x \to 0} \frac{\sin x}{x} = 1",
      PASS,
-     "x -> fn:sin; x -> power; x -> tends_to; fn:sin,power -> multiply; "
-     "tends_to -> num; multiply,tends_to -> limit; limit,num -> equals",
-     "x -> __power_5; x -> __sin_4; x -> __tends_to_7; "
-     "__power_5,__sin_4 -> __multiply_3; __tends_to_7 -> __num_6; "
+     "x -> fn:sin; x -> power; num,x -> tends_to; fn:sin,power -> multiply; "
+     "multiply,tends_to -> limit; limit,num -> equals",
+     "x -> __power_5; x -> __sin_4; __num_6,x -> __tends_to_7; "
+     "__power_5,__sin_4 -> __multiply_3; "
      "__multiply_3,__tends_to_7 -> __limit_2; __limit_2,__num_8 -> __equals_1",
      [{"op": "tends_to", "type": "operator",
        "with_respect_to": "x", "limit_point": "__num_6"}]),
@@ -66,15 +66,14 @@ LIMIT_EXPRESSIONS: list[CatalogEntry] = [
     ("lhopital",
      r"\lim_{x \to a} \frac{f(x)}{g(x)} = \lim_{x \to a} \frac{f'(x)}{g'(x)}",
      PASS,
-     "x -> fn:f; x -> fn:f'; x -> fn:g; x -> fn:g'; x -> tends_to; "
-     "x -> tends_to; tends_to,tends_to -> a; fn:g -> power; "
+     "x -> fn:f; x -> fn:f'; x -> fn:g; x -> fn:g'; "
+     "a,x -> tends_to; a,x -> tends_to; fn:g -> power; "
      "fn:g' -> power; fn:f,power -> multiply; fn:f',power -> multiply; "
      "multiply,tends_to -> limit; multiply,tends_to -> limit; "
      "limit,limit -> equals",
      "x -> __f'_10; x -> __f_4; x -> __g'_12; x -> __g_6; "
-     "x -> __tends_to_13; x -> __tends_to_7; "
+     "a,x -> __tends_to_13; a,x -> __tends_to_7; "
      "__g'_12 -> __power_11; __g_6 -> __power_5; "
-     "__tends_to_13,__tends_to_7 -> a; "
      "__f_4,__power_5 -> __multiply_3; __f'_10,__power_11 -> __multiply_9; "
      "__multiply_3,__tends_to_7 -> __limit_2; "
      "__multiply_9,__tends_to_13 -> __limit_8; "
@@ -84,9 +83,9 @@ LIMIT_EXPRESSIONS: list[CatalogEntry] = [
     ("limit_infinity",
      r"\lim_{x \to \infty} \frac{1}{x} = 0",
      PASS,
-     "x -> power; x -> tends_to; tends_to -> const:__const_4; "
+     "x -> power; const:__const_4,x -> tends_to; "
      "power,tends_to -> limit; limit,num -> equals",
-     "x -> __power_3; x -> __tends_to_5; __tends_to_5 -> __const_4; "
+     "x -> __power_3; __const_4,x -> __tends_to_5; "
      "__power_3,__tends_to_5 -> __limit_2; __limit_2,__num_6 -> __equals_1",
      [{"op": "tends_to", "type": "operator",
        "with_respect_to": "x", "limit_point": "__const_4",
@@ -97,9 +96,9 @@ DERIVATIVE_EXPRESSIONS: list[CatalogEntry] = [
     ("derivative_power",
      r"\frac{d}{dx} x^n = n x^{n-1}",
      PASS,
-     "n,num -> add; n,x -> power; power -> derivative; add,x -> power; "
+     "n,num -> add; n,x -> power; power,x -> derivative; add,x -> power; "
      "n,power -> multiply; derivative,multiply -> equals",
-     "__num_7,n -> __add_6; n,x -> __power_3; __power_3 -> __deriv_2; "
+     "__num_7,n -> __add_6; n,x -> __power_3; __power_3,x -> __deriv_2; "
      "__add_6,x -> __power_5; __power_5,n -> __multiply_4; "
      "__deriv_2,__multiply_4 -> __equals_1",
      [{"op": "derivative"}]),
@@ -107,9 +106,9 @@ DERIVATIVE_EXPRESSIONS: list[CatalogEntry] = [
     ("derivative_chain",
      r"\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}",
      PASS,
-     "u -> derivative; y -> derivative; y -> derivative; "
+     "u,x -> derivative; u,y -> derivative; x,y -> derivative; "
      "derivative,derivative -> multiply; derivative,multiply -> equals",
-     "y -> __deriv_2; y -> __deriv_4; u -> __deriv_5; "
+     "x,y -> __deriv_2; u,y -> __deriv_4; u,x -> __deriv_5; "
      "__deriv_4,__deriv_5 -> __multiply_3; "
      "__deriv_2,__multiply_3 -> __equals_1",
      [{"op": "derivative"}]),
@@ -169,10 +168,11 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("ftc",
      r"\frac{d}{dx} \int_a^x f(t) \, dt = f(x)",
      PASS,
-     "t -> fn:f; x -> fn:f; fn:f -> integral; "
-     "integral -> derivative; derivative,fn:f -> equals",
+     "t -> fn:f; x -> fn:f; fn:f -> integral; integral,x -> derivative; "
+     "derivative,fn:f -> equals",
      "t -> __f_4; x -> __f_5; __f_4 -> __integral_3; "
-     "__integral_3 -> __deriv_2; __deriv_2,__f_5 -> __equals_1",
+     "__integral_3,x -> __deriv_2; "
+     "__deriv_2,__f_5 -> __equals_1",
      [{"op": "integral", "with_respect_to": "t",
        "lower_bound": "a", "upper_bound": "x"},
       {"op": "derivative"}]),
@@ -280,10 +280,11 @@ class TestCalculusRegressions:
 
     def test_tends_to_has_asymmetric_edges(self, parse):
         r"""The tends_to node must have lhs/rhs edge roles:
-        x --lhs--> tends_to --rhs--> point."""
+        x --lhs--> tends_to <--rhs-- point.
+        Both edges flow inward (child → parent)."""
         g = parse(r"\lim_{x \to 0} x^2")
         tends_id = next(n.id for n in g.nodes if n.op == "tends_to")
         lhs_edges = [e for e in g.edges if e.to == tends_id and e.role == "lhs"]
-        rhs_edges = [e for e in g.edges if e.from_ == tends_id and e.role == "rhs"]
+        rhs_edges = [e for e in g.edges if e.to == tends_id and e.role == "rhs"]
         assert len(lhs_edges) == 1, f"Expected 1 lhs edge into tends_to, got {len(lhs_edges)}"
-        assert len(rhs_edges) == 1, f"Expected 1 rhs edge from tends_to, got {len(rhs_edges)}"
+        assert len(rhs_edges) == 1, f"Expected 1 rhs edge into tends_to, got {len(rhs_edges)}"

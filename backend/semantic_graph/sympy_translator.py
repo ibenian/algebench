@@ -1028,7 +1028,7 @@ class SemanticGraphBuilder:
             # specification that the limit operates on.
             tends_id = self._next_id("tends_to")
             self._add_edge(var_id, tends_id, role="lhs")
-            self._add_edge(tends_id, point_id, role="rhs")
+            self._add_edge(point_id, tends_id, role="rhs")
             tends_attrs: dict[str, str] = {
                 "type": "operator", "op": "tends_to",
                 "with_respect_to": var_id,
@@ -1054,6 +1054,7 @@ class SemanticGraphBuilder:
             for v, _ in expr.variable_count:
                 var_id = self._walk(v)
                 wrt_ids.append(var_id)
+                self._add_edge(var_id, node_id, role="wrt")
             self._add_node(node_id, type="operator", op=op_name,
                            with_respect_to=", ".join(wrt_ids))
             return node_id

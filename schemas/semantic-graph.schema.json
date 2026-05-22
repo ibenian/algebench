@@ -170,8 +170,8 @@
         },
         "role": {
           "type": "string",
-          "enum": ["lhs", "rhs"],
-          "description": "Operand position for asymmetric operators (comparisons). 'lhs' is the left operand, 'rhs' is the right operand. Omit for symmetric operators (add, multiply, equals)."
+          "enum": ["lhs", "rhs", "wrt"],
+          "description": "Operand position or relationship. 'lhs'/'rhs' for asymmetric operators (comparisons). 'wrt' for the differentiation/integration variable edge into derivative/integral nodes. Omit for symmetric operators (add, multiply, equals)."
         }
       }
     },

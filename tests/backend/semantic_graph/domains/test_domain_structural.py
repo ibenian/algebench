@@ -97,9 +97,11 @@ CHAINED_EQUALS_EXPRESSIONS: list[CatalogEntry] = [
     ("substitution",
      r"F = ma = m \frac{dv}{dt}",
      PASS,
-     "v -> derivative; a,m -> multiply; derivative,m -> multiply; "
-     "multiply,multiply -> equals; F,equals -> rel:equals",
-     "v -> __deriv_4; a,m -> __multiply_2; __deriv_4,m -> __multiply_3; "
+     "t,v -> derivative; a,m -> multiply; "
+     "derivative,m -> multiply; multiply,multiply -> equals; "
+     "F,equals -> rel:equals",
+     "t,v -> __deriv_4; a,m -> __multiply_2; "
+     "__deriv_4,m -> __multiply_3; "
      "__multiply_2,__multiply_3 -> __equals_1; "
      "F,__equals_1 -> __equals_5",
      [{"op": "derivative"}]),

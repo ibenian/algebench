@@ -57,29 +57,31 @@ FIRST_ORDER_EXPRESSIONS: list[CatalogEntry] = [
     ("first_order",
      r"\frac{dy}{dx} = ky",
      PASS,
-     "y -> derivative; k,y -> multiply; derivative,multiply -> equals",
-     "y -> __deriv_2; k,y -> __multiply_3; "
+     "x,y -> derivative; k,y -> multiply; "
+     "derivative,multiply -> equals",
+     "x,y -> __deriv_2; k,y -> __multiply_3; "
      "__deriv_2,__multiply_3 -> __equals_1",
      [{"op": "derivative"}]),
 
     ("separable",
      r"\frac{dy}{dx} = \frac{x}{y}",
      PASS,
-     "y -> derivative; y -> power; power,x -> multiply; "
+     "x,y -> derivative; y -> power; power,x -> multiply; "
      "derivative,multiply -> equals",
-     "y -> __deriv_2; y -> __power_4; __power_4,x -> __multiply_3; "
-     "__deriv_2,__multiply_3 -> __equals_1",
+     "x,y -> __deriv_2; y -> __power_4; "
+     "__power_4,x -> __multiply_3; __deriv_2,__multiply_3 -> __equals_1",
      [{"op": "derivative"}, {"op": "power", "exponent": "-1"}]),
 
     ("bernoulli",
      r"\frac{dy}{dx} + P(x) y = Q(x) y^n",
      PASS,
-     "y -> derivative; x -> fn:P; x -> fn:Q; n,y -> power; "
+     "x,y -> derivative; x -> fn:P; x -> fn:Q; n,y -> power; "
      "fn:P,y -> multiply; fn:Q,power -> multiply; "
      "derivative,multiply -> add; add,multiply -> equals",
-     "x -> __P_5; x -> __Q_7; y -> __deriv_3; n,y -> __power_8; "
-     "__P_5,y -> __multiply_4; __Q_7,__power_8 -> __multiply_6; "
-     "__deriv_3,__multiply_4 -> __add_2; __add_2,__multiply_6 -> __equals_1",
+     "x -> __P_5; x -> __Q_7; x,y -> __deriv_3; n,y -> __power_8; "
+     "__P_5,y -> __multiply_4; "
+     "__Q_7,__power_8 -> __multiply_6; __deriv_3,__multiply_4 -> __add_2; "
+     "__add_2,__multiply_6 -> __equals_1",
      [{"op": "derivative"}]),
 
     ("exact",
@@ -97,19 +99,20 @@ SECOND_ORDER_EXPRESSIONS: list[CatalogEntry] = [
     ("second_order",
      r"\frac{d^2 y}{dx^2} + \omega^2 y = 0",
      PASS,
-     "y -> derivative; omega -> power; power,y -> multiply; "
-     "derivative,multiply -> add; add,num -> equals",
-     "y -> __deriv_3; omega -> __power_5; __power_5,y -> __multiply_4; "
-     "__deriv_3,__multiply_4 -> __add_2; __add_2,__num_6 -> __equals_1",
+     "x,y -> derivative; omega -> power; "
+     "power,y -> multiply; derivative,multiply -> add; add,num -> equals",
+     "x,y -> __deriv_3; omega -> __power_5; "
+     "__power_5,y -> __multiply_4; __deriv_3,__multiply_4 -> __add_2; "
+     "__add_2,__num_6 -> __equals_1",
      [{"op": "derivative"}, {"op": "power", "exponent": "2"}]),
 
     ("damped_oscillator",
      r"m \ddot{x} + c \dot{x} + k x = 0",
      PASS,
-     "x -> derivative; x -> derivative; k,x -> multiply; "
+     "t,x -> derivative; t,x -> derivative; k,x -> multiply; "
      "c,derivative -> multiply; derivative,m -> multiply; "
      "multiply,multiply -> add; add,multiply -> add; add,num -> equals",
-     "x -> __deriv_5; x -> __deriv_7; k,x -> __multiply_8; "
+     "t,x -> __deriv_5; t,x -> __deriv_7; k,x -> __multiply_8; "
      "__deriv_5,m -> __multiply_4; __deriv_7,c -> __multiply_6; "
      "__multiply_4,__multiply_6 -> __add_3; "
      "__add_3,__multiply_8 -> __add_2; __add_2,__num_9 -> __equals_1",
@@ -120,12 +123,12 @@ SYSTEM_EXPRESSIONS: list[CatalogEntry] = [
     ("system",
      r"\dot{x} = ax + by, \quad \dot{y} = cx + dy",
      PASS,
-     "x -> derivative; y -> derivative; a,x -> multiply; "
-     "b,y -> multiply; c,x -> multiply; dy,multiply -> add; "
-     "multiply,multiply -> add; add,derivative -> equals; "
-     "add,derivative -> equals",
-     "x -> c0___deriv_2; a,x -> c0___multiply_4; b,y -> c0___multiply_5; "
-     "y -> c1___deriv_2; c,x -> c1___multiply_4; "
+     "t,x -> derivative; t,y -> derivative; a,x -> multiply; "
+     "b,y -> multiply; c,x -> multiply; "
+     "dy,multiply -> add; multiply,multiply -> add; "
+     "add,derivative -> equals; add,derivative -> equals",
+     "t,x -> c0___deriv_2; a,x -> c0___multiply_4; b,y -> c0___multiply_5; "
+     "t,y -> c1___deriv_2; c,x -> c1___multiply_4; "
      "c0___multiply_4,c0___multiply_5 -> c0___add_3; "
      "c1___multiply_4,dy -> c1___add_3; "
      "c0___add_3,c0___deriv_2 -> c0___equals_1; "

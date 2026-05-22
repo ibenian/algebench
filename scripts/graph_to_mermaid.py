@@ -88,7 +88,7 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "less_than": "<",
     "greater_equal": "≥",
     "less_equal": "≤",
-    "derivative": "d/dt",
+    "derivative": "d/d·",
     "integral": "∫",
     "sum": "Σ",
     "product": "∏",
@@ -118,7 +118,7 @@ OPERATOR_LATEX: dict[str, str] = {
     "less_than": "<",
     "greater_equal": r"\geq",
     "less_equal": r"\leq",
-    "derivative": r"\frac{d}{dt}",
+    "derivative": r"\frac{d}{d\cdot}",
     "integral": r"\int",
     "sum": r"\sum",
     "product": r"\prod",
@@ -290,6 +290,16 @@ def _format_label(
         exponent = node.get("exponent", "")
         if op == "power" and exponent:
             return f"${{(\\cdot)}}^{{{exponent}}}$"
+        # Derivative / integral: show the actual variable from with_respect_to
+        wrt = node.get("with_respect_to", "")
+        if op == "derivative" and wrt:
+            return f"$\\frac{{d}}{{d{wrt}}}$"
+        if op == "integral" and wrt:
+            lb = node.get("lower_bound", "")
+            ub = node.get("upper_bound", "")
+            if lb and ub:
+                return f"$\\int_{{{lb}}}^{{{ub}}} d{wrt}$"
+            return f"$\\int d{wrt}$"
         node_latex = node.get("latex")
         if node_latex:
             symbol = node_latex
@@ -704,6 +714,17 @@ def semantic_graph_to_mermaid(
 
         edge_role = edge.get("role", "")
         display_label = edge_label or edge_role
+
+        # Roles whose visual arrow points outward (reversed from the
+        # data-model direction).  Data edges always flow inward
+        # (child → parent); these roles swap src/dst at render time
+        # so the arrow reads naturally — e.g. "derivative →wrt→ x".
+        # ── Keep in sync with VISUAL_REVERSE_ROLES in
+        #    static/graph-panel/d3-semantic-graph.js ──
+        VISUAL_REVERSE_ROLES = {}
+        if edge_role in VISUAL_REVERSE_ROLES:
+            src, dst = dst, src
+
         if display_label:
             lines.append(f"  {src} {arrow}|{display_label}| {dst}")
         else:
