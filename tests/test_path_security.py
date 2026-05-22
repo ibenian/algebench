@@ -17,11 +17,11 @@ class TestLoadScene:
 
     def test_valid_scene_file_accepted(self):
         scenes = server.list_builtin_scenes()
-        if scenes:
-            path = server.scenes_dir / f"{scenes[0]}.json"
-            if path.exists():
-                spec = server._load_scene(str(path))
-                assert isinstance(spec, dict)
+        assert scenes, "Expected built-in scenes in scenes/"
+        path = server.scenes_dir / f"{scenes[0]}.json"
+        assert path.exists(), f"Scene file missing: {path}"
+        spec = server._load_scene(str(path))
+        assert isinstance(spec, dict)
 
     def test_traversal_rejected(self):
         import pytest
@@ -52,9 +52,9 @@ class TestLoadBuiltinScene:
 
     def test_simple_name_resolves(self):
         scenes = server.list_builtin_scenes()
-        if scenes:
-            result = server.load_builtin_scene(scenes[0])
-            assert result is not None
+        assert scenes, "Expected built-in scenes in scenes/"
+        result = server.load_builtin_scene(scenes[0])
+        assert result is not None
 
     def test_dotdot_traversal_rejected(self):
         assert server.load_builtin_scene("../server") is None
@@ -84,26 +84,26 @@ class TestResolveScenePathSafe:
 
     def test_absolute_path_inside_roots_allowed(self):
         scenes = server.list_builtin_scenes()
-        if scenes:
-            abs_path = str(server.scenes_dir / f"{scenes[0]}.json")
-            result = server.resolve_scene_path_safe(abs_path)
-            assert result is not None
+        assert scenes, "Expected built-in scenes in scenes/"
+        abs_path = str(server.scenes_dir / f"{scenes[0]}.json")
+        result = server.resolve_scene_path_safe(abs_path)
+        assert result is not None
 
     def test_dotdot_traversal_outside_roots_rejected(self):
         assert server.resolve_scene_path_safe("../../../etc/passwd") is None
 
     def test_dotdot_within_roots_contained(self):
         scenes = server.list_builtin_scenes()
-        if scenes:
-            result = server.resolve_scene_path_safe(f"scenes/../scenes/{scenes[0]}.json")
-            if result:
-                allowed = (server.scenes_dir.resolve(), server.script_dir.resolve())
-                assert any(result.is_relative_to(r) for r in allowed)
+        assert scenes, "Expected built-in scenes in scenes/"
+        result = server.resolve_scene_path_safe(f"scenes/../scenes/{scenes[0]}.json")
+        assert result is not None, "dotdot path within roots should resolve"
+        allowed = (server.scenes_dir.resolve(), server.script_dir.resolve())
+        assert any(result.is_relative_to(r) for r in allowed)
 
     def test_valid_scene_resolves(self):
         scenes = server.list_builtin_scenes()
-        if scenes:
-            path = server.resolve_scene_path_safe(f"scenes/{scenes[0]}.json")
-            assert path is not None
-            allowed = (server.scenes_dir.resolve(), server.script_dir.resolve())
-            assert any(path.is_relative_to(r) for r in allowed)
+        assert scenes, "Expected built-in scenes in scenes/"
+        path = server.resolve_scene_path_safe(f"scenes/{scenes[0]}.json")
+        assert path is not None
+        allowed = (server.scenes_dir.resolve(), server.script_dir.resolve())
+        assert any(path.is_relative_to(r) for r in allowed)
