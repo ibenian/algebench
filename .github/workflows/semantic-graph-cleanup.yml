@@ -15,7 +15,7 @@ jobs:
       - name: Check gh-pages branch exists
         id: check
         run: |
-          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+          if git ls-remote --exit-code --heads "https://github.com/${{ github.repository }}.git" gh-pages >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"

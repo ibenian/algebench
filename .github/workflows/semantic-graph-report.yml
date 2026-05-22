@@ -59,7 +59,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
           destination_dir: ${{ steps.dest.outputs.dir }}
-          keep_files: true
+          keep_files: ${{ github.event_name == 'pull_request' }}
 
       - name: Post preview URL
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
