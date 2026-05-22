@@ -179,7 +179,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-22 19:08 UTC &middot; theme: default-dark &middot; 12 expressions</div>
+<div class="report-meta">Generated 2026-05-22 19:17 UTC &middot; theme: default-dark &middot; 12 expressions</div>
 <div class="section-title">Algebra (12 expressions)</div>
 <div class="row">
   <div>
@@ -2250,7 +2250,7 @@
   __num_5["$0$"]:::number
   __sum_4(("$\sum$")):::operator
   __multiply_6(("$\times$")):::operator
-  __binomial_7{{"$binomial$"}}:::function
+  __choose_7{{"$\binom{\cdot}{\cdot}$"}}:::function
   __multiply_8(("$\times$")):::operator
   __power_9(("$(\cdot)^n$")):::operator
   __add_10(("$+$")):::operator
@@ -2262,9 +2262,9 @@
   __add_3 --&gt; __power_2
   n --&gt; __power_2
   __power_2 --&gt; __equals_1
-  n --&gt; __binomial_7
-  k --&gt; __binomial_7
-  __binomial_7 --&gt; __multiply_6
+  n --&gt; __choose_7
+  k --&gt; __choose_7
+  __choose_7 --&gt; __multiply_6
   x --&gt; __power_9
   n --&gt; __add_10
   k --&gt; __negation_11
@@ -2370,9 +2370,9 @@
       "subexpr": "{\\binom{n}{k}} x^{- k + n} y^{k}"
     },
     {
-      "id": "__binomial_7",
+      "id": "__choose_7",
       "type": "function",
-      "op": "binomial",
+      "op": "choose",
       "subexpr": "{\\binom{n}{k}}"
     },
     {
@@ -2429,14 +2429,14 @@
     },
     {
       "from": "n",
-      "to": "__binomial_7"
+      "to": "__choose_7"
     },
     {
       "from": "k",
-      "to": "__binomial_7"
+      "to": "__choose_7"
     },
     {
-      "from": "__binomial_7",
+      "from": "__choose_7",
       "to": "__multiply_6",
       "semantic": "direct",
       "weight": 1.0

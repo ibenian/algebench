@@ -179,7 +179,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-22 19:08 UTC &middot; theme: default-dark &middot; 12 expressions</div>
+<div class="report-meta">Generated 2026-05-22 19:17 UTC &middot; theme: default-dark &middot; 12 expressions</div>
 <div class="section-title">Structural (12 expressions)</div>
 <div class="row">
   <div>
@@ -941,7 +941,7 @@
     <div class="row-latex">$$a \leq b \leq c$$</div>
   </div>
   <div class="row-error">Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1480, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1486, in _latex_to_semantic_graph_dict
     expr = parse_latex(preprocessed)
   File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/__init__.py", line 199, in parse_latex
     return _latex.parse_latex(s, strict)
@@ -969,9 +969,9 @@ The above exception was the direct cause of the following exception:
 Traceback (most recent call last):
   File "/home/runner/work/algebench/algebench/scripts/semantic_graph_report.py", line 317, in _render_row
     graph_obj = latex_to_semantic_graph(latex)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1540, in latex_to_semantic_graph
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1546, in latex_to_semantic_graph
     raw = _latex_to_semantic_graph_dict(latex, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1482, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1488, in _latex_to_semantic_graph_dict
     raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
 ValueError: Failed to parse LaTeX: Can only compare inequalities with Expr
 </div>
@@ -1349,7 +1349,7 @@ antlr4.error.Errors.LexerNoViableAltException: LexerNoViableAltException('&amp;'
 During handling of the above exception, another exception occurred:
 
 Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1480, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1486, in _latex_to_semantic_graph_dict
     expr = parse_latex(preprocessed)
   File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/__init__.py", line 199, in parse_latex
     return _latex.parse_latex(s, strict)
@@ -1407,9 +1407,9 @@ f(x) = \begin{cases} x &amp; x \geq 0
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1313, in _build_comma_separated_graph
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1319, in _build_comma_separated_graph
     sub = _latex_to_semantic_graph_dict(clause, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1482, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1488, in _latex_to_semantic_graph_dict
     raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
 ValueError: Failed to parse LaTeX: I don't understand this
 f(x) = \begin{cases} x &amp; x \geq 0
@@ -1420,13 +1420,13 @@ The above exception was the direct cause of the following exception:
 Traceback (most recent call last):
   File "/home/runner/work/algebench/algebench/scripts/semantic_graph_report.py", line 317, in _render_row
     graph_obj = latex_to_semantic_graph(latex)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1540, in latex_to_semantic_graph
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1546, in latex_to_semantic_graph
     raw = _latex_to_semantic_graph_dict(latex, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1390, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1396, in _latex_to_semantic_graph_dict
     graph = _build_comma_separated_graph(
         strong_clauses, overrides=user_overrides, domain=domain,
     )
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1315, in _build_comma_separated_graph
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1321, in _build_comma_separated_graph
     raise ValueError(
     ...&lt;2 lines&gt;...
     ) from exc
