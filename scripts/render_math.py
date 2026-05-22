@@ -129,7 +129,59 @@ PAGE_TEMPLATE = """\
   onload="renderMathInElement(document.body, {{delimiters:[{{left:'$$',right:'$$',display:true}},{{left:'$',right:'$',display:false}}]}});"></script>
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
-  mermaid.initialize({{ startOnLoad: true, theme: '{mermaid_theme}' }});
+  mermaid.initialize({{ startOnLoad: false, theme: '{mermaid_theme}',
+    flowchart: {{ htmlLabels: true, curve: 'basis' }} }});
+  await mermaid.run();
+  // Post-render: replace $...$ inside Mermaid foreignObject labels with KaTeX
+  if (window.katex) {{
+    const INLINE_MATH = /\\$([^$\\n]+)\\$/g;
+    document.querySelectorAll(
+      'foreignObject span, foreignObject div, foreignObject p, .nodeLabel'
+    ).forEach((host) => {{
+      if (!host.textContent || host.textContent.indexOf('$') === -1) return;
+      const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT, null);
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+      textNodes.forEach((tn) => {{
+        const src = tn.nodeValue;
+        if (!src || src.indexOf('$') === -1) return;
+        INLINE_MATH.lastIndex = 0;
+        if (!INLINE_MATH.test(src)) return;
+        INLINE_MATH.lastIndex = 0;
+        const frag = document.createDocumentFragment();
+        let last = 0, m;
+        while ((m = INLINE_MATH.exec(src)) !== null) {{
+          if (m.index > last)
+            frag.appendChild(document.createTextNode(src.slice(last, m.index)));
+          const span = document.createElement('span');
+          try {{ katex.render(m[1], span, {{ throwOnError: false, displayMode: false }}); }}
+          catch (_) {{ span.textContent = m[0]; }}
+          frag.appendChild(span);
+          last = m.index + m[0].length;
+        }}
+        if (last < src.length)
+          frag.appendChild(document.createTextNode(src.slice(last)));
+        tn.parentNode.replaceChild(frag, tn);
+      }});
+    }});
+    // Center labels inside foreignObject after KaTeX changes text width
+    const svg = document.querySelector('.render-math-container svg');
+    if (svg) {{
+      const NS = 'http://www.w3.org/1999/xhtml';
+      svg.querySelectorAll('g.node foreignObject').forEach((fo) => {{
+        const outer = fo.firstElementChild;
+        if (!outer || outer.dataset?.gvCentered === 'wrapper') return;
+        const wrapper = document.createElementNS(NS, 'div');
+        wrapper.dataset.gvCentered = 'wrapper';
+        Object.assign(wrapper.style, {{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: '100%', height: '100%',
+        }});
+        fo.replaceChild(wrapper, outer);
+        wrapper.appendChild(outer);
+      }});
+    }}
+  }}
 </script>
 <style>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
