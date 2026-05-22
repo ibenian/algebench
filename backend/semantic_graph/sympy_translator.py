@@ -1163,7 +1163,12 @@ class SemanticGraphBuilder:
                     child_semantic = None
                     child_weight = None
                 child_id = self._walk(arg)
-                edge_role = ("lhs" if i == 0 else "rhs") if asymmetric else None
+                if asymmetric:
+                    edge_role = "lhs" if i == 0 else "rhs"
+                elif op_name == "power" and i == 1:
+                    edge_role = "exp"
+                else:
+                    edge_role = None
                 self._add_edge(
                     child_id, node_id,
                     semantic=child_semantic, weight=child_weight, role=edge_role,

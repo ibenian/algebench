@@ -101,7 +101,8 @@ DERIVATIVE_EXPRESSIONS: list[CatalogEntry] = [
      "__num_7,n -> __add_6; n,x -> __power_3; __power_3,x -> __deriv_2; "
      "__add_6,x -> __power_5; __power_5,n -> __multiply_4; "
      "__deriv_2,__multiply_4 -> __equals_1",
-     [{"op": "derivative"}]),
+     [{"op": "derivative"},
+      {"op": "power", "exponent": None, "_edge_roles": {"exp": 1}}]),
 
     ("derivative_chain",
      r"\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}",
@@ -152,7 +153,8 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
      "__power_3 -> __integral_2; __add_7,x -> __power_6; "
      "__add_10 -> __power_9; __power_6,__power_9 -> __multiply_5; "
      "C,__multiply_5 -> __add_4; __add_4,__integral_2 -> __equals_1",
-     [{"op": "integral", "with_respect_to": "x"}]),
+     [{"op": "integral", "with_respect_to": "x"},
+      {"op": "power", "exponent": None, "_edge_roles": {"exp": 1}}]),
 
     ("integral_definite",
      r"\int_a^b f(x) \, dx = F(b) - F(a)",
@@ -190,7 +192,8 @@ SERIES_EXPRESSIONS: list[CatalogEntry] = [
      "__multiply_6 -> __sum_3; "
      "__power_2,__sum_3 -> __equals_1",
      [{"op": "sum", "with_respect_to": "n"},
-      {"op": "factorial", "type": "function"}]),
+      {"op": "factorial", "type": "function"},
+      {"op": "power", "exponent": None, "_edge_roles": {"exp": 1}}]),
 
     ("series_geometric",
      r"\sum_{n=0}^{\infty} r^n = \frac{1}{1 - r}",
@@ -201,7 +204,8 @@ SERIES_EXPRESSIONS: list[CatalogEntry] = [
      "r -> __negation_9; n,r -> __power_5; __negation_9,__num_8 -> __add_7; "
      "__power_5 -> __sum_2; __add_7 -> __power_6; "
      "__power_6,__sum_2 -> __equals_1",
-     [{"op": "sum", "with_respect_to": "n"}]),
+     [{"op": "sum", "with_respect_to": "n"},
+      {"op": "power", "exponent": None, "_edge_roles": {"exp": 1}}]),
 ]
 
 ALL_EXPRESSIONS = (
