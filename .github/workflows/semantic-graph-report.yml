@@ -68,15 +68,9 @@ jobs:
           PREVIEW_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ steps.dest.outputs.dir }}/"
           echo "## 📊 Semantic Graph Report" >> "$GITHUB_STEP_SUMMARY"
           echo "Preview: ${PREVIEW_URL}" >> "$GITHUB_STEP_SUMMARY"
-          COMMENT_BODY="## 📊 Semantic Graph Report
+          EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '[.comments[] | select(.body | contains("Semantic Graph Report"))] | length')
+          if [ "$EXISTING" = "0" ]; then
+            gh pr comment ${{ github.event.pull_request.number }} --body "## 📊 Semantic Graph Report
 
-          **Preview:** ${PREVIEW_URL}
-
-          *Updated: $(date -u '+%Y-%m-%d %H:%M UTC')*"
-          EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '.comments[] | select(.body | contains("Semantic Graph Report")) | .url' | head -1)
-          if [ -n "$EXISTING" ]; then
-            COMMENT_ID=$(echo "$EXISTING" | grep -oE '[0-9]+$')
-            gh api repos/${{ github.repository }}/issues/comments/${COMMENT_ID} -X PATCH -f body="${COMMENT_BODY}"
-          else
-            gh pr comment ${{ github.event.pull_request.number }} --body "${COMMENT_BODY}"
+          **Preview:** ${PREVIEW_URL}"
           fi
