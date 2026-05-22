@@ -21,11 +21,15 @@ jobs:
     steps:
       - name: Skip if triggered by bot commit
         id: guard
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name != 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          SHA="${{ github.event.pull_request.head.sha }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            SHA="${{ github.sha }}"
+          fi
           LOGIN=$(gh api "repos/${{ github.repository }}/commits/${SHA}" --jq '.author.login // empty' 2>/dev/null || true)
           if [ "$LOGIN" = "github-actions[bot]" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
