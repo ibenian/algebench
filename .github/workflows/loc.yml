@@ -68,7 +68,6 @@ jobs:
           echo "Preview: ${PREVIEW_URL}" >> "$GITHUB_STEP_SUMMARY"
           EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '[.comments[] | select(.body | contains("LOC Report"))] | length')
           if [ "$EXISTING" = "0" ]; then
-            gh pr comment ${{ github.event.pull_request.number }} \
-              --body "## 📊 LOC Report
-**Preview:** ${PREVIEW_URL}"
+            BODY="$(printf '## 📊 LOC Report\n**Preview:** %s' "$PREVIEW_URL")"
+            gh pr comment ${{ github.event.pull_request.number }} --body "$BODY"
           fi
