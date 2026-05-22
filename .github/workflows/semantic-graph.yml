@@ -8,6 +8,7 @@ on:
       - 'scripts/graph_to_mermaid.py'
       - 'scripts/semantic_graph_report.py'
       - 'themes/semantic-graph/**'
+      - 'tests/backend/semantic_graph/domains/**'
   push:
     branches: [main]
     paths:
@@ -16,6 +17,7 @@ on:
       - 'scripts/graph_to_mermaid.py'
       - 'scripts/semantic_graph_report.py'
       - 'themes/semantic-graph/**'
+      - 'tests/backend/semantic_graph/domains/**'
   workflow_dispatch:
 
 permissions:

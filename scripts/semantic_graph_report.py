@@ -38,6 +38,18 @@ from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
 from tests.backend.semantic_graph.domains.test_domain_arithmetic import (
     ALL_EXPRESSIONS as ARITHMETIC_EXPRESSIONS,
 )
+from tests.backend.semantic_graph.domains.test_domain_algebra import (
+    ALL_EXPRESSIONS as ALGEBRA_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_calculus import (
+    ALL_EXPRESSIONS as CALCULUS_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_ode import (
+    ALL_EXPRESSIONS as ODE_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_structural import (
+    ALL_EXPRESSIONS as STRUCTURAL_EXPRESSIONS,
+)
 
 
 # ── Expression catalog ─────────────────────────────────────────────────
@@ -47,8 +59,15 @@ from tests.backend.semantic_graph.domains.test_domain_arithmetic import (
 
 def _collect_expressions() -> list[tuple[str, list[tuple[str, str]]]]:
     sections: list[tuple[str, list[tuple[str, str]]]] = []
-    arith = [(tid, latex) for tid, latex, *_ in ARITHMETIC_EXPRESSIONS]
-    sections.append(("Arithmetic", arith))
+    for name, catalog in (
+        ("Arithmetic", ARITHMETIC_EXPRESSIONS),
+        ("Algebra", ALGEBRA_EXPRESSIONS),
+        ("Calculus", CALCULUS_EXPRESSIONS),
+        ("ODE", ODE_EXPRESSIONS),
+        ("Structural", STRUCTURAL_EXPRESSIONS),
+    ):
+        items = [(tid, latex) for tid, latex, *_ in catalog]
+        sections.append((name, items))
     return sections
 
 
