@@ -12,12 +12,23 @@ jobs:
     name: Remove PR preview
     runs-on: ubuntu-latest
     steps:
+      - name: Check gh-pages branch exists
+        id: check
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout gh-pages
+        if: steps.check.outputs.exists == 'true'
         uses: actions/checkout@v4
         with:
           ref: gh-pages
 
       - name: Remove PR directory
+        if: steps.check.outputs.exists == 'true'
         run: |
           PR_DIR="semantic-graph/pr-${{ github.event.pull_request.number }}"
           if [ -d "$PR_DIR" ]; then

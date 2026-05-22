@@ -1,4 +1,4 @@
-name: Semantic Graph Report
+name: Semantic Graph Visual Report
 
 on:
   pull_request:
@@ -53,6 +53,7 @@ jobs:
           ./run.sh scripts/semantic_graph_report.py --outdir _site
 
       - name: Deploy to GitHub Pages
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -61,16 +62,16 @@ jobs:
           keep_files: true
 
       - name: Post preview URL
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PREVIEW_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ steps.dest.outputs.dir }}/"
-          echo "## 📊 Semantic Graph Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "## 📊 Semantic Graph Visual Report" >> "$GITHUB_STEP_SUMMARY"
           echo "Preview: ${PREVIEW_URL}" >> "$GITHUB_STEP_SUMMARY"
-          EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '[.comments[] | select(.body | contains("Semantic Graph Report"))] | length')
+          EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '[.comments[] | select(.body | contains("Semantic Graph Visual Report"))] | length')
           if [ "$EXISTING" = "0" ]; then
-            gh pr comment ${{ github.event.pull_request.number }} --body "## 📊 Semantic Graph Report
-
-          **Preview:** ${PREVIEW_URL}"
+            gh pr comment ${{ github.event.pull_request.number }} \
+              --body "## 📊 Semantic Graph Visual Report
+**Preview:** ${PREVIEW_URL}"
           fi

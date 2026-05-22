@@ -7,7 +7,7 @@ Renders every expression from the domain test catalogs as a row containing:
   - expandable JSON panel
 
 Supports two output modes:
-  - Single file:  -o report.html
+  - Single file:  -o report.html  (requires internet for KaTeX/Mermaid CDN)
   - Site directory: --outdir _site  (one HTML per domain + index page)
 
 The site mode is used by CI to deploy to GitHub Pages.
@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 import textwrap
 import traceback
 from pathlib import Path
@@ -286,7 +285,6 @@ def _render_row(
     test_id: str,
     latex: str,
     theme: dict[str, Any],
-    theme_colors: dict[str, str],
 ) -> tuple[str, bool]:
     """Render a single expression row. Returns (html, success)."""
     parts: list[str] = []
@@ -303,7 +301,7 @@ def _render_row(
         graph_json = json.dumps(graph_dict, indent=2, ensure_ascii=False)
 
         parts.append(f'  <div class="row-graph">')
-        parts.append(f'    <pre class="mermaid">{mermaid_src}</pre>')
+        parts.append(f'    <pre class="mermaid">{_escape_html(mermaid_src)}</pre>')
         parts.append(f'  </div>')
         parts.append(f'  <div class="row-actions">')
         parts.append(
@@ -360,7 +358,7 @@ def _build_report_html(
             f'({len(expressions)} expressions)</div>'
         )
         for test_id, latex in expressions:
-            row_html, success = _render_row(test_id, latex, theme, colors)
+            row_html, success = _render_row(test_id, latex, theme)
             body_parts.append(row_html)
             if success:
                 ok_count += 1
