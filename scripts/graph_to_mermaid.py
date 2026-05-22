@@ -102,9 +102,7 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "sqrt": "√",
     # SymPy class names: the parser used to normalize these via
     # FUNCTION_MAP (``Abs`` → ``abs``), but since FUNCTION_MAP was
-    # removed the parser emits the SymPy class name directly. Key the
-    # entry on what the parser actually produces — no aliases needed.
-    "Abs": "|·|",
+    "abs": "|·|",
     "choose": "(⋮)",
 }
 
@@ -132,9 +130,7 @@ OPERATOR_LATEX: dict[str, str] = {
     "log": r"\log",
     "exp": r"\exp",
     "sqrt": r"\sqrt{\cdot}",
-    # SymPy class name (see OPERATOR_SYMBOLS comment). Parser emits
-    # ``Abs``; nothing in the codebase produces a normalized ``abs``.
-    "Abs": r"|\cdot|",
+    "abs": r"|\cdot|",
     "choose": r"\binom{\cdot}{\cdot}",
 }
 

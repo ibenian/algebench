@@ -255,3 +255,18 @@ class TestAlgebraDomain:
 
 class TestAlgebraRegressions:
     """Regression tests for specific algebra parsing issues."""
+
+    def test_binomial_coefficient_uses_choose_op(self, parse):
+        r"""SymPy's ``binomial`` class must emit op="choose", not "binomial".
+        The op field uses mathematical names, not SymPy class names."""
+        g = parse(r"\binom{n}{k}")
+        choose_nodes = [n for n in g.nodes if n.op == "choose"]
+        assert len(choose_nodes) == 1, (
+            f"Expected exactly one choose node, got ops: "
+            f"{[n.op for n in g.nodes if n.op]}"
+        )
+        # Must NOT have the raw SymPy class name
+        for n in g.nodes:
+            assert n.op != "binomial", (
+                f"SymPy class name 'binomial' leaked as op on node {n.id!r}"
+            )

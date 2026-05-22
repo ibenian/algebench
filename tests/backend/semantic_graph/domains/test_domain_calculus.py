@@ -263,3 +263,27 @@ class TestCalculusDomain:
 
 class TestCalculusRegressions:
     """Regression tests for specific calculus parsing issues."""
+
+    def test_limit_has_tends_to_subnode(self, parse):
+        r"""Limits must emit a dedicated tends_to operator node for
+        ``x \to 0``, not flatten variable and point as edges into limit."""
+        g = parse(r"\lim_{x \to 0} x^2")
+        tends_nodes = [n for n in g.nodes if n.op == "tends_to"]
+        assert len(tends_nodes) == 1, (
+            f"Expected one tends_to node, got ops: "
+            f"{[n.op for n in g.nodes if n.op]}"
+        )
+        t = tends_nodes[0]
+        assert t.with_respect_to == "x", (
+            f"tends_to.with_respect_to should be 'x', got {t.with_respect_to!r}"
+        )
+
+    def test_tends_to_has_asymmetric_edges(self, parse):
+        r"""The tends_to node must have lhs/rhs edge roles:
+        x --lhs--> tends_to --rhs--> point."""
+        g = parse(r"\lim_{x \to 0} x^2")
+        tends_id = next(n.id for n in g.nodes if n.op == "tends_to")
+        lhs_edges = [e for e in g.edges if e.to == tends_id and e.role == "lhs"]
+        rhs_edges = [e for e in g.edges if e.from_ == tends_id and e.role == "rhs"]
+        assert len(lhs_edges) == 1, f"Expected 1 lhs edge into tends_to, got {len(lhs_edges)}"
+        assert len(rhs_edges) == 1, f"Expected 1 rhs edge from tends_to, got {len(rhs_edges)}"

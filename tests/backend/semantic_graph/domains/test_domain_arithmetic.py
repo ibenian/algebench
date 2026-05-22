@@ -35,7 +35,7 @@ from tests.backend.semantic_graph.generators.invariants import (
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
     "less_than", "greater_than", "less_equal", "greater_equal",
-    "sqrt", "Abs", "abs", "function",
+    "sqrt", "abs", "function",
 }
 
 
@@ -227,16 +227,16 @@ ABS_EXPRESSIONS: list[CatalogEntry] = [
     ("abs_basic",
      r"|x - 3| = 5",
      PASS,
-     "num,x -> add; add -> fn:Abs; fn:Abs,num -> equals",
-     "__num_4,x -> __add_3; __add_3 -> __Abs_2; __Abs_2,__num_5 -> __equals_1",
-     [{"op": "Abs", "type": "function"}]),
+     "num,x -> add; add -> fn:abs; fn:abs,num -> equals",
+     "__num_4,x -> __add_3; __add_3 -> __abs_2; __abs_2,__num_5 -> __equals_1",
+     [{"op": "abs", "type": "function"}]),
 
     ("abs_variable",
      r"|x| = y",
      PASS,
-     "x -> fn:Abs; fn:Abs,y -> equals",
-     "x -> __Abs_2; __Abs_2,y -> __equals_1",
-     [{"op": "Abs", "type": "function"}]),
+     "x -> fn:abs; fn:abs,y -> equals",
+     "x -> __abs_2; __abs_2,y -> __equals_1",
+     [{"op": "abs", "type": "function"}]),
 ]
 
 
@@ -300,3 +300,36 @@ class TestArithmeticRegressions:
         """Even pure numeric expressions should have a classification."""
         g = parse(r"2 + 3 = 5")
         assert g.classification.kind == "algebraic"
+
+    def test_tautological_equation_not_collapsed(self, parse):
+        """Tautological equations (e.g. -(-x) = x) must not collapse to a
+        single BooleanTrue expression node — they should produce a proper
+        equals graph."""
+        g = parse(r"-(-x) = x")
+        ops = [n.op for n in g.nodes if n.op]
+        assert "equals" in ops, "tautological equation must have an equals node"
+        # Must NOT have BooleanTrue anywhere
+        for n in g.nodes:
+            assert n.op != "BooleanTrue", (
+                f"BooleanTrue leaked into graph as op on node {n.id!r}"
+            )
+
+    def test_numeric_tautology_has_structure(self, parse):
+        """Pure numeric tautologies like 2+3=5 should produce proper
+        arithmetic structure, not a collapsed BooleanTrue."""
+        g = parse(r"2 + 3 = 5")
+        ops = [n.op for n in g.nodes if n.op]
+        assert "add" in ops, "2+3=5 must have an add node"
+        assert "equals" in ops, "2+3=5 must have an equals node"
+        assert len(g.edges) > 0, "numeric equation must have edges"
+
+    def test_no_expression_nodes_with_sympy_class_ops(self, parse):
+        """No node should have type='expression' with a raw SymPy class name
+        as its op — those are implementation leaks, not math operations."""
+        g = parse(r"-(-x) = x")
+        for n in g.nodes:
+            if n.type == "expression":
+                assert False, (
+                    f"expression node {n.id!r} with op={n.op!r} — "
+                    "SymPy class name leaked into graph"
+                )

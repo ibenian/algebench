@@ -998,6 +998,7 @@ class SemanticGraphBuilder:
         # Map SymPy class names to canonical operation names where they differ.
         _FUNC_OP_MAP: dict[str, str] = {
             "binomial": "choose",  # C(n,k) — "choose", not "binomial"
+            "Abs": "abs",          # normalize SymPy's uppercase class name
         }
 
         if isinstance(expr, sympy.Function):
