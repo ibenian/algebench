@@ -179,7 +179,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-22 04:17 UTC &middot; theme: default-dark &middot; 24 expressions</div>
+<div class="report-meta">Generated 2026-05-22 18:56 UTC &middot; theme: default-dark &middot; 24 expressions</div>
 <div class="section-title">Arithmetic (24 expressions)</div>
 <div class="row">
   <div>
@@ -1107,7 +1107,12 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __expr_1["$BooleanTrue$"]:::expression
+  x["$x$"]:::scalar
+  __equals_1(("$=$")):::operator
+  x --&gt; __equals_1
+  x --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1118,13 +1123,28 @@
   <div class="row-panel row-json">{
   "nodes": [
     {
-      "id": "__expr_1",
-      "type": "expression",
-      "op": "BooleanTrue",
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "-(-x)"
+    },
+    {
+      "id": "__equals_1",
+      "type": "operator",
+      "op": "equals",
       "subexpr": "-(-x) = x"
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "from": "x",
+      "to": "__equals_1"
+    },
+    {
+      "from": "x",
+      "to": "__equals_1"
+    }
+  ],
   "classification": {
     "kind": "algebraic"
   }
@@ -1844,7 +1864,19 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __expr_1["$BooleanTrue$"]:::expression
+  __add_1(("$+$")):::operator
+  __num_2["$2$"]:::number
+  __num_3["$3$"]:::number
+  __num_4["$5$"]:::number
+  __equals_5(("$=$")):::operator
+  __num_2 --&gt; __add_1
+  __num_3 --&gt; __add_1
+  __add_1 --&gt; __equals_5
+  __num_4 --&gt; __equals_5
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1855,13 +1887,54 @@
   <div class="row-panel row-json">{
   "nodes": [
     {
-      "id": "__expr_1",
-      "type": "expression",
-      "op": "BooleanTrue",
+      "id": "__add_1",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "2 + 3"
+    },
+    {
+      "id": "__num_2",
+      "type": "number",
+      "label": "2",
+      "subexpr": "2"
+    },
+    {
+      "id": "__num_3",
+      "type": "number",
+      "label": "3",
+      "subexpr": "3"
+    },
+    {
+      "id": "__num_4",
+      "type": "number",
+      "label": "5",
+      "subexpr": "5"
+    },
+    {
+      "id": "__equals_5",
+      "type": "operator",
+      "op": "equals",
       "subexpr": "2 + 3 = 5"
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "from": "__num_2",
+      "to": "__add_1"
+    },
+    {
+      "from": "__num_3",
+      "to": "__add_1"
+    },
+    {
+      "from": "__add_1",
+      "to": "__equals_5"
+    },
+    {
+      "from": "__num_4",
+      "to": "__equals_5"
+    }
+  ],
   "classification": {
     "kind": "algebraic"
   }
@@ -1885,7 +1958,19 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __expr_1["$BooleanTrue$"]:::expression
+  __add_1(("$+$")):::operator
+  __num_2["$7$"]:::number
+  __num_3["$-4$"]:::number
+  __num_4["$3$"]:::number
+  __equals_5(("$=$")):::operator
+  __num_2 --&gt; __add_1
+  __num_3 --&gt; __add_1
+  __add_1 --&gt; __equals_5
+  __num_4 --&gt; __equals_5
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1896,13 +1981,54 @@
   <div class="row-panel row-json">{
   "nodes": [
     {
-      "id": "__expr_1",
-      "type": "expression",
-      "op": "BooleanTrue",
+      "id": "__add_1",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "7 - 4"
+    },
+    {
+      "id": "__num_2",
+      "type": "number",
+      "label": "7",
+      "subexpr": "7"
+    },
+    {
+      "id": "__num_3",
+      "type": "number",
+      "label": "-4",
+      "subexpr": "-4"
+    },
+    {
+      "id": "__num_4",
+      "type": "number",
+      "label": "3",
+      "subexpr": "3"
+    },
+    {
+      "id": "__equals_5",
+      "type": "operator",
+      "op": "equals",
       "subexpr": "7 - 4 = 3"
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "from": "__num_2",
+      "to": "__add_1"
+    },
+    {
+      "from": "__num_3",
+      "to": "__add_1"
+    },
+    {
+      "from": "__add_1",
+      "to": "__equals_5"
+    },
+    {
+      "from": "__num_4",
+      "to": "__equals_5"
+    }
+  ],
   "classification": {
     "kind": "algebraic"
   }
@@ -1926,7 +2052,19 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __expr_1["$BooleanTrue$"]:::expression
+  __multiply_1(("$\times$")):::operator
+  __num_2["$3$"]:::number
+  __num_3["$4$"]:::number
+  __num_4["$12$"]:::number
+  __equals_5(("$=$")):::operator
+  __num_2 --&gt; __multiply_1
+  __num_3 --&gt; __multiply_1
+  __multiply_1 --&gt; __equals_5
+  __num_4 --&gt; __equals_5
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1937,13 +2075,58 @@
   <div class="row-panel row-json">{
   "nodes": [
     {
-      "id": "__expr_1",
-      "type": "expression",
-      "op": "BooleanTrue",
+      "id": "__multiply_1",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "3 \\times 4"
+    },
+    {
+      "id": "__num_2",
+      "type": "number",
+      "label": "3",
+      "subexpr": "3"
+    },
+    {
+      "id": "__num_3",
+      "type": "number",
+      "label": "4",
+      "subexpr": "4"
+    },
+    {
+      "id": "__num_4",
+      "type": "number",
+      "label": "12",
+      "subexpr": "12"
+    },
+    {
+      "id": "__equals_5",
+      "type": "operator",
+      "op": "equals",
       "subexpr": "3 \\times 4 = 12"
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "from": "__num_2",
+      "to": "__multiply_1",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__num_3",
+      "to": "__multiply_1",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_1",
+      "to": "__equals_5"
+    },
+    {
+      "from": "__num_4",
+      "to": "__equals_5"
+    }
+  ],
   "classification": {
     "kind": "algebraic"
   }
@@ -1967,7 +2150,22 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __expr_1["$BooleanTrue$"]:::expression
+  __multiply_1(("$\times$")):::operator
+  __num_2["$10$"]:::number
+  __power_3(("${(\cdot)}^{-1}$")):::operator
+  __num_4["$2$"]:::number
+  __num_5["$5$"]:::number
+  __equals_6(("$=$")):::operator
+  __num_2 --&gt; __multiply_1
+  __num_4 --&gt; __power_3
+  __power_3 -.-&gt; __multiply_1
+  __multiply_1 --&gt; __equals_6
+  __num_5 --&gt; __equals_6
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#42a5f5,stroke-width:1px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1978,13 +2176,67 @@
   <div class="row-panel row-json">{
   "nodes": [
     {
-      "id": "__expr_1",
-      "type": "expression",
-      "op": "BooleanTrue",
+      "id": "__multiply_1",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\frac{10}{2}"
+    },
+    {
+      "id": "__num_2",
+      "type": "number",
+      "label": "10",
+      "subexpr": "10"
+    },
+    {
+      "id": "__power_3",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{2}"
+    },
+    {
+      "id": "__num_4",
+      "type": "number",
+      "label": "2",
+      "subexpr": "2"
+    },
+    {
+      "id": "__num_5",
+      "type": "number",
+      "label": "5",
+      "subexpr": "5"
+    },
+    {
+      "id": "__equals_6",
+      "type": "operator",
+      "op": "equals",
       "subexpr": "\\frac{10}{2} = 5"
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "from": "__num_2",
+      "to": "__multiply_1",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__num_4",
+      "to": "__power_3"
+    },
+    {
+      "from": "__power_3",
+      "to": "__multiply_1"
+    },
+    {
+      "from": "__multiply_1",
+      "to": "__equals_6"
+    },
+    {
+      "from": "__num_5",
+      "to": "__equals_6"
+    }
+  ],
   "classification": {
     "kind": "algebraic"
   }
@@ -2008,7 +2260,25 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __expr_1["$BooleanTrue$"]:::expression
+  __add_1(("$+$")):::operator
+  __num_2["$2$"]:::number
+  __multiply_3(("$\times$")):::operator
+  __num_4["$3$"]:::number
+  __num_5["$4$"]:::number
+  __num_6["$14$"]:::number
+  __equals_7(("$=$")):::operator
+  __num_2 --&gt; __add_1
+  __num_4 --&gt; __multiply_3
+  __num_5 --&gt; __multiply_3
+  __multiply_3 --&gt; __add_1
+  __add_1 --&gt; __equals_7
+  __num_6 --&gt; __equals_7
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2019,13 +2289,78 @@
   <div class="row-panel row-json">{
   "nodes": [
     {
-      "id": "__expr_1",
-      "type": "expression",
-      "op": "BooleanTrue",
+      "id": "__add_1",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "2 + 3 \\times 4"
+    },
+    {
+      "id": "__num_2",
+      "type": "number",
+      "label": "2",
+      "subexpr": "2"
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "3 4"
+    },
+    {
+      "id": "__num_4",
+      "type": "number",
+      "label": "3",
+      "subexpr": "3"
+    },
+    {
+      "id": "__num_5",
+      "type": "number",
+      "label": "4",
+      "subexpr": "4"
+    },
+    {
+      "id": "__num_6",
+      "type": "number",
+      "label": "14",
+      "subexpr": "14"
+    },
+    {
+      "id": "__equals_7",
+      "type": "operator",
+      "op": "equals",
       "subexpr": "2 + 3 \\times 4 = 14"
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "from": "__num_2",
+      "to": "__add_1"
+    },
+    {
+      "from": "__num_4",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__num_5",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__add_1"
+    },
+    {
+      "from": "__add_1",
+      "to": "__equals_7"
+    },
+    {
+      "from": "__num_6",
+      "to": "__equals_7"
+    }
+  ],
   "classification": {
     "kind": "algebraic"
   }
@@ -2049,7 +2384,16 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __expr_1["$BooleanTrue$"]:::expression
+  __power_1(("${(\cdot)}^{3}$")):::operator
+  __num_2["$2$"]:::number
+  __num_3["$8$"]:::number
+  __equals_4(("$=$")):::operator
+  __num_2 --&gt; __power_1
+  __power_1 --&gt; __equals_4
+  __num_3 --&gt; __equals_4
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:8px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2060,13 +2404,45 @@
   <div class="row-panel row-json">{
   "nodes": [
     {
-      "id": "__expr_1",
-      "type": "expression",
-      "op": "BooleanTrue",
+      "id": "__power_1",
+      "type": "operator",
+      "op": "power",
+      "exponent": "3",
+      "subexpr": "2^3"
+    },
+    {
+      "id": "__num_2",
+      "type": "number",
+      "label": "2",
+      "subexpr": "2"
+    },
+    {
+      "id": "__num_3",
+      "type": "number",
+      "label": "8",
+      "subexpr": "8"
+    },
+    {
+      "id": "__equals_4",
+      "type": "operator",
+      "op": "equals",
       "subexpr": "2^3 = 8"
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "from": "__num_2",
+      "to": "__power_1"
+    },
+    {
+      "from": "__power_1",
+      "to": "__equals_4"
+    },
+    {
+      "from": "__num_3",
+      "to": "__equals_4"
+    }
+  ],
   "classification": {
     "kind": "algebraic"
   }
@@ -2090,7 +2466,40 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __expr_1["$BooleanTrue$"]:::expression
+  __add_1(("$+$")):::operator
+  __power_2(("${(\cdot)}^{-1}$")):::operator
+  __num_3["$2$"]:::number
+  __multiply_4(("$\times$")):::operator
+  __num_5["$3$"]:::number
+  __power_6(("${(\cdot)}^{-1}$")):::operator
+  __num_7["$4$"]:::number
+  __multiply_8(("$\times$")):::operator
+  __num_9["$5$"]:::number
+  __power_10(("${(\cdot)}^{-1}$")):::operator
+  __num_11["$4$"]:::number
+  __equals_12(("$=$")):::operator
+  __num_3 --&gt; __power_2
+  __power_2 -.-&gt; __add_1
+  __num_5 --&gt; __multiply_4
+  __num_7 --&gt; __power_6
+  __power_6 -.-&gt; __multiply_4
+  __multiply_4 --&gt; __add_1
+  __num_9 --&gt; __multiply_8
+  __num_11 --&gt; __power_10
+  __power_10 -.-&gt; __multiply_8
+  __add_1 --&gt; __equals_12
+  __multiply_8 --&gt; __equals_12
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#42a5f5,stroke-width:1px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#42a5f5,stroke-width:1px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#42a5f5,stroke-width:1px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2101,13 +2510,131 @@
   <div class="row-panel row-json">{
   "nodes": [
     {
-      "id": "__expr_1",
-      "type": "expression",
-      "op": "BooleanTrue",
+      "id": "__add_1",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "\\frac{1}{2} + \\frac{3}{4}"
+    },
+    {
+      "id": "__power_2",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{2}"
+    },
+    {
+      "id": "__num_3",
+      "type": "number",
+      "label": "2",
+      "subexpr": "2"
+    },
+    {
+      "id": "__multiply_4",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "3 \\frac{1}{4}"
+    },
+    {
+      "id": "__num_5",
+      "type": "number",
+      "label": "3",
+      "subexpr": "3"
+    },
+    {
+      "id": "__power_6",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{4}"
+    },
+    {
+      "id": "__num_7",
+      "type": "number",
+      "label": "4",
+      "subexpr": "4"
+    },
+    {
+      "id": "__multiply_8",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\frac{5}{4}"
+    },
+    {
+      "id": "__num_9",
+      "type": "number",
+      "label": "5",
+      "subexpr": "5"
+    },
+    {
+      "id": "__power_10",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{4}"
+    },
+    {
+      "id": "__num_11",
+      "type": "number",
+      "label": "4",
+      "subexpr": "4"
+    },
+    {
+      "id": "__equals_12",
+      "type": "operator",
+      "op": "equals",
       "subexpr": "\\frac{1}{2} + \\frac{3}{4} = \\frac{5}{4}"
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "from": "__num_3",
+      "to": "__power_2"
+    },
+    {
+      "from": "__power_2",
+      "to": "__add_1"
+    },
+    {
+      "from": "__num_5",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__num_7",
+      "to": "__power_6"
+    },
+    {
+      "from": "__power_6",
+      "to": "__multiply_4"
+    },
+    {
+      "from": "__multiply_4",
+      "to": "__add_1"
+    },
+    {
+      "from": "__num_9",
+      "to": "__multiply_8",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__num_11",
+      "to": "__power_10"
+    },
+    {
+      "from": "__power_10",
+      "to": "__multiply_8"
+    },
+    {
+      "from": "__add_1",
+      "to": "__equals_12"
+    },
+    {
+      "from": "__multiply_8",
+      "to": "__equals_12"
+    }
+  ],
   "classification": {
     "kind": "algebraic"
   }

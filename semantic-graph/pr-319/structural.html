@@ -179,7 +179,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-22 04:17 UTC &middot; theme: default-dark &middot; 12 expressions</div>
+<div class="report-meta">Generated 2026-05-22 18:56 UTC &middot; theme: default-dark &middot; 12 expressions</div>
 <div class="section-title">Structural (12 expressions)</div>
 <div class="row">
   <div>
@@ -798,7 +798,6 @@
   __multiply_2 --&gt; __equals_1
   m --&gt; __multiply_3
   v --&gt; __deriv_4
-  t --&gt; __deriv_4
   __deriv_4 --&gt; __multiply_3
   __multiply_3 --&gt; __equals_1
   F --&gt; __equals_5
@@ -808,11 +807,10 @@
   linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#ef5350,stroke-width:3px
   linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -914,10 +912,6 @@
       "to": "__deriv_4"
     },
     {
-      "from": "t",
-      "to": "__deriv_4"
-    },
-    {
       "from": "__deriv_4",
       "to": "__multiply_3",
       "semantic": "direct",
@@ -947,7 +941,7 @@
     <div class="row-latex">$$a \leq b \leq c$$</div>
   </div>
   <div class="row-error">Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1431, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1471, in _latex_to_semantic_graph_dict
     expr = parse_latex(preprocessed)
   File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/__init__.py", line 199, in parse_latex
     return _latex.parse_latex(s, strict)
@@ -975,9 +969,9 @@ The above exception was the direct cause of the following exception:
 Traceback (most recent call last):
   File "/home/runner/work/algebench/algebench/scripts/semantic_graph_report.py", line 317, in _render_row
     graph_obj = latex_to_semantic_graph(latex)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1451, in latex_to_semantic_graph
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1531, in latex_to_semantic_graph
     raw = _latex_to_semantic_graph_dict(latex, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1433, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1473, in _latex_to_semantic_graph_dict
     raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
 ValueError: Failed to parse LaTeX: Can only compare inequalities with Expr
 </div>
@@ -1355,7 +1349,7 @@ antlr4.error.Errors.LexerNoViableAltException: LexerNoViableAltException('&amp;'
 During handling of the above exception, another exception occurred:
 
 Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1431, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1471, in _latex_to_semantic_graph_dict
     expr = parse_latex(preprocessed)
   File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/__init__.py", line 199, in parse_latex
     return _latex.parse_latex(s, strict)
@@ -1413,9 +1407,9 @@ f(x) = \begin{cases} x &amp; x \geq 0
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1264, in _build_comma_separated_graph
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1304, in _build_comma_separated_graph
     sub = _latex_to_semantic_graph_dict(clause, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1433, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1473, in _latex_to_semantic_graph_dict
     raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
 ValueError: Failed to parse LaTeX: I don't understand this
 f(x) = \begin{cases} x &amp; x \geq 0
@@ -1426,13 +1420,13 @@ The above exception was the direct cause of the following exception:
 Traceback (most recent call last):
   File "/home/runner/work/algebench/algebench/scripts/semantic_graph_report.py", line 317, in _render_row
     graph_obj = latex_to_semantic_graph(latex)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1451, in latex_to_semantic_graph
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1531, in latex_to_semantic_graph
     raw = _latex_to_semantic_graph_dict(latex, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1341, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1381, in _latex_to_semantic_graph_dict
     graph = _build_comma_separated_graph(
         strong_clauses, overrides=user_overrides, domain=domain,
     )
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1266, in _build_comma_separated_graph
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1306, in _build_comma_separated_graph
     raise ValueError(
     ...&lt;2 lines&gt;...
     ) from exc
