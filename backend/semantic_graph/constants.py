@@ -127,6 +127,10 @@ RELATION_MAP: list[tuple[str, dict[str, str]]] = [
     (r"\neq", {"op": "not_equal", "label": "not equal to", "emoji": "≠"}),
     (r"\notin", {"op": "not_element_of", "label": "not element of", "emoji": "∉"}),
     (r"\in", {"op": "element_of", "label": "element of", "emoji": "∈"}),
+    (r"\geq", {"op": "greater_equal", "label": "greater than or equal to", "emoji": "≥"}),
+    (r"\leq", {"op": "less_equal", "label": "less than or equal to", "emoji": "≤"}),
+    (r"\ge", {"op": "greater_equal", "label": "greater than or equal to", "emoji": "≥"}),
+    (r"\le", {"op": "less_equal", "label": "less than or equal to", "emoji": "≤"}),
     (r"\gt", {"op": "greater_than", "label": "greater than", "emoji": ">"}),
     (r"\lt", {"op": "less_than", "label": "less than", "emoji": "<"}),
 ]

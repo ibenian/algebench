@@ -108,11 +108,26 @@ CHAINED_EQUALS_EXPRESSIONS: list[CatalogEntry] = [
      [{"op": "derivative"}]),
 ]
 
-MIXED_RELATION_EXPRESSIONS: list[CatalogEntry] = [
-    ("mixed_relations",
+INEQUALITY_EXPRESSIONS: list[CatalogEntry] = [
+    ("chained_leq",
      r"a \leq b \leq c",
-     XFAIL,
-     "", "",
+     PASS,
+     "b,c -> rel:less_equal; a,rel:less_equal -> rel:less_equal",
+     "b,c -> __less_equal_1; __less_equal_1,a -> __less_equal_2",
+     None),
+
+    ("single_geq",
+     r"x \geq 0",
+     PASS,
+     "num,x -> rel:greater_equal",
+     "__num_1,x -> __greater_equal_2",
+     None),
+
+    ("chained_geq",
+     r"a \geq b \geq c",
+     PASS,
+     "b,c -> rel:greater_equal; a,rel:greater_equal -> rel:greater_equal",
+     "b,c -> __greater_equal_1; __greater_equal_1,a -> __greater_equal_2",
      None),
 
     ("implication_chain",
@@ -173,7 +188,7 @@ SUBJECT_GROUP_EXPRESSIONS: list[CatalogEntry] = [
 ALL_EXPRESSIONS = (
     STATEMENT_SEPARATOR_EXPRESSIONS
     + CHAINED_EQUALS_EXPRESSIONS
-    + MIXED_RELATION_EXPRESSIONS
+    + INEQUALITY_EXPRESSIONS
     + SYSTEM_EXPRESSIONS
     + PIECEWISE_EXPRESSIONS
     + ANNOTATION_EXPRESSIONS
