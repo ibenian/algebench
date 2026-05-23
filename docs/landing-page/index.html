@@ -20,7 +20,10 @@
   .banner-wrap {
     position: relative; width: 100%; overflow: hidden;
   }
-  .banner-wrap img { width: 100%; display: block; }
+  .banner-wrap img {
+    width: 100%; display: block;
+    max-height: 480px; object-fit: cover; object-position: center 40%;
+  }
   .banner-wrap::after {
     content: '';
     position: absolute; bottom: 0; left: 0; right: 0; height: 120px;
