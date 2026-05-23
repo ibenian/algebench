@@ -105,6 +105,9 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "abs": "|·|",
     "factorial": "(·)!",
     "choose": "(⋮)",
+    "implies": "⟹",
+    "iff": "⟺",
+    "and": ",",
 }
 
 OPERATOR_LATEX: dict[str, str] = {
@@ -134,6 +137,9 @@ OPERATOR_LATEX: dict[str, str] = {
     "abs": r"|\cdot|",
     "factorial": r"(\cdot)!",
     "choose": r"\binom{\cdot}{\cdot}",
+    "implies": r"\Rightarrow",
+    "iff": r"\Leftrightarrow",
+    "and": ",",
 }
 
 # Op-specific shape defaults. The graph schema is semantic-only
@@ -174,6 +180,12 @@ _LOGICAL_CONNECTIVE_OPS = frozenset({"implies", "iff"})
 # which KaTeX parses as ``➡`` text + a phantom ``\R`` accent and renders
 # as a garbled ``→ⓡ`` artifact — see issue #170).
 RELATION_SYMBOLS: dict[str, str] = {
+    "equals": "=",
+    "not_equal": "≠",
+    "greater_than": ">",
+    "less_than": "<",
+    "greater_equal": "≥",
+    "less_equal": "≤",
     "implies": "⟹",
     "iff": "⟺",
     "proportional": "∝",

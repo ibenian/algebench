@@ -58,7 +58,7 @@ FIRST_ORDER_EXPRESSIONS: list[CatalogEntry] = [
      r"\frac{dy}{dx} = ky",
      PASS,
      "x,y -> derivative; k,y -> multiply; "
-     "derivative,multiply -> equals",
+     "derivative,multiply -> rel:equals",
      "x,y -> __deriv_2; k,y -> __multiply_3; "
      "__deriv_2,__multiply_3 -> __equals_1",
      [{"op": "derivative"}]),
@@ -67,7 +67,7 @@ FIRST_ORDER_EXPRESSIONS: list[CatalogEntry] = [
      r"\frac{dy}{dx} = \frac{x}{y}",
      PASS,
      "x,y -> derivative; y -> power; power,x -> multiply; "
-     "derivative,multiply -> equals",
+     "derivative,multiply -> rel:equals",
      "x,y -> __deriv_2; y -> __power_4; "
      "__power_4,x -> __multiply_3; __deriv_2,__multiply_3 -> __equals_1",
      [{"op": "derivative"}, {"op": "power", "exponent": "-1"}]),
@@ -77,7 +77,7 @@ FIRST_ORDER_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "x,y -> derivative; x -> fn:P; x -> fn:Q; n,y -> power; "
      "fn:P,y -> multiply; fn:Q,power -> multiply; "
-     "derivative,multiply -> add; add,multiply -> equals",
+     "derivative,multiply -> add; add,multiply -> rel:equals",
      "x -> __P_5; x -> __Q_7; x,y -> __deriv_3; n,y -> __power_8; "
      "__P_5,y -> __multiply_4; "
      "__Q_7,__power_8 -> __multiply_6; __deriv_3,__multiply_4 -> __add_2; "
@@ -88,7 +88,7 @@ FIRST_ORDER_EXPRESSIONS: list[CatalogEntry] = [
      r"M(x,y) dx + N(x,y) dy = 0",
      PASS,
      "x,y -> fn:M; x,y -> fn:N; dx,fn:M -> multiply; dy,fn:N -> multiply; "
-     "multiply,multiply -> add; add,num -> equals",
+     "multiply,multiply -> add; add,num -> rel:equals",
      "x,y -> __M_4; x,y -> __N_6; __M_4,dx -> __multiply_3; "
      "__N_6,dy -> __multiply_5; __multiply_3,__multiply_5 -> __add_2; "
      "__add_2,__num_7 -> __equals_1",
@@ -100,7 +100,7 @@ SECOND_ORDER_EXPRESSIONS: list[CatalogEntry] = [
      r"\frac{d^2 y}{dx^2} + \omega^2 y = 0",
      PASS,
      "x,y -> derivative; omega -> power; "
-     "power,y -> multiply; derivative,multiply -> add; add,num -> equals",
+     "power,y -> multiply; derivative,multiply -> add; add,num -> rel:equals",
      "x,y -> __deriv_3; omega -> __power_5; "
      "__power_5,y -> __multiply_4; __deriv_3,__multiply_4 -> __add_2; "
      "__add_2,__num_6 -> __equals_1",
@@ -111,7 +111,7 @@ SECOND_ORDER_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "t,x -> derivative; t,x -> derivative; k,x -> multiply; "
      "c,derivative -> multiply; derivative,m -> multiply; "
-     "multiply,multiply -> add; add,multiply -> add; add,num -> equals",
+     "multiply,multiply -> add; add,multiply -> add; add,num -> rel:equals",
      "t,x -> __deriv_5; t,x -> __deriv_7; k,x -> __multiply_8; "
      "__deriv_5,m -> __multiply_4; __deriv_7,c -> __multiply_6; "
      "__multiply_4,__multiply_6 -> __add_3; "
@@ -126,7 +126,7 @@ SYSTEM_EXPRESSIONS: list[CatalogEntry] = [
      "t,x -> derivative; t,y -> derivative; a,x -> multiply; "
      "b,y -> multiply; c,x -> multiply; "
      "dy,multiply -> add; multiply,multiply -> add; "
-     "add,derivative -> equals; add,derivative -> equals",
+     "add,derivative -> rel:equals; add,derivative -> rel:equals",
      "t,x -> c0___deriv_2; a,x -> c0___multiply_4; b,y -> c0___multiply_5; "
      "t,y -> c1___deriv_2; c,x -> c1___multiply_4; "
      "c0___multiply_4,c0___multiply_5 -> c0___add_3; "
@@ -139,7 +139,7 @@ SYSTEM_EXPRESSIONS: list[CatalogEntry] = [
      r"y'' + y = 0, \quad y(0) = 1, \quad y'(0) = 0",
      PASS,
      "y,y'' -> add; num -> fn:y; num -> fn:y'; "
-     "add,num -> equals; fn:y,num -> equals; fn:y',num -> equals",
+     "add,num -> rel:equals; fn:y,num -> rel:equals; fn:y',num -> rel:equals",
      "y,y'' -> c0___add_2; c1___num_3 -> c1___y_2; "
      "c2___num_3 -> c2___y'_2; c0___add_2,c0___num_3 -> c0___equals_1; "
      "c1___num_4,c1___y_2 -> c1___equals_1; "
@@ -153,7 +153,7 @@ TRANSFORM_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "s -> fn:Y; t -> fn:f; num -> fn:y; L,fn:f -> multiply; "
      "fn:Y,s -> multiply; fn:y -> negation; multiply,negation -> add; "
-     "add,multiply -> equals",
+     "add,multiply -> rel:equals",
      "s -> __Y_4; t -> __f_9; __num_7 -> __y_6; __Y_4,s -> __multiply_3; "
      "L,__f_9 -> __multiply_8; __y_6 -> __negation_5; "
      "__multiply_3,__negation_5 -> __add_2; "
@@ -164,7 +164,7 @@ TRANSFORM_EXPRESSIONS: list[CatalogEntry] = [
      r"y_p = u_1 y_1 + u_2 y_2",
      PASS,
      "u_{1},y_{1} -> multiply; u_{2},y_{2} -> multiply; "
-     "multiply,multiply -> add; add,y_{p} -> equals",
+     "multiply,multiply -> add; add,y_{p} -> rel:equals",
      "u_{1},y_{1} -> __multiply_3; u_{2},y_{2} -> __multiply_4; "
      "__multiply_3,__multiply_4 -> __add_2; __add_2,y_{p} -> __equals_1",
      None),

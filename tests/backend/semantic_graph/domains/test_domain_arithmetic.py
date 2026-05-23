@@ -9,7 +9,7 @@ Suite-specific invariant (from design doc §8.3):
   All operator nodes have ``op`` in ALLOWED_OPS.
 
 Connectivity is verified via ``graph_signature()`` — a canonical string
-encoding of the graph's edge structure (e.g. ``"x,y -> add; add,z -> equals"``).
+encoding of the graph's edge structure (e.g. ``"x,y -> add; add,z -> rel:equals"``).
 """
 
 from __future__ import annotations
@@ -61,42 +61,42 @@ VARIABLE_EXPRESSIONS: list[CatalogEntry] = [
     ("var_addition",
      r"x + y = z",
      PASS,
-     "x,y -> add; add,z -> equals",
+     "x,y -> add; add,z -> rel:equals",
      "x,y -> __add_2; __add_2,z -> __equals_1",
      None),
 
     ("var_subtraction",
      r"a - b = c",
      PASS,
-     "b -> negation; a,negation -> add; add,c -> equals",
+     "b -> negation; a,negation -> add; add,c -> rel:equals",
      "b -> __negation_3; __negation_3,a -> __add_2; __add_2,c -> __equals_1",
      None),
 
     ("var_multiplication",
      r"a \cdot b = c",
      PASS,
-     "a,b -> multiply; c,multiply -> equals",
+     "a,b -> multiply; c,multiply -> rel:equals",
      "a,b -> __multiply_2; __multiply_2,c -> __equals_1",
      None),
 
     ("var_times",
      r"a \times b = c",
      PASS,
-     "a,b -> multiply; c,multiply -> equals",
+     "a,b -> multiply; c,multiply -> rel:equals",
      "a,b -> __multiply_2; __multiply_2,c -> __equals_1",
      None),
 
     ("var_fraction",
      r"\frac{a}{b} = c",
      PASS,
-     "b -> power; a,power -> multiply; c,multiply -> equals",
+     "b -> power; a,power -> multiply; c,multiply -> rel:equals",
      "b -> __power_3; __power_3,a -> __multiply_2; __multiply_2,c -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
 
     ("var_power",
      r"x^2 + y^2 = z^2",
      PASS,
-     "x -> power; y -> power; z -> power; power,power -> add; add,power -> equals",
+     "x -> power; y -> power; z -> power; power,power -> add; add,power -> rel:equals",
      "x -> __power_3; y -> __power_4; z -> __power_5; "
      "__power_3,__power_4 -> __add_2; __add_2,__power_5 -> __equals_1",
      [{"op": "power", "exponent": "2"}]),
@@ -105,7 +105,7 @@ VARIABLE_EXPRESSIONS: list[CatalogEntry] = [
      r"((a + b) \cdot c) = ac + bc",
      PASS,
      "a,b -> add; a,c -> multiply; b,c -> multiply; "
-     "multiply,multiply -> add; add,c -> multiply; add,multiply -> equals",
+     "multiply,multiply -> add; add,c -> multiply; add,multiply -> rel:equals",
      "a,b -> __add_3; a,c -> __multiply_5; b,c -> __multiply_6; "
      "__multiply_5,__multiply_6 -> __add_4; __add_3,c -> __multiply_2; "
      "__add_4,__multiply_2 -> __equals_1",
@@ -114,49 +114,49 @@ VARIABLE_EXPRESSIONS: list[CatalogEntry] = [
     ("var_negation",
      r"-x = y",
      PASS,
-     "x -> negation; negation,y -> equals",
+     "x -> negation; negation,y -> rel:equals",
      "x -> __negation_2; __negation_2,y -> __equals_1",
      None),
 
     ("var_double_negation",
      r"-(-x) = x",
      PASS,
-     "x,x -> equals",
+     "x,x -> rel:equals",
      "x,x -> __equals_1",
      None),
 
     ("var_sqrt",
      r"\sqrt{x} = y",
      PASS,
-     "x -> power; power,y -> equals",
+     "x -> power; power,y -> rel:equals",
      "x -> __power_2; __power_2,y -> __equals_1",
      [{"op": "power", "exponent": "1/2"}]),
 
     ("var_mixed_ops",
      r"a + b \cdot c = d",
      PASS,
-     "b,c -> multiply; a,multiply -> add; add,d -> equals",
+     "b,c -> multiply; a,multiply -> add; add,d -> rel:equals",
      "b,c -> __multiply_3; __multiply_3,a -> __add_2; __add_2,d -> __equals_1",
      None),
 
     ("var_triple_add",
      r"a + b + c = d",
      PASS,
-     "a,b -> add; add,c -> add; add,d -> equals",
+     "a,b -> add; add,c -> add; add,d -> rel:equals",
      "a,b -> __add_3; __add_3,c -> __add_2; __add_2,d -> __equals_1",
      None),
 
     ("var_negative_exponent",
      r"x^{-1} = y",
      PASS,
-     "x -> power; power,y -> equals",
+     "x -> power; power,y -> rel:equals",
      "x -> __power_2; __power_2,y -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
 
     ("var_frac_equation",
      r"\frac{x + y}{z} = w",
      PASS,
-     "x,y -> add; z -> power; add,power -> multiply; multiply,w -> equals",
+     "x,y -> add; z -> power; add,power -> multiply; multiply,w -> rel:equals",
      "x,y -> __add_3; z -> __power_4; "
      "__add_3,__power_4 -> __multiply_2; __multiply_2,w -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
@@ -165,7 +165,7 @@ VARIABLE_EXPRESSIONS: list[CatalogEntry] = [
      r"\frac{\frac{a}{b}}{c} = d",
      PASS,
      "b -> power; c -> power; a,power -> multiply; "
-     "multiply,power -> multiply; d,multiply -> equals",
+     "multiply,power -> multiply; d,multiply -> rel:equals",
      "b -> __power_4; c -> __power_5; __power_4,a -> __multiply_3; "
      "__multiply_3,__power_5 -> __multiply_2; __multiply_2,d -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
@@ -176,46 +176,46 @@ NUMERIC_EXPRESSIONS: list[CatalogEntry] = [
     ("num_addition",
      r"2 + 3 = 5",
      PASS,
-     "num,num -> add; add,num -> equals",
+     "num,num -> add; add,num -> rel:equals",
      "__num_2,__num_3 -> __add_1; __add_1,__num_4 -> __equals_5",
      None),
     ("num_subtraction",
      r"7 - 4 = 3",
      PASS,
-     "num,num -> add; add,num -> equals",
+     "num,num -> add; add,num -> rel:equals",
      "__num_2,__num_3 -> __add_1; __add_1,__num_4 -> __equals_5",
      None),
     ("num_multiplication",
      r"3 \times 4 = 12",
      PASS,
-     "num,num -> multiply; multiply,num -> equals",
+     "num,num -> multiply; multiply,num -> rel:equals",
      "__num_2,__num_3 -> __multiply_1; __multiply_1,__num_4 -> __equals_5",
      None),
     ("num_division",
      r"\frac{10}{2} = 5",
      PASS,
-     "num -> power; num,power -> multiply; multiply,num -> equals",
+     "num -> power; num,power -> multiply; multiply,num -> rel:equals",
      "__num_4 -> __power_3; __num_2,__power_3 -> __multiply_1; "
      "__multiply_1,__num_5 -> __equals_6",
      None),
     ("num_order_of_ops",
      r"2 + 3 \times 4 = 14",
      PASS,
-     "num,num -> multiply; multiply,num -> add; add,num -> equals",
+     "num,num -> multiply; multiply,num -> add; add,num -> rel:equals",
      "__num_4,__num_5 -> __multiply_3; __multiply_3,__num_2 -> __add_1; "
      "__add_1,__num_6 -> __equals_7",
      None),
     ("num_exponents",
      r"2^3 = 8",
      PASS,
-     "num -> power; num,power -> equals",
+     "num -> power; num,power -> rel:equals",
      "__num_2 -> __power_1; __num_3,__power_1 -> __equals_4",
      None),
     ("num_mixed_fracs",
      r"\frac{1}{2} + \frac{3}{4} = \frac{5}{4}",
      PASS,
      "num -> power; num -> power; num -> power; num,power -> multiply; "
-     "num,power -> multiply; multiply,power -> add; add,multiply -> equals",
+     "num,power -> multiply; multiply,power -> add; add,multiply -> rel:equals",
      "__num_11 -> __power_10; __num_3 -> __power_2; __num_7 -> __power_6; "
      "__num_5,__power_6 -> __multiply_4; __num_9,__power_10 -> __multiply_8; "
      "__multiply_4,__power_2 -> __add_1; __add_1,__multiply_8 -> __equals_12",
@@ -227,14 +227,14 @@ ABS_EXPRESSIONS: list[CatalogEntry] = [
     ("abs_basic",
      r"|x - 3| = 5",
      PASS,
-     "num,x -> add; add -> fn:abs; fn:abs,num -> equals",
+     "num,x -> add; add -> fn:abs; fn:abs,num -> rel:equals",
      "__num_4,x -> __add_3; __add_3 -> __abs_2; __abs_2,__num_5 -> __equals_1",
      [{"op": "abs", "type": "function"}]),
 
     ("abs_variable",
      r"|x| = y",
      PASS,
-     "x -> fn:abs; fn:abs,y -> equals",
+     "x -> fn:abs; fn:abs,y -> rel:equals",
      "x -> __abs_2; __abs_2,y -> __equals_1",
      [{"op": "abs", "type": "function"}]),
 ]

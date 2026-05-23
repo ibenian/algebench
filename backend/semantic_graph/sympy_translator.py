@@ -1095,16 +1095,28 @@ class SemanticGraphBuilder:
         if isinstance(expr, (Sum, Product)):
             op_name = "sum" if isinstance(expr, Sum) else "product"
             node_id = self._next_id(op_name)
-            wrt_ids = []
+            wrt_ids: list[str] = []
             lower_nid = None
             upper_nid = None
-            node_attrs = {"type": "operator", "op": op_name}
+            node_attrs: dict[str, Any] = {"type": "operator", "op": op_name}
             for limit_tuple in expr.limits:
                 var_id = self._walk(limit_tuple[0])
                 wrt_ids.append(var_id)
                 if len(limit_tuple) >= 3:
                     lower_nid = self._walk(limit_tuple[1])
                     upper_nid = self._walk(limit_tuple[2])
+
+                    # Index specification: ``n = 0`` as a symmetric
+                    # equals node — no roles (same as any other ``=``).
+                    idx_id = self._next_id("equals")
+                    self._add_node(idx_id, type="relation", op="equals")
+                    self._add_edge(var_id, idx_id)
+                    self._add_edge(lower_nid, idx_id)
+                    self._add_edge(idx_id, node_id, role="lb")
+
+                    # Upper bound feeds directly into the sum/product.
+                    self._add_edge(upper_nid, node_id, role="ub")
+
             node_attrs["with_respect_to"] = ", ".join(wrt_ids)
             if lower_nid is not None:
                 node_attrs["lower_bound"] = lower_nid
@@ -1160,7 +1172,12 @@ class SemanticGraphBuilder:
         op_name = OPERATOR_MAP.get(type(expr))
         if op_name is not None:
             node_id = self._next_id(op_name)
-            self._add_node(node_id, type="operator", op=op_name)
+            node_type = (
+                "relation"
+                if op_name in _ASYMMETRIC_OPS or op_name == "equals"
+                else "operator"
+            )
+            self._add_node(node_id, type=node_type, op=op_name)
             edge_semantic = "direct" if op_name == "multiply" else None
             edge_weight = 1.0 if op_name == "multiply" else None
             asymmetric = op_name in _ASYMMETRIC_OPS
@@ -1274,7 +1291,7 @@ def _build_relation_graph(
             clause_roots.append(cid)
         conj_id = builder._next_id("and")
         builder._add_node(
-            conj_id, type="relation", op="and", label="and", emoji=",",
+            conj_id, type="operator", op="and", label="and", emoji=",",
             subexpr=builder._restore_placeholders(side_latex.strip()),
         )
         for cid in clause_roots:
@@ -1294,8 +1311,12 @@ def _build_relation_graph(
             node["subexpr"] = builder._restore_placeholders(rhs_latex.strip())
 
     rel_id = builder._next_id(rel_meta["op"])
+    rel_type = (
+        "operator" if rel_meta["op"] in _META_RELATION_OPS
+        else "relation"
+    )
     builder._add_node(
-        rel_id, type="relation", subexpr=original_latex.strip(), **rel_meta,
+        rel_id, type=rel_type, subexpr=original_latex.strip(), **rel_meta,
     )
     rel_asymmetric = rel_meta["op"] in _ASYMMETRIC_OPS
     builder._add_edge(lhs_id, rel_id, role="lhs" if rel_asymmetric else None)
@@ -1532,7 +1553,7 @@ def _latex_to_semantic_graph_dict(
                     n["subexpr"] = builder._restore_placeholders(
                         rhs_latex.strip())
             eq_id = builder._next_id("equals")
-            builder._add_node(eq_id, type="operator", op="equals",
+            builder._add_node(eq_id, type="relation", op="equals",
                               subexpr=latex.strip())
             builder._add_edge(lhs_id, eq_id)
             builder._add_edge(rhs_id, eq_id)

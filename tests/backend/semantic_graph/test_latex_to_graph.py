@@ -68,7 +68,7 @@ class TestGraphStructure:
     def test_equation(self):
         g = latex_to_semantic_graph("F = m \\cdot a")
         assert _find_node(g, id="F", type="scalar")
-        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, type="relation", op="equals")
 
     def test_power(self):
         g = latex_to_semantic_graph("x^2")
@@ -330,27 +330,27 @@ class TestRelations:
 
     def test_implies(self):
         g = latex_to_semantic_graph(r"x > 0 \implies x^2 > 0")
-        rel = _find_node(g, type="relation", op="implies")
+        rel = _find_node(g, type="operator", op="implies")
         assert rel is not None
         assert rel.label == "implies"
         assert rel.emoji == "⇒"
 
     def test_rightarrow_implies(self):
         g = latex_to_semantic_graph(r"x > 0 \Rightarrow x^2 > 0")
-        rel = _find_node(g, type="relation", op="implies")
+        rel = _find_node(g, type="operator", op="implies")
         assert rel is not None
         assert rel.emoji == "⇒"
 
     def test_iff(self):
         g = latex_to_semantic_graph(r"x = 0 \iff x^2 = 0")
-        rel = _find_node(g, type="relation", op="iff")
+        rel = _find_node(g, type="operator", op="iff")
         assert rel is not None
         assert rel.label == "if and only if"
         assert rel.emoji == "⇔"
 
     def test_leftrightarrow_iff(self):
         g = latex_to_semantic_graph(r"A \Leftrightarrow B")
-        rel = _find_node(g, type="relation", op="iff")
+        rel = _find_node(g, type="operator", op="iff")
         assert rel is not None
         assert rel.emoji == "⇔"
         assert _find_node(g, id="A")
@@ -401,24 +401,24 @@ class TestComparisonOperators:
 
     def test_greater_than(self):
         g = latex_to_semantic_graph(r"x > 0")
-        op = _find_node(g, type="operator", op="greater_than")
+        op = _find_node(g, type="relation", op="greater_than")
         assert op is not None
         assert _find_node(g, id="x")
 
     def test_less_than(self):
         g = latex_to_semantic_graph(r"x < 5")
-        op = _find_node(g, type="operator", op="less_than")
+        op = _find_node(g, type="relation", op="less_than")
         assert op is not None
         assert _find_node(g, id="x")
 
     def test_geq(self):
         g = latex_to_semantic_graph(r"x \geq y + 1")
-        op = _find_node(g, type="operator", op="greater_equal")
+        op = _find_node(g, type="relation", op="greater_equal")
         assert op is not None
 
     def test_leq(self):
         g = latex_to_semantic_graph(r"a \leq b")
-        op = _find_node(g, type="operator", op="less_equal")
+        op = _find_node(g, type="relation", op="less_equal")
         assert op is not None
         assert _find_node(g, id="a")
         assert _find_node(g, id="b")
@@ -438,20 +438,20 @@ class TestComparisonOperators:
     def test_comparison_in_comma_constraint(self):
         """Comparison as a constraint clause after comma."""
         g = latex_to_semantic_graph(r"f(x) = x^2, x > 0")
-        gt = _find_node(g, type="operator", op="greater_than")
-        eq = _find_node(g, type="operator", op="equals")
+        gt = _find_node(g, type="relation", op="greater_than")
+        eq = _find_node(g, type="relation", op="equals")
         assert gt is not None
         assert eq is not None
 
     def test_comparison_has_two_children(self):
         g = latex_to_semantic_graph(r"x > 0")
-        op = _find_node(g, type="operator", op="greater_than")
+        op = _find_node(g, type="relation", op="greater_than")
         incoming = [e for e in g.edges if e.to == op.id]
         assert len(incoming) == 2
 
     def test_comparison_edges_have_lhs_rhs_roles(self):
         g = latex_to_semantic_graph(r"x > 0")
-        op = _find_node(g, type="operator", op="greater_than")
+        op = _find_node(g, type="relation", op="greater_than")
         edges = [e for e in g.edges if e.to == op.id]
         roles = {e.role for e in edges}
         assert roles == {"lhs", "rhs"}
@@ -461,7 +461,7 @@ class TestComparisonOperators:
     def test_equals_edges_have_no_roles(self):
         """Symmetric operators should not have role tags."""
         g = latex_to_semantic_graph(r"x = 0")
-        op = _find_node(g, type="operator", op="equals")
+        op = _find_node(g, type="relation", op="equals")
         edges = [e for e in g.edges if e.to == op.id]
         assert all(e.role is None for e in edges)
 
@@ -503,24 +503,24 @@ class TestRelationOperandComma:
 
     def test_implies_with_comma_rhs_groups_as_conjunction(self):
         g = latex_to_semantic_graph(r"x > 0 \implies y = 1, z = 2")
-        impl = _find_node(g, type="relation", op="implies")
+        impl = _find_node(g, type="operator", op="implies")
         assert impl is not None
         # Both consequent clauses must reach the implies node.
-        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        equals_nodes = _find_nodes(g, type="relation", op="equals")
         assert len(equals_nodes) == 2
         for eq in equals_nodes:
             assert self._reaches(g, eq.id, impl.id), (
                 f"clause {eq.subexpr!r} does not reach implies"
             )
         # And they reach it through a synthetic ``and`` conjunction node.
-        conj = _find_node(g, type="relation", op="and")
+        conj = _find_node(g, type="operator", op="and")
         assert conj is not None
         assert self._reaches(g, conj.id, impl.id)
 
     def test_iff_with_comma_rhs_groups_as_conjunction(self):
         g = latex_to_semantic_graph(r"P \iff A, B")
-        iff = _find_node(g, type="relation", op="iff")
-        conj = _find_node(g, type="relation", op="and")
+        iff = _find_node(g, type="operator", op="iff")
+        conj = _find_node(g, type="operator", op="and")
         assert iff is not None and conj is not None
         assert self._reaches(g, conj.id, iff.id)
         assert self._reaches(g, "A", iff.id)
@@ -529,8 +529,8 @@ class TestRelationOperandComma:
     def test_implies_with_comma_lhs_groups_as_conjunction(self):
         """Comma on the LHS of an implication groups the antecedents."""
         g = latex_to_semantic_graph(r"A, B \implies C")
-        impl = _find_node(g, type="relation", op="implies")
-        conj = _find_node(g, type="relation", op="and")
+        impl = _find_node(g, type="operator", op="implies")
+        conj = _find_node(g, type="operator", op="and")
         assert impl is not None and conj is not None
         assert self._reaches(g, "A", conj.id)
         assert self._reaches(g, "B", conj.id)
@@ -543,16 +543,16 @@ class TestRelationOperandComma:
         conjunction node is emitted."""
         g = latex_to_semantic_graph(r"x = 1 \implies f(x, y) = 0")
         # No ``and`` conjunction should appear — comma is depth>0.
-        assert _find_node(g, type="relation", op="and") is None
-        impl = _find_node(g, type="relation", op="implies")
+        assert _find_node(g, type="operator", op="and") is None
+        impl = _find_node(g, type="operator", op="implies")
         assert impl is not None
 
     def test_top_level_comma_without_relation_unchanged(self):
         """Without a top-level relation, comma still acts as a statement
         separator — no synthetic ``and`` node."""
         g = latex_to_semantic_graph(r"a = 1, b = 2")
-        assert _find_node(g, type="relation", op="and") is None
-        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        assert _find_node(g, type="operator", op="and") is None
+        equals_nodes = _find_nodes(g, type="relation", op="equals")
         assert len(equals_nodes) == 2
 
 
@@ -583,7 +583,7 @@ class TestSubjectGroupComma:
         g = latex_to_semantic_graph(r"\alpha, \beta \in \mathbb{C}")
         elem = _find_node(g, type="relation", op="element_of")
         assert elem is not None
-        conj = _find_node(g, type="relation", op="and")
+        conj = _find_node(g, type="operator", op="and")
         assert conj is not None, "expected an 'and' conjunction for the composite LHS"
         assert self._reaches(g, "alpha", conj.id)
         assert self._reaches(g, "beta", conj.id)
@@ -595,7 +595,7 @@ class TestSubjectGroupComma:
         g = latex_to_semantic_graph(r"x, y, z \in \mathbb{R}")
         elem = _find_node(g, type="relation", op="element_of")
         assert elem is not None
-        conj = _find_node(g, type="relation", op="and")
+        conj = _find_node(g, type="operator", op="and")
         assert conj is not None
         for var in ("x", "y", "z"):
             assert self._reaches(g, var, elem.id), f"{var} should reach element_of"
@@ -606,7 +606,7 @@ class TestSubjectGroupComma:
         g = latex_to_semantic_graph(
             r"a = 1, \quad \alpha, \beta \in \mathbb{C}"
         )
-        eq = _find_node(g, type="operator", op="equals")
+        eq = _find_node(g, type="relation", op="equals")
         elem = _find_node(g, type="relation", op="element_of")
         assert eq is not None, "expected an equals node for a = 1"
         assert elem is not None, "expected an element_of node for α, β ∈ ℂ"
@@ -628,11 +628,11 @@ class TestSubjectGroupComma:
             r"a = 1, \quad \alpha,\beta\in\mathbb{C}, "
             r"\quad |\alpha|^2 + |\beta|^2 = 1"
         )
-        equals = _find_nodes(g, type="operator", op="equals")
+        equals = _find_nodes(g, type="relation", op="equals")
         elem = _find_node(g, type="relation", op="element_of")
         assert len(equals) == 2, f"expected 2 equals nodes, got {len(equals)}"
         assert elem is not None, "expected element_of for α,β ∈ ℂ"
-        conj = _find_node(g, type="relation", op="and")
+        conj = _find_node(g, type="operator", op="and")
         assert conj is not None, "expected 'and' conjunction grouping α and β"
         assert self._reaches(g, "alpha", conj.id)
         assert self._reaches(g, "beta", conj.id)
@@ -670,11 +670,11 @@ class TestStatementSeparators:
             r" + \beta\lvert 1\rangle}, \quad \alpha,\beta\in\mathbb{C},"
             r" \quad \lvert\alpha\rvert^2 + \lvert\beta\rvert^2 = 1"
         )
-        equals = _find_nodes(g, type="operator", op="equals")
+        equals = _find_nodes(g, type="relation", op="equals")
         elem = _find_node(g, type="relation", op="element_of")
         assert len(equals) == 2, f"expected 2 equals nodes, got {len(equals)}"
         assert elem is not None, "expected element_of for α,β ∈ ℂ"
-        conj = _find_node(g, type="relation", op="and")
+        conj = _find_node(g, type="operator", op="and")
         assert conj is not None, "expected 'and' conjunction grouping α and β"
         assert self._reaches(g, "alpha", conj.id)
         assert self._reaches(g, "beta", conj.id)
@@ -691,7 +691,7 @@ class TestStatementSeparators:
             r"p(1)=\lvert\langle 1\vert\psi\rangle\rvert^2="
             r"\htmlClass{hl-p1}{\sin^2\!\left(\frac{\theta}{2}\right)}"
         )
-        equals = _find_nodes(g, type="operator", op="equals")
+        equals = _find_nodes(g, type="relation", op="equals")
         assert len(equals) >= 2, (
             f"expected at least 2 equals nodes (one per line), got {len(equals)}"
         )
@@ -717,10 +717,10 @@ class TestTextCommand:
             r"T = \text{const} \implies dP = \frac{k_B T}{m}\, d\rho"
         )
         assert _find_node(g, type="text", label="const") is not None
-        assert _find_node(g, type="relation", op="implies") is not None
+        assert _find_node(g, type="operator", op="implies") is not None
         # Two equals nodes: one per side of the implication.
         equals_nodes = [n for n in g.nodes
-                        if n.type == "operator" and n.op == "equals"]
+                        if n.type == "relation" and n.op == "equals"]
         assert len(equals_nodes) == 2
 
     def test_repeated_text_dedups(self):
@@ -746,7 +746,7 @@ class TestComplexFormulas:
         three flow through the symbol path. KNOWN_VARIABLES["pi"] still pins
         type=constant; ``e`` / ``i`` default to scalar."""
         g = latex_to_semantic_graph(r"e^{i \pi} + 1 = 0")
-        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, type="relation", op="equals")
         assert _find_node(g, id="e")
         assert _find_node(g, id="pi", type="constant")  # label/emoji are enricher's job
         assert _find_node(g, type="operator", op="power")
@@ -756,7 +756,7 @@ class TestComplexFormulas:
     def test_kinetic_energy(self):
         """K = 1/2 m v^2 — equation with fraction, multiplication, power."""
         g = latex_to_semantic_graph(r"K = \frac{1}{2} m v^2")
-        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, type="relation", op="equals")
         assert _find_node(g, id="K")
         assert _find_node(g, id="m")  # parser doesn't pre-fill labels
         assert _find_node(g, id="v")
@@ -769,7 +769,7 @@ class TestComplexFormulas:
         g = latex_to_semantic_graph(
             r"\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}"
         )
-        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, type="relation", op="equals")
         assert _find_node(g, type="operator", op="integral")
         assert _find_node(g, type="operator", op="power")
         assert _find_node(g, id="x")
@@ -810,7 +810,7 @@ class TestComplexFormulas:
         assert _find_node(g, id="psi")
         assert _find_node(g, id="h")
         assert _find_node(g, type="operator", op="derivative")
-        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, type="relation", op="equals")
         c = g.classification
         assert c.kind == "ODE"
         assert c.order == 2
@@ -818,7 +818,7 @@ class TestComplexFormulas:
     def test_coulomb_law(self):
         """F = k q1 q2 / r^2 — subscripted variables, fractions."""
         g = latex_to_semantic_graph(r"F = k \frac{q_1 q_2}{r^2}")
-        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, type="relation", op="equals")
         assert _find_node(g, id="F")
         assert _find_node(g, id="r")
         assert _find_node(g, type="operator", op="power")
@@ -834,7 +834,7 @@ class TestComplexFormulas:
         )
         assert _find_node(g, type="function", op="sin")
         assert _find_node(g, type="operator", op="sum")
-        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, type="relation", op="equals")
         # Should have factorial node
         assert _find_node(g, op="factorial")
         assert g.classification.kind == "algebraic"
@@ -847,7 +847,7 @@ class TestComplexFormulas:
         assert _find_node(g, id="gamma")
         assert _find_node(g, id="v")  # parser emits structural fields only
         assert _find_node(g, id="c")
-        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, type="relation", op="equals")
         assert g.classification.kind == "algebraic"
 
     def test_quadratic_formula(self):
@@ -855,7 +855,7 @@ class TestComplexFormulas:
         g = latex_to_semantic_graph(
             r"x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}"
         )
-        assert _find_node(g, type="operator", op="equals")
+        assert _find_node(g, type="relation", op="equals")
         assert _find_node(g, id="x")
         assert _find_node(g, id="a")
         assert _find_node(g, id="b")
@@ -1181,7 +1181,7 @@ class TestCommaSeparatedClauses:
         carry a parent ``and`` / ``comma`` / ``conjunction`` relation node
         artificially joining the clauses."""
         g = latex_to_semantic_graph("a = 1, b = 2")
-        assert _find_node(g, type="relation", op="and") is None
+        assert _find_node(g, type="operator", op="and") is None
         assert _find_node(g, type="relation", op="comma") is None
         assert _find_node(g, type="relation", op="conjunction") is None
 
@@ -1192,7 +1192,7 @@ class TestCommaSeparatedClauses:
         assert _find_node(g, id="a") is not None
         assert _find_node(g, id="b") is not None
         # Two equals nodes, one per clause.
-        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        equals_nodes = _find_nodes(g, type="relation", op="equals")
         assert len(equals_nodes) == 2
         # The graph has exactly two roots (nodes with no outgoing edges
         # among the operator/relation nodes) — the two equals nodes.
@@ -1250,7 +1250,7 @@ class TestCommaSeparatedClauses:
 
     def test_three_clauses_all_present(self):
         g = latex_to_semantic_graph("a = 1, b = 2, c = 3")
-        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        equals_nodes = _find_nodes(g, type="relation", op="equals")
         assert len(equals_nodes) == 3
         assert g.classification.count == 3
 
@@ -1274,7 +1274,7 @@ class TestCommaSeparatedClauses:
         prefixes operator ids ``c0_``, ``c1_``, …, and the graph holds
         one independent subtree per clause."""
         g = latex_to_semantic_graph("a = 1, b = 2, c = 3, d = 4")
-        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        equals_nodes = _find_nodes(g, type="relation", op="equals")
         assert len(equals_nodes) == 4
         assert g.classification.count == 4
         # All four clause equals-node ids must be uniquely prefixed.
@@ -1328,7 +1328,7 @@ class TestCommaSeparatedClauses:
         g = latex_to_semantic_graph(r"x = \text{foo, bar}")
         # Single equation — not multi-statement.
         assert g.classification.kind != "statements"
-        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        equals_nodes = _find_nodes(g, type="relation", op="equals")
         assert len(equals_nodes) == 1
 
     def test_comma_inside_function_args_not_split(self):
@@ -1362,7 +1362,7 @@ class TestCommaSeparatedClauses:
         g = latex_to_semantic_graph(
             r"\frac{dh}{dt} = -V \sin \gamma, \quad \gamma = \text{const}"
         )
-        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        equals_nodes = _find_nodes(g, type="relation", op="equals")
         subexprs = {(n.subexpr or "") for n in equals_nodes}
         # Neither equals subexpr should start with a leading \quad/\qquad/etc.
         for s in subexprs:
@@ -1390,7 +1390,7 @@ class TestCommaSeparatedClauses:
             f"— Xi_{{N}} placeholder collision across clauses"
         )
         # Both equals nodes must survive, each with its own text operand.
-        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        equals_nodes = _find_nodes(g, type="relation", op="equals")
         assert len(equals_nodes) == 2
 
     def test_same_text_per_clause_each_gets_its_own_node(self):
@@ -1411,7 +1411,7 @@ class TestCommaSeparatedClauses:
         g = latex_to_semantic_graph(
             r"\frac{dh}{dt} = -V \sin \gamma, \quad \gamma = \text{const}"
         )
-        equals_nodes = _find_nodes(g, type="operator", op="equals")
+        equals_nodes = _find_nodes(g, type="relation", op="equals")
         subexprs = [(n.subexpr or "") for n in equals_nodes]
         # Neither subexpr should contain a comma (that would mean the
         # whole original expression leaked in).

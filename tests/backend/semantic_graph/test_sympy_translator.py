@@ -53,7 +53,7 @@ class TestNodeLabels:
         assert node_short_label({"type": "operator", "latex": "+"}) == "+"
 
     def test_short_label_operator_glyph(self):
-        assert node_short_label({"type": "operator", "op": "equals"}) == "="
+        assert node_short_label({"type": "relation", "op": "equals"}) == "="
 
     def test_short_label_data_node(self):
         assert node_short_label({"type": "scalar", "latex": "F"}) == "F"

@@ -56,7 +56,7 @@ POLYNOMIAL_EXPRESSIONS: list[CatalogEntry] = [
     ("poly_expand",
      r"(x + 1)(x - 1) = x^2 - 1",
      PASS,
-     "num,x -> add; num,x -> add; x -> power; num,power -> add; add,add -> multiply; add,multiply -> equals",
+     "num,x -> add; num,x -> add; x -> power; num,power -> add; add,add -> multiply; add,multiply -> rel:equals",
      "__num_4,x -> __add_3; __num_6,x -> __add_5; x -> __power_8; "
      "__num_9,__power_8 -> __add_7; __add_3,__add_5 -> __multiply_2; "
      "__add_7,__multiply_2 -> __equals_1",
@@ -66,7 +66,7 @@ POLYNOMIAL_EXPRESSIONS: list[CatalogEntry] = [
      r"ax^2 + bx + c = 0",
      PASS,
      "b,x -> multiply; x -> power; a,power -> multiply; "
-     "multiply,multiply -> add; add,c -> add; add,num -> equals",
+     "multiply,multiply -> add; add,c -> add; add,num -> rel:equals",
      "b,x -> __multiply_6; x -> __power_5; __power_5,a -> __multiply_4; "
      "__multiply_4,__multiply_6 -> __add_3; __add_3,c -> __add_2; "
      "__add_2,__num_7 -> __equals_1",
@@ -78,7 +78,7 @@ POLYNOMIAL_EXPRESSIONS: list[CatalogEntry] = [
      "a,c -> multiply; a,num -> multiply; b -> power; "
      "multiply,num -> multiply; multiply -> power; multiply -> negation; "
      "negation,power -> add; add -> power; b,pm,power -> multiply; "
-     "multiply -> negation; negation,power -> multiply; multiply,x -> equals",
+     "multiply -> negation; negation,power -> multiply; multiply,x -> rel:equals",
      "a,c -> __multiply_11; __num_14,a -> __multiply_13; b -> __power_7; "
      "__multiply_11,__num_10 -> __multiply_9; __multiply_13 -> __power_12; "
      "__multiply_9 -> __negation_8; __negation_8,__power_7 -> __add_6; "
@@ -90,7 +90,7 @@ POLYNOMIAL_EXPRESSIONS: list[CatalogEntry] = [
     ("cubic_depressed",
      r"t^3 + pt + q = 0",
      PASS,
-     "p,t -> multiply; t -> power; multiply,power -> add; add,q -> add; add,num -> equals",
+     "p,t -> multiply; t -> power; multiply,power -> add; add,q -> add; add,num -> rel:equals",
      "p,t -> __multiply_5; t -> __power_4; __multiply_5,__power_4 -> __add_3; "
      "__add_3,q -> __add_2; __add_2,__num_6 -> __equals_1",
      [{"op": "power", "exponent": "3"}]),
@@ -100,7 +100,7 @@ POLYNOMIAL_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "num,x -> multiply; x -> power; x -> power; num,power -> multiply; "
      "multiply -> negation; negation,power -> add; add,multiply -> add; "
-     "add,num -> add; add,num -> equals",
+     "add,num -> add; add,num -> rel:equals",
      "__num_11,x -> __multiply_10; x -> __power_5; x -> __power_9; "
      "__num_8,__power_9 -> __multiply_7; __multiply_7 -> __negation_6; "
      "__negation_6,__power_5 -> __add_4; __add_4,__multiply_10 -> __add_3; "
@@ -114,7 +114,7 @@ FACTORING_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "a,b -> add; b -> negation; a -> power; b -> power; a,negation -> add; "
      "power -> negation; negation,power -> add; add,add -> multiply; "
-     "add,multiply -> equals",
+     "add,multiply -> rel:equals",
      "a,b -> __add_7; b -> __negation_9; a -> __power_3; b -> __power_5; "
      "__negation_9,a -> __add_8; __power_5 -> __negation_4; "
      "__negation_4,__power_3 -> __add_2; __add_7,__add_8 -> __multiply_6; "
@@ -126,7 +126,7 @@ FACTORING_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "a,b -> add; a,b -> multiply; a -> power; b -> power; "
      "multiply,num -> multiply; add -> power; multiply,power -> add; "
-     "add,power -> add; add,power -> equals",
+     "add,power -> add; add,power -> rel:equals",
      "a,b -> __add_10; a,b -> __multiply_7; a -> __power_4; b -> __power_8; "
      "__multiply_7,__num_6 -> __multiply_5; __add_10 -> __power_9; "
      "__multiply_5,__power_4 -> __add_3; __add_3,__power_8 -> __add_2; "
@@ -139,7 +139,7 @@ FACTORING_EXPRESSIONS: list[CatalogEntry] = [
      "a,b -> add; a,b -> multiply; a -> power; a -> power; b -> power; "
      "b -> power; power,power -> add; multiply -> negation; "
      "negation,power -> add; add,power -> add; add,add -> multiply; "
-     "add,multiply -> equals",
+     "add,multiply -> rel:equals",
      "a,b -> __add_6; a,b -> __multiply_11; b -> __power_12; a -> __power_3; "
      "b -> __power_4; a -> __power_9; __power_3,__power_4 -> __add_2; "
      "__multiply_11 -> __negation_10; __negation_10,__power_9 -> __add_8; "
@@ -153,7 +153,7 @@ ROOT_EXPRESSIONS: list[CatalogEntry] = [
      r"r_1 + r_2 = -\frac{b}{a}",
      PASS,
      "r_{1},r_{2} -> add; a -> power; b,power -> multiply; "
-     "multiply -> negation; add,negation -> equals",
+     "multiply -> negation; add,negation -> rel:equals",
      "r_{1},r_{2} -> __add_2; a -> __power_5; __power_5,b -> __multiply_4; "
      "__multiply_4 -> __negation_3; __add_2,__negation_3 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
@@ -162,7 +162,7 @@ ROOT_EXPRESSIONS: list[CatalogEntry] = [
      r"r_1 r_2 = \frac{c}{a}",
      PASS,
      "r_{1},r_{2} -> multiply; a -> power; c,power -> multiply; "
-     "multiply,multiply -> equals",
+     "multiply,multiply -> rel:equals",
      "r_{1},r_{2} -> __multiply_2; a -> __power_4; __power_4,c -> __multiply_3; "
      "__multiply_2,__multiply_3 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
@@ -172,18 +172,19 @@ BINOMIAL_EXPRESSIONS: list[CatalogEntry] = [
     ("binomial_theorem",
      r"(x + y)^n = \sum_{k=0}^{n} \binom{n}{k} x^{n-k} y^k",
      PASS,
-     "x,y -> add; k,n -> fn:choose; k -> negation; "
-     "k,y -> power; n,negation -> add; add,n -> power; add,x -> power; "
+     "x,y -> add; k,n -> fn:choose; k -> negation; k,y -> power; "
+     "k,num -> rel:equals; n,negation -> add; add,n -> power; add,x -> power; "
      "power,power -> multiply; fn:choose,multiply -> multiply; "
-     "multiply -> sum; power,sum -> equals",
-     "x,y -> __add_3; k,n -> __choose_7; "
-     "k -> __negation_11; k,y -> __power_12; __negation_11,n -> __add_10; "
-     "__add_3,n -> __power_2; __add_10,x -> __power_9; "
-     "__power_12,__power_9 -> __multiply_8; "
-     "__choose_7,__multiply_8 -> __multiply_6; "
-     "__multiply_6 -> __sum_4; __power_2,__sum_4 -> __equals_1",
+     "multiply,n,rel:equals -> sum; power,sum -> rel:equals",
+     "x,y -> __add_3; k,n -> __choose_8; __num_5,k -> __equals_6; "
+     "k -> __negation_12; k,y -> __power_13; __negation_12,n -> __add_11; "
+     "__add_3,n -> __power_2; __add_11,x -> __power_10; "
+     "__power_10,__power_13 -> __multiply_9; "
+     "__choose_8,__multiply_9 -> __multiply_7; "
+     "__equals_6,__multiply_7,n -> __sum_4; __power_2,__sum_4 -> __equals_1",
      [{"op": "choose", "type": "function"},
-      {"op": "sum", "with_respect_to": "k", "upper_bound": "n"}]),
+      {"op": "sum", "with_respect_to": "k", "upper_bound": "n",
+       "_edge_roles": {"lb": 1, "ub": 1}}]),
 ]
 
 FUNCTION_EXPRESSIONS: list[CatalogEntry] = [
@@ -191,7 +192,7 @@ FUNCTION_EXPRESSIONS: list[CatalogEntry] = [
      r"f(x) = q(x) \cdot d(x) + r(x)",
      PASS,
      "x -> fn:d; x -> fn:f; x -> fn:q; x -> fn:r; fn:d,fn:q -> multiply; "
-     "fn:r,multiply -> add; add,fn:f -> equals",
+     "fn:r,multiply -> add; add,fn:f -> rel:equals",
      "x -> __d_6; x -> __f_2; x -> __q_5; x -> __r_7; "
      "__d_6,__q_5 -> __multiply_4; __multiply_4,__r_7 -> __add_3; "
      "__add_3,__f_2 -> __equals_1",

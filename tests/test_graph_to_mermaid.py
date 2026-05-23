@@ -31,7 +31,7 @@ F_MA_GRAPH = {
         {"id": "a", "label": "acceleration", "emoji": "🧭", "type": "vector", "latex": "a"},
         {"id": "__multiply_1", "type": "operator", "op": "multiply"},
         {"id": "F", "label": "force", "emoji": "🏹", "type": "vector", "latex": "F"},
-        {"id": "__equals_1", "type": "operator", "op": "equals"},
+        {"id": "__equals_1", "type": "relation", "op": "equals"},
     ],
     "edges": [
         {"from": "m", "to": "__multiply_1"},

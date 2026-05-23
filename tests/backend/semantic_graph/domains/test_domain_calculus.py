@@ -57,7 +57,7 @@ LIMIT_EXPRESSIONS: list[CatalogEntry] = [
      r"\lim_{x \to 0} \frac{\sin x}{x} = 1",
      PASS,
      "x -> fn:sin; x -> power; num,x -> tends_to; fn:sin,power -> multiply; "
-     "multiply,tends_to -> limit; limit,num -> equals",
+     "multiply,tends_to -> limit; limit,num -> rel:equals",
      "x -> __power_5; x -> __sin_4; __num_6,x -> __tends_to_7; "
      "__power_5,__sin_4 -> __multiply_3; "
      "__multiply_3,__tends_to_7 -> __limit_2; __limit_2,__num_8 -> __equals_1",
@@ -71,7 +71,7 @@ LIMIT_EXPRESSIONS: list[CatalogEntry] = [
      "a,x -> tends_to; a,x -> tends_to; fn:g -> power; "
      "fn:g' -> power; fn:f,power -> multiply; fn:f',power -> multiply; "
      "multiply,tends_to -> limit; multiply,tends_to -> limit; "
-     "limit,limit -> equals",
+     "limit,limit -> rel:equals",
      "x -> __f'_10; x -> __f_4; x -> __g'_12; x -> __g_6; "
      "a,x -> __tends_to_13; a,x -> __tends_to_7; "
      "__g'_12 -> __power_11; __g_6 -> __power_5; "
@@ -85,7 +85,7 @@ LIMIT_EXPRESSIONS: list[CatalogEntry] = [
      r"\lim_{x \to \infty} \frac{1}{x} = 0",
      PASS,
      "x -> power; const:__const_4,x -> tends_to; "
-     "power,tends_to -> limit; limit,num -> equals",
+     "power,tends_to -> limit; limit,num -> rel:equals",
      "x -> __power_3; __const_4,x -> __tends_to_5; "
      "__power_3,__tends_to_5 -> __limit_2; __limit_2,__num_6 -> __equals_1",
      [{"op": "tends_to", "type": "operator",
@@ -98,7 +98,7 @@ DERIVATIVE_EXPRESSIONS: list[CatalogEntry] = [
      r"\frac{d}{dx} x^n = n x^{n-1}",
      PASS,
      "n,num -> add; n,x -> power; power,x -> derivative; add,x -> power; "
-     "n,power -> multiply; derivative,multiply -> equals",
+     "n,power -> multiply; derivative,multiply -> rel:equals",
      "__num_7,n -> __add_6; n,x -> __power_3; __power_3,x -> __deriv_2; "
      "__add_6,x -> __power_5; __power_5,n -> __multiply_4; "
      "__deriv_2,__multiply_4 -> __equals_1",
@@ -109,7 +109,7 @@ DERIVATIVE_EXPRESSIONS: list[CatalogEntry] = [
      r"\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}",
      PASS,
      "u,x -> derivative; u,y -> derivative; x,y -> derivative; "
-     "derivative,derivative -> multiply; derivative,multiply -> equals",
+     "derivative,derivative -> multiply; derivative,multiply -> rel:equals",
      "x,y -> __deriv_2; u,y -> __deriv_4; u,x -> __deriv_5; "
      "__deriv_4,__deriv_5 -> __multiply_3; "
      "__deriv_2,__multiply_3 -> __equals_1",
@@ -134,7 +134,7 @@ DERIVATIVE_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "a -> fn:f; b -> fn:f; c -> fn:f'; a -> negation; b,negation -> add; "
      "fn:f -> negation; fn:f,negation -> add; add -> power; "
-     "add,power -> multiply; fn:f',multiply -> equals",
+     "add,power -> multiply; fn:f',multiply -> rel:equals",
      "c -> __f'_2; b -> __f_5; a -> __f_7; a -> __negation_10; "
      "__negation_10,b -> __add_9; __f_7 -> __negation_6; "
      "__f_5,__negation_6 -> __add_4; __add_9 -> __power_8; "
@@ -149,7 +149,7 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "n,num -> add; n,num -> add; n,x -> power; power -> integral; "
      "add -> power; add,x -> power; power,power -> multiply; "
-     "C,multiply -> add; add,integral -> equals",
+     "C,multiply -> add; add,integral -> rel:equals",
      "__num_11,n -> __add_10; __num_8,n -> __add_7; n,x -> __power_3; "
      "__power_3 -> __integral_2; __add_7,x -> __power_6; "
      "__add_10 -> __power_9; __power_6,__power_9 -> __multiply_5; "
@@ -161,7 +161,7 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
      r"\int_a^b f(x) \, dx = F(b) - F(a)",
      PASS,
      "a -> fn:F; b -> fn:F; x -> fn:f; fn:f -> integral; "
-     "fn:F -> negation; fn:F,negation -> add; add,integral -> equals",
+     "fn:F -> negation; fn:F,negation -> add; add,integral -> rel:equals",
      "b -> __F_5; a -> __F_7; x -> __f_3; "
      "__f_3 -> __integral_2; __F_7 -> __negation_6; "
      "__F_5,__negation_6 -> __add_4; __add_4,__integral_2 -> __equals_1",
@@ -172,7 +172,7 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
      r"\frac{d}{dx} \int_a^x f(t) \, dt = f(x)",
      PASS,
      "t -> fn:f; x -> fn:f; fn:f -> integral; integral,x -> derivative; "
-     "derivative,fn:f -> equals",
+     "derivative,fn:f -> rel:equals",
      "t -> __f_4; x -> __f_5; __f_4 -> __integral_3; "
      "__integral_3,x -> __deriv_2; "
      "__deriv_2,__f_5 -> __equals_1",
@@ -185,27 +185,31 @@ SERIES_EXPRESSIONS: list[CatalogEntry] = [
     ("taylor_exp",
      r"e^x = \sum_{n=0}^{\infty} \frac{x^n}{n!}",
      PASS,
-     "n -> factorial; e,x -> power; n,x -> power; "
+     "n -> factorial; e,x -> power; n,x -> power; n,num -> rel:equals; "
      "factorial -> power; power,power -> multiply; "
-     "multiply -> sum; power,sum -> equals",
-     "n -> __factorial_9; e,x -> __power_2; n,x -> __power_7; "
-     "__factorial_9 -> __power_8; __power_7,__power_8 -> __multiply_6; "
-     "__multiply_6 -> __sum_3; "
+     "const:__const_5,multiply,rel:equals -> sum; power,sum -> rel:equals",
+     "__num_4,n -> __equals_6; n -> __factorial_10; e,x -> __power_2; "
+     "n,x -> __power_8; __factorial_10 -> __power_9; "
+     "__power_8,__power_9 -> __multiply_7; "
+     "__const_5,__equals_6,__multiply_7 -> __sum_3; "
      "__power_2,__sum_3 -> __equals_1",
-     [{"op": "sum", "with_respect_to": "n"},
+     [{"op": "sum", "with_respect_to": "n",
+       "_edge_roles": {"lb": 1, "ub": 1}},
       {"op": "factorial", "type": "operator"},
       {"op": "power", "exponent": None, "_edge_roles": {"exp": 1}}]),
 
     ("series_geometric",
      r"\sum_{n=0}^{\infty} r^n = \frac{1}{1 - r}",
      PASS,
-     "r -> negation; n,r -> power; negation,num -> add; "
-     "power -> sum; add -> power; "
-     "power,sum -> equals",
-     "r -> __negation_9; n,r -> __power_5; __negation_9,__num_8 -> __add_7; "
-     "__power_5 -> __sum_2; __add_7 -> __power_6; "
-     "__power_6,__sum_2 -> __equals_1",
-     [{"op": "sum", "with_respect_to": "n"},
+     "r -> negation; n,r -> power; n,num -> rel:equals; negation,num -> add; "
+     "const:__const_4,power,rel:equals -> sum; add -> power; "
+     "power,sum -> rel:equals",
+     "__num_3,n -> __equals_5; r -> __negation_10; n,r -> __power_6; "
+     "__negation_10,__num_9 -> __add_8; "
+     "__const_4,__equals_5,__power_6 -> __sum_2; __add_8 -> __power_7; "
+     "__power_7,__sum_2 -> __equals_1",
+     [{"op": "sum", "with_respect_to": "n",
+       "_edge_roles": {"lb": 1, "ub": 1}},
       {"op": "power", "exponent": None, "_edge_roles": {"exp": 1}}]),
 ]
 

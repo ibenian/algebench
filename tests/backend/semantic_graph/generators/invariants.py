@@ -241,11 +241,11 @@ def assert_node_exists(
 def assert_operators_in(
     graph: SemanticGraph, allowed: set[str], *, latex: str = "",
 ) -> None:
-    """Assert all operator ops are within the allowed set."""
-    actual = operator_ops(graph)
+    """Assert all operator and relation ops are within the allowed set."""
+    actual = operator_ops(graph) | relation_ops(graph)
     unexpected = actual - allowed
     assert not unexpected, (
-        f"Unexpected operator ops {unexpected} for: {latex!r}\n"
+        f"Unexpected operator/relation ops {unexpected} for: {latex!r}\n"
         f"  Allowed: {allowed}"
     )
 
