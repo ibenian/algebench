@@ -50,8 +50,9 @@ jobs:
             python scripts/audit_expressions.py $FILES 2>&1 | tee /tmp/audit-output.txt
             echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
           else
-            echo "No scene files changed — skipping audit"
-            echo "exit_code=0" >> "$GITHUB_OUTPUT"
+            echo "No scene files changed — running full audit (regex or audit script may have changed)"
+            python scripts/audit_expressions.py 2>&1 | tee /tmp/audit-output.txt
+            echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Post audit proposals as PR comment
@@ -59,8 +60,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Extract the Coverage Proposals section
-          PROPOSALS=$(awk '/^📋 Coverage Proposals/{found=1} found' /tmp/audit-output.txt || true)
+          # Extract the Coverage Proposals section (guard against missing file)
+          PROPOSALS=$([ -f /tmp/audit-output.txt ] && awk '/^📋 Coverage Proposals/{found=1} found' /tmp/audit-output.txt || true)
           if [ -n "$PROPOSALS" ]; then
             BODY="<!-- audit-expressions-proposals -->
           ### 📋 Coverage Proposals
