@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Developers — AlgeBench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0a0e14; color: #e6edf3; line-height: 1.7;
+  }
+
+  /* ── Nav ── */
+  nav {
+    display: flex; align-items: center; gap: 1rem;
+    max-width: 900px; margin: 0 auto; padding: 1.25rem 1.5rem;
+  }
+  nav a {
+    color: #8b949e; text-decoration: none; font-size: 0.9rem; font-weight: 500;
+    transition: color 0.2s;
+  }
+  nav a:hover { color: #e6edf3; }
+  nav .brand { color: #e6edf3; font-weight: 700; font-size: 1.1rem; }
+  nav .sep { color: #30363d; }
+
+  .container {
+    max-width: 900px; margin: 0 auto; padding: 0 1.5rem;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    padding: 2rem 0 1rem;
+    border-bottom: 1px solid #21262d;
+    margin-bottom: 2rem;
+  }
+  .page-header h1 {
+    font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;
+  }
+  .page-header p { color: #8b949e; font-size: 1.05rem; }
+
+  /* ── Cards ── */
+  .cards {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem; margin-bottom: 2.5rem;
+  }
+  .card {
+    background: linear-gradient(145deg, #161b22, #1c2333);
+    border: 1px solid #30363d; border-radius: 12px;
+    padding: 1.75rem; text-decoration: none; color: inherit;
+    transition: border-color 0.25s, transform 0.2s, box-shadow 0.25s;
+    display: flex; flex-direction: column;
+  }
+  .card:hover {
+    border-color: #58a6ff; transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(88,166,255,0.12);
+  }
+  .card .icon {
+    font-size: 2rem; margin-bottom: 0.75rem; display: block;
+    width: 48px; height: 48px; line-height: 48px; text-align: center;
+    background: rgba(88,166,255,0.08); border-radius: 10px;
+  }
+  .card h3 {
+    font-size: 1.1rem; font-weight: 600; margin-bottom: 0.4rem; color: #e6edf3;
+  }
+  .card p { color: #8b949e; font-size: 0.9rem; flex: 1; }
+  .card .arrow {
+    margin-top: 1rem; color: #58a6ff; font-size: 0.85rem; font-weight: 500;
+  }
+
+  /* ── Tech stack ── */
+  .section { margin-bottom: 2.5rem; }
+  .section h2 {
+    font-size: 1.3rem; font-weight: 600; margin-bottom: 1rem; color: #c9d1d9;
+  }
+  .tech-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+  .tech-item {
+    background: #161b22; border: 1px solid #21262d; border-radius: 8px;
+    padding: 1rem; text-align: center;
+  }
+  .tech-item .t-icon { font-size: 1.5rem; display: block; margin-bottom: 0.4rem; }
+  .tech-item h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.2rem; }
+  .tech-item p { color: #8b949e; font-size: 0.78rem; }
+
+  /* ── Getting Started ── */
+  .getting-started pre {
+    background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+    padding: 1.25rem; overflow-x: auto; font-size: 0.85rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: #c9d1d9; line-height: 1.8;
+  }
+  .getting-started .comment { color: #8b949e; }
+  .getting-started .cmd { color: #79c0ff; }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center; padding: 2.5rem 1rem; color: #484f58; font-size: 0.8rem;
+    border-top: 1px solid #21262d; margin-top: 1rem;
+  }
+  footer a { color: #58a6ff; text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 600px) {
+    .cards { grid-template-columns: 1fr; }
+    .tech-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="brand">AlgeBench</a>
+  <span class="sep">/</span>
+  <a href="developers.html">Developers</a>
+</nav>
+
+<div class="container">
+
+  <div class="page-header">
+    <h1>Developers</h1>
+    <p>Reports, dashboards, and tools for contributors and maintainers.</p>
+  </div>
+
+  <!-- Reports -->
+  <div class="section">
+    <h2>Live Reports</h2>
+    <div class="cards">
+      <a href="semantic-graph/" class="card">
+        <span class="icon">🔗</span>
+        <h3>Semantic Graph</h3>
+        <p>Navigate mathematical concepts and their relationships through interactive, explorable graphs organized by domain.</p>
+        <span class="arrow">Explore graphs &rarr;</span>
+      </a>
+
+      <a href="loc-report/" class="card">
+        <span class="icon">📊</span>
+        <h3>Lines of Code Report</h3>
+        <p>Auto-generated codebase statistics with Mermaid charts &mdash; breakdown by language, directory, and category.</p>
+        <span class="arrow">View report &rarr;</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Tech Stack -->
+  <div class="section">
+    <h2>Tech Stack</h2>
+    <div class="tech-grid">
+      <div class="tech-item">
+        <span class="t-icon">🐍</span>
+        <h4>Python</h4>
+        <p>Backend, proof engine, graph builder</p>
+      </div>
+      <div class="tech-item">
+        <span class="t-icon">⚡</span>
+        <h4>JavaScript</h4>
+        <p>Interactive frontend, real-time rendering</p>
+      </div>
+      <div class="tech-item">
+        <span class="t-icon">📐</span>
+        <h4>MathBox</h4>
+        <p>Mathematical visualization engine</p>
+      </div>
+      <div class="tech-item">
+        <span class="t-icon">🔺</span>
+        <h4>Three.js</h4>
+        <p>3D rendering and scene management</p>
+      </div>
+      <div class="tech-item">
+        <span class="t-icon">✨</span>
+        <h4>Google GenAI</h4>
+        <p>LLM and real-time text-to-speech</p>
+      </div>
+      <div class="tech-item">
+        <span class="t-icon">🔧</span>
+        <h4>Pydantic AI</h4>
+        <p>Structured AI agent framework</p>
+      </div>
+      <div class="tech-item">
+        <span class="t-icon">🧪</span>
+        <h4>pytest</h4>
+        <p>Comprehensive test suite</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Getting Started -->
+  <div class="section getting-started">
+    <h2>Getting Started</h2>
+    <pre><span class="comment"># Clone the repository</span>
+<span class="cmd">git clone https://github.com/ibenian/algebench.git</span>
+<span class="cmd">cd algebench</span>
+
+<span class="comment"># Run a scene</span>
+<span class="cmd">./algebench scenes/eigenvalues.json --debug</span>
+
+<span class="comment"># Run the test suite</span>
+<span class="cmd">./run.sh -m pytest tests/</span></pre>
+  </div>
+
+</div>
+
+<footer>
+  <a href="https://github.com/ibenian/algebench">github.com/ibenian/algebench</a>
+</footer>
+
+</body>
+</html>
