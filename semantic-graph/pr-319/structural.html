@@ -154,7 +154,7 @@
     display: block;
   }
   .row-error {
-    grid-column: 2 / -1;
+    grid-column: 2 / 3;
     background: #2d1b1b;
     border: 1px solid #6b2020;
     border-radius: 6px;
@@ -179,8 +179,8 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-23 01:15 UTC &middot; theme: default-dark &middot; 17 expressions</div>
-<div class="section-title">Structural (17 expressions)</div>
+<div class="report-meta">Generated 2026-05-23 02:57 UTC &middot; theme: default-dark &middot; 21 expressions</div>
+<div class="section-title">Structural (21 expressions)</div>
 <div class="row">
   <div>
     <div class="row-id">two_stmt_backslash</div>
@@ -1413,6 +1413,78 @@
 </div>
 <div class="row">
   <div>
+    <div class="row-id">single_implication</div>
+    <div class="row-latex">$$P \implies Q$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  P["$P$"]:::scalar
+  Q["$Q$"]:::scalar
+  __implies_1(("$\Rightarrow$")):::operator
+  P --&gt;|lhs| __implies_1
+  Q --&gt;|rhs| __implies_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">P \implies Q</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "P",
+      "type": "scalar",
+      "latex": "P",
+      "subexpr": "P"
+    },
+    {
+      "id": "Q",
+      "type": "scalar",
+      "latex": "Q",
+      "subexpr": "Q"
+    },
+    {
+      "id": "__implies_1",
+      "type": "operator",
+      "label": "implies",
+      "emoji": "⇒",
+      "op": "implies",
+      "subexpr": "P \\implies Q"
+    }
+  ],
+  "edges": [
+    {
+      "from": "P",
+      "to": "__implies_1",
+      "role": "lhs"
+    },
+    {
+      "from": "Q",
+      "to": "__implies_1",
+      "role": "rhs"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
     <div class="row-id">implication_chain</div>
     <div class="row-latex">$$P \implies Q \implies R$$</div>
   </div>
@@ -1430,24 +1502,18 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   P["$P$"]:::scalar
-  __multiply_1(("$\times$")):::operator
   Q["$Q$"]:::scalar
-  __multiply_2(("$\times$")):::operator
-  implies["$\implies$"]:::scalar
   R["$R$"]:::scalar
-  __implies_3(("$\Rightarrow$")):::operator
-  Q --&gt; __multiply_1
-  implies --&gt; __multiply_2
-  R --&gt; __multiply_2
-  __multiply_2 --&gt; __multiply_1
-  P --&gt; __implies_3
-  __multiply_1 --&gt; __implies_3
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  __implies_1(("$\Rightarrow$")):::operator
+  __implies_2(("$\Rightarrow$")):::operator
+  Q --&gt;|lhs| __implies_1
+  R --&gt;|rhs| __implies_1
+  P --&gt;|lhs| __implies_2
+  __implies_1 --&gt;|rhs| __implies_2
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1464,28 +1530,10 @@
       "subexpr": "P"
     },
     {
-      "id": "__multiply_1",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "Q \\implies R"
-    },
-    {
       "id": "Q",
       "type": "scalar",
       "latex": "Q",
       "subexpr": "Q"
-    },
-    {
-      "id": "__multiply_2",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\implies R"
-    },
-    {
-      "id": "implies",
-      "type": "scalar",
-      "latex": "\\implies",
-      "subexpr": "\\implies"
     },
     {
       "id": "R",
@@ -1494,7 +1542,15 @@
       "subexpr": "R"
     },
     {
-      "id": "__implies_3",
+      "id": "__implies_1",
+      "type": "operator",
+      "label": "implies",
+      "emoji": "⇒",
+      "op": "implies",
+      "subexpr": "P \\implies Q \\implies R"
+    },
+    {
+      "id": "__implies_2",
       "type": "operator",
       "label": "implies",
       "emoji": "⇒",
@@ -1505,35 +1561,308 @@
   "edges": [
     {
       "from": "Q",
-      "to": "__multiply_1",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "implies",
-      "to": "__multiply_2",
-      "semantic": "direct",
-      "weight": 1.0
+      "to": "__implies_1",
+      "role": "lhs"
     },
     {
       "from": "R",
-      "to": "__multiply_2",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_2",
-      "to": "__multiply_1",
-      "semantic": "direct",
-      "weight": 1.0
+      "to": "__implies_1",
+      "role": "rhs"
     },
     {
       "from": "P",
-      "to": "__implies_3"
+      "to": "__implies_2",
+      "role": "lhs"
     },
     {
-      "from": "__multiply_1",
-      "to": "__implies_3"
+      "from": "__implies_1",
+      "to": "__implies_2",
+      "role": "rhs"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">implication_chain_four</div>
+    <div class="row-latex">$$A \implies B \implies C \implies D$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  A["$A$"]:::scalar
+  B["$B$"]:::scalar
+  C["$C$"]:::scalar
+  D["$D$"]:::scalar
+  __implies_1(("$\Rightarrow$")):::operator
+  __implies_2(("$\Rightarrow$")):::operator
+  __implies_3(("$\Rightarrow$")):::operator
+  C --&gt;|lhs| __implies_1
+  D --&gt;|rhs| __implies_1
+  B --&gt;|lhs| __implies_2
+  __implies_1 --&gt;|rhs| __implies_2
+  A --&gt;|lhs| __implies_3
+  __implies_2 --&gt;|rhs| __implies_3
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">A \implies B \implies C \implies D</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "A",
+      "type": "scalar",
+      "latex": "A",
+      "subexpr": "A"
+    },
+    {
+      "id": "B",
+      "type": "scalar",
+      "latex": "B",
+      "subexpr": "B"
+    },
+    {
+      "id": "C",
+      "type": "scalar",
+      "latex": "C",
+      "subexpr": "C"
+    },
+    {
+      "id": "D",
+      "type": "scalar",
+      "latex": "D",
+      "subexpr": "D"
+    },
+    {
+      "id": "__implies_1",
+      "type": "operator",
+      "label": "implies",
+      "emoji": "⇒",
+      "op": "implies",
+      "subexpr": "A \\implies B \\implies C \\implies D"
+    },
+    {
+      "id": "__implies_2",
+      "type": "operator",
+      "label": "implies",
+      "emoji": "⇒",
+      "op": "implies",
+      "subexpr": "A \\implies B \\implies C \\implies D"
+    },
+    {
+      "id": "__implies_3",
+      "type": "operator",
+      "label": "implies",
+      "emoji": "⇒",
+      "op": "implies",
+      "subexpr": "A \\implies B \\implies C \\implies D"
+    }
+  ],
+  "edges": [
+    {
+      "from": "C",
+      "to": "__implies_1",
+      "role": "lhs"
+    },
+    {
+      "from": "D",
+      "to": "__implies_1",
+      "role": "rhs"
+    },
+    {
+      "from": "B",
+      "to": "__implies_2",
+      "role": "lhs"
+    },
+    {
+      "from": "__implies_1",
+      "to": "__implies_2",
+      "role": "rhs"
+    },
+    {
+      "from": "A",
+      "to": "__implies_3",
+      "role": "lhs"
+    },
+    {
+      "from": "__implies_2",
+      "to": "__implies_3",
+      "role": "rhs"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">single_iff</div>
+    <div class="row-latex">$$P \iff Q$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  P["$P$"]:::scalar
+  Q["$Q$"]:::scalar
+  __iff_1(("$\Leftrightarrow$")):::operator
+  P --&gt; __iff_1
+  Q --&gt; __iff_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">P \iff Q</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "P",
+      "type": "scalar",
+      "latex": "P",
+      "subexpr": "P"
+    },
+    {
+      "id": "Q",
+      "type": "scalar",
+      "latex": "Q",
+      "subexpr": "Q"
+    },
+    {
+      "id": "__iff_1",
+      "type": "operator",
+      "label": "if and only if",
+      "emoji": "⇔",
+      "op": "iff",
+      "subexpr": "P \\iff Q"
+    }
+  ],
+  "edges": [
+    {
+      "from": "P",
+      "to": "__iff_1"
+    },
+    {
+      "from": "Q",
+      "to": "__iff_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">chained_iff</div>
+    <div class="row-latex">$$P \iff Q \iff R$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  P["$P$"]:::scalar
+  Q["$Q$"]:::scalar
+  R["$R$"]:::scalar
+  __iff_1(("$\Leftrightarrow$")):::operator
+  P --&gt; __iff_1
+  Q --&gt; __iff_1
+  R --&gt; __iff_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">P \iff Q \iff R</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "P",
+      "type": "scalar",
+      "latex": "P",
+      "subexpr": "P"
+    },
+    {
+      "id": "Q",
+      "type": "scalar",
+      "latex": "Q",
+      "subexpr": "Q"
+    },
+    {
+      "id": "R",
+      "type": "scalar",
+      "latex": "R",
+      "subexpr": "R"
+    },
+    {
+      "id": "__iff_1",
+      "type": "operator",
+      "label": "if and only if",
+      "emoji": "⇔",
+      "op": "iff",
+      "subexpr": "P \\iff Q \\iff R"
+    }
+  ],
+  "edges": [
+    {
+      "from": "P",
+      "to": "__iff_1"
+    },
+    {
+      "from": "Q",
+      "to": "__iff_1"
+    },
+    {
+      "from": "R",
+      "to": "__iff_1"
     }
   ],
   "classification": {
@@ -1768,116 +2097,211 @@
     <div class="row-id">piecewise</div>
     <div class="row-latex">$$f(x) = \begin{cases} x &amp; x \geq 0 \\ -x &amp; x &lt; 0 \end{cases}$$</div>
   </div>
-  <div class="row-error">Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/Lexer.py", line 137, in nextToken
-    ttype = self._interp.match(self._input, self._mode)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/atn/LexerATNSimulator.py", line 104, in match
-    return self.execATN(input, dfa.s0)
-           ~~~~~~~~~~~~^^^^^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/atn/LexerATNSimulator.py", line 195, in execATN
-    return self.failOrAccept(self.prevAccept, input, s.configs, t)
-           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/atn/LexerATNSimulator.py", line 254, in failOrAccept
-    raise LexerNoViableAltException(self.recog, input, self.startIndex, reach)
-antlr4.error.Errors.LexerNoViableAltException: LexerNoViableAltException('&amp;')
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1329, in _build_relation_graph
-    lhs_id, lhs_expr = _walk_relation_side(lhs_latex)
-                       ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1306, in _walk_relation_side
-    expr = parse_latex(side_latex)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/__init__.py", line 199, in parse_latex
-    return _latex.parse_latex(s, strict)
-           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_parse_latex_antlr.py", line 85, in parse_latex
-    relation = parser.math().relation()
-               ~~~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 442, in math
-    self.relation(0)
-    ~~~~~~~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 528, in relation
-    self.relation(3)
-    ~~~~~~~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 504, in relation
-    self.expr()
-    ~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 610, in expr
-    self.additive(0)
-    ~~~~~~~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 660, in additive
-    self.mp(0)
-    ~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 750, in mp
-    self.unary()
-    ~~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 943, in unary
-    _alt = self._interp.adaptivePredict(self._input,4,self._ctx)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/atn/ParserATNSimulator.py", line 346, in adaptivePredict
-    alt = self.execATN(dfa, s0, input, index, outerContext)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/atn/ParserATNSimulator.py", line 469, in execATN
-    input.consume()
-    ~~~~~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/BufferedTokenStream.py", line 100, in consume
-    if self.sync(self.index + 1):
-       ~~~~~~~~~^^^^^^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/BufferedTokenStream.py", line 112, in sync
-    fetched = self.fetch(n)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/BufferedTokenStream.py", line 124, in fetch
-    t = self.tokenSource.nextToken()
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/Lexer.py", line 139, in nextToken
-    self.notifyListeners(e)		# report error
-    ~~~~~~~~~~~~~~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/Lexer.py", line 294, in notifyListeners
-    listener.syntaxError(self, None, self._tokenStartLine, self._tokenStartColumn, msg, e)
-    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/error/ErrorListener.py", line 60, in syntaxError
-    delegate.syntaxError(recognizer, offendingSymbol, line, column, msg, e)
-    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_parse_latex_antlr.py", line 58, in syntaxError
-    raise LaTeXParsingError(err)
-sympy.parsing.latex.errors.LaTeXParsingError: I don't understand this
-f(x) = \begin{cases} x &amp; x
-~~~~~~~~~~~~~~~~~~~~~~~^
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1438, in _build_comma_separated_graph
-    sub = _latex_to_semantic_graph_dict(clause, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1583, in _latex_to_semantic_graph_dict
-    graph = _build_relation_graph(
-        lhs_latex, rel_meta, rhs_latex, latex,
-        overrides=overrides, latex_commands=latex_commands,
-        parenthetical_annotations=parenthetical_annotations, domain=domain,
-    )
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1332, in _build_relation_graph
-    raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
-ValueError: Failed to parse LaTeX: I don't understand this
-f(x) = \begin{cases} x &amp; x
-~~~~~~~~~~~~~~~~~~~~~~~^
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/scripts/semantic_graph_report.py", line 317, in _render_row
-    graph_obj = latex_to_semantic_graph(latex)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1663, in latex_to_semantic_graph
-    raw = _latex_to_semantic_graph_dict(latex, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1515, in _latex_to_semantic_graph_dict
-    graph = _build_comma_separated_graph(
-        strong_clauses, overrides=user_overrides, domain=domain,
-    )
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1440, in _build_comma_separated_graph
-    raise ValueError(
-    ...&lt;2 lines&gt;...
-    ) from exc
-ValueError: Failed to parse clause 1 ('f(x) = \\begin{cases} x &amp; x \\geq 0') of comma-separated expression: Failed to parse LaTeX: I don't understand this
-f(x) = \begin{cases} x &amp; x
-~~~~~~~~~~~~~~~~~~~~~~~^
-</div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __piecewise_1(("$piecewise$")):::operator
+  __branch_2(("$\Rightarrow$")):::operator
+  x["$x$"]:::scalar
+  __num_3["$0$"]:::number
+  __greater_equal_4{"≥"}:::relation
+  __branch_5(("$\Rightarrow$")):::operator
+  __negation_6@{ shape: "flip-tri", label: "$-$" }
+  __less_than_7{"&lt;"}:::relation
+  __num_8["$0$"]:::number
+  __f_9{{"$f$"}}:::function
+  __equals_10{"="}:::relation
+  class __negation_6 operator
+  __branch_2 --&gt; __piecewise_1
+  x --&gt;|value| __branch_2
+  x --&gt;|lhs| __greater_equal_4
+  __num_3 --&gt;|rhs| __greater_equal_4
+  __greater_equal_4 --&gt;|condition| __branch_2
+  __branch_5 --&gt; __piecewise_1
+  x --&gt; __negation_6
+  __negation_6 --&gt;|value| __branch_5
+  x --&gt;|lhs| __less_than_7
+  __num_8 --&gt;|rhs| __less_than_7
+  __less_than_7 --&gt;|condition| __branch_5
+  x --&gt; __f_9
+  __f_9 --&gt; __equals_10
+  __piecewise_1 --&gt; __equals_10
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">f(x) = \begin{cases} x &amp; x \geq 0 \\ -x &amp; x &lt; 0 \end{cases}</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__piecewise_1",
+      "type": "operator",
+      "label": "piecewise",
+      "op": "piecewise",
+      "subexpr": "f(x) = \\begin{cases} x &amp; x \\geq 0 \\\\ -x &amp; x &lt; 0 \\end{cases}"
+    },
+    {
+      "id": "__branch_2",
+      "type": "operator",
+      "label": "branch",
+      "op": "branch",
+      "subexpr": "x \\text{ if } x \\geq 0"
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x"
+    },
+    {
+      "id": "__num_3",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0"
+    },
+    {
+      "id": "__greater_equal_4",
+      "type": "relation",
+      "label": "greater than or equal to",
+      "emoji": "≥",
+      "op": "greater_equal",
+      "subexpr": "x \\geq 0"
+    },
+    {
+      "id": "__branch_5",
+      "type": "operator",
+      "label": "branch",
+      "op": "branch",
+      "subexpr": "-x \\text{ if } x &lt; 0"
+    },
+    {
+      "id": "__negation_6",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-x"
+    },
+    {
+      "id": "__less_than_7",
+      "type": "relation",
+      "op": "less_than",
+      "subexpr": "x &lt; 0"
+    },
+    {
+      "id": "__num_8",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0"
+    },
+    {
+      "id": "__f_9",
+      "type": "function",
+      "op": "f",
+      "subexpr": "f(x)"
+    },
+    {
+      "id": "__equals_10",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "f(x) = \\begin{cases} x &amp; x \\geq 0 \\\\ -x &amp; x &lt; 0 \\end{cases}"
+    }
+  ],
+  "edges": [
+    {
+      "from": "__branch_2",
+      "to": "__piecewise_1"
+    },
+    {
+      "from": "x",
+      "to": "__branch_2",
+      "role": "value"
+    },
+    {
+      "from": "x",
+      "to": "__greater_equal_4",
+      "role": "lhs"
+    },
+    {
+      "from": "__num_3",
+      "to": "__greater_equal_4",
+      "role": "rhs"
+    },
+    {
+      "from": "__greater_equal_4",
+      "to": "__branch_2",
+      "role": "condition"
+    },
+    {
+      "from": "__branch_5",
+      "to": "__piecewise_1"
+    },
+    {
+      "from": "x",
+      "to": "__negation_6"
+    },
+    {
+      "from": "__negation_6",
+      "to": "__branch_5",
+      "role": "value"
+    },
+    {
+      "from": "x",
+      "to": "__less_than_7",
+      "role": "lhs"
+    },
+    {
+      "from": "__num_8",
+      "to": "__less_than_7",
+      "role": "rhs"
+    },
+    {
+      "from": "__less_than_7",
+      "to": "__branch_5",
+      "role": "condition"
+    },
+    {
+      "from": "x",
+      "to": "__f_9"
+    },
+    {
+      "from": "__f_9",
+      "to": "__equals_10"
+    },
+    {
+      "from": "__piecewise_1",
+      "to": "__equals_10"
+    }
+  ],
+  "classification": {
+    "kind": "piecewise",
+    "branches": 2
+  }
+}</div>
 </div>
 <div class="row">
   <div>
@@ -2140,7 +2564,7 @@ f(x) = \begin{cases} x &amp; x
   }
 }</div>
 </div>
-<div class="summary"><span class="count">16</span> rendered, <span class="count">1</span> errors out of <span class="count">17</span> expressions</div>
+<div class="summary"><span class="count">21</span> rendered, <span class="count">0</span> errors out of <span class="count">21</span> expressions</div>
 <script>
 document.querySelectorAll('.row-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
