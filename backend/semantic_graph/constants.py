@@ -102,6 +102,10 @@ _ASYMMETRIC_OPS: set[str] = {
     "element_of", "not_element_of",
 }
 
+_SYMMETRIC_OPS: set[str] = {
+    "equals", "approximately", "not_equal", "proportional", "maps_to",
+}
+
 _META_RELATION_OPS: set[str] = {"implies", "iff"}
 
 _PLACEHOLDER_NAME_RE: re.Pattern[str] = re.compile(r"^(?:Theta|Xi|Phi)_\{\d+\}$")

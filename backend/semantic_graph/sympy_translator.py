@@ -33,6 +33,7 @@ from .constants import (
     CONSTANT_MAP,
     RELATION_MAP,
     _ASYMMETRIC_OPS,
+    _SYMMETRIC_OPS,
     _META_RELATION_OPS,
     _PLACEHOLDER_NAME_RE,
     _STYLE_SYMBOL_COMMAND_RE,
@@ -50,6 +51,30 @@ from .constants import (
 
 _QUAD_COMMA_RE = re.compile(r",\s*\\(?:quad|qquad)\b")
 _LEADING_SPACE_CMD_RE = re.compile(r"^\s*(?:\\(?:quad|qquad|,|;|!|:)\s*)+")
+
+
+# ---------------------------------------------------------------------------
+# Relation-kind predicates
+# ---------------------------------------------------------------------------
+
+def is_asymmetric_relation(op: str) -> bool:
+    """True for directional relations that need lhs/rhs edge roles."""
+    return op in _ASYMMETRIC_OPS
+
+
+def is_symmetric_relation(op: str) -> bool:
+    """True for relations that can be flattened into an n-ary node."""
+    return op in _SYMMETRIC_OPS
+
+
+def is_meta_relation(op: str) -> bool:
+    """True for logical connectives (implies, iff) that use type='operator'."""
+    return op in _META_RELATION_OPS
+
+
+def is_relation(op: str) -> bool:
+    """True if this op uses type='relation' in the graph."""
+    return is_asymmetric_relation(op) or is_symmetric_relation(op)
 
 
 # ---------------------------------------------------------------------------
@@ -641,8 +666,12 @@ def _split_on_relation(latex: str) -> tuple[str, dict[str, str], str] | None:
     return None
 
 
-def _split_chained_equals(latex: str) -> tuple[str, dict[str, str], str] | None:
-    r"""Split on first ``=`` only when 2+ bare ``=`` exist at depth 0."""
+def _split_chained_equals(latex: str) -> list[str] | None:
+    r"""Split on all ``=`` at depth 0 when 2+ bare ``=`` exist.
+
+    Returns a list of the individual parts (e.g. ``["a", "b", "c"]``
+    for ``a = b = c``), or ``None`` when fewer than two ``=`` are found.
+    """
     n = len(latex)
     d = 0
     eq_positions: list[int] = []
@@ -656,12 +685,14 @@ def _split_chained_equals(latex: str) -> tuple[str, dict[str, str], str] | None:
             eq_positions.append(i)
     if len(eq_positions) < 2:
         return None
-    first = eq_positions[0]
-    lhs = latex[:first].strip()
-    rhs = latex[first + 1:].strip()
-    if lhs and rhs:
-        meta = {"op": "equals", "label": "equals", "emoji": "="}
-        return lhs, meta, rhs
+    parts: list[str] = []
+    prev = 0
+    for pos in eq_positions:
+        parts.append(latex[prev:pos].strip())
+        prev = pos + 1
+    parts.append(latex[prev:].strip())
+    if all(parts):
+        return parts
     return None
 
 
@@ -1172,15 +1203,11 @@ class SemanticGraphBuilder:
         op_name = OPERATOR_MAP.get(type(expr))
         if op_name is not None:
             node_id = self._next_id(op_name)
-            node_type = (
-                "relation"
-                if op_name in _ASYMMETRIC_OPS or op_name == "equals"
-                else "operator"
-            )
+            node_type = "relation" if is_relation(op_name) else "operator"
             self._add_node(node_id, type=node_type, op=op_name)
             edge_semantic = "direct" if op_name == "multiply" else None
             edge_weight = 1.0 if op_name == "multiply" else None
-            asymmetric = op_name in _ASYMMETRIC_OPS
+            asymmetric = is_asymmetric_relation(op_name)
             for i, arg in enumerate(expr.args):
                 child_semantic = edge_semantic
                 child_weight = edge_weight
@@ -1311,14 +1338,11 @@ def _build_relation_graph(
             node["subexpr"] = builder._restore_placeholders(rhs_latex.strip())
 
     rel_id = builder._next_id(rel_meta["op"])
-    rel_type = (
-        "operator" if rel_meta["op"] in _META_RELATION_OPS
-        else "relation"
-    )
+    rel_type = "relation" if is_relation(rel_meta["op"]) else "operator"
     builder._add_node(
         rel_id, type=rel_type, subexpr=original_latex.strip(), **rel_meta,
     )
-    rel_asymmetric = rel_meta["op"] in _ASYMMETRIC_OPS
+    rel_asymmetric = is_asymmetric_relation(rel_meta["op"])
     builder._add_edge(lhs_id, rel_id, role="lhs" if rel_asymmetric else None)
     builder._add_edge(rhs_id, rel_id, role="rhs" if rel_asymmetric else None)
 
@@ -1331,6 +1355,64 @@ def _build_relation_graph(
         graph["classification"] = _classify_expression(combined)
     else:
         graph["classification"] = {"kind": "algebraic"}
+    if domain:
+        graph["domain"] = domain
+    _inject_annotations(graph, parenthetical_annotations or [])
+    return graph
+
+
+def _build_nary_relation_graph(
+    part_latexes: list[str],
+    rel_meta: dict[str, str],
+    original_latex: str,
+    *,
+    overrides: dict[str, dict[str, str]] | None,
+    latex_commands: dict[str, str] | None = None,
+    parenthetical_annotations: list | None = None,
+    domain: str | None = None,
+) -> dict:
+    r"""Build an n-ary relation graph: all parts feed into one relation node.
+
+    Used for chained symmetric relations such as ``a = b = c`` or
+    ``a \approx b \approx c``.  Each part is parsed independently and
+    connected to a single relation node.
+    """
+    builder = SemanticGraphBuilder(
+        overrides=overrides,
+        latex_commands=latex_commands or {},
+        original_latex=original_latex,
+    )
+    part_ids: list[str] = []
+    first_expr = None
+    try:
+        for part_latex in part_latexes:
+            expr = parse_latex(part_latex)
+            if first_expr is None:
+                first_expr = expr
+            pid = builder._walk(expr)
+            for node in builder.nodes:
+                if node["id"] == pid:
+                    node["subexpr"] = builder._restore_placeholders(
+                        part_latex.strip())
+                    break
+            part_ids.append(pid)
+    except Exception as exc:
+        raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
+
+    op = rel_meta["op"]
+    rel_type = "relation" if is_relation(op) else "operator"
+    rel_id = builder._next_id(op)
+    builder._add_node(
+        rel_id, type=rel_type, subexpr=original_latex.strip(), **rel_meta,
+    )
+    for pid in part_ids:
+        builder._add_edge(pid, rel_id)
+
+    graph: dict = {"nodes": builder.nodes, "edges": builder.edges}
+    graph["classification"] = (
+        _classify_expression(first_expr) if first_expr is not None
+        else {"kind": "algebraic"}
+    )
     if domain:
         graph["domain"] = domain
     _inject_annotations(graph, parenthetical_annotations or [])
@@ -1453,7 +1535,7 @@ def _latex_to_semantic_graph_dict(
     rel = _split_on_relation(preprocessed)
 
     # --- Meta relations (implies, iff) take priority over commas ---
-    if rel is not None and rel[1]["op"] in _META_RELATION_OPS:
+    if rel is not None and is_meta_relation(rel[1]["op"]):
         lhs_latex, rel_meta, rhs_latex = rel
         graph = _build_relation_graph(
             lhs_latex, rel_meta, rhs_latex, latex,
@@ -1476,6 +1558,28 @@ def _latex_to_semantic_graph_dict(
     # --- Object-level relations ---
     if rel is not None:
         lhs_latex, rel_meta, rhs_latex = rel
+        op = rel_meta["op"]
+
+        # Chained symmetric relations → single n-ary node.
+        if is_symmetric_relation(op):
+            parts = [lhs_latex]
+            remaining = rhs_latex
+            while True:
+                inner = _split_on_relation(remaining)
+                if inner is not None and inner[1]["op"] == op:
+                    parts.append(inner[0])
+                    remaining = inner[2]
+                else:
+                    parts.append(remaining)
+                    break
+            if len(parts) >= 3:
+                return _build_nary_relation_graph(
+                    parts, rel_meta, latex,
+                    overrides=overrides, latex_commands=latex_commands,
+                    parenthetical_annotations=parenthetical_annotations,
+                    domain=domain,
+                )
+
         graph = _build_relation_graph(
             lhs_latex, rel_meta, rhs_latex, latex,
             overrides=overrides, latex_commands=latex_commands,
@@ -1483,40 +1587,16 @@ def _latex_to_semantic_graph_dict(
         )
         return graph
 
-    # --- Chained equals ---
-    chained = _split_chained_equals(preprocessed)
-    if chained is not None:
-        lhs_latex, rel_meta, rhs_latex = chained
-        builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands, original_latex=latex)
-        try:
-            lhs_expr = parse_latex(lhs_latex)
-            lhs_id = builder._walk(lhs_expr)
-            rhs_expr = parse_latex(rhs_latex)
-            rhs_id = builder._walk(rhs_expr)
-        except Exception as exc:
-            raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
-        for node in builder.nodes:
-            if node["id"] == lhs_id:
-                node["subexpr"] = builder._restore_placeholders(lhs_latex.strip())
-            elif node["id"] == rhs_id:
-                node["subexpr"] = builder._restore_placeholders(rhs_latex.strip())
-        rel_id = builder._next_id(rel_meta["op"])
-        builder._add_node(rel_id, type="relation", subexpr=latex.strip(), **rel_meta)
-        builder._add_edge(lhs_id, rel_id)
-        builder._add_edge(rhs_id, rel_id)
-        graph = {"nodes": builder.nodes, "edges": builder.edges}
-        if lhs_expr is not None and rhs_expr is not None:
-            try:
-                combined = lhs_expr - rhs_expr
-            except TypeError:
-                combined = lhs_expr
-            graph["classification"] = _classify_expression(combined)
-        else:
-            graph["classification"] = {"kind": "algebraic"}
-        if domain:
-            graph["domain"] = domain
-        _inject_annotations(graph, parenthetical_annotations)
-        return graph
+    # --- Chained equals (n-ary: a = b = c → single = node) ---
+    chained_parts = _split_chained_equals(preprocessed)
+    if chained_parts is not None:
+        eq_meta = {"op": "equals", "label": "equals", "emoji": "="}
+        return _build_nary_relation_graph(
+            chained_parts, eq_meta, latex,
+            overrides=overrides, latex_commands=latex_commands,
+            parenthetical_annotations=parenthetical_annotations,
+            domain=domain,
+        )
 
     # --- Single expression ---
     try:

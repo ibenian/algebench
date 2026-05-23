@@ -20,6 +20,7 @@ from backend.semantic_graph.constants import (
     KNOWN_VARIABLES,
     OPERATOR_MAP,
     _ASYMMETRIC_OPS,
+    _SYMMETRIC_OPS,
     _META_RELATION_OPS,
     _PLACEHOLDER_NAME_RE,
     CONSTANT_MAP,
@@ -84,8 +85,18 @@ class TestTranslatorConstants:
         assert "element_of" in _ASYMMETRIC_OPS
         assert "equals" not in _ASYMMETRIC_OPS
 
+    def test_symmetric_ops(self):
+        assert "equals" in _SYMMETRIC_OPS
+        assert "approximately" in _SYMMETRIC_OPS
+        assert "implies" not in _SYMMETRIC_OPS
+
     def test_meta_relation_ops(self):
         assert _META_RELATION_OPS == {"implies", "iff"}
+
+    def test_relation_sets_are_disjoint(self):
+        assert _ASYMMETRIC_OPS.isdisjoint(_SYMMETRIC_OPS)
+        assert _ASYMMETRIC_OPS.isdisjoint(_META_RELATION_OPS)
+        assert _SYMMETRIC_OPS.isdisjoint(_META_RELATION_OPS)
 
     def test_placeholder_name_re(self):
         assert isinstance(_PLACEHOLDER_NAME_RE, re.Pattern)

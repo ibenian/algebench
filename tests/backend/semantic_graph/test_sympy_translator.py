@@ -9,6 +9,10 @@ from backend.semantic_graph.sympy_translator import (
     node_short_label,
     node_long_label,
     operator_kind,
+    is_asymmetric_relation,
+    is_symmetric_relation,
+    is_meta_relation,
+    is_relation,
     SemanticGraphBuilder,
     _normalize_latex,
     _preprocess_latex,
@@ -46,6 +50,57 @@ class TestOperatorKind:
 
     def test_unknown_function_defaults(self):
         assert operator_kind({"type": "function", "op": "unknown_fn"}) == "function"
+
+
+class TestRelationPredicates:
+    @pytest.mark.parametrize("op", [
+        "greater_than", "less_than", "greater_equal", "less_equal",
+        "element_of", "not_element_of",
+    ])
+    def test_asymmetric(self, op):
+        assert is_asymmetric_relation(op) is True
+        assert is_symmetric_relation(op) is False
+        assert is_meta_relation(op) is False
+        assert is_relation(op) is True
+
+    @pytest.mark.parametrize("op", ["implies", "iff"])
+    def test_meta(self, op):
+        assert is_meta_relation(op) is True
+        assert is_symmetric_relation(op) is False
+        assert is_asymmetric_relation(op) is False
+        assert is_relation(op) is False
+
+    @pytest.mark.parametrize("op", [
+        "equals", "approximately", "not_equal", "proportional", "maps_to",
+    ])
+    def test_symmetric(self, op):
+        assert is_symmetric_relation(op) is True
+        assert is_asymmetric_relation(op) is False
+        assert is_meta_relation(op) is False
+        assert is_relation(op) is True
+
+    @pytest.mark.parametrize("op", ["add", "multiply", "power", "sin"])
+    def test_non_relation(self, op):
+        assert is_relation(op) is False
+        assert is_asymmetric_relation(op) is False
+        assert is_symmetric_relation(op) is False
+        assert is_meta_relation(op) is False
+
+    def test_categories_are_mutually_exclusive(self):
+        """Every RELATION_MAP op belongs to exactly one category."""
+        from backend.semantic_graph.constants import RELATION_MAP
+        all_ops = {meta["op"] for _, meta in RELATION_MAP}
+        all_ops.add("equals")
+        for op in all_ops:
+            flags = (
+                is_asymmetric_relation(op),
+                is_symmetric_relation(op),
+                is_meta_relation(op),
+            )
+            assert sum(flags) == 1, (
+                f"{op!r} belongs to {sum(flags)} categories: "
+                f"asym={flags[0]}, sym={flags[1]}, meta={flags[2]}"
+            )
 
 
 class TestNodeLabels:
@@ -205,10 +260,12 @@ class TestSplitChainedEquals:
     def test_two_equals(self):
         result = _split_chained_equals("a = b = c")
         assert result is not None
-        lhs, meta, rhs = result
-        assert lhs == "a"
-        assert rhs == "b = c"
-        assert meta["op"] == "equals"
+        assert result == ["a", "b", "c"]
+
+    def test_three_equals(self):
+        result = _split_chained_equals("a = b = c = d")
+        assert result is not None
+        assert result == ["a", "b", "c", "d"]
 
     def test_single_equals(self):
         assert _split_chained_equals("a = b") is None

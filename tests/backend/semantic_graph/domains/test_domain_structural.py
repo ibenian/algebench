@@ -38,6 +38,7 @@ ALLOWED_OPS = {
     "derivative", "function",
     "less_than", "greater_than", "less_equal", "greater_equal",
     "implies", "and", "element_of",
+    "approximately", "not_equal", "proportional",
 }
 
 
@@ -83,29 +84,49 @@ CHAINED_EQUALS_EXPRESSIONS: list[CatalogEntry] = [
     ("chained_two",
      r"a = b = c",
      PASS,
-     "b,c -> rel:equals; a,rel:equals -> rel:equals",
-     "b,c -> __equals_1; __equals_1,a -> __equals_2",
+     "a,b,c -> rel:equals",
+     "a,b,c -> __equals_1",
      None),
 
     ("chained_three",
      r"a = b = c = d",
      PASS,
-     "b,c -> rel:equals; d,rel:equals -> rel:equals; a,rel:equals -> rel:equals",
-     "b,c -> __equals_2; __equals_2,d -> __equals_1; "
-     "__equals_1,a -> __equals_3",
+     "a,b,c,d -> rel:equals",
+     "a,b,c,d -> __equals_1",
      None),
 
     ("substitution",
      r"F = ma = m \frac{dv}{dt}",
      PASS,
      "t,v -> derivative; a,m -> multiply; "
-     "derivative,m -> multiply; multiply,multiply -> rel:equals; "
-     "F,rel:equals -> rel:equals",
-     "t,v -> __deriv_4; a,m -> __multiply_2; "
-     "__deriv_4,m -> __multiply_3; "
-     "__multiply_2,__multiply_3 -> __equals_1; "
-     "F,__equals_1 -> __equals_5",
+     "derivative,m -> multiply; F,multiply,multiply -> rel:equals",
+     "t,v -> __deriv_3; a,m -> __multiply_1; "
+     "__deriv_3,m -> __multiply_2; "
+     "F,__multiply_1,__multiply_2 -> __equals_4",
      [{"op": "derivative"}]),
+]
+
+CHAINED_SYMMETRIC_EXPRESSIONS: list[CatalogEntry] = [
+    ("chained_approx",
+     r"a \approx b \approx c",
+     PASS,
+     "a,b,c -> rel:approximately",
+     "a,b,c -> __approximately_1",
+     None),
+
+    ("chained_neq",
+     r"a \neq b \neq c",
+     PASS,
+     "a,b,c -> rel:not_equal",
+     "a,b,c -> __not_equal_1",
+     None),
+
+    ("chained_propto",
+     r"a \propto b \propto c",
+     PASS,
+     "a,b,c -> rel:proportional",
+     "a,b,c -> __proportional_1",
+     None),
 ]
 
 INEQUALITY_EXPRESSIONS: list[CatalogEntry] = [
@@ -188,6 +209,7 @@ SUBJECT_GROUP_EXPRESSIONS: list[CatalogEntry] = [
 ALL_EXPRESSIONS = (
     STATEMENT_SEPARATOR_EXPRESSIONS
     + CHAINED_EQUALS_EXPRESSIONS
+    + CHAINED_SYMMETRIC_EXPRESSIONS
     + INEQUALITY_EXPRESSIONS
     + SYSTEM_EXPRESSIONS
     + PIECEWISE_EXPRESSIONS
