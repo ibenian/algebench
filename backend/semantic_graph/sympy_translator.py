@@ -1640,10 +1640,12 @@ def _build_piecewise_graph(
     *lhs_latex* is the expression before ``= \begin{cases}`` (may be ``None``
     for bare cases).  Each branch is ``(value_latex, condition_latex | None)``.
 
-    The resulting graph has a ``piecewise`` operator node connected to the
-    value sub-graph of each branch via ``value`` role, and to each condition
-    sub-graph via ``condition`` role.  If *lhs_latex* is present, the whole
-    thing is wrapped in an ``equals`` relation.
+    Each branch gets an explicit ``branch`` intermediary node that groups
+    a value sub-graph (``value`` role) with its condition sub-graph
+    (``condition`` role).  The ``piecewise`` operator node then collects
+    branches.  A branch without a condition (the "otherwise" case) has
+    only a ``value`` edge.  If *lhs_latex* is present, the whole thing is
+    wrapped in an ``equals`` relation.
     """
     builder = SemanticGraphBuilder(
         overrides=overrides,
@@ -1658,6 +1660,18 @@ def _build_piecewise_graph(
     )
 
     for val_latex, cond_latex in branches:
+        # Build the branch label from value & condition
+        branch_subexpr = val_latex
+        if cond_latex:
+            branch_subexpr = f"{val_latex} \\text{{ if }} {cond_latex}"
+
+        branch_id = builder._next_id("branch")
+        builder._add_node(
+            branch_id, type="operator", op="branch", label="branch",
+            subexpr=builder._restore_placeholders(branch_subexpr),
+        )
+        builder._add_edge(branch_id, pw_id)
+
         # Parse value expression
         try:
             val_expr = parse_latex(val_latex)
@@ -1672,12 +1686,12 @@ def _build_piecewise_graph(
                 val_id, type="scalar", latex=val_latex,
                 subexpr=val_latex,
             )
-        builder._add_edge(val_id, pw_id, role="value")
+        builder._add_edge(val_id, branch_id, role="value")
 
         # Parse condition expression (if present)
         if cond_latex:
             cond_id = _walk_condition_into(builder, cond_latex, overrides)
-            builder._add_edge(cond_id, pw_id, role="condition")
+            builder._add_edge(cond_id, branch_id, role="condition")
 
     graph: dict = {"nodes": builder.nodes, "edges": builder.edges}
 

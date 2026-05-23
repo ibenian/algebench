@@ -35,7 +35,7 @@ from tests.backend.semantic_graph.generators.invariants import (
 
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
-    "derivative", "function", "piecewise",
+    "derivative", "function", "piecewise", "branch",
     "less_than", "greater_than", "less_equal", "greater_equal",
     "implies", "iff", "and", "element_of",
     "approximately", "not_equal", "proportional",
@@ -210,13 +210,16 @@ PIECEWISE_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "x -> fn:f; x -> negation; num,x -> rel:greater_equal; "
      "num,x -> rel:less_than; "
-     "negation,rel:greater_equal,rel:less_than,x -> piecewise; "
-     "fn:f,piecewise -> rel:equals",
-     "x -> __f_7; __num_2,x -> __greater_equal_3; "
-     "__num_6,x -> __less_than_5; x -> __negation_4; "
-     "__greater_equal_3,__less_than_5,__negation_4,x -> __piecewise_1; "
-     "__f_7,__piecewise_1 -> __equals_8",
+     "negation,rel:less_than -> branch; rel:greater_equal,x -> branch; "
+     "branch,branch -> piecewise; fn:f,piecewise -> rel:equals",
+     "x -> __f_9; __num_3,x -> __greater_equal_4; "
+     "__num_8,x -> __less_than_7; x -> __negation_6; "
+     "__greater_equal_4,x -> __branch_2; "
+     "__less_than_7,__negation_6 -> __branch_5; "
+     "__branch_2,__branch_5 -> __piecewise_1; "
+     "__f_9,__piecewise_1 -> __equals_10",
      [{"op": "piecewise"},
+      {"op": "branch"},
       {"op": "greater_equal", "_edge_roles": {"lhs": 1, "rhs": 1}},
       {"op": "less_than", "_edge_roles": {"lhs": 1, "rhs": 1}}]),
 ]

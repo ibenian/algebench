@@ -108,6 +108,7 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "implies": "⟹",
     "iff": "⟺",
     "and": ",",
+    "branch": "⇒",
 }
 
 OPERATOR_LATEX: dict[str, str] = {
@@ -140,6 +141,7 @@ OPERATOR_LATEX: dict[str, str] = {
     "implies": r"\Rightarrow",
     "iff": r"\Leftrightarrow",
     "and": ",",
+    "branch": r"\Rightarrow",
 }
 
 # Op-specific shape defaults. The graph schema is semantic-only

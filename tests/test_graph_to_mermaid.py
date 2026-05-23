@@ -583,6 +583,66 @@ class TestSemanticGraphToMermaid:
 # End-to-end with latex_to_graph
 # ---------------------------------------------------------------------------
 
+class TestPiecewiseBranchLabels:
+    """Branch and piecewise operator nodes render with correct glyphs."""
+
+    def test_branch_operator_renders_implication_arrow(self):
+        node = {"id": "__branch_1", "type": "operator", "op": "branch"}
+        label = _format_label(node, "emoji")
+        assert label == r"$\Rightarrow$"
+
+    def test_branch_operator_renders_implication_arrow_latex_mode(self):
+        node = {"id": "__branch_1", "type": "operator", "op": "branch"}
+        label = _format_label(node, "latex")
+        assert label == r"$\Rightarrow$"
+
+    def test_piecewise_operator_renders_as_text(self):
+        # piecewise falls back to op name since it's not in OPERATOR_LATEX
+        node = {"id": "__piecewise_1", "type": "operator", "op": "piecewise"}
+        label = _format_label(node, "emoji")
+        assert label == "$piecewise$"
+
+    def test_piecewise_graph_renders_branch_nodes(self):
+        """Full piecewise graph with branch nodes renders to valid Mermaid."""
+        graph = {
+            "nodes": [
+                {"id": "x", "type": "scalar", "latex": "x"},
+                {"id": "__piecewise_1", "type": "operator", "op": "piecewise"},
+                {"id": "__branch_2", "type": "operator", "op": "branch",
+                 "subexpr": r"x \text{ if } x \geq 0"},
+                {"id": "__branch_5", "type": "operator", "op": "branch",
+                 "subexpr": r"-x \text{ if } x < 0"},
+                {"id": "__greater_equal_4", "type": "relation", "op": "greater_equal"},
+                {"id": "__less_than_7", "type": "relation", "op": "less_than"},
+                {"id": "__negation_6", "type": "operator", "op": "negation"},
+                {"id": "__num_3", "type": "number", "label": "0", "latex": "0"},
+                {"id": "__num_8", "type": "number", "label": "0", "latex": "0"},
+            ],
+            "edges": [
+                {"from": "x", "to": "__greater_equal_4"},
+                {"from": "__num_3", "to": "__greater_equal_4"},
+                {"from": "x", "to": "__less_than_7"},
+                {"from": "__num_8", "to": "__less_than_7"},
+                {"from": "x", "to": "__negation_6"},
+                {"from": "__greater_equal_4", "to": "__branch_2", "role": "condition"},
+                {"from": "x", "to": "__branch_2", "role": "value"},
+                {"from": "__less_than_7", "to": "__branch_5", "role": "condition"},
+                {"from": "__negation_6", "to": "__branch_5", "role": "value"},
+                {"from": "__branch_2", "to": "__piecewise_1"},
+                {"from": "__branch_5", "to": "__piecewise_1"},
+            ],
+        }
+        result = semantic_graph_to_mermaid(graph)
+        assert result.startswith("flowchart")
+        # Branch nodes present with implication arrow
+        assert "__branch_2" in result
+        assert "__branch_5" in result
+        assert "__piecewise_1" in result
+        # Edge role labels rendered
+        assert "|condition|" in result
+        assert "|value|" in result
+
+
 class TestEndToEnd:
     def test_latex_to_mermaid_pipeline(self):
         from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
@@ -602,6 +662,19 @@ class TestEndToEnd:
             theme = load_theme(theme_name)
             result = semantic_graph_to_mermaid(graph, theme=theme)
             assert result.startswith("flowchart")
+
+    def test_piecewise_pipeline(self):
+        from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
+
+        graph = latex_to_semantic_graph(
+            r"f(x) = \begin{cases} x & x \geq 0 \\ -x & x < 0 \end{cases}"
+        ).model_dump(by_alias=True)
+        result = semantic_graph_to_mermaid(graph)
+        assert result.startswith("flowchart")
+        # Branch nodes render with the implication arrow
+        assert r"\Rightarrow" in result
+        # Piecewise node present
+        assert "piecewise" in result
 
     def test_all_label_modes(self):
         from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
