@@ -498,9 +498,8 @@ def _classify_expression(expr: sympy.Basic) -> dict[str, Any]:
 # Piecewise / cases detection
 # ---------------------------------------------------------------------------
 
-_CASES_RE = re.compile(
-    r"\\begin\{cases\}(.*?)\\end\{cases\}", re.DOTALL,
-)
+_CASES_BEGIN = r"\begin{cases}"
+_CASES_END = r"\end{cases}"
 
 
 def _extract_piecewise(latex: str) -> tuple[str | None, list[tuple[str, str | None]]] | None:
@@ -511,12 +510,18 @@ def _extract_piecewise(latex: str) -> tuple[str | None, list[tuple[str, str | No
     ``=``, and each branch is ``(value_latex, condition_latex | None)``.
     Returns ``None`` if no cases environment is found.
     """
-    m = _CASES_RE.search(latex)
-    if m is None:
+    # Use simple string search instead of regex to avoid polynomial
+    # backtracking on crafted input (CodeQL: polynomial-redos).
+    start = latex.find(_CASES_BEGIN)
+    if start == -1:
+        return None
+    body_start = start + len(_CASES_BEGIN)
+    end = latex.find(_CASES_END, body_start)
+    if end == -1:
         return None
 
-    before = latex[:m.start()].strip()
-    body = m.group(1).strip()
+    before = latex[:start].strip()
+    body = latex[body_start:end].strip()
 
     # Strip trailing = from the lhs
     lhs = before.rstrip("= ").strip() if before else None

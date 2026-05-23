@@ -39,7 +39,8 @@
         "derivative", "integral", "limit", "tends_to", "sum", "product",
         "sin", "cos", "tan", "log", "exp", "sqrt", "abs",
         "arcsin", "arccos", "arctan",
-        "inner_product"
+        "inner_product",
+        "piecewise", "branch"
       ],
       "description": "The mathematical operation this operator or function performs."
     },
@@ -77,7 +78,7 @@
         },
         "with_respect_to": {
           "type": "string",
-          "description": "Comma-separated node ID(s) of the variable(s) of operation for derivative, integral, sum, and product operators (e.g. \"x\" for d/dx, \"x, y\" for ∂²/∂x∂y). Each ID references a node in the graph."
+          "description": "Comma-separated node ID(s) of the variable(s) of operation for derivative, integral, sum, product, and tends_to operators (e.g. \"x\" for d/dx, \"x, y\" for ∂²/∂x∂y, \"x\" for lim x→a). Each ID references a node in the graph."
         },
         "lower_bound": {
           "type": "string",
@@ -89,12 +90,12 @@
         },
         "limit_point": {
           "type": "string",
-          "description": "Node ID of the point being approached in a limit operator (e.g. \"__num_3\" for lim x→0, \"__const_5\" for lim x→∞). References a node in the graph. Present only on limit operators."
+          "description": "Node ID of the point being approached (e.g. \"__num_3\" for lim x→0, \"__const_5\" for lim x→∞). References a node in the graph. Present only on tends_to operator nodes (the approach specification inside a limit, not on the limit node itself)."
         },
         "limit_direction": {
           "type": "string",
           "enum": ["+", "-"],
-          "description": "Direction of approach for one-sided limits: \"+\" for right-hand (x→a⁺), \"-\" for left-hand (x→a⁻). Omitted for bilateral limits (the default)."
+          "description": "Direction of approach for one-sided limits: \"+\" for right-hand (x→a⁺), \"-\" for left-hand (x→a⁻). Omitted for bilateral limits (the default). Present only on tends_to operator nodes."
         },
         "subexpr": {
           "type": "string",
@@ -170,8 +171,8 @@
         },
         "role": {
           "type": "string",
-          "enum": ["lhs", "rhs", "wrt", "exp", "lb", "ub"],
-          "description": "Operand position or relationship. 'lhs'/'rhs' for asymmetric operators (comparisons). 'wrt' for the differentiation/integration variable edge into derivative/integral nodes. 'exp' for the exponent edge into a power node with symbolic exponent. 'lb'/'ub' for lower/upper bound edges into sum/product nodes. Omit for symmetric operators (add, multiply, equals)."
+          "enum": ["lhs", "rhs", "wrt", "exp", "lb", "ub", "value", "condition"],
+          "description": "Operand position or relationship. 'lhs'/'rhs' for asymmetric operators (comparisons, tends_to). 'wrt' for the differentiation/integration variable edge into derivative/integral nodes. 'exp' for the exponent edge into a power node with symbolic exponent. 'lb'/'ub' for lower/upper bound edges into sum/product nodes. 'value'/'condition' for piecewise branch nodes — 'value' is the branch result, 'condition' is the guard predicate. Omit for symmetric operators (add, multiply, equals)."
         }
       }
     },
@@ -182,13 +183,18 @@
       "properties": {
         "kind": {
           "type": "string",
-          "enum": ["algebraic", "ODE", "PDE", "statements"],
-          "description": "Expression type: algebraic (no derivatives), ODE (single independent variable), PDE (multiple independent variables), or statements (top-level comma-separated clauses — each clause is an independent statement emitted as its own subtree; see issue #144)."
+          "enum": ["algebraic", "ODE", "PDE", "statements", "piecewise"],
+          "description": "Expression type: algebraic (no derivatives), ODE (single independent variable), PDE (multiple independent variables), statements (top-level comma-separated clauses — each clause is an independent statement emitted as its own subtree; see issue #144), or piecewise (expression defined by cases/branches via \\begin{cases}...\\end{cases})."
         },
         "count": {
           "type": "integer",
           "minimum": 2,
           "description": "Number of independent statements in the graph. Present only when kind = \"statements\". Redundant with clauses.length but kept for quick access."
+        },
+        "branches": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of case branches in a piecewise expression. Present only when kind = \"piecewise\"."
         },
         "clauses": {
           "type": "array",
