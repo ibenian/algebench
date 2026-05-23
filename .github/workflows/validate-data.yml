@@ -121,17 +121,8 @@ jobs:
           THEME_ICON=$(icon "$THEME_EXIT" "$THEME_OUT")
 
           BODY="<!-- data-validation-report -->
-          ### Data Validation Report
-
-          | Check | Status |
-          |-------|--------|
-          | Scene Schema | ${SCHEMA_ICON} |
-          | Scene Content | ${CONTENT_ICON} |
-          | Scene Lint | ${LINT_ICON} |
-          | Theme Schema | ${THEME_ICON} |
-
           <details>
-          <summary>Scene Schema Validation</summary>
+          <summary>${SCHEMA_ICON} Scene Schema</summary>
 
           \`\`\`
           ${SCHEMA_OUT}
@@ -140,7 +131,7 @@ jobs:
           </details>
 
           <details>
-          <summary>Scene Content Validation</summary>
+          <summary>${CONTENT_ICON} Scene Content</summary>
 
           \`\`\`
           ${CONTENT_OUT}
@@ -149,7 +140,7 @@ jobs:
           </details>
 
           <details>
-          <summary>Scene Lint</summary>
+          <summary>${LINT_ICON} Scene Lint</summary>
 
           \`\`\`
           ${LINT_OUT}
@@ -158,7 +149,7 @@ jobs:
           </details>
 
           <details>
-          <summary>Theme Schema Validation</summary>
+          <summary>${THEME_ICON} Theme Schema</summary>
 
           \`\`\`
           ${THEME_OUT}
