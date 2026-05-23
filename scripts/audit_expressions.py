@@ -34,6 +34,7 @@ _JS_ONLY_RE = re.compile(
     r'|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\('
     r'|\bnew\b|\bthis\b|\btypeof\b|\binstanceof\b|\bdelete\b|\bclass\b'
     r"|\basync\b|\bawait\b|\byield\b|\bthrow\b|\btry\b|\bcatch\b|\bimport\b|\bdebugger\b"
+    r"|\bif\b|\belse\b|\bswitch\b|\bcase\b|\bdo\b|\bbreak\b|\bcontinue\b|\bwith\s*\(|\bvoid\b"
     r"""|\[\s*['"`]"""
 )
 
