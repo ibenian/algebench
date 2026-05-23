@@ -32,13 +32,31 @@ class TestConvert:
         assert "# Lines of Code" in html
         assert "| Lang | Lines |" in html
 
-    def test_html_escapes_special_chars(self, tmp_path: Path):
+    def test_preserves_raw_markdown_in_script(self, tmp_path: Path):
         md = tmp_path / "report.md"
         md.write_text("a < b & c > d\n")
         out = convert(md, tmp_path / "out")
 
         html = out.read_text()
-        assert "a &lt; b &amp; c &gt; d" in html
+        assert "a < b & c > d" in html
+
+    def test_escapes_script_close_tag(self, tmp_path: Path):
+        md = tmp_path / "report.md"
+        md.write_text("code has </script> in it\n")
+        out = convert(md, tmp_path / "out")
+
+        html = out.read_text()
+        assert "</script>" not in html.split("raw-md")[1].split("</script>")[0]
+        assert "<\\/script" in html
+
+    def test_github_alert_css_present(self, tmp_path: Path):
+        md = tmp_path / "report.md"
+        md.write_text("> [!NOTE]\n> Some note\n")
+        out = convert(md, tmp_path / "out")
+
+        html = out.read_text()
+        assert "markdown-alert-note" in html
+        assert "markdown-alert-title" in html
 
     def test_mermaid_block_rendered(self, tmp_path: Path):
         md = tmp_path / "report.md"
