@@ -27,12 +27,17 @@ import sys
 from pathlib import Path
 
 
-# Mirrors _JS_ONLY_RE from static/app.js (line 90).
+# Mirrors _JS_ONLY_RE from static/expr.js.
 # Detects expressions that require native JS execution.
 _JS_ONLY_RE = re.compile(
     r'\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\('
     r'|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\('
+    r'|\bnew\b|\bthis\b|\btypeof\b|\binstanceof\b|\bdelete\b|\bclass\b'
+    r"|\basync\b|\bawait\b|\byield\b|\bthrow\b|\btry\b|\bcatch\b|\bimport\b|\bdebugger\b"
+    r"|\bif\b|\belse\b|\bswitch\b|\bcase\b|\bdo\b|\bbreak\b|\bcontinue\b|\bwith\s*\(|\bvoid\b"
+    r"""|\[\s*['"`]"""
 )
+
 
 # Math.js extensions registered in static/expr.js via _MATHJS_EXTENSIONS.
 # These are available in the math.js sandbox and should NOT be flagged as JS.
