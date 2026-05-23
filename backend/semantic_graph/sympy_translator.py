@@ -495,13 +495,57 @@ def _classify_expression(expr: sympy.Basic) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Piecewise / cases detection
+# ---------------------------------------------------------------------------
+
+_CASES_RE = re.compile(
+    r"\\begin\{cases\}(.*?)\\end\{cases\}", re.DOTALL,
+)
+
+
+def _extract_piecewise(latex: str) -> tuple[str | None, list[tuple[str, str | None]]] | None:
+    r"""Detect ``\begin{cases}...\end{cases}`` and extract branches.
+
+    Returns ``(lhs_latex, branches)`` where *lhs_latex* is the part before
+    the cases environment (e.g. ``"f(x) ="``) stripped of the trailing
+    ``=``, and each branch is ``(value_latex, condition_latex | None)``.
+    Returns ``None`` if no cases environment is found.
+    """
+    m = _CASES_RE.search(latex)
+    if m is None:
+        return None
+
+    before = latex[:m.start()].strip()
+    body = m.group(1).strip()
+
+    # Strip trailing = from the lhs
+    lhs = before.rstrip("= ").strip() if before else None
+
+    # Split branches on \\ at env depth 0 within the body
+    branches: list[tuple[str, str | None]] = []
+    for row in re.split(r"\\\\", body):
+        row = row.strip()
+        if not row:
+            continue
+        # & separates value from condition
+        if "&" in row:
+            val, cond = row.split("&", 1)
+            branches.append((val.strip(), cond.strip()))
+        else:
+            branches.append((row.strip(), None))
+
+    return (lhs, branches)
+
+
+# ---------------------------------------------------------------------------
 # Statement splitting
 # ---------------------------------------------------------------------------
 
 def _split_on_statement_separators(latex: str) -> list[str]:
-    r"""Split on ``\\`` and ``, \quad`` at brace depth 0."""
+    r"""Split on ``\\`` and ``, \quad`` at brace/env depth 0."""
     parts: list[str] = []
-    depth = 0
+    depth = 0      # brace / paren / bracket depth
+    env_depth = 0  # \begin{...} / \end{...} environment depth
     i = 0
     start = 0
     n = len(latex)
@@ -515,7 +559,17 @@ def _split_on_statement_separators(latex: str) -> list[str]:
                 depth -= 1
             i += 1
         elif ch == "\\" and depth == 0:
-            if i + 1 < n and latex[i + 1] == "\\":
+            # Track \begin{...} / \end{...} environments
+            if latex[i:i + 7] == r"\begin{":
+                env_depth += 1
+                i += 7
+                continue
+            if latex[i:i + 5] == r"\end{":
+                if env_depth > 0:
+                    env_depth -= 1
+                i += 5
+                continue
+            if i + 1 < n and latex[i + 1] == "\\" and env_depth == 0:
                 end_of_bs = i + 2
                 after = end_of_bs
                 while after < n and latex[after] in " \t":
@@ -533,7 +587,7 @@ def _split_on_statement_separators(latex: str) -> list[str]:
                 i = after
             else:
                 i += 1
-        elif ch == "," and depth == 0:
+        elif ch == "," and depth == 0 and env_depth == 0:
             bs = 0
             j = i - 1
             while j >= 0 and latex[j] == "\\":
@@ -1485,6 +1539,179 @@ def _build_nary_relation_graph(
     return graph
 
 
+def _walk_condition_into(
+    builder: SemanticGraphBuilder,
+    cond_latex: str,
+    overrides: dict[str, dict[str, str]] | None = None,
+) -> str:
+    """Parse a condition expression and add its nodes/edges to *builder*.
+
+    Handles relational conditions like ``x \\geq 0`` by splitting on
+    the relation and walking each side through the same builder so that
+    symbol dedup works across the whole piecewise graph.
+    Returns the root node ID of the condition sub-graph.
+    """
+    preprocessed = _preprocess_latex(cond_latex)
+    rel = _split_on_relation(preprocessed)
+
+    if rel is not None:
+        lhs_latex, rel_meta, rhs_latex = rel
+        try:
+            lhs_expr = parse_latex(lhs_latex)
+            lhs_id = builder._walk(lhs_expr)
+        except Exception:
+            lhs_id = builder._next_id("unparsed")
+            builder._add_node(lhs_id, type="scalar", latex=lhs_latex)
+        try:
+            rhs_expr = parse_latex(rhs_latex)
+            rhs_id = builder._walk(rhs_expr)
+        except Exception:
+            rhs_id = builder._next_id("unparsed")
+            builder._add_node(rhs_id, type="scalar", latex=rhs_latex)
+
+        rel_id = builder._next_id(rel_meta["op"])
+        rel_type = "relation" if is_relation(rel_meta["op"]) else "operator"
+        builder._add_node(
+            rel_id, type=rel_type,
+            subexpr=builder._restore_placeholders(cond_latex.strip()),
+            **rel_meta,
+        )
+        is_asym = is_asymmetric_relation(rel_meta["op"])
+        builder._add_edge(lhs_id, rel_id, role="lhs" if is_asym else None)
+        builder._add_edge(rhs_id, rel_id, role="rhs" if is_asym else None)
+        return rel_id
+
+    # Check for bare equals: x = 0
+    eq_split = _split_on_single_equals(preprocessed)
+    if eq_split is not None:
+        lhs_latex, rhs_latex = eq_split
+        try:
+            lhs_expr = parse_latex(lhs_latex)
+            lhs_id = builder._walk(lhs_expr)
+        except Exception:
+            lhs_id = builder._next_id("unparsed")
+            builder._add_node(lhs_id, type="scalar", latex=lhs_latex)
+        try:
+            rhs_expr = parse_latex(rhs_latex)
+            rhs_id = builder._walk(rhs_expr)
+        except Exception:
+            rhs_id = builder._next_id("unparsed")
+            builder._add_node(rhs_id, type="scalar", latex=rhs_latex)
+
+        eq_id = builder._next_id("equals")
+        builder._add_node(
+            eq_id, type="relation", op="equals",
+            subexpr=builder._restore_placeholders(cond_latex.strip()),
+        )
+        builder._add_edge(lhs_id, eq_id)
+        builder._add_edge(rhs_id, eq_id)
+        return eq_id
+
+    # Fallback: parse as a plain expression
+    try:
+        expr = parse_latex(preprocessed)
+        cond_id = builder._walk(expr)
+        for node in builder.nodes:
+            if node["id"] == cond_id:
+                node["subexpr"] = builder._restore_placeholders(cond_latex)
+                break
+        return cond_id
+    except Exception:
+        cond_id = builder._next_id("unparsed")
+        builder._add_node(
+            cond_id, type="scalar", latex=cond_latex,
+            subexpr=cond_latex,
+        )
+        return cond_id
+
+
+def _build_piecewise_graph(
+    lhs_latex: str | None,
+    branches: list[tuple[str, str | None]],
+    original_latex: str,
+    *,
+    overrides: dict[str, dict[str, str]] | None = None,
+    latex_commands: dict[str, str] | None = None,
+    parenthetical_annotations: list | None = None,
+    domain: str | None = None,
+) -> dict:
+    r"""Build a graph for ``\begin{cases}...\end{cases}`` piecewise expressions.
+
+    *lhs_latex* is the expression before ``= \begin{cases}`` (may be ``None``
+    for bare cases).  Each branch is ``(value_latex, condition_latex | None)``.
+
+    The resulting graph has a ``piecewise`` operator node connected to the
+    value sub-graph of each branch via ``value`` role, and to each condition
+    sub-graph via ``condition`` role.  If *lhs_latex* is present, the whole
+    thing is wrapped in an ``equals`` relation.
+    """
+    builder = SemanticGraphBuilder(
+        overrides=overrides,
+        latex_commands=latex_commands or {},
+        original_latex=original_latex,
+    )
+
+    pw_id = builder._next_id("piecewise")
+    builder._add_node(
+        pw_id, type="operator", op="piecewise", label="piecewise",
+        subexpr=original_latex.strip(),
+    )
+
+    for val_latex, cond_latex in branches:
+        # Parse value expression
+        try:
+            val_expr = parse_latex(val_latex)
+            val_id = builder._walk(val_expr)
+            for node in builder.nodes:
+                if node["id"] == val_id:
+                    node["subexpr"] = builder._restore_placeholders(val_latex)
+                    break
+        except Exception:
+            val_id = builder._next_id("unparsed")
+            builder._add_node(
+                val_id, type="scalar", latex=val_latex,
+                subexpr=val_latex,
+            )
+        builder._add_edge(val_id, pw_id, role="value")
+
+        # Parse condition expression (if present)
+        if cond_latex:
+            cond_id = _walk_condition_into(builder, cond_latex, overrides)
+            builder._add_edge(cond_id, pw_id, role="condition")
+
+    graph: dict = {"nodes": builder.nodes, "edges": builder.edges}
+
+    # Wrap in equals if there's a lhs
+    if lhs_latex:
+        try:
+            lhs_expr = parse_latex(lhs_latex)
+            lhs_id = builder._walk(lhs_expr)
+            for node in builder.nodes:
+                if node["id"] == lhs_id:
+                    node["subexpr"] = builder._restore_placeholders(lhs_latex)
+                    break
+        except Exception:
+            lhs_id = builder._next_id("unparsed")
+            builder._add_node(
+                lhs_id, type="scalar", latex=lhs_latex,
+                subexpr=lhs_latex,
+            )
+        eq_id = builder._next_id("equals")
+        builder._add_node(eq_id, type="relation", op="equals",
+                          subexpr=original_latex.strip())
+        builder._add_edge(lhs_id, eq_id)
+        builder._add_edge(pw_id, eq_id)
+        graph = {"nodes": builder.nodes, "edges": builder.edges}
+
+    graph["classification"] = {"kind": "piecewise", "branches": len(branches)}
+    if domain:
+        graph["domain"] = domain
+    _inject_annotations(graph, parenthetical_annotations or [])
+    return graph
+
+
+
+
 def _build_comma_separated_graph(
     clauses: list[str],
     overrides: dict[str, dict[str, str]] | None,
@@ -1574,6 +1801,17 @@ def _latex_to_semantic_graph_dict(
     user_overrides = overrides
     latex = _normalize_latex(latex)
     latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
+
+    # --- Piecewise / cases environment ---
+    pw = _extract_piecewise(latex)
+    if pw is not None:
+        lhs_latex, branches = pw
+        return _build_piecewise_graph(
+            lhs_latex, branches, latex,
+            overrides=user_overrides,
+            parenthetical_annotations=parenthetical_annotations,
+            domain=domain,
+        )
 
     # --- Strong statement separators ---
     strong_clauses = _split_on_statement_separators(latex)

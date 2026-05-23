@@ -43,9 +43,9 @@ Role = Literal[
 
 EdgeSemantic = Literal["direct", "inverse", "neutral"]
 
-EdgeRole = Literal["lhs", "rhs", "wrt", "exp", "lb", "ub"]
+EdgeRole = Literal["lhs", "rhs", "wrt", "exp", "lb", "ub", "value", "condition"]
 
-ClassificationKind = Literal["algebraic", "ODE", "PDE", "statements"]
+ClassificationKind = Literal["algebraic", "ODE", "PDE", "statements", "piecewise"]
 
 
 _NO_HTML = r"^[^<>]*$"
@@ -116,6 +116,7 @@ class Classification(BaseModel):
 
     kind: ClassificationKind
     count: Optional[int] = Field(default=None, ge=2)
+    branches: Optional[int] = Field(default=None, ge=1)
     clauses: Optional[List["Classification"]] = None
     order: Optional[int] = Field(default=None, ge=1)
     dependent_variables: Optional[List[str]] = None

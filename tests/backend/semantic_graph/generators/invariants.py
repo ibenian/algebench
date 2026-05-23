@@ -75,7 +75,7 @@ def assert_classification_present(graph: SemanticGraph, *, latex: str = "") -> N
     """Classification block exists with a valid ``kind``."""
     assert graph.classification is not None, f"Missing classification for: {latex!r}"
     kind = graph.classification.kind
-    assert kind in {"algebraic", "ODE", "PDE", "statements"}, (
+    assert kind in {"algebraic", "ODE", "PDE", "statements", "piecewise"}, (
         f"Invalid classification kind {kind!r} for: {latex!r}"
     )
 

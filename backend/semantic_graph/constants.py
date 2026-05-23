@@ -161,7 +161,7 @@ _OPERATOR_GLYPHS: dict[str, str] = {
     "greater_equal": "≥", "less_equal": "≤", "not_equal": "≠",
     "multiply": "×", "add": "+", "subtract": "−",
     "divide": "÷", "integral": "∫",
-    "implies": "⇒", "iff": "⇔",
+    "implies": "⇒", "iff": "⇔", "piecewise": "pw",
     "negation": "−", "not": "¬", "logical_not": "¬",
     "conjunction": "∧", "disjunction": "∨",
     "sum": "∑", "product": "∏", "limit": "lim",
@@ -198,4 +198,5 @@ _OPERATOR_KINDS: dict[str, str] = {
     "integral": "aggregate", "limit": "aggregate",
     "derivative": "aggregate", "partial_derivative": "aggregate",
     "inner_product": "quantum",
+    "piecewise": "structural",
 }

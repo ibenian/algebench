@@ -35,7 +35,7 @@ from tests.backend.semantic_graph.generators.invariants import (
 
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
-    "derivative", "function",
+    "derivative", "function", "piecewise",
     "less_than", "greater_than", "less_equal", "greater_equal",
     "implies", "iff", "and", "element_of",
     "approximately", "not_equal", "proportional",
@@ -207,9 +207,18 @@ SYSTEM_EXPRESSIONS: list[CatalogEntry] = [
 PIECEWISE_EXPRESSIONS: list[CatalogEntry] = [
     ("piecewise",
      r"f(x) = \begin{cases} x & x \geq 0 \\ -x & x < 0 \end{cases}",
-     XFAIL,
-     "", "",
-     None),
+     PASS,
+     "x -> fn:f; x -> negation; num,x -> rel:greater_equal; "
+     "num,x -> rel:less_than; "
+     "negation,rel:greater_equal,rel:less_than,x -> piecewise; "
+     "fn:f,piecewise -> rel:equals",
+     "x -> __f_7; __num_2,x -> __greater_equal_3; "
+     "__num_6,x -> __less_than_5; x -> __negation_4; "
+     "__greater_equal_3,__less_than_5,__negation_4,x -> __piecewise_1; "
+     "__f_7,__piecewise_1 -> __equals_8",
+     [{"op": "piecewise"},
+      {"op": "greater_equal", "_edge_roles": {"lhs": 1, "rhs": 1}},
+      {"op": "less_than", "_edge_roles": {"lhs": 1, "rhs": 1}}]),
 ]
 
 ANNOTATION_EXPRESSIONS: list[CatalogEntry] = [
@@ -270,8 +279,8 @@ class TestStructuralDomain:
     def test_classification_is_correct(self, parse, latex, sig_type, sig_id, node_checks):
         graph = parse(latex)
         kind = graph.classification.kind if graph.classification else None
-        assert kind in {"algebraic", "statements"}, (
-            f"Expected algebraic/statements classification, got {kind!r} "
+        assert kind in {"algebraic", "statements", "piecewise"}, (
+            f"Expected algebraic/statements/piecewise classification, got {kind!r} "
             f"for: {latex!r}"
         )
 
