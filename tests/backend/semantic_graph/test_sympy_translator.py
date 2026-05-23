@@ -63,12 +63,19 @@ class TestRelationPredicates:
         assert is_meta_relation(op) is False
         assert is_relation(op) is True
 
-    @pytest.mark.parametrize("op", ["implies", "iff"])
-    def test_meta(self, op):
-        assert is_meta_relation(op) is True
-        assert is_symmetric_relation(op) is False
-        assert is_asymmetric_relation(op) is False
-        assert is_relation(op) is False
+    def test_meta_asymmetric(self):
+        """implies is both meta and asymmetric — needs lhs/rhs roles."""
+        assert is_meta_relation("implies") is True
+        assert is_asymmetric_relation("implies") is True
+        assert is_symmetric_relation("implies") is False
+        assert is_relation("implies") is False  # type="operator", not "relation"
+
+    def test_meta_symmetric(self):
+        """iff is both meta and symmetric — flattens to n-ary when chained."""
+        assert is_meta_relation("iff") is True
+        assert is_symmetric_relation("iff") is True
+        assert is_asymmetric_relation("iff") is False
+        assert is_relation("iff") is False  # type="operator", not "relation"
 
     @pytest.mark.parametrize("op", [
         "equals", "approximately", "not_equal", "proportional", "maps_to",
@@ -86,20 +93,23 @@ class TestRelationPredicates:
         assert is_symmetric_relation(op) is False
         assert is_meta_relation(op) is False
 
-    def test_categories_are_mutually_exclusive(self):
-        """Every RELATION_MAP op belongs to exactly one category."""
+    def test_every_op_is_classified(self):
+        """Every RELATION_MAP op is asymmetric or symmetric (meta overlaps both)."""
         from backend.semantic_graph.constants import RELATION_MAP
         all_ops = {meta["op"] for _, meta in RELATION_MAP}
         all_ops.add("equals")
         for op in all_ops:
-            flags = (
-                is_asymmetric_relation(op),
-                is_symmetric_relation(op),
-                is_meta_relation(op),
-            )
-            assert sum(flags) == 1, (
-                f"{op!r} belongs to {sum(flags)} categories: "
-                f"asym={flags[0]}, sym={flags[1]}, meta={flags[2]}"
+            asym = is_asymmetric_relation(op)
+            sym = is_symmetric_relation(op)
+            meta = is_meta_relation(op)
+            # Symmetric and asymmetric are mutually exclusive
+            assert not (sym and asym), f"{op!r} is both symmetric and asymmetric"
+            # Meta ops must be either asymmetric or symmetric
+            if meta:
+                assert asym or sym, f"{op!r} is meta but neither asymmetric nor symmetric"
+            # Every op must be at least one
+            assert asym or sym, (
+                f"{op!r} is neither asymmetric nor symmetric"
             )
 
 

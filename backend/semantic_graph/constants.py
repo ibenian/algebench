@@ -100,10 +100,12 @@ OPERATOR_MAP: dict[type, str] = {
 _ASYMMETRIC_OPS: set[str] = {
     "greater_than", "less_than", "greater_equal", "less_equal",
     "element_of", "not_element_of",
+    "implies",
 }
 
 _SYMMETRIC_OPS: set[str] = {
     "equals", "approximately", "not_equal", "proportional", "maps_to",
+    "iff",
 }
 
 _META_RELATION_OPS: set[str] = {"implies", "iff"}

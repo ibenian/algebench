@@ -93,10 +93,14 @@ class TestTranslatorConstants:
     def test_meta_relation_ops(self):
         assert _META_RELATION_OPS == {"implies", "iff"}
 
-    def test_relation_sets_are_disjoint(self):
+    def test_relation_sets_overlap(self):
+        # Symmetric and asymmetric are disjoint
         assert _ASYMMETRIC_OPS.isdisjoint(_SYMMETRIC_OPS)
-        assert _ASYMMETRIC_OPS.isdisjoint(_META_RELATION_OPS)
-        assert _SYMMETRIC_OPS.isdisjoint(_META_RELATION_OPS)
+        # Every meta op is either asymmetric or symmetric
+        assert _META_RELATION_OPS.issubset(_ASYMMETRIC_OPS | _SYMMETRIC_OPS)
+        # implies is asymmetric, iff is symmetric
+        assert "implies" in _ASYMMETRIC_OPS
+        assert "iff" in _SYMMETRIC_OPS
 
     def test_placeholder_name_re(self):
         assert isinstance(_PLACEHOLDER_NAME_RE, re.Pattern)

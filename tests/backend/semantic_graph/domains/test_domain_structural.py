@@ -37,7 +37,7 @@ ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
     "derivative", "function",
     "less_than", "greater_than", "less_equal", "greater_equal",
-    "implies", "and", "element_of",
+    "implies", "iff", "and", "element_of",
     "approximately", "not_equal", "proportional",
 }
 
@@ -151,14 +151,41 @@ INEQUALITY_EXPRESSIONS: list[CatalogEntry] = [
      "b,c -> __greater_equal_1; __greater_equal_1,a -> __greater_equal_2",
      None),
 
+    ("single_implication",
+     r"P \implies Q",
+     PASS,
+     "P,Q -> implies",
+     "P,Q -> __implies_1",
+     [{"op": "implies", "_edge_roles": {"lhs": 1, "rhs": 1}}]),
+
     ("implication_chain",
      r"P \implies Q \implies R",
      PASS,
-     "R,implies -> multiply; Q,multiply -> multiply; "
-     "P,multiply -> implies",
-     "R,implies -> __multiply_2; Q,__multiply_2 -> __multiply_1; "
-     "P,__multiply_1 -> __implies_3",
-     None),
+     "Q,R -> implies; P,implies -> implies",
+     "Q,R -> __implies_1; P,__implies_1 -> __implies_2",
+     [{"op": "implies", "_edge_roles": {"lhs": 1, "rhs": 1}}]),
+
+    ("implication_chain_four",
+     r"A \implies B \implies C \implies D",
+     PASS,
+     "C,D -> implies; B,implies -> implies; A,implies -> implies",
+     "C,D -> __implies_1; B,__implies_1 -> __implies_2; "
+     "A,__implies_2 -> __implies_3",
+     [{"op": "implies", "_edge_roles": {"lhs": 1, "rhs": 1}}]),
+
+    ("single_iff",
+     r"P \iff Q",
+     PASS,
+     "P,Q -> iff",
+     "P,Q -> __iff_1",
+     [{"op": "iff"}]),
+
+    ("chained_iff",
+     r"P \iff Q \iff R",
+     PASS,
+     "P,Q,R -> iff",
+     "P,Q,R -> __iff_1",
+     [{"op": "iff"}]),
 ]
 
 SYSTEM_EXPRESSIONS: list[CatalogEntry] = [

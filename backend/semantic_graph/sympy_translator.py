@@ -73,8 +73,12 @@ def is_meta_relation(op: str) -> bool:
 
 
 def is_relation(op: str) -> bool:
-    """True if this op uses type='relation' in the graph."""
-    return is_asymmetric_relation(op) or is_symmetric_relation(op)
+    """True if this op uses type='relation' in the graph.
+
+    Meta-relations (implies, iff) are asymmetric but use type='operator',
+    so they are excluded here.
+    """
+    return (is_asymmetric_relation(op) or is_symmetric_relation(op)) and not is_meta_relation(op)
 
 
 # ---------------------------------------------------------------------------
@@ -1361,6 +1365,68 @@ def _build_relation_graph(
     return graph
 
 
+def _build_chained_asymmetric_relation_graph(
+    part_latexes: list[str],
+    rel_meta: dict[str, str],
+    original_latex: str,
+    *,
+    overrides: dict[str, dict[str, str]] | None,
+    latex_commands: dict[str, str] | None = None,
+    parenthetical_annotations: list | None = None,
+    domain: str | None = None,
+) -> dict:
+    r"""Build right-associative nested binary nodes for chained asymmetric relations.
+
+    ``P \implies Q \implies R`` becomes::
+
+        Q --lhs--> implies₁ <--rhs-- R
+        P --lhs--> implies₂ <--rhs-- implies₁
+
+    Each part is parsed independently via SymPy, then connected with
+    nested binary relation nodes from right to left.
+    """
+    builder = SemanticGraphBuilder(
+        overrides=overrides,
+        latex_commands=latex_commands or {},
+        original_latex=original_latex,
+    )
+    part_ids: list[str] = []
+    try:
+        for part_latex in part_latexes:
+            expr = parse_latex(part_latex)
+            pid = builder._walk(expr)
+            for node in builder.nodes:
+                if node["id"] == pid:
+                    node["subexpr"] = builder._restore_placeholders(
+                        part_latex.strip())
+                    break
+            part_ids.append(pid)
+    except Exception as exc:
+        raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
+
+    op = rel_meta["op"]
+    rel_type = "relation" if is_relation(op) else "operator"
+
+    # Build right-associative chain: fold from the right.
+    rhs_id = part_ids[-1]
+    for i in range(len(part_ids) - 2, -1, -1):
+        lhs_id = part_ids[i]
+        rel_id = builder._next_id(op)
+        builder._add_node(
+            rel_id, type=rel_type, subexpr=original_latex.strip(), **rel_meta,
+        )
+        builder._add_edge(lhs_id, rel_id, role="lhs")
+        builder._add_edge(rhs_id, rel_id, role="rhs")
+        rhs_id = rel_id
+
+    graph: dict = {"nodes": builder.nodes, "edges": builder.edges}
+    graph["classification"] = {"kind": "algebraic"}
+    if domain:
+        graph["domain"] = domain
+    _inject_annotations(graph, parenthetical_annotations or [])
+    return graph
+
+
 def _build_nary_relation_graph(
     part_latexes: list[str],
     rel_meta: dict[str, str],
@@ -1537,6 +1603,38 @@ def _latex_to_semantic_graph_dict(
     # --- Meta relations (implies, iff) take priority over commas ---
     if rel is not None and is_meta_relation(rel[1]["op"]):
         lhs_latex, rel_meta, rhs_latex = rel
+        op = rel_meta["op"]
+
+        # Detect chain: P \implies Q \implies R → [P, Q, R]
+        parts = [lhs_latex]
+        remaining = rhs_latex
+        while True:
+            inner = _split_on_relation(remaining)
+            if inner is not None and inner[1]["op"] == op:
+                parts.append(inner[0])
+                remaining = inner[2]
+            else:
+                parts.append(remaining)
+                break
+
+        if len(parts) >= 3:
+            if is_symmetric_relation(op):
+                # Symmetric meta-relations (iff) → single n-ary node.
+                return _build_nary_relation_graph(
+                    parts, rel_meta, latex,
+                    overrides=overrides, latex_commands=latex_commands,
+                    parenthetical_annotations=parenthetical_annotations,
+                    domain=domain,
+                )
+            else:
+                # Asymmetric meta-relations (implies) → right-associative nesting.
+                return _build_chained_asymmetric_relation_graph(
+                    parts, rel_meta, latex,
+                    overrides=overrides, latex_commands=latex_commands,
+                    parenthetical_annotations=parenthetical_annotations,
+                    domain=domain,
+                )
+
         graph = _build_relation_graph(
             lhs_latex, rel_meta, rhs_latex, latex,
             overrides=overrides, latex_commands=latex_commands,
