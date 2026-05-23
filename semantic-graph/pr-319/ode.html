@@ -179,7 +179,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-22 22:59 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="report-meta">Generated 2026-05-23 00:38 UTC &middot; theme: default-dark &middot; 10 expressions</div>
 <div class="section-title">ODE (10 expressions)</div>
 <div class="row">
   <div>
@@ -199,7 +199,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   y["$y$"]:::scalar
   x["$x$"]:::scalar
   __deriv_2(("$\frac{d}{dx}$")):::operator
@@ -228,7 +228,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\frac{dy}{dx} = ky"
     },
@@ -338,7 +338,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   y["$y$"]:::scalar
   x["$x$"]:::scalar
   __deriv_2(("$\frac{d}{dx}$")):::operator
@@ -369,7 +369,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\frac{dy}{dx} = \\frac{x}{y}"
     },
@@ -482,7 +482,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   __add_2(("$+$")):::operator
   y["$y$"]:::scalar
   x["$x$"]:::scalar
@@ -503,8 +503,8 @@
   __add_2 --&gt; __equals_1
   x --&gt; __Q_7
   __Q_7 --&gt; __multiply_6
-  y --&gt;|lhs| __power_8
-  n --&gt;|rhs| __power_8
+  y --&gt; __power_8
+  n --&gt;|exp| __power_8
   __power_8 --&gt; __multiply_6
   __multiply_6 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -532,7 +532,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\frac{dy}{dx} + P(x) y = Q(x) y^n"
     },
@@ -648,13 +648,12 @@
     },
     {
       "from": "y",
-      "to": "__power_8",
-      "role": "lhs"
+      "to": "__power_8"
     },
     {
       "from": "n",
       "to": "__power_8",
-      "role": "rhs"
+      "role": "exp"
     },
     {
       "from": "__power_8",
@@ -705,7 +704,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   __add_2(("$+$")):::operator
   __multiply_3(("$\times$")):::operator
   __M_4{{"$M$"}}:::function
@@ -751,7 +750,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "M(x,y) dx + N(x,y) dy = 0"
     },
@@ -897,7 +896,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   __add_2(("$+$")):::operator
   y["$y$"]:::scalar
   x["$x$"]:::scalar
@@ -935,7 +934,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\frac{d^2 y}{dx^2} + \\omega^2 y = 0"
     },
@@ -1071,7 +1070,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   __add_2(("$+$")):::operator
   __add_3(("$+$")):::operator
   __multiply_4(("$\times$")):::operator
@@ -1128,7 +1127,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "m \\ddot{x} + c \\dot{x} + k x = 0"
     },
@@ -1331,7 +1330,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  c0___equals_1(("$=$")):::operator
+  c0___equals_1{"="}:::relation
   x["$x$"]:::scalar
   t["$t$"]:::scalar
   c0___deriv_2(("$\frac{d}{dt}$")):::operator
@@ -1341,7 +1340,7 @@
   c0___multiply_5(("$\times$")):::operator
   b["$b$"]:::scalar
   y["$y$"]:::scalar
-  c1___equals_1(("$=$")):::operator
+  c1___equals_1{"="}:::relation
   c1___deriv_2(("$\frac{d}{dt}$")):::operator
   c1___add_3(("$+$")):::operator
   c1___multiply_4(("$\times$")):::operator
@@ -1394,7 +1393,7 @@
   "nodes": [
     {
       "id": "c0___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\dot{x} = ax + by"
     },
@@ -1455,7 +1454,7 @@
     },
     {
       "id": "c1___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\dot{y} = cx + dy"
     },
@@ -1655,16 +1654,16 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  c0___equals_1(("$=$")):::operator
+  c0___equals_1{"="}:::relation
   c0___add_2(("$+$")):::operator
   y''["$y''$"]:::scalar
   y["$y$"]:::scalar
   c0___num_3["$0$"]:::number
-  c1___equals_1(("$=$")):::operator
+  c1___equals_1{"="}:::relation
   c1___y_2{{"$y$"}}:::function
   c1___num_3["$0$"]:::number
   c1___num_4["$1$"]:::number
-  c2___equals_1(("$=$")):::operator
+  c2___equals_1{"="}:::relation
   c2___y'_2{{"$y'$"}}:::function
   c2___num_3["$0$"]:::number
   c2___num_4["$0$"]:::number
@@ -1699,7 +1698,7 @@
   "nodes": [
     {
       "id": "c0___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "y'' + y = 0"
     },
@@ -1729,7 +1728,7 @@
     },
     {
       "id": "c1___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "y(0) = 1"
     },
@@ -1753,7 +1752,7 @@
     },
     {
       "id": "c2___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "y'(0) = 0"
     },
@@ -1853,7 +1852,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   __add_2(("$+$")):::operator
   __multiply_3(("$\times$")):::operator
   s["$s$"]:::scalar
@@ -1901,7 +1900,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "s Y(s) - y(0) = \\mathcal{L}\\{f(t)\\}"
     },
@@ -2053,7 +2052,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   y__p_["$y_{p}$"]:::scalar
   __add_2(("$+$")):::operator
   __multiply_3(("$\times$")):::operator
@@ -2089,7 +2088,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "y_p = u_1 y_1 + u_2 y_2"
     },

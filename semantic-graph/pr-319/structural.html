@@ -179,8 +179,8 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-22 22:59 UTC &middot; theme: default-dark &middot; 12 expressions</div>
-<div class="section-title">Structural (12 expressions)</div>
+<div class="report-meta">Generated 2026-05-23 00:38 UTC &middot; theme: default-dark &middot; 14 expressions</div>
+<div class="section-title">Structural (14 expressions)</div>
 <div class="row">
   <div>
     <div class="row-id">two_stmt_backslash</div>
@@ -199,10 +199,10 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  c0___equals_1(("$=$")):::operator
+  c0___equals_1{"="}:::relation
   x["$x$"]:::scalar
   c0___num_2["$1$"]:::number
-  c1___equals_1(("$=$")):::operator
+  c1___equals_1{"="}:::relation
   y["$y$"]:::scalar
   c1___num_2["$2$"]:::number
   x --&gt; c0___equals_1
@@ -224,7 +224,7 @@
   "nodes": [
     {
       "id": "c0___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "x = 1"
     },
@@ -242,7 +242,7 @@
     },
     {
       "id": "c1___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "y = 2"
     },
@@ -309,10 +309,10 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  c0___equals_1(("$=$")):::operator
+  c0___equals_1{"="}:::relation
   a["$a$"]:::scalar
   c0___num_2["$1$"]:::number
-  c1___equals_1(("$=$")):::operator
+  c1___equals_1{"="}:::relation
   b["$b$"]:::scalar
   c1___num_2["$2$"]:::number
   a --&gt; c0___equals_1
@@ -334,7 +334,7 @@
   "nodes": [
     {
       "id": "c0___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "a = 1"
     },
@@ -352,7 +352,7 @@
     },
     {
       "id": "c1___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "b = 2"
     },
@@ -419,13 +419,13 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  c0___equals_1(("$=$")):::operator
+  c0___equals_1{"="}:::relation
   x["$x$"]:::scalar
   c0___num_2["$1$"]:::number
-  c1___equals_1(("$=$")):::operator
+  c1___equals_1{"="}:::relation
   y["$y$"]:::scalar
   c1___num_2["$2$"]:::number
-  c2___equals_1(("$=$")):::operator
+  c2___equals_1{"="}:::relation
   z["$z$"]:::scalar
   c2___num_2["$3$"]:::number
   x --&gt; c0___equals_1
@@ -451,7 +451,7 @@
   "nodes": [
     {
       "id": "c0___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "x = 1"
     },
@@ -469,7 +469,7 @@
     },
     {
       "id": "c1___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "y = 2"
     },
@@ -487,7 +487,7 @@
     },
     {
       "id": "c2___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "z = 3"
     },
@@ -566,7 +566,7 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   a["$a$"]:::scalar
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   b["$b$"]:::scalar
   c["$c$"]:::scalar
   __equals_2{"="}:::relation
@@ -595,7 +595,7 @@
     },
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "b = c"
     },
@@ -662,8 +662,8 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   a["$a$"]:::scalar
-  __equals_1(("$=$")):::operator
-  __equals_2(("$=$")):::operator
+  __equals_1{"="}:::relation
+  __equals_2{"="}:::relation
   b["$b$"]:::scalar
   c["$c$"]:::scalar
   d["$d$"]:::scalar
@@ -697,13 +697,13 @@
     },
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "b = c = d"
     },
     {
       "id": "__equals_2",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "b = c"
     },
@@ -784,7 +784,7 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   F["$F$"]:::scalar
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   __multiply_2(("$\times$")):::operator
   m["$m$"]:::scalar
   a["$a$"]:::scalar
@@ -830,7 +830,7 @@
     },
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "ma = m \\frac{d}{d t} v"
     },
@@ -944,44 +944,275 @@
 </div>
 <div class="row">
   <div>
-    <div class="row-id">mixed_relations</div>
+    <div class="row-id">chained_leq</div>
     <div class="row-latex">$$a \leq b \leq c$$</div>
   </div>
-  <div class="row-error">Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1489, in _latex_to_semantic_graph_dict
-    expr = parse_latex(preprocessed)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/__init__.py", line 199, in parse_latex
-    return _latex.parse_latex(s, strict)
-           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_parse_latex_antlr.py", line 88, in parse_latex
-    expr = convert_relation(relation)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_parse_latex_antlr.py", line 102, in convert_relation
-    return sympy.LessThan(lh, rh)
-           ~~~~~~~~~~~~~~^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/core/relational.py", line 859, in __new__
-    return cls._eval_relation(lhs, rhs, **options)
-           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/core/relational.py", line 866, in _eval_relation
-    val = cls._eval_fuzzy_relation(lhs, rhs)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/core/relational.py", line 1158, in _eval_fuzzy_relation
-    return is_le(lhs, rhs)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/core/relational.py", line 1288, in is_le
-    return is_ge(rhs, lhs, assumptions)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/core/relational.py", line 1387, in is_ge
-    raise TypeError("Can only compare inequalities with Expr")
-TypeError: Can only compare inequalities with Expr
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/scripts/semantic_graph_report.py", line 317, in _render_row
-    graph_obj = latex_to_semantic_graph(latex)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1549, in latex_to_semantic_graph
-    raw = _latex_to_semantic_graph_dict(latex, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1491, in _latex_to_semantic_graph_dict
-    raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
-ValueError: Failed to parse LaTeX: Can only compare inequalities with Expr
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  a["$a$"]:::scalar
+  __less_equal_1{"≤"}:::relation
+  b["$b$"]:::scalar
+  c["$c$"]:::scalar
+  __less_equal_2{"≤"}:::relation
+  b --&gt;|lhs| __less_equal_1
+  c --&gt;|rhs| __less_equal_1
+  a --&gt;|lhs| __less_equal_2
+  __less_equal_1 --&gt;|rhs| __less_equal_2
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">a \leq b \leq c</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "a",
+      "type": "scalar",
+      "latex": "a",
+      "subexpr": "a"
+    },
+    {
+      "id": "__less_equal_1",
+      "type": "relation",
+      "op": "less_equal",
+      "subexpr": "b \\leq c"
+    },
+    {
+      "id": "b",
+      "type": "scalar",
+      "latex": "b",
+      "subexpr": "b"
+    },
+    {
+      "id": "c",
+      "type": "scalar",
+      "latex": "c",
+      "subexpr": "c"
+    },
+    {
+      "id": "__less_equal_2",
+      "type": "relation",
+      "label": "less than or equal to",
+      "emoji": "≤",
+      "op": "less_equal",
+      "subexpr": "a \\leq b \\leq c"
+    }
+  ],
+  "edges": [
+    {
+      "from": "b",
+      "to": "__less_equal_1",
+      "role": "lhs"
+    },
+    {
+      "from": "c",
+      "to": "__less_equal_1",
+      "role": "rhs"
+    },
+    {
+      "from": "a",
+      "to": "__less_equal_2",
+      "role": "lhs"
+    },
+    {
+      "from": "__less_equal_1",
+      "to": "__less_equal_2",
+      "role": "rhs"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
 </div>
+<div class="row">
+  <div>
+    <div class="row-id">single_geq</div>
+    <div class="row-latex">$$x \geq 0$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  x["$x$"]:::scalar
+  __num_1["$0$"]:::number
+  __greater_equal_2{"≥"}:::relation
+  x --&gt;|lhs| __greater_equal_2
+  __num_1 --&gt;|rhs| __greater_equal_2
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">x \geq 0</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x"
+    },
+    {
+      "id": "__num_1",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0"
+    },
+    {
+      "id": "__greater_equal_2",
+      "type": "relation",
+      "label": "greater than or equal to",
+      "emoji": "≥",
+      "op": "greater_equal",
+      "subexpr": "x \\geq 0"
+    }
+  ],
+  "edges": [
+    {
+      "from": "x",
+      "to": "__greater_equal_2",
+      "role": "lhs"
+    },
+    {
+      "from": "__num_1",
+      "to": "__greater_equal_2",
+      "role": "rhs"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">chained_geq</div>
+    <div class="row-latex">$$a \geq b \geq c$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  a["$a$"]:::scalar
+  __greater_equal_1{"≥"}:::relation
+  b["$b$"]:::scalar
+  c["$c$"]:::scalar
+  __greater_equal_2{"≥"}:::relation
+  b --&gt;|lhs| __greater_equal_1
+  c --&gt;|rhs| __greater_equal_1
+  a --&gt;|lhs| __greater_equal_2
+  __greater_equal_1 --&gt;|rhs| __greater_equal_2
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">a \geq b \geq c</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "a",
+      "type": "scalar",
+      "latex": "a",
+      "subexpr": "a"
+    },
+    {
+      "id": "__greater_equal_1",
+      "type": "relation",
+      "op": "greater_equal",
+      "subexpr": "b \\geq c"
+    },
+    {
+      "id": "b",
+      "type": "scalar",
+      "latex": "b",
+      "subexpr": "b"
+    },
+    {
+      "id": "c",
+      "type": "scalar",
+      "latex": "c",
+      "subexpr": "c"
+    },
+    {
+      "id": "__greater_equal_2",
+      "type": "relation",
+      "label": "greater than or equal to",
+      "emoji": "≥",
+      "op": "greater_equal",
+      "subexpr": "a \\geq b \\geq c"
+    }
+  ],
+  "edges": [
+    {
+      "from": "b",
+      "to": "__greater_equal_1",
+      "role": "lhs"
+    },
+    {
+      "from": "c",
+      "to": "__greater_equal_1",
+      "role": "rhs"
+    },
+    {
+      "from": "a",
+      "to": "__greater_equal_2",
+      "role": "lhs"
+    },
+    {
+      "from": "__greater_equal_1",
+      "to": "__greater_equal_2",
+      "role": "rhs"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
 </div>
 <div class="row">
   <div>
@@ -1007,7 +1238,7 @@ ValueError: Failed to parse LaTeX: Can only compare inequalities with Expr
   __multiply_2(("$\times$")):::operator
   implies["$\implies$"]:::scalar
   R["$R$"]:::scalar
-  __implies_3{"⟹"}:::relation
+  __implies_3(("$\Rightarrow$")):::operator
   Q --&gt; __multiply_1
   implies --&gt; __multiply_2
   R --&gt; __multiply_2
@@ -1067,7 +1298,7 @@ ValueError: Failed to parse LaTeX: Can only compare inequalities with Expr
     },
     {
       "id": "__implies_3",
-      "type": "relation",
+      "type": "operator",
       "label": "implies",
       "emoji": "⇒",
       "op": "implies",
@@ -1131,7 +1362,7 @@ ValueError: Failed to parse LaTeX: Can only compare inequalities with Expr
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  c0___equals_1(("$=$")):::operator
+  c0___equals_1{"="}:::relation
   c0___add_2(("$+$")):::operator
   c0___multiply_3(("$\times$")):::operator
   c0___num_4["$2$"]:::number
@@ -1140,7 +1371,7 @@ ValueError: Failed to parse LaTeX: Can only compare inequalities with Expr
   c0___num_6["$3$"]:::number
   y["$y$"]:::scalar
   c0___num_7["$7$"]:::number
-  c1___equals_1(("$=$")):::operator
+  c1___equals_1{"="}:::relation
   c1___add_2(("$+$")):::operator
   c1___negation_3@{ shape: "flip-tri", label: "$-$" }
   c1___num_4["$1$"]:::number
@@ -1182,7 +1413,7 @@ ValueError: Failed to parse LaTeX: Can only compare inequalities with Expr
   "nodes": [
     {
       "id": "c0___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "2x + 3y = 7"
     },
@@ -1236,7 +1467,7 @@ ValueError: Failed to parse LaTeX: Can only compare inequalities with Expr
     },
     {
       "id": "c1___equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "x - y = 1"
     },
@@ -1356,8 +1587,11 @@ antlr4.error.Errors.LexerNoViableAltException: LexerNoViableAltException('&amp;'
 During handling of the above exception, another exception occurred:
 
 Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1489, in _latex_to_semantic_graph_dict
-    expr = parse_latex(preprocessed)
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1302, in _build_relation_graph
+    lhs_id, lhs_expr = _walk_relation_side(lhs_latex)
+                       ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1279, in _walk_relation_side
+    expr = parse_latex(side_latex)
   File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/__init__.py", line 199, in parse_latex
     return _latex.parse_latex(s, strict)
            ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
@@ -1408,18 +1642,24 @@ Traceback (most recent call last):
   File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_parse_latex_antlr.py", line 58, in syntaxError
     raise LaTeXParsingError(err)
 sympy.parsing.latex.errors.LaTeXParsingError: I don't understand this
-f(x) = \begin{cases} x &amp; x \geq 0
+f(x) = \begin{cases} x &amp; x
 ~~~~~~~~~~~~~~~~~~~~~~~^
 
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1322, in _build_comma_separated_graph
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1356, in _build_comma_separated_graph
     sub = _latex_to_semantic_graph_dict(clause, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1491, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1479, in _latex_to_semantic_graph_dict
+    graph = _build_relation_graph(
+        lhs_latex, rel_meta, rhs_latex, latex,
+        overrides=overrides, latex_commands=latex_commands,
+        parenthetical_annotations=parenthetical_annotations, domain=domain,
+    )
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1305, in _build_relation_graph
     raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
 ValueError: Failed to parse LaTeX: I don't understand this
-f(x) = \begin{cases} x &amp; x \geq 0
+f(x) = \begin{cases} x &amp; x
 ~~~~~~~~~~~~~~~~~~~~~~~^
 
 The above exception was the direct cause of the following exception:
@@ -1427,18 +1667,18 @@ The above exception was the direct cause of the following exception:
 Traceback (most recent call last):
   File "/home/runner/work/algebench/algebench/scripts/semantic_graph_report.py", line 317, in _render_row
     graph_obj = latex_to_semantic_graph(latex)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1549, in latex_to_semantic_graph
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1583, in latex_to_semantic_graph
     raw = _latex_to_semantic_graph_dict(latex, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1399, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1433, in _latex_to_semantic_graph_dict
     graph = _build_comma_separated_graph(
         strong_clauses, overrides=user_overrides, domain=domain,
     )
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1324, in _build_comma_separated_graph
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1358, in _build_comma_separated_graph
     raise ValueError(
     ...&lt;2 lines&gt;...
     ) from exc
 ValueError: Failed to parse clause 1 ('f(x) = \\begin{cases} x &amp; x \\geq 0') of comma-separated expression: Failed to parse LaTeX: I don't understand this
-f(x) = \begin{cases} x &amp; x \geq 0
+f(x) = \begin{cases} x &amp; x
 ~~~~~~~~~~~~~~~~~~~~~~~^
 </div>
 </div>
@@ -1460,7 +1700,7 @@ f(x) = \begin{cases} x &amp; x \geq 0
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   E["$E$"]:::scalar
   __multiply_2(("$\times$")):::operator
   __power_3(("${(\cdot)}^{-1}$")):::operator
@@ -1497,7 +1737,7 @@ f(x) = \begin{cases} x &amp; x \geq 0
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "E = \\frac{1}{2}mv^2"
     },
@@ -1623,7 +1863,7 @@ f(x) = \begin{cases} x &amp; x \geq 0
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   alpha["$\alpha$"]:::scalar
   beta["$\beta$"]:::scalar
-  __and_1{","}:::relation
+  __and_1(("$,$")):::operator
   R["$\mathbb{R}$"]:::scalar
   __element_of_2{"∈"}:::relation
   alpha --&gt; __and_1
@@ -1657,7 +1897,7 @@ f(x) = \begin{cases} x &amp; x \geq 0
     },
     {
       "id": "__and_1",
-      "type": "relation",
+      "type": "operator",
       "label": "and",
       "emoji": ",",
       "op": "and",
@@ -1703,7 +1943,7 @@ f(x) = \begin{cases} x &amp; x \geq 0
   }
 }</div>
 </div>
-<div class="summary"><span class="count">10</span> rendered, <span class="count">2</span> errors out of <span class="count">12</span> expressions</div>
+<div class="summary"><span class="count">13</span> rendered, <span class="count">1</span> errors out of <span class="count">14</span> expressions</div>
 <script>
 document.querySelectorAll('.row-toggle').forEach(btn => {
   btn.addEventListener('click', () => {

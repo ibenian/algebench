@@ -179,7 +179,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-22 22:59 UTC &middot; theme: default-dark &middot; 13 expressions</div>
+<div class="report-meta">Generated 2026-05-23 00:38 UTC &middot; theme: default-dark &middot; 13 expressions</div>
 <div class="section-title">Calculus (13 expressions)</div>
 <div class="row">
   <div>
@@ -199,7 +199,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   __multiply_3(("$\times$")):::operator
   __sin_4{{"$\sin$"}}:::function
   x["$x$"]:::scalar
@@ -239,7 +239,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1"
     },
@@ -364,7 +364,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   __multiply_3(("$\times$")):::operator
   __f_4{{"$f$"}}:::function
   x["$x$"]:::scalar
@@ -430,7 +430,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\lim_{x \\to a} \\frac{f(x)}{g(x)} = \\lim_{x \\to a} \\frac{f'(x)}{g'(x)}"
     },
@@ -636,7 +636,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   __power_3(("${(\cdot)}^{-1}$")):::operator
   x["$x$"]:::scalar
   __const_4["$\infty$"]:::constant
@@ -668,7 +668,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\lim_{x \\to \\infty} \\frac{1}{x} = 0"
     },
@@ -767,7 +767,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   __power_3(("$(\cdot)^{\cdot}$")):::operator
   x["$x$"]:::scalar
   n["$n$"]:::scalar
@@ -776,16 +776,16 @@
   __power_5(("$(\cdot)^{\cdot}$")):::operator
   __add_6(("$+$")):::operator
   __num_7["$-1$"]:::number
-  x --&gt;|lhs| __power_3
-  n --&gt;|rhs| __power_3
+  x --&gt; __power_3
+  n --&gt;|exp| __power_3
   __power_3 --&gt; __deriv_2
   x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
   n --&gt; __multiply_4
-  x --&gt;|lhs| __power_5
+  x --&gt; __power_5
   n --&gt; __add_6
   __num_7 --&gt; __add_6
-  __add_6 --&gt;|rhs| __power_5
+  __add_6 --&gt;|exp| __power_5
   __power_5 --&gt; __multiply_4
   __multiply_4 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -811,7 +811,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\frac{d}{dx} x^n = n x^{n-1}"
     },
@@ -868,13 +868,12 @@
   "edges": [
     {
       "from": "x",
-      "to": "__power_3",
-      "role": "lhs"
+      "to": "__power_3"
     },
     {
       "from": "n",
       "to": "__power_3",
-      "role": "rhs"
+      "role": "exp"
     },
     {
       "from": "__power_3",
@@ -897,8 +896,7 @@
     },
     {
       "from": "x",
-      "to": "__power_5",
-      "role": "lhs"
+      "to": "__power_5"
     },
     {
       "from": "n",
@@ -911,7 +909,7 @@
     {
       "from": "__add_6",
       "to": "__power_5",
-      "role": "rhs"
+      "role": "exp"
     },
     {
       "from": "__power_5",
@@ -952,7 +950,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   y["$y$"]:::scalar
   x["$x$"]:::scalar
   __deriv_2(("$\frac{d}{dx}$")):::operator
@@ -991,7 +989,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\frac{dy}{dx} = \\frac{dy}{du} \\cdot \\frac{du}{dx}"
     },
@@ -1278,7 +1276,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   __f'_2{{"$f'$"}}:::function
   c["$c$"]:::scalar
   __multiply_3(("$\times$")):::operator
@@ -1332,7 +1330,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "f'(c) = \\frac{f(b) - f(a)}{b - a}"
     },
@@ -1493,7 +1491,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   x["$x$"]:::scalar
   __integral_2(("$\int dx$")):::operator
   __power_3(("$(\cdot)^{\cdot}$")):::operator
@@ -1507,14 +1505,14 @@
   __add_10(("$+$")):::operator
   __num_11["$1$"]:::number
   C["$C$"]:::scalar
-  x --&gt;|lhs| __power_3
-  n --&gt;|rhs| __power_3
+  x --&gt; __power_3
+  n --&gt;|exp| __power_3
   __power_3 --&gt; __integral_2
   __integral_2 --&gt; __equals_1
-  x --&gt;|lhs| __power_6
+  x --&gt; __power_6
   n --&gt; __add_7
   __num_8 --&gt; __add_7
-  __add_7 --&gt;|rhs| __power_6
+  __add_7 --&gt;|exp| __power_6
   __power_6 --&gt; __multiply_5
   n --&gt; __add_10
   __num_11 --&gt; __add_10
@@ -1550,7 +1548,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\int x^n \\, dx = \\frac{x^{n+1}}{n+1} + C"
     },
@@ -1638,13 +1636,12 @@
   "edges": [
     {
       "from": "x",
-      "to": "__power_3",
-      "role": "lhs"
+      "to": "__power_3"
     },
     {
       "from": "n",
       "to": "__power_3",
-      "role": "rhs"
+      "role": "exp"
     },
     {
       "from": "__power_3",
@@ -1656,8 +1653,7 @@
     },
     {
       "from": "x",
-      "to": "__power_6",
-      "role": "lhs"
+      "to": "__power_6"
     },
     {
       "from": "n",
@@ -1670,7 +1666,7 @@
     {
       "from": "__add_7",
       "to": "__power_6",
-      "role": "rhs"
+      "role": "exp"
     },
     {
       "from": "__power_6",
@@ -1730,7 +1726,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   x["$x$"]:::scalar
   a["$a$"]:::scalar
   b["$b$"]:::scalar
@@ -1770,7 +1766,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\int_a^b f(x) \\, dx = F(b) - F(a)"
     },
@@ -1893,7 +1889,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   t["$t$"]:::scalar
   a["$a$"]:::scalar
   x["$x$"]:::scalar
@@ -1926,7 +1922,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\frac{d}{dx} \\int_a^x f(t) \\, dt = f(x)"
     },
@@ -2036,40 +2032,49 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   __power_2(("$(\cdot)^{\cdot}$")):::operator
   e["$e$"]:::scalar
   x["$x$"]:::scalar
   n["$n$"]:::scalar
   __num_4["$0$"]:::number
   __const_5["$\infty$"]:::constant
+  __equals_6{"="}:::relation
   __sum_3(("$\sum$")):::operator
-  __multiply_6(("$\times$")):::operator
-  __power_7(("$(\cdot)^{\cdot}$")):::operator
-  __power_8(("${(\cdot)}^{-1}$")):::operator
-  __factorial_9{{"$factorial$"}}:::function
-  e --&gt;|lhs| __power_2
-  x --&gt;|rhs| __power_2
+  __multiply_7(("$\times$")):::operator
+  __power_8(("$(\cdot)^{\cdot}$")):::operator
+  __power_9(("${(\cdot)}^{-1}$")):::operator
+  __factorial_10(("$(\cdot)!$")):::operator
+  e --&gt; __power_2
+  x --&gt;|exp| __power_2
   __power_2 --&gt; __equals_1
-  x --&gt;|lhs| __power_7
-  n --&gt;|rhs| __power_7
-  __power_7 --&gt; __multiply_6
-  n --&gt; __factorial_9
-  __factorial_9 --&gt; __power_8
-  __power_8 -.-&gt; __multiply_6
-  __multiply_6 --&gt; __sum_3
+  n --&gt; __equals_6
+  __num_4 --&gt; __equals_6
+  __equals_6 --&gt;|lb| __sum_3
+  __const_5 --&gt;|ub| __sum_3
+  x --&gt; __power_8
+  n --&gt;|exp| __power_8
+  __power_8 --&gt; __multiply_7
+  n --&gt; __factorial_10
+  __factorial_10 --&gt; __power_9
+  __power_9 -.-&gt; __multiply_7
+  __multiply_7 --&gt; __sum_3
   __sum_3 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#42a5f5,stroke-width:1px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#ef5350,stroke-width:3px
   linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#42a5f5,stroke-width:1px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2081,7 +2086,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "e^x = \\sum_{n=0}^{\\infty} \\frac{x^n}{n!}"
     },
@@ -2122,6 +2127,11 @@
       "subexpr": "\\infty"
     },
     {
+      "id": "__equals_6",
+      "type": "relation",
+      "op": "equals"
+    },
+    {
       "id": "__sum_3",
       "type": "operator",
       "op": "sum",
@@ -2131,27 +2141,27 @@
       "subexpr": "\\sum_{n=0}^{\\infty} \\frac{x^{n}}{n!}"
     },
     {
-      "id": "__multiply_6",
+      "id": "__multiply_7",
       "type": "operator",
       "op": "multiply",
       "subexpr": "x^{n} \\frac{1}{n!}"
     },
     {
-      "id": "__power_7",
+      "id": "__power_8",
       "type": "operator",
       "op": "power",
       "subexpr": "x^{n}"
     },
     {
-      "id": "__power_8",
+      "id": "__power_9",
       "type": "operator",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{n!}"
     },
     {
-      "id": "__factorial_9",
-      "type": "function",
+      "id": "__factorial_10",
+      "type": "operator",
       "op": "factorial",
       "subexpr": "n!"
     }
@@ -2159,48 +2169,64 @@
   "edges": [
     {
       "from": "e",
-      "to": "__power_2",
-      "role": "lhs"
+      "to": "__power_2"
     },
     {
       "from": "x",
       "to": "__power_2",
-      "role": "rhs"
+      "role": "exp"
     },
     {
       "from": "__power_2",
       "to": "__equals_1"
     },
     {
+      "from": "n",
+      "to": "__equals_6"
+    },
+    {
+      "from": "__num_4",
+      "to": "__equals_6"
+    },
+    {
+      "from": "__equals_6",
+      "to": "__sum_3",
+      "role": "lb"
+    },
+    {
+      "from": "__const_5",
+      "to": "__sum_3",
+      "role": "ub"
+    },
+    {
       "from": "x",
-      "to": "__power_7",
-      "role": "lhs"
+      "to": "__power_8"
     },
     {
       "from": "n",
-      "to": "__power_7",
-      "role": "rhs"
+      "to": "__power_8",
+      "role": "exp"
     },
     {
-      "from": "__power_7",
-      "to": "__multiply_6",
+      "from": "__power_8",
+      "to": "__multiply_7",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "n",
-      "to": "__factorial_9"
+      "to": "__factorial_10"
     },
     {
-      "from": "__factorial_9",
-      "to": "__power_8"
+      "from": "__factorial_10",
+      "to": "__power_9"
     },
     {
-      "from": "__power_8",
-      "to": "__multiply_6"
+      "from": "__power_9",
+      "to": "__multiply_7"
     },
     {
-      "from": "__multiply_6",
+      "from": "__multiply_7",
       "to": "__sum_3"
     },
     {
@@ -2231,27 +2257,32 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1(("$=$")):::operator
+  __equals_1{"="}:::relation
   n["$n$"]:::scalar
   __num_3["$0$"]:::number
   __const_4["$\infty$"]:::constant
+  __equals_5{"="}:::relation
   __sum_2(("$\sum$")):::operator
-  __power_5(("$(\cdot)^{\cdot}$")):::operator
+  __power_6(("$(\cdot)^{\cdot}$")):::operator
   r["$r$"]:::scalar
-  __power_6(("${(\cdot)}^{-1}$")):::operator
-  __add_7(("$+$")):::operator
-  __num_8["$1$"]:::number
-  __negation_9@{ shape: "flip-tri", label: "$-$" }
-  class __negation_9 operator
-  r --&gt;|lhs| __power_5
-  n --&gt;|rhs| __power_5
-  __power_5 --&gt; __sum_2
+  __power_7(("${(\cdot)}^{-1}$")):::operator
+  __add_8(("$+$")):::operator
+  __num_9["$1$"]:::number
+  __negation_10@{ shape: "flip-tri", label: "$-$" }
+  class __negation_10 operator
+  n --&gt; __equals_5
+  __num_3 --&gt; __equals_5
+  __equals_5 --&gt;|lb| __sum_2
+  __const_4 --&gt;|ub| __sum_2
+  r --&gt; __power_6
+  n --&gt;|exp| __power_6
+  __power_6 --&gt; __sum_2
   __sum_2 --&gt; __equals_1
-  __num_8 --&gt; __add_7
-  r --&gt; __negation_9
-  __negation_9 --&gt; __add_7
-  __add_7 --&gt; __power_6
-  __power_6 -.-&gt; __equals_1
+  __num_9 --&gt; __add_8
+  r --&gt; __negation_10
+  __negation_10 --&gt; __add_8
+  __add_8 --&gt; __power_7
+  __power_7 -.-&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#aaa,stroke-width:2px
@@ -2260,7 +2291,11 @@
   linkStyle 5 stroke:#aaa,stroke-width:2px
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#42a5f5,stroke-width:1px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#42a5f5,stroke-width:1px
 </pre>
   </div>
   <div class="row-actions">
@@ -2272,7 +2307,7 @@
   "nodes": [
     {
       "id": "__equals_1",
-      "type": "operator",
+      "type": "relation",
       "op": "equals",
       "subexpr": "\\sum_{n=0}^{\\infty} r^n = \\frac{1}{1 - r}"
     },
@@ -2295,6 +2330,11 @@
       "subexpr": "\\infty"
     },
     {
+      "id": "__equals_5",
+      "type": "relation",
+      "op": "equals"
+    },
+    {
       "id": "__sum_2",
       "type": "operator",
       "op": "sum",
@@ -2304,7 +2344,7 @@
       "subexpr": "\\sum_{n=0}^{\\infty} r^{n}"
     },
     {
-      "id": "__power_5",
+      "id": "__power_6",
       "type": "operator",
       "op": "power",
       "subexpr": "r^{n}"
@@ -2316,26 +2356,26 @@
       "subexpr": "r"
     },
     {
-      "id": "__power_6",
+      "id": "__power_7",
       "type": "operator",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{1 - r}"
     },
     {
-      "id": "__add_7",
+      "id": "__add_8",
       "type": "operator",
       "op": "add",
       "subexpr": "1 - r"
     },
     {
-      "id": "__num_8",
+      "id": "__num_9",
       "type": "number",
       "label": "1",
       "subexpr": "1"
     },
     {
-      "id": "__negation_9",
+      "id": "__negation_10",
       "type": "operator",
       "op": "negation",
       "subexpr": "-r"
@@ -2343,17 +2383,34 @@
   ],
   "edges": [
     {
+      "from": "n",
+      "to": "__equals_5"
+    },
+    {
+      "from": "__num_3",
+      "to": "__equals_5"
+    },
+    {
+      "from": "__equals_5",
+      "to": "__sum_2",
+      "role": "lb"
+    },
+    {
+      "from": "__const_4",
+      "to": "__sum_2",
+      "role": "ub"
+    },
+    {
       "from": "r",
-      "to": "__power_5",
-      "role": "lhs"
+      "to": "__power_6"
     },
     {
       "from": "n",
-      "to": "__power_5",
-      "role": "rhs"
+      "to": "__power_6",
+      "role": "exp"
     },
     {
-      "from": "__power_5",
+      "from": "__power_6",
       "to": "__sum_2"
     },
     {
@@ -2361,23 +2418,23 @@
       "to": "__equals_1"
     },
     {
-      "from": "__num_8",
-      "to": "__add_7"
+      "from": "__num_9",
+      "to": "__add_8"
     },
     {
       "from": "r",
-      "to": "__negation_9"
+      "to": "__negation_10"
     },
     {
-      "from": "__negation_9",
-      "to": "__add_7"
+      "from": "__negation_10",
+      "to": "__add_8"
     },
     {
-      "from": "__add_7",
-      "to": "__power_6"
+      "from": "__add_8",
+      "to": "__power_7"
     },
     {
-      "from": "__power_6",
+      "from": "__power_7",
       "to": "__equals_1"
     }
   ],
