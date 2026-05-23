@@ -99,6 +99,23 @@
   .getting-started .comment { color: #8b949e; }
   .getting-started .cmd { color: #79c0ff; }
 
+  /* ── Docs list ── */
+  .doc-list { list-style: none; }
+  .doc-list li {
+    border: 1px solid #21262d; border-radius: 8px;
+    margin-bottom: 0.6rem;
+  }
+  .doc-list a {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.9rem 1.1rem; text-decoration: none; color: #e6edf3;
+    background: #161b22; border-radius: 8px;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .doc-list a:hover { background: #1c2333; }
+  .doc-list .d-icon { font-size: 1.2rem; flex-shrink: 0; }
+  .doc-list .d-title { font-weight: 600; font-size: 0.92rem; }
+  .doc-list .d-desc { color: #8b949e; font-size: 0.8rem; margin-top: 0.1rem; }
+
   /* ── Footer ── */
   footer {
     text-align: center; padding: 2.5rem 1rem; color: #484f58; font-size: 0.8rem;
@@ -146,6 +163,49 @@
         <span class="arrow">View report &rarr;</span>
       </a>
     </div>
+  </div>
+
+  <!-- Documentation -->
+  <div class="section">
+    <h2>Documentation</h2>
+    <ul class="doc-list">
+      <li><a href="https://github.com/ibenian/algebench/blob/main/README.md">
+        <span class="d-icon">📖</span>
+        <div><div class="d-title">README</div><div class="d-desc">Project overview, setup instructions, and quick-start guide</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/CONTRIBUTING.md">
+        <span class="d-icon">🤝</span>
+        <div><div class="d-title">Contributing Guide</div><div class="d-desc">How to contribute, coding standards, and pull request workflow</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/architecture.md">
+        <span class="d-icon">🏗️</span>
+        <div><div class="d-title">Architecture</div><div class="d-desc">System design, module boundaries, and data flow</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/proofs-model.md">
+        <span class="d-icon">🧮</span>
+        <div><div class="d-title">Proofs Model</div><div class="d-desc">How algebraic proofs are represented, validated, and animated</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/semantic-graph-module-design.md">
+        <span class="d-icon">🌐</span>
+        <div><div class="d-title">Semantic Graph Design</div><div class="d-desc">Module design for the concept-relationship graph engine</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/sandbox-model.md">
+        <span class="d-icon">🔒</span>
+        <div><div class="d-title">Sandbox Model</div><div class="d-desc">Security sandboxing for user-submitted expressions and scripts</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/latex-parser-design.md">
+        <span class="d-icon">📝</span>
+        <div><div class="d-title">LaTeX Parser Design</div><div class="d-desc">Parsing and rendering pipeline for mathematical notation</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/feature-ideas.md">
+        <span class="d-icon">💡</span>
+        <div><div class="d-title">Feature Ideas</div><div class="d-desc">Roadmap brainstorming and future feature candidates</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/lesson-ideas.md">
+        <span class="d-icon">🎓</span>
+        <div><div class="d-title">Lesson Ideas</div><div class="d-desc">Planned interactive lessons across algebra, calculus, and physics</div></div>
+      </a></li>
+    </ul>
   </div>
 
   <!-- Tech Stack -->
