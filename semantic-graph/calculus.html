@@ -1,0 +1,2457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Semantic Graph Visual Report</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false, theme: 'dark',
+    flowchart: { htmlLabels: true, curve: 'basis' } });
+  await mermaid.run();
+  if (window.katex) {
+    const INLINE_MATH = /\$([^$\n]+)\$/g;
+    document.querySelectorAll(
+      'foreignObject span, foreignObject div, foreignObject p, .nodeLabel'
+    ).forEach((host) => {
+      if (!host.textContent || host.textContent.indexOf('$') === -1) return;
+      const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT, null);
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+      textNodes.forEach((tn) => {
+        const src = tn.nodeValue;
+        if (!src || src.indexOf('$') === -1) return;
+        INLINE_MATH.lastIndex = 0;
+        if (!INLINE_MATH.test(src)) return;
+        INLINE_MATH.lastIndex = 0;
+        const frag = document.createDocumentFragment();
+        let last = 0, m;
+        while ((m = INLINE_MATH.exec(src)) !== null) {
+          if (m.index > last)
+            frag.appendChild(document.createTextNode(src.slice(last, m.index)));
+          const span = document.createElement('span');
+          try { katex.render(m[1], span, { throwOnError: false, displayMode: false }); }
+          catch (_) { span.textContent = m[0]; }
+          frag.appendChild(span);
+          last = m.index + m[0].length;
+        }
+        if (last < src.length)
+          frag.appendChild(document.createTextNode(src.slice(last)));
+        tn.parentNode.replaceChild(frag, tn);
+      });
+    });
+    document.querySelectorAll('svg g.node foreignObject').forEach((fo) => {
+      const outer = fo.firstElementChild;
+      if (!outer || outer.dataset?.gvCentered === 'wrapper') return;
+      const NS = 'http://www.w3.org/1999/xhtml';
+      const wrapper = document.createElementNS(NS, 'div');
+      wrapper.dataset.gvCentered = 'wrapper';
+      Object.assign(wrapper.style, {
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: '100%', height: '100%',
+      });
+      fo.replaceChild(wrapper, outer);
+      wrapper.appendChild(outer);
+    });
+  }
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    padding: 2rem;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .report-meta {
+    font-size: 0.8rem;
+    color: #8b949e;
+    margin-bottom: 2rem;
+  }
+  .section-title {
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #8b949e;
+    margin: 2rem 0 1rem 0;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 0.5rem;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 1rem;
+    align-items: start;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .row-id {
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: #8b949e;
+    margin-bottom: 0.3rem;
+  }
+  .row-latex {
+    font-size: 1.2rem;
+    padding: 0.5rem 0;
+  }
+  .row-graph {
+    min-width: 0;
+    overflow-x: auto;
+  }
+  .row-graph .mermaid {
+    font-size: 0.85rem;
+  }
+  .row-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    align-self: center;
+  }
+  .row-toggle {
+    background: none;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    color: #8b949e;
+    font-family: monospace;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .row-toggle:hover {
+    color: #e6edf3;
+    border-color: #e6edf3;
+  }
+  .row-panel {
+    display: none;
+    grid-column: 1 / -1;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 0.8rem;
+    font-family: monospace;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 400px;
+    overflow: auto;
+  }
+  .row-panel.open {
+    display: block;
+  }
+  .row-error {
+    grid-column: 2 / 3;
+    background: #2d1b1b;
+    border: 1px solid #6b2020;
+    border-radius: 6px;
+    padding: 0.5rem 0.8rem;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #f87171;
+    white-space: pre-wrap;
+  }
+  .summary {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    font-size: 0.85rem;
+  }
+  .summary .count {
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<h1>Semantic Graph &mdash; Visual Examination Report</h1>
+<div class="report-meta">Generated 2026-05-23 03:34 UTC &middot; theme: default-dark &middot; 13 expressions</div>
+<div class="section-title">Calculus (13 expressions)</div>
+<div class="row">
+  <div>
+    <div class="row-id">limit_basic</div>
+    <div class="row-latex">$$\lim_{x \to 0} \frac{\sin x}{x} = 1$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __multiply_3(("$\times$")):::operator
+  __sin_4{{"$\sin$"}}:::function
+  x["$x$"]:::scalar
+  __power_5(("${(\cdot)}^{-1}$")):::operator
+  __num_6["$0$"]:::number
+  __tends_to_7(("$\to$")):::operator
+  __limit_2(("$\lim$")):::operator
+  __num_8["$1$"]:::number
+  x --&gt; __sin_4
+  __sin_4 --&gt; __multiply_3
+  x --&gt; __power_5
+  __power_5 -.-&gt; __multiply_3
+  __multiply_3 --&gt; __limit_2
+  x --&gt;|lhs| __tends_to_7
+  __num_6 --&gt;|rhs| __tends_to_7
+  __tends_to_7 --&gt; __limit_2
+  __limit_2 --&gt; __equals_1
+  __num_8 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#42a5f5,stroke-width:1px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">\lim_{x \to 0} \frac{\sin x}{x} = 1</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1"
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\frac{1}{x} \\sin{\\left(x \\right)}"
+    },
+    {
+      "id": "__sin_4",
+      "type": "function",
+      "latex": "\\sin",
+      "op": "sin",
+      "subexpr": "\\sin{\\left(x \\right)}"
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x"
+    },
+    {
+      "id": "__power_5",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{x}"
+    },
+    {
+      "id": "__num_6",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0"
+    },
+    {
+      "id": "__tends_to_7",
+      "type": "operator",
+      "op": "tends_to",
+      "with_respect_to": "x",
+      "limit_point": "__num_6"
+    },
+    {
+      "id": "__limit_2",
+      "type": "operator",
+      "op": "limit",
+      "subexpr": "\\lim_{x \\to 0}\\left(\\frac{\\sin{\\left(x \\right)}}{x}\\right)"
+    },
+    {
+      "id": "__num_8",
+      "type": "number",
+      "label": "1",
+      "subexpr": "1"
+    }
+  ],
+  "edges": [
+    {
+      "from": "x",
+      "to": "__sin_4"
+    },
+    {
+      "from": "__sin_4",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "x",
+      "to": "__power_5"
+    },
+    {
+      "from": "__power_5",
+      "to": "__multiply_3"
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__limit_2"
+    },
+    {
+      "from": "x",
+      "to": "__tends_to_7",
+      "role": "lhs"
+    },
+    {
+      "from": "__num_6",
+      "to": "__tends_to_7",
+      "role": "rhs"
+    },
+    {
+      "from": "__tends_to_7",
+      "to": "__limit_2"
+    },
+    {
+      "from": "__limit_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "__num_8",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">lhopital</div>
+    <div class="row-latex">$$\lim_{x \to a} \frac{f(x)}{g(x)} = \lim_{x \to a} \frac{f'(x)}{g'(x)}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __multiply_3(("$\times$")):::operator
+  __f_4{{"$f$"}}:::function
+  x["$x$"]:::scalar
+  __power_5(("${(\cdot)}^{-1}$")):::operator
+  __g_6{{"$g$"}}:::function
+  a["$a$"]:::scalar
+  __tends_to_7(("$\to$")):::operator
+  __limit_2(("$\lim$")):::operator
+  __multiply_9(("$\times$")):::operator
+  __f'_10{{"$f'$"}}:::function
+  __power_11(("${(\cdot)}^{-1}$")):::operator
+  __g'_12{{"$g'$"}}:::function
+  __tends_to_13(("$\to$")):::operator
+  __limit_8(("$\lim$")):::operator
+  x --&gt; __f_4
+  __f_4 --&gt; __multiply_3
+  x --&gt; __g_6
+  __g_6 --&gt; __power_5
+  __power_5 -.-&gt; __multiply_3
+  __multiply_3 --&gt; __limit_2
+  x --&gt;|lhs| __tends_to_7
+  a --&gt;|rhs| __tends_to_7
+  __tends_to_7 --&gt; __limit_2
+  __limit_2 --&gt; __equals_1
+  x --&gt; __f'_10
+  __f'_10 --&gt; __multiply_9
+  x --&gt; __g'_12
+  __g'_12 --&gt; __power_11
+  __power_11 -.-&gt; __multiply_9
+  __multiply_9 --&gt; __limit_8
+  x --&gt;|lhs| __tends_to_13
+  a --&gt;|rhs| __tends_to_13
+  __tends_to_13 --&gt; __limit_8
+  __limit_8 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#42a5f5,stroke-width:1px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#ef5350,stroke-width:3px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#42a5f5,stroke-width:1px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 17 stroke:#aaa,stroke-width:2px
+  linkStyle 18 stroke:#aaa,stroke-width:2px
+  linkStyle 19 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">\lim_{x \to a} \frac{f(x)}{g(x)} = \lim_{x \to a} \frac{f'(x)}{g'(x)}</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\lim_{x \\to a} \\frac{f(x)}{g(x)} = \\lim_{x \\to a} \\frac{f'(x)}{g'(x)}"
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "f{\\left(x \\right)} \\frac{1}{g{\\left(x \\right)}}"
+    },
+    {
+      "id": "__f_4",
+      "type": "function",
+      "op": "f",
+      "subexpr": "f{\\left(x \\right)}"
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x"
+    },
+    {
+      "id": "__power_5",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{g{\\left(x \\right)}}"
+    },
+    {
+      "id": "__g_6",
+      "type": "function",
+      "op": "g",
+      "subexpr": "g{\\left(x \\right)}"
+    },
+    {
+      "id": "a",
+      "type": "scalar",
+      "latex": "a",
+      "subexpr": "a"
+    },
+    {
+      "id": "__tends_to_7",
+      "type": "operator",
+      "op": "tends_to",
+      "with_respect_to": "x",
+      "limit_point": "a"
+    },
+    {
+      "id": "__limit_2",
+      "type": "operator",
+      "op": "limit",
+      "subexpr": "\\lim_{x \\to a}\\left(\\frac{f{\\left(x \\right)}}{g{\\left(x \\right)}}\\right)"
+    },
+    {
+      "id": "__multiply_9",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\operatorname{f'}{\\left(x \\right)} \\frac{1}{\\operatorname{g'}{\\left(x \\right)}}"
+    },
+    {
+      "id": "__f'_10",
+      "type": "function",
+      "op": "f'",
+      "subexpr": "\\operatorname{f'}{\\left(x \\right)}"
+    },
+    {
+      "id": "__power_11",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{\\operatorname{g'}{\\left(x \\right)}}"
+    },
+    {
+      "id": "__g'_12",
+      "type": "function",
+      "op": "g'",
+      "subexpr": "\\operatorname{g'}{\\left(x \\right)}"
+    },
+    {
+      "id": "__tends_to_13",
+      "type": "operator",
+      "op": "tends_to",
+      "with_respect_to": "x",
+      "limit_point": "a"
+    },
+    {
+      "id": "__limit_8",
+      "type": "operator",
+      "op": "limit",
+      "subexpr": "\\lim_{x \\to a}\\left(\\frac{\\operatorname{f'}{\\left(x \\right)}}{\\operatorname{g'}{\\left(x \\right)}}\\right)"
+    }
+  ],
+  "edges": [
+    {
+      "from": "x",
+      "to": "__f_4"
+    },
+    {
+      "from": "__f_4",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "x",
+      "to": "__g_6"
+    },
+    {
+      "from": "__g_6",
+      "to": "__power_5"
+    },
+    {
+      "from": "__power_5",
+      "to": "__multiply_3"
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__limit_2"
+    },
+    {
+      "from": "x",
+      "to": "__tends_to_7",
+      "role": "lhs"
+    },
+    {
+      "from": "a",
+      "to": "__tends_to_7",
+      "role": "rhs"
+    },
+    {
+      "from": "__tends_to_7",
+      "to": "__limit_2"
+    },
+    {
+      "from": "__limit_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "x",
+      "to": "__f'_10"
+    },
+    {
+      "from": "__f'_10",
+      "to": "__multiply_9",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "x",
+      "to": "__g'_12"
+    },
+    {
+      "from": "__g'_12",
+      "to": "__power_11"
+    },
+    {
+      "from": "__power_11",
+      "to": "__multiply_9"
+    },
+    {
+      "from": "__multiply_9",
+      "to": "__limit_8"
+    },
+    {
+      "from": "x",
+      "to": "__tends_to_13",
+      "role": "lhs"
+    },
+    {
+      "from": "a",
+      "to": "__tends_to_13",
+      "role": "rhs"
+    },
+    {
+      "from": "__tends_to_13",
+      "to": "__limit_8"
+    },
+    {
+      "from": "__limit_8",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">limit_infinity</div>
+    <div class="row-latex">$$\lim_{x \to \infty} \frac{1}{x} = 0$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __power_3(("${(\cdot)}^{-1}$")):::operator
+  x["$x$"]:::scalar
+  __const_4["$\infty$"]:::constant
+  __tends_to_5(("$\to$")):::operator
+  __limit_2(("$\lim$")):::operator
+  __num_6["$0$"]:::number
+  x --&gt; __power_3
+  __power_3 -.-&gt; __limit_2
+  x --&gt;|lhs| __tends_to_5
+  __const_4 --&gt;|rhs| __tends_to_5
+  __tends_to_5 --&gt; __limit_2
+  __limit_2 --&gt; __equals_1
+  __num_6 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#42a5f5,stroke-width:1px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">\lim_{x \to \infty} \frac{1}{x} = 0</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\lim_{x \\to \\infty} \\frac{1}{x} = 0"
+    },
+    {
+      "id": "__power_3",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{x}"
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x"
+    },
+    {
+      "id": "__const_4",
+      "type": "constant",
+      "label": "infinity",
+      "subexpr": "\\infty"
+    },
+    {
+      "id": "__tends_to_5",
+      "type": "operator",
+      "op": "tends_to",
+      "with_respect_to": "x",
+      "limit_point": "__const_4",
+      "limit_direction": "-"
+    },
+    {
+      "id": "__limit_2",
+      "type": "operator",
+      "op": "limit",
+      "subexpr": "\\lim_{x \\to \\infty} \\frac{1}{x}"
+    },
+    {
+      "id": "__num_6",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0"
+    }
+  ],
+  "edges": [
+    {
+      "from": "x",
+      "to": "__power_3"
+    },
+    {
+      "from": "__power_3",
+      "to": "__limit_2"
+    },
+    {
+      "from": "x",
+      "to": "__tends_to_5",
+      "role": "lhs"
+    },
+    {
+      "from": "__const_4",
+      "to": "__tends_to_5",
+      "role": "rhs"
+    },
+    {
+      "from": "__tends_to_5",
+      "to": "__limit_2"
+    },
+    {
+      "from": "__limit_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "__num_6",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">derivative_power</div>
+    <div class="row-latex">$$\frac{d}{dx} x^n = n x^{n-1}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
+  x["$x$"]:::scalar
+  n["$n$"]:::scalar
+  __deriv_2(("$\frac{d}{dx}$")):::operator
+  __multiply_4(("$\times$")):::operator
+  __power_5(("$(\cdot)^{\cdot}$")):::operator
+  __add_6(("$+$")):::operator
+  __num_7["$-1$"]:::number
+  x --&gt; __power_3
+  n --&gt;|exp| __power_3
+  __power_3 --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
+  __deriv_2 --&gt; __equals_1
+  n --&gt; __multiply_4
+  x --&gt; __power_5
+  n --&gt; __add_6
+  __num_7 --&gt; __add_6
+  __add_6 --&gt;|exp| __power_5
+  __power_5 --&gt; __multiply_4
+  __multiply_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">\frac{d}{dx} x^n = n x^{n-1}</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\frac{d}{dx} x^n = n x^{n-1}"
+    },
+    {
+      "id": "__power_3",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "x^{n}"
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x"
+    },
+    {
+      "id": "n",
+      "type": "scalar",
+      "latex": "n",
+      "subexpr": "n"
+    },
+    {
+      "id": "__deriv_2",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "x",
+      "subexpr": "\\frac{\\partial}{\\partial x} x^{n}"
+    },
+    {
+      "id": "__multiply_4",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "x^{n - 1} n"
+    },
+    {
+      "id": "__power_5",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "x^{n - 1}"
+    },
+    {
+      "id": "__add_6",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "n - 1"
+    },
+    {
+      "id": "__num_7",
+      "type": "number",
+      "label": "-1",
+      "subexpr": "-1"
+    }
+  ],
+  "edges": [
+    {
+      "from": "x",
+      "to": "__power_3"
+    },
+    {
+      "from": "n",
+      "to": "__power_3",
+      "role": "exp"
+    },
+    {
+      "from": "__power_3",
+      "to": "__deriv_2"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_2",
+      "role": "wrt"
+    },
+    {
+      "from": "__deriv_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "n",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "x",
+      "to": "__power_5"
+    },
+    {
+      "from": "n",
+      "to": "__add_6"
+    },
+    {
+      "from": "__num_7",
+      "to": "__add_6"
+    },
+    {
+      "from": "__add_6",
+      "to": "__power_5",
+      "role": "exp"
+    },
+    {
+      "from": "__power_5",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_4",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "ODE",
+    "order": 1,
+    "dependent_variables": [],
+    "independent_variables": [
+      "x"
+    ]
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">derivative_chain</div>
+    <div class="row-latex">$$\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_2(("$\frac{d}{dx}$")):::operator
+  __multiply_3(("$\times$")):::operator
+  u["$u$"]:::scalar
+  __deriv_4(("$\frac{d}{du}$")):::operator
+  __deriv_5(("$\frac{d}{dx}$")):::operator
+  y --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
+  __deriv_2 --&gt; __equals_1
+  y --&gt; __deriv_4
+  u --&gt;|wrt| __deriv_4
+  __deriv_4 --&gt; __multiply_3
+  u --&gt; __deriv_5
+  x --&gt;|wrt| __deriv_5
+  __deriv_5 --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\frac{dy}{dx} = \\frac{dy}{du} \\cdot \\frac{du}{dx}"
+    },
+    {
+      "id": "y",
+      "type": "scalar",
+      "latex": "y",
+      "subexpr": "y"
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x"
+    },
+    {
+      "id": "__deriv_2",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "x",
+      "subexpr": "\\frac{d}{d x} y"
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\frac{d}{d u} y \\frac{d}{d x} u"
+    },
+    {
+      "id": "u",
+      "type": "scalar",
+      "latex": "u",
+      "subexpr": "u"
+    },
+    {
+      "id": "__deriv_4",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "u",
+      "subexpr": "\\frac{d}{d u} y"
+    },
+    {
+      "id": "__deriv_5",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "x",
+      "subexpr": "\\frac{d}{d x} u"
+    }
+  ],
+  "edges": [
+    {
+      "from": "y",
+      "to": "__deriv_2"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_2",
+      "role": "wrt"
+    },
+    {
+      "from": "__deriv_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "y",
+      "to": "__deriv_4"
+    },
+    {
+      "from": "u",
+      "to": "__deriv_4",
+      "role": "wrt"
+    },
+    {
+      "from": "__deriv_4",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "u",
+      "to": "__deriv_5"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_5",
+      "role": "wrt"
+    },
+    {
+      "from": "__deriv_5",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "PDE",
+    "order": 1,
+    "dependent_variables": [
+      "u",
+      "y"
+    ],
+    "independent_variables": [
+      "u",
+      "x"
+    ]
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">product_rule</div>
+    <div class="row-latex">$$(fg)' = f'g + fg'$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __multiply_1(("$\times$")):::operator
+  f["$f$"]:::scalar
+  g["$g$"]:::scalar
+  f --&gt; __multiply_1
+  g --&gt; __multiply_1
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">(fg)' = f'g + fg'</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__multiply_1",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "(fg)' = f'g + fg'"
+    },
+    {
+      "id": "f",
+      "type": "scalar",
+      "latex": "f",
+      "subexpr": "f"
+    },
+    {
+      "id": "g",
+      "type": "scalar",
+      "latex": "g",
+      "subexpr": "g"
+    }
+  ],
+  "edges": [
+    {
+      "from": "f",
+      "to": "__multiply_1",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "g",
+      "to": "__multiply_1",
+      "semantic": "direct",
+      "weight": 1.0
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">quotient_rule</div>
+    <div class="row-latex">$$\left(\frac{f}{g}\right)' = \frac{f'g - fg'}{g^2}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __multiply_1(("$\times$")):::operator
+  f["$f$"]:::scalar
+  __power_2(("${(\cdot)}^{-1}$")):::operator
+  g["$g$"]:::scalar
+  f --&gt; __multiply_1
+  g --&gt; __power_2
+  __power_2 -.-&gt; __multiply_1
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#42a5f5,stroke-width:1px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">\left(\frac{f}{g}\right)' = \frac{f'g - fg'}{g^2}</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__multiply_1",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\left(\\frac{f}{g}\\right)' = \\frac{f'g - fg'}{g^2}"
+    },
+    {
+      "id": "f",
+      "type": "scalar",
+      "latex": "f",
+      "subexpr": "f"
+    },
+    {
+      "id": "__power_2",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{g}"
+    },
+    {
+      "id": "g",
+      "type": "scalar",
+      "latex": "g",
+      "subexpr": "g"
+    }
+  ],
+  "edges": [
+    {
+      "from": "f",
+      "to": "__multiply_1",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "g",
+      "to": "__power_2"
+    },
+    {
+      "from": "__power_2",
+      "to": "__multiply_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">mvt</div>
+    <div class="row-latex">$$f'(c) = \frac{f(b) - f(a)}{b - a}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __f'_2{{"$f'$"}}:::function
+  c["$c$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  __add_4(("$+$")):::operator
+  __f_5{{"$f$"}}:::function
+  b["$b$"]:::scalar
+  __negation_6@{ shape: "flip-tri", label: "$-$" }
+  __f_7{{"$f$"}}:::function
+  a["$a$"]:::scalar
+  __power_8(("${(\cdot)}^{-1}$")):::operator
+  __add_9(("$+$")):::operator
+  __negation_10@{ shape: "flip-tri", label: "$-$" }
+  class __negation_6 operator
+  class __negation_10 operator
+  c --&gt; __f'_2
+  __f'_2 --&gt; __equals_1
+  b --&gt; __f_5
+  __f_5 --&gt; __add_4
+  a --&gt; __f_7
+  __f_7 --&gt; __negation_6
+  __negation_6 --&gt; __add_4
+  __add_4 --&gt; __multiply_3
+  b --&gt; __add_9
+  a --&gt; __negation_10
+  __negation_10 --&gt; __add_9
+  __add_9 --&gt; __power_8
+  __power_8 -.-&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#42a5f5,stroke-width:1px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">f'(c) = \frac{f(b) - f(a)}{b - a}</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "f'(c) = \\frac{f(b) - f(a)}{b - a}"
+    },
+    {
+      "id": "__f'_2",
+      "type": "function",
+      "op": "f'",
+      "subexpr": "\\operatorname{f'}{\\left(c \\right)}"
+    },
+    {
+      "id": "c",
+      "type": "scalar",
+      "latex": "c",
+      "subexpr": "c"
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\left(-f{\\left(a \\right)} + f{\\left(b \\right)}\\right) \\frac{1}{- a + b}"
+    },
+    {
+      "id": "__add_4",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "-f{\\left(a \\right)} + f{\\left(b \\right)}"
+    },
+    {
+      "id": "__f_5",
+      "type": "function",
+      "op": "f",
+      "subexpr": "f{\\left(b \\right)}"
+    },
+    {
+      "id": "b",
+      "type": "scalar",
+      "latex": "b",
+      "subexpr": "b"
+    },
+    {
+      "id": "__negation_6",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-f{\\left(a \\right)}"
+    },
+    {
+      "id": "__f_7",
+      "type": "function",
+      "op": "f",
+      "subexpr": "f{\\left(a \\right)}"
+    },
+    {
+      "id": "a",
+      "type": "scalar",
+      "latex": "a",
+      "subexpr": "a"
+    },
+    {
+      "id": "__power_8",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{- a + b}"
+    },
+    {
+      "id": "__add_9",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "b - a"
+    },
+    {
+      "id": "__negation_10",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-a"
+    }
+  ],
+  "edges": [
+    {
+      "from": "c",
+      "to": "__f'_2"
+    },
+    {
+      "from": "__f'_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "b",
+      "to": "__f_5"
+    },
+    {
+      "from": "__f_5",
+      "to": "__add_4"
+    },
+    {
+      "from": "a",
+      "to": "__f_7"
+    },
+    {
+      "from": "__f_7",
+      "to": "__negation_6"
+    },
+    {
+      "from": "__negation_6",
+      "to": "__add_4"
+    },
+    {
+      "from": "__add_4",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "b",
+      "to": "__add_9"
+    },
+    {
+      "from": "a",
+      "to": "__negation_10"
+    },
+    {
+      "from": "__negation_10",
+      "to": "__add_9"
+    },
+    {
+      "from": "__add_9",
+      "to": "__power_8"
+    },
+    {
+      "from": "__power_8",
+      "to": "__multiply_3"
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">integral_power</div>
+    <div class="row-latex">$$\int x^n \, dx = \frac{x^{n+1}}{n+1} + C$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  x["$x$"]:::scalar
+  __integral_2(("$\int dx$")):::operator
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
+  n["$n$"]:::scalar
+  __add_4(("$+$")):::operator
+  __multiply_5(("$\times$")):::operator
+  __power_6(("$(\cdot)^{\cdot}$")):::operator
+  __add_7(("$+$")):::operator
+  __num_8["$1$"]:::number
+  __power_9(("${(\cdot)}^{-1}$")):::operator
+  __add_10(("$+$")):::operator
+  __num_11["$1$"]:::number
+  C["$C$"]:::scalar
+  x --&gt; __power_3
+  n --&gt;|exp| __power_3
+  __power_3 --&gt; __integral_2
+  __integral_2 --&gt; __equals_1
+  x --&gt; __power_6
+  n --&gt; __add_7
+  __num_8 --&gt; __add_7
+  __add_7 --&gt;|exp| __power_6
+  __power_6 --&gt; __multiply_5
+  n --&gt; __add_10
+  __num_11 --&gt; __add_10
+  __add_10 --&gt; __power_9
+  __power_9 -.-&gt; __multiply_5
+  __multiply_5 --&gt; __add_4
+  C --&gt; __add_4
+  __add_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#42a5f5,stroke-width:1px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">\int x^n \, dx = \frac{x^{n+1}}{n+1} + C</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\int x^n \\, dx = \\frac{x^{n+1}}{n+1} + C"
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x"
+    },
+    {
+      "id": "__integral_2",
+      "type": "operator",
+      "op": "integral",
+      "with_respect_to": "x",
+      "subexpr": "\\int x^{n}\\, dx"
+    },
+    {
+      "id": "__power_3",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "x^{n}"
+    },
+    {
+      "id": "n",
+      "type": "scalar",
+      "latex": "n",
+      "subexpr": "n"
+    },
+    {
+      "id": "__add_4",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "C + x^{n + 1} \\frac{1}{n + 1}"
+    },
+    {
+      "id": "__multiply_5",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "x^{n + 1} \\frac{1}{n + 1}"
+    },
+    {
+      "id": "__power_6",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "x^{n + 1}"
+    },
+    {
+      "id": "__add_7",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "n + 1"
+    },
+    {
+      "id": "__num_8",
+      "type": "number",
+      "label": "1",
+      "subexpr": "1"
+    },
+    {
+      "id": "__power_9",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{n + 1}"
+    },
+    {
+      "id": "__add_10",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "n + 1"
+    },
+    {
+      "id": "__num_11",
+      "type": "number",
+      "label": "1",
+      "subexpr": "1"
+    },
+    {
+      "id": "C",
+      "type": "scalar",
+      "latex": "C",
+      "subexpr": "C"
+    }
+  ],
+  "edges": [
+    {
+      "from": "x",
+      "to": "__power_3"
+    },
+    {
+      "from": "n",
+      "to": "__power_3",
+      "role": "exp"
+    },
+    {
+      "from": "__power_3",
+      "to": "__integral_2"
+    },
+    {
+      "from": "__integral_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "x",
+      "to": "__power_6"
+    },
+    {
+      "from": "n",
+      "to": "__add_7"
+    },
+    {
+      "from": "__num_8",
+      "to": "__add_7"
+    },
+    {
+      "from": "__add_7",
+      "to": "__power_6",
+      "role": "exp"
+    },
+    {
+      "from": "__power_6",
+      "to": "__multiply_5",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "n",
+      "to": "__add_10"
+    },
+    {
+      "from": "__num_11",
+      "to": "__add_10"
+    },
+    {
+      "from": "__add_10",
+      "to": "__power_9"
+    },
+    {
+      "from": "__power_9",
+      "to": "__multiply_5"
+    },
+    {
+      "from": "__multiply_5",
+      "to": "__add_4"
+    },
+    {
+      "from": "C",
+      "to": "__add_4"
+    },
+    {
+      "from": "__add_4",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">integral_definite</div>
+    <div class="row-latex">$$\int_a^b f(x) \, dx = F(b) - F(a)$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  x["$x$"]:::scalar
+  a["$a$"]:::scalar
+  b["$b$"]:::scalar
+  __integral_2(("$\int_{a}^{b} dx$")):::operator
+  __f_3{{"$f$"}}:::function
+  __add_4(("$+$")):::operator
+  __F_5{{"$F$"}}:::function
+  __negation_6@{ shape: "flip-tri", label: "$-$" }
+  __F_7{{"$F$"}}:::function
+  class __negation_6 operator
+  x --&gt; __f_3
+  __f_3 --&gt; __integral_2
+  __integral_2 --&gt; __equals_1
+  b --&gt; __F_5
+  __F_5 --&gt; __add_4
+  a --&gt; __F_7
+  __F_7 --&gt; __negation_6
+  __negation_6 --&gt; __add_4
+  __add_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">\int_a^b f(x) \, dx = F(b) - F(a)</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\int_a^b f(x) \\, dx = F(b) - F(a)"
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x"
+    },
+    {
+      "id": "a",
+      "type": "scalar",
+      "latex": "a",
+      "subexpr": "a"
+    },
+    {
+      "id": "b",
+      "type": "scalar",
+      "latex": "b",
+      "subexpr": "b"
+    },
+    {
+      "id": "__integral_2",
+      "type": "operator",
+      "op": "integral",
+      "with_respect_to": "x",
+      "lower_bound": "a",
+      "upper_bound": "b",
+      "subexpr": "\\int\\limits_{a}^{b} f{\\left(x \\right)}\\, dx"
+    },
+    {
+      "id": "__f_3",
+      "type": "function",
+      "op": "f",
+      "subexpr": "f{\\left(x \\right)}"
+    },
+    {
+      "id": "__add_4",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "-F{\\left(a \\right)} + F{\\left(b \\right)}"
+    },
+    {
+      "id": "__F_5",
+      "type": "function",
+      "op": "F",
+      "subexpr": "F{\\left(b \\right)}"
+    },
+    {
+      "id": "__negation_6",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-F{\\left(a \\right)}"
+    },
+    {
+      "id": "__F_7",
+      "type": "function",
+      "op": "F",
+      "subexpr": "F{\\left(a \\right)}"
+    }
+  ],
+  "edges": [
+    {
+      "from": "x",
+      "to": "__f_3"
+    },
+    {
+      "from": "__f_3",
+      "to": "__integral_2"
+    },
+    {
+      "from": "__integral_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "b",
+      "to": "__F_5"
+    },
+    {
+      "from": "__F_5",
+      "to": "__add_4"
+    },
+    {
+      "from": "a",
+      "to": "__F_7"
+    },
+    {
+      "from": "__F_7",
+      "to": "__negation_6"
+    },
+    {
+      "from": "__negation_6",
+      "to": "__add_4"
+    },
+    {
+      "from": "__add_4",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">ftc</div>
+    <div class="row-latex">$$\frac{d}{dx} \int_a^x f(t) \, dt = f(x)$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  t["$t$"]:::scalar
+  a["$a$"]:::scalar
+  x["$x$"]:::scalar
+  __integral_3(("$\int_{a}^{x} dt$")):::operator
+  __f_4{{"$f$"}}:::function
+  __deriv_2(("$\frac{d}{dx}$")):::operator
+  __f_5{{"$f$"}}:::function
+  t --&gt; __f_4
+  __f_4 --&gt; __integral_3
+  __integral_3 --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
+  __deriv_2 --&gt; __equals_1
+  x --&gt; __f_5
+  __f_5 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">\frac{d}{dx} \int_a^x f(t) \, dt = f(x)</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\frac{d}{dx} \\int_a^x f(t) \\, dt = f(x)"
+    },
+    {
+      "id": "t",
+      "type": "scalar",
+      "latex": "t",
+      "subexpr": "t"
+    },
+    {
+      "id": "a",
+      "type": "scalar",
+      "latex": "a",
+      "subexpr": "a"
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x"
+    },
+    {
+      "id": "__integral_3",
+      "type": "operator",
+      "op": "integral",
+      "with_respect_to": "t",
+      "lower_bound": "a",
+      "upper_bound": "x",
+      "subexpr": "\\int\\limits_{a}^{x} f{\\left(t \\right)}\\, dt"
+    },
+    {
+      "id": "__f_4",
+      "type": "function",
+      "op": "f",
+      "subexpr": "f{\\left(t \\right)}"
+    },
+    {
+      "id": "__deriv_2",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "x",
+      "subexpr": "\\frac{\\partial}{\\partial x} \\int\\limits_{a}^{x} f{\\left(t \\right)}\\, dt"
+    },
+    {
+      "id": "__f_5",
+      "type": "function",
+      "op": "f",
+      "subexpr": "f{\\left(x \\right)}"
+    }
+  ],
+  "edges": [
+    {
+      "from": "t",
+      "to": "__f_4"
+    },
+    {
+      "from": "__f_4",
+      "to": "__integral_3"
+    },
+    {
+      "from": "__integral_3",
+      "to": "__deriv_2"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_2",
+      "role": "wrt"
+    },
+    {
+      "from": "__deriv_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "x",
+      "to": "__f_5"
+    },
+    {
+      "from": "__f_5",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "ODE",
+    "order": 1,
+    "dependent_variables": [],
+    "independent_variables": [
+      "x"
+    ]
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">taylor_exp</div>
+    <div class="row-latex">$$e^x = \sum_{n=0}^{\infty} \frac{x^n}{n!}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __power_2(("$(\cdot)^{\cdot}$")):::operator
+  e["$e$"]:::scalar
+  x["$x$"]:::scalar
+  n["$n$"]:::scalar
+  __num_4["$0$"]:::number
+  __const_5["$\infty$"]:::constant
+  __equals_6{"="}:::relation
+  __sum_3(("$\sum$")):::operator
+  __multiply_7(("$\times$")):::operator
+  __power_8(("$(\cdot)^{\cdot}$")):::operator
+  __power_9(("${(\cdot)}^{-1}$")):::operator
+  __factorial_10(("$(\cdot)!$")):::operator
+  e --&gt; __power_2
+  x --&gt;|exp| __power_2
+  __power_2 --&gt; __equals_1
+  n --&gt; __equals_6
+  __num_4 --&gt; __equals_6
+  __equals_6 --&gt;|lb| __sum_3
+  __const_5 --&gt;|ub| __sum_3
+  x --&gt; __power_8
+  n --&gt;|exp| __power_8
+  __power_8 --&gt; __multiply_7
+  n --&gt; __factorial_10
+  __factorial_10 --&gt; __power_9
+  __power_9 -.-&gt; __multiply_7
+  __multiply_7 --&gt; __sum_3
+  __sum_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#ef5350,stroke-width:3px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#42a5f5,stroke-width:1px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">e^x = \sum_{n=0}^{\infty} \frac{x^n}{n!}</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "e^x = \\sum_{n=0}^{\\infty} \\frac{x^n}{n!}"
+    },
+    {
+      "id": "__power_2",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "e^{x}"
+    },
+    {
+      "id": "e",
+      "type": "scalar",
+      "latex": "e",
+      "subexpr": "e"
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x"
+    },
+    {
+      "id": "n",
+      "type": "scalar",
+      "latex": "n",
+      "subexpr": "n"
+    },
+    {
+      "id": "__num_4",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0"
+    },
+    {
+      "id": "__const_5",
+      "type": "constant",
+      "label": "infinity",
+      "subexpr": "\\infty"
+    },
+    {
+      "id": "__equals_6",
+      "type": "relation",
+      "op": "equals"
+    },
+    {
+      "id": "__sum_3",
+      "type": "operator",
+      "op": "sum",
+      "with_respect_to": "n",
+      "lower_bound": "__num_4",
+      "upper_bound": "__const_5",
+      "subexpr": "\\sum_{n=0}^{\\infty} \\frac{x^{n}}{n!}"
+    },
+    {
+      "id": "__multiply_7",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "x^{n} \\frac{1}{n!}"
+    },
+    {
+      "id": "__power_8",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "x^{n}"
+    },
+    {
+      "id": "__power_9",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{n!}"
+    },
+    {
+      "id": "__factorial_10",
+      "type": "operator",
+      "op": "factorial",
+      "subexpr": "n!"
+    }
+  ],
+  "edges": [
+    {
+      "from": "e",
+      "to": "__power_2"
+    },
+    {
+      "from": "x",
+      "to": "__power_2",
+      "role": "exp"
+    },
+    {
+      "from": "__power_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "n",
+      "to": "__equals_6"
+    },
+    {
+      "from": "__num_4",
+      "to": "__equals_6"
+    },
+    {
+      "from": "__equals_6",
+      "to": "__sum_3",
+      "role": "lb"
+    },
+    {
+      "from": "__const_5",
+      "to": "__sum_3",
+      "role": "ub"
+    },
+    {
+      "from": "x",
+      "to": "__power_8"
+    },
+    {
+      "from": "n",
+      "to": "__power_8",
+      "role": "exp"
+    },
+    {
+      "from": "__power_8",
+      "to": "__multiply_7",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "n",
+      "to": "__factorial_10"
+    },
+    {
+      "from": "__factorial_10",
+      "to": "__power_9"
+    },
+    {
+      "from": "__power_9",
+      "to": "__multiply_7"
+    },
+    {
+      "from": "__multiply_7",
+      "to": "__sum_3"
+    },
+    {
+      "from": "__sum_3",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">series_geometric</div>
+    <div class="row-latex">$$\sum_{n=0}^{\infty} r^n = \frac{1}{1 - r}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  n["$n$"]:::scalar
+  __num_3["$0$"]:::number
+  __const_4["$\infty$"]:::constant
+  __equals_5{"="}:::relation
+  __sum_2(("$\sum$")):::operator
+  __power_6(("$(\cdot)^{\cdot}$")):::operator
+  r["$r$"]:::scalar
+  __power_7(("${(\cdot)}^{-1}$")):::operator
+  __add_8(("$+$")):::operator
+  __num_9["$1$"]:::number
+  __negation_10@{ shape: "flip-tri", label: "$-$" }
+  class __negation_10 operator
+  n --&gt; __equals_5
+  __num_3 --&gt; __equals_5
+  __equals_5 --&gt;|lb| __sum_2
+  __const_4 --&gt;|ub| __sum_2
+  r --&gt; __power_6
+  n --&gt;|exp| __power_6
+  __power_6 --&gt; __sum_2
+  __sum_2 --&gt; __equals_1
+  __num_9 --&gt; __add_8
+  r --&gt; __negation_10
+  __negation_10 --&gt; __add_8
+  __add_8 --&gt; __power_7
+  __power_7 -.-&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#42a5f5,stroke-width:1px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">\sum_{n=0}^{\infty} r^n = \frac{1}{1 - r}</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\sum_{n=0}^{\\infty} r^n = \\frac{1}{1 - r}"
+    },
+    {
+      "id": "n",
+      "type": "scalar",
+      "latex": "n",
+      "subexpr": "n"
+    },
+    {
+      "id": "__num_3",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0"
+    },
+    {
+      "id": "__const_4",
+      "type": "constant",
+      "label": "infinity",
+      "subexpr": "\\infty"
+    },
+    {
+      "id": "__equals_5",
+      "type": "relation",
+      "op": "equals"
+    },
+    {
+      "id": "__sum_2",
+      "type": "operator",
+      "op": "sum",
+      "with_respect_to": "n",
+      "lower_bound": "__num_3",
+      "upper_bound": "__const_4",
+      "subexpr": "\\sum_{n=0}^{\\infty} r^{n}"
+    },
+    {
+      "id": "__power_6",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "r^{n}"
+    },
+    {
+      "id": "r",
+      "type": "scalar",
+      "latex": "r",
+      "subexpr": "r"
+    },
+    {
+      "id": "__power_7",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{1 - r}"
+    },
+    {
+      "id": "__add_8",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "1 - r"
+    },
+    {
+      "id": "__num_9",
+      "type": "number",
+      "label": "1",
+      "subexpr": "1"
+    },
+    {
+      "id": "__negation_10",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-r"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n",
+      "to": "__equals_5"
+    },
+    {
+      "from": "__num_3",
+      "to": "__equals_5"
+    },
+    {
+      "from": "__equals_5",
+      "to": "__sum_2",
+      "role": "lb"
+    },
+    {
+      "from": "__const_4",
+      "to": "__sum_2",
+      "role": "ub"
+    },
+    {
+      "from": "r",
+      "to": "__power_6"
+    },
+    {
+      "from": "n",
+      "to": "__power_6",
+      "role": "exp"
+    },
+    {
+      "from": "__power_6",
+      "to": "__sum_2"
+    },
+    {
+      "from": "__sum_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "__num_9",
+      "to": "__add_8"
+    },
+    {
+      "from": "r",
+      "to": "__negation_10"
+    },
+    {
+      "from": "__negation_10",
+      "to": "__add_8"
+    },
+    {
+      "from": "__add_8",
+      "to": "__power_7"
+    },
+    {
+      "from": "__power_7",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="summary"><span class="count">13</span> rendered, <span class="count">0</span> errors out of <span class="count">13</span> expressions</div>
+<script>
+document.querySelectorAll('.row-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.target;
+    const panel = btn.closest('.row').querySelector('.' + target);
+    if (panel) panel.classList.toggle('open');
+  });
+});
+</script>
+</body>
+</html>
