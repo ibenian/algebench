@@ -9,6 +9,10 @@ from backend.semantic_graph.sympy_translator import (
     node_short_label,
     node_long_label,
     operator_kind,
+    is_asymmetric_relation,
+    is_symmetric_relation,
+    is_meta_relation,
+    is_relation,
     SemanticGraphBuilder,
     _normalize_latex,
     _preprocess_latex,
@@ -48,12 +52,73 @@ class TestOperatorKind:
         assert operator_kind({"type": "function", "op": "unknown_fn"}) == "function"
 
 
+class TestRelationPredicates:
+    @pytest.mark.parametrize("op", [
+        "greater_than", "less_than", "greater_equal", "less_equal",
+        "element_of", "not_element_of",
+    ])
+    def test_asymmetric(self, op):
+        assert is_asymmetric_relation(op) is True
+        assert is_symmetric_relation(op) is False
+        assert is_meta_relation(op) is False
+        assert is_relation(op) is True
+
+    def test_meta_asymmetric(self):
+        """implies is both meta and asymmetric — needs lhs/rhs roles."""
+        assert is_meta_relation("implies") is True
+        assert is_asymmetric_relation("implies") is True
+        assert is_symmetric_relation("implies") is False
+        assert is_relation("implies") is False  # type="operator", not "relation"
+
+    def test_meta_symmetric(self):
+        """iff is both meta and symmetric — flattens to n-ary when chained."""
+        assert is_meta_relation("iff") is True
+        assert is_symmetric_relation("iff") is True
+        assert is_asymmetric_relation("iff") is False
+        assert is_relation("iff") is False  # type="operator", not "relation"
+
+    @pytest.mark.parametrize("op", [
+        "equals", "approximately", "not_equal", "proportional", "maps_to",
+    ])
+    def test_symmetric(self, op):
+        assert is_symmetric_relation(op) is True
+        assert is_asymmetric_relation(op) is False
+        assert is_meta_relation(op) is False
+        assert is_relation(op) is True
+
+    @pytest.mark.parametrize("op", ["add", "multiply", "power", "sin"])
+    def test_non_relation(self, op):
+        assert is_relation(op) is False
+        assert is_asymmetric_relation(op) is False
+        assert is_symmetric_relation(op) is False
+        assert is_meta_relation(op) is False
+
+    def test_every_op_is_classified(self):
+        """Every RELATION_MAP op is asymmetric or symmetric (meta overlaps both)."""
+        from backend.semantic_graph.constants import RELATION_MAP
+        all_ops = {meta["op"] for _, meta in RELATION_MAP}
+        all_ops.add("equals")
+        for op in all_ops:
+            asym = is_asymmetric_relation(op)
+            sym = is_symmetric_relation(op)
+            meta = is_meta_relation(op)
+            # Symmetric and asymmetric are mutually exclusive
+            assert not (sym and asym), f"{op!r} is both symmetric and asymmetric"
+            # Meta ops must be either asymmetric or symmetric
+            if meta:
+                assert asym or sym, f"{op!r} is meta but neither asymmetric nor symmetric"
+            # Every op must be at least one
+            assert asym or sym, (
+                f"{op!r} is neither asymmetric nor symmetric"
+            )
+
+
 class TestNodeLabels:
     def test_short_label_operator_with_latex(self):
         assert node_short_label({"type": "operator", "latex": "+"}) == "+"
 
     def test_short_label_operator_glyph(self):
-        assert node_short_label({"type": "operator", "op": "equals"}) == "="
+        assert node_short_label({"type": "relation", "op": "equals"}) == "="
 
     def test_short_label_data_node(self):
         assert node_short_label({"type": "scalar", "latex": "F"}) == "F"
@@ -205,10 +270,12 @@ class TestSplitChainedEquals:
     def test_two_equals(self):
         result = _split_chained_equals("a = b = c")
         assert result is not None
-        lhs, meta, rhs = result
-        assert lhs == "a"
-        assert rhs == "b = c"
-        assert meta["op"] == "equals"
+        assert result == ["a", "b", "c"]
+
+    def test_three_equals(self):
+        result = _split_chained_equals("a = b = c = d")
+        assert result is not None
+        assert result == ["a", "b", "c", "d"]
 
     def test_single_equals(self):
         assert _split_chained_equals("a = b") is None

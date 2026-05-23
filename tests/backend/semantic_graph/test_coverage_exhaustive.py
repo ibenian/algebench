@@ -31,15 +31,10 @@ from tests.backend.semantic_graph.generators.invariants import (
 
 # Var styles where compound symbol placeholders leak into node IDs.
 # Tracked as a known parser gap — when fixed, strict xfail catches it.
+# To un-xfail individual cases after fixing, add their axis_id to
+# _COMPOUND_FIXED and the strict xfail will catch any regression.
 _PLACEHOLDER_LEAK_STYLES = {"compound"}
-
-# Compound cases where the parser no longer leaks placeholders.
-# Discovered via strict xfail — keep this set updated as more are fixed.
-_COMPOUND_FIXED = {
-    "single-=-compound-add-bare",
-    "single-=-compound-add-parens",
-    "single-=-compound-add-left_right",
-}
+_COMPOUND_FIXED: set[str] = set()
 
 
 def _get_cases(config):

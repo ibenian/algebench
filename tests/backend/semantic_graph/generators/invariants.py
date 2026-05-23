@@ -75,7 +75,7 @@ def assert_classification_present(graph: SemanticGraph, *, latex: str = "") -> N
     """Classification block exists with a valid ``kind``."""
     assert graph.classification is not None, f"Missing classification for: {latex!r}"
     kind = graph.classification.kind
-    assert kind in {"algebraic", "ODE", "PDE", "statements"}, (
+    assert kind in {"algebraic", "ODE", "PDE", "statements", "piecewise"}, (
         f"Invalid classification kind {kind!r} for: {latex!r}"
     )
 
@@ -241,11 +241,11 @@ def assert_node_exists(
 def assert_operators_in(
     graph: SemanticGraph, allowed: set[str], *, latex: str = "",
 ) -> None:
-    """Assert all operator ops are within the allowed set."""
-    actual = operator_ops(graph)
+    """Assert all operator and relation ops are within the allowed set."""
+    actual = operator_ops(graph) | relation_ops(graph)
     unexpected = actual - allowed
     assert not unexpected, (
-        f"Unexpected operator ops {unexpected} for: {latex!r}\n"
+        f"Unexpected operator/relation ops {unexpected} for: {latex!r}\n"
         f"  Allowed: {allowed}"
     )
 
@@ -262,10 +262,17 @@ def assert_node_properties(
     all be present on at least one node.  This lets test catalogs verify
     fine-grained node properties — e.g. ``{"op": "power", "exponent": "2"}``
     — beyond what connectivity signatures capture.
+
+    Edge-role assertions: if ``checks`` contains an ``_edge_roles`` key,
+    its value must be a dict mapping ``role → count`` (e.g.
+    ``{"exp": 1}``).  The assertion verifies that the matched node has
+    exactly that many inbound edges with each role.
     """
     if not checks:
         return
-    for attrs in checks:
+    for raw_attrs in checks:
+        edge_roles = raw_attrs.get("_edge_roles")
+        attrs = {k: v for k, v in raw_attrs.items() if k != "_edge_roles"}
         if not has_node_with(graph, **attrs):
             # Show the checked fields on every node for easy debugging
             check_fields = set(attrs.keys())
@@ -278,6 +285,21 @@ def assert_node_properties(
                 f"No node matching {attrs} found for: {latex!r}\n"
                 f"  Nodes: {relevant}"
             )
+        if edge_roles:
+            # Find the matched node(s) and verify edge roles
+            matched = [n for n in graph.nodes
+                       if all(getattr(n, k, None) == v
+                              for k, v in attrs.items())]
+            for node in matched:
+                inbound = [e for e in graph.edges if e.to == node.id]
+                for role, expected_count in edge_roles.items():
+                    actual_count = sum(1 for e in inbound if e.role == role)
+                    assert actual_count == expected_count, (
+                        f"Node {node.id} (op={node.op}): expected "
+                        f"{expected_count} inbound edge(s) with "
+                        f"role={role!r}, got {actual_count} "
+                        f"for: {latex!r}"
+                    )
 
 
 # ── Connectivity helpers ──────────────────────────────────────────────

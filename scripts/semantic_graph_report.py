@@ -38,6 +38,18 @@ from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
 from tests.backend.semantic_graph.domains.test_domain_arithmetic import (
     ALL_EXPRESSIONS as ARITHMETIC_EXPRESSIONS,
 )
+from tests.backend.semantic_graph.domains.test_domain_algebra import (
+    ALL_EXPRESSIONS as ALGEBRA_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_calculus import (
+    ALL_EXPRESSIONS as CALCULUS_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_ode import (
+    ALL_EXPRESSIONS as ODE_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_structural import (
+    ALL_EXPRESSIONS as STRUCTURAL_EXPRESSIONS,
+)
 
 
 # ── Expression catalog ─────────────────────────────────────────────────
@@ -47,8 +59,15 @@ from tests.backend.semantic_graph.domains.test_domain_arithmetic import (
 
 def _collect_expressions() -> list[tuple[str, list[tuple[str, str]]]]:
     sections: list[tuple[str, list[tuple[str, str]]]] = []
-    arith = [(tid, latex) for tid, latex, *_ in ARITHMETIC_EXPRESSIONS]
-    sections.append(("Arithmetic", arith))
+    for name, catalog in (
+        ("Arithmetic", ARITHMETIC_EXPRESSIONS),
+        ("Algebra", ALGEBRA_EXPRESSIONS),
+        ("Calculus", CALCULUS_EXPRESSIONS),
+        ("ODE", ODE_EXPRESSIONS),
+        ("Structural", STRUCTURAL_EXPRESSIONS),
+    ):
+        items = [(tid, latex) for tid, latex, *_ in catalog]
+        sections.append((name, items))
     return sections
 
 
@@ -240,7 +259,7 @@ def _page_template() -> str:
         display: block;
       }}
       .row-error {{
-        grid-column: 2 / -1;
+        grid-column: 2 / 3;
         background: {error_bg};
         border: 1px solid {error_border};
         border-radius: 6px;
@@ -294,6 +313,7 @@ def _render_row(
     parts.append(f'    <div class="row-latex">$${_escape_html(latex)}$$</div>')
     parts.append(f'  </div>')
 
+    graph_json = None
     try:
         graph_obj = latex_to_semantic_graph(latex)
         graph_dict = graph_obj.model_dump(by_alias=True, exclude_none=True)
@@ -303,24 +323,6 @@ def _render_row(
         parts.append(f'  <div class="row-graph">')
         parts.append(f'    <pre class="mermaid">{_escape_html(mermaid_src)}</pre>')
         parts.append(f'  </div>')
-        parts.append(f'  <div class="row-actions">')
-        parts.append(
-            f'    <button class="row-toggle" data-target="row-latex-src" '
-            f'title="Toggle LaTeX source">LaTeX</button>'
-        )
-        parts.append(
-            f'    <button class="row-toggle" data-target="row-json" '
-            f'title="Toggle JSON">{{}}</button>'
-        )
-        parts.append(f'  </div>')
-        parts.append(
-            f'  <div class="row-panel row-latex-src">'
-            f'{_escape_html(latex)}</div>'
-        )
-        parts.append(
-            f'  <div class="row-panel row-json">'
-            f'{_escape_html(graph_json)}</div>'
-        )
         success = True
     except Exception:
         tb = traceback.format_exc()
@@ -328,6 +330,28 @@ def _render_row(
             f'  <div class="row-error">{_escape_html(tb)}</div>'
         )
         success = False
+
+    # Always render action buttons so LaTeX source is accessible even on error.
+    parts.append(f'  <div class="row-actions">')
+    parts.append(
+        f'    <button class="row-toggle" data-target="row-latex-src" '
+        f'title="Toggle LaTeX source">LaTeX</button>'
+    )
+    if graph_json is not None:
+        parts.append(
+            f'    <button class="row-toggle" data-target="row-json" '
+            f'title="Toggle JSON">{{}}</button>'
+        )
+    parts.append(f'  </div>')
+    parts.append(
+        f'  <div class="row-panel row-latex-src">'
+        f'{_escape_html(latex)}</div>'
+    )
+    if graph_json is not None:
+        parts.append(
+            f'  <div class="row-panel row-json">'
+            f'{_escape_html(graph_json)}</div>'
+        )
 
     parts.append('</div>')
     return "\n".join(parts), success

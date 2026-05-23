@@ -20,6 +20,7 @@ from backend.semantic_graph.constants import (
     KNOWN_VARIABLES,
     OPERATOR_MAP,
     _ASYMMETRIC_OPS,
+    _SYMMETRIC_OPS,
     _META_RELATION_OPS,
     _PLACEHOLDER_NAME_RE,
     CONSTANT_MAP,
@@ -84,8 +85,22 @@ class TestTranslatorConstants:
         assert "element_of" in _ASYMMETRIC_OPS
         assert "equals" not in _ASYMMETRIC_OPS
 
+    def test_symmetric_ops(self):
+        assert "equals" in _SYMMETRIC_OPS
+        assert "approximately" in _SYMMETRIC_OPS
+        assert "implies" not in _SYMMETRIC_OPS
+
     def test_meta_relation_ops(self):
         assert _META_RELATION_OPS == {"implies", "iff"}
+
+    def test_relation_sets_overlap(self):
+        # Symmetric and asymmetric are disjoint
+        assert _ASYMMETRIC_OPS.isdisjoint(_SYMMETRIC_OPS)
+        # Every meta op is either asymmetric or symmetric
+        assert _META_RELATION_OPS.issubset(_ASYMMETRIC_OPS | _SYMMETRIC_OPS)
+        # implies is asymmetric, iff is symmetric
+        assert "implies" in _ASYMMETRIC_OPS
+        assert "iff" in _SYMMETRIC_OPS
 
     def test_placeholder_name_re(self):
         assert isinstance(_PLACEHOLDER_NAME_RE, re.Pattern)
@@ -97,7 +112,7 @@ class TestTranslatorConstants:
 
     def test_relation_map(self):
         assert isinstance(RELATION_MAP, list)
-        assert len(RELATION_MAP) == 15
+        assert len(RELATION_MAP) == 19
         ops = {entry[1]["op"] for entry in RELATION_MAP}
         assert "element_of" in ops
 

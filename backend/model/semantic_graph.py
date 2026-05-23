@@ -43,9 +43,9 @@ Role = Literal[
 
 EdgeSemantic = Literal["direct", "inverse", "neutral"]
 
-EdgeRole = Literal["lhs", "rhs"]
+EdgeRole = Literal["lhs", "rhs", "wrt", "exp", "lb", "ub", "value", "condition"]
 
-ClassificationKind = Literal["algebraic", "ODE", "PDE", "statements"]
+ClassificationKind = Literal["algebraic", "ODE", "PDE", "statements", "piecewise"]
 
 
 _NO_HTML = r"^[^<>]*$"
@@ -76,6 +76,10 @@ class SemanticGraphNode(BaseModel):
     op: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     exponent: Optional[str] = Field(default=None, max_length=20, pattern=_NO_HTML)
     with_respect_to: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    lower_bound: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    upper_bound: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    limit_point: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    limit_direction: Optional[str] = Field(default=None, pattern=r'^[+-]$')
     subexpr: Optional[str] = Field(default=None, max_length=400)
     description: Optional[str] = Field(default=None, max_length=200, pattern=_NO_HTML)
     quantity: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
@@ -112,6 +116,7 @@ class Classification(BaseModel):
 
     kind: ClassificationKind
     count: Optional[int] = Field(default=None, ge=2)
+    branches: Optional[int] = Field(default=None, ge=1)
     clauses: Optional[List["Classification"]] = None
     order: Optional[int] = Field(default=None, ge=1)
     dependent_variables: Optional[List[str]] = None

@@ -100,6 +100,12 @@ OPERATOR_MAP: dict[type, str] = {
 _ASYMMETRIC_OPS: set[str] = {
     "greater_than", "less_than", "greater_equal", "less_equal",
     "element_of", "not_element_of",
+    "implies",
+}
+
+_SYMMETRIC_OPS: set[str] = {
+    "equals", "approximately", "not_equal", "proportional", "maps_to",
+    "iff",
 }
 
 _META_RELATION_OPS: set[str] = {"implies", "iff"}
@@ -127,6 +133,10 @@ RELATION_MAP: list[tuple[str, dict[str, str]]] = [
     (r"\neq", {"op": "not_equal", "label": "not equal to", "emoji": "≠"}),
     (r"\notin", {"op": "not_element_of", "label": "not element of", "emoji": "∉"}),
     (r"\in", {"op": "element_of", "label": "element of", "emoji": "∈"}),
+    (r"\geq", {"op": "greater_equal", "label": "greater than or equal to", "emoji": "≥"}),
+    (r"\leq", {"op": "less_equal", "label": "less than or equal to", "emoji": "≤"}),
+    (r"\ge", {"op": "greater_equal", "label": "greater than or equal to", "emoji": "≥"}),
+    (r"\le", {"op": "less_equal", "label": "less than or equal to", "emoji": "≤"}),
     (r"\gt", {"op": "greater_than", "label": "greater than", "emoji": ">"}),
     (r"\lt", {"op": "less_than", "label": "less than", "emoji": "<"}),
 ]
@@ -151,11 +161,11 @@ _OPERATOR_GLYPHS: dict[str, str] = {
     "greater_equal": "≥", "less_equal": "≤", "not_equal": "≠",
     "multiply": "×", "add": "+", "subtract": "−",
     "divide": "÷", "integral": "∫",
-    "implies": "⇒", "iff": "⇔",
+    "implies": "⇒", "iff": "⇔", "piecewise": "pw", "branch": "⇒",
     "negation": "−", "not": "¬", "logical_not": "¬",
     "conjunction": "∧", "disjunction": "∨",
     "sum": "∑", "product": "∏", "limit": "lim",
-    "factorial": "!", "sqrt": "√(·)",
+    "factorial": "(·)!", "sqrt": "√(·)",
     "log": "log", "logarithm": "log", "exp": "exp",
     "sin": "sin", "cos": "cos", "tan": "tan",
     "Abs": "|·|", "abs": "|·|",
@@ -174,7 +184,7 @@ _OPERATOR_KINDS: dict[str, str] = {
     "add": "arithmetic", "subtract": "arithmetic", "multiply": "arithmetic",
     "divide": "arithmetic", "power": "arithmetic", "negation": "arithmetic",
     "Abs": "function", "abs": "function", "sqrt": "function",
-    "factorial": "function",
+    "factorial": "arithmetic",
     "sin": "function", "cos": "function", "tan": "function",
     "log": "function", "logarithm": "function", "exp": "function",
     "equals": "comparison", "not_equal": "comparison",
@@ -188,4 +198,6 @@ _OPERATOR_KINDS: dict[str, str] = {
     "integral": "aggregate", "limit": "aggregate",
     "derivative": "aggregate", "partial_derivative": "aggregate",
     "inner_product": "quantum",
+    "piecewise": "structural",
+    "branch": "structural",
 }
