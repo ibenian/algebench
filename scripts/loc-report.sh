@@ -82,7 +82,7 @@ for line in sys.stdin:
 
 root_only = int('${root_only}')
 if root_only > 0:
-    rows.append(('(root files)', root_only, 0, 0))
+    rows.append(('(other)', root_only, 0, 0))
 
 rows.sort(key=lambda x: x[1], reverse=True)
 
@@ -115,7 +115,7 @@ for line in sys.stdin:
 
 root_only = int('${root_only}')
 if root_only > 0:
-    rows.append(('(root files)', root_only, 0, 0))
+    rows.append(('(other)', root_only, 0, 0))
 
 rows.sort(key=lambda x: x[1], reverse=True)
 

@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
 
@@ -72,6 +73,7 @@ def _html_template() -> str:
 <body>
 <div id="content"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
@@ -107,7 +109,12 @@ def _html_template() -> str:
   };
 
   marked.setOptions({ renderer, gfm: true, breaks: false });
-  document.getElementById('content').innerHTML = marked.parse(md);
+  const dirty = marked.parse(md);
+  if (typeof DOMPurify !== 'undefined') {
+    document.getElementById('content').innerHTML = DOMPurify.sanitize(dirty, {ADD_TAGS: ['div'], ADD_ATTR: ['class']});
+  } else {
+    document.getElementById('content').innerHTML = dirty;
+  }
 
   await mermaid.run();
 </script>
@@ -124,8 +131,8 @@ def convert(md_path: Path, outdir: Path) -> Path:
 
     md_content = md_path.read_text(encoding="utf-8")
     # <script> is a raw text element — HTML entities are NOT decoded.
-    # Only escape sequences that would prematurely close the tag.
-    safe = md_content.replace("</script", "<\\/script")
+    # Escape any sequence that could prematurely close the tag (case-insensitive).
+    safe = re.sub(r"</script", r"<\\/script", md_content, flags=re.IGNORECASE)
 
     page = _html_template().replace("MARKDOWN_PLACEHOLDER", safe)
 
