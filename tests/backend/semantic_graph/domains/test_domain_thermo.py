@@ -37,7 +37,7 @@ DOMAIN = "thermodynamics"
 
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
-    "less_equal",
+    "less_equal", "sum",
 }
 
 ALLOWED_KINDS = {"algebraic"}
@@ -162,6 +162,19 @@ ENTROPY_EXPRESSIONS: list[CatalogEntry] = [
      "T -> __power_3; __power_3,dQ -> __multiply_2; "
      "__multiply_2,oint -> __multiply_1; __multiply_1,__num_4 -> __less_equal_5",
      [{"op": "power", "exponent": "-1"}]),
+
+    ("partition_fn",
+     r"Z = \sum_i e^{-E_i / k_B T}",
+     PASS,
+     "T,k_{B} -> multiply; E_{i} -> negation; i,num -> rel:equals; "
+     "multiply -> power; negation,power -> multiply; e,multiply -> power; "
+     "const:__const_4,power,rel:equals -> sum; Z,sum -> rel:equals",
+     "__num_3,i -> __equals_5; T,k_{B} -> __multiply_10; "
+     "E_{i} -> __negation_8; __multiply_10 -> __power_9; "
+     "__negation_8,__power_9 -> __multiply_7; __multiply_7,e -> __power_6; "
+     "__const_4,__equals_5,__power_6 -> __sum_2; Z,__sum_2 -> __equals_1",
+     [{"op": "sum", "with_respect_to": "i"},
+      {"op": "power", "exponent": "-1"}]),
 ]
 
 RADIATION_EXPRESSIONS: list[CatalogEntry] = [
@@ -187,21 +200,11 @@ RADIATION_EXPRESSIONS: list[CatalogEntry] = [
      [{"op": "power", "exponent": "1/2"}, {"op": "power", "exponent": "-1"}]),
 ]
 
-PARSE_FAILURE_EXPRESSIONS: list[CatalogEntry] = [
-    ("partition_fn",
-     r"Z = \sum_i e^{-E_i / k_B T}",
-     XFAIL,
-     "", "",
-     None),
-]
-
-
 ALL_EXPRESSIONS = (
     GAS_LAW_EXPRESSIONS
     + ENERGY_EXPRESSIONS
     + ENTROPY_EXPRESSIONS
     + RADIATION_EXPRESSIONS
-    + PARSE_FAILURE_EXPRESSIONS
 )
 
 

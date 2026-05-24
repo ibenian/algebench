@@ -463,6 +463,7 @@ def _preprocess_latex(latex: str) -> str:
     )
     latex = LaTeXPreprocessor.rewrite_dot_derivatives(latex)
     latex = LaTeXPreprocessor.normalize_frac_derivatives(latex)
+    latex = LaTeXPreprocessor.normalize_bare_sums(latex)
     latex = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", latex)
     latex = re.sub(r"\\(?:quad|qquad|,|;|!)\s*", " ", latex)
     return latex
