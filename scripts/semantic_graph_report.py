@@ -50,6 +50,18 @@ from tests.backend.semantic_graph.domains.test_domain_ode import (
 from tests.backend.semantic_graph.domains.test_domain_structural import (
     ALL_EXPRESSIONS as STRUCTURAL_EXPRESSIONS,
 )
+from tests.backend.semantic_graph.domains.test_domain_mechanics import (
+    ALL_EXPRESSIONS as MECHANICS_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_em import (
+    ALL_EXPRESSIONS as EM_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_thermo import (
+    ALL_EXPRESSIONS as THERMO_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_waves import (
+    ALL_EXPRESSIONS as WAVES_EXPRESSIONS,
+)
 
 
 # ── Expression catalog ─────────────────────────────────────────────────
@@ -65,6 +77,10 @@ def _collect_expressions() -> list[tuple[str, list[tuple[str, str]]]]:
         ("Calculus", CALCULUS_EXPRESSIONS),
         ("ODE", ODE_EXPRESSIONS),
         ("Structural", STRUCTURAL_EXPRESSIONS),
+        ("Mechanics", MECHANICS_EXPRESSIONS),
+        ("Electromagnetism", EM_EXPRESSIONS),
+        ("Thermodynamics", THERMO_EXPRESSIONS),
+        ("Waves & Optics", WAVES_EXPRESSIONS),
     ):
         items = [(tid, latex) for tid, latex, *_ in catalog]
         sections.append((name, items))
