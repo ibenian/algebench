@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Developers — AlgeBench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0a0e14; color: #e6edf3; line-height: 1.7;
+  }
+
+  /* ── Nav ── */
+  nav {
+    display: flex; align-items: center; gap: 1rem;
+    max-width: 900px; margin: 0 auto; padding: 1.25rem 1.5rem;
+  }
+  nav a {
+    color: #8b949e; text-decoration: none; font-size: 0.9rem; font-weight: 500;
+    transition: color 0.2s;
+  }
+  nav a:hover { color: #e6edf3; }
+  nav .brand { color: #e6edf3; font-weight: 700; font-size: 1.1rem; }
+  nav .sep { color: #30363d; }
+
+  .container {
+    max-width: 900px; margin: 0 auto; padding: 0 1.5rem;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    padding: 2rem 0 1rem;
+    border-bottom: 1px solid #21262d;
+    margin-bottom: 2rem;
+  }
+  .page-header h1 {
+    font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;
+  }
+  .page-header p { color: #8b949e; font-size: 1.05rem; }
+
+  /* ── Cards ── */
+  .cards {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem; margin-bottom: 2.5rem;
+  }
+  .card {
+    background: linear-gradient(145deg, #161b22, #1c2333);
+    border: 1px solid #30363d; border-radius: 12px;
+    padding: 1.75rem; text-decoration: none; color: inherit;
+    transition: border-color 0.25s, transform 0.2s, box-shadow 0.25s;
+    display: flex; flex-direction: column;
+  }
+  .card:hover {
+    border-color: #58a6ff; transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(88,166,255,0.12);
+  }
+  .card .icon {
+    font-size: 2rem; margin-bottom: 0.75rem; display: block;
+    width: 48px; height: 48px; line-height: 48px; text-align: center;
+    background: rgba(88,166,255,0.08); border-radius: 10px;
+  }
+  .card h3 {
+    font-size: 1.1rem; font-weight: 600; margin-bottom: 0.4rem; color: #e6edf3;
+  }
+  .card p { color: #8b949e; font-size: 0.9rem; flex: 1; }
+  .card .arrow {
+    margin-top: 1rem; color: #58a6ff; font-size: 0.85rem; font-weight: 500;
+  }
+
+  /* ── Tech stack ── */
+  .section { margin-bottom: 2.5rem; }
+  .section h2 {
+    font-size: 1.3rem; font-weight: 600; margin-bottom: 1rem; color: #c9d1d9;
+  }
+  .tech-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+  .tech-item {
+    background: #161b22; border: 1px solid #21262d; border-radius: 8px;
+    padding: 1rem; text-align: center; color: inherit; text-decoration: none;
+    transition: border-color 0.2s, background 0.2s, transform 0.2s;
+  }
+  .tech-item:hover, .tech-item:focus-visible {
+    background: #1c2333; border-color: #58a6ff; transform: translateY(-2px);
+  }
+  .tech-item:focus-visible { outline: 2px solid #58a6ff; outline-offset: 3px; }
+  .tech-item .t-icon {
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 0.6rem; width: 40px; height: 40px;
+  }
+  .tech-item .t-icon svg { width: 32px; height: 32px; }
+  .tech-item .t-icon svg.brand-mark { fill: var(--brand); }
+  .tech-item .t-icon .wordmark {
+    color: #79c0ff; font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 0; line-height: 1;
+  }
+  .tech-item h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.2rem; }
+  .tech-item p { color: #8b949e; font-size: 0.78rem; }
+
+  /* ── Getting Started ── */
+  .getting-started pre {
+    background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+    padding: 1.25rem; overflow-x: auto; font-size: 0.85rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: #c9d1d9; line-height: 1.8;
+  }
+  .getting-started .comment { color: #8b949e; }
+  .getting-started .cmd { color: #79c0ff; }
+
+  /* ── Docs list ── */
+  .doc-list { list-style: none; }
+  .doc-list li {
+    border: 1px solid #21262d; border-radius: 8px;
+    margin-bottom: 0.6rem;
+  }
+  .doc-list a {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.9rem 1.1rem; text-decoration: none; color: #e6edf3;
+    background: #161b22; border-radius: 8px;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .doc-list a:hover { background: #1c2333; }
+  .doc-list .d-icon { font-size: 1.2rem; flex-shrink: 0; }
+  .doc-list .d-title { font-weight: 600; font-size: 0.92rem; }
+  .doc-list .d-desc { color: #8b949e; font-size: 0.8rem; margin-top: 0.1rem; }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center; padding: 2.5rem 1rem; color: #484f58; font-size: 0.8rem;
+    border-top: 1px solid #21262d; margin-top: 1rem;
+  }
+  footer a { color: #58a6ff; text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 600px) {
+    .cards { grid-template-columns: 1fr; }
+    .tech-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="brand">AlgeBench</a>
+  <span class="sep">/</span>
+  <a href="developers.html">Developers</a>
+</nav>
+
+<div class="container">
+
+  <div class="page-header">
+    <h1>Developers</h1>
+    <p>Reports, dashboards, and tools for contributors and maintainers.</p>
+  </div>
+
+  <!-- Reports -->
+  <div class="section">
+    <h2>Live Reports</h2>
+    <div class="cards">
+      <a href="semantic-graph/" class="card">
+        <span class="icon">🔗</span>
+        <h3>Semantic Graph</h3>
+        <p>Semantic graphs generated for test cases for visual examination.</p>
+        <span class="arrow">Explore graphs &rarr;</span>
+      </a>
+
+      <a href="loc-report/" class="card">
+        <span class="icon">📊</span>
+        <h3>Lines of Code Report</h3>
+        <p>Auto-generated codebase statistics with Mermaid charts &mdash; breakdown by language, directory, and category.</p>
+        <span class="arrow">View report &rarr;</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Documentation -->
+  <div class="section">
+    <h2>Documentation</h2>
+    <ul class="doc-list">
+      <li><a href="https://github.com/ibenian/algebench/blob/main/README.md">
+        <span class="d-icon">📖</span>
+        <div><div class="d-title">README</div><div class="d-desc">Project overview, setup instructions, and quick-start guide</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/CONTRIBUTING.md">
+        <span class="d-icon">🤝</span>
+        <div><div class="d-title">Contributing Guide</div><div class="d-desc">How to contribute, coding standards, and pull request workflow</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/architecture.md">
+        <span class="d-icon">🏗️</span>
+        <div><div class="d-title">Architecture</div><div class="d-desc">System design, module boundaries, and data flow</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/proofs-model.md">
+        <span class="d-icon">🧮</span>
+        <div><div class="d-title">Proofs Model</div><div class="d-desc">How algebraic proofs are represented, validated, and animated</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/semantic-graph-module-design.md">
+        <span class="d-icon">🌐</span>
+        <div><div class="d-title">Semantic Graph Design</div><div class="d-desc">Module design for the concept-relationship graph engine</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/sandbox-model.md">
+        <span class="d-icon">🔒</span>
+        <div><div class="d-title">Sandbox Model</div><div class="d-desc">Security sandboxing for user-submitted expressions and scripts</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/latex-parser-design.md">
+        <span class="d-icon">📝</span>
+        <div><div class="d-title">LaTeX Parser Design</div><div class="d-desc">Parsing and rendering pipeline for mathematical notation</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/feature-ideas.md">
+        <span class="d-icon">💡</span>
+        <div><div class="d-title">Feature Ideas</div><div class="d-desc">Roadmap brainstorming and future feature candidates</div></div>
+      </a></li>
+      <li><a href="https://github.com/ibenian/algebench/blob/main/docs/lesson-ideas.md">
+        <span class="d-icon">🎓</span>
+        <div><div class="d-title">Lesson Ideas</div><div class="d-desc">Planned interactive lessons across algebra, calculus, and physics</div></div>
+      </a></li>
+    </ul>
+  </div>
+
+  <!-- Tech Stack -->
+  <div class="section">
+    <h2>Tech Stack</h2>
+    <div class="tech-grid">
+      <!-- Colored marks use Devicon where available; remaining brand marks use Simple Icons. MathBox does not publish an official SVG logo. -->
+      <a class="tech-item" href="https://www.python.org/" target="_blank" rel="noopener noreferrer" aria-label="Python official website">
+        <span class="t-icon"><svg role="img" viewBox="0 0 128 128" aria-label="Python" xmlns="http://www.w3.org/2000/svg"><title>Python</title><linearGradient id="python-a" gradientUnits="userSpaceOnUse" x1="70.252" y1="1237.476" x2="170.659" y2="1151.089" gradientTransform="matrix(.563 0 0 -.568 -29.215 707.817)"><stop offset="0" stop-color="#5A9FD4"/><stop offset="1" stop-color="#306998"/></linearGradient><linearGradient id="python-b" gradientUnits="userSpaceOnUse" x1="209.474" y1="1098.811" x2="173.62" y2="1149.537" gradientTransform="matrix(.563 0 0 -.568 -29.215 707.817)"><stop offset="0" stop-color="#FFD43B"/><stop offset="1" stop-color="#FFE873"/></linearGradient><path fill="url(#python-a)" d="M63.391 12.248c-4.222.02-8.252.379-11.8 1.007-10.45 1.846-12.346 5.71-12.346 12.837v9.411h24.693v3.137H29.977c-7.176 0-13.46 4.313-15.426 12.521-2.268 9.405-2.368 15.275 0 25.096 1.755 7.311 5.947 12.519 13.124 12.519h8.491V77.494c0-8.151 7.051-15.34 15.426-15.34h24.665c6.866 0 12.346-5.654 12.346-12.548V26.093c0-6.693-5.646-11.72-12.346-12.837-4.244-.706-8.645-1.027-12.866-1.008zM50.037 19.817c2.55 0 4.634 2.117 4.634 4.721 0 2.593-2.083 4.69-4.634 4.69-2.56 0-4.633-2.097-4.633-4.69-.001-2.604 2.073-4.721 4.633-4.721z"/><path fill="url(#python-b)" d="M91.682 38.64v10.966c0 8.5-7.208 15.655-15.426 15.655H51.591c-6.756 0-12.346 5.783-12.346 12.549v23.515c0 6.691 5.818 10.628 12.346 12.547 7.816 2.297 15.312 2.713 24.665 0 6.216-1.801 12.346-5.423 12.346-12.547v-9.412H63.938v-3.138h37.012c7.176 0 9.852-5.005 12.348-12.519 2.578-7.735 2.467-15.174 0-25.096-1.774-7.145-5.161-12.521-12.348-12.521h-9.268zM77.809 98.187c2.561 0 4.634 2.097 4.634 4.692 0 2.602-2.074 4.719-4.634 4.719-2.55 0-4.633-2.117-4.633-4.719 0-2.595 2.083-4.692 4.633-4.692z"/></svg></span>
+        <h4>Python</h4>
+        <p>Backend server, scenes, mathematical semantic graph builder and AI integration</p>
+      </a>
+      <a class="tech-item" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank" rel="noopener noreferrer" aria-label="JavaScript documentation">
+        <span class="t-icon"><svg role="img" viewBox="0 0 128 128" aria-label="JavaScript" xmlns="http://www.w3.org/2000/svg"><title>JavaScript</title><path fill="#F0DB4F" d="M1.408 1.408h125.184v125.185H1.408z"/><path fill="#323330" d="M116.347 96.736c-.917-5.711-4.641-10.508-15.672-14.981-3.832-1.761-8.104-3.022-9.377-5.926-.452-1.69-.512-2.642-.226-3.665.821-3.32 4.784-4.355 7.925-3.403 2.023.678 3.938 2.237 5.093 4.724 5.402-3.498 5.391-3.475 9.163-5.879-1.381-2.141-2.118-3.129-3.022-4.045-3.249-3.629-7.676-5.498-14.756-5.355l-3.688.477c-3.534.893-6.902 2.748-8.877 5.235-5.926 6.724-4.236 18.492 2.975 23.335 7.104 5.332 17.54 6.545 18.873 11.531 1.297 6.104-4.486 8.08-10.234 7.378-4.236-.881-6.592-3.034-9.139-6.949-4.688 2.713-4.688 2.713-9.508 5.485 1.143 2.499 2.344 3.63 4.26 5.795 9.068 9.198 31.76 8.746 35.83-5.176.165-.478 1.261-3.666.38-8.581zM69.462 58.943H57.753l-.048 30.272c0 6.438.333 12.34-.714 14.149-1.713 3.558-6.152 3.117-8.175 2.427-2.059-1.012-3.106-2.451-4.319-4.485-.333-.584-.583-1.036-.667-1.071l-9.52 5.83c1.583 3.249 3.915 6.069 6.902 7.901 4.462 2.678 10.459 3.499 16.731 2.059 4.082-1.189 7.604-3.652 9.448-7.401 2.666-4.915 2.094-10.864 2.07-17.444.06-10.735.001-21.468.001-32.237z"/></svg></span>
+        <h4>JavaScript</h4>
+        <p>Interactive frontend, real-time rendering</p>
+      </a>
+      <a class="tech-item" href="https://mathbox.org/" target="_blank" rel="noopener noreferrer" aria-label="MathBox official website">
+        <span class="t-icon"><span class="wordmark">MathBox</span></span>
+        <h4>MathBox</h4>
+        <p>Mathematical visualization engine</p>
+      </a>
+      <a class="tech-item" href="https://threejs.org/" target="_blank" rel="noopener noreferrer" aria-label="Three.js official website">
+        <span class="t-icon"><svg class="brand-mark" style="--brand: #ffffff;" role="img" viewBox="0 0 24 24" aria-label="Three.js" xmlns="http://www.w3.org/2000/svg"><title>Three.js</title><path d="M.38 0a.268.268 0 0 0-.256.332l2.894 11.716a.268.268 0 0 0 .01.04l2.89 11.708a.268.268 0 0 0 .447.128L23.802 7.15a.268.268 0 0 0-.112-.45l-5.784-1.667a.268.268 0 0 0-.123-.035L6.38 1.715a.268.268 0 0 0-.144-.04L.456.01A.268.268 0 0 0 .38 0zm.374.654L5.71 2.08 1.99 5.664zM6.61 2.34l4.864 1.4-3.65 3.515zm-.522.12l1.217 4.926-4.877-1.4zm6.28 1.538l4.878 1.404-3.662 3.53zm-.52.13l1.208 4.9-4.853-1.392zm6.3 1.534l4.947 1.424-3.715 3.574zm-.524.12l1.215 4.926-4.876-1.398zm-15.432.696l4.964 1.424-3.726 3.586zM8.047 8.15l4.877 1.4-3.66 3.527zm-.518.137l1.236 5.017-4.963-1.432zm6.274 1.535l4.965 1.425-3.73 3.586zm-.52.127l1.235 5.012-4.958-1.43zm-9.63 2.438l4.873 1.406-3.656 3.523zm5.854 1.687l4.863 1.403-3.648 3.51zm-.54.04l1.214 4.927-4.875-1.4zm-3.896 4.02l5.037 1.442-3.782 3.638z"/></svg></span>
+        <h4>Three.js</h4>
+        <p>3D rendering and scene management</p>
+      </a>
+      <a class="tech-item" href="https://ai.google.dev/gemini-api/docs" target="_blank" rel="noopener noreferrer" aria-label="Google Gemini API documentation">
+        <span class="t-icon"><svg role="img" viewBox="0 0 24 24" aria-label="Google Gemini" xmlns="http://www.w3.org/2000/svg"><title>Google Gemini</title><defs><linearGradient id="gemini-a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4285F4"/><stop offset=".48" stop-color="#9B72CB"/><stop offset="1" stop-color="#D96570"/></linearGradient></defs><path fill="url(#gemini-a)" d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81"/></svg></span>
+        <h4>Google GenAI</h4>
+        <p>LLM and real-time text-to-speech</p>
+      </a>
+      <a class="tech-item" href="https://ai.pydantic.dev/" target="_blank" rel="noopener noreferrer" aria-label="Pydantic AI official website">
+        <span class="t-icon"><svg class="brand-mark" style="--brand: #E92063;" role="img" viewBox="0 0 24 24" aria-label="Pydantic" xmlns="http://www.w3.org/2000/svg"><title>Pydantic</title><path d="m23.826 17.316-4.23-5.866-6.847-9.496c-.348-.48-1.151-.48-1.497 0l-6.845 9.494-4.233 5.868a.925.925 0 0 0 .46 1.417l11.078 3.626h.002a.92.92 0 0 0 .572 0h.002l11.077-3.626c.28-.092.5-.31.59-.592a.916.916 0 0 0-.13-.825h.002ZM12.001 4.07l4.44 6.158-4.152-1.36c-.032-.01-.066-.008-.098-.016a.8.8 0 0 0-.096-.016c-.032-.004-.062-.016-.094-.016s-.062.012-.094.016a.74.74 0 0 0-.096.016c-.032.006-.066.006-.096.016L7.59 10.221l-.026.008 4.44-6.158h-.002Zm-6.273 8.7 4.834-1.583.516-.168v9.19L2.41 17.372l3.317-4.6Zm7.197 7.437V11.02l5.35 1.752 3.316 4.598-8.666 2.838Z"/></svg></span>
+        <h4>Pydantic AI</h4>
+        <p>Structured AI agent framework</p>
+      </a>
+      <a class="tech-item" href="https://fastapi.tiangolo.com/" target="_blank" rel="noopener noreferrer" aria-label="FastAPI official website">
+        <span class="t-icon"><svg role="img" viewBox="0 0 128 128" aria-label="FastAPI" xmlns="http://www.w3.org/2000/svg"><title>FastAPI</title><path fill="#049688" d="M56.813 127.586c-1.903-.227-3.899-.52-4.434-.652a48.078 48.078 0 0 0-2.375-.5 36.042 36.042 0 0 1-2.703-.633c-4.145-1.188-4.442-1.285-7.567-2.563-2.875-1.172-8.172-3.91-9.984-5.156-.496-.344-.96-.621-1.031-.621-.07 0-1.23-.816-2.578-1.813-8.57-6.343-15.004-14.043-19.653-23.527-.8-1.629-1.453-3.074-1.453-3.21 0-.134-.144-.505-.32-.817-.363-.649-.88-2.047-1.297-3.492a20.047 20.047 0 0 0-.625-1.813c-.195-.46-.352-1.02-.352-1.246 0-.227-.195-.965-.433-1.645-.238-.675-.43-1.472-.43-1.77 0-.296-.187-1.32-.418-2.276C.598 73.492 0 67.379 0 63.953c0-3.422.598-9.535 1.16-11.894.23-.957.418-2 .418-2.32 0-.321.145-.95.32-1.4.18-.448.41-1.253.516-1.788.11-.535.36-1.457.563-2.055l.59-1.726c.433-1.293.835-2.387 1.027-2.813.11-.238.539-1.21.957-2.16.676-1.535 2.125-4.43 2.972-5.945.309-.555.426-.739 2.098-3.352 2.649-4.148 7.176-9.309 11.39-12.988 1.485-1.297 6.446-5.063 6.669-5.063.062 0 .53-.281 1.043-.625 1.347-.902 2.668-1.668 4.39-2.531a53.06 53.06 0 0 1 1.836-.953c.285-.164.82-.41 3.567-1.64.605-.27 1.257-.516 3.136-1.173.414-.144 1.246-.449 1.84-.672.598-.222 1.301-.406 1.563-.406.258 0 .937-.18 1.508-.402.57-.223 1.605-.477 2.304-.563.696-.082 1.621-.277 2.055-.43.43-.148 1.61-.34 2.621-.425a72.572 72.572 0 0 0 3.941-.465c2.688-.394 8.532-.394 11.192 0a75.02 75.02 0 0 0 3.781.445c.953.079 2.168.278 2.703.442.535.16 1.461.36 2.055.433.594.079 1.594.325 2.222.551.63.23 1.344.414 1.59.414s.754.137 1.125.309c.375.168 1.168.449 1.766.625.594.18 1.613.535 2.27.797.652.261 1.527.605 1.945.761.77.29 6.46 3.137 7.234 3.622 6.281 3.917 9.512 6.476 13.856 10.964 5.238 5.414 8.715 10.57 12.254 18.16.25.536.632 1.329.851 1.758.215.434.395.942.395 1.13 0 .19.18.76.402 1.269.602 1.383 1.117 2.957 1.36 4.16.12.59.343 1.32.495 1.621.153.3.332 1.063.403 1.688.07.624.277 1.648.453 2.269 1.02 3.531 1.527 13.934.91 18.535-.183 1.367-.39 3.02-.46 3.672-.118 1.117-.708 4.004-1.212 5.945l-.52 2.055c-.98 3.957-3.402 9.594-6.359 14.809-1.172 2.07-5.101 7.668-5.843 8.324-.067.058-.399.45-.735.863-.336.418-1.414 1.586-2.39 2.594-4.301 4.441-7.77 7.187-13.86 10.969-.722.449-6.847 3.441-7.992 3.906-.594.238-1.586.64-2.203.89-.613.247-1.297.454-1.512.458-.215.003-.781.195-1.258.425-.476.23-1.082.422-1.351.426-.266.004-1.043.192-1.727.418-.683.23-1.633.477-2.11.55-.476.075-1.495.278-2.269.45-.773.172-3.11.508-5.187.746a59.06 59.06 0 0 1-13.945-.031zm4.703-12.5c.3-.234.609-.7.691-1.027.18-.723 29.234-58.97 29.781-59.7.461-.617.504-1.605.082-1.953-.222-.187-3.004-.246-10.43-.234-5.57.012-10.253.016-10.406.012-.226-.008-.273-3.73-.25-19.672.016-10.817-.035-19.766-.113-19.89-.078-.126-.383-.227-.68-.227-.418 0-.613.18-.87.808-.485 1.168-1.825 3.82-8.348 16.485a3554.569 3554.569 0 0 0-4.055 7.89c-1.156 2.262-2.98 5.813-4.047 7.89a8751.248 8751.248 0 0 0-8.598 16.759c-4.933 9.636-5.53 10.785-5.742 11.039-.41.496-.633 1.64-.402 2.07.21.394.629.41 11.043.394 5.953-.007 10.863.024 10.914.07.137.141.086 37.31-.055 38.196-.093.582-.031.89.235 1.156.46.461.586.457 1.25-.066zm0 0"/></svg></span>
+        <h4>FastAPI</h4>
+        <p>High-performance async web framework</p>
+      </a>
+      <a class="tech-item" href="https://www.sympy.org/" target="_blank" rel="noopener noreferrer" aria-label="SymPy official website">
+        <span class="t-icon"><svg role="img" viewBox="0 0 24 24" aria-label="SymPy" xmlns="http://www.w3.org/2000/svg"><title>SymPy</title><defs><linearGradient id="sp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3B5526"/><stop offset="1" stop-color="#6BA539"/></linearGradient></defs><text x="12" y="19" text-anchor="middle" font-family="serif" font-size="20" font-style="italic" fill="url(#sp)">&#x222B;</text></svg></span>
+        <h4>SymPy</h4>
+        <p>Symbolic mathematics and CAS engine</p>
+      </a>
+      <a class="tech-item" href="https://docs.pytest.org/" target="_blank" rel="noopener noreferrer" aria-label="pytest documentation">
+        <span class="t-icon"><svg role="img" viewBox="0 0 128 128" aria-label="pytest" xmlns="http://www.w3.org/2000/svg"><title>pytest</title><path d="M31.512 30.398h61.304a3.006 3.006 0 0 1 0 6.012H31.512a3.007 3.007 0 0 1-3.004-3.004 3.008 3.008 0 0 1 3.004-3.008zm0 0" fill="#696969"/><path d="M32.047 24.32H44.37v2.844H32.047zm0 0" fill="#009fe3"/><path d="M48.168 24.32h12.324v2.844H48.168zm0 0" fill="#c7d302"/><path d="M64.07 24.32h12.328v2.844H64.07zm0 0" fill="#f07e16"/><path d="M79.91 24.32h12.324v2.844H79.91zm0 15.22h12.324v20.835H79.91zm0 0" fill="#df2815"/><path d="M64.07 39.54h12.352v33.847H64.07zm0 0" fill="#f07e16"/><path d="M48.168 39.54h12.324v50.698H48.168zm0 0" fill="#c7d302"/><path d="M32.047 39.54H44.37v61.792H32.047zm0 0" fill="#009fe3"/></svg></span>
+        <h4>pytest</h4>
+        <p>Comprehensive test suite</p>
+      </a>
+    </div>
+  </div>
+
+  <!-- Getting Started -->
+  <div class="section getting-started">
+    <h2>Getting Started</h2>
+    <pre><span class="comment"># Clone the repository</span>
+<span class="cmd">git clone https://github.com/ibenian/algebench.git</span>
+<span class="cmd">cd algebench</span>
+
+<span class="comment"># Run a scene</span>
+<span class="cmd">./algebench scenes/eigenvalues.json</span>
+
+<span class="comment"># Run the test suite</span>
+<span class="cmd">./run.sh -m pytest tests/</span></pre>
+  </div>
+
+</div>
+
+<footer>
+  <a href="https://github.com/ibenian/algebench">github.com/ibenian/algebench</a>
+
+</footer>
+
+</body>
+</html>
