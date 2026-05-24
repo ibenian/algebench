@@ -85,6 +85,7 @@
     max-width: 700px; margin: 0 auto; text-align: center;
     font-size: 1.05rem; color: #c9d1d9; line-height: 1.8;
   }
+  .vision-text + .vision-text { margin-top: 1rem; }
   .vision-text em {
     color: #d2a8ff; font-style: normal; font-weight: 500;
   }
@@ -229,10 +230,10 @@
 
   <!-- Hero -->
   <section class="hero">
-    <h1>Explore Math Visually</h1>
+    <h1>Interactive 3D math lessons with a live AI tutor</h1>
     <p class="tagline">
-      An interactive workbench for algebra, calculus, and beyond &mdash;
-      with AI-assisted proofs, semantic graph exploration, and real-time equation rendering.
+      Explore algebra, calculus, and physics through visual scenes you can question,
+      manipulate, and learn from.
     </p>
   </section>
 
@@ -253,12 +254,16 @@
   <section class="section">
     <h2>Vision</h2>
     <p class="vision-text">
-      Mathematics is a deeply visual discipline, yet most tools treat it as static text on a page.
-      AlgeBench bridges the gap between <em>symbolic reasoning</em> and <em>spatial intuition</em> &mdash;
-      turning abstract equations into explorable, interactive scenes where students can
-      <em>see</em> a proof unfold, <em>manipulate</em> a function in real time, and
-      <em>discover</em> connections across mathematical domains. Our goal is to make
-      mathematical understanding feel as natural as exploring a map.
+      AlgeBench is built around one idea: AI should prepare the conditions for
+      understanding, then let the learner do the seeing. It sets up interactive
+      scenes, explains what matters, and stays available as an
+      <em>infinitely patient tutor</em>.
+    </p>
+    <p class="vision-text">
+      Spin up a lesson, move the sliders, rotate the model, listen to the
+      explanation, then interrupt with <em>what</em>, <em>how</em>, or <em>why</em>.
+      The narrator answers in real time while the visualization stays connected
+      to the math.
     </p>
   </section>
 
@@ -267,24 +272,24 @@
     <h2>Who It's For</h2>
     <div class="audience-grid">
       <div class="audience-card">
-        <span class="a-icon">🎓</span>
+        <span class="a-icon" aria-hidden="true">🎓</span>
         <h3>Students</h3>
-        <p>Build intuition through interactive visualizations instead of memorizing formulas. See how algebra, calculus, and physics connect.</p>
+        <p>Build intuition by manipulating equations, surfaces, vectors, and proofs instead of only memorizing formulas.</p>
       </div>
       <div class="audience-card">
-        <span class="a-icon">👩‍🏫</span>
+        <span class="a-icon" aria-hidden="true">👩‍🏫</span>
         <h3>Educators</h3>
-        <p>Create rich, interactive lessons and assignments. Let students explore concepts at their own pace with guided scenes.</p>
+        <p>Create guided lessons that let students explore ideas at their own pace with narration, sliders, and visual checkpoints.</p>
       </div>
       <div class="audience-card">
-        <span class="a-icon">📖</span>
+        <span class="a-icon" aria-hidden="true">📖</span>
         <h3>Self-Learners</h3>
-        <p>Teach yourself at your own pace with an AI tutor that speaks, guides, and adapts to your level of understanding.</p>
+        <p>Teach yourself with an AI tutor that can explain the current scene, answer follow-up questions, and adapt to your level.</p>
       </div>
       <div class="audience-card">
-        <span class="a-icon">🔬</span>
-        <h3>Researchers</h3>
-        <p>Prototype mathematical models visually. Use the semantic graph to map relationships across theories and domains.</p>
+        <span class="a-icon" aria-hidden="true">🛠️</span>
+        <h3>Builders</h3>
+        <p>Prototype mathematical scenes, lesson formats, and AI-assisted learning workflows on top of an open source stack.</p>
       </div>
     </div>
   </section>
@@ -294,24 +299,46 @@
     <h2>What Makes AlgeBench Different</h2>
     <div class="feature-grid">
       <div class="feature">
-        <span class="f-icon">🧮</span>
+        <span class="f-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="36" height="36">
+          <line x1="32" y1="44" x2="32" y2="10" stroke="#58a6ff" stroke-width="2.5" stroke-linecap="round"/>
+          <polygon points="32,4 28,12 36,12" fill="#58a6ff"/>
+          <line x1="32" y1="44" x2="8" y2="58" stroke="#58a6ff" stroke-width="2.5" stroke-linecap="round"/>
+          <polygon points="4,60 11,56 8,52" fill="#58a6ff"/>
+          <line x1="32" y1="44" x2="56" y2="58" stroke="#58a6ff" stroke-width="2.5" stroke-linecap="round"/>
+          <polygon points="60,60 53,56 56,52" fill="#58a6ff"/>
+          <line x1="32" y1="44" x2="42" y2="39" stroke="#d2a8ff" stroke-width="2" stroke-linecap="round"/>
+          <line x1="32" y1="44" x2="32" y2="28" stroke="#d2a8ff" stroke-width="2" stroke-linecap="round"/>
+          <line x1="42" y1="39" x2="42" y2="23" stroke="#d2a8ff" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.5"/>
+          <line x1="32" y1="28" x2="42" y2="23" stroke="#d2a8ff" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.5"/>
+          <polygon points="42,23 40,28 38,27" fill="#d2a8ff"/>
+        </svg></span>
+        <h4>3D Scenes</h4>
+        <p>Spin, zoom, and inspect mathematical objects in scenes that respond to your input</p>
+      </div>
+      <div class="feature">
+        <span class="f-icon" aria-hidden="true">🗣️</span>
+        <h4>Live AI Narrator</h4>
+        <p>Ask questions out loud while the tutor explains the scene and answers in context</p>
+      </div>
+      <div class="feature">
+        <span class="f-icon" aria-hidden="true">🧮</span>
         <h4>Visual Proofs</h4>
-        <p>Step through algebraic proofs with animated, interactive visualizations</p>
+        <p>Step through derivations with highlighted changes tied back to the visual model</p>
       </div>
       <div class="feature">
-        <span class="f-icon">🤖</span>
-        <h4>AI Assisted</h4>
-        <p>Get intelligent hints and proof suggestions powered by language models</p>
-      </div>
-      <div class="feature">
-        <span class="f-icon">🌐</span>
+        <span class="f-icon" aria-hidden="true">🌐</span>
         <h4>Semantic Graphs</h4>
-        <p>Explore how mathematical concepts connect across domains</p>
+        <p>See variables, operators, and relationships as an interactive map of the equation</p>
       </div>
       <div class="feature">
-        <span class="f-icon">🔓</span>
+        <span class="f-icon" aria-hidden="true">🤖</span>
+        <h4>Scene Generation</h4>
+        <p>Turn mathematical ideas into interactive lessons with narration, sliders, and visual structure</p>
+      </div>
+      <div class="feature">
+        <span class="f-icon" aria-hidden="true">🔓</span>
         <h4>Open Source</h4>
-        <p>Fully open &mdash; contribute, extend, or use it for your own courses</p>
+        <p>Study the code, extend the lesson format, or adapt the project for your own courses</p>
       </div>
     </div>
   </section>
@@ -363,15 +390,18 @@
 
   <!-- More Videos -->
   <section class="section">
-    <h2>More Videos</h2>
+    <h2>Follow the Demos</h2>
     <p style="text-align:center; color:#8b949e; font-size:0.9rem; margin-bottom:1.25rem;">
-      Watch more walkthroughs and demos on the
+      Watch walkthroughs, experiments, and new scene demos on the
       <a href="https://www.youtube.com/@algebench" target="_blank" rel="noopener" style="color:#58a6ff; text-decoration:none;">AlgeBench YouTube channel</a>.
     </p>
   </section>
 
   <!-- CTA -->
   <section class="cta">
+    <p style="color:#8b949e; font-size:0.95rem; margin:0 auto 1rem; max-width:620px;">
+      Clone the repo, add a <code>GEMINI_API_KEY</code>, and launch a local interactive lesson in about two minutes.
+    </p>
     <div class="cta-links">
       <a href="https://github.com/ibenian/algebench" class="btn-primary">Get Started on GitHub</a>
       <a href="developers.html" class="btn-secondary">Developer Dashboard</a>
