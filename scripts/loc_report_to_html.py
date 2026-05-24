@@ -11,7 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import html
+import re
 from pathlib import Path
 
 
@@ -53,12 +53,27 @@ def _html_template() -> str:
   code { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
   .mermaid { background: #161b22; border-radius: 8px; padding: 1rem; margin: 0.5rem 0; }
   a { color: #58a6ff; }
-  .markdown-alert { margin: 0.5rem 0; }
+  .markdown-alert {
+    border-left: 3px solid; padding: 0.5rem 1rem; margin: 0.5rem 0;
+    background: #161b22; border-radius: 4px;
+  }
+  .markdown-alert-title { font-weight: 600; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.4rem; }
+  .markdown-alert-note  { border-color: #539bf5; }
+  .markdown-alert-note .markdown-alert-title { color: #539bf5; }
+  .markdown-alert-tip   { border-color: #57ab5a; }
+  .markdown-alert-tip .markdown-alert-title { color: #57ab5a; }
+  .markdown-alert-important { border-color: #986ee2; }
+  .markdown-alert-important .markdown-alert-title { color: #986ee2; }
+  .markdown-alert-warning { border-color: #c69026; }
+  .markdown-alert-warning .markdown-alert-title { color: #c69026; }
+  .markdown-alert-caution { border-color: #e5534b; }
+  .markdown-alert-caution .markdown-alert-title { color: #e5534b; }
 </style>
 </head>
 <body>
 <div id="content"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
@@ -66,17 +81,40 @@ def _html_template() -> str:
 
   const md = document.getElementById('raw-md').textContent;
 
+  const alertIcons = {
+    note: 'ℹ️', tip: '💡', important: '❗',
+    warning: '⚠️', caution: '🛑'
+  };
+
   const renderer = new marked.Renderer();
   const origCode = renderer.code.bind(renderer);
-  renderer.code = function(obj) {
-    if (obj.lang === 'mermaid') {
-      return '<div class="mermaid">' + obj.text + '</div>';
+  renderer.code = function(code, language) {
+    if (language === 'mermaid') {
+      return '<div class="mermaid">' + code + '</div>';
     }
-    return origCode(obj);
+    return origCode(code, language);
+  };
+  const origBlockquote = renderer.blockquote.bind(renderer);
+  renderer.blockquote = function(quote) {
+    const m = quote.match(/^\\s*<p>\\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\\][\\s\\n]*/i);
+    if (m) {
+      const kind = m[1].toLowerCase();
+      const body = quote.replace(m[0], '<p>');
+      const icon = alertIcons[kind] || '';
+      return '<div class="markdown-alert markdown-alert-' + kind + '">'
+        + '<p class="markdown-alert-title">' + icon + ' ' + m[1] + '</p>'
+        + body + '</div>';
+    }
+    return origBlockquote(quote);
   };
 
   marked.setOptions({ renderer, gfm: true, breaks: false });
-  document.getElementById('content').innerHTML = marked.parse(md);
+  const dirty = marked.parse(md);
+  if (typeof DOMPurify !== 'undefined') {
+    document.getElementById('content').innerHTML = DOMPurify.sanitize(dirty, {ADD_TAGS: ['div'], ADD_ATTR: ['class']});
+  } else {
+    document.getElementById('content').innerHTML = dirty;
+  }
 
   await mermaid.run();
 </script>
@@ -92,9 +130,11 @@ def convert(md_path: Path, outdir: Path) -> Path:
     outdir.mkdir(parents=True, exist_ok=True)
 
     md_content = md_path.read_text(encoding="utf-8")
-    escaped = html.escape(md_content, quote=False)
+    # <script> is a raw text element — HTML entities are NOT decoded.
+    # Escape any sequence that could prematurely close the tag (case-insensitive).
+    safe = re.sub(r"</script", r"<\\/script", md_content, flags=re.IGNORECASE)
 
-    page = _html_template().replace("MARKDOWN_PLACEHOLDER", escaped)
+    page = _html_template().replace("MARKDOWN_PLACEHOLDER", safe)
 
     out_file = outdir / "index.html"
     out_file.write_text(page, encoding="utf-8")

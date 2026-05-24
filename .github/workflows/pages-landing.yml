@@ -1,0 +1,31 @@
+name: GitHub Pages Landing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/landing-page/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare site
+        run: |
+          mkdir -p _site
+          cp docs/landing-page/index.html _site/index.html
+          cp docs/landing-page/developers.html _site/developers.html
+          cp docs/landing-page/AlgeBench-Banner.png _site/AlgeBench-Banner.png
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          keep_files: true

@@ -32,13 +32,43 @@ class TestConvert:
         assert "# Lines of Code" in html
         assert "| Lang | Lines |" in html
 
-    def test_html_escapes_special_chars(self, tmp_path: Path):
+    def test_preserves_raw_markdown_in_script(self, tmp_path: Path):
         md = tmp_path / "report.md"
         md.write_text("a < b & c > d\n")
         out = convert(md, tmp_path / "out")
 
         html = out.read_text()
-        assert "a &lt; b &amp; c &gt; d" in html
+        assert "a < b & c > d" in html
+
+    def test_escapes_script_close_tag(self, tmp_path: Path):
+        md = tmp_path / "report.md"
+        md.write_text("code has </script> in it\n")
+        out = convert(md, tmp_path / "out")
+
+        html = out.read_text()
+        script_start = html.index('<script id="raw-md"')
+        script_body = html[script_start:html.index("</script>", script_start)]
+        assert "</script" not in script_body.split("\n", 1)[1]
+        assert "<\\/script" in html
+
+    def test_escapes_script_close_tag_case_insensitive(self, tmp_path: Path):
+        md = tmp_path / "report.md"
+        md.write_text("code has </SCRIPT> in it\n")
+        out = convert(md, tmp_path / "out")
+
+        html = out.read_text()
+        script_start = html.index('<script id="raw-md"')
+        script_body = html[script_start:html.index("</script>", script_start)]
+        assert "</SCRIPT" not in script_body
+
+    def test_github_alert_css_present(self, tmp_path: Path):
+        md = tmp_path / "report.md"
+        md.write_text("> [!NOTE]\n> Some note\n")
+        out = convert(md, tmp_path / "out")
+
+        html = out.read_text()
+        assert "markdown-alert-note" in html
+        assert "markdown-alert-title" in html
 
     def test_mermaid_block_rendered(self, tmp_path: Path):
         md = tmp_path / "report.md"

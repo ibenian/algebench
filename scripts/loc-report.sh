@@ -36,8 +36,102 @@ BRANCH="${GITHUB_HEAD_REF:-$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)}"
   echo "| **Date** | $COMMIT_DATE |"
   echo ""
 
-  echo "## Language Breakdown"
+  echo "> [!NOTE]"
+  echo "> Charts render on GitHub and in Mermaid-compatible viewers."
   echo ""
+
+  # ── Collect per-directory stats ──
+  dir_data=""
+  for d in backend docs scenes schemas scripts static tests themes; do
+    dir_path="$REPO_ROOT/$d"
+    [ -d "$dir_path" ] || continue
+    stats=$(tokei "$dir_path" "${EXCLUDE[@]}" --output json 2>/dev/null | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+t = d.get('Total', {})
+print(f'{t.get(\"code\",0)} {t.get(\"comments\",0)} {t.get(\"blanks\",0)}')
+" 2>/dev/null || echo "0 0 0")
+    code=$(echo "$stats" | awk '{print $1}')
+    comments=$(echo "$stats" | awk '{print $2}')
+    blanks=$(echo "$stats" | awk '{print $3}')
+    if [ "$code" -gt 0 ] 2>/dev/null; then
+      dir_data="$dir_data
+$d $code $comments $blanks"
+    fi
+  done
+
+  root_code=$(tokei "$REPO_ROOT" "${EXCLUDE[@]}" --output json 2>/dev/null | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print(d.get('Total', {}).get('code', 0))
+" 2>/dev/null || echo "0")
+  subdir_code=$(echo "$dir_data" | awk '{s+=$2} END{print s+0}')
+  root_only=$((root_code - subdir_code))
+
+  # ── Code Lines by Directory (chart) ──
+  echo "$dir_data" | python3 -c "
+import sys
+
+rows = []
+for line in sys.stdin:
+    line = line.strip()
+    if not line:
+        continue
+    parts = line.split()
+    rows.append((parts[0], int(parts[1]), int(parts[2]), int(parts[3])))
+
+root_only = int('${root_only}')
+if root_only > 0:
+    rows.append(('(other)', root_only, 0, 0))
+
+rows.sort(key=lambda x: x[1], reverse=True)
+
+chart_rows = [r for r in rows if r[1] >= 100]
+if chart_rows:
+    names = ', '.join(f'\"{r[0]}\"' for r in chart_rows)
+    values = ', '.join(str(r[1]) for r in chart_rows)
+    print('\`\`\`mermaid')
+    print('xychart-beta horizontal')
+    print('  title \"Code Lines by Directory\"')
+    print(f'  x-axis [{names}]')
+    print(f'  bar [{values}]')
+    print('\`\`\`')
+"
+  echo ""
+
+  # ── By Directory (table) ──
+  echo "## By Directory"
+  echo ""
+  echo "$dir_data" | python3 -c "
+import sys
+
+rows = []
+for line in sys.stdin:
+    line = line.strip()
+    if not line:
+        continue
+    parts = line.split()
+    rows.append((parts[0], int(parts[1]), int(parts[2]), int(parts[3])))
+
+root_only = int('${root_only}')
+if root_only > 0:
+    rows.append(('(other)', root_only, 0, 0))
+
+rows.sort(key=lambda x: x[1], reverse=True)
+
+print('| Directory | Code | Comments | Blanks |')
+print('|---|---:|---:|---:|')
+total_code = total_comments = total_blanks = 0
+for name, code, comments, blanks in rows:
+    print(f'| \`{name}/\` | {code:,} | {comments:,} | {blanks:,} |')
+    total_code += code
+    total_comments += comments
+    total_blanks += blanks
+print(f'| **Total** | **{total_code:,}** | **{total_comments:,}** | **{total_blanks:,}** |')
+"
+  echo ""
+
+  # ── Lines of Code by Language (chart) ──
   tokei "$REPO_ROOT" "${EXCLUDE[@]}" --output json 2>/dev/null | python3 -c "
 import sys, json
 
@@ -48,19 +142,13 @@ for lang, stats in data.items():
         continue
     if isinstance(stats, dict) and 'code' in stats:
         code = stats['code']
-        comments = stats.get('comments', 0)
-        blanks = stats.get('blanks', 0)
         if code > 0:
-            langs.append((lang, code, comments, blanks))
+            langs.append((lang, code))
 
 langs.sort(key=lambda x: x[1], reverse=True)
 
-# Mermaid xychart
 names = ', '.join(f'\"{l[0]}\"' for l in langs)
 values = ', '.join(str(l[1]) for l in langs)
-print('> [!NOTE]')
-print('> Chart renders on GitHub and in Mermaid-compatible viewers.')
-print()
 print('\`\`\`mermaid')
 print('xychart-beta horizontal')
 print('  title \"Lines of Code by Language\"')
@@ -70,6 +158,7 @@ print('\`\`\`')
 "
   echo ""
 
+  # ── Summary by Language ──
   echo "## Summary by Language"
   echo ""
   echo '```'
