@@ -246,7 +246,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-24 20:35 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-05-24 20:58 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Thermodynamics (15 expressions)</div>
 <div class="row">
   <div>
@@ -1904,6 +1904,257 @@
 </div>
 <div class="row">
   <div>
+    <div class="row-id">partition_fn</div>
+    <div class="row-latex">$$Z = \sum_i e^{-E_i / k_B T}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart LR
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  Z["$Z$"]:::scalar
+  i["$i$"]:::scalar
+  __num_3["$0$"]:::number
+  __const_4["$\infty$"]:::constant
+  __equals_5{"="}:::relation
+  __sum_2(("$\sum$")):::operator
+  __power_6(("$(\cdot)^{\cdot}$")):::operator
+  e["$e$"]:::scalar
+  __multiply_7(("$\times$")):::operator
+  __negation_8@{ shape: "flip-tri", label: "$-$" }
+  E__i_["$E_{i}$"]:::scalar
+  __power_9(("$\dfrac{1}{(\cdot)}$")):::operator
+  __multiply_10(("$\times$")):::operator
+  k__B_["$k_{B}$"]:::scalar
+  T["$T$"]:::scalar
+  class __negation_8 operator
+  Z --&gt; __equals_1
+  i --&gt; __equals_5
+  __num_3 --&gt; __equals_5
+  __equals_5 --&gt;|lb| __sum_2
+  __const_4 --&gt;|ub| __sum_2
+  e --&gt; __power_6
+  E__i_ --&gt; __negation_8
+  __negation_8 --&gt; __multiply_7
+  k__B_ --&gt; __multiply_10
+  T --&gt; __multiply_10
+  __multiply_10 --&gt; __power_9
+  __power_9 -.-&gt; __multiply_7
+  __multiply_7 --&gt;|exp| __power_6
+  __power_6 --&gt; __sum_2
+  __sum_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#ef5350,stroke-width:3px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#42a5f5,stroke-width:1px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+  </div>
+  <div class="row-panel row-latex-src">Z = \sum_i e^{-E_i / k_B T}</div>
+  <div class="row-panel row-json">{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "Z = \\sum_i e^{-E_i / k_B T}"
+    },
+    {
+      "id": "Z",
+      "type": "scalar",
+      "latex": "Z",
+      "subexpr": "Z"
+    },
+    {
+      "id": "i",
+      "type": "scalar",
+      "latex": "i",
+      "subexpr": "i"
+    },
+    {
+      "id": "__num_3",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0"
+    },
+    {
+      "id": "__const_4",
+      "type": "constant",
+      "label": "infinity",
+      "subexpr": "\\infty"
+    },
+    {
+      "id": "__equals_5",
+      "type": "relation",
+      "op": "equals"
+    },
+    {
+      "id": "__sum_2",
+      "type": "operator",
+      "op": "sum",
+      "with_respect_to": "i",
+      "lower_bound": "__num_3",
+      "upper_bound": "__const_4",
+      "subexpr": "\\sum_{i=0}^{\\infty} e^{\\frac{\\left(-1\\right) E_{i}}{T k_{B}}}"
+    },
+    {
+      "id": "__power_6",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "e^{\\frac{\\left(-1\\right) E_{i}}{T k_{B}}}"
+    },
+    {
+      "id": "e",
+      "type": "scalar",
+      "latex": "e",
+      "subexpr": "e"
+    },
+    {
+      "id": "__multiply_7",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "-E_{i} \\frac{1}{T k_{B}}"
+    },
+    {
+      "id": "__negation_8",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-E_{i}"
+    },
+    {
+      "id": "E_{i}",
+      "type": "scalar",
+      "latex": "E_{i}",
+      "subexpr": "E_{i}"
+    },
+    {
+      "id": "__power_9",
+      "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{T k_{B}}"
+    },
+    {
+      "id": "__multiply_10",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "T k_{B}"
+    },
+    {
+      "id": "k_{B}",
+      "type": "scalar",
+      "latex": "k_{B}",
+      "subexpr": "k_{B}"
+    },
+    {
+      "id": "T",
+      "type": "scalar",
+      "latex": "T",
+      "subexpr": "T"
+    }
+  ],
+  "edges": [
+    {
+      "from": "Z",
+      "to": "__equals_1"
+    },
+    {
+      "from": "i",
+      "to": "__equals_5"
+    },
+    {
+      "from": "__num_3",
+      "to": "__equals_5"
+    },
+    {
+      "from": "__equals_5",
+      "to": "__sum_2",
+      "role": "lb"
+    },
+    {
+      "from": "__const_4",
+      "to": "__sum_2",
+      "role": "ub"
+    },
+    {
+      "from": "e",
+      "to": "__power_6"
+    },
+    {
+      "from": "E_{i}",
+      "to": "__negation_8"
+    },
+    {
+      "from": "__negation_8",
+      "to": "__multiply_7",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "k_{B}",
+      "to": "__multiply_10",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "T",
+      "to": "__multiply_10",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_10",
+      "to": "__power_9"
+    },
+    {
+      "from": "__power_9",
+      "to": "__multiply_7"
+    },
+    {
+      "from": "__multiply_7",
+      "to": "__power_6",
+      "role": "exp"
+    },
+    {
+      "from": "__power_6",
+      "to": "__sum_2"
+    },
+    {
+      "from": "__sum_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</div>
+</div>
+<div class="row">
+  <div>
     <div class="row-id">stefan_boltzmann</div>
     <div class="row-latex">$$P = \sigma A T^4$$</div>
   </div>
@@ -2229,133 +2480,7 @@
   }
 }</div>
 </div>
-<div class="row">
-  <div>
-    <div class="row-id">partition_fn</div>
-    <div class="row-latex">$$Z = \sum_i e^{-E_i / k_B T}$$</div>
-  </div>
-  <div class="row-error">Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 2076, in atom
-    la_ = self._interp.adaptivePredict(self._input,31,self._ctx)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/atn/ParserATNSimulator.py", line 346, in adaptivePredict
-    alt = self.execATN(dfa, s0, input, index, outerContext)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/atn/ParserATNSimulator.py", line 446, in execATN
-    alt = self.execATNWithFullContext(dfa, D, s0_closure, input, startIndex, outerContext)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/atn/ParserATNSimulator.py", line 592, in execATNWithFullContext
-    raise e
-antlr4.error.Errors.NoViableAltException: None
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 2002, in _latex_to_semantic_graph_dict
-    expr = parse_latex(preprocessed)
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/__init__.py", line 199, in parse_latex
-    return _latex.parse_latex(s, strict)
-           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_parse_latex_antlr.py", line 85, in parse_latex
-    relation = parser.math().relation()
-               ~~~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 442, in math
-    self.relation(0)
-    ~~~~~~~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 528, in relation
-    self.relation(3)
-    ~~~~~~~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 504, in relation
-    self.expr()
-    ~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 610, in expr
-    self.additive(0)
-    ~~~~~~~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 660, in additive
-    self.mp(0)
-    ~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 750, in mp
-    self.unary()
-    ~~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 937, in unary
-    self.postfix()
-    ~~~~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 1072, in postfix
-    self.exp(0)
-    ~~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 1438, in exp
-    self.comp()
-    ~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 1663, in comp
-    self.func()
-    ~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 3077, in func
-    self.subeq()
-    ~~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 3543, in subeq
-    self.equality()
-    ~~~~~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 572, in equality
-    self.expr()
-    ~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 610, in expr
-    self.additive(0)
-    ~~~~~~~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 660, in additive
-    self.mp(0)
-    ~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 750, in mp
-    self.unary()
-    ~~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 937, in unary
-    self.postfix()
-    ~~~~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 1072, in postfix
-    self.exp(0)
-    ~~~~~~~~^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 1438, in exp
-    self.comp()
-    ~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 1669, in comp
-    self.atom()
-    ~~~~~~~~~^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_antlr/latexparser.py", line 2157, in atom
-    self._errHandler.reportError(self, re)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/error/ErrorStrategy.py", line 126, in reportError
-    self.reportNoViableAlternative(recognizer, e)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/error/ErrorStrategy.py", line 261, in reportNoViableAlternative
-    recognizer.notifyErrorListeners(msg, e.offendingToken, e)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/Parser.py", line 322, in notifyErrorListeners
-    listener.syntaxError(self, offendingToken, line, column, msg, e)
-    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/antlr4/error/ErrorListener.py", line 60, in syntaxError
-    delegate.syntaxError(recognizer, offendingSymbol, line, column, msg, e)
-    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/_parse_latex_antlr.py", line 58, in syntaxError
-    raise LaTeXParsingError(err)
-sympy.parsing.latex.errors.LaTeXParsingError: I expected something else here
-Z = \sum_{i} e^{-E_{i} / k_{B} T}
-~~~~~~~~~~~^
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/scripts/semantic_graph_report.py", line 405, in _render_row
-    graph_obj = latex_to_semantic_graph(latex)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 2073, in latex_to_semantic_graph
-    raw = _latex_to_semantic_graph_dict(cleaned, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 2004, in _latex_to_semantic_graph_dict
-    raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
-ValueError: Failed to parse LaTeX: I expected something else here
-Z = \sum_{i} e^{-E_{i} / k_{B} T}
-~~~~~~~~~~~^
-</div>
-  <div class="row-actions">
-    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
-  </div>
-  <div class="row-panel row-latex-src">Z = \sum_i e^{-E_i / k_B T}</div>
-</div>
-<div class="summary"><span class="count">14</span> rendered, <span class="count">1</span> errors out of <span class="count">15</span> expressions</div>
+<div class="summary"><span class="count">15</span> rendered, <span class="count">0</span> errors out of <span class="count">15</span> expressions</div>
 <script>
 document.querySelectorAll('.row-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
