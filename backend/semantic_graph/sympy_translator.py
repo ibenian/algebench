@@ -250,6 +250,43 @@ def _normalize_latex(latex: str) -> str:
     return latex
 
 
+def _collapse_multichar_subscripts(
+    latex: str,
+) -> tuple[str, dict[str, dict[str, str]]]:
+    r"""Collapse symbols with multi-char alphabetic subscripts into placeholders.
+
+    SymPy's ``parse_latex`` treats ``v_{rms}`` as ``v`` subscripted by
+    ``r \cdot m \cdot s``.  This pass replaces the full token
+    (``v_{rms}``) with a ``\Xi_{N}`` placeholder and records the
+    original text in *overrides* so the postprocessor can restore it.
+    """
+    overrides: dict[str, dict[str, str]] = {}
+    seen: dict[str, int] = {}
+
+    # Match: optional \cmd base  OR  single alpha base, then _{multichar_alpha}
+    pattern = re.compile(
+        r"(\\[A-Za-z]+|[A-Za-z])"   # base: \sigma or v
+        r"_\{([A-Za-z]{2,})\}"      # subscript: {rms} (2+ alpha chars)
+    )
+
+    def _repl(m: re.Match) -> str:
+        base = m.group(1)
+        sub = m.group(2)
+        full = m.group(0)
+        if full not in seen:
+            idx = len(seen)
+            seen[full] = idx
+            # Display as base_{sub} — use \text for the subscript
+            overrides[f"Xi_{{{idx}}}"] = {
+                "latex": rf"{base}_{{\text{{{sub}}}}}",
+                "type": "scalar",
+            }
+        return rf"\Xi_{{{seen[full]}}}"
+
+    rewritten = pattern.sub(_repl, latex)
+    return rewritten, overrides
+
+
 def _collapse_text_commands(latex: str) -> tuple[str, dict[str, dict[str, str]]]:
     r"""Replace ``\text{NAME}`` with ``\Xi_{N}`` placeholder symbols."""
     overrides: dict[str, dict[str, str]] = {}
@@ -1916,13 +1953,15 @@ def _latex_to_semantic_graph_dict(
 
     braket_collapsed, braket_overrides = _collapse_braket_notation(latex)
     compound_collapsed, compound_overrides = _collapse_compound_symbols(braket_collapsed)
-    collapsed, text_overrides = _collapse_text_commands(compound_collapsed)
+    subscript_collapsed, subscript_overrides = _collapse_multichar_subscripts(compound_collapsed)
+    collapsed, text_overrides = _collapse_text_commands(subscript_collapsed)
     font_unwrapped = _strip_symbol_font_commands(collapsed)
     preprocessed, bare_sum_indices = _preprocess_latex(font_unwrapped)
     latex_commands = _extract_latex_commands(latex)
     merged_overrides: dict[str, dict[str, str]] = {
         **braket_overrides,
         **compound_overrides,
+        **subscript_overrides,
         **text_overrides,
         **(user_overrides or {}),
     }
@@ -2087,6 +2126,35 @@ def _latex_to_semantic_graph_dict(
     return graph
 
 
+def _resolve_xi_node_ids(graph: SemanticGraph) -> None:
+    """Rename ``Xi_{N}`` / ``cK_Xi_{N}`` node ids to clean display forms.
+
+    Multi-char subscripts like ``v_{rms}`` are collapsed into ``Xi_{0}``
+    placeholders before SymPy parsing.  The node's ``latex`` field holds
+    the restored form (e.g. ``v_{\\text{rms}}``).  This pass derives a
+    clean id from that latex and renames nodes + edges consistently.
+    """
+    _XI_ID_RE = re.compile(r"(?:c\d+_)?Xi_\{\d+\}")
+    rename_map: dict[str, str] = {}
+    for node in graph.nodes:
+        if not _XI_ID_RE.fullmatch(node.id):
+            continue
+        latex_val = getattr(node, "latex", None) or ""
+        clean = re.sub(r"\\text\{([^{}]+)\}", r"\1", latex_val)
+        if clean and clean != node.id:
+            rename_map[node.id] = clean
+    if not rename_map:
+        return
+    for node in graph.nodes:
+        if node.id in rename_map:
+            node.id = rename_map[node.id]
+    for edge in graph.edges:
+        if edge.from_ in rename_map:
+            edge.from_ = rename_map[edge.from_]
+        if edge.to in rename_map:
+            edge.to = rename_map[edge.to]
+
+
 def latex_to_semantic_graph(
     latex: str,
     overrides: dict[str, dict[str, str]] | None = None,
@@ -2106,6 +2174,7 @@ def latex_to_semantic_graph(
     cleaned = _strip_tracked_accents(latex, accent_map)
     raw = _latex_to_semantic_graph_dict(cleaned, overrides=overrides, domain=domain)
     graph = SemanticGraph.model_validate(raw)
+    _resolve_xi_node_ids(graph)
     if accent_map:
         GraphPostprocessor.restore_accents(graph, accent_map)
     return graph

@@ -192,11 +192,11 @@ RADIATION_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "T,k_{B} -> multiply; m -> power; multiply,num -> multiply; "
      "multiply,power -> multiply; multiply -> power; "
-     "power,v_{r*(m*s)} -> rel:equals",
+     "power,v_{rms} -> rel:equals",
      "T,k_{B} -> __multiply_6; m -> __power_7; "
      "__multiply_6,__num_5 -> __multiply_4; "
      "__multiply_4,__power_7 -> __multiply_3; __multiply_3 -> __power_2; "
-     "__power_2,v_{r*(m*s)} -> __equals_1",
+     "__power_2,v_{rms} -> __equals_1",
      [{"op": "power", "exponent": "1/2"}, {"op": "power", "exponent": "-1"}]),
 ]
 
