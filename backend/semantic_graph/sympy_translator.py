@@ -402,6 +402,45 @@ def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, 
     return latex, annotations
 
 
+# Accent commands that SymPy's ``parse_latex`` doesn't understand — it
+# treats ``\vec{F}`` as ``Symbol("vec") * Symbol("F")``.  We strip these
+# before parsing and restore them via the postprocessor.  Font commands
+# (``\mathbf``, ``\mathrm``, …) are intentionally excluded — they are
+# handled downstream by ``_strip_symbol_font_commands``.
+# Note: ``dot``/``ddot``/``dddot``/``ddddot`` are intentionally excluded —
+# they carry derivative semantics (``\dot{x}`` ≡ ``dx/dt``) and are
+# handled by ``LaTeXPreprocessor.rewrite_dot_derivatives``.
+_TRACKED_ACCENT_RE = re.compile(
+    r"\\(vec|hat|bar|tilde"
+    r"|overline|widehat|widetilde|check|breve|mathring|acute|grave)"
+    r"\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}"
+)
+
+
+def _strip_tracked_accents(
+    latex: str,
+    accent_map: dict[str, str],
+) -> str:
+    r"""Strip tracked accent commands and record them in *accent_map*.
+
+    ``\vec{F}`` → ``F`` with ``accent_map["F"] = "vec"``.
+    Nested accents are handled by iterating until stable.
+    """
+    prev = None
+    cleaned = latex
+    while cleaned != prev:
+        prev = cleaned
+        def _replace(m: re.Match) -> str:
+            accent = m.group(1)
+            body = m.group(2)
+            # Only record single-token bodies (no nested commands)
+            if body and "\\" not in body:
+                accent_map.setdefault(body, accent)
+            return body
+        cleaned = _TRACKED_ACCENT_RE.sub(_replace, cleaned)
+    return cleaned
+
+
 def _preprocess_latex(latex: str) -> str:
     """Rewrite LaTeX patterns that SymPy's parse_latex doesn't handle."""
     def _expand_higher_deriv(m: re.Match) -> str:
@@ -2015,5 +2054,19 @@ def latex_to_semantic_graph(
     domain: str | None = None,
 ) -> SemanticGraph:
     """Parse a LaTeX string and return a ``SemanticGraph`` model instance."""
-    raw = _latex_to_semantic_graph_dict(latex, overrides=overrides, domain=domain)
-    return SemanticGraph.model_validate(raw)
+    # Strip LaTeX accent commands (\vec, \hat, …) before SymPy parsing —
+    # SymPy's parse_latex treats them as unknown symbols (e.g. \vec{F} →
+    # Symbol("vec") * Symbol("F")).  After graph construction we restore
+    # the accents on the matching nodes via the postprocessor.
+    #
+    # Only strip *tracked* accents — not font commands (\mathbf, \mathrm,
+    # etc.) which are handled downstream by ``_strip_symbol_font_commands``.
+    from .postprocessor import GraphPostprocessor
+
+    accent_map: dict[str, str] = {}
+    cleaned = _strip_tracked_accents(latex, accent_map)
+    raw = _latex_to_semantic_graph_dict(cleaned, overrides=overrides, domain=domain)
+    graph = SemanticGraph.model_validate(raw)
+    if accent_map:
+        GraphPostprocessor.restore_accents(graph, accent_map)
+    return graph

@@ -110,6 +110,90 @@ class TestKnownVariables:
         assert a_node.type == "vector"
         assert a_node.latex == r"\vec{a}"
 
+    def test_vec_accent_via_latex_to_semantic_graph(self):
+        """latex_to_semantic_graph must also restore accents (not only SemanticGraphService)."""
+        g = latex_to_semantic_graph(r"\vec{F} = m \vec{a}")
+        f_node = _find_node(g, id="F")
+        assert f_node is not None, "node F not found"
+        assert f_node.type == "vector"
+        assert f_node.latex == r"\vec{F}"
+        a_node = _find_node(g, id="a")
+        assert a_node is not None, "node a not found"
+        assert a_node.type == "vector"
+        assert a_node.latex == r"\vec{a}"
+        # No separate 'vec' node should exist
+        vec_node = _find_node(g, id="vec")
+        assert vec_node is None, "standalone 'vec' node should not exist"
+
+    def test_accent_subexpr_restored_on_leaf_nodes(self):
+        """Leaf symbol nodes must have subexpr containing accent notation."""
+        # vec
+        g = latex_to_semantic_graph(r"\vec{F} = m \vec{a}")
+        f_node = _find_node(g, id="F")
+        assert f_node is not None, "node F not found"
+        assert f_node.subexpr == r"\vec{F}", (
+            f"Expected subexpr='\\vec{{F}}', got {f_node.subexpr!r}"
+        )
+        a_node = _find_node(g, id="a")
+        assert a_node is not None, "node a not found"
+        assert a_node.subexpr == r"\vec{a}", (
+            f"Expected subexpr='\\vec{{a}}', got {a_node.subexpr!r}"
+        )
+        # hat
+        g2 = latex_to_semantic_graph(r"\hat{H} = T + V")
+        h_node = _find_node(g2, id="H")
+        assert h_node is not None, "node H not found"
+        assert h_node.subexpr == r"\hat{H}", (
+            f"Expected subexpr='\\hat{{H}}', got {h_node.subexpr!r}"
+        )
+
+    def test_accent_subexpr_restored_in_compound_expressions(self):
+        """Operator/relation nodes' subexpr must contain accent notation (any accent type)."""
+        # vec accents in compound subexpr
+        g = latex_to_semantic_graph(r"\vec{F} = m \vec{a}")
+        eq_node = next(
+            (n for n in g.nodes if n.type == "relation" or "equals" in (n.id or "")),
+            None,
+        )
+        if eq_node and eq_node.subexpr:
+            assert r"\vec{F}" in eq_node.subexpr, (
+                f"equals subexpr missing \\vec{{F}}: {eq_node.subexpr!r}"
+            )
+            assert r"\vec{a}" in eq_node.subexpr, (
+                f"equals subexpr missing \\vec{{a}}: {eq_node.subexpr!r}"
+            )
+        # hat accent in compound subexpr
+        g2 = latex_to_semantic_graph(r"\hat{H} = T + V")
+        eq_node2 = next(
+            (n for n in g2.nodes if n.type == "relation" or "equals" in (n.id or "")),
+            None,
+        )
+        if eq_node2 and eq_node2.subexpr:
+            assert r"\hat{H}" in eq_node2.subexpr, (
+                f"equals subexpr missing \\hat{{H}}: {eq_node2.subexpr!r}"
+            )
+
+    def test_hat_accent_restores_latex(self):
+        """\\hat{H} should produce a single node with latex='\\hat{H}'."""
+        g = latex_to_semantic_graph(r"\hat{H} = T + V")
+        h_node = _find_node(g, id="H")
+        assert h_node is not None, "node H not found"
+        assert h_node.latex == r"\hat{H}"
+        hat_node = _find_node(g, id="hat")
+        assert hat_node is None, "standalone 'hat' node should not exist"
+
+    def test_bar_accent_subexpr_restored(self):
+        """\\bar{x} leaf node subexpr must carry the accent notation."""
+        g = latex_to_semantic_graph(r"\bar{x} = \frac{1}{N} \sum x_i")
+        x_bar = _find_node(g, id="x")
+        assert x_bar is not None, "node x not found"
+        assert x_bar.latex == r"\bar{x}", (
+            f"Expected latex='\\bar{{x}}', got {x_bar.latex!r}"
+        )
+        assert x_bar.subexpr == r"\bar{x}", (
+            f"Expected subexpr='\\bar{{x}}', got {x_bar.subexpr!r}"
+        )
+
     def test_unknown_variable_gets_defaults(self):
         g = latex_to_semantic_graph("Q")
         node = _find_node(g, id="Q")

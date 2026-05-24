@@ -142,70 +142,56 @@ MAXWELL_EXPRESSIONS: list[CatalogEntry] = [
     ("gauss_law",
      r"\oint \vec{E} \cdot d\vec{A} = \frac{Q}{\epsilon_0}",
      PASS,
-     "A,dvec -> multiply; E,vec -> multiply; epsilon_{0} -> power; "
-     "Q,power -> multiply; multiply,oint -> multiply; "
-     "multiply,multiply -> multiply; multiply,multiply -> rel:equals",
-     "E,vec -> __multiply_4; A,dvec -> __multiply_5; "
-     "epsilon_{0} -> __power_7; __multiply_4,oint -> __multiply_3; "
-     "Q,__power_7 -> __multiply_6; __multiply_3,__multiply_5 -> __multiply_2; "
-     "__multiply_2,__multiply_6 -> __equals_1",
+     "oint,vec:E -> multiply; epsilon_{0} -> power; "
+     "Q,power -> multiply; dA,multiply -> multiply; "
+     "multiply,multiply -> rel:equals",
+     "E,oint -> __multiply_3; epsilon_{0} -> __power_5; "
+     "__multiply_3,dA -> __multiply_2; Q,__power_5 -> __multiply_4; "
+     "__multiply_2,__multiply_4 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
 
     ("faraday",
      r"\nabla \times \vec{E} = -\frac{\partial \vec{B}}{\partial t}",
      PASS,
-     "B,vec -> multiply; E,vec -> multiply; multiply,nabla -> multiply; "
-     "multiply,t -> partial_derivative; partial_derivative -> negation; "
-     "multiply,negation -> rel:equals",
-     "E,vec -> __multiply_3; B,vec -> __multiply_6; "
-     "__multiply_6,t -> __deriv_5; __multiply_3,nabla -> __multiply_2; "
-     "__deriv_5 -> __negation_4; __multiply_2,__negation_4 -> __equals_1",
+     "nabla,vec:E -> multiply; t,vec:B -> partial_derivative; "
+     "partial_derivative -> negation; multiply,negation -> rel:equals",
+     "B,t -> __deriv_4; E,nabla -> __multiply_2; "
+     "__deriv_4 -> __negation_3; __multiply_2,__negation_3 -> __equals_1",
      None),
 
     ("lorentz",
      r"\vec{F} = q(\vec{E} + \vec{v} \times \vec{B})",
      PASS,
-     "B,vec -> multiply; E,vec -> multiply; F,vec -> multiply; "
-     "v,vec -> multiply; multiply,multiply -> multiply; "
-     "multiply,multiply -> add; add -> fn:q; fn:q,multiply -> rel:equals",
-     "F,vec -> __multiply_2; E,vec -> __multiply_5; "
-     "v,vec -> __multiply_7; B,vec -> __multiply_8; "
-     "__multiply_7,__multiply_8 -> __multiply_6; "
-     "__multiply_5,__multiply_6 -> __add_4; __add_4 -> __q_3; "
-     "__multiply_2,__q_3 -> __equals_1",
+     "vec:B,vec:v -> multiply; multiply,vec:E -> add; "
+     "add -> fn:q; fn:q,vec:F -> rel:equals",
+     "B,v -> __multiply_4; E,__multiply_4 -> __add_3; "
+     "__add_3 -> __q_2; F,__q_2 -> __equals_1",
      None),
 
     ("poynting",
      r"\vec{S} = \frac{1}{\mu_0} \vec{E} \times \vec{B}",
      PASS,
-     "B,vec -> multiply; E,vec -> multiply; S,vec -> multiply; "
-     "mu_{0} -> power; multiply,power -> multiply; "
-     "multiply,multiply -> multiply; multiply,multiply -> rel:equals",
-     "S,vec -> __multiply_2; E,vec -> __multiply_6; "
-     "B,vec -> __multiply_7; mu_{0} -> __power_5; "
-     "__multiply_6,__power_5 -> __multiply_4; "
-     "__multiply_4,__multiply_7 -> __multiply_3; "
-     "__multiply_2,__multiply_3 -> __equals_1",
+     "mu_{0} -> power; power,vec:E -> multiply; "
+     "multiply,vec:B -> multiply; multiply,vec:S -> rel:equals",
+     "mu_{0} -> __power_4; E,__power_4 -> __multiply_3; "
+     "B,__multiply_3 -> __multiply_2; S,__multiply_2 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
 
     ("ampere_maxwell",
      r"\nabla \times \vec{B} = \mu_0 \vec{J} "
      r"+ \mu_0 \epsilon_0 \frac{\partial \vec{E}}{\partial t}",
      PASS,
-     "B,vec -> multiply; E,vec -> multiply; J,vec -> multiply; "
-     "mu_{0},multiply -> multiply; multiply,nabla -> multiply; "
-     "multiply,t -> partial_derivative; "
+     "mu_{0},vec:J -> multiply; nabla,vec:B -> multiply; "
+     "t,vec:E -> partial_derivative; "
      "epsilon_{0},partial_derivative -> multiply; "
      "mu_{0},multiply -> multiply; multiply,multiply -> add; "
      "add,multiply -> rel:equals",
-     "E,vec -> __multiply_10; B,vec -> __multiply_3; "
-     "J,vec -> __multiply_6; __multiply_10,t -> __deriv_9; "
-     "__multiply_3,nabla -> __multiply_2; "
+     "E,t -> __deriv_7; B,nabla -> __multiply_2; "
+     "J,mu_{0} -> __multiply_4; "
+     "__deriv_7,epsilon_{0} -> __multiply_6; "
      "__multiply_6,mu_{0} -> __multiply_5; "
-     "__deriv_9,epsilon_{0} -> __multiply_8; "
-     "__multiply_8,mu_{0} -> __multiply_7; "
-     "__multiply_5,__multiply_7 -> __add_4; "
-     "__add_4,__multiply_2 -> __equals_1",
+     "__multiply_4,__multiply_5 -> __add_3; "
+     "__add_3,__multiply_2 -> __equals_1",
      None),
 ]
 

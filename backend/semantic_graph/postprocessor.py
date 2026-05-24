@@ -73,9 +73,14 @@ class GraphPostprocessor:
         graph: SemanticGraph | None,
         accent_map: dict[str, str],
     ) -> None:
-        """Re-wrap stripped accents in each node's display ``latex`` field."""
+        """Re-wrap stripped accents in each node's display ``latex`` field.
+
+        Also restores ``subexpr`` on every node so compound sub-expressions
+        (e.g. ``"F = m a"``) become ``"\\vec{F} = m \\vec{a}"``.
+        """
         if not graph or not accent_map:
             return
+        # Pass 1: symbol nodes — restore latex, type, and subexpr
         for node in graph.nodes:
             if node.type in ("operator", "relation"):
                 continue
@@ -89,6 +94,8 @@ class GraphPostprocessor:
                     node.latex = f"\\{accent}{{{body}}}"
                     if accent == "vec":
                         node.type = "vector"
+                    if hasattr(node, "subexpr") and node.subexpr == body:
+                        node.subexpr = f"\\{accent}{{{body}}}"
                     break
                 if latex.startswith(body) and len(latex) > len(body):
                     tail = latex[len(body):]
@@ -96,7 +103,30 @@ class GraphPostprocessor:
                         node.latex = f"\\{accent}{{{body}}}{tail}"
                         if accent == "vec":
                             node.type = "vector"
+                        if hasattr(node, "subexpr") and node.subexpr:
+                            if node.subexpr == body:
+                                node.subexpr = f"\\{accent}{{{body}}}"
+                            elif node.subexpr.startswith(body) and len(node.subexpr) > len(body) and node.subexpr[len(body)] in "_^":
+                                node.subexpr = f"\\{accent}{{{body}}}{node.subexpr[len(body):]}"
                         break
+
+        # Pass 2: restore accents inside *all* nodes' subexpr strings
+        # (operators, relations, etc. whose subexpr is a compound expression
+        # like "F = m a" → "\vec{F} = m \vec{a}").
+        # Sort by body length descending so longer matches replace first
+        # (avoids partial replacements on overlapping names).
+        sorted_items = sorted(accent_map.items(), key=lambda kv: -len(kv[0]))
+        for node in graph.nodes:
+            subexpr = getattr(node, "subexpr", None)
+            if not isinstance(subexpr, str) or not subexpr:
+                continue
+            for body, accent in sorted_items:
+                wrapped = f"\\{accent}{{{body}}}"
+                if wrapped in subexpr:
+                    continue  # already restored
+                if body in subexpr:
+                    subexpr = subexpr.replace(body, wrapped)
+            node.subexpr = subexpr
 
     @staticmethod
     def restore_subscripts(graph: SemanticGraph, mapping: dict[str, str]) -> None:
