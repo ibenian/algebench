@@ -79,12 +79,12 @@ def _collect_expressions() -> list[tuple[str, list[tuple[str, str]]]]:
         ("Algebra", ALGEBRA_EXPRESSIONS),
         ("Calculus", CALCULUS_EXPRESSIONS),
         ("ODE", ODE_EXPRESSIONS),
+        ("PDE", PDE_EXPRESSIONS),
         ("Structural", STRUCTURAL_EXPRESSIONS),
         ("Mechanics", MECHANICS_EXPRESSIONS),
         ("Electromagnetism", EM_EXPRESSIONS),
         ("Thermodynamics", THERMO_EXPRESSIONS),
         ("Waves & Optics", WAVES_EXPRESSIONS),
-        ("Partial Derivatives & PDEs", PDE_EXPRESSIONS),
     ):
         items = [(tid, latex) for tid, latex, *_ in catalog]
         sections.append((name, items))
@@ -181,24 +181,6 @@ def _page_template() -> str:
           }});
           fo.replaceChild(wrapper, outer);
           wrapper.appendChild(outer);
-        }});
-        requestAnimationFrame(() => {{
-          document.querySelectorAll('svg g.node foreignObject').forEach((fo) => {{
-            const content = fo.querySelector('.katex');
-            if (!content) return;
-            const rect = content.getBoundingClientRect();
-            const foRect = fo.getBoundingClientRect();
-            if (rect.height > foRect.height) {{
-              const pad = 8;
-              const newH = rect.height + pad;
-              const dy = (newH - foRect.height) / 2;
-              fo.setAttribute('height', newH);
-              const oldY = parseFloat(fo.getAttribute('y') || 0);
-              fo.setAttribute('y', oldY - dy);
-              const wrapper = fo.querySelector('[data-gv-centered="wrapper"]');
-              if (wrapper) wrapper.style.height = newH + 'px';
-            }}
-          }});
         }});
       }}
     </script>
