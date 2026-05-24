@@ -57,6 +57,64 @@
       fo.replaceChild(wrapper, outer);
       wrapper.appendChild(outer);
     });
+    // Resize foreignObject + parent node rect after KaTeX renders accents
+    document.querySelectorAll('svg g.node foreignObject').forEach((fo) => {
+      const content = fo.querySelector('[data-gv-centered="wrapper"]') || fo.firstElementChild;
+      if (!content) return;
+      const bbox = content.getBoundingClientRect();
+      const foRect = fo.getBoundingClientRect();
+      // Only expand if content is taller/wider than current foreignObject
+      const PAD = 8;
+      const neededH = bbox.height + PAD;
+      const neededW = bbox.width + PAD;
+      const curH = parseFloat(fo.getAttribute('height')) || foRect.height;
+      const curW = parseFloat(fo.getAttribute('width')) || foRect.width;
+      if (neededH > curH) {
+        const dh = neededH - curH;
+        fo.setAttribute('height', neededH);
+        // Shift foreignObject up by half the delta to keep node centered
+        const curY = parseFloat(fo.getAttribute('y')) || 0;
+        fo.setAttribute('y', curY - dh / 2);
+        // Also expand parent rect/polygon
+        const nodeG = fo.closest('g.node');
+        if (nodeG) {
+          const rect = nodeG.querySelector('rect, .basic');
+          if (rect) {
+            const rh = parseFloat(rect.getAttribute('height')) || 0;
+            if (rh && rh < neededH) {
+              rect.setAttribute('height', neededH);
+              const ry = parseFloat(rect.getAttribute('y')) || 0;
+              rect.setAttribute('y', ry - dh / 2);
+            }
+          }
+        }
+      }
+      if (neededW > curW) {
+        const dw = neededW - curW;
+        fo.setAttribute('width', neededW);
+        const curX = parseFloat(fo.getAttribute('x')) || 0;
+        fo.setAttribute('x', curX - dw / 2);
+        const nodeG = fo.closest('g.node');
+        if (nodeG) {
+          const rect = nodeG.querySelector('rect, .basic');
+          if (rect) {
+            const rw = parseFloat(rect.getAttribute('width')) || 0;
+            if (rw && rw < neededW) {
+              rect.setAttribute('width', neededW);
+              const rx = parseFloat(rect.getAttribute('x')) || 0;
+              rect.setAttribute('x', rx - dw / 2);
+            }
+          }
+        }
+      }
+    });
+    // Fix KaTeX accent arrow colors: SVG paths inside foreignObject
+    // default to fill:black which is invisible on dark backgrounds.
+    // Use inline style (not attribute) to override any CSS rules.
+    document.querySelectorAll('svg g.node foreignObject .katex svg path').forEach((p) => {
+      const textColor = window.getComputedStyle(p.closest('.katex')).color;
+      p.style.fill = textColor;
+    });
   }
 </script>
 <style>
@@ -116,6 +174,12 @@
   }
   .row-graph .mermaid svg g.node foreignObject {
     overflow: visible !important;
+  }
+  /* KaTeX accent arrows (e.g. ec) render as SVG paths that default
+     to fill:black — invisible on dark backgrounds. Inherit text color. */
+  .katex .accent-body svg path,
+  .katex .overlay svg path {
+    fill: currentColor;
   }
   .row-actions {
     display: flex;
@@ -182,7 +246,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-24 04:07 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-05-24 19:39 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Electromagnetism (15 expressions)</div>
 <div class="row">
   <div>
@@ -1542,42 +1606,30 @@
   __multiply_2(("$\times$")):::operator
   __multiply_3(("$\times$")):::operator
   oint["$\oint$"]:::scalar
+  E["$\vec{E}$"]:::vector
+  dA["$dA$"]:::scalar
   __multiply_4(("$\times$")):::operator
-  vec["$\vec$"]:::scalar
-  E["$E$"]:::scalar
-  __multiply_5(("$\times$")):::operator
-  dvec["$\mathrm{d}\vec$"]:::scalar
-  A["$A$"]:::scalar
-  __multiply_6(("$\times$")):::operator
   Q["$Q$"]:::scalar
-  __power_7(("${(\cdot)}^{-1}$")):::operator
+  __power_5(("${(\cdot)}^{-1}$")):::operator
   epsilon__0_["$\epsilon_{0}$"]:::scalar
   oint --&gt; __multiply_3
-  vec --&gt; __multiply_4
-  E --&gt; __multiply_4
-  __multiply_4 --&gt; __multiply_3
+  E --&gt; __multiply_3
   __multiply_3 --&gt; __multiply_2
-  dvec --&gt; __multiply_5
-  A --&gt; __multiply_5
-  __multiply_5 --&gt; __multiply_2
+  dA --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  Q --&gt; __multiply_6
-  epsilon__0_ --&gt; __power_7
-  __power_7 -.-&gt; __multiply_6
-  __multiply_6 --&gt; __equals_1
+  Q --&gt; __multiply_4
+  epsilon__0_ --&gt; __power_5
+  __power_5 -.-&gt; __multiply_4
+  __multiply_4 --&gt; __equals_1
   linkStyle 0 stroke:#ef5350,stroke-width:3px
   linkStyle 1 stroke:#ef5350,stroke-width:3px
   linkStyle 2 stroke:#ef5350,stroke-width:3px
   linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#ef5350,stroke-width:3px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#42a5f5,stroke-width:1px
   linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
-  linkStyle 11 stroke:#42a5f5,stroke-width:1px
-  linkStyle 12 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1597,13 +1649,13 @@
       "id": "__multiply_2",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\oint \\vec E A \\mathrm{d}\\vec"
+      "subexpr": "\\oint \\vec{E} d\\vec{A}"
     },
     {
       "id": "__multiply_3",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\oint \\vec E"
+      "subexpr": "\\oint \\vec{E}"
     },
     {
       "id": "oint",
@@ -1612,43 +1664,19 @@
       "subexpr": "\\oint"
     },
     {
-      "id": "__multiply_4",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\vec E"
-    },
-    {
-      "id": "vec",
-      "type": "scalar",
-      "latex": "\\vec",
-      "subexpr": "\\vec"
-    },
-    {
       "id": "E",
+      "type": "vector",
+      "latex": "\\vec{E}",
+      "subexpr": "\\vec{E}"
+    },
+    {
+      "id": "dA",
       "type": "scalar",
-      "latex": "E",
-      "subexpr": "E"
+      "latex": "dA",
+      "subexpr": "d\\vec{A}"
     },
     {
-      "id": "__multiply_5",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "A \\mathrm{d}\\vec"
-    },
-    {
-      "id": "dvec",
-      "type": "scalar",
-      "latex": "\\mathrm{d}\\vec",
-      "subexpr": "\\mathrm{d}\\vec"
-    },
-    {
-      "id": "A",
-      "type": "scalar",
-      "latex": "A",
-      "subexpr": "A"
-    },
-    {
-      "id": "__multiply_6",
+      "id": "__multiply_4",
       "type": "operator",
       "op": "multiply",
       "subexpr": "Q \\frac{1}{epsilon_{0}}"
@@ -1660,7 +1688,7 @@
       "subexpr": "Q"
     },
     {
-      "id": "__power_7",
+      "id": "__power_5",
       "type": "operator",
       "op": "power",
       "exponent": "-1",
@@ -1681,19 +1709,7 @@
       "weight": 1.0
     },
     {
-      "from": "vec",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
       "from": "E",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_4",
       "to": "__multiply_3",
       "semantic": "direct",
       "weight": 1.0
@@ -1705,19 +1721,7 @@
       "weight": 1.0
     },
     {
-      "from": "dvec",
-      "to": "__multiply_5",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "A",
-      "to": "__multiply_5",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_5",
+      "from": "dA",
       "to": "__multiply_2",
       "semantic": "direct",
       "weight": 1.0
@@ -1728,20 +1732,20 @@
     },
     {
       "from": "Q",
-      "to": "__multiply_6",
+      "to": "__multiply_4",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "epsilon_{0}",
-      "to": "__power_7"
+      "to": "__power_5"
     },
     {
-      "from": "__power_7",
-      "to": "__multiply_6"
+      "from": "__power_5",
+      "to": "__multiply_4"
     },
     {
-      "from": "__multiply_6",
+      "from": "__multiply_4",
       "to": "__equals_1"
     }
   ],
@@ -1771,37 +1775,26 @@
   __equals_1{"="}:::relation
   __multiply_2(("$\times$")):::operator
   nabla["$\nabla$"]:::scalar
-  __multiply_3(("$\times$")):::operator
-  vec["$\vec$"]:::scalar
-  E["$E$"]:::scalar
-  __negation_4@{ shape: "flip-tri", label: "$-$" }
-  __multiply_6(("$\times$")):::operator
-  B["$B$"]:::scalar
+  E["$\vec{E}$"]:::vector
+  __negation_3@{ shape: "flip-tri", label: "$-$" }
+  B["$\vec{B}$"]:::vector
   t["$t$"]:::scalar
-  __deriv_5(("$\dfrac{\partial}{\partial t}$")):::operator
-  class __negation_4 operator
+  __deriv_4(("$\dfrac{\partial}{\partial t}$")):::operator
+  class __negation_3 operator
   nabla --&gt; __multiply_2
-  vec --&gt; __multiply_3
-  E --&gt; __multiply_3
-  __multiply_3 --&gt; __multiply_2
+  E --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  vec --&gt; __multiply_6
-  B --&gt; __multiply_6
-  __multiply_6 --&gt; __deriv_5
-  t --&gt;|wrt| __deriv_5
-  __deriv_5 --&gt; __negation_4
-  __negation_4 --&gt; __equals_1
+  B --&gt; __deriv_4
+  t --&gt;|wrt| __deriv_4
+  __deriv_4 --&gt; __negation_3
+  __negation_3 --&gt; __equals_1
   linkStyle 0 stroke:#ef5350,stroke-width:3px
   linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1821,7 +1814,7 @@
       "id": "__multiply_2",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\nabla \\vec E"
+      "subexpr": "\\nabla \\times \\vec{E}"
     },
     {
       "id": "nabla",
@@ -1830,40 +1823,22 @@
       "subexpr": "\\nabla"
     },
     {
-      "id": "__multiply_3",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\vec E"
-    },
-    {
-      "id": "vec",
-      "type": "scalar",
-      "latex": "\\vec",
-      "subexpr": "\\vec"
-    },
-    {
       "id": "E",
-      "type": "scalar",
-      "latex": "E",
-      "subexpr": "E"
+      "type": "vector",
+      "latex": "\\vec{E}",
+      "subexpr": "\\vec{E}"
     },
     {
-      "id": "__negation_4",
+      "id": "__negation_3",
       "type": "operator",
       "op": "negation",
-      "subexpr": "-\\frac{\\partial \\vec B}{\\partial t}"
-    },
-    {
-      "id": "__multiply_6",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\vec B"
+      "subexpr": "-\\frac{\\partial \\vec{B}}{\\partial t}"
     },
     {
       "id": "B",
-      "type": "scalar",
-      "latex": "B",
-      "subexpr": "B"
+      "type": "vector",
+      "latex": "\\vec{B}",
+      "subexpr": "\\vec{B}"
     },
     {
       "id": "t",
@@ -1872,11 +1847,11 @@
       "subexpr": "t"
     },
     {
-      "id": "__deriv_5",
+      "id": "__deriv_4",
       "type": "operator",
       "op": "partial_derivative",
       "with_respect_to": "t",
-      "subexpr": "\\frac{\\partial \\vec B}{\\partial t}"
+      "subexpr": "\\frac{\\partial \\vec{B}}{\\partial t}"
     }
   ],
   "edges": [
@@ -1887,19 +1862,7 @@
       "weight": 1.0
     },
     {
-      "from": "vec",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
       "from": "E",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_3",
       "to": "__multiply_2",
       "semantic": "direct",
       "weight": 1.0
@@ -1909,42 +1872,49 @@
       "to": "__equals_1"
     },
     {
-      "from": "vec",
-      "to": "__multiply_6",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
       "from": "B",
-      "to": "__multiply_6",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_6",
-      "to": "__deriv_5"
+      "to": "__deriv_4"
     },
     {
       "from": "t",
-      "to": "__deriv_5",
+      "to": "__deriv_4",
       "role": "wrt"
     },
     {
-      "from": "__deriv_5",
-      "to": "__negation_4"
+      "from": "__deriv_4",
+      "to": "__negation_3"
     },
     {
-      "from": "__negation_4",
+      "from": "__negation_3",
       "to": "__equals_1"
     }
   ],
   "classification": {
     "kind": "ODE",
     "order": 1,
-    "dependent_variables": [],
+    "dependent_variables": [
+      "B"
+    ],
     "independent_variables": [
       "t"
-    ]
+    ],
+    "sympy_hints": [
+      "factorable",
+      "nth_algebraic",
+      "separable",
+      "1st_exact",
+      "1st_linear",
+      "Bernoulli",
+      "1st_power_series",
+      "lie_group",
+      "nth_linear_constant_coeff_undetermined_coefficients",
+      "nth_linear_euler_eq_nonhomogeneous_undetermined_coefficients",
+      "nth_linear_constant_coeff_variation_of_parameters",
+      "nth_linear_euler_eq_nonhomogeneous_variation_of_parameters"
+    ],
+    "linear": true,
+    "homogeneous": true,
+    "constant_coefficients": true
   }
 }</div>
 </div>
@@ -1967,48 +1937,27 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\times$")):::operator
-  vec["$\vec$"]:::scalar
-  F["$F$"]:::scalar
-  __q_3{{"$q(\cdot)$"}}:::function
-  __add_4(("$+$")):::operator
-  __multiply_5(("$\times$")):::operator
-  E["$E$"]:::scalar
-  __multiply_6(("$\times$")):::operator
-  __multiply_7(("$\times$")):::operator
-  v["$v$"]:::scalar
-  __multiply_8(("$\times$")):::operator
-  B["$B$"]:::scalar
-  vec --&gt; __multiply_2
-  F --&gt; __multiply_2
-  __multiply_2 --&gt; __equals_1
-  vec --&gt; __multiply_5
-  E --&gt; __multiply_5
-  __multiply_5 --&gt; __add_4
-  vec --&gt; __multiply_7
-  v --&gt; __multiply_7
-  __multiply_7 --&gt; __multiply_6
-  vec --&gt; __multiply_8
-  B --&gt; __multiply_8
-  __multiply_8 --&gt; __multiply_6
-  __multiply_6 --&gt; __add_4
-  __add_4 --&gt; __q_3
-  __q_3 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
+  F["$\vec{F}$"]:::vector
+  __q_2{{"$q(\cdot)$"}}:::function
+  __add_3(("$+$")):::operator
+  E["$\vec{E}$"]:::vector
+  __multiply_4(("$\times$")):::operator
+  v["$\vec{v}$"]:::vector
+  B["$\vec{B}$"]:::vector
+  F --&gt; __equals_1
+  E --&gt; __add_3
+  v --&gt; __multiply_4
+  B --&gt; __multiply_4
+  __multiply_4 --&gt; __add_3
+  __add_3 --&gt; __q_2
+  __q_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
   linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#ef5350,stroke-width:3px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
-  linkStyle 10 stroke:#ef5350,stroke-width:3px
-  linkStyle 11 stroke:#ef5350,stroke-width:3px
-  linkStyle 12 stroke:#aaa,stroke-width:2px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
-  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2022,160 +1971,82 @@
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "\\vec{F} = q(\\vec{E} + \\vec{v} \\times \\vec{B})"
-    },
-    {
-      "id": "__multiply_2",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\vec F"
-    },
-    {
-      "id": "vec",
-      "type": "scalar",
-      "latex": "\\vec",
-      "subexpr": "\\vec"
+      "subexpr": "\\\\vec{v}ec{F} = q(\\\\vec{v}ec{E} + \\vec{v} \\times \\vec{B})"
     },
     {
       "id": "F",
-      "type": "scalar",
-      "latex": "F",
-      "subexpr": "F"
+      "type": "vector",
+      "latex": "\\vec{F}",
+      "subexpr": "\\\\vec{v}ec{F}"
     },
     {
-      "id": "__q_3",
+      "id": "__q_2",
       "type": "function",
       "op": "q",
-      "subexpr": "q{\\left(E vec + B vec v vec \\right)}"
+      "subexpr": "q{\\left(\\vec{B} \\vec{v} + \\\\vec{v}ec{E} \\right)}"
     },
     {
-      "id": "__add_4",
+      "id": "__add_3",
       "type": "operator",
       "op": "add",
-      "subexpr": "\\vec E + \\vec v \\vec B"
-    },
-    {
-      "id": "__multiply_5",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\vec E"
+      "subexpr": "\\\\vec{v}ec{E} + \\vec{v} \\vec{B}"
     },
     {
       "id": "E",
-      "type": "scalar",
-      "latex": "E",
-      "subexpr": "E"
+      "type": "vector",
+      "latex": "\\vec{E}",
+      "subexpr": "\\\\vec{v}ec{E}"
     },
     {
-      "id": "__multiply_6",
+      "id": "__multiply_4",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\vec v \\vec B"
-    },
-    {
-      "id": "__multiply_7",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\vec v"
+      "subexpr": "\\vec{v} \\vec{B}"
     },
     {
       "id": "v",
-      "type": "scalar",
-      "latex": "v",
-      "subexpr": "v"
-    },
-    {
-      "id": "__multiply_8",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\vec B"
+      "type": "vector",
+      "latex": "\\vec{v}",
+      "subexpr": "\\vec{v}"
     },
     {
       "id": "B",
-      "type": "scalar",
-      "latex": "B",
-      "subexpr": "B"
+      "type": "vector",
+      "latex": "\\vec{B}",
+      "subexpr": "\\\\vec{v}ec{\\vec{B}}"
     }
   ],
   "edges": [
     {
-      "from": "vec",
-      "to": "__multiply_2",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
       "from": "F",
-      "to": "__multiply_2",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_2",
       "to": "__equals_1"
     },
     {
-      "from": "vec",
-      "to": "__multiply_5",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
       "from": "E",
-      "to": "__multiply_5",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_5",
-      "to": "__add_4"
-    },
-    {
-      "from": "vec",
-      "to": "__multiply_7",
-      "semantic": "direct",
-      "weight": 1.0
+      "to": "__add_3"
     },
     {
       "from": "v",
-      "to": "__multiply_7",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_7",
-      "to": "__multiply_6",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "vec",
-      "to": "__multiply_8",
+      "to": "__multiply_4",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "B",
-      "to": "__multiply_8",
+      "to": "__multiply_4",
       "semantic": "direct",
       "weight": 1.0
     },
     {
-      "from": "__multiply_8",
-      "to": "__multiply_6",
-      "semantic": "direct",
-      "weight": 1.0
+      "from": "__multiply_4",
+      "to": "__add_3"
     },
     {
-      "from": "__multiply_6",
-      "to": "__add_4"
+      "from": "__add_3",
+      "to": "__q_2"
     },
     {
-      "from": "__add_4",
-      "to": "__q_3"
-    },
-    {
-      "from": "__q_3",
+      "from": "__q_2",
       "to": "__equals_1"
     }
   ],
@@ -2203,43 +2074,27 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
+  S["$\vec{S}$"]:::vector
   __multiply_2(("$\times$")):::operator
-  vec["$\vec$"]:::scalar
-  S["$S$"]:::scalar
   __multiply_3(("$\times$")):::operator
-  __multiply_4(("$\times$")):::operator
-  __power_5(("${(\cdot)}^{-1}$")):::operator
+  __power_4(("${(\cdot)}^{-1}$")):::operator
   mu__0_["$\mu_{0}$"]:::scalar
-  __multiply_6(("$\times$")):::operator
-  E["$E$"]:::scalar
-  __multiply_7(("$\times$")):::operator
-  B["$B$"]:::scalar
-  vec --&gt; __multiply_2
-  S --&gt; __multiply_2
+  E["$\vec{E}$"]:::vector
+  B["$\vec{B}$"]:::vector
+  S --&gt; __equals_1
+  mu__0_ --&gt; __power_4
+  __power_4 -.-&gt; __multiply_3
+  E --&gt; __multiply_3
+  __multiply_3 --&gt; __multiply_2
+  B --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  mu__0_ --&gt; __power_5
-  __power_5 -.-&gt; __multiply_4
-  vec --&gt; __multiply_6
-  E --&gt; __multiply_6
-  __multiply_6 --&gt; __multiply_4
-  __multiply_4 --&gt; __multiply_3
-  vec --&gt; __multiply_7
-  B --&gt; __multiply_7
-  __multiply_7 --&gt; __multiply_3
-  __multiply_3 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#42a5f5,stroke-width:1px
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#42a5f5,stroke-width:1px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
   linkStyle 5 stroke:#ef5350,stroke-width:3px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#ef5350,stroke-width:3px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
-  linkStyle 10 stroke:#ef5350,stroke-width:3px
-  linkStyle 11 stroke:#ef5350,stroke-width:3px
-  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2256,37 +2111,25 @@
       "subexpr": "\\vec{S} = \\frac{1}{\\mu_0} \\vec{E} \\times \\vec{B}"
     },
     {
+      "id": "S",
+      "type": "vector",
+      "latex": "\\vec{S}",
+      "subexpr": "\\vec{S}"
+    },
+    {
       "id": "__multiply_2",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\vec S"
-    },
-    {
-      "id": "vec",
-      "type": "scalar",
-      "latex": "\\vec",
-      "subexpr": "\\vec"
-    },
-    {
-      "id": "S",
-      "type": "scalar",
-      "latex": "S",
-      "subexpr": "S"
+      "subexpr": "\\vec{B} \\vec{E} \\frac{1}{mu_{0}}"
     },
     {
       "id": "__multiply_3",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\frac{1}{mu_{0}} \\vec E \\vec B"
+      "subexpr": "\\vec{E} \\frac{1}{mu_{0}}"
     },
     {
-      "id": "__multiply_4",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\frac{1}{mu_{0}} \\vec E"
-    },
-    {
-      "id": "__power_5",
+      "id": "__power_4",
       "type": "operator",
       "op": "power",
       "exponent": "-1",
@@ -2299,99 +2142,51 @@
       "subexpr": "\\mu_{0}"
     },
     {
-      "id": "__multiply_6",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\vec E"
-    },
-    {
       "id": "E",
-      "type": "scalar",
-      "latex": "E",
-      "subexpr": "E"
-    },
-    {
-      "id": "__multiply_7",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\vec B"
+      "type": "vector",
+      "latex": "\\vec{E}",
+      "subexpr": "\\vec{E}"
     },
     {
       "id": "B",
-      "type": "scalar",
-      "latex": "B",
-      "subexpr": "B"
+      "type": "vector",
+      "latex": "\\vec{B}",
+      "subexpr": "\\vec{B}"
     }
   ],
   "edges": [
     {
-      "from": "vec",
-      "to": "__multiply_2",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
       "from": "S",
-      "to": "__multiply_2",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_2",
       "to": "__equals_1"
     },
     {
       "from": "mu_{0}",
-      "to": "__power_5"
+      "to": "__power_4"
     },
     {
-      "from": "__power_5",
-      "to": "__multiply_4"
-    },
-    {
-      "from": "vec",
-      "to": "__multiply_6",
-      "semantic": "direct",
-      "weight": 1.0
+      "from": "__power_4",
+      "to": "__multiply_3"
     },
     {
       "from": "E",
-      "to": "__multiply_6",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_6",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_4",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "vec",
-      "to": "__multiply_7",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "B",
-      "to": "__multiply_7",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_7",
       "to": "__multiply_3",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "__multiply_3",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "B",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_2",
       "to": "__equals_1"
     }
   ],
@@ -2421,61 +2216,45 @@
   __equals_1{"="}:::relation
   __multiply_2(("$\times$")):::operator
   nabla["$\nabla$"]:::scalar
-  __multiply_3(("$\times$")):::operator
-  vec["$\vec$"]:::scalar
-  B["$B$"]:::scalar
-  __add_4(("$+$")):::operator
-  __multiply_5(("$\times$")):::operator
+  B["$\vec{B}$"]:::vector
+  __add_3(("$+$")):::operator
+  __multiply_4(("$\times$")):::operator
   mu__0_["$\mu_{0}$"]:::scalar
+  J["$\vec{J}$"]:::vector
+  __multiply_5(("$\times$")):::operator
   __multiply_6(("$\times$")):::operator
-  J["$J$"]:::scalar
-  __multiply_7(("$\times$")):::operator
-  __multiply_8(("$\times$")):::operator
   epsilon__0_["$\epsilon_{0}$"]:::scalar
-  __multiply_10(("$\times$")):::operator
-  E["$E$"]:::scalar
+  E["$\vec{E}$"]:::vector
   t["$t$"]:::scalar
-  __deriv_9(("$\dfrac{\partial}{\partial t}$")):::operator
+  __deriv_7(("$\dfrac{\partial}{\partial t}$")):::operator
   nabla --&gt; __multiply_2
-  vec --&gt; __multiply_3
-  B --&gt; __multiply_3
-  __multiply_3 --&gt; __multiply_2
+  B --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
+  mu__0_ --&gt; __multiply_4
+  J --&gt; __multiply_4
+  __multiply_4 --&gt; __add_3
   mu__0_ --&gt; __multiply_5
-  vec --&gt; __multiply_6
-  J --&gt; __multiply_6
+  epsilon__0_ --&gt; __multiply_6
+  E --&gt; __deriv_7
+  t --&gt;|wrt| __deriv_7
+  __deriv_7 --&gt; __multiply_6
   __multiply_6 --&gt; __multiply_5
-  __multiply_5 --&gt; __add_4
-  mu__0_ --&gt; __multiply_7
-  epsilon__0_ --&gt; __multiply_8
-  vec --&gt; __multiply_10
-  E --&gt; __multiply_10
-  __multiply_10 --&gt; __deriv_9
-  t --&gt;|wrt| __deriv_9
-  __deriv_9 --&gt; __multiply_8
-  __multiply_8 --&gt; __multiply_7
-  __multiply_7 --&gt; __add_4
-  __add_4 --&gt; __equals_1
+  __multiply_5 --&gt; __add_3
+  __add_3 --&gt; __equals_1
   linkStyle 0 stroke:#ef5350,stroke-width:3px
   linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
   linkStyle 6 stroke:#ef5350,stroke-width:3px
   linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
   linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#ef5350,stroke-width:3px
   linkStyle 11 stroke:#ef5350,stroke-width:3px
-  linkStyle 12 stroke:#ef5350,stroke-width:3px
-  linkStyle 13 stroke:#ef5350,stroke-width:3px
-  linkStyle 14 stroke:#aaa,stroke-width:2px
-  linkStyle 15 stroke:#aaa,stroke-width:2px
-  linkStyle 16 stroke:#ef5350,stroke-width:3px
-  linkStyle 17 stroke:#ef5350,stroke-width:3px
-  linkStyle 18 stroke:#aaa,stroke-width:2px
-  linkStyle 19 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2495,7 +2274,7 @@
       "id": "__multiply_2",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\nabla \\vec B"
+      "subexpr": "\\nabla \\times \\vec{B}"
     },
     {
       "id": "nabla",
@@ -2504,34 +2283,22 @@
       "subexpr": "\\nabla"
     },
     {
-      "id": "__multiply_3",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\vec B"
-    },
-    {
-      "id": "vec",
-      "type": "scalar",
-      "latex": "\\vec",
-      "subexpr": "\\vec"
-    },
-    {
       "id": "B",
-      "type": "scalar",
-      "latex": "B",
-      "subexpr": "B"
+      "type": "vector",
+      "latex": "\\vec{B}",
+      "subexpr": "\\vec{B}"
     },
     {
-      "id": "__add_4",
+      "id": "__add_3",
       "type": "operator",
       "op": "add",
-      "subexpr": "\\mu_{0} \\vec J + \\mu_{0} \\epsilon_{0} \\frac{\\partial \\vec E}{\\partial t}"
+      "subexpr": "\\vec{J} \\mu_{0} + \\mu_{0} \\epsilon_{0} \\frac{\\partial \\vec{E}}{\\partial t}"
     },
     {
-      "id": "__multiply_5",
+      "id": "__multiply_4",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\mu_{0} \\vec J"
+      "subexpr": "\\vec{J} \\mu_{0}"
     },
     {
       "id": "mu_{0}",
@@ -2540,28 +2307,22 @@
       "subexpr": "\\mu_{0}"
     },
     {
+      "id": "J",
+      "type": "vector",
+      "latex": "\\vec{J}",
+      "subexpr": "\\vec{J}"
+    },
+    {
+      "id": "__multiply_5",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\mu_{0} \\epsilon_{0} \\frac{\\partial \\vec{E}}{\\partial t}"
+    },
+    {
       "id": "__multiply_6",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\vec J"
-    },
-    {
-      "id": "J",
-      "type": "scalar",
-      "latex": "J",
-      "subexpr": "J"
-    },
-    {
-      "id": "__multiply_7",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\mu_{0} \\epsilon_{0} \\frac{\\partial \\vec E}{\\partial t}"
-    },
-    {
-      "id": "__multiply_8",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\epsilon_{0} \\frac{\\partial \\vec E}{\\partial t}"
+      "subexpr": "\\epsilon_{0} \\frac{\\partial \\vec{E}}{\\partial t}"
     },
     {
       "id": "epsilon_{0}",
@@ -2570,16 +2331,10 @@
       "subexpr": "\\epsilon_{0}"
     },
     {
-      "id": "__multiply_10",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\vec E"
-    },
-    {
       "id": "E",
-      "type": "scalar",
-      "latex": "E",
-      "subexpr": "E"
+      "type": "vector",
+      "latex": "\\vec{E}",
+      "subexpr": "\\vec{E}"
     },
     {
       "id": "t",
@@ -2588,11 +2343,11 @@
       "subexpr": "t"
     },
     {
-      "id": "__deriv_9",
+      "id": "__deriv_7",
       "type": "operator",
       "op": "partial_derivative",
       "with_respect_to": "t",
-      "subexpr": "\\frac{\\partial \\vec E}{\\partial t}"
+      "subexpr": "\\frac{\\partial \\vec{E}}{\\partial t}"
     }
   ],
   "edges": [
@@ -2603,19 +2358,7 @@
       "weight": 1.0
     },
     {
-      "from": "vec",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
       "from": "B",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_3",
       "to": "__multiply_2",
       "semantic": "direct",
       "weight": 1.0
@@ -2626,18 +2369,43 @@
     },
     {
       "from": "mu_{0}",
-      "to": "__multiply_5",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "vec",
-      "to": "__multiply_6",
+      "to": "__multiply_4",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "J",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_4",
+      "to": "__add_3"
+    },
+    {
+      "from": "mu_{0}",
+      "to": "__multiply_5",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "epsilon_{0}",
+      "to": "__multiply_6",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "E",
+      "to": "__deriv_7"
+    },
+    {
+      "from": "t",
+      "to": "__deriv_7",
+      "role": "wrt"
+    },
+    {
+      "from": "__deriv_7",
       "to": "__multiply_6",
       "semantic": "direct",
       "weight": 1.0
@@ -2650,69 +2418,39 @@
     },
     {
       "from": "__multiply_5",
-      "to": "__add_4"
+      "to": "__add_3"
     },
     {
-      "from": "mu_{0}",
-      "to": "__multiply_7",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "epsilon_{0}",
-      "to": "__multiply_8",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "vec",
-      "to": "__multiply_10",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "E",
-      "to": "__multiply_10",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_10",
-      "to": "__deriv_9"
-    },
-    {
-      "from": "t",
-      "to": "__deriv_9",
-      "role": "wrt"
-    },
-    {
-      "from": "__deriv_9",
-      "to": "__multiply_8",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_8",
-      "to": "__multiply_7",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_7",
-      "to": "__add_4"
-    },
-    {
-      "from": "__add_4",
+      "from": "__add_3",
       "to": "__equals_1"
     }
   ],
   "classification": {
     "kind": "ODE",
     "order": 1,
-    "dependent_variables": [],
+    "dependent_variables": [
+      "E"
+    ],
     "independent_variables": [
       "t"
-    ]
+    ],
+    "sympy_hints": [
+      "factorable",
+      "nth_algebraic",
+      "separable",
+      "1st_exact",
+      "1st_linear",
+      "Bernoulli",
+      "1st_power_series",
+      "lie_group",
+      "nth_linear_constant_coeff_undetermined_coefficients",
+      "nth_linear_euler_eq_nonhomogeneous_undetermined_coefficients",
+      "nth_linear_constant_coeff_variation_of_parameters",
+      "nth_linear_euler_eq_nonhomogeneous_variation_of_parameters"
+    ],
+    "linear": true,
+    "homogeneous": true,
+    "constant_coefficients": true
   }
 }</div>
 </div>
