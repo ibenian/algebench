@@ -75,6 +75,14 @@ class TestGraphStructure:
         assert _find_node(g, id="x")
         assert _find_node(g, type="operator", op="power")
 
+    def test_power_inverse_label(self):
+        r"""Power node with exponent=-1 should display as \\dfrac{1}{(\\cdot)}."""
+        g = latex_to_semantic_graph(r"\frac{Q}{V}")
+        pw = _find_node(g, type="operator", op="power")
+        assert pw is not None
+        assert pw.exponent == "-1"
+        assert pw.latex == r"\dfrac{1}{(\cdot)}"
+
     def test_edges_connect_operands_to_operator(self):
         g = latex_to_semantic_graph("x + y")
         add_node = _find_node(g, type="operator", op="add")

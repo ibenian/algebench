@@ -106,6 +106,8 @@ def _operator_glyph(node: dict) -> str | None:
         return None
     if op == "power":
         exp = node.get("exponent")
+        if exp is not None and str(exp) == "-1":
+            return "1/(·)"
         return f"(·){_to_superscript(exp)}" if exp else "(·)˙"
     if op in ("derivative", "partial_derivative"):
         d = "∂" if op == "partial_derivative" else "d"
@@ -1265,7 +1267,10 @@ class SemanticGraphBuilder:
             exponent = expr.args[1]
             exp_val = self._fmt_number(exponent)
             node_id = self._next_id("power")
-            self._add_node(node_id, type="operator", op="power", exponent=exp_val)
+            attrs: dict[str, Any] = {"type": "operator", "op": "power", "exponent": exp_val}
+            if exponent == -1:
+                attrs["latex"] = r"\dfrac{1}{(\cdot)}"
+            self._add_node(node_id, **attrs)
             base_id = self._walk(expr.args[0])
             self._add_edge(base_id, node_id)
             return node_id

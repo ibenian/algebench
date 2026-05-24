@@ -308,6 +308,8 @@ def _format_label(
     if node_type in ("operator", "function", "expression"):
         exponent = node.get("exponent", "")
         if op == "power" and exponent:
+            if str(exponent) == "-1":
+                return r"$\dfrac{1}{(\cdot)}$"
             return f"${{(\\cdot)}}^{{{exponent}}}$"
         # Derivative / integral: show the actual variable from with_respect_to
         wrt = node.get("with_respect_to", "")
