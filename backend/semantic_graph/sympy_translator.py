@@ -443,8 +443,14 @@ def _strip_tracked_accents(
     return cleaned
 
 
-def _preprocess_latex(latex: str) -> str:
-    """Rewrite LaTeX patterns that SymPy's parse_latex doesn't handle."""
+def _preprocess_latex(latex: str) -> tuple[str, set[str]]:
+    """Rewrite LaTeX patterns that SymPy's parse_latex doesn't handle.
+
+    Returns ``(preprocessed_latex, bare_sum_indices)`` where
+    *bare_sum_indices* is the set of index variable names that were
+    given synthetic ``{idx=0}^{\\infty}`` bounds by the preprocessor
+    (originating from bare ``\\sum_i`` notation).
+    """
     def _expand_higher_deriv(m: re.Match) -> str:
         op = m.group(1)
         order = int(m.group(2) or m.group(3))
@@ -463,10 +469,11 @@ def _preprocess_latex(latex: str) -> str:
     )
     latex = LaTeXPreprocessor.rewrite_dot_derivatives(latex)
     latex = LaTeXPreprocessor.normalize_frac_derivatives(latex)
-    latex = LaTeXPreprocessor.normalize_bare_sums(latex)
+    bare_sum_indices: set[str] = set()
+    latex = LaTeXPreprocessor.normalize_bare_sums(latex, captured=bare_sum_indices)
     latex = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", latex)
     latex = re.sub(r"\\(?:quad|qquad|,|;|!)\s*", " ", latex)
-    return latex
+    return latex, bare_sum_indices
 
 
 def _inject_annotations(graph: dict, annotations: list[dict[str, str]]) -> None:
@@ -830,6 +837,7 @@ class SemanticGraphBuilder:
         overrides: dict[str, dict[str, str]] | None = None,
         latex_commands: dict[str, str] | None = None,
         original_latex: str | None = None,
+        bare_sum_indices: set[str] | None = None,
     ) -> None:
         self.nodes: list[dict[str, str]] = []
         self.edges: list[dict[str, str]] = []
@@ -838,6 +846,7 @@ class SemanticGraphBuilder:
         self._overrides = overrides or {}
         self._latex_commands = latex_commands or {}
         self._original_latex = original_latex or ""
+        self._bare_sum_indices: set[str] = bare_sum_indices or set()
         self._symbol_order = self._build_symbol_order()
 
     @staticmethod
@@ -1239,19 +1248,32 @@ class SemanticGraphBuilder:
                 var_id = self._walk(limit_tuple[0])
                 wrt_ids.append(var_id)
                 if len(limit_tuple) >= 3:
-                    lower_nid = self._walk(limit_tuple[1])
-                    upper_nid = self._walk(limit_tuple[2])
+                    lb_expr = limit_tuple[1]
+                    ub_expr = limit_tuple[2]
 
-                    # Index specification: ``n = 0`` as a symmetric
-                    # equals node — no roles (same as any other ``=``).
-                    idx_id = self._next_id("equals")
-                    self._add_node(idx_id, type="relation", op="equals")
-                    self._add_edge(var_id, idx_id)
-                    self._add_edge(lower_nid, idx_id)
-                    self._add_edge(idx_id, node_id, role="lb")
+                    # Check if this index variable had synthetic bounds
+                    # injected by the preprocessor for bare ``\sum_i``
+                    # notation.  Only suppress bounds when the index is
+                    # known-synthetic — explicit ``\sum_{n=0}^{\infty}``
+                    # must keep its bound nodes.
+                    idx_name = str(limit_tuple[0])
+                    synthetic = idx_name in self._bare_sum_indices
+                    if synthetic:
+                        self._add_edge(var_id, node_id, role="wrt")
+                    else:
+                        lower_nid = self._walk(lb_expr)
+                        upper_nid = self._walk(ub_expr)
 
-                    # Upper bound feeds directly into the sum/product.
-                    self._add_edge(upper_nid, node_id, role="ub")
+                        # Index specification: ``n = 0`` as a symmetric
+                        # equals node — no roles (same as any other ``=``).
+                        idx_id = self._next_id("equals")
+                        self._add_node(idx_id, type="relation", op="equals")
+                        self._add_edge(var_id, idx_id)
+                        self._add_edge(lower_nid, idx_id)
+                        self._add_edge(idx_id, node_id, role="lb")
+
+                        # Upper bound feeds directly into the sum/product.
+                        self._add_edge(upper_nid, node_id, role="ub")
 
             node_attrs["with_respect_to"] = ", ".join(wrt_ids)
             if lower_nid is not None:
@@ -1400,12 +1422,14 @@ def _build_relation_graph(
     latex_commands: dict[str, str] | None = None,
     parenthetical_annotations: list | None = None,
     domain: str | None = None,
+    bare_sum_indices: set[str] | None = None,
 ) -> dict:
     r"""Build a graph for a binary relation ``lhs <op> rhs``."""
     builder = SemanticGraphBuilder(
         overrides=overrides,
         latex_commands=latex_commands or {},
         original_latex=original_latex,
+        bare_sum_indices=bare_sum_indices,
     )
 
     def _walk_relation_side(side_latex: str) -> tuple[str, sympy.Basic | None]:
@@ -1478,6 +1502,7 @@ def _build_chained_asymmetric_relation_graph(
     latex_commands: dict[str, str] | None = None,
     parenthetical_annotations: list | None = None,
     domain: str | None = None,
+    bare_sum_indices: set[str] | None = None,
 ) -> dict:
     r"""Build right-associative nested binary nodes for chained asymmetric relations.
 
@@ -1493,6 +1518,7 @@ def _build_chained_asymmetric_relation_graph(
         overrides=overrides,
         latex_commands=latex_commands or {},
         original_latex=original_latex,
+        bare_sum_indices=bare_sum_indices,
     )
     part_ids: list[str] = []
     try:
@@ -1540,6 +1566,7 @@ def _build_nary_relation_graph(
     latex_commands: dict[str, str] | None = None,
     parenthetical_annotations: list | None = None,
     domain: str | None = None,
+    bare_sum_indices: set[str] | None = None,
 ) -> dict:
     r"""Build an n-ary relation graph: all parts feed into one relation node.
 
@@ -1551,6 +1578,7 @@ def _build_nary_relation_graph(
         overrides=overrides,
         latex_commands=latex_commands or {},
         original_latex=original_latex,
+        bare_sum_indices=bare_sum_indices,
     )
     part_ids: list[str] = []
     first_expr = None
@@ -1601,7 +1629,7 @@ def _walk_condition_into(
     symbol dedup works across the whole piecewise graph.
     Returns the root node ID of the condition sub-graph.
     """
-    preprocessed = _preprocess_latex(cond_latex)
+    preprocessed, _ = _preprocess_latex(cond_latex)
     rel = _split_on_relation(preprocessed)
 
     if rel is not None:
@@ -1890,7 +1918,7 @@ def _latex_to_semantic_graph_dict(
     compound_collapsed, compound_overrides = _collapse_compound_symbols(braket_collapsed)
     collapsed, text_overrides = _collapse_text_commands(compound_collapsed)
     font_unwrapped = _strip_symbol_font_commands(collapsed)
-    preprocessed = _preprocess_latex(font_unwrapped)
+    preprocessed, bare_sum_indices = _preprocess_latex(font_unwrapped)
     latex_commands = _extract_latex_commands(latex)
     merged_overrides: dict[str, dict[str, str]] = {
         **braket_overrides,
@@ -1926,7 +1954,7 @@ def _latex_to_semantic_graph_dict(
                     parts, rel_meta, latex,
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
-                    domain=domain,
+                    domain=domain, bare_sum_indices=bare_sum_indices,
                 )
             else:
                 # Asymmetric meta-relations (implies) → right-associative nesting.
@@ -1934,13 +1962,14 @@ def _latex_to_semantic_graph_dict(
                     parts, rel_meta, latex,
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
-                    domain=domain,
+                    domain=domain, bare_sum_indices=bare_sum_indices,
                 )
 
         graph = _build_relation_graph(
             lhs_latex, rel_meta, rhs_latex, latex,
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations, domain=domain,
+            bare_sum_indices=bare_sum_indices,
         )
         return graph
 
@@ -1977,13 +2006,14 @@ def _latex_to_semantic_graph_dict(
                     parts, rel_meta, latex,
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
-                    domain=domain,
+                    domain=domain, bare_sum_indices=bare_sum_indices,
                 )
 
         graph = _build_relation_graph(
             lhs_latex, rel_meta, rhs_latex, latex,
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations, domain=domain,
+            bare_sum_indices=bare_sum_indices,
         )
         return graph
 
@@ -1995,7 +2025,7 @@ def _latex_to_semantic_graph_dict(
             chained_parts, eq_meta, latex,
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations,
-            domain=domain,
+            domain=domain, bare_sum_indices=bare_sum_indices,
         )
 
     # --- Single expression ---
@@ -2015,7 +2045,7 @@ def _latex_to_semantic_graph_dict(
             lhs_latex, rhs_latex = eq_split
             builder = SemanticGraphBuilder(
                 overrides=overrides, latex_commands=latex_commands,
-                original_latex=latex,
+                original_latex=latex, bare_sum_indices=bare_sum_indices,
             )
             try:
                 lhs_expr = parse_latex(lhs_latex)
@@ -2045,7 +2075,10 @@ def _latex_to_semantic_graph_dict(
             return graph
 
     classification = _classify_expression(expr)
-    builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands, original_latex=latex)
+    builder = SemanticGraphBuilder(
+        overrides=overrides, latex_commands=latex_commands,
+        original_latex=latex, bare_sum_indices=bare_sum_indices,
+    )
     graph = builder.build(expr, original_latex=latex)
     graph["classification"] = classification
     if domain:

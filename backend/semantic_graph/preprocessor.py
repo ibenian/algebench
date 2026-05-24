@@ -192,7 +192,10 @@ class LaTeXPreprocessor:
         return "".join(out)
 
     @staticmethod
-    def normalize_bare_sums(latex: str) -> str:
+    def normalize_bare_sums(
+        latex: str,
+        captured: set[str] | None = None,
+    ) -> str:
         r"""Add default bounds to bare ``\sum_i`` / ``\prod_j`` notation.
 
         SymPy's ``parse_latex`` requires explicit bounds, e.g.
@@ -204,6 +207,10 @@ class LaTeXPreprocessor:
 
         Only bare subscripts (no ``=`` inside) without a following ``^``
         are rewritten — fully bounded forms are left untouched.
+
+        If *captured* is provided, index variable names that were
+        normalised are added to the set so the translator can suppress
+        the synthetic bound nodes.
         """
         if not isinstance(latex, str):
             return latex
@@ -222,6 +229,8 @@ class LaTeXPreprocessor:
         def _repl(m: re.Match) -> str:
             cmd = m.group(1)
             idx = m.group(2) or m.group(3)
+            if captured is not None:
+                captured.add(idx)
             return rf"{cmd}_{{{idx}=0}}^{{\infty}}"
 
         return pattern.sub(_repl, latex)

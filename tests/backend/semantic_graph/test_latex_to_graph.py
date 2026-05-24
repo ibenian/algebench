@@ -358,7 +358,7 @@ class TestDerivatives:
         assert "t" in (deriv.with_respect_to or "")
 
     def test_dot_notation_preprocessed(self):
-        result = _preprocess_latex(r"\dot{x}")
+        result, _ = _preprocess_latex(r"\dot{x}")
         assert r"\frac" in result
         assert "d t" in result or "dt" in result
 
@@ -369,7 +369,7 @@ class TestDerivatives:
         assert "t" in (deriv.with_respect_to or "")
 
     def test_ddot_notation_preprocessed(self):
-        result = _preprocess_latex(r"\ddot{x}")
+        result, _ = _preprocess_latex(r"\ddot{x}")
         assert result.count(r"\frac") == 2
 
     def test_ddot_notation_graph(self):
@@ -380,7 +380,7 @@ class TestDerivatives:
         assert "t" in (deriv.with_respect_to or "")
 
     def test_higher_order_derivative(self):
-        result = _preprocess_latex(r"\frac{d^2 y}{dy^2}")
+        result, _ = _preprocess_latex(r"\frac{d^2 y}{dy^2}")
         assert result.count(r"\frac") == 2
 
     def test_higher_order_derivative_graph(self):
@@ -390,11 +390,11 @@ class TestDerivatives:
         assert "y" in (deriv.with_respect_to or "")
 
     def test_higher_order_derivative_braced(self):
-        result = _preprocess_latex(r"\frac{d^{2} y}{dy^{2}}")
+        result, _ = _preprocess_latex(r"\frac{d^{2} y}{dy^{2}}")
         assert result.count(r"\frac") == 2
 
     def test_higher_order_partial_braced(self):
-        result = _preprocess_latex(r"\frac{\partial^{3} u}{\partial x^{3}}")
+        result, _ = _preprocess_latex(r"\frac{\partial^{3} u}{\partial x^{3}}")
         assert result.count(r"\frac") == 3
 
     def test_ordinary_derivative_not_partial(self):
