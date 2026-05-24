@@ -1,5 +1,7 @@
 # AlgeBench
 
+[**ibenian.github.io/algebench**](https://ibenian.github.io/algebench/)
+
 **See and touch the math.**
 **Think with an AI.**
 
