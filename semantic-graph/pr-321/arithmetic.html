@@ -246,7 +246,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-24 19:39 UTC &middot; theme: default-dark &middot; 24 expressions</div>
+<div class="report-meta">Generated 2026-05-24 20:35 UTC &middot; theme: default-dark &middot; 24 expressions</div>
 <div class="section-title">Arithmetic (24 expressions)</div>
 <div class="row">
   <div>
@@ -667,7 +667,7 @@
   __equals_1{"="}:::relation
   __multiply_2(("$\times$")):::operator
   a["$a$"]:::scalar
-  __power_3(("${(\cdot)}^{-1}$")):::operator
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
   b["$b$"]:::scalar
   c["$c$"]:::scalar
   a --&gt; __multiply_2
@@ -710,6 +710,7 @@
     {
       "id": "__power_3",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{b}"
@@ -1562,7 +1563,7 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __power_2(("${(\cdot)}^{-1}$")):::operator
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
   x["$x$"]:::scalar
   y["$y$"]:::scalar
   x --&gt; __power_2
@@ -1589,6 +1590,7 @@
     {
       "id": "__power_2",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{x}"
@@ -1648,7 +1650,7 @@
   __add_3(("$+$")):::operator
   x["$x$"]:::scalar
   y["$y$"]:::scalar
-  __power_4(("${(\cdot)}^{-1}$")):::operator
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
   z["$z$"]:::scalar
   w["$w$"]:::scalar
   x --&gt; __add_3
@@ -1707,6 +1709,7 @@
     {
       "id": "__power_4",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{z}"
@@ -1783,9 +1786,9 @@
   __multiply_2(("$\times$")):::operator
   __multiply_3(("$\times$")):::operator
   a["$a$"]:::scalar
-  __power_4(("${(\cdot)}^{-1}$")):::operator
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
   b["$b$"]:::scalar
-  __power_5(("${(\cdot)}^{-1}$")):::operator
+  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
   c["$c$"]:::scalar
   d["$d$"]:::scalar
   a --&gt; __multiply_3
@@ -1840,6 +1843,7 @@
     {
       "id": "__power_4",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{b}"
@@ -1853,6 +1857,7 @@
     {
       "id": "__power_5",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{c}"
@@ -2219,7 +2224,7 @@
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __multiply_1(("$\times$")):::operator
   __num_2["$10$"]:::number
-  __power_3(("${(\cdot)}^{-1}$")):::operator
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
   __num_4["$2$"]:::number
   __num_5["$5$"]:::number
   __equals_6{"="}:::relation
@@ -2257,6 +2262,7 @@
     {
       "id": "__power_3",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{2}"
@@ -2534,15 +2540,15 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __add_1(("$+$")):::operator
-  __power_2(("${(\cdot)}^{-1}$")):::operator
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
   __num_3["$2$"]:::number
   __multiply_4(("$\times$")):::operator
   __num_5["$3$"]:::number
-  __power_6(("${(\cdot)}^{-1}$")):::operator
+  __power_6(("$\dfrac{1}{(\cdot)}$")):::operator
   __num_7["$4$"]:::number
   __multiply_8(("$\times$")):::operator
   __num_9["$5$"]:::number
-  __power_10(("${(\cdot)}^{-1}$")):::operator
+  __power_10(("$\dfrac{1}{(\cdot)}$")):::operator
   __num_11["$4$"]:::number
   __equals_12{"="}:::relation
   __num_3 --&gt; __power_2
@@ -2585,6 +2591,7 @@
     {
       "id": "__power_2",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{2}"
@@ -2610,6 +2617,7 @@
     {
       "id": "__power_6",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{4}"
@@ -2635,6 +2643,7 @@
     {
       "id": "__power_10",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{4}"

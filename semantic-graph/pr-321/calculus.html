@@ -246,7 +246,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-24 19:39 UTC &middot; theme: default-dark &middot; 13 expressions</div>
+<div class="report-meta">Generated 2026-05-24 20:35 UTC &middot; theme: default-dark &middot; 13 expressions</div>
 <div class="section-title">Calculus (13 expressions)</div>
 <div class="row">
   <div>
@@ -270,7 +270,7 @@
   __multiply_3(("$\times$")):::operator
   __sin_4{{"$sin(\cdot)$"}}:::function
   x["$x$"]:::scalar
-  __power_5(("${(\cdot)}^{-1}$")):::operator
+  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
   __num_6["$0$"]:::number
   __tends_to_7(("$\to$")):::operator
   __limit_2(("$\lim$")):::operator
@@ -332,6 +332,7 @@
     {
       "id": "__power_5",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{x}"
@@ -435,14 +436,14 @@
   __multiply_3(("$\times$")):::operator
   __f_4{{"$f(\cdot)$"}}:::function
   x["$x$"]:::scalar
-  __power_5(("${(\cdot)}^{-1}$")):::operator
+  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
   __g_6{{"$g(\cdot)$"}}:::function
   a["$a$"]:::scalar
   __tends_to_7(("$\to$")):::operator
   __limit_2(("$\lim$")):::operator
   __multiply_9(("$\times$")):::operator
   __f'_10{{"$f'(\cdot)$"}}:::function
-  __power_11(("${(\cdot)}^{-1}$")):::operator
+  __power_11(("$\dfrac{1}{(\cdot)}$")):::operator
   __g'_12{{"$g'(\cdot)$"}}:::function
   __tends_to_13(("$\to$")):::operator
   __limit_8(("$\lim$")):::operator
@@ -522,6 +523,7 @@
     {
       "id": "__power_5",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{g{\\left(x \\right)}}"
@@ -566,6 +568,7 @@
     {
       "id": "__power_11",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{\\operatorname{g'}{\\left(x \\right)}}"
@@ -704,7 +707,7 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __power_3(("${(\cdot)}^{-1}$")):::operator
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
   x["$x$"]:::scalar
   __const_4["$\infty$"]:::constant
   __tends_to_5(("$\to$")):::operator
@@ -742,6 +745,7 @@
     {
       "id": "__power_3",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{x}"
@@ -1261,7 +1265,7 @@
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __multiply_1(("$\times$")):::operator
   f["$f$"]:::scalar
-  __power_2(("${(\cdot)}^{-1}$")):::operator
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
   g["$g$"]:::scalar
   f --&gt; __multiply_1
   g --&gt; __power_2
@@ -1293,6 +1297,7 @@
     {
       "id": "__power_2",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{g}"
@@ -1353,7 +1358,7 @@
   __negation_6@{ shape: "flip-tri", label: "$-$" }
   __f_7{{"$f(\cdot)$"}}:::function
   a["$a$"]:::scalar
-  __power_8(("${(\cdot)}^{-1}$")):::operator
+  __power_8(("$\dfrac{1}{(\cdot)}$")):::operator
   __add_9(("$+$")):::operator
   __negation_10@{ shape: "flip-tri", label: "$-$" }
   class __negation_6 operator
@@ -1458,6 +1463,7 @@
     {
       "id": "__power_8",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{- a + b}"
@@ -1568,7 +1574,7 @@
   __power_6(("$(\cdot)^{\cdot}$")):::operator
   __add_7(("$+$")):::operator
   __num_8["$1$"]:::number
-  __power_9(("${(\cdot)}^{-1}$")):::operator
+  __power_9(("$\dfrac{1}{(\cdot)}$")):::operator
   __add_10(("$+$")):::operator
   __num_11["$1$"]:::number
   C["$C$"]:::scalar
@@ -1677,6 +1683,7 @@
     {
       "id": "__power_9",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{n + 1}"
@@ -2110,7 +2117,7 @@
   __sum_3(("$\sum$")):::operator
   __multiply_7(("$\times$")):::operator
   __power_8(("$(\cdot)^{\cdot}$")):::operator
-  __power_9(("${(\cdot)}^{-1}$")):::operator
+  __power_9(("$\dfrac{1}{(\cdot)}$")):::operator
   __factorial_10(("$(\cdot)!$")):::operator
   e --&gt; __power_2
   x --&gt;|exp| __power_2
@@ -2222,6 +2229,7 @@
     {
       "id": "__power_9",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{n!}"
@@ -2332,7 +2340,7 @@
   __sum_2(("$\sum$")):::operator
   __power_6(("$(\cdot)^{\cdot}$")):::operator
   r["$r$"]:::scalar
-  __power_7(("${(\cdot)}^{-1}$")):::operator
+  __power_7(("$\dfrac{1}{(\cdot)}$")):::operator
   __add_8(("$+$")):::operator
   __num_9["$1$"]:::number
   __negation_10@{ shape: "flip-tri", label: "$-$" }
@@ -2425,6 +2433,7 @@
     {
       "id": "__power_7",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{1 - r}"

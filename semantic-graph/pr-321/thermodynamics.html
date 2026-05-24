@@ -246,7 +246,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-24 19:39 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-05-24 20:35 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Thermodynamics (15 expressions)</div>
 <div class="row">
   <div>
@@ -555,11 +555,11 @@
   __equals_1{"="}:::relation
   __multiply_2(("$\times$")):::operator
   V__1_["$V_{1}$"]:::scalar
-  __power_3(("${(\cdot)}^{-1}$")):::operator
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
   T__1_["$T_{1}$"]:::scalar
   __multiply_4(("$\times$")):::operator
   V__2_["$V_{2}$"]:::scalar
-  __power_5(("${(\cdot)}^{-1}$")):::operator
+  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
   T__2_["$T_{2}$"]:::scalar
   V__1_ --&gt; __multiply_2
   T__1_ --&gt; __power_3
@@ -607,6 +607,7 @@
     {
       "id": "__power_3",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{T_{1}}"
@@ -632,6 +633,7 @@
     {
       "id": "__power_5",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{T_{2}}"
@@ -1221,7 +1223,7 @@
   __multiply_2(("$\times$")):::operator
   __multiply_3(("$\times$")):::operator
   __num_4["$3$"]:::number
-  __power_5(("${(\cdot)}^{-1}$")):::operator
+  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
   __num_6["$2$"]:::number
   __multiply_7(("$\times$")):::operator
   k__B_["$k_{B}$"]:::scalar
@@ -1286,6 +1288,7 @@
     {
       "id": "__power_5",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{2}"
@@ -1390,7 +1393,7 @@
   S["$S$"]:::scalar
   __multiply_2(("$\times$")):::operator
   Q["$Q$"]:::scalar
-  __power_3(("${(\cdot)}^{-1}$")):::operator
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
   T["$T$"]:::scalar
   S --&gt; __equals_1
   Q --&gt; __multiply_2
@@ -1438,6 +1441,7 @@
     {
       "id": "__power_3",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{T}"
@@ -1627,7 +1631,7 @@
   __negation_4@{ shape: "flip-tri", label: "$-$" }
   __multiply_5(("$\times$")):::operator
   T__C_["$T_{C}$"]:::scalar
-  __power_6(("${(\cdot)}^{-1}$")):::operator
+  __power_6(("$\dfrac{1}{(\cdot)}$")):::operator
   T__H_["$T_{H}$"]:::scalar
   class __negation_4 operator
   eta --&gt; __equals_1
@@ -1700,6 +1704,7 @@
     {
       "id": "__power_6",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{T_{H}}"
@@ -1774,7 +1779,7 @@
   oint["$\oint$"]:::scalar
   __multiply_2(("$\times$")):::operator
   dQ["$dQ$"]:::scalar
-  __power_3(("${(\cdot)}^{-1}$")):::operator
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
   T["$T$"]:::scalar
   __num_4["$0$"]:::number
   __less_equal_5{"≤"}:::relation
@@ -1828,6 +1833,7 @@
     {
       "id": "__power_3",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{T}"
@@ -2065,7 +2071,7 @@
   __multiply_6(("$\times$")):::operator
   k__B_["$k_{B}$"]:::scalar
   T["$T$"]:::scalar
-  __power_7(("${(\cdot)}^{-1}$")):::operator
+  __power_7(("$\dfrac{1}{(\cdot)}$")):::operator
   m["$m$"]:::scalar
   v__r__m_s__ --&gt; __equals_1
   __num_5 --&gt; __multiply_4
@@ -2154,6 +2160,7 @@
     {
       "id": "__power_7",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{m}"
@@ -2241,7 +2248,7 @@ antlr4.error.Errors.NoViableAltException: None
 During handling of the above exception, another exception occurred:
 
 Traceback (most recent call last):
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1997, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 2002, in _latex_to_semantic_graph_dict
     expr = parse_latex(preprocessed)
   File "/home/runner/work/algebench/algebench/.venv/lib/python3.14/site-packages/sympy/parsing/latex/__init__.py", line 199, in parse_latex
     return _latex.parse_latex(s, strict)
@@ -2335,9 +2342,9 @@ The above exception was the direct cause of the following exception:
 Traceback (most recent call last):
   File "/home/runner/work/algebench/algebench/scripts/semantic_graph_report.py", line 405, in _render_row
     graph_obj = latex_to_semantic_graph(latex)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 2068, in latex_to_semantic_graph
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 2073, in latex_to_semantic_graph
     raw = _latex_to_semantic_graph_dict(cleaned, overrides=overrides, domain=domain)
-  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 1999, in _latex_to_semantic_graph_dict
+  File "/home/runner/work/algebench/algebench/backend/semantic_graph/sympy_translator.py", line 2004, in _latex_to_semantic_graph_dict
     raise ValueError(f"Failed to parse LaTeX: {exc}") from exc
 ValueError: Failed to parse LaTeX: I expected something else here
 Z = \sum_{i} e^{-E_{i} / k_{B} T}

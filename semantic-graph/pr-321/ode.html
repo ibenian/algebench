@@ -246,7 +246,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-24 19:39 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="report-meta">Generated 2026-05-24 20:35 UTC &middot; theme: default-dark &middot; 10 expressions</div>
 <div class="section-title">ODE (10 expressions)</div>
 <div class="row">
   <div>
@@ -410,7 +410,7 @@
   x["$x$"]:::scalar
   __deriv_2(("$\dfrac{d}{d x}$")):::operator
   __multiply_3(("$\times$")):::operator
-  __power_4(("${(\cdot)}^{-1}$")):::operator
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
   y --&gt; __deriv_2
   x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
@@ -468,6 +468,7 @@
     {
       "id": "__power_4",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{y}"
