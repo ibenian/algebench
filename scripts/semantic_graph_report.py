@@ -62,6 +62,9 @@ from tests.backend.semantic_graph.domains.test_domain_thermo import (
 from tests.backend.semantic_graph.domains.test_domain_waves import (
     ALL_EXPRESSIONS as WAVES_EXPRESSIONS,
 )
+from tests.backend.semantic_graph.domains.test_domain_pde import (
+    ALL_EXPRESSIONS as PDE_EXPRESSIONS,
+)
 
 
 # ── Expression catalog ─────────────────────────────────────────────────
@@ -81,6 +84,7 @@ def _collect_expressions() -> list[tuple[str, list[tuple[str, str]]]]:
         ("Electromagnetism", EM_EXPRESSIONS),
         ("Thermodynamics", THERMO_EXPRESSIONS),
         ("Waves & Optics", WAVES_EXPRESSIONS),
+        ("Partial Derivatives & PDEs", PDE_EXPRESSIONS),
     ):
         items = [(tid, latex) for tid, latex, *_ in catalog]
         sections.append((name, items))
@@ -178,6 +182,24 @@ def _page_template() -> str:
           fo.replaceChild(wrapper, outer);
           wrapper.appendChild(outer);
         }});
+        requestAnimationFrame(() => {{
+          document.querySelectorAll('svg g.node foreignObject').forEach((fo) => {{
+            const content = fo.querySelector('.katex');
+            if (!content) return;
+            const rect = content.getBoundingClientRect();
+            const foRect = fo.getBoundingClientRect();
+            if (rect.height > foRect.height) {{
+              const pad = 8;
+              const newH = rect.height + pad;
+              const dy = (newH - foRect.height) / 2;
+              fo.setAttribute('height', newH);
+              const oldY = parseFloat(fo.getAttribute('y') || 0);
+              fo.setAttribute('y', oldY - dy);
+              const wrapper = fo.querySelector('[data-gv-centered="wrapper"]');
+              if (wrapper) wrapper.style.height = newH + 'px';
+            }}
+          }});
+        }});
       }}
     </script>
     <style>
@@ -234,6 +256,9 @@ def _page_template() -> str:
       }}
       .row-graph .mermaid {{
         font-size: 0.85rem;
+      }}
+      .row-graph .mermaid svg g.node foreignObject {{
+        overflow: visible !important;
       }}
       .row-actions {{
         display: flex;

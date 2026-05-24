@@ -89,6 +89,7 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "greater_equal": "≥",
     "less_equal": "≤",
     "derivative": "d/d·",
+    "partial_derivative": "∂/∂·",
     "integral": "∫",
     "sum": "Σ",
     "product": "∏",
@@ -124,6 +125,7 @@ OPERATOR_LATEX: dict[str, str] = {
     "greater_equal": r"\geq",
     "less_equal": r"\leq",
     "derivative": r"\frac{d}{d\cdot}",
+    "partial_derivative": r"\frac{\partial}{\partial\cdot}",
     "integral": r"\int",
     "sum": r"\sum",
     "product": r"\prod",
@@ -308,8 +310,16 @@ def _format_label(
             return f"${{(\\cdot)}}^{{{exponent}}}$"
         # Derivative / integral: show the actual variable from with_respect_to
         wrt = node.get("with_respect_to", "")
-        if op == "derivative" and wrt:
-            return f"$\\frac{{d}}{{d{wrt}}}$"
+        if op in ("derivative", "partial_derivative") and wrt:
+            d = r"\partial" if op == "partial_derivative" else "d"
+            order = ""
+            subexpr = node.get("subexpr", "")
+            if subexpr:
+                m = re.search(r"\\partial\^{?(\d+)}?" if d == r"\partial"
+                              else r"(?<!\\)d\^{?(\d+)}?", subexpr)
+                if m and int(m.group(1)) > 1:
+                    order = f"^{{{m.group(1)}}}"
+            return f"$\\dfrac{{{d}{order}}}{{{d} {wrt}{order}}}$"
         if op == "integral" and wrt:
             lb = node.get("lower_bound", "")
             ub = node.get("upper_bound", "")
