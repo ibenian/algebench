@@ -53,14 +53,14 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
     ("newton_second_law",
      r"F = m a",
      PASS,
-     "a,m -> multiply; F,multiply -> equals",
+     "a,m -> multiply; F,multiply -> rel:equals",
      "a,m -> __multiply_2; F,__multiply_2 -> __equals_1",
      None),
 
     ("weight",
      r"W = m g",
      PASS,
-     "g,m -> multiply; W,multiply -> equals",
+     "g,m -> multiply; W,multiply -> rel:equals",
      "g,m -> __multiply_2; W,__multiply_2 -> __equals_1",
      None),
 
@@ -68,7 +68,7 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
      r"E_k = \frac{1}{2} m v^2",
      PASS,
      "num -> power; v -> power; m,power -> multiply; "
-     "multiply,power -> multiply; E_{k},multiply -> equals",
+     "multiply,power -> multiply; E_{k},multiply -> rel:equals",
      "__num_4 -> __power_3; v -> __power_6; __power_6,m -> __multiply_5; "
      "__multiply_5,__power_3 -> __multiply_2; E_{k},__multiply_2 -> __equals_1",
      [{"op": "power", "exponent": "2"}]),
@@ -76,7 +76,7 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
     ("potential_energy",
      r"U = m g h",
      PASS,
-     "g,h -> multiply; m,multiply -> multiply; U,multiply -> equals",
+     "g,h -> multiply; m,multiply -> multiply; U,multiply -> rel:equals",
      "g,h -> __multiply_3; __multiply_3,m -> __multiply_2; "
      "U,__multiply_2 -> __equals_1",
      None),
@@ -84,7 +84,7 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
     ("work",
      r"W = F d \cos\theta",
      PASS,
-     "dcos,theta -> multiply; F,multiply -> multiply; W,multiply -> equals",
+     "dcos,theta -> multiply; F,multiply -> multiply; W,multiply -> rel:equals",
      "dcos,theta -> __multiply_3; F,__multiply_3 -> __multiply_2; "
      "W,__multiply_2 -> __equals_1",
      None),
@@ -92,7 +92,7 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
     ("momentum",
      r"p = m v",
      PASS,
-     "m,v -> multiply; multiply,p -> equals",
+     "m,v -> multiply; multiply,p -> rel:equals",
      "m,v -> __multiply_2; __multiply_2,p -> __equals_1",
      None),
 
@@ -100,7 +100,7 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
      r"F = G \frac{m_1 m_2}{r^2}",
      PASS,
      "m_{1},m_{2} -> multiply; r -> power; power -> power; "
-     "multiply,power -> multiply; G,multiply -> multiply; F,multiply -> equals",
+     "multiply,power -> multiply; G,multiply -> multiply; F,multiply -> rel:equals",
      "m_{1},m_{2} -> __multiply_4; r -> __power_6; __power_6 -> __power_5; "
      "__multiply_4,__power_5 -> __multiply_3; G,__multiply_3 -> __multiply_2; "
      "F,__multiply_2 -> __equals_1",
@@ -110,7 +110,7 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
      r"F = \frac{m v^2}{r}",
      PASS,
      "r -> power; v -> power; m,power -> multiply; "
-     "multiply,power -> multiply; F,multiply -> equals",
+     "multiply,power -> multiply; F,multiply -> rel:equals",
      "v -> __power_4; r -> __power_5; __power_4,m -> __multiply_3; "
      "__multiply_3,__power_5 -> __multiply_2; F,__multiply_2 -> __equals_1",
      [{"op": "power", "exponent": "2"}, {"op": "power", "exponent": "-1"}]),
@@ -118,7 +118,7 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
     ("hooke",
      r"F = -k x",
      PASS,
-     "k,x -> multiply; multiply -> negation; F,negation -> equals",
+     "k,x -> multiply; multiply -> negation; F,negation -> rel:equals",
      "k,x -> __multiply_3; __multiply_3 -> __negation_2; "
      "F,__negation_2 -> __equals_1",
      None),
@@ -126,14 +126,14 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
     ("power_mech",
      r"P = \frac{W}{t}",
      PASS,
-     "t -> power; W,power -> multiply; P,multiply -> equals",
+     "t -> power; W,power -> multiply; P,multiply -> rel:equals",
      "t -> __power_3; W,__power_3 -> __multiply_2; P,__multiply_2 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
 
     ("lagrangian",
      r"L = T - V",
      PASS,
-     "V -> negation; T,negation -> add; L,add -> equals",
+     "V -> negation; T,negation -> add; L,add -> rel:equals",
      "V -> __negation_3; T,__negation_3 -> __add_2; L,__add_2 -> __equals_1",
      None),
 
@@ -144,7 +144,7 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
      "q,t -> derivative; L,partial -> multiply; L,q -> partial_derivative; "
      "derivative,partial -> multiply; partial_derivative -> negation; "
      "multiply -> power; multiply,power -> multiply; multiply,t -> derivative; "
-     "derivative,negation -> add; add,num -> equals",
+     "derivative,negation -> add; add,num -> rel:equals",
      "L,q -> __deriv_10; q,t -> __deriv_8; L,partial -> __multiply_5; "
      "__deriv_8,partial -> __multiply_7; __deriv_10 -> __negation_9; "
      "__multiply_7 -> __power_6; __multiply_5,__power_6 -> __multiply_4; "
@@ -155,14 +155,14 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
     ("hamiltonian",
      r"H = T + V",
      PASS,
-     "T,V -> add; H,add -> equals",
+     "T,V -> add; H,add -> rel:equals",
      "T,V -> __add_2; H,__add_2 -> __equals_1",
      None),
 
     ("angular_momentum",
      r"L = I \omega",
      PASS,
-     "I,omega -> multiply; L,multiply -> equals",
+     "I,omega -> multiply; L,multiply -> rel:equals",
      "I,omega -> __multiply_2; L,__multiply_2 -> __equals_1",
      None),
 
@@ -170,7 +170,7 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
      r"\tau = r F \sin\theta",
      PASS,
      "theta -> fn:sin; F,fn:sin -> multiply; multiply,r -> multiply; "
-     "multiply,tau -> equals",
+     "multiply,tau -> rel:equals",
      "theta -> __sin_4; F,__sin_4 -> __multiply_3; "
      "__multiply_3,r -> __multiply_2; __multiply_2,tau -> __equals_1",
      None),

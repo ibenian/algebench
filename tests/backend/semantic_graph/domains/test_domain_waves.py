@@ -53,14 +53,14 @@ WAVE_FUNDAMENTALS: list[CatalogEntry] = [
     ("wave_velocity",
      r"v = f \lambda",
      PASS,
-     "f,lambda -> multiply; multiply,v -> equals",
+     "f,lambda -> multiply; multiply,v -> rel:equals",
      "f,lambda -> __multiply_2; __multiply_2,v -> __equals_1",
      None),
 
     ("frequency_period",
      r"f = \frac{1}{T}",
      PASS,
-     "T -> power; f,power -> equals",
+     "T -> power; f,power -> rel:equals",
      "T -> __power_2; __power_2,f -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
 
@@ -68,7 +68,7 @@ WAVE_FUNDAMENTALS: list[CatalogEntry] = [
      r"\omega = 2 \pi f",
      PASS,
      "const:pi,f -> multiply; multiply,num -> multiply; "
-     "multiply,omega -> equals",
+     "multiply,omega -> rel:equals",
      "f,pi -> __multiply_4; __multiply_4,__num_3 -> __multiply_2; "
      "__multiply_2,omega -> __equals_1",
      None),
@@ -77,7 +77,7 @@ WAVE_FUNDAMENTALS: list[CatalogEntry] = [
      r"k = \frac{2 \pi}{\lambda}",
      PASS,
      "const:pi,num -> multiply; lambda -> power; "
-     "multiply,power -> multiply; k,multiply -> equals",
+     "multiply,power -> multiply; k,multiply -> rel:equals",
      "__num_4,pi -> __multiply_3; lambda -> __power_5; "
      "__multiply_3,__power_5 -> __multiply_2; __multiply_2,k -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
@@ -86,7 +86,7 @@ WAVE_FUNDAMENTALS: list[CatalogEntry] = [
      r"E = \frac{1}{2} k A^2",
      PASS,
      "A -> power; num -> power; k,power -> multiply; "
-     "multiply,power -> multiply; E,multiply -> equals",
+     "multiply,power -> multiply; E,multiply -> rel:equals",
      "__num_4 -> __power_3; A -> __power_6; __power_6,k -> __multiply_5; "
      "__multiply_5,__power_3 -> __multiply_2; E,__multiply_2 -> __equals_1",
      [{"op": "power", "exponent": "2"}, {"op": "power", "exponent": "-1"}]),
@@ -94,7 +94,7 @@ WAVE_FUNDAMENTALS: list[CatalogEntry] = [
     ("intensity",
      r"I = \frac{P}{A}",
      PASS,
-     "A -> power; P,power -> multiply; I,multiply -> equals",
+     "A -> power; P,power -> multiply; I,multiply -> rel:equals",
      "A -> __power_3; P,__power_3 -> __multiply_2; "
      "I,__multiply_2 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
@@ -106,7 +106,7 @@ OPTICS_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "theta_{1} -> fn:sin; theta_{2} -> fn:sin; "
      "fn:sin,n_{1} -> multiply; fn:sin,n_{2} -> multiply; "
-     "multiply,multiply -> equals",
+     "multiply,multiply -> rel:equals",
      "theta_{1} -> __sin_3; theta_{2} -> __sin_5; "
      "__sin_3,n_{1} -> __multiply_2; __sin_5,n_{2} -> __multiply_4; "
      "__multiply_2,__multiply_4 -> __equals_1",
@@ -116,7 +116,7 @@ OPTICS_EXPRESSIONS: list[CatalogEntry] = [
      r"\frac{1}{f} = \frac{1}{d_o} + \frac{1}{d_i}",
      PASS,
      "d_{i} -> power; d_{o} -> power; f -> power; "
-     "power,power -> add; add,power -> equals",
+     "power,power -> add; add,power -> rel:equals",
      "f -> __power_2; d_{o} -> __power_4; d_{i} -> __power_5; "
      "__power_4,__power_5 -> __add_3; __add_3,__power_2 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
@@ -125,7 +125,7 @@ OPTICS_EXPRESSIONS: list[CatalogEntry] = [
      r"\tan\theta_B = \frac{n_2}{n_1}",
      PASS,
      "theta_{B} -> fn:tan; n_{1} -> power; "
-     "n_{2},power -> multiply; fn:tan,multiply -> equals",
+     "n_{2},power -> multiply; fn:tan,multiply -> rel:equals",
      "n_{1} -> __power_4; theta_{B} -> __tan_2; "
      "__power_4,n_{2} -> __multiply_3; __multiply_3,__tan_2 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
@@ -134,7 +134,7 @@ OPTICS_EXPRESSIONS: list[CatalogEntry] = [
      r"I = I_0 \cos^2\theta",
      PASS,
      "theta -> fn:cos; fn:cos -> power; "
-     "I_{0},power -> multiply; I,multiply -> equals",
+     "I_{0},power -> multiply; I,multiply -> rel:equals",
      "theta -> __cos_4; __cos_4 -> __power_3; "
      "I_{0},__power_3 -> __multiply_2; I,__multiply_2 -> __equals_1",
      [{"op": "power", "exponent": "2"}]),
@@ -145,7 +145,7 @@ DIFFRACTION_EXPRESSIONS: list[CatalogEntry] = [
      r"d \sin\theta = m \lambda",
      PASS,
      "dsin,theta -> multiply; lambda,m -> multiply; "
-     "multiply,multiply -> equals",
+     "multiply,multiply -> rel:equals",
      "dsin,theta -> __multiply_2; lambda,m -> __multiply_3; "
      "__multiply_2,__multiply_3 -> __equals_1",
      None),
@@ -153,7 +153,7 @@ DIFFRACTION_EXPRESSIONS: list[CatalogEntry] = [
     ("path_difference",
      r"\Delta = d \sin\theta",
      PASS,
-     "dsin,theta -> multiply; Delta,multiply -> equals",
+     "dsin,theta -> multiply; Delta,multiply -> rel:equals",
      "dsin,theta -> __multiply_2; Delta,__multiply_2 -> __equals_1",
      None),
 
@@ -161,7 +161,7 @@ DIFFRACTION_EXPRESSIONS: list[CatalogEntry] = [
      r"\lambda_n = \frac{2 L}{n}",
      PASS,
      "L,num -> multiply; n -> power; multiply,power -> multiply; "
-     "lambda_{n},multiply -> equals",
+     "lambda_{n},multiply -> rel:equals",
      "L,__num_4 -> __multiply_3; n -> __power_5; "
      "__multiply_3,__power_5 -> __multiply_2; "
      "__multiply_2,lambda_{n} -> __equals_1",
@@ -174,7 +174,7 @@ DYNAMIC_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "v,v_{o} -> add; v_{s} -> negation; negation,v -> add; "
      "add -> power; add,power -> multiply; "
-     "f,multiply -> multiply; f',multiply -> equals",
+     "f,multiply -> multiply; f',multiply -> rel:equals",
      "v,v_{o} -> __add_4; v_{s} -> __negation_7; "
      "__negation_7,v -> __add_6; __add_6 -> __power_5; "
      "__add_4,__power_5 -> __multiply_3; __multiply_3,f -> __multiply_2; "
@@ -185,7 +185,7 @@ DYNAMIC_EXPRESSIONS: list[CatalogEntry] = [
      r"x = A \cos(\omega t + \phi)",
      PASS,
      "omega,t -> multiply; multiply,phi -> add; add -> fn:cos; "
-     "A,fn:cos -> multiply; multiply,x -> equals",
+     "A,fn:cos -> multiply; multiply,x -> rel:equals",
      "omega,t -> __multiply_5; __multiply_5,phi -> __add_4; "
      "__add_4 -> __cos_3; A,__cos_3 -> __multiply_2; "
      "__multiply_2,x -> __equals_1",

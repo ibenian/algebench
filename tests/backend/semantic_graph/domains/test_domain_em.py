@@ -54,21 +54,21 @@ CIRCUIT_EXPRESSIONS: list[CatalogEntry] = [
     ("ohm",
      r"V = I R",
      PASS,
-     "I,R -> multiply; V,multiply -> equals",
+     "I,R -> multiply; V,multiply -> rel:equals",
      "I,R -> __multiply_2; V,__multiply_2 -> __equals_1",
      None),
 
     ("power_electric",
      r"P = I V",
      PASS,
-     "I,V -> multiply; P,multiply -> equals",
+     "I,V -> multiply; P,multiply -> rel:equals",
      "I,V -> __multiply_2; P,__multiply_2 -> __equals_1",
      None),
 
     ("resistance_series",
      r"R = R_1 + R_2 + R_3",
      PASS,
-     "R_{1},R_{2} -> add; R_{3},add -> add; R,add -> equals",
+     "R_{1},R_{2} -> add; R_{3},add -> add; R,add -> rel:equals",
      "R_{1},R_{2} -> __add_3; R_{3},__add_3 -> __add_2; "
      "R,__add_2 -> __equals_1",
      None),
@@ -76,7 +76,7 @@ CIRCUIT_EXPRESSIONS: list[CatalogEntry] = [
     ("capacitance",
      r"C = \frac{Q}{V}",
      PASS,
-     "V -> power; Q,power -> multiply; C,multiply -> equals",
+     "V -> power; Q,power -> multiply; C,multiply -> rel:equals",
      "V -> __power_3; Q,__power_3 -> __multiply_2; C,__multiply_2 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
 
@@ -84,7 +84,7 @@ CIRCUIT_EXPRESSIONS: list[CatalogEntry] = [
      r"U = \frac{1}{2} C V^2",
      PASS,
      "V -> power; num -> power; C,power -> multiply; "
-     "multiply,power -> multiply; U,multiply -> equals",
+     "multiply,power -> multiply; U,multiply -> rel:equals",
      "__num_4 -> __power_3; V -> __power_6; C,__power_6 -> __multiply_5; "
      "__multiply_5,__power_3 -> __multiply_2; U,__multiply_2 -> __equals_1",
      [{"op": "power", "exponent": "2"}, {"op": "power", "exponent": "-1"}]),
@@ -93,7 +93,7 @@ CIRCUIT_EXPRESSIONS: list[CatalogEntry] = [
      r"V = -L \frac{dI}{dt}",
      PASS,
      "I,t -> derivative; L,derivative -> multiply; "
-     "multiply -> negation; V,negation -> equals",
+     "multiply -> negation; V,negation -> rel:equals",
      "I,t -> __deriv_4; L,__deriv_4 -> __multiply_3; "
      "__multiply_3 -> __negation_2; V,__negation_2 -> __equals_1",
      None),
@@ -105,7 +105,7 @@ ELECTROSTATICS_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "q_{1},q_{2} -> multiply; r -> power; power -> power; "
      "multiply,power -> multiply; k_{e},multiply -> multiply; "
-     "F,multiply -> equals",
+     "F,multiply -> rel:equals",
      "q_{1},q_{2} -> __multiply_4; r -> __power_6; "
      "__power_6 -> __power_5; __multiply_4,__power_5 -> __multiply_3; "
      "__multiply_3,k_{e} -> __multiply_2; F,__multiply_2 -> __equals_1",
@@ -114,7 +114,7 @@ ELECTROSTATICS_EXPRESSIONS: list[CatalogEntry] = [
     ("electric_field",
      r"E = \frac{F}{q}",
      PASS,
-     "q -> power; F,power -> multiply; E,multiply -> equals",
+     "q -> power; F,power -> multiply; E,multiply -> rel:equals",
      "q -> __power_3; F,__power_3 -> __multiply_2; E,__multiply_2 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
 
@@ -122,7 +122,7 @@ ELECTROSTATICS_EXPRESSIONS: list[CatalogEntry] = [
      r"F = q v B \sin\theta",
      PASS,
      "theta -> fn:sin; B,fn:sin -> multiply; multiply,v -> multiply; "
-     "multiply,q -> multiply; F,multiply -> equals",
+     "multiply,q -> multiply; F,multiply -> rel:equals",
      "theta -> __sin_5; B,__sin_5 -> __multiply_4; "
      "__multiply_4,v -> __multiply_3; __multiply_3,q -> __multiply_2; "
      "F,__multiply_2 -> __equals_1",
@@ -132,7 +132,7 @@ ELECTROSTATICS_EXPRESSIONS: list[CatalogEntry] = [
      r"c = \frac{1}{\sqrt{\mu_0 \epsilon_0}}",
      PASS,
      "epsilon_{0},mu_{0} -> multiply; multiply -> power; "
-     "power -> power; c,power -> equals",
+     "power -> power; c,power -> rel:equals",
      "epsilon_{0},mu_{0} -> __multiply_4; __multiply_4 -> __power_3; "
      "__power_3 -> __power_2; __power_2,c -> __equals_1",
      [{"op": "power", "exponent": "1/2"}, {"op": "power", "exponent": "-1"}]),
@@ -144,7 +144,7 @@ MAXWELL_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "A,dvec -> multiply; E,vec -> multiply; epsilon_{0} -> power; "
      "Q,power -> multiply; multiply,oint -> multiply; "
-     "multiply,multiply -> multiply; multiply,multiply -> equals",
+     "multiply,multiply -> multiply; multiply,multiply -> rel:equals",
      "E,vec -> __multiply_4; A,dvec -> __multiply_5; "
      "epsilon_{0} -> __power_7; __multiply_4,oint -> __multiply_3; "
      "Q,__power_7 -> __multiply_6; __multiply_3,__multiply_5 -> __multiply_2; "
@@ -156,7 +156,7 @@ MAXWELL_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "B,vec -> multiply; E,vec -> multiply; multiply,nabla -> multiply; "
      "multiply,t -> partial_derivative; partial_derivative -> negation; "
-     "multiply,negation -> equals",
+     "multiply,negation -> rel:equals",
      "E,vec -> __multiply_3; B,vec -> __multiply_6; "
      "__multiply_6,t -> __deriv_5; __multiply_3,nabla -> __multiply_2; "
      "__deriv_5 -> __negation_4; __multiply_2,__negation_4 -> __equals_1",
@@ -167,7 +167,7 @@ MAXWELL_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "B,vec -> multiply; E,vec -> multiply; F,vec -> multiply; "
      "v,vec -> multiply; multiply,multiply -> multiply; "
-     "multiply,multiply -> add; add -> fn:q; fn:q,multiply -> equals",
+     "multiply,multiply -> add; add -> fn:q; fn:q,multiply -> rel:equals",
      "F,vec -> __multiply_2; E,vec -> __multiply_5; "
      "v,vec -> __multiply_7; B,vec -> __multiply_8; "
      "__multiply_7,__multiply_8 -> __multiply_6; "
@@ -180,7 +180,7 @@ MAXWELL_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "B,vec -> multiply; E,vec -> multiply; S,vec -> multiply; "
      "mu_{0} -> power; multiply,power -> multiply; "
-     "multiply,multiply -> multiply; multiply,multiply -> equals",
+     "multiply,multiply -> multiply; multiply,multiply -> rel:equals",
      "S,vec -> __multiply_2; E,vec -> __multiply_6; "
      "B,vec -> __multiply_7; mu_{0} -> __power_5; "
      "__multiply_6,__power_5 -> __multiply_4; "
@@ -197,7 +197,7 @@ MAXWELL_EXPRESSIONS: list[CatalogEntry] = [
      "multiply,t -> partial_derivative; "
      "epsilon_{0},partial_derivative -> multiply; "
      "mu_{0},multiply -> multiply; multiply,multiply -> add; "
-     "add,multiply -> equals",
+     "add,multiply -> rel:equals",
      "E,vec -> __multiply_10; B,vec -> __multiply_3; "
      "J,vec -> __multiply_6; __multiply_10,t -> __deriv_9; "
      "__multiply_3,nabla -> __multiply_2; "

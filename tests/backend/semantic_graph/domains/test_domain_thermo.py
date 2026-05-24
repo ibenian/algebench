@@ -54,7 +54,7 @@ GAS_LAW_EXPRESSIONS: list[CatalogEntry] = [
      r"P V = n R T",
      PASS,
      "P,V -> multiply; R,T -> multiply; multiply,n -> multiply; "
-     "multiply,multiply -> equals",
+     "multiply,multiply -> rel:equals",
      "P,V -> __multiply_2; R,T -> __multiply_4; "
      "__multiply_4,n -> __multiply_3; __multiply_2,__multiply_3 -> __equals_1",
      None),
@@ -63,7 +63,7 @@ GAS_LAW_EXPRESSIONS: list[CatalogEntry] = [
      r"P_1 V_1 = P_2 V_2",
      PASS,
      "P_{1},V_{1} -> multiply; P_{2},V_{2} -> multiply; "
-     "multiply,multiply -> equals",
+     "multiply,multiply -> rel:equals",
      "P_{1},V_{1} -> __multiply_2; P_{2},V_{2} -> __multiply_3; "
      "__multiply_2,__multiply_3 -> __equals_1",
      None),
@@ -72,7 +72,7 @@ GAS_LAW_EXPRESSIONS: list[CatalogEntry] = [
      r"\frac{V_1}{T_1} = \frac{V_2}{T_2}",
      PASS,
      "T_{1} -> power; T_{2} -> power; V_{1},power -> multiply; "
-     "V_{2},power -> multiply; multiply,multiply -> equals",
+     "V_{2},power -> multiply; multiply,multiply -> rel:equals",
      "T_{1} -> __power_3; T_{2} -> __power_5; "
      "V_{1},__power_3 -> __multiply_2; V_{2},__power_5 -> __multiply_4; "
      "__multiply_2,__multiply_4 -> __equals_1",
@@ -83,14 +83,14 @@ ENERGY_EXPRESSIONS: list[CatalogEntry] = [
     ("internal_energy",
      r"U = Q - W",
      PASS,
-     "W -> negation; Q,negation -> add; U,add -> equals",
+     "W -> negation; Q,negation -> add; U,add -> rel:equals",
      "W -> __negation_3; Q,__negation_3 -> __add_2; U,__add_2 -> __equals_1",
      None),
 
     ("specific_heat",
      r"Q = m c T",
      PASS,
-     "T,c -> multiply; m,multiply -> multiply; Q,multiply -> equals",
+     "T,c -> multiply; m,multiply -> multiply; Q,multiply -> rel:equals",
      "T,c -> __multiply_3; __multiply_3,m -> __multiply_2; "
      "Q,__multiply_2 -> __equals_1",
      None),
@@ -99,7 +99,7 @@ ENERGY_EXPRESSIONS: list[CatalogEntry] = [
      r"G = H - T S",
      PASS,
      "S,T -> multiply; multiply -> negation; H,negation -> add; "
-     "G,add -> equals",
+     "G,add -> rel:equals",
      "S,T -> __multiply_4; __multiply_4 -> __negation_3; "
      "H,__negation_3 -> __add_2; G,__add_2 -> __equals_1",
      None),
@@ -108,7 +108,7 @@ ENERGY_EXPRESSIONS: list[CatalogEntry] = [
      r"F = U - T S",
      PASS,
      "S,T -> multiply; multiply -> negation; U,negation -> add; "
-     "F,add -> equals",
+     "F,add -> rel:equals",
      "S,T -> __multiply_4; __multiply_4 -> __negation_3; "
      "U,__negation_3 -> __add_2; F,__add_2 -> __equals_1",
      None),
@@ -118,7 +118,7 @@ ENERGY_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "T,k_{B} -> multiply; num -> power; "
      "num,power -> multiply; multiply,multiply -> multiply; "
-     "E_{k},multiply -> equals",
+     "E_{k},multiply -> rel:equals",
      "T,k_{B} -> __multiply_7; __num_6 -> __power_5; "
      "__num_4,__power_5 -> __multiply_3; "
      "__multiply_3,__multiply_7 -> __multiply_2; "
@@ -130,7 +130,7 @@ ENTROPY_EXPRESSIONS: list[CatalogEntry] = [
     ("entropy_ratio",
      r"S = \frac{Q}{T}",
      PASS,
-     "T -> power; Q,power -> multiply; S,multiply -> equals",
+     "T -> power; Q,power -> multiply; S,multiply -> rel:equals",
      "T -> __power_3; Q,__power_3 -> __multiply_2; "
      "S,__multiply_2 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
@@ -139,7 +139,7 @@ ENTROPY_EXPRESSIONS: list[CatalogEntry] = [
      r"S = k_B \ln W",
      PASS,
      "W,const:__const_4 -> fn:log; fn:log,k_{B} -> multiply; "
-     "S,multiply -> equals",
+     "S,multiply -> rel:equals",
      "W,__const_4 -> __log_3; __log_3,k_{B} -> __multiply_2; "
      "S,__multiply_2 -> __equals_1",
      None),
@@ -148,7 +148,7 @@ ENTROPY_EXPRESSIONS: list[CatalogEntry] = [
      r"\eta = 1 - \frac{T_C}{T_H}",
      PASS,
      "T_{H} -> power; T_{C},power -> multiply; multiply -> negation; "
-     "negation,num -> add; add,eta -> equals",
+     "negation,num -> add; add,eta -> rel:equals",
      "T_{H} -> __power_6; T_{C},__power_6 -> __multiply_5; "
      "__multiply_5 -> __negation_4; __negation_4,__num_3 -> __add_2; "
      "__add_2,eta -> __equals_1",
@@ -158,9 +158,9 @@ ENTROPY_EXPRESSIONS: list[CatalogEntry] = [
      r"\oint \frac{dQ}{T} \leq 0",
      PASS,
      "T -> power; dQ,power -> multiply; multiply,oint -> multiply; "
-     "multiply,num -> less_equal",
-     "T -> __power_4; __power_4,dQ -> __multiply_3; "
-     "__multiply_3,oint -> __multiply_2; __multiply_2,__num_5 -> __less_equal_1",
+     "multiply,num -> rel:less_equal",
+     "T -> __power_3; __power_3,dQ -> __multiply_2; "
+     "__multiply_2,oint -> __multiply_1; __multiply_1,__num_4 -> __less_equal_5",
      [{"op": "power", "exponent": "-1"}]),
 ]
 
@@ -169,7 +169,7 @@ RADIATION_EXPRESSIONS: list[CatalogEntry] = [
      r"P = \sigma A T^4",
      PASS,
      "T -> power; A,power -> multiply; multiply,sigma -> multiply; "
-     "P,multiply -> equals",
+     "P,multiply -> rel:equals",
      "T -> __power_4; A,__power_4 -> __multiply_3; "
      "__multiply_3,sigma -> __multiply_2; P,__multiply_2 -> __equals_1",
      [{"op": "power", "exponent": "4"}]),
@@ -179,7 +179,7 @@ RADIATION_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "T,k_{B} -> multiply; m -> power; multiply,num -> multiply; "
      "multiply,power -> multiply; multiply -> power; "
-     "power,v_{r*(m*s)} -> equals",
+     "power,v_{r*(m*s)} -> rel:equals",
      "T,k_{B} -> __multiply_6; m -> __power_7; "
      "__multiply_6,__num_5 -> __multiply_4; "
      "__multiply_4,__power_7 -> __multiply_3; __multiply_3 -> __power_2; "
