@@ -289,6 +289,7 @@ def _format_label(
     node: dict[str, str],
     label_mode: str,
     show: set[str] | None = None,
+    arity: int = 0,
 ) -> str:
     """Format a node label based on the label mode and visible fields.
 
@@ -326,6 +327,9 @@ def _format_label(
             if lb and ub:
                 return f"$\\int_{{{lb}}}^{{{ub}}} d{wrt}$"
             return f"$\\int d{wrt}$"
+        if node_type == "function" and op:
+            dots = r", ".join([r"\cdot"] * max(arity, 1))
+            return f"${op}({dots})$"
         node_latex = node.get("latex")
         if node_latex:
             symbol = node_latex
@@ -609,6 +613,12 @@ def semantic_graph_to_mermaid(
             lines.append(f"  classDef {cls_key} {','.join(parts)}")
             emitted_classes.add(cls_key)
 
+    # Pre-compute incoming edge counts so function nodes can show arity.
+    in_degree: dict[str, int] = {}
+    for e in edges:
+        dst = e.get("to", "")
+        in_degree[dst] = in_degree.get(dst, 0) + 1
+
     # Node definitions. Mermaid 11's typed-shape form (``@{ ... }``) doesn't
     # accept the inline ``:::className`` shortcut, so we emit those classes
     # via separate ``class nid className`` statements instead.
@@ -628,7 +638,8 @@ def semantic_graph_to_mermaid(
         # schema is semantic-only.
         op_default = OP_DEFAULT_SHAPES.get(node.get("op"))
         shape = op_default or ns.get("shape") or TYPE_DEFAULT_SHAPES.get(ntype, "rect")
-        label = _format_label(node, lm, show=show)
+        label = _format_label(node, lm, show=show,
+                              arity=in_degree.get(node["id"], 0))
         node_def = _wrap_shape(nid, label, shape)
         # ``operatorVariants`` styling only applies to operator-like nodes.
         # When a matching variant class is available, it takes precedence
