@@ -53,7 +53,7 @@ class TestMathRendererHTML:
         # All labels use single-``$`` inline math — see _format_label docstring
         # in scripts/graph_to_mermaid.py for why we avoid Mermaid's built-in
         # MathML-only KaTeX path.
-        assert r"$\displaystyle F$" in html or r"$\displaystyle \times$" in html
+        assert r"$F$" in html or r"$\times$" in html
 
     def test_label_mode_plain(self):
         r = MathRenderer("F = ma", show_mermaid=True, label_mode="plain")

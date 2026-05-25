@@ -427,8 +427,11 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
 
     def _repl_greek_sub(m: re.Match) -> str:
         full = m.group(0)
-        # Normalise to braced subscript: \epsilon_0 → \epsilon_{0}
         cmd = m.group(1)   # e.g. \epsilon
+        # Skip already-collapsed placeholders (\Theta_{N}, \Xi_{N}, \Phi_{N})
+        if cmd in (r"\Theta", r"\Xi", r"\Phi"):
+            return full
+        # Normalise to braced subscript: \epsilon_0 → \epsilon_{0}
         sub = m.group(2)   # e.g. _0 or _{0}
         if not sub.startswith("_{"):
             sub = "_{" + sub[1:] + "}"
@@ -1925,7 +1928,9 @@ def _build_comma_separated_graph(
                 return nid
             if nid.startswith("__"):
                 return p + nid
-            if nid.startswith("Xi_{") or nid.startswith("Theta_{") or nid.startswith("Phi_{"):
+            # SymPy symbol names may include a leading backslash (e.g. \Theta_{0})
+            stripped = nid.lstrip("\\")
+            if stripped.startswith("Xi_{") or stripped.startswith("Theta_{") or stripped.startswith("Phi_{"):
                 return p + nid
             return nid
 
@@ -2194,19 +2199,26 @@ def _resolve_xi_node_ids(graph: SemanticGraph) -> None:
     derives a clean id from that latex and renames nodes + edges
     consistently.
     """
-    _PLACEHOLDER_ID_RE = re.compile(r"(?:c\d+_)?(?:Xi|Theta)_\{\d+\}")
+    _PLACEHOLDER_ID_RE = re.compile(r"(c\d+_)?(?:Xi|Theta)_\{\d+\}")
     rename_map: dict[str, str] = {}
     for node in graph.nodes:
-        if not _PLACEHOLDER_ID_RE.fullmatch(node.id):
+        m = _PLACEHOLDER_ID_RE.fullmatch(node.id)
+        if not m:
             continue
+        clause_prefix = m.group(1) or ""
         latex_val = getattr(node, "latex", None) or ""
         clean = re.sub(r"\\text\{([^{}]+)\}", r"\1", latex_val)
         # Greek subscript placeholders (Theta_): the latex is e.g.
         # ``\epsilon_{0}`` — strip the leading command backslash so
         # the node id stays ``epsilon_{0}`` (internal identifier),
         # while latex/subexpr keep the proper ``\epsilon_{0}`` form.
-        if node.id.startswith("Theta_{"):
+        bare_id = node.id[len(clause_prefix):]
+        if bare_id.startswith("Theta_{"):
             clean = re.sub(r"^\\", "", clean)
+        # Preserve the clause prefix (e.g. ``c0_``) so that the same
+        # variable appearing in different clauses keeps a unique id.
+        if clause_prefix:
+            clean = clause_prefix + clean
         if clean and clean != node.id:
             rename_map[node.id] = clean
     if not rename_map:
