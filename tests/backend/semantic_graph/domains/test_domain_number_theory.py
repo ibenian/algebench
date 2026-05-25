@@ -33,7 +33,7 @@ ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
     "function", "gcd", "floor", "ceiling",
     "phi", "pi", "factorial", "log",
-    "binomial",
+    "binomial", "congruent",
 }
 
 
@@ -55,11 +55,9 @@ NUMBER_THEORY_EXPRESSIONS: list[CatalogEntry] = [
     ("nt_modular",
      r"a \equiv b \pmod{n}",
      PASS,
-     "n,pmod -> multiply; b,multiply -> multiply; "
-     "equiv,multiply -> multiply; a,multiply -> multiply",
-     "n,pmod -> __multiply_4; __multiply_4,b -> __multiply_3; "
-     "__multiply_3,equiv -> __multiply_2; __multiply_2,a -> __multiply_1",
-     None),
+     "a,b,n -> rel:congruent",
+     "a,b,n -> __congruent_1",
+     [{"op": "congruent", "type": "relation"}]),
 
     ("nt_divides",
      r"a \mid b",
@@ -110,13 +108,10 @@ NUMBER_THEORY_EXPRESSIONS: list[CatalogEntry] = [
     ("nt_fermat_little",
      r"a^{p-1} \equiv 1 \pmod{p}",
      PASS,
-     "num,p -> add; p,pmod -> multiply; multiply,num -> multiply; "
-     "a,add -> power; equiv,multiply -> multiply; "
-     "multiply,power -> multiply",
-     "__num_4,p -> __add_3; p,pmod -> __multiply_8; "
-     "__multiply_8,__num_7 -> __multiply_6; __add_3,a -> __power_2; "
-     "__multiply_6,equiv -> __multiply_5; __multiply_5,__power_2 -> __multiply_1",
-     None),
+     "num,p -> add; a,add -> power; num,p,power -> rel:congruent",
+     "__num_3,p -> __add_2; __add_2,a -> __power_1; "
+     "__num_4,__power_1,p -> __congruent_5",
+     [{"op": "congruent", "type": "relation"}]),
 
     ("nt_sum_divisors",
      r"\sum_{d \mid n} d = \sigma(n)",
@@ -136,27 +131,22 @@ NUMBER_THEORY_EXPRESSIONS: list[CatalogEntry] = [
     ("nt_legendre",
      r"\left(\frac{a}{p}\right) = a^{(p-1)/2} \pmod{p}",
      PASS,
-         "num,p -> add; p,pmod -> multiply; num -> power; p -> power; "
+         "num,p -> add; num -> power; p -> power; "
          "a,power -> multiply; add,power -> multiply; "
-         "a,multiply -> power; multiply,power -> multiply; "
-         "multiply,multiply -> rel:equals",
-         "__num_8,p -> __add_7; p,pmod -> __multiply_11; "
-         "p -> __power_3; __num_10 -> __power_9; "
+         "a,multiply -> power; multiply,power -> rel:equals",
+         "__num_7,p -> __add_6; p -> __power_3; __num_9 -> __power_8; "
          "__power_3,a -> __multiply_2; "
-         "__add_7,__power_9 -> __multiply_6; "
-         "__multiply_6,a -> __power_5; "
-         "__multiply_11,__power_5 -> __multiply_4; "
-         "__multiply_2,__multiply_4 -> __equals_1",
-     None),
+         "__add_6,__power_8 -> __multiply_5; "
+         "__multiply_5,a -> __power_4; "
+         "__multiply_2,__power_4 -> __equals_1",
+     [{"type": "annotation", "label": "mod p"}]),
 
     ("nt_congruence",
      r"a \equiv b \pmod{m}",
      PASS,
-     "m,pmod -> multiply; b,multiply -> multiply; "
-     "equiv,multiply -> multiply; a,multiply -> multiply",
-     "m,pmod -> __multiply_4; __multiply_4,b -> __multiply_3; "
-     "__multiply_3,equiv -> __multiply_2; __multiply_2,a -> __multiply_1",
-     None),
+     "a,b,m -> rel:congruent",
+     "a,b,m -> __congruent_1",
+     [{"op": "congruent", "type": "relation"}]),
 ]
 
 

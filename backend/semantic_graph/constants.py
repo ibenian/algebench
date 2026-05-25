@@ -43,7 +43,7 @@ _ORDER_TO_ACCENT: dict[int, str] = {1: "dot", 2: "ddot", 3: "dddot", 4: "ddddot"
 # Equation-chain / statement-splitting constants (from server.py)
 # ---------------------------------------------------------------------------
 
-_CHAIN_RELATION_COMMANDS: tuple[str, ...] = ("\\approx", "\\simeq", "\\equiv")
+_CHAIN_RELATION_COMMANDS: tuple[str, ...] = ("\\approx", "\\simeq")
 
 _LOGICAL_CONNECTIVE_COMMANDS: tuple[str, ...] = (
     "\\implies", "\\impliedby", "\\iff",
@@ -105,7 +105,7 @@ _ASYMMETRIC_OPS: set[str] = {
 
 _SYMMETRIC_OPS: set[str] = {
     "equals", "approximately", "not_equal", "proportional", "maps_to",
-    "iff",
+    "iff", "congruent",
 }
 
 _META_RELATION_OPS: set[str] = {"implies", "iff"}
@@ -127,6 +127,7 @@ RELATION_MAP: list[tuple[str, dict[str, str]]] = [
     (r"\implies", {"op": "implies", "label": "implies", "emoji": "⇒"}),
     (r"\propto", {"op": "proportional", "label": "proportional to", "emoji": "∝"}),
     (r"\approx", {"op": "approximately", "label": "approximately equal", "emoji": "≈"}),
+    (r"\equiv", {"op": "congruent", "label": "congruent to", "emoji": "≡"}),
     (r"\iff", {"op": "iff", "label": "if and only if", "emoji": "⇔"}),
     (r"\to", {"op": "maps_to", "label": "maps to", "emoji": "→"}),
     (r"\rightarrow", {"op": "maps_to", "label": "maps to", "emoji": "→"}),
@@ -157,7 +158,8 @@ _SIMPLE_STYLED_SYMBOL_RE: re.Pattern[str] = re.compile(
 # ---------------------------------------------------------------------------
 
 _OPERATOR_GLYPHS: dict[str, str] = {
-    "equals": "=", "greater_than": ">", "less_than": "<",
+    "equals": "=", "congruent": "≡",
+    "greater_than": ">", "less_than": "<",
     "greater_equal": "≥", "less_equal": "≤", "not_equal": "≠",
     "multiply": "×", "add": "+", "subtract": "−",
     "divide": "÷", "integral": "∫", "closed_integral": "∮",
@@ -187,7 +189,7 @@ _OPERATOR_KINDS: dict[str, str] = {
     "factorial": "arithmetic",
     "sin": "function", "cos": "function", "tan": "function",
     "log": "function", "logarithm": "function", "exp": "function",
-    "equals": "comparison", "not_equal": "comparison",
+    "equals": "comparison", "congruent": "comparison", "not_equal": "comparison",
     "greater_than": "comparison", "less_than": "comparison",
     "greater_equal": "comparison", "less_equal": "comparison",
     "element_of": "comparison", "not_element_of": "comparison",

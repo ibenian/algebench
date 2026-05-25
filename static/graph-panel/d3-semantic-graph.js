@@ -151,7 +151,8 @@ function inferEdgeSemantic(edge, nodeById) {
 // ---------------------------------------------------------------------------
 
 const OPERATOR_GLYPHS = {
-    equals: '=', greater_than: '>', less_than: '<',
+    equals: '=', congruent: '≡',
+    greater_than: '>', less_than: '<',
     greater_equal: '≥', less_equal: '≤', not_equal: '≠',
     multiply: '×', add: '+', subtract: '−',
     divide: '÷', integral: '∫', closed_integral: '∮',
@@ -169,7 +170,8 @@ const OPERATOR_GLYPHS = {
 // LaTeX equivalents for operator glyphs — used when rendering operator
 // labels through KaTeX (nodes without an explicit ``latex`` field).
 const OPERATOR_LATEX = {
-    equals: '=', greater_than: '>', less_than: '<',
+    equals: '=', congruent: '\\equiv',
+    greater_than: '>', less_than: '<',
     greater_equal: '\\geq', less_equal: '\\leq', not_equal: '\\neq',
     element_of: '\\in', not_element_of: '\\notin',
     multiply: '\\times', add: '+', subtract: '-',

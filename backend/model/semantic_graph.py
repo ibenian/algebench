@@ -43,7 +43,7 @@ Role = Literal[
 
 EdgeSemantic = Literal["direct", "inverse", "neutral"]
 
-EdgeRole = Literal["lhs", "rhs", "wrt", "exp", "lb", "ub", "value", "condition"]
+EdgeRole = Literal["lhs", "rhs", "wrt", "exp", "lb", "ub", "value", "condition", "modulus"]
 
 ClassificationKind = Literal["algebraic", "ODE", "PDE", "statements", "piecewise"]
 
@@ -78,6 +78,7 @@ class SemanticGraphNode(BaseModel):
     with_respect_to: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     lower_bound: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     upper_bound: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    modulus: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     limit_point: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
     limit_direction: Optional[str] = Field(default=None, pattern=r'^[+-]$')
     subexpr: Optional[str] = Field(default=None, max_length=400)

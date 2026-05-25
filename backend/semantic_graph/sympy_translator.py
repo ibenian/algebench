@@ -1527,6 +1527,25 @@ class SemanticGraphBuilder:
 # Graph assembly
 # ---------------------------------------------------------------------------
 
+_PMOD_RE = re.compile(
+    r"\\pmod\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}\s*$"
+)
+
+
+def _extract_pmod(rhs_latex: str) -> tuple[str, str | None]:
+    r"""Strip a trailing ``\pmod{…}`` from *rhs_latex*.
+
+    Returns ``(cleaned_rhs, modulus_latex)`` where *modulus_latex* is
+    ``None`` when no ``\pmod`` was found.
+    """
+    m = _PMOD_RE.search(rhs_latex)
+    if m is None:
+        return rhs_latex, None
+    modulus = m.group(1).strip()
+    cleaned = rhs_latex[:m.start()].strip()
+    return cleaned, modulus
+
+
 def _build_relation_graph(
     lhs_latex: str,
     rel_meta: dict[str, str],
@@ -1541,6 +1560,13 @@ def _build_relation_graph(
 
 ) -> dict:
     r"""Build a graph for a binary relation ``lhs <op> rhs``."""
+
+    # --- Handle \pmod annotation ---
+    # For congruent relations, \pmod becomes a modulus attribute + edge.
+    # For other relations (equals, etc.), \pmod becomes an annotation node.
+    modulus_latex: str | None = None
+    rhs_latex, modulus_latex = _extract_pmod(rhs_latex)
+
     builder = SemanticGraphBuilder(
         overrides=overrides,
         latex_commands=latex_commands or {},
@@ -1587,12 +1613,38 @@ def _build_relation_graph(
 
     rel_id = builder._next_id(rel_meta["op"])
     rel_type = "relation" if is_relation(rel_meta["op"]) else "operator"
+    rel_extra: dict[str, str] = {}
+    is_congruent = rel_meta.get("op") == "congruent"
+    if modulus_latex is not None and is_congruent:
+        rel_extra["modulus"] = modulus_latex
     builder._add_node(
-        rel_id, type=rel_type, subexpr=original_latex.strip(), **rel_meta,
+        rel_id, type=rel_type, subexpr=original_latex.strip(),
+        **rel_meta, **rel_extra,
     )
     rel_asymmetric = is_asymmetric_relation(rel_meta["op"])
     builder._add_edge(lhs_id, rel_id, role="lhs" if rel_asymmetric else None)
     builder._add_edge(rhs_id, rel_id, role="rhs" if rel_asymmetric else None)
+
+    # --- Connect modulus to the graph ---
+    if modulus_latex is not None:
+        if is_congruent:
+            # Congruent: modulus is structural — connect via modulus edge
+            try:
+                mod_expr = parse_latex(modulus_latex)
+                mod_id = builder._walk(mod_expr)
+                builder._add_edge(mod_id, rel_id, role="modulus")
+            except Exception:
+                pass  # modulus couldn't be parsed — already stored as attribute
+        else:
+            # Non-congruent (e.g. equals): \pmod is an annotation
+            ann = {
+                "type": "annotation",
+                "label": f"mod {modulus_latex}",
+                "latex": rf"\pmod{{{modulus_latex}}}",
+            }
+            if parenthetical_annotations is None:
+                parenthetical_annotations = []
+            parenthetical_annotations.append(ann)
 
     graph: dict = {"nodes": builder.nodes, "edges": builder.edges}
     if lhs_expr is not None and rhs_expr is not None:
@@ -2040,6 +2092,20 @@ def _latex_to_semantic_graph_dict(
     collapsed, text_overrides = _collapse_text_commands(subscript_collapsed)
     font_unwrapped = _strip_symbol_font_commands(collapsed)
     preprocessed, bare_sum_indices = _preprocess_latex(font_unwrapped)
+
+    # --- Strip \pmod{…} before SymPy sees it (non-congruent paths) ---
+    # For \equiv expressions, _build_relation_graph handles \pmod itself.
+    # For everything else (=, single expression, etc.), \pmod would be
+    # parsed as a raw symbol — strip it and inject an annotation instead.
+    if r"\equiv" not in preprocessed:
+        preprocessed, pmod_modulus = _extract_pmod(preprocessed)
+        if pmod_modulus is not None:
+            parenthetical_annotations.append({
+                "type": "annotation",
+                "label": f"mod {pmod_modulus}",
+                "latex": rf"\pmod{{{pmod_modulus}}}",
+            })
+
     latex_commands = _extract_latex_commands(latex)
     merged_overrides: dict[str, dict[str, str]] = {
         **braket_overrides,
