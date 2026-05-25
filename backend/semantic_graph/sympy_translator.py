@@ -412,6 +412,38 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
         + rf"({sub_sup_chain})"
     )
     rewritten = re.sub(pattern, repl, latex)
+
+    # Also collapse Greek letter commands with subscripts, e.g.
+    # ``\epsilon_0``, ``\epsilon_{0}``, ``\mu_{r}``.  SymPy's
+    # ``parse_latex`` embeds braces in the symbol name
+    # (``Symbol('epsilon_{0}')``), which breaks ``sympy.latex()``
+    # Greek-letter detection — it outputs bare ``epsilon_{0}`` instead
+    # of ``\epsilon_{0}``.  Collapsing to a ``\Theta_{N}`` placeholder
+    # lets the existing restore pipeline produce the correct LaTeX.
+    greek_sub_pattern = re.compile(
+        r"(\\(?:" + greek_operands + r"))"
+        r"(_\{[^{}]+\}|_[A-Za-z0-9])"  # braced or single-char subscript
+    )
+
+    def _repl_greek_sub(m: re.Match) -> str:
+        full = m.group(0)
+        # Normalise to braced subscript: \epsilon_0 → \epsilon_{0}
+        cmd = m.group(1)   # e.g. \epsilon
+        sub = m.group(2)   # e.g. _0 or _{0}
+        if not sub.startswith("_{"):
+            sub = "_{" + sub[1:] + "}"
+        canonical = cmd + sub
+        if full not in seen:
+            idx = len(seen)
+            seen[full] = idx
+            overrides[f"Theta_{{{idx}}}"] = {
+                "latex": canonical,
+                "type": "scalar",
+            }
+        return rf"\Theta_{{{seen[full]}}}"
+
+    rewritten = greek_sub_pattern.sub(_repl_greek_sub, rewritten)
+
     return rewritten, overrides
 
 
@@ -2153,20 +2185,28 @@ def _latex_to_semantic_graph_dict(
 
 
 def _resolve_xi_node_ids(graph: SemanticGraph) -> None:
-    """Rename ``Xi_{N}`` / ``cK_Xi_{N}`` node ids to clean display forms.
+    """Rename ``Xi_{N}`` / ``Theta_{N}`` / ``cK_Xi_{N}`` node ids to clean display forms.
 
     Multi-char subscripts like ``v_{rms}`` are collapsed into ``Xi_{0}``
-    placeholders before SymPy parsing.  The node's ``latex`` field holds
-    the restored form (e.g. ``v_{\\text{rms}}``).  This pass derives a
-    clean id from that latex and renames nodes + edges consistently.
+    placeholders before SymPy parsing; Greek subscripts like
+    ``\\epsilon_0`` are collapsed into ``Theta_{N}`` placeholders.
+    The node's ``latex`` field holds the restored form.  This pass
+    derives a clean id from that latex and renames nodes + edges
+    consistently.
     """
-    _XI_ID_RE = re.compile(r"(?:c\d+_)?Xi_\{\d+\}")
+    _PLACEHOLDER_ID_RE = re.compile(r"(?:c\d+_)?(?:Xi|Theta)_\{\d+\}")
     rename_map: dict[str, str] = {}
     for node in graph.nodes:
-        if not _XI_ID_RE.fullmatch(node.id):
+        if not _PLACEHOLDER_ID_RE.fullmatch(node.id):
             continue
         latex_val = getattr(node, "latex", None) or ""
         clean = re.sub(r"\\text\{([^{}]+)\}", r"\1", latex_val)
+        # Greek subscript placeholders (Theta_): the latex is e.g.
+        # ``\epsilon_{0}`` — strip the leading command backslash so
+        # the node id stays ``epsilon_{0}`` (internal identifier),
+        # while latex/subexpr keep the proper ``\epsilon_{0}`` form.
+        if node.id.startswith("Theta_{"):
+            clean = re.sub(r"^\\", "", clean)
         if clean and clean != node.id:
             rename_map[node.id] = clean
     if not rename_map:
