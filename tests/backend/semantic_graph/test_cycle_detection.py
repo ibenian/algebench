@@ -95,16 +95,18 @@ class TestDerivativeCycleDetection:
 
     @pytest.mark.parametrize("latex", DERIVATIVE_CYCLE_CASES)
     def test_wrt_edges_flow_inward(self, parse, latex):
-        """wrt edges must point from the variable into the derivative
-        node (not outward), matching the standard DAG convention."""
+        """wrt edges must point from the variable into a derivative,
+        integral, sum, or product node (not outward), matching the
+        standard DAG convention."""
         graph = parse(latex)
-        deriv_ids = {n.id for n in graph.nodes if n.op in ("derivative", "partial_derivative")}
+        wrt_target_ops = {"derivative", "partial_derivative", "integral", "sum", "product"}
+        valid_ids = {n.id for n in graph.nodes if n.op in wrt_target_ops}
         wrt_edges = [e for e in graph.edges if e.role == "wrt"]
         for e in wrt_edges:
-            assert e.to in deriv_ids, (
-                f"wrt edge should point into a derivative node, but "
-                f"edge {e.from_} → {e.to} targets a non-derivative "
-                f"node for: {latex!r}"
+            assert e.to in valid_ids, (
+                f"wrt edge should point into a derivative/integral/sum "
+                f"node, but edge {e.from_} → {e.to} targets a "
+                f"non-matching node for: {latex!r}"
             )
 
 

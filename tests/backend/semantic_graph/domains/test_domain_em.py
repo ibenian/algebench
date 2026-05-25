@@ -38,7 +38,7 @@ DOMAIN = "electromagnetism"
 
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
-    "derivative", "partial_derivative",
+    "derivative", "partial_derivative", "integral", "closed_integral",
 }
 
 ALLOWED_KINDS = {"algebraic", "ODE"}
@@ -142,13 +142,12 @@ MAXWELL_EXPRESSIONS: list[CatalogEntry] = [
     ("gauss_law",
      r"\oint \vec{E} \cdot d\vec{A} = \frac{Q}{\epsilon_0}",
      PASS,
-     "oint,vec:E -> multiply; epsilon_{0} -> power; "
-     "Q,power -> multiply; dA,multiply -> multiply; "
-     "multiply,multiply -> rel:equals",
-     "E,oint -> __multiply_3; epsilon_{0} -> __power_5; "
-     "__multiply_3,dA -> __multiply_2; Q,__power_5 -> __multiply_4; "
-     "__multiply_2,__multiply_4 -> __equals_1",
-     [{"op": "power", "exponent": "-1"}]),
+     "vec:A,vec:E -> closed_integral; epsilon_{0} -> power; "
+     "Q,power -> multiply; closed_integral,multiply -> rel:equals",
+     "A,E -> __closed_integral_2; epsilon_{0} -> __power_4; "
+     "Q,__power_4 -> __multiply_3; __closed_integral_2,__multiply_3 -> __equals_1",
+     [{"op": "power", "exponent": "-1"},
+      {"op": "closed_integral"}]),
 
     ("faraday",
      r"\nabla \times \vec{E} = -\frac{\partial \vec{B}}{\partial t}",

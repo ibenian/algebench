@@ -37,7 +37,7 @@ DOMAIN = "thermodynamics"
 
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
-    "less_equal", "sum",
+    "less_equal", "sum", "closed_integral",
 }
 
 ALLOWED_KINDS = {"algebraic"}
@@ -157,11 +157,11 @@ ENTROPY_EXPRESSIONS: list[CatalogEntry] = [
     ("clausius",
      r"\oint \frac{dQ}{T} \leq 0",
      PASS,
-     "T -> power; dQ,power -> multiply; multiply,oint -> multiply; "
-     "multiply,num -> rel:less_equal",
-     "T -> __power_3; __power_3,dQ -> __multiply_2; "
-     "__multiply_2,oint -> __multiply_1; __multiply_1,__num_4 -> __less_equal_5",
-     [{"op": "power", "exponent": "-1"}]),
+     "T -> power; Q,power -> closed_integral; closed_integral,num -> rel:less_equal",
+     "T -> __power_2; Q,__power_2 -> __closed_integral_1; "
+     "__closed_integral_1,__num_3 -> __less_equal_4",
+     [{"op": "power", "exponent": "-1"},
+      {"op": "closed_integral"}]),
 
     ("partition_fn",
      r"Z = \sum_i e^{-E_i / k_B T}",

@@ -90,7 +90,7 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "less_equal": "≤",
     "derivative": "d/d·",
     "partial_derivative": "∂/∂·",
-    "integral": "∫",
+    "integral": "∫", "closed_integral": "∮",
     "sum": "Σ",
     "product": "∏",
     "limit": "lim",
@@ -126,7 +126,7 @@ OPERATOR_LATEX: dict[str, str] = {
     "less_equal": r"\leq",
     "derivative": r"\frac{d}{d\cdot}",
     "partial_derivative": r"\frac{\partial}{\partial\cdot}",
-    "integral": r"\int",
+    "integral": r"\int", "closed_integral": r"\oint",
     "sum": r"\sum",
     "product": r"\prod",
     "limit": r"\lim",
@@ -323,12 +323,13 @@ def _format_label(
                 if m and int(m.group(1)) > 1:
                     order = f"^{{{m.group(1)}}}"
             return f"$\\dfrac{{{d}{order}}}{{{d} {wrt}{order}}}$"
-        if op == "integral" and wrt:
+        if op in ("integral", "closed_integral") and wrt:
+            int_cmd = OPERATOR_LATEX.get(op, r"\int")
             lb = node.get("lower_bound", "")
             ub = node.get("upper_bound", "")
             if lb and ub:
-                return f"$\\int_{{{lb}}}^{{{ub}}} d{wrt}$"
-            return f"$\\int d{wrt}$"
+                return f"${int_cmd}_{{{lb}}}^{{{ub}}} d{wrt}$"
+            return f"${int_cmd} d{wrt}$"
         if node_type == "function" and op:
             dots = r", ".join([r"\cdot"] * max(arity, 1))
             return f"${op}({dots})$"
