@@ -175,13 +175,13 @@ BINOMIAL_EXPRESSIONS: list[CatalogEntry] = [
      "x,y -> add; k,n -> fn:choose; k -> negation; k,y -> power; "
      "k,num -> rel:equals; n,negation -> add; add,n -> power; add,x -> power; "
      "power,power -> multiply; fn:choose,multiply -> multiply; "
-     "multiply,n,rel:equals -> sum; power,sum -> rel:equals",
+     "k,multiply,n,rel:equals -> sum; power,sum -> rel:equals",
      "x,y -> __add_3; k,n -> __choose_8; __num_5,k -> __equals_6; "
      "k -> __negation_12; k,y -> __power_13; __negation_12,n -> __add_11; "
      "__add_3,n -> __power_2; __add_11,x -> __power_10; "
      "__power_10,__power_13 -> __multiply_9; "
      "__choose_8,__multiply_9 -> __multiply_7; "
-     "__equals_6,__multiply_7,n -> __sum_4; __power_2,__sum_4 -> __equals_1",
+     "__equals_6,__multiply_7,k,n -> __sum_4; __power_2,__sum_4 -> __equals_1",
      [{"op": "choose", "type": "function"},
       {"op": "sum", "with_respect_to": "k", "upper_bound": "n",
        "_edge_roles": {"lb": 1, "ub": 1}}]),

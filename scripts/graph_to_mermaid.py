@@ -89,7 +89,8 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "greater_equal": "≥",
     "less_equal": "≤",
     "derivative": "d/d·",
-    "integral": "∫",
+    "partial_derivative": "∂/∂·",
+    "integral": "∫", "closed_integral": "∮",
     "sum": "Σ",
     "product": "∏",
     "limit": "lim",
@@ -124,7 +125,8 @@ OPERATOR_LATEX: dict[str, str] = {
     "greater_equal": r"\geq",
     "less_equal": r"\leq",
     "derivative": r"\frac{d}{d\cdot}",
-    "integral": r"\int",
+    "partial_derivative": r"\frac{\partial}{\partial\cdot}",
+    "integral": r"\int", "closed_integral": r"\oint",
     "sum": r"\sum",
     "product": r"\prod",
     "limit": r"\lim",
@@ -287,6 +289,7 @@ def _format_label(
     node: dict[str, str],
     label_mode: str,
     show: set[str] | None = None,
+    arity: int = 0,
 ) -> str:
     """Format a node label based on the label mode and visible fields.
 
@@ -305,17 +308,35 @@ def _format_label(
     if node_type in ("operator", "function", "expression"):
         exponent = node.get("exponent", "")
         if op == "power" and exponent:
+            if str(exponent) == "-1":
+                return r"$\dfrac{1}{(\cdot)}$"
             return f"${{(\\cdot)}}^{{{exponent}}}$"
         # Derivative / integral: show the actual variable from with_respect_to
         wrt = node.get("with_respect_to", "")
-        if op == "derivative" and wrt:
-            return f"$\\frac{{d}}{{d{wrt}}}$"
-        if op == "integral" and wrt:
+        if op in ("derivative", "partial_derivative") and wrt:
+            d = r"\partial" if op == "partial_derivative" else "d"
+            order = ""
+            subexpr = node.get("subexpr", "")
+            if subexpr:
+                m = re.search(r"\\partial\^{?(\d+)}?" if d == r"\partial"
+                              else r"(?<!\\)d\^{?(\d+)}?", subexpr)
+                if m and int(m.group(1)) > 1:
+                    order = f"^{{{m.group(1)}}}"
+            return f"$\\dfrac{{{d}{order}}}{{{d} {wrt}{order}}}$"
+        if op in ("integral", "closed_integral") and wrt:
+            int_cmd = OPERATOR_LATEX.get(op, r"\int")
             lb = node.get("lower_bound", "")
             ub = node.get("upper_bound", "")
             if lb and ub:
-                return f"$\\int_{{{lb}}}^{{{ub}}} d{wrt}$"
-            return f"$\\int d{wrt}$"
+                return f"${int_cmd}_{{{lb}}}^{{{ub}}} d{wrt}$"
+            return f"${int_cmd} d{wrt}$"
+        if op in ("sum", "product") and wrt:
+            agg_cmd = OPERATOR_LATEX.get(op, r"\sum")
+            return f"${agg_cmd}_{{{wrt}}}$"
+        if node_type == "function" and op:
+            dots = r", ".join([r"\cdot"] * max(arity, 1))
+            fn_name = OPERATOR_LATEX.get(op, op)
+            return f"${fn_name}({dots})$"
         node_latex = node.get("latex")
         if node_latex:
             symbol = node_latex
@@ -599,6 +620,12 @@ def semantic_graph_to_mermaid(
             lines.append(f"  classDef {cls_key} {','.join(parts)}")
             emitted_classes.add(cls_key)
 
+    # Pre-compute incoming edge counts so function nodes can show arity.
+    in_degree: dict[str, int] = {}
+    for e in edges:
+        dst = e.get("to", "")
+        in_degree[dst] = in_degree.get(dst, 0) + 1
+
     # Node definitions. Mermaid 11's typed-shape form (``@{ ... }``) doesn't
     # accept the inline ``:::className`` shortcut, so we emit those classes
     # via separate ``class nid className`` statements instead.
@@ -618,7 +645,8 @@ def semantic_graph_to_mermaid(
         # schema is semantic-only.
         op_default = OP_DEFAULT_SHAPES.get(node.get("op"))
         shape = op_default or ns.get("shape") or TYPE_DEFAULT_SHAPES.get(ntype, "rect")
-        label = _format_label(node, lm, show=show)
+        label = _format_label(node, lm, show=show,
+                              arity=in_degree.get(node["id"], 0))
         node_def = _wrap_shape(nid, label, shape)
         # ``operatorVariants`` styling only applies to operator-like nodes.
         # When a matching variant class is available, it takes precedence

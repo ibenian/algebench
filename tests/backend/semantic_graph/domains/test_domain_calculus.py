@@ -147,11 +147,11 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("integral_power",
      r"\int x^n \, dx = \frac{x^{n+1}}{n+1} + C",
      PASS,
-     "n,num -> add; n,num -> add; n,x -> power; power -> integral; "
+     "n,num -> add; n,num -> add; n,x -> power; power,x -> integral; "
      "add -> power; add,x -> power; power,power -> multiply; "
      "C,multiply -> add; add,integral -> rel:equals",
      "__num_11,n -> __add_10; __num_8,n -> __add_7; n,x -> __power_3; "
-     "__power_3 -> __integral_2; __add_7,x -> __power_6; "
+     "__power_3,x -> __integral_2; __add_7,x -> __power_6; "
      "__add_10 -> __power_9; __power_6,__power_9 -> __multiply_5; "
      "C,__multiply_5 -> __add_4; __add_4,__integral_2 -> __equals_1",
      [{"op": "integral", "with_respect_to": "x"},
@@ -160,10 +160,10 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("integral_definite",
      r"\int_a^b f(x) \, dx = F(b) - F(a)",
      PASS,
-     "a -> fn:F; b -> fn:F; x -> fn:f; fn:f -> integral; "
+     "a -> fn:F; b -> fn:F; x -> fn:f; a,b,fn:f,x -> integral; "
      "fn:F -> negation; fn:F,negation -> add; add,integral -> rel:equals",
      "b -> __F_5; a -> __F_7; x -> __f_3; "
-     "__f_3 -> __integral_2; __F_7 -> __negation_6; "
+     "__f_3,a,b,x -> __integral_2; __F_7 -> __negation_6; "
      "__F_5,__negation_6 -> __add_4; __add_4,__integral_2 -> __equals_1",
      [{"op": "integral", "with_respect_to": "x",
        "lower_bound": "a", "upper_bound": "b"}]),
@@ -171,9 +171,9 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("ftc",
      r"\frac{d}{dx} \int_a^x f(t) \, dt = f(x)",
      PASS,
-     "t -> fn:f; x -> fn:f; fn:f -> integral; integral,x -> derivative; "
+     "t -> fn:f; x -> fn:f; a,fn:f,t,x -> integral; integral,x -> derivative; "
      "derivative,fn:f -> rel:equals",
-     "t -> __f_4; x -> __f_5; __f_4 -> __integral_3; "
+     "t -> __f_4; x -> __f_5; __f_4,a,t,x -> __integral_3; "
      "__integral_3,x -> __deriv_2; "
      "__deriv_2,__f_5 -> __equals_1",
      [{"op": "integral", "with_respect_to": "t",
@@ -187,11 +187,11 @@ SERIES_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "n -> factorial; e,x -> power; n,x -> power; n,num -> rel:equals; "
      "factorial -> power; power,power -> multiply; "
-     "const:__const_5,multiply,rel:equals -> sum; power,sum -> rel:equals",
+     "const:__const_5,multiply,n,rel:equals -> sum; power,sum -> rel:equals",
      "__num_4,n -> __equals_6; n -> __factorial_10; e,x -> __power_2; "
      "n,x -> __power_8; __factorial_10 -> __power_9; "
      "__power_8,__power_9 -> __multiply_7; "
-     "__const_5,__equals_6,__multiply_7 -> __sum_3; "
+     "__const_5,__equals_6,__multiply_7,n -> __sum_3; "
      "__power_2,__sum_3 -> __equals_1",
      [{"op": "sum", "with_respect_to": "n",
        "_edge_roles": {"lb": 1, "ub": 1}},
@@ -202,11 +202,11 @@ SERIES_EXPRESSIONS: list[CatalogEntry] = [
      r"\sum_{n=0}^{\infty} r^n = \frac{1}{1 - r}",
      PASS,
      "r -> negation; n,r -> power; n,num -> rel:equals; negation,num -> add; "
-     "const:__const_4,power,rel:equals -> sum; add -> power; "
+     "const:__const_4,n,power,rel:equals -> sum; add -> power; "
      "power,sum -> rel:equals",
      "__num_3,n -> __equals_5; r -> __negation_10; n,r -> __power_6; "
      "__negation_10,__num_9 -> __add_8; "
-     "__const_4,__equals_5,__power_6 -> __sum_2; __add_8 -> __power_7; "
+     "__const_4,__equals_5,__power_6,n -> __sum_2; __add_8 -> __power_7; "
      "__power_7,__sum_2 -> __equals_1",
      [{"op": "sum", "with_respect_to": "n",
        "_edge_roles": {"lb": 1, "ub": 1}},

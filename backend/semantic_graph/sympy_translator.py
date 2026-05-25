@@ -106,6 +106,8 @@ def _operator_glyph(node: dict) -> str | None:
         return None
     if op == "power":
         exp = node.get("exponent")
+        if exp is not None and str(exp) == "-1":
+            return "1/(·)"
         return f"(·){_to_superscript(exp)}" if exp else "(·)˙"
     if op in ("derivative", "partial_derivative"):
         d = "∂" if op == "partial_derivative" else "d"
@@ -248,6 +250,43 @@ def _normalize_latex(latex: str) -> str:
     return latex
 
 
+def _collapse_multichar_subscripts(
+    latex: str,
+) -> tuple[str, dict[str, dict[str, str]]]:
+    r"""Collapse symbols with multi-char alphabetic subscripts into placeholders.
+
+    SymPy's ``parse_latex`` treats ``v_{rms}`` as ``v`` subscripted by
+    ``r \cdot m \cdot s``.  This pass replaces the full token
+    (``v_{rms}``) with a ``\Xi_{N}`` placeholder and records the
+    original text in *overrides* so the postprocessor can restore it.
+    """
+    overrides: dict[str, dict[str, str]] = {}
+    seen: dict[str, int] = {}
+
+    # Match: optional \cmd base  OR  single alpha base, then _{multichar_alpha}
+    pattern = re.compile(
+        r"(\\[A-Za-z]+|[A-Za-z])"   # base: \sigma or v
+        r"_\{([A-Za-z]{2,})\}"      # subscript: {rms} (2+ alpha chars)
+    )
+
+    def _repl(m: re.Match) -> str:
+        base = m.group(1)
+        sub = m.group(2)
+        full = m.group(0)
+        if full not in seen:
+            idx = len(seen)
+            seen[full] = idx
+            # Display as base_{sub} — use \text for the subscript
+            overrides[f"Xi_{{{idx}}}"] = {
+                "latex": rf"{base}_{{\text{{{sub}}}}}",
+                "type": "scalar",
+            }
+        return rf"\Xi_{{{seen[full]}}}"
+
+    rewritten = pattern.sub(_repl, latex)
+    return rewritten, overrides
+
+
 def _collapse_text_commands(latex: str) -> tuple[str, dict[str, dict[str, str]]]:
     r"""Replace ``\text{NAME}`` with ``\Xi_{N}`` placeholder symbols."""
     overrides: dict[str, dict[str, str]] = {}
@@ -373,6 +412,41 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
         + rf"({sub_sup_chain})"
     )
     rewritten = re.sub(pattern, repl, latex)
+
+    # Also collapse Greek letter commands with subscripts, e.g.
+    # ``\epsilon_0``, ``\epsilon_{0}``, ``\mu_{r}``.  SymPy's
+    # ``parse_latex`` embeds braces in the symbol name
+    # (``Symbol('epsilon_{0}')``), which breaks ``sympy.latex()``
+    # Greek-letter detection — it outputs bare ``epsilon_{0}`` instead
+    # of ``\epsilon_{0}``.  Collapsing to a ``\Theta_{N}`` placeholder
+    # lets the existing restore pipeline produce the correct LaTeX.
+    greek_sub_pattern = re.compile(
+        r"(\\(?:" + greek_operands + r"))"
+        r"(_\{[^{}]+\}|_[A-Za-z0-9])"  # braced or single-char subscript
+    )
+
+    def _repl_greek_sub(m: re.Match) -> str:
+        full = m.group(0)
+        cmd = m.group(1)   # e.g. \epsilon
+        # Skip already-collapsed placeholders (\Theta_{N}, \Xi_{N}, \Phi_{N})
+        if cmd in (r"\Theta", r"\Xi", r"\Phi"):
+            return full
+        # Normalise to braced subscript: \epsilon_0 → \epsilon_{0}
+        sub = m.group(2)   # e.g. _0 or _{0}
+        if not sub.startswith("_{"):
+            sub = "_{" + sub[1:] + "}"
+        canonical = cmd + sub
+        if full not in seen:
+            idx = len(seen)
+            seen[full] = idx
+            overrides[f"Theta_{{{idx}}}"] = {
+                "latex": canonical,
+                "type": "scalar",
+            }
+        return rf"\Theta_{{{seen[full]}}}"
+
+    rewritten = greek_sub_pattern.sub(_repl_greek_sub, rewritten)
+
     return rewritten, overrides
 
 
@@ -402,8 +476,53 @@ def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, 
     return latex, annotations
 
 
-def _preprocess_latex(latex: str) -> str:
-    """Rewrite LaTeX patterns that SymPy's parse_latex doesn't handle."""
+# Accent commands that SymPy's ``parse_latex`` doesn't understand — it
+# treats ``\vec{F}`` as ``Symbol("vec") * Symbol("F")``.  We strip these
+# before parsing and restore them via the postprocessor.  Font commands
+# (``\mathbf``, ``\mathrm``, …) are intentionally excluded — they are
+# handled downstream by ``_strip_symbol_font_commands``.
+# Note: ``dot``/``ddot``/``dddot``/``ddddot`` are intentionally excluded —
+# they carry derivative semantics (``\dot{x}`` ≡ ``dx/dt``) and are
+# handled by ``LaTeXPreprocessor.rewrite_dot_derivatives``.
+_TRACKED_ACCENT_RE = re.compile(
+    r"\\(vec|hat|bar|tilde"
+    r"|overline|widehat|widetilde|check|breve|mathring|acute|grave)"
+    r"\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}"
+)
+
+
+def _strip_tracked_accents(
+    latex: str,
+    accent_map: dict[str, str],
+) -> str:
+    r"""Strip tracked accent commands and record them in *accent_map*.
+
+    ``\vec{F}`` → ``F`` with ``accent_map["F"] = "vec"``.
+    Nested accents are handled by iterating until stable.
+    """
+    prev = None
+    cleaned = latex
+    while cleaned != prev:
+        prev = cleaned
+        def _replace(m: re.Match) -> str:
+            accent = m.group(1)
+            body = m.group(2)
+            # Only record single-token bodies (no nested commands)
+            if body and "\\" not in body:
+                accent_map.setdefault(body, accent)
+            return body
+        cleaned = _TRACKED_ACCENT_RE.sub(_replace, cleaned)
+    return cleaned
+
+
+def _preprocess_latex(latex: str) -> tuple[str, set[str]]:
+    """Rewrite LaTeX patterns that SymPy's parse_latex doesn't handle.
+
+    Returns ``(preprocessed_latex, bare_sum_indices)`` where
+    *bare_sum_indices* is the set of index variable names that were
+    given synthetic ``{idx=0}^{\\infty}`` bounds by the preprocessor
+    (originating from bare ``\\sum_i`` notation).
+    """
     def _expand_higher_deriv(m: re.Match) -> str:
         op = m.group(1)
         order = int(m.group(2) or m.group(3))
@@ -422,9 +541,13 @@ def _preprocess_latex(latex: str) -> str:
     )
     latex = LaTeXPreprocessor.rewrite_dot_derivatives(latex)
     latex = LaTeXPreprocessor.normalize_frac_derivatives(latex)
+    bare_sum_indices: set[str] = set()
+    latex = LaTeXPreprocessor.normalize_bare_sums(latex, captured=bare_sum_indices)
+    # Rewrite closed line integrals: \oint → \int (SymPy doesn't know \oint)
+    latex = re.sub(r"\\oint\b", r"\\int", latex)
     latex = re.sub(r"_([A-Za-z0-9])(?![A-Za-z0-9_{])", r"_{\1}", latex)
     latex = re.sub(r"\\(?:quad|qquad|,|;|!)\s*", " ", latex)
-    return latex
+    return latex, bare_sum_indices
 
 
 def _inject_annotations(graph: dict, annotations: list[dict[str, str]]) -> None:
@@ -780,6 +903,11 @@ def _split_on_single_equals(latex: str) -> tuple[str, str] | None:
 # SemanticGraphBuilder — SymPy AST walker
 # ---------------------------------------------------------------------------
 
+# Matches ``\oint`` or ``\int`` commands in LaTeX — used to tag each
+# Integral node as closed or open based on left-to-right position.
+_INTEGRAL_CMD_RE: re.Pattern[str] = re.compile(r"\\(oint|int)\b")
+
+
 class SemanticGraphBuilder:
     """Walks a SymPy expression tree and emits nodes + edges."""
 
@@ -788,6 +916,7 @@ class SemanticGraphBuilder:
         overrides: dict[str, dict[str, str]] | None = None,
         latex_commands: dict[str, str] | None = None,
         original_latex: str | None = None,
+        bare_sum_indices: set[str] | None = None,
     ) -> None:
         self.nodes: list[dict[str, str]] = []
         self.edges: list[dict[str, str]] = []
@@ -796,7 +925,17 @@ class SemanticGraphBuilder:
         self._overrides = overrides or {}
         self._latex_commands = latex_commands or {}
         self._original_latex = original_latex or ""
+        self._bare_sum_indices: set[str] = bare_sum_indices or set()
         self._symbol_order = self._build_symbol_order()
+        # Per-integral closed-integral flags: scan the *original* LaTeX for
+        # \oint vs \int in left-to-right order so each Integral node can be
+        # tagged independently (avoids the old global-boolean bug that
+        # marked *all* integrals as closed when *any* \oint appeared).
+        self._integral_closed_flags: list[bool] = [
+            m.group(1) == "oint"
+            for m in _INTEGRAL_CMD_RE.finditer(self._original_latex)
+        ]
+        self._integral_walk_idx: int = 0
 
     @staticmethod
     def _fmt_number(expr: sympy.Basic) -> str:
@@ -1071,6 +1210,8 @@ class SemanticGraphBuilder:
                 attrs: dict[str, Any] = {"type": "constant"}
                 if meta.get("label"):
                     attrs["label"] = meta["label"]
+                if meta.get("latex"):
+                    attrs["latex"] = meta["latex"]
                 self._add_node(node_id, **attrs)
                 return node_id
 
@@ -1164,11 +1305,18 @@ class SemanticGraphBuilder:
 
         # --- Integral ---
         if isinstance(expr, Integral):
-            node_id = self._next_id("integral")
+            idx = self._integral_walk_idx
+            self._integral_walk_idx += 1
+            is_closed = (
+                idx < len(self._integral_closed_flags)
+                and self._integral_closed_flags[idx]
+            )
+            op = "closed_integral" if is_closed else "integral"
+            node_id = self._next_id(op)
             wrt_ids: list[str] = []
             lower_nid: str | None = None
             upper_nid: str | None = None
-            node_attrs: dict[str, str] = {"type": "operator", "op": "integral"}
+            node_attrs: dict[str, str] = {"type": "operator", "op": op}
             for limit_tuple in expr.limits:
                 var_id = self._walk(limit_tuple[0])
                 wrt_ids.append(var_id)
@@ -1181,6 +1329,12 @@ class SemanticGraphBuilder:
             if upper_nid is not None:
                 node_attrs["upper_bound"] = upper_nid
             self._add_node(node_id, **node_attrs)
+            for wid in wrt_ids:
+                self._add_edge(wid, node_id, role="wrt")
+            if lower_nid is not None:
+                self._add_edge(lower_nid, node_id, role="lb")
+            if upper_nid is not None:
+                self._add_edge(upper_nid, node_id, role="ub")
             child_id = self._walk(expr.function)
             self._add_edge(child_id, node_id)
             return node_id
@@ -1197,19 +1351,36 @@ class SemanticGraphBuilder:
                 var_id = self._walk(limit_tuple[0])
                 wrt_ids.append(var_id)
                 if len(limit_tuple) >= 3:
-                    lower_nid = self._walk(limit_tuple[1])
-                    upper_nid = self._walk(limit_tuple[2])
+                    lb_expr = limit_tuple[1]
+                    ub_expr = limit_tuple[2]
 
-                    # Index specification: ``n = 0`` as a symmetric
-                    # equals node — no roles (same as any other ``=``).
-                    idx_id = self._next_id("equals")
-                    self._add_node(idx_id, type="relation", op="equals")
-                    self._add_edge(var_id, idx_id)
-                    self._add_edge(lower_nid, idx_id)
-                    self._add_edge(idx_id, node_id, role="lb")
+                    # Check if this index variable had synthetic bounds
+                    # injected by the preprocessor for bare ``\sum_i``
+                    # notation.  Only suppress bounds when the index is
+                    # known-synthetic — explicit ``\sum_{n=0}^{\infty}``
+                    # must keep its bound nodes.
+                    idx_name = str(limit_tuple[0])
+                    synthetic = idx_name in self._bare_sum_indices
+                    if synthetic:
+                        self._add_edge(var_id, node_id, role="wrt")
+                    else:
+                        lower_nid = self._walk(lb_expr)
+                        upper_nid = self._walk(ub_expr)
 
-                    # Upper bound feeds directly into the sum/product.
-                    self._add_edge(upper_nid, node_id, role="ub")
+                        # Index variable → sum/product with role="wrt"
+                        # so downstream renderers always know the index.
+                        self._add_edge(var_id, node_id, role="wrt")
+
+                        # Index specification: ``n = 0`` as a symmetric
+                        # equals node — no roles (same as any other ``=``).
+                        idx_id = self._next_id("equals")
+                        self._add_node(idx_id, type="relation", op="equals")
+                        self._add_edge(var_id, idx_id)
+                        self._add_edge(lower_nid, idx_id)
+                        self._add_edge(idx_id, node_id, role="lb")
+
+                        # Upper bound feeds directly into the sum/product.
+                        self._add_edge(upper_nid, node_id, role="ub")
 
             node_attrs["with_respect_to"] = ", ".join(wrt_ids)
             if lower_nid is not None:
@@ -1226,7 +1397,10 @@ class SemanticGraphBuilder:
             exponent = expr.args[1]
             exp_val = self._fmt_number(exponent)
             node_id = self._next_id("power")
-            self._add_node(node_id, type="operator", op="power", exponent=exp_val)
+            attrs: dict[str, Any] = {"type": "operator", "op": "power", "exponent": exp_val}
+            if exponent == -1:
+                attrs["latex"] = r"\dfrac{1}{(\cdot)}"
+            self._add_node(node_id, **attrs)
             base_id = self._walk(expr.args[0])
             self._add_edge(base_id, node_id)
             return node_id
@@ -1355,12 +1529,15 @@ def _build_relation_graph(
     latex_commands: dict[str, str] | None = None,
     parenthetical_annotations: list | None = None,
     domain: str | None = None,
+    bare_sum_indices: set[str] | None = None,
+
 ) -> dict:
     r"""Build a graph for a binary relation ``lhs <op> rhs``."""
     builder = SemanticGraphBuilder(
         overrides=overrides,
         latex_commands=latex_commands or {},
         original_latex=original_latex,
+        bare_sum_indices=bare_sum_indices,
     )
 
     def _walk_relation_side(side_latex: str) -> tuple[str, sympy.Basic | None]:
@@ -1433,6 +1610,8 @@ def _build_chained_asymmetric_relation_graph(
     latex_commands: dict[str, str] | None = None,
     parenthetical_annotations: list | None = None,
     domain: str | None = None,
+    bare_sum_indices: set[str] | None = None,
+
 ) -> dict:
     r"""Build right-associative nested binary nodes for chained asymmetric relations.
 
@@ -1448,6 +1627,7 @@ def _build_chained_asymmetric_relation_graph(
         overrides=overrides,
         latex_commands=latex_commands or {},
         original_latex=original_latex,
+        bare_sum_indices=bare_sum_indices,
     )
     part_ids: list[str] = []
     try:
@@ -1495,6 +1675,8 @@ def _build_nary_relation_graph(
     latex_commands: dict[str, str] | None = None,
     parenthetical_annotations: list | None = None,
     domain: str | None = None,
+    bare_sum_indices: set[str] | None = None,
+
 ) -> dict:
     r"""Build an n-ary relation graph: all parts feed into one relation node.
 
@@ -1506,6 +1688,7 @@ def _build_nary_relation_graph(
         overrides=overrides,
         latex_commands=latex_commands or {},
         original_latex=original_latex,
+        bare_sum_indices=bare_sum_indices,
     )
     part_ids: list[str] = []
     first_expr = None
@@ -1556,7 +1739,7 @@ def _walk_condition_into(
     symbol dedup works across the whole piecewise graph.
     Returns the root node ID of the condition sub-graph.
     """
-    preprocessed = _preprocess_latex(cond_latex)
+    preprocessed, _ = _preprocess_latex(cond_latex)
     rel = _split_on_relation(preprocessed)
 
     if rel is not None:
@@ -1765,7 +1948,9 @@ def _build_comma_separated_graph(
                 return nid
             if nid.startswith("__"):
                 return p + nid
-            if nid.startswith("Xi_{") or nid.startswith("Theta_{") or nid.startswith("Phi_{"):
+            # SymPy symbol names may include a leading backslash (e.g. \Theta_{0})
+            stripped = nid.lstrip("\\")
+            if stripped.startswith("Xi_{") or stripped.startswith("Theta_{") or stripped.startswith("Phi_{"):
                 return p + nid
             return nid
 
@@ -1843,13 +2028,15 @@ def _latex_to_semantic_graph_dict(
 
     braket_collapsed, braket_overrides = _collapse_braket_notation(latex)
     compound_collapsed, compound_overrides = _collapse_compound_symbols(braket_collapsed)
-    collapsed, text_overrides = _collapse_text_commands(compound_collapsed)
+    subscript_collapsed, subscript_overrides = _collapse_multichar_subscripts(compound_collapsed)
+    collapsed, text_overrides = _collapse_text_commands(subscript_collapsed)
     font_unwrapped = _strip_symbol_font_commands(collapsed)
-    preprocessed = _preprocess_latex(font_unwrapped)
+    preprocessed, bare_sum_indices = _preprocess_latex(font_unwrapped)
     latex_commands = _extract_latex_commands(latex)
     merged_overrides: dict[str, dict[str, str]] = {
         **braket_overrides,
         **compound_overrides,
+        **subscript_overrides,
         **text_overrides,
         **(user_overrides or {}),
     }
@@ -1881,7 +2068,7 @@ def _latex_to_semantic_graph_dict(
                     parts, rel_meta, latex,
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
-                    domain=domain,
+                    domain=domain, bare_sum_indices=bare_sum_indices,
                 )
             else:
                 # Asymmetric meta-relations (implies) → right-associative nesting.
@@ -1889,13 +2076,14 @@ def _latex_to_semantic_graph_dict(
                     parts, rel_meta, latex,
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
-                    domain=domain,
+                    domain=domain, bare_sum_indices=bare_sum_indices,
                 )
 
         graph = _build_relation_graph(
             lhs_latex, rel_meta, rhs_latex, latex,
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations, domain=domain,
+            bare_sum_indices=bare_sum_indices,
         )
         return graph
 
@@ -1932,13 +2120,14 @@ def _latex_to_semantic_graph_dict(
                     parts, rel_meta, latex,
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
-                    domain=domain,
+                    domain=domain, bare_sum_indices=bare_sum_indices,
                 )
 
         graph = _build_relation_graph(
             lhs_latex, rel_meta, rhs_latex, latex,
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations, domain=domain,
+            bare_sum_indices=bare_sum_indices,
         )
         return graph
 
@@ -1950,7 +2139,7 @@ def _latex_to_semantic_graph_dict(
             chained_parts, eq_meta, latex,
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations,
-            domain=domain,
+            domain=domain, bare_sum_indices=bare_sum_indices,
         )
 
     # --- Single expression ---
@@ -1970,7 +2159,7 @@ def _latex_to_semantic_graph_dict(
             lhs_latex, rhs_latex = eq_split
             builder = SemanticGraphBuilder(
                 overrides=overrides, latex_commands=latex_commands,
-                original_latex=latex,
+                original_latex=latex, bare_sum_indices=bare_sum_indices,
             )
             try:
                 lhs_expr = parse_latex(lhs_latex)
@@ -2000,7 +2189,10 @@ def _latex_to_semantic_graph_dict(
             return graph
 
     classification = _classify_expression(expr)
-    builder = SemanticGraphBuilder(overrides=overrides, latex_commands=latex_commands, original_latex=latex)
+    builder = SemanticGraphBuilder(
+        overrides=overrides, latex_commands=latex_commands,
+        original_latex=latex, bare_sum_indices=bare_sum_indices,
+    )
     graph = builder.build(expr, original_latex=latex)
     graph["classification"] = classification
     if domain:
@@ -2009,11 +2201,70 @@ def _latex_to_semantic_graph_dict(
     return graph
 
 
+def _resolve_xi_node_ids(graph: SemanticGraph) -> None:
+    """Rename ``Xi_{N}`` / ``Theta_{N}`` / ``cK_Xi_{N}`` node ids to clean display forms.
+
+    Multi-char subscripts like ``v_{rms}`` are collapsed into ``Xi_{0}``
+    placeholders before SymPy parsing; Greek subscripts like
+    ``\\epsilon_0`` are collapsed into ``Theta_{N}`` placeholders.
+    The node's ``latex`` field holds the restored form.  This pass
+    derives a clean id from that latex and renames nodes + edges
+    consistently.
+    """
+    _PLACEHOLDER_ID_RE = re.compile(r"(c\d+_)?(?:Xi|Theta)_\{\d+\}")
+    rename_map: dict[str, str] = {}
+    for node in graph.nodes:
+        m = _PLACEHOLDER_ID_RE.fullmatch(node.id)
+        if not m:
+            continue
+        clause_prefix = m.group(1) or ""
+        latex_val = getattr(node, "latex", None) or ""
+        clean = re.sub(r"\\text\{([^{}]+)\}", r"\1", latex_val)
+        # Greek subscript placeholders (Theta_): the latex is e.g.
+        # ``\epsilon_{0}`` — strip the leading command backslash so
+        # the node id stays ``epsilon_{0}`` (internal identifier),
+        # while latex/subexpr keep the proper ``\epsilon_{0}`` form.
+        bare_id = node.id[len(clause_prefix):]
+        if bare_id.startswith("Theta_{"):
+            clean = re.sub(r"^\\", "", clean)
+        # Preserve the clause prefix (e.g. ``c0_``) so that the same
+        # variable appearing in different clauses keeps a unique id.
+        if clause_prefix:
+            clean = clause_prefix + clean
+        if clean and clean != node.id:
+            rename_map[node.id] = clean
+    if not rename_map:
+        return
+    for node in graph.nodes:
+        if node.id in rename_map:
+            node.id = rename_map[node.id]
+    for edge in graph.edges:
+        if edge.from_ in rename_map:
+            edge.from_ = rename_map[edge.from_]
+        if edge.to in rename_map:
+            edge.to = rename_map[edge.to]
+
+
 def latex_to_semantic_graph(
     latex: str,
     overrides: dict[str, dict[str, str]] | None = None,
     domain: str | None = None,
 ) -> SemanticGraph:
     """Parse a LaTeX string and return a ``SemanticGraph`` model instance."""
-    raw = _latex_to_semantic_graph_dict(latex, overrides=overrides, domain=domain)
-    return SemanticGraph.model_validate(raw)
+    # Strip LaTeX accent commands (\vec, \hat, …) before SymPy parsing —
+    # SymPy's parse_latex treats them as unknown symbols (e.g. \vec{F} →
+    # Symbol("vec") * Symbol("F")).  After graph construction we restore
+    # the accents on the matching nodes via the postprocessor.
+    #
+    # Only strip *tracked* accents — not font commands (\mathbf, \mathrm,
+    # etc.) which are handled downstream by ``_strip_symbol_font_commands``.
+    from .postprocessor import GraphPostprocessor
+
+    accent_map: dict[str, str] = {}
+    cleaned = _strip_tracked_accents(latex, accent_map)
+    raw = _latex_to_semantic_graph_dict(cleaned, overrides=overrides, domain=domain)
+    graph = SemanticGraph.model_validate(raw)
+    _resolve_xi_node_ids(graph)
+    if accent_map:
+        GraphPostprocessor.restore_accents(graph, accent_map)
+    return graph

@@ -154,7 +154,7 @@ const OPERATOR_GLYPHS = {
     equals: '=', greater_than: '>', less_than: '<',
     greater_equal: '≥', less_equal: '≤', not_equal: '≠',
     multiply: '×', add: '+', subtract: '−',
-    divide: '÷', integral: '∫',
+    divide: '÷', integral: '∫', closed_integral: '∮',
     implies: '⇒', iff: '⇔',
     negation: '−', not: '¬', logical_not: '¬',
     conjunction: '∧', disjunction: '∨',
@@ -173,7 +173,7 @@ const OPERATOR_LATEX = {
     greater_equal: '\\geq', less_equal: '\\leq', not_equal: '\\neq',
     element_of: '\\in', not_element_of: '\\notin',
     multiply: '\\times', add: '+', subtract: '-',
-    divide: '\\div', integral: '\\int',
+    divide: '\\div', integral: '\\int', closed_integral: '\\oint',
     implies: '\\Rightarrow', iff: '\\Leftrightarrow',
     negation: '-', not: '\\lnot', logical_not: '\\lnot',
     conjunction: '\\land', disjunction: '\\lor',
@@ -213,7 +213,7 @@ const OPERATOR_KINDS = {
     not: 'logical', logical_not: 'logical',
     conjunction: 'logical', disjunction: 'logical',
     sum: 'aggregate', product: 'aggregate',
-    integral: 'aggregate', limit: 'aggregate',
+    integral: 'aggregate', closed_integral: 'aggregate', limit: 'aggregate',
     derivative: 'aggregate', partial_derivative: 'aggregate',
     inner_product: 'quantum',
 };
@@ -243,13 +243,8 @@ function operatorGlyph(node) {
     const op = node.op;
     if (!op) return null;
     if (op === 'power') {
+        if (node.exponent != null && String(node.exponent) === '-1') return '1/(·)';
         return node.exponent ? `(·)${toSuperscript(node.exponent)}` : '(·)˙';
-    }
-    if (op === 'derivative' || op === 'partial_derivative') {
-        const d = op === 'partial_derivative' ? '∂' : 'd';
-        if (node.with_respect_to && (!node._childIds || node._childIds.length <= 1))
-            return `${d}·/${d}${node.with_respect_to}`;
-        return `${d}·/${d}·`;
     }
     return OPERATOR_GLYPHS[op] || null;
 }
@@ -1239,7 +1234,18 @@ export class D3SemanticGraphRenderer {
                 tile.attr('fill', style.fill || '').attr('stroke', style.stroke || '');
             }
 
-            this._renderLabel(group, data, estimatedWidth, true, style);
+            const measured = this._renderLabel(group, data, estimatedWidth, true, style);
+
+            // Resize tile to fit measured KaTeX content.
+            if (measured) {
+                const padX = 24, padY = 16;
+                const tileW = Math.max(estimatedWidth, measured.width + padX);
+                const tileH = Math.max(48, measured.height + padY);
+                tile.attr('x', -tileW / 2)
+                    .attr('width', tileW)
+                    .attr('y', -tileH / 2)
+                    .attr('height', tileH);
+            }
 
             this._appendChevron(group, d, true);
             return;
@@ -1340,6 +1346,7 @@ export class D3SemanticGraphRenderer {
         if (OPERATOR_LATEX[op]) return OPERATOR_LATEX[op];
         if (op === 'power') {
             const exp = data.exponent;
+            if (exp != null && String(exp) === '-1') return `\\dfrac{1}{(\\cdot)}`;
             return exp ? `(\\cdot)^{${exp}}` : `(\\cdot)^{\\cdot}`;
         }
         if (op === 'derivative' || op === 'partial_derivative') {
@@ -1349,9 +1356,33 @@ export class D3SemanticGraphRenderer {
                 return `\\frac{${d}}{${d}${wrt}}`;
             return `\\frac{${d}}{${d}\\cdot}`;
         }
+        if (op === 'integral' || op === 'closed_integral') {
+            const cmd = OPERATOR_LATEX[op];
+            const wrt = data.with_respect_to;
+            const lb = data.lower_bound || '';
+            const ub = data.upper_bound || '';
+            if (wrt) {
+                if (lb && ub) return `${cmd}_{${lb}}^{${ub}} d${wrt}`;
+                return `${cmd} d${wrt}`;
+            }
+            return cmd;
+        }
+        if (op === 'sum' || op === 'product') {
+            const cmd = OPERATOR_LATEX[op];
+            const wrt = data.with_respect_to;
+            if (wrt) return `${cmd}_{${wrt}}`;
+            return cmd;
+        }
         return `\\text{${op}}`;
     }
 
+    /**
+     * Render a node label via KaTeX (or plain text fallback).
+     *
+     * Returns ``{width, height}`` of the measured KaTeX content so the
+     * caller can resize the background shape to fit, or ``null`` when the
+     * plain-text fallback was used.
+     */
     _renderLabel(group, data, maxWidth, isCollapsed, style = {}) {
         let latex = isCollapsed
             ? (data.subexpr || data.latex || null)
@@ -1368,11 +1399,38 @@ export class D3SemanticGraphRenderer {
         }
 
         if (latex && this.katex) {
+            const span = document.createElement('span');
+            let ok = false;
+            try {
+                this.katex.render('\\displaystyle ' + latex, span, { throwOnError: false, displayMode: false });
+                ok = true;
+            } catch (_) { /* fallback below */ }
+
+            // Measure the rendered content offscreen so we can size the
+            // foreignObject (and the caller's background shape) to fit.
+            let measuredW = maxWidth, measuredH = 28;
+            if (ok) {
+                span.style.position = 'absolute';
+                span.style.visibility = 'hidden';
+                span.style.whiteSpace = 'nowrap';
+                document.body.appendChild(span);
+                const bbox = span.getBoundingClientRect();
+                measuredW = bbox.width;
+                measuredH = bbox.height;
+                document.body.removeChild(span);
+                span.style.position = '';
+                span.style.visibility = '';
+                span.style.whiteSpace = '';
+            }
+
+            const foW = Math.max(maxWidth, measuredW + 8);
+            const foH = Math.max(28, measuredH + 4);
+
             const fo = group.append('foreignObject')
-                .attr('x', -maxWidth / 2)
-                .attr('y', -14)
-                .attr('width', maxWidth)
-                .attr('height', 28)
+                .attr('x', -foW / 2)
+                .attr('y', -foH / 2)
+                .attr('width', foW)
+                .attr('height', foH)
                 .attr('class', 'd3sg-label-fo');
 
             const div = fo.append('xhtml:div')
@@ -1381,13 +1439,10 @@ export class D3SemanticGraphRenderer {
                 .style('justify-content', 'center')
                 .style('align-items', 'center')
                 .style('width', '100%')
-                .style('height', '100%')
-                .style('overflow', 'hidden');
+                .style('height', '100%');
             if (textColor) div.style('color', textColor);
 
-            const span = document.createElement('span');
-            try {
-                this.katex.render(latex, span, { throwOnError: false, displayMode: false });
+            if (ok) {
                 if (data.emoji && !isOp) {
                     const emojiSpan = document.createElement('span');
                     emojiSpan.textContent = data.emoji;
@@ -1395,8 +1450,10 @@ export class D3SemanticGraphRenderer {
                     div.node().appendChild(emojiSpan);
                 }
                 div.node().appendChild(span);
-            } catch (_) {
+                return { width: measuredW, height: measuredH };
+            } else {
                 div.text(data.label || data.id);
+                return null;
             }
         } else {
             const text = getNodeLabel(data, this.labels);
@@ -1407,6 +1464,7 @@ export class D3SemanticGraphRenderer {
                 .attr('font-size', isCollapsed ? '14px' : '17px')
                 .text(text);
             if (textColor) label.attr('fill', textColor);
+            return null;
         }
     }
 

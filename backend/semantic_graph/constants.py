@@ -113,10 +113,10 @@ _META_RELATION_OPS: set[str] = {"implies", "iff"}
 _PLACEHOLDER_NAME_RE: re.Pattern[str] = re.compile(r"^(?:Theta|Xi|Phi)_\{\d+\}$")
 
 CONSTANT_MAP: dict[Any, dict[str, str]] = {
-    pi: {"label": "pi"},
-    E: {"label": "e (Euler's number)"},
-    I: {"label": "imaginary unit"},
-    oo: {"label": "infinity"},
+    pi: {"label": "pi", "latex": "\\pi"},
+    E: {"label": "e (Euler's number)", "latex": "e"},
+    I: {"label": "imaginary unit", "latex": "i"},
+    oo: {"label": "infinity", "latex": "\\infty"},
 }
 
 RELATION_MAP: list[tuple[str, dict[str, str]]] = [
@@ -160,7 +160,7 @@ _OPERATOR_GLYPHS: dict[str, str] = {
     "equals": "=", "greater_than": ">", "less_than": "<",
     "greater_equal": "≥", "less_equal": "≤", "not_equal": "≠",
     "multiply": "×", "add": "+", "subtract": "−",
-    "divide": "÷", "integral": "∫",
+    "divide": "÷", "integral": "∫", "closed_integral": "∮",
     "implies": "⇒", "iff": "⇔", "piecewise": "pw", "branch": "⇒",
     "negation": "−", "not": "¬", "logical_not": "¬",
     "conjunction": "∧", "disjunction": "∨",
@@ -195,7 +195,8 @@ _OPERATOR_KINDS: dict[str, str] = {
     "not": "logical", "logical_not": "logical",
     "conjunction": "logical", "disjunction": "logical",
     "sum": "aggregate", "product": "aggregate",
-    "integral": "aggregate", "limit": "aggregate",
+    "integral": "aggregate", "closed_integral": "aggregate",
+    "limit": "aggregate",
     "derivative": "aggregate", "partial_derivative": "aggregate",
     "inner_product": "quantum",
     "piecewise": "structural",

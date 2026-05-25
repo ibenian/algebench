@@ -42,6 +42,13 @@
       "runtimeExecutable": "./algebench",
       "runtimeArgs": ["scenes/draft/photons-wavelength-energy.json", "--port", "5736", "--debug", "--server-only"],
       "port": 5736
+    },
+    {
+      "name": "sg-report",
+      "runtimeExecutable": "./scripts/serve_sg_report.sh",
+      "runtimeArgs": ["--port", "5740"],
+      "port": 5740,
+      "autoPort": false
     }
   ]
 }

@@ -30,10 +30,10 @@ from tests.backend.semantic_graph.generators.invariants import (
 
 
 # Var styles where compound symbol placeholders leak into node IDs.
-# Tracked as a known parser gap — when fixed, strict xfail catches it.
-# To un-xfail individual cases after fixing, add their axis_id to
-# _COMPOUND_FIXED and the strict xfail will catch any regression.
-_PLACEHOLDER_LEAK_STYLES = {"compound"}
+# Previously {"compound"} — resolved by preventing double-collapsing
+# of Theta/Xi/Phi placeholders in _collapse_compound_symbols.
+# Kept as infrastructure for future var-style-specific xfails.
+_PLACEHOLDER_LEAK_STYLES: set[str] = set()
 _COMPOUND_FIXED: set[str] = set()
 
 

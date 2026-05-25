@@ -25,6 +25,7 @@ class LaTeXPreprocessor:
         dotted_vars: dict[str, int] = {}
         src = self.rewrite_dot_derivatives(src, dotted_vars)
         src = self.normalize_frac_derivatives(src)
+        src = self.normalize_bare_sums(src)
         accent_map: dict[str, str] = {}
         src = self.strip_accent_commands(src, accent_map)
         src, subscript_map = self.substitute_multichar_subscripts(src)
@@ -189,6 +190,50 @@ class LaTeXPreprocessor:
             out.append("}")
             i = den_close + 1
         return "".join(out)
+
+    @staticmethod
+    def normalize_bare_sums(
+        latex: str,
+        captured: set[str] | None = None,
+    ) -> str:
+        r"""Add default bounds to bare ``\sum_i`` / ``\prod_j`` notation.
+
+        SymPy's ``parse_latex`` requires explicit bounds, e.g.
+        ``\sum_{i=0}^{\infty}``.  This pass rewrites shorthand forms:
+
+        * ``\sum_i …``    → ``\sum_{i=0}^{\infty} …``
+        * ``\sum_{i} …``  → ``\sum_{i=0}^{\infty} …``
+        * ``\prod_j …``   → ``\prod_{j=0}^{\infty} …``
+
+        Only bare subscripts (no ``=`` inside) without a following ``^``
+        are rewritten — fully bounded forms are left untouched.
+
+        If *captured* is provided, index variable names that were
+        normalised are added to the set so the translator can suppress
+        the synthetic bound nodes.
+        """
+        if not isinstance(latex, str):
+            return latex
+        # Match \sum or \prod followed by a bare subscript (no '=')
+        # and NOT already followed by ^{...}
+        # Group 1: command (\sum or \prod)
+        # Group 2: index variable (single char or braced simple name)
+        pattern = re.compile(
+            r"(\\(?:sum|prod))"               # \sum or \prod
+            r"_"                               # subscript marker
+            r"(?:\{([A-Za-z](?:[A-Za-z0-9]*)?)\}"  # {i} or {idx} — braced, no '='
+            r"|([A-Za-z]))"                    # or bare single char: i
+            r"(?!\s*\^)"                       # NOT followed by ^
+        )
+
+        def _repl(m: re.Match) -> str:
+            cmd = m.group(1)
+            idx = m.group(2) or m.group(3)
+            if captured is not None:
+                captured.add(idx)
+            return rf"{cmd}_{{{idx}=0}}^{{\infty}}"
+
+        return pattern.sub(_repl, latex)
 
     @staticmethod
     def strip_accent_commands(

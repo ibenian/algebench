@@ -50,6 +50,21 @@ from tests.backend.semantic_graph.domains.test_domain_ode import (
 from tests.backend.semantic_graph.domains.test_domain_structural import (
     ALL_EXPRESSIONS as STRUCTURAL_EXPRESSIONS,
 )
+from tests.backend.semantic_graph.domains.test_domain_mechanics import (
+    ALL_EXPRESSIONS as MECHANICS_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_em import (
+    ALL_EXPRESSIONS as EM_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_thermo import (
+    ALL_EXPRESSIONS as THERMO_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_waves import (
+    ALL_EXPRESSIONS as WAVES_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_pde import (
+    ALL_EXPRESSIONS as PDE_EXPRESSIONS,
+)
 
 
 # ── Expression catalog ─────────────────────────────────────────────────
@@ -64,7 +79,12 @@ def _collect_expressions() -> list[tuple[str, list[tuple[str, str]]]]:
         ("Algebra", ALGEBRA_EXPRESSIONS),
         ("Calculus", CALCULUS_EXPRESSIONS),
         ("ODE", ODE_EXPRESSIONS),
+        ("PDE", PDE_EXPRESSIONS),
         ("Structural", STRUCTURAL_EXPRESSIONS),
+        ("Mechanics", MECHANICS_EXPRESSIONS),
+        ("Electromagnetism", EM_EXPRESSIONS),
+        ("Thermodynamics", THERMO_EXPRESSIONS),
+        ("Waves & Optics", WAVES_EXPRESSIONS),
     ):
         items = [(tid, latex) for tid, latex, *_ in catalog]
         sections.append((name, items))
@@ -117,7 +137,12 @@ def _page_template() -> str:
       import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
       mermaid.initialize({{ startOnLoad: false, theme: '{mermaid_theme}',
         flowchart: {{ htmlLabels: true, curve: 'basis' }} }});
-      await mermaid.run();
+      try {{ await mermaid.run(); }} catch (_) {{}}
+      // KaTeX is loaded via a defer script which may not have executed yet
+      // when this module runs.  Poll briefly (defer + module ordering is
+      // not guaranteed across browsers).
+      for (let i = 0; i < 50 && !window.katex; i++)
+        await new Promise(r => setTimeout(r, 50));
       if (window.katex) {{
         const INLINE_MATH = /\\$([^$\\n]+)\\$/g;
         document.querySelectorAll(
@@ -161,6 +186,64 @@ def _page_template() -> str:
           }});
           fo.replaceChild(wrapper, outer);
           wrapper.appendChild(outer);
+        }});
+        // Resize foreignObject + parent node rect after KaTeX renders accents
+        document.querySelectorAll('svg g.node foreignObject').forEach((fo) => {{
+          const content = fo.querySelector('[data-gv-centered="wrapper"]') || fo.firstElementChild;
+          if (!content) return;
+          const bbox = content.getBoundingClientRect();
+          const foRect = fo.getBoundingClientRect();
+          // Only expand if content is taller/wider than current foreignObject
+          const PAD = 8;
+          const neededH = bbox.height + PAD;
+          const neededW = bbox.width + PAD;
+          const curH = parseFloat(fo.getAttribute('height')) || foRect.height;
+          const curW = parseFloat(fo.getAttribute('width')) || foRect.width;
+          if (neededH > curH) {{
+            const dh = neededH - curH;
+            fo.setAttribute('height', neededH);
+            // Shift foreignObject up by half the delta to keep node centered
+            const curY = parseFloat(fo.getAttribute('y')) || 0;
+            fo.setAttribute('y', curY - dh / 2);
+            // Also expand parent rect/polygon
+            const nodeG = fo.closest('g.node');
+            if (nodeG) {{
+              const rect = nodeG.querySelector('rect, .basic');
+              if (rect) {{
+                const rh = parseFloat(rect.getAttribute('height')) || 0;
+                if (rh && rh < neededH) {{
+                  rect.setAttribute('height', neededH);
+                  const ry = parseFloat(rect.getAttribute('y')) || 0;
+                  rect.setAttribute('y', ry - dh / 2);
+                }}
+              }}
+            }}
+          }}
+          if (neededW > curW) {{
+            const dw = neededW - curW;
+            fo.setAttribute('width', neededW);
+            const curX = parseFloat(fo.getAttribute('x')) || 0;
+            fo.setAttribute('x', curX - dw / 2);
+            const nodeG = fo.closest('g.node');
+            if (nodeG) {{
+              const rect = nodeG.querySelector('rect, .basic');
+              if (rect) {{
+                const rw = parseFloat(rect.getAttribute('width')) || 0;
+                if (rw && rw < neededW) {{
+                  rect.setAttribute('width', neededW);
+                  const rx = parseFloat(rect.getAttribute('x')) || 0;
+                  rect.setAttribute('x', rx - dw / 2);
+                }}
+              }}
+            }}
+          }}
+        }});
+        // Fix KaTeX accent arrow colors: SVG paths inside foreignObject
+        // default to fill:black which is invisible on dark backgrounds.
+        // Use inline style (not attribute) to override any CSS rules.
+        document.querySelectorAll('svg g.node foreignObject .katex svg path').forEach((p) => {{
+          const textColor = window.getComputedStyle(p.closest('.katex')).color;
+          p.style.fill = textColor;
         }});
       }}
     </script>
@@ -218,6 +301,15 @@ def _page_template() -> str:
       }}
       .row-graph .mermaid {{
         font-size: 0.85rem;
+      }}
+      .row-graph .mermaid svg g.node foreignObject {{
+        overflow: visible !important;
+      }}
+      /* KaTeX accent arrows (e.g. \vec) render as SVG paths that default
+         to fill:black — invisible on dark backgrounds. Inherit text color. */
+      .katex .accent-body svg path,
+      .katex .overlay svg path {{
+        fill: currentColor;
       }}
       .row-actions {{
         display: flex;

@@ -36,9 +36,15 @@
       "type": "string",
       "enum": [
         "add", "subtract", "multiply", "divide", "power", "equals", "negation",
-        "derivative", "integral", "limit", "tends_to", "sum", "product",
+        "derivative", "partial_derivative",
+        "integral", "closed_integral", "limit", "tends_to", "sum", "product",
         "sin", "cos", "tan", "log", "exp", "sqrt", "abs",
         "arcsin", "arccos", "arctan",
+        "factorial", "choose",
+        "greater_than", "less_than", "greater_equal", "less_equal",
+        "not_equal", "approximately", "proportional",
+        "implies", "iff",
+        "element_of", "not_element_of",
         "inner_product",
         "piecewise", "branch"
       ],
