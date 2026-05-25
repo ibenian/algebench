@@ -246,7 +246,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 01:11 UTC &middot; theme: default-dark &middot; 12 expressions</div>
+<div class="report-meta">Generated 2026-05-25 01:30 UTC &middot; theme: default-dark &middot; 12 expressions</div>
 <div class="section-title">Algebra (12 expressions)</div>
 <div class="row">
   <div>
@@ -267,15 +267,15 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\times$")):::operator
-  __add_3(("$+$")):::operator
-  x["$x$"]:::scalar
-  __num_4["$1$"]:::number
-  __add_5(("$+$")):::operator
-  __num_6["$-1$"]:::number
-  __add_7(("$+$")):::operator
-  __power_8(("${(\cdot)}^{2}$")):::operator
-  __num_9["$-1$"]:::number
+  __multiply_2(("$\displaystyle \times$")):::operator
+  __add_3(("$\displaystyle +$")):::operator
+  x["$\displaystyle x$"]:::scalar
+  __num_4["$\displaystyle 1$"]:::number
+  __add_5(("$\displaystyle +$")):::operator
+  __num_6["$\displaystyle -1$"]:::number
+  __add_7(("$\displaystyle +$")):::operator
+  __power_8(("$\displaystyle {(\cdot)}^{2}$")):::operator
+  __num_9["$\displaystyle -1$"]:::number
   x --&gt; __add_3
   __num_4 --&gt; __add_3
   __add_3 --&gt; __multiply_2
@@ -443,16 +443,16 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$+$")):::operator
-  __add_3(("$+$")):::operator
-  __multiply_4(("$\times$")):::operator
-  a["$a$"]:::scalar
-  __power_5(("${(\cdot)}^{2}$")):::operator
-  x["$x$"]:::scalar
-  __multiply_6(("$\times$")):::operator
-  b["$b$"]:::scalar
-  c["$c$"]:::scalar
-  __num_7["$0$"]:::number
+  __add_2(("$\displaystyle +$")):::operator
+  __add_3(("$\displaystyle +$")):::operator
+  __multiply_4(("$\displaystyle \times$")):::operator
+  a["$\displaystyle a$"]:::scalar
+  __power_5(("$\displaystyle {(\cdot)}^{2}$")):::operator
+  x["$\displaystyle x$"]:::scalar
+  __multiply_6(("$\displaystyle \times$")):::operator
+  b["$\displaystyle b$"]:::scalar
+  c["$\displaystyle c$"]:::scalar
+  __num_7["$\displaystyle 0$"]:::number
   a --&gt; __multiply_4
   x --&gt; __power_5
   __power_5 --&gt; __multiply_4
@@ -630,24 +630,24 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  x["$x$"]:::scalar
-  __multiply_2(("$\times$")):::operator
-  __negation_3@{ shape: "flip-tri", label: "$-$" }
-  __multiply_4(("$\times$")):::operator
-  b["$b$"]:::scalar
-  pm["$\pm$"]:::scalar
-  __power_5(("${(\cdot)}^{1/2}$")):::operator
-  __add_6(("$+$")):::operator
-  __power_7(("${(\cdot)}^{2}$")):::operator
-  __negation_8@{ shape: "flip-tri", label: "$-$" }
-  __multiply_9(("$\times$")):::operator
-  __num_10["$4$"]:::number
-  __multiply_11(("$\times$")):::operator
-  a["$a$"]:::scalar
-  c["$c$"]:::scalar
-  __power_12(("$\dfrac{1}{(\cdot)}$")):::operator
-  __multiply_13(("$\times$")):::operator
-  __num_14["$2$"]:::number
+  x["$\displaystyle x$"]:::scalar
+  __multiply_2(("$\displaystyle \times$")):::operator
+  __negation_3@{ shape: "flip-tri", label: "$\displaystyle -$" }
+  __multiply_4(("$\displaystyle \times$")):::operator
+  b["$\displaystyle b$"]:::scalar
+  pm["$\displaystyle \pm$"]:::scalar
+  __power_5(("$\displaystyle {(\cdot)}^{1/2}$")):::operator
+  __add_6(("$\displaystyle +$")):::operator
+  __power_7(("$\displaystyle {(\cdot)}^{2}$")):::operator
+  __negation_8@{ shape: "flip-tri", label: "$\displaystyle -$" }
+  __multiply_9(("$\displaystyle \times$")):::operator
+  __num_10["$\displaystyle 4$"]:::number
+  __multiply_11(("$\displaystyle \times$")):::operator
+  a["$\displaystyle a$"]:::scalar
+  c["$\displaystyle c$"]:::scalar
+  __power_12(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
+  __multiply_13(("$\displaystyle \times$")):::operator
+  __num_14["$\displaystyle 2$"]:::number
   class __negation_3 operator
   class __negation_8 operator
   x --&gt; __equals_1
@@ -944,14 +944,14 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$+$")):::operator
-  __add_3(("$+$")):::operator
-  __power_4(("${(\cdot)}^{3}$")):::operator
-  t["$t$"]:::scalar
-  __multiply_5(("$\times$")):::operator
-  p["$p$"]:::scalar
-  q["$q$"]:::scalar
-  __num_6["$0$"]:::number
+  __add_2(("$\displaystyle +$")):::operator
+  __add_3(("$\displaystyle +$")):::operator
+  __power_4(("$\displaystyle {(\cdot)}^{3}$")):::operator
+  t["$\displaystyle t$"]:::scalar
+  __multiply_5(("$\displaystyle \times$")):::operator
+  p["$\displaystyle p$"]:::scalar
+  q["$\displaystyle q$"]:::scalar
+  __num_6["$\displaystyle 0$"]:::number
   t --&gt; __power_4
   __power_4 --&gt; __add_3
   p --&gt; __multiply_5
@@ -1101,19 +1101,19 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$+$")):::operator
-  __add_3(("$+$")):::operator
-  __add_4(("$+$")):::operator
-  __power_5(("${(\cdot)}^{3}$")):::operator
-  x["$x$"]:::scalar
-  __negation_6@{ shape: "flip-tri", label: "$-$" }
-  __multiply_7(("$\times$")):::operator
-  __num_8["$6$"]:::number
-  __power_9(("${(\cdot)}^{2}$")):::operator
-  __multiply_10(("$\times$")):::operator
-  __num_11["$11$"]:::number
-  __num_12["$-6$"]:::number
-  __num_13["$0$"]:::number
+  __add_2(("$\displaystyle +$")):::operator
+  __add_3(("$\displaystyle +$")):::operator
+  __add_4(("$\displaystyle +$")):::operator
+  __power_5(("$\displaystyle {(\cdot)}^{3}$")):::operator
+  x["$\displaystyle x$"]:::scalar
+  __negation_6@{ shape: "flip-tri", label: "$\displaystyle -$" }
+  __multiply_7(("$\displaystyle \times$")):::operator
+  __num_8["$\displaystyle 6$"]:::number
+  __power_9(("$\displaystyle {(\cdot)}^{2}$")):::operator
+  __multiply_10(("$\displaystyle \times$")):::operator
+  __num_11["$\displaystyle 11$"]:::number
+  __num_12["$\displaystyle -6$"]:::number
+  __num_13["$\displaystyle 0$"]:::number
   class __negation_6 operator
   x --&gt; __power_5
   __power_5 --&gt; __add_4
@@ -1335,16 +1335,16 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$+$")):::operator
-  __power_3(("${(\cdot)}^{2}$")):::operator
-  a["$a$"]:::scalar
-  __negation_4@{ shape: "flip-tri", label: "$-$" }
-  __power_5(("${(\cdot)}^{2}$")):::operator
-  b["$b$"]:::scalar
-  __multiply_6(("$\times$")):::operator
-  __add_7(("$+$")):::operator
-  __add_8(("$+$")):::operator
-  __negation_9@{ shape: "flip-tri", label: "$-$" }
+  __add_2(("$\displaystyle +$")):::operator
+  __power_3(("$\displaystyle {(\cdot)}^{2}$")):::operator
+  a["$\displaystyle a$"]:::scalar
+  __negation_4@{ shape: "flip-tri", label: "$\displaystyle -$" }
+  __power_5(("$\displaystyle {(\cdot)}^{2}$")):::operator
+  b["$\displaystyle b$"]:::scalar
+  __multiply_6(("$\displaystyle \times$")):::operator
+  __add_7(("$\displaystyle +$")):::operator
+  __add_8(("$\displaystyle +$")):::operator
+  __negation_9@{ shape: "flip-tri", label: "$\displaystyle -$" }
   class __negation_4 operator
   class __negation_9 operator
   a --&gt; __power_3
@@ -1539,17 +1539,17 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$+$")):::operator
-  __add_3(("$+$")):::operator
-  __power_4(("${(\cdot)}^{2}$")):::operator
-  a["$a$"]:::scalar
-  __multiply_5(("$\times$")):::operator
-  __num_6["$2$"]:::number
-  __multiply_7(("$\times$")):::operator
-  b["$b$"]:::scalar
-  __power_8(("${(\cdot)}^{2}$")):::operator
-  __power_9(("${(\cdot)}^{2}$")):::operator
-  __add_10(("$+$")):::operator
+  __add_2(("$\displaystyle +$")):::operator
+  __add_3(("$\displaystyle +$")):::operator
+  __power_4(("$\displaystyle {(\cdot)}^{2}$")):::operator
+  a["$\displaystyle a$"]:::scalar
+  __multiply_5(("$\displaystyle \times$")):::operator
+  __num_6["$\displaystyle 2$"]:::number
+  __multiply_7(("$\displaystyle \times$")):::operator
+  b["$\displaystyle b$"]:::scalar
+  __power_8(("$\displaystyle {(\cdot)}^{2}$")):::operator
+  __power_9(("$\displaystyle {(\cdot)}^{2}$")):::operator
+  __add_10(("$\displaystyle +$")):::operator
   a --&gt; __power_4
   __power_4 --&gt; __add_3
   __num_6 --&gt; __multiply_5
@@ -1759,19 +1759,19 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$+$")):::operator
-  __power_3(("${(\cdot)}^{3}$")):::operator
-  a["$a$"]:::scalar
-  __power_4(("${(\cdot)}^{3}$")):::operator
-  b["$b$"]:::scalar
-  __multiply_5(("$\times$")):::operator
-  __add_6(("$+$")):::operator
-  __add_7(("$+$")):::operator
-  __add_8(("$+$")):::operator
-  __power_9(("${(\cdot)}^{2}$")):::operator
-  __negation_10@{ shape: "flip-tri", label: "$-$" }
-  __multiply_11(("$\times$")):::operator
-  __power_12(("${(\cdot)}^{2}$")):::operator
+  __add_2(("$\displaystyle +$")):::operator
+  __power_3(("$\displaystyle {(\cdot)}^{3}$")):::operator
+  a["$\displaystyle a$"]:::scalar
+  __power_4(("$\displaystyle {(\cdot)}^{3}$")):::operator
+  b["$\displaystyle b$"]:::scalar
+  __multiply_5(("$\displaystyle \times$")):::operator
+  __add_6(("$\displaystyle +$")):::operator
+  __add_7(("$\displaystyle +$")):::operator
+  __add_8(("$\displaystyle +$")):::operator
+  __power_9(("$\displaystyle {(\cdot)}^{2}$")):::operator
+  __negation_10@{ shape: "flip-tri", label: "$\displaystyle -$" }
+  __multiply_11(("$\displaystyle \times$")):::operator
+  __power_12(("$\displaystyle {(\cdot)}^{2}$")):::operator
   class __negation_10 operator
   a --&gt; __power_3
   __power_3 --&gt; __add_2
@@ -2019,14 +2019,14 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$+$")):::operator
-  r__1_["$r_{1}$"]:::scalar
-  r__2_["$r_{2}$"]:::scalar
-  __negation_3@{ shape: "flip-tri", label: "$-$" }
-  __multiply_4(("$\times$")):::operator
-  b["$b$"]:::scalar
-  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
-  a["$a$"]:::scalar
+  __add_2(("$\displaystyle +$")):::operator
+  r__1_["$\displaystyle r_{1}$"]:::scalar
+  r__2_["$\displaystyle r_{2}$"]:::scalar
+  __negation_3@{ shape: "flip-tri", label: "$\displaystyle -$" }
+  __multiply_4(("$\displaystyle \times$")):::operator
+  b["$\displaystyle b$"]:::scalar
+  __power_5(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
+  a["$\displaystyle a$"]:::scalar
   class __negation_3 operator
   r__1_ --&gt; __add_2
   r__2_ --&gt; __add_2
@@ -2170,13 +2170,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\times$")):::operator
-  r__1_["$r_{1}$"]:::scalar
-  r__2_["$r_{2}$"]:::scalar
-  __multiply_3(("$\times$")):::operator
-  c["$c$"]:::scalar
-  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
-  a["$a$"]:::scalar
+  __multiply_2(("$\displaystyle \times$")):::operator
+  r__1_["$\displaystyle r_{1}$"]:::scalar
+  r__2_["$\displaystyle r_{2}$"]:::scalar
+  __multiply_3(("$\displaystyle \times$")):::operator
+  c["$\displaystyle c$"]:::scalar
+  __power_4(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
+  a["$\displaystyle a$"]:::scalar
   r__1_ --&gt; __multiply_2
   r__2_ --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
@@ -2311,22 +2311,22 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __power_2(("$(\cdot)^{\cdot}$")):::operator
-  __add_3(("$+$")):::operator
-  x["$x$"]:::scalar
-  y["$y$"]:::scalar
-  n["$n$"]:::scalar
-  k["$k$"]:::scalar
-  __num_5["$0$"]:::number
+  __power_2(("$\displaystyle (\cdot)^{\cdot}$")):::operator
+  __add_3(("$\displaystyle +$")):::operator
+  x["$\displaystyle x$"]:::scalar
+  y["$\displaystyle y$"]:::scalar
+  n["$\displaystyle n$"]:::scalar
+  k["$\displaystyle k$"]:::scalar
+  __num_5["$\displaystyle 0$"]:::number
   __equals_6{"="}:::relation
-  __sum_4(("$\displaystyle\sum_{k}$")):::operator
-  __multiply_7(("$\times$")):::operator
-  __choose_8{{"$choose(\cdot, \cdot)$"}}:::function
-  __multiply_9(("$\times$")):::operator
-  __power_10(("$(\cdot)^{\cdot}$")):::operator
-  __add_11(("$+$")):::operator
-  __negation_12@{ shape: "flip-tri", label: "$-$" }
-  __power_13(("$(\cdot)^{\cdot}$")):::operator
+  __sum_4(("$\displaystyle \sum_{k}$")):::operator
+  __multiply_7(("$\displaystyle \times$")):::operator
+  __choose_8{{"$\displaystyle choose(\cdot, \cdot)$"}}:::function
+  __multiply_9(("$\displaystyle \times$")):::operator
+  __power_10(("$\displaystyle (\cdot)^{\cdot}$")):::operator
+  __add_11(("$\displaystyle +$")):::operator
+  __negation_12@{ shape: "flip-tri", label: "$\displaystyle -$" }
+  __power_13(("$\displaystyle (\cdot)^{\cdot}$")):::operator
   class __negation_12 operator
   x --&gt; __add_3
   y --&gt; __add_3
@@ -2625,13 +2625,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __f_2{{"$f(\cdot)$"}}:::function
-  x["$x$"]:::scalar
-  __add_3(("$+$")):::operator
-  __multiply_4(("$\times$")):::operator
-  __q_5{{"$q(\cdot)$"}}:::function
-  __d_6{{"$d(\cdot)$"}}:::function
-  __r_7{{"$r(\cdot)$"}}:::function
+  __f_2{{"$\displaystyle f(\cdot)$"}}:::function
+  x["$\displaystyle x$"]:::scalar
+  __add_3(("$\displaystyle +$")):::operator
+  __multiply_4(("$\displaystyle \times$")):::operator
+  __q_5{{"$\displaystyle q(\cdot)$"}}:::function
+  __d_6{{"$\displaystyle d(\cdot)$"}}:::function
+  __r_7{{"$\displaystyle r(\cdot)$"}}:::function
   x --&gt; __f_2
   __f_2 --&gt; __equals_1
   x --&gt; __q_5
