@@ -515,16 +515,27 @@ def _page_template() -> str:
       }});
     }});
     function copyText(text, btn) {{
+      function onSuccess() {{
+        btn.textContent = 'copied';
+        btn.classList.add('copied');
+        setTimeout(function() {{ btn.textContent = 'copy'; btn.classList.remove('copied'); }}, 1500);
+      }}
+      if (navigator.clipboard && navigator.clipboard.writeText) {{
+        navigator.clipboard.writeText(text).then(onSuccess, function() {{ fallbackCopy(text, btn, onSuccess); }});
+      }} else {{
+        fallbackCopy(text, btn, onSuccess);
+      }}
+    }}
+    function fallbackCopy(text, btn, onSuccess) {{
       var ta = document.createElement('textarea');
       ta.value = text;
       ta.style.cssText = 'position:fixed;left:-9999px';
       document.body.appendChild(ta);
       ta.select();
-      document.execCommand('copy');
+      var ok = false;
+      try {{ ok = document.execCommand('copy'); }} catch(e) {{}}
       document.body.removeChild(ta);
-      btn.textContent = 'copied';
-      btn.classList.add('copied');
-      setTimeout(function() {{ btn.textContent = 'copy'; btn.classList.remove('copied'); }}, 1500);
+      if (ok) onSuccess();
     }}
     document.querySelectorAll('.row-copy-btn').forEach(btn => {{
       btn.addEventListener('click', () => {{
@@ -651,7 +662,7 @@ def _render_row(
             f'</div>'
         )
         compact_json = json.dumps(
-            json.loads(graph_json), separators=(",", ":"), ensure_ascii=False,
+            graph_dict, separators=(",", ":"), ensure_ascii=False,
         )
         parts.append(
             f'  <div class="row-panel row-d3" data-graph="{_escape_attr(compact_json)}">'
