@@ -410,6 +410,7 @@ def _page_template() -> str:
         max-height: 400px;
         overflow: auto;
         padding: 0.5rem 0.8rem;
+        position: relative;
       }}
       .row-json-pane pre {{
         margin: 0;
@@ -418,17 +419,40 @@ def _page_template() -> str:
         font-size: 0.7rem;
         line-height: 1.4;
       }}
-      .row-json-label {{
-        font-size: 0.65rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: {muted};
-        margin-bottom: 0.3rem;
+      .row-json-header {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         position: sticky;
         top: 0;
         background: {card_bg};
         padding: 0.2rem 0;
         z-index: 1;
+        margin-bottom: 0.3rem;
+      }}
+      .row-json-label {{
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: {muted};
+      }}
+      .row-copy-btn {{
+        background: none;
+        border: 1px solid {border};
+        border-radius: 3px;
+        color: {muted};
+        font-size: 0.6rem;
+        padding: 1px 5px;
+        cursor: pointer;
+        line-height: 1.3;
+      }}
+      .row-copy-btn:hover {{
+        color: {fg};
+        border-color: {fg};
+      }}
+      .row-copy-btn.copied {{
+        color: #66bb6a;
+        border-color: #66bb6a;
       }}
       .row-toggle.active {{
         color: {fg};
@@ -468,6 +492,17 @@ def _page_template() -> str:
         const target = btn.dataset.target;
         const panel = btn.closest('.row').querySelector('.' + target);
         if (panel) panel.classList.toggle('open');
+      }});
+    }});
+    document.querySelectorAll('.row-copy-btn').forEach(btn => {{
+      btn.addEventListener('click', () => {{
+        const pre = btn.closest('.row-json-pane').querySelector('pre');
+        if (!pre) return;
+        navigator.clipboard.writeText(pre.textContent).then(() => {{
+          btn.textContent = 'copied';
+          btn.classList.add('copied');
+          setTimeout(() => {{ btn.textContent = 'copy'; btn.classList.remove('copied'); }}, 1500);
+        }});
       }});
     }});
     </script>
@@ -571,9 +606,13 @@ def _render_row(
     if graph_json is not None:
         parts.append(
             f'  <div class="row-panel row-json">'
-            f'<div class="row-json-pane"><div class="row-json-label">Semantic Graph JSON</div>'
+            f'<div class="row-json-pane">'
+            f'<div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span>'
+            f'<button class="row-copy-btn" title="Copy JSON">copy</button></div>'
             f'<pre>{_escape_html(graph_json)}</pre></div>'
-            f'<div class="row-json-pane"><div class="row-json-label">Mermaid Script</div>'
+            f'<div class="row-json-pane">'
+            f'<div class="row-json-header"><span class="row-json-label">Mermaid Script</span>'
+            f'<button class="row-copy-btn" title="Copy Mermaid">copy</button></div>'
             f'<pre>{_escape_html(mermaid_src)}</pre></div>'
             f'</div>'
         )
