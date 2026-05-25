@@ -251,7 +251,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 04:18 UTC &middot; theme: default-dark &middot; 13 expressions</div>
+<div class="report-meta">Generated 2026-05-25 14:42 UTC &middot; theme: default-dark &middot; 13 expressions</div>
 <div class="section-title">Calculus (13 expressions)</div>
 <div class="row">
   <div>
@@ -2177,6 +2177,7 @@
   e --&gt; __power_2
   x --&gt;|exp| __power_2
   __power_2 --&gt; __equals_1
+  n --&gt;|wrt| __sum_3
   n --&gt; __equals_6
   __num_4 --&gt; __equals_6
   __equals_6 --&gt;|lb| __sum_3
@@ -2198,12 +2199,13 @@
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
   linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#42a5f5,stroke-width:1px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#42a5f5,stroke-width:1px
   linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2313,6 +2315,11 @@
     },
     {
       "from": "n",
+      "to": "__sum_3",
+      "role": "wrt"
+    },
+    {
+      "from": "n",
       "to": "__equals_6"
     },
     {
@@ -2401,6 +2408,7 @@
   __num_9["$1$"]:::number
   __negation_10@{ shape: "flip-tri", label: "$-$" }
   class __negation_10 operator
+  n --&gt;|wrt| __sum_2
   n --&gt; __equals_5
   __num_3 --&gt; __equals_5
   __equals_5 --&gt;|lb| __sum_2
@@ -2426,7 +2434,8 @@
   linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
   linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#42a5f5,stroke-width:1px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#42a5f5,stroke-width:1px
 </pre>
   </div>
   <div class="row-actions">
@@ -2515,6 +2524,11 @@
     }
   ],
   "edges": [
+    {
+      "from": "n",
+      "to": "__sum_2",
+      "role": "wrt"
+    },
     {
       "from": "n",
       "to": "__equals_5"

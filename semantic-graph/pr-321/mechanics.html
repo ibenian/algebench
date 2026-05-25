@@ -251,7 +251,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 04:18 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-05-25 14:42 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Mechanics (15 expressions)</div>
 <div class="row">
   <div>
@@ -735,7 +735,7 @@
 <div class="row">
   <div>
     <div class="row-id">work</div>
-    <div class="row-latex">$$W = F d \cos\theta$$</div>
+    <div class="row-latex">$$W = F s \cos\theta$$</div>
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart LR
@@ -755,34 +755,37 @@
   __multiply_2(("$\times$")):::operator
   F["$F$"]:::scalar
   __multiply_3(("$\times$")):::operator
-  dcos["$\mathrm{d}\cos$"]:::scalar
+  s["$s$"]:::scalar
+  __cos_4{{"$\cos(\cdot)$"}}:::function
   theta["$\theta$"]:::scalar
   W --&gt; __equals_1
   F --&gt; __multiply_2
-  dcos --&gt; __multiply_3
-  theta --&gt; __multiply_3
+  s --&gt; __multiply_3
+  theta --&gt; __cos_4
+  __cos_4 --&gt; __multiply_3
   __multiply_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#ef5350,stroke-width:3px
   linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
   </div>
-  <div class="row-panel row-latex-src">W = F d \cos\theta</div>
+  <div class="row-panel row-latex-src">W = F s \cos\theta</div>
   <div class="row-panel row-json">{
   "nodes": [
     {
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "W = F d \\cos\\theta"
+      "subexpr": "W = F s \\cos\\theta"
     },
     {
       "id": "W",
@@ -794,7 +797,7 @@
       "id": "__multiply_2",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "F \\theta \\mathrm{d}\\cos"
+      "subexpr": "F s \\cos{\\left(\\theta \\right)}"
     },
     {
       "id": "F",
@@ -806,13 +809,20 @@
       "id": "__multiply_3",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\theta \\mathrm{d}\\cos"
+      "subexpr": "s \\cos{\\left(\\theta \\right)}"
     },
     {
-      "id": "dcos",
+      "id": "s",
       "type": "scalar",
-      "latex": "\\mathrm{d}\\cos",
-      "subexpr": "\\mathrm{d}\\cos"
+      "latex": "s",
+      "subexpr": "s"
+    },
+    {
+      "id": "__cos_4",
+      "type": "function",
+      "latex": "\\cos",
+      "op": "cos",
+      "subexpr": "\\cos{\\left(\\theta \\right)}"
     },
     {
       "id": "theta",
@@ -833,13 +843,17 @@
       "weight": 1.0
     },
     {
-      "from": "dcos",
+      "from": "s",
       "to": "__multiply_3",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "theta",
+      "to": "__cos_4"
+    },
+    {
+      "from": "__cos_4",
       "to": "__multiply_3",
       "semantic": "direct",
       "weight": 1.0
