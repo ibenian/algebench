@@ -350,6 +350,15 @@ class TestCalculus:
         assert _find_node(g, label="1") is not None
         assert _find_node(g, label="infinity") is not None
 
+    def test_sum_lower_bound_equals_subexpr(self):
+        g = latex_to_semantic_graph("\\sum_{n=1}^\\infty n")
+        eq_node = _find_node(g, type="relation", op="equals")
+        assert eq_node is not None
+        assert eq_node.subexpr is not None
+        assert "n" in eq_node.subexpr
+        assert "=" in eq_node.subexpr
+        assert "1" in eq_node.subexpr
+
 class TestLimits:
     def test_limit_basic_structure(self):
         g = latex_to_semantic_graph(r"\lim_{x \to 0} \frac{\sin x}{x}")
