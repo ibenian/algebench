@@ -251,7 +251,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 14:42 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-05-25 15:43 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Electromagnetism (15 expressions)</div>
 <div class="row">
   <div>
@@ -1900,7 +1900,7 @@
 <div class="row">
   <div>
     <div class="row-id">lorentz</div>
-    <div class="row-latex">$$\vec{F} = q(\vec{E} + \vec{v} \times \vec{B})$$</div>
+    <div class="row-latex">$$\vec{F} = q \cdot (\vec{E} + \vec{v} \times \vec{B})$$</div>
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart LR
@@ -1917,40 +1917,43 @@
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   F["$\vec{F}$"]:::vector
-  __q_2{{"$q(\cdot)$"}}:::function
+  __multiply_2(("$\times$")):::operator
+  q["$q$"]:::scalar
   __add_3(("$+$")):::operator
   E["$\vec{E}$"]:::vector
   __multiply_4(("$\times$")):::operator
   v["$\vec{v}$"]:::vector
   B["$\vec{B}$"]:::vector
   F --&gt; __equals_1
+  q --&gt; __multiply_2
   E --&gt; __add_3
   v --&gt; __multiply_4
   B --&gt; __multiply_4
   __multiply_4 --&gt; __add_3
-  __add_3 --&gt; __q_2
-  __q_2 --&gt; __equals_1
+  __add_3 --&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
   linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
   </div>
-  <div class="row-panel row-latex-src">\vec{F} = q(\vec{E} + \vec{v} \times \vec{B})</div>
+  <div class="row-panel row-latex-src">\vec{F} = q \cdot (\vec{E} + \vec{v} \times \vec{B})</div>
   <div class="row-panel row-json">{
   "nodes": [
     {
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "\\vec{F} = q(\\vec{E} + \\vec{v} \\times \\vec{B})"
+      "subexpr": "\\vec{F} = q \\cdot (\\vec{E} + \\vec{v} \\times \\vec{B})"
     },
     {
       "id": "F",
@@ -1959,10 +1962,16 @@
       "subexpr": "\\vec{F}"
     },
     {
-      "id": "__q_2",
-      "type": "function",
-      "op": "q",
-      "subexpr": "q{\\left(\\vec{B} \\vec{v} + \\vec{E} \\right)}"
+      "id": "__multiply_2",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "q \\left(\\vec{E} + \\vec{v} \\vec{B}\\right)"
+    },
+    {
+      "id": "q",
+      "type": "scalar",
+      "latex": "q",
+      "subexpr": "q"
     },
     {
       "id": "__add_3",
@@ -2001,6 +2010,12 @@
       "to": "__equals_1"
     },
     {
+      "from": "q",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
       "from": "E",
       "to": "__add_3"
     },
@@ -2022,10 +2037,12 @@
     },
     {
       "from": "__add_3",
-      "to": "__q_2"
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
     },
     {
-      "from": "__q_2",
+      "from": "__multiply_2",
       "to": "__equals_1"
     }
   ],
