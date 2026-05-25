@@ -160,10 +160,10 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("integral_definite",
      r"\int_a^b f(x) \, dx = F(b) - F(a)",
      PASS,
-     "a -> fn:F; b -> fn:F; x -> fn:f; fn:f,x -> integral; "
+     "a -> fn:F; b -> fn:F; x -> fn:f; a,b,fn:f,x -> integral; "
      "fn:F -> negation; fn:F,negation -> add; add,integral -> rel:equals",
      "b -> __F_5; a -> __F_7; x -> __f_3; "
-     "__f_3,x -> __integral_2; __F_7 -> __negation_6; "
+     "__f_3,a,b,x -> __integral_2; __F_7 -> __negation_6; "
      "__F_5,__negation_6 -> __add_4; __add_4,__integral_2 -> __equals_1",
      [{"op": "integral", "with_respect_to": "x",
        "lower_bound": "a", "upper_bound": "b"}]),
@@ -171,9 +171,9 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("ftc",
      r"\frac{d}{dx} \int_a^x f(t) \, dt = f(x)",
      PASS,
-     "t -> fn:f; x -> fn:f; fn:f,t -> integral; integral,x -> derivative; "
+     "t -> fn:f; x -> fn:f; a,fn:f,t,x -> integral; integral,x -> derivative; "
      "derivative,fn:f -> rel:equals",
-     "t -> __f_4; x -> __f_5; __f_4,t -> __integral_3; "
+     "t -> __f_4; x -> __f_5; __f_4,a,t,x -> __integral_3; "
      "__integral_3,x -> __deriv_2; "
      "__deriv_2,__f_5 -> __equals_1",
      [{"op": "integral", "with_respect_to": "t",

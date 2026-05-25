@@ -1161,6 +1161,8 @@ class SemanticGraphBuilder:
                 attrs: dict[str, Any] = {"type": "constant"}
                 if meta.get("label"):
                     attrs["label"] = meta["label"]
+                if meta.get("latex"):
+                    attrs["latex"] = meta["latex"]
                 self._add_node(node_id, **attrs)
                 return node_id
 
@@ -1275,6 +1277,10 @@ class SemanticGraphBuilder:
             self._add_node(node_id, **node_attrs)
             for wid in wrt_ids:
                 self._add_edge(wid, node_id, role="wrt")
+            if lower_nid is not None:
+                self._add_edge(lower_nid, node_id, role="lb")
+            if upper_nid is not None:
+                self._add_edge(upper_nid, node_id, role="ub")
             child_id = self._walk(expr.function)
             self._add_edge(child_id, node_id)
             return node_id

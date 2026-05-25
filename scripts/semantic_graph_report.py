@@ -137,7 +137,12 @@ def _page_template() -> str:
       import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
       mermaid.initialize({{ startOnLoad: false, theme: '{mermaid_theme}',
         flowchart: {{ htmlLabels: true, curve: 'basis' }} }});
-      await mermaid.run();
+      try {{ await mermaid.run(); }} catch (_) {{}}
+      // KaTeX is loaded via a defer script which may not have executed yet
+      // when this module runs.  Poll briefly (defer + module ordering is
+      // not guaranteed across browsers).
+      for (let i = 0; i < 50 && !window.katex; i++)
+        await new Promise(r => setTimeout(r, 50));
       if (window.katex) {{
         const INLINE_MATH = /\\$([^$\\n]+)\\$/g;
         document.querySelectorAll(

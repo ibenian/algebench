@@ -309,8 +309,8 @@ def _format_label(
         exponent = node.get("exponent", "")
         if op == "power" and exponent:
             if str(exponent) == "-1":
-                return r"$\displaystyle \dfrac{1}{(\cdot)}$"
-            return f"$\\displaystyle {{(\\cdot)}}^{{{exponent}}}$"
+                return r"$\dfrac{1}{(\cdot)}$"
+            return f"${{(\\cdot)}}^{{{exponent}}}$"
         # Derivative / integral: show the actual variable from with_respect_to
         wrt = node.get("with_respect_to", "")
         if op in ("derivative", "partial_derivative") and wrt:
@@ -322,26 +322,26 @@ def _format_label(
                               else r"(?<!\\)d\^{?(\d+)}?", subexpr)
                 if m and int(m.group(1)) > 1:
                     order = f"^{{{m.group(1)}}}"
-            return f"$\\displaystyle \\dfrac{{{d}{order}}}{{{d} {wrt}{order}}}$"
+            return f"$\\dfrac{{{d}{order}}}{{{d} {wrt}{order}}}$"
         if op in ("integral", "closed_integral") and wrt:
             int_cmd = OPERATOR_LATEX.get(op, r"\int")
             lb = node.get("lower_bound", "")
             ub = node.get("upper_bound", "")
             if lb and ub:
-                return f"$\\displaystyle {int_cmd}_{{{lb}}}^{{{ub}}} d{wrt}$"
-            return f"$\\displaystyle {int_cmd} d{wrt}$"
+                return f"${int_cmd}_{{{lb}}}^{{{ub}}} d{wrt}$"
+            return f"${int_cmd} d{wrt}$"
         if op in ("sum", "product") and wrt:
             agg_cmd = OPERATOR_LATEX.get(op, r"\sum")
-            return f"$\\displaystyle {agg_cmd}_{{{wrt}}}$"
+            return f"${agg_cmd}_{{{wrt}}}$"
         if node_type == "function" and op:
             dots = r", ".join([r"\cdot"] * max(arity, 1))
-            return f"$\\displaystyle {op}({dots})$"
+            return f"${op}({dots})$"
         node_latex = node.get("latex")
         if node_latex:
             symbol = node_latex
         else:
             symbol = OPERATOR_LATEX.get(op, OPERATOR_SYMBOLS.get(op, op))
-        return f"$\\displaystyle {symbol}$"
+        return f"${symbol}$"
 
     if node_type == "relation":
         # Render the relation glyph as plain Unicode text — NOT wrapped in
@@ -374,7 +374,7 @@ def _format_label(
     # surrounding ``<br/>`` separators and collapses multi-line labels. The
     # client instead runs a post-Mermaid pass via ``window.katex`` to rewrite
     # every ``$...$`` span in the rendered SVG — see ``graph-view.js``.
-    display_name = f"$\\displaystyle {symbol_latex}$"
+    display_name = f"${symbol_latex}$"
 
     # Used below to suppress a description/label line that merely repeats
     # the head glyph (common for number nodes where label == latex == "-1").

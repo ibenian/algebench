@@ -45,8 +45,8 @@
     },
     {
       "name": "sg-report",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "5740", "-d", "/tmp/sg_report"],
+      "runtimeExecutable": "./scripts/serve_sg_report.sh",
+      "runtimeArgs": ["--port", "5740"],
       "port": 5740,
       "autoPort": false
     }

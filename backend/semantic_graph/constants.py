@@ -113,10 +113,10 @@ _META_RELATION_OPS: set[str] = {"implies", "iff"}
 _PLACEHOLDER_NAME_RE: re.Pattern[str] = re.compile(r"^(?:Theta|Xi|Phi)_\{\d+\}$")
 
 CONSTANT_MAP: dict[Any, dict[str, str]] = {
-    pi: {"label": "pi"},
-    E: {"label": "e (Euler's number)"},
-    I: {"label": "imaginary unit"},
-    oo: {"label": "infinity"},
+    pi: {"label": "pi", "latex": "\\pi"},
+    E: {"label": "e (Euler's number)", "latex": "e"},
+    I: {"label": "imaginary unit", "latex": "i"},
+    oo: {"label": "infinity", "latex": "\\infty"},
 }
 
 RELATION_MAP: list[tuple[str, dict[str, str]]] = [
