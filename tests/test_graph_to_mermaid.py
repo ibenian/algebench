@@ -102,7 +102,7 @@ class TestLabelFormatting:
         # otherwise ``_format_label`` falls back to ``label``. ``id`` is a
         # machine identifier and is not intended for display.
         node = {"id": "m", "latex": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
-        assert _format_label(node, "emoji") == "⚖️ $m$"
+        assert _format_label(node, "emoji") == r"⚖️ $\displaystyle m$"
 
     def test_emoji_mode_operator(self):
         node = {"id": "__mul_1", "type": "operator", "op": "multiply"}
@@ -110,27 +110,27 @@ class TestLabelFormatting:
         # pass renders them with HTML (TeX-quality) output. Double-``$$``
         # is intercepted by Mermaid's own KaTeX → MathML path, which has
         # worse accent placement and no stretchy decorations.
-        assert _format_label(node, "emoji") == r"$\times$"
+        assert _format_label(node, "emoji") == r"$\displaystyle \times$"
 
     def test_latex_mode_variable(self):
         node = {"id": "F", "label": "force", "emoji": "🏹", "type": "vector", "latex": "F"}
-        assert _format_label(node, "latex") == "$F$"
+        assert _format_label(node, "latex") == r"$\displaystyle F$"
 
     def test_latex_mode_operator(self):
         node = {"id": "__mul_1", "type": "operator", "op": "multiply"}
-        assert _format_label(node, "latex") == r"$\times$"
+        assert _format_label(node, "latex") == r"$\displaystyle \times$"
 
     def test_plain_mode(self):
         node = {"id": "m", "latex": "m", "label": "mass", "emoji": "⚖️", "type": "scalar"}
-        assert _format_label(node, "plain") == "$m$"
+        assert _format_label(node, "plain") == r"$\displaystyle m$"
 
     def test_plain_mode_label_equals_id(self):
         node = {"id": "x", "label": "x", "emoji": "📍", "type": "scalar"}
-        assert _format_label(node, "plain") == "$x$"
+        assert _format_label(node, "plain") == r"$\displaystyle x$"
 
     def test_emoji_mode_no_emoji(self):
         node = {"id": "z", "label": "z", "type": "scalar"}
-        assert _format_label(node, "emoji") == "$z$"
+        assert _format_label(node, "emoji") == r"$\displaystyle z$"
 
     def test_relation_uses_canonical_glyph_not_emoji_field(self):
         # Issue #170: the enricher (Gemini) sometimes overwrites the
@@ -195,36 +195,36 @@ class TestAggregateOperatorLabels:
     def test_integral_with_wrt(self):
         node = {"id": "__integral_1", "type": "operator", "op": "integral",
                 "with_respect_to": "x"}
-        assert _format_label(node, "latex") == r"$\displaystyle\int dx$"
+        assert _format_label(node, "latex") == r"$\displaystyle \int dx$"
 
     def test_integral_with_bounds_and_wrt(self):
         node = {"id": "__integral_1", "type": "operator", "op": "integral",
                 "with_respect_to": "x", "lower_bound": "a", "upper_bound": "b"}
-        assert _format_label(node, "latex") == r"$\displaystyle\int_{a}^{b} dx$"
+        assert _format_label(node, "latex") == r"$\displaystyle \int_{a}^{b} dx$"
 
     def test_closed_integral_with_wrt(self):
         node = {"id": "__closed_integral_1", "type": "operator",
                 "op": "closed_integral", "with_respect_to": "Q"}
-        assert _format_label(node, "latex") == r"$\displaystyle\oint dQ$"
+        assert _format_label(node, "latex") == r"$\displaystyle \oint dQ$"
 
     def test_closed_integral_no_wrt(self):
         node = {"id": "__closed_integral_1", "type": "operator",
                 "op": "closed_integral"}
-        assert _format_label(node, "latex") == r"$\oint$"
+        assert _format_label(node, "latex") == r"$\displaystyle \oint$"
 
     def test_sum_with_wrt(self):
         node = {"id": "__sum_1", "type": "operator", "op": "sum",
                 "with_respect_to": "i"}
-        assert _format_label(node, "latex") == r"$\displaystyle\sum_{i}$"
+        assert _format_label(node, "latex") == r"$\displaystyle \sum_{i}$"
 
     def test_sum_no_wrt(self):
         node = {"id": "__sum_1", "type": "operator", "op": "sum"}
-        assert _format_label(node, "latex") == r"$\sum$"
+        assert _format_label(node, "latex") == r"$\displaystyle \sum$"
 
     def test_product_with_wrt(self):
         node = {"id": "__product_1", "type": "operator", "op": "product",
                 "with_respect_to": "k"}
-        assert _format_label(node, "latex") == r"$\displaystyle\prod_{k}$"
+        assert _format_label(node, "latex") == r"$\displaystyle \prod_{k}$"
 
 
 class TestSanitizeId:
@@ -347,8 +347,8 @@ class TestSemanticGraphToMermaid:
         }
         result = semantic_graph_to_mermaid(graph, label_mode="latex")
         lines = {line.strip() for line in result.splitlines()}
-        assert 'n_01e["$a$"]:::vector' in lines
-        assert '01e["$a$"]:::vector' not in lines
+        assert r'n_01e["$\displaystyle a$"]:::vector' in lines
+        assert r'01e["$\displaystyle a$"]:::vector' not in lines
         assert "01e a" not in result
 
     def test_edges_present(self):
@@ -372,8 +372,8 @@ class TestSemanticGraphToMermaid:
         # All labels (symbol and operator) use single-``$`` inline math so
         # the post-Mermaid KaTeX pass renders them uniformly with HTML
         # output.
-        assert "$m$" in result
-        assert "$F$" in result
+        assert r"$\displaystyle m$" in result
+        assert r"$\displaystyle F$" in result
 
     def test_plain_label_mode(self):
         result = semantic_graph_to_mermaid(F_MA_GRAPH, label_mode="plain")
@@ -627,18 +627,18 @@ class TestPiecewiseBranchLabels:
     def test_branch_operator_renders_implication_arrow(self):
         node = {"id": "__branch_1", "type": "operator", "op": "branch"}
         label = _format_label(node, "emoji")
-        assert label == r"$\Rightarrow$"
+        assert label == r"$\displaystyle \Rightarrow$"
 
     def test_branch_operator_renders_implication_arrow_latex_mode(self):
         node = {"id": "__branch_1", "type": "operator", "op": "branch"}
         label = _format_label(node, "latex")
-        assert label == r"$\Rightarrow$"
+        assert label == r"$\displaystyle \Rightarrow$"
 
     def test_piecewise_operator_renders_as_text(self):
         # piecewise falls back to op name since it's not in OPERATOR_LATEX
         node = {"id": "__piecewise_1", "type": "operator", "op": "piecewise"}
         label = _format_label(node, "emoji")
-        assert label == "$piecewise$"
+        assert label == r"$\displaystyle piecewise$"
 
     def test_piecewise_graph_renders_branch_nodes(self):
         """Full piecewise graph with branch nodes renders to valid Mermaid."""
