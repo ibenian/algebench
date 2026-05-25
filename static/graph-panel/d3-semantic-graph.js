@@ -160,10 +160,10 @@ const OPERATOR_GLYPHS = {
     conjunction: '∧', disjunction: '∨',
     sum: '∑', product: '∏', limit: 'lim',
     factorial: '(·)!', sqrt: '√(·)',
-    log: 'log', logarithm: 'log', exp: 'exp',
-    sin: 'sin', cos: 'cos', tan: 'tan',
+    log: 'log(·)', logarithm: 'log(·)', exp: 'exp(·)',
+    sin: 'sin(·)', cos: 'cos(·)', tan: 'tan(·)',
     Abs: '|·|', abs: '|·|',
-    function: 'f',
+    function: 'f(·)',
 };
 
 // LaTeX equivalents for operator glyphs — used when rendering operator
@@ -174,15 +174,16 @@ const OPERATOR_LATEX = {
     element_of: '\\in', not_element_of: '\\notin',
     multiply: '\\times', add: '+', subtract: '-',
     divide: '\\div', integral: '\\int', closed_integral: '\\oint',
+    tends_to: '\\to',
     implies: '\\Rightarrow', iff: '\\Leftrightarrow',
     negation: '-', not: '\\lnot', logical_not: '\\lnot',
     conjunction: '\\land', disjunction: '\\lor',
     sum: '\\sum', product: '\\prod', limit: '\\lim',
     factorial: '(\\cdot)!', sqrt: '\\sqrt{\\cdot}',
-    log: '\\log', logarithm: '\\log', exp: '\\exp',
-    sin: '\\sin', cos: '\\cos', tan: '\\tan',
+    log: '\\log(\\cdot)', logarithm: '\\log(\\cdot)', exp: '\\exp(\\cdot)',
+    sin: '\\sin(\\cdot)', cos: '\\cos(\\cdot)', tan: '\\tan(\\cdot)',
     Abs: '\\lvert\\cdot\\rvert', abs: '\\lvert\\cdot\\rvert',
-    function: 'f',
+    function: 'f(\\cdot)',
 };
 
 const OP_KINDS = new Set(['operator', 'relation', 'function']);
@@ -256,10 +257,23 @@ function operatorGlyph(node) {
 export function nodeShortLabel(node) {
     if (!node) return '';
     if (OP_KINDS.has(node.type)) {
-        if (node.latex) return node.latex;
+        if (node.latex) {
+            if (node.type === 'function' && !node.latex.includes('\\cdot') && !node.latex.includes('·')) {
+                const arity = (node._childIds || []).length || 1;
+                const dots = Array(arity).fill('·').join(', ');
+                return `${node.latex}(${dots})`;
+            }
+            return node.latex;
+        }
         const g = operatorGlyph(node);
         if (g) return g;
-        return node.op || node.id || '';
+        const name = node.op || node.id || '';
+        if (node.type === 'function' && name && !name.includes('·')) {
+            const arity = (node._childIds || []).length || 1;
+            const dots = Array(arity).fill('·').join(', ');
+            return `${name}(${dots})`;
+        }
+        return name;
     }
     return node.latex || node.label || node.id || '';
 }
@@ -1373,7 +1387,7 @@ export class D3SemanticGraphRenderer {
             if (wrt) return `${cmd}_{${wrt}}`;
             return cmd;
         }
-        return `\\text{${op}}`;
+        return `\\text{${op.replace(/\\/g, '\\\\').replace(/_/g, '\\_')}}`;
     }
 
     /**
@@ -1396,6 +1410,13 @@ export class D3SemanticGraphRenderer {
         // plain op name wrapped in \text{} only as a last resort.
         if (!latex && isOp && this.katex) {
             latex = this._operatorLatex(data);
+        }
+
+        if (latex && data.type === 'function' && !isCollapsed
+            && !latex.includes('\\cdot') && !latex.includes('·')) {
+            const arity = (data._childIds || []).length || 1;
+            const dots = Array(arity).fill('\\cdot').join(', ');
+            latex = `${latex}(${dots})`;
         }
 
         if (latex && this.katex) {

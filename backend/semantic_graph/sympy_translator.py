@@ -1273,10 +1273,13 @@ class SemanticGraphBuilder:
             tends_id = self._next_id("tends_to")
             self._add_edge(var_id, tends_id, role="lhs")
             self._add_edge(point_id, tends_id, role="rhs")
+            var_latex = self._subexpr_ordered(expr.args[1])
+            point_latex = self._subexpr_ordered(expr.args[2])
             tends_attrs: dict[str, str] = {
                 "type": "operator", "op": "tends_to",
                 "with_respect_to": var_id,
                 "limit_point": point_id,
+                "subexpr": f"{var_latex} \\to {point_latex}",
             }
             if len(expr.args) > 3:
                 direction = str(expr.args[3])
@@ -1374,7 +1377,12 @@ class SemanticGraphBuilder:
                         # Index specification: ``n = 0`` as a symmetric
                         # equals node — no roles (same as any other ``=``).
                         idx_id = self._next_id("equals")
-                        self._add_node(idx_id, type="relation", op="equals")
+                        var_latex = self._subexpr_ordered(limit_tuple[0])
+                        lb_latex = self._subexpr_ordered(lb_expr)
+                        self._add_node(
+                            idx_id, type="relation", op="equals",
+                            subexpr=f"{var_latex} = {lb_latex}",
+                        )
                         self._add_edge(var_id, idx_id)
                         self._add_edge(lower_nid, idx_id)
                         self._add_edge(idx_id, node_id, role="lb")

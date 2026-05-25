@@ -23,7 +23,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "▶ Generating semantic graph report → $OUTDIR"
-./run.sh scripts/semantic_graph_report.py --outdir "$OUTDIR" "${EXTRA_ARGS[@]}"
+./run.sh scripts/semantic_graph_report.py --outdir "$OUTDIR" ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}
 
 echo "▶ Serving on http://localhost:$PORT"
 python3 -m http.server "$PORT" -d "$OUTDIR"
