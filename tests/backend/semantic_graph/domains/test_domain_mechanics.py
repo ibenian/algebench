@@ -82,11 +82,12 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
      None),
 
     ("work",
-     r"W = F d \cos\theta",
+     r"W = F s \cos\theta",
      PASS,
-     "dcos,theta -> multiply; F,multiply -> multiply; W,multiply -> rel:equals",
-     "dcos,theta -> __multiply_3; F,__multiply_3 -> __multiply_2; "
-     "W,__multiply_2 -> __equals_1",
+     "theta -> fn:cos; fn:cos,s -> multiply; F,multiply -> multiply; "
+     "W,multiply -> rel:equals",
+     "theta -> __cos_4; __cos_4,s -> __multiply_3; "
+     "F,__multiply_3 -> __multiply_2; W,__multiply_2 -> __equals_1",
      None),
 
     ("momentum",

@@ -2,9 +2,9 @@
 # serve_sg_report.sh — Generate the semantic graph report and serve it locally.
 #
 # Usage:
-#   ./scripts/serve_sg_report.sh [--port PORT] [--theme THEME]
+#   ./scripts/serve_sg_report.sh [--port PORT] [--theme THEME] [--outdir DIR]
 #
-# Generates the structured report to /tmp/sg_report, then starts
+# Generates the structured report to /tmp/sg_report (or DIR), then starts
 # a local HTTP server on the specified port (default: 5740).
 
 set -euo pipefail

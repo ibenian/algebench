@@ -37,7 +37,7 @@
       "enum": [
         "add", "subtract", "multiply", "divide", "power", "equals", "negation",
         "derivative", "partial_derivative",
-        "integral", "limit", "tends_to", "sum", "product",
+        "integral", "closed_integral", "limit", "tends_to", "sum", "product",
         "sin", "cos", "tan", "log", "exp", "sqrt", "abs",
         "arcsin", "arccos", "arctan",
         "factorial", "choose",

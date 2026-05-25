@@ -922,6 +922,16 @@ class SemanticGraphBuilder:
         self._original_latex = original_latex or ""
         self._bare_sum_indices: set[str] = bare_sum_indices or set()
         self._symbol_order = self._build_symbol_order()
+        # Per-integral closed-integral flags: scan the *original* LaTeX for
+        # \oint vs \int in left-to-right order so each Integral node can be
+        # tagged independently (avoids the old global-boolean bug that
+        # marked *all* integrals as closed when *any* \oint appeared).
+        _INTEGRAL_CMD_RE = re.compile(r"\\(oint|int)\b")
+        self._integral_closed_flags: list[bool] = [
+            m.group(1) == "oint"
+            for m in _INTEGRAL_CMD_RE.finditer(self._original_latex)
+        ]
+        self._integral_walk_idx: int = 0
 
     @staticmethod
     def _fmt_number(expr: sympy.Basic) -> str:
@@ -1291,7 +1301,12 @@ class SemanticGraphBuilder:
 
         # --- Integral ---
         if isinstance(expr, Integral):
-            is_closed = r"\oint" in self._original_latex
+            idx = self._integral_walk_idx
+            self._integral_walk_idx += 1
+            is_closed = (
+                idx < len(self._integral_closed_flags)
+                and self._integral_closed_flags[idx]
+            )
             op = "closed_integral" if is_closed else "integral"
             node_id = self._next_id(op)
             wrt_ids: list[str] = []
@@ -1347,6 +1362,10 @@ class SemanticGraphBuilder:
                     else:
                         lower_nid = self._walk(lb_expr)
                         upper_nid = self._walk(ub_expr)
+
+                        # Index variable → sum/product with role="wrt"
+                        # so downstream renderers always know the index.
+                        self._add_edge(var_id, node_id, role="wrt")
 
                         # Index specification: ``n = 0`` as a symmetric
                         # equals node — no roles (same as any other ``=``).
