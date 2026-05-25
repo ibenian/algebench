@@ -396,6 +396,14 @@ def _page_template() -> str:
       .summary .count {{
         font-weight: 600;
       }}
+      .row-panel.row-latex-src {{
+        position: relative;
+      }}
+      .row-copy-latex {{
+        position: absolute;
+        top: 0.4rem;
+        right: 0.4rem;
+      }}
       .row-panel.row-json {{
         display: none;
         padding: 0;
@@ -496,9 +504,14 @@ def _page_template() -> str:
     }});
     document.querySelectorAll('.row-copy-btn').forEach(btn => {{
       btn.addEventListener('click', () => {{
-        const pre = btn.closest('.row-json-pane').querySelector('pre');
-        if (!pre) return;
-        navigator.clipboard.writeText(pre.textContent).then(() => {{
+        const pane = btn.closest('.row-json-pane');
+        var text;
+        if (pane) {{
+          text = pane.querySelector('pre').textContent;
+        }} else {{
+          text = btn.parentElement.dataset.latex || btn.parentElement.querySelector('pre')?.textContent || '';
+        }}
+        navigator.clipboard.writeText(text).then(() => {{
           btn.textContent = 'copied';
           btn.classList.add('copied');
           setTimeout(() => {{ btn.textContent = 'copy'; btn.classList.remove('copied'); }}, 1500);
@@ -600,7 +613,8 @@ def _render_row(
         )
     parts.append(f'  </div>')
     parts.append(
-        f'  <div class="row-panel row-latex-src">'
+        f'  <div class="row-panel row-latex-src" data-latex="{_escape_attr(latex)}">'
+        f'<button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>'
         f'{_escape_html(latex)}</div>'
     )
     if graph_json is not None:
