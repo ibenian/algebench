@@ -246,7 +246,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-24 20:58 UTC &middot; theme: default-dark &middot; 13 expressions</div>
+<div class="report-meta">Generated 2026-05-25 00:59 UTC &middot; theme: default-dark &middot; 13 expressions</div>
 <div class="section-title">Calculus (13 expressions)</div>
 <div class="row">
   <div>
@@ -1578,6 +1578,7 @@
   __add_10(("$+$")):::operator
   __num_11["$1$"]:::number
   C["$C$"]:::scalar
+  x --&gt;|wrt| __integral_2
   x --&gt; __power_3
   n --&gt;|exp| __power_3
   __power_3 --&gt; __integral_2
@@ -1602,14 +1603,15 @@
   linkStyle 5 stroke:#aaa,stroke-width:2px
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#ef5350,stroke-width:3px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#ef5350,stroke-width:3px
   linkStyle 10 stroke:#aaa,stroke-width:2px
   linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#42a5f5,stroke-width:1px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#42a5f5,stroke-width:1px
   linkStyle 14 stroke:#aaa,stroke-width:2px
   linkStyle 15 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1708,6 +1710,11 @@
     }
   ],
   "edges": [
+    {
+      "from": "x",
+      "to": "__integral_2",
+      "role": "wrt"
+    },
     {
       "from": "x",
       "to": "__power_3"
@@ -1811,6 +1818,7 @@
   __negation_6@{ shape: "flip-tri", label: "$-$" }
   __F_7{{"$F(\cdot)$"}}:::function
   class __negation_6 operator
+  x --&gt;|wrt| __integral_2
   x --&gt; __f_3
   __f_3 --&gt; __integral_2
   __integral_2 --&gt; __equals_1
@@ -1829,6 +1837,7 @@
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1905,6 +1914,11 @@
   "edges": [
     {
       "from": "x",
+      "to": "__integral_2",
+      "role": "wrt"
+    },
+    {
+      "from": "x",
       "to": "__f_3"
     },
     {
@@ -1971,6 +1985,7 @@
   __f_4{{"$f(\cdot)$"}}:::function
   __deriv_2(("$\dfrac{d}{d x}$")):::operator
   __f_5{{"$f(\cdot)$"}}:::function
+  t --&gt;|wrt| __integral_3
   t --&gt; __f_4
   __f_4 --&gt; __integral_3
   __integral_3 --&gt; __deriv_2
@@ -1985,6 +2000,7 @@
   linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#aaa,stroke-width:2px
   linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2048,6 +2064,11 @@
     }
   ],
   "edges": [
+    {
+      "from": "t",
+      "to": "__integral_3",
+      "role": "wrt"
+    },
     {
       "from": "t",
       "to": "__f_4"
@@ -2114,7 +2135,7 @@
   __num_4["$0$"]:::number
   __const_5["$\infty$"]:::constant
   __equals_6{"="}:::relation
-  __sum_3(("$\sum$")):::operator
+  __sum_3(("$\sum_{n}$")):::operator
   __multiply_7(("$\times$")):::operator
   __power_8(("$(\cdot)^{\cdot}$")):::operator
   __power_9(("$\dfrac{1}{(\cdot)}$")):::operator
@@ -2337,7 +2358,7 @@
   __num_3["$0$"]:::number
   __const_4["$\infty$"]:::constant
   __equals_5{"="}:::relation
-  __sum_2(("$\sum$")):::operator
+  __sum_2(("$\sum_{n}$")):::operator
   __power_6(("$(\cdot)^{\cdot}$")):::operator
   r["$r$"]:::scalar
   __power_7(("$\dfrac{1}{(\cdot)}$")):::operator

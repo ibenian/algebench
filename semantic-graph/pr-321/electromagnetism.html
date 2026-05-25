@@ -246,7 +246,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-24 20:58 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-05-25 00:59 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Electromagnetism (15 expressions)</div>
 <div class="row">
   <div>
@@ -1608,33 +1608,27 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\times$")):::operator
-  __multiply_3(("$\times$")):::operator
-  oint["$\oint$"]:::scalar
+  A["$\vec{A}$"]:::vector
+  __closed_integral_2(("$\oint dA$")):::operator
   E["$\vec{E}$"]:::vector
-  dA["$dA$"]:::scalar
-  __multiply_4(("$\times$")):::operator
+  __multiply_3(("$\times$")):::operator
   Q["$Q$"]:::scalar
-  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
   epsilon__0_["$\epsilon_{0}$"]:::scalar
-  oint --&gt; __multiply_3
-  E --&gt; __multiply_3
-  __multiply_3 --&gt; __multiply_2
-  dA --&gt; __multiply_2
-  __multiply_2 --&gt; __equals_1
-  Q --&gt; __multiply_4
-  epsilon__0_ --&gt; __power_5
-  __power_5 -.-&gt; __multiply_4
-  __multiply_4 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  A --&gt;|wrt| __closed_integral_2
+  E --&gt; __closed_integral_2
+  __closed_integral_2 --&gt; __equals_1
+  Q --&gt; __multiply_3
+  epsilon__0_ --&gt; __power_4
+  __power_4 -.-&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#ef5350,stroke-width:3px
   linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#42a5f5,stroke-width:1px
   linkStyle 6 stroke:#aaa,stroke-width:2px
-  linkStyle 7 stroke:#42a5f5,stroke-width:1px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1651,22 +1645,17 @@
       "subexpr": "\\oint \\vec{E} \\cdot d\\vec{A} = \\frac{Q}{\\epsilon_0}"
     },
     {
-      "id": "__multiply_2",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\oint \\vec{E} d\\vec{A}"
+      "id": "A",
+      "type": "vector",
+      "latex": "\\vec{A}",
+      "subexpr": "\\vec{A}"
     },
     {
-      "id": "__multiply_3",
+      "id": "__closed_integral_2",
       "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\oint \\vec{E}"
-    },
-    {
-      "id": "oint",
-      "type": "scalar",
-      "latex": "\\oint",
-      "subexpr": "\\oint"
+      "op": "closed_integral",
+      "with_respect_to": "A",
+      "subexpr": "\\int \\vec{E}\\, d\\vec{A}"
     },
     {
       "id": "E",
@@ -1675,13 +1664,7 @@
       "subexpr": "\\vec{E}"
     },
     {
-      "id": "dA",
-      "type": "scalar",
-      "latex": "dA",
-      "subexpr": "d\\vec{A}"
-    },
-    {
-      "id": "__multiply_4",
+      "id": "__multiply_3",
       "type": "operator",
       "op": "multiply",
       "subexpr": "Q \\frac{1}{epsilon_{0}}"
@@ -1693,7 +1676,7 @@
       "subexpr": "Q"
     },
     {
-      "id": "__power_5",
+      "id": "__power_4",
       "type": "operator",
       "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
@@ -1709,49 +1692,34 @@
   ],
   "edges": [
     {
-      "from": "oint",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
+      "from": "A",
+      "to": "__closed_integral_2",
+      "role": "wrt"
     },
     {
       "from": "E",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
+      "to": "__closed_integral_2"
     },
     {
-      "from": "__multiply_3",
-      "to": "__multiply_2",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "dA",
-      "to": "__multiply_2",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_2",
+      "from": "__closed_integral_2",
       "to": "__equals_1"
     },
     {
       "from": "Q",
-      "to": "__multiply_4",
+      "to": "__multiply_3",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "epsilon_{0}",
-      "to": "__power_5"
+      "to": "__power_4"
     },
     {
-      "from": "__power_5",
-      "to": "__multiply_4"
+      "from": "__power_4",
+      "to": "__multiply_3"
     },
     {
-      "from": "__multiply_4",
+      "from": "__multiply_3",
       "to": "__equals_1"
     }
   ],

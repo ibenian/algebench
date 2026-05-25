@@ -246,7 +246,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-24 20:58 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-05-25 00:59 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Thermodynamics (15 expressions)</div>
 <div class="row">
   <div>
@@ -1775,28 +1775,22 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __multiply_1(("$\times$")):::operator
-  oint["$\oint$"]:::scalar
-  __multiply_2(("$\times$")):::operator
-  dQ["$dQ$"]:::scalar
-  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
+  Q["$Q$"]:::scalar
+  __closed_integral_1(("$\oint dQ$")):::operator
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
   T["$T$"]:::scalar
-  __num_4["$0$"]:::number
-  __less_equal_5{"≤"}:::relation
-  oint --&gt; __multiply_1
-  dQ --&gt; __multiply_2
-  T --&gt; __power_3
-  __power_3 -.-&gt; __multiply_2
-  __multiply_2 --&gt; __multiply_1
-  __multiply_1 --&gt;|lhs| __less_equal_5
-  __num_4 --&gt;|rhs| __less_equal_5
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#42a5f5,stroke-width:1px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#aaa,stroke-width:2px
+  __num_3["$0$"]:::number
+  __less_equal_4{"≤"}:::relation
+  Q --&gt;|wrt| __closed_integral_1
+  T --&gt; __power_2
+  __power_2 -.-&gt; __closed_integral_1
+  __closed_integral_1 --&gt;|lhs| __less_equal_4
+  __num_3 --&gt;|rhs| __less_equal_4
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#42a5f5,stroke-width:1px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1807,31 +1801,20 @@
   <div class="row-panel row-json">{
   "nodes": [
     {
-      "id": "__multiply_1",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\oint \\frac{dQ}{T}"
-    },
-    {
-      "id": "oint",
+      "id": "Q",
       "type": "scalar",
-      "latex": "\\oint",
-      "subexpr": "\\oint"
+      "latex": "Q",
+      "subexpr": "Q"
     },
     {
-      "id": "__multiply_2",
+      "id": "__closed_integral_1",
       "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\frac{1}{T} dQ"
+      "op": "closed_integral",
+      "with_respect_to": "Q",
+      "subexpr": "\\int \\frac{dQ}{T}"
     },
     {
-      "id": "dQ",
-      "type": "scalar",
-      "latex": "dQ",
-      "subexpr": "dQ"
-    },
-    {
-      "id": "__power_3",
+      "id": "__power_2",
       "type": "operator",
       "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
@@ -1845,13 +1828,13 @@
       "subexpr": "T"
     },
     {
-      "id": "__num_4",
+      "id": "__num_3",
       "type": "number",
       "label": "0",
       "subexpr": "0"
     },
     {
-      "id": "__less_equal_5",
+      "id": "__less_equal_4",
       "type": "relation",
       "label": "less than or equal to",
       "emoji": "≤",
@@ -1861,39 +1844,26 @@
   ],
   "edges": [
     {
-      "from": "oint",
-      "to": "__multiply_1",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "dQ",
-      "to": "__multiply_2",
-      "semantic": "direct",
-      "weight": 1.0
+      "from": "Q",
+      "to": "__closed_integral_1",
+      "role": "wrt"
     },
     {
       "from": "T",
-      "to": "__power_3"
+      "to": "__power_2"
     },
     {
-      "from": "__power_3",
-      "to": "__multiply_2"
+      "from": "__power_2",
+      "to": "__closed_integral_1"
     },
     {
-      "from": "__multiply_2",
-      "to": "__multiply_1",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_1",
-      "to": "__less_equal_5",
+      "from": "__closed_integral_1",
+      "to": "__less_equal_4",
       "role": "lhs"
     },
     {
-      "from": "__num_4",
-      "to": "__less_equal_5",
+      "from": "__num_3",
+      "to": "__less_equal_4",
       "role": "rhs"
     }
   ],
@@ -1923,50 +1893,41 @@
   __equals_1{"="}:::relation
   Z["$Z$"]:::scalar
   i["$i$"]:::scalar
-  __num_3["$0$"]:::number
-  __const_4["$\infty$"]:::constant
-  __equals_5{"="}:::relation
-  __sum_2(("$\sum$")):::operator
-  __power_6(("$(\cdot)^{\cdot}$")):::operator
+  __sum_2(("$\sum_{i}$")):::operator
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
   e["$e$"]:::scalar
-  __multiply_7(("$\times$")):::operator
-  __negation_8@{ shape: "flip-tri", label: "$-$" }
+  __multiply_4(("$\times$")):::operator
+  __negation_5@{ shape: "flip-tri", label: "$-$" }
   E__i_["$E_{i}$"]:::scalar
-  __power_9(("$\dfrac{1}{(\cdot)}$")):::operator
-  __multiply_10(("$\times$")):::operator
+  __power_6(("$\dfrac{1}{(\cdot)}$")):::operator
+  __multiply_7(("$\times$")):::operator
   k__B_["$k_{B}$"]:::scalar
   T["$T$"]:::scalar
-  class __negation_8 operator
+  class __negation_5 operator
   Z --&gt; __equals_1
-  i --&gt; __equals_5
-  __num_3 --&gt; __equals_5
-  __equals_5 --&gt;|lb| __sum_2
-  __const_4 --&gt;|ub| __sum_2
-  e --&gt; __power_6
-  E__i_ --&gt; __negation_8
-  __negation_8 --&gt; __multiply_7
-  k__B_ --&gt; __multiply_10
-  T --&gt; __multiply_10
-  __multiply_10 --&gt; __power_9
-  __power_9 -.-&gt; __multiply_7
-  __multiply_7 --&gt;|exp| __power_6
-  __power_6 --&gt; __sum_2
+  i --&gt;|wrt| __sum_2
+  e --&gt; __power_3
+  E__i_ --&gt; __negation_5
+  __negation_5 --&gt; __multiply_4
+  k__B_ --&gt; __multiply_7
+  T --&gt; __multiply_7
+  __multiply_7 --&gt; __power_6
+  __power_6 -.-&gt; __multiply_4
+  __multiply_4 --&gt;|exp| __power_3
+  __power_3 --&gt; __sum_2
   __sum_2 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#aaa,stroke-width:2px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#ef5350,stroke-width:3px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#42a5f5,stroke-width:1px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
-  linkStyle 11 stroke:#42a5f5,stroke-width:1px
-  linkStyle 12 stroke:#aaa,stroke-width:2px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
-  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1995,33 +1956,14 @@
       "subexpr": "i"
     },
     {
-      "id": "__num_3",
-      "type": "number",
-      "label": "0",
-      "subexpr": "0"
-    },
-    {
-      "id": "__const_4",
-      "type": "constant",
-      "label": "infinity",
-      "subexpr": "\\infty"
-    },
-    {
-      "id": "__equals_5",
-      "type": "relation",
-      "op": "equals"
-    },
-    {
       "id": "__sum_2",
       "type": "operator",
       "op": "sum",
       "with_respect_to": "i",
-      "lower_bound": "__num_3",
-      "upper_bound": "__const_4",
       "subexpr": "\\sum_{i=0}^{\\infty} e^{\\frac{\\left(-1\\right) E_{i}}{T k_{B}}}"
     },
     {
-      "id": "__power_6",
+      "id": "__power_3",
       "type": "operator",
       "op": "power",
       "subexpr": "e^{\\frac{\\left(-1\\right) E_{i}}{T k_{B}}}"
@@ -2033,13 +1975,13 @@
       "subexpr": "e"
     },
     {
-      "id": "__multiply_7",
+      "id": "__multiply_4",
       "type": "operator",
       "op": "multiply",
       "subexpr": "-E_{i} \\frac{1}{T k_{B}}"
     },
     {
-      "id": "__negation_8",
+      "id": "__negation_5",
       "type": "operator",
       "op": "negation",
       "subexpr": "-E_{i}"
@@ -2051,7 +1993,7 @@
       "subexpr": "E_{i}"
     },
     {
-      "id": "__power_9",
+      "id": "__power_6",
       "type": "operator",
       "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
@@ -2059,7 +2001,7 @@
       "subexpr": "\\frac{1}{T k_{B}}"
     },
     {
-      "id": "__multiply_10",
+      "id": "__multiply_7",
       "type": "operator",
       "op": "multiply",
       "subexpr": "T k_{B}"
@@ -2084,63 +2026,50 @@
     },
     {
       "from": "i",
-      "to": "__equals_5"
-    },
-    {
-      "from": "__num_3",
-      "to": "__equals_5"
-    },
-    {
-      "from": "__equals_5",
       "to": "__sum_2",
-      "role": "lb"
-    },
-    {
-      "from": "__const_4",
-      "to": "__sum_2",
-      "role": "ub"
+      "role": "wrt"
     },
     {
       "from": "e",
-      "to": "__power_6"
+      "to": "__power_3"
     },
     {
       "from": "E_{i}",
-      "to": "__negation_8"
+      "to": "__negation_5"
     },
     {
-      "from": "__negation_8",
-      "to": "__multiply_7",
+      "from": "__negation_5",
+      "to": "__multiply_4",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "k_{B}",
-      "to": "__multiply_10",
+      "to": "__multiply_7",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "T",
-      "to": "__multiply_10",
+      "to": "__multiply_7",
       "semantic": "direct",
       "weight": 1.0
     },
     {
-      "from": "__multiply_10",
-      "to": "__power_9"
-    },
-    {
-      "from": "__power_9",
-      "to": "__multiply_7"
-    },
-    {
       "from": "__multiply_7",
-      "to": "__power_6",
-      "role": "exp"
+      "to": "__power_6"
     },
     {
       "from": "__power_6",
+      "to": "__multiply_4"
+    },
+    {
+      "from": "__multiply_4",
+      "to": "__power_3",
+      "role": "exp"
+    },
+    {
+      "from": "__power_3",
       "to": "__sum_2"
     },
     {
@@ -2314,7 +2243,7 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  v__r__m_s__["$v_{r*(m*s)}$"]:::scalar
+  v__rms_["$v_{\text{rms}}$"]:::scalar
   __power_2(("${(\cdot)}^{1/2}$")):::operator
   __multiply_3(("$\times$")):::operator
   __multiply_4(("$\times$")):::operator
@@ -2324,7 +2253,7 @@
   T["$T$"]:::scalar
   __power_7(("$\dfrac{1}{(\cdot)}$")):::operator
   m["$m$"]:::scalar
-  v__r__m_s__ --&gt; __equals_1
+  v__rms_ --&gt; __equals_1
   __num_5 --&gt; __multiply_4
   k__B_ --&gt; __multiply_6
   T --&gt; __multiply_6
@@ -2360,10 +2289,10 @@
       "subexpr": "v_{rms} = \\sqrt{\\frac{3 k_B T}{m}}"
     },
     {
-      "id": "v_{r*(m*s)}",
+      "id": "v_{rms}",
       "type": "scalar",
-      "latex": "v_{r*(m*s)}",
-      "subexpr": "v_{r*(m*s)}"
+      "latex": "v_{\\text{rms}}",
+      "subexpr": "v_{\\text{rms}}"
     },
     {
       "id": "__power_2",
@@ -2425,7 +2354,7 @@
   ],
   "edges": [
     {
-      "from": "v_{r*(m*s)}",
+      "from": "v_{rms}",
       "to": "__equals_1"
     },
     {
