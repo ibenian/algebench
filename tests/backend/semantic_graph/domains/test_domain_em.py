@@ -159,12 +159,12 @@ MAXWELL_EXPRESSIONS: list[CatalogEntry] = [
      None),
 
     ("lorentz",
-     r"\vec{F} = q(\vec{E} + \vec{v} \times \vec{B})",
+     r"\vec{F} = q \cdot (\vec{E} + \vec{v} \times \vec{B})",
      PASS,
      "vec:B,vec:v -> multiply; multiply,vec:E -> add; "
-     "add -> fn:q; fn:q,vec:F -> rel:equals",
+     "add,q -> multiply; multiply,vec:F -> rel:equals",
      "B,v -> __multiply_4; E,__multiply_4 -> __add_3; "
-     "__add_3 -> __q_2; F,__q_2 -> __equals_1",
+     "__add_3,q -> __multiply_2; F,__multiply_2 -> __equals_1",
      None),
 
     ("poynting",

@@ -903,6 +903,11 @@ def _split_on_single_equals(latex: str) -> tuple[str, str] | None:
 # SemanticGraphBuilder — SymPy AST walker
 # ---------------------------------------------------------------------------
 
+# Matches ``\oint`` or ``\int`` commands in LaTeX — used to tag each
+# Integral node as closed or open based on left-to-right position.
+_INTEGRAL_CMD_RE: re.Pattern[str] = re.compile(r"\\(oint|int)\b")
+
+
 class SemanticGraphBuilder:
     """Walks a SymPy expression tree and emits nodes + edges."""
 
@@ -926,7 +931,6 @@ class SemanticGraphBuilder:
         # \oint vs \int in left-to-right order so each Integral node can be
         # tagged independently (avoids the old global-boolean bug that
         # marked *all* integrals as closed when *any* \oint appeared).
-        _INTEGRAL_CMD_RE = re.compile(r"\\(oint|int)\b")
         self._integral_closed_flags: list[bool] = [
             m.group(1) == "oint"
             for m in _INTEGRAL_CMD_RE.finditer(self._original_latex)
@@ -1534,7 +1538,6 @@ def _build_relation_graph(
         latex_commands=latex_commands or {},
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
-
     )
 
     def _walk_relation_side(side_latex: str) -> tuple[str, sympy.Basic | None]:
@@ -1625,7 +1628,6 @@ def _build_chained_asymmetric_relation_graph(
         latex_commands=latex_commands or {},
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
-
     )
     part_ids: list[str] = []
     try:
@@ -1687,7 +1689,6 @@ def _build_nary_relation_graph(
         latex_commands=latex_commands or {},
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
-
     )
     part_ids: list[str] = []
     first_expr = None
@@ -2068,7 +2069,6 @@ def _latex_to_semantic_graph_dict(
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
-            
                 )
             else:
                 # Asymmetric meta-relations (implies) → right-associative nesting.
@@ -2077,7 +2077,6 @@ def _latex_to_semantic_graph_dict(
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
-            
                 )
 
         graph = _build_relation_graph(
@@ -2085,7 +2084,6 @@ def _latex_to_semantic_graph_dict(
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations, domain=domain,
             bare_sum_indices=bare_sum_indices,
-    
         )
         return graph
 
@@ -2123,7 +2121,6 @@ def _latex_to_semantic_graph_dict(
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
-            
                 )
 
         graph = _build_relation_graph(
@@ -2131,7 +2128,6 @@ def _latex_to_semantic_graph_dict(
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations, domain=domain,
             bare_sum_indices=bare_sum_indices,
-    
         )
         return graph
 
@@ -2144,7 +2140,6 @@ def _latex_to_semantic_graph_dict(
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations,
             domain=domain, bare_sum_indices=bare_sum_indices,
-    
         )
 
     # --- Single expression ---
@@ -2165,7 +2160,6 @@ def _latex_to_semantic_graph_dict(
             builder = SemanticGraphBuilder(
                 overrides=overrides, latex_commands=latex_commands,
                 original_latex=latex, bare_sum_indices=bare_sum_indices,
-        
             )
             try:
                 lhs_expr = parse_latex(lhs_latex)
@@ -2198,7 +2192,6 @@ def _latex_to_semantic_graph_dict(
     builder = SemanticGraphBuilder(
         overrides=overrides, latex_commands=latex_commands,
         original_latex=latex, bare_sum_indices=bare_sum_indices,
-
     )
     graph = builder.build(expr, original_latex=latex)
     graph["classification"] = classification
