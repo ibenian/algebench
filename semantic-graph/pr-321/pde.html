@@ -12,7 +12,12 @@
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
   mermaid.initialize({ startOnLoad: false, theme: 'dark',
     flowchart: { htmlLabels: true, curve: 'basis' } });
-  await mermaid.run();
+  try { await mermaid.run(); } catch (_) {}
+  // KaTeX is loaded via a defer script which may not have executed yet
+  // when this module runs.  Poll briefly (defer + module ordering is
+  // not guaranteed across browsers).
+  for (let i = 0; i < 50 && !window.katex; i++)
+    await new Promise(r => setTimeout(r, 50));
   if (window.katex) {
     const INLINE_MATH = /\$([^$\n]+)\$/g;
     document.querySelectorAll(
@@ -246,7 +251,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 01:30 UTC &middot; theme: default-dark &middot; 14 expressions</div>
+<div class="report-meta">Generated 2026-05-25 02:14 UTC &middot; theme: default-dark &middot; 14 expressions</div>
 <div class="section-title">PDE (14 expressions)</div>
 <div class="row">
   <div>
@@ -266,9 +271,9 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  f["$\displaystyle f$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_1(("$\displaystyle \dfrac{\partial}{\partial x}$")):::operator
+  f["$f$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_1(("$\dfrac{\partial}{\partial x}$")):::operator
   f --&gt; __deriv_1
   x --&gt;|wrt| __deriv_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -361,13 +366,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  u["$\displaystyle u$"]:::scalar
-  t["$\displaystyle t$"]:::scalar
-  __deriv_2(("$\displaystyle \dfrac{\partial}{\partial t}$")):::operator
-  __multiply_3(("$\displaystyle \times$")):::operator
-  k["$\displaystyle k$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_4(("$\displaystyle \dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
+  u["$u$"]:::scalar
+  t["$t$"]:::scalar
+  __deriv_2(("$\dfrac{\partial}{\partial t}$")):::operator
+  __multiply_3(("$\times$")):::operator
+  k["$k$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_4(("$\dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
   u --&gt; __deriv_2
   t --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
@@ -516,14 +521,14 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  u["$\displaystyle u$"]:::scalar
-  t["$\displaystyle t$"]:::scalar
-  __deriv_2(("$\displaystyle \dfrac{\partial^{2}}{\partial t^{2}}$")):::operator
-  __multiply_3(("$\displaystyle \times$")):::operator
-  __power_4(("$\displaystyle {(\cdot)}^{2}$")):::operator
-  c["$\displaystyle c$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_5(("$\displaystyle \dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
+  u["$u$"]:::scalar
+  t["$t$"]:::scalar
+  __deriv_2(("$\dfrac{\partial^{2}}{\partial t^{2}}$")):::operator
+  __multiply_3(("$\times$")):::operator
+  __power_4(("${(\cdot)}^{2}$")):::operator
+  c["$c$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_5(("$\dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
   u --&gt; __deriv_2
   t --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
@@ -685,13 +690,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  u["$\displaystyle u$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_3(("$\displaystyle \dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
-  y["$\displaystyle y$"]:::scalar
-  __deriv_4(("$\displaystyle \dfrac{\partial^{2}}{\partial y^{2}}$")):::operator
-  __num_5["$\displaystyle 0$"]:::number
+  __add_2(("$+$")):::operator
+  u["$u$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_3(("$\dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
+  y["$y$"]:::scalar
+  __deriv_4(("$\dfrac{\partial^{2}}{\partial y^{2}}$")):::operator
+  __num_5["$0$"]:::number
   u --&gt; __deriv_3
   x --&gt;|wrt| __deriv_3
   __deriv_3 --&gt; __add_2
@@ -836,15 +841,15 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  u["$\displaystyle u$"]:::scalar
-  t["$\displaystyle t$"]:::scalar
-  __deriv_3(("$\displaystyle \dfrac{\partial}{\partial t}$")):::operator
-  __multiply_4(("$\displaystyle \times$")):::operator
-  c["$\displaystyle c$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_5(("$\displaystyle \dfrac{\partial}{\partial x}$")):::operator
-  __num_6["$\displaystyle 0$"]:::number
+  __add_2(("$+$")):::operator
+  u["$u$"]:::scalar
+  t["$t$"]:::scalar
+  __deriv_3(("$\dfrac{\partial}{\partial t}$")):::operator
+  __multiply_4(("$\times$")):::operator
+  c["$c$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_5(("$\dfrac{\partial}{\partial x}$")):::operator
+  __num_6["$0$"]:::number
   u --&gt; __deriv_3
   t --&gt;|wrt| __deriv_3
   __deriv_3 --&gt; __add_2
@@ -1017,13 +1022,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  C["$\displaystyle C$"]:::scalar
-  t["$\displaystyle t$"]:::scalar
-  __deriv_2(("$\displaystyle \dfrac{\partial}{\partial t}$")):::operator
-  __multiply_3(("$\displaystyle \times$")):::operator
-  D["$\displaystyle D$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_4(("$\displaystyle \dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
+  C["$C$"]:::scalar
+  t["$t$"]:::scalar
+  __deriv_2(("$\dfrac{\partial}{\partial t}$")):::operator
+  __multiply_3(("$\times$")):::operator
+  D["$D$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_4(("$\dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
   C --&gt; __deriv_2
   t --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
@@ -1172,13 +1177,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  u["$\displaystyle u$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_3(("$\displaystyle \dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
-  y["$\displaystyle y$"]:::scalar
-  __deriv_4(("$\displaystyle \dfrac{\partial^{2}}{\partial y^{2}}$")):::operator
-  __f_5{{"$\displaystyle f(\cdot, \cdot)$"}}:::function
+  __add_2(("$+$")):::operator
+  u["$u$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_3(("$\dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
+  y["$y$"]:::scalar
+  __deriv_4(("$\dfrac{\partial^{2}}{\partial y^{2}}$")):::operator
+  __f_5{{"$f(\cdot, \cdot)$"}}:::function
   u --&gt; __deriv_3
   x --&gt;|wrt| __deriv_3
   __deriv_3 --&gt; __add_2
@@ -1335,13 +1340,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  phi["$\displaystyle \phi$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_3(("$\displaystyle \dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
-  y["$\displaystyle y$"]:::scalar
-  __deriv_4(("$\displaystyle \dfrac{\partial^{2}}{\partial y^{2}}$")):::operator
-  __num_5["$\displaystyle 0$"]:::number
+  __add_2(("$+$")):::operator
+  phi["$\phi$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_3(("$\dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
+  y["$y$"]:::scalar
+  __deriv_4(("$\dfrac{\partial^{2}}{\partial y^{2}}$")):::operator
+  __num_5["$0$"]:::number
   phi --&gt; __deriv_3
   x --&gt;|wrt| __deriv_3
   __deriv_3 --&gt; __add_2
@@ -1486,15 +1491,15 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\displaystyle \times$")):::operator
-  i["$\displaystyle i$"]:::scalar
-  __multiply_3(("$\displaystyle \times$")):::operator
-  hbar["$\displaystyle \hbar$"]:::scalar
-  psi["$\displaystyle \psi$"]:::scalar
-  t["$\displaystyle t$"]:::scalar
-  __deriv_4(("$\displaystyle \dfrac{\partial}{\partial t}$")):::operator
-  __multiply_5(("$\displaystyle \times$")):::operator
-  H["$\displaystyle H$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  i["$i$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  hbar["$\hbar$"]:::scalar
+  psi["$\psi$"]:::scalar
+  t["$t$"]:::scalar
+  __deriv_4(("$\dfrac{\partial}{\partial t}$")):::operator
+  __multiply_5(("$\times$")):::operator
+  H["$H$"]:::scalar
   i --&gt; __multiply_2
   hbar --&gt; __multiply_3
   psi --&gt; __deriv_4
@@ -1686,15 +1691,15 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  rho["$\displaystyle \rho$"]:::scalar
-  t["$\displaystyle t$"]:::scalar
-  __deriv_3(("$\displaystyle \dfrac{\partial}{\partial t}$")):::operator
-  __multiply_4(("$\displaystyle \times$")):::operator
-  nabla["$\displaystyle \nabla$"]:::scalar
-  __multiply_5(("$\displaystyle \times$")):::operator
-  v["$\displaystyle \mathbf{v}$"]:::scalar
-  __num_6["$\displaystyle 0$"]:::number
+  __add_2(("$+$")):::operator
+  rho["$\rho$"]:::scalar
+  t["$t$"]:::scalar
+  __deriv_3(("$\dfrac{\partial}{\partial t}$")):::operator
+  __multiply_4(("$\times$")):::operator
+  nabla["$\nabla$"]:::scalar
+  __multiply_5(("$\times$")):::operator
+  v["$\mathbf{v}$"]:::scalar
+  __num_6["$0$"]:::number
   rho --&gt; __deriv_3
   t --&gt;|wrt| __deriv_3
   __deriv_3 --&gt; __add_2
@@ -1881,16 +1886,16 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  u["$\displaystyle u$"]:::scalar
-  t["$\displaystyle t$"]:::scalar
-  __deriv_3(("$\displaystyle \dfrac{\partial}{\partial t}$")):::operator
-  __multiply_4(("$\displaystyle \times$")):::operator
-  x["$\displaystyle x$"]:::scalar
-  __deriv_5(("$\displaystyle \dfrac{\partial}{\partial x}$")):::operator
-  __multiply_6(("$\displaystyle \times$")):::operator
-  nu["$\displaystyle \nu$"]:::scalar
-  __deriv_7(("$\displaystyle \dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
+  __add_2(("$+$")):::operator
+  u["$u$"]:::scalar
+  t["$t$"]:::scalar
+  __deriv_3(("$\dfrac{\partial}{\partial t}$")):::operator
+  __multiply_4(("$\times$")):::operator
+  x["$x$"]:::scalar
+  __deriv_5(("$\dfrac{\partial}{\partial x}$")):::operator
+  __multiply_6(("$\times$")):::operator
+  nu["$\nu$"]:::scalar
+  __deriv_7(("$\dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
   u --&gt; __deriv_3
   t --&gt;|wrt| __deriv_3
   __deriv_3 --&gt; __add_2
@@ -2099,21 +2104,21 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  __add_3(("$\displaystyle +$")):::operator
-  phi["$\displaystyle \phi$"]:::scalar
-  t["$\displaystyle t$"]:::scalar
-  __deriv_4(("$\displaystyle \dfrac{\partial^{2}}{\partial t^{2}}$")):::operator
-  __negation_5@{ shape: "flip-tri", label: "$\displaystyle -$" }
-  __multiply_6(("$\displaystyle \times$")):::operator
-  __power_7(("$\displaystyle {(\cdot)}^{2}$")):::operator
-  c["$\displaystyle c$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_8(("$\displaystyle \dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
-  __multiply_9(("$\displaystyle \times$")):::operator
-  __power_10(("$\displaystyle {(\cdot)}^{2}$")):::operator
-  m["$\displaystyle m$"]:::scalar
-  __num_11["$\displaystyle 0$"]:::number
+  __add_2(("$+$")):::operator
+  __add_3(("$+$")):::operator
+  phi["$\phi$"]:::scalar
+  t["$t$"]:::scalar
+  __deriv_4(("$\dfrac{\partial^{2}}{\partial t^{2}}$")):::operator
+  __negation_5@{ shape: "flip-tri", label: "$-$" }
+  __multiply_6(("$\times$")):::operator
+  __power_7(("${(\cdot)}^{2}$")):::operator
+  c["$c$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_8(("$\dfrac{\partial^{2}}{\partial x^{2}}$")):::operator
+  __multiply_9(("$\times$")):::operator
+  __power_10(("${(\cdot)}^{2}$")):::operator
+  m["$m$"]:::scalar
+  __num_11["$0$"]:::number
   class __negation_5 operator
   phi --&gt; __deriv_4
   t --&gt;|wrt| __deriv_4
@@ -2371,18 +2376,18 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  z["$\displaystyle z$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_2(("$\displaystyle \dfrac{\partial}{\partial x}$")):::operator
-  __add_3(("$\displaystyle +$")):::operator
-  __multiply_4(("$\displaystyle \times$")):::operator
-  u["$\displaystyle u$"]:::scalar
-  __deriv_5(("$\displaystyle \dfrac{\partial}{\partial u}$")):::operator
-  __deriv_6(("$\displaystyle \dfrac{\partial}{\partial x}$")):::operator
-  __multiply_7(("$\displaystyle \times$")):::operator
-  v["$\displaystyle v$"]:::scalar
-  __deriv_8(("$\displaystyle \dfrac{\partial}{\partial v}$")):::operator
-  __deriv_9(("$\displaystyle \dfrac{\partial}{\partial x}$")):::operator
+  z["$z$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_2(("$\dfrac{\partial}{\partial x}$")):::operator
+  __add_3(("$+$")):::operator
+  __multiply_4(("$\times$")):::operator
+  u["$u$"]:::scalar
+  __deriv_5(("$\dfrac{\partial}{\partial u}$")):::operator
+  __deriv_6(("$\dfrac{\partial}{\partial x}$")):::operator
+  __multiply_7(("$\times$")):::operator
+  v["$v$"]:::scalar
+  __deriv_8(("$\dfrac{\partial}{\partial v}$")):::operator
+  __deriv_9(("$\dfrac{\partial}{\partial x}$")):::operator
   z --&gt; __deriv_2
   x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
@@ -2634,17 +2639,17 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  dz["$\displaystyle dz$"]:::scalar
-  __add_2(("$\displaystyle +$")):::operator
-  __multiply_3(("$\displaystyle \times$")):::operator
-  z["$\displaystyle z$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_4(("$\displaystyle \dfrac{\partial}{\partial x}$")):::operator
-  dx["$\displaystyle dx$"]:::scalar
-  __multiply_5(("$\displaystyle \times$")):::operator
-  y["$\displaystyle y$"]:::scalar
-  __deriv_6(("$\displaystyle \dfrac{\partial}{\partial y}$")):::operator
-  dy["$\displaystyle dy$"]:::scalar
+  dz["$dz$"]:::scalar
+  __add_2(("$+$")):::operator
+  __multiply_3(("$\times$")):::operator
+  z["$z$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_4(("$\dfrac{\partial}{\partial x}$")):::operator
+  dx["$dx$"]:::scalar
+  __multiply_5(("$\times$")):::operator
+  y["$y$"]:::scalar
+  __deriv_6(("$\dfrac{\partial}{\partial y}$")):::operator
+  dy["$dy$"]:::scalar
   dz --&gt; __equals_1
   z --&gt; __deriv_4
   x --&gt;|wrt| __deriv_4

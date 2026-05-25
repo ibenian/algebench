@@ -12,7 +12,12 @@
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
   mermaid.initialize({ startOnLoad: false, theme: 'dark',
     flowchart: { htmlLabels: true, curve: 'basis' } });
-  await mermaid.run();
+  try { await mermaid.run(); } catch (_) {}
+  // KaTeX is loaded via a defer script which may not have executed yet
+  // when this module runs.  Poll briefly (defer + module ordering is
+  // not guaranteed across browsers).
+  for (let i = 0; i < 50 && !window.katex; i++)
+    await new Promise(r => setTimeout(r, 50));
   if (window.katex) {
     const INLINE_MATH = /\$([^$\n]+)\$/g;
     document.querySelectorAll(
@@ -246,7 +251,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 01:30 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="report-meta">Generated 2026-05-25 02:14 UTC &middot; theme: default-dark &middot; 10 expressions</div>
 <div class="section-title">ODE (10 expressions)</div>
 <div class="row">
   <div>
@@ -267,11 +272,11 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  y["$\displaystyle y$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_2(("$\displaystyle \dfrac{d}{d x}$")):::operator
-  __multiply_3(("$\displaystyle \times$")):::operator
-  k["$\displaystyle k$"]:::scalar
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
+  __multiply_3(("$\times$")):::operator
+  k["$k$"]:::scalar
   y --&gt; __deriv_2
   x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
@@ -406,11 +411,11 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  y["$\displaystyle y$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_2(("$\displaystyle \dfrac{d}{d x}$")):::operator
-  __multiply_3(("$\displaystyle \times$")):::operator
-  __power_4(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
+  __multiply_3(("$\times$")):::operator
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
   y --&gt; __deriv_2
   x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
@@ -551,16 +556,16 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  y["$\displaystyle y$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_3(("$\displaystyle \dfrac{d}{d x}$")):::operator
-  __multiply_4(("$\displaystyle \times$")):::operator
-  __P_5{{"$\displaystyle P(\cdot)$"}}:::function
-  __multiply_6(("$\displaystyle \times$")):::operator
-  __Q_7{{"$\displaystyle Q(\cdot)$"}}:::function
-  __power_8(("$\displaystyle (\cdot)^{\cdot}$")):::operator
-  n["$\displaystyle n$"]:::scalar
+  __add_2(("$+$")):::operator
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_3(("$\dfrac{d}{d x}$")):::operator
+  __multiply_4(("$\times$")):::operator
+  __P_5{{"$P(\cdot)$"}}:::function
+  __multiply_6(("$\times$")):::operator
+  __Q_7{{"$Q(\cdot)$"}}:::function
+  __power_8(("$(\cdot)^{\cdot}$")):::operator
+  n["$n$"]:::scalar
   y --&gt; __deriv_3
   x --&gt;|wrt| __deriv_3
   __deriv_3 --&gt; __add_2
@@ -773,16 +778,16 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  __multiply_3(("$\displaystyle \times$")):::operator
-  __M_4{{"$\displaystyle M(\cdot, \cdot)$"}}:::function
-  x["$\displaystyle x$"]:::scalar
-  y["$\displaystyle y$"]:::scalar
-  dx["$\displaystyle dx$"]:::scalar
-  __multiply_5(("$\displaystyle \times$")):::operator
-  __N_6{{"$\displaystyle N(\cdot, \cdot)$"}}:::function
-  dy["$\displaystyle dy$"]:::scalar
-  __num_7["$\displaystyle 0$"]:::number
+  __add_2(("$+$")):::operator
+  __multiply_3(("$\times$")):::operator
+  __M_4{{"$M(\cdot, \cdot)$"}}:::function
+  x["$x$"]:::scalar
+  y["$y$"]:::scalar
+  dx["$dx$"]:::scalar
+  __multiply_5(("$\times$")):::operator
+  __N_6{{"$N(\cdot, \cdot)$"}}:::function
+  dy["$dy$"]:::scalar
+  __num_7["$0$"]:::number
   x --&gt; __M_4
   y --&gt; __M_4
   __M_4 --&gt; __multiply_3
@@ -965,14 +970,14 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  y["$\displaystyle y$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  __deriv_3(("$\displaystyle \dfrac{d^{2}}{d x^{2}}$")):::operator
-  __multiply_4(("$\displaystyle \times$")):::operator
-  __power_5(("$\displaystyle {(\cdot)}^{2}$")):::operator
-  omega["$\displaystyle \omega$"]:::scalar
-  __num_6["$\displaystyle 0$"]:::number
+  __add_2(("$+$")):::operator
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_3(("$\dfrac{d^{2}}{d x^{2}}$")):::operator
+  __multiply_4(("$\times$")):::operator
+  __power_5(("${(\cdot)}^{2}$")):::operator
+  omega["$\omega$"]:::scalar
+  __num_6["$0$"]:::number
   y --&gt; __deriv_3
   x --&gt;|wrt| __deriv_3
   __deriv_3 --&gt; __add_2
@@ -1139,19 +1144,19 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  __add_3(("$\displaystyle +$")):::operator
-  __multiply_4(("$\displaystyle \times$")):::operator
-  m["$\displaystyle m$"]:::scalar
-  x["$\displaystyle x$"]:::scalar
-  t["$\displaystyle t$"]:::scalar
-  __deriv_5(("$\displaystyle \dfrac{d^{2}}{d t^{2}}$")):::operator
-  __multiply_6(("$\displaystyle \times$")):::operator
-  c["$\displaystyle c$"]:::scalar
-  __deriv_7(("$\displaystyle \dfrac{d}{d t}$")):::operator
-  __multiply_8(("$\displaystyle \times$")):::operator
-  k["$\displaystyle k$"]:::scalar
-  __num_9["$\displaystyle 0$"]:::number
+  __add_2(("$+$")):::operator
+  __add_3(("$+$")):::operator
+  __multiply_4(("$\times$")):::operator
+  m["$m$"]:::scalar
+  x["$x$"]:::scalar
+  t["$t$"]:::scalar
+  __deriv_5(("$\dfrac{d^{2}}{d t^{2}}$")):::operator
+  __multiply_6(("$\times$")):::operator
+  c["$c$"]:::scalar
+  __deriv_7(("$\dfrac{d}{d t}$")):::operator
+  __multiply_8(("$\times$")):::operator
+  k["$k$"]:::scalar
+  __num_9["$0$"]:::number
   m --&gt; __multiply_4
   x --&gt; __deriv_5
   t --&gt;|wrt| __deriv_5
@@ -1399,21 +1404,21 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   c0___equals_1{"="}:::relation
-  x["$\displaystyle x$"]:::scalar
-  t["$\displaystyle t$"]:::scalar
-  c0___deriv_2(("$\displaystyle \dfrac{d}{d t}$")):::operator
-  c0___add_3(("$\displaystyle +$")):::operator
-  c0___multiply_4(("$\displaystyle \times$")):::operator
-  a["$\displaystyle a$"]:::scalar
-  c0___multiply_5(("$\displaystyle \times$")):::operator
-  b["$\displaystyle b$"]:::scalar
-  y["$\displaystyle y$"]:::scalar
+  x["$x$"]:::scalar
+  t["$t$"]:::scalar
+  c0___deriv_2(("$\dfrac{d}{d t}$")):::operator
+  c0___add_3(("$+$")):::operator
+  c0___multiply_4(("$\times$")):::operator
+  a["$a$"]:::scalar
+  c0___multiply_5(("$\times$")):::operator
+  b["$b$"]:::scalar
+  y["$y$"]:::scalar
   c1___equals_1{"="}:::relation
-  c1___deriv_2(("$\displaystyle \dfrac{d}{d t}$")):::operator
-  c1___add_3(("$\displaystyle +$")):::operator
-  c1___multiply_4(("$\displaystyle \times$")):::operator
-  c["$\displaystyle c$"]:::scalar
-  dy["$\displaystyle dy$"]:::scalar
+  c1___deriv_2(("$\dfrac{d}{d t}$")):::operator
+  c1___add_3(("$+$")):::operator
+  c1___multiply_4(("$\times$")):::operator
+  c["$c$"]:::scalar
+  dy["$dy$"]:::scalar
   x --&gt; c0___deriv_2
   t --&gt;|wrt| c0___deriv_2
   c0___deriv_2 --&gt; c0___equals_1
@@ -1723,18 +1728,18 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   c0___equals_1{"="}:::relation
-  c0___add_2(("$\displaystyle +$")):::operator
-  y''["$\displaystyle y''$"]:::scalar
-  y["$\displaystyle y$"]:::scalar
-  c0___num_3["$\displaystyle 0$"]:::number
+  c0___add_2(("$+$")):::operator
+  y''["$y''$"]:::scalar
+  y["$y$"]:::scalar
+  c0___num_3["$0$"]:::number
   c1___equals_1{"="}:::relation
-  c1___y_2{{"$\displaystyle y(\cdot)$"}}:::function
-  c1___num_3["$\displaystyle 0$"]:::number
-  c1___num_4["$\displaystyle 1$"]:::number
+  c1___y_2{{"$y(\cdot)$"}}:::function
+  c1___num_3["$0$"]:::number
+  c1___num_4["$1$"]:::number
   c2___equals_1{"="}:::relation
-  c2___y'_2{{"$\displaystyle y'(\cdot)$"}}:::function
-  c2___num_3["$\displaystyle 0$"]:::number
-  c2___num_4["$\displaystyle 0$"]:::number
+  c2___y'_2{{"$y'(\cdot)$"}}:::function
+  c2___num_3["$0$"]:::number
+  c2___num_4["$0$"]:::number
   y'' --&gt; c0___add_2
   y --&gt; c0___add_2
   c0___add_2 --&gt; c0___equals_1
@@ -1921,17 +1926,17 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  __multiply_3(("$\displaystyle \times$")):::operator
-  s["$\displaystyle s$"]:::scalar
-  __Y_4{{"$\displaystyle Y(\cdot)$"}}:::function
-  __negation_5@{ shape: "flip-tri", label: "$\displaystyle -$" }
-  __y_6{{"$\displaystyle y(\cdot)$"}}:::function
-  __num_7["$\displaystyle 0$"]:::number
-  __multiply_8(("$\displaystyle \times$")):::operator
-  L["$\displaystyle \mathcal{L}$"]:::scalar
-  __f_9{{"$\displaystyle f(\cdot)$"}}:::function
-  t["$\displaystyle t$"]:::scalar
+  __add_2(("$+$")):::operator
+  __multiply_3(("$\times$")):::operator
+  s["$s$"]:::scalar
+  __Y_4{{"$Y(\cdot)$"}}:::function
+  __negation_5@{ shape: "flip-tri", label: "$-$" }
+  __y_6{{"$y(\cdot)$"}}:::function
+  __num_7["$0$"]:::number
+  __multiply_8(("$\times$")):::operator
+  L["$\mathcal{L}$"]:::scalar
+  __f_9{{"$f(\cdot)$"}}:::function
+  t["$t$"]:::scalar
   class __negation_5 operator
   s --&gt; __multiply_3
   s --&gt; __Y_4
@@ -2121,14 +2126,14 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  y__p_["$\displaystyle y_{p}$"]:::scalar
-  __add_2(("$\displaystyle +$")):::operator
-  __multiply_3(("$\displaystyle \times$")):::operator
-  u__1_["$\displaystyle u_{1}$"]:::scalar
-  y__1_["$\displaystyle y_{1}$"]:::scalar
-  __multiply_4(("$\displaystyle \times$")):::operator
-  u__2_["$\displaystyle u_{2}$"]:::scalar
-  y__2_["$\displaystyle y_{2}$"]:::scalar
+  y__p_["$y_{p}$"]:::scalar
+  __add_2(("$+$")):::operator
+  __multiply_3(("$\times$")):::operator
+  u__1_["$u_{1}$"]:::scalar
+  y__1_["$y_{1}$"]:::scalar
+  __multiply_4(("$\times$")):::operator
+  u__2_["$u_{2}$"]:::scalar
+  y__2_["$y_{2}$"]:::scalar
   y__p_ --&gt; __equals_1
   u__1_ --&gt; __multiply_3
   y__1_ --&gt; __multiply_3

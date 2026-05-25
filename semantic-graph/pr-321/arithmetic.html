@@ -12,7 +12,12 @@
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
   mermaid.initialize({ startOnLoad: false, theme: 'dark',
     flowchart: { htmlLabels: true, curve: 'basis' } });
-  await mermaid.run();
+  try { await mermaid.run(); } catch (_) {}
+  // KaTeX is loaded via a defer script which may not have executed yet
+  // when this module runs.  Poll briefly (defer + module ordering is
+  // not guaranteed across browsers).
+  for (let i = 0; i < 50 && !window.katex; i++)
+    await new Promise(r => setTimeout(r, 50));
   if (window.katex) {
     const INLINE_MATH = /\$([^$\n]+)\$/g;
     document.querySelectorAll(
@@ -246,7 +251,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 01:30 UTC &middot; theme: default-dark &middot; 24 expressions</div>
+<div class="report-meta">Generated 2026-05-25 02:14 UTC &middot; theme: default-dark &middot; 24 expressions</div>
 <div class="section-title">Arithmetic (24 expressions)</div>
 <div class="row">
   <div>
@@ -267,10 +272,10 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  x["$\displaystyle x$"]:::scalar
-  y["$\displaystyle y$"]:::scalar
-  z["$\displaystyle z$"]:::scalar
+  __add_2(("$+$")):::operator
+  x["$x$"]:::scalar
+  y["$y$"]:::scalar
+  z["$z$"]:::scalar
   x --&gt; __add_2
   y --&gt; __add_2
   __add_2 --&gt; __equals_1
@@ -361,11 +366,11 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  a["$\displaystyle a$"]:::scalar
-  __negation_3@{ shape: "flip-tri", label: "$\displaystyle -$" }
-  b["$\displaystyle b$"]:::scalar
-  c["$\displaystyle c$"]:::scalar
+  __add_2(("$+$")):::operator
+  a["$a$"]:::scalar
+  __negation_3@{ shape: "flip-tri", label: "$-$" }
+  b["$b$"]:::scalar
+  c["$c$"]:::scalar
   class __negation_3 operator
   a --&gt; __add_2
   b --&gt; __negation_3
@@ -469,10 +474,10 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\displaystyle \times$")):::operator
-  a["$\displaystyle a$"]:::scalar
-  b["$\displaystyle b$"]:::scalar
-  c["$\displaystyle c$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  a["$a$"]:::scalar
+  b["$b$"]:::scalar
+  c["$c$"]:::scalar
   a --&gt; __multiply_2
   b --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
@@ -567,10 +572,10 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\displaystyle \times$")):::operator
-  a["$\displaystyle a$"]:::scalar
-  b["$\displaystyle b$"]:::scalar
-  c["$\displaystyle c$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  a["$a$"]:::scalar
+  b["$b$"]:::scalar
+  c["$c$"]:::scalar
   a --&gt; __multiply_2
   b --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
@@ -665,11 +670,11 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\displaystyle \times$")):::operator
-  a["$\displaystyle a$"]:::scalar
-  __power_3(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  b["$\displaystyle b$"]:::scalar
-  c["$\displaystyle c$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  a["$a$"]:::scalar
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
+  b["$b$"]:::scalar
+  c["$c$"]:::scalar
   a --&gt; __multiply_2
   b --&gt; __power_3
   __power_3 -.-&gt; __multiply_2
@@ -776,13 +781,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  __power_3(("$\displaystyle {(\cdot)}^{2}$")):::operator
-  x["$\displaystyle x$"]:::scalar
-  __power_4(("$\displaystyle {(\cdot)}^{2}$")):::operator
-  y["$\displaystyle y$"]:::scalar
-  __power_5(("$\displaystyle {(\cdot)}^{2}$")):::operator
-  z["$\displaystyle z$"]:::scalar
+  __add_2(("$+$")):::operator
+  __power_3(("${(\cdot)}^{2}$")):::operator
+  x["$x$"]:::scalar
+  __power_4(("${(\cdot)}^{2}$")):::operator
+  y["$y$"]:::scalar
+  __power_5(("${(\cdot)}^{2}$")):::operator
+  z["$z$"]:::scalar
   x --&gt; __power_3
   __power_3 --&gt; __add_2
   y --&gt; __power_4
@@ -912,14 +917,14 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\displaystyle \times$")):::operator
-  __add_3(("$\displaystyle +$")):::operator
-  a["$\displaystyle a$"]:::scalar
-  b["$\displaystyle b$"]:::scalar
-  c["$\displaystyle c$"]:::scalar
-  __add_4(("$\displaystyle +$")):::operator
-  __multiply_5(("$\displaystyle \times$")):::operator
-  __multiply_6(("$\displaystyle \times$")):::operator
+  __multiply_2(("$\times$")):::operator
+  __add_3(("$+$")):::operator
+  a["$a$"]:::scalar
+  b["$b$"]:::scalar
+  c["$c$"]:::scalar
+  __add_4(("$+$")):::operator
+  __multiply_5(("$\times$")):::operator
+  __multiply_6(("$\times$")):::operator
   a --&gt; __add_3
   b --&gt; __add_3
   __add_3 --&gt; __multiply_2
@@ -1094,9 +1099,9 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __negation_2@{ shape: "flip-tri", label: "$\displaystyle -$" }
-  x["$\displaystyle x$"]:::scalar
-  y["$\displaystyle y$"]:::scalar
+  __negation_2@{ shape: "flip-tri", label: "$-$" }
+  x["$x$"]:::scalar
+  y["$y$"]:::scalar
   class __negation_2 operator
   x --&gt; __negation_2
   __negation_2 --&gt; __equals_1
@@ -1175,7 +1180,7 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  x["$\displaystyle x$"]:::scalar
+  x["$x$"]:::scalar
   __equals_1{"="}:::relation
   x --&gt; __equals_1
   x --&gt; __equals_1
@@ -1237,9 +1242,9 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __power_2(("$\displaystyle {(\cdot)}^{1/2}$")):::operator
-  x["$\displaystyle x$"]:::scalar
-  y["$\displaystyle y$"]:::scalar
+  __power_2(("${(\cdot)}^{1/2}$")):::operator
+  x["$x$"]:::scalar
+  y["$y$"]:::scalar
   x --&gt; __power_2
   __power_2 --&gt; __equals_1
   y --&gt; __equals_1
@@ -1319,12 +1324,12 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  a["$\displaystyle a$"]:::scalar
-  __multiply_3(("$\displaystyle \times$")):::operator
-  b["$\displaystyle b$"]:::scalar
-  c["$\displaystyle c$"]:::scalar
-  d["$\displaystyle d$"]:::scalar
+  __add_2(("$+$")):::operator
+  a["$a$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  b["$b$"]:::scalar
+  c["$c$"]:::scalar
+  d["$d$"]:::scalar
   a --&gt; __add_2
   b --&gt; __multiply_3
   c --&gt; __multiply_3
@@ -1443,12 +1448,12 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __add_2(("$\displaystyle +$")):::operator
-  __add_3(("$\displaystyle +$")):::operator
-  a["$\displaystyle a$"]:::scalar
-  b["$\displaystyle b$"]:::scalar
-  c["$\displaystyle c$"]:::scalar
-  d["$\displaystyle d$"]:::scalar
+  __add_2(("$+$")):::operator
+  __add_3(("$+$")):::operator
+  a["$a$"]:::scalar
+  b["$b$"]:::scalar
+  c["$c$"]:::scalar
+  d["$d$"]:::scalar
   a --&gt; __add_3
   b --&gt; __add_3
   __add_3 --&gt; __add_2
@@ -1563,9 +1568,9 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __power_2(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  x["$\displaystyle x$"]:::scalar
-  y["$\displaystyle y$"]:::scalar
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
+  x["$x$"]:::scalar
+  y["$y$"]:::scalar
   x --&gt; __power_2
   __power_2 -.-&gt; __equals_1
   y --&gt; __equals_1
@@ -1646,13 +1651,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\displaystyle \times$")):::operator
-  __add_3(("$\displaystyle +$")):::operator
-  x["$\displaystyle x$"]:::scalar
-  y["$\displaystyle y$"]:::scalar
-  __power_4(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  z["$\displaystyle z$"]:::scalar
-  w["$\displaystyle w$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  __add_3(("$+$")):::operator
+  x["$x$"]:::scalar
+  y["$y$"]:::scalar
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
+  z["$z$"]:::scalar
+  w["$w$"]:::scalar
   x --&gt; __add_3
   y --&gt; __add_3
   __add_3 --&gt; __multiply_2
@@ -1783,14 +1788,14 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\displaystyle \times$")):::operator
-  __multiply_3(("$\displaystyle \times$")):::operator
-  a["$\displaystyle a$"]:::scalar
-  __power_4(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  b["$\displaystyle b$"]:::scalar
-  __power_5(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  c["$\displaystyle c$"]:::scalar
-  d["$\displaystyle d$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  __multiply_3(("$\times$")):::operator
+  a["$a$"]:::scalar
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
+  b["$b$"]:::scalar
+  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
+  c["$c$"]:::scalar
+  d["$d$"]:::scalar
   a --&gt; __multiply_3
   b --&gt; __power_4
   __power_4 -.-&gt; __multiply_3
@@ -1936,10 +1941,10 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __add_1(("$\displaystyle +$")):::operator
-  __num_2["$\displaystyle 2$"]:::number
-  __num_3["$\displaystyle 3$"]:::number
-  __num_4["$\displaystyle 5$"]:::number
+  __add_1(("$+$")):::operator
+  __num_2["$2$"]:::number
+  __num_3["$3$"]:::number
+  __num_4["$5$"]:::number
   __equals_5{"="}:::relation
   __num_2 --&gt; __add_1
   __num_3 --&gt; __add_1
@@ -2030,10 +2035,10 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __add_1(("$\displaystyle +$")):::operator
-  __num_2["$\displaystyle 7$"]:::number
-  __num_3["$\displaystyle -4$"]:::number
-  __num_4["$\displaystyle 3$"]:::number
+  __add_1(("$+$")):::operator
+  __num_2["$7$"]:::number
+  __num_3["$-4$"]:::number
+  __num_4["$3$"]:::number
   __equals_5{"="}:::relation
   __num_2 --&gt; __add_1
   __num_3 --&gt; __add_1
@@ -2124,10 +2129,10 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __multiply_1(("$\displaystyle \times$")):::operator
-  __num_2["$\displaystyle 3$"]:::number
-  __num_3["$\displaystyle 4$"]:::number
-  __num_4["$\displaystyle 12$"]:::number
+  __multiply_1(("$\times$")):::operator
+  __num_2["$3$"]:::number
+  __num_3["$4$"]:::number
+  __num_4["$12$"]:::number
   __equals_5{"="}:::relation
   __num_2 --&gt; __multiply_1
   __num_3 --&gt; __multiply_1
@@ -2222,11 +2227,11 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __multiply_1(("$\displaystyle \times$")):::operator
-  __num_2["$\displaystyle 10$"]:::number
-  __power_3(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  __num_4["$\displaystyle 2$"]:::number
-  __num_5["$\displaystyle 5$"]:::number
+  __multiply_1(("$\times$")):::operator
+  __num_2["$10$"]:::number
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
+  __num_4["$2$"]:::number
+  __num_5["$5$"]:::number
   __equals_6{"="}:::relation
   __num_2 --&gt; __multiply_1
   __num_4 --&gt; __power_3
@@ -2333,12 +2338,12 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __add_1(("$\displaystyle +$")):::operator
-  __num_2["$\displaystyle 2$"]:::number
-  __multiply_3(("$\displaystyle \times$")):::operator
-  __num_4["$\displaystyle 3$"]:::number
-  __num_5["$\displaystyle 4$"]:::number
-  __num_6["$\displaystyle 14$"]:::number
+  __add_1(("$+$")):::operator
+  __num_2["$2$"]:::number
+  __multiply_3(("$\times$")):::operator
+  __num_4["$3$"]:::number
+  __num_5["$4$"]:::number
+  __num_6["$14$"]:::number
   __equals_7{"="}:::relation
   __num_2 --&gt; __add_1
   __num_4 --&gt; __multiply_3
@@ -2457,9 +2462,9 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __power_1(("$\displaystyle {(\cdot)}^{3}$")):::operator
-  __num_2["$\displaystyle 2$"]:::number
-  __num_3["$\displaystyle 8$"]:::number
+  __power_1(("${(\cdot)}^{3}$")):::operator
+  __num_2["$2$"]:::number
+  __num_3["$8$"]:::number
   __equals_4{"="}:::relation
   __num_2 --&gt; __power_1
   __power_1 --&gt; __equals_4
@@ -2539,17 +2544,17 @@
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __add_1(("$\displaystyle +$")):::operator
-  __power_2(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  __num_3["$\displaystyle 2$"]:::number
-  __multiply_4(("$\displaystyle \times$")):::operator
-  __num_5["$\displaystyle 3$"]:::number
-  __power_6(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  __num_7["$\displaystyle 4$"]:::number
-  __multiply_8(("$\displaystyle \times$")):::operator
-  __num_9["$\displaystyle 5$"]:::number
-  __power_10(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  __num_11["$\displaystyle 4$"]:::number
+  __add_1(("$+$")):::operator
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
+  __num_3["$2$"]:::number
+  __multiply_4(("$\times$")):::operator
+  __num_5["$3$"]:::number
+  __power_6(("$\dfrac{1}{(\cdot)}$")):::operator
+  __num_7["$4$"]:::number
+  __multiply_8(("$\times$")):::operator
+  __num_9["$5$"]:::number
+  __power_10(("$\dfrac{1}{(\cdot)}$")):::operator
+  __num_11["$4$"]:::number
   __equals_12{"="}:::relation
   __num_3 --&gt; __power_2
   __power_2 -.-&gt; __add_1
@@ -2735,11 +2740,11 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __abs_2{{"$\displaystyle abs(\cdot)$"}}:::function
-  __add_3(("$\displaystyle +$")):::operator
-  x["$\displaystyle x$"]:::scalar
-  __num_4["$\displaystyle -3$"]:::number
-  __num_5["$\displaystyle 5$"]:::number
+  __abs_2{{"$abs(\cdot)$"}}:::function
+  __add_3(("$+$")):::operator
+  x["$x$"]:::scalar
+  __num_4["$-3$"]:::number
+  __num_5["$5$"]:::number
   x --&gt; __add_3
   __num_4 --&gt; __add_3
   __add_3 --&gt; __abs_2
@@ -2842,9 +2847,9 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __abs_2{{"$\displaystyle abs(\cdot)$"}}:::function
-  x["$\displaystyle x$"]:::scalar
-  y["$\displaystyle y$"]:::scalar
+  __abs_2{{"$abs(\cdot)$"}}:::function
+  x["$x$"]:::scalar
+  y["$y$"]:::scalar
   x --&gt; __abs_2
   __abs_2 --&gt; __equals_1
   y --&gt; __equals_1

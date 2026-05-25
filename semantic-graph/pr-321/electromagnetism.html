@@ -12,7 +12,12 @@
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
   mermaid.initialize({ startOnLoad: false, theme: 'dark',
     flowchart: { htmlLabels: true, curve: 'basis' } });
-  await mermaid.run();
+  try { await mermaid.run(); } catch (_) {}
+  // KaTeX is loaded via a defer script which may not have executed yet
+  // when this module runs.  Poll briefly (defer + module ordering is
+  // not guaranteed across browsers).
+  for (let i = 0; i < 50 && !window.katex; i++)
+    await new Promise(r => setTimeout(r, 50));
   if (window.katex) {
     const INLINE_MATH = /\$([^$\n]+)\$/g;
     document.querySelectorAll(
@@ -246,7 +251,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 01:30 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-05-25 02:14 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Electromagnetism (15 expressions)</div>
 <div class="row">
   <div>
@@ -267,10 +272,10 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  V["$\displaystyle V$"]:::scalar
-  __multiply_2(("$\displaystyle \times$")):::operator
-  I["$\displaystyle I$"]:::scalar
-  R["$\displaystyle R$"]:::scalar
+  V["$V$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  I["$I$"]:::scalar
+  R["$R$"]:::scalar
   V --&gt; __equals_1
   I --&gt; __multiply_2
   R --&gt; __multiply_2
@@ -365,10 +370,10 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  P["$\displaystyle P$"]:::scalar
-  __multiply_2(("$\displaystyle \times$")):::operator
-  I["$\displaystyle I$"]:::scalar
-  V["$\displaystyle V$"]:::scalar
+  P["$P$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  I["$I$"]:::scalar
+  V["$V$"]:::scalar
   P --&gt; __equals_1
   I --&gt; __multiply_2
   V --&gt; __multiply_2
@@ -463,12 +468,12 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  R["$\displaystyle R$"]:::scalar
-  __add_2(("$\displaystyle +$")):::operator
-  __add_3(("$\displaystyle +$")):::operator
-  R__1_["$\displaystyle R_{1}$"]:::scalar
-  R__2_["$\displaystyle R_{2}$"]:::scalar
-  R__3_["$\displaystyle R_{3}$"]:::scalar
+  R["$R$"]:::scalar
+  __add_2(("$+$")):::operator
+  __add_3(("$+$")):::operator
+  R__1_["$R_{1}$"]:::scalar
+  R__2_["$R_{2}$"]:::scalar
+  R__3_["$R_{3}$"]:::scalar
   R --&gt; __equals_1
   R__1_ --&gt; __add_3
   R__2_ --&gt; __add_3
@@ -583,11 +588,11 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  C["$\displaystyle C$"]:::scalar
-  __multiply_2(("$\displaystyle \times$")):::operator
-  Q["$\displaystyle Q$"]:::scalar
-  __power_3(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  V["$\displaystyle V$"]:::scalar
+  C["$C$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  Q["$Q$"]:::scalar
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
+  V["$V$"]:::scalar
   C --&gt; __equals_1
   Q --&gt; __multiply_2
   V --&gt; __power_3
@@ -694,14 +699,14 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  U["$\displaystyle U$"]:::scalar
-  __multiply_2(("$\displaystyle \times$")):::operator
-  __power_3(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  __num_4["$\displaystyle 2$"]:::number
-  __multiply_5(("$\displaystyle \times$")):::operator
-  C["$\displaystyle C$"]:::scalar
-  __power_6(("$\displaystyle {(\cdot)}^{2}$")):::operator
-  V["$\displaystyle V$"]:::scalar
+  U["$U$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
+  __num_4["$2$"]:::number
+  __multiply_5(("$\times$")):::operator
+  C["$C$"]:::scalar
+  __power_6(("${(\cdot)}^{2}$")):::operator
+  V["$V$"]:::scalar
   U --&gt; __equals_1
   __num_4 --&gt; __power_3
   __power_3 -.-&gt; __multiply_2
@@ -849,13 +854,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  V["$\displaystyle V$"]:::scalar
-  __negation_2@{ shape: "flip-tri", label: "$\displaystyle -$" }
-  __multiply_3(("$\displaystyle \times$")):::operator
-  L["$\displaystyle L$"]:::scalar
-  I["$\displaystyle I$"]:::scalar
-  t["$\displaystyle t$"]:::scalar
-  __deriv_4(("$\displaystyle \dfrac{d}{d t}$")):::operator
+  V["$V$"]:::scalar
+  __negation_2@{ shape: "flip-tri", label: "$-$" }
+  __multiply_3(("$\times$")):::operator
+  L["$L$"]:::scalar
+  I["$I$"]:::scalar
+  t["$t$"]:::scalar
+  __deriv_4(("$\dfrac{d}{d t}$")):::operator
   class __negation_2 operator
   V --&gt; __equals_1
   L --&gt; __multiply_3
@@ -1013,16 +1018,16 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  F["$\displaystyle F$"]:::scalar
-  __multiply_2(("$\displaystyle \times$")):::operator
-  k__e_["$\displaystyle k_{e}$"]:::scalar
-  __multiply_3(("$\displaystyle \times$")):::operator
-  __multiply_4(("$\displaystyle \times$")):::operator
-  q__1_["$\displaystyle q_{1}$"]:::scalar
-  q__2_["$\displaystyle q_{2}$"]:::scalar
-  __power_5(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  __power_6(("$\displaystyle {(\cdot)}^{2}$")):::operator
-  r["$\displaystyle r$"]:::scalar
+  F["$F$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  k__e_["$k_{e}$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  __multiply_4(("$\times$")):::operator
+  q__1_["$q_{1}$"]:::scalar
+  q__2_["$q_{2}$"]:::scalar
+  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
+  __power_6(("${(\cdot)}^{2}$")):::operator
+  r["$r$"]:::scalar
   F --&gt; __equals_1
   k__e_ --&gt; __multiply_2
   q__1_ --&gt; __multiply_4
@@ -1198,11 +1203,11 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  E["$\displaystyle E$"]:::scalar
-  __multiply_2(("$\displaystyle \times$")):::operator
-  F["$\displaystyle F$"]:::scalar
-  __power_3(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  q["$\displaystyle q$"]:::scalar
+  E["$E$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  F["$F$"]:::scalar
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
+  q["$q$"]:::scalar
   E --&gt; __equals_1
   F --&gt; __multiply_2
   q --&gt; __power_3
@@ -1309,15 +1314,15 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  F["$\displaystyle F$"]:::scalar
-  __multiply_2(("$\displaystyle \times$")):::operator
-  q["$\displaystyle q$"]:::scalar
-  __multiply_3(("$\displaystyle \times$")):::operator
-  v["$\displaystyle v$"]:::scalar
-  __multiply_4(("$\displaystyle \times$")):::operator
-  B["$\displaystyle B$"]:::scalar
-  __sin_5{{"$\displaystyle sin(\cdot)$"}}:::function
-  theta["$\displaystyle \theta$"]:::scalar
+  F["$F$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  q["$q$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  v["$v$"]:::scalar
+  __multiply_4(("$\times$")):::operator
+  B["$B$"]:::scalar
+  __sin_5{{"$sin(\cdot)$"}}:::function
+  theta["$\theta$"]:::scalar
   F --&gt; __equals_1
   q --&gt; __multiply_2
   v --&gt; __multiply_3
@@ -1481,12 +1486,12 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  c["$\displaystyle c$"]:::scalar
-  __power_2(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  __power_3(("$\displaystyle {(\cdot)}^{1/2}$")):::operator
-  __multiply_4(("$\displaystyle \times$")):::operator
-  mu__0_["$\displaystyle \mu_{0}$"]:::scalar
-  epsilon__0_["$\displaystyle \epsilon_{0}$"]:::scalar
+  c["$c$"]:::scalar
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
+  __power_3(("${(\cdot)}^{1/2}$")):::operator
+  __multiply_4(("$\times$")):::operator
+  mu__0_["$\mu_{0}$"]:::scalar
+  epsilon__0_["$\epsilon_{0}$"]:::scalar
   c --&gt; __equals_1
   mu__0_ --&gt; __multiply_4
   epsilon__0_ --&gt; __multiply_4
@@ -1608,13 +1613,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  A["$\displaystyle \vec{A}$"]:::vector
-  __closed_integral_2(("$\displaystyle \oint dA$")):::operator
-  E["$\displaystyle \vec{E}$"]:::vector
-  __multiply_3(("$\displaystyle \times$")):::operator
-  Q["$\displaystyle Q$"]:::scalar
-  __power_4(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  epsilon__0_["$\displaystyle \epsilon_{0}$"]:::scalar
+  A["$\vec{A}$"]:::vector
+  __closed_integral_2(("$\oint dA$")):::operator
+  E["$\vec{E}$"]:::vector
+  __multiply_3(("$\times$")):::operator
+  Q["$Q$"]:::scalar
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
+  epsilon__0_["$\epsilon_{0}$"]:::scalar
   A --&gt;|wrt| __closed_integral_2
   E --&gt; __closed_integral_2
   __closed_integral_2 --&gt; __equals_1
@@ -1747,13 +1752,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\displaystyle \times$")):::operator
-  nabla["$\displaystyle \nabla$"]:::scalar
-  E["$\displaystyle \vec{E}$"]:::vector
-  __negation_3@{ shape: "flip-tri", label: "$\displaystyle -$" }
-  B["$\displaystyle \vec{B}$"]:::vector
-  t["$\displaystyle t$"]:::scalar
-  __deriv_4(("$\displaystyle \dfrac{\partial}{\partial t}$")):::operator
+  __multiply_2(("$\times$")):::operator
+  nabla["$\nabla$"]:::scalar
+  E["$\vec{E}$"]:::vector
+  __negation_3@{ shape: "flip-tri", label: "$-$" }
+  B["$\vec{B}$"]:::vector
+  t["$t$"]:::scalar
+  __deriv_4(("$\dfrac{\partial}{\partial t}$")):::operator
   class __negation_3 operator
   nabla --&gt; __multiply_2
   E --&gt; __multiply_2
@@ -1911,13 +1916,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  F["$\displaystyle \vec{F}$"]:::vector
-  __q_2{{"$\displaystyle q(\cdot)$"}}:::function
-  __add_3(("$\displaystyle +$")):::operator
-  E["$\displaystyle \vec{E}$"]:::vector
-  __multiply_4(("$\displaystyle \times$")):::operator
-  v["$\displaystyle \vec{v}$"]:::vector
-  B["$\displaystyle \vec{B}$"]:::vector
+  F["$\vec{F}$"]:::vector
+  __q_2{{"$q(\cdot)$"}}:::function
+  __add_3(("$+$")):::operator
+  E["$\vec{E}$"]:::vector
+  __multiply_4(("$\times$")):::operator
+  v["$\vec{v}$"]:::vector
+  B["$\vec{B}$"]:::vector
   F --&gt; __equals_1
   E --&gt; __add_3
   v --&gt; __multiply_4
@@ -2048,13 +2053,13 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  S["$\displaystyle \vec{S}$"]:::vector
-  __multiply_2(("$\displaystyle \times$")):::operator
-  __multiply_3(("$\displaystyle \times$")):::operator
-  __power_4(("$\displaystyle \dfrac{1}{(\cdot)}$")):::operator
-  mu__0_["$\displaystyle \mu_{0}$"]:::scalar
-  E["$\displaystyle \vec{E}$"]:::vector
-  B["$\displaystyle \vec{B}$"]:::vector
+  S["$\vec{S}$"]:::vector
+  __multiply_2(("$\times$")):::operator
+  __multiply_3(("$\times$")):::operator
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
+  mu__0_["$\mu_{0}$"]:::scalar
+  E["$\vec{E}$"]:::vector
+  B["$\vec{B}$"]:::vector
   S --&gt; __equals_1
   mu__0_ --&gt; __power_4
   __power_4 -.-&gt; __multiply_3
@@ -2189,19 +2194,19 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __multiply_2(("$\displaystyle \times$")):::operator
-  nabla["$\displaystyle \nabla$"]:::scalar
-  B["$\displaystyle \vec{B}$"]:::vector
-  __add_3(("$\displaystyle +$")):::operator
-  __multiply_4(("$\displaystyle \times$")):::operator
-  mu__0_["$\displaystyle \mu_{0}$"]:::scalar
-  J["$\displaystyle \vec{J}$"]:::vector
-  __multiply_5(("$\displaystyle \times$")):::operator
-  __multiply_6(("$\displaystyle \times$")):::operator
-  epsilon__0_["$\displaystyle \epsilon_{0}$"]:::scalar
-  E["$\displaystyle \vec{E}$"]:::vector
-  t["$\displaystyle t$"]:::scalar
-  __deriv_7(("$\displaystyle \dfrac{\partial}{\partial t}$")):::operator
+  __multiply_2(("$\times$")):::operator
+  nabla["$\nabla$"]:::scalar
+  B["$\vec{B}$"]:::vector
+  __add_3(("$+$")):::operator
+  __multiply_4(("$\times$")):::operator
+  mu__0_["$\mu_{0}$"]:::scalar
+  J["$\vec{J}$"]:::vector
+  __multiply_5(("$\times$")):::operator
+  __multiply_6(("$\times$")):::operator
+  epsilon__0_["$\epsilon_{0}$"]:::scalar
+  E["$\vec{E}$"]:::vector
+  t["$t$"]:::scalar
+  __deriv_7(("$\dfrac{\partial}{\partial t}$")):::operator
   nabla --&gt; __multiply_2
   B --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
