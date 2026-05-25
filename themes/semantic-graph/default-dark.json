@@ -1,7 +1,7 @@
 {
   "name": "default-dark",
   "mode": "dark",
-  "direction": "LR",
+  "direction": "RL",
   "labelMode": "emoji",
   "nodeStyles": {
     "scalar":   { "shape": "rect",    "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9" },
