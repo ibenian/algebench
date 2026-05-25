@@ -1,3 +1,9 @@
+---
+name: debug-chrome
+description: Launch or restart AlgeBench, open it in Chrome browser tools, and debug UI behavior with console, DOM, screenshots, and interactions.
+args: "[action=<stop|restart>]"
+---
+
 # Debug AlgeBench in Chrome
 
 Launch AlgeBench (if not already running), open it in Chrome via browser tools, and interactively debug the UI.
