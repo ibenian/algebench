@@ -1450,11 +1450,11 @@ export class D3SemanticGraphRenderer {
                     div.node().appendChild(emojiSpan);
                 }
                 div.node().appendChild(span);
+                return { width: measuredW, height: measuredH };
             } else {
                 div.text(data.label || data.id);
+                return null;
             }
-
-            return { width: measuredW, height: measuredH };
         } else {
             const text = getNodeLabel(data, this.labels);
             const label = group.append('text')

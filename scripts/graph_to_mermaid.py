@@ -335,7 +335,8 @@ def _format_label(
             return f"${agg_cmd}_{{{wrt}}}$"
         if node_type == "function" and op:
             dots = r", ".join([r"\cdot"] * max(arity, 1))
-            return f"${op}({dots})$"
+            fn_name = OPERATOR_LATEX.get(op, op)
+            return f"${fn_name}({dots})$"
         node_latex = node.get("latex")
         if node_latex:
             symbol = node_latex

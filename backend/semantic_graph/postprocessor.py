@@ -124,8 +124,17 @@ class GraphPostprocessor:
                 wrapped = f"\\{accent}{{{body}}}"
                 if wrapped in subexpr:
                     continue  # already restored
-                if body in subexpr:
-                    subexpr = subexpr.replace(body, wrapped)
+                # Use word-boundary-aware replacement to avoid corrupting
+                # LaTeX commands (e.g. body "a" must not match inside \tan).
+                # Match ``body`` only when NOT preceded by a backslash or
+                # letter, and NOT followed by a letter.
+                pattern = re.compile(
+                    r"(?<!\\)(?<![A-Za-z])" + re.escape(body) + r"(?![A-Za-z])"
+                )
+                if pattern.search(subexpr):
+                    # Use a lambda to avoid backslash interpretation in
+                    # the replacement string (e.g. \hat → \h escape error).
+                    subexpr = pattern.sub(lambda _: wrapped, subexpr)
             node.subexpr = subexpr
 
     @staticmethod

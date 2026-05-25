@@ -10,20 +10,20 @@
 set -euo pipefail
 
 PORT=5740
-THEME=""
 OUTDIR="/tmp/sg_report"
+EXTRA_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --port) PORT="$2"; shift 2 ;;
-        --theme) THEME="--theme $2"; shift 2 ;;
+        --theme) EXTRA_ARGS+=(--theme "$2"); shift 2 ;;
         --outdir) OUTDIR="$2"; shift 2 ;;
         *) echo "Unknown arg: $1"; exit 1 ;;
     esac
 done
 
 echo "▶ Generating semantic graph report → $OUTDIR"
-./run.sh scripts/semantic_graph_report.py --outdir "$OUTDIR" $THEME
+./run.sh scripts/semantic_graph_report.py --outdir "$OUTDIR" "${EXTRA_ARGS[@]}"
 
 echo "▶ Serving on http://localhost:$PORT"
 python3 -m http.server "$PORT" -d "$OUTDIR"
