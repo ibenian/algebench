@@ -142,19 +142,20 @@ OPTICS_EXPRESSIONS: list[CatalogEntry] = [
 
 DIFFRACTION_EXPRESSIONS: list[CatalogEntry] = [
     ("diffraction_grating",
-     r"d \sin\theta = m \lambda",
+     r"{d} \sin\theta = m \lambda",
      PASS,
-     "dsin,theta -> multiply; lambda,m -> multiply; "
+     "theta -> fn:sin; lambda,m -> multiply; d,fn:sin -> multiply; "
      "multiply,multiply -> rel:equals",
-     "dsin,theta -> __multiply_2; lambda,m -> __multiply_3; "
-     "__multiply_2,__multiply_3 -> __equals_1",
+     "lambda,m -> __multiply_4; theta -> __sin_3; "
+     "__sin_3,d -> __multiply_2; __multiply_2,__multiply_4 -> __equals_1",
      None),
 
     ("path_difference",
-     r"\Delta = d \sin\theta",
+     r"\Delta = {d} \sin\theta",
      PASS,
-     "dsin,theta -> multiply; Delta,multiply -> rel:equals",
-     "dsin,theta -> __multiply_2; Delta,__multiply_2 -> __equals_1",
+     "theta -> fn:sin; d,fn:sin -> multiply; Delta,multiply -> rel:equals",
+     "theta -> __sin_3; __sin_3,d -> __multiply_2; "
+     "Delta,__multiply_2 -> __equals_1",
      None),
 
     ("standing_wave",
