@@ -154,7 +154,7 @@ const OPERATOR_GLYPHS = {
     equals: '=', greater_than: '>', less_than: '<',
     greater_equal: '≥', less_equal: '≤', not_equal: '≠',
     multiply: '×', add: '+', subtract: '−',
-    divide: '÷', integral: '∫',
+    divide: '÷', integral: '∫', closed_integral: '∮',
     implies: '⇒', iff: '⇔',
     negation: '−', not: '¬', logical_not: '¬',
     conjunction: '∧', disjunction: '∨',
@@ -173,7 +173,7 @@ const OPERATOR_LATEX = {
     greater_equal: '\\geq', less_equal: '\\leq', not_equal: '\\neq',
     element_of: '\\in', not_element_of: '\\notin',
     multiply: '\\times', add: '+', subtract: '-',
-    divide: '\\div', integral: '\\int',
+    divide: '\\div', integral: '\\int', closed_integral: '\\oint',
     implies: '\\Rightarrow', iff: '\\Leftrightarrow',
     negation: '-', not: '\\lnot', logical_not: '\\lnot',
     conjunction: '\\land', disjunction: '\\lor',
@@ -213,7 +213,7 @@ const OPERATOR_KINDS = {
     not: 'logical', logical_not: 'logical',
     conjunction: 'logical', disjunction: 'logical',
     sum: 'aggregate', product: 'aggregate',
-    integral: 'aggregate', limit: 'aggregate',
+    integral: 'aggregate', closed_integral: 'aggregate', limit: 'aggregate',
     derivative: 'aggregate', partial_derivative: 'aggregate',
     inner_product: 'quantum',
 };
@@ -245,12 +245,6 @@ function operatorGlyph(node) {
     if (op === 'power') {
         if (node.exponent != null && String(node.exponent) === '-1') return '1/(·)';
         return node.exponent ? `(·)${toSuperscript(node.exponent)}` : '(·)˙';
-    }
-    if (op === 'derivative' || op === 'partial_derivative') {
-        const d = op === 'partial_derivative' ? '∂' : 'd';
-        if (node.with_respect_to && (!node._childIds || node._childIds.length <= 1))
-            return `${d}·/${d}${node.with_respect_to}`;
-        return `${d}·/${d}·`;
     }
     return OPERATOR_GLYPHS[op] || null;
 }
@@ -1350,6 +1344,23 @@ export class D3SemanticGraphRenderer {
             if (wrt && (!data._childIds || data._childIds.length <= 1))
                 return `\\frac{${d}}{${d}${wrt}}`;
             return `\\frac{${d}}{${d}\\cdot}`;
+        }
+        if (op === 'integral' || op === 'closed_integral') {
+            const cmd = OPERATOR_LATEX[op];
+            const wrt = data.with_respect_to;
+            const lb = data.lower_bound || '';
+            const ub = data.upper_bound || '';
+            if (wrt) {
+                if (lb && ub) return `${cmd}_{${lb}}^{${ub}} d${wrt}`;
+                return `${cmd} d${wrt}`;
+            }
+            return cmd;
+        }
+        if (op === 'sum' || op === 'product') {
+            const cmd = OPERATOR_LATEX[op];
+            const wrt = data.with_respect_to;
+            if (wrt) return `${cmd}_{${wrt}}`;
+            return cmd;
         }
         return `\\text{${op}}`;
     }

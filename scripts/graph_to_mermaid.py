@@ -330,6 +330,9 @@ def _format_label(
             if lb and ub:
                 return f"${int_cmd}_{{{lb}}}^{{{ub}}} d{wrt}$"
             return f"${int_cmd} d{wrt}$"
+        if op in ("sum", "product") and wrt:
+            agg_cmd = OPERATOR_LATEX.get(op, r"\sum")
+            return f"${agg_cmd}_{{{wrt}}}$"
         if node_type == "function" and op:
             dots = r", ".join([r"\cdot"] * max(arity, 1))
             return f"${op}({dots})$"

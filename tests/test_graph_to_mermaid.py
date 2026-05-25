@@ -189,6 +189,44 @@ class TestLabelFormatting:
 # ID sanitization
 # ---------------------------------------------------------------------------
 
+class TestAggregateOperatorLabels:
+    """Integral, closed_integral, sum, and product labels with wrt variables."""
+
+    def test_integral_with_wrt(self):
+        node = {"id": "__integral_1", "type": "operator", "op": "integral",
+                "with_respect_to": "x"}
+        assert _format_label(node, "latex") == r"$\int dx$"
+
+    def test_integral_with_bounds_and_wrt(self):
+        node = {"id": "__integral_1", "type": "operator", "op": "integral",
+                "with_respect_to": "x", "lower_bound": "a", "upper_bound": "b"}
+        assert _format_label(node, "latex") == r"$\int_{a}^{b} dx$"
+
+    def test_closed_integral_with_wrt(self):
+        node = {"id": "__closed_integral_1", "type": "operator",
+                "op": "closed_integral", "with_respect_to": "Q"}
+        assert _format_label(node, "latex") == r"$\oint dQ$"
+
+    def test_closed_integral_no_wrt(self):
+        node = {"id": "__closed_integral_1", "type": "operator",
+                "op": "closed_integral"}
+        assert _format_label(node, "latex") == r"$\oint$"
+
+    def test_sum_with_wrt(self):
+        node = {"id": "__sum_1", "type": "operator", "op": "sum",
+                "with_respect_to": "i"}
+        assert _format_label(node, "latex") == r"$\sum_{i}$"
+
+    def test_sum_no_wrt(self):
+        node = {"id": "__sum_1", "type": "operator", "op": "sum"}
+        assert _format_label(node, "latex") == r"$\sum$"
+
+    def test_product_with_wrt(self):
+        node = {"id": "__product_1", "type": "operator", "op": "product",
+                "with_respect_to": "k"}
+        assert _format_label(node, "latex") == r"$\prod_{k}$"
+
+
 class TestSanitizeId:
     def test_basic(self):
         assert _sanitize_id("hello") == "hello"
