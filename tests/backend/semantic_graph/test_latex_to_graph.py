@@ -350,6 +350,33 @@ class TestCalculus:
         assert _find_node(g, label="1") is not None
         assert _find_node(g, label="infinity") is not None
 
+class TestLimits:
+    def test_limit_basic_structure(self):
+        g = latex_to_semantic_graph(r"\lim_{x \to 0} \frac{\sin x}{x}")
+        limit_node = _find_node(g, type="operator", op="limit")
+        assert limit_node is not None
+        tends_to = _find_node(g, type="operator", op="tends_to")
+        assert tends_to is not None
+
+    def test_tends_to_subexpr(self):
+        g = latex_to_semantic_graph(r"\lim_{x \to 0} x^2")
+        tends_to = _find_node(g, type="operator", op="tends_to")
+        assert tends_to is not None
+        assert tends_to.subexpr is not None
+        assert r"\to" in tends_to.subexpr
+        assert "x" in tends_to.subexpr
+        assert "0" in tends_to.subexpr
+
+    def test_tends_to_subexpr_infinity(self):
+        g = latex_to_semantic_graph(r"\lim_{n \to \infty} \frac{1}{n}")
+        tends_to = _find_node(g, type="operator", op="tends_to")
+        assert tends_to is not None
+        assert tends_to.subexpr is not None
+        assert r"\to" in tends_to.subexpr
+        assert "n" in tends_to.subexpr
+        assert "infty" in tends_to.subexpr or "\\infty" in tends_to.subexpr
+
+
 class TestDerivatives:
     def test_first_order_derivative(self):
         g = latex_to_semantic_graph("\\frac{d v}{d t}")
