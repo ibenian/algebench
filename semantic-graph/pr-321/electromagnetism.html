@@ -251,7 +251,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 03:59 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-05-25 04:18 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Electromagnetism (15 expressions)</div>
 <div class="row">
   <div>
@@ -1321,7 +1321,7 @@
   v["$v$"]:::scalar
   __multiply_4(("$\times$")):::operator
   B["$B$"]:::scalar
-  __sin_5{{"$sin(\cdot)$"}}:::function
+  __sin_5{{"$\sin(\cdot)$"}}:::function
   theta["$\theta$"]:::scalar
   F --&gt; __equals_1
   q --&gt; __multiply_2
@@ -1647,7 +1647,7 @@
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "\\oint \\vec{E} \\cdot d\\vec{A} = \\frac{Q}{\\epsilon_0}"
+      "subexpr": "\\oint \\vec{E} \\cdot dA = \\frac{Q}{\\epsilon_0}"
     },
     {
       "id": "A",
@@ -1660,7 +1660,7 @@
       "type": "operator",
       "op": "closed_integral",
       "with_respect_to": "A",
-      "subexpr": "\\int \\vec{E}\\, d\\vec{A}"
+      "subexpr": "\\int \\vec{E}\\, dA"
     },
     {
       "id": "E",
@@ -1950,31 +1950,31 @@
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "\\\\vec{v}ec{F} = q(\\\\vec{v}ec{E} + \\vec{v} \\times \\vec{B})"
+      "subexpr": "\\vec{F} = q(\\vec{E} + \\vec{v} \\times \\vec{B})"
     },
     {
       "id": "F",
       "type": "vector",
       "latex": "\\vec{F}",
-      "subexpr": "\\\\vec{v}ec{F}"
+      "subexpr": "\\vec{F}"
     },
     {
       "id": "__q_2",
       "type": "function",
       "op": "q",
-      "subexpr": "q{\\left(\\vec{B} \\vec{v} + \\\\vec{v}ec{E} \\right)}"
+      "subexpr": "q{\\left(\\vec{B} \\vec{v} + \\vec{E} \\right)}"
     },
     {
       "id": "__add_3",
       "type": "operator",
       "op": "add",
-      "subexpr": "\\\\vec{v}ec{E} + \\vec{v} \\vec{B}"
+      "subexpr": "\\vec{E} + \\vec{v} \\vec{B}"
     },
     {
       "id": "E",
       "type": "vector",
       "latex": "\\vec{E}",
-      "subexpr": "\\\\vec{v}ec{E}"
+      "subexpr": "\\vec{E}"
     },
     {
       "id": "__multiply_4",
@@ -1992,7 +1992,7 @@
       "id": "B",
       "type": "vector",
       "latex": "\\vec{B}",
-      "subexpr": "\\\\vec{v}ec{\\vec{B}}"
+      "subexpr": "\\vec{B}"
     }
   ],
   "edges": [
