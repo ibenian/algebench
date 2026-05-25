@@ -1,3 +1,9 @@
+---
+name: update-glt
+description: Update the pinned gemini-live-tools dependency to a PR branch, named branch, version tag, or latest release and verify the installed package.
+args: "[target=<PR_NUMBER|BRANCH_NAME|TAG|latest>]"
+---
+
 # Update gemini-live-tools
 
 Update the gemini-live-tools dependency — either to a PR branch for testing, a specific version tag, or the latest release.

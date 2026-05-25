@@ -1,3 +1,9 @@
+---
+name: version-bump
+description: Bump the AlgeBench version by reviewing changes since the last tag, choosing the next semantic version, tagging it, and optionally creating a GitHub release.
+args: "[bump_level=<revision|minor|major>] [release=<yes|no>]"
+---
+
 # Version Bump
 
 Check what has changed since the last tag, bump the version, tag it, and optionally publish a GitHub release.
