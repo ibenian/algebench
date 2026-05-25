@@ -12,7 +12,12 @@
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
   mermaid.initialize({ startOnLoad: false, theme: 'dark',
     flowchart: { htmlLabels: true, curve: 'basis' } });
-  await mermaid.run();
+  try { await mermaid.run(); } catch (_) {}
+  // KaTeX is loaded via a defer script which may not have executed yet
+  // when this module runs.  Poll briefly (defer + module ordering is
+  // not guaranteed across browsers).
+  for (let i = 0; i < 50 && !window.katex; i++)
+    await new Promise(r => setTimeout(r, 50));
   if (window.katex) {
     const INLINE_MATH = /\$([^$\n]+)\$/g;
     document.querySelectorAll(
@@ -56,6 +61,64 @@
       });
       fo.replaceChild(wrapper, outer);
       wrapper.appendChild(outer);
+    });
+    // Resize foreignObject + parent node rect after KaTeX renders accents
+    document.querySelectorAll('svg g.node foreignObject').forEach((fo) => {
+      const content = fo.querySelector('[data-gv-centered="wrapper"]') || fo.firstElementChild;
+      if (!content) return;
+      const bbox = content.getBoundingClientRect();
+      const foRect = fo.getBoundingClientRect();
+      // Only expand if content is taller/wider than current foreignObject
+      const PAD = 8;
+      const neededH = bbox.height + PAD;
+      const neededW = bbox.width + PAD;
+      const curH = parseFloat(fo.getAttribute('height')) || foRect.height;
+      const curW = parseFloat(fo.getAttribute('width')) || foRect.width;
+      if (neededH > curH) {
+        const dh = neededH - curH;
+        fo.setAttribute('height', neededH);
+        // Shift foreignObject up by half the delta to keep node centered
+        const curY = parseFloat(fo.getAttribute('y')) || 0;
+        fo.setAttribute('y', curY - dh / 2);
+        // Also expand parent rect/polygon
+        const nodeG = fo.closest('g.node');
+        if (nodeG) {
+          const rect = nodeG.querySelector('rect, .basic');
+          if (rect) {
+            const rh = parseFloat(rect.getAttribute('height')) || 0;
+            if (rh && rh < neededH) {
+              rect.setAttribute('height', neededH);
+              const ry = parseFloat(rect.getAttribute('y')) || 0;
+              rect.setAttribute('y', ry - dh / 2);
+            }
+          }
+        }
+      }
+      if (neededW > curW) {
+        const dw = neededW - curW;
+        fo.setAttribute('width', neededW);
+        const curX = parseFloat(fo.getAttribute('x')) || 0;
+        fo.setAttribute('x', curX - dw / 2);
+        const nodeG = fo.closest('g.node');
+        if (nodeG) {
+          const rect = nodeG.querySelector('rect, .basic');
+          if (rect) {
+            const rw = parseFloat(rect.getAttribute('width')) || 0;
+            if (rw && rw < neededW) {
+              rect.setAttribute('width', neededW);
+              const rx = parseFloat(rect.getAttribute('x')) || 0;
+              rect.setAttribute('x', rx - dw / 2);
+            }
+          }
+        }
+      }
+    });
+    // Fix KaTeX accent arrow colors: SVG paths inside foreignObject
+    // default to fill:black which is invisible on dark backgrounds.
+    // Use inline style (not attribute) to override any CSS rules.
+    document.querySelectorAll('svg g.node foreignObject .katex svg path').forEach((p) => {
+      const textColor = window.getComputedStyle(p.closest('.katex')).color;
+      p.style.fill = textColor;
     });
   }
 </script>
@@ -113,6 +176,15 @@
   }
   .row-graph .mermaid {
     font-size: 0.85rem;
+  }
+  .row-graph .mermaid svg g.node foreignObject {
+    overflow: visible !important;
+  }
+  /* KaTeX accent arrows (e.g. ec) render as SVG paths that default
+     to fill:black — invisible on dark backgrounds. Inherit text color. */
+  .katex .accent-body svg path,
+  .katex .overlay svg path {
+    fill: currentColor;
   }
   .row-actions {
     display: flex;
@@ -179,7 +251,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-23 03:34 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="report-meta">Generated 2026-05-25 15:46 UTC &middot; theme: default-dark &middot; 10 expressions</div>
 <div class="section-title">ODE (10 expressions)</div>
 <div class="row">
   <div>
@@ -202,7 +274,7 @@
   __equals_1{"="}:::relation
   y["$y$"]:::scalar
   x["$x$"]:::scalar
-  __deriv_2(("$\frac{d}{dx}$")):::operator
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
   __multiply_3(("$\times$")):::operator
   k["$k$"]:::scalar
   y --&gt; __deriv_2
@@ -341,9 +413,9 @@
   __equals_1{"="}:::relation
   y["$y$"]:::scalar
   x["$x$"]:::scalar
-  __deriv_2(("$\frac{d}{dx}$")):::operator
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
   __multiply_3(("$\times$")):::operator
-  __power_4(("${(\cdot)}^{-1}$")):::operator
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
   y --&gt; __deriv_2
   x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
@@ -401,6 +473,7 @@
     {
       "id": "__power_4",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{y}"
@@ -486,11 +559,11 @@
   __add_2(("$+$")):::operator
   y["$y$"]:::scalar
   x["$x$"]:::scalar
-  __deriv_3(("$\frac{d}{dx}$")):::operator
+  __deriv_3(("$\dfrac{d}{d x}$")):::operator
   __multiply_4(("$\times$")):::operator
-  __P_5{{"$P$"}}:::function
+  __P_5{{"$P(\cdot)$"}}:::function
   __multiply_6(("$\times$")):::operator
-  __Q_7{{"$Q$"}}:::function
+  __Q_7{{"$Q(\cdot)$"}}:::function
   __power_8(("$(\cdot)^{\cdot}$")):::operator
   n["$n$"]:::scalar
   y --&gt; __deriv_3
@@ -707,12 +780,12 @@
   __equals_1{"="}:::relation
   __add_2(("$+$")):::operator
   __multiply_3(("$\times$")):::operator
-  __M_4{{"$M$"}}:::function
+  __M_4{{"$M(\cdot, \cdot)$"}}:::function
   x["$x$"]:::scalar
   y["$y$"]:::scalar
   dx["$dx$"]:::scalar
   __multiply_5(("$\times$")):::operator
-  __N_6{{"$N$"}}:::function
+  __N_6{{"$N(\cdot, \cdot)$"}}:::function
   dy["$dy$"]:::scalar
   __num_7["$0$"]:::number
   x --&gt; __M_4
@@ -900,7 +973,7 @@
   __add_2(("$+$")):::operator
   y["$y$"]:::scalar
   x["$x$"]:::scalar
-  __deriv_3(("$\frac{d}{dx}$")):::operator
+  __deriv_3(("$\dfrac{d^{2}}{d x^{2}}$")):::operator
   __multiply_4(("$\times$")):::operator
   __power_5(("${(\cdot)}^{2}$")):::operator
   omega["$\omega$"]:::scalar
@@ -1077,10 +1150,10 @@
   m["$m$"]:::scalar
   x["$x$"]:::scalar
   t["$t$"]:::scalar
-  __deriv_5(("$\frac{d}{dt}$")):::operator
+  __deriv_5(("$\dfrac{d^{2}}{d t^{2}}$")):::operator
   __multiply_6(("$\times$")):::operator
   c["$c$"]:::scalar
-  __deriv_7(("$\frac{d}{dt}$")):::operator
+  __deriv_7(("$\dfrac{d}{d t}$")):::operator
   __multiply_8(("$\times$")):::operator
   k["$k$"]:::scalar
   __num_9["$0$"]:::number
@@ -1333,7 +1406,7 @@
   c0___equals_1{"="}:::relation
   x["$x$"]:::scalar
   t["$t$"]:::scalar
-  c0___deriv_2(("$\frac{d}{dt}$")):::operator
+  c0___deriv_2(("$\dfrac{d}{d t}$")):::operator
   c0___add_3(("$+$")):::operator
   c0___multiply_4(("$\times$")):::operator
   a["$a$"]:::scalar
@@ -1341,7 +1414,7 @@
   b["$b$"]:::scalar
   y["$y$"]:::scalar
   c1___equals_1{"="}:::relation
-  c1___deriv_2(("$\frac{d}{dt}$")):::operator
+  c1___deriv_2(("$\dfrac{d}{d t}$")):::operator
   c1___add_3(("$+$")):::operator
   c1___multiply_4(("$\times$")):::operator
   c["$c$"]:::scalar
@@ -1660,11 +1733,11 @@
   y["$y$"]:::scalar
   c0___num_3["$0$"]:::number
   c1___equals_1{"="}:::relation
-  c1___y_2{{"$y$"}}:::function
+  c1___y_2{{"$y(\cdot)$"}}:::function
   c1___num_3["$0$"]:::number
   c1___num_4["$1$"]:::number
   c2___equals_1{"="}:::relation
-  c2___y'_2{{"$y'$"}}:::function
+  c2___y'_2{{"$y'(\cdot)$"}}:::function
   c2___num_3["$0$"]:::number
   c2___num_4["$0$"]:::number
   y'' --&gt; c0___add_2
@@ -1856,13 +1929,13 @@
   __add_2(("$+$")):::operator
   __multiply_3(("$\times$")):::operator
   s["$s$"]:::scalar
-  __Y_4{{"$Y$"}}:::function
+  __Y_4{{"$Y(\cdot)$"}}:::function
   __negation_5@{ shape: "flip-tri", label: "$-$" }
-  __y_6{{"$y$"}}:::function
+  __y_6{{"$y(\cdot)$"}}:::function
   __num_7["$0$"]:::number
   __multiply_8(("$\times$")):::operator
   L["$\mathcal{L}$"]:::scalar
-  __f_9{{"$f$"}}:::function
+  __f_9{{"$f(\cdot)$"}}:::function
   t["$t$"]:::scalar
   class __negation_5 operator
   s --&gt; __multiply_3

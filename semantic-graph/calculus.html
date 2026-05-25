@@ -12,7 +12,12 @@
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
   mermaid.initialize({ startOnLoad: false, theme: 'dark',
     flowchart: { htmlLabels: true, curve: 'basis' } });
-  await mermaid.run();
+  try { await mermaid.run(); } catch (_) {}
+  // KaTeX is loaded via a defer script which may not have executed yet
+  // when this module runs.  Poll briefly (defer + module ordering is
+  // not guaranteed across browsers).
+  for (let i = 0; i < 50 && !window.katex; i++)
+    await new Promise(r => setTimeout(r, 50));
   if (window.katex) {
     const INLINE_MATH = /\$([^$\n]+)\$/g;
     document.querySelectorAll(
@@ -56,6 +61,64 @@
       });
       fo.replaceChild(wrapper, outer);
       wrapper.appendChild(outer);
+    });
+    // Resize foreignObject + parent node rect after KaTeX renders accents
+    document.querySelectorAll('svg g.node foreignObject').forEach((fo) => {
+      const content = fo.querySelector('[data-gv-centered="wrapper"]') || fo.firstElementChild;
+      if (!content) return;
+      const bbox = content.getBoundingClientRect();
+      const foRect = fo.getBoundingClientRect();
+      // Only expand if content is taller/wider than current foreignObject
+      const PAD = 8;
+      const neededH = bbox.height + PAD;
+      const neededW = bbox.width + PAD;
+      const curH = parseFloat(fo.getAttribute('height')) || foRect.height;
+      const curW = parseFloat(fo.getAttribute('width')) || foRect.width;
+      if (neededH > curH) {
+        const dh = neededH - curH;
+        fo.setAttribute('height', neededH);
+        // Shift foreignObject up by half the delta to keep node centered
+        const curY = parseFloat(fo.getAttribute('y')) || 0;
+        fo.setAttribute('y', curY - dh / 2);
+        // Also expand parent rect/polygon
+        const nodeG = fo.closest('g.node');
+        if (nodeG) {
+          const rect = nodeG.querySelector('rect, .basic');
+          if (rect) {
+            const rh = parseFloat(rect.getAttribute('height')) || 0;
+            if (rh && rh < neededH) {
+              rect.setAttribute('height', neededH);
+              const ry = parseFloat(rect.getAttribute('y')) || 0;
+              rect.setAttribute('y', ry - dh / 2);
+            }
+          }
+        }
+      }
+      if (neededW > curW) {
+        const dw = neededW - curW;
+        fo.setAttribute('width', neededW);
+        const curX = parseFloat(fo.getAttribute('x')) || 0;
+        fo.setAttribute('x', curX - dw / 2);
+        const nodeG = fo.closest('g.node');
+        if (nodeG) {
+          const rect = nodeG.querySelector('rect, .basic');
+          if (rect) {
+            const rw = parseFloat(rect.getAttribute('width')) || 0;
+            if (rw && rw < neededW) {
+              rect.setAttribute('width', neededW);
+              const rx = parseFloat(rect.getAttribute('x')) || 0;
+              rect.setAttribute('x', rx - dw / 2);
+            }
+          }
+        }
+      }
+    });
+    // Fix KaTeX accent arrow colors: SVG paths inside foreignObject
+    // default to fill:black which is invisible on dark backgrounds.
+    // Use inline style (not attribute) to override any CSS rules.
+    document.querySelectorAll('svg g.node foreignObject .katex svg path').forEach((p) => {
+      const textColor = window.getComputedStyle(p.closest('.katex')).color;
+      p.style.fill = textColor;
     });
   }
 </script>
@@ -113,6 +176,15 @@
   }
   .row-graph .mermaid {
     font-size: 0.85rem;
+  }
+  .row-graph .mermaid svg g.node foreignObject {
+    overflow: visible !important;
+  }
+  /* KaTeX accent arrows (e.g. ec) render as SVG paths that default
+     to fill:black — invisible on dark backgrounds. Inherit text color. */
+  .katex .accent-body svg path,
+  .katex .overlay svg path {
+    fill: currentColor;
   }
   .row-actions {
     display: flex;
@@ -179,7 +251,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-23 03:34 UTC &middot; theme: default-dark &middot; 13 expressions</div>
+<div class="report-meta">Generated 2026-05-25 15:46 UTC &middot; theme: default-dark &middot; 13 expressions</div>
 <div class="section-title">Calculus (13 expressions)</div>
 <div class="row">
   <div>
@@ -201,9 +273,9 @@
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   __multiply_3(("$\times$")):::operator
-  __sin_4{{"$\sin$"}}:::function
+  __sin_4{{"$\sin(\cdot)$"}}:::function
   x["$x$"]:::scalar
-  __power_5(("${(\cdot)}^{-1}$")):::operator
+  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
   __num_6["$0$"]:::number
   __tends_to_7(("$\to$")):::operator
   __limit_2(("$\lim$")):::operator
@@ -265,6 +337,7 @@
     {
       "id": "__power_5",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{x}"
@@ -366,17 +439,17 @@
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   __multiply_3(("$\times$")):::operator
-  __f_4{{"$f$"}}:::function
+  __f_4{{"$f(\cdot)$"}}:::function
   x["$x$"]:::scalar
-  __power_5(("${(\cdot)}^{-1}$")):::operator
-  __g_6{{"$g$"}}:::function
+  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
+  __g_6{{"$g(\cdot)$"}}:::function
   a["$a$"]:::scalar
   __tends_to_7(("$\to$")):::operator
   __limit_2(("$\lim$")):::operator
   __multiply_9(("$\times$")):::operator
-  __f'_10{{"$f'$"}}:::function
-  __power_11(("${(\cdot)}^{-1}$")):::operator
-  __g'_12{{"$g'$"}}:::function
+  __f'_10{{"$f'(\cdot)$"}}:::function
+  __power_11(("$\dfrac{1}{(\cdot)}$")):::operator
+  __g'_12{{"$g'(\cdot)$"}}:::function
   __tends_to_13(("$\to$")):::operator
   __limit_8(("$\lim$")):::operator
   x --&gt; __f_4
@@ -455,6 +528,7 @@
     {
       "id": "__power_5",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{g{\\left(x \\right)}}"
@@ -499,6 +573,7 @@
     {
       "id": "__power_11",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{\\operatorname{g'}{\\left(x \\right)}}"
@@ -637,7 +712,7 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __power_3(("${(\cdot)}^{-1}$")):::operator
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
   x["$x$"]:::scalar
   __const_4["$\infty$"]:::constant
   __tends_to_5(("$\to$")):::operator
@@ -675,6 +750,7 @@
     {
       "id": "__power_3",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{x}"
@@ -689,6 +765,7 @@
       "id": "__const_4",
       "type": "constant",
       "label": "infinity",
+      "latex": "\\infty",
       "subexpr": "\\infty"
     },
     {
@@ -771,7 +848,7 @@
   __power_3(("$(\cdot)^{\cdot}$")):::operator
   x["$x$"]:::scalar
   n["$n$"]:::scalar
-  __deriv_2(("$\frac{d}{dx}$")):::operator
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
   __multiply_4(("$\times$")):::operator
   __power_5(("$(\cdot)^{\cdot}$")):::operator
   __add_6(("$+$")):::operator
@@ -953,11 +1030,11 @@
   __equals_1{"="}:::relation
   y["$y$"]:::scalar
   x["$x$"]:::scalar
-  __deriv_2(("$\frac{d}{dx}$")):::operator
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
   __multiply_3(("$\times$")):::operator
   u["$u$"]:::scalar
-  __deriv_4(("$\frac{d}{du}$")):::operator
-  __deriv_5(("$\frac{d}{dx}$")):::operator
+  __deriv_4(("$\dfrac{d}{d u}$")):::operator
+  __deriv_5(("$\dfrac{d}{d x}$")):::operator
   y --&gt; __deriv_2
   x --&gt;|wrt| __deriv_2
   __deriv_2 --&gt; __equals_1
@@ -1194,7 +1271,7 @@
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __multiply_1(("$\times$")):::operator
   f["$f$"]:::scalar
-  __power_2(("${(\cdot)}^{-1}$")):::operator
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
   g["$g$"]:::scalar
   f --&gt; __multiply_1
   g --&gt; __power_2
@@ -1226,6 +1303,7 @@
     {
       "id": "__power_2",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{g}"
@@ -1277,16 +1355,16 @@
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  __f'_2{{"$f'$"}}:::function
+  __f'_2{{"$f'(\cdot)$"}}:::function
   c["$c$"]:::scalar
   __multiply_3(("$\times$")):::operator
   __add_4(("$+$")):::operator
-  __f_5{{"$f$"}}:::function
+  __f_5{{"$f(\cdot)$"}}:::function
   b["$b$"]:::scalar
   __negation_6@{ shape: "flip-tri", label: "$-$" }
-  __f_7{{"$f$"}}:::function
+  __f_7{{"$f(\cdot)$"}}:::function
   a["$a$"]:::scalar
-  __power_8(("${(\cdot)}^{-1}$")):::operator
+  __power_8(("$\dfrac{1}{(\cdot)}$")):::operator
   __add_9(("$+$")):::operator
   __negation_10@{ shape: "flip-tri", label: "$-$" }
   class __negation_6 operator
@@ -1391,6 +1469,7 @@
     {
       "id": "__power_8",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{- a + b}"
@@ -1501,10 +1580,11 @@
   __power_6(("$(\cdot)^{\cdot}$")):::operator
   __add_7(("$+$")):::operator
   __num_8["$1$"]:::number
-  __power_9(("${(\cdot)}^{-1}$")):::operator
+  __power_9(("$\dfrac{1}{(\cdot)}$")):::operator
   __add_10(("$+$")):::operator
   __num_11["$1$"]:::number
   C["$C$"]:::scalar
+  x --&gt;|wrt| __integral_2
   x --&gt; __power_3
   n --&gt;|exp| __power_3
   __power_3 --&gt; __integral_2
@@ -1529,14 +1609,15 @@
   linkStyle 5 stroke:#aaa,stroke-width:2px
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#ef5350,stroke-width:3px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#ef5350,stroke-width:3px
   linkStyle 10 stroke:#aaa,stroke-width:2px
   linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#42a5f5,stroke-width:1px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#42a5f5,stroke-width:1px
   linkStyle 14 stroke:#aaa,stroke-width:2px
   linkStyle 15 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1610,6 +1691,7 @@
     {
       "id": "__power_9",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{n + 1}"
@@ -1634,6 +1716,11 @@
     }
   ],
   "edges": [
+    {
+      "from": "x",
+      "to": "__integral_2",
+      "role": "wrt"
+    },
     {
       "from": "x",
       "to": "__power_3"
@@ -1731,12 +1818,15 @@
   a["$a$"]:::scalar
   b["$b$"]:::scalar
   __integral_2(("$\int_{a}^{b} dx$")):::operator
-  __f_3{{"$f$"}}:::function
+  __f_3{{"$f(\cdot)$"}}:::function
   __add_4(("$+$")):::operator
-  __F_5{{"$F$"}}:::function
+  __F_5{{"$F(\cdot)$"}}:::function
   __negation_6@{ shape: "flip-tri", label: "$-$" }
-  __F_7{{"$F$"}}:::function
+  __F_7{{"$F(\cdot)$"}}:::function
   class __negation_6 operator
+  x --&gt;|wrt| __integral_2
+  a --&gt;|lb| __integral_2
+  b --&gt;|ub| __integral_2
   x --&gt; __f_3
   __f_3 --&gt; __integral_2
   __integral_2 --&gt; __equals_1
@@ -1755,6 +1845,9 @@
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1831,6 +1924,21 @@
   "edges": [
     {
       "from": "x",
+      "to": "__integral_2",
+      "role": "wrt"
+    },
+    {
+      "from": "a",
+      "to": "__integral_2",
+      "role": "lb"
+    },
+    {
+      "from": "b",
+      "to": "__integral_2",
+      "role": "ub"
+    },
+    {
+      "from": "x",
       "to": "__f_3"
     },
     {
@@ -1894,9 +2002,12 @@
   a["$a$"]:::scalar
   x["$x$"]:::scalar
   __integral_3(("$\int_{a}^{x} dt$")):::operator
-  __f_4{{"$f$"}}:::function
-  __deriv_2(("$\frac{d}{dx}$")):::operator
-  __f_5{{"$f$"}}:::function
+  __f_4{{"$f(\cdot)$"}}:::function
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
+  __f_5{{"$f(\cdot)$"}}:::function
+  t --&gt;|wrt| __integral_3
+  a --&gt;|lb| __integral_3
+  x --&gt;|ub| __integral_3
   t --&gt; __f_4
   __f_4 --&gt; __integral_3
   __integral_3 --&gt; __deriv_2
@@ -1911,6 +2022,9 @@
   linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#aaa,stroke-width:2px
   linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1974,6 +2088,21 @@
     }
   ],
   "edges": [
+    {
+      "from": "t",
+      "to": "__integral_3",
+      "role": "wrt"
+    },
+    {
+      "from": "a",
+      "to": "__integral_3",
+      "role": "lb"
+    },
+    {
+      "from": "x",
+      "to": "__integral_3",
+      "role": "ub"
+    },
     {
       "from": "t",
       "to": "__f_4"
@@ -2040,14 +2169,15 @@
   __num_4["$0$"]:::number
   __const_5["$\infty$"]:::constant
   __equals_6{"="}:::relation
-  __sum_3(("$\sum$")):::operator
+  __sum_3(("$\sum_{n}$")):::operator
   __multiply_7(("$\times$")):::operator
   __power_8(("$(\cdot)^{\cdot}$")):::operator
-  __power_9(("${(\cdot)}^{-1}$")):::operator
+  __power_9(("$\dfrac{1}{(\cdot)}$")):::operator
   __factorial_10(("$(\cdot)!$")):::operator
   e --&gt; __power_2
   x --&gt;|exp| __power_2
   __power_2 --&gt; __equals_1
+  n --&gt;|wrt| __sum_3
   n --&gt; __equals_6
   __num_4 --&gt; __equals_6
   __equals_6 --&gt;|lb| __sum_3
@@ -2069,12 +2199,13 @@
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
   linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#42a5f5,stroke-width:1px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#42a5f5,stroke-width:1px
   linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2124,6 +2255,7 @@
       "id": "__const_5",
       "type": "constant",
       "label": "infinity",
+      "latex": "\\infty",
       "subexpr": "\\infty"
     },
     {
@@ -2155,6 +2287,7 @@
     {
       "id": "__power_9",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{n!}"
@@ -2179,6 +2312,11 @@
     {
       "from": "__power_2",
       "to": "__equals_1"
+    },
+    {
+      "from": "n",
+      "to": "__sum_3",
+      "role": "wrt"
     },
     {
       "from": "n",
@@ -2262,14 +2400,15 @@
   __num_3["$0$"]:::number
   __const_4["$\infty$"]:::constant
   __equals_5{"="}:::relation
-  __sum_2(("$\sum$")):::operator
+  __sum_2(("$\sum_{n}$")):::operator
   __power_6(("$(\cdot)^{\cdot}$")):::operator
   r["$r$"]:::scalar
-  __power_7(("${(\cdot)}^{-1}$")):::operator
+  __power_7(("$\dfrac{1}{(\cdot)}$")):::operator
   __add_8(("$+$")):::operator
   __num_9["$1$"]:::number
   __negation_10@{ shape: "flip-tri", label: "$-$" }
   class __negation_10 operator
+  n --&gt;|wrt| __sum_2
   n --&gt; __equals_5
   __num_3 --&gt; __equals_5
   __equals_5 --&gt;|lb| __sum_2
@@ -2295,7 +2434,8 @@
   linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
   linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#42a5f5,stroke-width:1px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#42a5f5,stroke-width:1px
 </pre>
   </div>
   <div class="row-actions">
@@ -2327,6 +2467,7 @@
       "id": "__const_4",
       "type": "constant",
       "label": "infinity",
+      "latex": "\\infty",
       "subexpr": "\\infty"
     },
     {
@@ -2358,6 +2499,7 @@
     {
       "id": "__power_7",
       "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
       "subexpr": "\\frac{1}{1 - r}"
@@ -2382,6 +2524,11 @@
     }
   ],
   "edges": [
+    {
+      "from": "n",
+      "to": "__sum_2",
+      "role": "wrt"
+    },
     {
       "from": "n",
       "to": "__equals_5"
