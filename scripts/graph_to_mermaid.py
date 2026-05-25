@@ -328,11 +328,11 @@ def _format_label(
             lb = node.get("lower_bound", "")
             ub = node.get("upper_bound", "")
             if lb and ub:
-                return f"${int_cmd}_{{{lb}}}^{{{ub}}} d{wrt}$"
-            return f"${int_cmd} d{wrt}$"
+                return f"$\\displaystyle{int_cmd}_{{{lb}}}^{{{ub}}} d{wrt}$"
+            return f"$\\displaystyle{int_cmd} d{wrt}$"
         if op in ("sum", "product") and wrt:
             agg_cmd = OPERATOR_LATEX.get(op, r"\sum")
-            return f"${agg_cmd}_{{{wrt}}}$"
+            return f"$\\displaystyle{agg_cmd}_{{{wrt}}}$"
         if node_type == "function" and op:
             dots = r", ".join([r"\cdot"] * max(arity, 1))
             return f"${op}({dots})$"

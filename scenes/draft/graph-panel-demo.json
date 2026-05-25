@@ -124,6 +124,22 @@
         {
           "title": "Bare symbols (formerly hardcoded vectors)",
           "description": "$y = F + a \\cdot v - p + B$"
+        },
+        {
+          "title": "Definite integral",
+          "description": "$W = \\int_a^b F \\, dx$"
+        },
+        {
+          "title": "Closed line integral (Gauss's law)",
+          "description": "$\\oint \\vec{E} \\cdot d\\vec{A} = \\frac{Q}{\\epsilon_0}$"
+        },
+        {
+          "title": "Summation (partition function)",
+          "description": "$Z = \\sum_i e^{-E_i / k_B T}$"
+        },
+        {
+          "title": "Product (factorial via product)",
+          "description": "$n! = \\prod_k k$"
         }
       ],
       "proof": {
@@ -1969,6 +1985,38 @@
             "math": "y = F + a \\cdot v - p + B",
             "justification": "All five symbols (F, a, v, p, B) were previously hardcoded as vectors in KNOWN_VARIABLES. After PR #311 they should appear as scalars from the raw graph builder.",
             "sceneStep": 22
+          },
+          {
+            "id": "proof-step-24",
+            "type": "given",
+            "label": "Definite integral — Work",
+            "math": "W = \\int_a^b F \\, dx",
+            "justification": "Work done by a force F over the interval [a, b]. Tests integral operator with bounds and with_respect_to rendering.",
+            "sceneStep": 23
+          },
+          {
+            "id": "proof-step-25",
+            "type": "given",
+            "label": "Closed line integral — Gauss's law",
+            "math": "\\oint \\vec{E} \\cdot d\\vec{A} = \\frac{Q}{\\epsilon_0}",
+            "justification": "Gauss's law: the closed surface integral of the electric field equals the enclosed charge divided by the permittivity of free space. Tests closed_integral operator.",
+            "sceneStep": 24
+          },
+          {
+            "id": "proof-step-26",
+            "type": "given",
+            "label": "Summation — Partition function",
+            "math": "Z = \\sum_i e^{-E_i / k_B T}",
+            "justification": "Statistical mechanics partition function — sum over all microstates weighted by Boltzmann factor. Tests sum operator with index variable i.",
+            "sceneStep": 25
+          },
+          {
+            "id": "proof-step-27",
+            "type": "given",
+            "label": "Product — Factorial",
+            "math": "n! = \\prod_k k",
+            "justification": "Factorial defined as a product over index k. Tests product operator with index variable.",
+            "sceneStep": 26
           }
         ]
       }

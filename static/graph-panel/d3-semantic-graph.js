@@ -1351,16 +1351,16 @@ export class D3SemanticGraphRenderer {
             const lb = data.lower_bound || '';
             const ub = data.upper_bound || '';
             if (wrt) {
-                if (lb && ub) return `${cmd}_{${lb}}^{${ub}} d${wrt}`;
-                return `${cmd} d${wrt}`;
+                if (lb && ub) return `\\displaystyle${cmd}_{${lb}}^{${ub}} d${wrt}`;
+                return `\\displaystyle${cmd} d${wrt}`;
             }
-            return cmd;
+            return `\\displaystyle${cmd}`;
         }
         if (op === 'sum' || op === 'product') {
             const cmd = OPERATOR_LATEX[op];
             const wrt = data.with_respect_to;
-            if (wrt) return `${cmd}_{${wrt}}`;
-            return cmd;
+            if (wrt) return `\\displaystyle${cmd}_{${wrt}}`;
+            return `\\displaystyle${cmd}`;
         }
         return `\\text{${op}}`;
     }
