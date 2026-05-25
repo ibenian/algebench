@@ -396,6 +396,40 @@ def _page_template() -> str:
       .summary .count {{
         font-weight: 600;
       }}
+      .row-panel.row-json {{
+        display: none;
+        padding: 0;
+      }}
+      .row-panel.row-json.open {{
+        display: flex;
+        gap: 1px;
+      }}
+      .row-json-pane {{
+        flex: 1;
+        min-width: 0;
+        max-height: 400px;
+        overflow: auto;
+        padding: 0.5rem 0.8rem;
+      }}
+      .row-json-pane pre {{
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 0.7rem;
+        line-height: 1.4;
+      }}
+      .row-json-label {{
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: {muted};
+        margin-bottom: 0.3rem;
+        position: sticky;
+        top: 0;
+        background: {card_bg};
+        padding: 0.2rem 0;
+        z-index: 1;
+      }}
       .row-toggle.active {{
         color: {fg};
         border-color: {fg};
@@ -537,7 +571,11 @@ def _render_row(
     if graph_json is not None:
         parts.append(
             f'  <div class="row-panel row-json">'
-            f'{_escape_html(graph_json)}</div>'
+            f'<div class="row-json-pane"><div class="row-json-label">Semantic Graph JSON</div>'
+            f'<pre>{_escape_html(graph_json)}</pre></div>'
+            f'<div class="row-json-pane"><div class="row-json-label">Mermaid Script</div>'
+            f'<pre>{_escape_html(mermaid_src)}</pre></div>'
+            f'</div>'
         )
         compact_json = json.dumps(
             json.loads(graph_json), separators=(",", ":"), ensure_ascii=False,
