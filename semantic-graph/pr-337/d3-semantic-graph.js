@@ -1387,7 +1387,7 @@ export class D3SemanticGraphRenderer {
             if (wrt) return `${cmd}_{${wrt}}`;
             return cmd;
         }
-        return `\\text{${op.replace(/_/g, '\\_')}}`;
+        return `\\text{${op.replace(/\\/g, '\\\\').replace(/_/g, '\\_')}}`;
     }
 
     /**
