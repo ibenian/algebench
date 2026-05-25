@@ -8,6 +8,14 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
   onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+<script type="importmap">{
+  "imports": {
+    "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}"
+  }
+}</script>
+<script>
+  window.__SG_REPORT_THEME__ = {"name": "default-dark", "mode": "dark", "direction": "RL", "labelMode": "emoji", "nodeStyles": {"scalar": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "vector": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "constant": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "number": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "expression": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "text": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "operator": {"shape": "circle", "fill": "#1a2740", "stroke": "#42a5f5", "color": "#bbdefb"}, "function": {"shape": "hexagon", "fill": "#1a2740", "stroke": "#42a5f5", "color": "#bbdefb"}, "relation": {"shape": "diamond", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2"}, "result": {"shape": "stadium", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2"}, "annotation": {"shape": "circle", "fill": "#131a2c", "stroke": "#4a5580", "color": "#b0bcd0"}}, "edgeStyles": {"direct": {"stroke": "#ef5350", "strokeWidth": 3}, "inverse": {"stroke": "#42a5f5", "strokeWidth": 1, "arrow": "-.->"}, "neutral": {"stroke": "#aaa", "strokeWidth": 2}}, "paintBySemantic": true, "fontSize": 15};
+</script>
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
   mermaid.initialize({ startOnLoad: false, theme: 'dark',
@@ -124,6 +132,18 @@
 </script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #8b949e; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #30363d transparent;
+  }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: #0d1117;
@@ -192,7 +212,8 @@
     gap: 0.4rem;
     align-self: center;
   }
-  .row-toggle {
+  .row-toggle,
+  .row-toggle-d3 {
     background: none;
     border: 1px solid #30363d;
     border-radius: 4px;
@@ -203,7 +224,8 @@
     cursor: pointer;
     white-space: nowrap;
   }
-  .row-toggle:hover {
+  .row-toggle:hover,
+  .row-toggle-d3:hover {
     color: #e6edf3;
     border-color: #e6edf3;
   }
@@ -247,11 +269,394 @@
   .summary .count {
     font-weight: 600;
   }
+  .row-panel.row-latex-src {
+    position: relative;
+  }
+  .row-copy-latex {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+  }
+  .row-panel.row-json {
+    display: none;
+    padding: 0;
+  }
+  .row-panel.row-json.open {
+    display: flex;
+    gap: 1px;
+  }
+  .row-json-pane {
+    flex: 1;
+    min-width: 0;
+    max-height: 400px;
+    overflow: auto;
+    padding: 0.5rem 0.8rem;
+    position: relative;
+  }
+  .row-json-pane pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.7rem;
+    line-height: 1.4;
+  }
+  .row-json-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: #161b22;
+    padding: 0.2rem 0;
+    z-index: 1;
+    margin-bottom: 0.3rem;
+  }
+  .row-json-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #8b949e;
+  }
+  .row-copy-btn {
+    background: none;
+    border: 1px solid #30363d;
+    border-radius: 3px;
+    color: #8b949e;
+    font-size: 0.6rem;
+    padding: 1px 5px;
+    cursor: pointer;
+    line-height: 1.3;
+  }
+  .row-copy-btn:hover {
+    color: #e6edf3;
+    border-color: #e6edf3;
+  }
+  .row-copy-btn.copied {
+    color: #66bb6a;
+    border-color: #66bb6a;
+  }
+  .row-toggle.active {
+    color: #e6edf3;
+    border-color: #e6edf3;
+    background: #0d1117;
+  }
+  .row-panel.row-d3 {
+    position: relative;
+    height: 400px;
+    padding: 0;
+    overflow: hidden;
+    font-family: inherit;
+    white-space: normal;
+    word-break: normal;
+  }
+  .row-panel.row-d3.open {
+    display: block;
+  }
+  .row-d3-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #8b949e;
+    font-size: 0.85rem;
+  }
+  /* D3 Semantic Graph Renderer — dark theme styles */
+
+.d3-graph-card {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+svg.d3-semantic-graph {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+/* Variable nodes — fill/stroke set by theme via inline attributes */
+.d3sg-var-bg {
+    stroke-width: 1.5px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-var-bg {
+    filter: brightness(1.3);
+}
+
+/* Operator nodes — fill/stroke set by theme via inline attributes */
+.d3sg-op-bg {
+    stroke-width: 1.5px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-op-bg {
+    filter: brightness(1.3);
+}
+
+/* Collapsed tile — fill/stroke set by theme via inline attributes */
+.d3sg-tile-bg {
+    stroke-width: 2px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-tile-bg {
+    filter: brightness(1.25);
+}
+
+/* Node labels */
+.d3sg-label {
+    fill: #dde6ff;
+    pointer-events: none;
+    user-select: none;
+}
+
+.d3sg-katex-host {
+    color: #dde6ff;
+    font-size: 17px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.d3sg-katex-host .katex {
+    font-size: 0.9em;
+}
+
+/* Edge labels */
+.d3sg-edge-label {
+    fill: #aebbd1;
+    font-size: 11px;
+    paint-order: stroke;
+    stroke: #131a2c;
+    stroke-width: 4px;
+    pointer-events: none;
+}
+.d3sg-role-label {
+    fill: #8fa8c8;
+    font-size: 10px;
+    font-style: italic;
+}
+.d3sg-role-lhs,
+.d3sg-role-rhs {
+    stroke-dasharray: none;
+}
+
+/* Chevron (collapse/expand button) */
+.d3sg-chevron {
+    opacity: 0;
+    cursor: pointer;
+    pointer-events: all;
+    transition: opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-chevron {
+    opacity: 0.7;
+}
+.d3sg-chevron:hover {
+    opacity: 1 !important;
+}
+
+/* Invisible hit target for flat themes */
+.d3sg-hit-target {
+    transition: stroke 0.12s ease-out, stroke-opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-hit-target {
+    stroke: #7ea8ff !important;
+    stroke-width: 1.5px !important;
+    stroke-opacity: 0.4;
+}
+
+/* Active node ring */
+.d3sg-node.active .d3sg-var-bg {
+    stroke: #6df08e;
+    stroke-width: 2.5px;
+}
+.d3sg-node.active .d3sg-op-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+}
+.d3sg-node.active .d3sg-tile-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+}
+
+/* Multi-selected node ring */
+.d3sg-node.selected .d3sg-var-bg {
+    stroke: #6df08e;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(109, 240, 142, 0.5));
+}
+.d3sg-node.selected .d3sg-op-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(126, 168, 255, 0.5));
+}
+.d3sg-node.selected .d3sg-tile-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(126, 168, 255, 0.5));
+}
+.d3sg-node.selected .d3sg-hit-target {
+    stroke: #7ea8ff !important;
+    stroke-width: 2px !important;
+    stroke-opacity: 0.6;
+}
+
+/* Annotation overlay — stacked at bottom of graph viewport */
+.d3sg-annotation-overlay {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: none;
+    z-index: 10;
+    max-width: min(90%, 420px);
+}
+
+.d3sg-anno-card {
+    position: relative;
+    pointer-events: all;
+    border: 1px dashed;
+    border-radius: 8px;
+    padding: 10px 36px 10px 18px;
+    font-size: 0.88em;
+    font-style: italic;
+    line-height: 1.45;
+    backdrop-filter: blur(8px);
+    opacity: 0.92;
+    text-align: center;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.d3sg-anno-content {
+    display: block;
+    text-align: center;
+}
+
+.d3sg-anno-card .katex {
+    font-size: 0.92em;
+}
+
+.d3sg-anno-ai-btn {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(100, 110, 255, 0.15);
+    color: rgba(160, 170, 255, 0.8);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.d3sg-anno-card:hover .d3sg-anno-ai-btn,
+.d3sg-anno-card:focus-within .d3sg-anno-ai-btn {
+    opacity: 1;
+}
+
+.d3sg-anno-ai-btn:hover {
+    background: rgba(100, 110, 255, 0.35);
+    color: #c0c8ff;
+}
+
+/* Edge semantics legend — bottom-left of graph viewport */
+.d3sg-edge-legend {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    background: rgba(10, 12, 26, 0.75);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 6px;
+    font-size: 0.72rem;
+    color: rgba(210, 218, 245, 0.92);
+    letter-spacing: 0.02em;
+    z-index: 2;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    pointer-events: none;
+    user-select: none;
+}
+.d3sg-edge-legend.hidden { display: none; }
+.d3sg-edge-legend-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.65;
+    margin-bottom: 2px;
+}
+.d3sg-edge-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.d3sg-edge-legend-swatch {
+    --legend-stroke: currentColor;
+    --legend-stroke-width: 2px;
+    position: relative;
+    display: inline-block;
+    width: 30px;
+    height: 12px;
+    flex-shrink: 0;
+}
+.d3sg-edge-legend-swatch::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 22px;
+    height: var(--legend-stroke-width);
+    background: var(--legend-stroke);
+    transform: translateY(-50%);
+}
+.d3sg-edge-legend-swatch[data-arrow="-.->"]::before,
+.d3sg-edge-legend-swatch[data-arrow="-.-"]::before {
+    background: none;
+    border-top: var(--legend-stroke-width) dotted var(--legend-stroke);
+    height: 0;
+}
+.d3sg-edge-legend-swatch[data-arrow="==>"]::before,
+.d3sg-edge-legend-swatch[data-arrow="==="]::before {
+    box-shadow: 0 -2px 0 var(--legend-stroke), 0 2px 0 var(--legend-stroke);
+}
+.d3sg-edge-legend-swatch::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid var(--legend-stroke);
+    transform: translateY(-50%);
+}
+.d3sg-edge-legend-swatch[data-arrow="---"]::after,
+.d3sg-edge-legend-swatch[data-arrow="==="]::after,
+.d3sg-edge-legend-swatch[data-arrow="-.-"]::after {
+    display: none;
+}
+
 </style>
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 15:46 UTC &middot; theme: default-dark &middot; 13 expressions</div>
+<div class="report-meta">Generated 2026-05-25 19:24 UTC &middot; theme: default-dark &middot; 13 expressions</div>
 <div class="section-title">Calculus (13 expressions)</div>
 <div class="row">
   <div>
@@ -259,7 +664,7 @@
     <div class="row-latex">$$\lim_{x \to 0} \frac{\sin x}{x} = 1$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -305,9 +710,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">\lim_{x \to 0} \frac{\sin x}{x} = 1</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="\lim_{x \to 0} \frac{\sin x}{x} = 1"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\lim_{x \to 0} \frac{\sin x}{x} = 1</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__equals_1",
@@ -353,7 +759,8 @@
       "type": "operator",
       "op": "tends_to",
       "with_respect_to": "x",
-      "limit_point": "__num_6"
+      "limit_point": "__num_6",
+      "subexpr": "x \\to 0"
     },
     {
       "id": "__limit_2",
@@ -417,7 +824,49 @@
   "classification": {
     "kind": "algebraic"
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __multiply_3(("$\times$")):::operator
+  __sin_4{{"$\sin(\cdot)$"}}:::function
+  x["$x$"]:::scalar
+  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
+  __num_6["$0$"]:::number
+  __tends_to_7(("$\to$")):::operator
+  __limit_2(("$\lim$")):::operator
+  __num_8["$1$"]:::number
+  x --&gt; __sin_4
+  __sin_4 --&gt; __multiply_3
+  x --&gt; __power_5
+  __power_5 -.-&gt; __multiply_3
+  __multiply_3 --&gt; __limit_2
+  x --&gt;|lhs| __tends_to_7
+  __num_6 --&gt;|rhs| __tends_to_7
+  __tends_to_7 --&gt; __limit_2
+  __limit_2 --&gt; __equals_1
+  __num_8 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#42a5f5,stroke-width:1px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{x} \\sin{\\left(x \\right)}&quot;},{&quot;id&quot;:&quot;__sin_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\sin&quot;,&quot;op&quot;:&quot;sin&quot;,&quot;subexpr&quot;:&quot;\\sin{\\left(x \\right)}&quot;},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{x}&quot;},{&quot;id&quot;:&quot;__num_6&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;},{&quot;id&quot;:&quot;__tends_to_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;tends_to&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;limit_point&quot;:&quot;__num_6&quot;,&quot;subexpr&quot;:&quot;x \\to 0&quot;},{&quot;id&quot;:&quot;__limit_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;limit&quot;,&quot;subexpr&quot;:&quot;\\lim_{x \\to 0}\\left(\\frac{\\sin{\\left(x \\right)}}{x}\\right)&quot;},{&quot;id&quot;:&quot;__num_8&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__sin_4&quot;},{&quot;from&quot;:&quot;__sin_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__limit_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__tends_to_7&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;__num_6&quot;,&quot;to&quot;:&quot;__tends_to_7&quot;,&quot;role&quot;:&quot;rhs&quot;},{&quot;from&quot;:&quot;__tends_to_7&quot;,&quot;to&quot;:&quot;__limit_2&quot;},{&quot;from&quot;:&quot;__limit_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_8&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -425,7 +874,7 @@
     <div class="row-latex">$$\lim_{x \to a} \frac{f(x)}{g(x)} = \lim_{x \to a} \frac{f'(x)}{g'(x)}$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -497,9 +946,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">\lim_{x \to a} \frac{f(x)}{g(x)} = \lim_{x \to a} \frac{f'(x)}{g'(x)}</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="\lim_{x \to a} \frac{f(x)}{g(x)} = \lim_{x \to a} \frac{f'(x)}{g'(x)}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\lim_{x \to a} \frac{f(x)}{g(x)} = \lim_{x \to a} \frac{f'(x)}{g'(x)}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__equals_1",
@@ -550,7 +1000,8 @@
       "type": "operator",
       "op": "tends_to",
       "with_respect_to": "x",
-      "limit_point": "a"
+      "limit_point": "a",
+      "subexpr": "x \\to a"
     },
     {
       "id": "__limit_2",
@@ -589,7 +1040,8 @@
       "type": "operator",
       "op": "tends_to",
       "with_respect_to": "x",
-      "limit_point": "a"
+      "limit_point": "a",
+      "subexpr": "x \\to a"
     },
     {
       "id": "__limit_8",
@@ -691,7 +1143,75 @@
   "classification": {
     "kind": "algebraic"
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __multiply_3(("$\times$")):::operator
+  __f_4{{"$f(\cdot)$"}}:::function
+  x["$x$"]:::scalar
+  __power_5(("$\dfrac{1}{(\cdot)}$")):::operator
+  __g_6{{"$g(\cdot)$"}}:::function
+  a["$a$"]:::scalar
+  __tends_to_7(("$\to$")):::operator
+  __limit_2(("$\lim$")):::operator
+  __multiply_9(("$\times$")):::operator
+  __f'_10{{"$f'(\cdot)$"}}:::function
+  __power_11(("$\dfrac{1}{(\cdot)}$")):::operator
+  __g'_12{{"$g'(\cdot)$"}}:::function
+  __tends_to_13(("$\to$")):::operator
+  __limit_8(("$\lim$")):::operator
+  x --&gt; __f_4
+  __f_4 --&gt; __multiply_3
+  x --&gt; __g_6
+  __g_6 --&gt; __power_5
+  __power_5 -.-&gt; __multiply_3
+  __multiply_3 --&gt; __limit_2
+  x --&gt;|lhs| __tends_to_7
+  a --&gt;|rhs| __tends_to_7
+  __tends_to_7 --&gt; __limit_2
+  __limit_2 --&gt; __equals_1
+  x --&gt; __f'_10
+  __f'_10 --&gt; __multiply_9
+  x --&gt; __g'_12
+  __g'_12 --&gt; __power_11
+  __power_11 -.-&gt; __multiply_9
+  __multiply_9 --&gt; __limit_8
+  x --&gt;|lhs| __tends_to_13
+  a --&gt;|rhs| __tends_to_13
+  __tends_to_13 --&gt; __limit_8
+  __limit_8 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#42a5f5,stroke-width:1px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#ef5350,stroke-width:3px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#42a5f5,stroke-width:1px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 17 stroke:#aaa,stroke-width:2px
+  linkStyle 18 stroke:#aaa,stroke-width:2px
+  linkStyle 19 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\lim_{x \\to a} \\frac{f(x)}{g(x)} = \\lim_{x \\to a} \\frac{f'(x)}{g'(x)}&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;f{\\left(x \\right)} \\frac{1}{g{\\left(x \\right)}}&quot;},{&quot;id&quot;:&quot;__f_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(x \\right)}&quot;},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{g{\\left(x \\right)}}&quot;},{&quot;id&quot;:&quot;__g_6&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;g&quot;,&quot;subexpr&quot;:&quot;g{\\left(x \\right)}&quot;},{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;},{&quot;id&quot;:&quot;__tends_to_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;tends_to&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;limit_point&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;x \\to a&quot;},{&quot;id&quot;:&quot;__limit_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;limit&quot;,&quot;subexpr&quot;:&quot;\\lim_{x \\to a}\\left(\\frac{f{\\left(x \\right)}}{g{\\left(x \\right)}}\\right)&quot;},{&quot;id&quot;:&quot;__multiply_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\operatorname{f'}{\\left(x \\right)} \\frac{1}{\\operatorname{g'}{\\left(x \\right)}}&quot;},{&quot;id&quot;:&quot;__f'_10&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f'&quot;,&quot;subexpr&quot;:&quot;\\operatorname{f'}{\\left(x \\right)}&quot;},{&quot;id&quot;:&quot;__power_11&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\operatorname{g'}{\\left(x \\right)}}&quot;},{&quot;id&quot;:&quot;__g'_12&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;g'&quot;,&quot;subexpr&quot;:&quot;\\operatorname{g'}{\\left(x \\right)}&quot;},{&quot;id&quot;:&quot;__tends_to_13&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;tends_to&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;limit_point&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;x \\to a&quot;},{&quot;id&quot;:&quot;__limit_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;limit&quot;,&quot;subexpr&quot;:&quot;\\lim_{x \\to a}\\left(\\frac{\\operatorname{f'}{\\left(x \\right)}}{\\operatorname{g'}{\\left(x \\right)}}\\right)&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__f_4&quot;},{&quot;from&quot;:&quot;__f_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__g_6&quot;},{&quot;from&quot;:&quot;__g_6&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__limit_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__tends_to_7&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;__tends_to_7&quot;,&quot;role&quot;:&quot;rhs&quot;},{&quot;from&quot;:&quot;__tends_to_7&quot;,&quot;to&quot;:&quot;__limit_2&quot;},{&quot;from&quot;:&quot;__limit_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__f'_10&quot;},{&quot;from&quot;:&quot;__f'_10&quot;,&quot;to&quot;:&quot;__multiply_9&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__g'_12&quot;},{&quot;from&quot;:&quot;__g'_12&quot;,&quot;to&quot;:&quot;__power_11&quot;},{&quot;from&quot;:&quot;__power_11&quot;,&quot;to&quot;:&quot;__multiply_9&quot;},{&quot;from&quot;:&quot;__multiply_9&quot;,&quot;to&quot;:&quot;__limit_8&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__tends_to_13&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;__tends_to_13&quot;,&quot;role&quot;:&quot;rhs&quot;},{&quot;from&quot;:&quot;__tends_to_13&quot;,&quot;to&quot;:&quot;__limit_8&quot;},{&quot;from&quot;:&quot;__limit_8&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -699,7 +1219,7 @@
     <div class="row-latex">$$\lim_{x \to \infty} \frac{1}{x} = 0$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -737,9 +1257,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">\lim_{x \to \infty} \frac{1}{x} = 0</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="\lim_{x \to \infty} \frac{1}{x} = 0"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\lim_{x \to \infty} \frac{1}{x} = 0</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__equals_1",
@@ -774,7 +1295,8 @@
       "op": "tends_to",
       "with_respect_to": "x",
       "limit_point": "__const_4",
-      "limit_direction": "-"
+      "limit_direction": "-",
+      "subexpr": "x \\to \\infty"
     },
     {
       "id": "__limit_2",
@@ -824,7 +1346,41 @@
   "classification": {
     "kind": "algebraic"
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
+  x["$x$"]:::scalar
+  __const_4["$\infty$"]:::constant
+  __tends_to_5(("$\to$")):::operator
+  __limit_2(("$\lim$")):::operator
+  __num_6["$0$"]:::number
+  x --&gt; __power_3
+  __power_3 -.-&gt; __limit_2
+  x --&gt;|lhs| __tends_to_5
+  __const_4 --&gt;|rhs| __tends_to_5
+  __tends_to_5 --&gt; __limit_2
+  __limit_2 --&gt; __equals_1
+  __num_6 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#42a5f5,stroke-width:1px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\lim_{x \\to \\infty} \\frac{1}{x} = 0&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{x}&quot;},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__const_4&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;infinity&quot;,&quot;latex&quot;:&quot;\\infty&quot;,&quot;subexpr&quot;:&quot;\\infty&quot;},{&quot;id&quot;:&quot;__tends_to_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;tends_to&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;limit_point&quot;:&quot;__const_4&quot;,&quot;limit_direction&quot;:&quot;-&quot;,&quot;subexpr&quot;:&quot;x \\to \\infty&quot;},{&quot;id&quot;:&quot;__limit_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;limit&quot;,&quot;subexpr&quot;:&quot;\\lim_{x \\to \\infty} \\frac{1}{x}&quot;},{&quot;id&quot;:&quot;__num_6&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__limit_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__tends_to_5&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;__const_4&quot;,&quot;to&quot;:&quot;__tends_to_5&quot;,&quot;role&quot;:&quot;rhs&quot;},{&quot;from&quot;:&quot;__tends_to_5&quot;,&quot;to&quot;:&quot;__limit_2&quot;},{&quot;from&quot;:&quot;__limit_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_6&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -832,7 +1388,7 @@
     <div class="row-latex">$$\frac{d}{dx} x^n = n x^{n-1}$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -882,9 +1438,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">\frac{d}{dx} x^n = n x^{n-1}</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="\frac{d}{dx} x^n = n x^{n-1}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\frac{d}{dx} x^n = n x^{n-1}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__equals_1",
@@ -1007,7 +1564,53 @@
       "x"
     ]
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
+  x["$x$"]:::scalar
+  n["$n$"]:::scalar
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
+  __multiply_4(("$\times$")):::operator
+  __power_5(("$(\cdot)^{\cdot}$")):::operator
+  __add_6(("$+$")):::operator
+  __num_7["$-1$"]:::number
+  x --&gt; __power_3
+  n --&gt;|exp| __power_3
+  __power_3 --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
+  __deriv_2 --&gt; __equals_1
+  n --&gt; __multiply_4
+  x --&gt; __power_5
+  n --&gt; __add_6
+  __num_7 --&gt; __add_6
+  __add_6 --&gt;|exp| __power_5
+  __power_5 --&gt; __multiply_4
+  __multiply_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{dx} x^n = n x^{n-1}&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;x^{n}&quot;},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;},{&quot;id&quot;:&quot;__deriv_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\frac{\\partial}{\\partial x} x^{n}&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;x^{n - 1} n&quot;},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;x^{n - 1}&quot;},{&quot;id&quot;:&quot;__add_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;n - 1&quot;},{&quot;id&quot;:&quot;__num_7&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;-1&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__power_3&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__deriv_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__add_6&quot;},{&quot;from&quot;:&quot;__num_7&quot;,&quot;to&quot;:&quot;__add_6&quot;},{&quot;from&quot;:&quot;__add_6&quot;,&quot;to&quot;:&quot;__power_5&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[],&quot;independent_variables&quot;:[&quot;x&quot;]}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -1015,7 +1618,7 @@
     <div class="row-latex">$$\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -1060,9 +1663,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__equals_1",
@@ -1177,7 +1781,48 @@
       "x"
     ]
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
+  __multiply_3(("$\times$")):::operator
+  u["$u$"]:::scalar
+  __deriv_4(("$\dfrac{d}{d u}$")):::operator
+  __deriv_5(("$\dfrac{d}{d x}$")):::operator
+  y --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
+  __deriv_2 --&gt; __equals_1
+  y --&gt; __deriv_4
+  u --&gt;|wrt| __deriv_4
+  __deriv_4 --&gt; __multiply_3
+  u --&gt; __deriv_5
+  x --&gt;|wrt| __deriv_5
+  __deriv_5 --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\frac{dy}{dx} = \\frac{dy}{du} \\cdot \\frac{du}{dx}&quot;},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__deriv_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{d x} y&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{d u} y \\frac{d}{d x} u&quot;},{&quot;id&quot;:&quot;u&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;u&quot;,&quot;subexpr&quot;:&quot;u&quot;},{&quot;id&quot;:&quot;__deriv_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;u&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{d u} y&quot;},{&quot;id&quot;:&quot;__deriv_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{d x} u&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__deriv_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__deriv_4&quot;},{&quot;from&quot;:&quot;u&quot;,&quot;to&quot;:&quot;__deriv_4&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;u&quot;,&quot;to&quot;:&quot;__deriv_5&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_5&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_5&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;PDE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;u&quot;,&quot;y&quot;],&quot;independent_variables&quot;:[&quot;u&quot;,&quot;x&quot;]}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -1185,7 +1830,7 @@
     <div class="row-latex">$$(fg)' = f'g + fg'$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -1209,9 +1854,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">(fg)' = f'g + fg'</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="(fg)' = f'g + fg'"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>(fg)' = f'g + fg'</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__multiply_1",
@@ -1249,7 +1895,27 @@
   "classification": {
     "kind": "algebraic"
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __multiply_1(("$\times$")):::operator
+  f["$f$"]:::scalar
+  g["$g$"]:::scalar
+  f --&gt; __multiply_1
+  g --&gt; __multiply_1
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__multiply_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;(fg)' = f'g + fg'&quot;},{&quot;id&quot;:&quot;f&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f&quot;},{&quot;id&quot;:&quot;g&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g&quot;,&quot;subexpr&quot;:&quot;g&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;f&quot;,&quot;to&quot;:&quot;__multiply_1&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;g&quot;,&quot;to&quot;:&quot;__multiply_1&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -1257,7 +1923,7 @@
     <div class="row-latex">$$\left(\frac{f}{g}\right)' = \frac{f'g - fg'}{g^2}$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -1284,9 +1950,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">\left(\frac{f}{g}\right)' = \frac{f'g - fg'}{g^2}</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="\left(\frac{f}{g}\right)' = \frac{f'g - fg'}{g^2}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\left(\frac{f}{g}\right)' = \frac{f'g - fg'}{g^2}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__multiply_1",
@@ -1334,7 +2001,30 @@
   "classification": {
     "kind": "algebraic"
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __multiply_1(("$\times$")):::operator
+  f["$f$"]:::scalar
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
+  g["$g$"]:::scalar
+  f --&gt; __multiply_1
+  g --&gt; __power_2
+  __power_2 -.-&gt; __multiply_1
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#42a5f5,stroke-width:1px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__multiply_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\left(\\frac{f}{g}\\right)' = \\frac{f'g - fg'}{g^2}&quot;},{&quot;id&quot;:&quot;f&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f&quot;},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{g}&quot;},{&quot;id&quot;:&quot;g&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g&quot;,&quot;subexpr&quot;:&quot;g&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;f&quot;,&quot;to&quot;:&quot;__multiply_1&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;g&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__multiply_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -1342,7 +2032,7 @@
     <div class="row-latex">$$f'(c) = \frac{f(b) - f(a)}{b - a}$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -1402,9 +2092,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">f'(c) = \frac{f(b) - f(a)}{b - a}</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="f'(c) = \frac{f(b) - f(a)}{b - a}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>f'(c) = \frac{f(b) - f(a)}{b - a}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__equals_1",
@@ -1550,7 +2241,63 @@
   "classification": {
     "kind": "algebraic"
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __f'_2{{"$f'(\cdot)$"}}:::function
+  c["$c$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  __add_4(("$+$")):::operator
+  __f_5{{"$f(\cdot)$"}}:::function
+  b["$b$"]:::scalar
+  __negation_6@{ shape: "flip-tri", label: "$-$" }
+  __f_7{{"$f(\cdot)$"}}:::function
+  a["$a$"]:::scalar
+  __power_8(("$\dfrac{1}{(\cdot)}$")):::operator
+  __add_9(("$+$")):::operator
+  __negation_10@{ shape: "flip-tri", label: "$-$" }
+  class __negation_6 operator
+  class __negation_10 operator
+  c --&gt; __f'_2
+  __f'_2 --&gt; __equals_1
+  b --&gt; __f_5
+  __f_5 --&gt; __add_4
+  a --&gt; __f_7
+  __f_7 --&gt; __negation_6
+  __negation_6 --&gt; __add_4
+  __add_4 --&gt; __multiply_3
+  b --&gt; __add_9
+  a --&gt; __negation_10
+  __negation_10 --&gt; __add_9
+  __add_9 --&gt; __power_8
+  __power_8 -.-&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#42a5f5,stroke-width:1px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;f'(c) = \\frac{f(b) - f(a)}{b - a}&quot;},{&quot;id&quot;:&quot;__f'_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f'&quot;,&quot;subexpr&quot;:&quot;\\operatorname{f'}{\\left(c \\right)}&quot;},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\left(-f{\\left(a \\right)} + f{\\left(b \\right)}\\right) \\frac{1}{- a + b}&quot;},{&quot;id&quot;:&quot;__add_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;-f{\\left(a \\right)} + f{\\left(b \\right)}&quot;},{&quot;id&quot;:&quot;__f_5&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(b \\right)}&quot;},{&quot;id&quot;:&quot;b&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;b&quot;},{&quot;id&quot;:&quot;__negation_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-f{\\left(a \\right)}&quot;},{&quot;id&quot;:&quot;__f_7&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(a \\right)}&quot;},{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{- a + b}&quot;},{&quot;id&quot;:&quot;__add_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;b - a&quot;},{&quot;id&quot;:&quot;__negation_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-a&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;__f'_2&quot;},{&quot;from&quot;:&quot;__f'_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;__f_5&quot;},{&quot;from&quot;:&quot;__f_5&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;__f_7&quot;},{&quot;from&quot;:&quot;__f_7&quot;,&quot;to&quot;:&quot;__negation_6&quot;},{&quot;from&quot;:&quot;__negation_6&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;__add_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;__add_9&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;__negation_10&quot;},{&quot;from&quot;:&quot;__negation_10&quot;,&quot;to&quot;:&quot;__add_9&quot;},{&quot;from&quot;:&quot;__add_9&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -1558,7 +2305,7 @@
     <div class="row-latex">$$\int x^n \, dx = \frac{x^{n+1}}{n+1} + C$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -1623,9 +2370,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">\int x^n \, dx = \frac{x^{n+1}}{n+1} + C</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="\int x^n \, dx = \frac{x^{n+1}}{n+1} + C"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\int x^n \, dx = \frac{x^{n+1}}{n+1} + C</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__equals_1",
@@ -1793,7 +2541,68 @@
   "classification": {
     "kind": "algebraic"
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  x["$x$"]:::scalar
+  __integral_2(("$\int dx$")):::operator
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
+  n["$n$"]:::scalar
+  __add_4(("$+$")):::operator
+  __multiply_5(("$\times$")):::operator
+  __power_6(("$(\cdot)^{\cdot}$")):::operator
+  __add_7(("$+$")):::operator
+  __num_8["$1$"]:::number
+  __power_9(("$\dfrac{1}{(\cdot)}$")):::operator
+  __add_10(("$+$")):::operator
+  __num_11["$1$"]:::number
+  C["$C$"]:::scalar
+  x --&gt;|wrt| __integral_2
+  x --&gt; __power_3
+  n --&gt;|exp| __power_3
+  __power_3 --&gt; __integral_2
+  __integral_2 --&gt; __equals_1
+  x --&gt; __power_6
+  n --&gt; __add_7
+  __num_8 --&gt; __add_7
+  __add_7 --&gt;|exp| __power_6
+  __power_6 --&gt; __multiply_5
+  n --&gt; __add_10
+  __num_11 --&gt; __add_10
+  __add_10 --&gt; __power_9
+  __power_9 -.-&gt; __multiply_5
+  __multiply_5 --&gt; __add_4
+  C --&gt; __add_4
+  __add_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#ef5350,stroke-width:3px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#42a5f5,stroke-width:1px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\int x^n \\, dx = \\frac{x^{n+1}}{n+1} + C&quot;},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\int x^{n}\\, dx&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;x^{n}&quot;},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;},{&quot;id&quot;:&quot;__add_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;C + x^{n + 1} \\frac{1}{n + 1}&quot;},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;x^{n + 1} \\frac{1}{n + 1}&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;x^{n + 1}&quot;},{&quot;id&quot;:&quot;__add_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;n + 1&quot;},{&quot;id&quot;:&quot;__num_8&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;},{&quot;id&quot;:&quot;__power_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{n + 1}&quot;},{&quot;id&quot;:&quot;__add_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;n + 1&quot;},{&quot;id&quot;:&quot;__num_11&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;},{&quot;id&quot;:&quot;C&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;C&quot;,&quot;subexpr&quot;:&quot;C&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__power_3&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__integral_2&quot;},{&quot;from&quot;:&quot;__integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__add_7&quot;},{&quot;from&quot;:&quot;__num_8&quot;,&quot;to&quot;:&quot;__add_7&quot;},{&quot;from&quot;:&quot;__add_7&quot;,&quot;to&quot;:&quot;__power_6&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__add_10&quot;},{&quot;from&quot;:&quot;__num_11&quot;,&quot;to&quot;:&quot;__add_10&quot;},{&quot;from&quot;:&quot;__add_10&quot;,&quot;to&quot;:&quot;__power_9&quot;},{&quot;from&quot;:&quot;__power_9&quot;,&quot;to&quot;:&quot;__multiply_5&quot;},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;C&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;__add_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -1801,7 +2610,7 @@
     <div class="row-latex">$$\int_a^b f(x) \, dx = F(b) - F(a)$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -1853,9 +2662,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">\int_a^b f(x) \, dx = F(b) - F(a)</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="\int_a^b f(x) \, dx = F(b) - F(a)"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\int_a^b f(x) \, dx = F(b) - F(a)</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__equals_1",
@@ -1977,7 +2787,55 @@
   "classification": {
     "kind": "algebraic"
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  x["$x$"]:::scalar
+  a["$a$"]:::scalar
+  b["$b$"]:::scalar
+  __integral_2(("$\int_{a}^{b} dx$")):::operator
+  __f_3{{"$f(\cdot)$"}}:::function
+  __add_4(("$+$")):::operator
+  __F_5{{"$F(\cdot)$"}}:::function
+  __negation_6@{ shape: "flip-tri", label: "$-$" }
+  __F_7{{"$F(\cdot)$"}}:::function
+  class __negation_6 operator
+  x --&gt;|wrt| __integral_2
+  a --&gt;|lb| __integral_2
+  b --&gt;|ub| __integral_2
+  x --&gt; __f_3
+  __f_3 --&gt; __integral_2
+  __integral_2 --&gt; __equals_1
+  b --&gt; __F_5
+  __F_5 --&gt; __add_4
+  a --&gt; __F_7
+  __F_7 --&gt; __negation_6
+  __negation_6 --&gt; __add_4
+  __add_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\int_a^b f(x) \\, dx = F(b) - F(a)&quot;},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;},{&quot;id&quot;:&quot;b&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;b&quot;},{&quot;id&quot;:&quot;__integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;lower_bound&quot;:&quot;a&quot;,&quot;upper_bound&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;\\int\\limits_{a}^{b} f{\\left(x \\right)}\\, dx&quot;},{&quot;id&quot;:&quot;__f_3&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(x \\right)}&quot;},{&quot;id&quot;:&quot;__add_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;-F{\\left(a \\right)} + F{\\left(b \\right)}&quot;},{&quot;id&quot;:&quot;__F_5&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;F&quot;,&quot;subexpr&quot;:&quot;F{\\left(b \\right)}&quot;},{&quot;id&quot;:&quot;__negation_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-F{\\left(a \\right)}&quot;},{&quot;id&quot;:&quot;__F_7&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;F&quot;,&quot;subexpr&quot;:&quot;F{\\left(a \\right)}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;__integral_2&quot;,&quot;role&quot;:&quot;lb&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;__integral_2&quot;,&quot;role&quot;:&quot;ub&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__f_3&quot;},{&quot;from&quot;:&quot;__f_3&quot;,&quot;to&quot;:&quot;__integral_2&quot;},{&quot;from&quot;:&quot;__integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;__F_5&quot;},{&quot;from&quot;:&quot;__F_5&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;__F_7&quot;},{&quot;from&quot;:&quot;__F_7&quot;,&quot;to&quot;:&quot;__negation_6&quot;},{&quot;from&quot;:&quot;__negation_6&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;__add_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -1985,7 +2843,7 @@
     <div class="row-latex">$$\frac{d}{dx} \int_a^x f(t) \, dt = f(x)$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -2030,9 +2888,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">\frac{d}{dx} \int_a^x f(t) \, dt = f(x)</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="\frac{d}{dx} \int_a^x f(t) \, dt = f(x)"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\frac{d}{dx} \int_a^x f(t) \, dt = f(x)</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__equals_1",
@@ -2141,7 +3000,48 @@
       "x"
     ]
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  t["$t$"]:::scalar
+  a["$a$"]:::scalar
+  x["$x$"]:::scalar
+  __integral_3(("$\int_{a}^{x} dt$")):::operator
+  __f_4{{"$f(\cdot)$"}}:::function
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
+  __f_5{{"$f(\cdot)$"}}:::function
+  t --&gt;|wrt| __integral_3
+  a --&gt;|lb| __integral_3
+  x --&gt;|ub| __integral_3
+  t --&gt; __f_4
+  __f_4 --&gt; __integral_3
+  __integral_3 --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
+  __deriv_2 --&gt; __equals_1
+  x --&gt; __f_5
+  __f_5 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{dx} \\int_a^x f(t) \\, dt = f(x)&quot;},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;},{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__integral_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;lower_bound&quot;:&quot;a&quot;,&quot;upper_bound&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\int\\limits_{a}^{x} f{\\left(t \\right)}\\, dt&quot;},{&quot;id&quot;:&quot;__f_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(t \\right)}&quot;},{&quot;id&quot;:&quot;__deriv_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\frac{\\partial}{\\partial x} \\int\\limits_{a}^{x} f{\\left(t \\right)}\\, dt&quot;},{&quot;id&quot;:&quot;__f_5&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(x \\right)}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__integral_3&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;__integral_3&quot;,&quot;role&quot;:&quot;lb&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__integral_3&quot;,&quot;role&quot;:&quot;ub&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__f_4&quot;},{&quot;from&quot;:&quot;__f_4&quot;,&quot;to&quot;:&quot;__integral_3&quot;},{&quot;from&quot;:&quot;__integral_3&quot;,&quot;to&quot;:&quot;__deriv_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__f_5&quot;},{&quot;from&quot;:&quot;__f_5&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[],&quot;independent_variables&quot;:[&quot;x&quot;]}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -2149,7 +3049,7 @@
     <div class="row-latex">$$e^x = \sum_{n=0}^{\infty} \frac{x^n}{n!}$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -2211,9 +3111,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">e^x = \sum_{n=0}^{\infty} \frac{x^n}{n!}</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="e^x = \sum_{n=0}^{\infty} \frac{x^n}{n!}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>e^x = \sum_{n=0}^{\infty} \frac{x^n}{n!}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__equals_1",
@@ -2261,7 +3162,8 @@
     {
       "id": "__equals_6",
       "type": "relation",
-      "op": "equals"
+      "op": "equals",
+      "subexpr": "n = 0"
     },
     {
       "id": "__sum_3",
@@ -2375,7 +3277,65 @@
   "classification": {
     "kind": "algebraic"
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __power_2(("$(\cdot)^{\cdot}$")):::operator
+  e["$e$"]:::scalar
+  x["$x$"]:::scalar
+  n["$n$"]:::scalar
+  __num_4["$0$"]:::number
+  __const_5["$\infty$"]:::constant
+  __equals_6{"="}:::relation
+  __sum_3(("$\sum_{n}$")):::operator
+  __multiply_7(("$\times$")):::operator
+  __power_8(("$(\cdot)^{\cdot}$")):::operator
+  __power_9(("$\dfrac{1}{(\cdot)}$")):::operator
+  __factorial_10(("$(\cdot)!$")):::operator
+  e --&gt; __power_2
+  x --&gt;|exp| __power_2
+  __power_2 --&gt; __equals_1
+  n --&gt;|wrt| __sum_3
+  n --&gt; __equals_6
+  __num_4 --&gt; __equals_6
+  __equals_6 --&gt;|lb| __sum_3
+  __const_5 --&gt;|ub| __sum_3
+  x --&gt; __power_8
+  n --&gt;|exp| __power_8
+  __power_8 --&gt; __multiply_7
+  n --&gt; __factorial_10
+  __factorial_10 --&gt; __power_9
+  __power_9 -.-&gt; __multiply_7
+  __multiply_7 --&gt; __sum_3
+  __sum_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#42a5f5,stroke-width:1px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;e^x = \\sum_{n=0}^{\\infty} \\frac{x^n}{n!}&quot;},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;e^{x}&quot;},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;},{&quot;id&quot;:&quot;__num_4&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;},{&quot;id&quot;:&quot;__const_5&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;infinity&quot;,&quot;latex&quot;:&quot;\\infty&quot;,&quot;subexpr&quot;:&quot;\\infty&quot;},{&quot;id&quot;:&quot;__equals_6&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;n = 0&quot;},{&quot;id&quot;:&quot;__sum_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;sum&quot;,&quot;with_respect_to&quot;:&quot;n&quot;,&quot;lower_bound&quot;:&quot;__num_4&quot;,&quot;upper_bound&quot;:&quot;__const_5&quot;,&quot;subexpr&quot;:&quot;\\sum_{n=0}^{\\infty} \\frac{x^{n}}{n!}&quot;},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;x^{n} \\frac{1}{n!}&quot;},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;x^{n}&quot;},{&quot;id&quot;:&quot;__power_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{n!}&quot;},{&quot;id&quot;:&quot;__factorial_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;factorial&quot;,&quot;subexpr&quot;:&quot;n!&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_2&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__sum_3&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__equals_6&quot;},{&quot;from&quot;:&quot;__num_4&quot;,&quot;to&quot;:&quot;__equals_6&quot;},{&quot;from&quot;:&quot;__equals_6&quot;,&quot;to&quot;:&quot;__sum_3&quot;,&quot;role&quot;:&quot;lb&quot;},{&quot;from&quot;:&quot;__const_5&quot;,&quot;to&quot;:&quot;__sum_3&quot;,&quot;role&quot;:&quot;ub&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__power_8&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__factorial_10&quot;},{&quot;from&quot;:&quot;__factorial_10&quot;,&quot;to&quot;:&quot;__power_9&quot;},{&quot;from&quot;:&quot;__power_9&quot;,&quot;to&quot;:&quot;__multiply_7&quot;},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__sum_3&quot;},{&quot;from&quot;:&quot;__sum_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -2383,7 +3343,7 @@
     <div class="row-latex">$$\sum_{n=0}^{\infty} r^n = \frac{1}{1 - r}$$</div>
   </div>
   <div class="row-graph">
-    <pre class="mermaid">flowchart LR
+    <pre class="mermaid">flowchart RL
   classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
   classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
@@ -2441,9 +3401,10 @@
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src">\sum_{n=0}^{\infty} r^n = \frac{1}{1 - r}</div>
-  <div class="row-panel row-json">{
+  <div class="row-panel row-latex-src" data-latex="\sum_{n=0}^{\infty} r^n = \frac{1}{1 - r}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\sum_{n=0}^{\infty} r^n = \frac{1}{1 - r}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__equals_1",
@@ -2473,7 +3434,8 @@
     {
       "id": "__equals_5",
       "type": "relation",
-      "op": "equals"
+      "op": "equals",
+      "subexpr": "n = 0"
     },
     {
       "id": "__sum_2",
@@ -2588,7 +3550,61 @@
   "classification": {
     "kind": "algebraic"
   }
-}</div>
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  n["$n$"]:::scalar
+  __num_3["$0$"]:::number
+  __const_4["$\infty$"]:::constant
+  __equals_5{"="}:::relation
+  __sum_2(("$\sum_{n}$")):::operator
+  __power_6(("$(\cdot)^{\cdot}$")):::operator
+  r["$r$"]:::scalar
+  __power_7(("$\dfrac{1}{(\cdot)}$")):::operator
+  __add_8(("$+$")):::operator
+  __num_9["$1$"]:::number
+  __negation_10@{ shape: "flip-tri", label: "$-$" }
+  class __negation_10 operator
+  n --&gt;|wrt| __sum_2
+  n --&gt; __equals_5
+  __num_3 --&gt; __equals_5
+  __equals_5 --&gt;|lb| __sum_2
+  __const_4 --&gt;|ub| __sum_2
+  r --&gt; __power_6
+  n --&gt;|exp| __power_6
+  __power_6 --&gt; __sum_2
+  __sum_2 --&gt; __equals_1
+  __num_9 --&gt; __add_8
+  r --&gt; __negation_10
+  __negation_10 --&gt; __add_8
+  __add_8 --&gt; __power_7
+  __power_7 -.-&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#42a5f5,stroke-width:1px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\sum_{n=0}^{\\infty} r^n = \\frac{1}{1 - r}&quot;},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;},{&quot;id&quot;:&quot;__num_3&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;},{&quot;id&quot;:&quot;__const_4&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;infinity&quot;,&quot;latex&quot;:&quot;\\infty&quot;,&quot;subexpr&quot;:&quot;\\infty&quot;},{&quot;id&quot;:&quot;__equals_5&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;n = 0&quot;},{&quot;id&quot;:&quot;__sum_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;sum&quot;,&quot;with_respect_to&quot;:&quot;n&quot;,&quot;lower_bound&quot;:&quot;__num_3&quot;,&quot;upper_bound&quot;:&quot;__const_4&quot;,&quot;subexpr&quot;:&quot;\\sum_{n=0}^{\\infty} r^{n}&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;r^{n}&quot;},{&quot;id&quot;:&quot;r&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;r&quot;,&quot;subexpr&quot;:&quot;r&quot;},{&quot;id&quot;:&quot;__power_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{1 - r}&quot;},{&quot;id&quot;:&quot;__add_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;1 - r&quot;},{&quot;id&quot;:&quot;__num_9&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;},{&quot;id&quot;:&quot;__negation_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-r&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__sum_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__equals_5&quot;},{&quot;from&quot;:&quot;__num_3&quot;,&quot;to&quot;:&quot;__equals_5&quot;},{&quot;from&quot;:&quot;__equals_5&quot;,&quot;to&quot;:&quot;__sum_2&quot;,&quot;role&quot;:&quot;lb&quot;},{&quot;from&quot;:&quot;__const_4&quot;,&quot;to&quot;:&quot;__sum_2&quot;,&quot;role&quot;:&quot;ub&quot;},{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__power_6&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__sum_2&quot;},{&quot;from&quot;:&quot;__sum_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_9&quot;,&quot;to&quot;:&quot;__add_8&quot;},{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__negation_10&quot;},{&quot;from&quot;:&quot;__negation_10&quot;,&quot;to&quot;:&quot;__add_8&quot;},{&quot;from&quot;:&quot;__add_8&quot;,&quot;to&quot;:&quot;__power_7&quot;},{&quot;from&quot;:&quot;__power_7&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="summary"><span class="count">13</span> rendered, <span class="count">0</span> errors out of <span class="count">13</span> expressions</div>
 <script>
@@ -2597,6 +3613,82 @@ document.querySelectorAll('.row-toggle').forEach(btn => {
     const target = btn.dataset.target;
     const panel = btn.closest('.row').querySelector('.' + target);
     if (panel) panel.classList.toggle('open');
+  });
+});
+function copyText(text, btn) {
+  function onSuccess() {
+    btn.textContent = 'copied';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(onSuccess, function() { fallbackCopy(text, btn, onSuccess); });
+  } else {
+    fallbackCopy(text, btn, onSuccess);
+  }
+}
+function fallbackCopy(text, btn, onSuccess) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  var ok = false;
+  try { ok = document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  if (ok) onSuccess();
+}
+document.querySelectorAll('.row-copy-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const pane = btn.closest('.row-json-pane');
+    var text;
+    if (pane) {
+      text = pane.querySelector('pre').textContent;
+    } else {
+      text = btn.parentElement.dataset.latex || '';
+    }
+    copyText(text, btn);
+  });
+});
+</script>
+<script>
+// Patch fetchTheme to use inlined theme data
+(function() {
+  var _origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    if (typeof url === 'string' && url.startsWith('/api/graph/theme/')) {
+      var theme = window.__SG_REPORT_THEME__;
+      return Promise.resolve(new Response(JSON.stringify(theme), {
+        status: 200, headers: { 'Content-Type': 'application/json' }
+      }));
+    }
+    return _origFetch.call(this, url, opts);
+  };
+})();
+
+import('./d3-semantic-graph.js').then(function(mod) {
+  var D3SemanticGraphRenderer = mod.D3SemanticGraphRenderer;
+  document.querySelectorAll('.row-toggle-d3').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var row = btn.closest('.row');
+      var panel = row.querySelector('.row-d3');
+      if (!panel) return;
+      panel.classList.toggle('open');
+      if (!panel.classList.contains('open')) return;
+      if (panel.dataset.rendered) return;
+      panel.dataset.rendered = '1';
+      var graphJson = panel.dataset.graph;
+      if (!graphJson) return;
+      panel.innerHTML = '';
+      var graph = JSON.parse(graphJson);
+      var renderer = new D3SemanticGraphRenderer(panel, {
+        direction: 'left-right',
+        labels: 'description',
+        theme: 'default-dark',
+        katex: window.katex || null,
+      });
+      renderer.render(graph);
+    });
   });
 });
 </script>
