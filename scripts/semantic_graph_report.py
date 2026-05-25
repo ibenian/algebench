@@ -271,6 +271,18 @@ def _page_template() -> str:
     </script>
     <style>
       * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+      ::-webkit-scrollbar {{ width: 6px; height: 6px; }}
+      ::-webkit-scrollbar-track {{ background: transparent; }}
+      ::-webkit-scrollbar-thumb {{
+        background: {border};
+        border-radius: 3px;
+      }}
+      ::-webkit-scrollbar-thumb:hover {{ background: {muted}; }}
+      ::-webkit-scrollbar-corner {{ background: transparent; }}
+      * {{
+        scrollbar-width: thin;
+        scrollbar-color: {border} transparent;
+      }}
       body {{
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         background: {bg};
@@ -502,6 +514,18 @@ def _page_template() -> str:
         if (panel) panel.classList.toggle('open');
       }});
     }});
+    function copyText(text, btn) {{
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = 'copied';
+      btn.classList.add('copied');
+      setTimeout(function() {{ btn.textContent = 'copy'; btn.classList.remove('copied'); }}, 1500);
+    }}
     document.querySelectorAll('.row-copy-btn').forEach(btn => {{
       btn.addEventListener('click', () => {{
         const pane = btn.closest('.row-json-pane');
@@ -509,13 +533,9 @@ def _page_template() -> str:
         if (pane) {{
           text = pane.querySelector('pre').textContent;
         }} else {{
-          text = btn.parentElement.dataset.latex || btn.parentElement.querySelector('pre')?.textContent || '';
+          text = btn.parentElement.dataset.latex || '';
         }}
-        navigator.clipboard.writeText(text).then(() => {{
-          btn.textContent = 'copied';
-          btn.classList.add('copied');
-          setTimeout(() => {{ btn.textContent = 'copy'; btn.classList.remove('copied'); }}, 1500);
-        }});
+        copyText(text, btn);
       }});
     }});
     </script>
