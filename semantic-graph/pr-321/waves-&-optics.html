@@ -251,7 +251,7 @@
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 03:04 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-05-25 03:23 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Waves & Optics (15 expressions)</div>
 <div class="row">
   <div>
@@ -1518,7 +1518,7 @@
 <div class="row">
   <div>
     <div class="row-id">diffraction_grating</div>
-    <div class="row-latex">$$d \sin\theta = m \lambda$$</div>
+    <div class="row-latex">$${d} \sin\theta = m \lambda$$</div>
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart LR
@@ -1535,49 +1535,59 @@
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   __multiply_2(("$\times$")):::operator
-  dsin["$\mathrm{d}\sin$"]:::scalar
+  d["$d$"]:::scalar
+  __sin_3{{"$sin(\cdot)$"}}:::function
   theta["$\theta$"]:::scalar
-  __multiply_3(("$\times$")):::operator
+  __multiply_4(("$\times$")):::operator
   m["$m$"]:::scalar
   lambda["$\lambda$"]:::scalar
-  dsin --&gt; __multiply_2
-  theta --&gt; __multiply_2
+  d --&gt; __multiply_2
+  theta --&gt; __sin_3
+  __sin_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  m --&gt; __multiply_3
-  lambda --&gt; __multiply_3
-  __multiply_3 --&gt; __equals_1
+  m --&gt; __multiply_4
+  lambda --&gt; __multiply_4
+  __multiply_4 --&gt; __equals_1
   linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
   </div>
-  <div class="row-panel row-latex-src">d \sin\theta = m \lambda</div>
+  <div class="row-panel row-latex-src">{d} \sin\theta = m \lambda</div>
   <div class="row-panel row-json">{
   "nodes": [
     {
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "d \\sin\\theta = m \\lambda"
+      "subexpr": "{d} \\sin\\theta = m \\lambda"
     },
     {
       "id": "__multiply_2",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\theta \\mathrm{d}\\sin"
+      "subexpr": "d \\sin{\\left(\\theta \\right)}"
     },
     {
-      "id": "dsin",
+      "id": "d",
       "type": "scalar",
-      "latex": "\\mathrm{d}\\sin",
-      "subexpr": "\\mathrm{d}\\sin"
+      "latex": "d",
+      "subexpr": "d"
+    },
+    {
+      "id": "__sin_3",
+      "type": "function",
+      "latex": "\\sin",
+      "op": "sin",
+      "subexpr": "\\sin{\\left(\\theta \\right)}"
     },
     {
       "id": "theta",
@@ -1586,7 +1596,7 @@
       "subexpr": "\\theta"
     },
     {
-      "id": "__multiply_3",
+      "id": "__multiply_4",
       "type": "operator",
       "op": "multiply",
       "subexpr": "m \\lambda"
@@ -1606,13 +1616,17 @@
   ],
   "edges": [
     {
-      "from": "dsin",
+      "from": "d",
       "to": "__multiply_2",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "theta",
+      "to": "__sin_3"
+    },
+    {
+      "from": "__sin_3",
       "to": "__multiply_2",
       "semantic": "direct",
       "weight": 1.0
@@ -1623,18 +1637,18 @@
     },
     {
       "from": "m",
-      "to": "__multiply_3",
+      "to": "__multiply_4",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "lambda",
-      "to": "__multiply_3",
+      "to": "__multiply_4",
       "semantic": "direct",
       "weight": 1.0
     },
     {
-      "from": "__multiply_3",
+      "from": "__multiply_4",
       "to": "__equals_1"
     }
   ],
@@ -1646,7 +1660,7 @@
 <div class="row">
   <div>
     <div class="row-id">path_difference</div>
-    <div class="row-latex">$$\Delta = d \sin\theta$$</div>
+    <div class="row-latex">$$\Delta = {d} \sin\theta$$</div>
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart LR
@@ -1664,30 +1678,33 @@
   __equals_1{"="}:::relation
   Delta["$\Delta$"]:::scalar
   __multiply_2(("$\times$")):::operator
-  dsin["$\mathrm{d}\sin$"]:::scalar
+  d["$d$"]:::scalar
+  __sin_3{{"$sin(\cdot)$"}}:::function
   theta["$\theta$"]:::scalar
   Delta --&gt; __equals_1
-  dsin --&gt; __multiply_2
-  theta --&gt; __multiply_2
+  d --&gt; __multiply_2
+  theta --&gt; __sin_3
+  __sin_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
   </div>
-  <div class="row-panel row-latex-src">\Delta = d \sin\theta</div>
+  <div class="row-panel row-latex-src">\Delta = {d} \sin\theta</div>
   <div class="row-panel row-json">{
   "nodes": [
     {
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "\\Delta = d \\sin\\theta"
+      "subexpr": "\\Delta = {d} \\sin\\theta"
     },
     {
       "id": "Delta",
@@ -1699,13 +1716,20 @@
       "id": "__multiply_2",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\theta \\mathrm{d}\\sin"
+      "subexpr": "d \\sin{\\left(\\theta \\right)}"
     },
     {
-      "id": "dsin",
+      "id": "d",
       "type": "scalar",
-      "latex": "\\mathrm{d}\\sin",
-      "subexpr": "\\mathrm{d}\\sin"
+      "latex": "d",
+      "subexpr": "d"
+    },
+    {
+      "id": "__sin_3",
+      "type": "function",
+      "latex": "\\sin",
+      "op": "sin",
+      "subexpr": "\\sin{\\left(\\theta \\right)}"
     },
     {
       "id": "theta",
@@ -1720,13 +1744,17 @@
       "to": "__equals_1"
     },
     {
-      "from": "dsin",
+      "from": "d",
       "to": "__multiply_2",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "theta",
+      "to": "__sin_3"
+    },
+    {
+      "from": "__sin_3",
       "to": "__multiply_2",
       "semantic": "direct",
       "weight": 1.0
