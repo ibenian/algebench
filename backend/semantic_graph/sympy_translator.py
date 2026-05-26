@@ -520,8 +520,10 @@ def _preprocess_latex(latex: str) -> tuple[str, set[str]]:
 
     Returns ``(preprocessed_latex, bare_sum_indices)`` where
     *bare_sum_indices* is the set of index variable names that were
-    given synthetic ``{idx=0}^{\\infty}`` bounds by the preprocessor
-    (originating from bare ``\\sum_i`` notation).
+    given synthetic ``{idx=0}^{\\infty}`` bounds by the preprocessor.
+    Names from ``\\sum_i`` forms keep the index visible; names starting
+    with ``BARE_SUM_DUMMY_PREFIX`` (from bare ``\\sum``) are suppressed
+    entirely by the translator.
     """
     def _expand_higher_deriv(m: re.Match) -> str:
         op = m.group(1)
@@ -1137,6 +1139,13 @@ class SemanticGraphBuilder:
             else:
                 replacement = real
             latex = latex.replace("\\" + name, replacement)
+            # SymPy renders Function('Xi_{0}') as \operatorname{Xi}_{0} —
+            # the base and subscript are split across LaTeX groups.
+            # Build that form so subexpr fields get cleaned up too.
+            m_ph = re.match(r"(Xi|Theta|Phi)_\{(\d+)\}", name)
+            if m_ph:
+                opname_form = rf"\operatorname{{{m_ph.group(1)}}}_{{{m_ph.group(2)}}}"
+                latex = latex.replace(opname_form, replacement)
             latex = latex.replace(name, replacement)
         return latex
 
@@ -1255,6 +1264,13 @@ class SemanticGraphBuilder:
         if isinstance(expr, sympy.Function):
             func_name = type(expr).__name__
             op_name = _FUNC_OP_MAP.get(func_name, func_name)
+            # Resolve Xi_{N} text-command placeholders used as functions.
+            # When ``\text{Res}(f, z_k)`` is collapsed into ``\Xi_{0}(f, z_k)``
+            # by ``_collapse_text_commands``, SymPy creates ``Xi_{0}`` as a
+            # Function class.  The text override contains the real name.
+            if _PLACEHOLDER_NAME_RE.fullmatch(func_name) and func_name in self._overrides:
+                ovr = self._overrides[func_name]
+                op_name = ovr.get("label", op_name)
             node_id = self._next_id(op_name)
             func_latex = self._latex_commands.get(func_name)
             func_attrs: dict[str, str] = {"type": "function", "op": op_name}
@@ -1361,6 +1377,13 @@ class SemanticGraphBuilder:
             upper_nid = None
             node_attrs: dict[str, Any] = {"type": "operator", "op": op_name}
             for limit_tuple in expr.limits:
+                idx_name = str(limit_tuple[0])
+                # Completely bare ``\sum`` (no subscript at all) gets a
+                # dummy index to satisfy SymPy — skip it entirely so the
+                # graph doesn't show a meaningless synthetic node.
+                if idx_name in LaTeXPreprocessor.BARE_SUM_DUMMIES:
+                    continue
+                synthetic = idx_name in self._bare_sum_indices
                 var_id = self._walk(limit_tuple[0])
                 wrt_ids.append(var_id)
                 if len(limit_tuple) >= 3:
@@ -1372,8 +1395,6 @@ class SemanticGraphBuilder:
                     # notation.  Only suppress bounds when the index is
                     # known-synthetic — explicit ``\sum_{n=0}^{\infty}``
                     # must keep its bound nodes.
-                    idx_name = str(limit_tuple[0])
-                    synthetic = idx_name in self._bare_sum_indices
                     if synthetic:
                         self._add_edge(var_id, node_id, role="wrt")
                     else:

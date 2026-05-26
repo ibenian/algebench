@@ -30,7 +30,7 @@ from tests.backend.semantic_graph.generators.invariants import (
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
     "sin", "cos", "Abs", "abs", "function", "sum",
-    "partial_derivative", "closed_integral",
+    "partial_derivative", "closed_integral", "Res",
 }
 
 
@@ -117,16 +117,16 @@ COMPLEX_EXPRESSIONS: list[CatalogEntry] = [
      None),
 
     ("complex_residue",
-     # \text{Res} is placeholder-replaced; the sum+Res part collapses,
-     # locking in current behavior.  Use \operatorname{Res} if full
-     # function-node support is added later.
      r"\oint f(z) dz = 2\pi i \sum \text{Res}(f, z_k)",
      PASS,
-         "z -> fn:f; const:pi,i -> multiply; fn:f,z -> closed_integral; "
-         "multiply,num -> multiply; "
+         "f,z_{k} -> fn:Res; z -> fn:f; fn:f,z -> closed_integral; "
+         "fn:Res -> sum; i,sum -> multiply; "
+         "const:pi,multiply -> multiply; multiply,num -> multiply; "
          "closed_integral,multiply -> rel:equals",
-         "z -> __f_3; i,pi -> __multiply_6; "
+         "f,z_{k} -> __Res_9; z -> __f_3; "
          "__f_3,z -> __closed_integral_2; "
+         "__Res_9 -> __sum_8; __sum_8,i -> __multiply_7; "
+         "__multiply_7,pi -> __multiply_6; "
          "__multiply_6,__num_5 -> __multiply_4; "
          "__closed_integral_2,__multiply_4 -> __equals_1",
      None),

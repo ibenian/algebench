@@ -191,6 +191,12 @@ class LaTeXPreprocessor:
             i = den_close + 1
         return "".join(out)
 
+    # Pool of dummy index names for completely bare ``\sum``/``\prod``.
+    # These are valid LaTeX commands that SymPy can parse but are
+    # extremely unlikely to appear in real expressions.  The translator
+    # checks this set to suppress them entirely from the graph.
+    BARE_SUM_DUMMIES = ("iota", "varrho", "varkappa")
+
     @staticmethod
     def normalize_bare_sums(
         latex: str,
@@ -203,6 +209,7 @@ class LaTeXPreprocessor:
 
         * ``\sum_i …``    → ``\sum_{i=0}^{\infty} …``
         * ``\sum_{i} …``  → ``\sum_{i=0}^{\infty} …``
+        * ``\sum …``      → ``\sum_{\iota=0}^{\infty} …``  (dummy index)
         * ``\prod_j …``   → ``\prod_{j=0}^{\infty} …``
 
         Only bare subscripts (no ``=`` inside) without a following ``^``
@@ -210,15 +217,14 @@ class LaTeXPreprocessor:
 
         If *captured* is provided, index variable names that were
         normalised are added to the set so the translator can suppress
-        the synthetic bound nodes.
+        the synthetic bound nodes.  Completely bare forms use names
+        from ``BARE_SUM_DUMMIES`` — the translator suppresses these
+        entirely (no node, no wrt edge).
         """
         if not isinstance(latex, str):
             return latex
-        # Match \sum or \prod followed by a bare subscript (no '=')
-        # and NOT already followed by ^{...}
-        # Group 1: command (\sum or \prod)
-        # Group 2: index variable (single char or braced simple name)
-        pattern = re.compile(
+        # --- Pass 1: bare subscript without bounds ---
+        sub_pattern = re.compile(
             r"(\\(?:sum|prod))"               # \sum or \prod
             r"_"                               # subscript marker
             r"(?:\{([A-Za-z](?:[A-Za-z0-9]*)?)\}"  # {i} or {idx} — braced, no '='
@@ -226,14 +232,32 @@ class LaTeXPreprocessor:
             r"(?!\s*\^)"                       # NOT followed by ^
         )
 
-        def _repl(m: re.Match) -> str:
+        def _repl_sub(m: re.Match) -> str:
             cmd = m.group(1)
             idx = m.group(2) or m.group(3)
             if captured is not None:
                 captured.add(idx)
             return rf"{cmd}_{{{idx}=0}}^{{\infty}}"
 
-        return pattern.sub(_repl, latex)
+        latex = sub_pattern.sub(_repl_sub, latex)
+
+        # --- Pass 2: completely bare (no subscript or superscript) ---
+        bare_pattern = re.compile(
+            r"(\\(?:sum|prod))"               # \sum or \prod
+            r"(?!\s*[_^])"                     # NOT followed by _ or ^
+        )
+        dummies = LaTeXPreprocessor.BARE_SUM_DUMMIES
+        _counter = [0]
+
+        def _repl_bare(m: re.Match) -> str:
+            cmd = m.group(1)
+            dummy = dummies[min(_counter[0], len(dummies) - 1)]
+            _counter[0] += 1
+            if captured is not None:
+                captured.add(dummy)
+            return rf"{cmd}_{{\{dummy}=0}}^{{\infty}}"
+
+        return bare_pattern.sub(_repl_bare, latex)
 
     @staticmethod
     def strip_accent_commands(
