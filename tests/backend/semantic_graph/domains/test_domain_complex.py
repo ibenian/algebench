@@ -117,6 +117,9 @@ COMPLEX_EXPRESSIONS: list[CatalogEntry] = [
      None),
 
     ("complex_residue",
+     # \text{Res} is placeholder-replaced; the sum+Res part collapses,
+     # locking in current behavior.  Use \operatorname{Res} if full
+     # function-node support is added later.
      r"\oint f(z) dz = 2\pi i \sum \text{Res}(f, z_k)",
      PASS,
          "z -> fn:f; const:pi,i -> multiply; fn:f,z -> closed_integral; "

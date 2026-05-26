@@ -2,8 +2,9 @@
 
 Covers modular arithmetic, divisibility, GCD, floor/ceiling functions,
 prime counting, Euler's totient, Fermat's little theorem, and the
-Legendre symbol.  Many notations (``\\pmod``, ``\\equiv``, ``\\mid``)
-are parsed as plain symbols — entries lock in current behavior.
+Legendre symbol.  ``\\equiv`` is parsed as a ``congruent`` relation,
+``\\mid`` as a ``divides`` relation, and ``\\pmod{…}`` attaches a
+modulus attribute to the congruence node (or emits an annotation).
 
 Suite-specific invariant (from design doc §8.3):
   All operator nodes have ``op`` in ALLOWED_OPS.

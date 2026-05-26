@@ -3,8 +3,11 @@
 Covers expected value, variance, Bayes' theorem, distributions
 (binomial, Poisson, geometric, uniform), conditional probability,
 linearity of expectation, covariance, and Markov/Chebyshev bounds.
-``E[X]`` bracket notation is not supported — use ``E(X)`` forms or
-summation equivalents.
+
+Note: ``E[X]`` bracket notation parses as implicit multiplication
+``E · X`` (the parser treats square brackets as grouping, not as
+function-call syntax).  Catalog entries using ``E[…]`` lock in this
+behavior; use ``E(X)`` for function-call semantics if needed.
 
 Suite-specific invariant (from design doc §8.3):
   All operator nodes have ``op`` in ALLOWED_OPS.
