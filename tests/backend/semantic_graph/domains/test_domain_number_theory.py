@@ -33,7 +33,7 @@ ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
     "function", "gcd", "floor", "ceiling",
     "phi", "pi", "factorial", "log",
-    "binomial", "congruent",
+    "binomial", "congruent", "divides",
 }
 
 
@@ -62,9 +62,9 @@ NUMBER_THEORY_EXPRESSIONS: list[CatalogEntry] = [
     ("nt_divides",
      r"a \mid b",
      PASS,
-     "b,mid -> multiply; a,multiply -> multiply",
-     "b,mid -> __multiply_2; __multiply_2,a -> __multiply_1",
-     None),
+     "a,b -> rel:divides",
+     "a,b -> __divides_1",
+     [{"op": "divides", "type": "relation"}]),
 
     ("nt_gcd",
      r"\gcd(a, b) = d",

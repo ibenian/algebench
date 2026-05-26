@@ -100,7 +100,7 @@ OPERATOR_MAP: dict[type, str] = {
 _ASYMMETRIC_OPS: set[str] = {
     "greater_than", "less_than", "greater_equal", "less_equal",
     "element_of", "not_element_of",
-    "implies",
+    "implies", "divides",
 }
 
 _SYMMETRIC_OPS: set[str] = {
@@ -140,6 +140,7 @@ RELATION_MAP: list[tuple[str, dict[str, str]]] = [
     (r"\le", {"op": "less_equal", "label": "less than or equal to", "emoji": "≤"}),
     (r"\gt", {"op": "greater_than", "label": "greater than", "emoji": ">"}),
     (r"\lt", {"op": "less_than", "label": "less than", "emoji": "<"}),
+    (r"\mid", {"op": "divides", "label": "divides", "emoji": "∣"}),
 ]
 
 _STYLE_SYMBOL_COMMAND_RE: re.Pattern[str] = re.compile(
@@ -158,7 +159,7 @@ _SIMPLE_STYLED_SYMBOL_RE: re.Pattern[str] = re.compile(
 # ---------------------------------------------------------------------------
 
 _OPERATOR_GLYPHS: dict[str, str] = {
-    "equals": "=", "congruent": "≡",
+    "equals": "=", "congruent": "≡", "divides": "∣",
     "greater_than": ">", "less_than": "<",
     "greater_equal": "≥", "less_equal": "≤", "not_equal": "≠",
     "multiply": "×", "add": "+", "subtract": "−",
@@ -189,7 +190,8 @@ _OPERATOR_KINDS: dict[str, str] = {
     "factorial": "arithmetic",
     "sin": "function", "cos": "function", "tan": "function",
     "log": "function", "logarithm": "function", "exp": "function",
-    "equals": "comparison", "congruent": "comparison", "not_equal": "comparison",
+    "equals": "comparison", "congruent": "comparison", "divides": "comparison",
+    "not_equal": "comparison",
     "greater_than": "comparison", "less_than": "comparison",
     "greater_equal": "comparison", "less_equal": "comparison",
     "element_of": "comparison", "not_element_of": "comparison",
