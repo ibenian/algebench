@@ -110,6 +110,9 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "iff": "⟺",
     "and": ",",
     "branch": "⇒",
+    "congruent": "≡",
+    "divides": "∣",
+    "asymptotic": "∼",
 }
 
 OPERATOR_LATEX: dict[str, str] = {
@@ -144,6 +147,9 @@ OPERATOR_LATEX: dict[str, str] = {
     "iff": r"\Leftrightarrow",
     "and": ",",
     "branch": r"\Rightarrow",
+    "congruent": r"\equiv",
+    "divides": r"\mid",
+    "asymptotic": r"\sim",
 }
 
 # Op-specific shape defaults. The graph schema is semantic-only
@@ -197,6 +203,9 @@ RELATION_SYMBOLS: dict[str, str] = {
     "maps_to": "→",
     "element_of": "∈",
     "not_element_of": "∉",
+    "congruent": "≡",
+    "divides": "∣",
+    "asymptotic": "∼",
 }
 
 
@@ -334,7 +343,7 @@ def _format_label(
             agg_cmd = OPERATOR_LATEX.get(op, r"\sum")
             return f"${agg_cmd}_{{{wrt}}}$"
         if node_type == "function" and op:
-            fn_name = OPERATOR_LATEX.get(op, op)
+            fn_name = OPERATOR_LATEX.get(op, node.get("latex") or op)
             if r"\cdot" in fn_name:
                 return f"${fn_name}$"
             dots = r", ".join([r"\cdot"] * max(arity, 1))

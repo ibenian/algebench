@@ -105,7 +105,7 @@ _ASYMMETRIC_OPS: set[str] = {
 
 _SYMMETRIC_OPS: set[str] = {
     "equals", "approximately", "not_equal", "proportional", "maps_to",
-    "iff", "congruent",
+    "iff", "congruent", "asymptotic",
 }
 
 _META_RELATION_OPS: set[str] = {"implies", "iff"}
@@ -127,6 +127,7 @@ RELATION_MAP: list[tuple[str, dict[str, str]]] = [
     (r"\implies", {"op": "implies", "label": "implies", "emoji": "⇒"}),
     (r"\propto", {"op": "proportional", "label": "proportional to", "emoji": "∝"}),
     (r"\approx", {"op": "approximately", "label": "approximately equal", "emoji": "≈"}),
+    (r"\sim", {"op": "asymptotic", "label": "asymptotically equal", "emoji": "∼"}),
     (r"\equiv", {"op": "congruent", "label": "congruent to", "emoji": "≡"}),
     (r"\iff", {"op": "iff", "label": "if and only if", "emoji": "⇔"}),
     (r"\to", {"op": "maps_to", "label": "maps to", "emoji": "→"}),
@@ -159,7 +160,7 @@ _SIMPLE_STYLED_SYMBOL_RE: re.Pattern[str] = re.compile(
 # ---------------------------------------------------------------------------
 
 _OPERATOR_GLYPHS: dict[str, str] = {
-    "equals": "=", "congruent": "≡", "divides": "∣",
+    "equals": "=", "congruent": "≡", "divides": "∣", "asymptotic": "∼",
     "greater_than": ">", "less_than": "<",
     "greater_equal": "≥", "less_equal": "≤", "not_equal": "≠",
     "multiply": "×", "add": "+", "subtract": "−",
@@ -191,6 +192,7 @@ _OPERATOR_KINDS: dict[str, str] = {
     "sin": "function", "cos": "function", "tan": "function",
     "log": "function", "logarithm": "function", "exp": "function",
     "equals": "comparison", "congruent": "comparison", "divides": "comparison",
+    "asymptotic": "comparison",
     "not_equal": "comparison",
     "greater_than": "comparison", "less_than": "comparison",
     "greater_equal": "comparison", "less_equal": "comparison",

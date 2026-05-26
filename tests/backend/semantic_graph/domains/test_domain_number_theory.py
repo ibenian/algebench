@@ -33,7 +33,7 @@ ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
     "function", "gcd", "floor", "ceiling",
     "phi", "pi", "factorial", "log",
-    "binomial", "congruent", "divides",
+    "binomial", "congruent", "divides", "asymptotic",
 }
 
 
@@ -90,13 +90,11 @@ NUMBER_THEORY_EXPRESSIONS: list[CatalogEntry] = [
     ("nt_prime_counting",
      r"\pi(x) \sim \frac{x}{\ln x}",
      PASS,
-     "const:__const_7,x -> fn:log; x -> fn:pi; fn:log -> power; "
-     "power,x -> multiply; multiply,sim -> multiply; "
-     "fn:pi,multiply -> multiply",
-     "__const_7,x -> __log_6; x -> __pi_2; __log_6 -> __power_5; "
-     "__power_5,x -> __multiply_4; __multiply_4,sim -> __multiply_3; "
-     "__multiply_3,__pi_2 -> __multiply_1",
-     None),
+     "const:__const_5,x -> fn:log; x -> fn:pi; fn:log -> power; "
+     "power,x -> multiply; fn:pi,multiply -> rel:asymptotic",
+     "__const_5,x -> __log_4; x -> __pi_1; __log_4 -> __power_3; "
+     "__power_3,x -> __multiply_2; __multiply_2,__pi_1 -> __asymptotic_6",
+     [{"op": "asymptotic", "type": "relation"}]),
 
     ("nt_euler_totient",
      r"\phi(n) = n",
