@@ -521,7 +521,7 @@ svg.d3-semantic-graph {
     border: 1px dashed;
     border-radius: 8px;
     padding: 10px 36px 10px 18px;
-    font-size: 0.88em;
+    font-size: 0.78rem;
     font-style: italic;
     line-height: 1.45;
     backdrop-filter: blur(8px);
@@ -538,7 +538,7 @@ svg.d3-semantic-graph {
 }
 
 .d3sg-anno-card .katex {
-    font-size: 0.92em;
+    font-size: 1.1em;
 }
 
 .d3sg-anno-ai-btn {
@@ -656,7 +656,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 22:34 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-05-26 01:33 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Thermodynamics (15 expressions)</div>
 <div class="row">
   <div>
@@ -2235,13 +2235,13 @@ svg.d3-semantic-graph {
   S["$S$"]:::scalar
   __multiply_2(("$\times$")):::operator
   k__B_["$k_{B}$"]:::scalar
-  __log_3{{"$\log(\cdot, \cdot)$"}}:::function
+  __log_3{{"$\ln(\cdot)$"}}:::function
   W["$W$"]:::scalar
   __const_4["$e$"]:::constant
   S --&gt; __equals_1
   k__B_ --&gt; __multiply_2
   W --&gt; __log_3
-  __const_4 --&gt; __log_3
+  __const_4 --&gt;|base| __log_3
   __log_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -2276,7 +2276,7 @@ svg.d3-semantic-graph {
       "id": "__multiply_2",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "k_{B} \\log{\\left(W \\right)}"
+      "subexpr": "k_{B} \\ln{\\left(W \\right)}"
     },
     {
       "id": "k_{B}",
@@ -2288,7 +2288,7 @@ svg.d3-semantic-graph {
       "id": "__log_3",
       "type": "function",
       "op": "log",
-      "subexpr": "\\log{\\left(W \\right)}"
+      "subexpr": "\\ln{\\left(W \\right)}"
     },
     {
       "id": "W",
@@ -2321,7 +2321,8 @@ svg.d3-semantic-graph {
     },
     {
       "from": "__const_4",
-      "to": "__log_3"
+      "to": "__log_3",
+      "role": "base"
     },
     {
       "from": "__log_3",
@@ -2353,13 +2354,13 @@ svg.d3-semantic-graph {
   S["$S$"]:::scalar
   __multiply_2(("$\times$")):::operator
   k__B_["$k_{B}$"]:::scalar
-  __log_3{{"$\log(\cdot, \cdot)$"}}:::function
+  __log_3{{"$\ln(\cdot)$"}}:::function
   W["$W$"]:::scalar
   __const_4["$e$"]:::constant
   S --&gt; __equals_1
   k__B_ --&gt; __multiply_2
   W --&gt; __log_3
-  __const_4 --&gt; __log_3
+  __const_4 --&gt;|base| __log_3
   __log_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -2369,7 +2370,7 @@ svg.d3-semantic-graph {
   linkStyle 4 stroke:#ef5350,stroke-width:3px
   linkStyle 5 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;S = k_B \\ln W&quot;},{&quot;id&quot;:&quot;S&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;S&quot;,&quot;subexpr&quot;:&quot;S&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;k_{B} \\log{\\left(W \\right)}&quot;},{&quot;id&quot;:&quot;k_{B}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k_{B}&quot;,&quot;subexpr&quot;:&quot;k_{B}&quot;},{&quot;id&quot;:&quot;__log_3&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;log&quot;,&quot;subexpr&quot;:&quot;\\log{\\left(W \\right)}&quot;},{&quot;id&quot;:&quot;W&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;W&quot;,&quot;subexpr&quot;:&quot;W&quot;},{&quot;id&quot;:&quot;__const_4&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;e (Euler's number)&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;S&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;k_{B}&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;W&quot;,&quot;to&quot;:&quot;__log_3&quot;},{&quot;from&quot;:&quot;__const_4&quot;,&quot;to&quot;:&quot;__log_3&quot;},{&quot;from&quot;:&quot;__log_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;S = k_B \\ln W&quot;},{&quot;id&quot;:&quot;S&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;S&quot;,&quot;subexpr&quot;:&quot;S&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;k_{B} \\ln{\\left(W \\right)}&quot;},{&quot;id&quot;:&quot;k_{B}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k_{B}&quot;,&quot;subexpr&quot;:&quot;k_{B}&quot;},{&quot;id&quot;:&quot;__log_3&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;log&quot;,&quot;subexpr&quot;:&quot;\\ln{\\left(W \\right)}&quot;},{&quot;id&quot;:&quot;W&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;W&quot;,&quot;subexpr&quot;:&quot;W&quot;},{&quot;id&quot;:&quot;__const_4&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;e (Euler's number)&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;S&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;k_{B}&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;W&quot;,&quot;to&quot;:&quot;__log_3&quot;},{&quot;from&quot;:&quot;__const_4&quot;,&quot;to&quot;:&quot;__log_3&quot;,&quot;role&quot;:&quot;base&quot;},{&quot;from&quot;:&quot;__log_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -3377,7 +3378,7 @@ svg.d3-semantic-graph {
 </pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;v_{rms} = \\sqrt{\\frac{3 k_B T}{m}}&quot;},{&quot;id&quot;:&quot;v_{rms}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;v_{\\text{rms}}&quot;,&quot;subexpr&quot;:&quot;v_{\\text{rms}}&quot;},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;1/2&quot;,&quot;subexpr&quot;:&quot;\\sqrt{\\frac{3 T k_{B}}{m}}&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{m} 3 T k_{B}&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;3 T k_{B}&quot;},{&quot;id&quot;:&quot;__num_5&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;3&quot;,&quot;subexpr&quot;:&quot;3&quot;},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;T k_{B}&quot;},{&quot;id&quot;:&quot;k_{B}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k_{B}&quot;,&quot;subexpr&quot;:&quot;k_{B}&quot;},{&quot;id&quot;:&quot;T&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;T&quot;,&quot;subexpr&quot;:&quot;T&quot;},{&quot;id&quot;:&quot;__power_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{m}&quot;},{&quot;id&quot;:&quot;m&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;m&quot;,&quot;subexpr&quot;:&quot;m&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;v_{rms}&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;k_{B}&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;T&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;m&quot;,&quot;to&quot;:&quot;__power_7&quot;},{&quot;from&quot;:&quot;__power_7&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
-<div class="summary"><span class="count">15</span> rendered, <span class="count">0</span> errors out of <span class="count">15</span> expressions</div>
+<div class="summary">✅ <span class="count">15</span> rendered, <span class="count">0</span> errors out of <span class="count">15</span> expressions</div>
 <script>
 document.querySelectorAll('.row-toggle').forEach(btn => {
   btn.addEventListener('click', () => {

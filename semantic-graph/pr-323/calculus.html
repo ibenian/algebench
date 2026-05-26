@@ -521,7 +521,7 @@ svg.d3-semantic-graph {
     border: 1px dashed;
     border-radius: 8px;
     padding: 10px 36px 10px 18px;
-    font-size: 0.88em;
+    font-size: 0.78rem;
     font-style: italic;
     line-height: 1.45;
     backdrop-filter: blur(8px);
@@ -538,7 +538,7 @@ svg.d3-semantic-graph {
 }
 
 .d3sg-anno-card .katex {
-    font-size: 0.92em;
+    font-size: 1.1em;
 }
 
 .d3sg-anno-ai-btn {
@@ -656,7 +656,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 22:34 UTC &middot; theme: default-dark &middot; 13 expressions</div>
+<div class="report-meta">Generated 2026-05-26 01:33 UTC &middot; theme: default-dark &middot; 13 expressions</div>
 <div class="section-title">Calculus (13 expressions)</div>
 <div class="row">
   <div>
@@ -3606,7 +3606,7 @@ svg.d3-semantic-graph {
 </pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\sum_{n=0}^{\\infty} r^n = \\frac{1}{1 - r}&quot;},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;},{&quot;id&quot;:&quot;__num_3&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;},{&quot;id&quot;:&quot;__const_4&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;infinity&quot;,&quot;latex&quot;:&quot;\\infty&quot;,&quot;subexpr&quot;:&quot;\\infty&quot;},{&quot;id&quot;:&quot;__equals_5&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;n = 0&quot;},{&quot;id&quot;:&quot;__sum_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;sum&quot;,&quot;with_respect_to&quot;:&quot;n&quot;,&quot;lower_bound&quot;:&quot;__num_3&quot;,&quot;upper_bound&quot;:&quot;__const_4&quot;,&quot;subexpr&quot;:&quot;\\sum_{n=0}^{\\infty} r^{n}&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;r^{n}&quot;},{&quot;id&quot;:&quot;r&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;r&quot;,&quot;subexpr&quot;:&quot;r&quot;},{&quot;id&quot;:&quot;__power_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{1 - r}&quot;},{&quot;id&quot;:&quot;__add_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;1 - r&quot;},{&quot;id&quot;:&quot;__num_9&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;},{&quot;id&quot;:&quot;__negation_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-r&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__sum_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__equals_5&quot;},{&quot;from&quot;:&quot;__num_3&quot;,&quot;to&quot;:&quot;__equals_5&quot;},{&quot;from&quot;:&quot;__equals_5&quot;,&quot;to&quot;:&quot;__sum_2&quot;,&quot;role&quot;:&quot;lb&quot;},{&quot;from&quot;:&quot;__const_4&quot;,&quot;to&quot;:&quot;__sum_2&quot;,&quot;role&quot;:&quot;ub&quot;},{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__power_6&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__sum_2&quot;},{&quot;from&quot;:&quot;__sum_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_9&quot;,&quot;to&quot;:&quot;__add_8&quot;},{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__negation_10&quot;},{&quot;from&quot;:&quot;__negation_10&quot;,&quot;to&quot;:&quot;__add_8&quot;},{&quot;from&quot;:&quot;__add_8&quot;,&quot;to&quot;:&quot;__power_7&quot;},{&quot;from&quot;:&quot;__power_7&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
-<div class="summary"><span class="count">13</span> rendered, <span class="count">0</span> errors out of <span class="count">13</span> expressions</div>
+<div class="summary">✅ <span class="count">13</span> rendered, <span class="count">0</span> errors out of <span class="count">13</span> expressions</div>
 <script>
 document.querySelectorAll('.row-toggle').forEach(btn => {
   btn.addEventListener('click', () => {

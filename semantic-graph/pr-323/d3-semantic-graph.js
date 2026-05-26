@@ -151,7 +151,8 @@ function inferEdgeSemantic(edge, nodeById) {
 // ---------------------------------------------------------------------------
 
 const OPERATOR_GLYPHS = {
-    equals: '=', greater_than: '>', less_than: '<',
+    equals: '=', congruent: '≡', divides: '∣', asymptotic: '∼',
+    greater_than: '>', less_than: '<',
     greater_equal: '≥', less_equal: '≤', not_equal: '≠',
     multiply: '×', add: '+', subtract: '−',
     divide: '÷', integral: '∫', closed_integral: '∮',
@@ -169,7 +170,8 @@ const OPERATOR_GLYPHS = {
 // LaTeX equivalents for operator glyphs — used when rendering operator
 // labels through KaTeX (nodes without an explicit ``latex`` field).
 const OPERATOR_LATEX = {
-    equals: '=', greater_than: '>', less_than: '<',
+    equals: '=', congruent: '\\equiv', divides: '\\mid', asymptotic: '\\sim',
+    greater_than: '>', less_than: '<',
     greater_equal: '\\geq', less_equal: '\\leq', not_equal: '\\neq',
     element_of: '\\in', not_element_of: '\\notin',
     multiply: '\\times', add: '+', subtract: '-',
@@ -1041,16 +1043,6 @@ export class D3SemanticGraphRenderer {
             if (this.katex && latex) {
                 try {
                     this.katex.render(latex, content, { throwOnError: false, displayMode: false });
-                    content.querySelectorAll('.katex-html').forEach(h => {
-                        h.style.whiteSpace = 'normal';
-                        h.style.display = 'block';
-                        h.style.textAlign = 'center';
-                    });
-                    content.querySelectorAll('.base').forEach(base => {
-                        base.style.display = 'inline';
-                        base.style.whiteSpace = 'normal';
-                        this._groupKatexWords(base);
-                    });
                 } catch (_) {
                     content.textContent = latex;
                 }
