@@ -1116,6 +1116,14 @@ class SemanticGraphBuilder:
         if "ln" in self._latex_commands:
             result = result.replace(r"\log", r"\ln")
 
+        # Strip synthetic dummy bounds injected for bare \sum / \prod.
+        for dummy in LaTeXPreprocessor.BARE_SUM_DUMMIES:
+            result = re.sub(
+                rf"_\{{\\{dummy}=0\}}\^\{{\\infty\}}\s*",
+                " ",
+                result,
+            )
+
         return result
 
     def _restore_placeholders(self, latex: str) -> str:
@@ -1421,7 +1429,8 @@ class SemanticGraphBuilder:
                         # Upper bound feeds directly into the sum/product.
                         self._add_edge(upper_nid, node_id, role="ub")
 
-            node_attrs["with_respect_to"] = ", ".join(wrt_ids)
+            if wrt_ids:
+                node_attrs["with_respect_to"] = ", ".join(wrt_ids)
             if lower_nid is not None:
                 node_attrs["lower_bound"] = lower_nid
             if upper_nid is not None:
@@ -1429,6 +1438,18 @@ class SemanticGraphBuilder:
             self._add_node(node_id, **node_attrs)
             child_id = self._walk(expr.function)
             self._add_edge(child_id, node_id)
+
+            # For bare sums (all indices were dummies), override the
+            # subexpr to strip the synthetic bounds that were only
+            # needed for SymPy parsing.
+            if not wrt_ids:
+                body_subexpr = self._subexpr_ordered(expr.function)
+                cmd = r"\sum" if isinstance(expr, Sum) else r"\prod"
+                for node in self.nodes:
+                    if node["id"] == node_id:
+                        node["subexpr"] = rf"{cmd} {body_subexpr}"
+                        break
+
             return node_id
 
         # --- Power with literal exponent ---
