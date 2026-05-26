@@ -344,9 +344,16 @@ def _format_label(
             return f"${agg_cmd}_{{{wrt}}}$"
         if node_type == "function" and op:
             fn_name = OPERATOR_LATEX.get(op, node.get("latex") or op)
+            effective_arity = arity
+            # Natural-log special case: when subexpr uses \ln, display
+            # as ln(·) and drop the implicit base-e argument.
+            subexpr = node.get("subexpr", "")
+            if op == "log" and r"\ln" in subexpr:
+                fn_name = r"\ln"
+                effective_arity = max(arity - 1, 1)  # drop the e child
             if r"\cdot" in fn_name:
                 return f"${fn_name}$"
-            dots = r", ".join([r"\cdot"] * max(arity, 1))
+            dots = r", ".join([r"\cdot"] * max(effective_arity, 1))
             return f"${fn_name}({dots})$"
         node_latex = node.get("latex")
         if node_latex:

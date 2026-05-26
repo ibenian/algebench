@@ -1107,7 +1107,14 @@ class SemanticGraphBuilder:
             den = " ".join(var_parts)
             return rf"\frac{{{num}}}{{{den}}}"
 
-        return self._restore_placeholders(sympy.latex(expr))
+        result = self._restore_placeholders(sympy.latex(expr))
+
+        # SymPy always renders natural log as ``\log``; restore the
+        # original ``\ln`` notation when the input LaTeX used it.
+        if "ln" in self._latex_commands:
+            result = result.replace(r"\log", r"\ln")
+
+        return result
 
     def _restore_placeholders(self, latex: str) -> str:
         if not self._overrides:
