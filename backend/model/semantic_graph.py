@@ -43,7 +43,7 @@ Role = Literal[
 
 EdgeSemantic = Literal["direct", "inverse", "neutral"]
 
-EdgeRole = Literal["lhs", "rhs", "wrt", "exp", "lb", "ub", "value", "condition", "modulus"]
+EdgeRole = Literal["lhs", "rhs", "wrt", "exp", "base", "lb", "ub", "value", "condition", "modulus"]
 
 ClassificationKind = Literal["algebraic", "ODE", "PDE", "statements", "piecewise"]
 

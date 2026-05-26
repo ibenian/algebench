@@ -1261,9 +1261,12 @@ class SemanticGraphBuilder:
             if func_latex:
                 func_attrs["latex"] = func_latex
             self._add_node(node_id, **func_attrs)
-            for arg in expr.args:
+            # log(arg, base) — mark the base edge with role="base"
+            is_log = isinstance(expr, log)
+            for i, arg in enumerate(expr.args):
                 child_id = self._walk(arg)
-                self._add_edge(child_id, node_id)
+                edge_role = "base" if is_log and i == 1 else None
+                self._add_edge(child_id, node_id, role=edge_role)
             return node_id
 
         # --- Limit ---

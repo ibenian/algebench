@@ -112,7 +112,7 @@ class TestTranslatorConstants:
 
     def test_relation_map(self):
         assert isinstance(RELATION_MAP, list)
-        assert len(RELATION_MAP) == 19
+        assert len(RELATION_MAP) == 22
         ops = {entry[1]["op"] for entry in RELATION_MAP}
         assert "element_of" in ops
 
