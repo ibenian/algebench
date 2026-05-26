@@ -1043,16 +1043,6 @@ export class D3SemanticGraphRenderer {
             if (this.katex && latex) {
                 try {
                     this.katex.render(latex, content, { throwOnError: false, displayMode: false });
-                    content.querySelectorAll('.katex-html').forEach(h => {
-                        h.style.whiteSpace = 'normal';
-                        h.style.display = 'block';
-                        h.style.textAlign = 'center';
-                    });
-                    content.querySelectorAll('.base').forEach(base => {
-                        base.style.display = 'inline';
-                        base.style.whiteSpace = 'normal';
-                        this._groupKatexWords(base);
-                    });
                 } catch (_) {
                     content.textContent = latex;
                 }
