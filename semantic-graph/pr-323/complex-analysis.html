@@ -656,7 +656,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-26 02:22 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="report-meta">Generated 2026-05-26 03:22 UTC &middot; theme: default-dark &middot; 10 expressions</div>
 <div class="section-title">Complex Analysis (10 expressions)</div>
 <div class="row">
   <div>
@@ -1991,14 +1991,24 @@ svg.d3-semantic-graph {
   __num_5["$2$"]:::number
   __multiply_6(("$\times$")):::operator
   pi["$\pi$"]:::constant
+  __multiply_7(("$\times$")):::operator
   i["$i$"]:::scalar
+  __sum_8(("$\sum$")):::operator
+  __Res_9{{"$Res(\cdot, \cdot)$"}}:::function
+  f["$f$"]:::scalar
+  z__k_["$z_{k}$"]:::scalar
   z --&gt;|wrt| __closed_integral_2
   z --&gt; __f_3
   __f_3 --&gt; __closed_integral_2
   __closed_integral_2 --&gt; __equals_1
   __num_5 --&gt; __multiply_4
   pi --&gt; __multiply_6
-  i --&gt; __multiply_6
+  i --&gt; __multiply_7
+  f --&gt; __Res_9
+  z__k_ --&gt; __Res_9
+  __Res_9 --&gt; __sum_8
+  __sum_8 --&gt; __multiply_7
+  __multiply_7 --&gt; __multiply_6
   __multiply_6 --&gt; __multiply_4
   __multiply_4 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -2008,8 +2018,13 @@ svg.d3-semantic-graph {
   linkStyle 4 stroke:#ef5350,stroke-width:3px
   linkStyle 5 stroke:#ef5350,stroke-width:3px
   linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#ef5350,stroke-width:3px
+  linkStyle 12 stroke:#ef5350,stroke-width:3px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2049,7 +2064,7 @@ svg.d3-semantic-graph {
       "id": "__multiply_4",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "2 i \\pi"
+      "subexpr": "2 \\pi i \\sum \\text{Res}{\\left(f,z_{k} \\right)}"
     },
     {
       "id": "__num_5",
@@ -2061,7 +2076,7 @@ svg.d3-semantic-graph {
       "id": "__multiply_6",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "i \\pi"
+      "subexpr": "\\pi i \\sum \\text{Res}{\\left(f,z_{k} \\right)}"
     },
     {
       "id": "pi",
@@ -2070,10 +2085,40 @@ svg.d3-semantic-graph {
       "subexpr": "\\pi"
     },
     {
+      "id": "__multiply_7",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "i \\sum \\text{Res}{\\left(f,z_{k} \\right)}"
+    },
+    {
       "id": "i",
       "type": "scalar",
       "latex": "i",
       "subexpr": "i"
+    },
+    {
+      "id": "__sum_8",
+      "type": "operator",
+      "op": "sum",
+      "subexpr": "\\sum \\text{Res}{\\left(f,z_{k} \\right)}"
+    },
+    {
+      "id": "__Res_9",
+      "type": "function",
+      "op": "Res",
+      "subexpr": "\\text{Res}{\\left(f,z_{k} \\right)}"
+    },
+    {
+      "id": "f",
+      "type": "scalar",
+      "latex": "f",
+      "subexpr": "f"
+    },
+    {
+      "id": "z_{k}",
+      "type": "scalar",
+      "latex": "z_{k}",
+      "subexpr": "z_{k}"
     }
   ],
   "edges": [
@@ -2108,6 +2153,30 @@ svg.d3-semantic-graph {
     },
     {
       "from": "i",
+      "to": "__multiply_7",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "f",
+      "to": "__Res_9"
+    },
+    {
+      "from": "z_{k}",
+      "to": "__Res_9"
+    },
+    {
+      "from": "__Res_9",
+      "to": "__sum_8"
+    },
+    {
+      "from": "__sum_8",
+      "to": "__multiply_7",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_7",
       "to": "__multiply_6",
       "semantic": "direct",
       "weight": 1.0
@@ -2146,14 +2215,24 @@ svg.d3-semantic-graph {
   __num_5["$2$"]:::number
   __multiply_6(("$\times$")):::operator
   pi["$\pi$"]:::constant
+  __multiply_7(("$\times$")):::operator
   i["$i$"]:::scalar
+  __sum_8(("$\sum$")):::operator
+  __Res_9{{"$Res(\cdot, \cdot)$"}}:::function
+  f["$f$"]:::scalar
+  z__k_["$z_{k}$"]:::scalar
   z --&gt;|wrt| __closed_integral_2
   z --&gt; __f_3
   __f_3 --&gt; __closed_integral_2
   __closed_integral_2 --&gt; __equals_1
   __num_5 --&gt; __multiply_4
   pi --&gt; __multiply_6
-  i --&gt; __multiply_6
+  i --&gt; __multiply_7
+  f --&gt; __Res_9
+  z__k_ --&gt; __Res_9
+  __Res_9 --&gt; __sum_8
+  __sum_8 --&gt; __multiply_7
+  __multiply_7 --&gt; __multiply_6
   __multiply_6 --&gt; __multiply_4
   __multiply_4 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -2163,10 +2242,15 @@ svg.d3-semantic-graph {
   linkStyle 4 stroke:#ef5350,stroke-width:3px
   linkStyle 5 stroke:#ef5350,stroke-width:3px
   linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#ef5350,stroke-width:3px
+  linkStyle 12 stroke:#ef5350,stroke-width:3px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\oint f(z) dz = 2\\pi i \\sum \\text{Res}(f, z_k)&quot;},{&quot;id&quot;:&quot;z&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;z&quot;,&quot;subexpr&quot;:&quot;z&quot;},{&quot;id&quot;:&quot;__closed_integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;closed_integral&quot;,&quot;with_respect_to&quot;:&quot;z&quot;,&quot;subexpr&quot;:&quot;\\int f{\\left(z \\right)}\\, dz&quot;},{&quot;id&quot;:&quot;__f_3&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(z \\right)}&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;2 i \\pi&quot;},{&quot;id&quot;:&quot;__num_5&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;i \\pi&quot;},{&quot;id&quot;:&quot;pi&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;latex&quot;:&quot;\\pi&quot;,&quot;subexpr&quot;:&quot;\\pi&quot;},{&quot;id&quot;:&quot;i&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;i&quot;,&quot;subexpr&quot;:&quot;i&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__f_3&quot;},{&quot;from&quot;:&quot;__f_3&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;},{&quot;from&quot;:&quot;__closed_integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;pi&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;i&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\oint f(z) dz = 2\\pi i \\sum \\text{Res}(f, z_k)&quot;},{&quot;id&quot;:&quot;z&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;z&quot;,&quot;subexpr&quot;:&quot;z&quot;},{&quot;id&quot;:&quot;__closed_integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;closed_integral&quot;,&quot;with_respect_to&quot;:&quot;z&quot;,&quot;subexpr&quot;:&quot;\\int f{\\left(z \\right)}\\, dz&quot;},{&quot;id&quot;:&quot;__f_3&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(z \\right)}&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;2 \\pi i \\sum \\text{Res}{\\left(f,z_{k} \\right)}&quot;},{&quot;id&quot;:&quot;__num_5&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\pi i \\sum \\text{Res}{\\left(f,z_{k} \\right)}&quot;},{&quot;id&quot;:&quot;pi&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;latex&quot;:&quot;\\pi&quot;,&quot;subexpr&quot;:&quot;\\pi&quot;},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;i \\sum \\text{Res}{\\left(f,z_{k} \\right)}&quot;},{&quot;id&quot;:&quot;i&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;i&quot;,&quot;subexpr&quot;:&quot;i&quot;},{&quot;id&quot;:&quot;__sum_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;sum&quot;,&quot;subexpr&quot;:&quot;\\sum \\text{Res}{\\left(f,z_{k} \\right)}&quot;},{&quot;id&quot;:&quot;__Res_9&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;Res&quot;,&quot;subexpr&quot;:&quot;\\text{Res}{\\left(f,z_{k} \\right)}&quot;},{&quot;id&quot;:&quot;f&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f&quot;},{&quot;id&quot;:&quot;z_{k}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;z_{k}&quot;,&quot;subexpr&quot;:&quot;z_{k}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__f_3&quot;},{&quot;from&quot;:&quot;__f_3&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;},{&quot;from&quot;:&quot;__closed_integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;pi&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;i&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;f&quot;,&quot;to&quot;:&quot;__Res_9&quot;},{&quot;from&quot;:&quot;z_{k}&quot;,&quot;to&quot;:&quot;__Res_9&quot;},{&quot;from&quot;:&quot;__Res_9&quot;,&quot;to&quot;:&quot;__sum_8&quot;},{&quot;from&quot;:&quot;__sum_8&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
