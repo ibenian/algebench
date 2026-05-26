@@ -250,6 +250,131 @@ def _normalize_latex(latex: str) -> str:
     return latex
 
 
+def _rewrite_conditional_bar(latex: str) -> str:
+    r"""Rewrite ``P(A|B)`` → ``P(A, B)`` so SymPy sees a two-arg function.
+
+    SymPy's ``parse_latex`` treats ``|`` as absolute-value delimiters,
+    which causes ``P(A|B)`` to collapse.  This pass detects bare ``|``
+    or ``\mid`` inside function-call parentheses and rewrites them as
+    commas.
+
+    Only single unpaired ``|`` is rewritten — paired ``|…|`` (absolute
+    value) is left untouched.  Example:
+
+    * ``P(A|B)``          → ``P(A, B)``         ← conditional bar
+    * ``P(|X| \geq a)``   → unchanged           ← absolute value
+    * ``P(A \mid B)``     → ``P(A, B)``         ← \mid form
+    """
+    if "|" not in latex and r"\mid" not in latex:
+        return latex
+
+    out: list[str] = []
+    i = 0
+    n = len(latex)
+    while i < n:
+        # Look for '(' preceded by an identifier — a function call.
+        if latex[i] == "(":
+            j = i - 1
+            while j >= 0 and latex[j] in " \t":
+                j -= 1
+            is_func_call = j >= 0 and (latex[j].isalpha() or latex[j] == "}")
+
+            if is_func_call:
+                # Scan the parenthesized body to find matching ')'.
+                depth = 1
+                body_start = i + 1
+                k = body_start
+                while k < n and depth > 0:
+                    if latex[k] == "(":
+                        depth += 1
+                    elif latex[k] == ")":
+                        depth -= 1
+                    k += 1
+                body_end = k - 1  # index of matching ')'
+                body = latex[body_start:body_end]
+
+                # Normalize \mid → | ONLY within this function body.
+                body = re.sub(r"\s*\\mid\b\s*", "|", body)
+
+                # Count bare pipes in body (not inside nested parens).
+                # Detect: is there exactly one unpaired |?
+                pipe_positions = _find_unpaired_pipes(body)
+                if len(pipe_positions) == 1:
+                    # Single unpaired pipe → conditional bar → rewrite to comma.
+                    pp = pipe_positions[0]
+                    body = body[:pp] + ", " + body[pp + 1:]
+
+                out.append("(")
+                out.append(body)
+                out.append(")")
+                i = body_end + 1
+                continue
+
+        out.append(latex[i])
+        i += 1
+
+    return "".join(out)
+
+
+def _find_unpaired_pipes(s: str) -> list[int]:
+    """Find positions of ``|`` chars that are NOT part of ``|…|`` pairs.
+
+    Inside function-call bodies, paired ``|`` (absolute value) comes in
+    ``|expr|`` form.  An unpaired ``|`` is the conditional bar.
+
+    Heuristic: a ``|`` at position *p* is paired if there's another ``|``
+    at some later position *q* such that there's non-whitespace content
+    between them (the absolute-value body).  A single ``|`` with no
+    viable partner is unpaired → conditional bar.
+    """
+    # Collect pipe positions that aren't inside nested parens/braces.
+    pipes: list[int] = []
+    depth_paren = 0
+    depth_brace = 0
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if c == "(":
+            depth_paren += 1
+        elif c == ")":
+            depth_paren -= 1
+        elif c == "{":
+            depth_brace += 1
+        elif c == "}":
+            depth_brace -= 1
+        elif c == "|" and depth_paren == 0 and depth_brace == 0:
+            pipes.append(i)
+        i += 1
+
+    if not pipes:
+        return []
+
+    # Even count → all paired (absolute values); odd → one is conditional.
+    if len(pipes) % 2 == 0:
+        return []  # all paired
+
+    # Odd count: find which pipe is the conditional bar.
+    # Strategy: try to greedily pair pipes left→right.  The leftover is
+    # the conditional bar.
+    # A valid |…| pair has non-whitespace between the pipes.
+    paired = set()
+    j = 0
+    while j < len(pipes) - 1:
+        left = pipes[j]
+        right = pipes[j + 1]
+        between = s[left + 1:right].strip()
+        if between:
+            # Valid absolute-value pair.
+            paired.add(j)
+            paired.add(j + 1)
+            j += 2
+        else:
+            j += 1
+
+    unpaired = [pipes[k] for k in range(len(pipes)) if k not in paired]
+    return unpaired
+
+
 def _collapse_multichar_subscripts(
     latex: str,
 ) -> tuple[str, dict[str, dict[str, str]]]:
@@ -2159,6 +2284,7 @@ def _latex_to_semantic_graph_dict(
     """Parse a LaTeX string and return a semantic graph dict (internal)."""
     user_overrides = overrides
     latex = _normalize_latex(latex)
+    latex = _rewrite_conditional_bar(latex)
     latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
 
     # --- Piecewise / cases environment ---

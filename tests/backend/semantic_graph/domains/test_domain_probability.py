@@ -81,7 +81,14 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
 
     ("prob_bayes",
      r"P(A|B) = \frac{P(B|A) P(A)}{P(B)}",
-     PASS, "", "",
+     PASS,
+         "A -> fn:P; A,B -> fn:P; A,B -> fn:P; B -> fn:P; "
+         "fn:P,fn:P -> multiply; fn:P -> power; "
+         "multiply,power -> multiply; fn:P,multiply -> rel:equals",
+         "A,B -> __P_2; A,B -> __P_5; A -> __P_6; B -> __P_8; "
+         "__P_5,__P_6 -> __multiply_4; __P_8 -> __power_7; "
+         "__multiply_4,__power_7 -> __multiply_3; "
+         "__P_2,__multiply_3 -> __equals_1",
      None),
 
     ("prob_normal",
@@ -103,11 +110,11 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     ("prob_conditional",
      r"P(A \cap B) = P(A) P(B|A)",
      PASS,
-         "A -> fn:P; B,cap -> multiply; A,multiply -> multiply; "
-         "P,fn:P -> multiply; multiply -> fn:P; "
-         "fn:P,multiply -> rel:equals",
-         "A -> __P_6; B,cap -> __multiply_4; "
-         "A,__multiply_4 -> __multiply_3; P,__P_6 -> __multiply_5; "
+         "A -> fn:P; A,B -> fn:P; B,cap -> multiply; "
+         "A,multiply -> multiply; fn:P,fn:P -> multiply; "
+         "multiply -> fn:P; fn:P,multiply -> rel:equals",
+         "A -> __P_6; A,B -> __P_7; B,cap -> __multiply_4; "
+         "A,__multiply_4 -> __multiply_3; __P_6,__P_7 -> __multiply_5; "
          "__multiply_3 -> __P_2; __P_2,__multiply_5 -> __equals_1",
      None),
 
