@@ -308,6 +308,49 @@ def _collapse_text_commands(latex: str) -> tuple[str, dict[str, dict[str, str]]]
     return rewritten, overrides
 
 
+def _collapse_overline(
+    latex: str,
+    start_idx: int = 0,
+) -> tuple[str, dict[str, dict[str, str]]]:
+    r"""Replace ``\overline{X}`` with ``\Xi_{N}`` placeholder symbols.
+
+    ``\overline`` is semantically ambiguous — it can mean complex conjugate,
+    logical NOT, statistical mean, or closure depending on the domain.
+    Rather than interpreting it, we treat ``\overline{X}`` as a distinct
+    scalar variable whose display label is ``\overline{X}``.
+
+    *start_idx* avoids ``Xi_{N}`` collisions with earlier collapse passes.
+    """
+    overrides: dict[str, dict[str, str]] = {}
+    if r"\overline" not in latex:
+        return latex, overrides
+
+    seen: dict[str, int] = {}
+    _counter = [start_idx]
+
+    # Match \overline{...} with balanced braces (single nesting level)
+    pattern = re.compile(
+        r"\\overline\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}"
+    )
+
+    def repl(m: re.Match) -> str:
+        body = m.group(1).strip()
+        full = m.group(0)
+        if full not in seen:
+            idx = _counter[0]
+            _counter[0] += 1
+            seen[full] = idx
+            overrides[f"Xi_{{{idx}}}"] = {
+                "label": rf"\overline{{{body}}}",
+                "latex": rf"\overline{{{body}}}",
+                "type": "scalar",
+            }
+        return rf"\Xi_{{{seen[full]}}}"
+
+    rewritten = pattern.sub(repl, latex)
+    return rewritten, overrides
+
+
 def _collapse_braket_notation(latex: str) -> tuple[str, dict[str, dict[str, str]]]:
     r"""Replace Dirac braket inner products with ``\Phi_{N}`` placeholders."""
     overrides: dict[str, dict[str, str]] = {}
@@ -486,7 +529,7 @@ def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, 
 # handled by ``LaTeXPreprocessor.rewrite_dot_derivatives``.
 _TRACKED_ACCENT_RE = re.compile(
     r"\\(vec|hat|bar|tilde"
-    r"|overline|widehat|widetilde|check|breve|mathring|acute|grave)"
+    r"|widehat|widetilde|check|breve|mathring|acute|grave)"
     r"\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}"
 )
 
@@ -2142,7 +2185,10 @@ def _latex_to_semantic_graph_dict(
     compound_collapsed, compound_overrides = _collapse_compound_symbols(braket_collapsed)
     subscript_collapsed, subscript_overrides = _collapse_multichar_subscripts(compound_collapsed)
     collapsed, text_overrides = _collapse_text_commands(subscript_collapsed)
-    font_unwrapped = _strip_symbol_font_commands(collapsed)
+    # Count existing Xi_{N} placeholders to avoid index collisions
+    xi_count = len(subscript_overrides) + len(text_overrides)
+    overline_collapsed, overline_overrides = _collapse_overline(collapsed, start_idx=xi_count)
+    font_unwrapped = _strip_symbol_font_commands(overline_collapsed)
     preprocessed, bare_sum_indices = _preprocess_latex(font_unwrapped)
 
     # --- Strip \pmod{…} before SymPy sees it (non-congruent paths) ---
@@ -2164,6 +2210,7 @@ def _latex_to_semantic_graph_dict(
         **compound_overrides,
         **subscript_overrides,
         **text_overrides,
+        **overline_overrides,
         **(user_overrides or {}),
     }
     overrides = merged_overrides

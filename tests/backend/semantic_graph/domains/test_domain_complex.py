@@ -90,12 +90,12 @@ COMPLEX_EXPRESSIONS: list[CatalogEntry] = [
      None),
 
     ("complex_conjugate",
-     r"z \bar{z} = |z|^2",
+     r"z \overline{z} = |z|^2",
      PASS,
-         "z -> fn:abs; z,z -> multiply; fn:abs -> power; "
-         "multiply,power -> rel:equals",
-         "z -> __abs_4; z,z -> __multiply_2; __abs_4 -> __power_3; "
-         "__multiply_2,__power_3 -> __equals_1",
+         r"z -> fn:abs; \overline{z},z -> multiply; "
+         "fn:abs -> power; multiply,power -> rel:equals",
+         r"z -> __abs_4; \overline{z},z -> __multiply_2; "
+         "__abs_4 -> __power_3; __multiply_2,__power_3 -> __equals_1",
      [{"op": "power", "exponent": "2"}]),
 
     ("complex_cauchy_integral",

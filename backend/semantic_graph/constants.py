@@ -27,7 +27,7 @@ _GREEK_POOL: list[str] = [
 
 _ACCENT_COMMANDS: tuple[str, ...] = (
     "vec", "hat", "bar", "tilde",
-    "overline", "underline", "widehat", "widetilde", "check", "breve",
+    "underline", "widehat", "widetilde", "check", "breve",
     "mathring", "acute", "grave",
     "mathbf", "mathrm", "mathit", "mathsf", "mathcal", "mathfrak",
     "boldsymbol", "bm", "operatorname",
