@@ -656,7 +656,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-26 03:22 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="report-meta">Generated 2026-05-26 08:54 UTC &middot; theme: default-dark &middot; 10 expressions</div>
 <div class="section-title">Complex Analysis (10 expressions)</div>
 <div class="row">
   <div>
@@ -1469,7 +1469,7 @@ svg.d3-semantic-graph {
 <div class="row">
   <div>
     <div class="row-id">complex_conjugate</div>
-    <div class="row-latex">$$z \bar{z} = |z|^2$$</div>
+    <div class="row-latex">$$z \overline{z} = |z|^2$$</div>
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
@@ -1486,11 +1486,12 @@ svg.d3-semantic-graph {
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   __multiply_2(("$\times$")):::operator
-  z["$\bar{z}$"]:::scalar
+  z["$z$"]:::scalar
+  n_\overline_z_["$\overline{z}$"]:::scalar
   __power_3(("${(\cdot)}^{2}$")):::operator
   __abs_4{{"$|\cdot|$"}}:::function
   z --&gt; __multiply_2
-  z --&gt; __multiply_2
+  n_\overline_z_ --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
   z --&gt; __abs_4
   __abs_4 --&gt; __power_3
@@ -1508,39 +1509,46 @@ svg.d3-semantic-graph {
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
     <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src" data-latex="z \bar{z} = |z|^2"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>z \bar{z} = |z|^2</div>
+  <div class="row-panel row-latex-src" data-latex="z \overline{z} = |z|^2"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>z \overline{z} = |z|^2</div>
   <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "\\bar{z} \\bar{z} = |\\bar{z}|^2"
+      "subexpr": "z \\overline{z} = |z|^2"
     },
     {
       "id": "__multiply_2",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\bar{z} \\bar{z}"
+      "subexpr": "z \\overline{z}"
     },
     {
       "id": "z",
       "type": "scalar",
-      "latex": "\\bar{z}",
-      "subexpr": "\\bar{z}"
+      "latex": "z",
+      "subexpr": "z"
+    },
+    {
+      "id": "\\overline{z}",
+      "type": "scalar",
+      "label": "\\overline{z}",
+      "latex": "\\overline{z}",
+      "subexpr": "\\overline{z}"
     },
     {
       "id": "__power_3",
       "type": "operator",
       "op": "power",
       "exponent": "2",
-      "subexpr": "\\left|{\\bar{z}}\\right|^{2}"
+      "subexpr": "\\left|{z}\\right|^{2}"
     },
     {
       "id": "__abs_4",
       "type": "function",
       "op": "abs",
-      "subexpr": "\\left|{\\bar{z}}\\right|"
+      "subexpr": "\\left|{z}\\right|"
     }
   ],
   "edges": [
@@ -1551,7 +1559,7 @@ svg.d3-semantic-graph {
       "weight": 1.0
     },
     {
-      "from": "z",
+      "from": "\\overline{z}",
       "to": "__multiply_2",
       "semantic": "direct",
       "weight": 1.0
@@ -1590,11 +1598,12 @@ svg.d3-semantic-graph {
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   __multiply_2(("$\times$")):::operator
-  z["$\bar{z}$"]:::scalar
+  z["$z$"]:::scalar
+  n_\overline_z_["$\overline{z}$"]:::scalar
   __power_3(("${(\cdot)}^{2}$")):::operator
   __abs_4{{"$|\cdot|$"}}:::function
   z --&gt; __multiply_2
-  z --&gt; __multiply_2
+  n_\overline_z_ --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
   z --&gt; __abs_4
   __abs_4 --&gt; __power_3
@@ -1606,7 +1615,7 @@ svg.d3-semantic-graph {
   linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#ef5350,stroke-width:6px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\bar{z} \\bar{z} = |\\bar{z}|^2&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\bar{z} \\bar{z}&quot;},{&quot;id&quot;:&quot;z&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\bar{z}&quot;,&quot;subexpr&quot;:&quot;\\bar{z}&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;\\left|{\\bar{z}}\\right|^{2}&quot;},{&quot;id&quot;:&quot;__abs_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;abs&quot;,&quot;subexpr&quot;:&quot;\\left|{\\bar{z}}\\right|&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__abs_4&quot;},{&quot;from&quot;:&quot;__abs_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;z \\overline{z} = |z|^2&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;z \\overline{z}&quot;},{&quot;id&quot;:&quot;z&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;z&quot;,&quot;subexpr&quot;:&quot;z&quot;},{&quot;id&quot;:&quot;\\overline{z}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;label&quot;:&quot;\\overline{z}&quot;,&quot;latex&quot;:&quot;\\overline{z}&quot;,&quot;subexpr&quot;:&quot;\\overline{z}&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;\\left|{z}\\right|^{2}&quot;},{&quot;id&quot;:&quot;__abs_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;abs&quot;,&quot;subexpr&quot;:&quot;\\left|{z}\\right|&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;\\overline{z}&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__abs_4&quot;},{&quot;from&quot;:&quot;__abs_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
