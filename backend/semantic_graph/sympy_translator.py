@@ -250,7 +250,7 @@ def _normalize_latex(latex: str) -> str:
     return latex
 
 
-def _rewrite_conditional_bar(latex: str) -> str:
+def _rewrite_conditional_bar(latex: str) -> tuple[str, set[str]]:
     r"""Rewrite ``P(A|B)`` → ``P(A, B)`` so SymPy sees a two-arg function.
 
     SymPy's ``parse_latex`` treats ``|`` as absolute-value delimiters,
@@ -264,11 +264,19 @@ def _rewrite_conditional_bar(latex: str) -> str:
     * ``P(A|B)``          → ``P(A, B)``         ← conditional bar
     * ``P(|X| \geq a)``   → unchanged           ← absolute value
     * ``P(A \mid B)``     → ``P(A, B)``         ← \mid form
+
+    Returns:
+        A tuple ``(rewritten_latex, conditional_bar_funcs)`` where
+        *conditional_bar_funcs* is the set of function names (e.g.
+        ``{"P"}``) that had a conditional bar rewritten.  The graph
+        builder uses this to tag the condition-argument edge with
+        ``role="condition"`` so the renderer can reconstruct ``P(·|·)``.
     """
     if "|" not in latex and r"\mid" not in latex:
-        return latex
+        return latex, set()
 
     out: list[str] = []
+    conditional_bar_funcs: set[str] = set()
     i = 0
     n = len(latex)
     while i < n:
@@ -280,6 +288,14 @@ def _rewrite_conditional_bar(latex: str) -> str:
             is_func_call = j >= 0 and (latex[j].isalpha() or latex[j] == "}")
 
             if is_func_call:
+                # Extract the function name preceding the '('.
+                name_end = j + 1
+                name_start = j
+                while name_start > 0 and (latex[name_start - 1].isalpha()
+                                          or latex[name_start - 1] == "_"):
+                    name_start -= 1
+                func_name = latex[name_start:name_end].strip()
+
                 # Scan the parenthesized body to find matching ')'.
                 depth = 1
                 body_start = i + 1
@@ -303,6 +319,7 @@ def _rewrite_conditional_bar(latex: str) -> str:
                     # Single unpaired pipe → conditional bar → rewrite to comma.
                     pp = pipe_positions[0]
                     body = body[:pp] + ", " + body[pp + 1:]
+                    conditional_bar_funcs.add(func_name)
 
                 out.append("(")
                 out.append(body)
@@ -313,7 +330,98 @@ def _rewrite_conditional_bar(latex: str) -> str:
         out.append(latex[i])
         i += 1
 
-    return "".join(out)
+    return "".join(out), conditional_bar_funcs
+
+
+def _restore_conditional_bar_in_subexpr(subexpr: str) -> str:
+    r"""Replace the last ``,`` inside the function's parens with ``\mid``.
+
+    SymPy renders ``P(A, B)`` as ``P{\left(A,B \right)}`` in the subexpr;
+    we want ``P{\left(A \mid B \right)}`` to match the original
+    conditional-probability notation.
+    """
+    # Find the innermost paren group that contains the function args.
+    # SymPy wraps as ``P{\left( ... \right)}``, so the comma is inside
+    # nested ``{`` and ``\left(`` — track depth with both ``(){}`` pairs.
+    depth = 0
+    last_comma = -1
+    # Find the opening ``(`` or ``\left(`` after the function name.
+    paren_depth = -1
+    for i, c in enumerate(subexpr):
+        if c in "({":
+            depth += 1
+            if c == "(" and paren_depth < 0:
+                paren_depth = depth
+        elif c in ")}":
+            depth -= 1
+        elif c == "," and paren_depth > 0 and depth == paren_depth:
+            last_comma = i
+    if last_comma < 0:
+        return subexpr
+    # Consume optional whitespace after the comma so spacing is clean.
+    after = last_comma + 1
+    while after < len(subexpr) and subexpr[after] == " ":
+        after += 1
+    return subexpr[:last_comma] + r" \mid " + subexpr[after:]
+
+
+def _restore_all_conditional_bars(
+    latex: str, func_names: set[str],
+) -> str:
+    r"""Restore conditional bars in ALL occurrences of named functions.
+
+    Scans *latex* for every call to a function whose name is in
+    *func_names* and replaces the **last** comma at argument-level depth
+    with ``\mid``.  Handles both SymPy's ``P{\left(A,B \right)}`` and
+    plain ``P(A,B)`` forms.
+    """
+    if not func_names:
+        return latex
+
+    # Build a regex that finds the function name followed by the opening
+    # delimiter — either ``{\left(`` or plain ``(``.
+    escaped = "|".join(
+        re.escape(f) for f in sorted(func_names, key=len, reverse=True)
+    )
+    pattern = re.compile(
+        rf"(?:{escaped})"       # function name
+        r"(?:\{\\left\(|(?:\{)?\()"  # opening delimiters
+    )
+
+    result: list[str] = []
+    pos = 0
+    for m in pattern.finditer(latex):
+        start = m.start()
+        result.append(latex[pos:start])
+
+        # Walk forward from end of match to find the balanced close.
+        depth = 1
+        k = m.end()
+        last_comma = -1
+        while k < len(latex) and depth > 0:
+            c = latex[k]
+            if c in "({":
+                depth += 1
+            elif c in ")}":
+                depth -= 1
+            elif c == "," and depth == 1:
+                last_comma = k          # track *last* comma at top level
+            k += 1
+
+        func_region = latex[start:k]
+        if last_comma >= 0:
+            rel = last_comma - start    # offset relative to func_region
+            after = rel + 1
+            while after < len(func_region) and func_region[after] == " ":
+                after += 1
+            func_region = (
+                func_region[:rel] + r" \mid " + func_region[after:]
+            )
+        result.append(func_region)
+        pos = k
+
+    result.append(latex[pos:])
+    return "".join(result)
 
 
 def _find_unpaired_pipes(s: str) -> list[int]:
@@ -1136,6 +1244,7 @@ class SemanticGraphBuilder:
         latex_commands: dict[str, str] | None = None,
         original_latex: str | None = None,
         bare_sum_indices: set[str] | None = None,
+        conditional_bar_funcs: set[str] | None = None,
     ) -> None:
         self.nodes: list[dict[str, str]] = []
         self.edges: list[dict[str, str]] = []
@@ -1145,6 +1254,7 @@ class SemanticGraphBuilder:
         self._latex_commands = latex_commands or {}
         self._original_latex = original_latex or ""
         self._bare_sum_indices: set[str] = bare_sum_indices or set()
+        self._conditional_bar_funcs: set[str] = conditional_bar_funcs or set()
         self._symbol_order = self._build_symbol_order()
         # Per-integral closed-integral flags: scan the *original* LaTeX for
         # \oint vs \int in left-to-right order so each Integral node can be
@@ -1189,13 +1299,21 @@ class SemanticGraphBuilder:
             edge["role"] = role
         self.edges.append(edge)
 
+    def _fix_bar_subexpr(self, subexpr: str) -> str:
+        """Restore ``|`` conditional bars in *subexpr* if needed."""
+        if self._conditional_bar_funcs:
+            return _restore_all_conditional_bars(
+                subexpr, self._conditional_bar_funcs)
+        return subexpr
+
     def build(self, expr: sympy.Basic, original_latex: str | None = None) -> dict:
         """Build the graph from *expr* and return ``{nodes, edges}``."""
         root_id = self._walk(expr)
         if original_latex:
+            subexpr = self._fix_bar_subexpr(original_latex.strip())
             for node in self.nodes:
                 if node["id"] == root_id:
-                    node["subexpr"] = original_latex.strip()
+                    node["subexpr"] = subexpr
                     break
         return {"nodes": self.nodes, "edges": self.edges}
 
@@ -1341,6 +1459,14 @@ class SemanticGraphBuilder:
                 result,
             )
 
+        # Restore conditional bars in any function calls that had them.
+        # SymPy renders P(A, B) but we want P(A \mid B).  This applies
+        # to the entire subexpr string, so composite expressions like
+        # ``P(B, A) P(A)`` are also fixed.
+        if self._conditional_bar_funcs:
+            result = _restore_all_conditional_bars(
+                result, self._conditional_bar_funcs)
+
         return result
 
     def _restore_placeholders(self, latex: str) -> str:
@@ -1377,7 +1503,13 @@ class SemanticGraphBuilder:
     def _set_subexpr(self, node_id: str, expr: sympy.Basic) -> None:
         for node in self.nodes:
             if node["id"] == node_id and "subexpr" not in node:
-                node["subexpr"] = self._subexpr_ordered(expr)
+                subexpr = self._subexpr_ordered(expr)
+                # Restore conditional bar: P(A, B) → P(A \mid B)
+                if (isinstance(expr, sympy.Function)
+                        and type(expr).__name__ in self._conditional_bar_funcs
+                        and len(expr.args) >= 2):
+                    subexpr = _restore_conditional_bar_in_subexpr(subexpr)
+                node["subexpr"] = subexpr
                 break
 
     def _walk(self, expr: sympy.Basic) -> str:
@@ -1503,10 +1635,19 @@ class SemanticGraphBuilder:
                 func_attrs["latex"] = func_latex
             self._add_node(node_id, **func_attrs)
             # log(arg, base) — mark the base edge with role="base"
+            # P(A|B) → P(A, B) — mark the last arg with role="condition"
             is_log = isinstance(expr, log)
+            has_cond_bar = (op_name in self._conditional_bar_funcs
+                           and len(expr.args) >= 2)
+            last_idx = len(expr.args) - 1
             for i, arg in enumerate(expr.args):
                 child_id = self._walk(arg)
-                edge_role = "base" if is_log and i == 1 else None
+                if is_log and i == 1:
+                    edge_role: str | None = "base"
+                elif has_cond_bar and i == last_idx:
+                    edge_role = "condition"
+                else:
+                    edge_role = None
                 self._add_edge(child_id, node_id, role=edge_role)
             return node_id
 
@@ -1826,6 +1967,7 @@ def _build_relation_graph(
     parenthetical_annotations: list | None = None,
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
+    conditional_bar_funcs: set[str] | None = None,
 
 ) -> dict:
     r"""Build a graph for a binary relation ``lhs <op> rhs``."""
@@ -1841,6 +1983,7 @@ def _build_relation_graph(
         latex_commands=latex_commands or {},
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
+        conditional_bar_funcs=conditional_bar_funcs,
     )
 
     def _walk_relation_side(side_latex: str) -> tuple[str, sympy.Basic | None]:
@@ -1887,7 +2030,8 @@ def _build_relation_graph(
     if modulus_latex is not None and is_congruent:
         rel_extra["modulus"] = modulus_latex
     builder._add_node(
-        rel_id, type=rel_type, subexpr=original_latex.strip(),
+        rel_id, type=rel_type,
+        subexpr=builder._fix_bar_subexpr(original_latex.strip()),
         **rel_meta, **rel_extra,
     )
     rel_asymmetric = is_asymmetric_relation(rel_meta["op"])
@@ -1940,6 +2084,7 @@ def _build_chained_asymmetric_relation_graph(
     parenthetical_annotations: list | None = None,
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
+    conditional_bar_funcs: set[str] | None = None,
 
 ) -> dict:
     r"""Build right-associative nested binary nodes for chained asymmetric relations.
@@ -1957,6 +2102,7 @@ def _build_chained_asymmetric_relation_graph(
         latex_commands=latex_commands or {},
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
+        conditional_bar_funcs=conditional_bar_funcs,
     )
     part_ids: list[str] = []
     try:
@@ -1981,7 +2127,9 @@ def _build_chained_asymmetric_relation_graph(
         lhs_id = part_ids[i]
         rel_id = builder._next_id(op)
         builder._add_node(
-            rel_id, type=rel_type, subexpr=original_latex.strip(), **rel_meta,
+            rel_id, type=rel_type,
+            subexpr=builder._fix_bar_subexpr(original_latex.strip()),
+            **rel_meta,
         )
         builder._add_edge(lhs_id, rel_id, role="lhs")
         builder._add_edge(rhs_id, rel_id, role="rhs")
@@ -2005,6 +2153,7 @@ def _build_nary_relation_graph(
     parenthetical_annotations: list | None = None,
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
+    conditional_bar_funcs: set[str] | None = None,
 
 ) -> dict:
     r"""Build an n-ary relation graph: all parts feed into one relation node.
@@ -2018,6 +2167,7 @@ def _build_nary_relation_graph(
         latex_commands=latex_commands or {},
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
+        conditional_bar_funcs=conditional_bar_funcs,
     )
     part_ids: list[str] = []
     first_expr = None
@@ -2040,7 +2190,9 @@ def _build_nary_relation_graph(
     rel_type = "relation" if is_relation(op) else "operator"
     rel_id = builder._next_id(op)
     builder._add_node(
-        rel_id, type=rel_type, subexpr=original_latex.strip(), **rel_meta,
+        rel_id, type=rel_type,
+        subexpr=builder._fix_bar_subexpr(original_latex.strip()),
+        **rel_meta,
     )
     for pid in part_ids:
         builder._add_edge(pid, rel_id)
@@ -2173,7 +2325,7 @@ def _build_piecewise_graph(
     pw_id = builder._next_id("piecewise")
     builder._add_node(
         pw_id, type="operator", op="piecewise", label="piecewise",
-        subexpr=original_latex.strip(),
+        subexpr=builder._fix_bar_subexpr(original_latex.strip()),
     )
 
     for val_latex, cond_latex in branches:
@@ -2229,7 +2381,8 @@ def _build_piecewise_graph(
             )
         eq_id = builder._next_id("equals")
         builder._add_node(eq_id, type="relation", op="equals",
-                          subexpr=original_latex.strip())
+                          subexpr=builder._fix_bar_subexpr(
+                              original_latex.strip()))
         builder._add_edge(lhs_id, eq_id)
         builder._add_edge(pw_id, eq_id)
         graph = {"nodes": builder.nodes, "edges": builder.edges}
@@ -2334,7 +2487,7 @@ def _latex_to_semantic_graph_dict(
     user_overrides = overrides
     latex = _normalize_latex(latex)
     latex = _rewrite_bracket_functions(latex)
-    latex = _rewrite_conditional_bar(latex)
+    latex, conditional_bar_funcs = _rewrite_conditional_bar(latex)
     latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
 
     # --- Piecewise / cases environment ---
@@ -2418,6 +2571,7 @@ def _latex_to_semantic_graph_dict(
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
+                    conditional_bar_funcs=conditional_bar_funcs,
                 )
             else:
                 # Asymmetric meta-relations (implies) → right-associative nesting.
@@ -2426,6 +2580,7 @@ def _latex_to_semantic_graph_dict(
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
+                    conditional_bar_funcs=conditional_bar_funcs,
                 )
 
         graph = _build_relation_graph(
@@ -2433,6 +2588,7 @@ def _latex_to_semantic_graph_dict(
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations, domain=domain,
             bare_sum_indices=bare_sum_indices,
+            conditional_bar_funcs=conditional_bar_funcs,
         )
         return graph
 
@@ -2470,6 +2626,7 @@ def _latex_to_semantic_graph_dict(
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
+                    conditional_bar_funcs=conditional_bar_funcs,
                 )
 
         graph = _build_relation_graph(
@@ -2477,6 +2634,7 @@ def _latex_to_semantic_graph_dict(
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations, domain=domain,
             bare_sum_indices=bare_sum_indices,
+            conditional_bar_funcs=conditional_bar_funcs,
         )
         return graph
 
@@ -2489,6 +2647,7 @@ def _latex_to_semantic_graph_dict(
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations,
             domain=domain, bare_sum_indices=bare_sum_indices,
+            conditional_bar_funcs=conditional_bar_funcs,
         )
 
     # --- Single expression ---
@@ -2509,6 +2668,7 @@ def _latex_to_semantic_graph_dict(
             builder = SemanticGraphBuilder(
                 overrides=overrides, latex_commands=latex_commands,
                 original_latex=latex, bare_sum_indices=bare_sum_indices,
+                conditional_bar_funcs=conditional_bar_funcs,
             )
             try:
                 lhs_expr = parse_latex(lhs_latex)
@@ -2541,6 +2701,7 @@ def _latex_to_semantic_graph_dict(
     builder = SemanticGraphBuilder(
         overrides=overrides, latex_commands=latex_commands,
         original_latex=latex, bare_sum_indices=bare_sum_indices,
+        conditional_bar_funcs=conditional_bar_funcs,
     )
     graph = builder.build(expr, original_latex=latex)
     graph["classification"] = classification

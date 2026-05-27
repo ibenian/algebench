@@ -88,7 +88,10 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
          "__P_5,__P_6 -> __multiply_4; __P_8 -> __power_7; "
          "__multiply_4,__power_7 -> __multiply_3; "
          "__P_2,__multiply_3 -> __equals_1",
-     None),
+     [{"op": "P", "id": "__P_2", "_edge_roles": {"condition": 1}},
+      {"op": "P", "id": "__P_5", "_edge_roles": {"condition": 1}},
+      {"op": "P", "id": "__P_6", "_edge_roles": {"condition": 0}},
+      {"op": "P", "id": "__P_8", "_edge_roles": {"condition": 0}}]),
 
     ("prob_normal",
      r"f(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}",
@@ -115,7 +118,8 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
          "A -> __P_6; A,B -> __P_7; B,cap -> __multiply_4; "
          "A,__multiply_4 -> __multiply_3; __P_6,__P_7 -> __multiply_5; "
          "__multiply_3 -> __P_2; __P_2,__multiply_5 -> __equals_1",
-     None),
+     [{"op": "P", "id": "__P_7", "_edge_roles": {"condition": 1}},
+      {"op": "P", "id": "__P_6", "_edge_roles": {"condition": 0}}]),
 
     ("prob_linearity",
      r"E[aX + b] = aE[X] + b",
@@ -127,7 +131,8 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
          "__multiply_4,b -> __add_3; __E_7,a -> __multiply_6; "
          "__add_3 -> __E_2; __multiply_6,b -> __add_5; "
          "__E_2,__add_5 -> __equals_1",
-     None),
+     [{"op": "E", "id": "__E_2", "_edge_roles": {"condition": 0}},
+      {"op": "E", "id": "__E_7", "_edge_roles": {"condition": 0}}]),
 
     ("prob_covariance",
      r"\sigma_{XY} = E(XY) - \mu_X \mu_Y",
@@ -159,7 +164,8 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
          "A -> __P_7; A,c -> __power_3; __power_3 -> __P_2; "
          "__P_7 -> __negation_6; __negation_6,__num_5 -> __add_4; "
          "__P_2,__add_4 -> __equals_1",
-     None),
+     [{"op": "P", "id": "__P_2", "_edge_roles": {"condition": 0}},
+      {"op": "P", "id": "__P_7", "_edge_roles": {"condition": 0}}]),
 
     ("prob_chebyshev",
      r"P(|X - \mu| \geq k\sigma) \leq \frac{1}{k^2}",
@@ -192,7 +198,8 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
          "A -> __P_6; B -> __P_7; B,cap -> __multiply_4; "
          "A,__multiply_4 -> __multiply_3; __P_6,__P_7 -> __multiply_5; "
          "__multiply_3 -> __P_2; __P_2,__multiply_5 -> __equals_1",
-     None),
+     [{"op": "P", "id": "__P_6", "_edge_roles": {"condition": 0}},
+      {"op": "P", "id": "__P_7", "_edge_roles": {"condition": 0}}]),
 
     ("prob_mgf",
      r"M_X(t) = E(e^{tX})",

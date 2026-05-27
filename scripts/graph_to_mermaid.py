@@ -299,6 +299,7 @@ def _format_label(
     label_mode: str,
     show: set[str] | None = None,
     arity: int = 0,
+    has_condition: bool = False,
 ) -> str:
     """Format a node label based on the label mode and visible fields.
 
@@ -353,7 +354,12 @@ def _format_label(
                 effective_arity = max(arity - 1, 1)  # drop the e child
             if r"\cdot" in fn_name:
                 return f"${fn_name}$"
-            dots = r", ".join([r"\cdot"] * max(effective_arity, 1))
+            # Conditional probability: P(·|·) instead of P(·, ·)
+            if has_condition and effective_arity >= 2:
+                regular_dots = r", ".join([r"\cdot"] * (effective_arity - 1))
+                dots = regular_dots + r"\mid " + r"\cdot"
+            else:
+                dots = r", ".join([r"\cdot"] * max(effective_arity, 1))
             return f"${fn_name}({dots})$"
         node_latex = node.get("latex")
         if node_latex:
@@ -639,10 +645,14 @@ def semantic_graph_to_mermaid(
             emitted_classes.add(cls_key)
 
     # Pre-compute incoming edge counts so function nodes can show arity.
+    # Also track which nodes have a "condition" edge (conditional probability).
     in_degree: dict[str, int] = {}
+    has_condition_edge: set[str] = set()
     for e in edges:
         dst = e.get("to", "")
         in_degree[dst] = in_degree.get(dst, 0) + 1
+        if e.get("role") == "condition":
+            has_condition_edge.add(dst)
 
     # Node definitions. Mermaid 11's typed-shape form (``@{ ... }``) doesn't
     # accept the inline ``:::className`` shortcut, so we emit those classes
@@ -664,7 +674,8 @@ def semantic_graph_to_mermaid(
         op_default = OP_DEFAULT_SHAPES.get(node.get("op"))
         shape = op_default or ns.get("shape") or TYPE_DEFAULT_SHAPES.get(ntype, "rect")
         label = _format_label(node, lm, show=show,
-                              arity=in_degree.get(node["id"], 0))
+                              arity=in_degree.get(node["id"], 0),
+                              has_condition=node["id"] in has_condition_edge)
         node_def = _wrap_shape(nid, label, shape)
         # ``operatorVariants`` styling only applies to operator-like nodes.
         # When a matching variant class is available, it takes precedence
