@@ -333,6 +333,90 @@ def _rewrite_conditional_bar(latex: str) -> tuple[str, set[str]]:
     return "".join(out), conditional_bar_funcs
 
 
+def _rewrite_assertion_equals(latex: str) -> tuple[str, set[str]]:
+    r"""Rewrite ``=`` inside function-call parens to ``,``.
+
+    Probability expressions like ``P(X = k)`` contain an assertion
+    (equality) inside the function arguments.  SymPy's ``parse_latex``
+    cannot handle ``=`` inside function calls — it silently collapses
+    the expression.  This preprocessor rewrites the ``=`` to ``,``
+    so SymPy sees ``P(X, k)``, and records which function names had
+    an assertion so the graph builder can attach the appropriate edge
+    role and the subexpr restorer can show ``=`` again.
+
+    Only a **single** bare ``=`` at argument depth is rewritten; nested
+    ``=`` inside inner parentheses or multiple ``=`` are left alone.
+    """
+    if "=" not in latex:
+        return latex, set()
+
+    out: list[str] = []
+    assertion_eq_funcs: set[str] = set()
+    i = 0
+    n = len(latex)
+    while i < n:
+        if latex[i] == "(":
+            j = i - 1
+            while j >= 0 and latex[j] in " \t":
+                j -= 1
+            is_func_call = j >= 0 and (latex[j].isalpha() or latex[j] == "}")
+
+            if is_func_call:
+                name_end = j + 1
+                name_start = j
+                while name_start > 0 and (latex[name_start - 1].isalpha()
+                                          or latex[name_start - 1] == "_"):
+                    name_start -= 1
+                func_name = latex[name_start:name_end].strip()
+
+                # Scan the parenthesized body to find matching ')'.
+                depth = 1
+                body_start = i + 1
+                k = body_start
+                while k < n and depth > 0:
+                    if latex[k] == "(":
+                        depth += 1
+                    elif latex[k] == ")":
+                        depth -= 1
+                    k += 1
+                body_end = k - 1
+                body = latex[body_start:body_end]
+
+                # Count bare = at depth 0 within the body.
+                eq_positions: list[int] = []
+                d = 0
+                for bi, bc in enumerate(body):
+                    if bc in "({":
+                        d += 1
+                    elif bc in ")}":
+                        d -= 1
+                    elif bc == "=" and d == 0:
+                        eq_positions.append(bi)
+
+                if len(eq_positions) == 1:
+                    pp = eq_positions[0]
+                    # Consume optional whitespace around the ``=``.
+                    before = pp
+                    while before > 0 and body[before - 1] == " ":
+                        before -= 1
+                    after = pp + 1
+                    while after < len(body) and body[after] == " ":
+                        after += 1
+                    body = body[:before] + ", " + body[after:]
+                    assertion_eq_funcs.add(func_name)
+
+                out.append("(")
+                out.append(body)
+                out.append(")")
+                i = body_end + 1
+                continue
+
+        out.append(latex[i])
+        i += 1
+
+    return "".join(out), assertion_eq_funcs
+
+
 def _restore_conditional_bar_in_subexpr(subexpr: str) -> str:
     r"""Replace the last ``,`` inside the function's parens with ``\mid``.
 
@@ -416,6 +500,65 @@ def _restore_all_conditional_bars(
                 after += 1
             func_region = (
                 func_region[:rel] + r" \mid " + func_region[after:]
+            )
+        result.append(func_region)
+        pos = k
+
+    result.append(latex[pos:])
+    return "".join(result)
+
+
+def _restore_all_assertion_equals(
+    latex: str, func_names: set[str],
+) -> str:
+    r"""Restore assertion ``=`` in ALL occurrences of named functions.
+
+    The preprocessor rewrites ``P(X = k)`` → ``P(X, k)`` before SymPy
+    parsing.  SymPy then renders ``P{\left(X,k \right)}`` in subexprs.
+    This function restores the **last** comma at argument depth to ``=``
+    for functions in *func_names*, so the display shows ``P(X = k)``
+    again.
+
+    Uses the same scanning logic as ``_restore_all_conditional_bars``.
+    """
+    if not func_names:
+        return latex
+
+    escaped = "|".join(
+        re.escape(f) for f in sorted(func_names, key=len, reverse=True)
+    )
+    pattern = re.compile(
+        rf"(?:{escaped})"
+        r"(?:\{\\left\(|(?:\{)?\()"
+    )
+
+    result: list[str] = []
+    pos = 0
+    for m in pattern.finditer(latex):
+        start = m.start()
+        result.append(latex[pos:start])
+
+        depth = 1
+        k = m.end()
+        last_comma = -1
+        while k < len(latex) and depth > 0:
+            c = latex[k]
+            if c in "({":
+                depth += 1
+            elif c in ")}":
+                depth -= 1
+            elif c == "," and depth == 1:
+                last_comma = k
+            k += 1
+
+        func_region = latex[start:k]
+        if last_comma >= 0:
+            rel = last_comma - start
+            after = rel + 1
+            while after < len(func_region) and func_region[after] == " ":
+                after += 1
+            func_region = (
+                func_region[:rel] + " = " + func_region[after:]
             )
         result.append(func_region)
         pos = k
@@ -1245,6 +1388,7 @@ class SemanticGraphBuilder:
         original_latex: str | None = None,
         bare_sum_indices: set[str] | None = None,
         conditional_bar_funcs: set[str] | None = None,
+        assertion_eq_funcs: set[str] | None = None,
     ) -> None:
         self.nodes: list[dict[str, str]] = []
         self.edges: list[dict[str, str]] = []
@@ -1255,6 +1399,7 @@ class SemanticGraphBuilder:
         self._original_latex = original_latex or ""
         self._bare_sum_indices: set[str] = bare_sum_indices or set()
         self._conditional_bar_funcs: set[str] = conditional_bar_funcs or set()
+        self._assertion_eq_funcs: set[str] = assertion_eq_funcs or set()
         self._symbol_order = self._build_symbol_order()
         # Per-integral closed-integral flags: scan the *original* LaTeX for
         # \oint vs \int in left-to-right order so each Integral node can be
@@ -1300,10 +1445,14 @@ class SemanticGraphBuilder:
         self.edges.append(edge)
 
     def _fix_bar_subexpr(self, subexpr: str) -> str:
-        """Restore ``|`` conditional bars in *subexpr* if needed."""
+        """Restore ``|`` conditional bars and ``=`` assertion equals
+        in *subexpr* if needed."""
         if self._conditional_bar_funcs:
-            return _restore_all_conditional_bars(
+            subexpr = _restore_all_conditional_bars(
                 subexpr, self._conditional_bar_funcs)
+        if self._assertion_eq_funcs:
+            subexpr = _restore_all_assertion_equals(
+                subexpr, self._assertion_eq_funcs)
         return subexpr
 
     def build(self, expr: sympy.Basic, original_latex: str | None = None) -> dict:
@@ -1466,6 +1615,12 @@ class SemanticGraphBuilder:
         if self._conditional_bar_funcs:
             result = _restore_all_conditional_bars(
                 result, self._conditional_bar_funcs)
+
+        # Restore assertion equals in any function calls that had them.
+        # SymPy renders P(X, k) but we want P(X = k).
+        if self._assertion_eq_funcs:
+            result = _restore_all_assertion_equals(
+                result, self._assertion_eq_funcs)
 
         return result
 
@@ -1968,6 +2123,7 @@ def _build_relation_graph(
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
     conditional_bar_funcs: set[str] | None = None,
+    assertion_eq_funcs: set[str] | None = None,
 
 ) -> dict:
     r"""Build a graph for a binary relation ``lhs <op> rhs``."""
@@ -1984,6 +2140,7 @@ def _build_relation_graph(
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
         conditional_bar_funcs=conditional_bar_funcs,
+        assertion_eq_funcs=assertion_eq_funcs,
     )
 
     def _walk_relation_side(side_latex: str) -> tuple[str, sympy.Basic | None]:
@@ -2019,9 +2176,11 @@ def _build_relation_graph(
 
     for node in builder.nodes:
         if node["id"] == lhs_id and lhs_expr is not None:
-            node["subexpr"] = builder._restore_placeholders(lhs_latex.strip())
+            node["subexpr"] = builder._fix_bar_subexpr(
+                builder._restore_placeholders(lhs_latex.strip()))
         elif node["id"] == rhs_id and rhs_expr is not None:
-            node["subexpr"] = builder._restore_placeholders(rhs_latex.strip())
+            node["subexpr"] = builder._fix_bar_subexpr(
+                builder._restore_placeholders(rhs_latex.strip()))
 
     rel_id = builder._next_id(rel_meta["op"])
     rel_type = "relation" if is_relation(rel_meta["op"]) else "operator"
@@ -2085,6 +2244,7 @@ def _build_chained_asymmetric_relation_graph(
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
     conditional_bar_funcs: set[str] | None = None,
+    assertion_eq_funcs: set[str] | None = None,
 
 ) -> dict:
     r"""Build right-associative nested binary nodes for chained asymmetric relations.
@@ -2103,6 +2263,7 @@ def _build_chained_asymmetric_relation_graph(
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
         conditional_bar_funcs=conditional_bar_funcs,
+        assertion_eq_funcs=assertion_eq_funcs,
     )
     part_ids: list[str] = []
     try:
@@ -2154,6 +2315,7 @@ def _build_nary_relation_graph(
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
     conditional_bar_funcs: set[str] | None = None,
+    assertion_eq_funcs: set[str] | None = None,
 
 ) -> dict:
     r"""Build an n-ary relation graph: all parts feed into one relation node.
@@ -2168,6 +2330,7 @@ def _build_nary_relation_graph(
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
         conditional_bar_funcs=conditional_bar_funcs,
+        assertion_eq_funcs=assertion_eq_funcs,
     )
     part_ids: list[str] = []
     first_expr = None
@@ -2488,6 +2651,7 @@ def _latex_to_semantic_graph_dict(
     latex = _normalize_latex(latex)
     latex = _rewrite_bracket_functions(latex)
     latex, conditional_bar_funcs = _rewrite_conditional_bar(latex)
+    latex, assertion_eq_funcs = _rewrite_assertion_equals(latex)
     latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
 
     # --- Piecewise / cases environment ---
@@ -2572,6 +2736,7 @@ def _latex_to_semantic_graph_dict(
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
                     conditional_bar_funcs=conditional_bar_funcs,
+                    assertion_eq_funcs=assertion_eq_funcs,
                 )
             else:
                 # Asymmetric meta-relations (implies) → right-associative nesting.
@@ -2581,6 +2746,7 @@ def _latex_to_semantic_graph_dict(
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
                     conditional_bar_funcs=conditional_bar_funcs,
+                    assertion_eq_funcs=assertion_eq_funcs,
                 )
 
         graph = _build_relation_graph(
@@ -2589,6 +2755,7 @@ def _latex_to_semantic_graph_dict(
             parenthetical_annotations=parenthetical_annotations, domain=domain,
             bare_sum_indices=bare_sum_indices,
             conditional_bar_funcs=conditional_bar_funcs,
+            assertion_eq_funcs=assertion_eq_funcs,
         )
         return graph
 
@@ -2627,6 +2794,7 @@ def _latex_to_semantic_graph_dict(
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
                     conditional_bar_funcs=conditional_bar_funcs,
+                    assertion_eq_funcs=assertion_eq_funcs,
                 )
 
         graph = _build_relation_graph(
@@ -2635,6 +2803,7 @@ def _latex_to_semantic_graph_dict(
             parenthetical_annotations=parenthetical_annotations, domain=domain,
             bare_sum_indices=bare_sum_indices,
             conditional_bar_funcs=conditional_bar_funcs,
+            assertion_eq_funcs=assertion_eq_funcs,
         )
         return graph
 
@@ -2648,6 +2817,7 @@ def _latex_to_semantic_graph_dict(
             parenthetical_annotations=parenthetical_annotations,
             domain=domain, bare_sum_indices=bare_sum_indices,
             conditional_bar_funcs=conditional_bar_funcs,
+            assertion_eq_funcs=assertion_eq_funcs,
         )
 
     # --- Single expression ---
@@ -2669,6 +2839,7 @@ def _latex_to_semantic_graph_dict(
                 overrides=overrides, latex_commands=latex_commands,
                 original_latex=latex, bare_sum_indices=bare_sum_indices,
                 conditional_bar_funcs=conditional_bar_funcs,
+                assertion_eq_funcs=assertion_eq_funcs,
             )
             try:
                 lhs_expr = parse_latex(lhs_latex)
@@ -2702,6 +2873,7 @@ def _latex_to_semantic_graph_dict(
         overrides=overrides, latex_commands=latex_commands,
         original_latex=latex, bare_sum_indices=bare_sum_indices,
         conditional_bar_funcs=conditional_bar_funcs,
+        assertion_eq_funcs=assertion_eq_funcs,
     )
     graph = builder.build(expr, original_latex=latex)
     graph["classification"] = classification

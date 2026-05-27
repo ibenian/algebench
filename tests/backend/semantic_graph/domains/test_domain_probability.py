@@ -101,12 +101,32 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
 
     ("prob_binomial",
      r"P(X = k) = \binom{n}{k} p^k (1-p)^{n-k}",
-     PASS, "", "",
+     PASS,
+         "X,k -> fn:P; k,n -> fn:choose; k -> negation; p -> negation; "
+         "k,p -> power; n,negation -> add; negation,num -> add; "
+         "add,add -> power; power,power -> multiply; "
+         "fn:choose,multiply -> multiply; fn:P,multiply -> rel:equals",
+         "X,k -> __P_2; k,n -> __choose_4; p -> __negation_10; "
+         "k -> __negation_12; k,p -> __power_6; "
+         "__negation_12,n -> __add_11; __negation_10,__num_9 -> __add_8; "
+         "__add_11,__add_8 -> __power_7; "
+         "__power_6,__power_7 -> __multiply_5; "
+         "__choose_4,__multiply_5 -> __multiply_3; "
+         "__P_2,__multiply_3 -> __equals_1",
      None),
 
     ("prob_poisson",
      r"P(X = k) = \frac{\lambda^k e^{-\lambda}}{k!}",
-     PASS, "", "",
+     PASS,
+         "k -> factorial; X,k -> fn:P; e -> power; "
+         "k,lambda -> power; power,power -> multiply; "
+         "factorial -> power; multiply,power -> multiply; "
+         "fn:P,multiply -> rel:equals",
+         "X,k -> __P_2; k -> __factorial_8; k,lambda -> __power_5; "
+         "e -> __power_6; __power_5,__power_6 -> __multiply_4; "
+         "__factorial_8 -> __power_7; "
+         "__multiply_4,__power_7 -> __multiply_3; "
+         "__P_2,__multiply_3 -> __equals_1",
      None),
 
     ("prob_conditional",
@@ -186,7 +206,15 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
 
     ("prob_geometric",
      r"P(X = k) = (1 - p)^{k-1} p",
-     PASS, "", "",
+     PASS,
+         "k,num -> add; X,k -> fn:P; p -> negation; "
+         "negation,num -> add; add,add -> power; "
+         "p,power -> multiply; fn:P,multiply -> rel:equals",
+         "X,k -> __P_2; __num_9,k -> __add_8; p -> __negation_7; "
+         "__negation_7,__num_6 -> __add_5; "
+         "__add_5,__add_8 -> __power_4; "
+         "__power_4,p -> __multiply_3; "
+         "__P_2,__multiply_3 -> __equals_1",
      None),
 
     ("prob_independence",
