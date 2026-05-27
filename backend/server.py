@@ -1218,6 +1218,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     fastapp = FastAPI(docs_url=None, redoc_url=None)
 
+    # ---- TTS kill infrastructure ----
+    _tts_kill_gen = [0]
+    _tts_sse_queues: list[asyncio.Queue] = []
+
     # -- GET routes --
 
     @fastapp.get("/")
@@ -1735,13 +1739,14 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             est_duration = GeminiLiveAPI.estimate_audio_duration(tts_text)
 
             async def generate_rt():
+                gen_at_start = _tts_kill_gen[0]
                 async for pcm_chunk in api.astream_realtime_pcm(
                     text=tts_text,
                     voice_name=req.voice,
                     character_name=req.character,
                     style=tts_stream_kwargs.get('style'),
                 ):
-                    if await request.is_disconnected():
+                    if _tts_kill_gen[0] != gen_at_start or await request.is_disconnected():
                         break
                     yield pcm_chunk
 
@@ -1766,13 +1771,14 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         chunk_count = len(sentences)
 
         async def generate():
+            gen_at_start = _tts_kill_gen[0]
             async for chunk in api.astream_parallel_wav(
                 text=tts_text,
                 voice_name=req.voice,
                 character_name=req.character,
                 **tts_stream_kwargs
             ):
-                if await request.is_disconnected():
+                if _tts_kill_gen[0] != gen_at_start or await request.is_disconnected():
                     break
                 yield chunk
 
@@ -1793,6 +1799,71 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         filename = os.path.basename(tts_output_file)
         return FileResponse(tts_output_file, media_type="audio/wav",
                             filename=filename, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+    def _kill_gstts_processes() -> int:
+        """Send SIGTERM to all running gstts / sounddevice TTS processes."""
+        killed = 0
+        my_pid = os.getpid()
+        try:
+            import signal as _sig
+            for line in subprocess.check_output(
+                ["pgrep", "-f", "gstts\\.py"], text=True
+            ).strip().splitlines():
+                pid = int(line.strip())
+                if pid != my_pid:
+                    os.kill(pid, _sig.SIGTERM)
+                    killed += 1
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
+        return killed
+
+    @fastapp.get("/api/tts")
+    async def api_tts_control(kill: bool = False):
+        if kill:
+            _tts_kill_gen[0] += 1
+            # Kill browser-side playback via SSE
+            for q in list(_tts_sse_queues):
+                try:
+                    q.put_nowait("kill")
+                except asyncio.QueueFull:
+                    pass
+            # Kill system-level gstts processes (sounddevice playback)
+            loop = asyncio.get_running_loop()
+            procs_killed = await loop.run_in_executor(None, _kill_gstts_processes)
+            if DEBUG_MODE:
+                print(f"🔇 TTS kill signal sent (gen={_tts_kill_gen[0]}, "
+                      f"gstts_procs={procs_killed})")
+            return JSONResponse({
+                "killed": True,
+                "generation": _tts_kill_gen[0],
+                "processes_killed": procs_killed,
+            })
+        return JSONResponse({"status": "ok", "generation": _tts_kill_gen[0]})
+
+    @fastapp.get("/api/tts/events")
+    async def api_tts_events(request: Request):
+        q: asyncio.Queue = asyncio.Queue(maxsize=16)
+        _tts_sse_queues.append(q)
+
+        async def event_stream():
+            try:
+                while True:
+                    if await request.is_disconnected():
+                        break
+                    try:
+                        msg = await asyncio.wait_for(q.get(), timeout=30)
+                        yield f"event: {msg}\ndata: {{}}\n\n"
+                    except asyncio.TimeoutError:
+                        yield ": keepalive\n\n"
+            finally:
+                if q in _tts_sse_queues:
+                    _tts_sse_queues.remove(q)
+
+        return StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     @fastapp.post("/api/load")
     async def api_load(request: Request):

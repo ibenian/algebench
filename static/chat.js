@@ -1243,6 +1243,26 @@ async function speakText(text, { explicit = false } = {}) {
     }
 }
 
+// ----- TTS Kill SSE Listener -----
+(function _initTTSKillListener() {
+    let es = null;
+    function connect() {
+        es = new EventSource('/api/tts/events');
+        es.addEventListener('kill', () => {
+            window.algebenchStopTTS();
+        });
+        es.onerror = () => {
+            es.close();
+            setTimeout(connect, 3000);
+        };
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', connect);
+    } else {
+        connect();
+    }
+})();
+
 // ----- Context Change Tracking -----
 let _lastContextJson = '';
 
