@@ -4,10 +4,9 @@ Covers expected value, variance, Bayes' theorem, distributions
 (binomial, Poisson, geometric, uniform), conditional probability,
 linearity of expectation, covariance, and Markov/Chebyshev bounds.
 
-Note: ``E[X]`` bracket notation parses as implicit multiplication
-``E · X`` (the parser treats square brackets as grouping, not as
-function-call syntax).  Catalog entries using ``E[…]`` lock in this
-behavior; use ``E(X)`` for function-call semantics if needed.
+Note: ``E[X]`` bracket notation is rewritten to ``E(X)`` by
+``_rewrite_bracket_functions`` before SymPy parsing, so both
+forms produce identical function-call semantics.
 
 Suite-specific invariant (from design doc §8.3):
   All operator nodes have ``op`` in ALLOWED_OPS.
@@ -121,13 +120,13 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     ("prob_linearity",
      r"E[aX + b] = aE[X] + b",
      PASS,
-         "E,X -> multiply; X,a -> multiply; b,multiply -> add; "
-         "a,multiply -> multiply; b,multiply -> add; E,add -> multiply; "
-         "add,multiply -> rel:equals",
-         "X,a -> __multiply_4; E,X -> __multiply_7; "
-         "__multiply_4,b -> __add_3; __multiply_7,a -> __multiply_6; "
-         "__multiply_6,b -> __add_5; E,__add_3 -> __multiply_2; "
-         "__add_5,__multiply_2 -> __equals_1",
+         "X -> fn:E; X,a -> multiply; b,multiply -> add; "
+         "a,fn:E -> multiply; b,multiply -> add; "
+         "add -> fn:E; add,fn:E -> rel:equals",
+         "X -> __E_7; X,a -> __multiply_4; "
+         "__multiply_4,b -> __add_3; __E_7,a -> __multiply_6; "
+         "__add_3 -> __E_2; __multiply_6,b -> __add_5; "
+         "__E_2,__add_5 -> __equals_1",
      None),
 
     ("prob_covariance",
@@ -145,10 +144,10 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     ("prob_markov",
      r"P(X \geq a) \leq \frac{E[X]}{a}",
     PASS,
-         "E,X -> multiply; a -> power; multiply,power -> multiply; "
+         "X -> fn:E; a -> power; fn:E,power -> multiply; "
          "P,multiply -> rel:less_equal",
-         "E,X -> __multiply_2; a -> __power_3; "
-         "__multiply_2,__power_3 -> __multiply_1; "
+         "X -> __E_2; a -> __power_3; "
+         "__E_2,__power_3 -> __multiply_1; "
          "P,__multiply_1 -> __less_equal_4",
      None),
 

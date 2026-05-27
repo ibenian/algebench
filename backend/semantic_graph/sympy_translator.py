@@ -375,6 +375,55 @@ def _find_unpaired_pipes(s: str) -> list[int]:
     return unpaired
 
 
+def _rewrite_bracket_functions(latex: str) -> str:
+    r"""Rewrite ``E[X]`` → ``E(X)`` so SymPy sees a function call.
+
+    SymPy's ``parse_latex`` treats square brackets as grouping, so
+    ``E[X]`` parses as implicit multiplication ``E · X``.  This pass
+    detects identifier-followed-by-``[`` patterns and rewrites the
+    brackets to parentheses.
+
+    Only single-letter identifiers or ``\cmd`` tokens immediately
+    before ``[`` are rewritten — standalone ``[…]`` (matrices, etc.)
+    is left untouched.
+    """
+    if "[" not in latex:
+        return latex
+
+    out: list[str] = []
+    i = 0
+    n = len(latex)
+    while i < n:
+        if latex[i] == "[":
+            # Check if preceded by an identifier (function name).
+            j = i - 1
+            while j >= 0 and latex[j] in " \t":
+                j -= 1
+            is_func = j >= 0 and (latex[j].isalpha() or latex[j] == "}")
+
+            if is_func:
+                # Find matching ']'.
+                depth = 1
+                k = i + 1
+                while k < n and depth > 0:
+                    if latex[k] == "[":
+                        depth += 1
+                    elif latex[k] == "]":
+                        depth -= 1
+                    k += 1
+                # Rewrite [...] → (...)
+                out.append("(")
+                out.append(latex[i + 1:k - 1])
+                out.append(")")
+                i = k
+                continue
+
+        out.append(latex[i])
+        i += 1
+
+    return "".join(out)
+
+
 def _collapse_multichar_subscripts(
     latex: str,
 ) -> tuple[str, dict[str, dict[str, str]]]:
@@ -2284,6 +2333,7 @@ def _latex_to_semantic_graph_dict(
     """Parse a LaTeX string and return a semantic graph dict (internal)."""
     user_overrides = overrides
     latex = _normalize_latex(latex)
+    latex = _rewrite_bracket_functions(latex)
     latex = _rewrite_conditional_bar(latex)
     latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
 
