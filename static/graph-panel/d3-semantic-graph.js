@@ -278,7 +278,10 @@ function _arityDots(arity, hasCondition, hasAssertion, dot) {
         const regular = Array(arity - 1).fill(dot).join(', ');
         return `${regular}${sep}${dot}`;
     }
-    if (hasAssertion && arity >= 2) {
+    // Assertion-form: the assertion is an arbitrary predicate (X=k, X≥a,
+    // |X−μ|≥kσ, …) fed in as a single edge.  Show ``…`` rather than
+    // trying to decompose it into ``·op·``.
+    if (hasAssertion) {
         return dot === '·' ? '…' : '\\ldots';
     }
     return Array(arity).fill(dot).join(', ');

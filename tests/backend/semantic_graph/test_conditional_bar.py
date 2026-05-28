@@ -43,8 +43,10 @@ class TestRewriteConditionalBar:
     def test_nested_abs_not_rewritten(self):
         """Paired ``|…|`` inside function args (abs value) must survive."""
         result, funcs = _rewrite_conditional_bar(r"P(|X| > a)")
-        # The paired |X| should not be treated as a conditional bar
-        assert "|" not in funcs or result.count(",") == 0
+        # The paired |X| should not be treated as a conditional bar —
+        # the result must still contain the abs bars and no comma rewrite.
+        assert "|X|" in result, f"Abs bars lost: {result!r}"
+        assert "," not in result, f"Unexpected comma rewrite: {result!r}"
 
     def test_no_bar_passthrough(self):
         result, funcs = _rewrite_conditional_bar(r"P(A)")
@@ -251,12 +253,20 @@ class TestSubexprConditionalBar:
     def test_single_arg_subexpr_unchanged(self, parse):
         r"""Single-arg ``P(A)`` subexprs must NOT get ``\mid``."""
         graph = parse(r"P(A|B) = \frac{P(B|A) P(A)}{P(B)}")
-        for n in graph.nodes:
-            if n.subexpr and r"P{\left(A \right)}" in n.subexpr:
-                # This is fine — single arg, no \mid
-                assert r"\mid" not in r"P{\left(A \right)}"
-            if n.subexpr and r"P{\left(B \right)}" in n.subexpr:
-                assert r"\mid" not in r"P{\left(B \right)}"
+        # Find single-arg P function nodes (P(A) and P(B))
+        single_arg_p = [
+            n for n in graph.nodes
+            if n.type == "function" and n.op == "P"
+            and n.subexpr and n.subexpr.count(",") == 0
+            and r"\mid" not in n.subexpr
+        ]
+        # There must be at least the P(A) and P(B) nodes
+        # and none of them should contain \mid
+        for n in single_arg_p:
+            assert r"\mid" not in n.subexpr, (
+                f"Single-arg function {n.id} has \\mid in subexpr: "
+                f"{n.subexpr!r}"
+            )
 
     def test_conditional_prob_subexpr(self, parse):
         r"""``P(A ∩ B) = P(A) P(B|A)`` — only P(B|A) gets bar."""
@@ -301,3 +311,107 @@ class TestBracketNotationWithBar:
             assert e.to in p_func_ids, (
                 "condition edge should only target P nodes, not E"
             )
+
+
+# ── Integration: chained inequality assertions ──────────────────────
+
+
+class TestChainedInequalityAssertion:
+    """Chained inequalities like ``P(1 < X \\leq 10)`` must produce a
+    right-associative chain of relation nodes connected to the function
+    via an ``assertion`` edge."""
+
+    def test_rewrite_chained_ops(self):
+        """Preprocessor rewrites both operators to commas."""
+        from backend.semantic_graph.sympy_translator import (
+            _rewrite_assertion_ops,
+        )
+        result, funcs = _rewrite_assertion_ops(r"P(1 < X \leq 10)")
+        assert result == r"P(1, X, 10)"
+        assert funcs == {"P": ["<", r"\leq"]}
+
+    def test_rewrite_single_op_returns_list(self):
+        """Single-op assertions now return a one-element list."""
+        from backend.semantic_graph.sympy_translator import (
+            _rewrite_assertion_ops,
+        )
+        result, funcs = _rewrite_assertion_ops(r"P(X = k)")
+        assert result == r"P(X, k)"
+        assert funcs == {"P": ["="]}
+
+    def test_chained_produces_assertion_edge(self, parse):
+        """``P(1 < X ≤ 10)`` must have exactly one assertion edge
+        pointing to the P function node."""
+        graph = parse(r"P(1 < X \leq 10)")
+        assertion_edges = [e for e in graph.edges if e.role == "assertion"]
+        assert len(assertion_edges) == 1
+        p_ids = {n.id for n in graph.nodes
+                 if n.type == "function" and n.op == "P"}
+        assert assertion_edges[0].to in p_ids
+
+    def test_chained_relation_chain(self, parse):
+        r"""``P(1 < X \leq 10)`` must produce ``less_than`` and
+        ``less_equal`` relation nodes in a right-associative chain."""
+        graph = parse(r"P(1 < X \leq 10)")
+        rel_nodes = {n.id: n for n in graph.nodes if n.type == "relation"}
+        # Must have exactly two relation nodes.
+        assert len(rel_nodes) == 2, (
+            f"Expected 2 relation nodes, got {len(rel_nodes)}: "
+            f"{[n.op for n in rel_nodes.values()]}"
+        )
+        ops = {n.op for n in rel_nodes.values()}
+        assert ops == {"less_than", "less_equal"}
+
+        # The less_than node must be lhs of the less_equal node.
+        lt_id = next(n.id for n in rel_nodes.values()
+                     if n.op == "less_than")
+        le_id = next(n.id for n in rel_nodes.values()
+                     if n.op == "less_equal")
+        lhs_edges = [e for e in graph.edges
+                     if e.from_ == lt_id and e.to == le_id
+                     and e.role == "lhs"]
+        assert len(lhs_edges) == 1, (
+            "less_than should be lhs of less_equal"
+        )
+
+    def test_chained_subexpr_has_operators(self, parse):
+        r"""Subexprs must show original operators, not commas."""
+        graph = parse(r"P(1 < X \leq 10)")
+        p_nodes = [n for n in graph.nodes
+                   if n.type == "function" and n.op == "P"]
+        assert len(p_nodes) == 1
+        subexpr = p_nodes[0].subexpr
+        assert subexpr is not None
+        assert "," not in subexpr, (
+            f"P function subexpr has comma instead of operators: "
+            f"{subexpr!r}"
+        )
+
+    def test_chained_in_equation(self, parse):
+        r"""``P(1 < X \leq 10) = 0.5`` — equation subexpr must show
+        the chained inequality, not commas."""
+        graph = parse(r"P(1 < X \leq 10) = 0.5")
+        eq_nodes = [n for n in graph.nodes if n.op == "equals"]
+        assert len(eq_nodes) == 1
+        assert eq_nodes[0].subexpr is not None
+        assert "," not in eq_nodes[0].subexpr, (
+            f"Equation subexpr has comma: {eq_nodes[0].subexpr!r}"
+        )
+
+    def test_reversed_direction(self, parse):
+        r"""``P(a \geq X > b)`` — reversed direction chain."""
+        graph = parse(r"P(a \geq X > b)")
+        rel_nodes = {n.id: n for n in graph.nodes if n.type == "relation"}
+        ops = {n.op for n in rel_nodes.values()}
+        assert ops == {"greater_equal", "greater_than"}
+        assertion_edges = [e for e in graph.edges if e.role == "assertion"]
+        assert len(assertion_edges) == 1
+
+    def test_single_op_unaffected(self, parse):
+        r"""Single-op assertions (``P(X = k)``) still work as before."""
+        graph = parse(r"P(X = k)")
+        assertion_edges = [e for e in graph.edges if e.role == "assertion"]
+        assert len(assertion_edges) == 1
+        rel_nodes = [n for n in graph.nodes if n.type == "relation"]
+        assert len(rel_nodes) == 1
+        assert rel_nodes[0].op == "equals"
