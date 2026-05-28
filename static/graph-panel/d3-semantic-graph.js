@@ -152,6 +152,7 @@ function inferEdgeSemantic(edge, nodeById) {
 
 const OPERATOR_GLYPHS = {
     equals: '=', congruent: '≡', divides: '∣', asymptotic: '∼',
+    approximately: '≈', proportional: '∝', maps_to: '→',
     greater_than: '>', less_than: '<',
     greater_equal: '≥', less_equal: '≤', not_equal: '≠',
     multiply: '×', add: '+', subtract: '−',
@@ -173,6 +174,7 @@ const OPERATOR_GLYPHS = {
 // labels through KaTeX (nodes without an explicit ``latex`` field).
 const OPERATOR_LATEX = {
     equals: '=', congruent: '\\equiv', divides: '\\mid', asymptotic: '\\sim',
+    approximately: '\\approx', proportional: '\\propto', maps_to: '\\to',
     greater_than: '>', less_than: '<',
     greater_equal: '\\geq', less_equal: '\\leq', not_equal: '\\neq',
     element_of: '\\in', not_element_of: '\\notin',
@@ -213,6 +215,7 @@ const OPERATOR_KINDS = {
     sin: 'function', cos: 'function', tan: 'function',
     log: 'function', logarithm: 'function', exp: 'function',
     equals: 'comparison', not_equal: 'comparison',
+    approximately: 'comparison', proportional: 'comparison', maps_to: 'comparison',
     greater_than: 'comparison', less_than: 'comparison',
     greater_equal: 'comparison', less_equal: 'comparison',
     element_of: 'comparison', not_element_of: 'comparison',
