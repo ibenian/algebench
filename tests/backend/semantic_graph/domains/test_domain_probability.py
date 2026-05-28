@@ -38,6 +38,7 @@ ALLOWED_OPS = {
     "P", "E",
     "Abs", "abs",
     "less_equal", "greater_equal",
+    "intersection",
 }
 
 
@@ -135,14 +136,14 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     ("prob_conditional",
      r"P(A \cap B) = P(A) P(B|A)",
      PASS,
-         "A -> fn:P; A,B -> fn:P; B,cap -> multiply; "
-         "A,multiply -> multiply; fn:P,fn:P -> multiply; "
-         "multiply -> fn:P; fn:P,multiply -> rel:equals",
-         "A -> __P_6; A,B -> __P_7; B,cap -> __multiply_4; "
-         "A,__multiply_4 -> __multiply_3; __P_6,__P_7 -> __multiply_5; "
-         "__multiply_3 -> __P_2; __P_2,__multiply_5 -> __equals_1",
-     [{"op": "P", "id": "__P_7", "_edge_roles": {"condition": 1}},
-      {"op": "P", "id": "__P_6", "_edge_roles": {"condition": 0}}]),
+         "A -> fn:P; A,B -> fn:P; A,B -> intersection; "
+         "intersection -> fn:P; fn:P,fn:P -> multiply; "
+         "fn:P,multiply -> rel:equals",
+         "A -> __P_5; A,B -> __P_6; A,B -> __intersection_3; "
+         "__intersection_3 -> __P_2; __P_5,__P_6 -> __multiply_4; "
+         "__P_2,__multiply_4 -> __equals_1",
+     [{"op": "P", "id": "__P_6", "_edge_roles": {"condition": 1}},
+      {"op": "P", "id": "__P_5", "_edge_roles": {"condition": 0}}]),
 
     ("prob_linearity",
      r"E[aX + b] = aE[X] + b",
@@ -231,14 +232,14 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     ("prob_independence",
      r"P(A \cap B) = P(A) \cdot P(B)",
      PASS,
-         "A -> fn:P; B -> fn:P; B,cap -> multiply; "
-         "A,multiply -> multiply; fn:P,fn:P -> multiply; "
-         "multiply -> fn:P; fn:P,multiply -> rel:equals",
-         "A -> __P_6; B -> __P_7; B,cap -> __multiply_4; "
-         "A,__multiply_4 -> __multiply_3; __P_6,__P_7 -> __multiply_5; "
-         "__multiply_3 -> __P_2; __P_2,__multiply_5 -> __equals_1",
-     [{"op": "P", "id": "__P_6", "_edge_roles": {"condition": 0}},
-      {"op": "P", "id": "__P_7", "_edge_roles": {"condition": 0}}]),
+         "A -> fn:P; B -> fn:P; A,B -> intersection; "
+         "intersection -> fn:P; fn:P,fn:P -> multiply; "
+         "fn:P,multiply -> rel:equals",
+         "A -> __P_5; B -> __P_6; A,B -> __intersection_3; "
+         "__intersection_3 -> __P_2; __P_5,__P_6 -> __multiply_4; "
+         "__P_2,__multiply_4 -> __equals_1",
+     [{"op": "P", "id": "__P_5", "_edge_roles": {"condition": 0}},
+      {"op": "P", "id": "__P_6", "_edge_roles": {"condition": 0}}]),
 
     ("prob_mgf",
      r"M_X(t) = E(e^{tX})",

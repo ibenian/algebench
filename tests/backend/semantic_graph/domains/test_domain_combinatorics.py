@@ -32,6 +32,7 @@ ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
     "function", "binomial", "choose", "factorial", "ceiling", "sum",
     "Abs", "abs", "approximately",
+    "intersection", "union",
 }
 
 
@@ -136,18 +137,16 @@ COMBINATORICS_EXPRESSIONS: list[CatalogEntry] = [
     ("comb_inclusion_exclusion",
      r"|A \cup B| = |A| + |B| - |A \cap B|",
      PASS,
-         "A -> fn:abs; B -> fn:abs; B,cap -> multiply; "
-         "B,cup -> multiply; fn:abs,fn:abs -> add; "
-         "A,multiply -> multiply; A,multiply -> multiply; "
-         "multiply -> fn:abs; multiply -> fn:abs; fn:abs -> negation; "
-         "add,negation -> add; add,fn:abs -> rel:equals",
-         "A -> __abs_7; B -> __abs_8; B,cap -> __multiply_12; "
-         "B,cup -> __multiply_4; __abs_7,__abs_8 -> __add_6; "
-         "A,__multiply_12 -> __multiply_11; "
-         "A,__multiply_4 -> __multiply_3; __multiply_11 -> __abs_10; "
-         "__multiply_3 -> __abs_2; __abs_10 -> __negation_9; "
-         "__add_6,__negation_9 -> __add_5; "
-         "__abs_2,__add_5 -> __equals_1",
+         "A -> fn:abs; B -> fn:abs; A,B -> intersection; A,B -> union; "
+         "fn:abs,fn:abs -> add; intersection -> fn:abs; union -> fn:abs; "
+         "fn:abs -> negation; add,negation -> add; "
+         "add,fn:abs -> rel:equals",
+         "A -> __abs_6; B -> __abs_7; "
+         "A,B -> __intersection_10; A,B -> __union_3; "
+         "__union_3 -> __abs_2; __intersection_10 -> __abs_9; "
+         "__abs_6,__abs_7 -> __add_5; __abs_9 -> __negation_8; "
+         "__add_5,__negation_8 -> __add_4; "
+         "__abs_2,__add_4 -> __equals_1",
      None),
 
     ("comb_pascals_rule",

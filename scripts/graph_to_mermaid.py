@@ -113,6 +113,11 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "congruent": "≡",
     "divides": "∣",
     "asymptotic": "∼",
+    "intersection": "∩",
+    "union": "∪",
+    "set_difference": "∖",
+    "conjunction": "∧",
+    "disjunction": "∨",
 }
 
 OPERATOR_LATEX: dict[str, str] = {
@@ -146,6 +151,11 @@ OPERATOR_LATEX: dict[str, str] = {
     "implies": r"\Rightarrow",
     "iff": r"\Leftrightarrow",
     "and": ",",
+    "intersection": r"\cap",
+    "union": r"\cup",
+    "set_difference": r"\setminus",
+    "conjunction": r"\land",
+    "disjunction": r"\lor",
     "branch": r"\Rightarrow",
     "congruent": r"\equiv",
     "divides": r"\mid",
