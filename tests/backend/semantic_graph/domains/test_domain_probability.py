@@ -169,11 +169,11 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     ("prob_markov",
      r"P(X \geq a) \leq \frac{E[X]}{a}",
     PASS,
-         "X -> fn:E; a -> power; fn:E,power -> multiply; "
-         "P,multiply -> rel:less_equal",
-         "X -> __E_2; a -> __power_3; "
-         "__E_2,__power_3 -> __multiply_1; "
-         "P,__multiply_1 -> __less_equal_4",
+         "X -> fn:E; X,a -> fn:P; a -> power; "
+         "fn:E,power -> multiply; fn:P,multiply -> rel:less_equal",
+         "X -> __E_3; X,a -> __P_1; a -> __power_4; "
+         "__E_3,__power_4 -> __multiply_2; "
+         "__P_1,__multiply_2 -> __less_equal_5",
      None),
 
     ("prob_complement",
@@ -190,9 +190,13 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     ("prob_chebyshev",
      r"P(|X - \mu| \geq k\sigma) \leq \frac{1}{k^2}",
     PASS,
-         "k -> power; power -> power; P,power -> rel:less_equal",
-         "k -> __power_2; __power_2 -> __power_1; "
-         "P,__power_1 -> __less_equal_3",
+         "k,sigma -> multiply; mu -> negation; k -> power; "
+         "X,negation -> add; power -> power; add -> fn:abs; "
+         "fn:abs,multiply -> fn:P; fn:P,power -> rel:less_equal",
+         "k,sigma -> __multiply_5; mu -> __negation_4; k -> __power_7; "
+         "X,__negation_4 -> __add_3; __power_7 -> __power_6; "
+         "__add_3 -> __abs_2; __abs_2,__multiply_5 -> __P_1; "
+         "__P_1,__power_6 -> __less_equal_8",
      None),
 
     ("prob_uniform",

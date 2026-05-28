@@ -333,25 +333,44 @@ def _rewrite_conditional_bar(latex: str) -> tuple[str, set[str]]:
     return "".join(out), conditional_bar_funcs
 
 
-def _rewrite_assertion_equals(latex: str) -> tuple[str, set[str]]:
-    r"""Rewrite ``=`` inside function-call parens to ``,``.
+# Assertion operators that can appear inside function-call parens.
+# Ordered longest-first so greedy matching picks e.g. ``\geq`` before ``>``.
+_ASSERTION_OPS: list[str] = [
+    r"\geq", r"\leq", r"\neq",
+    r"\ge", r"\le", r"\ne",
+    r"\gt", r"\lt",
+    "=", ">", "<",
+]
 
-    Probability expressions like ``P(X = k)`` contain an assertion
-    (equality) inside the function arguments.  SymPy's ``parse_latex``
-    cannot handle ``=`` inside function calls — it silently collapses
-    the expression.  This preprocessor rewrites the ``=`` to ``,``
-    so SymPy sees ``P(X, k)``, and records which function names had
-    an assertion so the graph builder can attach the appropriate edge
-    role and the subexpr restorer can show ``=`` again.
 
-    Only a **single** bare ``=`` at argument depth is rewritten; nested
-    ``=`` inside inner parentheses or multiple ``=`` are left alone.
+def _rewrite_assertion_equals(latex: str) -> tuple[str, dict[str, str]]:
+    r"""Rewrite assertion operators inside function-call parens to ``,``.
+
+    Probability expressions like ``P(X = k)`` or ``P(|X-\mu| \geq k)``
+    contain an assertion (relation) inside the function arguments.
+    SymPy's ``parse_latex`` cannot handle relation operators inside
+    function calls — it silently collapses the expression.  This
+    preprocessor rewrites the operator to ``,`` so SymPy sees
+    ``P(X, k)``, and records which function names had an assertion
+    and what operator was used so the subexpr restorer can show the
+    original operator again.
+
+    Only a **single** assertion operator at argument depth 0 is
+    rewritten; nested operators or multiple operators are left alone.
+
+    Returns
+    -------
+    tuple[str, dict[str, str]]
+        ``(rewritten_latex, assertion_eq_funcs)`` where
+        *assertion_eq_funcs* maps function names to the original
+        LaTeX operator string (e.g. ``{"P": "\\geq"}``).
     """
-    if "=" not in latex:
-        return latex, set()
+    # Quick bail-out: nothing to do if no operator could be present.
+    if not any(op in latex for op in _ASSERTION_OPS):
+        return latex, {}
 
     out: list[str] = []
-    assertion_eq_funcs: set[str] = set()
+    assertion_eq_funcs: dict[str, str] = {}
     i = 0
     n = len(latex)
     while i < n:
@@ -382,28 +401,50 @@ def _rewrite_assertion_equals(latex: str) -> tuple[str, set[str]]:
                 body_end = k - 1
                 body = latex[body_start:body_end]
 
-                # Count bare = at depth 0 within the body.
-                eq_positions: list[int] = []
+                # Find assertion operators at depth 0 within the body.
+                op_hits: list[tuple[int, int, str]] = []  # (start, end, op)
                 d = 0
-                for bi, bc in enumerate(body):
-                    if bc in "({":
+                bi = 0
+                blen = len(body)
+                while bi < blen:
+                    c = body[bi]
+                    if c in "({":
                         d += 1
-                    elif bc in ")}":
+                        bi += 1
+                    elif c in ")}":
                         d -= 1
-                    elif bc == "=" and d == 0:
-                        eq_positions.append(bi)
+                        bi += 1
+                    elif d == 0:
+                        matched = False
+                        for op in _ASSERTION_OPS:
+                            end = bi + len(op)
+                            if body[bi:end] == op:
+                                # For LaTeX commands (\geq, \ne, …) the
+                                # next char must NOT be alphabetic, else
+                                # we'd match \ne inside \neg.
+                                if op.startswith("\\") and end < blen \
+                                        and body[end].isalpha():
+                                    continue
+                                op_hits.append((bi, end, op))
+                                bi = end
+                                matched = True
+                                break
+                        if not matched:
+                            bi += 1
+                    else:
+                        bi += 1
 
-                if len(eq_positions) == 1:
-                    pp = eq_positions[0]
-                    # Consume optional whitespace around the ``=``.
-                    before = pp
+                if len(op_hits) == 1:
+                    start_op, end_op, orig_op = op_hits[0]
+                    # Consume optional whitespace around the operator.
+                    before = start_op
                     while before > 0 and body[before - 1] == " ":
                         before -= 1
-                    after = pp + 1
-                    while after < len(body) and body[after] == " ":
+                    after = end_op
+                    while after < blen and body[after] == " ":
                         after += 1
                     body = body[:before] + ", " + body[after:]
-                    assertion_eq_funcs.add(func_name)
+                    assertion_eq_funcs[func_name] = orig_op
 
                 out.append("(")
                 out.append(body)
@@ -509,26 +550,36 @@ def _restore_all_conditional_bars(
 
 
 def _restore_all_assertion_equals(
-    latex: str, func_names: set[str],
+    latex: str, func_names: dict[str, str] | set[str],
 ) -> str:
-    r"""Restore assertion ``=`` in ALL occurrences of named functions.
+    r"""Restore assertion operators in ALL occurrences of named functions.
 
-    The preprocessor rewrites ``P(X = k)`` → ``P(X, k)`` before SymPy
-    parsing.  SymPy then renders ``P{\left(X,k \right)}`` in subexprs.
-    This function restores the **last** comma at argument depth to ``=``
-    for functions in *func_names*, so the display shows ``P(X = k)``
-    again.
+    The preprocessor rewrites e.g. ``P(X = k)`` → ``P(X, k)`` or
+    ``P(|X-\mu| \geq k)`` → ``P(|X-\mu|, k)`` before SymPy parsing.
+    SymPy then renders ``P{\left(X,k \right)}`` in subexprs.  This
+    function restores the **last** comma at argument depth to the
+    original operator for functions in *func_names*.
+
+    *func_names* can be a ``dict[str, str]`` mapping function name →
+    original operator (e.g. ``{"P": "\\geq"}``) or a legacy
+    ``set[str]`` which defaults the operator to ``=``.
 
     Uses the same scanning logic as ``_restore_all_conditional_bars``.
     """
     if not func_names:
         return latex
 
+    # Normalise to dict form.
+    if isinstance(func_names, set):
+        func_map: dict[str, str] = {f: "=" for f in func_names}
+    else:
+        func_map = func_names
+
     escaped = "|".join(
-        re.escape(f) for f in sorted(func_names, key=len, reverse=True)
+        re.escape(f) for f in sorted(func_map, key=len, reverse=True)
     )
     pattern = re.compile(
-        rf"(?:{escaped})"
+        rf"(?P<fname>{escaped})"
         r"(?:\{\\left\(|(?:\{)?\()"
     )
 
@@ -536,6 +587,8 @@ def _restore_all_assertion_equals(
     pos = 0
     for m in pattern.finditer(latex):
         start = m.start()
+        fname = m.group("fname")
+        orig_op = func_map.get(fname, "=")
         result.append(latex[pos:start])
 
         depth = 1
@@ -558,7 +611,7 @@ def _restore_all_assertion_equals(
             while after < len(func_region) and func_region[after] == " ":
                 after += 1
             func_region = (
-                func_region[:rel] + " = " + func_region[after:]
+                func_region[:rel] + f" {orig_op} " + func_region[after:]
             )
         result.append(func_region)
         pos = k
@@ -1388,7 +1441,7 @@ class SemanticGraphBuilder:
         original_latex: str | None = None,
         bare_sum_indices: set[str] | None = None,
         conditional_bar_funcs: set[str] | None = None,
-        assertion_eq_funcs: set[str] | None = None,
+        assertion_eq_funcs: dict[str, str] | None = None,
     ) -> None:
         self.nodes: list[dict[str, str]] = []
         self.edges: list[dict[str, str]] = []
@@ -1399,7 +1452,7 @@ class SemanticGraphBuilder:
         self._original_latex = original_latex or ""
         self._bare_sum_indices: set[str] = bare_sum_indices or set()
         self._conditional_bar_funcs: set[str] = conditional_bar_funcs or set()
-        self._assertion_eq_funcs: set[str] = assertion_eq_funcs or set()
+        self._assertion_eq_funcs: dict[str, str] = assertion_eq_funcs or {}
         self._symbol_order = self._build_symbol_order()
         # Per-integral closed-integral flags: scan the *original* LaTeX for
         # \oint vs \int in left-to-right order so each Integral node can be
@@ -2128,7 +2181,7 @@ def _build_relation_graph(
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
     conditional_bar_funcs: set[str] | None = None,
-    assertion_eq_funcs: set[str] | None = None,
+    assertion_eq_funcs: dict[str, str] | None = None,
 
 ) -> dict:
     r"""Build a graph for a binary relation ``lhs <op> rhs``."""
@@ -2249,7 +2302,7 @@ def _build_chained_asymmetric_relation_graph(
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
     conditional_bar_funcs: set[str] | None = None,
-    assertion_eq_funcs: set[str] | None = None,
+    assertion_eq_funcs: dict[str, str] | None = None,
 
 ) -> dict:
     r"""Build right-associative nested binary nodes for chained asymmetric relations.
@@ -2320,7 +2373,7 @@ def _build_nary_relation_graph(
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
     conditional_bar_funcs: set[str] | None = None,
-    assertion_eq_funcs: set[str] | None = None,
+    assertion_eq_funcs: dict[str, str] | None = None,
 
 ) -> dict:
     r"""Build an n-ary relation graph: all parts feed into one relation node.
