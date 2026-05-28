@@ -397,8 +397,15 @@ def _format_label(
         # ``➡`` with a phantom ``\R`` accent), and the enricher occasionally
         # rewrites ``emoji`` to such a codepoint. Prefer the canonical glyph
         # for the known ``op`` so the visual stays stable regardless.
+        #
+        # Exception: bare ``>`` / ``<`` are interpreted by Mermaid as markdown
+        # blockquote and HTML tag openers.  For those ops, use the LaTeX path
+        # (wrapped in ``$...$``) which is safe from Mermaid's parser.
         sym = RELATION_SYMBOLS.get(op)
         if sym:
+            if sym in ("<", ">"):
+                latex_sym = OPERATOR_LATEX.get(op, sym)
+                return f"${latex_sym}$"
             return sym
         rel_emoji = node.get("emoji", "")
         if rel_emoji:
