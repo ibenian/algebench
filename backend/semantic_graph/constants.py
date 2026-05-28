@@ -27,7 +27,7 @@ _GREEK_POOL: list[str] = [
 
 _ACCENT_COMMANDS: tuple[str, ...] = (
     "vec", "hat", "bar", "tilde",
-    "overline", "underline", "widehat", "widetilde", "check", "breve",
+    "underline", "widehat", "widetilde", "check", "breve",
     "mathring", "acute", "grave",
     "mathbf", "mathrm", "mathit", "mathsf", "mathcal", "mathfrak",
     "boldsymbol", "bm", "operatorname",
@@ -43,7 +43,7 @@ _ORDER_TO_ACCENT: dict[int, str] = {1: "dot", 2: "ddot", 3: "dddot", 4: "ddddot"
 # Equation-chain / statement-splitting constants (from server.py)
 # ---------------------------------------------------------------------------
 
-_CHAIN_RELATION_COMMANDS: tuple[str, ...] = ("\\approx", "\\simeq", "\\equiv")
+_CHAIN_RELATION_COMMANDS: tuple[str, ...] = ("\\approx", "\\simeq")
 
 _LOGICAL_CONNECTIVE_COMMANDS: tuple[str, ...] = (
     "\\implies", "\\impliedby", "\\iff",
@@ -100,12 +100,12 @@ OPERATOR_MAP: dict[type, str] = {
 _ASYMMETRIC_OPS: set[str] = {
     "greater_than", "less_than", "greater_equal", "less_equal",
     "element_of", "not_element_of",
-    "implies",
+    "implies", "divides",
 }
 
 _SYMMETRIC_OPS: set[str] = {
     "equals", "approximately", "not_equal", "proportional", "maps_to",
-    "iff",
+    "iff", "congruent", "asymptotic",
 }
 
 _META_RELATION_OPS: set[str] = {"implies", "iff"}
@@ -127,6 +127,8 @@ RELATION_MAP: list[tuple[str, dict[str, str]]] = [
     (r"\implies", {"op": "implies", "label": "implies", "emoji": "⇒"}),
     (r"\propto", {"op": "proportional", "label": "proportional to", "emoji": "∝"}),
     (r"\approx", {"op": "approximately", "label": "approximately equal", "emoji": "≈"}),
+    (r"\sim", {"op": "asymptotic", "label": "asymptotically equal", "emoji": "∼"}),
+    (r"\equiv", {"op": "congruent", "label": "congruent to", "emoji": "≡"}),
     (r"\iff", {"op": "iff", "label": "if and only if", "emoji": "⇔"}),
     (r"\to", {"op": "maps_to", "label": "maps to", "emoji": "→"}),
     (r"\rightarrow", {"op": "maps_to", "label": "maps to", "emoji": "→"}),
@@ -139,6 +141,7 @@ RELATION_MAP: list[tuple[str, dict[str, str]]] = [
     (r"\le", {"op": "less_equal", "label": "less than or equal to", "emoji": "≤"}),
     (r"\gt", {"op": "greater_than", "label": "greater than", "emoji": ">"}),
     (r"\lt", {"op": "less_than", "label": "less than", "emoji": "<"}),
+    (r"\mid", {"op": "divides", "label": "divides", "emoji": "∣"}),
 ]
 
 _STYLE_SYMBOL_COMMAND_RE: re.Pattern[str] = re.compile(
@@ -157,13 +160,15 @@ _SIMPLE_STYLED_SYMBOL_RE: re.Pattern[str] = re.compile(
 # ---------------------------------------------------------------------------
 
 _OPERATOR_GLYPHS: dict[str, str] = {
-    "equals": "=", "greater_than": ">", "less_than": "<",
+    "equals": "=", "congruent": "≡", "divides": "∣", "asymptotic": "∼",
+    "greater_than": ">", "less_than": "<",
     "greater_equal": "≥", "less_equal": "≤", "not_equal": "≠",
     "multiply": "×", "add": "+", "subtract": "−",
     "divide": "÷", "integral": "∫", "closed_integral": "∮",
     "implies": "⇒", "iff": "⇔", "piecewise": "pw", "branch": "⇒",
     "negation": "−", "not": "¬", "logical_not": "¬",
     "conjunction": "∧", "disjunction": "∨",
+    "intersection": "∩", "union": "∪", "set_difference": "∖",
     "sum": "∑", "product": "∏", "limit": "lim",
     "factorial": "(·)!", "sqrt": "√(·)",
     "log": "log", "logarithm": "log", "exp": "exp",
@@ -187,13 +192,16 @@ _OPERATOR_KINDS: dict[str, str] = {
     "factorial": "arithmetic",
     "sin": "function", "cos": "function", "tan": "function",
     "log": "function", "logarithm": "function", "exp": "function",
-    "equals": "comparison", "not_equal": "comparison",
+    "equals": "comparison", "congruent": "comparison", "divides": "comparison",
+    "asymptotic": "comparison",
+    "not_equal": "comparison",
     "greater_than": "comparison", "less_than": "comparison",
     "greater_equal": "comparison", "less_equal": "comparison",
     "element_of": "comparison", "not_element_of": "comparison",
     "implies": "logical", "iff": "logical",
     "not": "logical", "logical_not": "logical",
     "conjunction": "logical", "disjunction": "logical",
+    "intersection": "set", "union": "set", "set_difference": "set",
     "sum": "aggregate", "product": "aggregate",
     "integral": "aggregate", "closed_integral": "aggregate",
     "limit": "aggregate",

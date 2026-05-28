@@ -82,6 +82,7 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "multiply": "×",
     "divide": "÷",
     "negation": "−",
+    "neg": "¬(·)",
     "power": "(·)˙",
     "equals": "=",
     "greater_than": ">",
@@ -110,6 +111,16 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "iff": "⟺",
     "and": ",",
     "branch": "⇒",
+    "congruent": "≡",
+    "divides": "∣",
+    "asymptotic": "∼",
+    "intersection": "∩",
+    "union": "∪",
+    "set_difference": "∖",
+    "conjunction": "∧",
+    "disjunction": "∨",
+    "forall": "∀(·)",
+    "exists": "∃(·)",
 }
 
 OPERATOR_LATEX: dict[str, str] = {
@@ -118,6 +129,7 @@ OPERATOR_LATEX: dict[str, str] = {
     "multiply": r"\times",
     "divide": r"\div",
     "negation": "-",
+    "neg": r"\lnot(\cdot)",
     "power": r"(\cdot)^{\cdot}",
     "equals": "=",
     "greater_than": ">",
@@ -143,7 +155,17 @@ OPERATOR_LATEX: dict[str, str] = {
     "implies": r"\Rightarrow",
     "iff": r"\Leftrightarrow",
     "and": ",",
+    "intersection": r"\cap",
+    "union": r"\cup",
+    "set_difference": r"\setminus",
+    "conjunction": r"\land",
+    "disjunction": r"\lor",
+    "forall": r"\forall(\cdot)",
+    "exists": r"\exists(\cdot)",
     "branch": r"\Rightarrow",
+    "congruent": r"\equiv",
+    "divides": r"\mid",
+    "asymptotic": r"\sim",
 }
 
 # Op-specific shape defaults. The graph schema is semantic-only
@@ -197,6 +219,9 @@ RELATION_SYMBOLS: dict[str, str] = {
     "maps_to": "→",
     "element_of": "∈",
     "not_element_of": "∉",
+    "congruent": "≡",
+    "divides": "∣",
+    "asymptotic": "∼",
 }
 
 
@@ -290,6 +315,8 @@ def _format_label(
     label_mode: str,
     show: set[str] | None = None,
     arity: int = 0,
+    has_condition: bool = False,
+    has_assertion: bool = False,
 ) -> str:
     """Format a node label based on the label mode and visible fields.
 
@@ -334,10 +361,25 @@ def _format_label(
             agg_cmd = OPERATOR_LATEX.get(op, r"\sum")
             return f"${agg_cmd}_{{{wrt}}}$"
         if node_type == "function" and op:
-            fn_name = OPERATOR_LATEX.get(op, op)
+            fn_name = OPERATOR_LATEX.get(op, node.get("latex") or op)
+            effective_arity = arity
+            # Natural-log special case: when subexpr uses \ln, display
+            # as ln(·) and drop the implicit base-e argument.
+            subexpr = node.get("subexpr", "")
+            if op == "log" and r"\ln" in subexpr:
+                fn_name = r"\ln"
+                effective_arity = max(arity - 1, 1)  # drop the e child
             if r"\cdot" in fn_name:
                 return f"${fn_name}$"
-            dots = r", ".join([r"\cdot"] * max(arity, 1))
+            # Conditional probability: P(·|·) instead of P(·, ·)
+            # Assertion equals: P(· = ·) instead of P(·, ·)
+            if has_condition and effective_arity >= 2:
+                regular_dots = r", ".join([r"\cdot"] * (effective_arity - 1))
+                dots = regular_dots + r"\mid " + r"\cdot"
+            elif has_assertion and effective_arity >= 2:
+                dots = r"\ldots"
+            else:
+                dots = r", ".join([r"\cdot"] * max(effective_arity, 1))
             return f"${fn_name}({dots})$"
         node_latex = node.get("latex")
         if node_latex:
@@ -355,8 +397,15 @@ def _format_label(
         # ``➡`` with a phantom ``\R`` accent), and the enricher occasionally
         # rewrites ``emoji`` to such a codepoint. Prefer the canonical glyph
         # for the known ``op`` so the visual stays stable regardless.
+        #
+        # Exception: bare ``>`` / ``<`` are interpreted by Mermaid as markdown
+        # blockquote and HTML tag openers.  For those ops, use the LaTeX path
+        # (wrapped in ``$...$``) which is safe from Mermaid's parser.
         sym = RELATION_SYMBOLS.get(op)
         if sym:
+            if sym in ("<", ">"):
+                latex_sym = OPERATOR_LATEX.get(op, sym)
+                return f"${latex_sym}$"
             return sym
         rel_emoji = node.get("emoji", "")
         if rel_emoji:
@@ -623,10 +672,17 @@ def semantic_graph_to_mermaid(
             emitted_classes.add(cls_key)
 
     # Pre-compute incoming edge counts so function nodes can show arity.
+    # Also track which nodes have a "condition" or "assertion" edge.
     in_degree: dict[str, int] = {}
+    has_condition_edge: set[str] = set()
+    has_assertion_edge: set[str] = set()
     for e in edges:
         dst = e.get("to", "")
         in_degree[dst] = in_degree.get(dst, 0) + 1
+        if e.get("role") == "condition":
+            has_condition_edge.add(dst)
+        elif e.get("role") == "assertion":
+            has_assertion_edge.add(dst)
 
     # Node definitions. Mermaid 11's typed-shape form (``@{ ... }``) doesn't
     # accept the inline ``:::className`` shortcut, so we emit those classes
@@ -648,7 +704,9 @@ def semantic_graph_to_mermaid(
         op_default = OP_DEFAULT_SHAPES.get(node.get("op"))
         shape = op_default or ns.get("shape") or TYPE_DEFAULT_SHAPES.get(ntype, "rect")
         label = _format_label(node, lm, show=show,
-                              arity=in_degree.get(node["id"], 0))
+                              arity=in_degree.get(node["id"], 0),
+                              has_condition=node["id"] in has_condition_edge,
+                              has_assertion=node["id"] in has_assertion_edge)
         node_def = _wrap_shape(nid, label, shape)
         # ``operatorVariants`` styling only applies to operator-like nodes.
         # When a matching variant class is available, it takes precedence

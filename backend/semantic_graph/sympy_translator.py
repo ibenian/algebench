@@ -250,6 +250,867 @@ def _normalize_latex(latex: str) -> str:
     return latex
 
 
+def _rewrite_conditional_bar(latex: str) -> tuple[str, set[str]]:
+    r"""Rewrite ``P(A|B)`` → ``P(A, B)`` so SymPy sees a two-arg function.
+
+    SymPy's ``parse_latex`` treats ``|`` as absolute-value delimiters,
+    which causes ``P(A|B)`` to collapse.  This pass detects bare ``|``
+    or ``\mid`` inside function-call parentheses and rewrites them as
+    commas.
+
+    Only single unpaired ``|`` is rewritten — paired ``|…|`` (absolute
+    value) is left untouched.  Example:
+
+    * ``P(A|B)``          → ``P(A, B)``         ← conditional bar
+    * ``P(|X| \geq a)``   → unchanged           ← absolute value
+    * ``P(A \mid B)``     → ``P(A, B)``         ← \mid form
+
+    Returns:
+        A tuple ``(rewritten_latex, conditional_bar_funcs)`` where
+        *conditional_bar_funcs* is the set of function names (e.g.
+        ``{"P"}``) that had a conditional bar rewritten.  The graph
+        builder uses this to tag the condition-argument edge with
+        ``role="condition"`` so the renderer can reconstruct ``P(·|·)``.
+    """
+    if "|" not in latex and r"\mid" not in latex:
+        return latex, set()
+
+    out: list[str] = []
+    conditional_bar_funcs: set[str] = set()
+    i = 0
+    n = len(latex)
+    while i < n:
+        # Look for '(' preceded by an identifier — a function call.
+        if latex[i] == "(":
+            j = i - 1
+            while j >= 0 and latex[j] in " \t":
+                j -= 1
+            is_func_call = j >= 0 and (latex[j].isalpha() or latex[j] == "}")
+
+            if is_func_call:
+                # Extract the function name preceding the '('.
+                name_end = j + 1
+                name_start = j
+                while name_start > 0 and (latex[name_start - 1].isalpha()
+                                          or latex[name_start - 1] == "_"):
+                    name_start -= 1
+                func_name = latex[name_start:name_end].strip()
+
+                # Scan the parenthesized body to find matching ')'.
+                depth = 1
+                body_start = i + 1
+                k = body_start
+                while k < n and depth > 0:
+                    if latex[k] == "(":
+                        depth += 1
+                    elif latex[k] == ")":
+                        depth -= 1
+                    k += 1
+                body_end = k - 1  # index of matching ')'
+                body = latex[body_start:body_end]
+
+                # Normalize \mid → | ONLY within this function body.
+                body = re.sub(r"\s*\\mid\b\s*", "|", body)
+
+                # Count bare pipes in body (not inside nested parens).
+                # Detect: is there exactly one unpaired |?
+                pipe_positions = _find_unpaired_pipes(body)
+                if len(pipe_positions) == 1:
+                    # Single unpaired pipe → conditional bar → rewrite to comma.
+                    pp = pipe_positions[0]
+                    body = body[:pp] + ", " + body[pp + 1:]
+                    conditional_bar_funcs.add(func_name)
+
+                out.append("(")
+                out.append(body)
+                out.append(")")
+                i = body_end + 1
+                continue
+
+        out.append(latex[i])
+        i += 1
+
+    return "".join(out), conditional_bar_funcs
+
+
+# Assertion operators that can appear inside function-call parens.
+# Ordered longest-first so greedy matching picks e.g. ``\geq`` before ``>``.
+_ASSERTION_OPS: list[str] = [
+    r"\notin", r"\geq", r"\leq", r"\neq",
+    r"\ge", r"\le", r"\ne",
+    r"\gt", r"\lt", r"\in",
+    "=", ">", "<",
+]
+
+# Map assertion LaTeX operators → graph relation op names + emoji.
+_ASSERTION_OP_META: dict[str, dict[str, str]] = {
+    "=":       {"op": "equals",        "emoji": "="},
+    r"\geq":   {"op": "greater_equal", "emoji": "≥"},
+    r"\ge":    {"op": "greater_equal", "emoji": "≥"},
+    r"\leq":   {"op": "less_equal",    "emoji": "≤"},
+    r"\le":    {"op": "less_equal",    "emoji": "≤"},
+    r"\gt":    {"op": "greater_than",  "emoji": ">"},
+    ">":       {"op": "greater_than",  "emoji": ">"},
+    r"\lt":    {"op": "less_than",     "emoji": "<"},
+    "<":       {"op": "less_than",     "emoji": "<"},
+    r"\neq":   {"op": "not_equal",     "emoji": "≠"},
+    r"\ne":    {"op": "not_equal",     "emoji": "≠"},
+    r"\in":    {"op": "element_of",    "emoji": "∈"},
+    r"\notin": {"op": "not_element_of","emoji": "∉"},
+}
+
+
+def _rewrite_assertion_ops(latex: str) -> tuple[str, dict[str, str]]:
+    r"""Rewrite assertion operators inside function-call parens to ``,``.
+
+    Probability expressions like ``P(X = k)`` or ``P(|X-\mu| \geq k)``
+    contain an assertion (relation) inside the function arguments.
+    SymPy's ``parse_latex`` cannot handle relation operators inside
+    function calls — it silently collapses the expression.  This
+    preprocessor rewrites the operator to ``,`` so SymPy sees
+    ``P(X, k)``, and records which function names had an assertion
+    and what operator was used so the subexpr restorer can show the
+    original operator again.
+
+    Only a **single** assertion operator at argument depth 0 is
+    rewritten; nested operators or multiple operators are left alone.
+
+    Returns
+    -------
+    tuple[str, dict[str, str]]
+        ``(rewritten_latex, assertion_funcs)`` where
+        *assertion_funcs* maps function names to the original
+        LaTeX operator string (e.g. ``{"P": "\\geq"}``).
+    """
+    # Quick bail-out: nothing to do if no operator could be present.
+    if not any(op in latex for op in _ASSERTION_OPS):
+        return latex, {}
+
+    out: list[str] = []
+    assertion_funcs: dict[str, str] = {}
+    i = 0
+    n = len(latex)
+    while i < n:
+        if latex[i] == "(":
+            j = i - 1
+            while j >= 0 and latex[j] in " \t":
+                j -= 1
+            is_func_call = j >= 0 and (latex[j].isalpha() or latex[j] == "}")
+
+            if is_func_call:
+                name_end = j + 1
+                name_start = j
+                while name_start > 0 and (latex[name_start - 1].isalpha()
+                                          or latex[name_start - 1] == "_"):
+                    name_start -= 1
+                func_name = latex[name_start:name_end].strip()
+
+                # Scan the parenthesized body to find matching ')'.
+                depth = 1
+                body_start = i + 1
+                k = body_start
+                while k < n and depth > 0:
+                    if latex[k] == "(":
+                        depth += 1
+                    elif latex[k] == ")":
+                        depth -= 1
+                    k += 1
+                body_end = k - 1
+                body = latex[body_start:body_end]
+
+                # Find assertion operators at depth 0 within the body.
+                op_hits: list[tuple[int, int, str]] = []  # (start, end, op)
+                d = 0
+                bi = 0
+                blen = len(body)
+                while bi < blen:
+                    c = body[bi]
+                    if c in "({":
+                        d += 1
+                        bi += 1
+                    elif c in ")}":
+                        d -= 1
+                        bi += 1
+                    elif d == 0:
+                        matched = False
+                        for op in _ASSERTION_OPS:
+                            end = bi + len(op)
+                            if body[bi:end] == op:
+                                # For LaTeX commands (\geq, \ne, …) the
+                                # next char must NOT be alphabetic, else
+                                # we'd match \ne inside \neg.
+                                if op.startswith("\\") and end < blen \
+                                        and body[end].isalpha():
+                                    continue
+                                op_hits.append((bi, end, op))
+                                bi = end
+                                matched = True
+                                break
+                        if not matched:
+                            bi += 1
+                    else:
+                        bi += 1
+
+                if len(op_hits) == 1:
+                    start_op, end_op, orig_op = op_hits[0]
+                    # Consume optional whitespace around the operator.
+                    before = start_op
+                    while before > 0 and body[before - 1] == " ":
+                        before -= 1
+                    after = end_op
+                    while after < blen and body[after] == " ":
+                        after += 1
+                    body = body[:before] + ", " + body[after:]
+                    assertion_funcs[func_name] = orig_op
+
+                out.append("(")
+                out.append(body)
+                out.append(")")
+                i = body_end + 1
+                continue
+
+        out.append(latex[i])
+        i += 1
+
+    return "".join(out), assertion_funcs
+
+
+# ---------------------------------------------------------------------------
+# Prefix operator rewriter  (\neg, \forall, \exists)
+# ---------------------------------------------------------------------------
+# ``\neg X``, ``\forall x``, ``\exists x`` without parentheses are parsed
+# by SymPy as implicit multiplication (``neg * X``) instead of function
+# calls (``neg(X)``).  We rewrite ``\CMD TOKEN`` → ``\CMD(TOKEN)`` where
+# TOKEN is a single variable, a braced group, or a LaTeX command with
+# its argument.
+
+_PREFIX_OPS = [r"\neg", r"\forall", r"\exists"]
+
+# Build one compiled regex per prefix command.
+_PREFIX_OP_RES: list[tuple[str, re.Pattern[str]]] = []
+for _cmd in _PREFIX_OPS:
+    _escaped = re.escape(_cmd)
+    _PREFIX_OP_RES.append((_cmd, re.compile(
+        _escaped + r"\s+"                        # \cmd + mandatory whitespace
+        r"(?!"                                    # NOT followed by…
+        r"\(|\\left\s*\(|\\left\s*\[|\\left\s*\{"  # already-parenthesized
+        r")"
+        r"("                                      # capture the operand
+        r"\\[a-zA-Z]+\{[^{}]*\}"                 # \cmd{...}
+        r"|\\[a-zA-Z]+"                          # bare \command
+        r"|[A-Za-z]"                             # single letter variable
+        r"|\{[^{}]*\}"                           # braced group {…}
+        r")"
+    )))
+
+
+def _rewrite_prefix_ops(latex: str) -> str:
+    r"""Rewrite ``\neg X`` → ``\neg(X)`` (and ``\forall``, ``\exists``).
+
+    Ensures SymPy parses prefix operators as function calls rather than
+    implicit multiplication.
+
+    Only rewrites when the operand is **not** already parenthesized.
+    Handles: ``\neg P``, ``\forall x``, ``\exists x``.
+    Skips:   ``\neg (P \land Q)``, ``\forall\left(…\right)``.
+    """
+    for cmd, pattern in _PREFIX_OP_RES:
+        if cmd not in latex:
+            continue
+        escaped = re.escape(cmd)
+        latex = pattern.sub(escaped + r"(\1)", latex)
+    return latex
+
+
+# ---------------------------------------------------------------------------
+# Infix set / logic operator rewriter
+# ---------------------------------------------------------------------------
+# LaTeX infix operators that SymPy can't parse (e.g. ``\cap``, ``\cup``,
+# ``\land``, ``\lor``).  We rewrite them to ``\Xi_{N}(LHS, RHS)``
+# placeholder function calls — SymPy parses ``\Xi_{N}`` as a callable
+# symbol, which the walker then converts to the proper operator node.
+#
+# Precedence groups are processed tightest-first so inner operators
+# become function calls before outer operators are scanned.  Within
+# each group operators associate left-to-right:
+#   ``A \cap B \cap C`` → ``\Xi_{N}(\Xi_{M}(A, B), C)``
+
+# Each entry: (latex_cmd, graph_op, emoji, node_type, original_latex)
+_INFIX_OP_CATALOG: list[tuple[str, str, str, str]] = [
+    # --- Precedence 1 (tightest): intersection / conjunction ---
+    (r"\cap",      "intersection",   "∩", "operator"),
+    (r"\land",     "conjunction",    "∧", "operator"),
+    (r"\wedge",    "conjunction",    "∧", "operator"),
+    # --- Precedence 2: union / disjunction / set difference ---
+    (r"\cup",      "union",          "∪", "operator"),
+    (r"\lor",      "disjunction",    "∨", "operator"),
+    (r"\vee",      "disjunction",    "∨", "operator"),
+    (r"\setminus", "set_difference", "∖", "operator"),
+]
+
+# Ordered precedence groups (tightest first).
+# Each group is a list of LaTeX commands at that precedence level.
+_INFIX_PRECEDENCE: list[list[str]] = [
+    [r"\cap", r"\land", r"\wedge"],
+    [r"\cup", r"\lor", r"\vee", r"\setminus"],
+]
+
+# Quick lookup from LaTeX command → metadata.
+_INFIX_OP_BY_CMD: dict[str, dict[str, str]] = {
+    entry[0]: {"op": entry[1], "emoji": entry[2], "type": entry[3],
+               "latex_cmd": entry[0]}
+    for entry in _INFIX_OP_CATALOG
+}
+
+# Sentinel prefix for infix-op Xi placeholders (avoids collisions with
+# the multichar-subscript and text-command Xi placeholders which use
+# small numeric indices).
+_INFIX_XI_START = 900
+
+
+_INFIX_RELATION_FENCES: list[str] = [
+    # Relation operators that act as segment boundaries for infix
+    # rewriting.  Sorted longest-first so greedy matching works.
+    r"\Longleftrightarrow", r"\Longrightarrow",
+    r"\Leftrightarrow", r"\Rightarrow",
+    r"\subseteq", r"\supseteq",
+    r"\implies", r"\approx", r"\subset", r"\supset",
+    r"\equiv", r"\notin", r"\propto",
+    r"\geq", r"\leq", r"\neq", r"\sim", r"\iff",
+    r"\ge", r"\le", r"\ne", r"\gt", r"\lt", r"\in",
+    r"\to", r"\mid",
+    "=", ">", "<",
+]
+
+
+def _rewrite_infix_ops(
+    latex: str,
+) -> tuple[str, dict[str, dict[str, str]]]:
+    r"""Rewrite LaTeX infix operators to ``\Xi_{N}(LHS, RHS)`` calls.
+
+    Recursively processes parenthesized and braced groups so operators
+    inside function arguments (e.g. ``P(A \cap B)``) are also rewritten.
+
+    Relation operators (``=``, ``\leq``, ``\iff``, …) act as segment
+    boundaries: the rewriter processes each segment independently so
+    it never wraps across an equation.
+
+    Returns ``(rewritten_latex, infix_overrides)`` where
+    *infix_overrides* maps each ``Xi_{N}`` placeholder name to its
+    operator metadata (``op``, ``emoji``, ``type``, ``latex_cmd``).
+    """
+    # Quick bail-out.
+    all_cmds = [cmd for group in _INFIX_PRECEDENCE for cmd in group]
+    if not any(cmd in latex for cmd in all_cmds):
+        return latex, {}
+
+    infix_overrides: dict[str, dict[str, str]] = {}
+    xi_counter = [_INFIX_XI_START]  # mutable counter for nested calls
+
+    def _alloc_placeholder(cmd: str) -> str:
+        """Allocate a new Xi placeholder for the given command."""
+        idx = xi_counter[0]
+        xi_counter[0] += 1
+        ph_name = f"Xi_{{{idx}}}"
+        infix_overrides[ph_name] = _INFIX_OP_BY_CMD[cmd].copy()
+        return rf"\Xi_{{{idx}}}"
+
+    def _process_segment(s: str) -> str:
+        """Process a single relation-free segment for infix operators."""
+        # Recurse into existing parenthesized/braced/pipe groups.
+        s = _recurse_into_groups(s)
+        # Rewrite operators at depth 0, one precedence group at a time.
+        for group in _INFIX_PRECEDENCE:
+            present = [cmd for cmd in group if cmd in s]
+            if not present:
+                continue
+            while True:
+                split = _split_on_infix(s, present)
+                if split is None:
+                    break
+                lhs, hit_cmd, rhs = split
+                lhs = _process_segment(lhs)
+                rhs = _process_segment(rhs)
+                placeholder = _alloc_placeholder(hit_cmd)
+                s = rf"{placeholder}({lhs}, {rhs})"
+        return s
+
+    def _process(s: str) -> str:
+        """Split on relation fences, process each segment, reassemble."""
+        segments, separators = _split_on_relation_fences(s)
+        if not separators:
+            # No relation fences — process the whole string.
+            return _process_segment(s)
+        processed = [_process_segment(seg) for seg in segments]
+        # Reassemble with original separators, preserving spacing.
+        out: list[str] = [processed[0]]
+        for sep, seg in zip(separators, processed[1:]):
+            out.append(f" {sep} " if not sep.startswith("\\") else f" {sep} ")
+            out.append(seg)
+        return "".join(out)
+
+    def _recurse_into_groups(s: str) -> str:
+        """Find parenthesized/braced/pipe groups and recursively process."""
+        all_cmds_local = [cmd for grp in _INFIX_PRECEDENCE
+                          for cmd in grp]
+        out: list[str] = []
+        i = 0
+        n = len(s)
+        while i < n:
+            c = s[i]
+            if c in "({":
+                close = ")" if c == "(" else "}"
+                depth = 1
+                k = i + 1
+                while k < n and depth > 0:
+                    if s[k] in "({":
+                        depth += 1
+                    elif s[k] in ")}":
+                        depth -= 1
+                    k += 1
+                inner = s[i + 1:k - 1]
+                if any(cmd in inner for cmd in all_cmds_local):
+                    inner = _process(inner)
+                out.append(c)
+                out.append(inner)
+                out.append(close)
+                i = k
+            elif c == "|":
+                # Try to find matching closing |.
+                k = i + 1
+                depth = 0
+                while k < n:
+                    if s[k] in "({":
+                        depth += 1
+                    elif s[k] in ")}":
+                        depth -= 1
+                    elif s[k] == "|" and depth == 0:
+                        break
+                    k += 1
+                if k < n:
+                    inner = s[i + 1:k]
+                    if any(cmd in inner for cmd in all_cmds_local):
+                        inner = _process(inner)
+                    out.append("|")
+                    out.append(inner)
+                    out.append("|")
+                    i = k + 1
+                else:
+                    out.append(c)
+                    i += 1
+            else:
+                out.append(s[i])
+                i += 1
+        return "".join(out)
+
+    latex = _process(latex)
+    return latex, infix_overrides
+
+
+def _split_on_relation_fences(
+    latex: str,
+) -> tuple[list[str], list[str]]:
+    """Split *latex* on depth-0 relation operators (=, \\leq, \\iff, …).
+
+    Returns ``(segments, separators)`` where ``len(segments) ==
+    len(separators) + 1``.  If no relation operator is found,
+    ``segments`` has one element and ``separators`` is empty.
+    """
+    depths = _compute_depth_map(latex)
+    segments: list[str] = []
+    separators: list[str] = []
+    seg_start = 0
+    i = 0
+    n = len(latex)
+
+    while i < n:
+        if depths[i] != 0:
+            i += 1
+            continue
+        found = False
+        for fence in _INFIX_RELATION_FENCES:
+            end = i + len(fence)
+            if end > n:
+                continue
+            if latex[i:end] != fence:
+                continue
+            if all(depths[k] == 0 for k in range(i, end)):
+                # Word-boundary for LaTeX commands.
+                if fence.startswith("\\") and end < n and latex[end].isalpha():
+                    continue
+                segments.append(latex[seg_start:i])
+                separators.append(fence)
+                seg_start = end
+                i = end
+                found = True
+                break
+        if not found:
+            i += 1
+
+    segments.append(latex[seg_start:])
+    return segments, separators
+
+
+def _split_on_infix(
+    latex: str, cmds: list[str],
+) -> tuple[str, str, str] | None:
+    r"""Find the **rightmost** depth-0 infix operator and split around it.
+
+    Returns ``(lhs, cmd, rhs)`` or ``None`` if no operator found.
+
+    Using the *rightmost* hit gives left-associative grouping:
+    ``A \cap B \cap C`` splits as ``(A \cap B, \cap, C)`` so the
+    recursive caller wraps the LHS first, yielding
+    ``Xi(Xi(A, B), C)``.
+
+    ``|…|`` absolute-value pairs are treated as balanced groups so
+    ``|A \cap B|`` is not split across the pipes.
+    """
+    # Forward pass: build a depth map so we know which characters are
+    # at depth 0 vs. inside groups.  This handles ``()``, ``{}``, and
+    # paired ``|…|`` (absolute-value notation).
+    depths = _compute_depth_map(latex)
+
+    # Scan right-to-left for the rightmost depth-0 operator.
+    i = len(latex) - 1
+    while i >= 0:
+        if depths[i] != 0:
+            i -= 1
+            continue
+        for cmd in cmds:
+            start = i - len(cmd) + 1
+            if start < 0:
+                continue
+            if latex[start:i + 1] != cmd:
+                continue
+            # All characters of the cmd must be at depth 0.
+            if any(depths[k] != 0 for k in range(start, i + 1)):
+                continue
+            end = i + 1
+            if (cmd.startswith("\\") and end < len(latex)
+                    and latex[end].isalpha()):
+                break  # word boundary
+            lhs = latex[:start].rstrip()
+            rhs = latex[end:].lstrip()
+            return lhs, cmd, rhs
+        i -= 1
+
+    return None
+
+
+def _compute_depth_map(latex: str) -> list[int]:
+    """Compute a per-character depth map for ``()``, ``{}``, ``|…|`` groups.
+
+    Returns a list of integers, one per character.  Characters at the
+    top level have depth 0; characters inside parenthesized, braced,
+    or pipe-delimited groups have depth > 0.
+    """
+    n = len(latex)
+    depths = [0] * n
+    depth = 0
+
+    # First pass: handle () and {} — these are unambiguous.
+    for i in range(n):
+        c = latex[i]
+        if c in "({":
+            depths[i] = depth
+            depth += 1
+        elif c in ")}":
+            depth -= 1
+            depths[i] = depth
+        else:
+            depths[i] = depth
+
+    # Second pass: handle | pairs.  Scan left-to-right and greedily
+    # pair | characters at the same brace/paren depth.
+    pipe_stack: list[tuple[int, int]] = []  # (position, depth_at_pipe)
+    for i in range(n):
+        if latex[i] != "|":
+            continue
+        d = depths[i]
+        if pipe_stack and pipe_stack[-1][1] == d:
+            # Close the pair.
+            open_pos, _ = pipe_stack.pop()
+            # Mark everything between the pipes as depth+1.
+            for j in range(open_pos + 1, i):
+                depths[j] += 1
+        else:
+            # Open a new pair.
+            pipe_stack.append((i, d))
+
+    return depths
+
+
+def _restore_conditional_bar_in_subexpr(subexpr: str) -> str:
+    r"""Replace the last ``,`` inside the function's parens with ``\mid``.
+
+    SymPy renders ``P(A, B)`` as ``P{\left(A,B \right)}`` in the subexpr;
+    we want ``P{\left(A \mid B \right)}`` to match the original
+    conditional-probability notation.
+    """
+    # Find the innermost paren group that contains the function args.
+    # SymPy wraps as ``P{\left( ... \right)}``, so the comma is inside
+    # nested ``{`` and ``\left(`` — track depth with both ``(){}`` pairs.
+    depth = 0
+    last_comma = -1
+    # Find the opening ``(`` or ``\left(`` after the function name.
+    paren_depth = -1
+    for i, c in enumerate(subexpr):
+        if c in "({":
+            depth += 1
+            if c == "(" and paren_depth < 0:
+                paren_depth = depth
+        elif c in ")}":
+            depth -= 1
+        elif c == "," and paren_depth > 0 and depth == paren_depth:
+            last_comma = i
+    if last_comma < 0:
+        return subexpr
+    # Consume optional whitespace after the comma so spacing is clean.
+    after = last_comma + 1
+    while after < len(subexpr) and subexpr[after] == " ":
+        after += 1
+    return subexpr[:last_comma] + r" \mid " + subexpr[after:]
+
+
+def _restore_all_conditional_bars(
+    latex: str, func_names: set[str],
+) -> str:
+    r"""Restore conditional bars in ALL occurrences of named functions.
+
+    Scans *latex* for every call to a function whose name is in
+    *func_names* and replaces the **last** comma at argument-level depth
+    with ``\mid``.  Handles both SymPy's ``P{\left(A,B \right)}`` and
+    plain ``P(A,B)`` forms.
+    """
+    if not func_names:
+        return latex
+
+    # Build a regex that finds the function name followed by the opening
+    # delimiter — either ``{\left(`` or plain ``(``.
+    escaped = "|".join(
+        re.escape(f) for f in sorted(func_names, key=len, reverse=True)
+    )
+    pattern = re.compile(
+        rf"(?:{escaped})"       # function name
+        r"(?:\{\\left\(|(?:\{)?\()"  # opening delimiters
+    )
+
+    result: list[str] = []
+    pos = 0
+    for m in pattern.finditer(latex):
+        start = m.start()
+        result.append(latex[pos:start])
+
+        # Walk forward from end of match to find the balanced close.
+        depth = 1
+        k = m.end()
+        last_comma = -1
+        while k < len(latex) and depth > 0:
+            c = latex[k]
+            if c in "({":
+                depth += 1
+            elif c in ")}":
+                depth -= 1
+            elif c == "," and depth == 1:
+                last_comma = k          # track *last* comma at top level
+            k += 1
+
+        func_region = latex[start:k]
+        if last_comma >= 0:
+            rel = last_comma - start    # offset relative to func_region
+            after = rel + 1
+            while after < len(func_region) and func_region[after] == " ":
+                after += 1
+            func_region = (
+                func_region[:rel] + r" \mid " + func_region[after:]
+            )
+        result.append(func_region)
+        pos = k
+
+    result.append(latex[pos:])
+    return "".join(result)
+
+
+def _restore_all_assertion_ops(
+    latex: str, func_names: dict[str, str] | set[str],
+) -> str:
+    r"""Restore assertion operators in ALL occurrences of named functions.
+
+    The preprocessor rewrites e.g. ``P(X = k)`` → ``P(X, k)`` or
+    ``P(|X-\mu| \geq k)`` → ``P(|X-\mu|, k)`` before SymPy parsing.
+    SymPy then renders ``P{\left(X,k \right)}`` in subexprs.  This
+    function restores the **last** comma at argument depth to the
+    original operator for functions in *func_names*.
+
+    *func_names* can be a ``dict[str, str]`` mapping function name →
+    original operator (e.g. ``{"P": "\\geq"}``) or a legacy
+    ``set[str]`` which defaults the operator to ``=``.
+
+    Uses the same scanning logic as ``_restore_all_conditional_bars``.
+    """
+    if not func_names:
+        return latex
+
+    # Normalise to dict form.
+    if isinstance(func_names, set):
+        func_map: dict[str, str] = {f: "=" for f in func_names}
+    else:
+        func_map = func_names
+
+    escaped = "|".join(
+        re.escape(f) for f in sorted(func_map, key=len, reverse=True)
+    )
+    pattern = re.compile(
+        rf"(?P<fname>{escaped})"
+        r"(?:\{\\left\(|(?:\{)?\()"
+    )
+
+    result: list[str] = []
+    pos = 0
+    for m in pattern.finditer(latex):
+        start = m.start()
+        fname = m.group("fname")
+        orig_op = func_map.get(fname, "=")
+        result.append(latex[pos:start])
+
+        depth = 1
+        k = m.end()
+        last_comma = -1
+        while k < len(latex) and depth > 0:
+            c = latex[k]
+            if c in "({":
+                depth += 1
+            elif c in ")}":
+                depth -= 1
+            elif c == "," and depth == 1:
+                last_comma = k
+            k += 1
+
+        func_region = latex[start:k]
+        if last_comma >= 0:
+            rel = last_comma - start
+            after = rel + 1
+            while after < len(func_region) and func_region[after] == " ":
+                after += 1
+            func_region = (
+                func_region[:rel] + f" {orig_op} " + func_region[after:]
+            )
+        result.append(func_region)
+        pos = k
+
+    result.append(latex[pos:])
+    return "".join(result)
+
+
+def _find_unpaired_pipes(s: str) -> list[int]:
+    """Find positions of ``|`` chars that are NOT part of ``|…|`` pairs.
+
+    Inside function-call bodies, paired ``|`` (absolute value) comes in
+    ``|expr|`` form.  An unpaired ``|`` is the conditional bar.
+
+    Heuristic: a ``|`` at position *p* is paired if there's another ``|``
+    at some later position *q* such that there's non-whitespace content
+    between them (the absolute-value body).  A single ``|`` with no
+    viable partner is unpaired → conditional bar.
+    """
+    # Collect pipe positions that aren't inside nested parens/braces.
+    pipes: list[int] = []
+    depth_paren = 0
+    depth_brace = 0
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if c == "(":
+            depth_paren += 1
+        elif c == ")":
+            depth_paren -= 1
+        elif c == "{":
+            depth_brace += 1
+        elif c == "}":
+            depth_brace -= 1
+        elif c == "|" and depth_paren == 0 and depth_brace == 0:
+            pipes.append(i)
+        i += 1
+
+    if not pipes:
+        return []
+
+    # Even count → all paired (absolute values); odd → one is conditional.
+    if len(pipes) % 2 == 0:
+        return []  # all paired
+
+    # Odd count: find which pipe is the conditional bar.
+    # Strategy: try to greedily pair pipes left→right.  The leftover is
+    # the conditional bar.
+    # A valid |…| pair has non-whitespace between the pipes.
+    paired = set()
+    j = 0
+    while j < len(pipes) - 1:
+        left = pipes[j]
+        right = pipes[j + 1]
+        between = s[left + 1:right].strip()
+        if between:
+            # Valid absolute-value pair.
+            paired.add(j)
+            paired.add(j + 1)
+            j += 2
+        else:
+            j += 1
+
+    unpaired = [pipes[k] for k in range(len(pipes)) if k not in paired]
+    return unpaired
+
+
+def _rewrite_bracket_functions(latex: str) -> str:
+    r"""Rewrite ``E[X]`` → ``E(X)`` so SymPy sees a function call.
+
+    SymPy's ``parse_latex`` treats square brackets as grouping, so
+    ``E[X]`` parses as implicit multiplication ``E · X``.  This pass
+    detects identifier-followed-by-``[`` patterns and rewrites the
+    brackets to parentheses.
+
+    Only single-letter identifiers or ``\cmd`` tokens immediately
+    before ``[`` are rewritten — standalone ``[…]`` (matrices, etc.)
+    is left untouched.
+    """
+    if "[" not in latex:
+        return latex
+
+    out: list[str] = []
+    i = 0
+    n = len(latex)
+    while i < n:
+        if latex[i] == "[":
+            # Check if preceded by an identifier (function name).
+            j = i - 1
+            while j >= 0 and latex[j] in " \t":
+                j -= 1
+            is_func = j >= 0 and (latex[j].isalpha() or latex[j] == "}")
+
+            if is_func:
+                # Find matching ']'.
+                depth = 1
+                k = i + 1
+                while k < n and depth > 0:
+                    if latex[k] == "[":
+                        depth += 1
+                    elif latex[k] == "]":
+                        depth -= 1
+                    k += 1
+                # Rewrite [...] → (...)
+                out.append("(")
+                out.append(latex[i + 1:k - 1])
+                out.append(")")
+                i = k
+                continue
+
+        out.append(latex[i])
+        i += 1
+
+    return "".join(out)
+
+
 def _collapse_multichar_subscripts(
     latex: str,
 ) -> tuple[str, dict[str, dict[str, str]]]:
@@ -305,6 +1166,49 @@ def _collapse_text_commands(latex: str) -> tuple[str, dict[str, dict[str, str]]]
         return rf"\Xi_{{{seen[content]}}}"
 
     rewritten = re.sub(r"\\text\{([^{}]+)\}", repl, latex)
+    return rewritten, overrides
+
+
+def _collapse_overline(
+    latex: str,
+    start_idx: int = 0,
+) -> tuple[str, dict[str, dict[str, str]]]:
+    r"""Replace ``\overline{X}`` with ``\Xi_{N}`` placeholder symbols.
+
+    ``\overline`` is semantically ambiguous — it can mean complex conjugate,
+    logical NOT, statistical mean, or closure depending on the domain.
+    Rather than interpreting it, we treat ``\overline{X}`` as a distinct
+    scalar variable whose display label is ``\overline{X}``.
+
+    *start_idx* avoids ``Xi_{N}`` collisions with earlier collapse passes.
+    """
+    overrides: dict[str, dict[str, str]] = {}
+    if r"\overline" not in latex:
+        return latex, overrides
+
+    seen: dict[str, int] = {}
+    _counter = [start_idx]
+
+    # Match \overline{...} with balanced braces (single nesting level)
+    pattern = re.compile(
+        r"\\overline\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}"
+    )
+
+    def repl(m: re.Match) -> str:
+        body = m.group(1).strip()
+        full = m.group(0)
+        if full not in seen:
+            idx = _counter[0]
+            _counter[0] += 1
+            seen[full] = idx
+            overrides[f"Xi_{{{idx}}}"] = {
+                "label": rf"\overline{{{body}}}",
+                "latex": rf"\overline{{{body}}}",
+                "type": "scalar",
+            }
+        return rf"\Xi_{{{seen[full]}}}"
+
+    rewritten = pattern.sub(repl, latex)
     return rewritten, overrides
 
 
@@ -486,7 +1390,7 @@ def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, 
 # handled by ``LaTeXPreprocessor.rewrite_dot_derivatives``.
 _TRACKED_ACCENT_RE = re.compile(
     r"\\(vec|hat|bar|tilde"
-    r"|overline|widehat|widetilde|check|breve|mathring|acute|grave)"
+    r"|widehat|widetilde|check|breve|mathring|acute|grave)"
     r"\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}"
 )
 
@@ -520,8 +1424,10 @@ def _preprocess_latex(latex: str) -> tuple[str, set[str]]:
 
     Returns ``(preprocessed_latex, bare_sum_indices)`` where
     *bare_sum_indices* is the set of index variable names that were
-    given synthetic ``{idx=0}^{\\infty}`` bounds by the preprocessor
-    (originating from bare ``\\sum_i`` notation).
+    given synthetic ``{idx=0}^{\\infty}`` bounds by the preprocessor.
+    Names from ``\\sum_i`` forms keep the index visible; names starting
+    with ``BARE_SUM_DUMMY_PREFIX`` (from bare ``\\sum``) are suppressed
+    entirely by the translator.
     """
     def _expand_higher_deriv(m: re.Match) -> str:
         op = m.group(1)
@@ -917,6 +1823,8 @@ class SemanticGraphBuilder:
         latex_commands: dict[str, str] | None = None,
         original_latex: str | None = None,
         bare_sum_indices: set[str] | None = None,
+        conditional_bar_funcs: set[str] | None = None,
+        assertion_funcs: dict[str, str] | None = None,
     ) -> None:
         self.nodes: list[dict[str, str]] = []
         self.edges: list[dict[str, str]] = []
@@ -926,6 +1834,8 @@ class SemanticGraphBuilder:
         self._latex_commands = latex_commands or {}
         self._original_latex = original_latex or ""
         self._bare_sum_indices: set[str] = bare_sum_indices or set()
+        self._conditional_bar_funcs: set[str] = conditional_bar_funcs or set()
+        self._assertion_funcs: dict[str, str] = assertion_funcs or {}
         self._symbol_order = self._build_symbol_order()
         # Per-integral closed-integral flags: scan the *original* LaTeX for
         # \oint vs \int in left-to-right order so each Integral node can be
@@ -970,15 +1880,135 @@ class SemanticGraphBuilder:
             edge["role"] = role
         self.edges.append(edge)
 
+    def _fix_bar_subexpr(self, subexpr: str) -> str:
+        """Restore ``|`` conditional bars and ``=`` assertion equals
+        in *subexpr* if needed."""
+        if self._conditional_bar_funcs:
+            subexpr = _restore_all_conditional_bars(
+                subexpr, self._conditional_bar_funcs)
+        if self._assertion_funcs:
+            subexpr = _restore_all_assertion_ops(
+                subexpr, self._assertion_funcs)
+        return subexpr
+
     def build(self, expr: sympy.Basic, original_latex: str | None = None) -> dict:
         """Build the graph from *expr* and return ``{nodes, edges}``."""
         root_id = self._walk(expr)
         if original_latex:
+            subexpr = self._fix_bar_subexpr(original_latex.strip())
             for node in self.nodes:
                 if node["id"] == root_id:
-                    node["subexpr"] = original_latex.strip()
+                    node["subexpr"] = subexpr
                     break
+        self._cleanup_infix_subexprs()
         return {"nodes": self.nodes, "edges": self.edges}
+
+    # ------------------------------------------------------------------
+    # Xi placeholder cleanup
+    # ------------------------------------------------------------------
+
+    # Matches the *header* of a Xi placeholder call — everything up to
+    # the opening paren.  The two forms are:
+    #   SymPy-generated:  ``\operatorname{Xi}_{900}{\left(``
+    #                  or ``\operatorname{Xi}_{900}^{c}{\left(``
+    #   Original-latex:   ``\Xi_{900}(``
+    _XI_HEADER_RE = re.compile(
+        r"\\(?:operatorname\{)?Xi(?:\})?_\{(\d+)\}"
+        r"(\^(?:\{[^{}]*\}|[a-zA-Z0-9]))?"       # optional exponent (captured)
+        r"\{?\\left\("
+        r"|"
+        r"\\Xi_\{(\d+)\}\s*\("
+    )
+
+    def _cleanup_infix_subexprs(self) -> None:
+        r"""Replace ``\Xi_{N}(…)`` remnants in ancestor subexprs.
+
+        SymPy's ``latex()`` renders infix placeholders as
+        ``\operatorname{Xi}_{900}{\left(A,B \right)}`` or as
+        ``\Xi_{900}(A, B)`` in the raw original-latex string.  This
+        pass replaces those fragments with the actual subexpr of the
+        corresponding infix operator node (e.g. ``A \cap B``).
+        """
+        if not self._overrides:
+            return
+        # Build mapping: Xi index → infix node subexpr
+        infix_subexprs: dict[int, str] = {}
+        for name, ovr in self._overrides.items():
+            if "op" not in ovr or "type" not in ovr:
+                continue
+            m = _PLACEHOLDER_NAME_RE.fullmatch(name)
+            if not m:
+                continue
+            idx = int(name.split("{")[1].rstrip("}"))
+            for nd in self.nodes:
+                if nd.get("op") == ovr["op"] and nd.get("subexpr"):
+                    infix_subexprs[idx] = nd["subexpr"]
+                    break
+        if not infix_subexprs:
+            return
+
+        def _replace_xi_calls(s: str) -> str:
+            """Scan *s* and replace each Xi placeholder call with its subexpr."""
+            result: list[str] = []
+            pos = 0
+            while pos < len(s):
+                m = self._XI_HEADER_RE.search(s, pos)
+                if not m:
+                    result.append(s[pos:])
+                    break
+                result.append(s[pos:m.start()])
+                # Groups: (1)=sympy idx, (2)=optional exponent, (3)=original idx
+                idx = int(m.group(1) or m.group(3))
+                exponent = m.group(2) or ""  # e.g. "^{c}"
+                replacement = infix_subexprs.get(idx)
+                if replacement is None:
+                    # Unknown Xi — keep original
+                    result.append(m.group(0))
+                    pos = m.end()
+                    continue
+                # Find matching close: scan for balanced parens
+                is_sympy = m.group(1) is not None  # \left( … \right) form
+                depth = 1
+                i = m.end()
+                while i < len(s) and depth > 0:
+                    if is_sympy:
+                        if s[i:].startswith(r"\left("):
+                            depth += 1
+                            i += 6
+                            continue
+                        if s[i:].startswith(r"\right)"):
+                            depth -= 1
+                            if depth == 0:
+                                i += 7  # skip past \right)
+                                # Also skip trailing ``}`` if present
+                                if i < len(s) and s[i] == "}":
+                                    i += 1
+                                break
+                            i += 7
+                            continue
+                    else:
+                        if s[i] == "(":
+                            depth += 1
+                        elif s[i] == ")":
+                            depth -= 1
+                            if depth == 0:
+                                i += 1
+                                break
+                    i += 1
+                # Wrap in parens if an exponent is present so it
+                # applies to the full group: ``(A \cup B)^{c}``
+                if exponent:
+                    result.append(f"({replacement}){exponent}")
+                else:
+                    result.append(replacement)
+                pos = i
+            return "".join(result)
+
+        for nd in self.nodes:
+            sub = nd.get("subexpr")
+            if not sub or "Xi" not in sub:
+                continue
+            nd["subexpr"] = _replace_xi_calls(sub)
 
     def _build_symbol_order(self) -> dict[str, int]:
         if not self._original_latex:
@@ -1107,7 +2137,50 @@ class SemanticGraphBuilder:
             den = " ".join(var_parts)
             return rf"\frac{{{num}}}{{{den}}}"
 
-        return self._restore_placeholders(sympy.latex(expr))
+        result = self._restore_placeholders(sympy.latex(expr))
+
+        # SymPy always renders natural log as ``\log``; restore the
+        # original ``\ln`` notation when the input LaTeX used it.
+        if "ln" in self._latex_commands:
+            result = result.replace(r"\log", r"\ln")
+
+        # Strip synthetic dummy bounds injected for bare \sum / \prod.
+        for dummy in LaTeXPreprocessor.BARE_SUM_DUMMIES:
+            result = re.sub(
+                rf"_\{{\\{dummy}=0\}}\^\{{\\infty\}}\s*",
+                " ",
+                result,
+            )
+
+        # SymPy renders ``\neg(X)`` as ``\operatorname{neg}{\left(X \right)}``.
+        # Same for ``\forall(X)`` and ``\exists(X)``.
+        # Restore the compact ``\cmd X`` form.
+        for _pfx_cmd, _pfx_latex in (
+            ("neg", r"\\neg"),
+            ("forall", r"\\forall"),
+            ("exists", r"\\exists"),
+        ):
+            result = re.sub(
+                rf"\\operatorname\{{{_pfx_cmd}\}}\{{\\left\(([^)]*?)\\right\)\}}",
+                _pfx_latex + r" \1",
+                result,
+            )
+
+        # Restore conditional bars in any function calls that had them.
+        # SymPy renders P(A, B) but we want P(A \mid B).  This applies
+        # to the entire subexpr string, so composite expressions like
+        # ``P(B, A) P(A)`` are also fixed.
+        if self._conditional_bar_funcs:
+            result = _restore_all_conditional_bars(
+                result, self._conditional_bar_funcs)
+
+        # Restore assertion equals in any function calls that had them.
+        # SymPy renders P(X, k) but we want P(X = k).
+        if self._assertion_funcs:
+            result = _restore_all_assertion_ops(
+                result, self._assertion_funcs)
+
+        return result
 
     def _restore_placeholders(self, latex: str) -> str:
         if not self._overrides:
@@ -1130,13 +2203,26 @@ class SemanticGraphBuilder:
             else:
                 replacement = real
             latex = latex.replace("\\" + name, replacement)
+            # SymPy renders Function('Xi_{0}') as \operatorname{Xi}_{0} —
+            # the base and subscript are split across LaTeX groups.
+            # Build that form so subexpr fields get cleaned up too.
+            m_ph = re.match(r"(Xi|Theta|Phi)_\{(\d+)\}", name)
+            if m_ph:
+                opname_form = rf"\operatorname{{{m_ph.group(1)}}}_{{{m_ph.group(2)}}}"
+                latex = latex.replace(opname_form, replacement)
             latex = latex.replace(name, replacement)
         return latex
 
     def _set_subexpr(self, node_id: str, expr: sympy.Basic) -> None:
         for node in self.nodes:
             if node["id"] == node_id and "subexpr" not in node:
-                node["subexpr"] = self._subexpr_ordered(expr)
+                subexpr = self._subexpr_ordered(expr)
+                # Restore conditional bar: P(A, B) → P(A \mid B)
+                if (isinstance(expr, sympy.Function)
+                        and type(expr).__name__ in self._conditional_bar_funcs
+                        and len(expr.args) >= 2):
+                    subexpr = _restore_conditional_bar_in_subexpr(subexpr)
+                node["subexpr"] = subexpr
                 break
 
     def _walk(self, expr: sympy.Basic) -> str:
@@ -1162,6 +2248,7 @@ class SemanticGraphBuilder:
             if name in self._overrides:
                 _INTERNAL_OVERRIDE_KEYS = {
                     "bra_content", "ket_content", "original_latex",
+                    "latex_cmd",
                 }
                 attrs.update({
                     k: v for k, v in self._overrides[name].items()
@@ -1248,15 +2335,100 @@ class SemanticGraphBuilder:
         if isinstance(expr, sympy.Function):
             func_name = type(expr).__name__
             op_name = _FUNC_OP_MAP.get(func_name, func_name)
+            # Resolve Xi_{N} placeholders used as functions.
+            if _PLACEHOLDER_NAME_RE.fullmatch(func_name) and func_name in self._overrides:
+                ovr = self._overrides[func_name]
+                # --- Infix operator placeholder (e.g. \cap → Xi_{900}) ---
+                # These carry an "op" key from _INFIX_OP_BY_CMD; emit an
+                # operator node instead of a function node.
+                if "op" in ovr and "type" in ovr:
+                    infix_op = ovr["op"]
+                    infix_emoji = ovr.get("emoji", "")
+                    infix_latex = ovr.get("latex_cmd", "")
+                    node_id = self._next_id(infix_op)
+                    # Walk children and add edges.
+                    child_ids: list[str] = []
+                    for arg in expr.args:
+                        child_id = self._walk(arg)
+                        child_ids.append(child_id)
+                        self._add_edge(child_id, node_id)
+                    # Build subexpr: "LHS \cap RHS"
+                    child_subexprs = []
+                    for cid in child_ids:
+                        for nd in self.nodes:
+                            if nd["id"] == cid:
+                                child_subexprs.append(
+                                    nd.get("subexpr", cid))
+                                break
+                    subexpr = f" {infix_latex} ".join(child_subexprs)
+                    self._add_node(
+                        node_id, type=ovr["type"], op=infix_op,
+                        emoji=infix_emoji, subexpr=subexpr,
+                    )
+                    return node_id
+                # --- Text-command placeholder (e.g. \text{Res} → Xi_{0}) ---
+                op_name = ovr.get("label", op_name)
             node_id = self._next_id(op_name)
             func_latex = self._latex_commands.get(func_name)
             func_attrs: dict[str, str] = {"type": "function", "op": op_name}
             if func_latex:
                 func_attrs["latex"] = func_latex
             self._add_node(node_id, **func_attrs)
-            for arg in expr.args:
-                child_id = self._walk(arg)
-                self._add_edge(child_id, node_id)
+            # log(arg, base) — mark the base edge with role="base"
+            # P(A|B) → P(A, B) — mark the last arg with role="condition"
+            # P(X=k) → P(X, k) — build inner relation node for the assertion
+            is_log = isinstance(expr, log)
+            has_cond_bar = (op_name in self._conditional_bar_funcs
+                           and len(expr.args) >= 2)
+            orig_op = self._assertion_funcs.get(op_name)
+            has_assertion = orig_op is not None and len(expr.args) >= 2
+
+            if has_assertion:
+                # Build an inner relation node for the assertion.
+                # E.g. P(X = k) → P contains an equals(X, k) child.
+                meta = _ASSERTION_OP_META.get(orig_op, {"op": "equals", "emoji": "="})
+                rel_op = meta["op"]
+                rel_emoji = meta["emoji"]
+                rel_id = self._next_id(rel_op)
+                # Walk all args and connect to the inner relation node
+                # with lhs/rhs roles (first arg = lhs, last = rhs).
+                child_ids: list[str] = []
+                last_idx = len(expr.args) - 1
+                for i, arg in enumerate(expr.args):
+                    child_id = self._walk(arg)
+                    child_ids.append(child_id)
+                    if i == 0:
+                        edge_role: str | None = "lhs"
+                    elif i == last_idx:
+                        edge_role = "rhs"
+                    else:
+                        edge_role = None
+                    self._add_edge(child_id, rel_id, role=edge_role)
+                # Build subexpr from children: "lhs_subexpr OP rhs_subexpr"
+                child_subexprs = []
+                for cid in child_ids:
+                    for nd in self.nodes:
+                        if nd["id"] == cid:
+                            child_subexprs.append(nd.get("subexpr", cid))
+                            break
+                rel_subexpr = f" {orig_op} ".join(child_subexprs)
+                self._add_node(
+                    rel_id, type="relation", op=rel_op, emoji=rel_emoji,
+                    subexpr=rel_subexpr,
+                )
+                # Connect the inner relation to the function.
+                self._add_edge(rel_id, node_id, role="assertion")
+            else:
+                last_idx = len(expr.args) - 1
+                for i, arg in enumerate(expr.args):
+                    child_id = self._walk(arg)
+                    if is_log and i == 1:
+                        edge_role = "base"
+                    elif has_cond_bar and i == last_idx:
+                        edge_role = "condition"
+                    else:
+                        edge_role = None
+                    self._add_edge(child_id, node_id, role=edge_role)
             return node_id
 
         # --- Limit ---
@@ -1351,6 +2523,13 @@ class SemanticGraphBuilder:
             upper_nid = None
             node_attrs: dict[str, Any] = {"type": "operator", "op": op_name}
             for limit_tuple in expr.limits:
+                idx_name = str(limit_tuple[0])
+                # Completely bare ``\sum`` (no subscript at all) gets a
+                # dummy index to satisfy SymPy — skip it entirely so the
+                # graph doesn't show a meaningless synthetic node.
+                if idx_name in LaTeXPreprocessor.BARE_SUM_DUMMIES:
+                    continue
+                synthetic = idx_name in self._bare_sum_indices
                 var_id = self._walk(limit_tuple[0])
                 wrt_ids.append(var_id)
                 if len(limit_tuple) >= 3:
@@ -1362,8 +2541,6 @@ class SemanticGraphBuilder:
                     # notation.  Only suppress bounds when the index is
                     # known-synthetic — explicit ``\sum_{n=0}^{\infty}``
                     # must keep its bound nodes.
-                    idx_name = str(limit_tuple[0])
-                    synthetic = idx_name in self._bare_sum_indices
                     if synthetic:
                         self._add_edge(var_id, node_id, role="wrt")
                     else:
@@ -1390,7 +2567,8 @@ class SemanticGraphBuilder:
                         # Upper bound feeds directly into the sum/product.
                         self._add_edge(upper_nid, node_id, role="ub")
 
-            node_attrs["with_respect_to"] = ", ".join(wrt_ids)
+            if wrt_ids:
+                node_attrs["with_respect_to"] = ", ".join(wrt_ids)
             if lower_nid is not None:
                 node_attrs["lower_bound"] = lower_nid
             if upper_nid is not None:
@@ -1398,6 +2576,18 @@ class SemanticGraphBuilder:
             self._add_node(node_id, **node_attrs)
             child_id = self._walk(expr.function)
             self._add_edge(child_id, node_id)
+
+            # For bare sums (all indices were dummies), override the
+            # subexpr to strip the synthetic bounds that were only
+            # needed for SymPy parsing.
+            if not wrt_ids:
+                body_subexpr = self._subexpr_ordered(expr.function)
+                cmd = r"\sum" if isinstance(expr, Sum) else r"\prod"
+                for node in self.nodes:
+                    if node["id"] == node_id:
+                        node["subexpr"] = rf"{cmd} {body_subexpr}"
+                        break
+
             return node_id
 
         # --- Power with literal exponent ---
@@ -1527,6 +2717,25 @@ class SemanticGraphBuilder:
 # Graph assembly
 # ---------------------------------------------------------------------------
 
+_PMOD_RE = re.compile(
+    r"\\pmod\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}\s*$"
+)
+
+
+def _extract_pmod(rhs_latex: str) -> tuple[str, str | None]:
+    r"""Strip a trailing ``\pmod{…}`` from *rhs_latex*.
+
+    Returns ``(cleaned_rhs, modulus_latex)`` where *modulus_latex* is
+    ``None`` when no ``\pmod`` was found.
+    """
+    m = _PMOD_RE.search(rhs_latex)
+    if m is None:
+        return rhs_latex, None
+    modulus = m.group(1).strip()
+    cleaned = rhs_latex[:m.start()].strip()
+    return cleaned, modulus
+
+
 def _build_relation_graph(
     lhs_latex: str,
     rel_meta: dict[str, str],
@@ -1538,14 +2747,25 @@ def _build_relation_graph(
     parenthetical_annotations: list | None = None,
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
+    conditional_bar_funcs: set[str] | None = None,
+    assertion_funcs: dict[str, str] | None = None,
 
 ) -> dict:
     r"""Build a graph for a binary relation ``lhs <op> rhs``."""
+
+    # --- Handle \pmod annotation ---
+    # For congruent relations, \pmod becomes a modulus attribute + edge.
+    # For other relations (equals, etc.), \pmod becomes an annotation node.
+    modulus_latex: str | None = None
+    rhs_latex, modulus_latex = _extract_pmod(rhs_latex)
+
     builder = SemanticGraphBuilder(
         overrides=overrides,
         latex_commands=latex_commands or {},
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
+        conditional_bar_funcs=conditional_bar_funcs,
+        assertion_funcs=assertion_funcs,
     )
 
     def _walk_relation_side(side_latex: str) -> tuple[str, sympy.Basic | None]:
@@ -1581,19 +2801,53 @@ def _build_relation_graph(
 
     for node in builder.nodes:
         if node["id"] == lhs_id and lhs_expr is not None:
-            node["subexpr"] = builder._restore_placeholders(lhs_latex.strip())
+            restored = builder._fix_bar_subexpr(
+                builder._restore_placeholders(lhs_latex.strip()))
+            if "Xi" not in restored or node.get("type") not in ("operator",):
+                node["subexpr"] = restored
         elif node["id"] == rhs_id and rhs_expr is not None:
-            node["subexpr"] = builder._restore_placeholders(rhs_latex.strip())
+            restored = builder._fix_bar_subexpr(
+                builder._restore_placeholders(rhs_latex.strip()))
+            if "Xi" not in restored or node.get("type") not in ("operator",):
+                node["subexpr"] = restored
 
     rel_id = builder._next_id(rel_meta["op"])
     rel_type = "relation" if is_relation(rel_meta["op"]) else "operator"
+    rel_extra: dict[str, str] = {}
+    is_congruent = rel_meta.get("op") == "congruent"
+    if modulus_latex is not None and is_congruent:
+        rel_extra["modulus"] = modulus_latex
     builder._add_node(
-        rel_id, type=rel_type, subexpr=original_latex.strip(), **rel_meta,
+        rel_id, type=rel_type,
+        subexpr=builder._fix_bar_subexpr(original_latex.strip()),
+        **rel_meta, **rel_extra,
     )
     rel_asymmetric = is_asymmetric_relation(rel_meta["op"])
     builder._add_edge(lhs_id, rel_id, role="lhs" if rel_asymmetric else None)
     builder._add_edge(rhs_id, rel_id, role="rhs" if rel_asymmetric else None)
 
+    # --- Connect modulus to the graph ---
+    if modulus_latex is not None:
+        if is_congruent:
+            # Congruent: modulus is structural — connect via modulus edge
+            try:
+                mod_expr = parse_latex(modulus_latex)
+                mod_id = builder._walk(mod_expr)
+                builder._add_edge(mod_id, rel_id, role="modulus")
+            except Exception:
+                pass  # modulus couldn't be parsed — already stored as attribute
+        else:
+            # Non-congruent (e.g. equals): \pmod is an annotation
+            ann = {
+                "type": "annotation",
+                "label": f"mod {modulus_latex}",
+                "latex": rf"\pmod{{{modulus_latex}}}",
+            }
+            if parenthetical_annotations is None:
+                parenthetical_annotations = []
+            parenthetical_annotations.append(ann)
+
+    builder._cleanup_infix_subexprs()
     graph: dict = {"nodes": builder.nodes, "edges": builder.edges}
     if lhs_expr is not None and rhs_expr is not None:
         try:
@@ -1619,6 +2873,8 @@ def _build_chained_asymmetric_relation_graph(
     parenthetical_annotations: list | None = None,
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
+    conditional_bar_funcs: set[str] | None = None,
+    assertion_funcs: dict[str, str] | None = None,
 
 ) -> dict:
     r"""Build right-associative nested binary nodes for chained asymmetric relations.
@@ -1636,16 +2892,21 @@ def _build_chained_asymmetric_relation_graph(
         latex_commands=latex_commands or {},
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
+        conditional_bar_funcs=conditional_bar_funcs,
+        assertion_funcs=assertion_funcs,
     )
     part_ids: list[str] = []
     try:
         for part_latex in part_latexes:
             expr = parse_latex(part_latex)
             pid = builder._walk(expr)
+            restored = builder._restore_placeholders(part_latex.strip())
             for node in builder.nodes:
                 if node["id"] == pid:
-                    node["subexpr"] = builder._restore_placeholders(
-                        part_latex.strip())
+                    # Don't overwrite a walker-built subexpr on infix
+                    # operator nodes — they already have the correct form.
+                    if "Xi" not in restored or node.get("type") not in ("operator",):
+                        node["subexpr"] = restored
                     break
             part_ids.append(pid)
     except Exception as exc:
@@ -1660,12 +2921,15 @@ def _build_chained_asymmetric_relation_graph(
         lhs_id = part_ids[i]
         rel_id = builder._next_id(op)
         builder._add_node(
-            rel_id, type=rel_type, subexpr=original_latex.strip(), **rel_meta,
+            rel_id, type=rel_type,
+            subexpr=builder._fix_bar_subexpr(original_latex.strip()),
+            **rel_meta,
         )
         builder._add_edge(lhs_id, rel_id, role="lhs")
         builder._add_edge(rhs_id, rel_id, role="rhs")
         rhs_id = rel_id
 
+    builder._cleanup_infix_subexprs()
     graph: dict = {"nodes": builder.nodes, "edges": builder.edges}
     graph["classification"] = {"kind": "algebraic"}
     if domain:
@@ -1684,6 +2948,8 @@ def _build_nary_relation_graph(
     parenthetical_annotations: list | None = None,
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
+    conditional_bar_funcs: set[str] | None = None,
+    assertion_funcs: dict[str, str] | None = None,
 
 ) -> dict:
     r"""Build an n-ary relation graph: all parts feed into one relation node.
@@ -1697,6 +2963,8 @@ def _build_nary_relation_graph(
         latex_commands=latex_commands or {},
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
+        conditional_bar_funcs=conditional_bar_funcs,
+        assertion_funcs=assertion_funcs,
     )
     part_ids: list[str] = []
     first_expr = None
@@ -1706,10 +2974,11 @@ def _build_nary_relation_graph(
             if first_expr is None:
                 first_expr = expr
             pid = builder._walk(expr)
+            restored = builder._restore_placeholders(part_latex.strip())
             for node in builder.nodes:
                 if node["id"] == pid:
-                    node["subexpr"] = builder._restore_placeholders(
-                        part_latex.strip())
+                    if "Xi" not in restored or node.get("type") not in ("operator",):
+                        node["subexpr"] = restored
                     break
             part_ids.append(pid)
     except Exception as exc:
@@ -1719,11 +2988,14 @@ def _build_nary_relation_graph(
     rel_type = "relation" if is_relation(op) else "operator"
     rel_id = builder._next_id(op)
     builder._add_node(
-        rel_id, type=rel_type, subexpr=original_latex.strip(), **rel_meta,
+        rel_id, type=rel_type,
+        subexpr=builder._fix_bar_subexpr(original_latex.strip()),
+        **rel_meta,
     )
     for pid in part_ids:
         builder._add_edge(pid, rel_id)
 
+    builder._cleanup_infix_subexprs()
     graph: dict = {"nodes": builder.nodes, "edges": builder.edges}
     graph["classification"] = (
         _classify_expression(first_expr) if first_expr is not None
@@ -1852,7 +3124,7 @@ def _build_piecewise_graph(
     pw_id = builder._next_id("piecewise")
     builder._add_node(
         pw_id, type="operator", op="piecewise", label="piecewise",
-        subexpr=original_latex.strip(),
+        subexpr=builder._fix_bar_subexpr(original_latex.strip()),
     )
 
     for val_latex, cond_latex in branches:
@@ -1908,7 +3180,8 @@ def _build_piecewise_graph(
             )
         eq_id = builder._next_id("equals")
         builder._add_node(eq_id, type="relation", op="equals",
-                          subexpr=original_latex.strip())
+                          subexpr=builder._fix_bar_subexpr(
+                              original_latex.strip()))
         builder._add_edge(lhs_id, eq_id)
         builder._add_edge(pw_id, eq_id)
         graph = {"nodes": builder.nodes, "edges": builder.edges}
@@ -2012,6 +3285,11 @@ def _latex_to_semantic_graph_dict(
     """Parse a LaTeX string and return a semantic graph dict (internal)."""
     user_overrides = overrides
     latex = _normalize_latex(latex)
+    latex, infix_overrides = _rewrite_infix_ops(latex)
+    latex = _rewrite_prefix_ops(latex)
+    latex = _rewrite_bracket_functions(latex)
+    latex, conditional_bar_funcs = _rewrite_conditional_bar(latex)
+    latex, assertion_funcs = _rewrite_assertion_ops(latex)
     latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
 
     # --- Piecewise / cases environment ---
@@ -2038,14 +3316,33 @@ def _latex_to_semantic_graph_dict(
     compound_collapsed, compound_overrides = _collapse_compound_symbols(braket_collapsed)
     subscript_collapsed, subscript_overrides = _collapse_multichar_subscripts(compound_collapsed)
     collapsed, text_overrides = _collapse_text_commands(subscript_collapsed)
-    font_unwrapped = _strip_symbol_font_commands(collapsed)
+    # Count existing Xi_{N} placeholders to avoid index collisions
+    xi_count = len(subscript_overrides) + len(text_overrides)
+    overline_collapsed, overline_overrides = _collapse_overline(collapsed, start_idx=xi_count)
+    font_unwrapped = _strip_symbol_font_commands(overline_collapsed)
     preprocessed, bare_sum_indices = _preprocess_latex(font_unwrapped)
+
+    # --- Strip \pmod{…} before SymPy sees it (non-congruent paths) ---
+    # For \equiv expressions, _build_relation_graph handles \pmod itself.
+    # For everything else (=, single expression, etc.), \pmod would be
+    # parsed as a raw symbol — strip it and inject an annotation instead.
+    if r"\equiv" not in preprocessed:
+        preprocessed, pmod_modulus = _extract_pmod(preprocessed)
+        if pmod_modulus is not None:
+            parenthetical_annotations.append({
+                "type": "annotation",
+                "label": f"mod {pmod_modulus}",
+                "latex": rf"\pmod{{{pmod_modulus}}}",
+            })
+
     latex_commands = _extract_latex_commands(latex)
     merged_overrides: dict[str, dict[str, str]] = {
         **braket_overrides,
         **compound_overrides,
         **subscript_overrides,
         **text_overrides,
+        **overline_overrides,
+        **infix_overrides,
         **(user_overrides or {}),
     }
     overrides = merged_overrides
@@ -2077,6 +3374,8 @@ def _latex_to_semantic_graph_dict(
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
+                    conditional_bar_funcs=conditional_bar_funcs,
+                    assertion_funcs=assertion_funcs,
                 )
             else:
                 # Asymmetric meta-relations (implies) → right-associative nesting.
@@ -2085,6 +3384,8 @@ def _latex_to_semantic_graph_dict(
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
+                    conditional_bar_funcs=conditional_bar_funcs,
+                    assertion_funcs=assertion_funcs,
                 )
 
         graph = _build_relation_graph(
@@ -2092,6 +3393,8 @@ def _latex_to_semantic_graph_dict(
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations, domain=domain,
             bare_sum_indices=bare_sum_indices,
+            conditional_bar_funcs=conditional_bar_funcs,
+            assertion_funcs=assertion_funcs,
         )
         return graph
 
@@ -2129,6 +3432,8 @@ def _latex_to_semantic_graph_dict(
                     overrides=overrides, latex_commands=latex_commands,
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
+                    conditional_bar_funcs=conditional_bar_funcs,
+                    assertion_funcs=assertion_funcs,
                 )
 
         graph = _build_relation_graph(
@@ -2136,6 +3441,8 @@ def _latex_to_semantic_graph_dict(
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations, domain=domain,
             bare_sum_indices=bare_sum_indices,
+            conditional_bar_funcs=conditional_bar_funcs,
+            assertion_funcs=assertion_funcs,
         )
         return graph
 
@@ -2148,6 +3455,8 @@ def _latex_to_semantic_graph_dict(
             overrides=overrides, latex_commands=latex_commands,
             parenthetical_annotations=parenthetical_annotations,
             domain=domain, bare_sum_indices=bare_sum_indices,
+            conditional_bar_funcs=conditional_bar_funcs,
+            assertion_funcs=assertion_funcs,
         )
 
     # --- Single expression ---
@@ -2168,6 +3477,8 @@ def _latex_to_semantic_graph_dict(
             builder = SemanticGraphBuilder(
                 overrides=overrides, latex_commands=latex_commands,
                 original_latex=latex, bare_sum_indices=bare_sum_indices,
+                conditional_bar_funcs=conditional_bar_funcs,
+                assertion_funcs=assertion_funcs,
             )
             try:
                 lhs_expr = parse_latex(lhs_latex)
@@ -2200,6 +3511,8 @@ def _latex_to_semantic_graph_dict(
     builder = SemanticGraphBuilder(
         overrides=overrides, latex_commands=latex_commands,
         original_latex=latex, bare_sum_indices=bare_sum_indices,
+        conditional_bar_funcs=conditional_bar_funcs,
+        assertion_funcs=assertion_funcs,
     )
     graph = builder.build(expr, original_latex=latex)
     graph["classification"] = classification

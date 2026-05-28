@@ -18,7 +18,7 @@ _LOGICAL_CONNECTIVE_COMMANDS = (
     "\\Rightarrow", "\\Leftarrow", "\\Leftrightarrow",
 )
 
-_CHAIN_RELATION_COMMANDS = ("\\approx", "\\simeq", "\\equiv")
+_CHAIN_RELATION_COMMANDS = ("\\approx", "\\simeq")
 
 _preprocessor = LaTeXPreprocessor()
 _postprocessor = GraphPostprocessor()

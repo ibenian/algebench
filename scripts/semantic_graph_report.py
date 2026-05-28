@@ -65,6 +65,27 @@ from tests.backend.semantic_graph.domains.test_domain_waves import (
 from tests.backend.semantic_graph.domains.test_domain_pde import (
     ALL_EXPRESSIONS as PDE_EXPRESSIONS,
 )
+from tests.backend.semantic_graph.domains.test_domain_trigonometry import (
+    ALL_EXPRESSIONS as TRIG_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_linalg import (
+    ALL_EXPRESSIONS as LINALG_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_complex import (
+    ALL_EXPRESSIONS as COMPLEX_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_logic import (
+    ALL_EXPRESSIONS as LOGIC_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_number_theory import (
+    ALL_EXPRESSIONS as NUMBER_THEORY_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_probability import (
+    ALL_EXPRESSIONS as PROBABILITY_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_combinatorics import (
+    ALL_EXPRESSIONS as COMBINATORICS_EXPRESSIONS,
+)
 
 
 # ── Expression catalog ─────────────────────────────────────────────────
@@ -85,8 +106,19 @@ def _collect_expressions() -> list[tuple[str, list[tuple[str, str]]]]:
         ("Electromagnetism", EM_EXPRESSIONS),
         ("Thermodynamics", THERMO_EXPRESSIONS),
         ("Waves & Optics", WAVES_EXPRESSIONS),
+        ("Trigonometry", TRIG_EXPRESSIONS),
+        ("Linear Algebra", LINALG_EXPRESSIONS),
+        ("Complex Analysis", COMPLEX_EXPRESSIONS),
+        ("Logic & Set Theory", LOGIC_EXPRESSIONS),
+        ("Number Theory", NUMBER_THEORY_EXPRESSIONS),
+        ("Probability & Statistics", PROBABILITY_EXPRESSIONS),
+        ("Combinatorics", COMBINATORICS_EXPRESSIONS),
     ):
-        items = [(tid, latex) for tid, latex, *_ in catalog]
+        items = [
+            (tid, latex)
+            for tid, latex, tag, *_ in catalog
+            if tag is None  # skip XFAIL / SKIP entries
+        ]
         sections.append((name, items))
     return sections
 
@@ -710,8 +742,10 @@ def _build_report_html(
             else:
                 err_count += 1
 
+    summary_icon = "✅" if err_count == 0 else "❌"
     summary = (
         f'<div class="summary">'
+        f'{summary_icon} '
         f'<span class="count">{ok_count}</span> rendered, '
         f'<span class="count">{err_count}</span> errors '
         f'out of <span class="count">{total}</span> expressions'
@@ -856,8 +890,9 @@ def generate_site(
         total_ok += ok
         total_err += err
 
+        icon = "✅" if err == 0 else "❌"
         index_entries.append(
-            f'<li><a href="{filename}">{section_name}</a>'
+            f'<li><a href="{filename}">{icon} {section_name}</a>'
             f'<div class="stats">{ok} rendered, {err} errors '
             f'out of {len(expressions)} expressions</div></li>'
         )
