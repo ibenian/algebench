@@ -1151,6 +1151,8 @@ window.algebenchStopTTS = function() {
     if (ttsAbortController) { ttsAbortController.abort(); ttsAbortController = null; }
     const p = _ensureTTSPlayer();
     if (p) p.stop();
+    // Tell server to close Gemini API streams
+    fetch('/api/tts/kill', { method: 'POST' }).catch(() => {});
 };
 
 // ---- algebenchSpeakText with completion callback ----
@@ -1249,7 +1251,14 @@ async function speakText(text, { explicit = false } = {}) {
     function connect() {
         es = new EventSource('/api/tts/events');
         es.addEventListener('kill', () => {
-            window.algebenchStopTTS();
+            // Stop locally only — don't call algebenchStopTTS which
+            // would POST /api/tts/kill and create an infinite loop.
+            ++ttsRequestId;
+            ttsPausedByUser = false;
+            ttsHasOutputFile = false;
+            if (ttsAbortController) { ttsAbortController.abort(); ttsAbortController = null; }
+            const p = _ensureTTSPlayer();
+            if (p) p.stop();
         });
         es.onerror = () => {
             es.close();
