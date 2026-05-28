@@ -1791,9 +1791,12 @@ class SemanticGraphBuilder:
             self._add_node(node_id, **func_attrs)
             # log(arg, base) — mark the base edge with role="base"
             # P(A|B) → P(A, B) — mark the last arg with role="condition"
+            # P(X=k) → P(X, k) — mark the last arg with role="assertion_eq"
             is_log = isinstance(expr, log)
             has_cond_bar = (op_name in self._conditional_bar_funcs
                            and len(expr.args) >= 2)
+            has_assert_eq = (op_name in self._assertion_eq_funcs
+                            and len(expr.args) >= 2)
             last_idx = len(expr.args) - 1
             for i, arg in enumerate(expr.args):
                 child_id = self._walk(arg)
@@ -1801,6 +1804,8 @@ class SemanticGraphBuilder:
                     edge_role: str | None = "base"
                 elif has_cond_bar and i == last_idx:
                     edge_role = "condition"
+                elif has_assert_eq and i == last_idx:
+                    edge_role = "assertion_eq"
                 else:
                     edge_role = None
                 self._add_edge(child_id, node_id, role=edge_role)

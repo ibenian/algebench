@@ -262,11 +262,14 @@ function operatorGlyph(node) {
  * @param {string} dot  The dot character (``·`` for text, ``\\cdot`` for LaTeX).
  * @returns {string}
  */
-function _arityDots(arity, hasCondition, dot) {
+function _arityDots(arity, hasCondition, hasAssertionEq, dot) {
     if (hasCondition && arity >= 2) {
         const sep = dot === '·' ? '|' : '\\mid ';
         const regular = Array(arity - 1).fill(dot).join(', ');
         return `${regular}${sep}${dot}`;
+    }
+    if (hasAssertionEq && arity >= 2) {
+        return dot === '·' ? '…' : '\\ldots';
     }
     return Array(arity).fill(dot).join(', ');
 }
@@ -281,7 +284,7 @@ export function nodeShortLabel(node) {
         if (node.latex) {
             if (node.type === 'function' && !node.latex.includes('\\cdot') && !node.latex.includes('·')) {
                 const arity = (node._childIds || []).length || 1;
-                const dots = _arityDots(arity, node._hasConditionEdge, '·');
+                const dots = _arityDots(arity, node._hasConditionEdge, node._hasAssertionEqEdge, '·');
                 return `${node.latex}(${dots})`;
             }
             return node.latex;
@@ -291,7 +294,7 @@ export function nodeShortLabel(node) {
         const name = node.op || node.id || '';
         if (node.type === 'function' && name && !name.includes('·')) {
             const arity = (node._childIds || []).length || 1;
-            const dots = _arityDots(arity, node._hasConditionEdge, '·');
+            const dots = _arityDots(arity, node._hasConditionEdge, node._hasAssertionEqEdge, '·');
             return `${name}(${dots})`;
         }
         return name;
@@ -672,10 +675,12 @@ export class D3SemanticGraphRenderer {
 
         const childrenOf = Object.create(null);
         const conditionEdgeTargets = new Set();
+        const assertionEqEdgeTargets = new Set();
         for (const e of edges) {
             if (!childrenOf[e.to]) childrenOf[e.to] = [];
             childrenOf[e.to].push(e.from);
             if (e.role === 'condition') conditionEdgeTargets.add(e.to);
+            if (e.role === 'assertion_eq') assertionEqEdgeTargets.add(e.to);
         }
 
         const annoIds = new Set(nodes.filter(n => n.type === 'annotation').map(n => n.id));
@@ -741,6 +746,7 @@ export class D3SemanticGraphRenderer {
                     _collapsed: this._collapsed.has(id),
                     _childIds: childrenOf[id] || [],
                     _hasConditionEdge: conditionEdgeTargets.has(id),
+                    _hasAssertionEqEdge: assertionEqEdgeTargets.has(id),
                 },
                 x: pos.x,
                 y: pos.y,
@@ -1429,7 +1435,7 @@ export class D3SemanticGraphRenderer {
         if (latex && data.type === 'function' && !isCollapsed
             && !latex.includes('\\cdot') && !latex.includes('·')) {
             const arity = (data._childIds || []).length || 1;
-            const dots = _arityDots(arity, data._hasConditionEdge, '\\cdot');
+            const dots = _arityDots(arity, data._hasConditionEdge, data._hasAssertionEqEdge, '\\cdot');
             latex = `${latex}(${dots})`;
         }
 
