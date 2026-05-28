@@ -253,6 +253,28 @@ function operatorGlyph(node) {
 }
 
 /**
+ * Build the arity-dot string for a function label.
+ * When ``hasCondition`` is true, the last argument is separated
+ * by ``|`` (conditional probability) instead of ``, ``.
+ *
+ * @param {number} arity  Number of arguments.
+ * @param {boolean} hasCondition  Whether the function has a condition edge.
+ * @param {string} dot  The dot character (``·`` for text, ``\\cdot`` for LaTeX).
+ * @returns {string}
+ */
+function _arityDots(arity, hasCondition, hasAssertion, dot) {
+    if (hasCondition && arity >= 2) {
+        const sep = dot === '·' ? '|' : '\\mid ';
+        const regular = Array(arity - 1).fill(dot).join(', ');
+        return `${regular}${sep}${dot}`;
+    }
+    if (hasAssertion && arity >= 2) {
+        return dot === '·' ? '…' : '\\ldots';
+    }
+    return Array(arity).fill(dot).join(', ');
+}
+
+/**
  * Compact symbol shown on the graph node itself.
  * ``\cos``, ``⟨0|·⟩``, ``|·|``, ``(·)²``, ``+``, ``=``…
  */
@@ -262,7 +284,7 @@ export function nodeShortLabel(node) {
         if (node.latex) {
             if (node.type === 'function' && !node.latex.includes('\\cdot') && !node.latex.includes('·')) {
                 const arity = (node._childIds || []).length || 1;
-                const dots = Array(arity).fill('·').join(', ');
+                const dots = _arityDots(arity, node._hasConditionEdge, node._hasAssertionEdge, '·');
                 return `${node.latex}(${dots})`;
             }
             return node.latex;
@@ -272,7 +294,7 @@ export function nodeShortLabel(node) {
         const name = node.op || node.id || '';
         if (node.type === 'function' && name && !name.includes('·')) {
             const arity = (node._childIds || []).length || 1;
-            const dots = Array(arity).fill('·').join(', ');
+            const dots = _arityDots(arity, node._hasConditionEdge, node._hasAssertionEdge, '·');
             return `${name}(${dots})`;
         }
         return name;
@@ -652,9 +674,13 @@ export class D3SemanticGraphRenderer {
         for (const n of nodes) nodeById[n.id] = n;
 
         const childrenOf = Object.create(null);
+        const conditionEdgeTargets = new Set();
+        const assertionEdgeTargets = new Set();
         for (const e of edges) {
             if (!childrenOf[e.to]) childrenOf[e.to] = [];
             childrenOf[e.to].push(e.from);
+            if (e.role === 'condition') conditionEdgeTargets.add(e.to);
+            if (e.role === 'assertion') assertionEdgeTargets.add(e.to);
         }
 
         const annoIds = new Set(nodes.filter(n => n.type === 'annotation').map(n => n.id));
@@ -719,6 +745,8 @@ export class D3SemanticGraphRenderer {
                     ...nodeById[id],
                     _collapsed: this._collapsed.has(id),
                     _childIds: childrenOf[id] || [],
+                    _hasConditionEdge: conditionEdgeTargets.has(id),
+                    _hasAssertionEdge: assertionEdgeTargets.has(id),
                 },
                 x: pos.x,
                 y: pos.y,
@@ -1407,7 +1435,7 @@ export class D3SemanticGraphRenderer {
         if (latex && data.type === 'function' && !isCollapsed
             && !latex.includes('\\cdot') && !latex.includes('·')) {
             const arity = (data._childIds || []).length || 1;
-            const dots = Array(arity).fill('\\cdot').join(', ');
+            const dots = _arityDots(arity, data._hasConditionEdge, data._hasAssertionEdge, '\\cdot');
             latex = `${latex}(${dots})`;
         }
 

@@ -656,7 +656,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-26 08:54 UTC &middot; theme: default-dark &middot; 21 expressions</div>
+<div class="report-meta">Generated 2026-05-28 01:58 UTC &middot; theme: default-dark &middot; 21 expressions</div>
 <div class="section-title">Structural (21 expressions)</div>
 <div class="row">
   <div>
@@ -3371,7 +3371,7 @@ svg.d3-semantic-graph {
   m["$m$"]:::scalar
   __power_6(("${(\cdot)}^{2}$")):::operator
   v["$v$"]:::scalar
-  __annotation_0(("$\text{where } v = \text{velocity}$")):::annotation
+  __annotation_0(("$\text{where } v, \text{velocity}$")):::annotation
   E --&gt; __equals_1
   __num_4 --&gt; __power_3
   __power_3 -.-&gt; __multiply_2
@@ -3458,8 +3458,8 @@ svg.d3-semantic-graph {
     {
       "id": "__annotation_0",
       "type": "annotation",
-      "label": "where v = velocity",
-      "latex": "\\text{where } v = \\text{velocity}"
+      "label": "where v, velocity",
+      "latex": "\\text{where } v, \\text{velocity}"
     }
   ],
   "edges": [
@@ -3526,7 +3526,7 @@ svg.d3-semantic-graph {
   m["$m$"]:::scalar
   __power_6(("${(\cdot)}^{2}$")):::operator
   v["$v$"]:::scalar
-  __annotation_0(("$\text{where } v = \text{velocity}$")):::annotation
+  __annotation_0(("$\text{where } v, \text{velocity}$")):::annotation
   E --&gt; __equals_1
   __num_4 --&gt; __power_3
   __power_3 -.-&gt; __multiply_2
@@ -3544,7 +3544,7 @@ svg.d3-semantic-graph {
   linkStyle 6 stroke:#ef5350,stroke-width:3px
   linkStyle 7 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;E = \\frac{1}{2}mv^2&quot;},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;E&quot;,&quot;subexpr&quot;:&quot;E&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2} m v^{2}&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2}&quot;},{&quot;id&quot;:&quot;__num_4&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;m v^{2}&quot;},{&quot;id&quot;:&quot;m&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;m&quot;,&quot;subexpr&quot;:&quot;m&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;v^{2}&quot;},{&quot;id&quot;:&quot;v&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;v&quot;,&quot;subexpr&quot;:&quot;v&quot;},{&quot;id&quot;:&quot;__annotation_0&quot;,&quot;type&quot;:&quot;annotation&quot;,&quot;label&quot;:&quot;where v = velocity&quot;,&quot;latex&quot;:&quot;\\text{where } v = \\text{velocity}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;},{&quot;from&quot;:&quot;m&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;v&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;E = \\frac{1}{2}mv^2&quot;},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;E&quot;,&quot;subexpr&quot;:&quot;E&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2} m v^{2}&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2}&quot;},{&quot;id&quot;:&quot;__num_4&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;m v^{2}&quot;},{&quot;id&quot;:&quot;m&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;m&quot;,&quot;subexpr&quot;:&quot;m&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;v^{2}&quot;},{&quot;id&quot;:&quot;v&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;v&quot;,&quot;subexpr&quot;:&quot;v&quot;},{&quot;id&quot;:&quot;__annotation_0&quot;,&quot;type&quot;:&quot;annotation&quot;,&quot;label&quot;:&quot;where v, velocity&quot;,&quot;latex&quot;:&quot;\\text{where } v, \\text{velocity}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;},{&quot;from&quot;:&quot;m&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;v&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
