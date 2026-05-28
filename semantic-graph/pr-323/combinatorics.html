@@ -656,7 +656,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-28 01:58 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="report-meta">Generated 2026-05-28 04:11 UTC &middot; theme: default-dark &middot; 10 expressions</div>
 <div class="section-title">Combinatorics (10 expressions)</div>
 <div class="row">
   <div>
@@ -2194,44 +2194,36 @@ svg.d3-semantic-graph {
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   __abs_2{{"$|\cdot|$"}}:::function
-  __multiply_3(("$\times$")):::operator
   A["$A$"]:::scalar
-  __multiply_4(("$\times$")):::operator
-  cup["$\cup$"]:::scalar
   B["$B$"]:::scalar
+  __union_3(("$\cup$")):::operator
+  __add_4(("$+$")):::operator
   __add_5(("$+$")):::operator
-  __add_6(("$+$")):::operator
+  __abs_6{{"$|\cdot|$"}}:::function
   __abs_7{{"$|\cdot|$"}}:::function
-  __abs_8{{"$|\cdot|$"}}:::function
-  __negation_9@{ shape: "flip-tri", label: "$-$" }
-  __abs_10{{"$|\cdot|$"}}:::function
-  __multiply_11(("$\times$")):::operator
-  __multiply_12(("$\times$")):::operator
-  cap["$\cap$"]:::scalar
-  class __negation_9 operator
-  A --&gt; __multiply_3
-  cup --&gt; __multiply_4
-  B --&gt; __multiply_4
-  __multiply_4 --&gt; __multiply_3
-  __multiply_3 --&gt; __abs_2
+  __negation_8@{ shape: "flip-tri", label: "$-$" }
+  __abs_9{{"$|\cdot|$"}}:::function
+  __intersection_10(("$\cap$")):::operator
+  class __negation_8 operator
+  A --&gt; __union_3
+  B --&gt; __union_3
+  __union_3 --&gt; __abs_2
   __abs_2 --&gt; __equals_1
-  A --&gt; __abs_7
-  __abs_7 --&gt; __add_6
-  B --&gt; __abs_8
-  __abs_8 --&gt; __add_6
-  __add_6 --&gt; __add_5
-  A --&gt; __multiply_11
-  cap --&gt; __multiply_12
-  B --&gt; __multiply_12
-  __multiply_12 --&gt; __multiply_11
-  __multiply_11 --&gt; __abs_10
-  __abs_10 --&gt; __negation_9
-  __negation_9 --&gt; __add_5
-  __add_5 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  A --&gt; __abs_6
+  __abs_6 --&gt; __add_5
+  B --&gt; __abs_7
+  __abs_7 --&gt; __add_5
+  __add_5 --&gt; __add_4
+  A --&gt; __intersection_10
+  B --&gt; __intersection_10
+  __intersection_10 --&gt; __abs_9
+  __abs_9 --&gt; __negation_8
+  __negation_8 --&gt; __add_4
+  __add_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#aaa,stroke-width:2px
   linkStyle 6 stroke:#aaa,stroke-width:2px
@@ -2239,14 +2231,10 @@ svg.d3-semantic-graph {
   linkStyle 8 stroke:#aaa,stroke-width:2px
   linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
-  linkStyle 11 stroke:#ef5350,stroke-width:3px
-  linkStyle 12 stroke:#ef5350,stroke-width:3px
-  linkStyle 13 stroke:#ef5350,stroke-width:3px
-  linkStyle 14 stroke:#ef5350,stroke-width:3px
-  linkStyle 15 stroke:#aaa,stroke-width:2px
-  linkStyle 16 stroke:#aaa,stroke-width:2px
-  linkStyle 17 stroke:#aaa,stroke-width:2px
-  linkStyle 18 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2261,19 +2249,13 @@ svg.d3-semantic-graph {
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "|A \\cup B| = |A| + |B| - |A \\cap B|"
+      "subexpr": "|A \\cup B|  =  |A| + |B| - |A \\cap B|"
     },
     {
       "id": "__abs_2",
       "type": "function",
       "op": "abs",
-      "subexpr": "\\left|{A B cup}\\right|"
-    },
-    {
-      "id": "__multiply_3",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "A \\cup B"
+      "subexpr": "\\left|{A \\cup B}\\right|"
     },
     {
       "id": "A",
@@ -2282,105 +2264,73 @@ svg.d3-semantic-graph {
       "subexpr": "A"
     },
     {
-      "id": "__multiply_4",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\cup B"
-    },
-    {
-      "id": "cup",
-      "type": "scalar",
-      "latex": "\\cup",
-      "subexpr": "\\cup"
-    },
-    {
       "id": "B",
       "type": "scalar",
       "latex": "B",
       "subexpr": "B"
     },
     {
-      "id": "__add_5",
+      "id": "__union_3",
       "type": "operator",
-      "op": "add",
-      "subexpr": "\\left|{A}\\right| + \\left|{B}\\right| - \\left|{A B cap}\\right|"
+      "emoji": "∪",
+      "op": "union",
+      "subexpr": "A \\cup B"
     },
     {
-      "id": "__add_6",
+      "id": "__add_4",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "\\left|{A}\\right| + \\left|{B}\\right| - \\left|{A \\cap B}\\right|"
+    },
+    {
+      "id": "__add_5",
       "type": "operator",
       "op": "add",
       "subexpr": "\\left|{A}\\right| + \\left|{B}\\right|"
     },
     {
-      "id": "__abs_7",
+      "id": "__abs_6",
       "type": "function",
       "op": "abs",
       "subexpr": "\\left|{A}\\right|"
     },
     {
-      "id": "__abs_8",
+      "id": "__abs_7",
       "type": "function",
       "op": "abs",
       "subexpr": "\\left|{B}\\right|"
     },
     {
-      "id": "__negation_9",
+      "id": "__negation_8",
       "type": "operator",
       "op": "negation",
-      "subexpr": "-\\left|{A B cap}\\right|"
+      "subexpr": "-\\left|{A \\cap B}\\right|"
     },
     {
-      "id": "__abs_10",
+      "id": "__abs_9",
       "type": "function",
       "op": "abs",
-      "subexpr": "\\left|{A B cap}\\right|"
+      "subexpr": "\\left|{A \\cap B}\\right|"
     },
     {
-      "id": "__multiply_11",
+      "id": "__intersection_10",
       "type": "operator",
-      "op": "multiply",
-      "subexpr": "A B \\cap"
-    },
-    {
-      "id": "__multiply_12",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "B \\cap"
-    },
-    {
-      "id": "cap",
-      "type": "scalar",
-      "latex": "\\cap",
-      "subexpr": "\\cap"
+      "emoji": "∩",
+      "op": "intersection",
+      "subexpr": "A \\cap B"
     }
   ],
   "edges": [
     {
       "from": "A",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "cup",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
+      "to": "__union_3"
     },
     {
       "from": "B",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
+      "to": "__union_3"
     },
     {
-      "from": "__multiply_4",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_3",
+      "from": "__union_3",
       "to": "__abs_2"
     },
     {
@@ -2389,62 +2339,46 @@ svg.d3-semantic-graph {
     },
     {
       "from": "A",
+      "to": "__abs_6"
+    },
+    {
+      "from": "__abs_6",
+      "to": "__add_5"
+    },
+    {
+      "from": "B",
       "to": "__abs_7"
     },
     {
       "from": "__abs_7",
-      "to": "__add_6"
-    },
-    {
-      "from": "B",
-      "to": "__abs_8"
-    },
-    {
-      "from": "__abs_8",
-      "to": "__add_6"
-    },
-    {
-      "from": "__add_6",
-      "to": "__add_5"
-    },
-    {
-      "from": "A",
-      "to": "__multiply_11",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "cap",
-      "to": "__multiply_12",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "B",
-      "to": "__multiply_12",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_12",
-      "to": "__multiply_11",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_11",
-      "to": "__abs_10"
-    },
-    {
-      "from": "__abs_10",
-      "to": "__negation_9"
-    },
-    {
-      "from": "__negation_9",
       "to": "__add_5"
     },
     {
       "from": "__add_5",
+      "to": "__add_4"
+    },
+    {
+      "from": "A",
+      "to": "__intersection_10"
+    },
+    {
+      "from": "B",
+      "to": "__intersection_10"
+    },
+    {
+      "from": "__intersection_10",
+      "to": "__abs_9"
+    },
+    {
+      "from": "__abs_9",
+      "to": "__negation_8"
+    },
+    {
+      "from": "__negation_8",
+      "to": "__add_4"
+    },
+    {
+      "from": "__add_4",
       "to": "__equals_1"
     }
   ],
@@ -2465,44 +2399,36 @@ svg.d3-semantic-graph {
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   __abs_2{{"$|\cdot|$"}}:::function
-  __multiply_3(("$\times$")):::operator
   A["$A$"]:::scalar
-  __multiply_4(("$\times$")):::operator
-  cup["$\cup$"]:::scalar
   B["$B$"]:::scalar
+  __union_3(("$\cup$")):::operator
+  __add_4(("$+$")):::operator
   __add_5(("$+$")):::operator
-  __add_6(("$+$")):::operator
+  __abs_6{{"$|\cdot|$"}}:::function
   __abs_7{{"$|\cdot|$"}}:::function
-  __abs_8{{"$|\cdot|$"}}:::function
-  __negation_9@{ shape: "flip-tri", label: "$-$" }
-  __abs_10{{"$|\cdot|$"}}:::function
-  __multiply_11(("$\times$")):::operator
-  __multiply_12(("$\times$")):::operator
-  cap["$\cap$"]:::scalar
-  class __negation_9 operator
-  A --&gt; __multiply_3
-  cup --&gt; __multiply_4
-  B --&gt; __multiply_4
-  __multiply_4 --&gt; __multiply_3
-  __multiply_3 --&gt; __abs_2
+  __negation_8@{ shape: "flip-tri", label: "$-$" }
+  __abs_9{{"$|\cdot|$"}}:::function
+  __intersection_10(("$\cap$")):::operator
+  class __negation_8 operator
+  A --&gt; __union_3
+  B --&gt; __union_3
+  __union_3 --&gt; __abs_2
   __abs_2 --&gt; __equals_1
-  A --&gt; __abs_7
-  __abs_7 --&gt; __add_6
-  B --&gt; __abs_8
-  __abs_8 --&gt; __add_6
-  __add_6 --&gt; __add_5
-  A --&gt; __multiply_11
-  cap --&gt; __multiply_12
-  B --&gt; __multiply_12
-  __multiply_12 --&gt; __multiply_11
-  __multiply_11 --&gt; __abs_10
-  __abs_10 --&gt; __negation_9
-  __negation_9 --&gt; __add_5
-  __add_5 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  A --&gt; __abs_6
+  __abs_6 --&gt; __add_5
+  B --&gt; __abs_7
+  __abs_7 --&gt; __add_5
+  __add_5 --&gt; __add_4
+  A --&gt; __intersection_10
+  B --&gt; __intersection_10
+  __intersection_10 --&gt; __abs_9
+  __abs_9 --&gt; __negation_8
+  __negation_8 --&gt; __add_4
+  __add_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#aaa,stroke-width:2px
   linkStyle 6 stroke:#aaa,stroke-width:2px
@@ -2510,16 +2436,12 @@ svg.d3-semantic-graph {
   linkStyle 8 stroke:#aaa,stroke-width:2px
   linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
-  linkStyle 11 stroke:#ef5350,stroke-width:3px
-  linkStyle 12 stroke:#ef5350,stroke-width:3px
-  linkStyle 13 stroke:#ef5350,stroke-width:3px
-  linkStyle 14 stroke:#ef5350,stroke-width:3px
-  linkStyle 15 stroke:#aaa,stroke-width:2px
-  linkStyle 16 stroke:#aaa,stroke-width:2px
-  linkStyle 17 stroke:#aaa,stroke-width:2px
-  linkStyle 18 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;|A \\cup B| = |A| + |B| - |A \\cap B|&quot;},{&quot;id&quot;:&quot;__abs_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;abs&quot;,&quot;subexpr&quot;:&quot;\\left|{A B cup}\\right|&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;A \\cup B&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\cup B&quot;},{&quot;id&quot;:&quot;cup&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\cup&quot;,&quot;subexpr&quot;:&quot;\\cup&quot;},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;B&quot;,&quot;subexpr&quot;:&quot;B&quot;},{&quot;id&quot;:&quot;__add_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;\\left|{A}\\right| + \\left|{B}\\right| - \\left|{A B cap}\\right|&quot;},{&quot;id&quot;:&quot;__add_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;\\left|{A}\\right| + \\left|{B}\\right|&quot;},{&quot;id&quot;:&quot;__abs_7&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;abs&quot;,&quot;subexpr&quot;:&quot;\\left|{A}\\right|&quot;},{&quot;id&quot;:&quot;__abs_8&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;abs&quot;,&quot;subexpr&quot;:&quot;\\left|{B}\\right|&quot;},{&quot;id&quot;:&quot;__negation_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\left|{A B cap}\\right|&quot;},{&quot;id&quot;:&quot;__abs_10&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;abs&quot;,&quot;subexpr&quot;:&quot;\\left|{A B cap}\\right|&quot;},{&quot;id&quot;:&quot;__multiply_11&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;A B \\cap&quot;},{&quot;id&quot;:&quot;__multiply_12&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;B \\cap&quot;},{&quot;id&quot;:&quot;cap&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\cap&quot;,&quot;subexpr&quot;:&quot;\\cap&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;cup&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__abs_2&quot;},{&quot;from&quot;:&quot;__abs_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__abs_7&quot;},{&quot;from&quot;:&quot;__abs_7&quot;,&quot;to&quot;:&quot;__add_6&quot;},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__abs_8&quot;},{&quot;from&quot;:&quot;__abs_8&quot;,&quot;to&quot;:&quot;__add_6&quot;},{&quot;from&quot;:&quot;__add_6&quot;,&quot;to&quot;:&quot;__add_5&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__multiply_11&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;cap&quot;,&quot;to&quot;:&quot;__multiply_12&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__multiply_12&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_12&quot;,&quot;to&quot;:&quot;__multiply_11&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_11&quot;,&quot;to&quot;:&quot;__abs_10&quot;},{&quot;from&quot;:&quot;__abs_10&quot;,&quot;to&quot;:&quot;__negation_9&quot;},{&quot;from&quot;:&quot;__negation_9&quot;,&quot;to&quot;:&quot;__add_5&quot;},{&quot;from&quot;:&quot;__add_5&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;|A \\cup B|  =  |A| + |B| - |A \\cap B|&quot;},{&quot;id&quot;:&quot;__abs_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;abs&quot;,&quot;subexpr&quot;:&quot;\\left|{A \\cup B}\\right|&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;B&quot;,&quot;subexpr&quot;:&quot;B&quot;},{&quot;id&quot;:&quot;__union_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;emoji&quot;:&quot;∪&quot;,&quot;op&quot;:&quot;union&quot;,&quot;subexpr&quot;:&quot;A \\cup B&quot;},{&quot;id&quot;:&quot;__add_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;\\left|{A}\\right| + \\left|{B}\\right| - \\left|{A \\cap B}\\right|&quot;},{&quot;id&quot;:&quot;__add_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;\\left|{A}\\right| + \\left|{B}\\right|&quot;},{&quot;id&quot;:&quot;__abs_6&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;abs&quot;,&quot;subexpr&quot;:&quot;\\left|{A}\\right|&quot;},{&quot;id&quot;:&quot;__abs_7&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;abs&quot;,&quot;subexpr&quot;:&quot;\\left|{B}\\right|&quot;},{&quot;id&quot;:&quot;__negation_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\left|{A \\cap B}\\right|&quot;},{&quot;id&quot;:&quot;__abs_9&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;abs&quot;,&quot;subexpr&quot;:&quot;\\left|{A \\cap B}\\right|&quot;},{&quot;id&quot;:&quot;__intersection_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;emoji&quot;:&quot;∩&quot;,&quot;op&quot;:&quot;intersection&quot;,&quot;subexpr&quot;:&quot;A \\cap B&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__union_3&quot;},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__union_3&quot;},{&quot;from&quot;:&quot;__union_3&quot;,&quot;to&quot;:&quot;__abs_2&quot;},{&quot;from&quot;:&quot;__abs_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__abs_6&quot;},{&quot;from&quot;:&quot;__abs_6&quot;,&quot;to&quot;:&quot;__add_5&quot;},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__abs_7&quot;},{&quot;from&quot;:&quot;__abs_7&quot;,&quot;to&quot;:&quot;__add_5&quot;},{&quot;from&quot;:&quot;__add_5&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__intersection_10&quot;},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__intersection_10&quot;},{&quot;from&quot;:&quot;__intersection_10&quot;,&quot;to&quot;:&quot;__abs_9&quot;},{&quot;from&quot;:&quot;__abs_9&quot;,&quot;to&quot;:&quot;__negation_8&quot;},{&quot;from&quot;:&quot;__negation_8&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;__add_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>

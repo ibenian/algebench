@@ -656,7 +656,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-28 01:58 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-05-28 04:11 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Probability & Statistics (15 expressions)</div>
 <div class="row">
   <div>
@@ -1994,38 +1994,32 @@ svg.d3-semantic-graph {
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   __P_2{{"$P(\cdot)$"}}:::function
-  __multiply_3(("$\times$")):::operator
   A["$A$"]:::scalar
-  __multiply_4(("$\times$")):::operator
-  cap["$\cap$"]:::scalar
   B["$B$"]:::scalar
-  __multiply_5(("$\times$")):::operator
-  __P_6{{"$P(\cdot)$"}}:::function
-  __P_7{{"$P(\cdot\mid \cdot)$"}}:::function
-  A --&gt; __multiply_3
-  cap --&gt; __multiply_4
-  B --&gt; __multiply_4
-  __multiply_4 --&gt; __multiply_3
-  __multiply_3 --&gt; __P_2
+  __intersection_3(("$\cap$")):::operator
+  __multiply_4(("$\times$")):::operator
+  __P_5{{"$P(\cdot)$"}}:::function
+  __P_6{{"$P(\cdot\mid \cdot)$"}}:::function
+  A --&gt; __intersection_3
+  B --&gt; __intersection_3
+  __intersection_3 --&gt; __P_2
   __P_2 --&gt; __equals_1
-  A --&gt; __P_6
-  __P_6 --&gt; __multiply_5
-  B --&gt; __P_7
-  A --&gt;|condition| __P_7
-  __P_7 --&gt; __multiply_5
-  __multiply_5 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  A --&gt; __P_5
+  __P_5 --&gt; __multiply_4
+  B --&gt; __P_6
+  A --&gt;|condition| __P_6
+  __P_6 --&gt; __multiply_4
+  __multiply_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
   linkStyle 6 stroke:#aaa,stroke-width:2px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
   linkStyle 9 stroke:#aaa,stroke-width:2px
-  linkStyle 10 stroke:#ef5350,stroke-width:3px
-  linkStyle 11 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2040,19 +2034,13 @@ svg.d3-semantic-graph {
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "P(A \\cap B) = P(A) P(B \\mid A)"
+      "subexpr": "P(A \\cap B)  =  P(A) P(B \\mid A)"
     },
     {
       "id": "__P_2",
       "type": "function",
       "op": "P",
-      "subexpr": "P{\\left(A B cap \\right)}"
-    },
-    {
-      "id": "__multiply_3",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "A \\cap B"
+      "subexpr": "P{\\left(A \\cap B \\right)}"
     },
     {
       "id": "A",
@@ -2061,37 +2049,32 @@ svg.d3-semantic-graph {
       "subexpr": "A"
     },
     {
-      "id": "__multiply_4",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\cap B"
-    },
-    {
-      "id": "cap",
-      "type": "scalar",
-      "latex": "\\cap",
-      "subexpr": "\\cap"
-    },
-    {
       "id": "B",
       "type": "scalar",
       "latex": "B",
       "subexpr": "B"
     },
     {
-      "id": "__multiply_5",
+      "id": "__intersection_3",
+      "type": "operator",
+      "emoji": "∩",
+      "op": "intersection",
+      "subexpr": "A \\cap B"
+    },
+    {
+      "id": "__multiply_4",
       "type": "operator",
       "op": "multiply",
       "subexpr": "P{\\left(A \\right)} P{\\left(B \\mid A \\right)}"
     },
     {
-      "id": "__P_6",
+      "id": "__P_5",
       "type": "function",
       "op": "P",
       "subexpr": "P{\\left(A \\right)}"
     },
     {
-      "id": "__P_7",
+      "id": "__P_6",
       "type": "function",
       "op": "P",
       "subexpr": "P{\\left(B \\mid A \\right)}"
@@ -2100,30 +2083,14 @@ svg.d3-semantic-graph {
   "edges": [
     {
       "from": "A",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "cap",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
+      "to": "__intersection_3"
     },
     {
       "from": "B",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
+      "to": "__intersection_3"
     },
     {
-      "from": "__multiply_4",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_3",
+      "from": "__intersection_3",
       "to": "__P_2"
     },
     {
@@ -2132,31 +2099,31 @@ svg.d3-semantic-graph {
     },
     {
       "from": "A",
-      "to": "__P_6"
+      "to": "__P_5"
     },
     {
-      "from": "__P_6",
-      "to": "__multiply_5",
+      "from": "__P_5",
+      "to": "__multiply_4",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "B",
-      "to": "__P_7"
+      "to": "__P_6"
     },
     {
       "from": "A",
-      "to": "__P_7",
+      "to": "__P_6",
       "role": "condition"
     },
     {
-      "from": "__P_7",
-      "to": "__multiply_5",
+      "from": "__P_6",
+      "to": "__multiply_4",
       "semantic": "direct",
       "weight": 1.0
     },
     {
-      "from": "__multiply_5",
+      "from": "__multiply_4",
       "to": "__equals_1"
     }
   ],
@@ -2177,40 +2144,34 @@ svg.d3-semantic-graph {
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   __P_2{{"$P(\cdot)$"}}:::function
-  __multiply_3(("$\times$")):::operator
   A["$A$"]:::scalar
-  __multiply_4(("$\times$")):::operator
-  cap["$\cap$"]:::scalar
   B["$B$"]:::scalar
-  __multiply_5(("$\times$")):::operator
-  __P_6{{"$P(\cdot)$"}}:::function
-  __P_7{{"$P(\cdot\mid \cdot)$"}}:::function
-  A --&gt; __multiply_3
-  cap --&gt; __multiply_4
-  B --&gt; __multiply_4
-  __multiply_4 --&gt; __multiply_3
-  __multiply_3 --&gt; __P_2
+  __intersection_3(("$\cap$")):::operator
+  __multiply_4(("$\times$")):::operator
+  __P_5{{"$P(\cdot)$"}}:::function
+  __P_6{{"$P(\cdot\mid \cdot)$"}}:::function
+  A --&gt; __intersection_3
+  B --&gt; __intersection_3
+  __intersection_3 --&gt; __P_2
   __P_2 --&gt; __equals_1
-  A --&gt; __P_6
-  __P_6 --&gt; __multiply_5
-  B --&gt; __P_7
-  A --&gt;|condition| __P_7
-  __P_7 --&gt; __multiply_5
-  __multiply_5 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  A --&gt; __P_5
+  __P_5 --&gt; __multiply_4
+  B --&gt; __P_6
+  A --&gt;|condition| __P_6
+  __P_6 --&gt; __multiply_4
+  __multiply_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
   linkStyle 6 stroke:#aaa,stroke-width:2px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
   linkStyle 9 stroke:#aaa,stroke-width:2px
-  linkStyle 10 stroke:#ef5350,stroke-width:3px
-  linkStyle 11 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P(A \\cap B) = P(A) P(B \\mid A)&quot;},{&quot;id&quot;:&quot;__P_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(A B cap \\right)}&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;A \\cap B&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\cap B&quot;},{&quot;id&quot;:&quot;cap&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\cap&quot;,&quot;subexpr&quot;:&quot;\\cap&quot;},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;B&quot;,&quot;subexpr&quot;:&quot;B&quot;},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;P{\\left(A \\right)} P{\\left(B \\mid A \\right)}&quot;},{&quot;id&quot;:&quot;__P_6&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;__P_7&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(B \\mid A \\right)}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;cap&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__P_2&quot;},{&quot;from&quot;:&quot;__P_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__P_6&quot;},{&quot;from&quot;:&quot;__P_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__P_7&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__P_7&quot;,&quot;role&quot;:&quot;condition&quot;},{&quot;from&quot;:&quot;__P_7&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P(A \\cap B)  =  P(A) P(B \\mid A)&quot;},{&quot;id&quot;:&quot;__P_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(A \\cap B \\right)}&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;B&quot;,&quot;subexpr&quot;:&quot;B&quot;},{&quot;id&quot;:&quot;__intersection_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;emoji&quot;:&quot;∩&quot;,&quot;op&quot;:&quot;intersection&quot;,&quot;subexpr&quot;:&quot;A \\cap B&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;P{\\left(A \\right)} P{\\left(B \\mid A \\right)}&quot;},{&quot;id&quot;:&quot;__P_5&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;__P_6&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(B \\mid A \\right)}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__intersection_3&quot;},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__intersection_3&quot;},{&quot;from&quot;:&quot;__intersection_3&quot;,&quot;to&quot;:&quot;__P_2&quot;},{&quot;from&quot;:&quot;__P_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__P_5&quot;},{&quot;from&quot;:&quot;__P_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__P_6&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__P_6&quot;,&quot;role&quot;:&quot;condition&quot;},{&quot;from&quot;:&quot;__P_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -3808,36 +3769,30 @@ svg.d3-semantic-graph {
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   __P_2{{"$P(\cdot)$"}}:::function
-  __multiply_3(("$\times$")):::operator
   A["$A$"]:::scalar
-  __multiply_4(("$\times$")):::operator
-  cap["$\cap$"]:::scalar
   B["$B$"]:::scalar
-  __multiply_5(("$\times$")):::operator
+  __intersection_3(("$\cap$")):::operator
+  __multiply_4(("$\times$")):::operator
+  __P_5{{"$P(\cdot)$"}}:::function
   __P_6{{"$P(\cdot)$"}}:::function
-  __P_7{{"$P(\cdot)$"}}:::function
-  A --&gt; __multiply_3
-  cap --&gt; __multiply_4
-  B --&gt; __multiply_4
-  __multiply_4 --&gt; __multiply_3
-  __multiply_3 --&gt; __P_2
+  A --&gt; __intersection_3
+  B --&gt; __intersection_3
+  __intersection_3 --&gt; __P_2
   __P_2 --&gt; __equals_1
-  A --&gt; __P_6
-  __P_6 --&gt; __multiply_5
-  B --&gt; __P_7
-  __P_7 --&gt; __multiply_5
-  __multiply_5 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  A --&gt; __P_5
+  __P_5 --&gt; __multiply_4
+  B --&gt; __P_6
+  __P_6 --&gt; __multiply_4
+  __multiply_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#ef5350,stroke-width:3px
   linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -3852,19 +3807,13 @@ svg.d3-semantic-graph {
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "P(A \\cap B) = P(A) \\cdot P(B)"
+      "subexpr": "P(A \\cap B)  =  P(A) \\cdot P(B)"
     },
     {
       "id": "__P_2",
       "type": "function",
       "op": "P",
-      "subexpr": "P{\\left(A B cap \\right)}"
-    },
-    {
-      "id": "__multiply_3",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "A \\cap B"
+      "subexpr": "P{\\left(A \\cap B \\right)}"
     },
     {
       "id": "A",
@@ -3873,37 +3822,32 @@ svg.d3-semantic-graph {
       "subexpr": "A"
     },
     {
-      "id": "__multiply_4",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\cap B"
-    },
-    {
-      "id": "cap",
-      "type": "scalar",
-      "latex": "\\cap",
-      "subexpr": "\\cap"
-    },
-    {
       "id": "B",
       "type": "scalar",
       "latex": "B",
       "subexpr": "B"
     },
     {
-      "id": "__multiply_5",
+      "id": "__intersection_3",
+      "type": "operator",
+      "emoji": "∩",
+      "op": "intersection",
+      "subexpr": "A \\cap B"
+    },
+    {
+      "id": "__multiply_4",
       "type": "operator",
       "op": "multiply",
       "subexpr": "P{\\left(A \\right)} P{\\left(B \\right)}"
     },
     {
-      "id": "__P_6",
+      "id": "__P_5",
       "type": "function",
       "op": "P",
       "subexpr": "P{\\left(A \\right)}"
     },
     {
-      "id": "__P_7",
+      "id": "__P_6",
       "type": "function",
       "op": "P",
       "subexpr": "P{\\left(B \\right)}"
@@ -3912,30 +3856,14 @@ svg.d3-semantic-graph {
   "edges": [
     {
       "from": "A",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "cap",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
+      "to": "__intersection_3"
     },
     {
       "from": "B",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
+      "to": "__intersection_3"
     },
     {
-      "from": "__multiply_4",
-      "to": "__multiply_3",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_3",
+      "from": "__intersection_3",
       "to": "__P_2"
     },
     {
@@ -3944,26 +3872,26 @@ svg.d3-semantic-graph {
     },
     {
       "from": "A",
-      "to": "__P_6"
+      "to": "__P_5"
     },
     {
-      "from": "__P_6",
-      "to": "__multiply_5",
+      "from": "__P_5",
+      "to": "__multiply_4",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "B",
-      "to": "__P_7"
+      "to": "__P_6"
     },
     {
-      "from": "__P_7",
-      "to": "__multiply_5",
+      "from": "__P_6",
+      "to": "__multiply_4",
       "semantic": "direct",
       "weight": 1.0
     },
     {
-      "from": "__multiply_5",
+      "from": "__multiply_4",
       "to": "__equals_1"
     }
   ],
@@ -3984,38 +3912,32 @@ svg.d3-semantic-graph {
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   __P_2{{"$P(\cdot)$"}}:::function
-  __multiply_3(("$\times$")):::operator
   A["$A$"]:::scalar
-  __multiply_4(("$\times$")):::operator
-  cap["$\cap$"]:::scalar
   B["$B$"]:::scalar
-  __multiply_5(("$\times$")):::operator
+  __intersection_3(("$\cap$")):::operator
+  __multiply_4(("$\times$")):::operator
+  __P_5{{"$P(\cdot)$"}}:::function
   __P_6{{"$P(\cdot)$"}}:::function
-  __P_7{{"$P(\cdot)$"}}:::function
-  A --&gt; __multiply_3
-  cap --&gt; __multiply_4
-  B --&gt; __multiply_4
-  __multiply_4 --&gt; __multiply_3
-  __multiply_3 --&gt; __P_2
+  A --&gt; __intersection_3
+  B --&gt; __intersection_3
+  __intersection_3 --&gt; __P_2
   __P_2 --&gt; __equals_1
-  A --&gt; __P_6
-  __P_6 --&gt; __multiply_5
-  B --&gt; __P_7
-  __P_7 --&gt; __multiply_5
-  __multiply_5 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  A --&gt; __P_5
+  __P_5 --&gt; __multiply_4
+  B --&gt; __P_6
+  __P_6 --&gt; __multiply_4
+  __multiply_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
   linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#ef5350,stroke-width:3px
   linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P(A \\cap B) = P(A) \\cdot P(B)&quot;},{&quot;id&quot;:&quot;__P_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(A B cap \\right)}&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;A \\cap B&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\cap B&quot;},{&quot;id&quot;:&quot;cap&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\cap&quot;,&quot;subexpr&quot;:&quot;\\cap&quot;},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;B&quot;,&quot;subexpr&quot;:&quot;B&quot;},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;P{\\left(A \\right)} P{\\left(B \\right)}&quot;},{&quot;id&quot;:&quot;__P_6&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;__P_7&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(B \\right)}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;cap&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__P_2&quot;},{&quot;from&quot;:&quot;__P_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__P_6&quot;},{&quot;from&quot;:&quot;__P_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__P_7&quot;},{&quot;from&quot;:&quot;__P_7&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P(A \\cap B)  =  P(A) \\cdot P(B)&quot;},{&quot;id&quot;:&quot;__P_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(A \\cap B \\right)}&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;B&quot;,&quot;subexpr&quot;:&quot;B&quot;},{&quot;id&quot;:&quot;__intersection_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;emoji&quot;:&quot;∩&quot;,&quot;op&quot;:&quot;intersection&quot;,&quot;subexpr&quot;:&quot;A \\cap B&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;P{\\left(A \\right)} P{\\left(B \\right)}&quot;},{&quot;id&quot;:&quot;__P_5&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;__P_6&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(B \\right)}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__intersection_3&quot;},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__intersection_3&quot;},{&quot;from&quot;:&quot;__intersection_3&quot;,&quot;to&quot;:&quot;__P_2&quot;},{&quot;from&quot;:&quot;__P_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__P_5&quot;},{&quot;from&quot;:&quot;__P_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__P_6&quot;},{&quot;from&quot;:&quot;__P_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
