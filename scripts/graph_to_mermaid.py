@@ -119,6 +119,8 @@ OPERATOR_SYMBOLS: dict[str, str] = {
     "set_difference": "∖",
     "conjunction": "∧",
     "disjunction": "∨",
+    "forall": "∀(·)",
+    "exists": "∃(·)",
 }
 
 OPERATOR_LATEX: dict[str, str] = {
@@ -158,6 +160,8 @@ OPERATOR_LATEX: dict[str, str] = {
     "set_difference": r"\setminus",
     "conjunction": r"\land",
     "disjunction": r"\lor",
+    "forall": r"\forall(\cdot)",
+    "exists": r"\exists(\cdot)",
     "branch": r"\Rightarrow",
     "congruent": r"\equiv",
     "divides": r"\mid",

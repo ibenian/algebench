@@ -124,21 +124,21 @@ LOGIC_EXPRESSIONS: list[CatalogEntry] = [
     ("logic_forall",
      r"\forall x \in \mathbb{R}, \quad x^2 \geq 0",
      PASS,
-         "forall,x -> multiply; x -> power; "
-         "R,multiply -> rel:element_of; num,power -> rel:greater_equal",
-         "forall,x -> c0___multiply_1; x -> c1___power_1; "
-         "R,c0___multiply_1 -> c0___element_of_2; "
+         "x -> fn:forall; x -> power; "
+         "R,fn:forall -> rel:element_of; num,power -> rel:greater_equal",
+         "x -> c0___forall_1; x -> c1___power_1; "
+         "R,c0___forall_1 -> c0___element_of_2; "
          "c1___num_2,c1___power_1 -> c1___greater_equal_3",
      None),
 
     ("logic_exists",
      r"\exists x \in \mathbb{N}, \quad x > 100",
      PASS,
-         "exists,x -> multiply; num,x -> rel:greater_than; "
-         "N,multiply -> rel:element_of",
-         "exists,x -> c0___multiply_1; "
+         "x -> fn:exists; num,x -> rel:greater_than; "
+         "N,fn:exists -> rel:element_of",
+         "x -> c0___exists_1; "
          "c1___num_2,x -> c1___greater_than_1; "
-         "N,c0___multiply_1 -> c0___element_of_2",
+         "N,c0___exists_1 -> c0___element_of_2",
      None),
 
     ("logic_demorgan",
