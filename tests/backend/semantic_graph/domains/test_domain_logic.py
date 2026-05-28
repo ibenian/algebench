@@ -37,7 +37,7 @@ ALLOWED_OPS = {
     "implies", "iff", "element_of", "not_element_of",
     "greater_than", "greater_equal", "less_than", "less_equal",
     "function", "Abs", "abs",
-    "neg", "lor",
+    "neg",
     "intersection", "union", "conjunction", "disjunction",
 }
 
@@ -144,12 +144,11 @@ LOGIC_EXPRESSIONS: list[CatalogEntry] = [
     ("logic_demorgan",
      r"\neg (P \land Q) \iff (\neg P) \lor (\neg Q)",
      PASS,
-         "P,Q -> conjunction; P,neg -> multiply; Q,neg -> multiply; "
-         "multiply,multiply -> disjunction; conjunction -> fn:neg; "
+         "P,Q -> conjunction; P -> fn:neg; Q -> fn:neg; "
+         "fn:neg,fn:neg -> disjunction; conjunction -> fn:neg; "
          "disjunction,fn:neg -> iff",
-         "P,Q -> __conjunction_2; P,neg -> __multiply_4; "
-         "Q,neg -> __multiply_5; "
-         "__multiply_4,__multiply_5 -> __disjunction_3; "
+         "P,Q -> __conjunction_2; P -> __neg_4; Q -> __neg_5; "
+         "__neg_4,__neg_5 -> __disjunction_3; "
          "__conjunction_2 -> __neg_1; "
          "__disjunction_3,__neg_1 -> __iff_6",
      None),

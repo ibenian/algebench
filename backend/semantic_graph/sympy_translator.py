@@ -476,6 +476,40 @@ def _rewrite_assertion_ops(latex: str) -> tuple[str, dict[str, str]]:
 
 
 # ---------------------------------------------------------------------------
+# Prefix negation rewriter
+# ---------------------------------------------------------------------------
+# ``\neg X`` without parentheses is parsed by SymPy as ``neg * X``
+# (implicit multiplication) instead of ``neg(X)`` (function call).
+# We rewrite ``\neg TOKEN`` → ``\neg(TOKEN)`` where TOKEN is a single
+# variable, a braced group, or a LaTeX command with its argument.
+
+_NEG_RE = re.compile(
+    r"\\neg\s+"                              # \neg + mandatory whitespace
+    r"(?!"                                    # NOT followed by…
+    r"\(|\\left\s*\(|\\left\s*\[|\\left\s*\{"  # already-parenthesized
+    r")"
+    r"("                                      # capture the operand
+    r"\\[a-zA-Z]+\{[^{}]*\}"                 # \cmd{...}
+    r"|\\[a-zA-Z]+"                          # bare \command
+    r"|[A-Za-z]"                             # single letter variable
+    r"|\{[^{}]*\}"                           # braced group {…}
+    r")"
+)
+
+
+def _rewrite_prefix_neg(latex: str) -> str:
+    r"""Rewrite ``\neg X`` → ``\neg(X)`` so SymPy parses it as a function call.
+
+    Only rewrites when the operand is **not** already parenthesized.
+    Handles: ``\neg P``, ``\neg \mathbb{R}``, ``\neg {foo}``.
+    Skips:   ``\neg (P \land Q)``, ``\neg\left(…\right)``.
+    """
+    if r"\neg" not in latex:
+        return latex
+    return _NEG_RE.sub(r"\\neg(\1)", latex)
+
+
+# ---------------------------------------------------------------------------
 # Infix set / logic operator rewriter
 # ---------------------------------------------------------------------------
 # LaTeX infix operators that SymPy can't parse (e.g. ``\cap``, ``\cup``,
@@ -2105,6 +2139,14 @@ class SemanticGraphBuilder:
                 result,
             )
 
+        # SymPy renders ``\neg(X)`` as ``\operatorname{neg}{\left(X \right)}``.
+        # Restore the compact ``\neg X`` form.
+        result = re.sub(
+            r"\\operatorname\{neg\}\{\\left\(([^)]*?)\\right\)\}",
+            r"\\neg \1",
+            result,
+        )
+
         # Restore conditional bars in any function calls that had them.
         # SymPy renders P(A, B) but we want P(A \mid B).  This applies
         # to the entire subexpr string, so composite expressions like
@@ -3225,6 +3267,7 @@ def _latex_to_semantic_graph_dict(
     user_overrides = overrides
     latex = _normalize_latex(latex)
     latex, infix_overrides = _rewrite_infix_ops(latex)
+    latex = _rewrite_prefix_neg(latex)
     latex = _rewrite_bracket_functions(latex)
     latex, conditional_bar_funcs = _rewrite_conditional_bar(latex)
     latex, assertion_funcs = _rewrite_assertion_ops(latex)
