@@ -151,13 +151,17 @@ function inferEdgeSemantic(edge, nodeById) {
 // ---------------------------------------------------------------------------
 
 const OPERATOR_GLYPHS = {
-    equals: '=', greater_than: '>', less_than: '<',
+    equals: '=', congruent: '≡', divides: '∣', asymptotic: '∼',
+    approximately: '≈', proportional: '∝', maps_to: '→',
+    greater_than: '>', less_than: '<',
     greater_equal: '≥', less_equal: '≤', not_equal: '≠',
     multiply: '×', add: '+', subtract: '−',
     divide: '÷', integral: '∫', closed_integral: '∮',
     implies: '⇒', iff: '⇔',
-    negation: '−', not: '¬', logical_not: '¬',
+    negation: '−', neg: '¬(·)', not: '¬', logical_not: '¬',
+    forall: '∀(·)', exists: '∃(·)',
     conjunction: '∧', disjunction: '∨',
+    intersection: '∩', union: '∪', set_difference: '∖',
     sum: '∑', product: '∏', limit: 'lim',
     factorial: '(·)!', sqrt: '√(·)',
     log: 'log(·)', logarithm: 'log(·)', exp: 'exp(·)',
@@ -169,15 +173,19 @@ const OPERATOR_GLYPHS = {
 // LaTeX equivalents for operator glyphs — used when rendering operator
 // labels through KaTeX (nodes without an explicit ``latex`` field).
 const OPERATOR_LATEX = {
-    equals: '=', greater_than: '>', less_than: '<',
+    equals: '=', congruent: '\\equiv', divides: '\\mid', asymptotic: '\\sim',
+    approximately: '\\approx', proportional: '\\propto', maps_to: '\\to',
+    greater_than: '>', less_than: '<',
     greater_equal: '\\geq', less_equal: '\\leq', not_equal: '\\neq',
     element_of: '\\in', not_element_of: '\\notin',
     multiply: '\\times', add: '+', subtract: '-',
     divide: '\\div', integral: '\\int', closed_integral: '\\oint',
     tends_to: '\\to',
     implies: '\\Rightarrow', iff: '\\Leftrightarrow',
-    negation: '-', not: '\\lnot', logical_not: '\\lnot',
+    negation: '-', neg: '\\lnot(\\cdot)', not: '\\lnot', logical_not: '\\lnot',
+    forall: '\\forall(\\cdot)', exists: '\\exists(\\cdot)',
     conjunction: '\\land', disjunction: '\\lor',
+    intersection: '\\cap', union: '\\cup', set_difference: '\\setminus',
     sum: '\\sum', product: '\\prod', limit: '\\lim',
     factorial: '(\\cdot)!', sqrt: '\\sqrt{\\cdot}',
     log: '\\log(\\cdot)', logarithm: '\\log(\\cdot)', exp: '\\exp(\\cdot)',
@@ -207,12 +215,15 @@ const OPERATOR_KINDS = {
     sin: 'function', cos: 'function', tan: 'function',
     log: 'function', logarithm: 'function', exp: 'function',
     equals: 'comparison', not_equal: 'comparison',
+    approximately: 'comparison', proportional: 'comparison', maps_to: 'comparison',
     greater_than: 'comparison', less_than: 'comparison',
     greater_equal: 'comparison', less_equal: 'comparison',
     element_of: 'comparison', not_element_of: 'comparison',
     implies: 'logical', iff: 'logical',
-    not: 'logical', logical_not: 'logical',
+    neg: 'logical', not: 'logical', logical_not: 'logical',
+    forall: 'logical', exists: 'logical',
     conjunction: 'logical', disjunction: 'logical',
+    intersection: 'set', union: 'set', set_difference: 'set',
     sum: 'aggregate', product: 'aggregate',
     integral: 'aggregate', closed_integral: 'aggregate', limit: 'aggregate',
     derivative: 'aggregate', partial_derivative: 'aggregate',
@@ -226,6 +237,7 @@ const OPERATOR_KIND_STYLES = {
     function:   { fill: '#0f3340', stroke: '#29b6f6', color: '#b3e5fc' },
     comparison: { fill: '#1a2240', stroke: '#7e57c2', color: '#d1c4e9' },
     logical:    { fill: '#0f2a30', stroke: '#26c6da', color: '#b2ebf2' },
+    set:        { fill: '#1a2a20', stroke: '#66bb6a', color: '#c8e6c9' },
     aggregate:  { fill: '#1d2540', stroke: '#5c6bc0', color: '#c5cae9' },
     quantum:    { fill: '#2d1530', stroke: '#ab47bc', color: '#e1bee7' },
 };
@@ -251,6 +263,28 @@ function operatorGlyph(node) {
 }
 
 /**
+ * Build the arity-dot string for a function label.
+ * When ``hasCondition`` is true, the last argument is separated
+ * by ``|`` (conditional probability) instead of ``, ``.
+ *
+ * @param {number} arity  Number of arguments.
+ * @param {boolean} hasCondition  Whether the function has a condition edge.
+ * @param {string} dot  The dot character (``·`` for text, ``\\cdot`` for LaTeX).
+ * @returns {string}
+ */
+function _arityDots(arity, hasCondition, hasAssertion, dot) {
+    if (hasCondition && arity >= 2) {
+        const sep = dot === '·' ? '|' : '\\mid ';
+        const regular = Array(arity - 1).fill(dot).join(', ');
+        return `${regular}${sep}${dot}`;
+    }
+    if (hasAssertion && arity >= 2) {
+        return dot === '·' ? '…' : '\\ldots';
+    }
+    return Array(arity).fill(dot).join(', ');
+}
+
+/**
  * Compact symbol shown on the graph node itself.
  * ``\cos``, ``⟨0|·⟩``, ``|·|``, ``(·)²``, ``+``, ``=``…
  */
@@ -260,7 +294,7 @@ export function nodeShortLabel(node) {
         if (node.latex) {
             if (node.type === 'function' && !node.latex.includes('\\cdot') && !node.latex.includes('·')) {
                 const arity = (node._childIds || []).length || 1;
-                const dots = Array(arity).fill('·').join(', ');
+                const dots = _arityDots(arity, node._hasConditionEdge, node._hasAssertionEdge, '·');
                 return `${node.latex}(${dots})`;
             }
             return node.latex;
@@ -270,7 +304,7 @@ export function nodeShortLabel(node) {
         const name = node.op || node.id || '';
         if (node.type === 'function' && name && !name.includes('·')) {
             const arity = (node._childIds || []).length || 1;
-            const dots = Array(arity).fill('·').join(', ');
+            const dots = _arityDots(arity, node._hasConditionEdge, node._hasAssertionEdge, '·');
             return `${name}(${dots})`;
         }
         return name;
@@ -650,9 +684,13 @@ export class D3SemanticGraphRenderer {
         for (const n of nodes) nodeById[n.id] = n;
 
         const childrenOf = Object.create(null);
+        const conditionEdgeTargets = new Set();
+        const assertionEdgeTargets = new Set();
         for (const e of edges) {
             if (!childrenOf[e.to]) childrenOf[e.to] = [];
             childrenOf[e.to].push(e.from);
+            if (e.role === 'condition') conditionEdgeTargets.add(e.to);
+            if (e.role === 'assertion') assertionEdgeTargets.add(e.to);
         }
 
         const annoIds = new Set(nodes.filter(n => n.type === 'annotation').map(n => n.id));
@@ -717,6 +755,8 @@ export class D3SemanticGraphRenderer {
                     ...nodeById[id],
                     _collapsed: this._collapsed.has(id),
                     _childIds: childrenOf[id] || [],
+                    _hasConditionEdge: conditionEdgeTargets.has(id),
+                    _hasAssertionEdge: assertionEdgeTargets.has(id),
                 },
                 x: pos.x,
                 y: pos.y,
@@ -1041,16 +1081,6 @@ export class D3SemanticGraphRenderer {
             if (this.katex && latex) {
                 try {
                     this.katex.render(latex, content, { throwOnError: false, displayMode: false });
-                    content.querySelectorAll('.katex-html').forEach(h => {
-                        h.style.whiteSpace = 'normal';
-                        h.style.display = 'block';
-                        h.style.textAlign = 'center';
-                    });
-                    content.querySelectorAll('.base').forEach(base => {
-                        base.style.display = 'inline';
-                        base.style.whiteSpace = 'normal';
-                        this._groupKatexWords(base);
-                    });
                 } catch (_) {
                     content.textContent = latex;
                 }
@@ -1415,7 +1445,7 @@ export class D3SemanticGraphRenderer {
         if (latex && data.type === 'function' && !isCollapsed
             && !latex.includes('\\cdot') && !latex.includes('·')) {
             const arity = (data._childIds || []).length || 1;
-            const dots = Array(arity).fill('\\cdot').join(', ');
+            const dots = _arityDots(arity, data._hasConditionEdge, data._hasAssertionEdge, '\\cdot');
             latex = `${latex}(${dots})`;
         }
 

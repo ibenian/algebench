@@ -521,7 +521,7 @@ svg.d3-semantic-graph {
     border: 1px dashed;
     border-radius: 8px;
     padding: 10px 36px 10px 18px;
-    font-size: 0.88em;
+    font-size: 0.78rem;
     font-style: italic;
     line-height: 1.45;
     backdrop-filter: blur(8px);
@@ -538,7 +538,7 @@ svg.d3-semantic-graph {
 }
 
 .d3sg-anno-card .katex {
-    font-size: 0.92em;
+    font-size: 1.1em;
 }
 
 .d3sg-anno-ai-btn {
@@ -656,7 +656,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-25 19:24 UTC &middot; theme: default-dark &middot; 21 expressions</div>
+<div class="report-meta">Generated 2026-05-28 22:17 UTC &middot; theme: default-dark &middot; 21 expressions</div>
 <div class="section-title">Structural (21 expressions)</div>
 <div class="row">
   <div>
@@ -3104,7 +3104,7 @@ svg.d3-semantic-graph {
   __greater_equal_4{"≥"}:::relation
   __branch_5(("$\Rightarrow$")):::operator
   __negation_6@{ shape: "flip-tri", label: "$-$" }
-  __less_than_7{"&lt;"}:::relation
+  __less_than_7{"$&lt;$"}:::relation
   __num_8["$0$"]:::number
   __f_9{{"$f(\cdot)$"}}:::function
   __equals_10{"="}:::relation
@@ -3308,7 +3308,7 @@ svg.d3-semantic-graph {
   __greater_equal_4{"≥"}:::relation
   __branch_5(("$\Rightarrow$")):::operator
   __negation_6@{ shape: "flip-tri", label: "$-$" }
-  __less_than_7{"&lt;"}:::relation
+  __less_than_7{"$&lt;$"}:::relation
   __num_8["$0$"]:::number
   __f_9{{"$f(\cdot)$"}}:::function
   __equals_10{"="}:::relation
@@ -3371,7 +3371,7 @@ svg.d3-semantic-graph {
   m["$m$"]:::scalar
   __power_6(("${(\cdot)}^{2}$")):::operator
   v["$v$"]:::scalar
-  __annotation_0(("$\text{where } v = \text{velocity}$")):::annotation
+  __annotation_0(("$\text{where } v, \text{velocity}$")):::annotation
   E --&gt; __equals_1
   __num_4 --&gt; __power_3
   __power_3 -.-&gt; __multiply_2
@@ -3458,8 +3458,8 @@ svg.d3-semantic-graph {
     {
       "id": "__annotation_0",
       "type": "annotation",
-      "label": "where v = velocity",
-      "latex": "\\text{where } v = \\text{velocity}"
+      "label": "where v, velocity",
+      "latex": "\\text{where } v, \\text{velocity}"
     }
   ],
   "edges": [
@@ -3526,7 +3526,7 @@ svg.d3-semantic-graph {
   m["$m$"]:::scalar
   __power_6(("${(\cdot)}^{2}$")):::operator
   v["$v$"]:::scalar
-  __annotation_0(("$\text{where } v = \text{velocity}$")):::annotation
+  __annotation_0(("$\text{where } v, \text{velocity}$")):::annotation
   E --&gt; __equals_1
   __num_4 --&gt; __power_3
   __power_3 -.-&gt; __multiply_2
@@ -3544,7 +3544,7 @@ svg.d3-semantic-graph {
   linkStyle 6 stroke:#ef5350,stroke-width:3px
   linkStyle 7 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;E = \\frac{1}{2}mv^2&quot;},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;E&quot;,&quot;subexpr&quot;:&quot;E&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2} m v^{2}&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2}&quot;},{&quot;id&quot;:&quot;__num_4&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;m v^{2}&quot;},{&quot;id&quot;:&quot;m&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;m&quot;,&quot;subexpr&quot;:&quot;m&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;v^{2}&quot;},{&quot;id&quot;:&quot;v&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;v&quot;,&quot;subexpr&quot;:&quot;v&quot;},{&quot;id&quot;:&quot;__annotation_0&quot;,&quot;type&quot;:&quot;annotation&quot;,&quot;label&quot;:&quot;where v = velocity&quot;,&quot;latex&quot;:&quot;\\text{where } v = \\text{velocity}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;},{&quot;from&quot;:&quot;m&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;v&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;E = \\frac{1}{2}mv^2&quot;},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;E&quot;,&quot;subexpr&quot;:&quot;E&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2} m v^{2}&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2}&quot;},{&quot;id&quot;:&quot;__num_4&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;m v^{2}&quot;},{&quot;id&quot;:&quot;m&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;m&quot;,&quot;subexpr&quot;:&quot;m&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;v^{2}&quot;},{&quot;id&quot;:&quot;v&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;v&quot;,&quot;subexpr&quot;:&quot;v&quot;},{&quot;id&quot;:&quot;__annotation_0&quot;,&quot;type&quot;:&quot;annotation&quot;,&quot;label&quot;:&quot;where v, velocity&quot;,&quot;latex&quot;:&quot;\\text{where } v, \\text{velocity}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;},{&quot;from&quot;:&quot;m&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;v&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -3673,7 +3673,7 @@ svg.d3-semantic-graph {
 </pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;alpha&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\alpha&quot;,&quot;subexpr&quot;:&quot;\\alpha&quot;},{&quot;id&quot;:&quot;beta&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\beta&quot;,&quot;subexpr&quot;:&quot;\\beta&quot;},{&quot;id&quot;:&quot;__and_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;label&quot;:&quot;and&quot;,&quot;emoji&quot;:&quot;,&quot;,&quot;op&quot;:&quot;and&quot;,&quot;subexpr&quot;:&quot;\\alpha, \\beta&quot;},{&quot;id&quot;:&quot;R&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\mathbb{R}&quot;,&quot;subexpr&quot;:&quot;{R}&quot;},{&quot;id&quot;:&quot;__element_of_2&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;label&quot;:&quot;element of&quot;,&quot;emoji&quot;:&quot;∈&quot;,&quot;op&quot;:&quot;element_of&quot;,&quot;subexpr&quot;:&quot;\\alpha, \\beta \\in \\mathbb{R}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;alpha&quot;,&quot;to&quot;:&quot;__and_1&quot;},{&quot;from&quot;:&quot;beta&quot;,&quot;to&quot;:&quot;__and_1&quot;},{&quot;from&quot;:&quot;__and_1&quot;,&quot;to&quot;:&quot;__element_of_2&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;R&quot;,&quot;to&quot;:&quot;__element_of_2&quot;,&quot;role&quot;:&quot;rhs&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
-<div class="summary"><span class="count">21</span> rendered, <span class="count">0</span> errors out of <span class="count">21</span> expressions</div>
+<div class="summary">✅ <span class="count">21</span> rendered, <span class="count">0</span> errors out of <span class="count">21</span> expressions</div>
 <script>
 document.querySelectorAll('.row-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
