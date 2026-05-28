@@ -360,7 +360,7 @@ _ASSERTION_OP_META: dict[str, dict[str, str]] = {
 }
 
 
-def _rewrite_assertion_ops(latex: str) -> tuple[str, dict[str, str]]:
+def _rewrite_assertion_ops(latex: str) -> tuple[str, dict[str, list[str]]]:
     r"""Rewrite assertion operators inside function-call parens to ``,``.
 
     Probability expressions like ``P(X = k)`` or ``P(|X-\mu| \geq k)``
@@ -369,25 +369,26 @@ def _rewrite_assertion_ops(latex: str) -> tuple[str, dict[str, str]]:
     function calls — it silently collapses the expression.  This
     preprocessor rewrites the operator to ``,`` so SymPy sees
     ``P(X, k)``, and records which function names had an assertion
-    and what operator was used so the subexpr restorer can show the
-    original operator again.
+    and what operator(s) were used so the subexpr restorer can show
+    the original operator(s) again.
 
-    Only a **single** assertion operator at argument depth 0 is
-    rewritten; nested operators or multiple operators are left alone.
+    Both single-operator assertions (``P(X = k)``) and chained
+    inequalities (``P(1 < X \leq 10)``) are supported.
 
     Returns
     -------
-    tuple[str, dict[str, str]]
+    tuple[str, dict[str, list[str]]]
         ``(rewritten_latex, assertion_funcs)`` where
-        *assertion_funcs* maps function names to the original
-        LaTeX operator string (e.g. ``{"P": "\\geq"}``).
+        *assertion_funcs* maps function names to a list of the
+        original LaTeX operator strings (e.g. ``{"P": ["\\geq"]}``
+        for single-op, ``{"P": ["<", "\\leq"]}`` for chained).
     """
     # Quick bail-out: nothing to do if no operator could be present.
     if not any(op in latex for op in _ASSERTION_OPS):
         return latex, {}
 
     out: list[str] = []
-    assertion_funcs: dict[str, str] = {}
+    assertion_funcs: dict[str, list[str]] = {}
     i = 0
     n = len(latex)
     while i < n:
@@ -451,17 +452,19 @@ def _rewrite_assertion_ops(latex: str) -> tuple[str, dict[str, str]]:
                     else:
                         bi += 1
 
-                if len(op_hits) == 1:
-                    start_op, end_op, orig_op = op_hits[0]
-                    # Consume optional whitespace around the operator.
-                    before = start_op
-                    while before > 0 and body[before - 1] == " ":
-                        before -= 1
-                    after = end_op
-                    while after < blen and body[after] == " ":
-                        after += 1
-                    body = body[:before] + ", " + body[after:]
-                    assertion_funcs[func_name] = orig_op
+                if len(op_hits) >= 1:
+                    # Replace operators with commas right-to-left so
+                    # earlier indices remain valid.
+                    for start_op, end_op, _orig_op in reversed(op_hits):
+                        # Consume optional whitespace around the operator.
+                        before = start_op
+                        while before > 0 and body[before - 1] == " ":
+                            before -= 1
+                        after = end_op
+                        while after < len(body) and body[after] == " ":
+                            after += 1
+                        body = body[:before] + ", " + body[after:]
+                    assertion_funcs[func_name] = [h[2] for h in op_hits]
 
                 out.append("(")
                 out.append(body)
@@ -933,19 +936,23 @@ def _restore_all_conditional_bars(
 
 
 def _restore_all_assertion_ops(
-    latex: str, func_names: dict[str, str] | set[str],
+    latex: str, func_names: dict[str, list[str]] | set[str],
 ) -> str:
     r"""Restore assertion operators in ALL occurrences of named functions.
 
     The preprocessor rewrites e.g. ``P(X = k)`` → ``P(X, k)`` or
     ``P(|X-\mu| \geq k)`` → ``P(|X-\mu|, k)`` before SymPy parsing.
     SymPy then renders ``P{\left(X,k \right)}`` in subexprs.  This
-    function restores the **last** comma at argument depth to the
-    original operator for functions in *func_names*.
+    function restores commas at argument depth to the original
+    operator(s) for functions in *func_names*.
 
-    *func_names* can be a ``dict[str, str]`` mapping function name →
-    original operator (e.g. ``{"P": "\\geq"}``) or a legacy
-    ``set[str]`` which defaults the operator to ``=``.
+    For single-operator assertions (``[\"=\"]``), only the **last**
+    comma is replaced.  For chained inequalities (``[\"<\", \"\\leq\"]``),
+    all commas are replaced in order with the corresponding operators.
+
+    *func_names* can be a ``dict[str, list[str]]`` mapping function name →
+    original operator list (e.g. ``{"P": ["\\geq"]}``) or a legacy
+    ``set[str]`` which defaults the operator to ``["="]``.
 
     Uses the same scanning logic as ``_restore_all_conditional_bars``.
     """
@@ -954,7 +961,7 @@ def _restore_all_assertion_ops(
 
     # Normalise to dict form.
     if isinstance(func_names, set):
-        func_map: dict[str, str] = {f: "=" for f in func_names}
+        func_map: dict[str, list[str]] = {f: ["="] for f in func_names}
     else:
         func_map = func_names
 
@@ -971,12 +978,12 @@ def _restore_all_assertion_ops(
     for m in pattern.finditer(latex):
         start = m.start()
         fname = m.group("fname")
-        orig_op = func_map.get(fname, "=")
+        orig_ops = func_map.get(fname, ["="])
         result.append(latex[pos:start])
 
         depth = 1
         k = m.end()
-        last_comma = -1
+        comma_positions: list[int] = []
         while k < len(latex) and depth > 0:
             c = latex[k]
             if c in "({":
@@ -984,18 +991,39 @@ def _restore_all_assertion_ops(
             elif c in ")}":
                 depth -= 1
             elif c == "," and depth == 1:
-                last_comma = k
+                comma_positions.append(k)
             k += 1
 
         func_region = latex[start:k]
-        if last_comma >= 0:
-            rel = last_comma - start
-            after = rel + 1
-            while after < len(func_region) and func_region[after] == " ":
-                after += 1
-            func_region = (
-                func_region[:rel] + f" {orig_op} " + func_region[after:]
-            )
+        if comma_positions:
+            if len(orig_ops) == 1:
+                # Single-op: replace LAST comma (backward-compatible).
+                last_comma = comma_positions[-1]
+                rel = last_comma - start
+                after = rel + 1
+                while after < len(func_region) and func_region[after] == " ":
+                    after += 1
+                func_region = (
+                    func_region[:rel]
+                    + f" {orig_ops[0]} "
+                    + func_region[after:]
+                )
+            else:
+                # Chained: replace ALL commas right-to-left with their
+                # corresponding operators.
+                n_replace = min(len(comma_positions), len(orig_ops))
+                for idx in range(n_replace - 1, -1, -1):
+                    comma_abs = comma_positions[idx]
+                    rel = comma_abs - start
+                    after = rel + 1
+                    while (after < len(func_region)
+                           and func_region[after] == " "):
+                        after += 1
+                    func_region = (
+                        func_region[:rel]
+                        + f" {orig_ops[idx]} "
+                        + func_region[after:]
+                    )
         result.append(func_region)
         pos = k
 
@@ -1824,7 +1852,7 @@ class SemanticGraphBuilder:
         original_latex: str | None = None,
         bare_sum_indices: set[str] | None = None,
         conditional_bar_funcs: set[str] | None = None,
-        assertion_funcs: dict[str, str] | None = None,
+        assertion_funcs: dict[str, list[str]] | None = None,
     ) -> None:
         self.nodes: list[dict[str, str]] = []
         self.edges: list[dict[str, str]] = []
@@ -1835,7 +1863,7 @@ class SemanticGraphBuilder:
         self._original_latex = original_latex or ""
         self._bare_sum_indices: set[str] = bare_sum_indices or set()
         self._conditional_bar_funcs: set[str] = conditional_bar_funcs or set()
-        self._assertion_funcs: dict[str, str] = assertion_funcs or {}
+        self._assertion_funcs: dict[str, list[str]] = assertion_funcs or {}
         self._symbol_order = self._build_symbol_order()
         # Per-integral closed-integral flags: scan the *original* LaTeX for
         # \oint vs \int in left-to-right order so each Integral node can be
@@ -1931,8 +1959,19 @@ class SemanticGraphBuilder:
         """
         if not self._overrides:
             return
-        # Build mapping: Xi index → infix node subexpr
+        # Build mapping: Xi index → infix node subexpr.
+        # Prefer the _xi_idx stored on the node (set in _walk when the
+        # Xi placeholder is resolved) so that duplicate ops (e.g. two
+        # ``union`` nodes) each map to their own subexpr.
         infix_subexprs: dict[int, str] = {}
+        # First pass: nodes with explicit _xi_idx (preferred).
+        seen_idxs: set[int] = set()
+        for nd in self.nodes:
+            xi_idx = nd.get("_xi_idx")
+            if xi_idx is not None and nd.get("subexpr"):
+                infix_subexprs[xi_idx] = nd["subexpr"]
+                seen_idxs.add(xi_idx)
+        # Fallback: match by op for nodes without _xi_idx (legacy).
         for name, ovr in self._overrides.items():
             if "op" not in ovr or "type" not in ovr:
                 continue
@@ -1940,6 +1979,8 @@ class SemanticGraphBuilder:
             if not m:
                 continue
             idx = int(name.split("{")[1].rstrip("}"))
+            if idx in seen_idxs:
+                continue  # already resolved via _xi_idx
             for nd in self.nodes:
                 if nd.get("op") == ovr["op"] and nd.get("subexpr"):
                     infix_subexprs[idx] = nd["subexpr"]
@@ -2009,6 +2050,10 @@ class SemanticGraphBuilder:
             if not sub or "Xi" not in sub:
                 continue
             nd["subexpr"] = _replace_xi_calls(sub)
+
+        # Strip internal _xi_idx field — it was only needed for mapping.
+        for nd in self.nodes:
+            nd.pop("_xi_idx", None)
 
     def _build_symbol_order(self) -> dict[str, int]:
         if not self._original_latex:
@@ -2361,9 +2406,13 @@ class SemanticGraphBuilder:
                                     nd.get("subexpr", cid))
                                 break
                     subexpr = f" {infix_latex} ".join(child_subexprs)
+                    # Extract Xi index so _cleanup_infix_subexprs can
+                    # match this node directly (not by op name).
+                    xi_idx = int(func_name.split("{")[1].rstrip("}"))
                     self._add_node(
                         node_id, type=ovr["type"], op=infix_op,
                         emoji=infix_emoji, subexpr=subexpr,
+                        _xi_idx=xi_idx,
                     )
                     return node_id
                 # --- Text-command placeholder (e.g. \text{Res} → Xi_{0}) ---
@@ -2380,13 +2429,16 @@ class SemanticGraphBuilder:
             is_log = isinstance(expr, log)
             has_cond_bar = (op_name in self._conditional_bar_funcs
                            and len(expr.args) >= 2)
-            orig_op = self._assertion_funcs.get(op_name)
-            has_assertion = orig_op is not None and len(expr.args) >= 2
+            orig_ops = self._assertion_funcs.get(op_name)
+            has_assertion = (orig_ops is not None
+                            and len(expr.args) >= 2
+                            and len(orig_ops) == len(expr.args) - 1)
 
-            if has_assertion:
-                # Build an inner relation node for the assertion.
-                # E.g. P(X = k) → P contains an equals(X, k) child.
-                meta = _ASSERTION_OP_META.get(orig_op, {"op": "equals", "emoji": "="})
+            if has_assertion and len(orig_ops) == 1:
+                # Single-op assertion: P(X = k) → one relation node.
+                orig_op = orig_ops[0]
+                meta = _ASSERTION_OP_META.get(
+                    orig_op, {"op": "equals", "emoji": "="})
                 rel_op = meta["op"]
                 rel_emoji = meta["emoji"]
                 rel_id = self._next_id(rel_op)
@@ -2405,7 +2457,7 @@ class SemanticGraphBuilder:
                         edge_role = None
                     self._add_edge(child_id, rel_id, role=edge_role)
                 # Build subexpr from children: "lhs_subexpr OP rhs_subexpr"
-                child_subexprs = []
+                child_subexprs: list[str] = []
                 for cid in child_ids:
                     for nd in self.nodes:
                         if nd["id"] == cid:
@@ -2413,11 +2465,48 @@ class SemanticGraphBuilder:
                             break
                 rel_subexpr = f" {orig_op} ".join(child_subexprs)
                 self._add_node(
-                    rel_id, type="relation", op=rel_op, emoji=rel_emoji,
-                    subexpr=rel_subexpr,
+                    rel_id, type="relation", op=rel_op,
+                    emoji=rel_emoji, subexpr=rel_subexpr,
                 )
                 # Connect the inner relation to the function.
                 self._add_edge(rel_id, node_id, role="assertion")
+            elif has_assertion:
+                # Chained assertion: P(1 < X ≤ 10) → right-associative
+                # chain of relation nodes.  Each consecutive pair of
+                # children is joined by its operator, and each new
+                # relation node becomes the lhs of the next one.
+                child_ids = []
+                for arg in expr.args:
+                    child_ids.append(self._walk(arg))
+                child_subexprs = []
+                for cid in child_ids:
+                    for nd in self.nodes:
+                        if nd["id"] == cid:
+                            child_subexprs.append(nd.get("subexpr", cid))
+                            break
+                prev_id: str = child_ids[0]
+                prev_subexpr: str = child_subexprs[0]
+                for j, op_latex in enumerate(orig_ops):
+                    meta = _ASSERTION_OP_META.get(
+                        op_latex, {"op": "equals", "emoji": "="})
+                    rel_op = meta["op"]
+                    rel_emoji = meta["emoji"]
+                    rel_id = self._next_id(rel_op)
+                    rhs_child = child_ids[j + 1]
+                    rel_subexpr = (
+                        f"{prev_subexpr} {op_latex} "
+                        f"{child_subexprs[j + 1]}"
+                    )
+                    self._add_edge(prev_id, rel_id, role="lhs")
+                    self._add_edge(rhs_child, rel_id, role="rhs")
+                    self._add_node(
+                        rel_id, type="relation", op=rel_op,
+                        emoji=rel_emoji, subexpr=rel_subexpr,
+                    )
+                    prev_id = rel_id
+                    prev_subexpr = rel_subexpr
+                # Connect outermost relation to the function.
+                self._add_edge(prev_id, node_id, role="assertion")
             else:
                 last_idx = len(expr.args) - 1
                 for i, arg in enumerate(expr.args):
@@ -2748,7 +2837,7 @@ def _build_relation_graph(
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
     conditional_bar_funcs: set[str] | None = None,
-    assertion_funcs: dict[str, str] | None = None,
+    assertion_funcs: dict[str, list[str]] | None = None,
 
 ) -> dict:
     r"""Build a graph for a binary relation ``lhs <op> rhs``."""
@@ -2874,7 +2963,7 @@ def _build_chained_asymmetric_relation_graph(
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
     conditional_bar_funcs: set[str] | None = None,
-    assertion_funcs: dict[str, str] | None = None,
+    assertion_funcs: dict[str, list[str]] | None = None,
 
 ) -> dict:
     r"""Build right-associative nested binary nodes for chained asymmetric relations.
@@ -2949,7 +3038,7 @@ def _build_nary_relation_graph(
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
     conditional_bar_funcs: set[str] | None = None,
-    assertion_funcs: dict[str, str] | None = None,
+    assertion_funcs: dict[str, list[str]] | None = None,
 
 ) -> dict:
     r"""Build an n-ary relation graph: all parts feed into one relation node.
