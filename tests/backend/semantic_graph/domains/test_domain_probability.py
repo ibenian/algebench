@@ -102,31 +102,34 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     ("prob_binomial",
      r"P(X = k) = \binom{n}{k} p^k (1-p)^{n-k}",
      PASS,
-         "X,k -> fn:P; k,n -> fn:choose; k -> negation; p -> negation; "
-         "k,p -> power; n,negation -> add; negation,num -> add; "
-         "add,add -> power; power,power -> multiply; "
-         "fn:choose,multiply -> multiply; fn:P,multiply -> rel:equals",
-         "X,k -> __P_2; k,n -> __choose_4; p -> __negation_10; "
-         "k -> __negation_12; k,p -> __power_6; "
-         "__negation_12,n -> __add_11; __negation_10,__num_9 -> __add_8; "
-         "__add_11,__add_8 -> __power_7; "
-         "__power_6,__power_7 -> __multiply_5; "
-         "__choose_4,__multiply_5 -> __multiply_3; "
-         "__P_2,__multiply_3 -> __equals_1",
+         "k,n -> fn:choose; k -> negation; p -> negation; "
+         "k,p -> power; X,k -> rel:equals; n,negation -> add; "
+         "negation,num -> add; rel:equals -> fn:P; add,add -> power; "
+         "power,power -> multiply; fn:choose,multiply -> multiply; "
+         "fn:P,multiply -> rel:equals",
+         "k,n -> __choose_5; X,k -> __equals_3; p -> __negation_11; "
+         "k -> __negation_13; k,p -> __power_7; "
+         "__equals_3 -> __P_2; __negation_13,n -> __add_12; "
+         "__negation_11,__num_10 -> __add_9; "
+         "__add_12,__add_9 -> __power_8; "
+         "__power_7,__power_8 -> __multiply_6; "
+         "__choose_5,__multiply_6 -> __multiply_4; "
+         "__P_2,__multiply_4 -> __equals_1",
      None),
 
     ("prob_poisson",
      r"P(X = k) = \frac{\lambda^k e^{-\lambda}}{k!}",
      PASS,
-         "k -> factorial; X,k -> fn:P; e -> power; "
-         "k,lambda -> power; power,power -> multiply; "
-         "factorial -> power; multiply,power -> multiply; "
-         "fn:P,multiply -> rel:equals",
-         "X,k -> __P_2; k -> __factorial_8; k,lambda -> __power_5; "
-         "e -> __power_6; __power_5,__power_6 -> __multiply_4; "
-         "__factorial_8 -> __power_7; "
-         "__multiply_4,__power_7 -> __multiply_3; "
-         "__P_2,__multiply_3 -> __equals_1",
+         "k -> factorial; e -> power; k,lambda -> power; "
+         "X,k -> rel:equals; rel:equals -> fn:P; "
+         "power,power -> multiply; factorial -> power; "
+         "multiply,power -> multiply; fn:P,multiply -> rel:equals",
+         "X,k -> __equals_3; k -> __factorial_9; "
+         "k,lambda -> __power_6; e -> __power_7; "
+         "__equals_3 -> __P_2; __power_6,__power_7 -> __multiply_5; "
+         "__factorial_9 -> __power_8; "
+         "__multiply_5,__power_8 -> __multiply_4; "
+         "__P_2,__multiply_4 -> __equals_1",
      None),
 
     ("prob_conditional",
@@ -169,11 +172,13 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     ("prob_markov",
      r"P(X \geq a) \leq \frac{E[X]}{a}",
     PASS,
-         "X -> fn:E; X,a -> fn:P; a -> power; "
-         "fn:E,power -> multiply; fn:P,multiply -> rel:less_equal",
-         "X -> __E_3; X,a -> __P_1; a -> __power_4; "
-         "__E_3,__power_4 -> __multiply_2; "
-         "__P_1,__multiply_2 -> __less_equal_5",
+         "X -> fn:E; a -> power; X,a -> rel:greater_equal; "
+         "rel:greater_equal -> fn:P; fn:E,power -> multiply; "
+         "fn:P,multiply -> rel:less_equal",
+         "X -> __E_4; X,a -> __greater_equal_2; a -> __power_5; "
+         "__greater_equal_2 -> __P_1; "
+         "__E_4,__power_5 -> __multiply_3; "
+         "__P_1,__multiply_3 -> __less_equal_6",
      None),
 
     ("prob_complement",
@@ -192,11 +197,13 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     PASS,
          "k,sigma -> multiply; mu -> negation; k -> power; "
          "X,negation -> add; power -> power; add -> fn:abs; "
-         "fn:abs,multiply -> fn:P; fn:P,power -> rel:less_equal",
-         "k,sigma -> __multiply_5; mu -> __negation_4; k -> __power_7; "
-         "X,__negation_4 -> __add_3; __power_7 -> __power_6; "
-         "__add_3 -> __abs_2; __abs_2,__multiply_5 -> __P_1; "
-         "__P_1,__power_6 -> __less_equal_8",
+         "fn:abs,multiply -> rel:greater_equal; "
+         "rel:greater_equal -> fn:P; fn:P,power -> rel:less_equal",
+         "k,sigma -> __multiply_6; mu -> __negation_5; k -> __power_8; "
+         "X,__negation_5 -> __add_4; __power_8 -> __power_7; "
+         "__add_4 -> __abs_3; __abs_3,__multiply_6 -> __greater_equal_2; "
+         "__greater_equal_2 -> __P_1; "
+         "__P_1,__power_7 -> __less_equal_9",
      None),
 
     ("prob_uniform",
@@ -211,14 +218,14 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     ("prob_geometric",
      r"P(X = k) = (1 - p)^{k-1} p",
      PASS,
-         "k,num -> add; X,k -> fn:P; p -> negation; "
-         "negation,num -> add; add,add -> power; "
+         "k,num -> add; p -> negation; X,k -> rel:equals; "
+         "negation,num -> add; rel:equals -> fn:P; add,add -> power; "
          "p,power -> multiply; fn:P,multiply -> rel:equals",
-         "X,k -> __P_2; __num_9,k -> __add_8; p -> __negation_7; "
-         "__negation_7,__num_6 -> __add_5; "
-         "__add_5,__add_8 -> __power_4; "
-         "__power_4,p -> __multiply_3; "
-         "__P_2,__multiply_3 -> __equals_1",
+         "__num_10,k -> __add_9; X,k -> __equals_3; p -> __negation_8; "
+         "__equals_3 -> __P_2; __negation_8,__num_7 -> __add_6; "
+         "__add_6,__add_9 -> __power_5; "
+         "__power_5,p -> __multiply_4; "
+         "__P_2,__multiply_4 -> __equals_1",
      None),
 
     ("prob_independence",

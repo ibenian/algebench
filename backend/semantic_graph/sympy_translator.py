@@ -342,6 +342,21 @@ _ASSERTION_OPS: list[str] = [
     "=", ">", "<",
 ]
 
+# Map assertion LaTeX operators → graph relation op names + emoji.
+_ASSERTION_OP_META: dict[str, dict[str, str]] = {
+    "=":      {"op": "equals",        "emoji": "="},
+    r"\geq":  {"op": "greater_equal", "emoji": "≥"},
+    r"\ge":   {"op": "greater_equal", "emoji": "≥"},
+    r"\leq":  {"op": "less_equal",    "emoji": "≤"},
+    r"\le":   {"op": "less_equal",    "emoji": "≤"},
+    r"\gt":   {"op": "greater_than",  "emoji": ">"},
+    ">":      {"op": "greater_than",  "emoji": ">"},
+    r"\lt":   {"op": "less_than",     "emoji": "<"},
+    "<":      {"op": "less_than",     "emoji": "<"},
+    r"\neq":  {"op": "not_equal",     "emoji": "≠"},
+    r"\ne":   {"op": "not_equal",     "emoji": "≠"},
+}
+
 
 def _rewrite_assertion_equals(latex: str) -> tuple[str, dict[str, str]]:
     r"""Rewrite assertion operators inside function-call parens to ``,``.
@@ -1844,24 +1859,59 @@ class SemanticGraphBuilder:
             self._add_node(node_id, **func_attrs)
             # log(arg, base) — mark the base edge with role="base"
             # P(A|B) → P(A, B) — mark the last arg with role="condition"
-            # P(X=k) → P(X, k) — mark the last arg with role="assertion_eq"
+            # P(X=k) → P(X, k) — build inner relation node for the assertion
             is_log = isinstance(expr, log)
             has_cond_bar = (op_name in self._conditional_bar_funcs
                            and len(expr.args) >= 2)
-            has_assert_eq = (op_name in self._assertion_eq_funcs
-                            and len(expr.args) >= 2)
-            last_idx = len(expr.args) - 1
-            for i, arg in enumerate(expr.args):
-                child_id = self._walk(arg)
-                if is_log and i == 1:
-                    edge_role: str | None = "base"
-                elif has_cond_bar and i == last_idx:
-                    edge_role = "condition"
-                elif has_assert_eq and i == last_idx:
-                    edge_role = "assertion_eq"
-                else:
-                    edge_role = None
-                self._add_edge(child_id, node_id, role=edge_role)
+            orig_op = self._assertion_eq_funcs.get(op_name)
+            has_assert_eq = orig_op is not None and len(expr.args) >= 2
+
+            if has_assert_eq:
+                # Build an inner relation node for the assertion.
+                # E.g. P(X = k) → P contains an equals(X, k) child.
+                meta = _ASSERTION_OP_META.get(orig_op, {"op": "equals", "emoji": "="})
+                rel_op = meta["op"]
+                rel_emoji = meta["emoji"]
+                rel_id = self._next_id(rel_op)
+                # Walk all args and connect to the inner relation node
+                # with lhs/rhs roles (first arg = lhs, last = rhs).
+                child_ids: list[str] = []
+                last_idx = len(expr.args) - 1
+                for i, arg in enumerate(expr.args):
+                    child_id = self._walk(arg)
+                    child_ids.append(child_id)
+                    if i == 0:
+                        edge_role: str | None = "lhs"
+                    elif i == last_idx:
+                        edge_role = "rhs"
+                    else:
+                        edge_role = None
+                    self._add_edge(child_id, rel_id, role=edge_role)
+                # Build subexpr from children: "lhs_subexpr OP rhs_subexpr"
+                child_subexprs = []
+                for cid in child_ids:
+                    for nd in self.nodes:
+                        if nd["id"] == cid:
+                            child_subexprs.append(nd.get("subexpr", cid))
+                            break
+                rel_subexpr = f" {orig_op} ".join(child_subexprs)
+                self._add_node(
+                    rel_id, type="relation", op=rel_op, emoji=rel_emoji,
+                    subexpr=rel_subexpr,
+                )
+                # Connect the inner relation to the function.
+                self._add_edge(rel_id, node_id, role="assertion_eq")
+            else:
+                last_idx = len(expr.args) - 1
+                for i, arg in enumerate(expr.args):
+                    child_id = self._walk(arg)
+                    if is_log and i == 1:
+                        edge_role = "base"
+                    elif has_cond_bar and i == last_idx:
+                        edge_role = "condition"
+                    else:
+                        edge_role = None
+                    self._add_edge(child_id, node_id, role=edge_role)
             return node_id
 
         # --- Limit ---
