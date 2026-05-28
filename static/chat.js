@@ -1151,6 +1151,8 @@ window.algebenchStopTTS = function() {
     if (ttsAbortController) { ttsAbortController.abort(); ttsAbortController = null; }
     const p = _ensureTTSPlayer();
     if (p) p.stop();
+    // Tell server to kill active TTS streams and broadcast stop
+    fetch('/api/tts/kill', { method: 'POST' }).catch(() => {});
 };
 
 // ---- algebenchSpeakText with completion callback ----
@@ -1242,6 +1244,33 @@ async function speakText(text, { explicit = false } = {}) {
         if (ttsAbortController === abort) ttsAbortController = null;
     }
 }
+
+// ----- TTS Kill SSE Listener -----
+(function _initTTSKillListener() {
+    let es = null;
+    function connect() {
+        es = new EventSource('/api/tts/events');
+        es.addEventListener('kill', () => {
+            // Stop locally only — don't call algebenchStopTTS which
+            // would POST /api/tts/kill and create an infinite loop.
+            ++ttsRequestId;
+            ttsPausedByUser = false;
+            ttsHasOutputFile = false;
+            if (ttsAbortController) { ttsAbortController.abort(); ttsAbortController = null; }
+            const p = _ensureTTSPlayer();
+            if (p) p.stop();
+        });
+        es.onerror = () => {
+            es.close();
+            setTimeout(connect, 3000);
+        };
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', connect);
+    } else {
+        connect();
+    }
+})();
 
 // ----- Context Change Tracking -----
 let _lastContextJson = '';

@@ -1218,6 +1218,11 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     fastapp = FastAPI(docs_url=None, redoc_url=None)
 
+    # ---- TTS kill infrastructure ----
+    _tts_kill_gen = [0]
+    _tts_sse_queues: list[asyncio.Queue] = []
+    _tts_active_gens: list = []  # active async generators to close on kill
+
     # -- GET routes --
 
     @fastapp.get("/")
@@ -1678,6 +1683,13 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     @fastapp.get("/shutdown")
     async def shutdown():
+        # Kill active TTS streams so uvicorn doesn't hang waiting for them
+        for gen in list(_tts_active_gens):
+            try:
+                await gen.aclose()
+            except Exception:
+                pass
+        _tts_active_gens.clear()
         threading.Thread(target=lambda: (time.sleep(0.5), os._exit(0))).start()
         return Response(content=b'Shutting down...')
 
@@ -1735,15 +1747,22 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             est_duration = GeminiLiveAPI.estimate_audio_duration(tts_text)
 
             async def generate_rt():
-                async for pcm_chunk in api.astream_realtime_pcm(
+                gen_at_start = _tts_kill_gen[0]
+                inner = api.astream_realtime_pcm(
                     text=tts_text,
                     voice_name=req.voice,
                     character_name=req.character,
                     style=tts_stream_kwargs.get('style'),
-                ):
-                    if await request.is_disconnected():
-                        break
-                    yield pcm_chunk
+                )
+                _tts_active_gens.append(inner)
+                try:
+                    async for pcm_chunk in inner:
+                        if _tts_kill_gen[0] != gen_at_start or await request.is_disconnected():
+                            break
+                        yield pcm_chunk
+                finally:
+                    if inner in _tts_active_gens:
+                        _tts_active_gens.remove(inner)
 
             headers = {
                 "Cache-Control": "no-cache",
@@ -1766,15 +1785,22 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         chunk_count = len(sentences)
 
         async def generate():
-            async for chunk in api.astream_parallel_wav(
+            gen_at_start = _tts_kill_gen[0]
+            inner = api.astream_parallel_wav(
                 text=tts_text,
                 voice_name=req.voice,
                 character_name=req.character,
                 **tts_stream_kwargs
-            ):
-                if await request.is_disconnected():
-                    break
-                yield chunk
+            )
+            _tts_active_gens.append(inner)
+            try:
+                async for chunk in inner:
+                    if _tts_kill_gen[0] != gen_at_start or await request.is_disconnected():
+                        break
+                    yield chunk
+            finally:
+                if inner in _tts_active_gens:
+                    _tts_active_gens.remove(inner)
 
         headers = {
             "Cache-Control": "no-cache",
@@ -1793,6 +1819,57 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         filename = os.path.basename(tts_output_file)
         return FileResponse(tts_output_file, media_type="audio/wav",
                             filename=filename, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+    @fastapp.post("/api/tts/kill")
+    async def api_tts_kill():
+        _tts_kill_gen[0] += 1
+        # Close active Gemini API streams (triggers cancel_event / session close)
+        streams_killed = 0
+        for gen in list(_tts_active_gens):
+            try:
+                await gen.aclose()
+                streams_killed += 1
+            except Exception:
+                pass
+        _tts_active_gens.clear()
+        # Kill browser-side playback via SSE
+        for q in list(_tts_sse_queues):
+            try:
+                q.put_nowait("kill")
+            except asyncio.QueueFull:
+                pass
+        if DEBUG_MODE:
+            print(f"🔇 TTS kill: {streams_killed} stream(s) closed (gen={_tts_kill_gen[0]})")
+        return JSONResponse({
+            "killed": True,
+            "generation": _tts_kill_gen[0],
+            "streams_killed": streams_killed,
+        })
+
+    @fastapp.get("/api/tts/events")
+    async def api_tts_events(request: Request):
+        q: asyncio.Queue = asyncio.Queue(maxsize=16)
+        _tts_sse_queues.append(q)
+
+        async def event_stream():
+            try:
+                while True:
+                    if await request.is_disconnected():
+                        break
+                    try:
+                        msg = await asyncio.wait_for(q.get(), timeout=30)
+                        yield f"event: {msg}\ndata: {{}}\n\n"
+                    except asyncio.TimeoutError:
+                        yield ": keepalive\n\n"
+            finally:
+                if q in _tts_sse_queues:
+                    _tts_sse_queues.remove(q)
+
+        return StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     @fastapp.post("/api/load")
     async def api_load(request: Request):
@@ -1852,14 +1929,12 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                         if char.lower() == 'q':
                             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
                             print(f"\nServer stopped")
-                            uvicorn_server.should_exit = True
-                            sys.exit(0)
+                            os._exit(0)
                     time.sleep(0.1)
             except KeyboardInterrupt:
                 termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
                 print(f"\n\nServer stopped")
-                uvicorn_server.should_exit = True
-                sys.exit(0)
+                os._exit(0)
             finally:
                 try:
                     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
