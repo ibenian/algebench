@@ -336,29 +336,31 @@ def _rewrite_conditional_bar(latex: str) -> tuple[str, set[str]]:
 # Assertion operators that can appear inside function-call parens.
 # Ordered longest-first so greedy matching picks e.g. ``\geq`` before ``>``.
 _ASSERTION_OPS: list[str] = [
-    r"\geq", r"\leq", r"\neq",
+    r"\notin", r"\geq", r"\leq", r"\neq",
     r"\ge", r"\le", r"\ne",
-    r"\gt", r"\lt",
+    r"\gt", r"\lt", r"\in",
     "=", ">", "<",
 ]
 
 # Map assertion LaTeX operators → graph relation op names + emoji.
 _ASSERTION_OP_META: dict[str, dict[str, str]] = {
-    "=":      {"op": "equals",        "emoji": "="},
-    r"\geq":  {"op": "greater_equal", "emoji": "≥"},
-    r"\ge":   {"op": "greater_equal", "emoji": "≥"},
-    r"\leq":  {"op": "less_equal",    "emoji": "≤"},
-    r"\le":   {"op": "less_equal",    "emoji": "≤"},
-    r"\gt":   {"op": "greater_than",  "emoji": ">"},
-    ">":      {"op": "greater_than",  "emoji": ">"},
-    r"\lt":   {"op": "less_than",     "emoji": "<"},
-    "<":      {"op": "less_than",     "emoji": "<"},
-    r"\neq":  {"op": "not_equal",     "emoji": "≠"},
-    r"\ne":   {"op": "not_equal",     "emoji": "≠"},
+    "=":       {"op": "equals",        "emoji": "="},
+    r"\geq":   {"op": "greater_equal", "emoji": "≥"},
+    r"\ge":    {"op": "greater_equal", "emoji": "≥"},
+    r"\leq":   {"op": "less_equal",    "emoji": "≤"},
+    r"\le":    {"op": "less_equal",    "emoji": "≤"},
+    r"\gt":    {"op": "greater_than",  "emoji": ">"},
+    ">":       {"op": "greater_than",  "emoji": ">"},
+    r"\lt":    {"op": "less_than",     "emoji": "<"},
+    "<":       {"op": "less_than",     "emoji": "<"},
+    r"\neq":   {"op": "not_equal",     "emoji": "≠"},
+    r"\ne":    {"op": "not_equal",     "emoji": "≠"},
+    r"\in":    {"op": "element_of",    "emoji": "∈"},
+    r"\notin": {"op": "not_element_of","emoji": "∉"},
 }
 
 
-def _rewrite_assertion_equals(latex: str) -> tuple[str, dict[str, str]]:
+def _rewrite_assertion_ops(latex: str) -> tuple[str, dict[str, str]]:
     r"""Rewrite assertion operators inside function-call parens to ``,``.
 
     Probability expressions like ``P(X = k)`` or ``P(|X-\mu| \geq k)``
@@ -376,8 +378,8 @@ def _rewrite_assertion_equals(latex: str) -> tuple[str, dict[str, str]]:
     Returns
     -------
     tuple[str, dict[str, str]]
-        ``(rewritten_latex, assertion_eq_funcs)`` where
-        *assertion_eq_funcs* maps function names to the original
+        ``(rewritten_latex, assertion_funcs)`` where
+        *assertion_funcs* maps function names to the original
         LaTeX operator string (e.g. ``{"P": "\\geq"}``).
     """
     # Quick bail-out: nothing to do if no operator could be present.
@@ -385,7 +387,7 @@ def _rewrite_assertion_equals(latex: str) -> tuple[str, dict[str, str]]:
         return latex, {}
 
     out: list[str] = []
-    assertion_eq_funcs: dict[str, str] = {}
+    assertion_funcs: dict[str, str] = {}
     i = 0
     n = len(latex)
     while i < n:
@@ -459,7 +461,7 @@ def _rewrite_assertion_equals(latex: str) -> tuple[str, dict[str, str]]:
                     while after < blen and body[after] == " ":
                         after += 1
                     body = body[:before] + ", " + body[after:]
-                    assertion_eq_funcs[func_name] = orig_op
+                    assertion_funcs[func_name] = orig_op
 
                 out.append("(")
                 out.append(body)
@@ -470,7 +472,7 @@ def _rewrite_assertion_equals(latex: str) -> tuple[str, dict[str, str]]:
         out.append(latex[i])
         i += 1
 
-    return "".join(out), assertion_eq_funcs
+    return "".join(out), assertion_funcs
 
 
 def _restore_conditional_bar_in_subexpr(subexpr: str) -> str:
@@ -564,7 +566,7 @@ def _restore_all_conditional_bars(
     return "".join(result)
 
 
-def _restore_all_assertion_equals(
+def _restore_all_assertion_ops(
     latex: str, func_names: dict[str, str] | set[str],
 ) -> str:
     r"""Restore assertion operators in ALL occurrences of named functions.
@@ -1456,7 +1458,7 @@ class SemanticGraphBuilder:
         original_latex: str | None = None,
         bare_sum_indices: set[str] | None = None,
         conditional_bar_funcs: set[str] | None = None,
-        assertion_eq_funcs: dict[str, str] | None = None,
+        assertion_funcs: dict[str, str] | None = None,
     ) -> None:
         self.nodes: list[dict[str, str]] = []
         self.edges: list[dict[str, str]] = []
@@ -1467,7 +1469,7 @@ class SemanticGraphBuilder:
         self._original_latex = original_latex or ""
         self._bare_sum_indices: set[str] = bare_sum_indices or set()
         self._conditional_bar_funcs: set[str] = conditional_bar_funcs or set()
-        self._assertion_eq_funcs: dict[str, str] = assertion_eq_funcs or {}
+        self._assertion_funcs: dict[str, str] = assertion_funcs or {}
         self._symbol_order = self._build_symbol_order()
         # Per-integral closed-integral flags: scan the *original* LaTeX for
         # \oint vs \int in left-to-right order so each Integral node can be
@@ -1518,9 +1520,9 @@ class SemanticGraphBuilder:
         if self._conditional_bar_funcs:
             subexpr = _restore_all_conditional_bars(
                 subexpr, self._conditional_bar_funcs)
-        if self._assertion_eq_funcs:
-            subexpr = _restore_all_assertion_equals(
-                subexpr, self._assertion_eq_funcs)
+        if self._assertion_funcs:
+            subexpr = _restore_all_assertion_ops(
+                subexpr, self._assertion_funcs)
         return subexpr
 
     def build(self, expr: sympy.Basic, original_latex: str | None = None) -> dict:
@@ -1686,9 +1688,9 @@ class SemanticGraphBuilder:
 
         # Restore assertion equals in any function calls that had them.
         # SymPy renders P(X, k) but we want P(X = k).
-        if self._assertion_eq_funcs:
-            result = _restore_all_assertion_equals(
-                result, self._assertion_eq_funcs)
+        if self._assertion_funcs:
+            result = _restore_all_assertion_ops(
+                result, self._assertion_funcs)
 
         return result
 
@@ -1863,10 +1865,10 @@ class SemanticGraphBuilder:
             is_log = isinstance(expr, log)
             has_cond_bar = (op_name in self._conditional_bar_funcs
                            and len(expr.args) >= 2)
-            orig_op = self._assertion_eq_funcs.get(op_name)
-            has_assert_eq = orig_op is not None and len(expr.args) >= 2
+            orig_op = self._assertion_funcs.get(op_name)
+            has_assertion = orig_op is not None and len(expr.args) >= 2
 
-            if has_assert_eq:
+            if has_assertion:
                 # Build an inner relation node for the assertion.
                 # E.g. P(X = k) → P contains an equals(X, k) child.
                 meta = _ASSERTION_OP_META.get(orig_op, {"op": "equals", "emoji": "="})
@@ -1900,7 +1902,7 @@ class SemanticGraphBuilder:
                     subexpr=rel_subexpr,
                 )
                 # Connect the inner relation to the function.
-                self._add_edge(rel_id, node_id, role="assertion_eq")
+                self._add_edge(rel_id, node_id, role="assertion")
             else:
                 last_idx = len(expr.args) - 1
                 for i, arg in enumerate(expr.args):
@@ -2231,7 +2233,7 @@ def _build_relation_graph(
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
     conditional_bar_funcs: set[str] | None = None,
-    assertion_eq_funcs: dict[str, str] | None = None,
+    assertion_funcs: dict[str, str] | None = None,
 
 ) -> dict:
     r"""Build a graph for a binary relation ``lhs <op> rhs``."""
@@ -2248,7 +2250,7 @@ def _build_relation_graph(
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
         conditional_bar_funcs=conditional_bar_funcs,
-        assertion_eq_funcs=assertion_eq_funcs,
+        assertion_funcs=assertion_funcs,
     )
 
     def _walk_relation_side(side_latex: str) -> tuple[str, sympy.Basic | None]:
@@ -2352,7 +2354,7 @@ def _build_chained_asymmetric_relation_graph(
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
     conditional_bar_funcs: set[str] | None = None,
-    assertion_eq_funcs: dict[str, str] | None = None,
+    assertion_funcs: dict[str, str] | None = None,
 
 ) -> dict:
     r"""Build right-associative nested binary nodes for chained asymmetric relations.
@@ -2371,7 +2373,7 @@ def _build_chained_asymmetric_relation_graph(
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
         conditional_bar_funcs=conditional_bar_funcs,
-        assertion_eq_funcs=assertion_eq_funcs,
+        assertion_funcs=assertion_funcs,
     )
     part_ids: list[str] = []
     try:
@@ -2423,7 +2425,7 @@ def _build_nary_relation_graph(
     domain: str | None = None,
     bare_sum_indices: set[str] | None = None,
     conditional_bar_funcs: set[str] | None = None,
-    assertion_eq_funcs: dict[str, str] | None = None,
+    assertion_funcs: dict[str, str] | None = None,
 
 ) -> dict:
     r"""Build an n-ary relation graph: all parts feed into one relation node.
@@ -2438,7 +2440,7 @@ def _build_nary_relation_graph(
         original_latex=original_latex,
         bare_sum_indices=bare_sum_indices,
         conditional_bar_funcs=conditional_bar_funcs,
-        assertion_eq_funcs=assertion_eq_funcs,
+        assertion_funcs=assertion_funcs,
     )
     part_ids: list[str] = []
     first_expr = None
@@ -2759,7 +2761,7 @@ def _latex_to_semantic_graph_dict(
     latex = _normalize_latex(latex)
     latex = _rewrite_bracket_functions(latex)
     latex, conditional_bar_funcs = _rewrite_conditional_bar(latex)
-    latex, assertion_eq_funcs = _rewrite_assertion_equals(latex)
+    latex, assertion_funcs = _rewrite_assertion_ops(latex)
     latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
 
     # --- Piecewise / cases environment ---
@@ -2844,7 +2846,7 @@ def _latex_to_semantic_graph_dict(
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
                     conditional_bar_funcs=conditional_bar_funcs,
-                    assertion_eq_funcs=assertion_eq_funcs,
+                    assertion_funcs=assertion_funcs,
                 )
             else:
                 # Asymmetric meta-relations (implies) → right-associative nesting.
@@ -2854,7 +2856,7 @@ def _latex_to_semantic_graph_dict(
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
                     conditional_bar_funcs=conditional_bar_funcs,
-                    assertion_eq_funcs=assertion_eq_funcs,
+                    assertion_funcs=assertion_funcs,
                 )
 
         graph = _build_relation_graph(
@@ -2863,7 +2865,7 @@ def _latex_to_semantic_graph_dict(
             parenthetical_annotations=parenthetical_annotations, domain=domain,
             bare_sum_indices=bare_sum_indices,
             conditional_bar_funcs=conditional_bar_funcs,
-            assertion_eq_funcs=assertion_eq_funcs,
+            assertion_funcs=assertion_funcs,
         )
         return graph
 
@@ -2902,7 +2904,7 @@ def _latex_to_semantic_graph_dict(
                     parenthetical_annotations=parenthetical_annotations,
                     domain=domain, bare_sum_indices=bare_sum_indices,
                     conditional_bar_funcs=conditional_bar_funcs,
-                    assertion_eq_funcs=assertion_eq_funcs,
+                    assertion_funcs=assertion_funcs,
                 )
 
         graph = _build_relation_graph(
@@ -2911,7 +2913,7 @@ def _latex_to_semantic_graph_dict(
             parenthetical_annotations=parenthetical_annotations, domain=domain,
             bare_sum_indices=bare_sum_indices,
             conditional_bar_funcs=conditional_bar_funcs,
-            assertion_eq_funcs=assertion_eq_funcs,
+            assertion_funcs=assertion_funcs,
         )
         return graph
 
@@ -2925,7 +2927,7 @@ def _latex_to_semantic_graph_dict(
             parenthetical_annotations=parenthetical_annotations,
             domain=domain, bare_sum_indices=bare_sum_indices,
             conditional_bar_funcs=conditional_bar_funcs,
-            assertion_eq_funcs=assertion_eq_funcs,
+            assertion_funcs=assertion_funcs,
         )
 
     # --- Single expression ---
@@ -2947,7 +2949,7 @@ def _latex_to_semantic_graph_dict(
                 overrides=overrides, latex_commands=latex_commands,
                 original_latex=latex, bare_sum_indices=bare_sum_indices,
                 conditional_bar_funcs=conditional_bar_funcs,
-                assertion_eq_funcs=assertion_eq_funcs,
+                assertion_funcs=assertion_funcs,
             )
             try:
                 lhs_expr = parse_latex(lhs_latex)
@@ -2981,7 +2983,7 @@ def _latex_to_semantic_graph_dict(
         overrides=overrides, latex_commands=latex_commands,
         original_latex=latex, bare_sum_indices=bare_sum_indices,
         conditional_bar_funcs=conditional_bar_funcs,
-        assertion_eq_funcs=assertion_eq_funcs,
+        assertion_funcs=assertion_funcs,
     )
     graph = builder.build(expr, original_latex=latex)
     graph["classification"] = classification
