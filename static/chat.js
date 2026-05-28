@@ -1151,7 +1151,7 @@ window.algebenchStopTTS = function() {
     if (ttsAbortController) { ttsAbortController.abort(); ttsAbortController = null; }
     const p = _ensureTTSPlayer();
     if (p) p.stop();
-    // Tell server to close Gemini API streams
+    // Tell server to kill active TTS streams and broadcast stop
     fetch('/api/tts/kill', { method: 'POST' }).catch(() => {});
 };
 
