@@ -2244,7 +2244,21 @@ class SemanticGraphBuilder:
             den = " ".join(var_parts)
             return rf"\frac{{{num}}}{{{den}}}"
 
-        result = self._restore_placeholders(sympy.latex(expr))
+        # Build a symbol->latex map so compound expressions (e.g. ``Pow``
+        # like ``dOmega**2``) keep the original command-based rendering
+        # (``\mathrm{d}\Omega``) instead of leaking the raw symbol name.
+        symbol_names: dict[Symbol, str] = {}
+        for sym in expr.free_symbols:
+            if not isinstance(sym, Symbol):
+                continue
+            sym_latex = self._symbol_latex(sym.name)
+            if sym_latex is not None:
+                symbol_names[sym] = sym_latex
+        if symbol_names:
+            result = self._restore_placeholders(
+                sympy.latex(expr, symbol_names=symbol_names))
+        else:
+            result = self._restore_placeholders(sympy.latex(expr))
 
         # SymPy always renders natural log as ``\log``; restore the
         # original ``\ln`` notation when the input LaTeX used it.
