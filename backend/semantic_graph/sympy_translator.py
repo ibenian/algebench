@@ -1139,6 +1139,29 @@ def _rewrite_bracket_functions(latex: str) -> str:
     return "".join(out)
 
 
+def _normalize_script_order(latex: str) -> str:
+    r"""Rewrite ``base^{up}_{down}`` as ``base_{down}^{up}``.
+
+    A symbol carrying both a superscript and a subscript (e.g. the tensor
+    ``R^\rho_{\sigma\mu\nu}``) is visually identical regardless of script
+    order, but SymPy's grammar binds the *second* script to the *first*:
+    ``R^\rho_{\sigma\mu\nu}`` parses as ``R ** (rho_{sigma mu nu})`` — the
+    subscript indices get glued onto the exponent.  Writing the subscript
+    first (``R_{\sigma\mu\nu}^\rho``) makes SymPy bind the subscript to the
+    base, so only the (deferred) superscript becomes a power.  This also
+    fixes ordinary cases like ``a^2_i`` → ``a_i^2`` (i.e. ``(a_i)**2``).
+    """
+    _script = r"(?:\{[^{}]*\}|\\[A-Za-z]+|[A-Za-z0-9])"
+    _base = r"(?:\\[A-Za-z]+|[A-Za-z])"
+    pattern = re.compile(rf"({_base})\^({_script})_({_script})")
+    # Apply repeatedly so chained rewrites settle (rare, but cheap).
+    prev = None
+    while prev != latex:
+        prev = latex
+        latex = pattern.sub(r"\1_\3^\2", latex)
+    return latex
+
+
 def _collapse_multichar_subscripts(
     latex: str,
 ) -> tuple[str, dict[str, dict[str, str]]]:
@@ -3440,7 +3463,11 @@ def _latex_to_semantic_graph_dict(
         _inject_annotations(graph, parenthetical_annotations)
         return graph
 
-    braket_collapsed, braket_overrides = _collapse_braket_notation(latex)
+    # Normalize tensor script order (base^{up}_{down} → base_{down}^{up}) on the
+    # raw LaTeX, *before* any placeholder-collapse pass — otherwise the reorder
+    # would split a \Theta_{N}/\Xi_{N} placeholder token apart.
+    script_normalized = _normalize_script_order(latex)
+    braket_collapsed, braket_overrides = _collapse_braket_notation(script_normalized)
     compound_collapsed, compound_overrides = _collapse_compound_symbols(braket_collapsed)
     subscript_collapsed, subscript_overrides = _collapse_multichar_subscripts(compound_collapsed)
     collapsed, text_overrides = _collapse_text_commands(subscript_collapsed)

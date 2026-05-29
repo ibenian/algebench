@@ -182,10 +182,10 @@ GENERAL_RELATIVITY: list[CatalogEntry] = [
     ("metric_inverse",
      r"g_{\mu\nu} g^{\nu\rho} = \delta^\rho_\mu",
      PASS,
-     r"nu,rho -> multiply; \rho_{\mu},delta -> power; "
+     r"nu,rho -> multiply; \delta_{\mu},rho -> power; "
      r"g,multiply -> power; g_{\mu\nu},power -> multiply; "
      r"multiply,power -> rel:equals",
-     r"nu,rho -> __multiply_4; \rho_{\mu},delta -> __power_5; "
+     r"nu,rho -> __multiply_4; \delta_{\mu},rho -> __power_5; "
      r"__multiply_4,g -> __power_3; __power_3,g_{\mu\nu} -> __multiply_2; "
      r"__multiply_2,__power_5 -> __equals_1",
      None),
@@ -194,13 +194,13 @@ GENERAL_RELATIVITY: list[CatalogEntry] = [
      r"R^\rho_{\sigma\mu\nu} = \partial_\mu \Gamma^\rho_{\nu\sigma} "
      r"- \partial_\nu \Gamma^\rho_{\mu\sigma}",
      PASS,
-     r"Gamma,rho_{\mu\sigma} -> power; Gamma,rho_{\nu\sigma} -> power; "
-     r"R,rho_{\sigma\mu\nu} -> power; "
+     r"Gamma_{\mu\sigma},rho -> power; Gamma_{\nu\sigma},rho -> power; "
+     r"R_{\sigma\mu\nu},rho -> power; "
      r"\partial_{\mu},power -> multiply; \partial_{\nu},power -> multiply; "
      r"multiply -> negation; multiply,negation -> add; add,power -> rel:equals",
-     r"R,rho_{\sigma\mu\nu} -> __power_2; "
-     r"Gamma,rho_{\nu\sigma} -> __power_5; "
-     r"Gamma,rho_{\mu\sigma} -> __power_8; "
+     r"R_{\sigma\mu\nu},rho -> __power_2; "
+     r"Gamma_{\nu\sigma},rho -> __power_5; "
+     r"Gamma_{\mu\sigma},rho -> __power_8; "
      r"\partial_{\mu},__power_5 -> __multiply_4; "
      r"\partial_{\nu},__power_8 -> __multiply_7; "
      r"__multiply_7 -> __negation_6; "
