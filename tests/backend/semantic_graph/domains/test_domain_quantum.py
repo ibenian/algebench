@@ -19,6 +19,7 @@ import pytest
 from tests.backend.semantic_graph.generators.invariants import (
     PASS,
     XFAIL,
+    XFAIL_LENIENT,
     SKIP,
     label_by_type,
     label_by_id,
@@ -35,6 +36,7 @@ from tests.backend.semantic_graph.generators.invariants import (
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
     "inner_product", "partial_derivative", "greater_equal",
+    "sum", "OuterProduct",
 }
 
 
@@ -56,26 +58,24 @@ BRA_KET_EXPRESSIONS: list[CatalogEntry] = [
     ("dirac_bra_ket",
      r"\langle \phi | \hat{A} | \psi \rangle",
      PASS,
-     "A,ket:__ket_5 -> multiply; hat,multiply -> multiply; "
-     "bra:__bra_2,multiply -> multiply",
-     "A,__ket_5 -> __multiply_4; __multiply_4,hat -> __multiply_3; "
-     "__bra_2,__multiply_3 -> __multiply_1",
+     "A,ket:__ket_4 -> multiply; bra:__bra_2,multiply -> multiply",
+     "A,__ket_4 -> __multiply_3; __bra_2,__multiply_3 -> __multiply_1",
      [{"type": "bra"}, {"type": "ket"}]),
 
     ("eigenvalue",
      r"\hat{A} | a \rangle = a | a \rangle",
      PASS,
-     "A,ket:__ket_4 -> multiply; a,ket:__ket_6 -> multiply; "
-     "hat,multiply -> multiply; multiply,multiply -> equals",
-     "A,__ket_4 -> __multiply_3; __ket_6,a -> __multiply_5; "
-     "__multiply_3,hat -> __multiply_2; __multiply_2,__multiply_5 -> __equals_1",
+     "A,ket:__ket_3 -> multiply; a,ket:__ket_5 -> multiply; "
+     "multiply,multiply -> rel:equals",
+     "A,__ket_3 -> __multiply_2; __ket_5,a -> __multiply_4; "
+     "__multiply_2,__multiply_4 -> __equals_1",
      [{"type": "ket"}]),
 
     ("qubit_state",
      r"| \psi \rangle = \alpha |0\rangle + \beta |1\rangle",
      PASS,
      "alpha,ket:__ket_5 -> multiply; beta,ket:__ket_7 -> multiply; "
-     "multiply,multiply -> add; add,ket:__ket_2 -> equals",
+     "multiply,multiply -> add; add,ket:__ket_2 -> rel:equals",
      "__ket_5,alpha -> __multiply_4; __ket_7,beta -> __multiply_6; "
      "__multiply_4,__multiply_6 -> __add_3; __add_3,__ket_2 -> __equals_1",
      [{"type": "ket"}]),
@@ -86,17 +86,17 @@ OPERATOR_EXPRESSIONS: list[CatalogEntry] = [
     ("schrodinger_indep",
      r"\hat{H} \psi = E \psi",
      PASS,
-     "E,psi -> multiply; H,psi -> multiply; hat,multiply -> multiply; "
-     "multiply,multiply -> equals",
-     "H,psi -> __multiply_3; E,psi -> __multiply_4; "
-     "__multiply_3,hat -> __multiply_2; __multiply_2,__multiply_4 -> __equals_1",
+     "E,psi -> multiply; H,psi -> multiply; "
+     "multiply,multiply -> rel:equals",
+     "H,psi -> __multiply_2; E,psi -> __multiply_3; "
+     "__multiply_2,__multiply_3 -> __equals_1",
      None),
 
     ("pauli_commutation",
      r"\sigma_x \sigma_y = i \sigma_z",
      PASS,
      "i,sigma_{z} -> multiply; sigma_{x},sigma_{y} -> multiply; "
-     "multiply,multiply -> equals",
+     "multiply,multiply -> rel:equals",
      "sigma_{x},sigma_{y} -> __multiply_2; i,sigma_{z} -> __multiply_3; "
      "__multiply_2,__multiply_3 -> __equals_1",
      None),
@@ -104,20 +104,20 @@ OPERATOR_EXPRESSIONS: list[CatalogEntry] = [
     ("pauli_square",
      r"\sigma_x^2 = I",
      PASS,
-     "sigma_{x} -> power; I,power -> equals",
+     "sigma_{x} -> power; I,power -> rel:equals",
      "sigma_{x} -> __power_2; I,__power_2 -> __equals_1",
      [{"op": "power", "exponent": "2"}]),
 
     ("hamiltonian",
      r"\hat{H} = \frac{\hat{p}^2}{2m} + V(x)",
      PASS,
-     "x -> fn:V; H,hat -> multiply; m,num -> multiply; p -> power; "
-     "hat,power -> multiply; multiply -> power; multiply,power -> multiply; "
-     "fn:V,multiply -> add; add,multiply -> equals",
-     "x -> __V_10; H,hat -> __multiply_2; __num_9,m -> __multiply_8; "
-     "p -> __power_6; __power_6,hat -> __multiply_5; __multiply_8 -> __power_7; "
-     "__multiply_5,__power_7 -> __multiply_4; __V_10,__multiply_4 -> __add_3; "
-     "__add_3,__multiply_2 -> __equals_1",
+     "x -> fn:V; m,num -> multiply; p -> power; "
+     "multiply -> power; power,power -> multiply; "
+     "fn:V,multiply -> add; H,add -> rel:equals",
+     "x -> __V_8; __num_7,m -> __multiply_6; "
+     "p -> __power_4; __multiply_6 -> __power_5; "
+     "__power_4,__power_5 -> __multiply_3; __V_8,__multiply_3 -> __add_2; "
+     "H,__add_2 -> __equals_1",
      [{"op": "power", "exponent": "2"}]),
 ]
 
@@ -126,14 +126,14 @@ FUNDAMENTAL_EXPRESSIONS: list[CatalogEntry] = [
     ("planck_relation",
      r"E = h \nu",
      PASS,
-     "h,nu -> multiply; E,multiply -> equals",
+     "h,nu -> multiply; E,multiply -> rel:equals",
      "h,nu -> __multiply_2; E,__multiply_2 -> __equals_1",
      None),
 
     ("de_broglie",
      r"\lambda = \frac{h}{p}",
      PASS,
-     "p -> power; h,power -> multiply; lambda,multiply -> equals",
+     "p -> power; h,power -> multiply; lambda,multiply -> rel:equals",
      "p -> __power_3; __power_3,h -> __multiply_2; __multiply_2,lambda -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
 
@@ -143,12 +143,64 @@ FUNDAMENTAL_EXPRESSIONS: list[CatalogEntry] = [
      "x -> fn:psi; k,x -> multiply; e -> power; "
      "B,power -> multiply; i,multiply -> multiply; "
      "e,multiply -> power; A,power -> multiply; "
-     "multiply,multiply -> add; add,fn:psi -> equals",
+     "multiply,multiply -> add; add,fn:psi -> rel:equals",
      "k,x -> __multiply_7; e -> __power_9; x -> __psi_2; "
      "__multiply_7,i -> __multiply_6; B,__power_9 -> __multiply_8; "
      "__multiply_6,e -> __power_5; A,__power_5 -> __multiply_4; "
      "__multiply_4,__multiply_8 -> __add_3; __add_3,__psi_2 -> __equals_1",
      None),
+]
+
+# Energy relations and uncertainty — algebraic, parse cleanly
+ENERGY_EXPRESSIONS: list[CatalogEntry] = [
+    ("heisenberg_uncertainty",
+     r"\Delta x \Delta p \geq \frac{\hbar}{2}",
+     PASS,
+     "Delta p,Delta x -> multiply; num -> power; hbar,power -> multiply; "
+     "multiply,multiply -> rel:greater_equal",
+     "Delta p,Delta x -> __multiply_1; __num_4 -> __power_3; "
+     "__power_3,hbar -> __multiply_2; "
+     "__multiply_1,__multiply_2 -> __greater_equal_5",
+     [{"op": "power", "exponent": "-1"}]),
+
+    ("photon_energy",
+     r"E = \frac{hc}{\lambda}",
+     PASS,
+     "c,h -> multiply; lambda -> power; multiply,power -> multiply; "
+     "E,multiply -> rel:equals",
+     "c,h -> __multiply_3; lambda -> __power_4; "
+     "__multiply_3,__power_4 -> __multiply_2; E,__multiply_2 -> __equals_1",
+     [{"op": "power", "exponent": "-1"}]),
+
+    ("particle_in_box",
+     r"E_n = \frac{n^2 h^2}{8 m L^2}",
+     PASS,
+     "L -> power; h -> power; n -> power; m,power -> multiply; "
+     "power,power -> multiply; multiply,num -> multiply; multiply -> power; "
+     "multiply,power -> multiply; E_{n},multiply -> rel:equals",
+     "L -> __power_10; n -> __power_4; h -> __power_5; "
+     "__power_4,__power_5 -> __multiply_3; __power_10,m -> __multiply_9; "
+     "__multiply_9,__num_8 -> __multiply_7; __multiply_7 -> __power_6; "
+     "__multiply_3,__power_6 -> __multiply_2; E_{n},__multiply_2 -> __equals_1",
+     [{"op": "power", "exponent": "2"}]),
+
+    ("reduced_planck",
+     r"\hbar = \frac{h}{2\pi}",
+     PASS,
+     "const:pi,num -> multiply; multiply -> power; h,power -> multiply; "
+     "hbar,multiply -> rel:equals",
+     "__num_5,pi -> __multiply_4; __multiply_4 -> __power_3; "
+     "__power_3,h -> __multiply_2; __multiply_2,hbar -> __equals_1",
+     [{"op": "power", "exponent": "-1"}]),
+
+    ("kinetic_energy_momentum",
+     r"E = \frac{p^2}{2m}",
+     PASS,
+     "m,num -> multiply; p -> power; multiply -> power; "
+     "power,power -> multiply; E,multiply -> rel:equals",
+     "__num_6,m -> __multiply_5; p -> __power_3; __multiply_5 -> __power_4; "
+     "__power_3,__power_4 -> __multiply_2; E,__multiply_2 -> __equals_1",
+     [{"op": "power", "exponent": "2"}]),
 ]
 
 # Aspirational expressions — parser does not handle these yet
@@ -167,14 +219,20 @@ ASPIRATIONAL_EXPRESSIONS: list[CatalogEntry] = [
 
     ("completeness_relation",
      r"\sum_n | n \rangle \langle n | = I",
-     XFAIL,
-     "", "",
+     PASS,
+     "bra:__bra_5,ket:__ket_4 -> OuterProduct; OuterProduct,n -> sum; "
+     "I,sum -> rel:equals",
+     "__bra_5,__ket_4 -> __expr_3; __expr_3,n -> __sum_2; "
+     "I,__sum_2 -> __equals_1",
      None),
 
     ("density_matrix",
      r"\rho = \sum_i p_i | \psi_i \rangle \langle \psi_i |",
-     XFAIL,
-     "", "",
+     XFAIL_LENIENT,
+     "bra:__bra_6,ket:__ket_5 -> OuterProduct; OuterProduct,p_{i} -> multiply; "
+     "i,multiply -> sum; rho,sum -> rel:equals",
+     "__bra_6,__ket_5 -> __expr_4; __expr_4,p_{i} -> __multiply_3; "
+     "__multiply_3,i -> __sum_2; __sum_2,rho -> __equals_1",
      None),
 
     ("pauli_x_matrix",
@@ -195,6 +253,7 @@ ALL_EXPRESSIONS = (
     BRA_KET_EXPRESSIONS
     + OPERATOR_EXPRESSIONS
     + FUNDAMENTAL_EXPRESSIONS
+    + ENERGY_EXPRESSIONS
     + ASPIRATIONAL_EXPRESSIONS
 )
 

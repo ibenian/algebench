@@ -58,7 +58,7 @@ CORE_EQUATIONS: list[CatalogEntry] = [
      PASS,
      "L,v -> multiply; R,e -> multiply; mu -> power; "
      "multiply,rho -> multiply; multiply,power -> multiply; "
-     "multiply,multiply -> equals",
+     "multiply,multiply -> rel:equals",
      "R,e -> __multiply_2; L,v -> __multiply_5; mu -> __power_6; "
      "__multiply_5,rho -> __multiply_4; "
      "__multiply_4,__power_6 -> __multiply_3; "
@@ -69,7 +69,7 @@ CORE_EQUATIONS: list[CatalogEntry] = [
      r"P = P_0 + \rho g h",
      PASS,
      "g,h -> multiply; multiply,rho -> multiply; "
-     "P_{0},multiply -> add; P,add -> equals",
+     "P_{0},multiply -> add; P,add -> rel:equals",
      "g,h -> __multiply_4; __multiply_4,rho -> __multiply_3; "
      "P_{0},__multiply_3 -> __add_2; P,__add_2 -> __equals_1",
      None),
@@ -79,7 +79,7 @@ CORE_EQUATIONS: list[CatalogEntry] = [
      PASS,
      "A,C_{D} -> multiply; num -> power; v -> power; "
      "multiply,power -> multiply; multiply,rho -> multiply; "
-     "multiply,power -> multiply; F_{D},multiply -> equals",
+     "multiply,power -> multiply; F_{D},multiply -> rel:equals",
      "A,C_{D} -> __multiply_8; __num_4 -> __power_3; v -> __power_7; "
      "__multiply_8,__power_7 -> __multiply_6; "
      "__multiply_6,rho -> __multiply_5; "
@@ -92,7 +92,7 @@ CORE_EQUATIONS: list[CatalogEntry] = [
      PASS,
      "r,v -> multiply; mu,multiply -> multiply; "
      "const:pi,multiply -> multiply; multiply,num -> multiply; "
-     "F,multiply -> equals",
+     "F,multiply -> rel:equals",
      "r,v -> __multiply_6; __multiply_6,mu -> __multiply_5; "
      "__multiply_5,pi -> __multiply_4; "
      "__multiply_4,__num_3 -> __multiply_2; "
@@ -103,7 +103,7 @@ CORE_EQUATIONS: list[CatalogEntry] = [
      r"Ma = \frac{v}{c}",
      PASS,
      "M,a -> multiply; c -> power; power,v -> multiply; "
-     "multiply,multiply -> equals",
+     "multiply,multiply -> rel:equals",
      "M,a -> __multiply_2; c -> __power_4; "
      "__power_4,v -> __multiply_3; "
      "__multiply_2,__multiply_3 -> __equals_1",
@@ -112,20 +112,70 @@ CORE_EQUATIONS: list[CatalogEntry] = [
     ("incompressible_flow",
      r"\nabla \cdot \vec{v} = 0",
      PASS,
-     "v,vec -> multiply; multiply,nabla -> multiply; "
-     "multiply,num -> equals",
-     "v,vec -> __multiply_3; __multiply_3,nabla -> __multiply_2; "
-     "__multiply_2,__num_4 -> __equals_1",
+     "nabla,vec:v -> multiply; multiply,num -> rel:equals",
+     "nabla,v -> __multiply_2; __multiply_2,__num_3 -> __equals_1",
      None),
 
     ("vorticity",
      r"\omega = \nabla \times \vec{v}",
      PASS,
-     "v,vec -> multiply; multiply,nabla -> multiply; "
-     "multiply,omega -> equals",
-     "v,vec -> __multiply_3; __multiply_3,nabla -> __multiply_2; "
-     "__multiply_2,omega -> __equals_1",
+     "nabla,vec:v -> multiply; multiply,omega -> rel:equals",
+     "nabla,v -> __multiply_2; __multiply_2,omega -> __equals_1",
      None),
+
+    ("continuity_area_velocity",
+     r"A_1 v_1 = A_2 v_2",
+     PASS,
+     "A_{1},v_{1} -> multiply; A_{2},v_{2} -> multiply; "
+     "multiply,multiply -> rel:equals",
+     "A_{1},v_{1} -> __multiply_2; A_{2},v_{2} -> __multiply_3; "
+     "__multiply_2,__multiply_3 -> __equals_1",
+     None),
+
+    ("volumetric_flow",
+     r"Q = A v",
+     PASS,
+     "A,v -> multiply; Q,multiply -> rel:equals",
+     "A,v -> __multiply_2; Q,__multiply_2 -> __equals_1",
+     None),
+
+    ("pressure_definition",
+     r"P = \frac{F}{A}",
+     PASS,
+     "A -> power; F,power -> multiply; P,multiply -> rel:equals",
+     "A -> __power_3; F,__power_3 -> __multiply_2; P,__multiply_2 -> __equals_1",
+     [{"op": "power", "exponent": "-1"}]),
+
+    ("dynamic_pressure",
+     r"q = \frac{1}{2} \rho v^2",
+     PASS,
+     "num -> power; v -> power; power,rho -> multiply; "
+     "multiply,power -> multiply; multiply,q -> rel:equals",
+     "__num_4 -> __power_3; v -> __power_6; __power_6,rho -> __multiply_5; "
+     "__multiply_5,__power_3 -> __multiply_2; __multiply_2,q -> __equals_1",
+     [{"op": "power", "exponent": "2"}]),
+
+    ("bernoulli",
+     r"P + \frac{1}{2} \rho v^2 + \rho g h = C",
+     PASS,
+     "g,h -> multiply; num -> power; v -> power; multiply,rho -> multiply; "
+     "power,rho -> multiply; multiply,power -> multiply; P,multiply -> add; "
+     "add,multiply -> add; C,add -> rel:equals",
+     "g,h -> __multiply_10; __num_6 -> __power_5; v -> __power_8; "
+     "__power_8,rho -> __multiply_7; __multiply_10,rho -> __multiply_9; "
+     "__multiply_7,__power_5 -> __multiply_4; P,__multiply_4 -> __add_3; "
+     "__add_3,__multiply_9 -> __add_2; C,__add_2 -> __equals_1",
+     [{"op": "power", "exponent": "2"}]),
+
+    ("froude_number",
+     r"Fr = \frac{v}{\sqrt{g L}}",
+     PASS,
+     "F,r -> multiply; L,g -> multiply; multiply -> power; power -> power; "
+     "power,v -> multiply; multiply,multiply -> rel:equals",
+     "F,r -> __multiply_2; L,g -> __multiply_6; __multiply_6 -> __power_5; "
+     "__power_5 -> __power_4; __power_4,v -> __multiply_3; "
+     "__multiply_2,__multiply_3 -> __equals_1",
+     [{"op": "power", "exponent": "1/2"}]),
 ]
 
 # Navier-Stokes variants — these parse but are classified as ODE

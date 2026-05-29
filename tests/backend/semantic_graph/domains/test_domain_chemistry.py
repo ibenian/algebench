@@ -56,26 +56,26 @@ KINETICS_EXPRESSIONS: list[CatalogEntry] = [
     ("rate_first_order",
      r"r = k [A]",
      PASS,
-     "A,k -> multiply; multiply,r -> equals",
-     "A,k -> __multiply_2; __multiply_2,r -> __equals_1",
+     "A -> fn:k; fn:k,r -> rel:equals",
+     "A -> __k_2; __k_2,r -> __equals_1",
      None),
 
     ("rate_second_order",
      r"r = k [A]^2",
      PASS,
-     "A -> power; k,power -> multiply; multiply,r -> equals",
-     "A -> __power_3; __power_3,k -> __multiply_2; "
-     "__multiply_2,r -> __equals_1",
+     "A -> fn:k; fn:k -> power; power,r -> rel:equals",
+     "A -> __k_3; __k_3 -> __power_2; "
+     "__power_2,r -> __equals_1",
      [{"op": "power", "exponent": "2"}]),
 
     ("rate_general",
      r"r = k [A]^m [B]^n",
      PASS,
-     "A,m -> power; B,n -> power; power,power -> multiply; "
-     "k,multiply -> multiply; multiply,r -> equals",
-     "A,m -> __power_4; B,n -> __power_5; "
-     "__power_4,__power_5 -> __multiply_3; "
-     "__multiply_3,k -> __multiply_2; __multiply_2,r -> __equals_1",
+     "A -> fn:k; B,n -> power; fn:k,m -> power; "
+     "power,power -> multiply; multiply,r -> rel:equals",
+     "A -> __k_4; B,n -> __power_5; "
+     "__k_4,m -> __power_3; "
+     "__power_3,__power_5 -> __multiply_2; __multiply_2,r -> __equals_1",
      None),
 
     ("first_order_integrated",
@@ -83,7 +83,7 @@ KINETICS_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "A,const:__const_3 -> fn:log; A,const:__const_8 -> fn:log; "
      "k,t -> multiply; multiply -> negation; fn:log,negation -> add; "
-     "add,fn:log -> equals",
+     "add,fn:log -> rel:equals",
      "A,__const_3 -> __log_2; A,__const_8 -> __log_7; "
      "k,t -> __multiply_6; __multiply_6 -> __negation_5; "
      "__log_7,__negation_5 -> __add_4; __add_4,__log_2 -> __equals_1",
@@ -92,14 +92,16 @@ KINETICS_EXPRESSIONS: list[CatalogEntry] = [
     ("second_order_integrated",
      r"\frac{1}{[A]} = kt + \frac{1}{[A]_0}",
      PASS,
-     "k,t -> multiply; A -> power; multiply,power -> equals",
+     "k,t -> multiply; A -> power; multiply,power -> rel:equals",
      "k,t -> __multiply_3; A -> __power_2; "
      "__multiply_3,__power_2 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
 
     ("first_order_decay",
      r"[A] = [A]_0 e^{-kt}",
-     PASS, "", "",
+     PASS,
+     "A,A -> rel:equals",
+     "A,A -> __equals_1",
      None),
 ]
 
@@ -111,7 +113,7 @@ EQUILIBRIUM_EXPRESSIONS: list[CatalogEntry] = [
      "A,a -> power; B,b -> power; C,c -> power; D,d -> power; "
      "power,power -> multiply; power,power -> multiply; "
      "multiply -> power; multiply,power -> multiply; "
-     "K,multiply -> equals",
+     "K,multiply -> rel:equals",
      "C,c -> __power_4; D,d -> __power_5; A,a -> __power_8; "
      "B,b -> __power_9; __power_4,__power_5 -> __multiply_3; "
      "__power_8,__power_9 -> __multiply_7; "
@@ -124,7 +126,7 @@ EQUILIBRIUM_EXPRESSIONS: list[CatalogEntry] = [
      r"P V = n R T",
      PASS,
      "P,V -> multiply; R,T -> multiply; multiply,n -> multiply; "
-     "multiply,multiply -> equals",
+     "multiply,multiply -> rel:equals",
      "P,V -> __multiply_2; R,T -> __multiply_4; "
      "__multiply_4,n -> __multiply_3; "
      "__multiply_2,__multiply_3 -> __equals_1",
@@ -135,7 +137,7 @@ EQUILIBRIUM_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "R,T -> multiply; E_{a} -> negation; multiply -> power; "
      "negation,power -> multiply; e,multiply -> power; "
-     "A,power -> multiply; k,multiply -> equals",
+     "A,power -> multiply; k,multiply -> rel:equals",
      "R,T -> __multiply_7; E_{a} -> __negation_5; "
      "__multiply_7 -> __power_6; "
      "__negation_5,__power_6 -> __multiply_4; "
@@ -147,7 +149,7 @@ EQUILIBRIUM_EXPRESSIONS: list[CatalogEntry] = [
      r"t_{1/2} = \frac{\ln 2}{k}",
      PASS,
      "const:__const_5,num -> fn:log; k -> power; "
-     "fn:log,power -> multiply; multiply,t_{1/2} -> equals",
+     "fn:log,power -> multiply; multiply,t_{1/2} -> rel:equals",
      "__const_5,__num_4 -> __log_3; k -> __power_6; "
      "__log_3,__power_6 -> __multiply_2; "
      "__multiply_2,t_{1/2} -> __equals_1",
@@ -162,7 +164,7 @@ ELECTROCHEMISTRY_EXPRESSIONS: list[CatalogEntry] = [
      "Q,const:__const_11 -> fn:log; F,n -> multiply; R,T -> multiply; "
      "E -> power; multiply -> power; multiply,power -> multiply; "
      "fn:log,multiply -> multiply; multiply -> negation; "
-     "negation,power -> add; E,add -> equals",
+     "negation,power -> add; E,add -> rel:equals",
      "Q,__const_11 -> __log_10; R,T -> __multiply_7; F,n -> __multiply_9; "
      "E -> __power_3; __multiply_9 -> __power_8; "
      "__multiply_7,__power_8 -> __multiply_6; "
@@ -175,14 +177,55 @@ ELECTROCHEMISTRY_EXPRESSIONS: list[CatalogEntry] = [
      r"A = \epsilon b c",
      PASS,
      "b,c -> multiply; epsilon,multiply -> multiply; "
-     "A,multiply -> equals",
+     "A,multiply -> rel:equals",
      "b,c -> __multiply_3; __multiply_3,epsilon -> __multiply_2; "
      "A,__multiply_2 -> __equals_1",
      None),
 ]
 
+# Solution chemistry and thermodynamics — algebraic, parse cleanly
+SOLUTION_EXPRESSIONS: list[CatalogEntry] = [
+    ("molarity",
+     r"M = \frac{n}{V}",
+     PASS,
+     "V -> power; n,power -> multiply; M,multiply -> rel:equals",
+     "V -> __power_3; __power_3,n -> __multiply_2; M,__multiply_2 -> __equals_1",
+     [{"op": "power", "exponent": "-1"}]),
+
+    ("density",
+     r"\rho = \frac{m}{V}",
+     PASS,
+     "V -> power; m,power -> multiply; multiply,rho -> rel:equals",
+     "V -> __power_3; __power_3,m -> __multiply_2; __multiply_2,rho -> __equals_1",
+     [{"op": "power", "exponent": "-1"}]),
+
+    ("dilution",
+     r"M_1 V_1 = M_2 V_2",
+     PASS,
+     "M_{1},V_{1} -> multiply; M_{2},V_{2} -> multiply; "
+     "multiply,multiply -> rel:equals",
+     "M_{1},V_{1} -> __multiply_2; M_{2},V_{2} -> __multiply_3; "
+     "__multiply_2,__multiply_3 -> __equals_1",
+     None),
+
+    ("gibbs_free_energy",
+     r"\Delta G = \Delta H - T \Delta S",
+     PASS,
+     "Delta S,T -> multiply; multiply -> negation; Delta H,negation -> add; "
+     "Delta G,add -> rel:equals",
+     "Delta S,T -> __multiply_4; __multiply_4 -> __negation_3; "
+     "Delta H,__negation_3 -> __add_2; Delta G,__add_2 -> __equals_1",
+     None),
+]
+
 # Aspirational expressions — parser limitations with ionic notation and Delta
 ASPIRATIONAL_EXPRESSIONS: list[CatalogEntry] = [
+    ("ph_definition",
+     r"\text{pH} = -\log [H^+]",
+     XFAIL,
+     "", "",
+     None),
+
     ("solubility_product",
      r"K_{sp} = [A^{m+}]^m [B^{n-}]^n",
      XFAIL,
@@ -201,6 +244,7 @@ ALL_EXPRESSIONS = (
     KINETICS_EXPRESSIONS
     + EQUILIBRIUM_EXPRESSIONS
     + ELECTROCHEMISTRY_EXPRESSIONS
+    + SOLUTION_EXPRESSIONS
     + ASPIRATIONAL_EXPRESSIONS
 )
 

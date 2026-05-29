@@ -1152,10 +1152,25 @@ def _collapse_multichar_subscripts(
     overrides: dict[str, dict[str, str]] = {}
     seen: dict[str, int] = {}
 
-    # Match: optional \cmd base  OR  single alpha base, then _{multichar_alpha}
+    # Match: optional \cmd base OR single alpha base, then a subscript made of
+    # 2+ contiguous tokens, where each token is a *Greek-letter* command (\mu)
+    # or a bare letter.  This catches both bare-letter subscripts (v_{rms}) and
+    # multi-Greek-letter tensor indices (g_{\mu\nu}) — the latter would
+    # otherwise be parsed by SymPy as an implicit product \mu·\nu.
+    #
+    # The command alternative is restricted to a Greek whitelist so that
+    # operator/relation subscripts like \lim_{x \to a} or \sum_{d \mid n}
+    # (where \to / \mid are not indices) are left untouched.
+    _greek = (
+        r"alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|"
+        r"iota|kappa|lambda|mu|nu|xi|omicron|pi|varpi|rho|varrho|sigma|"
+        r"varsigma|tau|upsilon|phi|varphi|chi|psi|omega|"
+        r"Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega"
+    )
+    _sub_token = rf"(?:\\(?:{_greek})|[A-Za-z])"
     pattern = re.compile(
-        r"(\\[A-Za-z]+|[A-Za-z])"   # base: \sigma or v
-        r"_\{([A-Za-z]{2,})\}"      # subscript: {rms} (2+ alpha chars)
+        r"(\\[A-Za-z]+|[A-Za-z])"          # base: \sigma or v
+        rf"_\{{({_sub_token}{{2,}})\}}"     # subscript: 2+ contiguous tokens
     )
 
     def _repl(m: re.Match) -> str:
@@ -1165,9 +1180,12 @@ def _collapse_multichar_subscripts(
         if full not in seen:
             idx = len(seen)
             seen[full] = idx
-            # Display as base_{sub} — use \text for the subscript
+            # Greek-command subscripts (e.g. \mu\nu) must stay in math mode so
+            # they render as Greek letters; bare-letter subscripts (e.g. rms)
+            # use \text to avoid implicit multiplication on restore.
+            sub_latex = sub if "\\" in sub else rf"\text{{{sub}}}"
             overrides[f"Xi_{{{idx}}}"] = {
-                "latex": rf"{base}_{{\text{{{sub}}}}}",
+                "latex": rf"{base}_{{{sub_latex}}}",
                 "type": "scalar",
             }
         return rf"\Xi_{{{seen[full]}}}"

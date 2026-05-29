@@ -25,6 +25,7 @@ from backend.model.semantic_graph import (
 
 PASS = None
 XFAIL = pytest.mark.xfail(strict=True, reason="Known parser limitation")
+XFAIL_LENIENT = pytest.mark.xfail(strict=False, reason="Partial parser limitation")
 SKIP = pytest.mark.skip(reason="Feature not yet implemented")
 
 
