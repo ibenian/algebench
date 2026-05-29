@@ -181,8 +181,8 @@
         },
         "role": {
           "type": "string",
-          "enum": ["lhs", "rhs", "wrt", "exp", "base", "lb", "ub", "value", "condition", "modulus"],
-          "description": "Operand position or relationship. 'lhs'/'rhs' for asymmetric operators (comparisons, tends_to). 'wrt' for the differentiation/integration variable edge into derivative/integral nodes. 'exp' for the exponent edge into a power node with symbolic exponent. 'base' for the base argument edge into a log function node. 'lb'/'ub' for lower/upper bound edges into sum/product nodes. 'value'/'condition' for piecewise branch nodes — 'value' is the branch result, 'condition' is the guard predicate. 'modulus' for the modulus operand of a congruence relation. Omit for symmetric operators (add, multiply, equals)."
+          "enum": ["lhs", "rhs", "wrt", "exp", "base", "lb", "ub", "value", "condition", "modulus", "assertion"],
+          "description": "Operand position or relationship. 'lhs'/'rhs' for asymmetric operators (comparisons, tends_to). 'wrt' for the differentiation/integration variable edge into derivative/integral nodes. 'exp' for the exponent edge into a power node with symbolic exponent. 'base' for the base argument edge into a log function node. 'lb'/'ub' for lower/upper bound edges into sum/product nodes. 'value'/'condition' for piecewise branch nodes — 'value' is the branch result, 'condition' is the guard predicate. 'modulus' for the modulus operand of a congruence relation. 'assertion' for an assertion-form relation (e.g. X=k) feeding into a probability function P(X=k). Omit for symmetric operators (add, multiply, equals)."
         }
       }
     },

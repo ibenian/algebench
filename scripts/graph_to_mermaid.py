@@ -372,11 +372,13 @@ def _format_label(
             if r"\cdot" in fn_name:
                 return f"${fn_name}$"
             # Conditional probability: P(·|·) instead of P(·, ·)
-            # Assertion equals: P(· = ·) instead of P(·, ·)
+            # Assertion: P(…) — the assertion is an arbitrary predicate
+            # (X=k, X≥a, |X−μ|≥kσ, …) so we show ellipsis rather than
+            # trying to decompose it.
             if has_condition and effective_arity >= 2:
                 regular_dots = r", ".join([r"\cdot"] * (effective_arity - 1))
                 dots = regular_dots + r"\mid " + r"\cdot"
-            elif has_assertion and effective_arity >= 2:
+            elif has_assertion:
                 dots = r"\ldots"
             else:
                 dots = r", ".join([r"\cdot"] * max(effective_arity, 1))

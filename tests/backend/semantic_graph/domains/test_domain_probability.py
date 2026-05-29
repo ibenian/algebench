@@ -37,7 +37,7 @@ ALLOWED_OPS = {
     "function", "binomial", "factorial", "sum",
     "P", "E",
     "Abs", "abs",
-    "less_equal", "greater_equal",
+    "less_than", "less_equal", "greater_than", "greater_equal",
     "intersection",
 }
 
@@ -206,6 +206,16 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
          "__greater_equal_2 -> __P_1; "
          "__P_1,__power_7 -> __less_equal_9",
      None),
+
+    ("prob_chained_ineq",
+     r"P(1 < X \leq 10) = 0.5",
+     PASS,
+         "X,num -> rel:less_than; num,rel:less_than -> rel:less_equal; "
+         "rel:less_equal -> fn:P; fn:P,num -> rel:equals",
+         "X,__num_3 -> __less_than_5; "
+         "__less_than_5,__num_4 -> __less_equal_6; "
+         "__less_equal_6 -> __P_2; __P_2,__num_7 -> __equals_1",
+     [{"op": "P", "id": "__P_2", "_edge_roles": {"assertion": 1}}]),
 
     ("prob_uniform",
      r"f(x) = \frac{1}{b - a}",
