@@ -1,0 +1,3743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Semantic Graph Visual Report</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+<script type="importmap">{
+  "imports": {
+    "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}"
+  }
+}</script>
+<script>
+  window.__SG_REPORT_THEME__ = {"name": "default-dark", "mode": "dark", "direction": "RL", "labelMode": "emoji", "nodeStyles": {"scalar": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "vector": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "constant": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "number": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "expression": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "text": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "operator": {"shape": "circle", "fill": "#1a2740", "stroke": "#42a5f5", "color": "#bbdefb"}, "function": {"shape": "hexagon", "fill": "#1a2740", "stroke": "#42a5f5", "color": "#bbdefb"}, "relation": {"shape": "diamond", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2"}, "result": {"shape": "stadium", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2"}, "annotation": {"shape": "circle", "fill": "#131a2c", "stroke": "#4a5580", "color": "#b0bcd0"}}, "edgeStyles": {"direct": {"stroke": "#ef5350", "strokeWidth": 3}, "inverse": {"stroke": "#42a5f5", "strokeWidth": 1, "arrow": "-.->"}, "neutral": {"stroke": "#aaa", "strokeWidth": 2}}, "paintBySemantic": true, "fontSize": 15};
+</script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false, theme: 'dark',
+    flowchart: { htmlLabels: true, curve: 'basis' } });
+  try { await mermaid.run(); } catch (_) {}
+  // KaTeX is loaded via a defer script which may not have executed yet
+  // when this module runs.  Poll briefly (defer + module ordering is
+  // not guaranteed across browsers).
+  for (let i = 0; i < 50 && !window.katex; i++)
+    await new Promise(r => setTimeout(r, 50));
+  if (window.katex) {
+    const INLINE_MATH = /\$([^$\n]+)\$/g;
+    document.querySelectorAll(
+      'foreignObject span, foreignObject div, foreignObject p, .nodeLabel'
+    ).forEach((host) => {
+      if (!host.textContent || host.textContent.indexOf('$') === -1) return;
+      const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT, null);
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+      textNodes.forEach((tn) => {
+        const src = tn.nodeValue;
+        if (!src || src.indexOf('$') === -1) return;
+        INLINE_MATH.lastIndex = 0;
+        if (!INLINE_MATH.test(src)) return;
+        INLINE_MATH.lastIndex = 0;
+        const frag = document.createDocumentFragment();
+        let last = 0, m;
+        while ((m = INLINE_MATH.exec(src)) !== null) {
+          if (m.index > last)
+            frag.appendChild(document.createTextNode(src.slice(last, m.index)));
+          const span = document.createElement('span');
+          try { katex.render(m[1], span, { throwOnError: false, displayMode: false }); }
+          catch (_) { span.textContent = m[0]; }
+          frag.appendChild(span);
+          last = m.index + m[0].length;
+        }
+        if (last < src.length)
+          frag.appendChild(document.createTextNode(src.slice(last)));
+        tn.parentNode.replaceChild(frag, tn);
+      });
+    });
+    document.querySelectorAll('svg g.node foreignObject').forEach((fo) => {
+      const outer = fo.firstElementChild;
+      if (!outer || outer.dataset?.gvCentered === 'wrapper') return;
+      const NS = 'http://www.w3.org/1999/xhtml';
+      const wrapper = document.createElementNS(NS, 'div');
+      wrapper.dataset.gvCentered = 'wrapper';
+      Object.assign(wrapper.style, {
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: '100%', height: '100%',
+      });
+      fo.replaceChild(wrapper, outer);
+      wrapper.appendChild(outer);
+    });
+    // Resize foreignObject + parent node rect after KaTeX renders accents
+    document.querySelectorAll('svg g.node foreignObject').forEach((fo) => {
+      const content = fo.querySelector('[data-gv-centered="wrapper"]') || fo.firstElementChild;
+      if (!content) return;
+      const bbox = content.getBoundingClientRect();
+      const foRect = fo.getBoundingClientRect();
+      // Only expand if content is taller/wider than current foreignObject
+      const PAD = 8;
+      const neededH = bbox.height + PAD;
+      const neededW = bbox.width + PAD;
+      const curH = parseFloat(fo.getAttribute('height')) || foRect.height;
+      const curW = parseFloat(fo.getAttribute('width')) || foRect.width;
+      if (neededH > curH) {
+        const dh = neededH - curH;
+        fo.setAttribute('height', neededH);
+        // Shift foreignObject up by half the delta to keep node centered
+        const curY = parseFloat(fo.getAttribute('y')) || 0;
+        fo.setAttribute('y', curY - dh / 2);
+        // Also expand parent rect/polygon
+        const nodeG = fo.closest('g.node');
+        if (nodeG) {
+          const rect = nodeG.querySelector('rect, .basic');
+          if (rect) {
+            const rh = parseFloat(rect.getAttribute('height')) || 0;
+            if (rh && rh < neededH) {
+              rect.setAttribute('height', neededH);
+              const ry = parseFloat(rect.getAttribute('y')) || 0;
+              rect.setAttribute('y', ry - dh / 2);
+            }
+          }
+        }
+      }
+      if (neededW > curW) {
+        const dw = neededW - curW;
+        fo.setAttribute('width', neededW);
+        const curX = parseFloat(fo.getAttribute('x')) || 0;
+        fo.setAttribute('x', curX - dw / 2);
+        const nodeG = fo.closest('g.node');
+        if (nodeG) {
+          const rect = nodeG.querySelector('rect, .basic');
+          if (rect) {
+            const rw = parseFloat(rect.getAttribute('width')) || 0;
+            if (rw && rw < neededW) {
+              rect.setAttribute('width', neededW);
+              const rx = parseFloat(rect.getAttribute('x')) || 0;
+              rect.setAttribute('x', rx - dw / 2);
+            }
+          }
+        }
+      }
+    });
+    // Fix KaTeX accent arrow colors: SVG paths inside foreignObject
+    // default to fill:black which is invisible on dark backgrounds.
+    // Use inline style (not attribute) to override any CSS rules.
+    document.querySelectorAll('svg g.node foreignObject .katex svg path').forEach((p) => {
+      const textColor = window.getComputedStyle(p.closest('.katex')).color;
+      p.style.fill = textColor;
+    });
+  }
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #8b949e; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #30363d transparent;
+  }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    padding: 2rem;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .report-meta {
+    font-size: 0.8rem;
+    color: #8b949e;
+    margin-bottom: 2rem;
+  }
+  .section-title {
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #8b949e;
+    margin: 2rem 0 1rem 0;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 0.5rem;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 1rem;
+    align-items: start;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .row-id {
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: #8b949e;
+    margin-bottom: 0.3rem;
+  }
+  .row-latex {
+    font-size: 1.2rem;
+    padding: 0.5rem 0;
+  }
+  .row-graph {
+    min-width: 0;
+    overflow-x: auto;
+  }
+  .row-graph .mermaid {
+    font-size: 0.85rem;
+  }
+  .row-graph .mermaid svg g.node foreignObject {
+    overflow: visible !important;
+  }
+  /* KaTeX accent arrows (e.g. ec) render as SVG paths that default
+     to fill:black — invisible on dark backgrounds. Inherit text color. */
+  .katex .accent-body svg path,
+  .katex .overlay svg path {
+    fill: currentColor;
+  }
+  .row-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    align-self: center;
+  }
+  .row-toggle,
+  .row-toggle-d3 {
+    background: none;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    color: #8b949e;
+    font-family: monospace;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .row-toggle:hover,
+  .row-toggle-d3:hover {
+    color: #e6edf3;
+    border-color: #e6edf3;
+  }
+  .row-panel {
+    display: none;
+    grid-column: 1 / -1;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 0.8rem;
+    font-family: monospace;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 400px;
+    overflow: auto;
+  }
+  .row-panel.open {
+    display: block;
+  }
+  .row-error {
+    grid-column: 2 / 3;
+    background: #2d1b1b;
+    border: 1px solid #6b2020;
+    border-radius: 6px;
+    padding: 0.5rem 0.8rem;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #f87171;
+    white-space: pre-wrap;
+  }
+  .summary {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    font-size: 0.85rem;
+  }
+  .summary .count {
+    font-weight: 600;
+  }
+  .row-panel.row-latex-src {
+    position: relative;
+  }
+  .row-copy-latex {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+  }
+  .row-panel.row-json {
+    display: none;
+    padding: 0;
+  }
+  .row-panel.row-json.open {
+    display: flex;
+    gap: 1px;
+  }
+  .row-json-pane {
+    flex: 1;
+    min-width: 0;
+    max-height: 400px;
+    overflow: auto;
+    padding: 0.5rem 0.8rem;
+    position: relative;
+  }
+  .row-json-pane pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.7rem;
+    line-height: 1.4;
+  }
+  .row-json-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: #161b22;
+    padding: 0.2rem 0;
+    z-index: 1;
+    margin-bottom: 0.3rem;
+  }
+  .row-json-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #8b949e;
+  }
+  .row-copy-btn {
+    background: none;
+    border: 1px solid #30363d;
+    border-radius: 3px;
+    color: #8b949e;
+    font-size: 0.6rem;
+    padding: 1px 5px;
+    cursor: pointer;
+    line-height: 1.3;
+  }
+  .row-copy-btn:hover {
+    color: #e6edf3;
+    border-color: #e6edf3;
+  }
+  .row-copy-btn.copied {
+    color: #66bb6a;
+    border-color: #66bb6a;
+  }
+  .row-toggle.active {
+    color: #e6edf3;
+    border-color: #e6edf3;
+    background: #0d1117;
+  }
+  .row-panel.row-d3 {
+    position: relative;
+    height: 400px;
+    padding: 0;
+    overflow: hidden;
+    font-family: inherit;
+    white-space: normal;
+    word-break: normal;
+  }
+  .row-panel.row-d3.open {
+    display: block;
+  }
+  .row-d3-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #8b949e;
+    font-size: 0.85rem;
+  }
+  /* D3 Semantic Graph Renderer — dark theme styles */
+
+.d3-graph-card {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+svg.d3-semantic-graph {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+/* Variable nodes — fill/stroke set by theme via inline attributes */
+.d3sg-var-bg {
+    stroke-width: 1.5px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-var-bg {
+    filter: brightness(1.3);
+}
+
+/* Operator nodes — fill/stroke set by theme via inline attributes */
+.d3sg-op-bg {
+    stroke-width: 1.5px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-op-bg {
+    filter: brightness(1.3);
+}
+
+/* Collapsed tile — fill/stroke set by theme via inline attributes */
+.d3sg-tile-bg {
+    stroke-width: 2px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-tile-bg {
+    filter: brightness(1.25);
+}
+
+/* Node labels */
+.d3sg-label {
+    fill: #dde6ff;
+    pointer-events: none;
+    user-select: none;
+}
+
+.d3sg-katex-host {
+    color: #dde6ff;
+    font-size: 17px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.d3sg-katex-host .katex {
+    font-size: 0.9em;
+}
+
+/* Edge labels */
+.d3sg-edge-label {
+    fill: #aebbd1;
+    font-size: 11px;
+    paint-order: stroke;
+    stroke: #131a2c;
+    stroke-width: 4px;
+    pointer-events: none;
+}
+.d3sg-role-label {
+    fill: #8fa8c8;
+    font-size: 10px;
+    font-style: italic;
+}
+.d3sg-role-lhs,
+.d3sg-role-rhs {
+    stroke-dasharray: none;
+}
+
+/* Chevron (collapse/expand button) */
+.d3sg-chevron {
+    opacity: 0;
+    cursor: pointer;
+    pointer-events: all;
+    transition: opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-chevron {
+    opacity: 0.7;
+}
+.d3sg-chevron:hover {
+    opacity: 1 !important;
+}
+
+/* Invisible hit target for flat themes */
+.d3sg-hit-target {
+    transition: stroke 0.12s ease-out, stroke-opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-hit-target {
+    stroke: #7ea8ff !important;
+    stroke-width: 1.5px !important;
+    stroke-opacity: 0.4;
+}
+
+/* Active node ring */
+.d3sg-node.active .d3sg-var-bg {
+    stroke: #6df08e;
+    stroke-width: 2.5px;
+}
+.d3sg-node.active .d3sg-op-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+}
+.d3sg-node.active .d3sg-tile-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+}
+
+/* Multi-selected node ring */
+.d3sg-node.selected .d3sg-var-bg {
+    stroke: #6df08e;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(109, 240, 142, 0.5));
+}
+.d3sg-node.selected .d3sg-op-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(126, 168, 255, 0.5));
+}
+.d3sg-node.selected .d3sg-tile-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(126, 168, 255, 0.5));
+}
+.d3sg-node.selected .d3sg-hit-target {
+    stroke: #7ea8ff !important;
+    stroke-width: 2px !important;
+    stroke-opacity: 0.6;
+}
+
+/* Annotation overlay — stacked at bottom of graph viewport */
+.d3sg-annotation-overlay {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: none;
+    z-index: 10;
+    max-width: min(90%, 420px);
+}
+
+.d3sg-anno-card {
+    position: relative;
+    pointer-events: all;
+    border: 1px dashed;
+    border-radius: 8px;
+    padding: 10px 36px 10px 18px;
+    font-size: 0.78rem;
+    font-style: italic;
+    line-height: 1.45;
+    backdrop-filter: blur(8px);
+    opacity: 0.92;
+    text-align: center;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.d3sg-anno-content {
+    display: block;
+    text-align: center;
+}
+
+.d3sg-anno-card .katex {
+    font-size: 1.1em;
+}
+
+.d3sg-anno-ai-btn {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(100, 110, 255, 0.15);
+    color: rgba(160, 170, 255, 0.8);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.d3sg-anno-card:hover .d3sg-anno-ai-btn,
+.d3sg-anno-card:focus-within .d3sg-anno-ai-btn {
+    opacity: 1;
+}
+
+.d3sg-anno-ai-btn:hover {
+    background: rgba(100, 110, 255, 0.35);
+    color: #c0c8ff;
+}
+
+/* Edge semantics legend — bottom-left of graph viewport */
+.d3sg-edge-legend {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    background: rgba(10, 12, 26, 0.75);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 6px;
+    font-size: 0.72rem;
+    color: rgba(210, 218, 245, 0.92);
+    letter-spacing: 0.02em;
+    z-index: 2;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    pointer-events: none;
+    user-select: none;
+}
+.d3sg-edge-legend.hidden { display: none; }
+.d3sg-edge-legend-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.65;
+    margin-bottom: 2px;
+}
+.d3sg-edge-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.d3sg-edge-legend-swatch {
+    --legend-stroke: currentColor;
+    --legend-stroke-width: 2px;
+    position: relative;
+    display: inline-block;
+    width: 30px;
+    height: 12px;
+    flex-shrink: 0;
+}
+.d3sg-edge-legend-swatch::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 22px;
+    height: var(--legend-stroke-width);
+    background: var(--legend-stroke);
+    transform: translateY(-50%);
+}
+.d3sg-edge-legend-swatch[data-arrow="-.->"]::before,
+.d3sg-edge-legend-swatch[data-arrow="-.-"]::before {
+    background: none;
+    border-top: var(--legend-stroke-width) dotted var(--legend-stroke);
+    height: 0;
+}
+.d3sg-edge-legend-swatch[data-arrow="==>"]::before,
+.d3sg-edge-legend-swatch[data-arrow="==="]::before {
+    box-shadow: 0 -2px 0 var(--legend-stroke), 0 2px 0 var(--legend-stroke);
+}
+.d3sg-edge-legend-swatch::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid var(--legend-stroke);
+    transform: translateY(-50%);
+}
+.d3sg-edge-legend-swatch[data-arrow="---"]::after,
+.d3sg-edge-legend-swatch[data-arrow="==="]::after,
+.d3sg-edge-legend-swatch[data-arrow="-.-"]::after {
+    display: none;
+}
+
+</style>
+</head>
+<body>
+<h1>Semantic Graph &mdash; Visual Examination Report</h1>
+<div class="report-meta">Generated 2026-05-29 22:42 UTC &middot; theme: default-dark &middot; 16 expressions</div>
+<div class="section-title">Chemistry (16 expressions)</div>
+<div class="row">
+  <div>
+    <div class="row-id">rate_first_order</div>
+    <div class="row-latex">$$r = k [A]$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  r["$r$"]:::scalar
+  __k_2{{"$k(\cdot)$"}}:::function
+  A["$A$"]:::scalar
+  r --&gt; __equals_1
+  A --&gt; __k_2
+  __k_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="r = k [A]"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>r = k [A]</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "r = k (A)"
+    },
+    {
+      "id": "r",
+      "type": "scalar",
+      "latex": "r",
+      "subexpr": "r"
+    },
+    {
+      "id": "__k_2",
+      "type": "function",
+      "op": "k",
+      "subexpr": "k{\\left(A \\right)}"
+    },
+    {
+      "id": "A",
+      "type": "scalar",
+      "latex": "A",
+      "subexpr": "A"
+    }
+  ],
+  "edges": [
+    {
+      "from": "r",
+      "to": "__equals_1"
+    },
+    {
+      "from": "A",
+      "to": "__k_2"
+    },
+    {
+      "from": "__k_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  r["$r$"]:::scalar
+  __k_2{{"$k(\cdot)$"}}:::function
+  A["$A$"]:::scalar
+  r --&gt; __equals_1
+  A --&gt; __k_2
+  __k_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;r = k (A)&quot;},{&quot;id&quot;:&quot;r&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;r&quot;,&quot;subexpr&quot;:&quot;r&quot;},{&quot;id&quot;:&quot;__k_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__k_2&quot;},{&quot;from&quot;:&quot;__k_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">rate_second_order</div>
+    <div class="row-latex">$$r = k [A]^2$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  r["$r$"]:::scalar
+  __power_2(("${(\cdot)}^{2}$")):::operator
+  __k_3{{"$k(\cdot)$"}}:::function
+  A["$A$"]:::scalar
+  r --&gt; __equals_1
+  A --&gt; __k_3
+  __k_3 --&gt; __power_2
+  __power_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:6px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="r = k [A]^2"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>r = k [A]^2</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "r = k (A)^2"
+    },
+    {
+      "id": "r",
+      "type": "scalar",
+      "latex": "r",
+      "subexpr": "r"
+    },
+    {
+      "id": "__power_2",
+      "type": "operator",
+      "op": "power",
+      "exponent": "2",
+      "subexpr": "k^{2}{\\left(A \\right)}"
+    },
+    {
+      "id": "__k_3",
+      "type": "function",
+      "op": "k",
+      "subexpr": "k{\\left(A \\right)}"
+    },
+    {
+      "id": "A",
+      "type": "scalar",
+      "latex": "A",
+      "subexpr": "A"
+    }
+  ],
+  "edges": [
+    {
+      "from": "r",
+      "to": "__equals_1"
+    },
+    {
+      "from": "A",
+      "to": "__k_3"
+    },
+    {
+      "from": "__k_3",
+      "to": "__power_2"
+    },
+    {
+      "from": "__power_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  r["$r$"]:::scalar
+  __power_2(("${(\cdot)}^{2}$")):::operator
+  __k_3{{"$k(\cdot)$"}}:::function
+  A["$A$"]:::scalar
+  r --&gt; __equals_1
+  A --&gt; __k_3
+  __k_3 --&gt; __power_2
+  __power_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:6px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;r = k (A)^2&quot;},{&quot;id&quot;:&quot;r&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;r&quot;,&quot;subexpr&quot;:&quot;r&quot;},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;k^{2}{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;__k_3&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__k_3&quot;},{&quot;from&quot;:&quot;__k_3&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">rate_general</div>
+    <div class="row-latex">$$r = k [A]^m [B]^n$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  r["$r$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
+  __k_4{{"$k(\cdot)$"}}:::function
+  A["$A$"]:::scalar
+  m["$m$"]:::scalar
+  __power_5(("$(\cdot)^{\cdot}$")):::operator
+  B["$B$"]:::scalar
+  n["$n$"]:::scalar
+  r --&gt; __equals_1
+  A --&gt; __k_4
+  __k_4 --&gt; __power_3
+  m --&gt;|exp| __power_3
+  __power_3 --&gt; __multiply_2
+  B --&gt; __power_5
+  n --&gt;|exp| __power_5
+  __power_5 --&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="r = k [A]^m [B]^n"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>r = k [A]^m [B]^n</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "r = k (A)^m (B)^n"
+    },
+    {
+      "id": "r",
+      "type": "scalar",
+      "latex": "r",
+      "subexpr": "r"
+    },
+    {
+      "id": "__multiply_2",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "B^{n} k^{m}{\\left(A \\right)}"
+    },
+    {
+      "id": "__power_3",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "k^{m}{\\left(A \\right)}"
+    },
+    {
+      "id": "__k_4",
+      "type": "function",
+      "op": "k",
+      "subexpr": "k{\\left(A \\right)}"
+    },
+    {
+      "id": "A",
+      "type": "scalar",
+      "latex": "A",
+      "subexpr": "A"
+    },
+    {
+      "id": "m",
+      "type": "scalar",
+      "latex": "m",
+      "subexpr": "m"
+    },
+    {
+      "id": "__power_5",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "B^{n}"
+    },
+    {
+      "id": "B",
+      "type": "scalar",
+      "latex": "B",
+      "subexpr": "B"
+    },
+    {
+      "id": "n",
+      "type": "scalar",
+      "latex": "n",
+      "subexpr": "n"
+    }
+  ],
+  "edges": [
+    {
+      "from": "r",
+      "to": "__equals_1"
+    },
+    {
+      "from": "A",
+      "to": "__k_4"
+    },
+    {
+      "from": "__k_4",
+      "to": "__power_3"
+    },
+    {
+      "from": "m",
+      "to": "__power_3",
+      "role": "exp"
+    },
+    {
+      "from": "__power_3",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "B",
+      "to": "__power_5"
+    },
+    {
+      "from": "n",
+      "to": "__power_5",
+      "role": "exp"
+    },
+    {
+      "from": "__power_5",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  r["$r$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
+  __k_4{{"$k(\cdot)$"}}:::function
+  A["$A$"]:::scalar
+  m["$m$"]:::scalar
+  __power_5(("$(\cdot)^{\cdot}$")):::operator
+  B["$B$"]:::scalar
+  n["$n$"]:::scalar
+  r --&gt; __equals_1
+  A --&gt; __k_4
+  __k_4 --&gt; __power_3
+  m --&gt;|exp| __power_3
+  __power_3 --&gt; __multiply_2
+  B --&gt; __power_5
+  n --&gt;|exp| __power_5
+  __power_5 --&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;r = k (A)^m (B)^n&quot;},{&quot;id&quot;:&quot;r&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;r&quot;,&quot;subexpr&quot;:&quot;r&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;B^{n} k^{m}{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;k^{m}{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;__k_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;m&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;m&quot;,&quot;subexpr&quot;:&quot;m&quot;},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;B^{n}&quot;},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;B&quot;,&quot;subexpr&quot;:&quot;B&quot;},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__k_4&quot;},{&quot;from&quot;:&quot;__k_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;m&quot;,&quot;to&quot;:&quot;__power_3&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__power_5&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">first_order_integrated</div>
+    <div class="row-latex">$$\ln [A] = -kt + \ln [A]_0$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __log_2{{"$\ln(\cdot)$"}}:::function
+  A["$A$"]:::scalar
+  __const_3["$e$"]:::constant
+  __add_4(("$+$")):::operator
+  __negation_5@{ shape: "flip-tri", label: "$-$" }
+  __multiply_6(("$\times$")):::operator
+  k["$k$"]:::scalar
+  t["$t$"]:::scalar
+  __log_7{{"$\ln(\cdot)$"}}:::function
+  __const_8["$e$"]:::constant
+  class __negation_5 operator
+  A --&gt; __log_2
+  __const_3 --&gt;|base| __log_2
+  __log_2 --&gt; __equals_1
+  k --&gt; __multiply_6
+  t --&gt; __multiply_6
+  __multiply_6 --&gt; __negation_5
+  __negation_5 --&gt; __add_4
+  A --&gt; __log_7
+  __const_8 --&gt;|base| __log_7
+  __log_7 --&gt; __add_4
+  __add_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="\ln [A] = -kt + \ln [A]_0"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\ln [A] = -kt + \ln [A]_0</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\ln (A) = -kt + \\ln (A)_0"
+    },
+    {
+      "id": "__log_2",
+      "type": "function",
+      "op": "log",
+      "subexpr": "\\ln{\\left(A \\right)}"
+    },
+    {
+      "id": "A",
+      "type": "scalar",
+      "latex": "A",
+      "subexpr": "A"
+    },
+    {
+      "id": "__const_3",
+      "type": "constant",
+      "label": "e (Euler's number)",
+      "latex": "e",
+      "subexpr": "e"
+    },
+    {
+      "id": "__add_4",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "-k t + \\ln{\\left(A \\right)}"
+    },
+    {
+      "id": "__negation_5",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-k t"
+    },
+    {
+      "id": "__multiply_6",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "k t"
+    },
+    {
+      "id": "k",
+      "type": "scalar",
+      "latex": "k",
+      "subexpr": "k"
+    },
+    {
+      "id": "t",
+      "type": "scalar",
+      "latex": "t",
+      "subexpr": "t"
+    },
+    {
+      "id": "__log_7",
+      "type": "function",
+      "op": "log",
+      "subexpr": "\\ln{\\left(A \\right)}"
+    },
+    {
+      "id": "__const_8",
+      "type": "constant",
+      "label": "e (Euler's number)",
+      "latex": "e",
+      "subexpr": "e"
+    }
+  ],
+  "edges": [
+    {
+      "from": "A",
+      "to": "__log_2"
+    },
+    {
+      "from": "__const_3",
+      "to": "__log_2",
+      "role": "base"
+    },
+    {
+      "from": "__log_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "k",
+      "to": "__multiply_6",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "t",
+      "to": "__multiply_6",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_6",
+      "to": "__negation_5"
+    },
+    {
+      "from": "__negation_5",
+      "to": "__add_4"
+    },
+    {
+      "from": "A",
+      "to": "__log_7"
+    },
+    {
+      "from": "__const_8",
+      "to": "__log_7",
+      "role": "base"
+    },
+    {
+      "from": "__log_7",
+      "to": "__add_4"
+    },
+    {
+      "from": "__add_4",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __log_2{{"$\ln(\cdot)$"}}:::function
+  A["$A$"]:::scalar
+  __const_3["$e$"]:::constant
+  __add_4(("$+$")):::operator
+  __negation_5@{ shape: "flip-tri", label: "$-$" }
+  __multiply_6(("$\times$")):::operator
+  k["$k$"]:::scalar
+  t["$t$"]:::scalar
+  __log_7{{"$\ln(\cdot)$"}}:::function
+  __const_8["$e$"]:::constant
+  class __negation_5 operator
+  A --&gt; __log_2
+  __const_3 --&gt;|base| __log_2
+  __log_2 --&gt; __equals_1
+  k --&gt; __multiply_6
+  t --&gt; __multiply_6
+  __multiply_6 --&gt; __negation_5
+  __negation_5 --&gt; __add_4
+  A --&gt; __log_7
+  __const_8 --&gt;|base| __log_7
+  __log_7 --&gt; __add_4
+  __add_4 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\ln (A) = -kt + \\ln (A)_0&quot;},{&quot;id&quot;:&quot;__log_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;log&quot;,&quot;subexpr&quot;:&quot;\\ln{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;__const_3&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;e (Euler's number)&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;},{&quot;id&quot;:&quot;__add_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;-k t + \\ln{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;__negation_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-k t&quot;},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;k t&quot;},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;},{&quot;id&quot;:&quot;__log_7&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;log&quot;,&quot;subexpr&quot;:&quot;\\ln{\\left(A \\right)}&quot;},{&quot;id&quot;:&quot;__const_8&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;e (Euler's number)&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__log_2&quot;},{&quot;from&quot;:&quot;__const_3&quot;,&quot;to&quot;:&quot;__log_2&quot;,&quot;role&quot;:&quot;base&quot;},{&quot;from&quot;:&quot;__log_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__negation_5&quot;},{&quot;from&quot;:&quot;__negation_5&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__log_7&quot;},{&quot;from&quot;:&quot;__const_8&quot;,&quot;to&quot;:&quot;__log_7&quot;,&quot;role&quot;:&quot;base&quot;},{&quot;from&quot;:&quot;__log_7&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;__add_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">second_order_integrated</div>
+    <div class="row-latex">$$\frac{1}{[A]} = kt + \frac{1}{[A]_0}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
+  A["$A$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  k["$k$"]:::scalar
+  t["$t$"]:::scalar
+  A --&gt; __power_2
+  __power_2 -.-&gt; __equals_1
+  k --&gt; __multiply_3
+  t --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#42a5f5,stroke-width:1px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="\frac{1}{[A]} = kt + \frac{1}{[A]_0}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\frac{1}{[A]} = kt + \frac{1}{[A]_0}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\frac{1}{[A]} = kt + \\frac{1}{[A]_0}"
+    },
+    {
+      "id": "__power_2",
+      "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{A}"
+    },
+    {
+      "id": "A",
+      "type": "scalar",
+      "latex": "A",
+      "subexpr": "A"
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "k t"
+    },
+    {
+      "id": "k",
+      "type": "scalar",
+      "latex": "k",
+      "subexpr": "k"
+    },
+    {
+      "id": "t",
+      "type": "scalar",
+      "latex": "t",
+      "subexpr": "t"
+    }
+  ],
+  "edges": [
+    {
+      "from": "A",
+      "to": "__power_2"
+    },
+    {
+      "from": "__power_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "k",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "t",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
+  A["$A$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  k["$k$"]:::scalar
+  t["$t$"]:::scalar
+  A --&gt; __power_2
+  __power_2 -.-&gt; __equals_1
+  k --&gt; __multiply_3
+  t --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#42a5f5,stroke-width:1px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{[A]} = kt + \\frac{1}{[A]_0}&quot;},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{A}&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;k t&quot;},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">first_order_decay</div>
+    <div class="row-latex">$$[A] = [A]_0 e^{-kt}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  A["$A$"]:::scalar
+  __equals_1{"="}:::relation
+  A --&gt; __equals_1
+  A --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="[A] = [A]_0 e^{-kt}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>[A] = [A]_0 e^{-kt}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "A",
+      "type": "scalar",
+      "latex": "A",
+      "subexpr": "[A]"
+    },
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "[A] = [A]_0 e^{-kt}"
+    }
+  ],
+  "edges": [
+    {
+      "from": "A",
+      "to": "__equals_1"
+    },
+    {
+      "from": "A",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  A["$A$"]:::scalar
+  __equals_1{"="}:::relation
+  A --&gt; __equals_1
+  A --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;[A]&quot;},{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;[A] = [A]_0 e^{-kt}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">equilibrium_constant</div>
+    <div class="row-latex">$$K = \frac{[C]^c [D]^d}{[A]^a [B]^b}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  K["$K$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  __multiply_3(("$\times$")):::operator
+  __power_4(("$(\cdot)^{\cdot}$")):::operator
+  C["$C$"]:::scalar
+  c["$c$"]:::scalar
+  __power_5(("$(\cdot)^{\cdot}$")):::operator
+  D["$D$"]:::scalar
+  d["$d$"]:::scalar
+  __power_6(("$\dfrac{1}{(\cdot)}$")):::operator
+  __multiply_7(("$\times$")):::operator
+  __power_8(("$(\cdot)^{\cdot}$")):::operator
+  A["$A$"]:::scalar
+  a["$a$"]:::scalar
+  __power_9(("$(\cdot)^{\cdot}$")):::operator
+  B["$B$"]:::scalar
+  b["$b$"]:::scalar
+  K --&gt; __equals_1
+  C --&gt; __power_4
+  c --&gt;|exp| __power_4
+  __power_4 --&gt; __multiply_3
+  D --&gt; __power_5
+  d --&gt;|exp| __power_5
+  __power_5 --&gt; __multiply_3
+  __multiply_3 --&gt; __multiply_2
+  A --&gt; __power_8
+  a --&gt;|exp| __power_8
+  __power_8 --&gt; __multiply_7
+  B --&gt; __power_9
+  b --&gt;|exp| __power_9
+  __power_9 --&gt; __multiply_7
+  __multiply_7 --&gt; __power_6
+  __power_6 -.-&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#ef5350,stroke-width:3px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 15 stroke:#42a5f5,stroke-width:1px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="K = \frac{[C]^c [D]^d}{[A]^a [B]^b}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>K = \frac{[C]^c [D]^d}{[A]^a [B]^b}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "K = \\frac{[C]^c (D)^d}{[A]^a (B)^b}"
+    },
+    {
+      "id": "K",
+      "type": "scalar",
+      "latex": "K",
+      "subexpr": "K"
+    },
+    {
+      "id": "__multiply_2",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "C^{c} D^{d} \\frac{1}{A^{a} B^{b}}"
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "C^{c} D^{d}"
+    },
+    {
+      "id": "__power_4",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "C^{c}"
+    },
+    {
+      "id": "C",
+      "type": "scalar",
+      "latex": "C",
+      "subexpr": "C"
+    },
+    {
+      "id": "c",
+      "type": "scalar",
+      "latex": "c",
+      "subexpr": "c"
+    },
+    {
+      "id": "__power_5",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "D^{d}"
+    },
+    {
+      "id": "D",
+      "type": "scalar",
+      "latex": "D",
+      "subexpr": "D"
+    },
+    {
+      "id": "d",
+      "type": "scalar",
+      "latex": "d",
+      "subexpr": "d"
+    },
+    {
+      "id": "__power_6",
+      "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{A^{a} B^{b}}"
+    },
+    {
+      "id": "__multiply_7",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "A^{a} B^{b}"
+    },
+    {
+      "id": "__power_8",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "A^{a}"
+    },
+    {
+      "id": "A",
+      "type": "scalar",
+      "latex": "A",
+      "subexpr": "A"
+    },
+    {
+      "id": "a",
+      "type": "scalar",
+      "latex": "a",
+      "subexpr": "a"
+    },
+    {
+      "id": "__power_9",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "B^{b}"
+    },
+    {
+      "id": "B",
+      "type": "scalar",
+      "latex": "B",
+      "subexpr": "B"
+    },
+    {
+      "id": "b",
+      "type": "scalar",
+      "latex": "b",
+      "subexpr": "b"
+    }
+  ],
+  "edges": [
+    {
+      "from": "K",
+      "to": "__equals_1"
+    },
+    {
+      "from": "C",
+      "to": "__power_4"
+    },
+    {
+      "from": "c",
+      "to": "__power_4",
+      "role": "exp"
+    },
+    {
+      "from": "__power_4",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "D",
+      "to": "__power_5"
+    },
+    {
+      "from": "d",
+      "to": "__power_5",
+      "role": "exp"
+    },
+    {
+      "from": "__power_5",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "A",
+      "to": "__power_8"
+    },
+    {
+      "from": "a",
+      "to": "__power_8",
+      "role": "exp"
+    },
+    {
+      "from": "__power_8",
+      "to": "__multiply_7",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "B",
+      "to": "__power_9"
+    },
+    {
+      "from": "b",
+      "to": "__power_9",
+      "role": "exp"
+    },
+    {
+      "from": "__power_9",
+      "to": "__multiply_7",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_7",
+      "to": "__power_6"
+    },
+    {
+      "from": "__power_6",
+      "to": "__multiply_2"
+    },
+    {
+      "from": "__multiply_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  K["$K$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  __multiply_3(("$\times$")):::operator
+  __power_4(("$(\cdot)^{\cdot}$")):::operator
+  C["$C$"]:::scalar
+  c["$c$"]:::scalar
+  __power_5(("$(\cdot)^{\cdot}$")):::operator
+  D["$D$"]:::scalar
+  d["$d$"]:::scalar
+  __power_6(("$\dfrac{1}{(\cdot)}$")):::operator
+  __multiply_7(("$\times$")):::operator
+  __power_8(("$(\cdot)^{\cdot}$")):::operator
+  A["$A$"]:::scalar
+  a["$a$"]:::scalar
+  __power_9(("$(\cdot)^{\cdot}$")):::operator
+  B["$B$"]:::scalar
+  b["$b$"]:::scalar
+  K --&gt; __equals_1
+  C --&gt; __power_4
+  c --&gt;|exp| __power_4
+  __power_4 --&gt; __multiply_3
+  D --&gt; __power_5
+  d --&gt;|exp| __power_5
+  __power_5 --&gt; __multiply_3
+  __multiply_3 --&gt; __multiply_2
+  A --&gt; __power_8
+  a --&gt;|exp| __power_8
+  __power_8 --&gt; __multiply_7
+  B --&gt; __power_9
+  b --&gt;|exp| __power_9
+  __power_9 --&gt; __multiply_7
+  __multiply_7 --&gt; __power_6
+  __power_6 -.-&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#ef5350,stroke-width:3px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 15 stroke:#42a5f5,stroke-width:1px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;K = \\frac{[C]^c (D)^d}{[A]^a (B)^b}&quot;},{&quot;id&quot;:&quot;K&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;K&quot;,&quot;subexpr&quot;:&quot;K&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;C^{c} D^{d} \\frac{1}{A^{a} B^{b}}&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;C^{c} D^{d}&quot;},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;C^{c}&quot;},{&quot;id&quot;:&quot;C&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;C&quot;,&quot;subexpr&quot;:&quot;C&quot;},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;D^{d}&quot;},{&quot;id&quot;:&quot;D&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;D&quot;,&quot;subexpr&quot;:&quot;D&quot;},{&quot;id&quot;:&quot;d&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;d&quot;,&quot;subexpr&quot;:&quot;d&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{A^{a} B^{b}}&quot;},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;A^{a} B^{b}&quot;},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;A^{a}&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;},{&quot;id&quot;:&quot;__power_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;B^{b}&quot;},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;B&quot;,&quot;subexpr&quot;:&quot;B&quot;},{&quot;id&quot;:&quot;b&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;b&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;K&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;C&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;__power_4&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;D&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;d&quot;,&quot;to&quot;:&quot;__power_5&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;__power_8&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__power_9&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;__power_9&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_9&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_2&quot;},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">ideal_gas_law</div>
+    <div class="row-latex">$$P V = n R T$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __multiply_2(("$\times$")):::operator
+  P["$P$"]:::scalar
+  V["$V$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  n["$n$"]:::scalar
+  __multiply_4(("$\times$")):::operator
+  R["$R$"]:::scalar
+  T["$T$"]:::scalar
+  P --&gt; __multiply_2
+  V --&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  n --&gt; __multiply_3
+  R --&gt; __multiply_4
+  T --&gt; __multiply_4
+  __multiply_4 --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="P V = n R T"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>P V = n R T</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "P V = n R T"
+    },
+    {
+      "id": "__multiply_2",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "P V"
+    },
+    {
+      "id": "P",
+      "type": "scalar",
+      "latex": "P",
+      "subexpr": "P"
+    },
+    {
+      "id": "V",
+      "type": "scalar",
+      "latex": "V",
+      "subexpr": "V"
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "n R T"
+    },
+    {
+      "id": "n",
+      "type": "scalar",
+      "latex": "n",
+      "subexpr": "n"
+    },
+    {
+      "id": "__multiply_4",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "R T"
+    },
+    {
+      "id": "R",
+      "type": "scalar",
+      "latex": "R",
+      "subexpr": "R"
+    },
+    {
+      "id": "T",
+      "type": "scalar",
+      "latex": "T",
+      "subexpr": "T"
+    }
+  ],
+  "edges": [
+    {
+      "from": "P",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "V",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "n",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "R",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "T",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_4",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __multiply_2(("$\times$")):::operator
+  P["$P$"]:::scalar
+  V["$V$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  n["$n$"]:::scalar
+  __multiply_4(("$\times$")):::operator
+  R["$R$"]:::scalar
+  T["$T$"]:::scalar
+  P --&gt; __multiply_2
+  V --&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  n --&gt; __multiply_3
+  R --&gt; __multiply_4
+  T --&gt; __multiply_4
+  __multiply_4 --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P V = n R T&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;P V&quot;},{&quot;id&quot;:&quot;P&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P&quot;},{&quot;id&quot;:&quot;V&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;V&quot;,&quot;subexpr&quot;:&quot;V&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;n R T&quot;},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;R T&quot;},{&quot;id&quot;:&quot;R&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;R&quot;,&quot;subexpr&quot;:&quot;R&quot;},{&quot;id&quot;:&quot;T&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;T&quot;,&quot;subexpr&quot;:&quot;T&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;P&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;V&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;R&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;T&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">arrhenius</div>
+    <div class="row-latex">$$k = A e^{-E_a / (R T)}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  k["$k$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  A["$A$"]:::scalar
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
+  e["$e$"]:::scalar
+  __multiply_4(("$\times$")):::operator
+  __negation_5@{ shape: "flip-tri", label: "$-$" }
+  E__a_["$E_{a}$"]:::scalar
+  __power_6(("$\dfrac{1}{(\cdot)}$")):::operator
+  __multiply_7(("$\times$")):::operator
+  R["$R$"]:::scalar
+  T["$T$"]:::scalar
+  class __negation_5 operator
+  k --&gt; __equals_1
+  A --&gt; __multiply_2
+  e --&gt; __power_3
+  E__a_ --&gt; __negation_5
+  __negation_5 --&gt; __multiply_4
+  R --&gt; __multiply_7
+  T --&gt; __multiply_7
+  __multiply_7 --&gt; __power_6
+  __power_6 -.-&gt; __multiply_4
+  __multiply_4 --&gt;|exp| __power_3
+  __power_3 --&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#42a5f5,stroke-width:1px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="k = A e^{-E_a / (R T)}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>k = A e^{-E_a / (R T)}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "k = A e^{-E_a / (R T)}"
+    },
+    {
+      "id": "k",
+      "type": "scalar",
+      "latex": "k",
+      "subexpr": "k"
+    },
+    {
+      "id": "__multiply_2",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "A e^{\\frac{\\left(-1\\right) E_{a}}{R T}}"
+    },
+    {
+      "id": "A",
+      "type": "scalar",
+      "latex": "A",
+      "subexpr": "A"
+    },
+    {
+      "id": "__power_3",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "e^{\\frac{\\left(-1\\right) E_{a}}{R T}}"
+    },
+    {
+      "id": "e",
+      "type": "scalar",
+      "latex": "e",
+      "subexpr": "e"
+    },
+    {
+      "id": "__multiply_4",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "-E_{a} \\frac{1}{R T}"
+    },
+    {
+      "id": "__negation_5",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-E_{a}"
+    },
+    {
+      "id": "E_{a}",
+      "type": "scalar",
+      "latex": "E_{a}",
+      "subexpr": "E_{a}"
+    },
+    {
+      "id": "__power_6",
+      "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{R T}"
+    },
+    {
+      "id": "__multiply_7",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "R T"
+    },
+    {
+      "id": "R",
+      "type": "scalar",
+      "latex": "R",
+      "subexpr": "R"
+    },
+    {
+      "id": "T",
+      "type": "scalar",
+      "latex": "T",
+      "subexpr": "T"
+    }
+  ],
+  "edges": [
+    {
+      "from": "k",
+      "to": "__equals_1"
+    },
+    {
+      "from": "A",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "e",
+      "to": "__power_3"
+    },
+    {
+      "from": "E_{a}",
+      "to": "__negation_5"
+    },
+    {
+      "from": "__negation_5",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "R",
+      "to": "__multiply_7",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "T",
+      "to": "__multiply_7",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_7",
+      "to": "__power_6"
+    },
+    {
+      "from": "__power_6",
+      "to": "__multiply_4"
+    },
+    {
+      "from": "__multiply_4",
+      "to": "__power_3",
+      "role": "exp"
+    },
+    {
+      "from": "__power_3",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  k["$k$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  A["$A$"]:::scalar
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
+  e["$e$"]:::scalar
+  __multiply_4(("$\times$")):::operator
+  __negation_5@{ shape: "flip-tri", label: "$-$" }
+  E__a_["$E_{a}$"]:::scalar
+  __power_6(("$\dfrac{1}{(\cdot)}$")):::operator
+  __multiply_7(("$\times$")):::operator
+  R["$R$"]:::scalar
+  T["$T$"]:::scalar
+  class __negation_5 operator
+  k --&gt; __equals_1
+  A --&gt; __multiply_2
+  e --&gt; __power_3
+  E__a_ --&gt; __negation_5
+  __negation_5 --&gt; __multiply_4
+  R --&gt; __multiply_7
+  T --&gt; __multiply_7
+  __multiply_7 --&gt; __power_6
+  __power_6 -.-&gt; __multiply_4
+  __multiply_4 --&gt;|exp| __power_3
+  __power_3 --&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#42a5f5,stroke-width:1px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;k = A e^{-E_a / (R T)}&quot;},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;A e^{\\frac{\\left(-1\\right) E_{a}}{R T}}&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;e^{\\frac{\\left(-1\\right) E_{a}}{R T}}&quot;},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;-E_{a} \\frac{1}{R T}&quot;},{&quot;id&quot;:&quot;__negation_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-E_{a}&quot;},{&quot;id&quot;:&quot;E_{a}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;E_{a}&quot;,&quot;subexpr&quot;:&quot;E_{a}&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{R T}&quot;},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;R T&quot;},{&quot;id&quot;:&quot;R&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;R&quot;,&quot;subexpr&quot;:&quot;R&quot;},{&quot;id&quot;:&quot;T&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;T&quot;,&quot;subexpr&quot;:&quot;T&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;E_{a}&quot;,&quot;to&quot;:&quot;__negation_5&quot;},{&quot;from&quot;:&quot;__negation_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;R&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;T&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__power_3&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">half_life</div>
+    <div class="row-latex">$$t_{1/2} = \frac{\ln 2}{k}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  t__1/2_["$t_{1/2}$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  __log_3{{"$\ln(\cdot)$"}}:::function
+  __num_4["$2$"]:::number
+  __const_5["$e$"]:::constant
+  __power_6(("$\dfrac{1}{(\cdot)}$")):::operator
+  k["$k$"]:::scalar
+  t__1/2_ --&gt; __equals_1
+  __num_4 --&gt; __log_3
+  __const_5 --&gt;|base| __log_3
+  __log_3 --&gt; __multiply_2
+  k --&gt; __power_6
+  __power_6 -.-&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#42a5f5,stroke-width:1px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="t_{1/2} = \frac{\ln 2}{k}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>t_{1/2} = \frac{\ln 2}{k}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "t_{1/2} = \\frac{\\ln 2}{k}"
+    },
+    {
+      "id": "t_{1/2}",
+      "type": "scalar",
+      "latex": "t_{1/2}",
+      "subexpr": "t_{1/2}"
+    },
+    {
+      "id": "__multiply_2",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\frac{1}{k} \\ln{\\left(2 \\right)}"
+    },
+    {
+      "id": "__log_3",
+      "type": "function",
+      "op": "log",
+      "subexpr": "\\ln{\\left(2 \\right)}"
+    },
+    {
+      "id": "__num_4",
+      "type": "number",
+      "label": "2",
+      "subexpr": "2"
+    },
+    {
+      "id": "__const_5",
+      "type": "constant",
+      "label": "e (Euler's number)",
+      "latex": "e",
+      "subexpr": "e"
+    },
+    {
+      "id": "__power_6",
+      "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{k}"
+    },
+    {
+      "id": "k",
+      "type": "scalar",
+      "latex": "k",
+      "subexpr": "k"
+    }
+  ],
+  "edges": [
+    {
+      "from": "t_{1/2}",
+      "to": "__equals_1"
+    },
+    {
+      "from": "__num_4",
+      "to": "__log_3"
+    },
+    {
+      "from": "__const_5",
+      "to": "__log_3",
+      "role": "base"
+    },
+    {
+      "from": "__log_3",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "k",
+      "to": "__power_6"
+    },
+    {
+      "from": "__power_6",
+      "to": "__multiply_2"
+    },
+    {
+      "from": "__multiply_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  t__1/2_["$t_{1/2}$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  __log_3{{"$\ln(\cdot)$"}}:::function
+  __num_4["$2$"]:::number
+  __const_5["$e$"]:::constant
+  __power_6(("$\dfrac{1}{(\cdot)}$")):::operator
+  k["$k$"]:::scalar
+  t__1/2_ --&gt; __equals_1
+  __num_4 --&gt; __log_3
+  __const_5 --&gt;|base| __log_3
+  __log_3 --&gt; __multiply_2
+  k --&gt; __power_6
+  __power_6 -.-&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#42a5f5,stroke-width:1px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;t_{1/2} = \\frac{\\ln 2}{k}&quot;},{&quot;id&quot;:&quot;t_{1/2}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t_{1/2}&quot;,&quot;subexpr&quot;:&quot;t_{1/2}&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{k} \\ln{\\left(2 \\right)}&quot;},{&quot;id&quot;:&quot;__log_3&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;log&quot;,&quot;subexpr&quot;:&quot;\\ln{\\left(2 \\right)}&quot;},{&quot;id&quot;:&quot;__num_4&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;},{&quot;id&quot;:&quot;__const_5&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;e (Euler's number)&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{k}&quot;},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;t_{1/2}&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_4&quot;,&quot;to&quot;:&quot;__log_3&quot;},{&quot;from&quot;:&quot;__const_5&quot;,&quot;to&quot;:&quot;__log_3&quot;,&quot;role&quot;:&quot;base&quot;},{&quot;from&quot;:&quot;__log_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_2&quot;},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">nernst_equation</div>
+    <div class="row-latex">$$E = E^0 - \frac{R T}{n F} \ln Q$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  E["$E$"]:::scalar
+  __add_2(("$+$")):::operator
+  __power_3(("${(\cdot)}^{0}$")):::operator
+  __negation_4@{ shape: "flip-tri", label: "$-$" }
+  __multiply_5(("$\times$")):::operator
+  __multiply_6(("$\times$")):::operator
+  __multiply_7(("$\times$")):::operator
+  R["$R$"]:::scalar
+  T["$T$"]:::scalar
+  __power_8(("$\dfrac{1}{(\cdot)}$")):::operator
+  __multiply_9(("$\times$")):::operator
+  n["$n$"]:::scalar
+  F["$F$"]:::scalar
+  __log_10{{"$\ln(\cdot)$"}}:::function
+  Q["$Q$"]:::scalar
+  __const_11["$e$"]:::constant
+  class __negation_4 operator
+  E --&gt; __equals_1
+  E --&gt; __power_3
+  __power_3 --&gt; __add_2
+  R --&gt; __multiply_7
+  T --&gt; __multiply_7
+  __multiply_7 --&gt; __multiply_6
+  n --&gt; __multiply_9
+  F --&gt; __multiply_9
+  __multiply_9 --&gt; __power_8
+  __power_8 -.-&gt; __multiply_6
+  __multiply_6 --&gt; __multiply_5
+  Q --&gt; __log_10
+  __const_11 --&gt;|base| __log_10
+  __log_10 --&gt; __multiply_5
+  __multiply_5 --&gt; __negation_4
+  __negation_4 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#42a5f5,stroke-width:1px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#ef5350,stroke-width:3px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="E = E^0 - \frac{R T}{n F} \ln Q"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>E = E^0 - \frac{R T}{n F} \ln Q</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "E = E^0 - \\frac{R T}{n F} \\ln Q"
+    },
+    {
+      "id": "E",
+      "type": "scalar",
+      "latex": "E",
+      "subexpr": "E"
+    },
+    {
+      "id": "__add_2",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "E^{0} - R T \\frac{1}{F n} \\ln{\\left(Q \\right)}"
+    },
+    {
+      "id": "__power_3",
+      "type": "operator",
+      "op": "power",
+      "exponent": "0",
+      "subexpr": "E^{0}"
+    },
+    {
+      "id": "__negation_4",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-R T \\frac{1}{F n} \\ln{\\left(Q \\right)}"
+    },
+    {
+      "id": "__multiply_5",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "R T \\frac{1}{F n} \\ln{\\left(Q \\right)}"
+    },
+    {
+      "id": "__multiply_6",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "R T \\frac{1}{F n}"
+    },
+    {
+      "id": "__multiply_7",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "R T"
+    },
+    {
+      "id": "R",
+      "type": "scalar",
+      "latex": "R",
+      "subexpr": "R"
+    },
+    {
+      "id": "T",
+      "type": "scalar",
+      "latex": "T",
+      "subexpr": "T"
+    },
+    {
+      "id": "__power_8",
+      "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{F n}"
+    },
+    {
+      "id": "__multiply_9",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "n F"
+    },
+    {
+      "id": "n",
+      "type": "scalar",
+      "latex": "n",
+      "subexpr": "n"
+    },
+    {
+      "id": "F",
+      "type": "scalar",
+      "latex": "F",
+      "subexpr": "F"
+    },
+    {
+      "id": "__log_10",
+      "type": "function",
+      "op": "log",
+      "subexpr": "\\ln{\\left(Q \\right)}"
+    },
+    {
+      "id": "Q",
+      "type": "scalar",
+      "latex": "Q",
+      "subexpr": "Q"
+    },
+    {
+      "id": "__const_11",
+      "type": "constant",
+      "label": "e (Euler's number)",
+      "latex": "e",
+      "subexpr": "e"
+    }
+  ],
+  "edges": [
+    {
+      "from": "E",
+      "to": "__equals_1"
+    },
+    {
+      "from": "E",
+      "to": "__power_3"
+    },
+    {
+      "from": "__power_3",
+      "to": "__add_2"
+    },
+    {
+      "from": "R",
+      "to": "__multiply_7",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "T",
+      "to": "__multiply_7",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_7",
+      "to": "__multiply_6",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "n",
+      "to": "__multiply_9",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "F",
+      "to": "__multiply_9",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_9",
+      "to": "__power_8"
+    },
+    {
+      "from": "__power_8",
+      "to": "__multiply_6"
+    },
+    {
+      "from": "__multiply_6",
+      "to": "__multiply_5",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "Q",
+      "to": "__log_10"
+    },
+    {
+      "from": "__const_11",
+      "to": "__log_10",
+      "role": "base"
+    },
+    {
+      "from": "__log_10",
+      "to": "__multiply_5",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_5",
+      "to": "__negation_4"
+    },
+    {
+      "from": "__negation_4",
+      "to": "__add_2"
+    },
+    {
+      "from": "__add_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  E["$E$"]:::scalar
+  __add_2(("$+$")):::operator
+  __power_3(("${(\cdot)}^{0}$")):::operator
+  __negation_4@{ shape: "flip-tri", label: "$-$" }
+  __multiply_5(("$\times$")):::operator
+  __multiply_6(("$\times$")):::operator
+  __multiply_7(("$\times$")):::operator
+  R["$R$"]:::scalar
+  T["$T$"]:::scalar
+  __power_8(("$\dfrac{1}{(\cdot)}$")):::operator
+  __multiply_9(("$\times$")):::operator
+  n["$n$"]:::scalar
+  F["$F$"]:::scalar
+  __log_10{{"$\ln(\cdot)$"}}:::function
+  Q["$Q$"]:::scalar
+  __const_11["$e$"]:::constant
+  class __negation_4 operator
+  E --&gt; __equals_1
+  E --&gt; __power_3
+  __power_3 --&gt; __add_2
+  R --&gt; __multiply_7
+  T --&gt; __multiply_7
+  __multiply_7 --&gt; __multiply_6
+  n --&gt; __multiply_9
+  F --&gt; __multiply_9
+  __multiply_9 --&gt; __power_8
+  __power_8 -.-&gt; __multiply_6
+  __multiply_6 --&gt; __multiply_5
+  Q --&gt; __log_10
+  __const_11 --&gt;|base| __log_10
+  __log_10 --&gt; __multiply_5
+  __multiply_5 --&gt; __negation_4
+  __negation_4 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#42a5f5,stroke-width:1px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#ef5350,stroke-width:3px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;E = E^0 - \\frac{R T}{n F} \\ln Q&quot;},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;E&quot;,&quot;subexpr&quot;:&quot;E&quot;},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;E^{0} - R T \\frac{1}{F n} \\ln{\\left(Q \\right)}&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;E^{0}&quot;},{&quot;id&quot;:&quot;__negation_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-R T \\frac{1}{F n} \\ln{\\left(Q \\right)}&quot;},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;R T \\frac{1}{F n} \\ln{\\left(Q \\right)}&quot;},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;R T \\frac{1}{F n}&quot;},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;R T&quot;},{&quot;id&quot;:&quot;R&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;R&quot;,&quot;subexpr&quot;:&quot;R&quot;},{&quot;id&quot;:&quot;T&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;T&quot;,&quot;subexpr&quot;:&quot;T&quot;},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{F n}&quot;},{&quot;id&quot;:&quot;__multiply_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;n F&quot;},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;},{&quot;id&quot;:&quot;F&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;F&quot;,&quot;subexpr&quot;:&quot;F&quot;},{&quot;id&quot;:&quot;__log_10&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;log&quot;,&quot;subexpr&quot;:&quot;\\ln{\\left(Q \\right)}&quot;},{&quot;id&quot;:&quot;Q&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;Q&quot;,&quot;subexpr&quot;:&quot;Q&quot;},{&quot;id&quot;:&quot;__const_11&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;e (Euler's number)&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;R&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;T&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__multiply_9&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;F&quot;,&quot;to&quot;:&quot;__multiply_9&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_9&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_6&quot;},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Q&quot;,&quot;to&quot;:&quot;__log_10&quot;},{&quot;from&quot;:&quot;__const_11&quot;,&quot;to&quot;:&quot;__log_10&quot;,&quot;role&quot;:&quot;base&quot;},{&quot;from&quot;:&quot;__log_10&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__negation_4&quot;},{&quot;from&quot;:&quot;__negation_4&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">beer_lambert</div>
+    <div class="row-latex">$$A = \epsilon b c$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  A["$A$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  epsilon["$\epsilon$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  b["$b$"]:::scalar
+  c["$c$"]:::scalar
+  A --&gt; __equals_1
+  epsilon --&gt; __multiply_2
+  b --&gt; __multiply_3
+  c --&gt; __multiply_3
+  __multiply_3 --&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="A = \epsilon b c"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>A = \epsilon b c</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "A = \\epsilon b c"
+    },
+    {
+      "id": "A",
+      "type": "scalar",
+      "latex": "A",
+      "subexpr": "A"
+    },
+    {
+      "id": "__multiply_2",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\epsilon b c"
+    },
+    {
+      "id": "epsilon",
+      "type": "scalar",
+      "latex": "\\epsilon",
+      "subexpr": "\\epsilon"
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "b c"
+    },
+    {
+      "id": "b",
+      "type": "scalar",
+      "latex": "b",
+      "subexpr": "b"
+    },
+    {
+      "id": "c",
+      "type": "scalar",
+      "latex": "c",
+      "subexpr": "c"
+    }
+  ],
+  "edges": [
+    {
+      "from": "A",
+      "to": "__equals_1"
+    },
+    {
+      "from": "epsilon",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "b",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "c",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  A["$A$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  epsilon["$\epsilon$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  b["$b$"]:::scalar
+  c["$c$"]:::scalar
+  A --&gt; __equals_1
+  epsilon --&gt; __multiply_2
+  b --&gt; __multiply_3
+  c --&gt; __multiply_3
+  __multiply_3 --&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;A = \\epsilon b c&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\epsilon b c&quot;},{&quot;id&quot;:&quot;epsilon&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\epsilon&quot;,&quot;subexpr&quot;:&quot;\\epsilon&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;b c&quot;},{&quot;id&quot;:&quot;b&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;b&quot;},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;epsilon&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">molarity</div>
+    <div class="row-latex">$$M = \frac{n}{V}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  M["$M$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  n["$n$"]:::scalar
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
+  V["$V$"]:::scalar
+  M --&gt; __equals_1
+  n --&gt; __multiply_2
+  V --&gt; __power_3
+  __power_3 -.-&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#42a5f5,stroke-width:1px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="M = \frac{n}{V}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>M = \frac{n}{V}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "M = \\frac{n}{V}"
+    },
+    {
+      "id": "M",
+      "type": "scalar",
+      "latex": "M",
+      "subexpr": "M"
+    },
+    {
+      "id": "__multiply_2",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "n \\frac{1}{V}"
+    },
+    {
+      "id": "n",
+      "type": "scalar",
+      "latex": "n",
+      "subexpr": "n"
+    },
+    {
+      "id": "__power_3",
+      "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{V}"
+    },
+    {
+      "id": "V",
+      "type": "scalar",
+      "latex": "V",
+      "subexpr": "V"
+    }
+  ],
+  "edges": [
+    {
+      "from": "M",
+      "to": "__equals_1"
+    },
+    {
+      "from": "n",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "V",
+      "to": "__power_3"
+    },
+    {
+      "from": "__power_3",
+      "to": "__multiply_2"
+    },
+    {
+      "from": "__multiply_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  M["$M$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  n["$n$"]:::scalar
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
+  V["$V$"]:::scalar
+  M --&gt; __equals_1
+  n --&gt; __multiply_2
+  V --&gt; __power_3
+  __power_3 -.-&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#42a5f5,stroke-width:1px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;M = \\frac{n}{V}&quot;},{&quot;id&quot;:&quot;M&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;M&quot;,&quot;subexpr&quot;:&quot;M&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;n \\frac{1}{V}&quot;},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{V}&quot;},{&quot;id&quot;:&quot;V&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;V&quot;,&quot;subexpr&quot;:&quot;V&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;M&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;V&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">density</div>
+    <div class="row-latex">$$\rho = \frac{m}{V}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  rho["$\rho$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  m["$m$"]:::scalar
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
+  V["$V$"]:::scalar
+  rho --&gt; __equals_1
+  m --&gt; __multiply_2
+  V --&gt; __power_3
+  __power_3 -.-&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#42a5f5,stroke-width:1px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="\rho = \frac{m}{V}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\rho = \frac{m}{V}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\rho = \\frac{m}{V}"
+    },
+    {
+      "id": "rho",
+      "type": "scalar",
+      "latex": "\\rho",
+      "subexpr": "\\rho"
+    },
+    {
+      "id": "__multiply_2",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "m \\frac{1}{V}"
+    },
+    {
+      "id": "m",
+      "type": "scalar",
+      "latex": "m",
+      "subexpr": "m"
+    },
+    {
+      "id": "__power_3",
+      "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{V}"
+    },
+    {
+      "id": "V",
+      "type": "scalar",
+      "latex": "V",
+      "subexpr": "V"
+    }
+  ],
+  "edges": [
+    {
+      "from": "rho",
+      "to": "__equals_1"
+    },
+    {
+      "from": "m",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "V",
+      "to": "__power_3"
+    },
+    {
+      "from": "__power_3",
+      "to": "__multiply_2"
+    },
+    {
+      "from": "__multiply_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  rho["$\rho$"]:::scalar
+  __multiply_2(("$\times$")):::operator
+  m["$m$"]:::scalar
+  __power_3(("$\dfrac{1}{(\cdot)}$")):::operator
+  V["$V$"]:::scalar
+  rho --&gt; __equals_1
+  m --&gt; __multiply_2
+  V --&gt; __power_3
+  __power_3 -.-&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#42a5f5,stroke-width:1px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\rho = \\frac{m}{V}&quot;},{&quot;id&quot;:&quot;rho&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\rho&quot;,&quot;subexpr&quot;:&quot;\\rho&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;m \\frac{1}{V}&quot;},{&quot;id&quot;:&quot;m&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;m&quot;,&quot;subexpr&quot;:&quot;m&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{V}&quot;},{&quot;id&quot;:&quot;V&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;V&quot;,&quot;subexpr&quot;:&quot;V&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;rho&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;m&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;V&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">dilution</div>
+    <div class="row-latex">$$M_1 V_1 = M_2 V_2$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __multiply_2(("$\times$")):::operator
+  M__1_["$M_{1}$"]:::scalar
+  V__1_["$V_{1}$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  M__2_["$M_{2}$"]:::scalar
+  V__2_["$V_{2}$"]:::scalar
+  M__1_ --&gt; __multiply_2
+  V__1_ --&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  M__2_ --&gt; __multiply_3
+  V__2_ --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="M_1 V_1 = M_2 V_2"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>M_1 V_1 = M_2 V_2</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "M_1 V_1 = M_2 V_2"
+    },
+    {
+      "id": "__multiply_2",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "M_{1} V_{1}"
+    },
+    {
+      "id": "M_{1}",
+      "type": "scalar",
+      "latex": "M_{1}",
+      "subexpr": "M_{1}"
+    },
+    {
+      "id": "V_{1}",
+      "type": "scalar",
+      "latex": "V_{1}",
+      "subexpr": "V_{1}"
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "M_{2} V_{2}"
+    },
+    {
+      "id": "M_{2}",
+      "type": "scalar",
+      "latex": "M_{2}",
+      "subexpr": "M_{2}"
+    },
+    {
+      "id": "V_{2}",
+      "type": "scalar",
+      "latex": "V_{2}",
+      "subexpr": "V_{2}"
+    }
+  ],
+  "edges": [
+    {
+      "from": "M_{1}",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "V_{1}",
+      "to": "__multiply_2",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "M_{2}",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "V_{2}",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __multiply_2(("$\times$")):::operator
+  M__1_["$M_{1}$"]:::scalar
+  V__1_["$V_{1}$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  M__2_["$M_{2}$"]:::scalar
+  V__2_["$V_{2}$"]:::scalar
+  M__1_ --&gt; __multiply_2
+  V__1_ --&gt; __multiply_2
+  __multiply_2 --&gt; __equals_1
+  M__2_ --&gt; __multiply_3
+  V__2_ --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;M_1 V_1 = M_2 V_2&quot;},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;M_{1} V_{1}&quot;},{&quot;id&quot;:&quot;M_{1}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;M_{1}&quot;,&quot;subexpr&quot;:&quot;M_{1}&quot;},{&quot;id&quot;:&quot;V_{1}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;V_{1}&quot;,&quot;subexpr&quot;:&quot;V_{1}&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;M_{2} V_{2}&quot;},{&quot;id&quot;:&quot;M_{2}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;M_{2}&quot;,&quot;subexpr&quot;:&quot;M_{2}&quot;},{&quot;id&quot;:&quot;V_{2}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;V_{2}&quot;,&quot;subexpr&quot;:&quot;V_{2}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;M_{1}&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;V_{1}&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;M_{2}&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;V_{2}&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">gibbs_free_energy</div>
+    <div class="row-latex">$$\Delta G = \Delta H - T \Delta S$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  Delta_G["$\Delta G$"]:::scalar
+  __add_2(("$+$")):::operator
+  Delta_H["$\Delta H$"]:::scalar
+  __negation_3@{ shape: "flip-tri", label: "$-$" }
+  __multiply_4(("$\times$")):::operator
+  T["$T$"]:::scalar
+  Delta_S["$\Delta S$"]:::scalar
+  class __negation_3 operator
+  Delta_G --&gt; __equals_1
+  Delta_H --&gt; __add_2
+  T --&gt; __multiply_4
+  Delta_S --&gt; __multiply_4
+  __multiply_4 --&gt; __negation_3
+  __negation_3 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="\Delta G = \Delta H - T \Delta S"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\Delta G = \Delta H - T \Delta S</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\Delta G = \\Delta H - T \\Delta S"
+    },
+    {
+      "id": "Delta G",
+      "type": "scalar",
+      "latex": "\\Delta G",
+      "subexpr": "\\Delta G"
+    },
+    {
+      "id": "__add_2",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "-T \\Delta S + \\Delta H"
+    },
+    {
+      "id": "Delta H",
+      "type": "scalar",
+      "latex": "\\Delta H",
+      "subexpr": "\\Delta H"
+    },
+    {
+      "id": "__negation_3",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-T \\Delta S"
+    },
+    {
+      "id": "__multiply_4",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "T \\Delta S"
+    },
+    {
+      "id": "T",
+      "type": "scalar",
+      "latex": "T",
+      "subexpr": "T"
+    },
+    {
+      "id": "Delta S",
+      "type": "scalar",
+      "latex": "\\Delta S",
+      "subexpr": "\\Delta S"
+    }
+  ],
+  "edges": [
+    {
+      "from": "Delta G",
+      "to": "__equals_1"
+    },
+    {
+      "from": "Delta H",
+      "to": "__add_2"
+    },
+    {
+      "from": "T",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "Delta S",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_4",
+      "to": "__negation_3"
+    },
+    {
+      "from": "__negation_3",
+      "to": "__add_2"
+    },
+    {
+      "from": "__add_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  Delta_G["$\Delta G$"]:::scalar
+  __add_2(("$+$")):::operator
+  Delta_H["$\Delta H$"]:::scalar
+  __negation_3@{ shape: "flip-tri", label: "$-$" }
+  __multiply_4(("$\times$")):::operator
+  T["$T$"]:::scalar
+  Delta_S["$\Delta S$"]:::scalar
+  class __negation_3 operator
+  Delta_G --&gt; __equals_1
+  Delta_H --&gt; __add_2
+  T --&gt; __multiply_4
+  Delta_S --&gt; __multiply_4
+  __multiply_4 --&gt; __negation_3
+  __negation_3 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\Delta G = \\Delta H - T \\Delta S&quot;},{&quot;id&quot;:&quot;Delta G&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta G&quot;,&quot;subexpr&quot;:&quot;\\Delta G&quot;},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;-T \\Delta S + \\Delta H&quot;},{&quot;id&quot;:&quot;Delta H&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta H&quot;,&quot;subexpr&quot;:&quot;\\Delta H&quot;},{&quot;id&quot;:&quot;__negation_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-T \\Delta S&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;T \\Delta S&quot;},{&quot;id&quot;:&quot;T&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;T&quot;,&quot;subexpr&quot;:&quot;T&quot;},{&quot;id&quot;:&quot;Delta S&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta S&quot;,&quot;subexpr&quot;:&quot;\\Delta S&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;Delta G&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;Delta H&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;T&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Delta S&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__negation_3&quot;},{&quot;from&quot;:&quot;__negation_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="summary">✅ <span class="count">16</span> rendered, <span class="count">0</span> errors out of <span class="count">16</span> expressions</div>
+<script>
+document.querySelectorAll('.row-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.target;
+    const panel = btn.closest('.row').querySelector('.' + target);
+    if (panel) panel.classList.toggle('open');
+  });
+});
+function copyText(text, btn) {
+  function onSuccess() {
+    btn.textContent = 'copied';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(onSuccess, function() { fallbackCopy(text, btn, onSuccess); });
+  } else {
+    fallbackCopy(text, btn, onSuccess);
+  }
+}
+function fallbackCopy(text, btn, onSuccess) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  var ok = false;
+  try { ok = document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  if (ok) onSuccess();
+}
+document.querySelectorAll('.row-copy-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const pane = btn.closest('.row-json-pane');
+    var text;
+    if (pane) {
+      text = pane.querySelector('pre').textContent;
+    } else {
+      text = btn.parentElement.dataset.latex || '';
+    }
+    copyText(text, btn);
+  });
+});
+</script>
+<script>
+// Patch fetchTheme to use inlined theme data
+(function() {
+  var _origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    if (typeof url === 'string' && url.startsWith('/api/graph/theme/')) {
+      var theme = window.__SG_REPORT_THEME__;
+      return Promise.resolve(new Response(JSON.stringify(theme), {
+        status: 200, headers: { 'Content-Type': 'application/json' }
+      }));
+    }
+    return _origFetch.call(this, url, opts);
+  };
+})();
+
+import('./d3-semantic-graph.js').then(function(mod) {
+  var D3SemanticGraphRenderer = mod.D3SemanticGraphRenderer;
+  document.querySelectorAll('.row-toggle-d3').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var row = btn.closest('.row');
+      var panel = row.querySelector('.row-d3');
+      if (!panel) return;
+      panel.classList.toggle('open');
+      if (!panel.classList.contains('open')) return;
+      if (panel.dataset.rendered) return;
+      panel.dataset.rendered = '1';
+      var graphJson = panel.dataset.graph;
+      if (!graphJson) return;
+      panel.innerHTML = '';
+      var graph = JSON.parse(graphJson);
+      var renderer = new D3SemanticGraphRenderer(panel, {
+        direction: 'left-right',
+        labels: 'description',
+        theme: 'default-dark',
+        katex: window.katex || null,
+      });
+      renderer.render(graph);
+    });
+  });
+});
+</script>
+</body>
+</html>
