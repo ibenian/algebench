@@ -172,20 +172,20 @@ GENERAL_RELATIVITY: list[CatalogEntry] = [
     ("conservation_law",
      r"\nabla_\mu T^{\mu\nu} = 0",
      PASS,
-     "mu,nu -> multiply; T,multiply -> power; "
-     "nabla_{mu},power -> multiply; multiply,num -> rel:equals",
-     "mu,nu -> __multiply_4; T,__multiply_4 -> __power_3; "
-     "__power_3,nabla_{mu} -> __multiply_2; "
-     "__multiply_2,__num_5 -> __equals_1",
+     r"mu,nu -> multiply; T,multiply -> power; "
+     r"\nabla_{\mu},power -> multiply; multiply,num -> rel:equals",
+     r"mu,nu -> __multiply_4; T,__multiply_4 -> __power_3; "
+     r"\nabla_{\mu},__power_3 -> __multiply_2; "
+     r"__multiply_2,__num_5 -> __equals_1",
      None),
 
     ("metric_inverse",
      r"g_{\mu\nu} g^{\nu\rho} = \delta^\rho_\mu",
      PASS,
-     r"nu,rho -> multiply; delta,rho_{mu} -> power; "
+     r"nu,rho -> multiply; \rho_{\mu},delta -> power; "
      r"g,multiply -> power; g_{\mu\nu},power -> multiply; "
      r"multiply,power -> rel:equals",
-     r"nu,rho -> __multiply_4; delta,rho_{mu} -> __power_5; "
+     r"nu,rho -> __multiply_4; \rho_{\mu},delta -> __power_5; "
      r"__multiply_4,g -> __power_3; __power_3,g_{\mu\nu} -> __multiply_2; "
      r"__multiply_2,__power_5 -> __equals_1",
      None),
@@ -196,16 +196,16 @@ GENERAL_RELATIVITY: list[CatalogEntry] = [
      PASS,
      r"Gamma,rho_{\mu\sigma} -> power; Gamma,rho_{\nu\sigma} -> power; "
      r"R,rho_{\sigma\mu\nu} -> power; "
-     "partial_{mu},power -> multiply; partial_{nu},power -> multiply; "
-     "multiply -> negation; multiply,negation -> add; add,power -> rel:equals",
+     r"\partial_{\mu},power -> multiply; \partial_{\nu},power -> multiply; "
+     r"multiply -> negation; multiply,negation -> add; add,power -> rel:equals",
      r"R,rho_{\sigma\mu\nu} -> __power_2; "
      r"Gamma,rho_{\nu\sigma} -> __power_5; "
      r"Gamma,rho_{\mu\sigma} -> __power_8; "
-     "__power_5,partial_{mu} -> __multiply_4; "
-     "__power_8,partial_{nu} -> __multiply_7; "
-     "__multiply_7 -> __negation_6; "
-     "__multiply_4,__negation_6 -> __add_3; "
-     "__add_3,__power_2 -> __equals_1",
+     r"\partial_{\mu},__power_5 -> __multiply_4; "
+     r"\partial_{\nu},__power_8 -> __multiply_7; "
+     r"__multiply_7 -> __negation_6; "
+     r"__multiply_4,__negation_6 -> __add_3; "
+     r"__add_3,__power_2 -> __equals_1",
      None),
 ]
 

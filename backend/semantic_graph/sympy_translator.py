@@ -1168,15 +1168,36 @@ def _collapse_multichar_subscripts(
         r"Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega"
     )
     _sub_token = rf"(?:\\(?:{_greek})|[A-Za-z])"
+
+    # Large operators whose subscript is a bound variable / index, NOT part of
+    # the symbol name (e.g. \sum_\mu, \int_\mu, \lim_\mu).  These must never be
+    # collapsed — doing so would erase the operator.  \partial and \nabla are
+    # deliberately absent: their indexed forms (\partial_\mu, \nabla_\mu) are
+    # treated as leaf symbols, so collapsing them is correct.
+    _operators = (
+        r"sum|prod|coprod|int|iint|iiint|oint|lim|limsup|liminf|"
+        r"max|min|sup|inf|arg|det|gcd|bigcup|bigcap|bigoplus|bigotimes|"
+        r"bigvee|bigwedge|bigsqcup"
+    )
+    # Base: a \cmd (not a large operator) or a single bare letter.
+    _base = rf"(?:\\(?!(?:{_operators})(?![A-Za-z]))[A-Za-z]+|[A-Za-z])"
+    # Subscript: braced 2+ contiguous tokens (v_{rms}, g_{\mu\nu}), a braced
+    # single Greek command (\nabla_{\mu}), or an *unbraced* single Greek command
+    # (\nabla_\mu).  Single bare letters (v_i) are left to SymPy.
+    _greek_cmd = rf"\\(?:{_greek})"
     pattern = re.compile(
-        r"(\\[A-Za-z]+|[A-Za-z])"          # base: \sigma or v
-        rf"_\{{({_sub_token}{{2,}})\}}"     # subscript: 2+ contiguous tokens
+        rf"({_base})"
+        rf"_(\{{(?:{_sub_token}{{2,}}|{_greek_cmd})\}}|{_greek_cmd})"
     )
 
     def _repl(m: re.Match) -> str:
         base = m.group(1)
         sub = m.group(2)
         full = m.group(0)
+        # Strip surrounding braces when present so the override carries the bare
+        # subscript content (which we re-wrap below).
+        if sub.startswith("{"):
+            sub = sub[1:-1]
         if full not in seen:
             idx = len(seen)
             seen[full] = idx
