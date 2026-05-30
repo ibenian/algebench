@@ -1511,9 +1511,35 @@ function showEnrichmentIndicator(step) {
     text.textContent = 'Enriching graph…';
     el.append(dots, text);
     stack.appendChild(el);
+    positionEnrichmentStack();
     refreshEnrichmentIndicatorVisibility();
     return el;
 }
+
+// Raise the enrichment-indicator stack so it sits directly above whatever
+// legends are docked in the bottom-right of the viewport (the edge-semantics
+// legend and/or the chart legend, which live inside .d3-graph-card). They
+// share the viewport corner, so without this the pills would overlap them.
+function positionEnrichmentStack() {
+    const viewport = document.getElementById('graph-viewport');
+    if (!viewport) return;
+    const stack = viewport.querySelector('.graph-enrich-indicator-stack');
+    if (!stack) return;
+    const vpRect = viewport.getBoundingClientRect();
+    let reach = 0; // px the tallest docked legend rises from the viewport bottom
+    for (const sel of ['.d3sg-edge-legend', '.sgc-legend-panel']) {
+        const el = viewport.querySelector(sel);
+        if (!el || el.classList.contains('hidden') || el.offsetParent === null) continue;
+        const r = el.getBoundingClientRect();
+        reach = Math.max(reach, vpRect.bottom - r.top);
+    }
+    stack.style.bottom = reach > 0 ? `${Math.round(reach) + 8}px` : '8px';
+}
+
+// The chart legend (managed by SgChartManager) appears, grows and disappears
+// independently of enrichment. It fires this event whenever it re-lays-out so
+// we can re-stack the enrichment pills above the new legend height.
+document.addEventListener('sgc:legend-change', positionEnrichmentStack);
 
 function refreshEnrichmentIndicatorVisibility() {
     const viewport = document.getElementById('graph-viewport');

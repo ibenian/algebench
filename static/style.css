@@ -3911,10 +3911,10 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 .graph-enrich-indicator-stack {
     position: absolute;
     right: 8px;
-    /* Sit above the edge-semantics / chart legends that dock to the
-       bottom-right of the graph viewport, so all three stack vertically
-       without overlapping. */
-    bottom: 116px;
+    /* Base position is the bottom-right corner; positionEnrichmentStack()
+       in graph-view.js raises `bottom` at runtime so the pills sit above
+       whatever edge-semantics / chart legends are docked there. */
+    bottom: 8px;
     display: flex;
     flex-direction: column-reverse;
     gap: 8px;
