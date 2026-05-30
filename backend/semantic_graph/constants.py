@@ -170,6 +170,7 @@ _OPERATOR_GLYPHS: dict[str, str] = {
     "conjunction": "∧", "disjunction": "∨",
     "intersection": "∩", "union": "∪", "set_difference": "∖",
     "sum": "∑", "product": "∏", "limit": "lim",
+    "concentration": "[·]",
     "factorial": "(·)!", "sqrt": "√(·)",
     "log": "log", "logarithm": "log", "exp": "exp",
     "sin": "sin", "cos": "cos", "tan": "tan",
@@ -208,6 +209,7 @@ _OPERATOR_KINDS: dict[str, str] = {
     "derivative": "aggregate", "partial_derivative": "aggregate",
     "inner_product": "quantum",
     "outer_product": "quantum",
+    "concentration": "chemistry",
     "piecewise": "structural",
     "branch": "structural",
 }

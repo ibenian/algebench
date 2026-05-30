@@ -1090,17 +1090,43 @@ def _find_unpaired_pipes(s: str) -> list[int]:
     return unpaired
 
 
+_EXPECTATION_STYLE_RE: re.Pattern[str] = re.compile(
+    r"\\(?:mathbb|mathbf|mathrm|operatorname)\s*\{E\}\s*$"
+)
+
+
+def _is_expectation_operator(latex: str, j: int) -> bool:
+    r"""Return True if the token ending at index ``j`` is expectation ``E``.
+
+    Matches a bare single-letter ``E`` (not part of a longer identifier)
+    or a styled form like ``\mathbb{E}`` / ``\mathrm{E}``.
+    """
+    if j < 0:
+        return False
+    # Bare E.  In LaTeX adjacent letters are implicit multiplication
+    # (``aE[X]`` = ``a · E[X]``), so a preceding letter is fine; only a
+    # backslash would make this part of a command name.
+    if latex[j] == "E":
+        return not (j > 0 and latex[j - 1] == "\\")
+    # Styled E: \mathbb{E}, \mathrm{E}, \operatorname{E}, …
+    if latex[j] == "}":
+        return _EXPECTATION_STYLE_RE.search(latex[: j + 1]) is not None
+    return False
+
+
 def _rewrite_bracket_functions(latex: str) -> str:
     r"""Rewrite ``E[X]`` → ``E(X)`` so SymPy sees a function call.
 
     SymPy's ``parse_latex`` treats square brackets as grouping, so
     ``E[X]`` parses as implicit multiplication ``E · X``.  This pass
-    detects identifier-followed-by-``[`` patterns and rewrites the
-    brackets to parentheses.
+    detects the expectation operator immediately before ``[`` and
+    rewrites the brackets to parentheses.
 
-    Only single-letter identifiers or ``\cmd`` tokens immediately
-    before ``[`` are rewritten — standalone ``[…]`` (matrices, etc.)
-    is left untouched.
+    Only the expectation operator ``E`` qualifies — either bare
+    (``E[X]``) or styled (``\mathbb{E}[X]``, ``\mathrm{E}[X]``, …).
+    Every other ``identifier[…]`` (concentration ``k[A]``, probability
+    ``P[A]``, indexing ``a[i]``, matrices) is left untouched, since
+    ``E[X]`` is the only bracket form that denotes a function call.
     """
     if "[" not in latex:
         return latex
@@ -1110,11 +1136,11 @@ def _rewrite_bracket_functions(latex: str) -> str:
     n = len(latex)
     while i < n:
         if latex[i] == "[":
-            # Check if preceded by an identifier (function name).
+            # Only the expectation operator E[...] is a function call.
             j = i - 1
             while j >= 0 and latex[j] in " \t":
                 j -= 1
-            is_func = j >= 0 and (latex[j].isalpha() or latex[j] == "}")
+            is_func = _is_expectation_operator(latex, j)
 
             if is_func:
                 # Find matching ']'.
@@ -1137,6 +1163,95 @@ def _rewrite_bracket_functions(latex: str) -> str:
         i += 1
 
     return "".join(out)
+
+
+# Base index for concentration placeholders.  Kept well above the small
+# indices used by the other ``\Xi_{N}`` collapse passes (subscripts, text,
+# overline — all start near 0) so the merged-override dict never clashes.
+_CONCENTRATION_XI_BASE = 600
+
+
+def _collapse_concentration_brackets(
+    latex: str,
+    start_idx: int = _CONCENTRATION_XI_BASE,
+) -> tuple[str, dict[str, dict[str, str]]]:
+    r"""Rewrite chemistry concentration brackets ``[A]`` into placeholders.
+
+    In chemistry, ``[A]`` denotes the molar concentration of species *A* —
+    a unary *operator* applied to the species, **not** grouping or a
+    function call.  SymPy has no concept of this, so each ``[species]`` is
+    replaced with a ``\Xi_{N}(species)`` placeholder function and recorded
+    in *overrides* with ``concentration=True``.  The walker turns that
+    placeholder into a dedicated ``concentration`` operator node fed by the
+    species, and the subexpr restorer rebuilds the original ``[…]`` form.
+
+    A trailing subscript (``[A]_0`` — initial concentration) is folded into
+    the species argument (``A_{0}``) so the two forms stay distinct.  A
+    trailing superscript (``[A]^2``) is left outside the bracket so it
+    becomes an ordinary power over the concentration node.
+    """
+    if "[" not in latex:
+        return latex, {}
+
+    overrides: dict[str, dict[str, str]] = {}
+    out: list[str] = []
+    i = 0
+    n = len(latex)
+    counter = start_idx
+    while i < n:
+        if latex[i] == "[":
+            # Find the matching ``]`` (single level of nesting tolerated).
+            depth = 1
+            k = i + 1
+            while k < n and depth > 0:
+                if latex[k] == "[":
+                    depth += 1
+                elif latex[k] == "]":
+                    depth -= 1
+                k += 1
+            if depth == 0:
+                content = latex[i + 1:k - 1].strip()
+                # Absorb a trailing subscript: ``[A]_0`` / ``[A]_{0}``.
+                sub_latex = ""
+                arg = content
+                j = k
+                while j < n and latex[j] in " \t":
+                    j += 1
+                if j < n and latex[j] == "_":
+                    j += 1
+                    if j < n and latex[j] == "{":
+                        depth2 = 1
+                        m = j + 1
+                        while m < n and depth2 > 0:
+                            if latex[m] == "{":
+                                depth2 += 1
+                            elif latex[m] == "}":
+                                depth2 -= 1
+                            m += 1
+                        sub_body = latex[j + 1:m - 1]
+                        sub_latex = "_{" + sub_body + "}"
+                        arg = f"{content}_{{{sub_body}}}"
+                        k = m
+                    elif j < n:
+                        sub_body = latex[j]
+                        sub_latex = "_" + sub_body
+                        arg = f"{content}_{{{sub_body}}}"
+                        k = j + 1
+                name = f"Xi_{{{counter}}}"
+                overrides[name] = {
+                    "concentration": True,
+                    "label": "concentration",
+                    "original_latex": f"[{content}]{sub_latex}",
+                    "latex": f"[{content}]{sub_latex}",
+                }
+                out.append(rf"\Xi_{{{counter}}}({arg})")
+                counter += 1
+                i = k
+                continue
+        out.append(latex[i])
+        i += 1
+
+    return "".join(out), overrides
 
 
 def _normalize_script_order(latex: str) -> str:
@@ -2319,8 +2434,34 @@ class SemanticGraphBuilder:
     def _restore_placeholders(self, latex: str) -> str:
         if not self._overrides:
             return latex
+        # --- Concentration placeholders first ---
+        # SymPy renders ``Xi_{N}(A)`` as ``\operatorname{Xi}_{N}{\left(A
+        # \right)}`` (and ``Xi_{N}(A)**2`` as ``\operatorname{Xi}_{N}^{2}{
+        # \left(A \right)}``).  Replace the whole function-application form
+        # with the original ``[…]`` notation, hoisting any power that SymPy
+        # tucked between the name and the argument back to the outside.
+        for name, attrs in self._overrides.items():
+            if not attrs.get("concentration"):
+                continue
+            m_c = re.match(r"(Xi|Theta|Phi)_\{(\d+)\}", name)
+            if not m_c:
+                continue
+            orig = (attrs.get("original_latex")
+                    or attrs.get("latex") or "").strip()
+            base, idx = m_c.group(1), m_c.group(2)
+            pat = re.compile(
+                rf"\\operatorname\{{{base}}}_\{{{idx}}}"
+                rf"(\^\{{[^{{}}]*}})?"
+                rf"\{{\\left\(.*?\\right\)}}"
+            )
+            latex = pat.sub(lambda mm: orig + (mm.group(1) or ""), latex)
+            # Bare-token fallbacks (no rendered args).
+            latex = latex.replace(rf"\{name}", orig)
+            latex = latex.replace(name, orig)
         for name, attrs in self._overrides.items():
             if not _PLACEHOLDER_NAME_RE.fullmatch(name):
+                continue
+            if attrs.get("concentration"):
                 continue
             real = attrs.get("original_latex") or attrs.get("latex")
             if not real:
@@ -2382,7 +2523,7 @@ class SemanticGraphBuilder:
             if name in self._overrides:
                 _INTERNAL_OVERRIDE_KEYS = {
                     "bra_content", "ket_content", "original_latex",
-                    "latex_cmd",
+                    "latex_cmd", "concentration",
                 }
                 attrs.update({
                     k: v for k, v in self._overrides[name].items()
@@ -2469,6 +2610,33 @@ class SemanticGraphBuilder:
         if isinstance(expr, sympy.Function):
             func_name = type(expr).__name__
             op_name = _FUNC_OP_MAP.get(func_name, func_name)
+            # --- Concentration placeholder (chemistry ``[A]``) ---
+            # ``\Xi_{N}(species)`` injected by _collapse_concentration_brackets
+            # becomes a dedicated unary ``concentration`` operator node fed by
+            # the species.  The subexpr is the original ``[…]`` form so the
+            # placeholder never leaks into display.
+            if (
+                _PLACEHOLDER_NAME_RE.fullmatch(func_name)
+                and func_name in self._overrides
+                and self._overrides[func_name].get("concentration")
+            ):
+                ovr = self._overrides[func_name]
+                node_id = self._next_id("concentration")
+                self._add_node(
+                    node_id, type="operator", op="concentration",
+                    # Use ``\thinspace`` (backslash-letters) rather than ``\,``
+                    # (backslash-punct): Mermaid's string parser strips a
+                    # backslash before punctuation, mangling ``\,`` → ``,`` and
+                    # turning the thin spaces into literal commas in KaTeX.
+                    # ``\thinspace`` survives Mermaid and renders identically to
+                    # ``\,`` in both the D3 and Mermaid KaTeX passes.
+                    latex=r"[\thinspace\cdot\thinspace]",
+                    subexpr=ovr.get("original_latex", ovr.get("latex", "")),
+                )
+                if expr.args:
+                    child_id = self._walk(expr.args[0])
+                    self._add_edge(child_id, node_id)
+                return node_id
             # Resolve Xi_{N} placeholders used as functions.
             if _PLACEHOLDER_NAME_RE.fullmatch(func_name) and func_name in self._overrides:
                 ovr = self._overrides[func_name]
@@ -3504,7 +3672,16 @@ def _latex_to_semantic_graph_dict(
     latex = _normalize_latex(latex)
     latex, infix_overrides = _rewrite_infix_ops(latex)
     latex = _rewrite_prefix_ops(latex)
-    latex = _rewrite_bracket_functions(latex)
+    # The bracket→paren rewrite only fires on the expectation operator
+    # ``E[X]`` → ``E(X)`` (see ``_rewrite_bracket_functions``); every other
+    # ``x[…]`` is left untouched.  In chemistry we skip it entirely so that a
+    # stray ``E[A]`` is read as a concentration (E is a species/coefficient),
+    # not an expectation — chemistry's ``[…]`` brackets are turned into
+    # dedicated concentration nodes by the collapse pass below, on the
+    # to-be-parsed copy only (the original ``[…]`` stays in ``latex`` for
+    # display/ordering).
+    if domain != "chemistry":
+        latex = _rewrite_bracket_functions(latex)
     latex, conditional_bar_funcs = _rewrite_conditional_bar(latex)
     latex, assertion_funcs = _rewrite_assertion_ops(latex)
     latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
@@ -3533,6 +3710,12 @@ def _latex_to_semantic_graph_dict(
     # raw LaTeX, *before* any placeholder-collapse pass — otherwise the reorder
     # would split a \Theta_{N}/\Xi_{N} placeholder token apart.
     script_normalized = _normalize_script_order(latex)
+    if domain == "chemistry":
+        script_normalized, concentration_overrides = (
+            _collapse_concentration_brackets(script_normalized)
+        )
+    else:
+        concentration_overrides = {}
     braket_collapsed, braket_overrides = _collapse_braket_notation(script_normalized)
     compound_collapsed, compound_overrides = _collapse_compound_symbols(braket_collapsed)
     subscript_collapsed, subscript_overrides = _collapse_multichar_subscripts(compound_collapsed)
@@ -3558,6 +3741,7 @@ def _latex_to_semantic_graph_dict(
 
     latex_commands = _extract_latex_commands(latex)
     merged_overrides: dict[str, dict[str, str]] = {
+        **concentration_overrides,
         **braket_overrides,
         **compound_overrides,
         **subscript_overrides,

@@ -130,7 +130,7 @@ def _collect_expressions() -> list[tuple[str, list[tuple[str, str, str | None]]]
         ("Quantum Mechanics", QUANTUM_EXPRESSIONS, "quantum_mechanics"),
         ("Relativity", RELATIVITY_EXPRESSIONS, "mechanics"),
         ("Fluid Dynamics", FLUIDS_EXPRESSIONS, "mechanics"),
-        ("Chemistry", CHEMISTRY_EXPRESSIONS, None),
+        ("Chemistry", CHEMISTRY_EXPRESSIONS, "chemistry"),
     ):
         items = [
             (tid, latex, domain)

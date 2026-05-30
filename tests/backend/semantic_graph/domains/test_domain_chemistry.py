@@ -1,10 +1,12 @@
 """Domain suite: Chemistry.
 
 Covers rate laws, equilibrium constants, Nernst equation, Arrhenius
-equation, ideal gas law, and Beer-Lambert law.  This is Phase 4 — no
-domain hint is used; the parser handles most chemical equations but
-struggles with ionic notation and ``\\Delta`` quantities which produce
-placeholder leaks.
+equation, ideal gas law, and Beer-Lambert law.  This is Phase 4 — the
+``domain="chemistry"`` hint enables concentration-bracket parsing, so
+``[A]`` becomes a dedicated ``concentration`` operator node wrapping the
+species (``k[A]`` → ``k × concentration(A)``).  The parser still struggles
+with ionic notation (charge superscripts inside brackets), which is why the
+``[H^+]`` / ``[A^{m+}]`` cases remain leniently-expected failures.
 
 Suite-specific invariant (from design doc §8.3):
   All operator nodes have ``op`` in ALLOWED_OPS.
@@ -20,6 +22,7 @@ import pytest
 from tests.backend.semantic_graph.generators.invariants import (
     PASS,
     XFAIL,
+    XFAIL_LENIENT,
     SKIP,
     label_by_type,
     label_by_id,
@@ -35,6 +38,7 @@ from tests.backend.semantic_graph.generators.invariants import (
 
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
+    "concentration",
 }
 
 
@@ -56,52 +60,68 @@ KINETICS_EXPRESSIONS: list[CatalogEntry] = [
     ("rate_first_order",
      r"r = k [A]",
      PASS,
-     "A -> fn:k; fn:k,r -> rel:equals",
-     "A -> __k_2; __k_2,r -> __equals_1",
-     None),
+     "A -> concentration; concentration,k -> multiply; "
+     "multiply,r -> rel:equals",
+     "A -> __concentration_3; __concentration_3,k -> __multiply_2; "
+     "__multiply_2,r -> __equals_1",
+     [{"op": "concentration"}]),
 
     ("rate_second_order",
      r"r = k [A]^2",
      PASS,
-     "A -> fn:k; fn:k -> power; power,r -> rel:equals",
-     "A -> __k_3; __k_3 -> __power_2; "
-     "__power_2,r -> __equals_1",
+     "A -> concentration; concentration -> power; k,power -> multiply; "
+     "multiply,r -> rel:equals",
+     "A -> __concentration_4; __concentration_4 -> __power_3; "
+     "__power_3,k -> __multiply_2; __multiply_2,r -> __equals_1",
      [{"op": "power", "exponent": "2"}]),
 
     ("rate_general",
      r"r = k [A]^m [B]^n",
      PASS,
-     "A -> fn:k; B,n -> power; fn:k,m -> power; "
-     "power,power -> multiply; multiply,r -> rel:equals",
-     "A -> __k_4; B,n -> __power_5; "
-     "__k_4,m -> __power_3; "
-     "__power_3,__power_5 -> __multiply_2; __multiply_2,r -> __equals_1",
+     "A -> concentration; B -> concentration; concentration,m -> power; "
+     "concentration,n -> power; power,power -> multiply; "
+     "k,multiply -> multiply; multiply,r -> rel:equals",
+     "A -> __concentration_5; B -> __concentration_7; "
+     "__concentration_5,m -> __power_4; __concentration_7,n -> __power_6; "
+     "__power_4,__power_6 -> __multiply_3; __multiply_3,k -> __multiply_2; "
+     "__multiply_2,r -> __equals_1",
      None),
 
     ("first_order_integrated",
      r"\ln [A] = -kt + \ln [A]_0",
      PASS,
-     "A,const:__const_3 -> fn:log; A,const:__const_8 -> fn:log; "
-     "k,t -> multiply; multiply -> negation; fn:log,negation -> add; "
-     "add,fn:log -> rel:equals",
-     "A,__const_3 -> __log_2; A,__const_8 -> __log_7; "
-     "k,t -> __multiply_6; __multiply_6 -> __negation_5; "
-     "__log_7,__negation_5 -> __add_4; __add_4,__log_2 -> __equals_1",
+     "A -> concentration; A_{0} -> concentration; k,t -> multiply; "
+     "concentration,const:__const_10 -> fn:log; "
+     "concentration,const:__const_4 -> fn:log; multiply -> negation; "
+     "fn:log,negation -> add; add,fn:log -> rel:equals",
+     "A -> __concentration_3; A_{0} -> __concentration_9; "
+     "k,t -> __multiply_7; __concentration_3,__const_4 -> __log_2; "
+     "__concentration_9,__const_10 -> __log_8; __multiply_7 -> __negation_6; "
+     "__log_8,__negation_6 -> __add_5; __add_5,__log_2 -> __equals_1",
      None),
 
     ("second_order_integrated",
      r"\frac{1}{[A]} = kt + \frac{1}{[A]_0}",
      PASS,
-     "k,t -> multiply; A -> power; multiply,power -> rel:equals",
-     "k,t -> __multiply_3; A -> __power_2; "
-     "__multiply_3,__power_2 -> __equals_1",
+     "A -> concentration; A_{0} -> concentration; k,t -> multiply; "
+     "concentration -> power; concentration -> power; "
+     "multiply,power -> add; add,power -> rel:equals",
+     "A -> __concentration_3; A_{0} -> __concentration_7; "
+     "k,t -> __multiply_5; __concentration_3 -> __power_2; "
+     "__concentration_7 -> __power_6; __multiply_5,__power_6 -> __add_4; "
+     "__add_4,__power_2 -> __equals_1",
      [{"op": "power", "exponent": "-1"}]),
 
     ("first_order_decay",
      r"[A] = [A]_0 e^{-kt}",
      PASS,
-     "A,A -> rel:equals",
-     "A,A -> __equals_1",
+     "A -> concentration; A_{0} -> concentration; k,t -> multiply; "
+     "multiply -> negation; e,negation -> power; "
+     "concentration,power -> multiply; concentration,multiply -> rel:equals",
+     "A -> __concentration_2; A_{0} -> __concentration_4; "
+     "k,t -> __multiply_7; __multiply_7 -> __negation_6; "
+     "__negation_6,e -> __power_5; __concentration_4,__power_5 -> __multiply_3; "
+     "__concentration_2,__multiply_3 -> __equals_1",
      None),
 ]
 
@@ -110,15 +130,20 @@ EQUILIBRIUM_EXPRESSIONS: list[CatalogEntry] = [
     ("equilibrium_constant",
      r"K = \frac{[C]^c [D]^d}{[A]^a [B]^b}",
      PASS,
-     "A,a -> power; B,b -> power; C,c -> power; D,d -> power; "
+     "A -> concentration; B -> concentration; C -> concentration; "
+     "D -> concentration; a,concentration -> power; b,concentration -> power; "
+     "c,concentration -> power; concentration,d -> power; "
      "power,power -> multiply; power,power -> multiply; "
      "multiply -> power; multiply,power -> multiply; "
      "K,multiply -> rel:equals",
-     "C,c -> __power_4; D,d -> __power_5; A,a -> __power_8; "
-     "B,b -> __power_9; __power_4,__power_5 -> __multiply_3; "
-     "__power_8,__power_9 -> __multiply_7; "
-     "__multiply_7 -> __power_6; "
-     "__multiply_3,__power_6 -> __multiply_2; "
+     "A -> __concentration_11; B -> __concentration_13; "
+     "C -> __concentration_5; D -> __concentration_7; "
+     "__concentration_11,a -> __power_10; __concentration_13,b -> __power_12; "
+     "__concentration_5,c -> __power_4; __concentration_7,d -> __power_6; "
+     "__power_4,__power_6 -> __multiply_3; "
+     "__power_10,__power_12 -> __multiply_9; "
+     "__multiply_9 -> __power_8; "
+     "__multiply_3,__power_8 -> __multiply_2; "
      "K,__multiply_2 -> __equals_1",
      None),
 
@@ -218,23 +243,26 @@ SOLUTION_EXPRESSIONS: list[CatalogEntry] = [
      None),
 ]
 
-# Aspirational expressions — parser limitations with ionic notation and Delta
+# Aspirational expressions — parser limitations with ionic notation.
+# Concentration brackets now parse, but charge superscripts inside the
+# bracket (``[H^+]``, ``[A^{m+}]``) still leak the species as a raw symbol
+# rather than feeding a clean concentration node — hence lenient xfail.
 ASPIRATIONAL_EXPRESSIONS: list[CatalogEntry] = [
     ("ph_definition",
      r"\text{pH} = -\log [H^+]",
-     XFAIL,
+     XFAIL_LENIENT,
      "", "",
      None),
 
     ("solubility_product",
      r"K_{sp} = [A^{m+}]^m [B^{n-}]^n",
-     XFAIL,
+     XFAIL_LENIENT,
      "", "",
      None),
 
     ("water_autoionization",
      r"K_w = [H^+][OH^-]",
-     XFAIL,
+     XFAIL_LENIENT,
      "", "",
      None),
 ]
@@ -268,25 +296,25 @@ class TestChemistryDomain:
     """Chemistry domain suite — universal + suite-specific invariants."""
 
     def test_universal_invariants(self, parse, latex, sig_type, sig_id, node_checks):
-        graph = parse(latex)
-        assert_universal_invariants(graph, latex=latex)
+        graph = parse(latex, domain="chemistry")
+        assert_universal_invariants(graph, latex=latex, domain="chemistry")
 
     def test_classification_is_algebraic(self, parse, latex, sig_type, sig_id, node_checks):
-        graph = parse(latex)
+        graph = parse(latex, domain="chemistry")
         assert_classification_kind_is(graph, "algebraic", latex=latex)
 
     def test_operators_within_allowed_set(self, parse, latex, sig_type, sig_id, node_checks):
-        graph = parse(latex)
+        graph = parse(latex, domain="chemistry")
         assert_operators_in(graph, ALLOWED_OPS, latex=latex)
 
     def test_connectivity_by_type(self, parse, latex, sig_type, sig_id, node_checks):
-        graph = parse(latex)
+        graph = parse(latex, domain="chemistry")
         assert_signature(graph, sig_type, labeler=label_by_type, latex=latex)
 
     def test_connectivity_by_id(self, parse, latex, sig_type, sig_id, node_checks):
-        graph = parse(latex)
+        graph = parse(latex, domain="chemistry")
         assert_signature(graph, sig_id, labeler=label_by_id, latex=latex)
 
     def test_node_properties(self, parse, latex, sig_type, sig_id, node_checks):
-        graph = parse(latex)
+        graph = parse(latex, domain="chemistry")
         assert_node_properties(graph, node_checks, latex=latex)
