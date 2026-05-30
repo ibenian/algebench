@@ -1102,6 +1102,17 @@ export class SgChartManager {
 
         this._legendPanel.classList.remove('hidden');
 
+        // Dock the chart legend immediately to the LEFT of the edge-semantics
+        // legend (which sits in the bottom-right corner). When the edge legend
+        // is absent or hidden, fall back to the corner ourselves.
+        const parent = this._legendPanel.parentElement;
+        const edgeLegend = parent ? parent.querySelector('.d3sg-edge-legend') : null;
+        const edgeVisible = edgeLegend && !edgeLegend.classList.contains('hidden')
+            && edgeLegend.offsetParent !== null;
+        this._legendPanel.style.right = edgeVisible
+            ? `${edgeLegend.offsetWidth + 16}px`
+            : '8px';
+
         const title = document.createElement('div');
         title.className = 'sgc-legend-title';
         title.textContent = 'CHARTS';
