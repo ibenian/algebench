@@ -365,6 +365,8 @@ export class D3SemanticGraphRenderer {
         this.onBackgroundClick = opts.onBackgroundClick || null;
 
         this.onZoomChange = opts.onZoomChange || null;
+        this.onTransformChange = opts.onTransformChange || null;
+        this.onChartClick = opts.onChartClick || null;
 
         this._graph = null;
         this._theme = null;
@@ -606,6 +608,9 @@ export class D3SemanticGraphRenderer {
                 this._viewport.attr('transform', event.transform);
                 if (this.onZoomChange) {
                     this.onZoomChange(Math.round(event.transform.k * 100));
+                }
+                if (this.onTransformChange) {
+                    this.onTransformChange(event.transform);
                 }
             });
 
@@ -1256,6 +1261,51 @@ export class D3SemanticGraphRenderer {
         return g;
     }
 
+    _chartBtnPos(shape) {
+        const sz = 14, half = sz / 2;
+        const dir = this.direction;
+        if (shape.type === 'rect' || shape.type === 'stadium') {
+            if (dir === 'left-right')  return { x: -shape.hw - half, y: -half };
+            if (dir === 'right-left')  return { x: shape.hw - half, y: -half };
+            if (dir === 'bottom-up')   return { x: -half, y: shape.hh - half };
+            return { x: -half, y: -shape.hh - half };
+        }
+        const r = shape.r || 26;
+        if (dir === 'left-right')  return { x: -r - half, y: -half };
+        if (dir === 'right-left')  return { x: r - half, y: -half };
+        if (dir === 'bottom-up')   return { x: -half, y: r - half };
+        return { x: -half, y: -r - half };
+    }
+
+    _appendChartBtn(group, d) {
+        const shape = this._nodeShape(d);
+        const pos = this._chartBtnPos(shape);
+        const self = this;
+        const sz = 14;
+        const g = group.append('g')
+            .attr('class', 'd3sg-chart-btn')
+            .attr('transform', `translate(${pos.x},${pos.y})`)
+            .on('click', function (event) {
+                event.stopPropagation();
+                if (self.onChartClick) self.onChartClick(d.data.id, d.data, this);
+            });
+        g.append('rect')
+            .attr('x', 0).attr('y', 0)
+            .attr('width', sz).attr('height', sz)
+            .attr('rx', 2)
+            .attr('fill', '#1a2440')
+            .attr('stroke', '#42a5f5')
+            .attr('stroke-width', 1);
+        g.append('path')
+            .attr('d', `M3,${sz-3} L5,5 L8,8 L${sz-3},3`)
+            .attr('fill', 'none')
+            .attr('stroke', '#42a5f5')
+            .attr('stroke-width', 1.5)
+            .attr('stroke-linecap', 'round')
+            .attr('stroke-linejoin', 'round');
+        return g;
+    }
+
     _drawNode(group, d) {
         group.selectAll('*').remove();
         const data = d.data;
@@ -1324,6 +1374,7 @@ export class D3SemanticGraphRenderer {
 
         if (isOp && data._childIds && data._childIds.length > 0) {
             this._appendChevron(group, d, false);
+            this._appendChartBtn(group, d);
         }
     }
 

@@ -19,6 +19,7 @@
 import { state } from '/state.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
+import { SgChartManager } from '/graph-panel/sg-chart.js';
 import { makeAiAskButton, renderKaTeX } from '/labels.js';
 
 let _currentGraphPanel = null;
@@ -26,6 +27,7 @@ let _currentSemanticKey = null;
 let _activeStepForPanel = null;
 let _initDone = false;
 let _currentD3Renderer = null;
+let _currentChartManager = null;
 let _d3NodeAskBtn = null;
 let _d3NodeAskHideTimer = null;
 let _d3HoveredNodeId = null;
@@ -715,6 +717,10 @@ function clearGraph() {
         try { _currentGraphPanel.destroy(); } catch {}
         _currentGraphPanel = null;
     }
+    if (_currentChartManager) {
+        try { _currentChartManager.destroy(); } catch {}
+        _currentChartManager = null;
+    }
     if (_currentD3Renderer) {
         try { _currentD3Renderer.destroy(); } catch {}
         _currentD3Renderer = null;
@@ -788,6 +794,13 @@ async function _renderWithD3(container, graph, step, key) {
 
     _d3ActiveGraph = graph;
 
+    if (_currentChartManager) {
+        try { _currentChartManager.destroy(); } catch {}
+    }
+    _currentChartManager = new SgChartManager(container, graph, {
+        katex: window.katex,
+    });
+
     // Reuse or create D3 renderer
     if (!_currentD3Renderer || _currentD3Renderer._destroyed) {
         _currentD3Renderer = new D3SemanticGraphRenderer(container, {
@@ -818,6 +831,17 @@ async function _renderWithD3(container, graph, step, key) {
             onZoomChange: (pct) => {
                 const label = document.getElementById('graph-zoom-level');
                 if (label) label.textContent = `${pct}%`;
+            },
+            onTransformChange: (t) => {
+                if (_currentChartManager) _currentChartManager.setTransform(t);
+            },
+            onChartClick: (nodeId, nodeData, btnEl) => {
+                if (!_currentChartManager) return;
+                if (_currentChartManager.charts.has(nodeId)) {
+                    _currentChartManager.closeChart(nodeId);
+                } else {
+                    _currentChartManager.openChart(nodeId, btnEl);
+                }
             },
         });
     } else {

@@ -1,0 +1,310 @@
+/* SgChartManager — chart plotting overlay for semantic graph nodes */
+
+/* ── Chart button on nodes ──────────────────────────────────────────── */
+.d3sg-chart-btn {
+    opacity: 0;
+    cursor: pointer;
+    pointer-events: all;
+    transition: opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-chart-btn {
+    opacity: 0.7;
+}
+.d3sg-chart-btn:hover {
+    opacity: 1 !important;
+}
+
+/* ── Chart box (inline or pinned) ───────────────────────────────────── */
+.sgc-chart-box {
+    width: 340px;
+    background: rgba(10, 12, 26, 0.92);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    transition: box-shadow 0.2s ease;
+}
+.sgc-chart-box:hover {
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.55);
+}
+
+.sgc-chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(110, 124, 180, 0.2);
+    gap: 8px;
+    min-height: 36px;
+}
+.sgc-chart-box:not(.sgc-pinned) .sgc-chart-header {
+    cursor: grab;
+}
+.sgc-chart-box:not(.sgc-pinned) .sgc-chart-header:active {
+    cursor: grabbing;
+}
+
+.sgc-chart-title {
+    font-size: 0.78rem;
+    color: #dde6ff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+.sgc-chart-title .katex {
+    font-size: 0.85em;
+}
+
+.sgc-chart-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.sgc-x-select {
+    background: rgba(30, 40, 70, 0.8);
+    border: 1px solid rgba(110, 124, 180, 0.3);
+    border-radius: 4px;
+    color: #aebbd1;
+    font-size: 0.7rem;
+    padding: 2px 4px;
+    cursor: pointer;
+    outline: none;
+    max-width: 70px;
+}
+.sgc-x-select:hover {
+    border-color: rgba(110, 124, 180, 0.6);
+    color: #dde6ff;
+}
+.sgc-x-select:focus {
+    border-color: #42a5f5;
+}
+
+.sgc-btn {
+    background: none;
+    border: 1px solid rgba(110, 124, 180, 0.25);
+    border-radius: 4px;
+    color: #7e8aa3;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    padding: 0;
+    transition: all 0.12s ease;
+}
+.sgc-btn:hover {
+    background: rgba(110, 124, 180, 0.15);
+    border-color: rgba(110, 124, 180, 0.5);
+    color: #dde6ff;
+}
+
+.sgc-pin-btn {
+    font-size: 0.65rem;
+}
+
+.sgc-close-btn {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.sgc-canvas-wrap {
+    position: relative;
+    height: 200px;
+    padding: 6px 8px 8px 4px;
+}
+.sgc-canvas-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* ── Pinned charts panel — top of viewport, stacks left→right ─────── */
+.sgc-pinned-panel {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    z-index: 30;
+    pointer-events: none;
+}
+.sgc-pinned-panel:empty {
+    display: none;
+}
+
+.sgc-chart-box.sgc-pinned {
+    pointer-events: all;
+    flex-shrink: 0;
+    position: relative;
+}
+
+/* ── Resize handle for pinned charts ───────────────────────────────── */
+.sgc-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    cursor: nwse-resize;
+    z-index: 5;
+}
+.sgc-resize-handle::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid rgba(110, 124, 180, 0.4);
+    border-bottom: 2px solid rgba(110, 124, 180, 0.4);
+}
+.sgc-resize-handle:hover::after {
+    border-color: rgba(140, 160, 220, 0.7);
+}
+
+/* ── Slider panel — bottom-left ───────────────────────────────────── */
+.sgc-slider-panel {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    background: rgba(10, 12, 26, 0.82);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 25;
+    min-width: 200px;
+    max-width: 300px;
+    pointer-events: all;
+}
+.sgc-slider-panel.hidden {
+    display: none;
+}
+
+.sgc-slider-title {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(210, 218, 245, 0.55);
+    margin-bottom: 2px;
+}
+
+.sgc-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sgc-slider-label {
+    font-size: 0.78rem;
+    color: #aebbd1;
+    min-width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+}
+.sgc-slider-label .katex {
+    font-size: 0.85em;
+}
+
+.sgc-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: rgba(110, 124, 180, 0.25);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+.sgc-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #42a5f5;
+    border: 2px solid rgba(10, 12, 26, 0.8);
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.sgc-slider::-webkit-slider-thumb:hover {
+    background: #64b5f6;
+}
+.sgc-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #42a5f5;
+    border: 2px solid rgba(10, 12, 26, 0.8);
+    cursor: pointer;
+}
+
+.sgc-slider-value {
+    font-size: 0.7rem;
+    color: #7e8aa3;
+    min-width: 42px;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Legend panel — bottom-right ──────────────────────────────────── */
+.sgc-legend-panel {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    background: rgba(10, 12, 26, 0.82);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 25;
+    pointer-events: none;
+}
+.sgc-legend-panel.hidden {
+    display: none;
+}
+
+.sgc-legend-title {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(210, 218, 245, 0.55);
+    margin-bottom: 2px;
+}
+
+.sgc-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sgc-legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.sgc-legend-name {
+    font-size: 0.72rem;
+    color: rgba(210, 218, 245, 0.9);
+}
+.sgc-legend-name .katex {
+    font-size: 0.85em;
+}
