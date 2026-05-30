@@ -370,8 +370,6 @@ export class SgChartManager {
         // default x-variable is not already taken by an existing chart.
         const existing = this._chartsForNode(nodeId);
         if (existing.some(e => e.xVar === xVar)) return;
-        const rawLabel = n.subexpr || n.latex || n.label || n.id;
-        const isRelation = _RELATION_RE.test(rawLabel);
 
         for (const v of vars) {
             this._allVariables.add(v);
@@ -393,21 +391,14 @@ export class SgChartManager {
 
         const title = document.createElement('span');
         title.className = 'sgc-chart-title';
-        let label = n.subexpr || n.latex || n.label || n.id;
+        let exprLabel = n.subexpr || n.latex || n.label || n.id;
         // If the backend converted a relation (=, ≤, ≥, …) to LHS−RHS,
         // reflect that in the chart title so it matches what is plotted.
-        if ((n.subexpr || n.latex) && _RELATION_RE.test(label)) {
-            label = _relationToLhsMinusRhs(label);
+        const isRelation = (n.subexpr || n.latex) && _RELATION_RE.test(exprLabel);
+        if (isRelation) {
+            exprLabel = _relationToLhsMinusRhs(exprLabel);
         }
-        if (this.katex && (n.subexpr || n.latex)) {
-            try {
-                this.katex.render(label, title, { throwOnError: false, displayMode: false });
-            } catch (_) {
-                title.textContent = label;
-            }
-        } else {
-            title.textContent = label;
-        }
+        this._renderTitle(title, exprLabel, xVar, isRelation);
 
         const controls = document.createElement('div');
         controls.className = 'sgc-chart-controls';
@@ -476,7 +467,7 @@ export class SgChartManager {
                 data: {
                     labels: data.map(p => p.x),
                     datasets: [{
-                        label: label,
+                        label: exprLabel,
                         data: data.map(p => p.y),
                         borderColor: chartColor,
                         backgroundColor: chartColor + '22',
@@ -591,6 +582,8 @@ export class SgChartManager {
             chart,
             box,
             canvas: box.querySelector('canvas'),
+            titleEl: title,
+            exprLabel,
             xVar,
             vars,
             scriptText,
@@ -859,6 +852,25 @@ export class SgChartManager {
         };
     }
 
+    /**
+     * Render the chart header title as ``f(xVar) = expression`` so the
+     * user can see what the vertical axis represents.  Uses KaTeX when
+     * available.
+     */
+    _renderTitle(el, exprLabel, xVar, _isRelation) {
+        const xLatex = _latexVar(xVar);
+        const fullLatex = `f(${xLatex}) = ${exprLabel}`;
+        if (this.katex) {
+            try {
+                this.katex.render(fullLatex, el, { throwOnError: false, displayMode: false });
+                return;
+            } catch (_) { /* fall through */ }
+        }
+        // Plain-text fallback
+        const xDisp = _displayVar(xVar);
+        el.textContent = `f(${xDisp}) = ${exprLabel}`;
+    }
+
     _computeData(nodeId, xVar, _vars) {
         const compiled = this._compiledScripts.get(nodeId);
         if (!compiled) return { data: [], xLabel: xVar };
@@ -900,6 +912,10 @@ export class SgChartManager {
         entry.chart.options.plugins.tooltip.callbacks.title =
             (items) => `${dv} = ${items[0]?.parsed.x?.toFixed(4)}`;
         entry.chart.update('none');
+        // Refresh the header title to reflect the current x-variable.
+        if (entry.titleEl) {
+            this._renderTitle(entry.titleEl, entry.exprLabel, entry.xVar, entry.isRelation);
+        }
     }
 
     _updateAllCharts() {
