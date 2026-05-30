@@ -209,10 +209,11 @@ svg.d3-semantic-graph {
     color: #c0c8ff;
 }
 
-/* Edge semantics legend — bottom-left of graph viewport */
+/* Edge semantics legend — bottom-left of graph viewport
+   (chart legend/slider panels occupy the bottom-right) */
 .d3sg-edge-legend {
     position: absolute;
-    right: 8px;
+    left: 8px;
     bottom: 8px;
     display: flex;
     flex-direction: column;

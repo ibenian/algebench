@@ -1386,15 +1386,16 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             script, variables = latex_to_mathjs(req.subexpr)
             return JSONResponse({"script": script, "variables": variables})
         except (ValueError, SyntaxError) as e:
+            print(f"   ⚠️  /api/graph/generate-mathjs: conversion failed: {e}")
             return JSONResponse(
-                {"error": "failed to convert LaTeX to mathjs", "detail": str(e)},
+                {"error": "failed to convert LaTeX to mathjs"},
                 status_code=400,
             )
         except Exception as e:
             import traceback
             print(f"   ❌ /api/graph/generate-mathjs: {e}\n{traceback.format_exc()}")
             return JSONResponse(
-                {"error": "internal error generating mathjs", "detail": str(e)},
+                {"error": "internal error generating mathjs"},
                 status_code=500,
             )
 

@@ -107,15 +107,25 @@ const _RELATION_RE = /(?:^|[^\\])=|\\(?:leq|geq|neq|lt|gt|le|ge)\b|[<>]/;
 
 // Convert an equation LaTeX into "LHS − (RHS)" display form.
 function _relationToLhsMinusRhs(latex) {
-    // Split on the first top-level relation operator.
-    // Try simple '=' first, then LaTeX commands.
-    for (const sep of ['=', '\\leq', '\\geq', '\\neq', '\\le', '\\ge', '<', '>']) {
-        const idx = latex.indexOf(sep);
-        if (idx >= 0) {
-            const lhs = latex.slice(0, idx).trim();
-            const rhs = latex.slice(idx + sep.length).trim();
-            if (lhs && rhs) return `${lhs} - \\left(${rhs}\\right)`;
+    // Find the first top-level relation operator using the same matcher as
+    // detection (_RELATION_RE) so escaped operators (e.g. "\=") are ignored.
+    // Capture the operator separately to know how much to slice off.
+    const splitRe = /(?:^|[^\\])(=)|\\(leq|geq|neq|lt|gt|le|ge)\b|([<>])/;
+    const m = splitRe.exec(latex);
+    if (m) {
+        const op = m[0];
+        const opIdx = m.index;
+        // m[1] = bare '=', m[2] = LaTeX word op, m[3] = bare '<'/'>'.
+        // For the '=' branch the match may include a leading non-backslash char.
+        let sepStart = opIdx;
+        let sepEnd = opIdx + op.length;
+        if (m[1] && op.length > 1) {
+            // Leading char captured before '='; keep it on the LHS.
+            sepStart = opIdx + op.length - 1;
         }
+        const lhs = latex.slice(0, sepStart).trim();
+        const rhs = latex.slice(sepEnd).trim();
+        if (lhs && rhs) return `${lhs} - \\left(${rhs}\\right)`;
     }
     return latex;
 }
@@ -177,6 +187,7 @@ export class SgChartManager {
         this._renderer = null;
         this._rafId = null;
         this._resizeObserver = null;
+        this._destroyed = false;
 
         this._scriptService = new SgChartScript(graph);
         this._compiledScripts = new Map();
@@ -340,12 +351,14 @@ export class SgChartManager {
 
     async openChart(nodeId, anchorEl) {
         if (!this._ready) await this.init();
+        if (this._destroyed) return;
 
         const n = this._nodeById[nodeId];
         if (!n) return;
 
         // ── Fetch mathjs script from backend (or pre-computed) ───────
         const result = await this._scriptService.getScript(nodeId);
+        if (this._destroyed) return;
         const hasError = !result || result.error;
         const vars = hasError ? [] : result.variables;
         const scriptText = hasError ? null : result.script;
@@ -1123,6 +1136,7 @@ export class SgChartManager {
     }
 
     destroy() {
+        this._destroyed = true;
         this._stopTransformPolling();
         if (this._resizeObserver) {
             this._resizeObserver.disconnect();
