@@ -44,6 +44,35 @@ _JS_CONST_MAP: dict[str, str] = {
 }
 
 
+# ── Prime-character helpers ───────────────────────────────────────────
+
+_PRIME_SUFFIXES = {1: "prime", 2: "dprime", 3: "tprime"}
+
+
+def _prime_suffix(count: int) -> str:
+    """Return a suffix for *count* prime marks: 1→prime, 2→dprime, etc."""
+    return _PRIME_SUFFIXES.get(count, f"{count}prime")
+
+
+def _sanitize_primed_symbols(expr: sympy.Basic) -> sympy.Basic:
+    """Replace primed free symbols with valid-identifier equivalents.
+
+    ``Symbol("u'")`` → ``Symbol("u_prime")``, ``Symbol("x''")`` →
+    ``Symbol("x_dprime")``, etc.  This ensures ``jscode()`` emits valid
+    JavaScript/mathjs identifiers.
+    """
+    subs: dict[Symbol, Symbol] = {}
+    for sym in expr.free_symbols:
+        name = sym.name
+        if "'" not in name:
+            continue
+        base = name.rstrip("'")
+        prime_count = len(name) - len(base)
+        clean = f"{base}_{_prime_suffix(prime_count)}" if base else f"_{_prime_suffix(prime_count)}"
+        subs[sym] = Symbol(clean)
+    return expr.subs(subs) if subs else expr
+
+
 # ── jscode → mathjs conversion ────────────────────────────────────────
 
 def jscode_to_mathjs(js_code: str) -> str:
@@ -57,6 +86,8 @@ def jscode_to_mathjs(js_code: str) -> str:
     * Comment blocks emitted by ``jscode(strict=False)`` for unsupported
       functions are stripped, leaving bare function names that mathjs
       handles natively (e.g. ``factorial(x)``).
+    * Prime characters in identifiers are sanitized:
+      ``u'`` → ``u_prime``, ``u''`` → ``u_dprime``.
     """
     # Strip ``// Not supported …`` comment lines.
     js_code = re.sub(r"//[^\n]*\n?", "", js_code)
@@ -68,6 +99,13 @@ def jscode_to_mathjs(js_code: str) -> str:
         return _JS_CONST_MAP.get(name, name)
 
     result = re.sub(r"Math\.(\w+)", _replace, js_code)
+
+    # Safety-net: sanitize any remaining prime characters in identifiers.
+    # ``jscode`` may emit ``u'`` or ``u''`` for primed symbols — these
+    # are not valid JS/mathjs identifiers.
+    result = re.sub(r"(\w)('{2,})", lambda m: m.group(1) + "_" + _prime_suffix(len(m.group(2))), result)
+    result = re.sub(r"(\w)'", r"\1_prime", result)
+
     return result.strip()
 
 
@@ -118,6 +156,10 @@ def latex_to_mathjs(latex: str) -> tuple[str, list[str]]:
     # un-evaluated form (e.g. ``log(x, E)`` with two args instead of
     # the canonical single-arg ``log(x)``).
     expr = expr.doit()
+
+    # Sanitize primed symbols (u' → u_prime) so jscode emits valid
+    # JavaScript identifiers.
+    expr = _sanitize_primed_symbols(expr)
 
     # Extract free variables (after substitution).
     variables = sorted(str(s) for s in expr.free_symbols)

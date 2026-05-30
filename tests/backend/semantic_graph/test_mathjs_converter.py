@@ -236,3 +236,40 @@ class TestLatexToMathjs:
         """Empty LaTeX should raise rather than silently succeed."""
         with pytest.raises((ValueError, Exception)):
             latex_to_mathjs("")
+
+    # -- Primed variable sanitization --
+
+    def test_prime_variable(self):
+        """``u'`` should be sanitized to ``u_prime``."""
+        script, variables = latex_to_mathjs(r"u'")
+        assert script == "u_prime"
+        assert variables == ["u_prime"]
+
+    def test_prime_product(self):
+        """``u' \\cdot v`` should produce ``u_prime*v``."""
+        script, variables = latex_to_mathjs(r"u' \cdot v")
+        assert "u_prime" in script
+        assert "v" in script
+        assert sorted(variables) == ["u_prime", "v"]
+
+    def test_double_prime(self):
+        """``u''`` should be sanitized to ``u_dprime``."""
+        script, variables = latex_to_mathjs(r"u''")
+        assert script == "u_dprime"
+        assert variables == ["u_dprime"]
+
+    def test_multiple_primed_vars(self):
+        """Multiple primed variables in one expression."""
+        script, variables = latex_to_mathjs(r"x' + y'")
+        assert "x_prime" in script
+        assert "y_prime" in script
+        assert sorted(variables) == ["x_prime", "y_prime"]
+
+    def test_prime_in_fraction(self):
+        """Primed variable inside a fraction — the velocity addition formula."""
+        script, variables = latex_to_mathjs(
+            r"\frac{u' + v}{1 + \frac{u' v}{c^2}}"
+        )
+        assert "u_prime" in script
+        assert "'" not in script
+        assert sorted(variables) == ["c", "u_prime", "v"]

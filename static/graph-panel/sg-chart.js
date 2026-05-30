@@ -23,6 +23,15 @@ const GRID_COLS = 6;
 const GRID_ROWS = 4;
 const GRID_GAP = 8;
 
+// Convert sanitized variable names back to display-friendly LaTeX.
+// u_prime → u', u_dprime → u'', u_tprime → u''', etc.
+function _displayVar(name) {
+    return name
+        .replace(/_tprime$/, "'''")
+        .replace(/_dprime$/, "''")
+        .replace(/_prime$/, "'");
+}
+
 let _chartJsLoaded = false;
 let _chartJsPromise = null;
 function loadChartJs() {
@@ -162,12 +171,35 @@ export class SgChartManager {
         const card = this.container.querySelector('.d3-graph-card') || this.container;
         const rect = card.getBoundingClientRect();
         const { x: tx, y: ty, k } = this._transform;
+        const placed = [];
         for (const entry of this.charts.values()) {
             if (entry.pinned) continue;
-            const screenX = entry.graphX * k + tx;
-            const screenY = entry.graphY * k + ty;
-            const left = Math.max(4, Math.min(screenX, rect.width - entry.box.offsetWidth - 4));
-            const top = Math.max(4, Math.min(screenY, rect.height - entry.box.offsetHeight - 4));
+            const boxW = entry.box.offsetWidth;
+            const boxH = entry.box.offsetHeight;
+            let left = entry.graphX * k + tx;
+            let top = entry.graphY * k + ty;
+            left = Math.max(4, Math.min(left, rect.width - boxW - 4));
+            top = Math.max(4, Math.min(top, rect.height - boxH - 4));
+            // Resolve collisions with previously placed charts
+            for (let attempt = 0; attempt < 4; attempt++) {
+                let collision = false;
+                for (const p of placed) {
+                    if (left < p.right && left + boxW > p.left &&
+                        top < p.bottom && top + boxH > p.top) {
+                        collision = true;
+                        top = p.bottom + 4;
+                        if (top + boxH > rect.height - 4) {
+                            top = 4;
+                            left = p.right + 4;
+                        }
+                        break;
+                    }
+                }
+                if (!collision) break;
+                left = Math.max(4, Math.min(left, rect.width - boxW - 4));
+                top = Math.max(4, Math.min(top, rect.height - boxH - 4));
+            }
+            placed.push({ left, top, right: left + boxW, bottom: top + boxH });
             entry.box.style.left = `${left}px`;
             entry.box.style.top = `${top}px`;
         }
@@ -276,7 +308,7 @@ export class SgChartManager {
         for (const v of vars) {
             const opt = document.createElement('option');
             opt.value = v;
-            opt.textContent = v;
+            opt.textContent = _displayVar(v);
             if (v === xVar) opt.selected = true;
             xSelect.appendChild(opt);
         }
@@ -359,19 +391,19 @@ export class SgChartManager {
                             borderWidth: 1,
                             callbacks: {
                                 label: (ctx) => `y = ${ctx.parsed.y?.toFixed(4)}`,
-                                title: (items) => `${xVar} = ${items[0]?.parsed.x?.toFixed(4)}`,
+                                title: (items) => `${_displayVar(xVar)} = ${items[0]?.parsed.x?.toFixed(4)}`,
                             },
                         },
                     },
                     scales: {
                         x: {
                             type: 'linear',
-                            title: { display: true, text: xVar, color: '#8fa8c8' },
+                            title: { display: true, text: _displayVar(xVar), color: '#8fa8c8' },
                             ticks: { color: '#7e8aa3', maxTicksLimit: 8, callback: v => +v.toFixed(3) },
                             grid: { color: 'rgba(110, 124, 180, 0.12)' },
                         },
                         y: {
-                            title: { display: true, text: 'f(' + xVar + ')', color: '#8fa8c8' },
+                            title: { display: true, text: 'f(' + _displayVar(xVar) + ')', color: '#8fa8c8' },
                             ticks: { color: '#7e8aa3', maxTicksLimit: 6, callback: v => +v.toFixed(3) },
                             grid: { color: 'rgba(110, 124, 180, 0.12)' },
                         },
@@ -458,7 +490,7 @@ export class SgChartManager {
         };
         this.charts.set(nodeId, entry);
 
-        if (chart) this._makeDraggable(entry);
+        this._makeDraggable(entry);
 
         xSelect.addEventListener('change', () => {
             entry.xVar = xSelect.value;
@@ -743,10 +775,11 @@ export class SgChartManager {
         const { data } = this._computeData(entry.nodeId, entry.xVar, entry.vars);
         entry.chart.data.labels = data.map(p => p.x);
         entry.chart.data.datasets[0].data = data.map(p => p.y);
-        entry.chart.options.scales.x.title.text = entry.xVar;
-        entry.chart.options.scales.y.title.text = `f(${entry.xVar})`;
+        const dv = _displayVar(entry.xVar);
+        entry.chart.options.scales.x.title.text = dv;
+        entry.chart.options.scales.y.title.text = `f(${dv})`;
         entry.chart.options.plugins.tooltip.callbacks.title =
-            (items) => `${entry.xVar} = ${items[0]?.parsed.x?.toFixed(4)}`;
+            (items) => `${dv} = ${items[0]?.parsed.x?.toFixed(4)}`;
         entry.chart.update('none');
     }
 
@@ -796,14 +829,15 @@ export class SgChartManager {
 
             const label = document.createElement('span');
             label.className = 'sgc-slider-label';
+            const displayName = _displayVar(v);
             if (this.katex) {
                 try {
-                    this.katex.render(v, label, { throwOnError: false, displayMode: false });
+                    this.katex.render(displayName, label, { throwOnError: false, displayMode: false });
                 } catch (_) {
-                    label.textContent = v;
+                    label.textContent = displayName;
                 }
             } else {
-                label.textContent = v;
+                label.textContent = displayName;
             }
 
             const input = document.createElement('input');
