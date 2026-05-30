@@ -23,8 +23,8 @@ const GRID_COLS = 6;
 const GRID_ROWS = 4;
 const GRID_GAP = 8;
 
-// Greek letter names → Unicode characters for plain-text contexts
-// (dropdown options, axis titles, tooltips).
+// Greek letter & math symbol names → Unicode characters for plain-text
+// contexts (dropdown options, axis titles, tooltips).
 const _GREEK_UNICODE = new Map([
     ['alpha', 'α'], ['beta', 'β'], ['gamma', 'γ'],
     ['delta', 'δ'], ['epsilon', 'ε'], ['zeta', 'ζ'],
@@ -37,9 +37,12 @@ const _GREEK_UNICODE = new Map([
     ['Gamma', 'Γ'], ['Delta', 'Δ'], ['Theta', 'Θ'],
     ['Lambda', 'Λ'], ['Pi', 'Π'], ['Sigma', 'Σ'],
     ['Phi', 'Φ'], ['Psi', 'Ψ'], ['Omega', 'Ω'],
+    // Common math symbols emitted by parse_latex
+    ['nabla', '∇'], ['partial', '∂'], ['infty', '∞'],
+    ['hbar', 'ℏ'], ['ell', 'ℓ'],
 ]);
 
-// Greek letter names → LaTeX commands for KaTeX rendering.
+// Greek letter & math symbol names → LaTeX commands for KaTeX rendering.
 const _GREEK_LATEX = new Map([
     ['alpha', '\\alpha'], ['beta', '\\beta'], ['gamma', '\\gamma'],
     ['delta', '\\delta'], ['epsilon', '\\epsilon'], ['zeta', '\\zeta'],
@@ -52,27 +55,51 @@ const _GREEK_LATEX = new Map([
     ['Gamma', '\\Gamma'], ['Delta', '\\Delta'], ['Theta', '\\Theta'],
     ['Lambda', '\\Lambda'], ['Pi', '\\Pi'], ['Sigma', '\\Sigma'],
     ['Phi', '\\Phi'], ['Psi', '\\Psi'], ['Omega', '\\Omega'],
+    // Common math symbols emitted by parse_latex
+    ['nabla', '\\nabla'], ['partial', '\\partial'], ['infty', '\\infty'],
+    ['hbar', '\\hbar'], ['ell', '\\ell'],
+    ['vec', '\\vec{v}'],
 ]);
 
 // Convert sanitized variable names back to display-friendly form.
-// u_prime → u', u_dprime → u'', gamma → γ (Unicode).
+// u_prime → u', u_dprime → u'', gamma → γ, mu_0 → μ₀ (Unicode).
 // Used for plain-text contexts (dropdowns, axis titles, tooltips).
 function _displayVar(name) {
     let out = name
         .replace(/_tprime$/, "'''")
         .replace(/_dprime$/, "''")
         .replace(/_prime$/, "'");
-    return _GREEK_UNICODE.get(out) || out;
+    // Exact match first (e.g. "gamma" → "γ")
+    if (_GREEK_UNICODE.has(out)) return _GREEK_UNICODE.get(out);
+    // Subscripted Greek: "mu_0" → "μ₀", "epsilon_0" → "ε₀"
+    const uIdx = out.indexOf('_');
+    if (uIdx > 0) {
+        const base = out.slice(0, uIdx);
+        const sub = out.slice(uIdx + 1);
+        const greek = _GREEK_UNICODE.get(base);
+        if (greek) return `${greek}_${sub}`;
+    }
+    return out;
 }
 
 // Convert variable name to LaTeX for KaTeX rendering.
-// gamma → \gamma, u_prime → u', etc.
+// gamma → \gamma, u_prime → u', mu_0 → \mu_{0}, etc.
 function _latexVar(name) {
     let out = name
         .replace(/_tprime$/, "'''")
         .replace(/_dprime$/, "''")
         .replace(/_prime$/, "'");
-    return _GREEK_LATEX.get(out) || out;
+    // Exact match first (e.g. "gamma" → "\\gamma")
+    if (_GREEK_LATEX.has(out)) return _GREEK_LATEX.get(out);
+    // Subscripted Greek: "mu_0" → "\\mu_{0}", "epsilon_0" → "\\epsilon_{0}"
+    const uIdx = out.indexOf('_');
+    if (uIdx > 0) {
+        const base = out.slice(0, uIdx);
+        const sub = out.slice(uIdx + 1);
+        const greek = _GREEK_LATEX.get(base);
+        if (greek) return `${greek}_{${sub}}`;
+    }
+    return out;
 }
 
 // Relation operators that trigger LHS−RHS conversion in the backend.
