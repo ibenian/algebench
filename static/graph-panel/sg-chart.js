@@ -19,7 +19,7 @@ const CHART_PALETTE = [
     '#ffa726', '#26c6da', '#ec407a', '#8d6e63',
 ];
 
-const GRID_COLS = 6;
+const GRID_COLS = 8;
 const GRID_ROWS = 4;
 const GRID_GAP = 8;
 

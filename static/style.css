@@ -3917,6 +3917,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     bottom: 8px;
     display: flex;
     flex-direction: column-reverse;
+    align-items: flex-end;
     gap: 8px;
     z-index: 3;
     pointer-events: none;

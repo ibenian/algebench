@@ -1526,14 +1526,21 @@ function positionEnrichmentStack() {
     const stack = viewport.querySelector('.graph-enrich-indicator-stack');
     if (!stack) return;
     const vpRect = viewport.getBoundingClientRect();
-    let reach = 0; // px the tallest docked legend rises from the viewport bottom
+    let reach = 0;        // px the tallest docked legend rises from the viewport bottom
+    let rightGap = null;  // smallest gap from viewport right edge to a legend's right edge
     for (const sel of ['.d3sg-edge-legend', '.sgc-legend-panel']) {
         const el = viewport.querySelector(sel);
         if (!el || el.classList.contains('hidden') || el.offsetParent === null) continue;
         const r = el.getBoundingClientRect();
         reach = Math.max(reach, vpRect.bottom - r.top);
+        const gap = vpRect.right - r.right;
+        rightGap = rightGap === null ? gap : Math.min(rightGap, gap);
     }
-    stack.style.bottom = reach > 0 ? `${Math.round(reach) + 8}px` : '8px';
+    // Pad above the legend strip and right-align the pills with the legends'
+    // right edge (falling back to the 8px corner when no legend is docked).
+    const TOP_PAD = 14;
+    stack.style.bottom = reach > 0 ? `${Math.round(reach) + TOP_PAD}px` : '8px';
+    stack.style.right = rightGap !== null ? `${Math.round(rightGap)}px` : '8px';
 }
 
 // The chart legend (managed by SgChartManager) appears, grows and disappears
