@@ -2035,6 +2035,11 @@ class SemanticGraphBuilder:
         self.edges: list[dict[str, str]] = []
         self._id_counter = 0
         self._seen_symbols: dict[str, str] = {}
+        # Named constants (π, e, i, ∞) are shared like symbols: a single node
+        # per constant, reused on every occurrence.  Keyed by the SymPy
+        # constant object so repeat appearances (e.g. the implicit ``e`` base
+        # of two natural logs) collapse onto one node instead of duplicating.
+        self._seen_constants: dict[Any, str] = {}
         self._overrides = overrides or {}
         self._latex_commands = latex_commands or {}
         self._original_latex = original_latex or ""
@@ -2568,6 +2573,11 @@ class SemanticGraphBuilder:
         # --- Constants ---
         for const, meta in CONSTANT_MAP.items():
             if expr is const:
+                # Share one node per named constant (like symbols), so e.g.
+                # the implicit ``e`` base of two natural logs collapses onto a
+                # single node instead of being duplicated.
+                if const in self._seen_constants:
+                    return self._seen_constants[const]
                 node_id = self._next_id("const")
                 attrs: dict[str, Any] = {"type": "constant"}
                 if meta.get("label"):
@@ -2575,6 +2585,7 @@ class SemanticGraphBuilder:
                 if meta.get("latex"):
                     attrs["latex"] = meta["latex"]
                 self._add_node(node_id, **attrs)
+                self._seen_constants[const] = node_id
                 return node_id
 
         # --- Boolean literals (S.true / S.false) ---

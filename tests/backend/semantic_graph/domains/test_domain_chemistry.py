@@ -91,12 +91,12 @@ KINETICS_EXPRESSIONS: list[CatalogEntry] = [
      r"\ln [A] = -kt + \ln [A]_0",
      PASS,
      "A -> concentration; A_{0} -> concentration; k,t -> multiply; "
-     "concentration,const:__const_10 -> fn:log; "
+     "concentration,const:__const_4 -> fn:log; "
      "concentration,const:__const_4 -> fn:log; multiply -> negation; "
      "fn:log,negation -> add; add,fn:log -> rel:equals",
      "A -> __concentration_3; A_{0} -> __concentration_9; "
      "k,t -> __multiply_7; __concentration_3,__const_4 -> __log_2; "
-     "__concentration_9,__const_10 -> __log_8; __multiply_7 -> __negation_6; "
+     "__concentration_9,__const_4 -> __log_8; __multiply_7 -> __negation_6; "
      "__log_8,__negation_6 -> __add_5; __add_5,__log_2 -> __equals_1",
      None),
 
