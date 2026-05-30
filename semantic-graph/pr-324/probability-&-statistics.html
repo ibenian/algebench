@@ -656,8 +656,8 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-29 23:43 UTC &middot; theme: default-dark &middot; 16 expressions</div>
-<div class="section-title">Probability & Statistics (16 expressions)</div>
+<div class="report-meta">Generated 2026-05-30 01:51 UTC &middot; theme: default-dark &middot; 17 expressions</div>
+<div class="section-title">Probability & Statistics (17 expressions)</div>
 <div class="row">
   <div>
     <div class="row-id">prob_expected_sum</div>
@@ -1328,6 +1328,439 @@ svg.d3-semantic-graph {
 </div>
 <div class="row">
   <div>
+    <div class="row-id">prob_normal</div>
+    <div class="row-latex">$$f(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __f_2{{"$f(\cdot)$"}}:::function
+  x["$x$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
+  __multiply_5(("$\times$")):::operator
+  sigma["$\sigma$"]:::scalar
+  __power_6(("${(\cdot)}^{1/2}$")):::operator
+  __multiply_7(("$\times$")):::operator
+  __num_8["$2$"]:::number
+  pi["$\pi$"]:::constant
+  __power_9(("$(\cdot)^{\cdot}$")):::operator
+  e["$e$"]:::scalar
+  __negation_10@{ shape: "flip-tri", label: "$-$" }
+  __multiply_11(("$\times$")):::operator
+  __power_12(("${(\cdot)}^{2}$")):::operator
+  __add_13(("$+$")):::operator
+  __negation_14@{ shape: "flip-tri", label: "$-$" }
+  mu["$\mu$"]:::scalar
+  __multiply_15(("$\times$")):::operator
+  __num_16["$\frac{1}{2}$"]:::number
+  __power_17(("${(\cdot)}^{-2}$")):::operator
+  class __negation_10 operator
+  class __negation_14 operator
+  x --&gt; __f_2
+  __f_2 --&gt; __equals_1
+  sigma --&gt; __multiply_5
+  __num_8 --&gt; __multiply_7
+  pi --&gt; __multiply_7
+  __multiply_7 --&gt; __power_6
+  __power_6 --&gt; __multiply_5
+  __multiply_5 --&gt; __power_4
+  __power_4 -.-&gt; __multiply_3
+  e --&gt; __power_9
+  x --&gt; __add_13
+  mu --&gt; __negation_14
+  __negation_14 --&gt; __add_13
+  __add_13 --&gt; __power_12
+  __power_12 --&gt; __multiply_11
+  __num_16 --&gt; __multiply_15
+  sigma --&gt; __power_17
+  __power_17 -.-&gt; __multiply_15
+  __multiply_15 --&gt; __multiply_11
+  __multiply_11 --&gt; __negation_10
+  __negation_10 --&gt;|exp| __power_9
+  __power_9 --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#42a5f5,stroke-width:1px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#ef5350,stroke-width:3px
+  linkStyle 15 stroke:#ef5350,stroke-width:3px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 17 stroke:#42a5f5,stroke-width:2px
+  linkStyle 18 stroke:#ef5350,stroke-width:3px
+  linkStyle 19 stroke:#aaa,stroke-width:2px
+  linkStyle 20 stroke:#aaa,stroke-width:2px
+  linkStyle 21 stroke:#ef5350,stroke-width:3px
+  linkStyle 22 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="f(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>f(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}} e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}}"
+    },
+    {
+      "id": "__f_2",
+      "type": "function",
+      "op": "f",
+      "subexpr": "f{\\left(x \\right)}"
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x"
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\sigma^{2}}} \\frac{1}{\\sigma \\sqrt{2 \\pi}}"
+    },
+    {
+      "id": "__power_4",
+      "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{\\sigma \\sqrt{2 \\pi}}"
+    },
+    {
+      "id": "__multiply_5",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\sigma \\sqrt{2 \\pi}"
+    },
+    {
+      "id": "sigma",
+      "type": "scalar",
+      "latex": "\\sigma",
+      "subexpr": "\\sigma"
+    },
+    {
+      "id": "__power_6",
+      "type": "operator",
+      "op": "power",
+      "exponent": "1/2",
+      "subexpr": "\\sqrt{2 \\pi}"
+    },
+    {
+      "id": "__multiply_7",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\pi 2"
+    },
+    {
+      "id": "__num_8",
+      "type": "number",
+      "label": "2",
+      "subexpr": "2"
+    },
+    {
+      "id": "pi",
+      "type": "constant",
+      "latex": "\\pi",
+      "subexpr": "\\pi"
+    },
+    {
+      "id": "__power_9",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\sigma^{2}}}"
+    },
+    {
+      "id": "e",
+      "type": "scalar",
+      "latex": "e",
+      "subexpr": "e"
+    },
+    {
+      "id": "__negation_10",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-\\left(- \\mu + x\\right)^{2} \\frac{1}{\\sigma^{2}} \\frac{1}{2}"
+    },
+    {
+      "id": "__multiply_11",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\left(- \\mu + x\\right)^{2} \\frac{1}{\\sigma^{2}} \\frac{1}{2}"
+    },
+    {
+      "id": "__power_12",
+      "type": "operator",
+      "op": "power",
+      "exponent": "2",
+      "subexpr": "\\left(- \\mu + x\\right)^{2}"
+    },
+    {
+      "id": "__add_13",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "x - \\mu"
+    },
+    {
+      "id": "__negation_14",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-\\mu"
+    },
+    {
+      "id": "mu",
+      "type": "scalar",
+      "latex": "\\mu",
+      "subexpr": "\\mu"
+    },
+    {
+      "id": "__multiply_15",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\frac{1}{\\sigma^{2}} \\frac{1}{2}"
+    },
+    {
+      "id": "__num_16",
+      "type": "number",
+      "label": "1/2",
+      "subexpr": "\\frac{1}{2}"
+    },
+    {
+      "id": "__power_17",
+      "type": "operator",
+      "op": "power",
+      "exponent": "-2",
+      "subexpr": "\\frac{1}{\\sigma^{2}}"
+    }
+  ],
+  "edges": [
+    {
+      "from": "x",
+      "to": "__f_2"
+    },
+    {
+      "from": "__f_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "sigma",
+      "to": "__multiply_5",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__num_8",
+      "to": "__multiply_7",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "pi",
+      "to": "__multiply_7",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_7",
+      "to": "__power_6"
+    },
+    {
+      "from": "__power_6",
+      "to": "__multiply_5",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_5",
+      "to": "__power_4"
+    },
+    {
+      "from": "__power_4",
+      "to": "__multiply_3"
+    },
+    {
+      "from": "e",
+      "to": "__power_9"
+    },
+    {
+      "from": "x",
+      "to": "__add_13"
+    },
+    {
+      "from": "mu",
+      "to": "__negation_14"
+    },
+    {
+      "from": "__negation_14",
+      "to": "__add_13"
+    },
+    {
+      "from": "__add_13",
+      "to": "__power_12"
+    },
+    {
+      "from": "__power_12",
+      "to": "__multiply_11",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__num_16",
+      "to": "__multiply_15",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "sigma",
+      "to": "__power_17"
+    },
+    {
+      "from": "__power_17",
+      "to": "__multiply_15"
+    },
+    {
+      "from": "__multiply_15",
+      "to": "__multiply_11",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_11",
+      "to": "__negation_10"
+    },
+    {
+      "from": "__negation_10",
+      "to": "__power_9",
+      "role": "exp"
+    },
+    {
+      "from": "__power_9",
+      "to": "__multiply_3"
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __f_2{{"$f(\cdot)$"}}:::function
+  x["$x$"]:::scalar
+  __multiply_3(("$\times$")):::operator
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
+  __multiply_5(("$\times$")):::operator
+  sigma["$\sigma$"]:::scalar
+  __power_6(("${(\cdot)}^{1/2}$")):::operator
+  __multiply_7(("$\times$")):::operator
+  __num_8["$2$"]:::number
+  pi["$\pi$"]:::constant
+  __power_9(("$(\cdot)^{\cdot}$")):::operator
+  e["$e$"]:::scalar
+  __negation_10@{ shape: "flip-tri", label: "$-$" }
+  __multiply_11(("$\times$")):::operator
+  __power_12(("${(\cdot)}^{2}$")):::operator
+  __add_13(("$+$")):::operator
+  __negation_14@{ shape: "flip-tri", label: "$-$" }
+  mu["$\mu$"]:::scalar
+  __multiply_15(("$\times$")):::operator
+  __num_16["$\frac{1}{2}$"]:::number
+  __power_17(("${(\cdot)}^{-2}$")):::operator
+  class __negation_10 operator
+  class __negation_14 operator
+  x --&gt; __f_2
+  __f_2 --&gt; __equals_1
+  sigma --&gt; __multiply_5
+  __num_8 --&gt; __multiply_7
+  pi --&gt; __multiply_7
+  __multiply_7 --&gt; __power_6
+  __power_6 --&gt; __multiply_5
+  __multiply_5 --&gt; __power_4
+  __power_4 -.-&gt; __multiply_3
+  e --&gt; __power_9
+  x --&gt; __add_13
+  mu --&gt; __negation_14
+  __negation_14 --&gt; __add_13
+  __add_13 --&gt; __power_12
+  __power_12 --&gt; __multiply_11
+  __num_16 --&gt; __multiply_15
+  sigma --&gt; __power_17
+  __power_17 -.-&gt; __multiply_15
+  __multiply_15 --&gt; __multiply_11
+  __multiply_11 --&gt; __negation_10
+  __negation_10 --&gt;|exp| __power_9
+  __power_9 --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#42a5f5,stroke-width:1px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#ef5350,stroke-width:3px
+  linkStyle 15 stroke:#ef5350,stroke-width:3px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 17 stroke:#42a5f5,stroke-width:2px
+  linkStyle 18 stroke:#ef5350,stroke-width:3px
+  linkStyle 19 stroke:#aaa,stroke-width:2px
+  linkStyle 20 stroke:#aaa,stroke-width:2px
+  linkStyle 21 stroke:#ef5350,stroke-width:3px
+  linkStyle 22 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}} e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}}&quot;},{&quot;id&quot;:&quot;__f_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(x \\right)}&quot;},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\sigma^{2}}} \\frac{1}{\\sigma \\sqrt{2 \\pi}}&quot;},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\sigma \\sqrt{2 \\pi}}&quot;},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\sigma \\sqrt{2 \\pi}&quot;},{&quot;id&quot;:&quot;sigma&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\sigma&quot;,&quot;subexpr&quot;:&quot;\\sigma&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;1/2&quot;,&quot;subexpr&quot;:&quot;\\sqrt{2 \\pi}&quot;},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\pi 2&quot;},{&quot;id&quot;:&quot;__num_8&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;},{&quot;id&quot;:&quot;pi&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;latex&quot;:&quot;\\pi&quot;,&quot;subexpr&quot;:&quot;\\pi&quot;},{&quot;id&quot;:&quot;__power_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\sigma^{2}}}&quot;},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;},{&quot;id&quot;:&quot;__negation_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\left(- \\mu + x\\right)^{2} \\frac{1}{\\sigma^{2}} \\frac{1}{2}&quot;},{&quot;id&quot;:&quot;__multiply_11&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\left(- \\mu + x\\right)^{2} \\frac{1}{\\sigma^{2}} \\frac{1}{2}&quot;},{&quot;id&quot;:&quot;__power_12&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;\\left(- \\mu + x\\right)^{2}&quot;},{&quot;id&quot;:&quot;__add_13&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;x - \\mu&quot;},{&quot;id&quot;:&quot;__negation_14&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\mu&quot;},{&quot;id&quot;:&quot;mu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\mu&quot;,&quot;subexpr&quot;:&quot;\\mu&quot;},{&quot;id&quot;:&quot;__multiply_15&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\sigma^{2}} \\frac{1}{2}&quot;},{&quot;id&quot;:&quot;__num_16&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1/2&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2}&quot;},{&quot;id&quot;:&quot;__power_17&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-2&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\sigma^{2}}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__f_2&quot;},{&quot;from&quot;:&quot;__f_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;sigma&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__num_8&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;pi&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_9&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__add_13&quot;},{&quot;from&quot;:&quot;mu&quot;,&quot;to&quot;:&quot;__negation_14&quot;},{&quot;from&quot;:&quot;__negation_14&quot;,&quot;to&quot;:&quot;__add_13&quot;},{&quot;from&quot;:&quot;__add_13&quot;,&quot;to&quot;:&quot;__power_12&quot;},{&quot;from&quot;:&quot;__power_12&quot;,&quot;to&quot;:&quot;__multiply_11&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__num_16&quot;,&quot;to&quot;:&quot;__multiply_15&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;sigma&quot;,&quot;to&quot;:&quot;__power_17&quot;},{&quot;from&quot;:&quot;__power_17&quot;,&quot;to&quot;:&quot;__multiply_15&quot;},{&quot;from&quot;:&quot;__multiply_15&quot;,&quot;to&quot;:&quot;__multiply_11&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_11&quot;,&quot;to&quot;:&quot;__negation_10&quot;},{&quot;from&quot;:&quot;__negation_10&quot;,&quot;to&quot;:&quot;__power_9&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_9&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
     <div class="row-id">prob_binomial</div>
     <div class="row-latex">$$P(X = k) = \binom{n}{k} p^k (1-p)^{n-k}$$</div>
   </div>
@@ -1724,7 +2157,7 @@ svg.d3-semantic-graph {
   __multiply_5(("$\times$")):::operator
   __power_6(("$(\cdot)^{\cdot}$")):::operator
   lambda["$\lambda$"]:::scalar
-  __power_7(("${(\cdot)}^{-lambda}$")):::operator
+  __power_7(("${(\cdot)}^{-\lambda}$")):::operator
   e["$e$"]:::scalar
   __power_8(("$\dfrac{1}{(\cdot)}$")):::operator
   __factorial_9(("$(\cdot)!$")):::operator
@@ -1825,7 +2258,7 @@ svg.d3-semantic-graph {
       "id": "__power_7",
       "type": "operator",
       "op": "power",
-      "exponent": "-lambda",
+      "exponent": "-\\lambda",
       "subexpr": "e^{- \\lambda}"
     },
     {
@@ -1939,7 +2372,7 @@ svg.d3-semantic-graph {
   __multiply_5(("$\times$")):::operator
   __power_6(("$(\cdot)^{\cdot}$")):::operator
   lambda["$\lambda$"]:::scalar
-  __power_7(("${(\cdot)}^{-lambda}$")):::operator
+  __power_7(("${(\cdot)}^{-\lambda}$")):::operator
   e["$e$"]:::scalar
   __power_8(("$\dfrac{1}{(\cdot)}$")):::operator
   __factorial_9(("$(\cdot)!$")):::operator
@@ -1972,7 +2405,7 @@ svg.d3-semantic-graph {
   linkStyle 12 stroke:#42a5f5,stroke-width:1px
   linkStyle 13 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P(X = k) = \\frac{\\lambda^k e^{-\\lambda}}{k!}&quot;},{&quot;id&quot;:&quot;__P_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(X = k \\right)}&quot;},{&quot;id&quot;:&quot;X&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;X&quot;,&quot;subexpr&quot;:&quot;X&quot;},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;},{&quot;id&quot;:&quot;__equals_3&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;emoji&quot;:&quot;=&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;X = k&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\lambda^{k} e^{- \\lambda} \\frac{1}{k!}&quot;},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\lambda^{k} e^{- \\lambda}&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\lambda^{k}&quot;},{&quot;id&quot;:&quot;lambda&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\lambda&quot;,&quot;subexpr&quot;:&quot;\\lambda&quot;},{&quot;id&quot;:&quot;__power_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-lambda&quot;,&quot;subexpr&quot;:&quot;e^{- \\lambda}&quot;},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{k!}&quot;},{&quot;id&quot;:&quot;__factorial_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;factorial&quot;,&quot;subexpr&quot;:&quot;k!&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;X&quot;,&quot;to&quot;:&quot;__equals_3&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__equals_3&quot;,&quot;role&quot;:&quot;rhs&quot;},{&quot;from&quot;:&quot;__equals_3&quot;,&quot;to&quot;:&quot;__P_2&quot;,&quot;role&quot;:&quot;assertion&quot;},{&quot;from&quot;:&quot;__P_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;lambda&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__power_6&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_7&quot;},{&quot;from&quot;:&quot;__power_7&quot;,&quot;to&quot;:&quot;__multiply_5&quot;},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__factorial_9&quot;},{&quot;from&quot;:&quot;__factorial_9&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_4&quot;},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P(X = k) = \\frac{\\lambda^k e^{-\\lambda}}{k!}&quot;},{&quot;id&quot;:&quot;__P_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(X = k \\right)}&quot;},{&quot;id&quot;:&quot;X&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;X&quot;,&quot;subexpr&quot;:&quot;X&quot;},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;},{&quot;id&quot;:&quot;__equals_3&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;emoji&quot;:&quot;=&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;X = k&quot;},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\lambda^{k} e^{- \\lambda} \\frac{1}{k!}&quot;},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\lambda^{k} e^{- \\lambda}&quot;},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\lambda^{k}&quot;},{&quot;id&quot;:&quot;lambda&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\lambda&quot;,&quot;subexpr&quot;:&quot;\\lambda&quot;},{&quot;id&quot;:&quot;__power_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-\\lambda&quot;,&quot;subexpr&quot;:&quot;e^{- \\lambda}&quot;},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{k!}&quot;},{&quot;id&quot;:&quot;__factorial_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;factorial&quot;,&quot;subexpr&quot;:&quot;k!&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;X&quot;,&quot;to&quot;:&quot;__equals_3&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__equals_3&quot;,&quot;role&quot;:&quot;rhs&quot;},{&quot;from&quot;:&quot;__equals_3&quot;,&quot;to&quot;:&quot;__P_2&quot;,&quot;role&quot;:&quot;assertion&quot;},{&quot;from&quot;:&quot;__P_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;lambda&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__power_6&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_7&quot;},{&quot;from&quot;:&quot;__power_7&quot;,&quot;to&quot;:&quot;__multiply_5&quot;},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__factorial_9&quot;},{&quot;from&quot;:&quot;__factorial_9&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_4&quot;},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -4297,7 +4730,7 @@ svg.d3-semantic-graph {
 </pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;M_X(t) = E(e^{tX})&quot;},{&quot;id&quot;:&quot;__M_{X}_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;M_{X}&quot;,&quot;subexpr&quot;:&quot;M_{X}{\\left(t \\right)}&quot;},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;},{&quot;id&quot;:&quot;__E_3&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;E&quot;,&quot;subexpr&quot;:&quot;E{\\left(e^{X t} \\right)}&quot;},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;e^{X t}&quot;},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;X t&quot;},{&quot;id&quot;:&quot;X&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;X&quot;,&quot;subexpr&quot;:&quot;X&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__M_{X}_2&quot;},{&quot;from&quot;:&quot;__M_{X}_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;X&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__power_4&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__E_3&quot;},{&quot;from&quot;:&quot;__E_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
-<div class="summary">✅ <span class="count">16</span> rendered, <span class="count">0</span> errors out of <span class="count">16</span> expressions</div>
+<div class="summary">✅ <span class="count">17</span> rendered, <span class="count">0</span> errors out of <span class="count">17</span> expressions</div>
 <script>
 document.querySelectorAll('.row-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
