@@ -20,7 +20,7 @@ const CHART_PALETTE = [
 ];
 
 const GRID_COLS = 8;
-const GRID_ROWS = 4;
+const GRID_ROWS = 8;
 const GRID_GAP = 8;
 
 // Greek letter & math symbol names → Unicode characters for plain-text
@@ -253,14 +253,13 @@ export class SgChartManager {
         if (this._resizeObserver) return;    // already observing
         const card = this.container.querySelector('.d3-graph-card') || this.container;
         this._resizeObserver = new ResizeObserver(() => {
-            // Reflow pinned charts (grid steps depend on viewport size)
+            // Rescale every chart — grid steps depend on the card width, so
+            // both pinned and inline charts must recompute their pixel size.
             for (const entry of this.charts.values()) {
-                if (entry.pinned) {
-                    this._applyGridSize(entry);
-                    entry.chart.resize();
-                }
+                this._applyGridSize(entry);
+                if (entry.chart) entry.chart.resize();
             }
-            // Reclamp unpinned charts to the new container bounds
+            // Reclamp inline (unpinned) charts to the new container bounds
             this._updateUnpinnedPositions();
         });
         this._resizeObserver.observe(card);
@@ -604,8 +603,8 @@ export class SgChartManager {
             pinned: false,
             graphX: _graphX,
             graphY: _graphY,
-            colSpan: 2,
-            rowSpan: 2,
+            colSpan: 3,
+            rowSpan: 3,
             isRelation,
         };
         this.charts.set(chartId, entry);
