@@ -64,6 +64,7 @@
     align-items: center;
     gap: 4px;
     flex-shrink: 0;
+    position: relative;
 }
 
 .sgc-x-select {
@@ -312,4 +313,52 @@
 }
 .sgc-legend-name .katex {
     font-size: 0.85em;
+}
+
+/* ── Code button (show mathjs script) ────────────────────────────── */
+.sgc-code-btn {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.65rem;
+    letter-spacing: -0.03em;
+}
+
+/* ── Script tooltip popover ──────────────────────────────────────── */
+.sgc-script-tooltip {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    padding: 8px 10px;
+    background: rgba(18, 22, 40, 0.96);
+    border: 1px solid rgba(110, 124, 180, 0.4);
+    border-radius: 6px;
+    color: #b8c8e8;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-width: 320px;
+    min-width: 140px;
+    z-index: 50;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    pointer-events: auto;
+}
+
+/* ── Error state in canvas area ──────────────────────────────────── */
+.sgc-canvas-wrap.sgc-chart-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(239, 83, 80, 0.06);
+    border-top: 1px solid rgba(239, 83, 80, 0.15);
+}
+
+.sgc-error-message {
+    padding: 16px 20px;
+    color: rgba(239, 130, 128, 0.85);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    text-align: center;
+    max-width: 90%;
 }

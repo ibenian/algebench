@@ -1,13 +1,15 @@
 /**
  * SgChartManager — interactive Chart.js plots for semantic graph nodes.
  *
- * Evaluates sub-expressions by walking the semantic graph DAG, renders
- * Chart.js line charts with variable selection, and supports pinning
- * charts to a floating overlay at the top of the viewport.
+ * Expression evaluation is handled by the backend (SymPy→mathjs pipeline)
+ * and evaluated client-side via expr.js.  Chart.js renders the results.
  *
  * Slider panel sits bottom-left, legend bottom-right (matching the 3D
  * viewport layout convention).
  */
+
+import { SgChartScript } from './sg-chart-script.js';
+import { compileExpr, evalExpr } from '/expr.js';
 
 const CHART_JS_CDN = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
 const NUM_POINTS = 200;
@@ -35,207 +37,6 @@ function loadChartJs() {
     });
     _chartJsPromise.catch(() => { _chartJsPromise = null; });
     return _chartJsPromise;
-}
-
-// ── Expression evaluator via graph DAG walk ──────────────────────────
-
-const MATH_OPS = {
-    add:       (a, b) => a + b,
-    subtract:  (a, b) => a - b,
-    multiply:  (a, b) => a * b,
-    divide:    (a, b) => b === 0 ? NaN : a / b,
-    power:     (a, b) => Math.pow(a, b),
-    negation:  (a) => -a,
-    sin:       (a) => Math.sin(a),
-    cos:       (a) => Math.cos(a),
-    tan:       (a) => Math.tan(a),
-    sqrt:      (a) => a < 0 ? NaN : Math.sqrt(a),
-    abs:       (a) => Math.abs(a),
-    Abs:       (a) => Math.abs(a),
-    log:       (a) => a <= 0 ? NaN : Math.log(a),
-    logarithm: (a) => a <= 0 ? NaN : Math.log(a),
-    exp:       (a) => Math.exp(a),
-    factorial: (a) => {
-        if (a < 0 || !Number.isInteger(a)) return NaN;
-        let r = 1; for (let i = 2; i <= a; i++) r *= i; return r;
-    },
-};
-
-const KNOWN_CONSTANTS = {
-    pi: Math.PI, 'π': Math.PI,
-    e: Math.E,
-    i: NaN,
-    phi: (1 + Math.sqrt(5)) / 2,
-    tau: 2 * Math.PI,
-    inf: Infinity,
-};
-
-function extractVariables(graph, rootId) {
-    const nodeById = Object.create(null);
-    for (const n of graph.nodes) nodeById[n.id] = n;
-    const childrenOf = Object.create(null);
-    const edgeRoles = Object.create(null);
-    for (const e of graph.edges) {
-        if (!childrenOf[e.to]) childrenOf[e.to] = [];
-        childrenOf[e.to].push(e.from);
-        edgeRoles[`${e.from}->${e.to}`] = e;
-    }
-
-    const vars = new Set();
-    const visited = new Set();
-    const queue = [rootId];
-    while (queue.length) {
-        const id = queue.shift();
-        if (visited.has(id)) continue;
-        visited.add(id);
-        const n = nodeById[id];
-        if (!n) continue;
-        const isOp = n.type === 'operator' || n.type === 'relation' || n.type === 'function';
-        if (!isOp && n.type !== 'number' && n.type !== 'constant') {
-            if (n.value == null || typeof n.value === 'string') {
-                const name = n.label || n.latex || n.id;
-                if (name && !KNOWN_CONSTANTS[name]) vars.add(name);
-            }
-        }
-        for (const child of (childrenOf[id] || [])) queue.push(child);
-    }
-    return [...vars];
-}
-
-function evaluateNode(graph, nodeId, vars, cache) {
-    if (cache.has(nodeId)) return cache.get(nodeId);
-
-    const nodeById = Object.create(null);
-    for (const n of graph.nodes) nodeById[n.id] = n;
-    const childrenOf = Object.create(null);
-    const edgeDetails = Object.create(null);
-    for (const e of graph.edges) {
-        if (!childrenOf[e.to]) childrenOf[e.to] = [];
-        childrenOf[e.to].push(e.from);
-        edgeDetails[`${e.from}->${e.to}`] = e;
-    }
-
-    function _eval(id) {
-        if (cache.has(id)) return cache.get(id);
-        const n = nodeById[id];
-        if (!n) { cache.set(id, NaN); return NaN; }
-
-        const isOp = n.type === 'operator' || n.type === 'relation' || n.type === 'function';
-
-        if (!isOp) {
-            if (n.value != null && typeof n.value === 'number') {
-                cache.set(id, n.value);
-                return n.value;
-            }
-            if (n.type === 'number') {
-                const v = parseFloat(n.label || n.latex || n.id);
-                cache.set(id, isNaN(v) ? 0 : v);
-                return cache.get(id);
-            }
-            if (n.type === 'constant') {
-                const name = n.label || n.latex || n.id;
-                if (KNOWN_CONSTANTS[name] != null) {
-                    cache.set(id, KNOWN_CONSTANTS[name]);
-                    return cache.get(id);
-                }
-                if (vars[name] != null) {
-                    cache.set(id, vars[name]);
-                    return vars[name];
-                }
-                cache.set(id, NaN);
-                return NaN;
-            }
-            const name = n.label || n.latex || n.id;
-            if (vars[name] != null) {
-                cache.set(id, vars[name]);
-                return vars[name];
-            }
-            cache.set(id, NaN);
-            return NaN;
-        }
-
-        const children = childrenOf[id] || [];
-        const op = n.op || '';
-
-        if (op === 'equals' || op === 'greater_than' || op === 'less_than' ||
-            op === 'greater_equal' || op === 'less_equal' || op === 'not_equal') {
-            if (children.length >= 2) {
-                const sorted = sortChildrenByRole(children, id, edgeDetails);
-                const lhs = _eval(sorted[0]);
-                const rhs = _eval(sorted[1]);
-                cache.set(id, lhs - rhs);
-                return lhs - rhs;
-            }
-        }
-
-        if (op === 'power') {
-            if (n.exponent != null) {
-                const expVal = parseFloat(n.exponent);
-                if (children.length >= 1) {
-                    const base = _eval(children[0]);
-                    const result = Math.pow(base, isNaN(expVal) ? 2 : expVal);
-                    cache.set(id, result);
-                    return result;
-                }
-            }
-            if (children.length >= 2) {
-                const sorted = sortChildrenByRole(children, id, edgeDetails);
-                const base = _eval(sorted[0]);
-                const exp = _eval(sorted[1]);
-                const result = Math.pow(base, exp);
-                cache.set(id, result);
-                return result;
-            }
-        }
-
-        const fn = MATH_OPS[op];
-        if (fn) {
-            const childVals = children.map(c => _eval(c));
-            if (fn.length === 1 && childVals.length >= 1) {
-                const result = fn(childVals[0]);
-                cache.set(id, result);
-                return result;
-            }
-            if (fn.length === 2 && childVals.length >= 2) {
-                let result = childVals[0];
-                for (let i = 1; i < childVals.length; i++) {
-                    result = fn(result, childVals[i]);
-                }
-                cache.set(id, result);
-                return result;
-            }
-            if (childVals.length === 1) {
-                cache.set(id, childVals[0]);
-                return childVals[0];
-            }
-        }
-
-        if (children.length === 1) {
-            const v = _eval(children[0]);
-            cache.set(id, v);
-            return v;
-        }
-
-        cache.set(id, NaN);
-        return NaN;
-    }
-
-    function sortChildrenByRole(children, parentId, edges) {
-        const withRole = children.map(c => {
-            const e = edges[`${c}->${parentId}`];
-            return { id: c, role: e?.role };
-        });
-        withRole.sort((a, b) => {
-            if (a.role === 'base' || a.role === 'lhs') return -1;
-            if (b.role === 'base' || b.role === 'lhs') return 1;
-            if (a.role === 'exp' || a.role === 'rhs') return 1;
-            if (b.role === 'exp' || b.role === 'rhs') return -1;
-            return 0;
-        });
-        return withRole.map(w => w.id);
-    }
-
-    return _eval(nodeId);
 }
 
 // ── Auto-range heuristics ────────────────────────────────────────────
@@ -279,6 +80,9 @@ export class SgChartManager {
         this._renderer = null;
         this._rafId = null;
         this._resizeObserver = null;
+
+        this._scriptService = new SgChartScript(graph);
+        this._compiledScripts = new Map();
 
         this._buildNodeIndex();
     }
@@ -395,20 +199,11 @@ export class SgChartManager {
     }
 
     hasExpression(nodeId) {
-        const n = this._nodeById[nodeId];
-        if (!n) return false;
-        const isOp = n.type === 'operator' || n.type === 'relation' || n.type === 'function';
-        if (isOp) {
-            const children = this._childrenOf[nodeId] || [];
-            return children.length > 0;
-        }
-        return false;
+        return this._scriptService.canChart(nodeId);
     }
 
     canChart(nodeId) {
-        if (!this._nodeById[nodeId]) return false;
-        const vars = extractVariables(this.graph, nodeId);
-        return vars.length > 0;
+        return this._scriptService.canChart(nodeId);
     }
 
     async openChart(nodeId, anchorEl) {
@@ -418,11 +213,25 @@ export class SgChartManager {
         const n = this._nodeById[nodeId];
         if (!n) return;
 
-        const vars = extractVariables(this.graph, nodeId);
-        if (vars.length === 0) return;
+        // ── Fetch mathjs script from backend (or pre-computed) ───────
+        const result = await this._scriptService.getScript(nodeId);
+        const hasError = !result || result.error;
+        const vars = hasError ? [] : result.variables;
+        const scriptText = hasError ? null : result.script;
+
+        // Compile the mathjs script via expr.js
+        let compiled = null;
+        if (scriptText) {
+            try {
+                compiled = compileExpr(scriptText);
+                this._compiledScripts.set(nodeId, compiled);
+            } catch (e) {
+                console.warn(`[SgChart] compile error for "${nodeId}":`, e);
+            }
+        }
 
         const chartId = `sgc-${++_chartIdCounter}`;
-        const xVar = vars[0];
+        const xVar = vars.length > 0 ? vars[0] : null;
 
         for (const v of vars) {
             this._allVariables.add(v);
@@ -469,6 +278,13 @@ export class SgChartManager {
             xSelect.appendChild(opt);
         }
 
+        // ── { } code button ─────────────────────────────────────────
+        const codeBtn = document.createElement('button');
+        codeBtn.className = 'sgc-btn sgc-code-btn';
+        codeBtn.title = 'Show mathjs script';
+        codeBtn.textContent = '{ }';
+        codeBtn.addEventListener('click', () => this._toggleScriptTooltip(nodeId, codeBtn));
+
         const pinBtn = document.createElement('button');
         pinBtn.className = 'sgc-btn sgc-pin-btn';
         pinBtn.title = 'Pin chart to overlay';
@@ -480,6 +296,7 @@ export class SgChartManager {
         closeBtn.textContent = '×';
 
         controls.appendChild(xSelect);
+        controls.appendChild(codeBtn);
         controls.appendChild(pinBtn);
         controls.appendChild(closeBtn);
         header.appendChild(title);
@@ -488,10 +305,79 @@ export class SgChartManager {
 
         const canvasWrap = document.createElement('div');
         canvasWrap.className = 'sgc-canvas-wrap';
-        const canvas = document.createElement('canvas');
-        canvasWrap.appendChild(canvas);
-        box.appendChild(canvasWrap);
 
+        // ── Error state or canvas ────────────────────────────────────
+        let chart = null;
+        if (hasError || !compiled) {
+            canvasWrap.classList.add('sgc-chart-error');
+            const errMsg = document.createElement('div');
+            errMsg.className = 'sgc-error-message';
+            errMsg.textContent = result?.error || result?.detail || 'Could not generate expression';
+            canvasWrap.appendChild(errMsg);
+            xSelect.style.display = 'none';
+            codeBtn.style.display = 'none';
+        } else {
+            const canvas = document.createElement('canvas');
+            canvasWrap.appendChild(canvas);
+
+            const { data } = this._computeData(nodeId, xVar, vars);
+
+            const colorIdx = _chartIdCounter % CHART_PALETTE.length;
+            const chartColor = CHART_PALETTE[colorIdx];
+
+            chart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: data.map(p => p.x),
+                    datasets: [{
+                        label: label,
+                        data: data.map(p => p.y),
+                        borderColor: chartColor,
+                        backgroundColor: chartColor + '22',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHitRadius: 6,
+                        fill: true,
+                        tension: 0.3,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 200 },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(10, 12, 26, 0.9)',
+                            titleColor: '#dde6ff',
+                            bodyColor: '#aebbd1',
+                            borderColor: 'rgba(110, 124, 180, 0.35)',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: (ctx) => `y = ${ctx.parsed.y?.toFixed(4)}`,
+                                title: (items) => `${xVar} = ${items[0]?.parsed.x?.toFixed(4)}`,
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: true, text: xVar, color: '#8fa8c8' },
+                            ticks: { color: '#7e8aa3', maxTicksLimit: 8, callback: v => +v.toFixed(3) },
+                            grid: { color: 'rgba(110, 124, 180, 0.12)' },
+                        },
+                        y: {
+                            title: { display: true, text: 'f(' + xVar + ')', color: '#8fa8c8' },
+                            ticks: { color: '#7e8aa3', maxTicksLimit: 6, callback: v => +v.toFixed(3) },
+                            grid: { color: 'rgba(110, 124, 180, 0.12)' },
+                        },
+                    },
+                    interaction: { mode: 'index', intersect: false },
+                },
+            });
+        }
+
+        box.appendChild(canvasWrap);
         card.appendChild(box);
 
         const boxW = 340, boxH = 248;
@@ -550,67 +436,15 @@ export class SgChartManager {
         const colorIdx = _chartIdCounter % CHART_PALETTE.length;
         const chartColor = CHART_PALETTE[colorIdx];
 
-        const { data, xLabel } = this._computeData(nodeId, xVar, vars);
-
-        const chart = new Chart(canvas, {
-            type: 'line',
-            data: {
-                labels: data.map(p => p.x),
-                datasets: [{
-                    label: label,
-                    data: data.map(p => p.y),
-                    borderColor: chartColor,
-                    backgroundColor: chartColor + '22',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    pointHitRadius: 6,
-                    fill: true,
-                    tension: 0.3,
-                }],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 200 },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: 'rgba(10, 12, 26, 0.9)',
-                        titleColor: '#dde6ff',
-                        bodyColor: '#aebbd1',
-                        borderColor: 'rgba(110, 124, 180, 0.35)',
-                        borderWidth: 1,
-                        callbacks: {
-                            label: (ctx) => `y = ${ctx.parsed.y?.toFixed(4)}`,
-                            title: (items) => `${xVar} = ${items[0]?.parsed.x?.toFixed(4)}`,
-                        },
-                    },
-                },
-                scales: {
-                    x: {
-                        type: 'linear',
-                        title: { display: true, text: xVar, color: '#8fa8c8' },
-                        ticks: { color: '#7e8aa3', maxTicksLimit: 8, callback: v => +v.toFixed(3) },
-                        grid: { color: 'rgba(110, 124, 180, 0.12)' },
-                    },
-                    y: {
-                        title: { display: true, text: 'f(' + xVar + ')', color: '#8fa8c8' },
-                        ticks: { color: '#7e8aa3', maxTicksLimit: 6, callback: v => +v.toFixed(3) },
-                        grid: { color: 'rgba(110, 124, 180, 0.12)' },
-                    },
-                },
-                interaction: { mode: 'index', intersect: false },
-            },
-        });
-
         const entry = {
             chartId,
             nodeId,
             chart,
             box,
-            canvas,
+            canvas: box.querySelector('canvas'),
             xVar,
             vars,
+            scriptText,
             color: chartColor,
             pinned: false,
             graphX: _graphX,
@@ -620,7 +454,7 @@ export class SgChartManager {
         };
         this.charts.set(nodeId, entry);
 
-        this._makeDraggable(entry);
+        if (chart) this._makeDraggable(entry);
 
         xSelect.addEventListener('change', () => {
             entry.xVar = xSelect.value;
@@ -643,14 +477,42 @@ export class SgChartManager {
         this._updateLegend();
     }
 
+    // ── Script tooltip ──────────────────────────────────────────────
+
+    _toggleScriptTooltip(nodeId, btnEl) {
+        // Close any existing tooltip
+        const existing = btnEl.parentElement?.querySelector('.sgc-script-tooltip');
+        if (existing) { existing.remove(); return; }
+
+        const entry = this.charts.get(nodeId);
+        const text = entry?.scriptText || '(no script)';
+
+        const tip = document.createElement('div');
+        tip.className = 'sgc-script-tooltip';
+        tip.textContent = text;
+
+        // Position below the button
+        btnEl.parentElement.appendChild(tip);
+
+        // Auto-close when clicking elsewhere
+        const close = (e) => {
+            if (!tip.contains(e.target) && e.target !== btnEl) {
+                tip.remove();
+                document.removeEventListener('click', close, true);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', close, true), 0);
+    }
+
     closeChart(nodeId) {
         const entry = this.charts.get(nodeId);
         if (!entry) return;
         if (entry._dragCleanup) entry._dragCleanup();
         if (entry._resizeCleanup) entry._resizeCleanup();
-        entry.chart.destroy();
+        if (entry.chart) entry.chart.destroy();
         entry.box.remove();
         this.charts.delete(nodeId);
+        this._compiledScripts.delete(nodeId);
         this._unpinChart(nodeId);
         this._rebuildVariableSet();
         this._updateSliders();
@@ -682,7 +544,7 @@ export class SgChartManager {
         }
 
         this.pinnedCharts.push(nodeId);
-        entry.chart.resize();
+        if (entry.chart) entry.chart.resize();
     }
 
     _unpinChart(nodeId) {
@@ -727,7 +589,7 @@ export class SgChartManager {
 
         this._unpinChart(nodeId);
         this._makeDraggable(entry);
-        entry.chart.resize();
+        if (entry.chart) entry.chart.resize();
     }
 
     _makeDraggable(entry) {
@@ -846,21 +708,26 @@ export class SgChartManager {
         };
     }
 
-    _computeData(nodeId, xVar, vars) {
+    _computeData(nodeId, xVar, _vars) {
+        const compiled = this._compiledScripts.get(nodeId);
+        if (!compiled) return { data: [], xLabel: xVar };
+
         const range = autoRange(xVar);
         const points = [];
         const step = (range.max - range.min) / NUM_POINTS;
 
         for (let i = 0; i <= NUM_POINTS; i++) {
             const xVal = range.min + step * i;
-            const varValues = { ...this.sliderValues };
-            varValues[xVar] = xVal;
+            const scope = { ...this.sliderValues };
+            scope[xVar] = xVal;
 
-            const cache = new Map();
-            const y = evaluateNode(this.graph, nodeId, varValues, cache);
-
-            if (Number.isFinite(y)) {
-                points.push({ x: +xVal.toFixed(6), y: +y.toFixed(6) });
+            try {
+                const y = evalExpr(compiled, 0, { extraScope: scope });
+                if (Number.isFinite(y)) {
+                    points.push({ x: +xVal.toFixed(6), y: +y.toFixed(6) });
+                }
+            } catch (_) {
+                // skip point on evaluation error
             }
         }
 
@@ -868,6 +735,7 @@ export class SgChartManager {
     }
 
     _updateChart(entry) {
+        if (!entry.chart) return;
         const { data } = this._computeData(entry.nodeId, entry.xVar, entry.vars);
         entry.chart.data.labels = data.map(p => p.x);
         entry.chart.data.datasets[0].data = data.map(p => p.y);
@@ -1017,10 +885,11 @@ export class SgChartManager {
         for (const entry of this.charts.values()) {
             if (entry._dragCleanup) entry._dragCleanup();
             if (entry._resizeCleanup) entry._resizeCleanup();
-            entry.chart.destroy();
+            if (entry.chart) entry.chart.destroy();
             entry.box.remove();
         }
         this.charts.clear();
+        this._compiledScripts.clear();
         this.pinnedCharts = [];
         if (this._sliderPanel) this._sliderPanel.remove();
         if (this._pinnedPanel) this._pinnedPanel.remove();

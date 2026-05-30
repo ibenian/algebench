@@ -34,6 +34,7 @@ try:
 except ImportError:
     from scripts.graph_to_mermaid import semantic_graph_to_mermaid, load_theme
 
+from backend.semantic_graph.mathjs_converter import latex_to_mathjs
 from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
 from tests.backend.semantic_graph.domains.test_domain_arithmetic import (
     ALL_EXPRESSIONS as ARITHMETIC_EXPRESSIONS,
@@ -203,9 +204,11 @@ def _page_template() -> str:
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
       onload="renderMathInElement(document.body, {{delimiters:[{{left:'$$',right:'$$',display:true}},{{left:'$',right:'$',display:false}}]}});"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjs@13.0.0/lib/browser/math.js"></script>
     <script type="importmap">{{
       "imports": {{
-        "/labels.js": "data:text/javascript,export function makeAiAskButton(){{return document.createElement('span')}}"
+        "/labels.js": "data:text/javascript,export function makeAiAskButton(){{return document.createElement('span')}}",
+        "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({{binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)}});export function compileExpr(s){{return m.compile(s)}}export function evalExpr(c,t,opts){{const scope=opts%26%26opts.extraScope?{{...opts.extraScope}}:{{}};return c.evaluate(scope)}}"
       }}
     }}</script>
     <script>
@@ -675,6 +678,24 @@ def _page_template() -> str:
     """)
 
 
+def _precompute_chart_scripts(graph_dict: dict[str, Any]) -> None:
+    """Pre-compute mathjs scripts for nodes that have ``subexpr``.
+
+    Mutates *graph_dict* in-place, adding a ``chartScript`` key to each
+    eligible node.  Errors are silently skipped — nodes without a
+    ``chartScript`` will simply not offer charting in the report.
+    """
+    for node in graph_dict.get("nodes", []):
+        subexpr = node.get("subexpr")
+        if not subexpr:
+            continue
+        try:
+            script, variables = latex_to_mathjs(subexpr)
+            node["chartScript"] = {"script": script, "variables": variables}
+        except Exception:
+            pass  # silently skip — chart button just won't appear
+
+
 def _render_row(
     test_id: str,
     latex: str,
@@ -693,6 +714,7 @@ def _render_row(
     try:
         graph_obj = latex_to_semantic_graph(latex, domain=domain)
         graph_dict = graph_obj.model_dump(by_alias=True, exclude_none=True)
+        _precompute_chart_scripts(graph_dict)
         mermaid_src = semantic_graph_to_mermaid(graph_dict, theme=theme)
         graph_json = json.dumps(graph_dict, indent=2, ensure_ascii=False)
 
@@ -860,6 +882,10 @@ def generate_report(
     chart_js_dst = output.parent / "sg-chart.js"
     shutil.copy2(chart_js_src, chart_js_dst)
 
+    chart_script_src = _PROJECT_ROOT / "static" / "graph-panel" / "sg-chart-script.js"
+    chart_script_dst = output.parent / "sg-chart-script.js"
+    shutil.copy2(chart_script_src, chart_script_dst)
+
     html, _, _ = _build_report_html(
         sections, graph_theme=graph_theme, theme=theme, colors=colors,
         d3_module_url="./d3-semantic-graph.js",
@@ -929,6 +955,10 @@ def generate_site(
     chart_js_src = _PROJECT_ROOT / "static" / "graph-panel" / "sg-chart.js"
     chart_js_dst = outdir / "sg-chart.js"
     shutil.copy2(chart_js_src, chart_js_dst)
+
+    chart_script_src = _PROJECT_ROOT / "static" / "graph-panel" / "sg-chart-script.js"
+    chart_script_dst = outdir / "sg-chart-script.js"
+    shutil.copy2(chart_script_src, chart_script_dst)
 
     theme = load_theme(graph_theme)
     color_mode = theme.get("mode", "dark")

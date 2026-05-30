@@ -31,6 +31,22 @@ const _MATHJS_EXTENSIONS = {
         const val = row[String(column)];
         return val != null ? val : 0;
     },
+
+    // ── SymPy jscode compatibility ──────────────────────────────────────
+    // SymPy's jscode(strict=False) emits bare function names for functions
+    // it can't map to Math.*. These aliases ensure mathjs can evaluate them.
+
+    // binomial(n, k) — SymPy emits this; mathjs has combinations()
+    binomial: (n, k) => _mathjs.combinations(n, k),
+
+    // erfc(x) — complementary error function: 1 − erf(x)
+    erfc: (x) => 1 - _mathjs.erf(x),
+
+    // beta(a, b) — Euler beta function: Γ(a)Γ(b) / Γ(a+b)
+    beta: (a, b) => _mathjs.gamma(a) * _mathjs.gamma(b) / _mathjs.gamma(a + b),
+
+    // conjugate(x) — SymPy emits this; mathjs has conj()
+    conjugate: (x) => _mathjs.conj(x),
 };
 
 _mathjs.import({

@@ -1368,6 +1368,36 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             print(f"   ❌ /api/graph/from-latex: {e}\n{traceback.format_exc()}")
             return JSONResponse({"error": "internal error processing LaTeX"}, status_code=500)
 
+    class GenerateMathjsRequest(BaseModel):
+        subexpr: str
+
+    @fastapp.post("/api/graph/generate-mathjs")
+    async def post_generate_mathjs(req: GenerateMathjsRequest):
+        """Convert a LaTeX sub-expression to a mathjs-compatible script.
+
+        Accepts the ``subexpr`` field from a semantic graph node and returns
+        a mathjs expression string suitable for ``math.compile()`` on the
+        client.  Relations (``=``, ``>``, …) are automatically converted to
+        ``LHS - RHS``.
+        """
+        from backend.semantic_graph.mathjs_converter import latex_to_mathjs
+
+        try:
+            script, variables = latex_to_mathjs(req.subexpr)
+            return JSONResponse({"script": script, "variables": variables})
+        except (ValueError, SyntaxError) as e:
+            return JSONResponse(
+                {"error": "failed to convert LaTeX to mathjs", "detail": str(e)},
+                status_code=400,
+            )
+        except Exception as e:
+            import traceback
+            print(f"   ❌ /api/graph/generate-mathjs: {e}\n{traceback.format_exc()}")
+            return JSONResponse(
+                {"error": "internal error generating mathjs", "detail": str(e)},
+                status_code=500,
+            )
+
     class GraphEnrichRequest(BaseModel):
         graph: dict
         context: dict | None = None
