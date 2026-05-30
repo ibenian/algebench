@@ -86,6 +86,18 @@ from tests.backend.semantic_graph.domains.test_domain_probability import (
 from tests.backend.semantic_graph.domains.test_domain_combinatorics import (
     ALL_EXPRESSIONS as COMBINATORICS_EXPRESSIONS,
 )
+from tests.backend.semantic_graph.domains.test_domain_quantum import (
+    ALL_EXPRESSIONS as QUANTUM_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_relativity import (
+    ALL_EXPRESSIONS as RELATIVITY_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_fluids import (
+    ALL_EXPRESSIONS as FLUIDS_EXPRESSIONS,
+)
+from tests.backend.semantic_graph.domains.test_domain_chemistry import (
+    ALL_EXPRESSIONS as CHEMISTRY_EXPRESSIONS,
+)
 
 
 # ── Expression catalog ─────────────────────────────────────────────────
@@ -93,29 +105,35 @@ from tests.backend.semantic_graph.domains.test_domain_combinatorics import (
 # Expand this list as new domain test files are added.
 
 
-def _collect_expressions() -> list[tuple[str, list[tuple[str, str]]]]:
-    sections: list[tuple[str, list[tuple[str, str]]]] = []
-    for name, catalog in (
-        ("Arithmetic", ARITHMETIC_EXPRESSIONS),
-        ("Algebra", ALGEBRA_EXPRESSIONS),
-        ("Calculus", CALCULUS_EXPRESSIONS),
-        ("ODE", ODE_EXPRESSIONS),
-        ("PDE", PDE_EXPRESSIONS),
-        ("Structural", STRUCTURAL_EXPRESSIONS),
-        ("Mechanics", MECHANICS_EXPRESSIONS),
-        ("Electromagnetism", EM_EXPRESSIONS),
-        ("Thermodynamics", THERMO_EXPRESSIONS),
-        ("Waves & Optics", WAVES_EXPRESSIONS),
-        ("Trigonometry", TRIG_EXPRESSIONS),
-        ("Linear Algebra", LINALG_EXPRESSIONS),
-        ("Complex Analysis", COMPLEX_EXPRESSIONS),
-        ("Logic & Set Theory", LOGIC_EXPRESSIONS),
-        ("Number Theory", NUMBER_THEORY_EXPRESSIONS),
-        ("Probability & Statistics", PROBABILITY_EXPRESSIONS),
-        ("Combinatorics", COMBINATORICS_EXPRESSIONS),
+def _collect_expressions() -> list[tuple[str, list[tuple[str, str, str | None]]]]:
+    # Each section: (display name, catalog, domain hint passed to the parser).
+    # The domain hint must match the one used by the domain's test suite.
+    sections: list[tuple[str, list[tuple[str, str, str | None]]]] = []
+    for name, catalog, domain in (
+        ("Arithmetic", ARITHMETIC_EXPRESSIONS, None),
+        ("Algebra", ALGEBRA_EXPRESSIONS, None),
+        ("Calculus", CALCULUS_EXPRESSIONS, None),
+        ("ODE", ODE_EXPRESSIONS, None),
+        ("PDE", PDE_EXPRESSIONS, None),
+        ("Structural", STRUCTURAL_EXPRESSIONS, None),
+        ("Mechanics", MECHANICS_EXPRESSIONS, None),
+        ("Electromagnetism", EM_EXPRESSIONS, None),
+        ("Thermodynamics", THERMO_EXPRESSIONS, None),
+        ("Waves & Optics", WAVES_EXPRESSIONS, None),
+        ("Trigonometry", TRIG_EXPRESSIONS, None),
+        ("Linear Algebra", LINALG_EXPRESSIONS, None),
+        ("Complex Analysis", COMPLEX_EXPRESSIONS, None),
+        ("Logic & Set Theory", LOGIC_EXPRESSIONS, None),
+        ("Number Theory", NUMBER_THEORY_EXPRESSIONS, None),
+        ("Probability & Statistics", PROBABILITY_EXPRESSIONS, None),
+        ("Combinatorics", COMBINATORICS_EXPRESSIONS, None),
+        ("Quantum Mechanics", QUANTUM_EXPRESSIONS, "quantum_mechanics"),
+        ("Relativity", RELATIVITY_EXPRESSIONS, "mechanics"),
+        ("Fluid Dynamics", FLUIDS_EXPRESSIONS, "mechanics"),
+        ("Chemistry", CHEMISTRY_EXPRESSIONS, "chemistry"),
     ):
         items = [
-            (tid, latex)
+            (tid, latex, domain)
             for tid, latex, tag, *_ in catalog
             if tag is None  # skip XFAIL / SKIP entries
         ]
@@ -632,6 +650,7 @@ def _render_row(
     test_id: str,
     latex: str,
     theme: dict[str, Any],
+    domain: str | None = None,
 ) -> tuple[str, bool]:
     """Render a single expression row. Returns (html, success)."""
     parts: list[str] = []
@@ -643,7 +662,7 @@ def _render_row(
 
     graph_json = None
     try:
-        graph_obj = latex_to_semantic_graph(latex)
+        graph_obj = latex_to_semantic_graph(latex, domain=domain)
         graph_dict = graph_obj.model_dump(by_alias=True, exclude_none=True)
         mermaid_src = semantic_graph_to_mermaid(graph_dict, theme=theme)
         graph_json = json.dumps(graph_dict, indent=2, ensure_ascii=False)
@@ -714,7 +733,7 @@ def _escape_attr(s: str) -> str:
 
 
 def _build_report_html(
-    sections: list[tuple[str, list[tuple[str, str]]]],
+    sections: list[tuple[str, list[tuple[str, str, str | None]]]],
     *,
     graph_theme: str,
     theme: dict[str, Any],
@@ -734,8 +753,8 @@ def _build_report_html(
             f'<div class="section-title">{section_name} '
             f'({len(expressions)} expressions)</div>'
         )
-        for test_id, latex in expressions:
-            row_html, success = _render_row(test_id, latex, theme)
+        for test_id, latex, domain in expressions:
+            row_html, success = _render_row(test_id, latex, theme, domain)
             body_parts.append(row_html)
             if success:
                 ok_count += 1
