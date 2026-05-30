@@ -1090,13 +1090,9 @@ export class SgChartManager {
         if (!this._legendPanel) return;
         this._legendPanel.innerHTML = '';
 
-        if (this.charts.size === 0) {
-            this._legendPanel.classList.add('hidden');
-            return;
-        }
-
         if (this.charts.size < 2) {
             this._legendPanel.classList.add('hidden');
+            this._emitLegendChange();
             return;
         }
 
@@ -1144,6 +1140,18 @@ export class SgChartManager {
             item.appendChild(name);
             this._legendPanel.appendChild(item);
         }
+
+        this._emitLegendChange();
+    }
+
+    // Notify graph-view.js (which owns the enrichment-progress stack in a
+    // sibling container) that the legend strip changed, so it can re-stack the
+    // enrichment pills above the new legend height. Decoupled via a DOM event
+    // to avoid a circular import between this module and graph-view.js.
+    _emitLegendChange() {
+        try {
+            document.dispatchEvent(new CustomEvent('sgc:legend-change'));
+        } catch (_) { /* no-op */ }
     }
 
     destroy() {
