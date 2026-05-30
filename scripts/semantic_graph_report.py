@@ -655,11 +655,8 @@ def _page_template() -> str:
               katex: window.katex || null,
               onTransformChange: function(t) {{ chartMgr.setTransform(t); }},
               onChartClick: function(nodeId, nodeData, btnEl) {{
-                if (chartMgr.charts.has(nodeId)) {{
-                  chartMgr.closeChart(nodeId);
-                }} else {{
-                  chartMgr.openChart(nodeId, btnEl);
-                }}
+                // Always open — never toggle.  Only the × button closes.
+                chartMgr.openChart(nodeId, btnEl);
               }},
             }});
             if (chartMgr.setRenderer) chartMgr.setRenderer(renderer);

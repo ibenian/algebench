@@ -837,11 +837,8 @@ async function _renderWithD3(container, graph, step, key) {
             },
             onChartClick: (nodeId, nodeData, btnEl) => {
                 if (!_currentChartManager) return;
-                if (_currentChartManager.charts.has(nodeId)) {
-                    _currentChartManager.closeChart(nodeId);
-                } else {
-                    _currentChartManager.openChart(nodeId, btnEl);
-                }
+                // Always open — never toggle.  Only the × button closes.
+                _currentChartManager.openChart(nodeId, btnEl);
             },
         });
     } else {

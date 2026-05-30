@@ -103,6 +103,14 @@ class TestJscodeToMathjs:
         assert "//" not in result
         assert "x + y" in result
 
+    # -- Subscript brace stripping --
+
+    def test_strips_subscript_braces(self):
+        assert jscode_to_mathjs("p_{i}*x_{i}") == "p_i*x_i"
+
+    def test_strips_nested_subscript_braces(self):
+        assert jscode_to_mathjs("a_{ij} + b_{12}") == "a_ij + b_12"
+
 
 # ── Full LaTeX → mathjs pipeline ──────────────────────────────────────
 
@@ -273,3 +281,26 @@ class TestLatexToMathjs:
         assert "u_prime" in script
         assert "'" not in script
         assert sorted(variables) == ["c", "u_prime", "v"]
+
+    # -- Subscript brace sanitization --
+
+    def test_subscripted_variable(self):
+        """``x_i`` should not have LaTeX braces in the output."""
+        script, variables = latex_to_mathjs(r"x_i")
+        assert "{" not in script
+        assert "}" not in script
+        assert variables == ["x_i"]
+
+    def test_subscripted_product(self):
+        """``x_i p_i`` — subscripted variables in a product."""
+        script, variables = latex_to_mathjs(r"x_i p_i")
+        assert "{" not in script
+        assert "}" not in script
+        assert sorted(variables) == ["p_i", "x_i"]
+
+    def test_subscript_in_equation(self):
+        """Subscripted variables in an equation."""
+        script, variables = latex_to_mathjs(r"a_1 + a_2 = b")
+        assert "{" not in script
+        assert "}" not in script
+        assert "b" in variables

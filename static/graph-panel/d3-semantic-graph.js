@@ -1345,6 +1345,7 @@ export class D3SemanticGraphRenderer {
             }
 
             this._appendChevron(group, d, true);
+            if (data.subexpr || data.chartScript) this._appendChartBtn(group, d);
             return;
         }
 
@@ -1374,6 +1375,8 @@ export class D3SemanticGraphRenderer {
 
         if (isOp && data._childIds && data._childIds.length > 0) {
             this._appendChevron(group, d, false);
+        }
+        if (data.subexpr || data.chartScript) {
             this._appendChartBtn(group, d);
         }
     }

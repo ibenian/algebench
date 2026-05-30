@@ -73,6 +73,29 @@ def _sanitize_primed_symbols(expr: sympy.Basic) -> sympy.Basic:
     return expr.subs(subs) if subs else expr
 
 
+def _sanitize_subscript_braces(expr: sympy.Basic) -> sympy.Basic:
+    """Strip LaTeX subscript braces from symbol names.
+
+    ``parse_latex`` emits ``Symbol("x_{i}")`` for ``x_i`` — the braces
+    are not valid in JavaScript/mathjs identifiers.  This replaces them:
+
+    * ``x_{i}``   → ``x_i``
+    * ``p_{ij}``  → ``p_ij``
+    * ``a_{12}``  → ``a_12``
+
+    Nested braces (rare) are also stripped.
+    """
+    subs: dict[Symbol, Symbol] = {}
+    for sym in expr.free_symbols:
+        name = sym.name
+        if "{" not in name and "}" not in name:
+            continue
+        clean = name.replace("{", "").replace("}", "")
+        if clean != name:
+            subs[sym] = Symbol(clean)
+    return expr.subs(subs) if subs else expr
+
+
 # ── jscode → mathjs conversion ────────────────────────────────────────
 
 def jscode_to_mathjs(js_code: str) -> str:
@@ -105,6 +128,10 @@ def jscode_to_mathjs(js_code: str) -> str:
     # are not valid JS/mathjs identifiers.
     result = re.sub(r"(\w)('{2,})", lambda m: m.group(1) + "_" + _prime_suffix(len(m.group(2))), result)
     result = re.sub(r"(\w)'", r"\1_prime", result)
+
+    # Safety-net: strip LaTeX subscript braces that may slip through
+    # (e.g. from parse_latex symbols like ``x_{i}``).
+    result = result.replace("{", "").replace("}", "")
 
     return result.strip()
 
@@ -160,6 +187,10 @@ def latex_to_mathjs(latex: str) -> tuple[str, list[str]]:
     # Sanitize primed symbols (u' → u_prime) so jscode emits valid
     # JavaScript identifiers.
     expr = _sanitize_primed_symbols(expr)
+
+    # Strip LaTeX subscript braces (x_{i} → x_i) so jscode emits
+    # valid JavaScript/mathjs identifiers.
+    expr = _sanitize_subscript_braces(expr)
 
     # Extract free variables (after substitution).
     variables = sorted(str(s) for s in expr.free_symbols)

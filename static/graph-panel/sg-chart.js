@@ -23,13 +23,74 @@ const GRID_COLS = 6;
 const GRID_ROWS = 4;
 const GRID_GAP = 8;
 
-// Convert sanitized variable names back to display-friendly LaTeX.
-// u_prime → u', u_dprime → u'', u_tprime → u''', etc.
+// Greek letter names → Unicode characters for plain-text contexts
+// (dropdown options, axis titles, tooltips).
+const _GREEK_UNICODE = new Map([
+    ['alpha', 'α'], ['beta', 'β'], ['gamma', 'γ'],
+    ['delta', 'δ'], ['epsilon', 'ε'], ['zeta', 'ζ'],
+    ['eta', 'η'], ['theta', 'θ'], ['iota', 'ι'],
+    ['kappa', 'κ'], ['lambda', 'λ'], ['mu', 'μ'],
+    ['nu', 'ν'], ['xi', 'ξ'], ['pi', 'π'],
+    ['rho', 'ρ'], ['sigma', 'σ'], ['tau', 'τ'],
+    ['upsilon', 'υ'], ['phi', 'φ'], ['chi', 'χ'],
+    ['psi', 'ψ'], ['omega', 'ω'],
+    ['Gamma', 'Γ'], ['Delta', 'Δ'], ['Theta', 'Θ'],
+    ['Lambda', 'Λ'], ['Pi', 'Π'], ['Sigma', 'Σ'],
+    ['Phi', 'Φ'], ['Psi', 'Ψ'], ['Omega', 'Ω'],
+]);
+
+// Greek letter names → LaTeX commands for KaTeX rendering.
+const _GREEK_LATEX = new Map([
+    ['alpha', '\\alpha'], ['beta', '\\beta'], ['gamma', '\\gamma'],
+    ['delta', '\\delta'], ['epsilon', '\\epsilon'], ['zeta', '\\zeta'],
+    ['eta', '\\eta'], ['theta', '\\theta'], ['iota', '\\iota'],
+    ['kappa', '\\kappa'], ['lambda', '\\lambda'], ['mu', '\\mu'],
+    ['nu', '\\nu'], ['xi', '\\xi'], ['pi', '\\pi'],
+    ['rho', '\\rho'], ['sigma', '\\sigma'], ['tau', '\\tau'],
+    ['upsilon', '\\upsilon'], ['phi', '\\phi'], ['chi', '\\chi'],
+    ['psi', '\\psi'], ['omega', '\\omega'],
+    ['Gamma', '\\Gamma'], ['Delta', '\\Delta'], ['Theta', '\\Theta'],
+    ['Lambda', '\\Lambda'], ['Pi', '\\Pi'], ['Sigma', '\\Sigma'],
+    ['Phi', '\\Phi'], ['Psi', '\\Psi'], ['Omega', '\\Omega'],
+]);
+
+// Convert sanitized variable names back to display-friendly form.
+// u_prime → u', u_dprime → u'', gamma → γ (Unicode).
+// Used for plain-text contexts (dropdowns, axis titles, tooltips).
 function _displayVar(name) {
-    return name
+    let out = name
         .replace(/_tprime$/, "'''")
         .replace(/_dprime$/, "''")
         .replace(/_prime$/, "'");
+    return _GREEK_UNICODE.get(out) || out;
+}
+
+// Convert variable name to LaTeX for KaTeX rendering.
+// gamma → \gamma, u_prime → u', etc.
+function _latexVar(name) {
+    let out = name
+        .replace(/_tprime$/, "'''")
+        .replace(/_dprime$/, "''")
+        .replace(/_prime$/, "'");
+    return _GREEK_LATEX.get(out) || out;
+}
+
+// Relation operators that trigger LHS−RHS conversion in the backend.
+const _RELATION_RE = /(?:^|[^\\])=|\\(?:leq|geq|neq|lt|gt|le|ge)\b|[<>]/;
+
+// Convert an equation LaTeX into "LHS − (RHS)" display form.
+function _relationToLhsMinusRhs(latex) {
+    // Split on the first top-level relation operator.
+    // Try simple '=' first, then LaTeX commands.
+    for (const sep of ['=', '\\leq', '\\geq', '\\neq', '\\le', '\\ge', '<', '>']) {
+        const idx = latex.indexOf(sep);
+        if (idx >= 0) {
+            const lhs = latex.slice(0, idx).trim();
+            const rhs = latex.slice(idx + sep.length).trim();
+            if (lhs && rhs) return `${lhs} - \\left(${rhs}\\right)`;
+        }
+    }
+    return latex;
 }
 
 let _chartJsLoaded = false;
@@ -157,7 +218,7 @@ export class SgChartManager {
             // Reflow pinned charts (grid steps depend on viewport size)
             for (const entry of this.charts.values()) {
                 if (entry.pinned) {
-                    this._applyPinnedSize(entry);
+                    this._applyGridSize(entry);
                     entry.chart.resize();
                 }
             }
@@ -241,9 +302,17 @@ export class SgChartManager {
         return this._scriptService.canChart(nodeId);
     }
 
+    /** Return all chart entries belonging to a given node. */
+    _chartsForNode(nodeId) {
+        const result = [];
+        for (const entry of this.charts.values()) {
+            if (entry.nodeId === nodeId) result.push(entry);
+        }
+        return result;
+    }
+
     async openChart(nodeId, anchorEl) {
         if (!this._ready) await this.init();
-        if (this.charts.has(nodeId)) return;
 
         const n = this._nodeById[nodeId];
         if (!n) return;
@@ -268,6 +337,15 @@ export class SgChartManager {
         const chartId = `sgc-${++_chartIdCounter}`;
         const xVar = vars.length > 0 ? vars[0] : null;
 
+        // ── Dedup: skip if a chart for this node already uses xVar ───
+        // Each node can have at most one chart per independent variable.
+        // Clicking the chart button again only adds a new chart if the
+        // default x-variable is not already taken by an existing chart.
+        const existing = this._chartsForNode(nodeId);
+        if (existing.some(e => e.xVar === xVar)) return;
+        const rawLabel = n.subexpr || n.latex || n.label || n.id;
+        const isRelation = _RELATION_RE.test(rawLabel);
+
         for (const v of vars) {
             this._allVariables.add(v);
             if (this.sliderValues[v] == null) {
@@ -288,7 +366,12 @@ export class SgChartManager {
 
         const title = document.createElement('span');
         title.className = 'sgc-chart-title';
-        const label = n.subexpr || n.latex || n.label || n.id;
+        let label = n.subexpr || n.latex || n.label || n.id;
+        // If the backend converted a relation (=, ≤, ≥, …) to LHS−RHS,
+        // reflect that in the chart title so it matches what is plotted.
+        if ((n.subexpr || n.latex) && _RELATION_RE.test(label)) {
+            label = _relationToLhsMinusRhs(label);
+        }
         if (this.katex && (n.subexpr || n.latex)) {
             try {
                 this.katex.render(label, title, { throwOnError: false, displayMode: false });
@@ -318,7 +401,7 @@ export class SgChartManager {
         codeBtn.className = 'sgc-btn sgc-code-btn';
         codeBtn.title = 'Show mathjs script';
         codeBtn.textContent = '{ }';
-        codeBtn.addEventListener('click', () => this._toggleScriptTooltip(nodeId, codeBtn));
+        codeBtn.addEventListener('click', () => this._toggleScriptTooltip(chartId, codeBtn));
 
         const pinBtn = document.createElement('button');
         pinBtn.className = 'sgc-btn sgc-pin-btn';
@@ -375,6 +458,7 @@ export class SgChartManager {
                         pointHitRadius: 6,
                         fill: true,
                         tension: 0.3,
+                        spanGaps: false,
                     }],
                 },
                 options: {
@@ -403,7 +487,7 @@ export class SgChartManager {
                             grid: { color: 'rgba(110, 124, 180, 0.12)' },
                         },
                         y: {
-                            title: { display: true, text: 'f(' + _displayVar(xVar) + ')', color: '#8fa8c8' },
+                            title: { display: true, text: isRelation ? 'LHS − RHS' : 'f(' + _displayVar(xVar) + ')', color: '#8fa8c8' },
                             ticks: { color: '#7e8aa3', maxTicksLimit: 6, callback: v => +v.toFixed(3) },
                             grid: { color: 'rgba(110, 124, 180, 0.12)' },
                         },
@@ -416,7 +500,9 @@ export class SgChartManager {
         box.appendChild(canvasWrap);
         card.appendChild(box);
 
-        const boxW = 340, boxH = 248;
+        const step = this._getGridSteps();
+        const boxW = 2 * step.w + GRID_GAP;
+        const boxH = 2 * step.h + GRID_GAP;
         let left = 4, top = 4;
         {
             const containerRect = card.getBoundingClientRect();
@@ -487,10 +573,13 @@ export class SgChartManager {
             graphY: _graphY,
             colSpan: 2,
             rowSpan: 2,
+            isRelation,
         };
-        this.charts.set(nodeId, entry);
+        this.charts.set(chartId, entry);
 
+        this._applyGridSize(entry);
         this._makeDraggable(entry);
+        this._addResizeHandle(entry);
 
         xSelect.addEventListener('change', () => {
             entry.xVar = xSelect.value;
@@ -499,15 +588,15 @@ export class SgChartManager {
         });
 
         pinBtn.addEventListener('click', () => {
-            const e = this.charts.get(nodeId);
+            const e = this.charts.get(chartId);
             if (!e) return;
             if (e.pinned) {
-                this._unpinAndRestore(nodeId);
+                this._unpinAndRestore(chartId);
             } else {
-                this._pinChart(nodeId);
+                this._pinChart(chartId);
             }
         });
-        closeBtn.addEventListener('click', () => this.closeChart(nodeId));
+        closeBtn.addEventListener('click', () => this.closeChart(chartId));
 
         this._updateSliders();
         this._updateLegend();
@@ -515,12 +604,12 @@ export class SgChartManager {
 
     // ── Script tooltip ──────────────────────────────────────────────
 
-    _toggleScriptTooltip(nodeId, btnEl) {
+    _toggleScriptTooltip(chartId, btnEl) {
         // Close any existing tooltip
         const existing = btnEl.parentElement?.querySelector('.sgc-script-tooltip');
         if (existing) { existing.remove(); return; }
 
-        const entry = this.charts.get(nodeId);
+        const entry = this.charts.get(chartId);
         const text = entry?.scriptText || '(no script)';
 
         const tip = document.createElement('div');
@@ -540,23 +629,26 @@ export class SgChartManager {
         setTimeout(() => document.addEventListener('click', close, true), 0);
     }
 
-    closeChart(nodeId) {
-        const entry = this.charts.get(nodeId);
+    closeChart(chartId) {
+        const entry = this.charts.get(chartId);
         if (!entry) return;
         if (entry._dragCleanup) entry._dragCleanup();
         if (entry._resizeCleanup) entry._resizeCleanup();
         if (entry.chart) entry.chart.destroy();
         entry.box.remove();
-        this.charts.delete(nodeId);
-        this._compiledScripts.delete(nodeId);
-        this._unpinChart(nodeId);
+        this.charts.delete(chartId);
+        // Only delete compiled script if no other charts for the same node
+        if (this._chartsForNode(entry.nodeId).length === 0) {
+            this._compiledScripts.delete(entry.nodeId);
+        }
+        this._unpinChart(chartId);
         this._rebuildVariableSet();
         this._updateSliders();
         this._updateLegend();
     }
 
-    _pinChart(nodeId) {
-        const entry = this.charts.get(nodeId);
+    _pinChart(chartId) {
+        const entry = this.charts.get(chartId);
         if (!entry || entry.pinned) return;
         entry.pinned = true;
 
@@ -569,7 +661,7 @@ export class SgChartManager {
         entry.box.style.zIndex = '';
 
         this._pinnedPanel.appendChild(entry.box);
-        this._applyPinnedSize(entry);
+        this._applyGridSize(entry);
         this._addResizeHandle(entry);
 
         const pinBtn = entry.box.querySelector('.sgc-pin-btn');
@@ -579,40 +671,36 @@ export class SgChartManager {
             pinBtn.classList.add('sgc-pin-active');
         }
 
-        this.pinnedCharts.push(nodeId);
+        this.pinnedCharts.push(chartId);
         if (entry.chart) entry.chart.resize();
     }
 
-    _unpinChart(nodeId) {
-        const idx = this.pinnedCharts.indexOf(nodeId);
+    _unpinChart(chartId) {
+        const idx = this.pinnedCharts.indexOf(chartId);
         if (idx >= 0) this.pinnedCharts.splice(idx, 1);
     }
 
-    _unpinAndRestore(nodeId) {
-        const entry = this.charts.get(nodeId);
+    _unpinAndRestore(chartId) {
+        const entry = this.charts.get(chartId);
         if (!entry) return;
         entry.pinned = false;
         entry.box.classList.remove('sgc-pinned');
-
-        if (entry._resizeCleanup) { entry._resizeCleanup(); entry._resizeCleanup = null; }
 
         const card = this.container.querySelector('.d3-graph-card') || this.container;
         card.appendChild(entry.box);
 
         entry.box.style.position = 'absolute';
-        entry.box.style.width = '340px';
-        entry.box.style.height = '';
         entry.box.style.zIndex = '20';
-
-        const wrap = entry.box.querySelector('.sgc-canvas-wrap');
-        if (wrap) wrap.style.height = '200px';
+        this._applyGridSize(entry);
 
         const rect = card.getBoundingClientRect();
+        const boxW = entry.box.offsetWidth;
+        const boxH = entry.box.offsetHeight;
         const { x: tx, y: ty, k } = this._transform;
         let left = entry.graphX * k + tx;
         let top = entry.graphY * k + ty;
-        left = Math.max(4, Math.min(left, rect.width - 340 - 4));
-        top = Math.max(4, Math.min(top, rect.height - 248 - 4));
+        left = Math.max(4, Math.min(left, rect.width - boxW - 4));
+        top = Math.max(4, Math.min(top, rect.height - boxH - 4));
         entry.box.style.left = `${left}px`;
         entry.box.style.top = `${top}px`;
 
@@ -623,7 +711,7 @@ export class SgChartManager {
             pinBtn.classList.remove('sgc-pin-active');
         }
 
-        this._unpinChart(nodeId);
+        this._unpinChart(chartId);
         this._makeDraggable(entry);
         if (entry.chart) entry.chart.resize();
     }
@@ -685,7 +773,7 @@ export class SgChartManager {
         };
     }
 
-    _applyPinnedSize(entry) {
+    _applyGridSize(entry) {
         const step = this._getGridSteps();
         const w = entry.colSpan * step.w + (entry.colSpan - 1) * GRID_GAP;
         const h = entry.rowSpan * step.h + (entry.rowSpan - 1) * GRID_GAP;
@@ -727,8 +815,8 @@ export class SgChartManager {
             if (colSpan !== entry.colSpan || rowSpan !== entry.rowSpan) {
                 entry.colSpan = colSpan;
                 entry.rowSpan = rowSpan;
-                this._applyPinnedSize(entry);
-                entry.chart.resize();
+                this._applyGridSize(entry);
+                if (entry.chart) entry.chart.resize();
             }
         };
 
@@ -761,9 +849,13 @@ export class SgChartManager {
                 const y = evalExpr(compiled, 0, { extraScope: scope });
                 if (Number.isFinite(y)) {
                     points.push({ x: +xVal.toFixed(6), y: +y.toFixed(6) });
+                } else {
+                    // Insert null to break the line at discontinuities
+                    // (asymptotes, division by zero, etc.)
+                    points.push({ x: +xVal.toFixed(6), y: null });
                 }
             } catch (_) {
-                // skip point on evaluation error
+                points.push({ x: +xVal.toFixed(6), y: null });
             }
         }
 
@@ -777,7 +869,7 @@ export class SgChartManager {
         entry.chart.data.datasets[0].data = data.map(p => p.y);
         const dv = _displayVar(entry.xVar);
         entry.chart.options.scales.x.title.text = dv;
-        entry.chart.options.scales.y.title.text = `f(${dv})`;
+        entry.chart.options.scales.y.title.text = entry.isRelation ? 'LHS − RHS' : `f(${dv})`;
         entry.chart.options.plugins.tooltip.callbacks.title =
             (items) => `${dv} = ${items[0]?.parsed.x?.toFixed(4)}`;
         entry.chart.update('none');
@@ -829,15 +921,14 @@ export class SgChartManager {
 
             const label = document.createElement('span');
             label.className = 'sgc-slider-label';
-            const displayName = _displayVar(v);
             if (this.katex) {
                 try {
-                    this.katex.render(displayName, label, { throwOnError: false, displayMode: false });
+                    this.katex.render(_latexVar(v), label, { throwOnError: false, displayMode: false });
                 } catch (_) {
-                    label.textContent = displayName;
+                    label.textContent = _displayVar(v);
                 }
             } else {
-                label.textContent = displayName;
+                label.textContent = _displayVar(v);
             }
 
             const input = document.createElement('input');
@@ -906,8 +997,16 @@ export class SgChartManager {
     }
 
     _syncCrosshair(sourceChart, index) {
+        // Find the source chart's x-axis variable so we only sync charts
+        // that share the same independent variable.
+        let sourceXVar = null;
+        for (const entry of this.charts.values()) {
+            if (entry.chart === sourceChart) { sourceXVar = entry.xVar; break; }
+        }
         for (const entry of this.charts.values()) {
             if (!entry.chart || entry.chart === sourceChart) continue;
+            // Only sync charts with the same x-axis variable
+            if (entry.xVar !== sourceXVar) continue;
             const dsLen = entry.chart.data.datasets[0]?.data?.length || 0;
             if (index >= dsLen) continue;
             entry.chart._sgcSyncIndex = index;
