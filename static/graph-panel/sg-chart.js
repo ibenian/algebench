@@ -84,6 +84,9 @@ export class SgChartManager {
         this._scriptService = new SgChartScript(graph);
         this._compiledScripts = new Map();
 
+        // Cross-chart hover synchronization plugin
+        this._crosshairPlugin = this._createCrosshairPlugin();
+
         this._buildNodeIndex();
     }
 
@@ -327,6 +330,7 @@ export class SgChartManager {
 
             chart = new Chart(canvas, {
                 type: 'line',
+                plugins: [this._crosshairPlugin],
                 data: {
                     labels: data.map(p => p.x),
                     datasets: [{
@@ -824,6 +828,72 @@ export class SgChartManager {
             row.appendChild(input);
             row.appendChild(val);
             this._sliderPanel.appendChild(row);
+        }
+    }
+
+    // ── Cross-chart hover synchronization ────────────────────────────
+
+    _createCrosshairPlugin() {
+        const mgr = this;
+        return {
+            id: 'sgcCrosshair',
+            afterEvent(chart, args) {
+                const event = args.event;
+                if (event.type === 'mousemove') {
+                    const elements = chart.getElementsAtEventForMode(
+                        event, 'index', { intersect: false }, false,
+                    );
+                    if (elements.length > 0) {
+                        mgr._syncCrosshair(chart, elements[0].index);
+                    }
+                } else if (event.type === 'mouseout') {
+                    mgr._clearCrosshair(chart);
+                }
+            },
+            afterDraw(chart) {
+                if (chart._sgcSyncIndex == null) return;
+                const meta = chart.getDatasetMeta(0);
+                if (!meta || !meta.data) return;
+                const point = meta.data[chart._sgcSyncIndex];
+                if (!point) return;
+                const { top, bottom } = chart.chartArea;
+                const ctx = chart.ctx;
+                ctx.save();
+                ctx.strokeStyle = 'rgba(150, 170, 220, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(point.x, top);
+                ctx.lineTo(point.x, bottom);
+                ctx.stroke();
+                ctx.restore();
+            },
+        };
+    }
+
+    _syncCrosshair(sourceChart, index) {
+        for (const entry of this.charts.values()) {
+            if (!entry.chart || entry.chart === sourceChart) continue;
+            const dsLen = entry.chart.data.datasets[0]?.data?.length || 0;
+            if (index >= dsLen) continue;
+            entry.chart._sgcSyncIndex = index;
+            entry.chart.setActiveElements([{ datasetIndex: 0, index }]);
+            entry.chart.tooltip.setActiveElements(
+                [{ datasetIndex: 0, index }],
+                { x: 0, y: 0 },
+            );
+            entry.chart.update('none');
+        }
+    }
+
+    _clearCrosshair(sourceChart) {
+        for (const entry of this.charts.values()) {
+            if (!entry.chart || entry.chart === sourceChart) continue;
+            if (entry.chart._sgcSyncIndex == null) continue;
+            entry.chart._sgcSyncIndex = null;
+            entry.chart.setActiveElements([]);
+            entry.chart.tooltip.setActiveElements([], { x: 0, y: 0 });
+            entry.chart.update('none');
         }
     }
 
