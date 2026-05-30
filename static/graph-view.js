@@ -848,6 +848,11 @@ async function _renderWithD3(container, graph, step, key) {
         await _currentD3Renderer.update({ direction: _currentDirection, labels: _currentLabels, theme: _currentTheme });
     }
 
+    // Connect chart manager to renderer for transform polling + resize observation
+    if (_currentChartManager && _currentD3Renderer) {
+        _currentChartManager.setRenderer(_currentD3Renderer);
+    }
+
     const stepKey = stableStepKey(step);
     if (_currentD3Renderer && _d3LastStepKey && _d3LastStepKey !== stepKey) {
         _d3StepStates.set(_d3LastStepKey, _currentD3Renderer.saveState());

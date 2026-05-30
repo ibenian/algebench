@@ -640,25 +640,32 @@ def _page_template() -> str:
           var graphJson = panel.dataset.graph;
           if (!graphJson) return;
           panel.innerHTML = '';
-          var graph = JSON.parse(graphJson);
-          var chartMgr = new SgChartManager(panel, graph, {{
-            katex: window.katex || null,
-          }});
-          var renderer = new D3SemanticGraphRenderer(panel, {{
-            direction: '{d3_direction}',
-            labels: 'description',
-            theme: '{d3_theme}',
-            katex: window.katex || null,
-            onTransformChange: function(t) {{ chartMgr.setTransform(t); }},
-            onChartClick: function(nodeId, nodeData, btnEl) {{
-              if (chartMgr.charts.has(nodeId)) {{
-                chartMgr.closeChart(nodeId);
-              }} else {{
-                chartMgr.openChart(nodeId, btnEl);
-              }}
-            }},
-          }});
-          renderer.render(graph);
+          try {{
+            var graph = JSON.parse(graphJson);
+            var chartMgr = new SgChartManager(panel, graph, {{
+              katex: window.katex || null,
+            }});
+            var renderer = new D3SemanticGraphRenderer(panel, {{
+              direction: '{d3_direction}',
+              labels: 'description',
+              theme: '{d3_theme}',
+              katex: window.katex || null,
+              onTransformChange: function(t) {{ chartMgr.setTransform(t); }},
+              onChartClick: function(nodeId, nodeData, btnEl) {{
+                if (chartMgr.charts.has(nodeId)) {{
+                  chartMgr.closeChart(nodeId);
+                }} else {{
+                  chartMgr.openChart(nodeId, btnEl);
+                }}
+              }},
+            }});
+            if (chartMgr.setRenderer) chartMgr.setRenderer(renderer);
+            renderer.render(graph);
+          }} catch (err) {{
+            panel.dataset.rendered = '';
+            panel.innerHTML = '<div style="padding:1em;color:#e57373">Render error: ' + err.message + '</div>';
+            console.error('D3 panel render error:', err);
+          }}
         }});
       }});
     }});

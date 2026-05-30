@@ -109,6 +109,11 @@
 .sgc-pin-btn {
     font-size: 0.65rem;
 }
+.sgc-pin-btn.sgc-pin-active {
+    background: rgba(66, 165, 245, 0.25);
+    border-color: rgba(66, 165, 245, 0.5);
+    color: #42a5f5;
+}
 
 .sgc-close-btn {
     font-size: 1rem;

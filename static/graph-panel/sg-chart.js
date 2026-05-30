@@ -276,6 +276,9 @@ export class SgChartManager {
         this._pinnedPanel = null;
         this._legendPanel = null;
         this._transform = { x: 0, y: 0, k: 1 };
+        this._renderer = null;
+        this._rafId = null;
+        this._resizeObserver = null;
 
         this._buildNodeIndex();
     }
@@ -293,6 +296,59 @@ export class SgChartManager {
     setTransform(t) {
         this._transform = t || { x: 0, y: 0, k: 1 };
         this._updateUnpinnedPositions();
+    }
+
+    /**
+     * Connect to a D3SemanticGraphRenderer so the chart manager can poll
+     * its _currentTransform on every animation frame.  This catches ALL
+     * transform sources (drag-pan, trackpad, scrollbar, zoomToFit, …)
+     * regardless of whether the callback chain fires.
+     */
+    setRenderer(renderer) {
+        this._renderer = renderer;
+        this._startTransformPolling();
+        this._observeContainerResize();
+    }
+
+    _startTransformPolling() {
+        if (this._rafId) return;             // already running
+        const poll = () => {
+            this._rafId = requestAnimationFrame(poll);
+            if (!this._renderer) return;
+            const rt = this._renderer._currentTransform;
+            if (!rt) return;
+            const cur = this._transform;
+            if (rt.x !== cur.x || rt.y !== cur.y || rt.k !== cur.k) {
+                this._transform = { x: rt.x, y: rt.y, k: rt.k };
+                this._updateUnpinnedPositions();
+            }
+        };
+        this._rafId = requestAnimationFrame(poll);
+    }
+
+    _stopTransformPolling() {
+        if (this._rafId) {
+            cancelAnimationFrame(this._rafId);
+            this._rafId = null;
+        }
+    }
+
+    /** Watch the graph card for size changes and realign all charts. */
+    _observeContainerResize() {
+        if (this._resizeObserver) return;    // already observing
+        const card = this.container.querySelector('.d3-graph-card') || this.container;
+        this._resizeObserver = new ResizeObserver(() => {
+            // Reflow pinned charts (grid steps depend on viewport size)
+            for (const entry of this.charts.values()) {
+                if (entry.pinned) {
+                    this._applyPinnedSize(entry);
+                    entry.chart.resize();
+                }
+            }
+            // Reclamp unpinned charts to the new container bounds
+            this._updateUnpinnedPositions();
+        });
+        this._resizeObserver.observe(card);
     }
 
     _updateUnpinnedPositions() {
@@ -572,7 +628,15 @@ export class SgChartManager {
             this._updateSliders();
         });
 
-        pinBtn.addEventListener('click', () => this._pinChart(nodeId));
+        pinBtn.addEventListener('click', () => {
+            const e = this.charts.get(nodeId);
+            if (!e) return;
+            if (e.pinned) {
+                this._unpinAndRestore(nodeId);
+            } else {
+                this._pinChart(nodeId);
+            }
+        });
         closeBtn.addEventListener('click', () => this.closeChart(nodeId));
 
         this._updateSliders();
@@ -612,9 +676,9 @@ export class SgChartManager {
 
         const pinBtn = entry.box.querySelector('.sgc-pin-btn');
         if (pinBtn) {
-            pinBtn.innerHTML = '&#x2716;';
+            pinBtn.innerHTML = '&#x1F4CC;';
             pinBtn.title = 'Unpin from overlay';
-            pinBtn.onclick = () => this._unpinAndRestore(nodeId);
+            pinBtn.classList.add('sgc-pin-active');
         }
 
         this.pinnedCharts.push(nodeId);
@@ -658,7 +722,7 @@ export class SgChartManager {
         if (pinBtn) {
             pinBtn.innerHTML = '&#x1F4CC;';
             pinBtn.title = 'Pin chart to overlay';
-            pinBtn.onclick = () => this._pinChart(nodeId);
+            pinBtn.classList.remove('sgc-pin-active');
         }
 
         this._unpinChart(nodeId);
@@ -945,6 +1009,11 @@ export class SgChartManager {
     }
 
     destroy() {
+        this._stopTransformPolling();
+        if (this._resizeObserver) {
+            this._resizeObserver.disconnect();
+            this._resizeObserver = null;
+        }
         for (const entry of this.charts.values()) {
             if (entry._dragCleanup) entry._dragCleanup();
             if (entry._resizeCleanup) entry._resizeCleanup();
