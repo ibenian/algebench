@@ -656,7 +656,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-05-30 03:03 UTC &middot; theme: default-dark &middot; 16 expressions</div>
+<div class="report-meta">Generated 2026-05-30 03:11 UTC &middot; theme: default-dark &middot; 16 expressions</div>
 <div class="section-title">Chemistry (16 expressions)</div>
 <div class="row">
   <div>
@@ -1254,7 +1254,6 @@ svg.d3-semantic-graph {
   __log_8{{"$\ln(\cdot)$"}}:::function
   __concentration_9(("$[\thinspace\cdot\thinspace]$")):::operator
   A__0_["$A_{0}$"]:::scalar
-  __const_10["$e$"]:::constant
   class __negation_6 operator
   A --&gt; __concentration_3
   __concentration_3 --&gt; __log_2
@@ -1266,7 +1265,7 @@ svg.d3-semantic-graph {
   __negation_6 --&gt; __add_5
   A__0_ --&gt; __concentration_9
   __concentration_9 --&gt; __log_8
-  __const_10 --&gt;|base| __log_8
+  __const_4 --&gt;|base| __log_8
   __log_8 --&gt; __add_5
   __add_5 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -1372,13 +1371,6 @@ svg.d3-semantic-graph {
       "type": "scalar",
       "latex": "A_{0}",
       "subexpr": "A_{0}"
-    },
-    {
-      "id": "__const_10",
-      "type": "constant",
-      "label": "e (Euler's number)",
-      "latex": "e",
-      "subexpr": "e"
     }
   ],
   "edges": [
@@ -1428,7 +1420,7 @@ svg.d3-semantic-graph {
       "to": "__log_8"
     },
     {
-      "from": "__const_10",
+      "from": "__const_4",
       "to": "__log_8",
       "role": "base"
     },
@@ -1470,7 +1462,6 @@ svg.d3-semantic-graph {
   __log_8{{"$\ln(\cdot)$"}}:::function
   __concentration_9(("$[\thinspace\cdot\thinspace]$")):::operator
   A__0_["$A_{0}$"]:::scalar
-  __const_10["$e$"]:::constant
   class __negation_6 operator
   A --&gt; __concentration_3
   __concentration_3 --&gt; __log_2
@@ -1482,7 +1473,7 @@ svg.d3-semantic-graph {
   __negation_6 --&gt; __add_5
   A__0_ --&gt; __concentration_9
   __concentration_9 --&gt; __log_8
-  __const_10 --&gt;|base| __log_8
+  __const_4 --&gt;|base| __log_8
   __log_8 --&gt; __add_5
   __add_5 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -1499,7 +1490,7 @@ svg.d3-semantic-graph {
   linkStyle 11 stroke:#aaa,stroke-width:2px
   linkStyle 12 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\ln [A] = -kt + \\ln [A]_0&quot;},{&quot;id&quot;:&quot;__log_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;log&quot;,&quot;subexpr&quot;:&quot;\\ln{\\left([A] \\right)}&quot;},{&quot;id&quot;:&quot;__concentration_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;[\\thinspace\\cdot\\thinspace]&quot;,&quot;op&quot;:&quot;concentration&quot;,&quot;subexpr&quot;:&quot;[A]&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;__const_4&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;e (Euler's number)&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;},{&quot;id&quot;:&quot;__add_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;-k t + \\ln{\\left([A]_0 \\right)}&quot;},{&quot;id&quot;:&quot;__negation_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-k t&quot;},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;k t&quot;},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;},{&quot;id&quot;:&quot;__log_8&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;log&quot;,&quot;subexpr&quot;:&quot;\\ln{\\left([A]_0 \\right)}&quot;},{&quot;id&quot;:&quot;__concentration_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;[\\thinspace\\cdot\\thinspace]&quot;,&quot;op&quot;:&quot;concentration&quot;,&quot;subexpr&quot;:&quot;[A]_0&quot;},{&quot;id&quot;:&quot;A_{0}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A_{0}&quot;,&quot;subexpr&quot;:&quot;A_{0}&quot;},{&quot;id&quot;:&quot;__const_10&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;e (Euler's number)&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__concentration_3&quot;},{&quot;from&quot;:&quot;__concentration_3&quot;,&quot;to&quot;:&quot;__log_2&quot;},{&quot;from&quot;:&quot;__const_4&quot;,&quot;to&quot;:&quot;__log_2&quot;,&quot;role&quot;:&quot;base&quot;},{&quot;from&quot;:&quot;__log_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__negation_6&quot;},{&quot;from&quot;:&quot;__negation_6&quot;,&quot;to&quot;:&quot;__add_5&quot;},{&quot;from&quot;:&quot;A_{0}&quot;,&quot;to&quot;:&quot;__concentration_9&quot;},{&quot;from&quot;:&quot;__concentration_9&quot;,&quot;to&quot;:&quot;__log_8&quot;},{&quot;from&quot;:&quot;__const_10&quot;,&quot;to&quot;:&quot;__log_8&quot;,&quot;role&quot;:&quot;base&quot;},{&quot;from&quot;:&quot;__log_8&quot;,&quot;to&quot;:&quot;__add_5&quot;},{&quot;from&quot;:&quot;__add_5&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;chemistry&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\ln [A] = -kt + \\ln [A]_0&quot;},{&quot;id&quot;:&quot;__log_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;log&quot;,&quot;subexpr&quot;:&quot;\\ln{\\left([A] \\right)}&quot;},{&quot;id&quot;:&quot;__concentration_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;[\\thinspace\\cdot\\thinspace]&quot;,&quot;op&quot;:&quot;concentration&quot;,&quot;subexpr&quot;:&quot;[A]&quot;},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;__const_4&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;e (Euler's number)&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;},{&quot;id&quot;:&quot;__add_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;-k t + \\ln{\\left([A]_0 \\right)}&quot;},{&quot;id&quot;:&quot;__negation_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-k t&quot;},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;k t&quot;},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;},{&quot;id&quot;:&quot;__log_8&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;log&quot;,&quot;subexpr&quot;:&quot;\\ln{\\left([A]_0 \\right)}&quot;},{&quot;id&quot;:&quot;__concentration_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;[\\thinspace\\cdot\\thinspace]&quot;,&quot;op&quot;:&quot;concentration&quot;,&quot;subexpr&quot;:&quot;[A]_0&quot;},{&quot;id&quot;:&quot;A_{0}&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A_{0}&quot;,&quot;subexpr&quot;:&quot;A_{0}&quot;}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__concentration_3&quot;},{&quot;from&quot;:&quot;__concentration_3&quot;,&quot;to&quot;:&quot;__log_2&quot;},{&quot;from&quot;:&quot;__const_4&quot;,&quot;to&quot;:&quot;__log_2&quot;,&quot;role&quot;:&quot;base&quot;},{&quot;from&quot;:&quot;__log_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__negation_6&quot;},{&quot;from&quot;:&quot;__negation_6&quot;,&quot;to&quot;:&quot;__add_5&quot;},{&quot;from&quot;:&quot;A_{0}&quot;,&quot;to&quot;:&quot;__concentration_9&quot;},{&quot;from&quot;:&quot;__concentration_9&quot;,&quot;to&quot;:&quot;__log_8&quot;},{&quot;from&quot;:&quot;__const_4&quot;,&quot;to&quot;:&quot;__log_8&quot;,&quot;role&quot;:&quot;base&quot;},{&quot;from&quot;:&quot;__log_8&quot;,&quot;to&quot;:&quot;__add_5&quot;},{&quot;from&quot;:&quot;__add_5&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;chemistry&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
