@@ -398,3 +398,32 @@ class TestLatexToSemanticGraph:
             str(v) for n in graph.nodes for v in n.model_dump().values()
         )
         assert "sp" in all_text
+
+    def test_bare_sum_index_strips_synthetic_bounds(self):
+        r"""``\sum_n`` must not show the synthetic ``n=0``/``\infty``
+        bounds that are injected only so SymPy can parse the bare form.
+
+        Regression: the bounds leaked into the displayed source LaTeX
+        (``subexpr``) for visible indices because the strip only ran for
+        fully-dummy bare sums.
+        """
+        graph = latex_to_semantic_graph(
+            r"\sum_n | n \rangle\langle n | = I",
+            domain="quantum_mechanics",
+        )
+        sum_nodes = [n for n in graph.nodes if n.op == "sum"]
+        assert len(sum_nodes) == 1
+        subexpr = sum_nodes[0].subexpr or ""
+        assert r"\sum_{n}" in subexpr
+        assert r"\infty" not in subexpr
+        assert "=0" not in subexpr
+
+    def test_explicit_sum_bounds_preserved(self):
+        r"""Explicit ``\sum_{i=1}^{n}`` bounds must survive — the
+        synthetic-bound strip must only touch bare-sum indices."""
+        graph = latex_to_semantic_graph(r"\mu = \sum_{i=1}^{n} x_i p_i")
+        sum_nodes = [n for n in graph.nodes if n.op == "sum"]
+        assert len(sum_nodes) == 1
+        subexpr = sum_nodes[0].subexpr or ""
+        assert "i=1" in subexpr
+        assert "^{n}" in subexpr

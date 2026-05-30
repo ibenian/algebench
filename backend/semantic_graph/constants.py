@@ -207,6 +207,7 @@ _OPERATOR_KINDS: dict[str, str] = {
     "limit": "aggregate",
     "derivative": "aggregate", "partial_derivative": "aggregate",
     "inner_product": "quantum",
+    "outer_product": "quantum",
     "piecewise": "structural",
     "branch": "structural",
 }

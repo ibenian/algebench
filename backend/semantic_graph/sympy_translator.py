@@ -22,7 +22,7 @@ from sympy import (
 )
 from sympy.parsing.latex import parse_latex
 from sympy.physics.quantum.state import KetBase, BraBase
-from sympy.physics.quantum import InnerProduct
+from sympy.physics.quantum import InnerProduct, OuterProduct
 
 from backend.model.semantic_graph import SemanticGraph
 
@@ -2273,6 +2273,19 @@ class SemanticGraphBuilder:
                 result,
             )
 
+        # Strip synthetic bounds from visible bare-sum indices (``\sum_n``
+        # → SymPy ``\sum_{n=0}^{\infty}``): keep the index subscript but
+        # drop the injected ``=0`` lower / ``\infty`` upper bounds so the
+        # rendered source matches the original ``\sum_n`` notation.
+        for idx in self._bare_sum_indices:
+            if idx in LaTeXPreprocessor.BARE_SUM_DUMMIES:
+                continue
+            result = re.sub(
+                rf"_\{{{re.escape(idx)}=0\}}\^\{{\\infty\}}",
+                rf"_{{{idx}}}",
+                result,
+            )
+
         # SymPy renders ``\neg(X)`` as ``\operatorname{neg}{\left(X \right)}``.
         # Same for ``\forall(X)`` and ``\exists(X)``.
         # Restore the compact ``\cmd X`` form.
@@ -2768,16 +2781,25 @@ class SemanticGraphBuilder:
             self._add_edge(base_id, node_id)
             return node_id
 
-        # --- Power with symbolic-negative exponent ---
+        # --- Power with symbolic-negative exponent (single factor) ---
+        # Only collapse a *single*-factor negated exponent (``-1 * thing``,
+        # e.g. ``x^{-n}`` or ``e^{-\lambda}``) into one node so the renderer
+        # can paint the base→power edge ``inverse``.  A genuine product like
+        # ``-ikx`` (``Mul(-1, i, k, x)``) must instead fall through to the
+        # general operator branch so the exponent expands into its own
+        # subtree — mirroring the positive ``e^{ikx}`` case.
         if (
             isinstance(expr, Pow)
             and isinstance(expr.args[1], Mul)
-            and expr.args[1].args
+            and len(expr.args[1].args) == 2
             and expr.args[1].args[0] == sympy.S.NegativeOne
         ):
             node_id = self._next_id("power")
+            # Render the exponent as LaTeX (not str()) so the simple ``-n``
+            # case stays clean.
             self._add_node(
-                node_id, type="operator", op="power", exponent=self._fmt_number(expr.args[1])
+                node_id, type="operator", op="power",
+                exponent=self._subexpr_ordered(expr.args[1]),
             )
             base_id = self._walk(expr.args[0])
             self._add_edge(base_id, node_id)
@@ -2867,6 +2889,36 @@ class SemanticGraphBuilder:
                     continue
                 child_id = self._walk(inner_label)
                 self._add_edge(child_id, node_id, role=edge_role)
+            return node_id
+
+        if isinstance(expr, OuterProduct):
+            # ``|ψ⟩⟨φ|`` — render as an operator node (mirroring
+            # ``inner_product``) instead of falling through to the generic
+            # ``expression`` fallback, which showed the bare class name
+            # ``OuterProduct`` in a symbol box.  The ket and bra become
+            # ``lhs``/``rhs`` children so the structure reads consistently.
+            node_id = self._next_id("outer_product")
+            ket_arg = expr.args[0]
+            bra_arg = expr.args[1]
+            ket_label = sympy.latex(ket_arg.args[0]) if ket_arg.args else ""
+            bra_label = sympy.latex(bra_arg.args[0]) if bra_arg.args else ""
+            # Render the operator glyph as ``\otimes`` (× in a circle) — the
+            # conventional outer/tensor-product symbol.  It's distinct from
+            # ``multiply``'s bare ``×`` and far more compact than the bra-ket
+            # skeleton, while the full ``|ψ⟩⟨φ|`` stays in ``subexpr``.
+            glyph = r"\otimes"
+            full_latex = (
+                rf"\left|{ket_label}\right\rangle"
+                rf"\left\langle {bra_label}\right|"
+            )
+            self._add_node(
+                node_id, type="operator", op="outer_product",
+                latex=glyph, subexpr=full_latex,
+            )
+            ket_id = self._walk(ket_arg)
+            self._add_edge(ket_id, node_id, role="lhs")
+            bra_id = self._walk(bra_arg)
+            self._add_edge(bra_id, node_id, role="rhs")
             return node_id
 
         # --- Fallback ---

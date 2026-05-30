@@ -36,7 +36,7 @@ from tests.backend.semantic_graph.generators.invariants import (
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
     "inner_product", "partial_derivative", "greater_equal",
-    "sum", "OuterProduct",
+    "sum", "outer_product",
 }
 
 
@@ -140,13 +140,15 @@ FUNDAMENTAL_EXPRESSIONS: list[CatalogEntry] = [
     ("free_particle",
      r"\psi(x) = A e^{ikx} + B e^{-ikx}",
      PASS,
-     "x -> fn:psi; k,x -> multiply; e -> power; "
-     "B,power -> multiply; i,multiply -> multiply; "
-     "e,multiply -> power; A,power -> multiply; "
+     "x -> fn:psi; i,k,x -> multiply; k,x -> multiply; "
+     "i,multiply -> multiply; multiply -> negation; "
+     "e,multiply -> power; e,negation -> power; "
+     "A,power -> multiply; B,power -> multiply; "
      "multiply,multiply -> add; add,fn:psi -> rel:equals",
-     "k,x -> __multiply_7; e -> __power_9; x -> __psi_2; "
-     "__multiply_7,i -> __multiply_6; B,__power_9 -> __multiply_8; "
-     "__multiply_6,e -> __power_5; A,__power_5 -> __multiply_4; "
+     "i,k,x -> __multiply_11; k,x -> __multiply_7; x -> __psi_2; "
+     "__multiply_7,i -> __multiply_6; __multiply_11 -> __negation_10; "
+     "__multiply_6,e -> __power_5; __negation_10,e -> __power_9; "
+     "A,__power_5 -> __multiply_4; B,__power_9 -> __multiply_8; "
      "__multiply_4,__multiply_8 -> __add_3; __add_3,__psi_2 -> __equals_1",
      None),
 ]
@@ -220,18 +222,18 @@ ASPIRATIONAL_EXPRESSIONS: list[CatalogEntry] = [
     ("completeness_relation",
      r"\sum_n | n \rangle \langle n | = I",
      PASS,
-     "bra:__bra_5,ket:__ket_4 -> OuterProduct; OuterProduct,n -> sum; "
+     "bra:__bra_5,ket:__ket_4 -> outer_product; n,outer_product -> sum; "
      "I,sum -> rel:equals",
-     "__bra_5,__ket_4 -> __expr_3; __expr_3,n -> __sum_2; "
+     "__bra_5,__ket_4 -> __outer_product_3; __outer_product_3,n -> __sum_2; "
      "I,__sum_2 -> __equals_1",
      None),
 
     ("density_matrix",
      r"\rho = \sum_i p_i | \psi_i \rangle \langle \psi_i |",
      XFAIL_LENIENT,
-     "bra:__bra_6,ket:__ket_5 -> OuterProduct; OuterProduct,p_{i} -> multiply; "
+     "bra:__bra_6,ket:__ket_5 -> outer_product; outer_product,p_{i} -> multiply; "
      "i,multiply -> sum; rho,sum -> rel:equals",
-     "__bra_6,__ket_5 -> __expr_4; __expr_4,p_{i} -> __multiply_3; "
+     "__bra_6,__ket_5 -> __outer_product_4; __outer_product_4,p_{i} -> __multiply_3; "
      "__multiply_3,i -> __sum_2; __sum_2,rho -> __equals_1",
      None),
 
