@@ -464,7 +464,13 @@ async function sendChatMessage(text, { silent = false } = {}) {
             const err = await res.json().catch(() => ({ error: 'Request failed' }));
             // FastAPI HTTPException (e.g. 429 rate limit) returns `detail`;
             // the app's own errors use `error`. Surface whichever is present.
-            const msg = err.detail || err.error;
+            // `detail` may be a non-string (e.g. 422 returns a list of dicts),
+            // so coerce to a string before logging/rendering — otherwise
+            // renderMarkdown/renderKaTeX would throw or print "[object Object]".
+            const rawMsg = err.detail ?? err.error;
+            const msg = typeof rawMsg === 'string'
+                ? rawMsg
+                : (rawMsg != null ? JSON.stringify(rawMsg) : '');
             console.error('%c🤖 Chat error: %c' + res.status + ' — ' + (msg || 'unknown'),
                 'color: #ff4444; font-weight: bold', 'color: #ccc');
             addChatMessage('assistant', msg || 'Something went wrong. Please try again.');
