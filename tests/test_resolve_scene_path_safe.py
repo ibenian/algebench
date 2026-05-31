@@ -67,15 +67,34 @@ def test_accepts_valid_scene_bare_name():
     assert result.name == name
 
 
-def test_resolved_path_within_allowed_roots():
+def test_resolved_path_within_scenes_dir():
     scene_files = list(scenes_dir.glob("*.json"))
     if not scene_files:
         return
     name = scene_files[0].name
     result = resolve_scene_path_safe(f"scenes/{name}")
     assert result is not None
-    allowed = (scenes_dir.resolve(), script_dir.resolve())
-    assert any(
-        result == root or str(result).startswith(str(root) + '/')
-        for root in allowed
-    )
+    # Confinement is to scenes_dir only — script_dir is no longer an allowed root.
+    assert str(result).startswith(str(scenes_dir.resolve()) + os.sep)
+
+
+def test_rejects_json_in_project_root_outside_scenes():
+    """Valid JSON elsewhere in the repo must NOT be served (issue: .claude/launch.json leak)."""
+    # Create a throwaway JSON file at the project root, confirm it is rejected.
+    probe = script_dir / "__probe_resolve_scene_path_safe__.json"
+    try:
+        probe.write_text("{}")
+        assert resolve_scene_path_safe("__probe_resolve_scene_path_safe__.json") is None
+    finally:
+        probe.unlink(missing_ok=True)
+
+
+def test_rejects_non_json_inside_scenes():
+    """Even within scenes/, a non-.json file must be rejected."""
+    probe = scenes_dir / "__probe_resolve_scene_path_safe__.txt"
+    try:
+        probe.write_text("not json")
+        assert resolve_scene_path_safe("scenes/__probe_resolve_scene_path_safe__.txt") is None
+        assert resolve_scene_path_safe("__probe_resolve_scene_path_safe__.txt") is None
+    finally:
+        probe.unlink(missing_ok=True)

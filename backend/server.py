@@ -510,10 +510,17 @@ def resolve_scene_path_safe(scene_arg):
     if raw.startswith('~'):
         return None
     candidate = Path(raw)
-    allowed_roots = (scenes_dir.resolve(), script_dir.resolve())
+    # Confine API scene loading to the scenes/ directory and to .json files only.
+    # script_dir stays as a candidate base so a leading "scenes/" prefix still
+    # resolves, but it is NOT an allowed root: the prefix check below rejects any
+    # resolved path that does not live under scenes_dir, so arbitrary JSON
+    # elsewhere in the repo (e.g. .claude/launch.json) is never served.
+    allowed_roots = (scenes_dir.resolve(),)
     allowed_prefixes = tuple(str(r) + os.sep for r in allowed_roots)
     if candidate.is_absolute():
         resolved = candidate.resolve()
+        if resolved.suffix.lower() != '.json':
+            return None
         if not str(resolved).startswith(allowed_prefixes):
             return None
         if resolved.exists() and resolved.is_file():
@@ -525,6 +532,8 @@ def resolve_scene_path_safe(scene_arg):
     candidates = [script_dir / normalized, scenes_dir / normalized]
     for path in candidates:
         resolved = path.resolve()
+        if resolved.suffix.lower() != '.json':
+            continue
         if not str(resolved).startswith(allowed_prefixes):
             continue
         if resolved.exists() and resolved.is_file():
