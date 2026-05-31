@@ -22,7 +22,7 @@
     {
       "name": "atmospheric-entry",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["scenes/draft/atmospheric-entry-physics.json", "--port", "5732", "--debug", "--server-only"],
+      "runtimeArgs": ["scenes/atmospheric-entry-physics.json", "--port", "5732", "--debug", "--server-only"],
       "port": 5732
     },
     {
