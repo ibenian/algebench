@@ -26,7 +26,7 @@ from sympy.physics.quantum import InnerProduct, OuterProduct
 
 from backend.model.semantic_graph import SemanticGraph
 
-from .preprocessor import LaTeXPreprocessor
+from .preprocessor import LaTeXPreprocessor, strip_trailing_spacing
 from .constants import (
     KNOWN_VARIABLES,
     OPERATOR_MAP,
@@ -250,6 +250,40 @@ def _normalize_latex(latex: str) -> str:
     return latex
 
 
+def _normalize_mid_tokens(s: str) -> str:
+    r"""Replace each ``\mid`` command (and the whitespace around it) with a
+    bare ``|``, in a single linear pass.
+
+    Equivalent to ``re.sub(r"\s*\\mid\b\s*", "|", s)`` but without a regex.
+    The ``\s*\\mid\s*`` form is a polynomial-ReDoS shape (CWE-1333): static
+    scanners flag it even when a lookbehind makes it linear at runtime, and the
+    naive version really is O(n^2) on attacker-supplied whitespace. A direct
+    scan is unambiguously linear and carries no backtracking surface.
+    """
+    token = "\\mid"
+    out: list[str] = []
+    i = 0
+    n = len(s)
+    while i < n:
+        j = s.find(token, i)
+        if j < 0:
+            out.append(s[i:])
+            break
+        end = j + len(token)
+        # Honor the trailing ``\b``: ``\mid`` must not be glued to a word char
+        # (e.g. ``\midpoint`` is not a match).
+        if end < n and (s[end].isalnum() or s[end] == "_"):
+            out.append(s[i:end])
+            i = end
+            continue
+        out.append(s[i:j].rstrip())   # drop whitespace immediately before token
+        out.append("|")
+        i = end
+        while i < n and s[i].isspace():  # drop whitespace immediately after token
+            i += 1
+    return "".join(out)
+
+
 def _rewrite_conditional_bar(latex: str) -> tuple[str, set[str]]:
     r"""Rewrite ``P(A|B)`` → ``P(A, B)`` so SymPy sees a two-arg function.
 
@@ -310,7 +344,9 @@ def _rewrite_conditional_bar(latex: str) -> tuple[str, set[str]]:
                 body = latex[body_start:body_end]
 
                 # Normalize \mid → | ONLY within this function body.
-                body = re.sub(r"\s*\\mid\b\s*", "|", body)
+                # Uses a linear, regex-free scan (see _normalize_mid_tokens) —
+                # the equivalent \s*\\mid\s* regex is a polynomial ReDoS shape.
+                body = _normalize_mid_tokens(body)
 
                 # Count bare pipes in body (not inside nested parens).
                 # Detect: is there exactly one unpaired |?
@@ -1562,13 +1598,17 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
 def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, str]]]:
     r"""Strip trailing parenthetical annotations from LaTeX."""
     annotations: list[dict[str, str]] = []
-    spacing = r"(?:\s|\\quad|\\qquad|\\,|\\;|\\!|\\:)*"
-    pattern = re.compile(
-        spacing + r"\(([^()]*\\text\{[^{}]+\}[^()]*)\)\s*$"
-    )
+    # Match a trailing ``(...)`` with no nested parens using a single
+    # ``[^()]*`` — the old ``[^()]*…[^()]*`` body is a polynomial-ReDoS
+    # shape (CWE-1333) that scanners flag. Whether the parenthetical is an
+    # annotation (must contain ``\text{…}``) is a separate, unambiguous
+    # containment check. Trailing spacing left before the matched paren is
+    # removed in linear time by ``strip_trailing_spacing`` below.
+    trailing_paren = re.compile(r"\(([^()]*)\)\s*$")
+    text_cmd = re.compile(r"\\text\{[^{}]+\}")
     while True:
-        m = pattern.search(latex)
-        if not m:
+        m = trailing_paren.search(latex)
+        if not m or not text_cmd.search(m.group(1)):
             break
         inner = m.group(1).strip()
         label = re.sub(r"\\text\{([^{}]+)\}", r"\1", inner)
@@ -1580,7 +1620,7 @@ def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, 
             "label": label,
             "type": "annotation",
         })
-        latex = latex[:m.start()].rstrip()
+        latex = strip_trailing_spacing(latex[:m.start()])
     annotations.reverse()
     return latex, annotations
 

@@ -25,7 +25,7 @@ import tty
 import termios
 import select
 from urllib.parse import quote
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import StreamingResponse, Response, JSONResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel
 import uvicorn
@@ -352,13 +352,35 @@ chat_js_path = static_dir / "chat.js"
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 GEMINI_MODEL   = os.environ.get('GEMINI_MODEL', 'gemini-3-flash-preview')
 
+
+def _env_bool(name: str, default: bool) -> bool:
+    """Parse a boolean env var. Accepts 1/true/yes/on (and 0/false/no/off),
+    case-insensitive; falls back to *default* when unset or unrecognized."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    val = raw.strip().lower()
+    if val in ('1', 'true', 'yes', 'on'):
+        return True
+    if val in ('0', 'false', 'no', 'off'):
+        return False
+    return default
+
+
 DEFAULT_PORT = 8785
 
 index_html_path = static_dir / "index.html"
 style_css_path  = static_dir / "style.css"
 
 # ---------------------------------------------------------------------------
-from backend.util import sanitize_path  # noqa: E402 — after Path is defined
+from backend.util import sanitize_path, limiter_from_env, rate_limit_dependency  # noqa: E402
+
+# Per-IP rate limits for billable (Gemini-backed) endpoints. Override via env
+# as "count/seconds", e.g. ALGEBENCH_RATELIMIT_CHAT="10/60". Limits protect the
+# Gemini spend on a public, unauthenticated deployment; the app is otherwise open.
+_chat_rate_limit = rate_limit_dependency(limiter_from_env("ALGEBENCH_RATELIMIT_CHAT", 20, 60))
+_tts_rate_limit = rate_limit_dependency(limiter_from_env("ALGEBENCH_RATELIMIT_TTS", 20, 60))
+_enrich_rate_limit = rate_limit_dependency(limiter_from_env("ALGEBENCH_RATELIMIT_ENRICH", 60, 60))
 
 
 def _safe_open_scene_path(source) -> Path:
@@ -472,11 +494,11 @@ def list_builtin_scenes():
 
 def load_builtin_scene(name):
     """Load a built-in scene JSON by name."""
-    if not re.fullmatch(r"[A-Za-z0-9_.\-/]+", name or ""):
-        return None
-    path = sanitize_path(scenes_dir, f"{name}.json")
+    # Charset/null-byte hygiene + confinement handled by sanitize_path.
+    path = sanitize_path(scenes_dir, f"{name}.json") if name else None
     if path and path.is_file():
-        return _load_scene(path)
+        # Already confined by sanitize_path — load directly.
+        return _load_scene(path, trusted=True)
     return None
 
 
@@ -496,32 +518,39 @@ def resolve_scene_path(scene_arg):
 
 
 def resolve_scene_path_safe(scene_arg):
-    """Resolve scene path restricted to allowed roots (for API use)."""
+    """Resolve a scene path confined to scenes_dir, for untrusted API input.
+
+    Scene files may *only* be read from ``scenes/`` and must be ``.json``.
+    Accepts a bare filename (``foo.json``) or a project-root-relative path
+    (``scenes/foo.json``). Everything else — ``~`` expansion, absolute
+    paths, traversal, null bytes, and non-``.json`` files — yields ``None``,
+    so arbitrary JSON elsewhere in the repo (e.g. ``.claude/launch.json``)
+    is never served.
+
+    All input hygiene and confinement is delegated to ``sanitize_path``
+    (empty/null-byte/charset rejection, ``~`` rejection, absolute-path
+    rejection, ``..`` rejection, and ``is_relative_to`` confinement that also
+    defeats symlink escapes). The only thing added here is the object-specific
+    shape: a final ``scenes_dir`` confinement + ``.json`` gate, so that even
+    when ``script_dir`` is used as a lookup base the result can only ever live
+    inside ``scenes/``.
+    """
     if not scene_arg:
         return None
     raw = str(scene_arg)
-    if raw.startswith('~'):
-        return None
-    candidate = Path(raw)
-    allowed_roots = (scenes_dir.resolve(), script_dir.resolve())
-    allowed_prefixes = tuple(str(r) + os.sep for r in allowed_roots)
-    if candidate.is_absolute():
-        resolved = candidate.resolve()
-        if not str(resolved).startswith(allowed_prefixes):
-            return None
-        if resolved.exists() and resolved.is_file():
-            return resolved
-        return None
-    normalized = os.path.normpath(raw)
-    if os.path.isabs(normalized) or normalized.startswith('..'):
-        return None
-    candidates = [script_dir / normalized, scenes_dir / normalized]
-    for path in candidates:
-        resolved = path.resolve()
-        if not str(resolved).startswith(allowed_prefixes):
+    scenes_root = scenes_dir.resolve()
+    # Try the input as a name within scenes/ and as a project-root-relative
+    # path ("scenes/foo.json"); confine the result to scenes/ and .json.
+    for base in (scenes_dir, script_dir):
+        candidate = sanitize_path(base, raw)
+        if not candidate:
             continue
-        if resolved.exists() and resolved.is_file():
-            return resolved
+        if candidate.suffix.lower() != '.json':
+            continue
+        if not candidate.is_relative_to(scenes_root):
+            continue
+        if candidate.is_file():
+            return candidate
     return None
 
 
@@ -1157,15 +1186,29 @@ def call_gemini_chat(message, history, context):
 
 DEBUG_MODE = False
 
-def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False, debug=False,
-                   tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
-                   tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
-                   tts_max_retries=None, tts_retry_delay=None, tts_style=None,
-                   tts_live=True, tts_output_file=None, tts_realtime=False,
-                   server_only=False):
-    """Serve the AlgeBench viewer and optionally open in browser."""
+def create_app(initial_scene_path=None, debug=False,
+               tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
+               tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
+               tts_max_retries=None, tts_retry_delay=None, tts_style=None,
+               tts_live=True, tts_output_file=None, tts_realtime=None):
+    """Build and return the AlgeBench FastAPI (ASGI) application.
+
+    All routes are registered here so the app can be served either by an
+    external ASGI server (``uvicorn backend.asgi:app``) or by
+    ``serve_and_open`` for the desktop launch flow.
+
+    ``tts_realtime`` controls whether ``/api/tts/stream`` streams raw PCM from
+    a single Live session (realtime) or buffered parallel WAV. When left as
+    ``None`` (the ASGI entrypoint passes nothing) it is resolved from the
+    ``ALGEBENCH_TTS_REALTIME`` env var, defaulting to realtime — so a hosted
+    deploy matches the CLI default without code changes. An explicit
+    ``True``/``False`` (e.g. from ``main()``) always wins over the env var.
+    """
     global DEBUG_MODE
     DEBUG_MODE = debug
+
+    if tts_realtime is None:
+        tts_realtime = _env_bool("ALGEBENCH_TTS_REALTIME", default=True)
 
     # Build TTS streaming kwargs
     tts_stream_kwargs = {}
@@ -1282,8 +1325,6 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/objects/{filename:path}")
     async def get_objects_js(filename: str):
         """Serve ES module files from static/objects/ subdirectory."""
-        if not re.fullmatch(r"[A-Za-z0-9_.\-/]+", filename):
-            return Response(status_code=404)
         path = sanitize_path(static_dir / "objects", filename)
         if not path or not path.is_file() or path.suffix != '.js':
             return Response(status_code=404)
@@ -1404,7 +1445,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         context: dict | None = None
 
     @fastapp.post("/api/graph/enrich")
-    async def post_graph_enrich(req: GraphEnrichRequest):
+    async def post_graph_enrich(req: GraphEnrichRequest, _rl: None = Depends(_enrich_rate_limit)):
         """Enrich a semantic graph via Gemini (descriptions, emoji, color, corrections).
 
         Runtime in-memory cache keyed by ``sha256({graph, context})`` — the
@@ -1572,8 +1613,6 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     @fastapp.get("/graph-panel/{filename:path}")
     async def get_graph_panel_file(filename: str):
         """Serve files from static/graph-panel/ subdirectory."""
-        if not re.fullmatch(r"[A-Za-z0-9._\-/]+", filename):
-            return Response(status_code=404)
         path = sanitize_path(static_dir / "graph-panel", filename)
         if not path or not path.is_file():
             return Response(status_code=404)
@@ -1647,8 +1686,17 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         if not resolved_path:
             return JSONResponse({"error": "Scene file not found"}, status_code=404)
         try:
-            scene = _load_scene(resolved_path)
-            return JSONResponse({"spec": scene, "path": str(resolved_path),
+            # resolve_scene_path_safe already confined this to scenes/ — load directly.
+            scene = _load_scene(resolved_path, trusted=True)
+            # Return a project-root-relative path ("scenes/<name>") so the
+            # ?scene= URL the frontend writes round-trips: resolve_scene_path_safe
+            # rejects absolute paths, so echoing an absolute path would 404 on
+            # reload.
+            try:
+                rel_path = "scenes/" + resolved_path.relative_to(scenes_dir.resolve()).as_posix()
+            except ValueError:
+                rel_path = resolved_path.name
+            return JSONResponse({"spec": scene, "path": rel_path,
                                  "label": resolved_path.name})
         except json.JSONDecodeError:
             return JSONResponse({"error": "Invalid JSON in scene file"}, status_code=400)
@@ -1688,8 +1736,6 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     @fastapp.get("/domains/{path:path}")
     async def get_domain_file(path: str):
-        if not re.fullmatch(r"[A-Za-z0-9_\-./]+", path or ""):
-            return Response(content=b'Domain not found', status_code=404)
         domain_path = sanitize_path(static_dir / 'domains', path)
         if not domain_path or not domain_path.is_file():
             return Response(content=b'Domain not found', status_code=404)
@@ -1727,7 +1773,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     # -- POST routes --
 
     @fastapp.post("/api/chat")
-    async def api_chat(req: ChatRequest):
+    async def api_chat(req: ChatRequest, _rl: None = Depends(_chat_rate_limit)):
         if not req.message.strip():
             return JSONResponse({"error": "Empty message"}, status_code=400)
         try:
@@ -1747,7 +1793,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             return JSONResponse({"error": "internal error processing chat request"}, status_code=500)
 
     @fastapp.post("/api/tts/stream")
-    async def api_tts_stream(req: TtsRequest, request: Request):
+    async def api_tts_stream(req: TtsRequest, request: Request, _rl: None = Depends(_tts_rate_limit)):
         if not TTS_AVAILABLE or not GEMINI_API_KEY:
             return JSONResponse({"error": "TTS not available"}, status_code=503)
         text = req.text.strip()
@@ -1911,6 +1957,36 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             return JSONResponse({"status": "loaded"})
         except json.JSONDecodeError:
             return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
+    return fastapp
+
+
+def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False, debug=False,
+                   tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
+                   tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
+                   tts_max_retries=None, tts_retry_delay=None, tts_style=None,
+                   tts_live=True, tts_output_file=None, tts_realtime=None,
+                   server_only=False):
+    """Serve the AlgeBench viewer and optionally open in browser.
+
+    ``tts_realtime=None`` defers to ``create_app``'s env-var resolution
+    (``ALGEBENCH_TTS_REALTIME``, default realtime); an explicit bool wins.
+    """
+    fastapp = create_app(
+        initial_scene_path=initial_scene_path,
+        debug=debug,
+        tts_parallelism=tts_parallelism,
+        tts_min_buffer=tts_min_buffer,
+        tts_min_sentence_chars=tts_min_sentence_chars,
+        tts_min_sentence_chars_growth=tts_min_sentence_chars_growth,
+        tts_chunk_timeout=tts_chunk_timeout,
+        tts_max_retries=tts_max_retries,
+        tts_retry_delay=tts_retry_delay,
+        tts_style=tts_style,
+        tts_live=tts_live,
+        tts_output_file=tts_output_file,
+        tts_realtime=tts_realtime,
+    )
 
     # ---- Start uvicorn in a background thread ----
 

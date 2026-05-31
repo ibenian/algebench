@@ -905,8 +905,9 @@ export function setupSceneDock() {
     const playBtn = document.getElementById('nav-play');
     const nextBtn = document.getElementById('nav-next');
 
+    // Default to expanded: open unless the user has explicitly collapsed it.
     const savedOpen = localStorage.getItem('algebench-dock-open');
-    if (savedOpen === 'true') {
+    if (savedOpen !== 'false') {
         panel.classList.add('open');
         toggle.classList.add('active');
     }
