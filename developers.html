@@ -103,6 +103,12 @@
   .tech-item h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.2rem; }
   .tech-item p { color: #8b949e; font-size: 0.78rem; }
 
+  code {
+    background: #21262d; padding: 0.15rem 0.4rem; border-radius: 4px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.82rem;
+    color: #c9d1d9;
+  }
+
   /* ── Getting Started ── */
   .getting-started pre {
     background: #161b22; border: 1px solid #30363d; border-radius: 10px;
@@ -157,6 +163,26 @@
   <div class="page-header">
     <h1>Developers</h1>
     <p>Reports, dashboards, and tools for contributors and maintainers.</p>
+  </div>
+
+  <!-- Deployed Environments -->
+  <div class="section">
+    <h2>Deployed Environments</h2>
+    <div class="cards">
+      <a href="https://algebench.org" class="card" target="_blank" rel="noopener">
+        <span class="icon">🚀</span>
+        <h3>Production</h3>
+        <p>Live public app &mdash; deploys from <code>deploy/on-render</code> branch.</p>
+        <span class="arrow">algebench.org &rarr;</span>
+      </a>
+
+      <a href="https://algebench-staging.onrender.com" class="card" target="_blank" rel="noopener">
+        <span class="icon">🧪</span>
+        <h3>Staging</h3>
+        <p>Preview upcoming features &mdash; deploys from <code>deploy/on-render-staging</code> branch.</p>
+        <span class="arrow">algebench-staging.onrender.com &rarr;</span>
+      </a>
+    </div>
   </div>
 
   <!-- Reports -->
