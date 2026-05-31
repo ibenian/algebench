@@ -15,11 +15,6 @@ Step-by-step **proofs** walk through derivations alongside the 3D scene — each
 
 ![AlgeBench screenshot](docs/rotating-space-habitat.png)
 
-```
-algebench eigenvalues.json
-```
-
-Built on [MathBox](https://github.com/unconed/mathbox) / [Three.js](https://github.com/mrdoob/three.js), powered by [Gemini](https://deepmind.google/technologies/gemini/), expressions via [math.js](https://github.com/josdejong/mathjs).
 
 ---
 
@@ -37,7 +32,16 @@ Built on [MathBox](https://github.com/unconed/mathbox) / [Three.js](https://gith
 | Rotating Space Habitat Simulation | [Watch](https://www.youtube.com/watch?v=HoZgrAxKKGA)         |
 
 
+**Try it yourself:** [Rotating Space Habitat](https://algebench-staging.onrender.com/?builtin=rotating-habitat)
+
+## Deployments
+|   |   |
+|---|---|
+| **Production** | [algebench.org](https://algebench.org) |
+| **Staging** | [algebench-staging.onrender.com](https://algebench-staging.onrender.com) |
+
 ---
+
 
 ## Vision
 
