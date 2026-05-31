@@ -656,14 +656,28 @@ export class D3SemanticGraphRenderer {
         const bbox = vpNode.getBBox();
         if (!bbox.width || !bbox.height) return;
 
+        // Charts pinned at the top dock over the graph; reserve their vertical
+        // band so the fit only uses the space left beneath them.
+        const card = svgNode.parentNode;
+        const pinned = card && card.querySelector('.sgc-pinned-panel');
+        let topInset = 0;
+        if (pinned && pinned.offsetParent !== null) {
+            const cardTop = card.getBoundingClientRect().top;
+            const pinnedRect = pinned.getBoundingClientRect();
+            // distance from the card's top edge to the bottom of the pinned band
+            topInset = Math.max(0, pinnedRect.bottom - cardTop);
+        }
+
         const pad = 40;
+        const availH = svgH - topInset;
         const scale = Math.min(
             (svgW - pad * 2) / bbox.width,
-            (svgH - pad * 2) / bbox.height,
+            (availH - pad * 2) / bbox.height,
             5
         );
         const tx = svgW / 2 - scale * (bbox.x + bbox.width / 2);
-        const ty = svgH / 2 - scale * (bbox.y + bbox.height / 2);
+        // Center within the region below the pinned charts.
+        const ty = topInset + availH / 2 - scale * (bbox.y + bbox.height / 2);
 
         const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
         if (animate) {
