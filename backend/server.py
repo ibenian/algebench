@@ -479,11 +479,11 @@ def list_builtin_scenes():
 
 def load_builtin_scene(name):
     """Load a built-in scene JSON by name."""
-    if not re.fullmatch(r"[A-Za-z0-9_.\-/]+", name or ""):
-        return None
-    path = sanitize_path(scenes_dir, f"{name}.json")
+    # Charset/null-byte hygiene + confinement handled by sanitize_path.
+    path = sanitize_path(scenes_dir, f"{name}.json") if name else None
     if path and path.is_file():
-        return _load_scene(path)
+        # Already confined by sanitize_path — load directly.
+        return _load_scene(path, trusted=True)
     return None
 
 
@@ -503,41 +503,39 @@ def resolve_scene_path(scene_arg):
 
 
 def resolve_scene_path_safe(scene_arg):
-    """Resolve scene path restricted to allowed roots (for API use)."""
+    """Resolve a scene path confined to scenes_dir, for untrusted API input.
+
+    Scene files may *only* be read from ``scenes/`` and must be ``.json``.
+    Accepts a bare filename (``foo.json``) or a project-root-relative path
+    (``scenes/foo.json``). Everything else — ``~`` expansion, absolute
+    paths, traversal, null bytes, and non-``.json`` files — yields ``None``,
+    so arbitrary JSON elsewhere in the repo (e.g. ``.claude/launch.json``)
+    is never served.
+
+    All input hygiene and confinement is delegated to ``sanitize_path``
+    (empty/null-byte/charset rejection, ``~`` rejection, absolute-path
+    rejection, ``..`` rejection, and ``is_relative_to`` confinement that also
+    defeats symlink escapes). The only thing added here is the object-specific
+    shape: a final ``scenes_dir`` confinement + ``.json`` gate, so that even
+    when ``script_dir`` is used as a lookup base the result can only ever live
+    inside ``scenes/``.
+    """
     if not scene_arg:
         return None
     raw = str(scene_arg)
-    if raw.startswith('~'):
-        return None
-    candidate = Path(raw)
-    # Confine API scene loading to the scenes/ directory and to .json files only.
-    # script_dir stays as a candidate base so a leading "scenes/" prefix still
-    # resolves, but it is NOT an allowed root: the prefix check below rejects any
-    # resolved path that does not live under scenes_dir, so arbitrary JSON
-    # elsewhere in the repo (e.g. .claude/launch.json) is never served.
-    allowed_roots = (scenes_dir.resolve(),)
-    allowed_prefixes = tuple(str(r) + os.sep for r in allowed_roots)
-    if candidate.is_absolute():
-        resolved = candidate.resolve()
-        if resolved.suffix.lower() != '.json':
-            return None
-        if not str(resolved).startswith(allowed_prefixes):
-            return None
-        if resolved.exists() and resolved.is_file():
-            return resolved
-        return None
-    normalized = os.path.normpath(raw)
-    if os.path.isabs(normalized) or normalized.startswith('..'):
-        return None
-    candidates = [script_dir / normalized, scenes_dir / normalized]
-    for path in candidates:
-        resolved = path.resolve()
-        if resolved.suffix.lower() != '.json':
+    scenes_root = scenes_dir.resolve()
+    # Try the input as a name within scenes/ and as a project-root-relative
+    # path ("scenes/foo.json"); confine the result to scenes/ and .json.
+    for base in (scenes_dir, script_dir):
+        candidate = sanitize_path(base, raw)
+        if not candidate:
             continue
-        if not str(resolved).startswith(allowed_prefixes):
+        if candidate.suffix.lower() != '.json':
             continue
-        if resolved.exists() and resolved.is_file():
-            return resolved
+        if not candidate.is_relative_to(scenes_root):
+            continue
+        if candidate.is_file():
+            return candidate
     return None
 
 
@@ -1302,8 +1300,6 @@ def create_app(initial_scene_path=None, debug=False,
     @fastapp.get("/objects/{filename:path}")
     async def get_objects_js(filename: str):
         """Serve ES module files from static/objects/ subdirectory."""
-        if not re.fullmatch(r"[A-Za-z0-9_.\-/]+", filename):
-            return Response(status_code=404)
         path = sanitize_path(static_dir / "objects", filename)
         if not path or not path.is_file() or path.suffix != '.js':
             return Response(status_code=404)
@@ -1592,8 +1588,6 @@ def create_app(initial_scene_path=None, debug=False,
     @fastapp.get("/graph-panel/{filename:path}")
     async def get_graph_panel_file(filename: str):
         """Serve files from static/graph-panel/ subdirectory."""
-        if not re.fullmatch(r"[A-Za-z0-9._\-/]+", filename):
-            return Response(status_code=404)
         path = sanitize_path(static_dir / "graph-panel", filename)
         if not path or not path.is_file():
             return Response(status_code=404)
@@ -1667,8 +1661,17 @@ def create_app(initial_scene_path=None, debug=False,
         if not resolved_path:
             return JSONResponse({"error": "Scene file not found"}, status_code=404)
         try:
-            scene = _load_scene(resolved_path)
-            return JSONResponse({"spec": scene, "path": str(resolved_path),
+            # resolve_scene_path_safe already confined this to scenes/ — load directly.
+            scene = _load_scene(resolved_path, trusted=True)
+            # Return a project-root-relative path ("scenes/<name>") so the
+            # ?scene= URL the frontend writes round-trips: resolve_scene_path_safe
+            # rejects absolute paths, so echoing an absolute path would 404 on
+            # reload.
+            try:
+                rel_path = "scenes/" + resolved_path.relative_to(scenes_dir.resolve()).as_posix()
+            except ValueError:
+                rel_path = resolved_path.name
+            return JSONResponse({"spec": scene, "path": rel_path,
                                  "label": resolved_path.name})
         except json.JSONDecodeError:
             return JSONResponse({"error": "Invalid JSON in scene file"}, status_code=400)
@@ -1708,8 +1711,6 @@ def create_app(initial_scene_path=None, debug=False,
 
     @fastapp.get("/domains/{path:path}")
     async def get_domain_file(path: str):
-        if not re.fullmatch(r"[A-Za-z0-9_\-./]+", path or ""):
-            return Response(content=b'Domain not found', status_code=404)
         domain_path = sanitize_path(static_dir / 'domains', path)
         if not domain_path or not domain_path.is_file():
             return Response(content=b'Domain not found', status_code=404)

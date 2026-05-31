@@ -28,12 +28,17 @@ class TestSanitizePath:
         result = sanitize_path(tmp_path, "/etc/passwd")
         assert result is None
 
-    def test_absolute_path_inside_root_allowed(self, tmp_path):
+    def test_absolute_path_inside_root_rejected(self, tmp_path):
+        # Absolute input is rejected even when it points inside root: callers
+        # address files by relative name only. Trusted, already-confined paths
+        # are loaded directly, not routed back through sanitize_path.
         (tmp_path / "ok.txt").touch()
         abs_path = str(tmp_path / "ok.txt")
-        result = sanitize_path(tmp_path, abs_path)
-        assert result is not None
-        assert result.is_relative_to(tmp_path)
+        assert sanitize_path(tmp_path, abs_path) is None
+
+    def test_tilde_prefix_rejected(self, tmp_path):
+        assert sanitize_path(tmp_path, "~/secrets.txt") is None
+        assert sanitize_path(tmp_path, "~root/.bashrc") is None
 
     def test_dotdot_that_stays_inside_root(self, tmp_path):
         sub = tmp_path / "a" / "b"

@@ -11,6 +11,32 @@ from .constants import (
 )
 from .preprocess_result import PreprocessResult
 
+# LaTeX spacing commands, longest-first so endswith() strips the longest match.
+_SPACING_COMMANDS = ("\\qquad", "\\quad", "\\,", "\\;", "\\!", "\\:")
+
+
+def strip_trailing_spacing(s: str) -> str:
+    r"""Remove trailing whitespace and LaTeX spacing commands, in linear time.
+
+    Equivalent to matching ``(?:\s|\\quad|\\qquad|\\,|\\;|\\!|\\:)*`` at the end
+    of *s*, but implemented as a shrinking-index scan so it cannot exhibit the
+    polynomial backtracking (ReDoS, CWE-1333) that an unanchored regular
+    expression of that shape suffers on long whitespace runs.
+    """
+    end = len(s)
+    changed = True
+    while changed:
+        changed = False
+        while end > 0 and s[end - 1].isspace():
+            end -= 1
+            changed = True
+        for cmd in _SPACING_COMMANDS:
+            if end >= len(cmd) and s.endswith(cmd, 0, end):
+                end -= len(cmd)
+                changed = True
+                break
+    return s[:end]
+
 
 class LaTeXPreprocessor:
     """Stateless preprocessor: each method takes raw strings and returns results."""
@@ -355,9 +381,13 @@ class LaTeXPreprocessor:
     ) -> tuple[str, list[dict[str, str]]]:
         r"""Strip trailing parenthetical annotations from LaTeX."""
         annotations: list[dict[str, str]] = []
-        spacing = r"(?:\s|\\quad|\\qquad|\\,|\\;|\\!|\\:)*"
+        # The literal ``\text{`` inside the group anchors the match, so we no
+        # longer need a leading spacing/whitespace quantifier — that prefix was
+        # a polynomial-time ReDoS (CWE-1333) on attacker-supplied whitespace.
+        # Trailing spacing left before the matched paren is removed in linear
+        # time by ``strip_trailing_spacing`` below.
         pattern = re.compile(
-            spacing + r"\(([^()]*\\text\{[^{}]+\}[^()]*)\)\s*$"
+            r"\(([^()]*\\text\{[^{}]+\}[^()]*)\)\s*$"
         )
         while True:
             m = pattern.search(latex)
@@ -373,6 +403,6 @@ class LaTeXPreprocessor:
                 "label": label,
                 "type": "annotation",
             })
-            latex = latex[:m.start()].rstrip()
+            latex = strip_trailing_spacing(latex[:m.start()])
         annotations.reverse()
         return latex, annotations

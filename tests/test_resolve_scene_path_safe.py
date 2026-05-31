@@ -21,14 +21,14 @@ def test_rejects_absolute_path_outside_project():
     assert resolve_scene_path_safe("/tmp/something.json") is None
 
 
-def test_accepts_absolute_path_within_project():
+def test_rejects_absolute_path_within_project():
+    # Untrusted API input must never be an absolute filesystem path, even when
+    # it points inside the project. Scenes are addressed by relative name only.
     scene_files = list(scenes_dir.glob("*.json"))
     if not scene_files:
         return
     abs_path = str(scene_files[0].resolve())
-    result = resolve_scene_path_safe(abs_path)
-    assert result is not None
-    assert result == scene_files[0].resolve()
+    assert resolve_scene_path_safe(abs_path) is None
 
 
 def test_rejects_home_expansion():

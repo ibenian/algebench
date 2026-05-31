@@ -16,12 +16,21 @@ class TestLoadScene:
         assert isinstance(spec, dict)
 
     def test_valid_scene_file_accepted(self):
+        # Untrusted loads address scenes by relative name only.
         scenes = server.list_builtin_scenes()
         assert scenes, "Expected built-in scenes in scenes/"
-        path = server.scenes_dir / f"{scenes[0]}.json"
-        assert path.exists(), f"Scene file missing: {path}"
-        spec = server._load_scene(str(path))
+        spec = server._load_scene(f"{scenes[0]}.json")
         assert isinstance(spec, dict)
+
+    def test_absolute_path_rejected(self):
+        # Even a valid absolute path inside scenes/ is rejected for untrusted
+        # input — the secure mechanism only accepts relative names.
+        import pytest
+        scenes = server.list_builtin_scenes()
+        assert scenes, "Expected built-in scenes in scenes/"
+        abs_path = str(server.scenes_dir / f"{scenes[0]}.json")
+        with pytest.raises(ValueError, match="Path outside allowed directories"):
+            server._load_scene(abs_path)
 
     def test_traversal_rejected(self):
         import pytest
@@ -82,12 +91,13 @@ class TestResolveScenePathSafe:
         assert server.resolve_scene_path_safe("/etc/passwd") is None
         assert server.resolve_scene_path_safe("/tmp/evil.json") is None
 
-    def test_absolute_path_inside_roots_allowed(self):
+    def test_absolute_path_inside_roots_rejected(self):
+        # Absolute input is rejected even inside the project: the API addresses
+        # scenes by relative name only (absolute paths are an injection vector).
         scenes = server.list_builtin_scenes()
         assert scenes, "Expected built-in scenes in scenes/"
         abs_path = str(server.scenes_dir / f"{scenes[0]}.json")
-        result = server.resolve_scene_path_safe(abs_path)
-        assert result is not None
+        assert server.resolve_scene_path_safe(abs_path) is None
 
     def test_dotdot_traversal_outside_roots_rejected(self):
         assert server.resolve_scene_path_safe("../../../etc/passwd") is None

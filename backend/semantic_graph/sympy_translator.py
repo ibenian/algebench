@@ -26,7 +26,7 @@ from sympy.physics.quantum import InnerProduct, OuterProduct
 
 from backend.model.semantic_graph import SemanticGraph
 
-from .preprocessor import LaTeXPreprocessor
+from .preprocessor import LaTeXPreprocessor, strip_trailing_spacing
 from .constants import (
     KNOWN_VARIABLES,
     OPERATOR_MAP,
@@ -310,7 +310,11 @@ def _rewrite_conditional_bar(latex: str) -> tuple[str, set[str]]:
                 body = latex[body_start:body_end]
 
                 # Normalize \mid → | ONLY within this function body.
-                body = re.sub(r"\s*\\mid\b\s*", "|", body)
+                # The (?<!\s) lookbehind anchors the leading whitespace run so
+                # it can only start matching at a run boundary, not at every
+                # interior space — without it this is a polynomial-time ReDoS
+                # on attacker-supplied whitespace (CWE-1333).
+                body = re.sub(r"(?<!\s)\s*\\mid\b\s*", "|", body)
 
                 # Count bare pipes in body (not inside nested parens).
                 # Detect: is there exactly one unpaired |?
@@ -1562,9 +1566,13 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
 def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, str]]]:
     r"""Strip trailing parenthetical annotations from LaTeX."""
     annotations: list[dict[str, str]] = []
-    spacing = r"(?:\s|\\quad|\\qquad|\\,|\\;|\\!|\\:)*"
+    # The literal ``\text{`` inside the group anchors the match, so we no
+    # longer need a leading spacing/whitespace quantifier — that prefix was
+    # a polynomial-time ReDoS (CWE-1333) on attacker-supplied whitespace.
+    # Trailing spacing left before the matched paren is removed in linear
+    # time by ``strip_trailing_spacing`` below.
     pattern = re.compile(
-        spacing + r"\(([^()]*\\text\{[^{}]+\}[^()]*)\)\s*$"
+        r"\(([^()]*\\text\{[^{}]+\}[^()]*)\)\s*$"
     )
     while True:
         m = pattern.search(latex)
@@ -1580,7 +1588,7 @@ def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, 
             "label": label,
             "type": "annotation",
         })
-        latex = latex[:m.start()].rstrip()
+        latex = strip_trailing_spacing(latex[:m.start()])
     annotations.reverse()
     return latex, annotations
 
