@@ -25,7 +25,7 @@ import tty
 import termios
 import select
 from urllib.parse import quote
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import StreamingResponse, Response, JSONResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel
 import uvicorn
@@ -358,7 +358,14 @@ index_html_path = static_dir / "index.html"
 style_css_path  = static_dir / "style.css"
 
 # ---------------------------------------------------------------------------
-from backend.util import sanitize_path  # noqa: E402 — after Path is defined
+from backend.util import sanitize_path, limiter_from_env, rate_limit_dependency  # noqa: E402
+
+# Per-IP rate limits for billable (Gemini-backed) endpoints. Override via env
+# as "count/seconds", e.g. ALGEBENCH_RATELIMIT_CHAT="10/60". Limits protect the
+# Gemini spend on a public, unauthenticated deployment; the app is otherwise open.
+_chat_rate_limit = rate_limit_dependency(limiter_from_env("ALGEBENCH_RATELIMIT_CHAT", 20, 60))
+_tts_rate_limit = rate_limit_dependency(limiter_from_env("ALGEBENCH_RATELIMIT_TTS", 20, 60))
+_enrich_rate_limit = rate_limit_dependency(limiter_from_env("ALGEBENCH_RATELIMIT_ENRICH", 60, 60))
 
 
 def _safe_open_scene_path(source) -> Path:
@@ -1408,7 +1415,7 @@ def create_app(initial_scene_path=None, debug=False,
         context: dict | None = None
 
     @fastapp.post("/api/graph/enrich")
-    async def post_graph_enrich(req: GraphEnrichRequest):
+    async def post_graph_enrich(req: GraphEnrichRequest, _rl: None = Depends(_enrich_rate_limit)):
         """Enrich a semantic graph via Gemini (descriptions, emoji, color, corrections).
 
         Runtime in-memory cache keyed by ``sha256({graph, context})`` — the
@@ -1731,7 +1738,7 @@ def create_app(initial_scene_path=None, debug=False,
     # -- POST routes --
 
     @fastapp.post("/api/chat")
-    async def api_chat(req: ChatRequest):
+    async def api_chat(req: ChatRequest, _rl: None = Depends(_chat_rate_limit)):
         if not req.message.strip():
             return JSONResponse({"error": "Empty message"}, status_code=400)
         try:
@@ -1751,7 +1758,7 @@ def create_app(initial_scene_path=None, debug=False,
             return JSONResponse({"error": "internal error processing chat request"}, status_code=500)
 
     @fastapp.post("/api/tts/stream")
-    async def api_tts_stream(req: TtsRequest, request: Request):
+    async def api_tts_stream(req: TtsRequest, request: Request, _rl: None = Depends(_tts_rate_limit)):
         if not TTS_AVAILABLE or not GEMINI_API_KEY:
             return JSONResponse({"error": "TTS not available"}, status_code=503)
         text = req.text.strip()
