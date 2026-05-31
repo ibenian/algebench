@@ -1157,13 +1157,17 @@ def call_gemini_chat(message, history, context):
 
 DEBUG_MODE = False
 
-def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False, debug=False,
-                   tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
-                   tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
-                   tts_max_retries=None, tts_retry_delay=None, tts_style=None,
-                   tts_live=True, tts_output_file=None, tts_realtime=False,
-                   server_only=False):
-    """Serve the AlgeBench viewer and optionally open in browser."""
+def create_app(initial_scene_path=None, debug=False,
+               tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
+               tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
+               tts_max_retries=None, tts_retry_delay=None, tts_style=None,
+               tts_live=True, tts_output_file=None, tts_realtime=False):
+    """Build and return the AlgeBench FastAPI (ASGI) application.
+
+    All routes are registered here so the app can be served either by an
+    external ASGI server (``uvicorn backend.asgi:app``) or by
+    ``serve_and_open`` for the desktop launch flow.
+    """
     global DEBUG_MODE
     DEBUG_MODE = debug
 
@@ -1911,6 +1915,32 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
             return JSONResponse({"status": "loaded"})
         except json.JSONDecodeError:
             return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
+    return fastapp
+
+
+def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False, debug=False,
+                   tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
+                   tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
+                   tts_max_retries=None, tts_retry_delay=None, tts_style=None,
+                   tts_live=True, tts_output_file=None, tts_realtime=False,
+                   server_only=False):
+    """Serve the AlgeBench viewer and optionally open in browser."""
+    fastapp = create_app(
+        initial_scene_path=initial_scene_path,
+        debug=debug,
+        tts_parallelism=tts_parallelism,
+        tts_min_buffer=tts_min_buffer,
+        tts_min_sentence_chars=tts_min_sentence_chars,
+        tts_min_sentence_chars_growth=tts_min_sentence_chars_growth,
+        tts_chunk_timeout=tts_chunk_timeout,
+        tts_max_retries=tts_max_retries,
+        tts_retry_delay=tts_retry_delay,
+        tts_style=tts_style,
+        tts_live=tts_live,
+        tts_output_file=tts_output_file,
+        tts_realtime=tts_realtime,
+    )
 
     # ---- Start uvicorn in a background thread ----
 
