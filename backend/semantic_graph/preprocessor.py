@@ -381,17 +381,17 @@ class LaTeXPreprocessor:
     ) -> tuple[str, list[dict[str, str]]]:
         r"""Strip trailing parenthetical annotations from LaTeX."""
         annotations: list[dict[str, str]] = []
-        # The literal ``\text{`` inside the group anchors the match, so we no
-        # longer need a leading spacing/whitespace quantifier — that prefix was
-        # a polynomial-time ReDoS (CWE-1333) on attacker-supplied whitespace.
-        # Trailing spacing left before the matched paren is removed in linear
-        # time by ``strip_trailing_spacing`` below.
-        pattern = re.compile(
-            r"\(([^()]*\\text\{[^{}]+\}[^()]*)\)\s*$"
-        )
+        # Match a trailing ``(...)`` with no nested parens using a single
+        # ``[^()]*`` — the old ``[^()]*…[^()]*`` body is a polynomial-ReDoS
+        # shape (CWE-1333) that scanners flag. Whether the parenthetical is an
+        # annotation (must contain ``\text{…}``) is a separate, unambiguous
+        # containment check. Trailing spacing left before the matched paren is
+        # removed in linear time by ``strip_trailing_spacing`` below.
+        trailing_paren = re.compile(r"\(([^()]*)\)\s*$")
+        text_cmd = re.compile(r"\\text\{[^{}]+\}")
         while True:
-            m = pattern.search(latex)
-            if not m:
+            m = trailing_paren.search(latex)
+            if not m or not text_cmd.search(m.group(1)):
                 break
             inner = m.group(1).strip()
             label = re.sub(r"\\text\{([^{}]+)\}", r"\1", inner)
