@@ -352,6 +352,21 @@ chat_js_path = static_dir / "chat.js"
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 GEMINI_MODEL   = os.environ.get('GEMINI_MODEL', 'gemini-3-flash-preview')
 
+
+def _env_bool(name: str, default: bool) -> bool:
+    """Parse a boolean env var. Accepts 1/true/yes/on (and 0/false/no/off),
+    case-insensitive; falls back to *default* when unset or unrecognized."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    val = raw.strip().lower()
+    if val in ('1', 'true', 'yes', 'on'):
+        return True
+    if val in ('0', 'false', 'no', 'off'):
+        return False
+    return default
+
+
 DEFAULT_PORT = 8785
 
 index_html_path = static_dir / "index.html"
@@ -1175,15 +1190,25 @@ def create_app(initial_scene_path=None, debug=False,
                tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
                tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
                tts_max_retries=None, tts_retry_delay=None, tts_style=None,
-               tts_live=True, tts_output_file=None, tts_realtime=False):
+               tts_live=True, tts_output_file=None, tts_realtime=None):
     """Build and return the AlgeBench FastAPI (ASGI) application.
 
     All routes are registered here so the app can be served either by an
     external ASGI server (``uvicorn backend.asgi:app``) or by
     ``serve_and_open`` for the desktop launch flow.
+
+    ``tts_realtime`` controls whether ``/api/tts/stream`` streams raw PCM from
+    a single Live session (realtime) or buffered parallel WAV. When left as
+    ``None`` (the ASGI entrypoint passes nothing) it is resolved from the
+    ``ALGEBENCH_TTS_REALTIME`` env var, defaulting to realtime — so a hosted
+    deploy matches the CLI default without code changes. An explicit
+    ``True``/``False`` (e.g. from ``main()``) always wins over the env var.
     """
     global DEBUG_MODE
     DEBUG_MODE = debug
+
+    if tts_realtime is None:
+        tts_realtime = _env_bool("ALGEBENCH_TTS_REALTIME", default=True)
 
     # Build TTS streaming kwargs
     tts_stream_kwargs = {}
@@ -1940,9 +1965,13 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                    tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
                    tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
                    tts_max_retries=None, tts_retry_delay=None, tts_style=None,
-                   tts_live=True, tts_output_file=None, tts_realtime=False,
+                   tts_live=True, tts_output_file=None, tts_realtime=None,
                    server_only=False):
-    """Serve the AlgeBench viewer and optionally open in browser."""
+    """Serve the AlgeBench viewer and optionally open in browser.
+
+    ``tts_realtime=None`` defers to ``create_app``'s env-var resolution
+    (``ALGEBENCH_TTS_REALTIME``, default realtime); an explicit bool wins.
+    """
     fastapp = create_app(
         initial_scene_path=initial_scene_path,
         debug=debug,
