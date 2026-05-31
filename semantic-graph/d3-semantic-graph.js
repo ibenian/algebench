@@ -365,6 +365,8 @@ export class D3SemanticGraphRenderer {
         this.onBackgroundClick = opts.onBackgroundClick || null;
 
         this.onZoomChange = opts.onZoomChange || null;
+        this.onTransformChange = opts.onTransformChange || null;
+        this.onChartClick = opts.onChartClick || null;
 
         this._graph = null;
         this._theme = null;
@@ -607,6 +609,9 @@ export class D3SemanticGraphRenderer {
                 if (this.onZoomChange) {
                     this.onZoomChange(Math.round(event.transform.k * 100));
                 }
+                if (this.onTransformChange) {
+                    this.onTransformChange(event.transform);
+                }
             });
 
         this._svg.call(this._zoomBehavior);
@@ -651,14 +656,28 @@ export class D3SemanticGraphRenderer {
         const bbox = vpNode.getBBox();
         if (!bbox.width || !bbox.height) return;
 
+        // Charts pinned at the top dock over the graph; reserve their vertical
+        // band so the fit only uses the space left beneath them.
+        const card = svgNode.parentNode;
+        const pinned = card && card.querySelector('.sgc-pinned-panel');
+        let topInset = 0;
+        if (pinned && pinned.offsetParent !== null) {
+            const cardTop = card.getBoundingClientRect().top;
+            const pinnedRect = pinned.getBoundingClientRect();
+            // distance from the card's top edge to the bottom of the pinned band
+            topInset = Math.max(0, pinnedRect.bottom - cardTop);
+        }
+
         const pad = 40;
+        const availH = svgH - topInset;
         const scale = Math.min(
             (svgW - pad * 2) / bbox.width,
-            (svgH - pad * 2) / bbox.height,
+            (availH - pad * 2) / bbox.height,
             5
         );
         const tx = svgW / 2 - scale * (bbox.x + bbox.width / 2);
-        const ty = svgH / 2 - scale * (bbox.y + bbox.height / 2);
+        // Center within the region below the pinned charts.
+        const ty = topInset + availH / 2 - scale * (bbox.y + bbox.height / 2);
 
         const t = d3.zoomIdentity.translate(tx, ty).scale(scale);
         if (animate) {
@@ -1256,6 +1275,51 @@ export class D3SemanticGraphRenderer {
         return g;
     }
 
+    _chartBtnPos(shape) {
+        const sz = 14, half = sz / 2;
+        const dir = this.direction;
+        if (shape.type === 'rect' || shape.type === 'stadium') {
+            if (dir === 'left-right')  return { x: -shape.hw - half, y: -half };
+            if (dir === 'right-left')  return { x: shape.hw - half, y: -half };
+            if (dir === 'bottom-up')   return { x: -half, y: shape.hh - half };
+            return { x: -half, y: -shape.hh - half };
+        }
+        const r = shape.r || 26;
+        if (dir === 'left-right')  return { x: -r - half, y: -half };
+        if (dir === 'right-left')  return { x: r - half, y: -half };
+        if (dir === 'bottom-up')   return { x: -half, y: r - half };
+        return { x: -half, y: -r - half };
+    }
+
+    _appendChartBtn(group, d) {
+        const shape = this._nodeShape(d);
+        const pos = this._chartBtnPos(shape);
+        const self = this;
+        const sz = 14;
+        const g = group.append('g')
+            .attr('class', 'd3sg-chart-btn')
+            .attr('transform', `translate(${pos.x},${pos.y})`)
+            .on('click', function (event) {
+                event.stopPropagation();
+                if (self.onChartClick) self.onChartClick(d.data.id, d.data, this);
+            });
+        g.append('rect')
+            .attr('x', 0).attr('y', 0)
+            .attr('width', sz).attr('height', sz)
+            .attr('rx', 2)
+            .attr('fill', '#1a2440')
+            .attr('stroke', '#42a5f5')
+            .attr('stroke-width', 1);
+        g.append('path')
+            .attr('d', `M3,${sz-3} L5,5 L8,8 L${sz-3},3`)
+            .attr('fill', 'none')
+            .attr('stroke', '#42a5f5')
+            .attr('stroke-width', 1.5)
+            .attr('stroke-linecap', 'round')
+            .attr('stroke-linejoin', 'round');
+        return g;
+    }
+
     _drawNode(group, d) {
         group.selectAll('*').remove();
         const data = d.data;
@@ -1295,6 +1359,7 @@ export class D3SemanticGraphRenderer {
             }
 
             this._appendChevron(group, d, true);
+            if (data.subexpr || data.chartScript) this._appendChartBtn(group, d);
             return;
         }
 
@@ -1324,6 +1389,9 @@ export class D3SemanticGraphRenderer {
 
         if (isOp && data._childIds && data._childIds.length > 0) {
             this._appendChevron(group, d, false);
+        }
+        if (data.subexpr || data.chartScript) {
+            this._appendChartBtn(group, d);
         }
     }
 
