@@ -462,9 +462,12 @@ async function sendChatMessage(text, { silent = false } = {}) {
 
         if (!res.ok) {
             const err = await res.json().catch(() => ({ error: 'Request failed' }));
-            console.error('%c🤖 Chat error: %c' + res.status + ' — ' + (err.error || 'unknown'),
+            // FastAPI HTTPException (e.g. 429 rate limit) returns `detail`;
+            // the app's own errors use `error`. Surface whichever is present.
+            const msg = err.detail || err.error;
+            console.error('%c🤖 Chat error: %c' + res.status + ' — ' + (msg || 'unknown'),
                 'color: #ff4444; font-weight: bold', 'color: #ccc');
-            addChatMessage('assistant', err.error || 'Something went wrong. Please try again.');
+            addChatMessage('assistant', msg || 'Something went wrong. Please try again.');
             if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') chatHistory.pop();
             chatSending = false;
             return;
