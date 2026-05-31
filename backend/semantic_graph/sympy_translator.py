@@ -250,6 +250,40 @@ def _normalize_latex(latex: str) -> str:
     return latex
 
 
+def _normalize_mid_tokens(s: str) -> str:
+    r"""Replace each ``\mid`` command (and the whitespace around it) with a
+    bare ``|``, in a single linear pass.
+
+    Equivalent to ``re.sub(r"\s*\\mid\b\s*", "|", s)`` but without a regex.
+    The ``\s*\\mid\s*`` form is a polynomial-ReDoS shape (CWE-1333): static
+    scanners flag it even when a lookbehind makes it linear at runtime, and the
+    naive version really is O(n^2) on attacker-supplied whitespace. A direct
+    scan is unambiguously linear and carries no backtracking surface.
+    """
+    token = "\\mid"
+    out: list[str] = []
+    i = 0
+    n = len(s)
+    while i < n:
+        j = s.find(token, i)
+        if j < 0:
+            out.append(s[i:])
+            break
+        end = j + len(token)
+        # Honor the trailing ``\b``: ``\mid`` must not be glued to a word char
+        # (e.g. ``\midpoint`` is not a match).
+        if end < n and (s[end].isalnum() or s[end] == "_"):
+            out.append(s[i:end])
+            i = end
+            continue
+        out.append(s[i:j].rstrip())   # drop whitespace immediately before token
+        out.append("|")
+        i = end
+        while i < n and s[i].isspace():  # drop whitespace immediately after token
+            i += 1
+    return "".join(out)
+
+
 def _rewrite_conditional_bar(latex: str) -> tuple[str, set[str]]:
     r"""Rewrite ``P(A|B)`` → ``P(A, B)`` so SymPy sees a two-arg function.
 
@@ -310,11 +344,9 @@ def _rewrite_conditional_bar(latex: str) -> tuple[str, set[str]]:
                 body = latex[body_start:body_end]
 
                 # Normalize \mid → | ONLY within this function body.
-                # The (?<!\s) lookbehind anchors the leading whitespace run so
-                # it can only start matching at a run boundary, not at every
-                # interior space — without it this is a polynomial-time ReDoS
-                # on attacker-supplied whitespace (CWE-1333).
-                body = re.sub(r"(?<!\s)\s*\\mid\b\s*", "|", body)
+                # Uses a linear, regex-free scan (see _normalize_mid_tokens) —
+                # the equivalent \s*\\mid\s* regex is a polynomial ReDoS shape.
+                body = _normalize_mid_tokens(body)
 
                 # Count bare pipes in body (not inside nested parens).
                 # Detect: is there exactly one unpaired |?
