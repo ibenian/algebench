@@ -310,7 +310,36 @@ def _rewrite_conditional_bar(latex: str) -> tuple[str, set[str]]:
                 body = latex[body_start:body_end]
 
                 # Normalize \mid → | ONLY within this function body.
-                body = re.sub(r"\s*\\mid\b\s*", "|", body)
+                # Avoid polynomial ReDoS: use string search instead of
+                # regex (CodeQL: polynomial-redos).
+                if r"\mid" in body:
+                    _mid_parts: list[str] = []
+                    _pos = 0
+                    while True:
+                        _idx = body.find(r"\mid", _pos)
+                        if _idx == -1:
+                            _mid_parts.append(body[_pos:])
+                            break
+                        _after = _idx + 4
+                        # Word boundary: skip \mid that is a prefix of a
+                        # longer command (e.g. \middle).
+                        if _after < len(body) and (
+                            body[_after].isalnum() or body[_after] == "_"
+                        ):
+                            _mid_parts.append(body[_pos : _idx + 1])
+                            _pos = _idx + 1
+                            continue
+                        # Strip whitespace immediately before \mid.
+                        _start = _idx
+                        while _start > _pos and body[_start - 1] in " \t\n\r":
+                            _start -= 1
+                        _mid_parts.append(body[_pos:_start])
+                        _mid_parts.append("|")
+                        # Skip whitespace immediately after \mid.
+                        _pos = _after
+                        while _pos < len(body) and body[_pos] in " \t\n\r":
+                            _pos += 1
+                    body = "".join(_mid_parts)
 
                 # Count bare pipes in body (not inside nested parens).
                 # Detect: is there exactly one unpaired |?

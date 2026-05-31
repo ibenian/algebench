@@ -78,6 +78,20 @@ class TestRewriteConditionalBar:
         _, funcs = _rewrite_conditional_bar(r"E(X) + P(A)")
         assert funcs == set()
 
+    def test_mid_command_rewrite(self):
+        r"""``\mid`` form is normalized to a conditional bar."""
+        result, funcs = _rewrite_conditional_bar(r"P(A \mid B)")
+        assert result == r"P(A, B)"
+        assert funcs == {"P"}
+
+    def test_mid_command_no_polynomial_redos(self):
+        r"""Many spaces before ``\mid`` must not cause catastrophic backtracking."""
+        # 500 spaces before \mid — would be O(n²) with the old regex.
+        padded = r"P(A" + " " * 500 + r"\mid B)"
+        result, funcs = _rewrite_conditional_bar(padded)
+        assert result == r"P(A, B)"
+        assert funcs == {"P"}
+
 
 # ── Unit tests: _restore_conditional_bar_in_subexpr ────────────────────
 
