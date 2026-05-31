@@ -19,6 +19,7 @@
 import { state } from '/state.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
+import { SgChartManager } from '/graph-panel/sg-chart.js';
 import { makeAiAskButton, renderKaTeX } from '/labels.js';
 
 let _currentGraphPanel = null;
@@ -26,6 +27,7 @@ let _currentSemanticKey = null;
 let _activeStepForPanel = null;
 let _initDone = false;
 let _currentD3Renderer = null;
+let _currentChartManager = null;
 let _d3NodeAskBtn = null;
 let _d3NodeAskHideTimer = null;
 let _d3HoveredNodeId = null;
@@ -715,6 +717,10 @@ function clearGraph() {
         try { _currentGraphPanel.destroy(); } catch {}
         _currentGraphPanel = null;
     }
+    if (_currentChartManager) {
+        try { _currentChartManager.destroy(); } catch {}
+        _currentChartManager = null;
+    }
     if (_currentD3Renderer) {
         try { _currentD3Renderer.destroy(); } catch {}
         _currentD3Renderer = null;
@@ -788,6 +794,13 @@ async function _renderWithD3(container, graph, step, key) {
 
     _d3ActiveGraph = graph;
 
+    if (_currentChartManager) {
+        try { _currentChartManager.destroy(); } catch {}
+    }
+    _currentChartManager = new SgChartManager(container, graph, {
+        katex: window.katex,
+    });
+
     // Reuse or create D3 renderer
     if (!_currentD3Renderer || _currentD3Renderer._destroyed) {
         _currentD3Renderer = new D3SemanticGraphRenderer(container, {
@@ -819,9 +832,22 @@ async function _renderWithD3(container, graph, step, key) {
                 const label = document.getElementById('graph-zoom-level');
                 if (label) label.textContent = `${pct}%`;
             },
+            onTransformChange: (t) => {
+                if (_currentChartManager) _currentChartManager.setTransform(t);
+            },
+            onChartClick: (nodeId, nodeData, btnEl) => {
+                if (!_currentChartManager) return;
+                // Always open — never toggle.  Only the × button closes.
+                _currentChartManager.openChart(nodeId, btnEl);
+            },
         });
     } else {
         await _currentD3Renderer.update({ direction: _currentDirection, labels: _currentLabels, theme: _currentTheme });
+    }
+
+    // Connect chart manager to renderer for transform polling + resize observation
+    if (_currentChartManager && _currentD3Renderer) {
+        _currentChartManager.setRenderer(_currentD3Renderer);
     }
 
     const stepKey = stableStepKey(step);
@@ -1485,9 +1511,42 @@ function showEnrichmentIndicator(step) {
     text.textContent = 'Enriching graph…';
     el.append(dots, text);
     stack.appendChild(el);
+    positionEnrichmentStack();
     refreshEnrichmentIndicatorVisibility();
     return el;
 }
+
+// Raise the enrichment-indicator stack so it sits directly above whatever
+// legends are docked in the bottom-right of the viewport (the edge-semantics
+// legend and/or the chart legend, which live inside .d3-graph-card). They
+// share the viewport corner, so without this the pills would overlap them.
+function positionEnrichmentStack() {
+    const viewport = document.getElementById('graph-viewport');
+    if (!viewport) return;
+    const stack = viewport.querySelector('.graph-enrich-indicator-stack');
+    if (!stack) return;
+    const vpRect = viewport.getBoundingClientRect();
+    let reach = 0;        // px the tallest docked legend rises from the viewport bottom
+    let rightGap = null;  // smallest gap from viewport right edge to a legend's right edge
+    for (const sel of ['.d3sg-edge-legend', '.sgc-legend-panel']) {
+        const el = viewport.querySelector(sel);
+        if (!el || el.classList.contains('hidden') || el.offsetParent === null) continue;
+        const r = el.getBoundingClientRect();
+        reach = Math.max(reach, vpRect.bottom - r.top);
+        const gap = vpRect.right - r.right;
+        rightGap = rightGap === null ? gap : Math.min(rightGap, gap);
+    }
+    // Pad above the legend strip and right-align the pills with the legends'
+    // right edge (falling back to the 8px corner when no legend is docked).
+    const TOP_PAD = 14;
+    stack.style.bottom = reach > 0 ? `${Math.round(reach) + TOP_PAD}px` : '8px';
+    stack.style.right = rightGap !== null ? `${Math.round(rightGap)}px` : '8px';
+}
+
+// The chart legend (managed by SgChartManager) appears, grows and disappears
+// independently of enrichment. It fires this event whenever it re-lays-out so
+// we can re-stack the enrichment pills above the new legend height.
+document.addEventListener('sgc:legend-change', positionEnrichmentStack);
 
 function refreshEnrichmentIndicatorVisibility() {
     const viewport = document.getElementById('graph-viewport');

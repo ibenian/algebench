@@ -3911,9 +3911,13 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 .graph-enrich-indicator-stack {
     position: absolute;
     right: 8px;
+    /* Base position is the bottom-right corner; positionEnrichmentStack()
+       in graph-view.js raises `bottom` at runtime so the pills sit above
+       whatever edge-semantics / chart legends are docked there. */
     bottom: 8px;
     display: flex;
     flex-direction: column-reverse;
+    align-items: flex-end;
     gap: 8px;
     z-index: 3;
     pointer-events: none;

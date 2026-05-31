@@ -209,10 +209,12 @@ svg.d3-semantic-graph {
     color: #c0c8ff;
 }
 
-/* Edge semantics legend — bottom-left of graph viewport */
+/* Edge semantics legend — bottom-right corner of graph viewport.
+   The chart legend panel docks to its left and the enrichment-progress
+   indicator stacks on top (see sg-chart.css / graph-view.js). */
 .d3sg-edge-legend {
     position: absolute;
-    left: 8px;
+    right: 8px;
     bottom: 8px;
     display: flex;
     flex-direction: column;

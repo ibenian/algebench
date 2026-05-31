@@ -34,6 +34,7 @@ try:
 except ImportError:
     from scripts.graph_to_mermaid import semantic_graph_to_mermaid, load_theme
 
+from backend.semantic_graph.mathjs_converter import latex_to_mathjs
 from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
 from tests.backend.semantic_graph.domains.test_domain_arithmetic import (
     ALL_EXPRESSIONS as ARITHMETIC_EXPRESSIONS,
@@ -185,6 +186,12 @@ def _load_d3_css() -> str:
     return css_path.read_text(encoding="utf-8")
 
 
+def _load_chart_css() -> str:
+    """Read the chart overlay CSS and return it for inline embedding."""
+    css_path = _PROJECT_ROOT / "static" / "graph-panel" / "sg-chart.css"
+    return css_path.read_text(encoding="utf-8")
+
+
 def _page_template() -> str:
     return textwrap.dedent("""\
     <!DOCTYPE html>
@@ -197,9 +204,11 @@ def _page_template() -> str:
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
       onload="renderMathInElement(document.body, {{delimiters:[{{left:'$$',right:'$$',display:true}},{{left:'$',right:'$',display:false}}]}});"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjs@13.0.0/lib/browser/math.js"></script>
     <script type="importmap">{{
       "imports": {{
-        "/labels.js": "data:text/javascript,export function makeAiAskButton(){{return document.createElement('span')}}"
+        "/labels.js": "data:text/javascript,export function makeAiAskButton(){{return document.createElement('span')}}",
+        "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({{binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)}});export function compileExpr(s){{return m.compile(s)}}export function evalExpr(c,t,opts){{const scope=opts%26%26opts.extraScope?{{...opts.extraScope}}:{{}};return c.evaluate(scope)}}"
       }}
     }}</script>
     <script>
@@ -550,6 +559,7 @@ def _page_template() -> str:
         font-size: 0.85rem;
       }}
       {d3_css}
+      {chart_css}
     </style>
     </head>
     <body>
@@ -615,8 +625,12 @@ def _page_template() -> str:
       }};
     }})();
 
-    import('{d3_module_url}').then(function(mod) {{
-      var D3SemanticGraphRenderer = mod.D3SemanticGraphRenderer;
+    Promise.all([
+      import('{d3_module_url}'),
+      import('{chart_module_url}'),
+    ]).then(function(mods) {{
+      var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
+      var SgChartManager = mods[1].SgChartManager;
       document.querySelectorAll('.row-toggle-d3').forEach(function(btn) {{
         btn.addEventListener('click', function() {{
           var row = btn.closest('.row');
@@ -629,14 +643,29 @@ def _page_template() -> str:
           var graphJson = panel.dataset.graph;
           if (!graphJson) return;
           panel.innerHTML = '';
-          var graph = JSON.parse(graphJson);
-          var renderer = new D3SemanticGraphRenderer(panel, {{
-            direction: '{d3_direction}',
-            labels: 'description',
-            theme: '{d3_theme}',
-            katex: window.katex || null,
-          }});
-          renderer.render(graph);
+          try {{
+            var graph = JSON.parse(graphJson);
+            var chartMgr = new SgChartManager(panel, graph, {{
+              katex: window.katex || null,
+            }});
+            var renderer = new D3SemanticGraphRenderer(panel, {{
+              direction: '{d3_direction}',
+              labels: 'description',
+              theme: '{d3_theme}',
+              katex: window.katex || null,
+              onTransformChange: function(t) {{ chartMgr.setTransform(t); }},
+              onChartClick: function(nodeId, nodeData, btnEl) {{
+                // Always open — never toggle.  Only the × button closes.
+                chartMgr.openChart(nodeId, btnEl);
+              }},
+            }});
+            if (chartMgr.setRenderer) chartMgr.setRenderer(renderer);
+            renderer.render(graph);
+          }} catch (err) {{
+            panel.dataset.rendered = '';
+            panel.innerHTML = '<div style="padding:1em;color:#e57373">Render error: ' + err.message + '</div>';
+            console.error('D3 panel render error:', err);
+          }}
         }});
       }});
     }});
@@ -644,6 +673,24 @@ def _page_template() -> str:
     </body>
     </html>
     """)
+
+
+def _precompute_chart_scripts(graph_dict: dict[str, Any]) -> None:
+    """Pre-compute mathjs scripts for nodes that have ``subexpr``.
+
+    Mutates *graph_dict* in-place, adding a ``chartScript`` key to each
+    eligible node.  Errors are silently skipped — nodes without a
+    ``chartScript`` will simply not offer charting in the report.
+    """
+    for node in graph_dict.get("nodes", []):
+        subexpr = node.get("subexpr")
+        if not subexpr:
+            continue
+        try:
+            script, variables = latex_to_mathjs(subexpr)
+            node["chartScript"] = {"script": script, "variables": variables}
+        except Exception:
+            pass  # silently skip — chart button just won't appear
 
 
 def _render_row(
@@ -664,6 +711,7 @@ def _render_row(
     try:
         graph_obj = latex_to_semantic_graph(latex, domain=domain)
         graph_dict = graph_obj.model_dump(by_alias=True, exclude_none=True)
+        _precompute_chart_scripts(graph_dict)
         mermaid_src = semantic_graph_to_mermaid(graph_dict, theme=theme)
         graph_json = json.dumps(graph_dict, indent=2, ensure_ascii=False)
 
@@ -739,6 +787,7 @@ def _build_report_html(
     theme: dict[str, Any],
     colors: dict[str, str],
     d3_module_url: str | None = None,
+    chart_module_url: str | None = None,
 ) -> tuple[str, int, int]:
     """Build report HTML body and return (html, ok_count, err_count)."""
     import datetime
@@ -776,6 +825,7 @@ def _build_report_html(
     meta = f"Generated {now} &middot; theme: {graph_theme} &middot; {total} expressions"
 
     d3_css = _load_d3_css()
+    chart_css = _load_chart_css()
     theme_json_str = json.dumps(theme, ensure_ascii=False)
     d3_direction = theme.get("direction", "LR")
     # Mermaid reverses edge direction (child→parent), so its LR puts
@@ -785,13 +835,16 @@ def _build_report_html(
     dir_map = {"LR": "right-left", "RL": "left-right", "TB": "bottom-up", "BT": "top-down"}
     d3_direction_full = dir_map.get(d3_direction, "right-left")
     effective_d3_url = d3_module_url or _D3_MODULE_URL
+    effective_chart_url = chart_module_url or "./sg-chart.js"
 
     html = _page_template().format(
         body="\n".join(body_parts),
         meta=meta,
         theme_json=theme_json_str,
         d3_css=d3_css,
+        chart_css=chart_css,
         d3_module_url=effective_d3_url,
+        chart_module_url=effective_chart_url,
         d3_direction=d3_direction_full,
         d3_theme=graph_theme,
         **colors,
@@ -822,9 +875,18 @@ def generate_report(
     d3_js_dst = output.parent / "d3-semantic-graph.js"
     shutil.copy2(d3_js_src, d3_js_dst)
 
+    chart_js_src = _PROJECT_ROOT / "static" / "graph-panel" / "sg-chart.js"
+    chart_js_dst = output.parent / "sg-chart.js"
+    shutil.copy2(chart_js_src, chart_js_dst)
+
+    chart_script_src = _PROJECT_ROOT / "static" / "graph-panel" / "sg-chart-script.js"
+    chart_script_dst = output.parent / "sg-chart-script.js"
+    shutil.copy2(chart_script_src, chart_script_dst)
+
     html, _, _ = _build_report_html(
         sections, graph_theme=graph_theme, theme=theme, colors=colors,
         d3_module_url="./d3-semantic-graph.js",
+        chart_module_url="./sg-chart.js",
     )
 
     output.write_text(html, encoding="utf-8")
@@ -887,6 +949,14 @@ def generate_site(
     d3_js_dst = outdir / "d3-semantic-graph.js"
     shutil.copy2(d3_js_src, d3_js_dst)
 
+    chart_js_src = _PROJECT_ROOT / "static" / "graph-panel" / "sg-chart.js"
+    chart_js_dst = outdir / "sg-chart.js"
+    shutil.copy2(chart_js_src, chart_js_dst)
+
+    chart_script_src = _PROJECT_ROOT / "static" / "graph-panel" / "sg-chart-script.js"
+    chart_script_dst = outdir / "sg-chart-script.js"
+    shutil.copy2(chart_script_src, chart_script_dst)
+
     theme = load_theme(graph_theme)
     color_mode = theme.get("mode", "dark")
     colors = THEMES[color_mode]
@@ -904,6 +974,7 @@ def generate_site(
             [(section_name, expressions)],
             graph_theme=graph_theme, theme=theme, colors=colors,
             d3_module_url="./d3-semantic-graph.js",
+            chart_module_url="./sg-chart.js",
         )
         (outdir / filename).write_text(html, encoding="utf-8")
         total_ok += ok
