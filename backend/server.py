@@ -1752,7 +1752,10 @@ def create_app(initial_scene_path=None, debug=False,
 
     @fastapp.get("/scenes/{name:path}")
     async def get_scene(name: str):
-        scene = load_builtin_scene(name)
+        # load_builtin_scene → _load_scene runs the per-step graph backfill,
+        # so offload it too (same reason as the other _load_scene callers) —
+        # otherwise selecting a large built-in lesson re-blocks the event loop.
+        scene = await asyncio.to_thread(load_builtin_scene, name)
         if scene:
             return JSONResponse(scene)
         return Response(content=b'Scene not found', status_code=404)
