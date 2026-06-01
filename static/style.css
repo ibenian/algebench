@@ -1659,6 +1659,45 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 
 #drop-overlay.active { display: flex; }
 
+/* Scene loading overlay — shown while a scene file is fetched/parsed
+   (the server derives a semantic graph per proof step, which can take a
+   few seconds for a large lesson). Toggled via the .active class. */
+#scene-loading {
+    display: none;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(10, 12, 24, 0.55);
+    backdrop-filter: blur(2px);
+    z-index: 350;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: rgba(180, 185, 255, 0.95);
+    font-size: 1.05em;
+    letter-spacing: 0.02em;
+}
+
+#scene-loading.active { display: flex; }
+
+.scene-loading-spinner {
+    width: 38px;
+    height: 38px;
+    border: 3px solid rgba(120, 120, 255, 0.25);
+    border-top-color: rgba(140, 140, 255, 0.95);
+    border-radius: 50%;
+    animation: sceneLoadingSpin 0.8s linear infinite;
+}
+
+@keyframes sceneLoadingSpin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scene-loading-spinner { animation-duration: 2s; }
+}
+
 #file-input { display: none; }
 
 /* Scene Dock */

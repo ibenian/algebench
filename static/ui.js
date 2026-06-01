@@ -6,6 +6,32 @@
 import { state } from '/state.js';
 import { loadLesson, loadScene, stopAutoPlay } from '/scene-loader.js';
 
+// ----- Scene Loading Indicator -----
+// Shown while a scene is fetched + parsed. The server derives a semantic
+// graph per proof step on load, which can take a few seconds for a large
+// lesson, so we surface progress instead of leaving the UI frozen-looking.
+// Ref-counted so overlapping loads don't hide it early.
+let _sceneLoadingCount = 0;
+
+export function showSceneLoading() {
+    _sceneLoadingCount++;
+    const el = document.getElementById('scene-loading');
+    if (el) {
+        el.classList.add('active');
+        el.setAttribute('aria-busy', 'true');
+    }
+}
+
+export function hideSceneLoading() {
+    _sceneLoadingCount = Math.max(0, _sceneLoadingCount - 1);
+    if (_sceneLoadingCount > 0) return;
+    const el = document.getElementById('scene-loading');
+    if (el) {
+        el.classList.remove('active');
+        el.setAttribute('aria-busy', 'false');
+    }
+}
+
 // ----- Built-in Scenes Dropdown -----
 
 export async function loadBuiltinScenesList() {
@@ -38,6 +64,7 @@ export async function loadBuiltinScenesList() {
 }
 
 export async function loadBuiltinScene(name) {
+    showSceneLoading();
     try {
         const resp = await fetch('/scenes/' + encodeURIComponent(name), { cache: 'no-store' });
         if (!resp.ok) {
@@ -55,23 +82,30 @@ export async function loadBuiltinScene(name) {
     } catch (e) {
         console.error('Failed to load scene:', name, e);
         return false;
+    } finally {
+        hideSceneLoading();
     }
 }
 
 export async function loadSceneFromPath(path) {
-    const resp = await fetch('/api/scene_file?path=' + encodeURIComponent(path), { cache: 'no-store' });
-    if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status} loading scene file`);
+    showSceneLoading();
+    try {
+        const resp = await fetch('/api/scene_file?path=' + encodeURIComponent(path), { cache: 'no-store' });
+        if (!resp.ok) {
+            throw new Error(`HTTP ${resp.status} loading scene file`);
+        }
+        const data = await resp.json();
+        if (!data || typeof data.spec !== 'object') {
+            throw new Error('Invalid scene payload');
+        }
+        state.currentSceneSourceLabel = data.label || path.split(/[\\/]/).pop() || path;
+        state.currentSceneSourcePath = data.path || path;
+        stopAutoPlay();
+        loadLesson(data.spec);
+        updateSceneUrl({ path: state.currentSceneSourcePath });
+    } finally {
+        hideSceneLoading();
     }
-    const data = await resp.json();
-    if (!data || typeof data.spec !== 'object') {
-        throw new Error('Invalid scene payload');
-    }
-    state.currentSceneSourceLabel = data.label || path.split(/[\\/]/).pop() || path;
-    state.currentSceneSourcePath = data.path || path;
-    stopAutoPlay();
-    loadLesson(data.spec);
-    updateSceneUrl({ path: state.currentSceneSourcePath });
 }
 
 export function updateSceneUrl(opts = {}) {
@@ -98,6 +132,7 @@ export async function loadInitialSceneFromQuery() {
         if (loaded) return;
     }
     if (!scenePath) {
+        showSceneLoading();
         try {
             const res = await fetch('/api/scene', { cache: 'no-store' });
             if (res.ok) {
@@ -107,7 +142,9 @@ export async function loadInitialSceneFromQuery() {
                     return;
                 }
             }
-        } catch {}
+        } catch {} finally {
+            hideSceneLoading();
+        }
         loadScene(null);
         return;
     }
