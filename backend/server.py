@@ -1399,7 +1399,10 @@ def create_app(initial_scene_path=None, debug=False,
         do not ship an explicit ``semanticGraph`` field.
         """
         try:
-            graph = _graph_service.derive(req.latex, domain=req.domain)
+            # Offload the synchronous parse to a worker thread so a burst of
+            # graph derivations can't monopolize the event loop and starve
+            # /api/health (Render's probe). See also _load_scene callers below.
+            graph = await asyncio.to_thread(_graph_service.derive, req.latex, domain=req.domain)
             return JSONResponse({"graph": graph.model_dump(by_alias=True, exclude_none=True) if graph else None})
         except (ValueError, SyntaxError, KeyError) as e:
             print(f"   ⚠️ /api/graph/from-latex parse error: {e}", flush=True)
@@ -1424,7 +1427,8 @@ def create_app(initial_scene_path=None, debug=False,
         from backend.semantic_graph.mathjs_converter import latex_to_mathjs
 
         try:
-            script, variables = latex_to_mathjs(req.subexpr)
+            # CPU-bound LaTeX→mathjs conversion — keep it off the event loop.
+            script, variables = await asyncio.to_thread(latex_to_mathjs, req.subexpr)
             return JSONResponse({"script": script, "variables": variables})
         except (ValueError, SyntaxError) as e:
             print(f"   ⚠️  /api/graph/generate-mathjs: conversion failed: {e}")
@@ -1592,7 +1596,8 @@ def create_app(initial_scene_path=None, debug=False,
                 theme = dict(theme)
                 theme["direction"] = req.direction
             show_set = set(req.show) if req.show else None
-            mermaid_src = g2m.semantic_graph_to_mermaid(
+            mermaid_src = await asyncio.to_thread(
+                g2m.semantic_graph_to_mermaid,
                 req.graph or {}, theme=theme, show=show_set,
             )
             # ``edgeStyles`` is forwarded so the client can paint a legend
@@ -1687,7 +1692,10 @@ def create_app(initial_scene_path=None, debug=False,
             return JSONResponse({"error": "Scene file not found"}, status_code=404)
         try:
             # resolve_scene_path_safe already confined this to scenes/ — load directly.
-            scene = _load_scene(resolved_path, trusted=True)
+            # _load_scene runs _autofill_semantic_graphs, which derives a graph per
+            # proof step (seconds for a large lesson). Offload to a worker thread so
+            # the load can't block the event loop and time out Render's health check.
+            scene = await asyncio.to_thread(_load_scene, resolved_path, trusted=True)
             # Return a project-root-relative path ("scenes/<name>") so the
             # ?scene= URL the frontend writes round-trips: resolve_scene_path_safe
             # rejects absolute paths, so echoing an absolute path would 404 on
@@ -1753,7 +1761,7 @@ def create_app(initial_scene_path=None, debug=False,
     async def get_current_scene():
         if current_spec_path[0]:
             try:
-                current_spec[0] = _load_scene(current_spec_path[0], trusted=True)
+                current_spec[0] = await asyncio.to_thread(_load_scene, current_spec_path[0], trusted=True)
             except Exception:
                 pass
         return JSONResponse(current_spec[0] if current_spec[0] else {})
@@ -1953,7 +1961,7 @@ def create_app(initial_scene_path=None, debug=False,
         body = await request.body()
         try:
             new_spec = json.loads(body)
-            current_spec[0] = _load_scene(new_spec)
+            current_spec[0] = await asyncio.to_thread(_load_scene, new_spec)
             return JSONResponse({"status": "loaded"})
         except json.JSONDecodeError:
             return JSONResponse({"error": "Invalid JSON"}, status_code=400)
