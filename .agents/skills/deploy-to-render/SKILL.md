@@ -42,7 +42,7 @@ git fetch origin main deploy/on-render deploy/on-render-staging --tags
 Run these commands to collect all the information needed for the status report:
 
 ```bash
-# Latest release tag
+# Latest tag (most recently created). Empty if the repo has no tags yet.
 LATEST_TAG=$(git tag --sort=-creatordate | head -1)
 
 # Commits on main not yet on staging
@@ -51,8 +51,8 @@ git log --oneline origin/deploy/on-render-staging..origin/main
 # Commits on staging not yet on prod
 git log --oneline origin/deploy/on-render..origin/deploy/on-render-staging
 
-# Commits on main since last release tag
-git log --oneline ${LATEST_TAG}..origin/main
+# Commits on main since last tag — only if a tag exists (otherwise all of main is "unreleased")
+[ -n "$LATEST_TAG" ] && git log --oneline ${LATEST_TAG}..origin/main || git log --oneline origin/main
 
 # Current HEAD of each branch
 git rev-parse --short origin/main
@@ -63,14 +63,15 @@ git rev-parse --short origin/deploy/on-render
 Then check whether the **currently deployed production commit** has an associated release:
 
 ```bash
-# Tag(s) pointing exactly at the prod commit
-git tag --points-at origin/deploy/on-render
+# Tag(s) pointing exactly at the prod commit (first one if several)
+PROD_TAG=$(git tag --points-at origin/deploy/on-render | head -1)
 
-# If a tag points at prod, look up its GitHub release (link + notes)
-gh release view <tag> --json tagName,name,url,publishedAt,body
+# Only look up a GitHub release when a tag actually points at prod — avoids a hard error
+[ -n "$PROD_TAG" ] && gh release view "$PROD_TAG" --json tagName,name,url,publishedAt,body
 
-# If no tag points exactly at prod, find the nearest release reachable from prod
-git describe --tags --abbrev=0 origin/deploy/on-render
+# If no tag points exactly at prod, find the nearest tag reachable from prod
+# (returns nothing if the repo has no tags yet)
+git describe --tags --abbrev=0 origin/deploy/on-render 2>/dev/null
 ```
 
 ### Step 3: Present Status Report
@@ -105,7 +106,7 @@ Always include clickable links:
 - [Production](https://algebench.org/)
 - [Staging](https://algebench-staging.onrender.com/)
 - [Developers Page](https://ibenian.github.io/algebench/developers.html)
-- GitHub compare links for each diff (e.g., `https://github.com/{owner}/{repo}/compare/{base}...{head}`)
+- GitHub compare links for each diff (e.g., `https://github.com/ibenian/algebench/compare/{base}...{head}`)
 
 ### Step 4: Offer Deployment Options
 
