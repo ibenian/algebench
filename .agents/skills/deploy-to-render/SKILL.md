@@ -63,8 +63,8 @@ git rev-parse --short origin/deploy/on-render
 Then check whether the **currently deployed production commit** has an associated release:
 
 ```bash
-# Tag(s) pointing exactly at the prod commit (first one if several)
-PROD_TAG=$(git tag --points-at origin/deploy/on-render | head -1)
+# Tag(s) pointing exactly at the prod commit — most recently created if several
+PROD_TAG=$(git tag --points-at origin/deploy/on-render --sort=-creatordate | head -1)
 
 # Only look up a GitHub release when a tag actually points at prod — avoids a hard error
 [ -n "$PROD_TAG" ] && gh release view "$PROD_TAG" --json tagName,name,url,publishedAt,body
