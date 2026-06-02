@@ -48,18 +48,24 @@ the JSON report:
 
 The report classifies every proof step that has `math`:
 
-| Status    | Meaning                                                        |
-|-----------|----------------------------------------------------------------|
-| `valid`   | A baked graph exists and matches a fresh derivation — leave it |
-| `stale`   | A baked graph exists but **differs** (math or parser changed) — needs rebaking |
-| `missing` | Derivable but **not yet baked** — baking would speed up loads  |
-| `error`   | Derivation fails (unsupported LaTeX) — **cannot** be baked     |
+| Status         | Meaning                                                   |
+|----------------|-----------------------------------------------------------|
+| `valid`        | A baked graph exists and matches a fresh derivation — leave it |
+| `stale`        | A baked graph exists but **differs** (math or parser changed) — needs rebaking |
+| `missing`      | Derivable but **not yet baked** — baking would speed up loads |
+| `errorBroken`  | **Had** a baked graph that no longer derives — a committed graph the parser can't reproduce (regression) |
+| `errorUnbaked` | Never baked, parser can't derive it (unsupported LaTeX) — expected; fails the same at runtime |
 
-Key fields: `counts`, `needsPrebake` (= stale + missing), `deriveSeconds`
-(cost to derive *everything* — the full bake cost), `runtimeDeriveSeconds`
-(cost the server still pays on every load — i.e. the steps that aren't
-validly baked; this is what baking eliminates), `recommendPrebake`, and
-`recommendReason`.
+Key fields: `counts`, `needsPrebake` (= stale + missing), `outOfSync`
+(= stale + errorBroken — committed graphs the current parser can't reproduce;
+the CI gate), `deriveSeconds` (full bake cost), `runtimeDeriveSeconds` (cost
+the server still pays on every load — what baking eliminates), `recommendPrebake`,
+and `recommendReason`.
+
+> **CI:** `--validate --fail-on-stale` exits non-zero **only** when
+> `outOfSync > 0`. The `validate-prebaked-graphs.yml` workflow runs it on
+> changed scenes (and all baked scenes when the parser changes) and posts a
+> compact PR comment. `missing`/`errorUnbaked` never fail.
 
 ### Step 2 — Present the assessment
 
@@ -70,8 +76,10 @@ Report to the user, clearly separating the categories:
   (`scene.proof.step` + math preview). These are the riskiest: the lesson is
   shipping graphs that disagree with their expressions.
 - **Missing** (N) — derivable steps with no baked graph; list a few.
-- **Error** (N) — steps the parser can't handle; these will be derived (and
-  fail fast) at runtime regardless — they can't be prebaked. Just note them.
+- **errorBroken** (N) — a committed graph that no longer derives. **Flag these
+  loudly** — a shipped lesson is carrying a graph the parser can't reproduce.
+- **errorUnbaked** (N) — steps the parser can't handle and were never baked;
+  they fail-fast at runtime regardless and can't be prebaked. Just note the count.
 
 If `needsPrebake == 0` (everything already baked), say so and **stop** — do not
 write. Otherwise continue to Step 2b to get a data-driven recommendation.

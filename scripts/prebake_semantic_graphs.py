@@ -16,12 +16,17 @@ Modes (exactly one is required)
 --------------------------------
   --validate  Read-only. Re-derive every step and compare against any
               already-baked graph. Classifies each step as:
-                valid    baked graph matches a fresh derivation
-                stale    baked graph differs (math or parser changed)
-                missing  derivable but not yet baked
-                error    derivation fails (cannot be baked)
+                valid          baked graph matches a fresh derivation
+                stale          baked graph differs (math or parser changed)
+                missing        derivable but not yet baked
+                errorBroken    HAD a baked graph that no longer derives (a
+                               committed graph the parser can't reproduce)
+                errorUnbaked   never baked, parser can't derive it (unsupported
+                               LaTeX) — expected, fails the same at runtime
               Never writes. Exit code 0 if nothing needs baking, 2 if there
-              are missing/stale graphs.
+              are missing/stale graphs. With --fail-on-stale, exits 1 only when
+              a committed graph is out of sync (stale + errorBroken), 0
+              otherwise — the CI gate; missing/errorUnbaked never fail.
   --write     Bake graphs into the file. By default only missing+stale steps
               are (re)written, keeping the diff minimal; pass --all to rewrite
               every derivable step. Reports the before/after server load time
@@ -193,7 +198,13 @@ def analyze(spec):
     """
     _graph_service.clear_cache()
     steps_report = []
-    counts = {"valid": 0, "stale": 0, "missing": 0, "error": 0}
+    # `error` splits by whether the step already had a committed graph:
+    #   errorUnbaked — never baked, parser can't derive it (unsupported LaTeX);
+    #                  expected, fails identically at runtime, NOT a sync failure.
+    #   errorBroken  — HAD a baked graph but it no longer derives (regression):
+    #                  a committed graph the current parser can't reproduce.
+    counts = {"valid": 0, "stale": 0, "missing": 0,
+              "errorUnbaked": 0, "errorBroken": 0}
     total_derive = 0.0    # cost to re-derive every step (the full bake cost)
     runtime_derive = 0.0  # cost the server still pays at load: steps without a
                           # valid baked graph (missing/stale/error are re-derived)
@@ -202,12 +213,17 @@ def analyze(spec):
         if not math_src or not isinstance(math_src, str):
             continue
         existing = _existing_graph(step)
+        was_baked = existing is not None
         fresh, err, dt = _derive_step_graph(step)
         total_derive += dt
         if err or fresh is None:
-            status = "error"
-            detail = err or "no graph"
-        elif existing is None:
+            if was_baked:
+                status = "errorBroken"
+                detail = "committed graph no longer derives (parser regression)"
+            else:
+                status = "errorUnbaked"
+                detail = err or "unsupported — parser produced no graph"
+        elif not was_baked:
             status = "missing"
             detail = "derivable but not baked"
         elif existing == fresh:
@@ -225,18 +241,21 @@ def analyze(spec):
             "status": status,
             "detail": detail,
             "deriveMs": round(dt * 1000, 1),
+            "wasBaked": was_baked,
         })
 
     needs = counts["missing"] + counts["stale"]
-    # Prebaking is suggested only when there are missing/stale graphs to bake.
-    # A fully-baked lesson derives nothing at runtime, so nothing to recommend —
-    # the full-derive cost is what baking already eliminated, not a reason to bake.
+    # A committed graph the current parser can't reproduce — either it derives
+    # differently now (stale) or no longer derives at all (broken). This is the
+    # CI gate: it means a shipped lesson's graph is out of sync with its math.
+    out_of_sync = counts["stale"] + counts["errorBroken"]
     recommend = needs > 0
     return {
         "title": spec.get("title") if isinstance(spec, dict) else None,
         "stepsWithMath": len(steps_report),
         "counts": counts,
         "needsPrebake": needs,
+        "outOfSync": out_of_sync,
         "deriveSeconds": round(total_derive, 2),
         "runtimeDeriveSeconds": round(runtime_derive, 2),
         "recommendPrebake": recommend,
@@ -319,16 +338,20 @@ def _dumps_compact_leaves(obj, indent=2, level=0):
 
 
 def _print_human(report, path):
-    icon = {"valid": "✅", "stale": "♻️ ", "missing": "➕", "error": "⚠️ "}
+    icon = {"valid": "✅", "stale": "♻️ ", "missing": "➕",
+            "errorBroken": "❌", "errorUnbaked": "⚠️ "}
     print(f"📄 {path}  —  {report['title'] or '(untitled)'}")
     print(f"   steps with math: {report['stepsWithMath']}   "
           f"derive time: {report['deriveSeconds']}s")
     c = report["counts"]
-    print(f"   valid={c['valid']}  stale={c['stale']}  missing={c['missing']}  error={c['error']}")
+    print(f"   valid={c['valid']}  stale={c['stale']}  missing={c['missing']}  "
+          f"broken={c['errorBroken']}  unsupported={c['errorUnbaked']}")
     for s in report["steps"]:
         if s["status"] != "valid":
             print(f"   {icon[s['status']]} [{s['scene']}.{s['proof']}.{s['step']}] "
-                  f"{s['status']:<7} {s['mathPreview']}")
+                  f"{s['status']:<12} {s['mathPreview']}")
+    if report["outOfSync"]:
+        print(f"   ✗ {report['outOfSync']} committed graph(s) out of sync (stale or broken)")
     print(f"   → recommend prebake: {'YES' if report['recommendPrebake'] else 'no'} "
           f"({report['recommendReason']})")
 
@@ -345,11 +368,17 @@ def main():
                     help="With --write, rebake every derivable step (default: only missing+stale)")
     ap.add_argument("--dry-run", action="store_true",
                     help="With --write, report what would change without writing")
+    ap.add_argument("--fail-on-stale", action="store_true",
+                    help="With --validate, exit non-zero only if a committed graph is "
+                         "out of sync (stale or broken). For CI; missing/unsupported "
+                         "steps never fail.")
     ap.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     args = ap.parse_args()
 
     if args.validate and (args.all or args.dry_run):
         ap.error("--all and --dry-run only apply to --write")
+    if args.write and args.fail_on_stale:
+        ap.error("--fail-on-stale only applies to --validate")
 
     path = Path(args.scene)
     if not path.is_file():
@@ -371,6 +400,10 @@ def main():
             print(json.dumps(report, indent=2))
         else:
             _print_human(report, path)
+        # CI gate: fail only when a committed graph can't be reproduced.
+        if args.fail_on_stale:
+            return 1 if report["outOfSync"] > 0 else 0
+        # Default: signal there is bakeable work (informational).
         return 2 if report["needsPrebake"] > 0 else 0
 
     # ---- write mode ----

@@ -1,0 +1,114 @@
+name: Validate Prebaked Graphs
+
+# Asserts that committed (baked) semantic graphs are still in sync with their
+# `math` — i.e. the current parser still reproduces them. Fails only on a
+# committed graph that can't be reproduced (stale or broken); never-baked or
+# unsupported steps are non-blocking. Runs when a scene changes (check that
+# scene) or when the graph parser changes (re-check every baked scene).
+
+on:
+  pull_request:
+    paths:
+      - 'scenes/**/*.json'
+      - 'scenes/*.json'
+      - 'backend/semantic_graph/**'
+      - 'backend/model/semantic_graph.py'
+      - 'scripts/prebake_semantic_graphs.py'
+  workflow_dispatch:
+
+jobs:
+  validate-prebaked:
+    name: Prebaked Graphs In Sync
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up venv (installs backend deps once)
+        run: ./run.sh -c "import backend.server; print('venv ready')"
+
+      - name: Resolve baked scenes to check
+        id: scenes
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            DIFF=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...HEAD)
+            CANDIDATES=$(echo "$DIFF" | grep -E '^scenes/[^/]+\.json$' || true)
+            # A parser/script change can stale *any* baked scene → re-check all.
+            if echo "$DIFF" | grep -qE '^(backend/semantic_graph/|backend/model/semantic_graph\.py|scripts/prebake_semantic_graphs\.py)'; then
+              CANDIDATES=$(find scenes -maxdepth 1 -name '*.json')
+            fi
+          else
+            CANDIDATES=$(find scenes -maxdepth 1 -name '*.json')
+          fi
+          # Only scenes that actually contain baked graphs are worth checking.
+          BAKED=""
+          for f in $CANDIDATES; do
+            grep -q '"semanticGraph"' "$f" 2>/dev/null && BAKED="$BAKED $f"
+          done
+          echo "list=$(echo $BAKED | xargs)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate prebaked graphs
+        id: check
+        if: steps.scenes.outputs.list != ''
+        run: |
+          FAILED=0
+          : > /tmp/prebake-out.txt
+          for f in ${{ steps.scenes.outputs.list }}; do
+            ./run.sh scripts/prebake_semantic_graphs.py "$f" --validate --fail-on-stale > /tmp/one.txt 2>&1
+            code=$?
+            # Keep only the summary lines (counts + any out-of-sync notice).
+            grep -E 'valid=|out of sync' /tmp/one.txt >> /tmp/prebake-out.txt || echo "  (no graphs)" >> /tmp/prebake-out.txt
+            [ "$code" != "0" ] && FAILED=1
+          done
+          echo "exit_code=${FAILED}" >> "$GITHUB_OUTPUT"
+
+      - name: Post report as PR comment
+        if: github.event_name == 'pull_request' && steps.scenes.outputs.list != '' && always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OUT=$(cat /tmp/prebake-out.txt 2>/dev/null || echo "(no output)")
+          if [ "${{ steps.check.outputs.exit_code }}" = "0" ]; then
+            HEADER="✅ Prebaked Graphs — in sync"
+          else
+            HEADER="❌ Prebaked Graphs — out of sync (a committed graph no longer matches its math)"
+          fi
+          BODY="<!-- prebaked-graphs-report -->
+          **${HEADER}**
+
+          <details><summary>baked scenes checked</summary>
+
+          \`\`\`
+          ${OUT}
+          \`\`\`
+
+          </details>
+
+          <sub>Fails only on **stale**/**broken** (a committed graph the parser can't reproduce). \`missing\` (un-baked) and \`unsupported\` (unparseable) steps are non-blocking — re-bake with \`scripts/prebake_semantic_graphs.py <scene> --write\`.</sub>"
+
+          gh pr comment "${{ github.event.pull_request.number }}" --body "$BODY" --edit-last 2>/dev/null || \
+          gh pr comment "${{ github.event.pull_request.number }}" --body "$BODY"
+
+      - name: Fail if any baked graph is out of sync
+        if: steps.scenes.outputs.list != '' && always()
+        run: |
+          if [ "${{ steps.check.outputs.exit_code }}" != "0" ]; then
+            echo "❌ A committed graph is out of sync — re-bake the scene. See the PR comment."
+            exit 1
+          fi
+          echo "✅ All baked graphs in sync."
+
+      - name: No baked scenes changed
+        if: steps.scenes.outputs.list == ''
+        run: echo "No changed scenes contain baked graphs — nothing to validate."
