@@ -1,0 +1,286 @@
+#!/usr/bin/env python3
+"""Pre-bake semantic graphs into an AlgeBench scene/lesson JSON file.
+
+At runtime the server derives a semantic graph for every proof step that has
+``math`` but no ``semanticGraph`` (see ``_autofill_semantic_graphs`` in
+``backend/server.py``). For a large lesson that is dozens of derivations on
+every load — seconds of CPU on a constrained host. Pre-baking runs those
+derivations *offline* and writes the resulting ``{"graph": {...}}`` blocks
+into the JSON, so the server skips them entirely and the lesson loads fast.
+
+This script reuses the *exact* backend derivation + highlight-overlay
+pipeline, so a baked graph is byte-identical to what the server would have
+produced — baking only changes *when* the work happens, never the result.
+
+Modes (exactly one is required)
+--------------------------------
+  --validate  Read-only. Re-derive every step and compare against any
+              already-baked graph. Classifies each step as:
+                valid    baked graph matches a fresh derivation
+                stale    baked graph differs (math or parser changed)
+                missing  derivable but not yet baked
+                error    derivation fails (cannot be baked)
+              Never writes. Exit code 0 if nothing needs baking, 2 if there
+              are missing/stale graphs.
+  --write     Bake graphs into the file. By default only missing+stale steps
+              are (re)written, keeping the diff minimal; pass --all to rewrite
+              every derivable step.
+
+Usage
+-----
+    ./run.sh scripts/prebake_semantic_graphs.py scene.json --validate          # read-only report
+    ./run.sh scripts/prebake_semantic_graphs.py scene.json --validate --json   # machine output
+    ./run.sh scripts/prebake_semantic_graphs.py scene.json --write             # bake missing+stale
+    ./run.sh scripts/prebake_semantic_graphs.py scene.json --write --all       # rebake everything
+    ./run.sh scripts/prebake_semantic_graphs.py scene.json --write --dry-run
+
+Exit codes
+----------
+    0  Nothing to do (validate: all valid / no derivable steps; write: file written or no-op)
+    1  Usage / IO / parse error
+    2  validate only: there are missing or stale graphs (work suggested)
+"""
+
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+# Reuse the backend's derivation + highlight pipeline verbatim so baked graphs
+# match server output exactly. Importing backend.server is heavy (pulls in
+# FastAPI/genai) but this is an offline CLI, so that cost is irrelevant.
+from backend.server import (  # noqa: E402
+    _graph_service,
+    _normalize_proofs,
+    _extract_htmlclass_pairs,
+    _strip_html_class,
+    _apply_highlights_to_graph,
+)
+
+
+def _derive_step_graph(step):
+    """Derive a fresh graph dict for one proof step, mirroring the server's
+    ``_autofill_semantic_graphs`` (strip ``\\htmlClass``, derive, overlay
+    highlights). Returns ``(graph_dict | None, error_str | None, seconds)``.
+    """
+    math_src = step.get("math")
+    if not math_src or not isinstance(math_src, str):
+        return None, None, 0.0
+    hl_pairs = _extract_htmlclass_pairs(math_src)
+    cleaned = _strip_html_class(math_src)
+    t0 = time.perf_counter()
+    # Guard the whole derive→highlight→serialize path. Any single step that
+    # blows up (parser crash, highlight-overlay edge case, serialization)
+    # degrades to a counted error so the rest of the lesson still processes —
+    # one bad step never aborts the batch.
+    try:
+        graph = _graph_service.derive(cleaned)
+    except Exception as e:  # parse crash — same class the server guards
+        return None, f"parse_crashed: {str(e).strip() or type(e).__name__}", time.perf_counter() - t0
+    if not graph:
+        return None, "parse_failed: parser returned no graph", time.perf_counter() - t0
+    try:
+        _apply_highlights_to_graph(graph, hl_pairs, step.get("highlights") or {})
+        result = graph.model_dump(by_alias=True, exclude_none=True)
+    except Exception as e:  # highlight overlay / serialization failure
+        return None, f"bake_error: {str(e).strip() or type(e).__name__}", time.perf_counter() - t0
+    return result, None, time.perf_counter() - t0
+
+
+def _iter_steps(spec):
+    """Yield ``(scene_idx, proof_idx, step_idx, step_dict)`` for every proof
+    step in a scene spec. Mirrors the traversal in the server's autofill."""
+    if not isinstance(spec, dict):
+        return
+    scenes_list = spec.get("scenes")
+    if not isinstance(scenes_list, list):
+        return
+    for si, sc in enumerate(scenes_list):
+        if not isinstance(sc, dict):
+            continue
+        for pi, proof in enumerate(_normalize_proofs(sc.get("proof"))):
+            steps = proof.get("steps")
+            if not isinstance(steps, list):
+                continue
+            for ki, step in enumerate(steps):
+                if isinstance(step, dict):
+                    yield si, pi, ki, step
+
+
+def _existing_graph(step):
+    """Return the already-baked graph dict for a step, or ``None``."""
+    sg = step.get("semanticGraph")
+    if isinstance(sg, dict) and isinstance(sg.get("graph"), dict):
+        return sg["graph"]
+    return None
+
+
+def analyze(spec):
+    """Validate pass: classify every step. Returns a report dict (no writes).
+
+    The graph cache is cleared first so results reflect the current parser
+    state, exactly like the server does before autofill.
+    """
+    _graph_service.clear_cache()
+    steps_report = []
+    counts = {"valid": 0, "stale": 0, "missing": 0, "error": 0}
+    total_derive = 0.0    # cost to re-derive every step (the full bake cost)
+    runtime_derive = 0.0  # cost the server still pays at load: steps without a
+                          # valid baked graph (missing/stale/error are re-derived)
+    for si, pi, ki, step in _iter_steps(spec):
+        math_src = step.get("math")
+        if not math_src or not isinstance(math_src, str):
+            continue
+        existing = _existing_graph(step)
+        fresh, err, dt = _derive_step_graph(step)
+        total_derive += dt
+        if err or fresh is None:
+            status = "error"
+            detail = err or "no graph"
+        elif existing is None:
+            status = "missing"
+            detail = "derivable but not baked"
+        elif existing == fresh:
+            status = "valid"
+            detail = "baked graph matches fresh derivation"
+        else:
+            status = "stale"
+            detail = "baked graph differs from fresh derivation"
+        if status != "valid":
+            runtime_derive += dt
+        counts[status] += 1
+        steps_report.append({
+            "scene": si, "proof": pi, "step": ki,
+            "mathPreview": (math_src[:60] + "…") if len(math_src) > 60 else math_src,
+            "status": status,
+            "detail": detail,
+            "deriveMs": round(dt * 1000, 1),
+        })
+
+    needs = counts["missing"] + counts["stale"]
+    # Prebaking is suggested only when there are missing/stale graphs to bake.
+    # A fully-baked lesson derives nothing at runtime, so nothing to recommend —
+    # the full-derive cost is what baking already eliminated, not a reason to bake.
+    recommend = needs > 0
+    return {
+        "title": spec.get("title") if isinstance(spec, dict) else None,
+        "stepsWithMath": len(steps_report),
+        "counts": counts,
+        "needsPrebake": needs,
+        "deriveSeconds": round(total_derive, 2),
+        "runtimeDeriveSeconds": round(runtime_derive, 2),
+        "recommendPrebake": recommend,
+        "recommendReason": (
+            f"{needs} graph(s) missing or stale — ~{runtime_derive:.2f}s derived on every load until baked"
+            if needs > 0
+            else f"all derivable graphs are baked; runtime derives ~{runtime_derive:.2f}s"
+        ),
+        "steps": steps_report,
+    }
+
+
+def bake(spec, *, only_all=False):
+    """Write pass: (re)bake graphs in-place. By default only missing+stale
+    steps are written; ``only_all`` rebakes every derivable step. Returns a
+    summary dict of what changed."""
+    _graph_service.clear_cache()
+    baked, skipped_valid, errors = 0, 0, 0
+    changed = []
+    for si, pi, ki, step in _iter_steps(spec):
+        math_src = step.get("math")
+        if not math_src or not isinstance(math_src, str):
+            continue
+        existing = _existing_graph(step)
+        fresh, err, _ = _derive_step_graph(step)
+        if err or fresh is None:
+            errors += 1
+            continue
+        is_valid = existing is not None and existing == fresh
+        if is_valid and not only_all:
+            skipped_valid += 1
+            continue
+        step["semanticGraph"] = {"graph": fresh}
+        baked += 1
+        changed.append({"scene": si, "proof": pi, "step": ki})
+    return {"baked": baked, "skippedValid": skipped_valid, "errors": errors, "changed": changed}
+
+
+def _print_human(report, path):
+    icon = {"valid": "✅", "stale": "♻️ ", "missing": "➕", "error": "⚠️ "}
+    print(f"📄 {path}  —  {report['title'] or '(untitled)'}")
+    print(f"   steps with math: {report['stepsWithMath']}   "
+          f"derive time: {report['deriveSeconds']}s")
+    c = report["counts"]
+    print(f"   valid={c['valid']}  stale={c['stale']}  missing={c['missing']}  error={c['error']}")
+    for s in report["steps"]:
+        if s["status"] != "valid":
+            print(f"   {icon[s['status']]} [{s['scene']}.{s['proof']}.{s['step']}] "
+                  f"{s['status']:<7} {s['mathPreview']}")
+    print(f"   → recommend prebake: {'YES' if report['recommendPrebake'] else 'no'} "
+          f"({report['recommendReason']})")
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Pre-bake semantic graphs into a scene/lesson JSON.")
+    ap.add_argument("scene", help="Path to the scene/lesson JSON file")
+    mode = ap.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--validate", action="store_true",
+                      help="Read-only: classify every step (valid/stale/missing/error); never writes")
+    mode.add_argument("--write", action="store_true",
+                      help="Bake graphs into the file (missing+stale by default; --all for full rebake)")
+    ap.add_argument("--all", action="store_true",
+                    help="With --write, rebake every derivable step (default: only missing+stale)")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="With --write, report what would change without writing")
+    ap.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    args = ap.parse_args()
+
+    if args.validate and (args.all or args.dry_run):
+        ap.error("--all and --dry-run only apply to --write")
+
+    path = Path(args.scene)
+    if not path.is_file():
+        print(f"error: file not found: {path}", file=sys.stderr)
+        return 1
+    try:
+        spec = json.loads(path.read_text())
+    except json.JSONDecodeError as e:
+        print(f"error: invalid JSON in {path}: {e}", file=sys.stderr)
+        return 1
+
+    # Always analyze first — both modes report the same classification.
+    report = analyze(spec)
+
+    if args.validate:
+        if args.json:
+            print(json.dumps(report, indent=2))
+        else:
+            _print_human(report, path)
+        return 2 if report["needsPrebake"] > 0 else 0
+
+    # write mode
+    result = bake(spec, only_all=args.all)
+    if args.dry_run:
+        result["dryRun"] = True
+    elif result["baked"] > 0:
+        with open(path, "w") as f:
+            json.dump(spec, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+
+    out = {"mode": "write", "file": str(path), "validateBefore": report, "result": result}
+    if args.json:
+        print(json.dumps(out, indent=2))
+    else:
+        verb = "would bake" if args.dry_run else "baked"
+        print(f"📄 {path}  —  {report['title'] or '(untitled)'}")
+        print(f"   {verb} {result['baked']} graph(s); "
+              f"left {result['skippedValid']} valid untouched; "
+              f"{result['errors']} not derivable.")
+        if not args.dry_run and result["baked"] > 0:
+            print(f"   ✅ wrote {path}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
