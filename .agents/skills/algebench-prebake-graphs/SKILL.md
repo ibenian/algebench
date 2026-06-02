@@ -118,12 +118,17 @@ Use `AskUserQuestion`. Only offer baking when there is something to bake
 - **No — leave as is** — stop without writing (the natural default when
   `strategy` is `skip`).
 
-> **Heads-up on the diff:** `--write` rewrites the whole file via
-> `json.load`→`json.dump`, so Python re-emits *every* numeric literal in its
-> canonical form (e.g. `0.00007292115` → `7.292115e-05`). These are **cosmetic
-> and numerically identical** — no value changes — but they add noise beyond
-> the added `semanticGraph` blocks. Mention this when presenting the diff so a
-> reviewer isn't alarmed by "changed" physics constants.
+> **Heads-up on the diff:** `--write` rewrites the whole file with a
+> *compact-leaves* serializer — the scene hierarchy stays indented, but each
+> leaf object/array (graph nodes, edges, small value arrays) collapses onto a
+> single line (~3× fewer lines than plain `indent=2`). Two cosmetic effects to
+> call out so a reviewer isn't alarmed:
+> - **Numeric literals** are re-emitted in Python's canonical form (e.g.
+>   `0.00007292115` → `7.292115e-05`) — numerically identical, no value changes.
+> - **Existing multi-line arrays/objects may re-flow** onto one line.
+>
+> The write is round-trip-checked (`json.loads(new) == spec`) before saving, so
+> formatting never changes the data.
 
 ### Step 4 — Bake
 
