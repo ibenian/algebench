@@ -105,6 +105,14 @@ def _propose_strategy(load_before, load_after, pct_increase, baked):
     if baked == 0:
         return {"recommendation": "noop",
                 "rationale": "Already fully baked — no graphs to add."}
+    # `--write --all` re-bakes every step even when all are already valid, so
+    # `baked > 0` but the output is byte-identical (no size growth). Adding a
+    # real graph always grows the file, so a ~0% delta means nothing actually
+    # changed — a noop, not a misleading "skip ... saves 0.00s but grows +0%".
+    if abs(pct_increase) < 0.1:
+        return {"recommendation": "noop",
+                "rationale": "Re-baked identical graphs (--all on an already-baked "
+                             "file) — no change to load or size."}
     if saved >= WORTH_IT_SAVED_SECONDS:
         return {"recommendation": "prebake",
                 "rationale": (
@@ -310,7 +318,10 @@ def main():
         print(f"error: file not found: {path}", file=sys.stderr)
         return 1
     try:
-        original_text = path.read_text()
+        # Explicit utf-8: scenes are written with ensure_ascii=False (may hold
+        # non-ASCII math), and byte sizes below are measured as utf-8 — don't
+        # let the platform default encoding (e.g. cp1252) corrupt or mismatch.
+        original_text = path.read_text(encoding="utf-8")
         spec = json.loads(original_text)
     except json.JSONDecodeError as e:
         print(f"error: invalid JSON in {path}: {e}", file=sys.stderr)
@@ -347,7 +358,7 @@ def main():
     if result["baked"] > 0:
         new_text = json.dumps(spec, indent=2, ensure_ascii=False) + "\n"
         if not args.dry_run:
-            path.write_text(new_text)
+            path.write_text(new_text, encoding="utf-8")
         final_size = len(new_text.encode("utf-8"))
     else:
         final_size = orig_size  # nothing baked → file unchanged
@@ -373,12 +384,13 @@ def main():
         print(f"   {verb} {result['baked']} graph(s); "
               f"left {result['skippedValid']} valid untouched; "
               f"{result['errors']} not derivable.")
-        # Only call out a speedup when baking actually changed something —
-        # otherwise before/after time the same spec and any delta is noise.
+        # Only call out a speedup when baking actually changed something — a
+        # ~0% size delta means nothing was added (e.g. --all on an already-baked
+        # file), so before/after just time the same spec and any delta is noise.
         # When the after-time is negligible the ratio explodes into a silly
         # number, so say "near-instant" instead.
         speed_txt = ""
-        if result["baked"] > 0 and speedup and speedup >= 1.05:
+        if result["baked"] > 0 and abs(pct) >= 0.1 and speedup and speedup >= 1.05:
             speed_txt = ("  (near-instant)" if load_after < 0.02 or speedup >= 100
                          else f"  ({speedup:.0f}× faster)")
         print(f"   load (server parse):  {load_before:.2f}s → {load_after:.2f}s{speed_txt}")
