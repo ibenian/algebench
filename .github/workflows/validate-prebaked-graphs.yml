@@ -51,52 +51,34 @@ jobs:
           else
             CANDIDATES=$(find scenes -maxdepth 1 -name '*.json')
           fi
-          # Only scenes that actually contain baked graphs are worth checking.
-          BAKED=""
+          # Keep scenes that have proof steps (where graphs come from) — covers
+          # both baked scenes (staleness) and un-baked ones (prebake suggestion).
+          RELEVANT=""
           for f in $CANDIDATES; do
-            grep -q '"semanticGraph"' "$f" 2>/dev/null && BAKED="$BAKED $f"
+            grep -q '"proof"' "$f" 2>/dev/null && RELEVANT="$RELEVANT $f"
           done
-          echo "list=$(echo $BAKED | xargs)" >> "$GITHUB_OUTPUT"
+          echo "list=$(echo $RELEVANT | xargs)" >> "$GITHUB_OUTPUT"
 
-      - name: Validate prebaked graphs
+      - name: Validate prebaked graphs (sync + prebake suggestions)
         id: check
         if: steps.scenes.outputs.list != ''
         run: |
-          FAILED=0
-          : > /tmp/prebake-out.txt
-          for f in ${{ steps.scenes.outputs.list }}; do
-            ./run.sh scripts/prebake_semantic_graphs.py "$f" --validate --fail-on-stale > /tmp/one.txt 2>&1
-            code=$?
-            # Keep only the summary lines (counts + any out-of-sync notice).
-            grep -E 'valid=|out of sync' /tmp/one.txt >> /tmp/prebake-out.txt || echo "  (no graphs)" >> /tmp/prebake-out.txt
-            [ "$code" != "0" ] && FAILED=1
-          done
-          echo "exit_code=${FAILED}" >> "$GITHUB_OUTPUT"
+          # The helper aggregates a TOTAL row + per-scene table + prebake
+          # suggestions, and exits 1 iff a committed graph is out of sync.
+          # Capture its exit without tripping `set -e` so we still post the comment.
+          set +e
+          ./run.sh scripts/ci_validate_prebaked.py ${{ steps.scenes.outputs.list }} > /tmp/comment.md
+          code=$?
+          set -e
+          echo "exit_code=${code}" >> "$GITHUB_OUTPUT"
+          cat /tmp/comment.md
 
       - name: Post report as PR comment
         if: github.event_name == 'pull_request' && steps.scenes.outputs.list != '' && always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          OUT=$(cat /tmp/prebake-out.txt 2>/dev/null || echo "(no output)")
-          if [ "${{ steps.check.outputs.exit_code }}" = "0" ]; then
-            HEADER="✅ Prebaked Graphs — in sync"
-          else
-            HEADER="❌ Prebaked Graphs — out of sync (a committed graph no longer matches its math)"
-          fi
-          BODY="<!-- prebaked-graphs-report -->
-          **${HEADER}**
-
-          <details><summary>baked scenes checked</summary>
-
-          \`\`\`
-          ${OUT}
-          \`\`\`
-
-          </details>
-
-          <sub>Fails only on **stale**/**broken** (a committed graph the parser can't reproduce). \`missing\` (un-baked) and \`unsupported\` (unparseable) steps are non-blocking — re-bake with \`scripts/prebake_semantic_graphs.py <scene> --write\`.</sub>"
-
+          BODY=$(cat /tmp/comment.md 2>/dev/null || echo "_prebaked-graph check produced no output_")
           gh pr comment "${{ github.event.pull_request.number }}" --body "$BODY" --edit-last 2>/dev/null || \
           gh pr comment "${{ github.event.pull_request.number }}" --body "$BODY"
 
@@ -109,6 +91,6 @@ jobs:
           fi
           echo "✅ All baked graphs in sync."
 
-      - name: No baked scenes changed
+      - name: No relevant scenes changed
         if: steps.scenes.outputs.list == ''
-        run: echo "No changed scenes contain baked graphs — nothing to validate."
+        run: echo "No changed scenes have proof steps — nothing to validate."

@@ -249,7 +249,18 @@ def analyze(spec):
     # differently now (stale) or no longer derives at all (broken). This is the
     # CI gate: it means a shipped lesson's graph is out of sync with its math.
     out_of_sync = counts["stale"] + counts["errorBroken"]
-    recommend = needs > 0
+    # Suggest prebaking only when there are missing/stale graphs AND deriving
+    # them costs enough to matter (cheap parses aren't worth the file growth) —
+    # mirrors the --write strategy's prebake/skip threshold.
+    recommend = needs > 0 and runtime_derive >= WORTH_IT_SAVED_SECONDS
+    if needs == 0:
+        reason = f"all derivable graphs are baked; runtime derives ~{runtime_derive:.2f}s"
+    elif recommend:
+        reason = (f"{needs} graph(s) missing/stale costing ~{runtime_derive:.2f}s/load "
+                  f"(~{runtime_derive * FREE_HOST_SLOWDOWN:.0f}s on a free host) — prebake worthwhile")
+    else:
+        reason = (f"{needs} graph(s) missing/stale but deriving them is cheap "
+                  f"(~{runtime_derive:.2f}s) — prebaking optional")
     return {
         "title": spec.get("title") if isinstance(spec, dict) else None,
         "stepsWithMath": len(steps_report),
@@ -259,11 +270,7 @@ def analyze(spec):
         "deriveSeconds": round(total_derive, 2),
         "runtimeDeriveSeconds": round(runtime_derive, 2),
         "recommendPrebake": recommend,
-        "recommendReason": (
-            f"{needs} graph(s) missing or stale — ~{runtime_derive:.2f}s derived on every load until baked"
-            if needs > 0
-            else f"all derivable graphs are baked; runtime derives ~{runtime_derive:.2f}s"
-        ),
+        "recommendReason": reason,
         "steps": steps_report,
     }
 

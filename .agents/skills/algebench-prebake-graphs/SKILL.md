@@ -65,7 +65,9 @@ and `recommendReason`.
 > **CI:** `--validate --fail-on-stale` exits non-zero **only** when
 > `outOfSync > 0`. The `validate-prebaked-graphs.yml` workflow runs it on
 > changed scenes (and all baked scenes when the parser changes) and posts a
-> compact PR comment. `missing`/`errorUnbaked` never fail.
+> compact PR comment — a TOTAL row + per-scene table, plus non-blocking
+> **prebake suggestions** for un-baked scenes whose parse cost clears the
+> threshold (`recommendPrebake`). `missing`/`errorUnbaked` never fail.
 
 ### Step 2 — Present the assessment
 
