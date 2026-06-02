@@ -73,28 +73,50 @@ Report to the user, clearly separating the categories:
 - **Error** (N) — steps the parser can't handle; these will be derived (and
   fail fast) at runtime regardless — they can't be prebaked. Just note them.
 
-Then state the **recommendation**:
+If `needsPrebake == 0` (everything already baked), say so and **stop** — do not
+write. Otherwise continue to Step 2b to get a data-driven recommendation.
 
-- **Prebake suggested** when `needsPrebake > 0` (there are stale or missing
-  graphs); the script sets `recommendPrebake` accordingly. Mention the
-  load-time win: baking removes ~`runtimeDeriveSeconds` of work from every
-  scene load (and several times that on a constrained host like a free
-  Render instance).
-- **No prebake needed** when everything is already baked (`needsPrebake == 0`).
-  Say so and stop — do not write. (A fully-baked lesson derives ~0s at runtime
-  regardless of how long a full re-derive would take.)
+### Step 2b — Get the strategy proposal (dry-run)
+
+When there's something to bake, run a dry-run to measure the actual trade-off
+and let the script **propose the best strategy** from it:
+
+```bash
+./run.sh scripts/prebake_semantic_graphs.py <scene.json> --write --dry-run --json
+```
+
+This computes (without writing):
+
+- `load` — server parse time before → after (a real scene-load simulation),
+  plus `speedup`.
+- `sizes` — file size before → after with `pctIncrease`.
+- `strategy` — `{recommendation, rationale}`, one of:
+  - **`prebake`** — the load win (locally, and ~12× more on a free host)
+    clearly outweighs the size growth. Recommend baking.
+  - **`skip`** — load is already fast; baking mostly just adds bytes.
+    Recommend leaving it (unless the user is targeting a very constrained host).
+  - **`noop`** — nothing to bake.
+
+**Present the strategy verbatim** — the rationale already quotes both the load
+win and the size cost (e.g. *"Load 4.6s→0.05s locally (~55s→~0.6s on a free
+host) for +269% size — the load win clearly outweighs the size cost"*). Lead
+your recommendation with `strategy.recommendation`; don't second-guess it.
 
 ### Step 3 — Ask before writing
 
-Prebaking overwrites data, so **never write without explicit confirmation.**
+Frame the question around the proposed `strategy.recommendation` (make the
+recommended action the first option). Prebaking overwrites data, so **never
+write without explicit confirmation.**
 Use `AskUserQuestion`. Only offer baking when there is something to bake
 (`needsPrebake > 0`, or the user explicitly wants a full rebake):
 
-- **Bake missing + stale** (recommended) — writes only the steps that need it,
-  keeping the *graph* changes minimal. Maps to `--write`.
+- **Bake missing + stale** (recommended when `strategy` is `prebake`) — writes
+  only the steps that need it, keeping the *graph* changes minimal. Maps to
+  `--write`.
 - **Rebake everything** — rewrites every derivable step (use when the parser
   changed and you want a clean, uniform pass). Maps to `--write --all`.
-- **No — leave as is** — stop without writing.
+- **No — leave as is** — stop without writing (the natural default when
+  `strategy` is `skip`).
 
 > **Heads-up on the diff:** `--write` rewrites the whole file via
 > `json.load`→`json.dump`, so Python re-emits *every* numeric literal in its
@@ -102,9 +124,6 @@ Use `AskUserQuestion`. Only offer baking when there is something to bake
 > and numerically identical** — no value changes — but they add noise beyond
 > the added `semanticGraph` blocks. Mention this when presenting the diff so a
 > reviewer isn't alarmed by "changed" physics constants.
-
-If the user wants to preview the exact change first, run with `--write
---dry-run` (reports what would change, writes nothing).
 
 ### Step 4 — Bake
 
@@ -118,6 +137,16 @@ Run the chosen write command:
 ./run.sh scripts/prebake_semantic_graphs.py <scene.json> --write --all
 ```
 
+`--write` reports the payoff directly:
+- **load (server parse):** before → after, simulating a real scene load
+  (`_autofill_semantic_graphs`, parse-if-missing) on the file before vs after
+  baking, with the speedup (e.g. `5.19s → 0.06s (86× faster)`).
+- **size:** before → after with % growth (graphs inline the JSON, so expect a
+  meaningful size increase — e.g. `+269%` for a graph-dense lesson).
+
+Relay both to the user — the trade is "bigger file, far faster load."
+`--write --dry-run` reports the same numbers as a projection without writing.
+
 ### Step 5 — Verify
 
 Re-run the validate pass and confirm the result:
@@ -129,12 +158,9 @@ Re-run the validate pass and confirm the result:
 After baking, expect `missing = 0`, `stale = 0` (only `valid` and any
 `error` steps remain), and `needsPrebake = 0`. Report the before/after counts.
 
-Optionally confirm the load-time win by timing the server autofill — it should
-now skip the baked steps:
-
-```bash
-./run.sh -c "import json,time; from backend.server import _autofill_semantic_graphs; s=json.load(open('<scene.json>')); t=time.time(); _autofill_semantic_graphs(s); print('autofill: %.3fs'%(time.time()-t))"
-```
+The load-time win was already measured and reported by `--write` in Step 4
+(the before/after `load (server parse)` line), so no separate timing run is
+needed.
 
 ## Important rules
 
