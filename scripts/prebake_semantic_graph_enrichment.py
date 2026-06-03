@@ -55,6 +55,13 @@ Usage
     ./run.sh scripts/prebake_semantic_graph_enrichment.py scene.json --write
     ./run.sh scripts/prebake_semantic_graph_enrichment.py scene.json --write --all
     ./run.sh scripts/prebake_semantic_graph_enrichment.py scene.json --write --concurrency 4
+    ./run.sh scripts/prebake_semantic_graph_enrichment.py scene.json --write --retries 6
+
+``--retries N`` sets the enrichment agent's output-validation retry budget
+(default 2, matching the live endpoint). Higher values give the model more
+attempts to emit a schema-valid field. Note this does NOT help *dropped-node*
+failures — there the validator re-raises on every retry, so more retries just
+fail slower; re-running the script (a fresh first attempt) is what helps those.
 
 Exit codes
 ----------
@@ -283,14 +290,29 @@ def _print_status(report, path):
 # Enrich (dry-run / write)
 # ---------------------------------------------------------------------------
 
-async def enrich_all(spec, *, rebake, concurrency):
+async def enrich_all(spec, *, rebake, concurrency, retries):
     """Enrich the selected graphs in-place on ``spec``. Returns a summary dict.
 
     Targets: every step with a baked graph that is either unenriched, or (with
     ``rebake``) already enriched too. Each enrichment is independent — one
     failure is counted and skipped, never aborting the batch.
+
+    ``retries`` overrides the enrichment agent's output-validation retry budget
+    (``SemanticGraphEnrichmentAgent.max_retries``, normally 2 — the same value
+    the live endpoint uses). Offline baking can afford more attempts than a
+    latency-bound request, which lets large graphs that intermittently emit a
+    schema-invalid field eventually succeed.
     """
     from backend.agents import SemanticGraphEnrichmentAgent
+
+    # ``max_retries`` is read inside ``BaseAgent.__init__`` (``retries=...``),
+    # so override it by constructing from a subclass with the bumped value
+    # rather than mutating the shared class attribute.
+    agent_cls = type(
+        "SemanticGraphEnrichmentAgentR",
+        (SemanticGraphEnrichmentAgent,),
+        {"max_retries": retries},
+    )
 
     targets = []  # (si, pi, ki, step, graph, context)
     skipped_enriched = no_graph = 0
@@ -308,7 +330,7 @@ async def enrich_all(spec, *, rebake, concurrency):
         ctx = _build_context(spec, sc, pr, step)
         targets.append((si, pi, ki, step, graph, ctx))
 
-    agent = SemanticGraphEnrichmentAgent() if targets else None
+    agent = agent_cls() if targets else None
     sem = asyncio.Semaphore(max(1, concurrency))
     enriched = 0
     errors = []
@@ -363,11 +385,21 @@ def main():
                          "already-enriched ones (default: only unenriched)")
     ap.add_argument("--concurrency", type=int, default=3, metavar="N",
                     help="Max concurrent enrichment calls (default: 3)")
+    ap.add_argument("--retries", type=int, default=2, metavar="N",
+                    help="Output-validation retry budget per graph (default: 2, "
+                         "matching the live endpoint). Higher values give the model "
+                         "more attempts to emit a schema-valid field — but do NOT "
+                         "help dropped-node failures, where the validator re-raises "
+                         "every retry (re-running the script is what helps those).")
     ap.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     args = ap.parse_args()
 
     if args.status and args.concurrency != 3:
         ap.error("--concurrency only applies to --dry-run / --write")
+    if args.status and args.retries != 2:
+        ap.error("--retries only applies to --dry-run / --write")
+    if args.retries < 1:
+        ap.error("--retries must be >= 1")
 
     path = Path(args.scene)
     if not path.is_file():
@@ -392,7 +424,8 @@ def main():
         return 2 if report["unenriched"] > 0 else 0
 
     # ---- dry-run / write mode ----
-    result = asyncio.run(enrich_all(spec, rebake=args.all, concurrency=args.concurrency))
+    result = asyncio.run(enrich_all(
+        spec, rebake=args.all, concurrency=args.concurrency, retries=args.retries))
 
     orig_size = len(original_text.encode("utf-8"))
     final_size = orig_size
