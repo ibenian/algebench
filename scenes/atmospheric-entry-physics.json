@@ -1847,11 +1847,11 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "F_{\\text{net}} = m a"},
-                    {"id": "F_{\\text{net}}", "type": "scalar", "latex": "F_{\\text{net}}", "subexpr": "F_{\\text{net}}"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "a m"},
-                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"},
-                    {"id": "a", "type": "scalar", "latex": "a", "subexpr": "a"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "F_{\\text{net}} = m a", "description": "Newton's Second Law, stating that net force equals mass times acceleration."},
+                    {"id": "F_{\\text{net}}", "type": "scalar", "emoji": "💨", "latex": "F_{\\text{net}}", "subexpr": "F_{\\text{net}}", "description": "The net force $F_{\\text{net}}$ acting on the entry vehicle, primarily from atmospheric drag.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "a m", "description": "The product of the vehicle's mass and its acceleration, which equals the net force.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N"},
+                    {"id": "m", "type": "scalar", "emoji": "⚖️", "latex": "m", "subexpr": "m", "description": "The mass $m$ of the atmospheric entry vehicle.", "quantity": "mass", "dimension": "M", "unit": "kg"},
+                    {"id": "a", "type": "scalar", "emoji": "🚀", "latex": "a", "subexpr": "a", "description": "The acceleration $a$ of the vehicle, caused by the net force.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"}
                   ],
                   "edges": [
                     {"from": "F_{\\text{net}}", "to": "__equals_1"},
@@ -1859,7 +1859,11 @@
                     {"from": "a", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
                     {"from": "__multiply_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is atmospheric entry, so the domain is classical mechanics. `F` is force, `m` is mass, and `a` is acceleration.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.F_{\\text{net}}.description", "nodes.F_{\\text{net}}.dimension", "nodes.F_{\\text{net}}.emoji", "nodes.F_{\\text{net}}.quantity", "nodes.F_{\\text{net}}.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.m.description", "nodes.m.dimension", "nodes.m.emoji", "nodes.m.quantity", "nodes.m.unit", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.unit"]
+                  }
                 }
               }
             },
@@ -2718,22 +2722,22 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\gamma_{\\text{steep}} = \\arcsin\\!\\left(\\frac{2eHg_0\\,n_{\\max}}{V_E^2}\\right)", "description": "maximum entry angle for crew survival", "color": "red", "highlight": "steep"},
-                    {"id": "gamma_{\\text{steep}}", "type": "scalar", "latex": "\\gamma_{\\text{steep}}", "subexpr": "\\gamma_{\\text{steep}}"},
-                    {"id": "__asin_2", "type": "function", "op": "asin", "subexpr": "\\operatorname{asin}{\\left(\\frac{2 e H g_{0} n_{max}}{V_{E}^{2}} \\right)}"},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "2 e H g_{0} n_{max} \\frac{1}{V_{E}^{2}}"},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "2 e H g_{0} n_{max}"},
-                    {"id": "__num_5", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "e H g_{0} n_{max}"},
-                    {"id": "e", "type": "scalar", "latex": "e", "subexpr": "e"},
-                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "H g_{0} n_{max}"},
-                    {"id": "H", "type": "scalar", "latex": "H", "subexpr": "H"},
-                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "g_{0} n_{max}"},
-                    {"id": "g_{0}", "type": "scalar", "latex": "g_{0}", "subexpr": "g_{0}"},
-                    {"id": "n_{max}", "type": "scalar", "latex": "n_{max}", "subexpr": "n_{max}"},
-                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{V_{E}^{2}}"},
-                    {"id": "__power_10", "type": "operator", "op": "power", "exponent": "2", "subexpr": "V_{E}^{2}"},
-                    {"id": "V_{E}", "type": "scalar", "latex": "V_{E}", "subexpr": "V_{E}"}
+                    {"id": "__equals_1", "type": "relation", "emoji": "⚖️", "op": "equals", "subexpr": "\\gamma_{\\text{steep}} = \\arcsin\\!\\left(\\frac{2eHg_0\\,n_{\\max}}{V_E^2}\\right)", "description": "This equation defines the steepest allowable entry angle, $\\gamma_{\\text{steep}}$, for a crew to survive the peak g-load.", "color": "red", "highlight": "steep"},
+                    {"id": "gamma_{\\text{steep}}", "type": "scalar", "emoji": "📐", "latex": "\\gamma_{\\text{steep}}", "subexpr": "\\gamma_{\\text{steep}}", "description": "The steepest allowable flight path angle for atmospheric entry, ensuring crew survival.", "quantity": "angle", "dimension": "1", "unit": "rad", "role": "dependent"},
+                    {"id": "__asin_2", "type": "function", "op": "asin", "subexpr": "\\operatorname{asin}{\\left(\\frac{2 e H g_{0} n_{max}}{V_{E}^{2}} \\right)}", "description": "The arcsin function calculates the angle whose sine is the ratio of peak deceleration forces to inertial forces.", "quantity": "angle", "dimension": "1", "unit": "rad"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "2 e H g_{0} n_{max} \\frac{1}{V_{E}^{2}}", "description": "The dimensionless ratio of peak deceleration forces to the initial inertial forces.", "quantity": "dimensionless_ratio", "dimension": "1", "unit": ""},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "2 e H g_{0} n_{max}", "description": "Numerator of the arcsin argument, representing the factors that contribute to peak deceleration.", "quantity": "specific_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__num_5", "type": "number", "label": "2", "emoji": "🔢", "subexpr": "2", "description": "A numeric factor of 2.", "quantity": "dimensionless_factor", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "e H g_{0} n_{max}", "description": "Combining Euler's number with the atmospheric scale height and peak deceleration.", "quantity": "specific_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "e", "type": "scalar", "emoji": "🌿", "latex": "e", "subexpr": "e", "description": "Euler's number (e ≈ 2.718), the base of natural logarithms, arising from the exponential atmosphere model.", "quantity": "eulers_number", "dimension": "1", "unit": "", "value": 2.718, "role": "constant"},
+                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "H g_{0} n_{max}", "description": "The product of atmospheric scale height and the maximum tolerable deceleration.", "quantity": "specific_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "H", "type": "scalar", "emoji": "⛰️", "latex": "H", "subexpr": "H", "description": "Atmospheric scale height, the vertical distance over which air density drops by a factor of e.", "quantity": "scale_height", "dimension": "L", "unit": "m", "value": 7200, "role": "parameter"},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "g_{0} n_{max}", "description": "The maximum tolerable deceleration for the crew, expressed as an acceleration.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "g_{0}", "type": "scalar", "emoji": "🌎", "latex": "g_{0}", "subexpr": "g_{0}", "description": "Standard gravity at sea level on Earth, approximately 9.81 m/s².", "quantity": "standard_gravity", "dimension": "L·T⁻²", "unit": "m/s²", "value": 9.81, "role": "constant"},
+                    {"id": "n_{max}", "type": "scalar", "emoji": "📈", "latex": "n_{max}", "subexpr": "n_{max}", "description": "The maximum g-load factor the crew or vehicle can withstand, a dimensionless multiple of Earth's gravity.", "quantity": "g_load_factor", "dimension": "1", "unit": "", "value": 10, "role": "parameter"},
+                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{V_{E}^{2}}", "description": "The inverse of the square of the entry velocity.", "dimension": "L⁻²·T²", "unit": "s²/m²"},
+                    {"id": "__power_10", "type": "operator", "op": "power", "exponent": "2", "subexpr": "V_{E}^{2}", "description": "The square of the entry velocity, proportional to the vehicle's specific kinetic energy.", "quantity": "specific_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "V_{E}", "type": "scalar", "emoji": "🚀", "latex": "V_{E}", "subexpr": "V_{E}", "description": "Entry velocity, the speed of the vehicle as it begins to encounter the atmosphere.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "value": 11000, "role": "parameter"}
                   ],
                   "edges": [
                     {"from": "gamma_{\\text{steep}}", "to": "__equals_1"},
@@ -2752,7 +2756,11 @@
                     {"from": "__multiply_3", "to": "__asin_2"},
                     {"from": "__asin_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is atmospheric entry physics, so the domain is classical mechanics. V_E is entry velocity, g_0 is gravity, and gamma is flight path angle.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.gamma_{\\text{steep}}.description", "nodes.gamma_{\\text{steep}}.dimension", "nodes.gamma_{\\text{steep}}.emoji", "nodes.gamma_{\\text{steep}}.quantity", "nodes.gamma_{\\text{steep}}.role", "nodes.gamma_{\\text{steep}}.unit", "nodes.__asin_2.description", "nodes.__asin_2.dimension", "nodes.__asin_2.quantity", "nodes.__asin_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.quantity", "nodes.__multiply_3.unit", "nodes.__multiply_4.description", "nodes.__multiply_4.dimension", "nodes.__multiply_4.quantity", "nodes.__multiply_4.unit", "nodes.__num_5.description", "nodes.__num_5.dimension", "nodes.__num_5.emoji", "nodes.__num_5.quantity", "nodes.__num_5.unit", "nodes.__num_5.value", "nodes.__multiply_6.description", "nodes.__multiply_6.dimension", "nodes.__multiply_6.quantity", "nodes.__multiply_6.unit", "nodes.e.description", "nodes.e.dimension", "nodes.e.emoji", "nodes.e.quantity", "nodes.e.role", "nodes.e.unit", "nodes.e.value", "nodes.__multiply_7.description", "nodes.__multiply_7.dimension", "nodes.__multiply_7.quantity", "nodes.__multiply_7.unit", "nodes.H.description", "nodes.H.dimension", "nodes.H.emoji", "nodes.H.quantity", "nodes.H.role", "nodes.H.unit", "nodes.H.value", "nodes.__multiply_8.description", "nodes.__multiply_8.dimension", "nodes.__multiply_8.quantity", "nodes.__multiply_8.unit", "nodes.g_{0}.description", "nodes.g_{0}.dimension", "nodes.g_{0}.emoji", "nodes.g_{0}.quantity", "nodes.g_{0}.role", "nodes.g_{0}.unit", "nodes.g_{0}.value", "nodes.n_{max}.description", "nodes.n_{max}.dimension", "nodes.n_{max}.emoji", "nodes.n_{max}.quantity", "nodes.n_{max}.role", "nodes.n_{max}.unit", "nodes.n_{max}.value", "nodes.__power_9.description", "nodes.__power_9.dimension", "nodes.__power_9.unit", "nodes.__power_10.description", "nodes.__power_10.dimension", "nodes.__power_10.quantity", "nodes.__power_10.unit", "nodes.V_{E}.description", "nodes.V_{E}.dimension", "nodes.V_{E}.emoji", "nodes.V_{E}.quantity", "nodes.V_{E}.role", "nodes.V_{E}.unit", "nodes.V_{E}.value"]
+                  }
                 }
               }
             },
@@ -3059,26 +3067,26 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\gamma_{\\text{shallow}} = \\arcsin\\!\\left(\\frac{\\rho_0 H\\,e^{-h_E/H}}{2\\beta\\,\\delta_{\\min}}\\right)"},
-                    {"id": "gamma_{\\text{shallow}}", "type": "scalar", "latex": "\\gamma_{\\text{shallow}}", "subexpr": "\\gamma_{\\text{shallow}}"},
-                    {"id": "__asin_2", "type": "function", "op": "asin", "subexpr": "\\operatorname{asin}{\\left(\\frac{\\rho_{0} H e^{\\frac{\\left(-1\\right) h_{E}}{H}}}{2 \\delta_{\\min} \\beta} \\right)}"},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\rho_{0} e^{\\frac{\\left(-1\\right) h_{E}}{H}} H \\frac{1}{2 \\delta_{\\min} \\beta}"},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\rho_{0} e^{\\frac{\\left(-1\\right) h_{E}}{H}} H"},
-                    {"id": "rho_{0}", "type": "scalar", "latex": "\\rho_{0}", "subexpr": "\\rho_{0}"},
-                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "e^{\\frac{\\left(-1\\right) h_{E}}{H}} H"},
-                    {"id": "H", "type": "scalar", "latex": "H", "subexpr": "H"},
-                    {"id": "__power_6", "type": "operator", "op": "power", "subexpr": "e^{\\frac{\\left(-1\\right) h_{E}}{H}}"},
-                    {"id": "e", "type": "scalar", "latex": "e", "subexpr": "e"},
-                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{H} -h_{E}"},
-                    {"id": "__negation_8", "type": "operator", "op": "negation", "subexpr": "-h_{E}"},
-                    {"id": "h_{E}", "type": "scalar", "latex": "h_{E}", "subexpr": "h_{E}"},
-                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{H}"},
-                    {"id": "__power_10", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 \\delta_{\\min} \\beta}"},
-                    {"id": "__multiply_11", "type": "operator", "op": "multiply", "subexpr": "2 \\beta \\delta_{\\min}"},
-                    {"id": "__num_12", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\beta \\delta_{\\min}"},
-                    {"id": "beta", "type": "scalar", "latex": "\\beta", "subexpr": "\\beta"},
-                    {"id": "delta_{\\min}", "type": "scalar", "latex": "\\delta_{\\min}", "subexpr": "\\delta_{\\min}"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\gamma_{\\text{shallow}} = \\arcsin\\!\\left(\\frac{\\rho_0 H\\,e^{-h_E/H}}{2\\beta\\,\\delta_{\\min}}\\right)", "description": "The relation defining the shallow bound of the entry corridor angle."},
+                    {"id": "gamma_{\\text{shallow}}", "type": "scalar", "emoji": "📐", "latex": "\\gamma_{\\text{shallow}}", "subexpr": "\\gamma_{\\text{shallow}}", "description": "Shallow bound of the entry corridor, the minimum flight path angle for atmospheric capture.", "quantity": "flight_path_angle", "dimension": "1", "unit": "rad"},
+                    {"id": "__asin_2", "type": "function", "op": "asin", "subexpr": "\\operatorname{asin}{\\left(\\frac{\\rho_{0} H e^{\\frac{\\left(-1\\right) h_{E}}{H}}}{2 \\delta_{\\min} \\beta} \\right)}", "description": "The arcsin of the ratio, yielding the shallow entry angle in radians.", "dimension": "1", "unit": "rad"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\rho_{0} e^{\\frac{\\left(-1\\right) h_{E}}{H}} H \\frac{1}{2 \\delta_{\\min} \\beta}", "description": "The argument to the arcsin function, a dimensionless ratio of atmospheric properties to vehicle characteristics.", "dimension": "1", "unit": ""},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\rho_{0} e^{\\frac{\\left(-1\\right) h_{E}}{H}} H", "description": "Numerator of the argument to arcsin, representing the atmospheric conditions scaled by the reference density.", "dimension": "M·L⁻²", "unit": "kg/m²"},
+                    {"id": "rho_{0}", "type": "scalar", "emoji": "💨", "latex": "\\rho_{0}", "subexpr": "\\rho_{0}", "description": "Atmospheric density at a reference altitude, typically sea level.", "quantity": "density", "dimension": "M·L⁻³", "unit": "kg/m³", "role": "parameter"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "e^{\\frac{\\left(-1\\right) h_{E}}{H}} H", "description": "The product of scale height and the density ratio factor.", "dimension": "L", "unit": "m"},
+                    {"id": "H", "type": "scalar", "emoji": "📉", "latex": "H", "subexpr": "H", "description": "Atmospheric scale height, the distance over which air density drops by a factor of $e$.", "quantity": "scale_height", "dimension": "L", "unit": "m", "role": "parameter"},
+                    {"id": "__power_6", "type": "operator", "op": "power", "subexpr": "e^{\\frac{\\left(-1\\right) h_{E}}{H}}", "description": "Exponential term describing the decrease in atmospheric density with altitude.", "dimension": "1", "unit": ""},
+                    {"id": "e", "type": "scalar", "emoji": "🔢", "latex": "e", "subexpr": "e", "description": "Euler's number, the base of the natural logarithm, approximately 2.718.", "quantity": "eulers_number", "dimension": "1", "unit": "", "value": 2.71828, "role": "constant"},
+                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{H} -h_{E}", "description": "The ratio of entry altitude to scale height, a dimensionless altitude parameter.", "dimension": "1", "unit": ""},
+                    {"id": "__negation_8", "type": "operator", "op": "negation", "subexpr": "-h_{E}", "description": "The negative of the entry interface altitude."},
+                    {"id": "h_{E}", "type": "scalar", "emoji": "🌎", "latex": "h_{E}", "subexpr": "h_{E}", "description": "Entry interface altitude, where the spacecraft begins to experience significant atmospheric effects.", "quantity": "altitude", "dimension": "L", "unit": "m", "role": "parameter"},
+                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{H}", "description": "The reciprocal of the atmospheric scale height.", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "__power_10", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 \\delta_{\\min} \\beta}", "description": "The reciprocal of the denominator term.", "dimension": "M⁻¹·L²", "unit": "m²/kg"},
+                    {"id": "__multiply_11", "type": "operator", "op": "multiply", "subexpr": "2 \\beta \\delta_{\\min}", "description": "Denominator of the argument to arcsin, representing vehicle properties and capture requirements.", "dimension": "M·L⁻²", "unit": "kg/m²"},
+                    {"id": "__num_12", "type": "number", "label": "2", "emoji": "🔢", "subexpr": "2", "description": "The number 2.", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\beta \\delta_{\\min}", "description": "Product of the ballistic coefficient and the minimum velocity fraction.", "dimension": "M·L⁻²", "unit": "kg/m²"},
+                    {"id": "beta", "type": "scalar", "emoji": "🚀", "latex": "\\beta", "subexpr": "\\beta", "description": "Ballistic coefficient, $\\beta = m / (C_d A)$, a measure of a body's ability to overcome air resistance in flight.", "quantity": "ballistic_coefficient", "dimension": "M·L⁻²", "unit": "kg/m²", "role": "parameter"},
+                    {"id": "delta_{\\min}", "type": "scalar", "emoji": "📉", "latex": "\\delta_{\\min}", "subexpr": "\\delta_{\\min}", "description": "Minimum fractional change in velocity required for atmospheric capture, a dimensionless parameter.", "quantity": "velocity_fraction", "dimension": "1", "unit": "", "role": "parameter"}
                   ],
                   "edges": [
                     {"from": "gamma_{\\text{shallow}}", "to": "__equals_1"},
@@ -3102,7 +3110,11 @@
                     {"from": "__multiply_3", "to": "__asin_2"},
                     {"from": "__asin_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is atmospheric entry, so the domain is `classical_mechanics`. Symbols are identified based on standard flight dynamics notation: `γ` is flight path angle, `β` is ballistic coefficient, `ρ` is density, and `H` is scale height.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.gamma_{\\text{shallow}}.description", "nodes.gamma_{\\text{shallow}}.dimension", "nodes.gamma_{\\text{shallow}}.emoji", "nodes.gamma_{\\text{shallow}}.quantity", "nodes.gamma_{\\text{shallow}}.unit", "nodes.__asin_2.description", "nodes.__asin_2.dimension", "nodes.__asin_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.unit", "nodes.__multiply_4.description", "nodes.__multiply_4.dimension", "nodes.__multiply_4.unit", "nodes.rho_{0}.description", "nodes.rho_{0}.dimension", "nodes.rho_{0}.emoji", "nodes.rho_{0}.quantity", "nodes.rho_{0}.role", "nodes.rho_{0}.unit", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.unit", "nodes.H.description", "nodes.H.dimension", "nodes.H.emoji", "nodes.H.quantity", "nodes.H.role", "nodes.H.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.unit", "nodes.e.description", "nodes.e.dimension", "nodes.e.emoji", "nodes.e.quantity", "nodes.e.role", "nodes.e.unit", "nodes.e.value", "nodes.__multiply_7.description", "nodes.__multiply_7.dimension", "nodes.__multiply_7.unit", "nodes.__negation_8.description", "nodes.h_{E}.description", "nodes.h_{E}.dimension", "nodes.h_{E}.emoji", "nodes.h_{E}.quantity", "nodes.h_{E}.role", "nodes.h_{E}.unit", "nodes.__power_9.description", "nodes.__power_9.dimension", "nodes.__power_9.unit", "nodes.__power_10.description", "nodes.__power_10.dimension", "nodes.__power_10.unit", "nodes.__multiply_11.description", "nodes.__multiply_11.dimension", "nodes.__multiply_11.unit", "nodes.__num_12.description", "nodes.__num_12.dimension", "nodes.__num_12.emoji", "nodes.__num_12.unit", "nodes.__num_12.value", "nodes.__multiply_13.description", "nodes.__multiply_13.dimension", "nodes.__multiply_13.unit", "nodes.beta.description", "nodes.beta.dimension", "nodes.beta.emoji", "nodes.beta.quantity", "nodes.beta.role", "nodes.beta.unit", "nodes.delta_{\\min}.description", "nodes.delta_{\\min}.dimension", "nodes.delta_{\\min}.emoji", "nodes.delta_{\\min}.quantity", "nodes.delta_{\\min}.role", "nodes.delta_{\\min}.unit"]
+                  }
                 }
               }
             },
@@ -4009,15 +4021,15 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\frac{\\dot{q_{\\text{lunar}}}}{\\dot{q_{\\text{LEO}}}} = 2.81"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\dot{q_{\\text{lunar}}} \\frac{1}{\\dot{q_{\\text{LEO}}}}"},
-                    {"id": "q_{\\text{lunar}}", "type": "scalar", "latex": "q_{\\text{lunar}}", "subexpr": "q_{\\text{lunar}}"},
-                    {"id": "t", "type": "scalar", "latex": "t", "subexpr": "t"},
-                    {"id": "__deriv_3", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{q_{\\text{lunar}}}"},
-                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\dot{q_{\\text{LEO}}}}"},
-                    {"id": "q_{\\text{LEO}}", "type": "scalar", "latex": "q_{\\text{LEO}}", "subexpr": "q_{\\text{LEO}}"},
-                    {"id": "__deriv_5", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{q_{\\text{LEO}}}"},
-                    {"id": "__num_6", "type": "number", "label": "2.81", "subexpr": "2.81", "description": "2.81× more heating from speed alone", "color": "red", "highlight": "result"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\frac{\\dot{q_{\\text{lunar}}}}{\\dot{q_{\\text{LEO}}}} = 2.81", "description": "The ratio of peak heating rates for lunar versus LEO reentry is approximately 2.81."},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\dot{q_{\\text{lunar}}} \\frac{1}{\\dot{q_{\\text{LEO}}}}", "description": "The ratio of the lunar return heating rate to the LEO return heating rate.", "quantity": "heating_rate_ratio", "dimension": "1", "unit": ""},
+                    {"id": "q_{\\text{lunar}}", "type": "scalar", "emoji": "🌕", "latex": "q_{\\text{lunar}}", "subexpr": "q_{\\text{lunar}}", "description": "Total heat energy absorbed by the spacecraft during a lunar return reentry.", "quantity": "heat", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "t", "type": "scalar", "emoji": "⏱️", "latex": "t", "subexpr": "t", "description": "Time, the variable with respect to which the heat rate is measured.", "quantity": "time", "dimension": "T", "unit": "s"},
+                    {"id": "__deriv_3", "type": "operator", "emoji": "🔥", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{q_{\\text{lunar}}}", "description": "The instantaneous rate of heat transfer (power) for a lunar return trajectory, $\\dot{q}_{\\text{lunar}}$.", "quantity": "power", "dimension": "M·L²·T⁻³", "unit": "W"},
+                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\dot{q_{\\text{LEO}}}}", "description": "The reciprocal of the LEO return heating rate, used to construct the ratio.", "quantity": "inverse_power", "dimension": "M⁻¹·L⁻²·T³", "unit": "W⁻¹"},
+                    {"id": "q_{\\text{LEO}}", "type": "scalar", "emoji": "🌍", "latex": "q_{\\text{LEO}}", "subexpr": "q_{\\text{LEO}}", "description": "Total heat energy absorbed by the spacecraft during a Low Earth Orbit (LEO) return reentry.", "quantity": "heat", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "__deriv_5", "type": "operator", "emoji": "🔥", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{q_{\\text{LEO}}}", "description": "The instantaneous rate of heat transfer (power) for a LEO return trajectory, $\\dot{q}_{\\text{LEO}}$.", "quantity": "power", "dimension": "M·L²·T⁻³", "unit": "W"},
+                    {"id": "__num_6", "type": "number", "label": "2.81", "emoji": "🌡️", "subexpr": "2.81", "description": "The calculated heating ratio, showing lunar return is 2.81 times more intense than LEO return.", "quantity": "heating_rate_ratio", "dimension": "1", "unit": "", "value": 2.81, "color": "red", "highlight": "result"}
                   ],
                   "edges": [
                     {"from": "q_{\\text{lunar}}", "to": "__deriv_3"},
@@ -4030,11 +4042,10 @@
                     {"from": "__multiply_2", "to": "__equals_1"},
                     {"from": "__num_6", "to": "__equals_1"}
                   ],
-                  "classification": {
-                    "kind": "ODE",
-                    "order": 1,
-                    "dependent_variables": ["Xi_{0}", "Xi_{1}"],
-                    "independent_variables": ["t"]
+                  "domain": "thermodynamics",
+                  "enrichment": {
+                    "reasoning": "The context is about aerodynamic heating during atmospheric entry, so the domain is thermodynamics. The symbol $\\dot{q}$ represents heat rate (power) and $t$ represents time.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.q_{\\text{lunar}}.description", "nodes.q_{\\text{lunar}}.dimension", "nodes.q_{\\text{lunar}}.emoji", "nodes.q_{\\text{lunar}}.quantity", "nodes.q_{\\text{lunar}}.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__deriv_3.description", "nodes.__deriv_3.dimension", "nodes.__deriv_3.emoji", "nodes.__deriv_3.quantity", "nodes.__deriv_3.unit", "nodes.__power_4.description", "nodes.__power_4.dimension", "nodes.__power_4.quantity", "nodes.__power_4.unit", "nodes.q_{\\text{LEO}}.description", "nodes.q_{\\text{LEO}}.dimension", "nodes.q_{\\text{LEO}}.emoji", "nodes.q_{\\text{LEO}}.quantity", "nodes.q_{\\text{LEO}}.unit", "nodes.__deriv_5.description", "nodes.__deriv_5.dimension", "nodes.__deriv_5.emoji", "nodes.__deriv_5.quantity", "nodes.__deriv_5.unit", "nodes.__num_6.description", "nodes.__num_6.dimension", "nodes.__num_6.emoji", "nodes.__num_6.quantity", "nodes.__num_6.unit", "nodes.__num_6.value"]
                   }
                 }
               }
@@ -4726,12 +4737,12 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "a", "type": "scalar", "latex": "a", "subexpr": "a"},
-                    {"id": "s1___num_1", "type": "number", "label": "0", "subexpr": "0"},
-                    {"id": "F_{\\text{net}}", "type": "scalar", "latex": "F_{\\text{net}}", "subexpr": "F_{\\text{net}}"},
-                    {"id": "s1___implies_2", "type": "operator", "label": "implies", "emoji": "⟹", "op": "implies", "subexpr": "0 \\quad \\Longrightarrow \\quad F_{\\text{net}}"},
-                    {"id": "s2___num_1", "type": "number", "label": "0", "subexpr": "0"},
-                    {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "a = 0 \\quad \\Longrightarrow \\quad F_{\\text{net}} = 0"}
+                    {"id": "a", "type": "scalar", "emoji": "🎢", "latex": "a", "subexpr": "a", "description": "Acceleration, the rate of change of velocity, which is zero when the capsule reaches a constant terminal velocity.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "s1___num_1", "type": "number", "label": "0", "emoji": "0️⃣", "subexpr": "0", "description": "The number zero, representing the value of acceleration $a$ at constant terminal velocity.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "F_{\\text{net}}", "type": "scalar", "emoji": "⚖️", "latex": "F_{\\text{net}}", "subexpr": "F_{\\text{net}}", "description": "Net force $F_{\\text{net}}$, the vector sum of all forces (in this case, gravity and drag) acting on the capsule.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N"},
+                    {"id": "s1___implies_2", "type": "operator", "label": "implies", "emoji": "⟹", "op": "implies", "subexpr": "0 \\quad \\Longrightarrow \\quad F_{\\text{net}}", "description": "A logical implication showing that the premise of zero acceleration leads to the conclusion of zero net force."},
+                    {"id": "s2___num_1", "type": "number", "label": "0", "emoji": "0️⃣", "subexpr": "0", "description": "The number zero, representing the value of the net force $F_{\\text{net}}$ when the downward force of gravity is perfectly balanced by the upward force of drag.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N"},
+                    {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "a = 0 \\quad \\Longrightarrow \\quad F_{\\text{net}} = 0", "description": "The full statement that zero acceleration ($a=0$) implies that the net force on the capsule is also zero ($F_{\\text{net}}=0$), the condition for terminal velocity."}
                   ],
                   "edges": [
                     {"from": "s1___num_1", "to": "s1___implies_2"},
@@ -4740,7 +4751,11 @@
                     {"from": "s1___implies_2", "to": "__equals_1"},
                     {"from": "s2___num_1", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context of terminal velocity, forces, and acceleration determines the domain as classical_mechanics. Symbols `a` and `F_net` are identified as acceleration and net force.",
+                    "fields": ["domain", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.unit", "nodes.s1___num_1.description", "nodes.s1___num_1.dimension", "nodes.s1___num_1.emoji", "nodes.s1___num_1.quantity", "nodes.s1___num_1.unit", "nodes.F_{\\text{net}}.description", "nodes.F_{\\text{net}}.dimension", "nodes.F_{\\text{net}}.emoji", "nodes.F_{\\text{net}}.quantity", "nodes.F_{\\text{net}}.unit", "nodes.s1___implies_2.description", "nodes.s2___num_1.description", "nodes.s2___num_1.dimension", "nodes.s2___num_1.emoji", "nodes.s2___num_1.quantity", "nodes.s2___num_1.unit", "nodes.__equals_1.description"]
+                  }
                 }
               }
             },
