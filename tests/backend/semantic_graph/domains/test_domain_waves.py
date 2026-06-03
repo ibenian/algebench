@@ -104,39 +104,29 @@ OPTICS_EXPRESSIONS: list[CatalogEntry] = [
     ("snell",
      r"n_1 \sin\theta_1 = n_2 \sin\theta_2",
      PASS,
-     "theta_{1} -> fn:sin; theta_{2} -> fn:sin; "
-     "fn:sin,n_{1} -> multiply; fn:sin,n_{2} -> multiply; "
-     "multiply,multiply -> rel:equals",
-     "theta_{1} -> __sin_3; theta_{2} -> __sin_5; "
-     "__sin_3,n_{1} -> __multiply_2; __sin_5,n_{2} -> __multiply_4; "
-     "__multiply_2,__multiply_4 -> __equals_1",
+     'theta_1 -> fn:sin; theta_2 -> fn:sin; fn:sin,n_1 -> multiply; fn:sin,n_2 -> multiply; multiply,multiply -> rel:equals',
+     'theta_1 -> __sin_3; theta_2 -> __sin_5; __sin_3,n_1 -> __multiply_2; __sin_5,n_2 -> __multiply_4; __multiply_2,__multiply_4 -> __equals_1',
      None),
 
     ("thin_lens",
      r"\frac{1}{f} = \frac{1}{d_o} + \frac{1}{d_i}",
      PASS,
-     "d_{i} -> power; d_{o} -> power; f -> power; "
-     "power,power -> add; add,power -> rel:equals",
-     "f -> __power_2; d_{o} -> __power_4; d_{i} -> __power_5; "
-     "__power_4,__power_5 -> __add_3; __add_3,__power_2 -> __equals_1",
+     'd_i -> power; d_o -> power; f -> power; power,power -> add; add,power -> rel:equals',
+     'f -> __power_2; d_o -> __power_4; d_i -> __power_5; __power_4,__power_5 -> __add_3; __add_3,__power_2 -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 
     ("brewster",
      r"\tan\theta_B = \frac{n_2}{n_1}",
      PASS,
-     "theta_{B} -> fn:tan; n_{1} -> power; "
-     "n_{2},power -> multiply; fn:tan,multiply -> rel:equals",
-     "n_{1} -> __power_4; theta_{B} -> __tan_2; "
-     "__power_4,n_{2} -> __multiply_3; __multiply_3,__tan_2 -> __equals_1",
+     'theta_B -> fn:tan; n_1 -> power; n_2,power -> multiply; fn:tan,multiply -> rel:equals',
+     'n_1 -> __power_4; theta_B -> __tan_2; __power_4,n_2 -> __multiply_3; __multiply_3,__tan_2 -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 
     ("malus",
      r"I = I_0 \cos^2\theta",
      PASS,
-     "theta -> fn:cos; fn:cos -> power; "
-     "I_{0},power -> multiply; I,multiply -> rel:equals",
-     "theta -> __cos_4; __cos_4 -> __power_3; "
-     "I_{0},__power_3 -> __multiply_2; I,__multiply_2 -> __equals_1",
+     'theta -> fn:cos; fn:cos -> power; I_0,power -> multiply; I,multiply -> rel:equals',
+     'theta -> __cos_4; __cos_4 -> __power_3; I_0,__power_3 -> __multiply_2; I,__multiply_2 -> __equals_1',
      [{"op": "power", "exponent": "2"}]),
 ]
 
@@ -161,11 +151,8 @@ DIFFRACTION_EXPRESSIONS: list[CatalogEntry] = [
     ("standing_wave",
      r"\lambda_n = \frac{2 L}{n}",
      PASS,
-     "L,num -> multiply; n -> power; multiply,power -> multiply; "
-     "lambda_{n},multiply -> rel:equals",
-     "L,__num_4 -> __multiply_3; n -> __power_5; "
-     "__multiply_3,__power_5 -> __multiply_2; "
-     "__multiply_2,lambda_{n} -> __equals_1",
+     'L,num -> multiply; n -> power; multiply,power -> multiply; lambda_n,multiply -> rel:equals',
+     'L,__num_4 -> __multiply_3; n -> __power_5; __multiply_3,__power_5 -> __multiply_2; __multiply_2,lambda_n -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 ]
 
@@ -173,13 +160,8 @@ DYNAMIC_EXPRESSIONS: list[CatalogEntry] = [
     ("doppler",
      r"f' = f \frac{v + v_o}{v - v_s}",
      PASS,
-     "v,v_{o} -> add; v_{s} -> negation; negation,v -> add; "
-     "add -> power; add,power -> multiply; "
-     "f,multiply -> multiply; f',multiply -> rel:equals",
-     "v,v_{o} -> __add_4; v_{s} -> __negation_7; "
-     "__negation_7,v -> __add_6; __add_6 -> __power_5; "
-     "__add_4,__power_5 -> __multiply_3; __multiply_3,f -> __multiply_2; "
-     "__multiply_2,f' -> __equals_1",
+     'v,v_o -> add; v_s -> negation; negation,v -> add; add -> power; add,power -> multiply; f_2,multiply -> multiply; f,multiply -> rel:equals',
+     'v,v_o -> __add_4; v_s -> __negation_7; __negation_7,v -> __add_6; __add_6 -> __power_5; __add_4,__power_5 -> __multiply_3; __multiply_3,f_2 -> __multiply_2; __multiply_2,f -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 
     ("simple_harmonic",

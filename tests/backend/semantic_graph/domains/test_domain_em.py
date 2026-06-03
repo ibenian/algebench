@@ -68,9 +68,8 @@ CIRCUIT_EXPRESSIONS: list[CatalogEntry] = [
     ("resistance_series",
      r"R = R_1 + R_2 + R_3",
      PASS,
-     "R_{1},R_{2} -> add; R_{3},add -> add; R,add -> rel:equals",
-     "R_{1},R_{2} -> __add_3; R_{3},__add_3 -> __add_2; "
-     "R,__add_2 -> __equals_1",
+     'R_1,R_2 -> add; R_3,add -> add; R,add -> rel:equals',
+     'R_1,R_2 -> __add_3; R_3,__add_3 -> __add_2; R,__add_2 -> __equals_1',
      None),
 
     ("capacitance",
@@ -103,12 +102,8 @@ ELECTROSTATICS_EXPRESSIONS: list[CatalogEntry] = [
     ("coulomb",
      r"F = k_e \frac{q_1 q_2}{r^2}",
      PASS,
-     "q_{1},q_{2} -> multiply; r -> power; power -> power; "
-     "multiply,power -> multiply; k_{e},multiply -> multiply; "
-     "F,multiply -> rel:equals",
-     "q_{1},q_{2} -> __multiply_4; r -> __power_6; "
-     "__power_6 -> __power_5; __multiply_4,__power_5 -> __multiply_3; "
-     "__multiply_3,k_{e} -> __multiply_2; F,__multiply_2 -> __equals_1",
+     'q_1,q_2 -> multiply; r -> power; power -> power; multiply,power -> multiply; k_e,multiply -> multiply; F,multiply -> rel:equals',
+     'q_1,q_2 -> __multiply_4; r -> __power_6; __power_6 -> __power_5; __multiply_4,__power_5 -> __multiply_3; __multiply_3,k_e -> __multiply_2; F,__multiply_2 -> __equals_1',
      [{"op": "power", "exponent": "2"}, {"op": "power", "exponent": "-1"}]),
 
     ("electric_field",
@@ -131,10 +126,8 @@ ELECTROSTATICS_EXPRESSIONS: list[CatalogEntry] = [
     ("wave_speed_em",
      r"c = \frac{1}{\sqrt{\mu_0 \epsilon_0}}",
      PASS,
-     "epsilon_{0},mu_{0} -> multiply; multiply -> power; "
-     "power -> power; c,power -> rel:equals",
-     "epsilon_{0},mu_{0} -> __multiply_4; __multiply_4 -> __power_3; "
-     "__power_3 -> __power_2; __power_2,c -> __equals_1",
+     'epsilon_0,mu_0 -> multiply; multiply -> power; power -> power; c,power -> rel:equals',
+     'epsilon_0,mu_0 -> __multiply_4; __multiply_4 -> __power_3; __power_3 -> __power_2; __power_2,c -> __equals_1',
      [{"op": "power", "exponent": "1/2"}, {"op": "power", "exponent": "-1"}]),
 ]
 
@@ -142,10 +135,8 @@ MAXWELL_EXPRESSIONS: list[CatalogEntry] = [
     ("gauss_law",
      r"\oint \vec{E} \cdot d\vec{A} = \frac{Q}{\epsilon_0}",
      PASS,
-     "vec:A,vec:E -> closed_integral; epsilon_{0} -> power; "
-     "Q,power -> multiply; closed_integral,multiply -> rel:equals",
-     "A,E -> __closed_integral_2; epsilon_{0} -> __power_4; "
-     "Q,__power_4 -> __multiply_3; __closed_integral_2,__multiply_3 -> __equals_1",
+     'vec:A,vec:E -> closed_integral; epsilon_0 -> power; Q,power -> multiply; closed_integral,multiply -> rel:equals',
+     'A,E -> __closed_integral_2; epsilon_0 -> __power_4; Q,__power_4 -> __multiply_3; __closed_integral_2,__multiply_3 -> __equals_1',
      [{"op": "power", "exponent": "-1"},
       {"op": "closed_integral"}]),
 
@@ -170,27 +161,16 @@ MAXWELL_EXPRESSIONS: list[CatalogEntry] = [
     ("poynting",
      r"\vec{S} = \frac{1}{\mu_0} \vec{E} \times \vec{B}",
      PASS,
-     "mu_{0} -> power; power,vec:E -> multiply; "
-     "multiply,vec:B -> multiply; multiply,vec:S -> rel:equals",
-     "mu_{0} -> __power_4; E,__power_4 -> __multiply_3; "
-     "B,__multiply_3 -> __multiply_2; S,__multiply_2 -> __equals_1",
+     'mu_0 -> power; power,vec:E -> multiply; multiply,vec:B -> multiply; multiply,vec:S -> rel:equals',
+     'mu_0 -> __power_4; E,__power_4 -> __multiply_3; B,__multiply_3 -> __multiply_2; S,__multiply_2 -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 
     ("ampere_maxwell",
      r"\nabla \times \vec{B} = \mu_0 \vec{J} "
      r"+ \mu_0 \epsilon_0 \frac{\partial \vec{E}}{\partial t}",
      PASS,
-     "mu_{0},vec:J -> multiply; nabla,vec:B -> multiply; "
-     "t,vec:E -> partial_derivative; "
-     "epsilon_{0},partial_derivative -> multiply; "
-     "mu_{0},multiply -> multiply; multiply,multiply -> add; "
-     "add,multiply -> rel:equals",
-     "E,t -> __deriv_7; B,nabla -> __multiply_2; "
-     "J,mu_{0} -> __multiply_4; "
-     "__deriv_7,epsilon_{0} -> __multiply_6; "
-     "__multiply_6,mu_{0} -> __multiply_5; "
-     "__multiply_4,__multiply_5 -> __add_3; "
-     "__add_3,__multiply_2 -> __equals_1",
+     'mu_0,vec:J -> multiply; nabla,vec:B -> multiply; t,vec:E -> partial_derivative; epsilon_0,partial_derivative -> multiply; mu_0,multiply -> multiply; multiply,multiply -> add; add,multiply -> rel:equals',
+     'E,t -> __deriv_7; B,nabla -> __multiply_2; J,mu_0 -> __multiply_4; __deriv_7,epsilon_0 -> __multiply_6; __multiply_6,mu_0 -> __multiply_5; __multiply_4,__multiply_5 -> __add_3; __add_3,__multiply_2 -> __equals_1',
      None),
 ]
 

@@ -931,6 +931,36 @@ def test_dropped_node_restoration_is_independent_of_phantom_drop() -> None:
     assert not any(e.model_dump(by_alias=True, exclude_none=True) == {"from": "g_phantom", "to": "g"} for e in out.edges)
 
 
+def test_classification_preserved_when_model_omits_it() -> None:
+    # ``classification`` is parser-owned structural metadata computed
+    # deterministically (kind=ODE/statements/algebraic/…); the model has
+    # nothing to add and routinely omits it. The enricher must carry it over
+    # from the input verbatim rather than silently dropping it.
+    enricher = _build_agent_with(
+        test_output={
+            # Model echoes the nodes/edges but returns NO classification.
+            "nodes": [
+                {"id": "P", "type": "scalar", "label": "P", "description": "pressure"},
+                {"id": "V", "type": "scalar", "label": "V", "description": "volume"},
+                {"id": "T", "type": "scalar", "label": "T", "description": "temperature"},
+                {"id": "__multiply_1", "type": "operator", "op": "multiply",
+                 "description": "P times V"},
+                {"id": "__equals_1", "type": "relation", "op": "equals",
+                 "description": "ideal gas law"},
+            ],
+            "edges": _INPUT_GRAPH["edges"],
+        },
+        critic_outputs=[{"ok": True, "mismatched_node_ids": []}],
+    )
+    input_graph = dict(_INPUT_GRAPH)
+    input_graph["classification"] = {"kind": "statements", "count": 2,
+                                     "clauses": [{"kind": "algebraic"}, {"kind": "algebraic"}]}
+    out = enricher.enrich(_g(input_graph), context=_ATMOSPHERIC_CONTEXT)
+
+    assert out.classification is not None
+    assert out.classification.model_dump(exclude_none=True) == input_graph["classification"]
+
+
 def test_no_dropped_nodes_means_no_changes_to_node_set() -> None:
     # Sanity: when the model returns every input id, the restoration
     # pass must not mutate the node list (no duplicates, ordering of the

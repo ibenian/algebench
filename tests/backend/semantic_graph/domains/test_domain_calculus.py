@@ -72,13 +72,7 @@ LIMIT_EXPRESSIONS: list[CatalogEntry] = [
      "fn:g' -> power; fn:f,power -> multiply; fn:f',power -> multiply; "
      "multiply,tends_to -> limit; multiply,tends_to -> limit; "
      "limit,limit -> rel:equals",
-     "x -> __f'_10; x -> __f_4; x -> __g'_12; x -> __g_6; "
-     "a,x -> __tends_to_13; a,x -> __tends_to_7; "
-     "__g'_12 -> __power_11; __g_6 -> __power_5; "
-     "__f_4,__power_5 -> __multiply_3; __f'_10,__power_11 -> __multiply_9; "
-     "__multiply_3,__tends_to_7 -> __limit_2; "
-     "__multiply_9,__tends_to_13 -> __limit_8; "
-     "__limit_2,__limit_8 -> __equals_1",
+     'x -> __f_10; x -> __f_4; x -> __g_12; x -> __g_6; a,x -> __tends_to_13; a,x -> __tends_to_7; __g_12 -> __power_11; __g_6 -> __power_5; __f_4,__power_5 -> __multiply_3; __f_10,__power_11 -> __multiply_9; __multiply_3,__tends_to_7 -> __limit_2; __multiply_9,__tends_to_13 -> __limit_8; __limit_2,__limit_8 -> __equals_1',
      [{"op": "tends_to", "type": "operator"}]),
 
     ("limit_infinity",
@@ -135,11 +129,7 @@ DERIVATIVE_EXPRESSIONS: list[CatalogEntry] = [
      "a -> fn:f; b -> fn:f; c -> fn:f'; a -> negation; b,negation -> add; "
      "fn:f -> negation; fn:f,negation -> add; add -> power; "
      "add,power -> multiply; fn:f',multiply -> rel:equals",
-     "c -> __f'_2; b -> __f_5; a -> __f_7; a -> __negation_10; "
-     "__negation_10,b -> __add_9; __f_7 -> __negation_6; "
-     "__f_5,__negation_6 -> __add_4; __add_9 -> __power_8; "
-     "__add_4,__power_8 -> __multiply_3; "
-     "__f'_2,__multiply_3 -> __equals_1",
+     'c -> __f_2; b -> __f_5; a -> __f_7; a -> __negation_10; __negation_10,b -> __add_9; __f_7 -> __negation_6; __f_5,__negation_6 -> __add_4; __add_9 -> __power_8; __add_4,__power_8 -> __multiply_3; __f_2,__multiply_3 -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 ]
 

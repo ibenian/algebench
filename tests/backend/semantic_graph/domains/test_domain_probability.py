@@ -60,11 +60,8 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     ("prob_expected_sum",
      r"\mu = \sum_{i=1}^{n} x_i p_i",
      PASS,
-         "p_{i},x_{i} -> multiply; i,num -> rel:equals; "
-         "i,multiply,n,rel:equals -> sum; mu,sum -> rel:equals",
-         "__num_3,i -> __equals_4; p_{i},x_{i} -> __multiply_5; "
-         "__equals_4,__multiply_5,i,n -> __sum_2; "
-         "__sum_2,mu -> __equals_1",
+         'p_i,x_i -> multiply; i,num -> rel:equals; i,multiply,n,rel:equals -> sum; mu,sum -> rel:equals',
+         '__num_3,i -> __equals_4; p_i,x_i -> __multiply_5; __equals_4,__multiply_5,i,n -> __sum_2; __sum_2,mu -> __equals_1',
      None),
 
     ("prob_variance",
@@ -174,13 +171,8 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
     ("prob_covariance",
      r"\sigma_{XY} = E(XY) - \mu_X \mu_Y",
      PASS,
-         "X,Y -> multiply; mu_{X},mu_{Y} -> multiply; multiply -> fn:E; "
-         "multiply -> negation; fn:E,negation -> add; "
-         "add,sigma_{XY} -> rel:equals",
-         "X,Y -> __multiply_4; mu_{X},mu_{Y} -> __multiply_6; "
-         "__multiply_4 -> __E_3; __multiply_6 -> __negation_5; "
-         "__E_3,__negation_5 -> __add_2; "
-         "__add_2,sigma_{XY} -> __equals_1",
+         'X,Y -> multiply; mu_X,mu_Y -> multiply; multiply -> fn:E; multiply -> negation; fn:E,negation -> add; add,sigma_XY -> rel:equals',
+         'X,Y -> __multiply_4; mu_X,mu_Y -> __multiply_6; __multiply_4 -> __E_3; __multiply_6 -> __negation_5; __E_3,__negation_5 -> __add_2; __add_2,sigma_XY -> __equals_1',
      None),
 
     ("prob_markov",
@@ -269,9 +261,7 @@ PROBABILITY_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
          "t -> fn:M_{X}; X,t -> multiply; e,multiply -> power; "
          "power -> fn:E; fn:E,fn:M_{X} -> rel:equals",
-         "t -> __M_{X}_2; X,t -> __multiply_5; "
-         "__multiply_5,e -> __power_4; __power_4 -> __E_3; "
-         "__E_3,__M_{X}_2 -> __equals_1",
+         't -> __M_X_2; X,t -> __multiply_5; __multiply_5,e -> __power_4; __power_4 -> __E_3; __E_3,__M_X_2 -> __equals_1',
      None),
 ]
 

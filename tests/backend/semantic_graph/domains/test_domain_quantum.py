@@ -95,17 +95,15 @@ OPERATOR_EXPRESSIONS: list[CatalogEntry] = [
     ("pauli_commutation",
      r"\sigma_x \sigma_y = i \sigma_z",
      PASS,
-     "i,sigma_{z} -> multiply; sigma_{x},sigma_{y} -> multiply; "
-     "multiply,multiply -> rel:equals",
-     "sigma_{x},sigma_{y} -> __multiply_2; i,sigma_{z} -> __multiply_3; "
-     "__multiply_2,__multiply_3 -> __equals_1",
+     'i,sigma_z -> multiply; sigma_x,sigma_y -> multiply; multiply,multiply -> rel:equals',
+     'sigma_x,sigma_y -> __multiply_2; i,sigma_z -> __multiply_3; __multiply_2,__multiply_3 -> __equals_1',
      None),
 
     ("pauli_square",
      r"\sigma_x^2 = I",
      PASS,
-     "sigma_{x} -> power; I,power -> rel:equals",
-     "sigma_{x} -> __power_2; I,__power_2 -> __equals_1",
+     'sigma_x -> power; I,power -> rel:equals',
+     'sigma_x -> __power_2; I,__power_2 -> __equals_1',
      [{"op": "power", "exponent": "2"}]),
 
     ("hamiltonian",
@@ -158,11 +156,8 @@ ENERGY_EXPRESSIONS: list[CatalogEntry] = [
     ("heisenberg_uncertainty",
      r"\Delta x \Delta p \geq \frac{\hbar}{2}",
      PASS,
-     "Delta p,Delta x -> multiply; num -> power; hbar,power -> multiply; "
-     "multiply,multiply -> rel:greater_equal",
-     "Delta p,Delta x -> __multiply_1; __num_4 -> __power_3; "
-     "__power_3,hbar -> __multiply_2; "
-     "__multiply_1,__multiply_2 -> __greater_equal_5",
+     'Delta_p,Delta_x -> multiply; num -> power; hbar,power -> multiply; multiply,multiply -> rel:greater_equal',
+     'Delta_p,Delta_x -> __multiply_1; __num_4 -> __power_3; __power_3,hbar -> __multiply_2; __multiply_1,__multiply_2 -> __greater_equal_5',
      [{"op": "power", "exponent": "-1"}]),
 
     ("photon_energy",
@@ -177,13 +172,8 @@ ENERGY_EXPRESSIONS: list[CatalogEntry] = [
     ("particle_in_box",
      r"E_n = \frac{n^2 h^2}{8 m L^2}",
      PASS,
-     "L -> power; h -> power; n -> power; m,power -> multiply; "
-     "power,power -> multiply; multiply,num -> multiply; multiply -> power; "
-     "multiply,power -> multiply; E_{n},multiply -> rel:equals",
-     "L -> __power_10; n -> __power_4; h -> __power_5; "
-     "__power_4,__power_5 -> __multiply_3; __power_10,m -> __multiply_9; "
-     "__multiply_9,__num_8 -> __multiply_7; __multiply_7 -> __power_6; "
-     "__multiply_3,__power_6 -> __multiply_2; E_{n},__multiply_2 -> __equals_1",
+     'L -> power; h -> power; n -> power; m,power -> multiply; power,power -> multiply; multiply,num -> multiply; multiply -> power; multiply,power -> multiply; E_n,multiply -> rel:equals',
+     'L -> __power_10; n -> __power_4; h -> __power_5; __power_4,__power_5 -> __multiply_3; __power_10,m -> __multiply_9; __multiply_9,__num_8 -> __multiply_7; __multiply_7 -> __power_6; __multiply_3,__power_6 -> __multiply_2; E_n,__multiply_2 -> __equals_1',
      [{"op": "power", "exponent": "2"}]),
 
     ("reduced_planck",

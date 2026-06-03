@@ -129,10 +129,12 @@ class TestIssue185Repro:
 
     def test_q_label_nodes_render_text_command_literally(self):
         g = _derive_semantic_graph(self.LATEX)
-        # Both label nodes must keep ``\text{...}`` intact.
-        ids = {node.id for node in g.nodes}
-        assert r"q_{\text{lunar}}" in ids
-        assert r"q_{\text{LEO}}" in ids
+        # The id is an internal wiring key now (e.g. ``q_lunar``); the
+        # ``\text{...}`` must survive in the DISPLAY latex so it renders
+        # literally rather than getting corrupted (issue 185).
+        latexes = [node.latex or "" for node in g.nodes]
+        assert any(r"\text{lunar}" in lx for lx in latexes)
+        assert any(r"\text{LEO}" in lx for lx in latexes)
 
     def test_accent_strip_prevents_token_concatenation(self):
         """``\\times\\vec{E}`` must strip to ``\\times E``, not ``\\timesE``."""

@@ -123,14 +123,16 @@ class TestNodeLabels:
     def test_short_label_data_node(self):
         assert node_short_label({"type": "scalar", "latex": "F"}) == "F"
 
-    def test_short_label_fallback_id(self):
-        assert node_short_label({"type": "scalar", "id": "x"}) == "x"
+    def test_short_label_never_uses_id(self):
+        # A node id is an internal wiring key, never a display string. A node
+        # with nothing displayable falls back to "?", not its id.
+        assert node_short_label({"type": "scalar", "id": "x"}) == "?"
 
     def test_long_label_subexpr(self):
         assert node_long_label({"subexpr": "a + b", "latex": "a"}) == "a + b"
 
-    def test_long_label_fallback(self):
-        assert node_long_label({"type": "scalar", "id": "x"}) == "x"
+    def test_long_label_never_uses_id(self):
+        assert node_long_label({"type": "scalar", "id": "x"}) == "?"
 
 
 # ------------------------------------------------------------------

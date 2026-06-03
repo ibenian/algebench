@@ -67,10 +67,8 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
     ("kinetic_energy",
      r"E_k = \frac{1}{2} m v^2",
      PASS,
-     "num -> power; v -> power; m,power -> multiply; "
-     "multiply,power -> multiply; E_{k},multiply -> rel:equals",
-     "__num_4 -> __power_3; v -> __power_6; __power_6,m -> __multiply_5; "
-     "__multiply_5,__power_3 -> __multiply_2; E_{k},__multiply_2 -> __equals_1",
+     'num -> power; v -> power; m,power -> multiply; multiply,power -> multiply; E_k,multiply -> rel:equals',
+     '__num_4 -> __power_3; v -> __power_6; __power_6,m -> __multiply_5; __multiply_5,__power_3 -> __multiply_2; E_k,__multiply_2 -> __equals_1',
      [{"op": "power", "exponent": "2"}]),
 
     ("potential_energy",
@@ -100,11 +98,8 @@ CORE_EXPRESSIONS: list[CatalogEntry] = [
     ("gravitational",
      r"F = G \frac{m_1 m_2}{r^2}",
      PASS,
-     "m_{1},m_{2} -> multiply; r -> power; power -> power; "
-     "multiply,power -> multiply; G,multiply -> multiply; F,multiply -> rel:equals",
-     "m_{1},m_{2} -> __multiply_4; r -> __power_6; __power_6 -> __power_5; "
-     "__multiply_4,__power_5 -> __multiply_3; G,__multiply_3 -> __multiply_2; "
-     "F,__multiply_2 -> __equals_1",
+     'm_1,m_2 -> multiply; r -> power; power -> power; multiply,power -> multiply; G,multiply -> multiply; F,multiply -> rel:equals',
+     'm_1,m_2 -> __multiply_4; r -> __power_6; __power_6 -> __power_5; __multiply_4,__power_5 -> __multiply_3; G,__multiply_3 -> __multiply_2; F,__multiply_2 -> __equals_1',
      [{"op": "power", "exponent": "2"}, {"op": "power", "exponent": "-1"}]),
 
     ("centripetal",

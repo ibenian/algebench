@@ -68,23 +68,15 @@ CORE_EQUATIONS: list[CatalogEntry] = [
     ("pressure_depth",
      r"P = P_0 + \rho g h",
      PASS,
-     "g,h -> multiply; multiply,rho -> multiply; "
-     "P_{0},multiply -> add; P,add -> rel:equals",
-     "g,h -> __multiply_4; __multiply_4,rho -> __multiply_3; "
-     "P_{0},__multiply_3 -> __add_2; P,__add_2 -> __equals_1",
+     'g,h -> multiply; multiply,rho -> multiply; P_0,multiply -> add; P,add -> rel:equals',
+     'g,h -> __multiply_4; __multiply_4,rho -> __multiply_3; P_0,__multiply_3 -> __add_2; P,__add_2 -> __equals_1',
      None),
 
     ("drag_force",
      r"F_D = \frac{1}{2} \rho v^2 C_D A",
      PASS,
-     "A,C_{D} -> multiply; num -> power; v -> power; "
-     "multiply,power -> multiply; multiply,rho -> multiply; "
-     "multiply,power -> multiply; F_{D},multiply -> rel:equals",
-     "A,C_{D} -> __multiply_8; __num_4 -> __power_3; v -> __power_7; "
-     "__multiply_8,__power_7 -> __multiply_6; "
-     "__multiply_6,rho -> __multiply_5; "
-     "__multiply_5,__power_3 -> __multiply_2; "
-     "F_{D},__multiply_2 -> __equals_1",
+     'A,C_D -> multiply; num -> power; v -> power; multiply,power -> multiply; multiply,rho -> multiply; multiply,power -> multiply; F_D,multiply -> rel:equals',
+     'A,C_D -> __multiply_8; __num_4 -> __power_3; v -> __power_7; __multiply_8,__power_7 -> __multiply_6; __multiply_6,rho -> __multiply_5; __multiply_5,__power_3 -> __multiply_2; F_D,__multiply_2 -> __equals_1',
      [{"op": "power", "exponent": "2"}]),
 
     ("stokes_drag",
@@ -126,10 +118,8 @@ CORE_EQUATIONS: list[CatalogEntry] = [
     ("continuity_area_velocity",
      r"A_1 v_1 = A_2 v_2",
      PASS,
-     "A_{1},v_{1} -> multiply; A_{2},v_{2} -> multiply; "
-     "multiply,multiply -> rel:equals",
-     "A_{1},v_{1} -> __multiply_2; A_{2},v_{2} -> __multiply_3; "
-     "__multiply_2,__multiply_3 -> __equals_1",
+     'A_1,v_1 -> multiply; A_2,v_2 -> multiply; multiply,multiply -> rel:equals',
+     'A_1,v_1 -> __multiply_2; A_2,v_2 -> __multiply_3; __multiply_2,__multiply_3 -> __equals_1',
      None),
 
     ("volumetric_flow",
