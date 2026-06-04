@@ -92,10 +92,8 @@ COMPLEX_EXPRESSIONS: list[CatalogEntry] = [
     ("complex_conjugate",
      r"z \overline{z} = |z|^2",
      PASS,
-         r"z -> fn:abs; \overline{z},z -> multiply; "
-         "fn:abs -> power; multiply,power -> rel:equals",
-         r"z -> __abs_4; \overline{z},z -> __multiply_2; "
-         "__abs_4 -> __power_3; __multiply_2,__power_3 -> __equals_1",
+         'z -> fn:abs; overlinez,z -> multiply; fn:abs -> power; multiply,power -> rel:equals',
+         'z -> __abs_4; overlinez,z -> __multiply_2; __abs_4 -> __power_3; __multiply_2,__power_3 -> __equals_1',
      [{"op": "power", "exponent": "2"}]),
 
     ("complex_cauchy_integral",
@@ -119,16 +117,8 @@ COMPLEX_EXPRESSIONS: list[CatalogEntry] = [
     ("complex_residue",
      r"\oint f(z) dz = 2\pi i \sum \text{Res}(f, z_k)",
      PASS,
-         "f,z_{k} -> fn:Res; z -> fn:f; fn:f,z -> closed_integral; "
-         "fn:Res -> sum; i,sum -> multiply; "
-         "const:pi,multiply -> multiply; multiply,num -> multiply; "
-         "closed_integral,multiply -> rel:equals",
-         "f,z_{k} -> __Res_9; z -> __f_3; "
-         "__f_3,z -> __closed_integral_2; "
-         "__Res_9 -> __sum_8; __sum_8,i -> __multiply_7; "
-         "__multiply_7,pi -> __multiply_6; "
-         "__multiply_6,__num_5 -> __multiply_4; "
-         "__closed_integral_2,__multiply_4 -> __equals_1",
+         'f,z_k -> fn:Res; z -> fn:f; fn:f,z -> closed_integral; fn:Res -> sum; i,sum -> multiply; const:pi,multiply -> multiply; multiply,num -> multiply; closed_integral,multiply -> rel:equals',
+         'f,z_k -> __Res_9; z -> __f_3; __f_3,z -> __closed_integral_2; __Res_9 -> __sum_8; __sum_8,i -> __multiply_7; __multiply_7,pi -> __multiply_6; __multiply_6,__num_5 -> __multiply_4; __closed_integral_2,__multiply_4 -> __equals_1',
      None),
 
     ("complex_demoivre",
@@ -160,15 +150,8 @@ COMPLEX_EXPRESSIONS: list[CatalogEntry] = [
     ("complex_laurent",
      r"f(z) = \sum_{n=-\infty}^{\infty} a_n (z - z_0)^n",
      PASS,
-         "z -> fn:f; z_{0} -> negation; n,num -> rel:equals; "
-         "negation,z -> add; add -> fn:a_{n}; fn:a_{n},n -> power; "
-         "const:__const_5,n,power,rel:equals -> sum; "
-         "fn:f,sum -> rel:equals",
-         "__num_4,n -> __equals_6; z -> __f_2; z_{0} -> __negation_10; "
-         "__negation_10,z -> __add_9; __add_9 -> __a_{n}_8; "
-         "__a_{n}_8,n -> __power_7; "
-         "__const_5,__equals_6,__power_7,n -> __sum_3; "
-         "__f_2,__sum_3 -> __equals_1",
+         'z -> fn:f; z_0 -> negation; n,num -> rel:equals; negation,z -> add; add -> fn:a_{n}; fn:a_{n},n -> power; const:__const_5,n,power,rel:equals -> sum; fn:f,sum -> rel:equals',
+         '__num_4,n -> __equals_6; z -> __f_2; z_0 -> __negation_10; __negation_10,z -> __add_9; __add_9 -> __a_n_8; __a_n_8,n -> __power_7; __const_5,__equals_6,__power_7,n -> __sum_3; __f_2,__sum_3 -> __equals_1',
      None),
 ]
 

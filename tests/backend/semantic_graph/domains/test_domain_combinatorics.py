@@ -71,8 +71,8 @@ COMBINATORICS_EXPRESSIONS: list[CatalogEntry] = [
     ("comb_recurrence",
      r"a_n = a_{n-1} + a_{n-2}",
      PASS,
-         "a_{n - 1},a_{n - 2} -> add; a_{n},add -> rel:equals",
-         "a_{n - 1},a_{n - 2} -> __add_2; __add_2,a_{n} -> __equals_1",
+         'a_n_1,a_n_2 -> add; a_n,add -> rel:equals',
+         'a_n_1,a_n_2 -> __add_2; __add_2,a_n -> __equals_1',
      None),
 
     ("comb_sum_binomial",
@@ -112,26 +112,15 @@ COMBINATORICS_EXPRESSIONS: list[CatalogEntry] = [
     ("comb_generating_fn",
      r"G(x) = \sum_{n=0}^{\infty} a_n x^n",
      PASS,
-         "x -> fn:G; n,x -> power; n,num -> rel:equals; "
-         "a_{n},power -> multiply; "
-         "const:__const_5,multiply,n,rel:equals -> sum; "
-         "fn:G,sum -> rel:equals",
-         "x -> __G_2; __num_4,n -> __equals_6; n,x -> __power_8; "
-         "__power_8,a_{n} -> __multiply_7; "
-         "__const_5,__equals_6,__multiply_7,n -> __sum_3; "
-         "__G_2,__sum_3 -> __equals_1",
+         'x -> fn:G; n,x -> power; n,num -> rel:equals; a_n,power -> multiply; const:__const_5,multiply,n,rel:equals -> sum; fn:G,sum -> rel:equals',
+         'x -> __G_2; __num_4,n -> __equals_6; n,x -> __power_8; __power_8,a_n -> __multiply_7; __const_5,__equals_6,__multiply_7,n -> __sum_3; __G_2,__sum_3 -> __equals_1',
      None),
 
     ("comb_catalan",
      r"C_n = \frac{1}{n+1} \binom{2n}{n}",
      PASS,
-         "n,num -> add; n,num -> multiply; multiply,n -> fn:choose; "
-         "add -> power; fn:choose,power -> multiply; "
-         "C_{n},multiply -> rel:equals",
-         "__num_5,n -> __add_4; __num_8,n -> __multiply_7; "
-         "__multiply_7,n -> __choose_6; __add_4 -> __power_3; "
-         "__choose_6,__power_3 -> __multiply_2; "
-         "C_{n},__multiply_2 -> __equals_1",
+         'n,num -> add; n,num -> multiply; multiply,n -> fn:choose; add -> power; fn:choose,power -> multiply; C_n,multiply -> rel:equals',
+         '__num_5,n -> __add_4; __num_8,n -> __multiply_7; __multiply_7,n -> __choose_6; __add_4 -> __power_3; __choose_6,__power_3 -> __multiply_2; C_n,__multiply_2 -> __equals_1',
      [{"op": "choose", "type": "function"}]),
 
     ("comb_inclusion_exclusion",
@@ -165,17 +154,8 @@ COMBINATORICS_EXPRESSIONS: list[CatalogEntry] = [
     ("comb_derangement",
      r"D_n = n! \sum_{k=0}^{n} \frac{(-1)^k}{k!}",
      PASS,
-         "k -> factorial; n -> factorial; k,num -> power; "
-         "k,num -> rel:equals; factorial -> power; "
-         "power,power -> multiply; k,multiply,n,rel:equals -> sum; "
-         "factorial,sum -> multiply; D_{n},multiply -> rel:equals",
-         "__num_5,k -> __equals_6; k -> __factorial_11; "
-         "n -> __factorial_3; __num_9,k -> __power_8; "
-         "__factorial_11 -> __power_10; "
-         "__power_10,__power_8 -> __multiply_7; "
-         "__equals_6,__multiply_7,k,n -> __sum_4; "
-         "__factorial_3,__sum_4 -> __multiply_2; "
-         "D_{n},__multiply_2 -> __equals_1",
+         'k -> factorial; n -> factorial; k,num -> power; k,num -> rel:equals; factorial -> power; power,power -> multiply; k,multiply,n,rel:equals -> sum; factorial,sum -> multiply; D_n,multiply -> rel:equals',
+         '__num_5,k -> __equals_6; k -> __factorial_11; n -> __factorial_3; __num_9,k -> __power_8; __factorial_11 -> __power_10; __power_10,__power_8 -> __multiply_7; __equals_6,__multiply_7,k,n -> __sum_4; __factorial_3,__sum_4 -> __multiply_2; D_n,__multiply_2 -> __equals_1',
      [{"op": "factorial", "type": "operator"}]),
 ]
 

@@ -548,17 +548,22 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\vec{F}_{\\text{action}} = -\\vec{F}_{\\text{reaction}}"},
-                  {"id": "F_{\\text{action}}", "type": "vector", "latex": "\\vec{F}_{\\text{action}}", "subexpr": "\\vec{F}_{\\text{action}}", "description": "Force on exhaust (backward)", "color": "cyan", "highlight": "action"},
-                  {"id": "__negation_2", "type": "operator", "op": "negation", "subexpr": "-\\vec{F}_{\\text{reaction}}"},
-                  {"id": "F_{\\text{reaction}}", "type": "vector", "latex": "\\vec{F}_{\\text{reaction}}", "subexpr": "\\vec{F}_{\\text{reaction}}", "description": "Force on rocket (forward)", "color": "orange", "highlight": "reaction"}
+                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\vec{F}_{\\text{action}} = -\\vec{F}_{\\text{reaction}}", "description": "Newton's third law: The action force is equal in magnitude and opposite in direction to the reaction force."},
+                  {"id": "F_action", "type": "vector", "emoji": "💨", "latex": "\\vec{F}_{\\text{action}}", "subexpr": "\\vec{F}_{\\text{action}}", "description": "The action force exerted by the rocket on the exhaust gas, pushing it backward.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N", "color": "cyan", "highlight": "action"},
+                  {"id": "__negation_2", "type": "operator", "op": "negation", "subexpr": "-\\vec{F}_{\\text{reaction}}", "description": "The negation of the reaction force, indicating it is in the opposite direction to the action force.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N"},
+                  {"id": "F_reaction", "type": "vector", "emoji": "🚀", "latex": "\\vec{F}_{\\text{reaction}}", "subexpr": "\\vec{F}_{\\text{reaction}}", "description": "The reaction force (thrust) exerted by the exhaust gas on the rocket, pushing it forward.", "quantity": "thrust", "dimension": "M·L·T⁻²", "unit": "N", "color": "orange", "highlight": "reaction"}
                 ],
                 "edges": [
-                  {"from": "F_{\\text{action}}", "to": "__equals_1"},
-                  {"from": "F_{\\text{reaction}}", "to": "__negation_2"},
+                  {"from": "F_action", "to": "__equals_1"},
+                  {"from": "F_reaction", "to": "__negation_2"},
                   {"from": "__negation_2", "to": "__equals_1"}
                 ],
-                "classification": {"kind": "algebraic"}
+                "classification": {"kind": "algebraic"},
+                "domain": "classical_mechanics",
+                "enrichment": {
+                  "reasoning": "The context is a rocket launch, governed by Newton's laws. The domain is classical_mechanics. $F_{action}$ is the force on the exhaust; $F_{reaction}$ is the thrust on the rocket.",
+                  "fields": ["domain", "nodes.__equals_1.description", "nodes.F_action.description", "nodes.F_action.dimension", "nodes.F_action.emoji", "nodes.F_action.quantity", "nodes.F_action.unit", "nodes.__negation_2.description", "nodes.__negation_2.dimension", "nodes.__negation_2.quantity", "nodes.__negation_2.unit", "nodes.F_reaction.description", "nodes.F_reaction.dimension", "nodes.F_reaction.emoji", "nodes.F_reaction.quantity", "nodes.F_reaction.unit"]
+                }
               }
             }
           },
@@ -576,15 +581,15 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "F", "type": "vector", "latex": "\\vec{F}", "subexpr": "\\vec{F}", "description": "Net force", "color": "cyan", "highlight": "force"},
-                  {"id": "p", "type": "vector", "latex": "\\vec{p}", "subexpr": "\\vec{p}", "description": "Momentum", "color": "yellow", "highlight": "momentum"},
-                  {"id": "t", "type": "scalar", "latex": "t", "subexpr": "t"},
-                  {"id": "s1___deriv_1", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\frac{d}{d t} \\vec{p}"},
-                  {"id": "s2___multiply_2", "type": "operator", "op": "multiply", "subexpr": "m \\vec{v}"},
-                  {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"},
-                  {"id": "v", "type": "vector", "latex": "\\vec{v}", "subexpr": "\\vec{v}"},
-                  {"id": "s2___deriv_1", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\frac{d}{d t} (m \\vec{v})"},
-                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "\\vec{F} = \\frac{d\\vec{p}}{dt} = \\frac{d(m\\vec{v})}{dt}"}
+                  {"id": "F", "type": "vector", "emoji": "∑", "latex": "\\vec{F}", "subexpr": "\\vec{F}", "description": "Net force, $\\\\vec{F}$, acting on the rocket.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N", "color": "cyan", "highlight": "force"},
+                  {"id": "p", "type": "vector", "emoji": "💨", "latex": "\\vec{p}", "subexpr": "\\vec{p}", "description": "Momentum, $\\\\vec{p}$, the product of mass and velocity.", "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s", "color": "yellow", "highlight": "momentum"},
+                  {"id": "t", "type": "scalar", "emoji": "⏱️", "latex": "t", "subexpr": "t", "description": "Time, the independent variable for the derivatives.", "quantity": "time", "dimension": "T", "unit": "s"},
+                  {"id": "s1___deriv_1", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\frac{d}{d t} \\vec{p}", "description": "The rate of change of momentum with respect to time, which defines the net force.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N"},
+                  {"id": "s2___multiply_2", "type": "operator", "op": "multiply", "subexpr": "m \\vec{v}", "description": "The product of the rocket's mass and velocity, which defines its momentum.", "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s"},
+                  {"id": "m", "type": "scalar", "emoji": "⚖️", "latex": "m", "subexpr": "m", "description": "The mass of the rocket, which changes as it burns fuel.", "quantity": "mass", "dimension": "M", "unit": "kg"},
+                  {"id": "v", "type": "vector", "emoji": "🚀", "latex": "\\vec{v}", "subexpr": "\\vec{v}", "description": "The velocity of the rocket.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                  {"id": "s2___deriv_1", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\frac{d}{d t} (m \\vec{v})", "description": "The rate of change of the rocket's momentum, equal to the net force acting on it.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N"},
+                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "\\vec{F} = \\frac{d\\vec{p}}{dt} = \\frac{d(m\\vec{v})}{dt}", "description": "An equation stating Newton's Second Law: force is the time derivative of momentum."}
                 ],
                 "edges": [
                   {"from": "p", "to": "s1___deriv_1"},
@@ -597,7 +602,12 @@
                   {"from": "s1___deriv_1", "to": "__equals_1"},
                   {"from": "s2___deriv_1", "to": "__equals_1"}
                 ],
-                "classification": {"kind": "algebraic"}
+                "classification": {"kind": "algebraic"},
+                "domain": "classical_mechanics",
+                "enrichment": {
+                  "reasoning": "The lesson context is a derivation of rocket thrust from Newton's laws, so the domain is `classical_mechanics`. Symbols F, p, m, and v are identified as force, momentum, mass, and velocity.",
+                  "fields": ["domain", "nodes.F.description", "nodes.F.dimension", "nodes.F.emoji", "nodes.F.quantity", "nodes.F.unit", "nodes.p.description", "nodes.p.dimension", "nodes.p.emoji", "nodes.p.quantity", "nodes.p.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.s1___deriv_1.description", "nodes.s1___deriv_1.dimension", "nodes.s1___deriv_1.quantity", "nodes.s1___deriv_1.unit", "nodes.s2___multiply_2.description", "nodes.s2___multiply_2.dimension", "nodes.s2___multiply_2.quantity", "nodes.s2___multiply_2.unit", "nodes.m.description", "nodes.m.dimension", "nodes.m.emoji", "nodes.m.quantity", "nodes.m.unit", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit", "nodes.s2___deriv_1.description", "nodes.s2___deriv_1.dimension", "nodes.s2___deriv_1.quantity", "nodes.s2___deriv_1.unit", "nodes.__equals_1.description"]
+                }
               }
             }
           },
@@ -615,37 +625,42 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "F_{\\text{exhaust}}", "type": "scalar", "latex": "F_{\\text{exhaust}}", "subexpr": "F_{\\text{exhaust}}"},
-                  {"id": "p", "type": "scalar", "latex": "p", "subexpr": "p"},
-                  {"id": "t", "type": "scalar", "latex": "t", "subexpr": "t"},
-                  {"id": "s1___deriv_1", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\frac{d}{d t} p"},
-                  {"id": "s2___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{d}{d t} m_{\\text{exhaust}} \\cdot v_e"},
-                  {"id": "m_{\\text{exhaust}}", "type": "scalar", "latex": "m_{\\text{exhaust}}", "subexpr": "m_{\\text{exhaust}}"},
-                  {"id": "s2___deriv_2", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\frac{d}{d t} m_{\\text{exhaust}}"},
-                  {"id": "v_{e}", "type": "scalar", "latex": "v_{e}", "subexpr": "v_{e}", "description": "Exhaust velocity (constant)", "color": "green", "highlight": "ve"},
-                  {"id": "s3___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\dot{m} \\cdot v_e"},
-                  {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m", "description": "Mass flow rate (kg/s)", "color": "yellow", "highlight": "mdot"},
-                  {"id": "s3___deriv_2", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{m}"},
-                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "F_{\\text{exhaust}} = \\frac{dp}{dt} = \\frac{dm_{\\text{exhaust}}}{dt} \\cdot v_e = \\dot{m} \\cdot v_e"},
+                  {"id": "F_exhaust", "type": "scalar", "label": "F_exhaust", "emoji": "💨", "latex": "F_{\\text{exhaust}}", "subexpr": "F_{\\text{exhaust}}", "description": "Thrust, the force exerted by the rocket's exhaust gases.", "quantity": "thrust", "dimension": "M·L·T⁻²", "unit": "N", "role": "dependent"},
+                  {"id": "p", "type": "scalar", "label": "p", "emoji": "⏩", "latex": "p", "subexpr": "p", "description": "Momentum of the expelled exhaust gas.", "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s", "role": "state_variable"},
+                  {"id": "t", "type": "scalar", "label": "t", "emoji": "⏱️", "latex": "t", "subexpr": "t", "description": "Time.", "quantity": "time", "dimension": "T", "unit": "s", "role": "independent"},
+                  {"id": "s1___deriv_1", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\frac{d}{d t} p", "description": "The time rate of change of momentum, which equals force.", "quantity": "force", "dimension": "M·L·T⁻²", "unit": "N"},
+                  {"id": "s2___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{d}{d t} m_{\\text{exhaust}} \\cdot v_e", "description": "Mass flow rate multiplied by exhaust velocity, which equals the rocket's thrust.", "quantity": "thrust", "dimension": "M·L·T⁻²", "unit": "N"},
+                  {"id": "m_exhaust", "type": "scalar", "label": "m_exhaust", "emoji": "🔥", "latex": "m_{\\text{exhaust}}", "subexpr": "m_{\\text{exhaust}}", "description": "Mass of the propellant expelled as exhaust.", "quantity": "mass", "dimension": "M", "unit": "kg", "role": "state_variable"},
+                  {"id": "s2___deriv_2", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\frac{d}{d t} m_{\\text{exhaust}}", "description": "The time rate of change of expelled mass, called the mass flow rate.", "quantity": "mass_flow_rate", "dimension": "M·T⁻¹", "unit": "kg/s"},
+                  {"id": "v_e", "type": "scalar", "label": "v_e", "emoji": "💨", "latex": "v_{e}", "subexpr": "v_{e}", "description": "Constant velocity of the exhaust gas relative to the rocket.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "role": "parameter", "color": "green", "highlight": "ve"},
+                  {"id": "s3___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\dot{m} \\cdot v_e", "description": "Mass flow rate multiplied by exhaust velocity, an expression for thrust.", "quantity": "thrust", "dimension": "M·L·T⁻²", "unit": "N"},
+                  {"id": "m", "type": "scalar", "label": "\\dot{m}", "latex": "m", "subexpr": "m", "description": "Mass of the rocket's propellant.", "quantity": "mass", "dimension": "M", "unit": "kg", "role": "state_variable", "color": "yellow", "highlight": "mdot"},
+                  {"id": "s3___deriv_2", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{m}", "description": "Mass flow rate, $\\dot{m}$, the rate at which propellant is consumed.", "quantity": "mass_flow_rate", "dimension": "M·T⁻¹", "unit": "kg/s"},
+                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "F_{\\text{exhaust}} = \\frac{dp}{dt} = \\frac{dm_{\\text{exhaust}}}{dt} \\cdot v_e = \\dot{m} \\cdot v_e", "description": "An equation stating that exhaust force (thrust) equals the rate of change of the exhaust's momentum."},
                   {"id": "__annotation_0", "type": "annotation", "label": "v_e constant", "latex": "v_e \\text{ constant}"}
                 ],
                 "edges": [
                   {"from": "p", "to": "s1___deriv_1"},
                   {"from": "t", "to": "s1___deriv_1"},
-                  {"from": "m_{\\text{exhaust}}", "to": "s2___deriv_2"},
+                  {"from": "m_exhaust", "to": "s2___deriv_2"},
                   {"from": "t", "to": "s2___deriv_2"},
                   {"from": "s2___deriv_2", "to": "s2___multiply_1"},
-                  {"from": "v_{e}", "to": "s2___multiply_1"},
+                  {"from": "v_e", "to": "s2___multiply_1"},
                   {"from": "m", "to": "s3___deriv_2"},
                   {"from": "t", "to": "s3___deriv_2"},
                   {"from": "s3___deriv_2", "to": "s3___multiply_1"},
-                  {"from": "v_{e}", "to": "s3___multiply_1"},
-                  {"from": "F_{\\text{exhaust}}", "to": "__equals_1"},
+                  {"from": "v_e", "to": "s3___multiply_1"},
+                  {"from": "F_exhaust", "to": "__equals_1"},
                   {"from": "s1___deriv_1", "to": "__equals_1"},
                   {"from": "s2___multiply_1", "to": "__equals_1"},
                   {"from": "s3___multiply_1", "to": "__equals_1"}
                 ],
-                "classification": {"kind": "algebraic"}
+                "classification": {"kind": "algebraic"},
+                "domain": "classical_mechanics",
+                "enrichment": {
+                  "reasoning": "The context is a lesson on rocket thrust and specific impulse for the SLS rocket, so the domain is classical mechanics. The symbols are unambiguous in this context.",
+                  "fields": ["domain", "nodes.F_exhaust.description", "nodes.F_exhaust.dimension", "nodes.F_exhaust.emoji", "nodes.F_exhaust.label", "nodes.F_exhaust.quantity", "nodes.F_exhaust.role", "nodes.F_exhaust.unit", "nodes.p.description", "nodes.p.dimension", "nodes.p.emoji", "nodes.p.label", "nodes.p.quantity", "nodes.p.role", "nodes.p.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.label", "nodes.t.quantity", "nodes.t.role", "nodes.t.unit", "nodes.s1___deriv_1.description", "nodes.s1___deriv_1.dimension", "nodes.s1___deriv_1.quantity", "nodes.s1___deriv_1.unit", "nodes.s2___multiply_1.description", "nodes.s2___multiply_1.dimension", "nodes.s2___multiply_1.quantity", "nodes.s2___multiply_1.unit", "nodes.m_exhaust.description", "nodes.m_exhaust.dimension", "nodes.m_exhaust.emoji", "nodes.m_exhaust.label", "nodes.m_exhaust.quantity", "nodes.m_exhaust.role", "nodes.m_exhaust.unit", "nodes.s2___deriv_2.description", "nodes.s2___deriv_2.dimension", "nodes.s2___deriv_2.quantity", "nodes.s2___deriv_2.unit", "nodes.v_e.description", "nodes.v_e.dimension", "nodes.v_e.emoji", "nodes.v_e.label", "nodes.v_e.quantity", "nodes.v_e.role", "nodes.v_e.unit", "nodes.s3___multiply_1.description", "nodes.s3___multiply_1.dimension", "nodes.s3___multiply_1.quantity", "nodes.s3___multiply_1.unit", "nodes.m.description", "nodes.m.dimension", "nodes.m.label", "nodes.m.quantity", "nodes.m.role", "nodes.m.unit", "nodes.s3___deriv_2.description", "nodes.s3___deriv_2.dimension", "nodes.s3___deriv_2.quantity", "nodes.s3___deriv_2.unit", "nodes.__equals_1.description"]
+                }
               }
             }
           },
@@ -664,20 +679,20 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "T = \\dot{m} \\cdot v_e"},
-                  {"id": "T", "type": "scalar", "latex": "T", "subexpr": "T", "description": "Thrust force (N)", "color": "cyan", "highlight": "thrust"},
-                  {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\dot{m} v_{e}"},
-                  {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m", "description": "Mass flow rate (kg/s)", "color": "yellow", "highlight": "mdot"},
-                  {"id": "t", "type": "scalar", "latex": "t", "subexpr": "t"},
-                  {"id": "__deriv_3", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{m}"},
-                  {"id": "v_{e}", "type": "scalar", "latex": "v_{e}", "subexpr": "v_{e}", "description": "Exhaust velocity (m/s)", "color": "green", "highlight": "ve"}
+                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "T = \\dot{m} \\cdot v_e", "description": "Relates the rocket's thrust to the product of its propellant mass flow rate and exhaust velocity."},
+                  {"id": "T", "type": "scalar", "emoji": "🚀", "latex": "T", "subexpr": "T", "description": "Thrust, the propulsive force generated by the rocket engine by expelling exhaust gas.", "quantity": "thrust", "dimension": "M·L·T⁻²", "unit": "N", "color": "cyan", "highlight": "thrust"},
+                  {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\dot{m} v_{e}", "description": "The product of mass flow rate and exhaust velocity, which equals the rocket's thrust.", "quantity": "thrust", "dimension": "M·L·T⁻²", "unit": "N"},
+                  {"id": "m", "type": "scalar", "emoji": "⚖️", "latex": "m", "subexpr": "m", "description": "The mass of the rocket's propellant.", "quantity": "mass", "dimension": "M", "unit": "kg", "color": "yellow", "highlight": "mdot"},
+                  {"id": "t", "type": "scalar", "emoji": "⏱️", "latex": "t", "subexpr": "t", "description": "Time, the independent variable for the mass flow rate.", "quantity": "time", "dimension": "T", "unit": "s"},
+                  {"id": "__deriv_3", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{m}", "description": "The time derivative of propellant mass, representing the mass flow rate $\\\\dot{m}$.", "quantity": "mass_flow_rate", "dimension": "M·T⁻¹", "unit": "kg/s"},
+                  {"id": "v_e", "type": "scalar", "emoji": "💨", "latex": "v_{e}", "subexpr": "v_{e}", "description": "Exhaust velocity, the speed at which the propellant gas exits the engine nozzle relative to the rocket.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "color": "green", "highlight": "ve"}
                 ],
                 "edges": [
                   {"from": "T", "to": "__equals_1"},
                   {"from": "m", "to": "__deriv_3"},
                   {"from": "t", "to": "__deriv_3", "role": "wrt"},
                   {"from": "__deriv_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
-                  {"from": "v_{e}", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                  {"from": "v_e", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
                   {"from": "__multiply_2", "to": "__equals_1"}
                 ],
                 "classification": {
@@ -689,6 +704,11 @@
                   "linear": true,
                   "homogeneous": true,
                   "constant_coefficients": true
+                },
+                "domain": "classical_mechanics",
+                "enrichment": {
+                  "reasoning": "The context describes rocket propulsion, a topic in classical mechanics. T is thrust, m is propellant mass, and v_e is exhaust velocity.",
+                  "fields": ["domain", "nodes.__equals_1.description", "nodes.T.description", "nodes.T.dimension", "nodes.T.emoji", "nodes.T.quantity", "nodes.T.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.m.description", "nodes.m.dimension", "nodes.m.emoji", "nodes.m.quantity", "nodes.m.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__deriv_3.description", "nodes.__deriv_3.dimension", "nodes.__deriv_3.quantity", "nodes.__deriv_3.unit", "nodes.v_e.description", "nodes.v_e.dimension", "nodes.v_e.emoji", "nodes.v_e.quantity", "nodes.v_e.unit"]
                 }
               }
             }
@@ -708,18 +728,18 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "J", "type": "scalar", "latex": "J", "subexpr": "J", "description": "Total impulse (N·s)", "color": "cyan", "highlight": "impulse"},
-                  {"id": "s1___multiply_1", "type": "operator", "op": "multiply", "subexpr": "T \\cdot t"},
-                  {"id": "T", "type": "scalar", "latex": "T", "subexpr": "T"},
-                  {"id": "t", "type": "scalar", "latex": "t", "subexpr": "t"},
-                  {"id": "s2___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\dot{m} \\cdot v_e \\cdot t"},
-                  {"id": "s2___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\dot{m} v_{e}"},
-                  {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"},
-                  {"id": "s2___deriv_3", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{m}"},
-                  {"id": "v_{e}", "type": "scalar", "latex": "v_{e}", "subexpr": "v_{e}", "description": "Exhaust velocity (m/s)", "color": "green", "highlight": "ve"},
-                  {"id": "s3___multiply_1", "type": "operator", "op": "multiply", "subexpr": "m_{\\text{prop}} \\cdot v_e"},
-                  {"id": "m_{\\text{prop}}", "type": "scalar", "latex": "m_{\\text{prop}}", "subexpr": "m_{\\text{prop}}", "description": "Total propellant mass (kg)", "color": "yellow", "highlight": "mprop"},
-                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "J = T \\cdot t = \\dot{m} \\cdot v_e \\cdot t = m_{\\text{prop}} \\cdot v_e"}
+                  {"id": "J", "type": "scalar", "emoji": "💥", "latex": "J", "subexpr": "J", "description": "Total impulse, the change in momentum produced by the rocket engine over time.", "quantity": "impulse", "dimension": "M·L·T⁻¹", "unit": "kg·m/s", "color": "cyan", "highlight": "impulse"},
+                  {"id": "s1___multiply_1", "type": "operator", "op": "multiply", "subexpr": "T \\cdot t", "description": "Thrust multiplied by the burn time gives the total impulse.", "quantity": "impulse", "dimension": "M·L·T⁻¹", "unit": "kg·m/s"},
+                  {"id": "T", "type": "scalar", "emoji": "🔥", "latex": "T", "subexpr": "T", "description": "Thrust, the force produced by the rocket engine.", "quantity": "thrust", "dimension": "M·L·T⁻²", "unit": "N"},
+                  {"id": "t", "type": "scalar", "emoji": "⏱️", "latex": "t", "subexpr": "t", "description": "Time, specifically the duration of the engine burn.", "quantity": "time", "dimension": "T", "unit": "s"},
+                  {"id": "s2___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\dot{m} \\cdot v_e \\cdot t", "description": "Mass flow rate times exhaust velocity times burn time, calculating the total impulse.", "quantity": "impulse", "dimension": "M·L·T⁻¹", "unit": "kg·m/s"},
+                  {"id": "s2___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\dot{m} v_{e}", "description": "Mass flow rate multiplied by exhaust velocity, which equals the rocket's thrust.", "quantity": "thrust", "dimension": "M·L·T⁻²", "unit": "N"},
+                  {"id": "m", "type": "scalar", "emoji": "⚖️", "latex": "m", "subexpr": "m", "description": "The mass of the rocket, which changes over time as propellant is burned.", "quantity": "mass", "dimension": "M", "unit": "kg"},
+                  {"id": "s2___deriv_3", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{m}", "description": "The time derivative of mass, representing the propellant mass flow rate.", "quantity": "mass_flow_rate", "dimension": "M·T⁻¹", "unit": "kg/s"},
+                  {"id": "v_e", "type": "scalar", "emoji": "💨", "latex": "v_{e}", "subexpr": "v_{e}", "description": "Effective exhaust velocity of the propellant relative to the rocket.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "color": "green", "highlight": "ve"},
+                  {"id": "s3___multiply_1", "type": "operator", "op": "multiply", "subexpr": "m_{\\text{prop}} \\cdot v_e", "description": "Total propellant mass multiplied by exhaust velocity, giving the total impulse.", "quantity": "impulse", "dimension": "M·L·T⁻¹", "unit": "kg·m/s"},
+                  {"id": "m_prop", "type": "scalar", "emoji": "⛽", "latex": "m_{\\text{prop}}", "subexpr": "m_{\\text{prop}}", "description": "Total mass of the propellant burned during the engine firing.", "quantity": "mass", "dimension": "M", "unit": "kg", "color": "yellow", "highlight": "mprop"},
+                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "J = T \\cdot t = \\dot{m} \\cdot v_e \\cdot t = m_{\\text{prop}} \\cdot v_e", "description": "An equation showing four equivalent ways to express the total impulse $J$ of the rocket engine."}
                 ],
                 "edges": [
                   {"from": "T", "to": "s1___multiply_1"},
@@ -727,17 +747,22 @@
                   {"from": "m", "to": "s2___deriv_3"},
                   {"from": "t", "to": "s2___deriv_3"},
                   {"from": "s2___deriv_3", "to": "s2___multiply_2"},
-                  {"from": "v_{e}", "to": "s2___multiply_2"},
+                  {"from": "v_e", "to": "s2___multiply_2"},
                   {"from": "s2___multiply_2", "to": "s2___multiply_1"},
                   {"from": "t", "to": "s2___multiply_1"},
-                  {"from": "m_{\\text{prop}}", "to": "s3___multiply_1"},
-                  {"from": "v_{e}", "to": "s3___multiply_1"},
+                  {"from": "m_prop", "to": "s3___multiply_1"},
+                  {"from": "v_e", "to": "s3___multiply_1"},
                   {"from": "J", "to": "__equals_1"},
                   {"from": "s1___multiply_1", "to": "__equals_1"},
                   {"from": "s2___multiply_1", "to": "__equals_1"},
                   {"from": "s3___multiply_1", "to": "__equals_1"}
                 ],
-                "classification": {"kind": "algebraic"}
+                "classification": {"kind": "algebraic"},
+                "domain": "classical_mechanics",
+                "enrichment": {
+                  "reasoning": "The context is a rocket launch simulation, so the domain is `classical_mechanics`. Symbols $J$, $T$, and $v_e$ are identified as impulse, thrust, and exhaust velocity.",
+                  "fields": ["domain", "nodes.J.description", "nodes.J.dimension", "nodes.J.emoji", "nodes.J.quantity", "nodes.J.unit", "nodes.s1___multiply_1.description", "nodes.s1___multiply_1.dimension", "nodes.s1___multiply_1.quantity", "nodes.s1___multiply_1.unit", "nodes.T.description", "nodes.T.dimension", "nodes.T.emoji", "nodes.T.quantity", "nodes.T.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.s2___multiply_1.description", "nodes.s2___multiply_1.dimension", "nodes.s2___multiply_1.quantity", "nodes.s2___multiply_1.unit", "nodes.s2___multiply_2.description", "nodes.s2___multiply_2.dimension", "nodes.s2___multiply_2.quantity", "nodes.s2___multiply_2.unit", "nodes.m.description", "nodes.m.dimension", "nodes.m.emoji", "nodes.m.quantity", "nodes.m.unit", "nodes.s2___deriv_3.description", "nodes.s2___deriv_3.dimension", "nodes.s2___deriv_3.quantity", "nodes.s2___deriv_3.unit", "nodes.v_e.description", "nodes.v_e.dimension", "nodes.v_e.emoji", "nodes.v_e.quantity", "nodes.v_e.unit", "nodes.s3___multiply_1.description", "nodes.s3___multiply_1.dimension", "nodes.s3___multiply_1.quantity", "nodes.s3___multiply_1.unit", "nodes.m_prop.description", "nodes.m_prop.dimension", "nodes.m_prop.emoji", "nodes.m_prop.quantity", "nodes.m_prop.unit", "nodes.__equals_1.description"]
+                }
               }
             }
           },
@@ -757,44 +782,49 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "I_{sp}", "type": "scalar", "latex": "I_{sp}", "subexpr": "I_{sp}", "description": "Specific impulse (s)", "color": "orange", "highlight": "isp"},
-                  {"id": "s1___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{J}{m_{\\text{prop}} \\cdot g_0}"},
-                  {"id": "J", "type": "scalar", "latex": "J", "subexpr": "J"},
-                  {"id": "s1___power_2", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{m_{\\text{prop}} g_{0}}"},
-                  {"id": "s1___multiply_3", "type": "operator", "op": "multiply", "subexpr": "m_{\\text{prop}} g_{0}"},
-                  {"id": "m_{\\text{prop}}", "type": "scalar", "latex": "m_{\\text{prop}}", "subexpr": "m_{\\text{prop}}", "description": "Propellant mass (cancels)", "color": "yellow", "highlight": "mprop"},
-                  {"id": "g_{0}", "type": "scalar", "latex": "g_{0}", "subexpr": "g_{0}", "description": "Standard gravity (9.81 m/s²)", "color": "blue", "highlight": "g0"},
-                  {"id": "s2___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{m_{\\text{prop}} \\cdot v_e}{m_{\\text{prop}} \\cdot g_0}"},
-                  {"id": "s2___multiply_2", "type": "operator", "op": "multiply", "subexpr": "m_{\\text{prop}} v_{e}"},
-                  {"id": "v_{e}", "type": "scalar", "latex": "v_{e}", "subexpr": "v_{e}", "description": "Exhaust velocity (m/s)", "color": "green", "highlight": "ve"},
-                  {"id": "s2___power_3", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{m_{\\text{prop}} g_{0}}"},
-                  {"id": "s2___multiply_4", "type": "operator", "op": "multiply", "subexpr": "m_{\\text{prop}} g_{0}"},
-                  {"id": "s3___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{v_e}{g_0}"},
-                  {"id": "s3___power_2", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{g_{0}}"},
-                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "I_{sp} = \\frac{J}{m_{\\text{prop}} \\cdot g_0} = \\frac{m_{\\text{prop}} \\cdot v_e}{m_{\\text{prop}} \\cdot g_0} = \\frac{v_e}{g_0}"}
+                  {"id": "I_sp", "type": "scalar", "emoji": "⏱️", "latex": "I_{sp}", "subexpr": "I_{sp}", "description": "Specific impulse, $I_{sp}$, which measures the fuel efficiency of a rocket engine.", "quantity": "specific_impulse", "dimension": "T", "unit": "s", "color": "orange", "highlight": "isp"},
+                  {"id": "s1___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{J}{m_{\\text{prop}} \\cdot g_0}", "description": "Total impulse divided by propellant weight, the definition of specific impulse.", "quantity": "specific_impulse", "dimension": "T", "unit": "s"},
+                  {"id": "J", "type": "scalar", "emoji": "💥", "latex": "J", "subexpr": "J", "description": "Total impulse, the change in momentum of the rocket system.", "quantity": "impulse", "dimension": "M·L·T⁻¹", "unit": "kg·m/s"},
+                  {"id": "s1___power_2", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{m_{\\text{prop}} g_{0}}", "description": "The reciprocal of the propellant weight, used to calculate impulse per unit weight.", "quantity": "inverse_weight", "dimension": "M⁻¹·L⁻¹·T²", "unit": "N⁻¹"},
+                  {"id": "s1___multiply_3", "type": "operator", "op": "multiply", "subexpr": "m_{\\text{prop}} g_{0}", "description": "Propellant mass multiplied by standard gravity gives the propellant weight.", "quantity": "weight", "dimension": "M·L·T⁻²", "unit": "N"},
+                  {"id": "m_prop", "type": "scalar", "emoji": "⛽", "latex": "m_{\\text{prop}}", "subexpr": "m_{\\text{prop}}", "description": "The mass of the propellant, $m_{\\\\text{prop}}$.", "quantity": "mass", "dimension": "M", "unit": "kg", "color": "yellow", "highlight": "mprop"},
+                  {"id": "g_0", "type": "scalar", "emoji": "🌍", "latex": "g_{0}", "subexpr": "g_{0}", "description": "Standard gravitational acceleration at sea level on Earth, $g_0$.", "quantity": "standard_gravity", "dimension": "L·T⁻²", "unit": "m/s²", "value": 9.81, "role": "constant", "color": "blue", "highlight": "g0"},
+                  {"id": "s2___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{m_{\\text{prop}} \\cdot v_e}{m_{\\text{prop}} \\cdot g_0}", "description": "Specific impulse calculated from impulse $m_{\\\\text{prop}} v_e$ and propellant weight $m_{\\\\text{prop}} g_0$.", "quantity": "specific_impulse", "dimension": "T", "unit": "s"},
+                  {"id": "s2___multiply_2", "type": "operator", "op": "multiply", "subexpr": "m_{\\text{prop}} v_{e}", "description": "Propellant mass multiplied by exhaust velocity, which equals the total impulse $J$.", "quantity": "impulse", "dimension": "M·L·T⁻¹", "unit": "kg·m/s"},
+                  {"id": "v_e", "type": "scalar", "emoji": "💨", "latex": "v_{e}", "subexpr": "v_{e}", "description": "The velocity of the exhaust gas, $v_e$, relative to the rocket.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "color": "green", "highlight": "ve"},
+                  {"id": "s2___power_3", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{m_{\\text{prop}} g_{0}}", "description": "The reciprocal of the propellant weight.", "quantity": "inverse_weight", "dimension": "M⁻¹·L⁻¹·T²", "unit": "N⁻¹"},
+                  {"id": "s2___multiply_4", "type": "operator", "op": "multiply", "subexpr": "m_{\\text{prop}} g_{0}", "description": "Propellant mass multiplied by standard gravity gives the propellant weight.", "quantity": "weight", "dimension": "M·L·T⁻²", "unit": "N"},
+                  {"id": "s3___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{v_e}{g_0}", "description": "The simplified expression for specific impulse after canceling propellant mass.", "quantity": "specific_impulse", "dimension": "T", "unit": "s"},
+                  {"id": "s3___power_2", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{g_{0}}", "description": "The reciprocal of standard gravity.", "quantity": "inverse_acceleration", "dimension": "L⁻¹·T²", "unit": "s²/m"},
+                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "I_{sp} = \\frac{J}{m_{\\text{prop}} \\cdot g_0} = \\frac{m_{\\text{prop}} \\cdot v_e}{m_{\\text{prop}} \\cdot g_0} = \\frac{v_e}{g_0}", "description": "An equation showing three equivalent expressions for specific impulse, $I_{sp}$."}
                 ],
                 "edges": [
                   {"from": "J", "to": "s1___multiply_1"},
-                  {"from": "m_{\\text{prop}}", "to": "s1___multiply_3"},
-                  {"from": "g_{0}", "to": "s1___multiply_3"},
+                  {"from": "m_prop", "to": "s1___multiply_3"},
+                  {"from": "g_0", "to": "s1___multiply_3"},
                   {"from": "s1___multiply_3", "to": "s1___power_2"},
                   {"from": "s1___power_2", "to": "s1___multiply_1"},
-                  {"from": "m_{\\text{prop}}", "to": "s2___multiply_2"},
-                  {"from": "v_{e}", "to": "s2___multiply_2"},
+                  {"from": "m_prop", "to": "s2___multiply_2"},
+                  {"from": "v_e", "to": "s2___multiply_2"},
                   {"from": "s2___multiply_2", "to": "s2___multiply_1"},
-                  {"from": "m_{\\text{prop}}", "to": "s2___multiply_4"},
-                  {"from": "g_{0}", "to": "s2___multiply_4"},
+                  {"from": "m_prop", "to": "s2___multiply_4"},
+                  {"from": "g_0", "to": "s2___multiply_4"},
                   {"from": "s2___multiply_4", "to": "s2___power_3"},
                   {"from": "s2___power_3", "to": "s2___multiply_1"},
-                  {"from": "v_{e}", "to": "s3___multiply_1"},
-                  {"from": "g_{0}", "to": "s3___power_2"},
+                  {"from": "v_e", "to": "s3___multiply_1"},
+                  {"from": "g_0", "to": "s3___power_2"},
                   {"from": "s3___power_2", "to": "s3___multiply_1"},
-                  {"from": "I_{sp}", "to": "__equals_1"},
+                  {"from": "I_sp", "to": "__equals_1"},
                   {"from": "s1___multiply_1", "to": "__equals_1"},
                   {"from": "s2___multiply_1", "to": "__equals_1"},
                   {"from": "s3___multiply_1", "to": "__equals_1"}
                 ],
-                "classification": {"kind": "algebraic"}
+                "classification": {"kind": "algebraic"},
+                "domain": "classical_mechanics",
+                "enrichment": {
+                  "reasoning": "The context is rocket propulsion, a topic in classical mechanics. Symbols like $v_e$ and $I_{sp}$ are unambiguous in this domain.",
+                  "fields": ["domain", "nodes.I_sp.description", "nodes.I_sp.dimension", "nodes.I_sp.emoji", "nodes.I_sp.quantity", "nodes.I_sp.unit", "nodes.s1___multiply_1.description", "nodes.s1___multiply_1.dimension", "nodes.s1___multiply_1.quantity", "nodes.s1___multiply_1.unit", "nodes.J.description", "nodes.J.dimension", "nodes.J.emoji", "nodes.J.quantity", "nodes.J.unit", "nodes.s1___power_2.description", "nodes.s1___power_2.dimension", "nodes.s1___power_2.quantity", "nodes.s1___power_2.unit", "nodes.s1___multiply_3.description", "nodes.s1___multiply_3.dimension", "nodes.s1___multiply_3.quantity", "nodes.s1___multiply_3.unit", "nodes.m_prop.description", "nodes.m_prop.dimension", "nodes.m_prop.emoji", "nodes.m_prop.quantity", "nodes.m_prop.unit", "nodes.g_0.description", "nodes.g_0.dimension", "nodes.g_0.emoji", "nodes.g_0.quantity", "nodes.g_0.role", "nodes.g_0.unit", "nodes.g_0.value", "nodes.s2___multiply_1.description", "nodes.s2___multiply_1.dimension", "nodes.s2___multiply_1.quantity", "nodes.s2___multiply_1.unit", "nodes.s2___multiply_2.description", "nodes.s2___multiply_2.dimension", "nodes.s2___multiply_2.quantity", "nodes.s2___multiply_2.unit", "nodes.v_e.description", "nodes.v_e.dimension", "nodes.v_e.emoji", "nodes.v_e.quantity", "nodes.v_e.unit", "nodes.s2___power_3.description", "nodes.s2___power_3.dimension", "nodes.s2___power_3.quantity", "nodes.s2___power_3.unit", "nodes.s2___multiply_4.description", "nodes.s2___multiply_4.dimension", "nodes.s2___multiply_4.quantity", "nodes.s2___multiply_4.unit", "nodes.s3___multiply_1.description", "nodes.s3___multiply_1.dimension", "nodes.s3___multiply_1.quantity", "nodes.s3___multiply_1.unit", "nodes.s3___power_2.description", "nodes.s3___power_2.dimension", "nodes.s3___power_2.quantity", "nodes.s3___power_2.unit", "nodes.__equals_1.description"]
+                }
               }
             }
           },
@@ -814,24 +844,24 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "T = \\dot{m} \\cdot I_{sp} \\cdot g_0"},
-                  {"id": "T", "type": "scalar", "latex": "T", "subexpr": "T", "description": "Thrust force (N)", "color": "cyan", "highlight": "thrust"},
-                  {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\dot{m} I_{sp} g_{0}"},
-                  {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\dot{m} I_{sp}"},
-                  {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m", "description": "Mass flow rate (kg/s)", "color": "yellow", "highlight": "mdot"},
-                  {"id": "t", "type": "scalar", "latex": "t", "subexpr": "t"},
-                  {"id": "__deriv_4", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{m}"},
-                  {"id": "I_{sp}", "type": "scalar", "latex": "I_{sp}", "subexpr": "I_{sp}", "description": "Specific impulse (s)", "color": "orange", "highlight": "isp"},
-                  {"id": "g_{0}", "type": "scalar", "latex": "g_{0}", "subexpr": "g_{0}", "description": "Standard gravity (9.81 m/s²)", "color": "blue", "highlight": "g0"}
+                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "T = \\dot{m} \\cdot I_{sp} \\cdot g_0", "description": "Relates rocket thrust to the product of mass flow rate, specific impulse, and standard gravity."},
+                  {"id": "T", "type": "scalar", "emoji": "🚀", "latex": "T", "subexpr": "T", "description": "Thrust, the propulsive force produced by the rocket engine.", "quantity": "thrust", "dimension": "M·L·T⁻²", "unit": "N", "color": "cyan", "highlight": "thrust"},
+                  {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\dot{m} I_{sp} g_{0}", "description": "The product of mass flow rate, specific impulse, and standard gravity, which defines the rocket's thrust.", "quantity": "thrust", "dimension": "M·L·T⁻²", "unit": "N"},
+                  {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\dot{m} I_{sp}", "description": "The product of the propellant mass flow rate and the engine's specific impulse.", "dimension": "M", "unit": "kg"},
+                  {"id": "m", "type": "scalar", "emoji": "⚖️", "latex": "m", "subexpr": "m", "description": "The mass of the rocket's propellant.", "quantity": "mass", "dimension": "M", "unit": "kg", "color": "yellow", "highlight": "mdot"},
+                  {"id": "t", "type": "scalar", "emoji": "⏳", "latex": "t", "subexpr": "t", "description": "Time, the independent variable for the mass flow rate.", "quantity": "time", "dimension": "T", "unit": "s"},
+                  {"id": "__deriv_4", "type": "operator", "op": "derivative", "with_respect_to": "t", "subexpr": "\\dot{m}", "description": "The time rate of change of mass, representing the propellant mass flow rate from the engine.", "quantity": "mass_flow_rate", "dimension": "M·T⁻¹", "unit": "kg/s"},
+                  {"id": "I_sp", "type": "scalar", "emoji": "⛽", "latex": "I_{sp}", "subexpr": "I_{sp}", "description": "Specific impulse, a measure of how efficiently a rocket engine uses propellant.", "quantity": "specific_impulse", "dimension": "T", "unit": "s", "color": "orange", "highlight": "isp"},
+                  {"id": "g_0", "type": "scalar", "emoji": "🌍", "latex": "g_{0}", "subexpr": "g_{0}", "description": "Standard gravity at sea level on Earth, a constant used by convention in the definition of specific impulse.", "quantity": "standard_gravity", "dimension": "L·T⁻²", "unit": "m/s²", "value": 9.80665, "color": "blue", "highlight": "g0"}
                 ],
                 "edges": [
                   {"from": "T", "to": "__equals_1"},
                   {"from": "m", "to": "__deriv_4"},
                   {"from": "t", "to": "__deriv_4", "role": "wrt"},
                   {"from": "__deriv_4", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
-                  {"from": "I_{sp}", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                  {"from": "I_sp", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
                   {"from": "__multiply_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
-                  {"from": "g_{0}", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                  {"from": "g_0", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
                   {"from": "__multiply_2", "to": "__equals_1"}
                 ],
                 "classification": {
@@ -843,6 +873,11 @@
                   "linear": true,
                   "homogeneous": true,
                   "constant_coefficients": true
+                },
+                "domain": "classical_mechanics",
+                "enrichment": {
+                  "reasoning": "The context is a lesson on rocket propulsion, so the domain is classical mechanics. Symbols T, m_dot, and I_sp are identified as thrust, mass flow rate, and specific impulse, respectively.",
+                  "fields": ["domain", "nodes.__equals_1.description", "nodes.T.description", "nodes.T.dimension", "nodes.T.emoji", "nodes.T.quantity", "nodes.T.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.unit", "nodes.m.description", "nodes.m.dimension", "nodes.m.emoji", "nodes.m.quantity", "nodes.m.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__deriv_4.description", "nodes.__deriv_4.dimension", "nodes.__deriv_4.quantity", "nodes.__deriv_4.unit", "nodes.I_sp.description", "nodes.I_sp.dimension", "nodes.I_sp.emoji", "nodes.I_sp.quantity", "nodes.I_sp.unit", "nodes.g_0.description", "nodes.g_0.dimension", "nodes.g_0.emoji", "nodes.g_0.quantity", "nodes.g_0.unit", "nodes.g_0.value"]
                 }
               }
             }

@@ -138,12 +138,8 @@ SYSTEM_EXPRESSIONS: list[CatalogEntry] = [
     ("initial_condition",
      r"y'' + y = 0, \quad y(0) = 1, \quad y'(0) = 0",
      PASS,
-     "y,y'' -> add; num -> fn:y; num -> fn:y'; "
-     "add,num -> rel:equals; fn:y,num -> rel:equals; fn:y',num -> rel:equals",
-     "y,y'' -> c0___add_2; c1___num_3 -> c1___y_2; "
-     "c2___num_3 -> c2___y'_2; c0___add_2,c0___num_3 -> c0___equals_1; "
-     "c1___num_4,c1___y_2 -> c1___equals_1; "
-     "c2___num_4,c2___y'_2 -> c2___equals_1",
+     "y,y_2 -> add; num -> fn:y; num -> fn:y'; add,num -> rel:equals; fn:y,num -> rel:equals; fn:y',num -> rel:equals",
+     'y,y_2 -> c0___add_2; c1___num_3 -> c1___y_2; c2___num_3 -> c2___y_2; c0___add_2,c0___num_3 -> c0___equals_1; c1___num_4,c1___y_2 -> c1___equals_1; c2___num_4,c2___y_2 -> c2___equals_1',
      None),
 ]
 
@@ -163,10 +159,8 @@ TRANSFORM_EXPRESSIONS: list[CatalogEntry] = [
     ("variation_params",
      r"y_p = u_1 y_1 + u_2 y_2",
      PASS,
-     "u_{1},y_{1} -> multiply; u_{2},y_{2} -> multiply; "
-     "multiply,multiply -> add; add,y_{p} -> rel:equals",
-     "u_{1},y_{1} -> __multiply_3; u_{2},y_{2} -> __multiply_4; "
-     "__multiply_3,__multiply_4 -> __add_2; __add_2,y_{p} -> __equals_1",
+     'u_1,y_1 -> multiply; u_2,y_2 -> multiply; multiply,multiply -> add; add,y_p -> rel:equals',
+     'u_1,y_1 -> __multiply_3; u_2,y_2 -> __multiply_4; __multiply_3,__multiply_4 -> __add_2; __add_2,y_p -> __equals_1',
      None),
 ]
 

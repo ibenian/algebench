@@ -26,6 +26,7 @@ from sympy.physics.quantum import InnerProduct, OuterProduct
 
 from backend.model.semantic_graph import SemanticGraph
 
+from .id_utils import _slug_id
 from .preprocessor import LaTeXPreprocessor, strip_trailing_spacing
 from .constants import (
     KNOWN_VARIABLES,
@@ -117,19 +118,21 @@ def _operator_glyph(node: dict) -> str | None:
 
 
 def node_short_label(node: dict) -> str:
-    """Return the SHORT label — compact symbol for the graph node."""
+    """Return the SHORT label — compact symbol for the graph node.
+
+    A node id is an internal wiring key, never a display string, so it is
+    never used here — display comes from ``latex`` / ``subexpr`` / ``label``
+    (and ``op`` / a glyph for operators). Falls back to ``?`` only when a node
+    genuinely carries nothing displayable.
+    """
     if node.get("type") in _OP_KINDS:
         if node.get("latex"):
             return node["latex"]
         glyph = _operator_glyph(node)
         if glyph:
             return glyph
-        return node.get("op") or node.get("id", "")
-    if node.get("latex"):
-        return node["latex"]
-    if node.get("label"):
-        return node["label"]
-    return node.get("id", "")
+        return node.get("op") or node.get("subexpr") or "?"
+    return node.get("latex") or node.get("subexpr") or node.get("label") or "?"
 
 
 def node_long_label(node: dict) -> str:
@@ -2104,8 +2107,11 @@ class SemanticGraphBuilder:
         return str(expr)
 
     def _next_id(self, prefix: str = "n") -> str:
+        # Slug the prefix so function nodes keyed on a LaTeX-bearing name
+        # (``a_{D}`` → ``__a_D_2``) stay clean. Operator prefixes
+        # (``multiply``, ``equals``) are already clean and pass through.
         self._id_counter += 1
-        return f"__{prefix}_{self._id_counter}"
+        return f"__{_slug_id(prefix)}_{self._id_counter}"
 
     def _add_node(self, node_id: str, **attrs: str) -> None:
         node: dict[str, str] = {"id": node_id}
@@ -2129,6 +2135,60 @@ class SemanticGraphBuilder:
         if role:
             edge["role"] = role
         self.edges.append(edge)
+
+    def _resolve_placeholders(self, s: str | None) -> str | None:
+        """Substitute any ``Xi_{N}`` / ``Theta_{N}`` / ``Phi_{N}`` placeholder
+        token in *s* with its override's display latex.
+
+        Multi-char subscripts, ``\\text{…}`` groups and compound identifiers are
+        collapsed into placeholder symbols before SymPy parsing; a *standalone*
+        placeholder (``v_{rms}`` → ``Xi_{0}``) gets its latex restored straight
+        from the override, but a *composed* one (``V_{\\text{exit}}`` →
+        ``V_{Xi_{0}}``) would otherwise leak the raw ``Xi_{0}`` into the display.
+        Iterates to a fixed point so nested placeholders fully unfold.
+        """
+        if not s or not self._overrides:
+            return s
+        for _ in range(12):  # bounded; placeholders nest at most a few deep
+            changed = False
+            for ph, ovr in self._overrides.items():
+                # ONLY the synthetic collapse sentinels (``Xi_{N}`` / ``Theta_{N}``
+                # / ``Phi_{N}``) are safe to substitute. User/symbol overrides
+                # (e.g. ``{"m": {"label": "mass"}}``) must never bleed into other
+                # symbols' display — see test_user_override_does_not_corrupt_text_macros.
+                if not _PLACEHOLDER_KEY_RE.match(ph):
+                    continue
+                if ph in s:
+                    repl = ovr.get("latex") or ovr.get("label") or ""
+                    if repl and repl != ph:
+                        s = s.replace(ph, repl)
+                        changed = True
+            if not changed:
+                break
+        return s
+
+    def _mint_symbol_id(self, name: str) -> str:
+        """Mint a clean, collision-free node id for a symbol.
+
+        Derived by slugging the sympy *name* (with placeholder tokens resolved,
+        so ``V_{Xi_{0}}`` → ``V_exit`` and ``Xi_{0}`` → ``v_rms``). The name —
+        not the display latex — is the right source: it already has font
+        commands stripped (``\\mathbb{R}`` parses to name ``R``), so the id
+        stays ``R`` instead of ``mathbbR``. A numeric suffix is appended if the
+        slug already names a different node in this graph, so two distinct
+        symbols never merge. Display never uses the id, so a suffix is purely
+        cosmetic.
+        """
+        base = _slug_id(self._resolve_placeholders(name) or name)
+        if base == "sym":
+            base = _slug_id(name)
+        existing = {n["id"] for n in self.nodes}
+        if base not in existing:
+            return base
+        i = 2
+        while f"{base}_{i}" in existing:
+            i += 1
+        return f"{base}_{i}"
 
     def _fix_bar_subexpr(self, subexpr: str) -> str:
         """Restore ``|`` conditional bars and ``=`` assertion equals
@@ -2559,7 +2619,6 @@ class SemanticGraphBuilder:
             if name in self._seen_symbols:
                 return self._seen_symbols[name]
             meta = KNOWN_VARIABLES.get(name, {})
-            node_id = name
             latex_fallback = self._symbol_latex(name) or name
             attrs: dict[str, Any] = {
                 "type": meta.get("type", "scalar"),
@@ -2581,6 +2640,16 @@ class SemanticGraphBuilder:
                 and (name.startswith("Theta_{") or name.startswith("Xi_{"))
             ):
                 attrs["subexpr"] = self._overrides[name]["latex"]
+            # The sympy name carries placeholder tokens for collapsed
+            # sub-expressions (``Xi_{0}`` for ``\text{exit}`` etc.). Resolve
+            # them in the display fields so a composed symbol like
+            # ``V_{Xi_{0}}`` renders as ``V_{\text{exit}}`` instead of leaking
+            # the placeholder, then mint a clean id from the resolved form.
+            # The id is an internal wiring key only — never a display string.
+            attrs["latex"] = self._resolve_placeholders(attrs.get("latex"))
+            if attrs.get("subexpr"):
+                attrs["subexpr"] = self._resolve_placeholders(attrs["subexpr"])
+            node_id = self._mint_symbol_id(name)
             self._add_node(node_id, **attrs)
             self._seen_symbols[name] = node_id
 
@@ -3660,21 +3729,27 @@ def _build_comma_separated_graph(
 
         prefix = f"c{ci}_"
 
-        def _rename(nid: str, p: str = prefix) -> str:
-            if not isinstance(nid, str):
-                return nid
-            if nid.startswith("__"):
-                return p + nid
-            # SymPy symbol names may include a leading backslash (e.g. \Theta_{0})
-            stripped = nid.lstrip("\\")
-            if stripped.startswith("Xi_{") or stripped.startswith("Theta_{") or stripped.startswith("Phi_{"):
-                return p + nid
-            return nid
+        # Which nodes are clause-LOCAL (get a per-clause prefix so identical
+        # entries in different statements stay distinct) vs SHARED across
+        # clauses. Operators/relations (``__*``) are always local. Text
+        # literals (``\text{foo}`` → type "text") are local too — the same
+        # label in two statements is two independent literals. Real symbols
+        # (variables) are shared: ``a`` in two clauses is one node (see
+        # test_multi_clause_mixed_variable_sharing). Node *type* drives this
+        # now — previously it keyed off the dirty ``Xi_{…}`` placeholder id,
+        # which clean ids no longer carry.
+        rename_map: dict[str, str] = {}
+        for n in sub.get("nodes") or []:
+            if not isinstance(n, dict) or not isinstance(n.get("id"), str):
+                continue
+            nid = n["id"]
+            if nid.startswith("__") or n.get("type") == "text":
+                rename_map[nid] = prefix + nid
 
         for n in sub.get("nodes") or []:
             if not isinstance(n, dict) or "id" not in n:
                 continue
-            new_id = _rename(n["id"])
+            new_id = rename_map.get(n["id"], n["id"])
             cloned = dict(n)
             cloned["id"] = new_id
             if new_id not in merged_nodes:
@@ -3685,8 +3760,8 @@ def _build_comma_separated_graph(
 
         for e in sub.get("edges") or []:
             new_edge = dict(e)
-            new_edge["from"] = _rename(e.get("from", ""))
-            new_edge["to"] = _rename(e.get("to", ""))
+            new_edge["from"] = rename_map.get(e.get("from", ""), e.get("from", ""))
+            new_edge["to"] = rename_map.get(e.get("to", ""), e.get("to", ""))
             merged_edges.append(new_edge)
 
         sub_cls = sub.get("classification")
@@ -4020,6 +4095,13 @@ def _resolve_xi_node_ids(graph: SemanticGraph) -> None:
             edge.from_ = rename_map[edge.from_]
         if edge.to in rename_map:
             edge.to = rename_map[edge.to]
+
+
+# Synthetic collapse sentinels (multichar subscripts, ``\text{…}``, compound
+# identifiers, braket inner products) — the only override keys safe to
+# substitute back into a symbol's display latex. A leading ``cN_`` is the
+# per-clause prefix used in comma-separated statements.
+_PLACEHOLDER_KEY_RE = re.compile(r"^(?:c\d+_)?(?:Xi|Theta|Phi)_\{\d+\}$")
 
 
 def latex_to_semantic_graph(

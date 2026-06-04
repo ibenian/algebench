@@ -62,20 +62,15 @@ GAS_LAW_EXPRESSIONS: list[CatalogEntry] = [
     ("boyle",
      r"P_1 V_1 = P_2 V_2",
      PASS,
-     "P_{1},V_{1} -> multiply; P_{2},V_{2} -> multiply; "
-     "multiply,multiply -> rel:equals",
-     "P_{1},V_{1} -> __multiply_2; P_{2},V_{2} -> __multiply_3; "
-     "__multiply_2,__multiply_3 -> __equals_1",
+     'P_1,V_1 -> multiply; P_2,V_2 -> multiply; multiply,multiply -> rel:equals',
+     'P_1,V_1 -> __multiply_2; P_2,V_2 -> __multiply_3; __multiply_2,__multiply_3 -> __equals_1',
      None),
 
     ("charles",
      r"\frac{V_1}{T_1} = \frac{V_2}{T_2}",
      PASS,
-     "T_{1} -> power; T_{2} -> power; V_{1},power -> multiply; "
-     "V_{2},power -> multiply; multiply,multiply -> rel:equals",
-     "T_{1} -> __power_3; T_{2} -> __power_5; "
-     "V_{1},__power_3 -> __multiply_2; V_{2},__power_5 -> __multiply_4; "
-     "__multiply_2,__multiply_4 -> __equals_1",
+     'T_1 -> power; T_2 -> power; V_1,power -> multiply; V_2,power -> multiply; multiply,multiply -> rel:equals',
+     'T_1 -> __power_3; T_2 -> __power_5; V_1,__power_3 -> __multiply_2; V_2,__power_5 -> __multiply_4; __multiply_2,__multiply_4 -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 ]
 
@@ -116,13 +111,8 @@ ENERGY_EXPRESSIONS: list[CatalogEntry] = [
     ("avg_kinetic",
      r"E_k = \frac{3}{2} k_B T",
      PASS,
-     "T,k_{B} -> multiply; num -> power; "
-     "num,power -> multiply; multiply,multiply -> multiply; "
-     "E_{k},multiply -> rel:equals",
-     "T,k_{B} -> __multiply_7; __num_6 -> __power_5; "
-     "__num_4,__power_5 -> __multiply_3; "
-     "__multiply_3,__multiply_7 -> __multiply_2; "
-     "E_{k},__multiply_2 -> __equals_1",
+     'T,k_B -> multiply; num -> power; num,power -> multiply; multiply,multiply -> multiply; E_k,multiply -> rel:equals',
+     'T,k_B -> __multiply_7; __num_6 -> __power_5; __num_4,__power_5 -> __multiply_3; __multiply_3,__multiply_7 -> __multiply_2; E_k,__multiply_2 -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 ]
 
@@ -138,20 +128,15 @@ ENTROPY_EXPRESSIONS: list[CatalogEntry] = [
     ("boltzmann_entropy",
      r"S = k_B \ln W",
      PASS,
-     "W,const:__const_4 -> fn:log; fn:log,k_{B} -> multiply; "
-     "S,multiply -> rel:equals",
-     "W,__const_4 -> __log_3; __log_3,k_{B} -> __multiply_2; "
-     "S,__multiply_2 -> __equals_1",
+     'W,const:__const_4 -> fn:log; fn:log,k_B -> multiply; S,multiply -> rel:equals',
+     'W,__const_4 -> __log_3; __log_3,k_B -> __multiply_2; S,__multiply_2 -> __equals_1',
      None),
 
     ("carnot",
      r"\eta = 1 - \frac{T_C}{T_H}",
      PASS,
-     "T_{H} -> power; T_{C},power -> multiply; multiply -> negation; "
-     "negation,num -> add; add,eta -> rel:equals",
-     "T_{H} -> __power_6; T_{C},__power_6 -> __multiply_5; "
-     "__multiply_5 -> __negation_4; __negation_4,__num_3 -> __add_2; "
-     "__add_2,eta -> __equals_1",
+     'T_H -> power; T_C,power -> multiply; multiply -> negation; negation,num -> add; add,eta -> rel:equals',
+     'T_H -> __power_6; T_C,__power_6 -> __multiply_5; __multiply_5 -> __negation_4; __negation_4,__num_3 -> __add_2; __add_2,eta -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 
     ("clausius",
@@ -166,13 +151,8 @@ ENTROPY_EXPRESSIONS: list[CatalogEntry] = [
     ("partition_fn",
      r"Z = \sum_i e^{-E_i / k_B T}",
      PASS,
-     "T,k_{B} -> multiply; E_{i} -> negation; "
-     "multiply -> power; negation,power -> multiply; e,multiply -> power; "
-     "i,power -> sum; Z,sum -> rel:equals",
-     "T,k_{B} -> __multiply_7; "
-     "E_{i} -> __negation_5; __multiply_7 -> __power_6; "
-     "__negation_5,__power_6 -> __multiply_4; __multiply_4,e -> __power_3; "
-     "__power_3,i -> __sum_2; Z,__sum_2 -> __equals_1",
+     'T,k_B -> multiply; E_i -> negation; multiply -> power; negation,power -> multiply; e,multiply -> power; i,power -> sum; Z,sum -> rel:equals',
+     'T,k_B -> __multiply_7; E_i -> __negation_5; __multiply_7 -> __power_6; __negation_5,__power_6 -> __multiply_4; __multiply_4,e -> __power_3; __power_3,i -> __sum_2; Z,__sum_2 -> __equals_1',
      [{"op": "sum", "with_respect_to": "i"},
       {"op": "power", "exponent": "-1"}]),
 ]
@@ -190,13 +170,8 @@ RADIATION_EXPRESSIONS: list[CatalogEntry] = [
     ("maxwell_speed",
      r"v_{rms} = \sqrt{\frac{3 k_B T}{m}}",
      PASS,
-     "T,k_{B} -> multiply; m -> power; multiply,num -> multiply; "
-     "multiply,power -> multiply; multiply -> power; "
-     "power,v_{rms} -> rel:equals",
-     "T,k_{B} -> __multiply_6; m -> __power_7; "
-     "__multiply_6,__num_5 -> __multiply_4; "
-     "__multiply_4,__power_7 -> __multiply_3; __multiply_3 -> __power_2; "
-     "__power_2,v_{rms} -> __equals_1",
+     'T,k_B -> multiply; m -> power; multiply,num -> multiply; multiply,power -> multiply; multiply -> power; power,v_rms -> rel:equals',
+     'T,k_B -> __multiply_6; m -> __power_7; __multiply_6,__num_5 -> __multiply_4; __multiply_4,__power_7 -> __multiply_3; __multiply_3 -> __power_2; __power_2,v_rms -> __equals_1',
      [{"op": "power", "exponent": "1/2"}, {"op": "power", "exponent": "-1"}]),
 ]
 

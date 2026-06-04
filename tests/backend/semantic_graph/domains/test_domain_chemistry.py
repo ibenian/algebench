@@ -90,38 +90,22 @@ KINETICS_EXPRESSIONS: list[CatalogEntry] = [
     ("first_order_integrated",
      r"\ln [A] = -kt + \ln [A]_0",
      PASS,
-     "A -> concentration; A_{0} -> concentration; k,t -> multiply; "
-     "concentration,const:__const_4 -> fn:log; "
-     "concentration,const:__const_4 -> fn:log; multiply -> negation; "
-     "fn:log,negation -> add; add,fn:log -> rel:equals",
-     "A -> __concentration_3; A_{0} -> __concentration_9; "
-     "k,t -> __multiply_7; __concentration_3,__const_4 -> __log_2; "
-     "__concentration_9,__const_4 -> __log_8; __multiply_7 -> __negation_6; "
-     "__log_8,__negation_6 -> __add_5; __add_5,__log_2 -> __equals_1",
+     'A -> concentration; A_0 -> concentration; k,t -> multiply; concentration,const:__const_4 -> fn:log; concentration,const:__const_4 -> fn:log; multiply -> negation; fn:log,negation -> add; add,fn:log -> rel:equals',
+     'A -> __concentration_3; A_0 -> __concentration_9; k,t -> __multiply_7; __concentration_3,__const_4 -> __log_2; __concentration_9,__const_4 -> __log_8; __multiply_7 -> __negation_6; __log_8,__negation_6 -> __add_5; __add_5,__log_2 -> __equals_1',
      None),
 
     ("second_order_integrated",
      r"\frac{1}{[A]} = kt + \frac{1}{[A]_0}",
      PASS,
-     "A -> concentration; A_{0} -> concentration; k,t -> multiply; "
-     "concentration -> power; concentration -> power; "
-     "multiply,power -> add; add,power -> rel:equals",
-     "A -> __concentration_3; A_{0} -> __concentration_7; "
-     "k,t -> __multiply_5; __concentration_3 -> __power_2; "
-     "__concentration_7 -> __power_6; __multiply_5,__power_6 -> __add_4; "
-     "__add_4,__power_2 -> __equals_1",
+     'A -> concentration; A_0 -> concentration; k,t -> multiply; concentration -> power; concentration -> power; multiply,power -> add; add,power -> rel:equals',
+     'A -> __concentration_3; A_0 -> __concentration_7; k,t -> __multiply_5; __concentration_3 -> __power_2; __concentration_7 -> __power_6; __multiply_5,__power_6 -> __add_4; __add_4,__power_2 -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 
     ("first_order_decay",
      r"[A] = [A]_0 e^{-kt}",
      PASS,
-     "A -> concentration; A_{0} -> concentration; k,t -> multiply; "
-     "multiply -> negation; e,negation -> power; "
-     "concentration,power -> multiply; concentration,multiply -> rel:equals",
-     "A -> __concentration_2; A_{0} -> __concentration_4; "
-     "k,t -> __multiply_7; __multiply_7 -> __negation_6; "
-     "__negation_6,e -> __power_5; __concentration_4,__power_5 -> __multiply_3; "
-     "__concentration_2,__multiply_3 -> __equals_1",
+     'A -> concentration; A_0 -> concentration; k,t -> multiply; multiply -> negation; e,negation -> power; concentration,power -> multiply; concentration,multiply -> rel:equals',
+     'A -> __concentration_2; A_0 -> __concentration_4; k,t -> __multiply_7; __multiply_7 -> __negation_6; __negation_6,e -> __power_5; __concentration_4,__power_5 -> __multiply_3; __concentration_2,__multiply_3 -> __equals_1',
      None),
 ]
 
@@ -160,24 +144,15 @@ EQUILIBRIUM_EXPRESSIONS: list[CatalogEntry] = [
     ("arrhenius",
      r"k = A e^{-E_a / (R T)}",
      PASS,
-     "R,T -> multiply; E_{a} -> negation; multiply -> power; "
-     "negation,power -> multiply; e,multiply -> power; "
-     "A,power -> multiply; k,multiply -> rel:equals",
-     "R,T -> __multiply_7; E_{a} -> __negation_5; "
-     "__multiply_7 -> __power_6; "
-     "__negation_5,__power_6 -> __multiply_4; "
-     "__multiply_4,e -> __power_3; A,__power_3 -> __multiply_2; "
-     "__multiply_2,k -> __equals_1",
+     'R,T -> multiply; E_a -> negation; multiply -> power; negation,power -> multiply; e,multiply -> power; A,power -> multiply; k,multiply -> rel:equals',
+     'R,T -> __multiply_7; E_a -> __negation_5; __multiply_7 -> __power_6; __negation_5,__power_6 -> __multiply_4; __multiply_4,e -> __power_3; A,__power_3 -> __multiply_2; __multiply_2,k -> __equals_1',
      None),
 
     ("half_life",
      r"t_{1/2} = \frac{\ln 2}{k}",
      PASS,
-     "const:__const_5,num -> fn:log; k -> power; "
-     "fn:log,power -> multiply; multiply,t_{1/2} -> rel:equals",
-     "__const_5,__num_4 -> __log_3; k -> __power_6; "
-     "__log_3,__power_6 -> __multiply_2; "
-     "__multiply_2,t_{1/2} -> __equals_1",
+     'const:__const_5,num -> fn:log; k -> power; fn:log,power -> multiply; multiply,t_1_2 -> rel:equals',
+     '__const_5,__num_4 -> __log_3; k -> __power_6; __log_3,__power_6 -> __multiply_2; __multiply_2,t_1_2 -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 ]
 
@@ -227,19 +202,15 @@ SOLUTION_EXPRESSIONS: list[CatalogEntry] = [
     ("dilution",
      r"M_1 V_1 = M_2 V_2",
      PASS,
-     "M_{1},V_{1} -> multiply; M_{2},V_{2} -> multiply; "
-     "multiply,multiply -> rel:equals",
-     "M_{1},V_{1} -> __multiply_2; M_{2},V_{2} -> __multiply_3; "
-     "__multiply_2,__multiply_3 -> __equals_1",
+     'M_1,V_1 -> multiply; M_2,V_2 -> multiply; multiply,multiply -> rel:equals',
+     'M_1,V_1 -> __multiply_2; M_2,V_2 -> __multiply_3; __multiply_2,__multiply_3 -> __equals_1',
      None),
 
     ("gibbs_free_energy",
      r"\Delta G = \Delta H - T \Delta S",
      PASS,
-     "Delta S,T -> multiply; multiply -> negation; Delta H,negation -> add; "
-     "Delta G,add -> rel:equals",
-     "Delta S,T -> __multiply_4; __multiply_4 -> __negation_3; "
-     "Delta H,__negation_3 -> __add_2; Delta G,__add_2 -> __equals_1",
+     'Delta_S,T -> multiply; multiply -> negation; Delta_H,negation -> add; Delta_G,add -> rel:equals',
+     'Delta_S,T -> __multiply_4; __multiply_4 -> __negation_3; Delta_H,__negation_3 -> __add_2; Delta_G,__add_2 -> __equals_1',
      None),
 ]
 

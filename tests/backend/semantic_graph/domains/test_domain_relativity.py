@@ -88,9 +88,8 @@ SPECIAL_RELATIVITY: list[CatalogEntry] = [
     ("length_contraction",
      r"L = \frac{L_0}{\gamma}",
      PASS,
-     "gamma -> power; L_{0},power -> multiply; L,multiply -> rel:equals",
-     "gamma -> __power_3; L_{0},__power_3 -> __multiply_2; "
-     "L,__multiply_2 -> __equals_1",
+     'gamma -> power; L_0,power -> multiply; L,multiply -> rel:equals',
+     'gamma -> __power_3; L_0,__power_3 -> __multiply_2; L,__multiply_2 -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 
     ("minkowski_metric",
@@ -113,43 +112,23 @@ GENERAL_RELATIVITY: list[CatalogEntry] = [
     ("metric_tensor",
      r"ds^2 = g_{\mu\nu} dx^\mu dx^\nu",
      PASS,
-     r"ds -> power; dx,mu -> power; dx,nu -> power; "
-     r"power,power -> multiply; g_{\mu\nu},multiply -> multiply; "
-     r"multiply,power -> rel:equals",
-     r"ds -> __power_2; dx,mu -> __power_5; dx,nu -> __power_6; "
-     r"__power_5,__power_6 -> __multiply_4; "
-     r"__multiply_4,g_{\mu\nu} -> __multiply_3; "
-     r"__multiply_3,__power_2 -> __equals_1",
+     'ds -> power; dx,mu -> power; dx,nu -> power; power,power -> multiply; g_munu,multiply -> multiply; multiply,power -> rel:equals',
+     'ds -> __power_2; dx,mu -> __power_5; dx,nu -> __power_6; __power_5,__power_6 -> __multiply_4; __multiply_4,g_munu -> __multiply_3; __multiply_3,__power_2 -> __equals_1',
      None),
 
     ("einstein_field",
      r"R_{\mu\nu} - \frac{1}{2} R g_{\mu\nu} + \Lambda g_{\mu\nu} = "
      r"\frac{8\pi G}{c^4} T_{\mu\nu}",
      PASS,
-     r"G,const:pi -> multiply; Lambda,g_{\mu\nu} -> multiply; "
-     r"R,g_{\mu\nu} -> multiply; c -> power; num -> power; "
-     r"multiply,num -> multiply; multiply,power -> multiply; "
-     r"power -> power; multiply,power -> multiply; multiply -> negation; "
-     r"R_{\mu\nu},negation -> add; T_{\mu\nu},multiply -> multiply; "
-     r"add,multiply -> add; add,multiply -> rel:equals",
-     r"G,pi -> __multiply_14; R,g_{\mu\nu} -> __multiply_8; "
-     r"Lambda,g_{\mu\nu} -> __multiply_9; c -> __power_16; "
-     r"__num_7 -> __power_6; __multiply_14,__num_13 -> __multiply_12; "
-     r"__multiply_8,__power_6 -> __multiply_5; __power_16 -> __power_15; "
-     r"__multiply_12,__power_15 -> __multiply_11; "
-     r"__multiply_5 -> __negation_4; R_{\mu\nu},__negation_4 -> __add_3; "
-     r"T_{\mu\nu},__multiply_11 -> __multiply_10; "
-     r"__add_3,__multiply_9 -> __add_2; __add_2,__multiply_10 -> __equals_1",
+     'G,const:pi -> multiply; Lambda,g_munu -> multiply; R,g_munu -> multiply; c -> power; num -> power; multiply,num -> multiply; multiply,power -> multiply; power -> power; multiply,power -> multiply; multiply -> negation; R_munu,negation -> add; T_munu,multiply -> multiply; add,multiply -> add; add,multiply -> rel:equals',
+     'G,pi -> __multiply_14; R,g_munu -> __multiply_8; Lambda,g_munu -> __multiply_9; c -> __power_16; __num_7 -> __power_6; __multiply_14,__num_13 -> __multiply_12; __multiply_8,__power_6 -> __multiply_5; __power_16 -> __power_15; __multiply_12,__power_15 -> __multiply_11; __multiply_5 -> __negation_4; R_munu,__negation_4 -> __add_3; T_munu,__multiply_11 -> __multiply_10; __add_3,__multiply_9 -> __add_2; __add_2,__multiply_10 -> __equals_1',
      None),
 
     ("proper_time",
      r"\tau = \int \sqrt{-g_{\mu\nu} dx^\mu dx^\nu}",
      PASS,
-     r"g_{\mu\nu} -> negation; negation -> power; "
-     r"power,x -> integral; integral,tau -> rel:equals",
-     r"g_{\mu\nu} -> __negation_4; "
-     r"__negation_4 -> __power_3; __power_3,x -> __integral_2; "
-     r"__integral_2,tau -> __equals_1",
+     'g_munu -> negation; negation -> power; power,x -> integral; integral,tau -> rel:equals',
+     'g_munu -> __negation_4; __negation_4 -> __power_3; __power_3,x -> __integral_2; __integral_2,tau -> __equals_1',
      None),
 
     ("stress_energy",
@@ -172,40 +151,23 @@ GENERAL_RELATIVITY: list[CatalogEntry] = [
     ("conservation_law",
      r"\nabla_\mu T^{\mu\nu} = 0",
      PASS,
-     r"mu,nu -> multiply; T,multiply -> power; "
-     r"\nabla_{\mu},power -> multiply; multiply,num -> rel:equals",
-     r"mu,nu -> __multiply_4; T,__multiply_4 -> __power_3; "
-     r"\nabla_{\mu},__power_3 -> __multiply_2; "
-     r"__multiply_2,__num_5 -> __equals_1",
+     'mu,nu -> multiply; T,multiply -> power; nabla_mu,power -> multiply; multiply,num -> rel:equals',
+     'mu,nu -> __multiply_4; T,__multiply_4 -> __power_3; __power_3,nabla_mu -> __multiply_2; __multiply_2,__num_5 -> __equals_1',
      None),
 
     ("metric_inverse",
      r"g_{\mu\nu} g^{\nu\rho} = \delta^\rho_\mu",
      PASS,
-     r"nu,rho -> multiply; \delta_{\mu},rho -> power; "
-     r"g,multiply -> power; g_{\mu\nu},power -> multiply; "
-     r"multiply,power -> rel:equals",
-     r"nu,rho -> __multiply_4; \delta_{\mu},rho -> __power_5; "
-     r"__multiply_4,g -> __power_3; __power_3,g_{\mu\nu} -> __multiply_2; "
-     r"__multiply_2,__power_5 -> __equals_1",
+     'nu,rho -> multiply; delta_mu,rho -> power; g,multiply -> power; g_munu,power -> multiply; multiply,power -> rel:equals',
+     'nu,rho -> __multiply_4; delta_mu,rho -> __power_5; __multiply_4,g -> __power_3; __power_3,g_munu -> __multiply_2; __multiply_2,__power_5 -> __equals_1',
      None),
 
     ("riemann_tensor",
      r"R^\rho_{\sigma\mu\nu} = \partial_\mu \Gamma^\rho_{\nu\sigma} "
      r"- \partial_\nu \Gamma^\rho_{\mu\sigma}",
      PASS,
-     r"Gamma_{\mu\sigma},rho -> power; Gamma_{\nu\sigma},rho -> power; "
-     r"R_{\sigma\mu\nu},rho -> power; "
-     r"\partial_{\mu},power -> multiply; \partial_{\nu},power -> multiply; "
-     r"multiply -> negation; multiply,negation -> add; add,power -> rel:equals",
-     r"R_{\sigma\mu\nu},rho -> __power_2; "
-     r"Gamma_{\nu\sigma},rho -> __power_5; "
-     r"Gamma_{\mu\sigma},rho -> __power_8; "
-     r"\partial_{\mu},__power_5 -> __multiply_4; "
-     r"\partial_{\nu},__power_8 -> __multiply_7; "
-     r"__multiply_7 -> __negation_6; "
-     r"__multiply_4,__negation_6 -> __add_3; "
-     r"__add_3,__power_2 -> __equals_1",
+     'Gamma_musigma,rho -> power; Gamma_nusigma,rho -> power; R_sigmamunu,rho -> power; partial_mu,power -> multiply; partial_nu,power -> multiply; multiply -> negation; multiply,negation -> add; add,power -> rel:equals',
+     'R_sigmamunu,rho -> __power_2; Gamma_nusigma,rho -> __power_5; Gamma_musigma,rho -> __power_8; __power_5,partial_mu -> __multiply_4; __power_8,partial_nu -> __multiply_7; __multiply_7 -> __negation_6; __multiply_4,__negation_6 -> __add_3; __add_3,__power_2 -> __equals_1',
      None),
 ]
 
@@ -214,8 +176,8 @@ RELATIVISTIC_DYNAMICS: list[CatalogEntry] = [
     ("time_dilation",
      r"\Delta t = \gamma \Delta t_0",
      PASS,
-     "Delta t_0,gamma -> multiply; Delta t,multiply -> rel:equals",
-     "Delta t_0,gamma -> __multiply_2; Delta t,__multiply_2 -> __equals_1",
+     'Delta_t_0,gamma -> multiply; Delta_t,multiply -> rel:equals',
+     'Delta_t_0,gamma -> __multiply_2; Delta_t,__multiply_2 -> __equals_1',
      None),
 
     ("relativistic_momentum",
@@ -238,23 +200,15 @@ RELATIVISTIC_DYNAMICS: list[CatalogEntry] = [
     ("schwarzschild_radius",
      r"r_s = \frac{2 G M}{c^2}",
      PASS,
-     "G,M -> multiply; c -> power; multiply,num -> multiply; power -> power; "
-     "multiply,power -> multiply; multiply,r_{s} -> rel:equals",
-     "G,M -> __multiply_5; c -> __power_7; __multiply_5,__num_4 -> __multiply_3; "
-     "__power_7 -> __power_6; __multiply_3,__power_6 -> __multiply_2; "
-     "__multiply_2,r_{s} -> __equals_1",
+     'G,M -> multiply; c -> power; multiply,num -> multiply; power -> power; multiply,power -> multiply; multiply,r_s -> rel:equals',
+     'G,M -> __multiply_5; c -> __power_7; __multiply_5,__num_4 -> __multiply_3; __power_7 -> __power_6; __multiply_3,__power_6 -> __multiply_2; __multiply_2,r_s -> __equals_1',
      [{"op": "power", "exponent": "2"}]),
 
     ("velocity_addition",
      r"u = \frac{u' + v}{1 + \frac{u' v}{c^2}}",
      PASS,
-     "u',v -> add; u',v -> multiply; c -> power; power -> power; "
-     "multiply,power -> multiply; multiply,num -> add; add -> power; "
-     "add,power -> multiply; multiply,u -> rel:equals",
-     "u',v -> __add_3; u',v -> __multiply_8; c -> __power_10; "
-     "__power_10 -> __power_9; __multiply_8,__power_9 -> __multiply_7; "
-     "__multiply_7,__num_6 -> __add_5; __add_5 -> __power_4; "
-     "__add_3,__power_4 -> __multiply_2; __multiply_2,u -> __equals_1",
+     'u_2,v -> add; u_2,v -> multiply; c -> power; power -> power; multiply,power -> multiply; multiply,num -> add; add -> power; add,power -> multiply; multiply,u -> rel:equals',
+     'u_2,v -> __add_3; u_2,v -> __multiply_8; c -> __power_10; __power_10 -> __power_9; __multiply_8,__power_9 -> __multiply_7; __multiply_7,__num_6 -> __add_5; __add_5 -> __power_4; __add_3,__power_4 -> __multiply_2; __multiply_2,u -> __equals_1',
      None),
 ]
 
@@ -264,33 +218,8 @@ ASPIRATIONAL_EXPRESSIONS: list[CatalogEntry] = [
      r"ds^2 = -\left(1 - \frac{r_s}{r}\right) c^2 dt^2 + "
      r"\frac{dr^2}{1 - \frac{r_s}{r}} + r^2 d\Omega^2",
      PASS,
-     "c -> power; dOmega -> power; dr -> power; ds -> power; "
-     "dt -> power; r -> power; r -> power; r -> power; "
-     "power,power -> multiply; power,r_{s} -> multiply; "
-     "power,r_{s} -> multiply; "
-     "multiply -> negation; multiply -> negation; "
-     "negation,num -> add; negation,num -> add; "
-     "add,power,power -> multiply; add -> power; "
-     "power,power -> multiply; multiply -> negation; "
-     "multiply,negation -> add; add,multiply -> add; "
-     "add,power -> rel:equals",
-     "r -> __power_13; dr -> __power_15; ds -> __power_2; "
-     "r -> __power_21; r -> __power_23; dOmega -> __power_24; "
-     "c -> __power_7; dt -> __power_8; "
-     "__power_13,r_{s} -> __multiply_12; "
-     "__power_21,r_{s} -> __multiply_20; "
-     "__power_23,__power_24 -> __multiply_22; "
-     "__multiply_12 -> __negation_11; "
-     "__multiply_20 -> __negation_19; "
-     "__negation_19,__num_18 -> __add_17; "
-     "__negation_11,__num_10 -> __add_9; "
-     "__add_9,__power_7,__power_8 -> __multiply_6; "
-     "__add_17 -> __power_16; "
-     "__power_15,__power_16 -> __multiply_14; "
-     "__multiply_6 -> __negation_5; "
-     "__multiply_14,__negation_5 -> __add_4; "
-     "__add_4,__multiply_22 -> __add_3; "
-     "__add_3,__power_2 -> __equals_1",
+     'c -> power; dOmega -> power; dr -> power; ds -> power; dt -> power; r -> power; r -> power; r -> power; power,power -> multiply; power,r_s -> multiply; power,r_s -> multiply; multiply -> negation; multiply -> negation; negation,num -> add; negation,num -> add; add,power,power -> multiply; add -> power; power,power -> multiply; multiply -> negation; multiply,negation -> add; add,multiply -> add; add,power -> rel:equals',
+     'r -> __power_13; dr -> __power_15; ds -> __power_2; r -> __power_21; r -> __power_23; dOmega -> __power_24; c -> __power_7; dt -> __power_8; __power_13,r_s -> __multiply_12; __power_21,r_s -> __multiply_20; __power_23,__power_24 -> __multiply_22; __multiply_12 -> __negation_11; __multiply_20 -> __negation_19; __negation_19,__num_18 -> __add_17; __negation_11,__num_10 -> __add_9; __add_9,__power_7,__power_8 -> __multiply_6; __add_17 -> __power_16; __power_15,__power_16 -> __multiply_14; __multiply_6 -> __negation_5; __multiply_14,__negation_5 -> __add_4; __add_4,__multiply_22 -> __add_3; __add_3,__power_2 -> __equals_1',
      None),
 ]
 

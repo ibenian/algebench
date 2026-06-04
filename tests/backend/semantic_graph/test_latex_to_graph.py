@@ -221,7 +221,7 @@ class TestKnownVariables:
         # `sympy.latex(Symbol("rho_{0}"))`, which drops the backslash.
         # The subexpr must carry the same LaTeX command as `latex`.
         g = latex_to_semantic_graph(r"\rho_0 + 1")
-        node = _find_node(g, id="rho_{0}")
+        node = _find_node(g, id="rho_0")
         assert node.latex == r"\rho_{0}"
         assert node.subexpr == r"\rho_{0}"
 
@@ -243,7 +243,7 @@ class TestKnownVariables:
         # Negative case: `x_0` is a plain ASCII variable, not a LaTeX
         # macro. `_symbol_latex` must NOT invent a `\x` command for it.
         g = latex_to_semantic_graph(r"x_0 + 1")
-        node = _find_node(g, id="x_{0}")
+        node = _find_node(g, id="x_0")
         assert node.latex == "x_{0}"
         assert node.subexpr == "x_{0}"
 

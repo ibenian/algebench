@@ -152,19 +152,15 @@ ROOT_EXPRESSIONS: list[CatalogEntry] = [
     ("vietas_sum",
      r"r_1 + r_2 = -\frac{b}{a}",
      PASS,
-     "r_{1},r_{2} -> add; a -> power; b,power -> multiply; "
-     "multiply -> negation; add,negation -> rel:equals",
-     "r_{1},r_{2} -> __add_2; a -> __power_5; __power_5,b -> __multiply_4; "
-     "__multiply_4 -> __negation_3; __add_2,__negation_3 -> __equals_1",
+     'r_1,r_2 -> add; a -> power; b,power -> multiply; multiply -> negation; add,negation -> rel:equals',
+     'r_1,r_2 -> __add_2; a -> __power_5; __power_5,b -> __multiply_4; __multiply_4 -> __negation_3; __add_2,__negation_3 -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 
     ("vietas_product",
      r"r_1 r_2 = \frac{c}{a}",
      PASS,
-     "r_{1},r_{2} -> multiply; a -> power; c,power -> multiply; "
-     "multiply,multiply -> rel:equals",
-     "r_{1},r_{2} -> __multiply_2; a -> __power_4; __power_4,c -> __multiply_3; "
-     "__multiply_2,__multiply_3 -> __equals_1",
+     'r_1,r_2 -> multiply; a -> power; c,power -> multiply; multiply,multiply -> rel:equals',
+     'r_1,r_2 -> __multiply_2; a -> __power_4; __power_4,c -> __multiply_3; __multiply_2,__multiply_3 -> __equals_1',
      [{"op": "power", "exponent": "-1"}]),
 ]
 
