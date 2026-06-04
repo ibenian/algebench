@@ -8,7 +8,7 @@ from typing import Any
 from backend.model.semantic_graph import SemanticGraph, SemanticGraphNode, SemanticGraphEdge
 
 from .constants import _ORDER_TO_ACCENT
-from .sympy_translator import _slug_id
+from .id_utils import _slug_id
 
 
 def _re_sub_literal(pattern: str, replacement: str, text: str) -> str:

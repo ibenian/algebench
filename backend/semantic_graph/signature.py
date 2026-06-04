@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from backend.model.semantic_graph import SemanticGraph, SemanticGraphNode
+from backend.model import SemanticGraph, SemanticGraphNode
 
 NodeLabeler = Callable[[SemanticGraphNode], str]
 
