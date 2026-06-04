@@ -56,6 +56,36 @@ def test_expanded_and_factored_forms_are_equivalent():
     assert is_grounded(factored, a ** 2 - b ** 2) is True
 
 
+def test_inequalities_and_logic_ground():
+    cases = [
+        (r"2 x + 1 < 7", sp.Lt(2 * x + 1, 7)),
+        (r"3 x \leq 9", sp.Le(3 * x, 9)),
+        (r"x^2 \geq 4", sp.Ge(x ** 2, 4)),
+        (r"x \neq 0", sp.Ne(x, 0)),
+        (r"x > 2 \implies x > 0", sp.Implies(sp.Gt(x, 2), sp.Gt(x, 0))),
+    ]
+    for latex, expected in cases:
+        g = SVC.derive(latex)
+        assert is_grounded(g, expected) is True, latex
+
+
+def test_inequality_direction_is_respected():
+    # 3 > x is the same relation as x < 3 (canonical), but x < 3 != x <= 3
+    assert sympy_equiv(sp.Gt(3, x), sp.Lt(x, 3)) is True
+    assert sympy_equiv(sp.Lt(x, 3), sp.Le(x, 3)) is False
+    # a true inequality must not match its reverse
+    assert sympy_equiv(sp.Lt(x, 3), sp.Gt(x, 3)) is False
+
+
+def test_inequality_and_logic_domains_are_groundable():
+    for dom in ("inequalities", "logic"):
+        exs = D.generate(n=4, seed=4, domains=[dom], max_ops=120)
+        assert exs, f"no examples for {dom}"
+        for e in exs:
+            sg = step_groundings(e.context.start, e.gold_ops, e.step_exprs)
+            assert all(s is True for s in sg), (dom, sg)
+
+
 def test_trajectory_consistent_on_gold():
     exs = D.generate(n=6, seed=99, max_steps=1)
     assert exs

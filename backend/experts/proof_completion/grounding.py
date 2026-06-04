@@ -39,6 +39,18 @@ _FUNC = {
 
 _CONSTANTS = {"pi": sp.pi, "e": sp.E, "E": sp.E, "infty": sp.oo, "oo": sp.oo}
 
+# relation op -> sympy relational constructor
+_RELATIONS = {
+    "equals": sp.Eq, "not_equal": sp.Ne,
+    "less_than": sp.Lt, "greater_than": sp.Gt,
+    "less_equal": sp.Le, "greater_equal": sp.Ge,
+}
+# logical-connective operator op -> sympy boolean constructor (binary)
+_LOGIC = {
+    "implies": sp.Implies, "iff": sp.Equivalent,
+    "conjunction": sp.And, "disjunction": sp.Or,
+}
+
 
 class UngroundableGraph(ValueError):
     """The graph uses a construct the structural walk does not model."""
@@ -157,13 +169,28 @@ def _eval_operator(n, op, ins, ev) -> sp.Expr:
         if not wrt:
             raise UngroundableGraph("derivative wrt")
         return sp.Derivative(f, *wrt)
+    if op in _LOGIC:
+        left, right = _binary_operands(op, ins, ev)
+        return _LOGIC[op](left, right)
     raise UngroundableGraph(f"operator {op!r}")
 
 
+def _binary_operands(op, ins, ev):
+    """Resolve (left, right) for a binary node, honoring lhs/rhs roles."""
+    if len(ins) != 2:
+        raise UngroundableGraph(f"{op!r} arity {len(ins)}")
+    roles = {r: c for r, c in ins}
+    if "lhs" in roles and "rhs" in roles:
+        return ev(roles["lhs"]), ev(roles["rhs"])
+    return ev(ins[0][1]), ev(ins[1][1])
+
+
 def _eval_relation(op, ins, ev) -> sp.Expr:
-    if op == "equals" and len(ins) == 2:
-        return sp.Eq(ev(ins[0][1]), ev(ins[1][1]))
-    raise UngroundableGraph(f"relation {op!r}")
+    fn = _RELATIONS.get(op)
+    if fn is None:
+        raise UngroundableGraph(f"relation {op!r}")
+    left, right = _binary_operands(op, ins, ev)
+    return fn(left, right)
 
 
 def graph_to_latex(graph: SemanticGraph) -> Optional[str]:
@@ -192,13 +219,39 @@ def _as_residual(expr):
 
 
 def sympy_equiv(a, b) -> bool:
-    """True iff ``a`` and ``b`` are mathematically equal (equations up to sign)."""
+    """True iff ``a`` and ``b`` denote the same statement.
+
+    - Plain expressions / equations: mathematically equal (equations up to sign).
+    - Inequalities (``<``, ``>``, ``<=``, ``>=``, ``!=``): same relation, compared
+      by canonical form (so ``3 > x`` matches ``x < 3``; direction is respected).
+    - Boolean connectives (``=>``, ``<=>``, ``and``, ``or``): logically equivalent.
+    """
+    from sympy.logic.boolalg import BooleanFunction
+
     try:
+        Rel = sp.core.relational.Relational
+        a_eq, b_eq = isinstance(a, sp.Equality), isinstance(b, sp.Equality)
+
+        # inequalities / not-equal: relational but not an equality
+        a_ineq = isinstance(a, Rel) and not a_eq
+        b_ineq = isinstance(b, Rel) and not b_eq
+        if a_ineq or b_ineq:
+            return bool(a_ineq and b_ineq and a.canonical == b.canonical)
+
+        # boolean connectives (And / Or / Implies / Equivalent)
+        if isinstance(a, BooleanFunction) or isinstance(b, BooleanFunction):
+            if not (isinstance(a, BooleanFunction) and isinstance(b, BooleanFunction)):
+                return False
+            try:
+                return bool(sp.simplify_logic(sp.Equivalent(a, b)) == sp.true)
+            except Exception:
+                return a == b
+
+        # expressions / equalities: residual comparison (equations up to sign)
         ra, rb = _as_residual(a), _as_residual(b)
         if sp.simplify(ra - rb) == 0:
             return True
-        # equations: a == b is the same relation as b - a == 0
-        if isinstance(a, sp.Equality) or isinstance(b, sp.Equality):
+        if a_eq or b_eq:
             return sp.simplify(ra + rb) == 0
         return False
     except Exception:
