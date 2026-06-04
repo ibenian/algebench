@@ -21,7 +21,7 @@ from collections import Counter
 
 from backend.experts.proof_completion import dataset as D
 from backend.experts.proof_completion.graph_ops import apply, canonical_equal
-from backend.experts.proof_completion.grounding import is_grounded
+from backend.experts.proof_completion.grounding import is_grounded, step_groundings
 
 
 def main() -> int:
@@ -49,6 +49,12 @@ def main() -> int:
     # (2) grounding: each graph -> sympy aligns with the source sympy expression
     g_start = sum(1 for e in exs if is_grounded(e.context.start, e.start_expr) is True)
     g_target = sum(1 for e in exs if is_grounded(e.context.target, e.target_expr) is True)
+    # (3) per-step grounding: every waypoint of every gold trajectory grounds
+    step_ok = step_total = 0
+    for e in exs:
+        sg = step_groundings(e.context.start, e.gold_ops, e.step_exprs)
+        step_ok += sum(1 for s in sg if s is True)
+        step_total += len(sg)
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     D.save_jsonl(exs, args.out)
@@ -57,6 +63,8 @@ def main() -> int:
     print(f"wrote {len(exs)} examples -> {args.out}")
     print(f"  trajectory-consistent (start+gold==target): {len(exs) - bad}/{len(exs)}")
     print(f"  grounded to sympy:  start {g_start}/{len(exs)}  target {g_target}/{len(exs)}")
+    print(f"  per-step grounded (every waypoint): {step_ok}/{step_total}")
+    print(f"  chain steps (n_steps): {dict(sorted(Counter(e.n_steps for e in exs).items()))}")
     print(f"  by domain: {dict(Counter(e.context.domain for e in exs))}")
     print(f"  gold ops: min {min(lens)} median {int(statistics.median(lens))} "
           f"mean {statistics.mean(lens):.1f} max {max(lens)}")

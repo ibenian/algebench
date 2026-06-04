@@ -25,6 +25,7 @@ from backend.semantic_graph.service import SemanticGraphService
 from ..context_id import build as build_context_id
 from ..outputs import GRAPH_OP_ADAPTER
 from .graph_ops import apply, canonical_equal, diff
+from .grounding import is_grounded
 from .models import GraphTransition
 
 _SVC = SemanticGraphService()
@@ -131,12 +132,19 @@ def _expr_to_graph(expr: sp.Expr, domain: str) -> Optional[SemanticGraph]:
     return _SVC.derive(sp.latex(expr), domain=domain)
 
 
-def thread_gold(graphs: list[SemanticGraph]) -> tuple[list[GraphOp], SemanticGraph]:
-    """Thread per-step diffs through the actual working graph (id-consistent)."""
-    gold: list[GraphOp] = []
+def thread_gold(graphs: list[SemanticGraph]) -> tuple[list, SemanticGraph]:
+    """Thread per-step diffs through the working graph, tagging ops by step.
+
+    Transition ``i`` (graph[i-1] -> graph[i]) is derivation step ``i`` (1-based);
+    every op produced by that diff is tagged ``step=i`` so the trajectory carries
+    explicit step boundaries.
+    """
+    gold: list = []
     working = graphs[0]
-    for nxt in graphs[1:]:
+    for i, nxt in enumerate(graphs[1:], start=1):
         ops = diff(working, nxt)
+        for op in ops:
+            op.step = i
         working = apply(working, ops)
         gold.extend(ops)
     return gold, working
@@ -157,6 +165,10 @@ def build_example(seed: Seed, rng: random.Random, max_steps: int, max_ops: int =
             return None
         if kept and canonical_equal(kept[-1][1], g):
             continue
+        # require every waypoint to be a groundable expression, so each
+        # derivation step lands on valid, verifiable math
+        if is_grounded(g, e) is not True:
+            return None
         kept.append((e, g))
     if len(kept) < 2:
         return None
@@ -185,6 +197,8 @@ def build_example(seed: Seed, rng: random.Random, max_steps: int, max_ops: int =
         # source-of-truth expressions (sympy) for grounding checks
         start_expr=start_expr,
         target_expr=target_expr,
+        # per-step target expressions e1..eN (one per derivation step)
+        step_exprs=[e for e, _ in kept[1:]],
     ).with_inputs("context", "context_id", "lesson_context", "instruction")
 
 
@@ -224,6 +238,7 @@ def example_to_dict(ex) -> dict:
         # sympy expressions serialized as sympify-able strings
         "start_expr": str(ex.get("start_expr")) if ex.get("start_expr") is not None else None,
         "target_expr": str(ex.get("target_expr")) if ex.get("target_expr") is not None else None,
+        "step_exprs": [str(e) for e in (ex.get("step_exprs") or [])],
     }
 
 
@@ -249,6 +264,7 @@ def example_from_dict(d: dict):
         n_steps=d.get("n_steps"),
         start_expr=_sympify_or_none(d.get("start_expr")),
         target_expr=_sympify_or_none(d.get("target_expr")),
+        step_exprs=[_sympify_or_none(s) for s in (d.get("step_exprs") or [])],
     ).with_inputs("context", "context_id", "lesson_context", "instruction")
 
 

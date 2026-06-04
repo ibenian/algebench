@@ -57,6 +57,10 @@ class GraphOpBase(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # 1-based derivation step this op belongs to. Ops sharing a step are applied
+    # together; the cumulative graph at each step boundary must be a complete,
+    # groundable expression (a valid waypoint in the derivation).
+    step: int = Field(default=1, ge=1, description="1-based derivation step index")
     explanation: str = Field(min_length=1, max_length=400, description="what changes")
     justification: str = Field(min_length=1, max_length=400,
                                description="why the change is mathematically valid")

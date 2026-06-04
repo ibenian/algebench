@@ -63,6 +63,17 @@ shared fields on `GraphOpBase` and behavior provided polymorphically via
    construct the walk doesn't model (e.g. a latex round-trip that reads implicit
    `x(...)` as function application) — `None` means "unverifiable," never wrong.
 
+3. **Per-step grounding (multi-step derivations)** — every `GraphOp` carries a
+   1-based `step`. With `--max-steps > 1`, `dataset.py` builds chains
+   `e0 → e1 → … → eN` where **every waypoint is required to be groundable**
+   (chains with an ungroundable step are rejected — which also forces target
+   grounding to 100%). `thread_gold` tags each op with its step; `step_groundings`
+   verifies that applying ops up to step k grounds to `eₖ` (the generator reports
+   it — e.g. `188/188`). For predictions, `per_step_groundable` /
+   `score_components`' `step_grounded` measures the fraction of the model's step
+   boundaries that are valid math waypoints — the "is every intermediate sane?"
+   signal (e.g. `x²+1=0 → x²=−1 → x=√−1`).
+
 ### Pipeline
 
 ```bash

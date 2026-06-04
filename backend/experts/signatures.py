@@ -28,8 +28,11 @@ class ProofCompletionSig(dspy.Signature):
     Rules:
     - Reference existing nodes/edges by their ids; choose fresh, descriptive ids
       for new nodes (ids must not contain a hyphen).
-    - Prefer small, mathematically meaningful steps that mirror a human
-      derivation, not one giant rewrite.
+    - Group the operations into derivation `step`s (1-based). Each step is a
+      complete rewrite: after applying all ops up to and including step k, the
+      graph must be a valid, complete expression (a sensible waypoint), not a
+      half-edited fragment. Use one step for a single rewrite; use several for a
+      multi-step derivation.
     - Every operation needs a one-line `explanation` (what changes) and a
       `justification` (the mathematical reason it is valid).
     - The cumulative result must equal the target graph exactly.

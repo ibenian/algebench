@@ -30,7 +30,7 @@ from backend.experts.proof_completion.metric import score_components  # noqa: E4
 def _agg(rows: list[dict]) -> dict:
     if not rows:
         return {}
-    keys = ("exact", "coverage", "op_f1")
+    keys = ("exact", "coverage", "op_f1", "step_grounded")
     out = {k: sum(r[k] for r in rows) / len(rows) for k in keys}
     # grounding rate is over the groundable subset
     groundable = [r for r in rows if r.get("groundable", 0.0) == 1.0]
@@ -46,7 +46,8 @@ def _fmt(d: dict) -> str:
         return "(none)"
     g = "n/a" if d.get("grounded") is None else f"{d['grounded']:.2f}"
     return (f"exact {d['exact']:.2f}  coverage {d['coverage']:.2f}  "
-            f"op_f1 {d['op_f1']:.2f}  grounded {g}  (n={d['n']})")
+            f"op_f1 {d['op_f1']:.2f}  grounded {g}  "
+            f"step_grounded {d['step_grounded']:.2f}  (n={d['n']})")
 
 
 def main() -> int:

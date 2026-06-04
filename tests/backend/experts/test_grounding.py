@@ -11,6 +11,8 @@ from backend.experts.proof_completion.graph_ops import apply
 from backend.experts.proof_completion.grounding import (
     graph_to_sympy,
     is_grounded,
+    per_step_groundable,
+    step_groundings,
     sympy_equiv,
     trajectory_consistent,
 )
@@ -66,6 +68,29 @@ def test_trajectory_inconsistent_when_ops_missing():
     ex = exs[0]
     # dropping the last op should break the reconstruction
     assert not trajectory_consistent(ex.context.start, ex.gold_ops[:-1], ex.context.target)
+
+
+def test_multistep_generation_tags_steps_and_grounds_every_waypoint():
+    exs = D.generate(n=20, seed=1, max_steps=3, max_ops=60)
+    assert exs
+    multi = [e for e in exs if e.n_steps > 1]
+    assert multi, "expected at least one multi-step chain"
+    for e in exs:
+        # ops are tagged with contiguous 1..n_steps step indices
+        assert sorted(set(o.step for o in e.gold_ops)) == list(range(1, e.n_steps + 1))
+        # one expected expression per step
+        assert len(e.step_exprs) == e.n_steps
+        # every waypoint of the gold trajectory grounds to its expected expr
+        assert all(s is True for s in step_groundings(
+            e.context.start, e.gold_ops, e.step_exprs))
+
+
+def test_per_step_groundable_counts_valid_waypoints():
+    exs = D.generate(n=6, seed=2, max_steps=3, max_ops=60)
+    e = next(x for x in exs if x.n_steps > 1)
+    ok, total = per_step_groundable(e.context.start, e.gold_ops)
+    assert total == e.n_steps
+    assert ok == total  # gold waypoints are all valid math
 
 
 def test_dataset_carries_source_expressions():

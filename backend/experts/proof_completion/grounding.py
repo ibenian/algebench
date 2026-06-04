@@ -215,3 +215,46 @@ def is_grounded(graph: SemanticGraph, expected) -> Optional[bool]:
     except UngroundableGraph:
         return None
     return sympy_equiv(got, expected)
+
+
+# --------------------------------------------------------------------------- #
+# per-step grounding (multi-step derivations)
+# --------------------------------------------------------------------------- #
+
+def _cumulative_at_step(start: SemanticGraph, ops, k: int) -> SemanticGraph:
+    """Apply, in order, every op belonging to step <= k."""
+    return apply(start, [op for op in ops if getattr(op, "step", 1) <= k])
+
+
+def step_groundings(start: SemanticGraph, ops, step_exprs: list) -> list:
+    """Gold check: does each step boundary ground to its expected expression?
+
+    Returns one entry per derivation step: True / False / None (ungroundable).
+    """
+    out = []
+    for k, expr in enumerate(step_exprs, start=1):
+        try:
+            g = _cumulative_at_step(start, ops, k)
+        except Exception:
+            out.append(False)
+            continue
+        out.append(is_grounded(g, expr))
+    return out
+
+
+def per_step_groundable(start: SemanticGraph, ops) -> tuple[int, int]:
+    """Prediction check: how many step boundaries are valid math waypoints?
+
+    A boundary is "valid" if the cumulative graph applies legally and grounds to
+    *some* expression (independent of what it should be). Returns (ok, total).
+    """
+    steps = sorted({getattr(op, "step", 1) for op in ops})
+    ok = 0
+    for k in steps:
+        try:
+            g = _cumulative_at_step(start, ops, k)
+            graph_to_sympy(g)
+            ok += 1
+        except Exception:
+            pass
+    return ok, len(steps)

@@ -23,7 +23,7 @@ from ..outputs import (
     RemoveNode,
 )
 from .graph_ops import apply, canonical_equal, wl_colors, _content
-from .grounding import is_grounded
+from .grounding import is_grounded, per_step_groundable
 
 
 # --------------------------------------------------------------------------- #
@@ -137,12 +137,19 @@ def score_components(example, pred) -> dict:
     target_expr = example.get("target_expr") if hasattr(example, "get") else None
     grounded = is_grounded(best_result, target_expr) if target_expr is not None else None
 
+    # per-step grounding: fraction of the prediction's step boundaries that are
+    # valid math waypoints (intermediate validity)
+    ps_ok, ps_total = per_step_groundable(start, pred_ops)
+    step_grounded = (ps_ok / ps_total) if ps_total else 0.0
+
     return {
         "exact": 1.0 if exact else 0.0,
         "coverage": coverage(best_result, target),
         "op_f1": op_f1(pred_ops, gold_ops),
         "groundable": 0.0 if grounded is None else 1.0,
         "grounded": 1.0 if grounded else 0.0,
+        "step_grounded": step_grounded,
+        "n_pred_steps": ps_total,
         "n_pred_ops": len(pred_ops),
         "n_gold_ops": len(gold_ops),
         "n_failed_ops": failed,
