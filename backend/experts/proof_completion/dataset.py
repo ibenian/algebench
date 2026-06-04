@@ -30,122 +30,12 @@ from .models import GraphTransition
 
 _SVC = SemanticGraphService()
 
-# Reusable symbols
-x, y, a, b, c, n = sp.symbols("x y a b c n")
+# Domains live one-file-per-domain under ``domains/`` and self-register.
+# Adding a domain = drop a file there. Import the registry + shared symbol(s).
+from .domains import discover_domains  # noqa: E402
+from .domains.base import DOMAIN_REGISTRY, Seed, x  # noqa: E402
 
-
-# --------------------------------------------------------------------------- #
-# seed expressions per domain
-# --------------------------------------------------------------------------- #
-
-@dataclass(frozen=True)
-class Seed:
-    domain: str
-    intent: str
-    expr: sp.Expr
-    # An explicit, scripted derivation chain (list of sympy exprs/equations).
-    # When set, build_example uses it verbatim instead of random rewrites — this
-    # is how we model real, goal-directed multi-step derivations.
-    chain: tuple = ()
-
-
-def _algebra_seeds(rng: random.Random) -> list[Seed]:
-    p, q = rng.randint(1, 5), rng.randint(1, 5)
-    return [
-        Seed("algebra", "expand the square", (x + p) ** 2),
-        Seed("algebra", "expand the product", (x + p) * (x + q)),
-        Seed("algebra", "factor the difference of squares", a ** 2 - b ** 2),
-        Seed("algebra", "expand the cube", (x + 1) ** 3),
-        Seed("algebra", "expand the product of conjugates", (a - b) * (a + b)),
-        Seed("algebra", "expand the binomial", (p * x + q) ** 2),
-    ]
-
-
-def _rational_seeds(rng: random.Random) -> list[Seed]:
-    return [
-        Seed("rational", "combine the fractions", 1 / x + 1 / (x + 1)),
-        Seed("rational", "simplify the rational expression", (x ** 2 - 1) / (x - 1)),
-        Seed("rational", "combine over a common denominator", a / x + b / y),
-    ]
-
-
-def _calculus_seeds(rng: random.Random) -> list[Seed]:
-    k = rng.randint(2, 4)
-    return [
-        Seed("calculus", "differentiate the power", sp.Derivative(x ** k, x)),
-        Seed("calculus", "differentiate the product", sp.Derivative(x * sp.sin(x), x)),
-        Seed("calculus", "differentiate the polynomial",
-             sp.Derivative(x ** 3 + x, x)),
-    ]
-
-
-# --------------------------------------------------------------------------- #
-# real, goal-directed multi-step derivations (scripted chains, each step a
-# complete, groundable equation that a human would actually write down)
-# --------------------------------------------------------------------------- #
-
-def _linear_solve_seeds(rng: random.Random) -> list[Seed]:
-    """ax + b = c  ->  ax = c - b  ->  x = root  (clean integer root)."""
-    a = rng.randint(2, 7)
-    root = rng.randint(1, 8)
-    b = rng.randint(1, 9)
-    c = a * root + b
-    chain = (
-        sp.Eq(a * x + b, c),
-        sp.Eq(a * x, c - b),
-        sp.Eq(x, sp.Integer(c - b) / a),
-    )
-    return [Seed("equation_solving", "solve the linear equation for x",
-                 chain[0], chain=chain)]
-
-
-def _quadratic_sqrt_seeds(rng: random.Random) -> list[Seed]:
-    """x^2 - k = 0  ->  x^2 = k  ->  x = r  (k a perfect square)."""
-    r = rng.randint(2, 9)
-    k = r * r
-    chain = (sp.Eq(x ** 2 - k, 0), sp.Eq(x ** 2, k), sp.Eq(x, r))
-    return [Seed("equation_solving",
-                 "solve the quadratic by isolating x squared and taking the root",
-                 chain[0], chain=chain)]
-
-
-def _shifted_square_seeds(rng: random.Random) -> list[Seed]:
-    """(x + p)^2 = q  ->  x + p = s  ->  x = s - p  (q = s^2)."""
-    p = rng.randint(1, 6)
-    s = rng.randint(2, 7)
-    q = s * s
-    chain = (sp.Eq((x + p) ** 2, q), sp.Eq(x + p, s), sp.Eq(x, s - p))
-    return [Seed("equation_solving",
-                 "solve by taking the square root of both sides",
-                 chain[0], chain=chain)]
-
-
-def _isolate_seeds(rng: random.Random) -> list[Seed]:
-    """(a x)/d + b = c  ->  (a x)/d = c - b  ->  a x = d(c - b)  ->  x = ..."""
-    a = rng.randint(2, 5)
-    d = rng.randint(2, 4)
-    root = rng.randint(1, 6)
-    b = rng.randint(1, 7)
-    c = sp.Integer(a * root) / d + b
-    chain = (
-        sp.Eq(a * x / d + b, c),
-        sp.Eq(a * x / d, c - b),
-        sp.Eq(a * x, d * (c - b)),
-        sp.Eq(x, root),
-    )
-    return [Seed("equation_solving", "isolate x step by step",
-                 chain[0], chain=chain)]
-
-
-SEED_BUILDERS: dict[str, Callable[[random.Random], list[Seed]]] = {
-    "algebra": _algebra_seeds,
-    "rational": _rational_seeds,
-    "calculus": _calculus_seeds,
-    "equation_solving": lambda rng: (
-        _linear_solve_seeds(rng) + _quadratic_sqrt_seeds(rng)
-        + _shifted_square_seeds(rng) + _isolate_seeds(rng)
-    ),
-}
+discover_domains()  # populate DOMAIN_REGISTRY from domains/*.py
 
 
 # --------------------------------------------------------------------------- #
@@ -274,13 +164,13 @@ def generate(n: int, seed: int, domains: Optional[list[str]] = None,
              max_steps: int = 1, max_ops: int = 40) -> list:
     """Generate up to ``n`` examples deterministically from ``seed``."""
     rng = random.Random(seed)
-    domains = domains or list(SEED_BUILDERS)
+    domains = domains or list(DOMAIN_REGISTRY)
     examples = []
     attempts = 0
     while len(examples) < n and attempts < n * 40:
         attempts += 1
         domain = rng.choice(domains)
-        seeds = SEED_BUILDERS[domain](rng)
+        seeds = DOMAIN_REGISTRY[domain](rng)
         seed_obj = rng.choice(seeds)
         ex = build_example(seed_obj, rng, max_steps, max_ops=max_ops)
         if ex is not None:
