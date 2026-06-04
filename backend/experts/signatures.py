@@ -1,0 +1,46 @@
+"""DSPy signatures.
+
+A signature is parameterized by its expert's context model. The standard input
+fields (``context``, ``context_id``, ``lesson_context``, ``instruction``) are
+bound by name as kwargs in :func:`backend.experts.service.invoke` — we never
+construct a ``Signature`` ourselves. The docstring holds the expert's *static*
+role and is what the optimizer (MIPROv2/GEPA) rewrites.
+"""
+
+from __future__ import annotations
+
+from typing import List
+
+import dspy
+
+from .outputs import GraphTrajectory
+from .proof_completion.models import GraphTransition
+
+
+class ProofCompletionSig(dspy.Signature):
+    """Produce the ordered atomic graph edits that turn `start` into `target`.
+
+    You are given two semantic graphs: a starting graph and a target graph.
+    Emit a single trajectory of atomic operations — add_node, remove_node,
+    add_edge, remove_edge — that, applied in order to the start graph, yields a
+    graph structurally and semantically identical to the target graph.
+
+    Rules:
+    - Reference existing nodes/edges by their ids; choose fresh, descriptive ids
+      for new nodes (ids must not contain a hyphen).
+    - Prefer small, mathematically meaningful steps that mirror a human
+      derivation, not one giant rewrite.
+    - Every operation needs a one-line `explanation` (what changes) and a
+      `justification` (the mathematical reason it is valid).
+    - The cumulative result must equal the target graph exactly.
+    """
+
+    context: GraphTransition = dspy.InputField(
+        desc="the start graph, the target graph, the domain, and the intent"
+    )
+    context_id: str = dspy.InputField(desc="id of the semantic graph being transformed")
+    lesson_context: str = dspy.InputField(desc="surrounding lesson summary, may be empty")
+    instruction: str = dspy.InputField(desc="the user's request")
+    outputs: List[GraphTrajectory] = dspy.OutputField(
+        desc="exactly one GraphTrajectory whose ops transform start into target"
+    )

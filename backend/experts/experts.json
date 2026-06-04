@@ -1,0 +1,8 @@
+{
+  "proof_completion": {
+    "description": "Given a start semantic graph and a target semantic graph, produce the ordered trajectory of atomic graph edits (add/remove node, add/remove edge) that transforms start into target, each with an explanation and a mathematical justification.",
+    "context_scope": "semanticGraph",
+    "context_model": "GraphTransition",
+    "outputs": ["graph_trajectory"]
+  }
+}

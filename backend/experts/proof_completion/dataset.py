@@ -1,0 +1,269 @@
+"""Sympy-as-ground-truth dataset generator for the ProofCompletionExpert.
+
+For each example we build a chain of valid sympy rewrites
+``e0 → e1 → … → eN``, derive each expression to a semantic graph with the
+project's existing pipeline, and thread per-step structural diffs into a single
+gold trajectory such that ``apply(start, gold_ops) ≅ target``.
+
+``sympy`` is the reliable source of truth: every (start, target) pair is a real
+algebraic transformation, and the gold trajectory is self-consistent by
+construction (verified in tests).
+"""
+
+from __future__ import annotations
+
+import json
+import random
+from dataclasses import dataclass
+from typing import Callable, Optional
+
+import sympy as sp
+
+from backend.model.semantic_graph import SemanticGraph
+from backend.semantic_graph.service import SemanticGraphService
+
+from ..context_id import build as build_context_id
+from ..outputs import GRAPH_OP_ADAPTER
+from .graph_ops import apply, canonical_equal, diff
+from .models import GraphTransition
+
+_SVC = SemanticGraphService()
+
+# Reusable symbols
+x, y, a, b, c, n = sp.symbols("x y a b c n")
+
+
+# --------------------------------------------------------------------------- #
+# seed expressions per domain
+# --------------------------------------------------------------------------- #
+
+@dataclass(frozen=True)
+class Seed:
+    domain: str
+    intent: str
+    expr: sp.Expr
+
+
+def _algebra_seeds(rng: random.Random) -> list[Seed]:
+    p, q = rng.randint(1, 5), rng.randint(1, 5)
+    return [
+        Seed("algebra", "expand the square", (x + p) ** 2),
+        Seed("algebra", "expand the product", (x + p) * (x + q)),
+        Seed("algebra", "factor the difference of squares", a ** 2 - b ** 2),
+        Seed("algebra", "expand the cube", (x + 1) ** 3),
+        Seed("algebra", "expand the product of conjugates", (a - b) * (a + b)),
+        Seed("algebra", "expand the binomial", (p * x + q) ** 2),
+    ]
+
+
+def _rational_seeds(rng: random.Random) -> list[Seed]:
+    return [
+        Seed("rational", "combine the fractions", 1 / x + 1 / (x + 1)),
+        Seed("rational", "simplify the rational expression", (x ** 2 - 1) / (x - 1)),
+        Seed("rational", "combine over a common denominator", a / x + b / y),
+    ]
+
+
+def _calculus_seeds(rng: random.Random) -> list[Seed]:
+    k = rng.randint(2, 4)
+    return [
+        Seed("calculus", "differentiate the power", sp.Derivative(x ** k, x)),
+        Seed("calculus", "differentiate the product", sp.Derivative(x * sp.sin(x), x)),
+        Seed("calculus", "differentiate the polynomial",
+             sp.Derivative(x ** 3 + x, x)),
+    ]
+
+
+SEED_BUILDERS: dict[str, Callable[[random.Random], list[Seed]]] = {
+    "algebra": _algebra_seeds,
+    "rational": _rational_seeds,
+    "calculus": _calculus_seeds,
+}
+
+
+# --------------------------------------------------------------------------- #
+# rewrite transforms
+# --------------------------------------------------------------------------- #
+
+def _safe(fn):
+    def wrapped(e):
+        try:
+            return fn(e)
+        except Exception:
+            return None
+    return wrapped
+
+
+TRANSFORMS: list[Callable[[sp.Expr], Optional[sp.Expr]]] = [
+    _safe(lambda e: sp.expand(e)),
+    _safe(lambda e: sp.factor(e)),
+    _safe(lambda e: sp.together(e)),
+    _safe(lambda e: sp.cancel(e)),
+    _safe(lambda e: sp.simplify(e)),
+    _safe(lambda e: e.doit() if hasattr(e, "doit") else None),  # evaluate Derivative
+    _safe(lambda e: sp.apart(e, x)),
+    _safe(lambda e: sp.trigsimp(e)),
+]
+
+
+def make_expr_chain(expr0: sp.Expr, rng: random.Random, max_steps: int) -> list[sp.Expr]:
+    """Apply a random ordered subset of transforms, keeping structure-changing steps."""
+    chain = [expr0]
+    order = TRANSFORMS[:]
+    rng.shuffle(order)
+    for tf in order:
+        if len(chain) - 1 >= max_steps:
+            break
+        nxt = tf(chain[-1])
+        if nxt is None:
+            continue
+        if sp.srepr(nxt) == sp.srepr(chain[-1]):
+            continue
+        chain.append(nxt)
+    return chain
+
+
+# --------------------------------------------------------------------------- #
+# graph chain + gold trajectory
+# --------------------------------------------------------------------------- #
+
+def _expr_to_graph(expr: sp.Expr, domain: str) -> Optional[SemanticGraph]:
+    return _SVC.derive(sp.latex(expr), domain=domain)
+
+
+def thread_gold(graphs: list[SemanticGraph]) -> tuple[list[GraphOp], SemanticGraph]:
+    """Thread per-step diffs through the actual working graph (id-consistent)."""
+    gold: list[GraphOp] = []
+    working = graphs[0]
+    for nxt in graphs[1:]:
+        ops = diff(working, nxt)
+        working = apply(working, ops)
+        gold.extend(ops)
+    return gold, working
+
+
+def build_example(seed: Seed, rng: random.Random, max_steps: int, max_ops: int = 40):
+    """Return a ``dspy.Example`` or None if the chain is unusable/too large."""
+    import dspy
+
+    chain = make_expr_chain(seed.expr, rng, max_steps)
+    if len(chain) < 2:
+        return None
+
+    kept: list[tuple] = []  # (sympy expr, graph), deduped on structure
+    for e in chain:
+        g = _expr_to_graph(e, seed.domain)
+        if g is None:
+            return None
+        if kept and canonical_equal(kept[-1][1], g):
+            continue
+        kept.append((e, g))
+    if len(kept) < 2:
+        return None
+
+    graphs = [g for _, g in kept]
+    gold_ops, working = thread_gold(graphs)
+    start_expr, start = kept[0]
+    target_expr, target = kept[-1]
+    if not canonical_equal(working, target):  # gold must be self-consistent
+        return None
+    if len(gold_ops) > max_ops:  # keep trajectories small/learnable/informative
+        return None
+
+    context = GraphTransition(
+        start=start, target=target, domain=seed.domain, intent=seed.intent
+    )
+    context_id = build_context_id(scene="g", semantic_graph=True)
+    return dspy.Example(
+        context=context,
+        context_id=context_id,
+        lesson_context="",
+        instruction=f"{seed.intent}: transform the start graph into the target graph.",
+        gold_ops=gold_ops,
+        domain=seed.domain,
+        n_steps=len(graphs) - 1,
+        # source-of-truth expressions (sympy) for grounding checks
+        start_expr=start_expr,
+        target_expr=target_expr,
+    ).with_inputs("context", "context_id", "lesson_context", "instruction")
+
+
+def generate(n: int, seed: int, domains: Optional[list[str]] = None,
+             max_steps: int = 1, max_ops: int = 40) -> list:
+    """Generate up to ``n`` examples deterministically from ``seed``."""
+    rng = random.Random(seed)
+    domains = domains or list(SEED_BUILDERS)
+    examples = []
+    attempts = 0
+    while len(examples) < n and attempts < n * 40:
+        attempts += 1
+        domain = rng.choice(domains)
+        seeds = SEED_BUILDERS[domain](rng)
+        seed_obj = rng.choice(seeds)
+        ex = build_example(seed_obj, rng, max_steps, max_ops=max_ops)
+        if ex is not None:
+            examples.append(ex)
+    return examples
+
+
+# --------------------------------------------------------------------------- #
+# (de)serialization
+# --------------------------------------------------------------------------- #
+
+def example_to_dict(ex) -> dict:
+    ctx: GraphTransition = ex.context
+    return {
+        # drop null optional fields — round-trips since they default to None
+        "context": ctx.model_dump(by_alias=True, exclude_none=True),
+        "context_id": ex.context_id,
+        "lesson_context": ex.lesson_context,
+        "instruction": ex.instruction,
+        "gold_ops": [op.model_dump(by_alias=True, exclude_none=True) for op in ex.gold_ops],
+        "domain": ex.domain,
+        "n_steps": ex.n_steps,
+        # sympy expressions serialized as sympify-able strings
+        "start_expr": str(ex.get("start_expr")) if ex.get("start_expr") is not None else None,
+        "target_expr": str(ex.get("target_expr")) if ex.get("target_expr") is not None else None,
+    }
+
+
+def _sympify_or_none(s):
+    if not s:
+        return None
+    try:
+        return sp.sympify(s)
+    except Exception:
+        return None
+
+
+def example_from_dict(d: dict):
+    import dspy
+
+    return dspy.Example(
+        context=GraphTransition.model_validate(d["context"]),
+        context_id=d["context_id"],
+        lesson_context=d.get("lesson_context", ""),
+        instruction=d.get("instruction", ""),
+        gold_ops=[GRAPH_OP_ADAPTER.validate_python(o) for o in d.get("gold_ops", [])],
+        domain=d.get("domain"),
+        n_steps=d.get("n_steps"),
+        start_expr=_sympify_or_none(d.get("start_expr")),
+        target_expr=_sympify_or_none(d.get("target_expr")),
+    ).with_inputs("context", "context_id", "lesson_context", "instruction")
+
+
+def save_jsonl(examples: list, path: str) -> None:
+    with open(path, "w", encoding="utf-8") as fh:
+        for ex in examples:
+            # compact separators — no spaces after ',' / ':'
+            fh.write(json.dumps(example_to_dict(ex), separators=(",", ":")) + "\n")
+
+
+def load_jsonl(path: str) -> list:
+    out = []
+    with open(path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if line:
+                out.append(example_from_dict(json.loads(line)))
+    return out
