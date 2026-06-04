@@ -161,8 +161,16 @@ def score_components(example, pred) -> dict:
 # --------------------------------------------------------------------------- #
 
 def proof_completion_metric(example, pred, trace=None) -> float:
-    """Scalar reward. Bootstrapping (trace set) → hard pass/fail; else blended."""
+    """Scalar reward that also rewards valid intermediate waypoints.
+
+    Bootstrapping (trace set) → hard pass/fail: a demo must reach the target
+    *and* have every step grounded (a fully-valid derivation). Otherwise a
+    blend where ``step_grounded`` carries real weight, so the optimizer steers
+    toward trajectories whose every waypoint is valid math, not just the
+    endpoint.
+    """
     c = score_components(example, pred)
     if trace is not None:
-        return c["exact"]
-    return 0.6 * c["exact"] + 0.3 * c["coverage"] + 0.1 * c["op_f1"]
+        return bool(c["exact"] == 1.0 and c["step_grounded"] == 1.0)
+    return (0.45 * c["exact"] + 0.20 * c["coverage"]
+            + 0.25 * c["step_grounded"] + 0.10 * c["op_f1"])

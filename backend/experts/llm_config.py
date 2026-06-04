@@ -28,8 +28,13 @@ def make_lm(temperature: float = 0.7, max_tokens: int = 32768) -> dspy.LM:
     ``ALGEBENCH_LM_REASONING`` (e.g. ``low`` / ``minimal`` / ``disable``) tunes
     the Gemini thinking budget via litellm's ``reasoning_effort`` — lowering it
     cuts per-call latency markedly, which matters during optimization.
+    ``ALGEBENCH_LM_TEMPERATURE`` overrides sampling temperature (set ``0`` for
+    deterministic, reproducible eval).
     """
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    env_temp = os.environ.get("ALGEBENCH_LM_TEMPERATURE")
+    if env_temp is not None:
+        temperature = float(env_temp)
     kwargs = dict(api_key=api_key, temperature=temperature, max_tokens=max_tokens)
     effort = os.environ.get("ALGEBENCH_LM_REASONING")
     if effort:

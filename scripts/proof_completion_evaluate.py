@@ -15,6 +15,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 from collections import defaultdict
 
 from _pc_env import load_env_local, predict_all
@@ -55,6 +56,9 @@ def main() -> int:
     ap.add_argument("--data", required=True, help="eval .jsonl")
     ap.add_argument("--program", default=None, help="compiled artifact to load")
     ap.add_argument("--limit", type=int, default=None, help="cap examples")
+    ap.add_argument("--tag", default=None, help="label this run in the results log")
+    ap.add_argument("--results-log", default=None,
+                    help="append a one-line JSON summary to this file")
     args = ap.parse_args()
 
     init_experts()  # configures the DSPy LM + discovers registrations
@@ -72,8 +76,26 @@ def main() -> int:
         r["domain"] = ex.context.domain
         r["n_steps"] = getattr(ex, "n_steps", None)
 
+    overall = _agg(rows)
     print("\n=== OVERALL ===")
-    print(" ", _fmt(_agg(rows)))
+    print(" ", _fmt(overall))
+
+    if args.results_log:
+        import json
+        rec = {
+            "tag": args.tag or ("compiled" if args.program else "baseline"),
+            "program": args.program,
+            "n": overall["n"],
+            "exact": round(overall["exact"], 4),
+            "coverage": round(overall["coverage"], 4),
+            "op_f1": round(overall["op_f1"], 4),
+            "grounded": None if overall.get("grounded") is None else round(overall["grounded"], 4),
+            "step_grounded": round(overall["step_grounded"], 4),
+        }
+        os.makedirs(os.path.dirname(args.results_log) or ".", exist_ok=True)
+        with open(args.results_log, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec) + "\n")
+        print(f"  logged -> {args.results_log} (tag={rec['tag']})")
 
     by_domain = defaultdict(list)
     for r in rows:

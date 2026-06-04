@@ -194,11 +194,12 @@ def build_example(seed: Seed, rng: random.Random, max_steps: int, max_ops: int =
         gold_ops=gold_ops,
         domain=seed.domain,
         n_steps=len(graphs) - 1,
-        # source-of-truth expressions (sympy) for grounding checks
-        start_expr=start_expr,
-        target_expr=target_expr,
+        # source-of-truth expressions as sympify-able STRINGS (JSON/pickle-safe
+        # so they survive being embedded as optimizer demos)
+        start_expr=str(start_expr),
+        target_expr=str(target_expr),
         # per-step target expressions e1..eN (one per derivation step)
-        step_exprs=[e for e, _ in kept[1:]],
+        step_exprs=[str(e) for e, _ in kept[1:]],
     ).with_inputs("context", "context_id", "lesson_context", "instruction")
 
 
@@ -262,9 +263,10 @@ def example_from_dict(d: dict):
         gold_ops=[GRAPH_OP_ADAPTER.validate_python(o) for o in d.get("gold_ops", [])],
         domain=d.get("domain"),
         n_steps=d.get("n_steps"),
-        start_expr=_sympify_or_none(d.get("start_expr")),
-        target_expr=_sympify_or_none(d.get("target_expr")),
-        step_exprs=[_sympify_or_none(s) for s in (d.get("step_exprs") or [])],
+        # kept as strings (JSON/pickle-safe); sympified at the metric boundary
+        start_expr=d.get("start_expr"),
+        target_expr=d.get("target_expr"),
+        step_exprs=list(d.get("step_exprs") or []),
     ).with_inputs("context", "context_id", "lesson_context", "instruction")
 
 

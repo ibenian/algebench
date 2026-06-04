@@ -208,8 +208,22 @@ def sympy_equiv(a, b) -> bool:
             return False
 
 
+def _coerce_expr(expr):
+    """Accept a sympy expression or a sympify-able string."""
+    if isinstance(expr, str):
+        return sp.sympify(expr)
+    return expr
+
+
 def is_grounded(graph: SemanticGraph, expected) -> Optional[bool]:
-    """True/False if the graph grounds to ``expected``; None if not groundable."""
+    """True/False if the graph grounds to ``expected``; None if not groundable.
+
+    ``expected`` may be a sympy expression or a sympify-able string.
+    """
+    try:
+        expected = _coerce_expr(expected)
+    except Exception:
+        return None
     try:
         got = graph_to_sympy(graph)
     except UngroundableGraph:
