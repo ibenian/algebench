@@ -30,12 +30,12 @@ DEFAULT_ARTIFACT = os.path.join(os.path.dirname(__file__), "artifacts",
 class ProofCompletionExpert(dspy.Module):
     """Produce the ordered atomic graph edits transforming start into target."""
 
-    def __init__(self, artifact: str | None = None):
+    def __init__(self, artifact: str | None = None, load_default: bool = True):
         super().__init__()
         self.predict = dspy.ChainOfThought(ProofCompletionSig)
-        # explicit artifact wins; otherwise load the blessed default if present;
-        # otherwise run uncompiled (baseline).
-        path = artifact or DEFAULT_ARTIFACT
+        # explicit artifact wins; else the blessed default if present and allowed;
+        # else uncompiled (baseline). load_default=False forces baseline.
+        path = artifact or (DEFAULT_ARTIFACT if load_default else None)
         if path and os.path.exists(path):
             self.load(path)
             self.loaded_artifact = path

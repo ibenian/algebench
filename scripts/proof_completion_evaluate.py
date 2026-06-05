@@ -55,6 +55,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--data", required=True, help="eval .jsonl")
     ap.add_argument("--program", default=None, help="compiled artifact to load")
+    ap.add_argument("--baseline", action="store_true",
+                    help="force the uncompiled model (ignore the default artifact)")
     ap.add_argument("--limit", type=int, default=None, help="cap examples")
     ap.add_argument("--tag", default=None, help="label this run in the results log")
     ap.add_argument("--results-log", default=None,
@@ -67,10 +69,11 @@ def main() -> int:
     data = D.load_jsonl(args.data)
     if args.limit:
         data = data[: args.limit]
-    print(f"evaluating {len(data)} examples "
-          f"({'compiled: ' + args.program if args.program else 'baseline (uncompiled)'})")
 
-    prog = ProofCompletionExpert(artifact=args.program)
+    prog = ProofCompletionExpert(artifact=args.program,
+                                 load_default=not args.baseline)
+    print(f"evaluating {len(data)} examples "
+          f"(model: {prog.loaded_artifact or 'baseline (uncompiled)'})")
     preds = predict_all(prog, data, label="eval")
 
     rows = [score_components(ex, pred) for ex, pred in zip(data, preds)]

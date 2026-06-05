@@ -60,6 +60,8 @@ def main() -> int:
     ap.add_argument("--domain", default=None, help="domain hint (e.g. algebra, calculus)")
     ap.add_argument("--intent", default=None, help="what the derivation should accomplish")
     ap.add_argument("--program", default=None, help="optimized artifact to load")
+    ap.add_argument("--baseline", action="store_true",
+                    help="force the uncompiled model (ignore the default artifact)")
     args = ap.parse_args()
 
     init_experts()  # configure the DSPy LM
@@ -77,7 +79,8 @@ def main() -> int:
 
     ctx = GraphTransition(start=start_g, target=target_g,
                           domain=args.domain, intent=intent)
-    prog = ProofCompletionExpert(artifact=args.program)
+    prog = ProofCompletionExpert(artifact=args.program,
+                                 load_default=not args.baseline)
     print(f"(model: {prog.loaded_artifact or 'baseline (uncompiled)'})")
     try:
         outputs = prog(
