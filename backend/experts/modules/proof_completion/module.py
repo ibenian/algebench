@@ -14,6 +14,7 @@ import dspy
 from backend.experts.registry import register_expert
 from .signature import ProofCompletionSig
 from .model import GraphTransition
+from .grounding import graph_to_latex
 
 # The "blessed" compiled program. If this file exists it is loaded by default —
 # so service.invoke and the CLI use the optimized expert without --program.
@@ -44,10 +45,21 @@ class ProofCompletionExpert(dspy.Module):
 
     def forward(self, *, context: GraphTransition, context_id: str,
                 lesson_context: str = "", instruction: str = ""):
+        # The model reasons in math, not graphs: translate the context graphs to
+        # proper LaTeX here and feed *that* to the LM. The graphs never enter the
+        # prompt — they stay code-side for verification + animation.
+        start_latex = graph_to_latex(context.start) or ""
+        target_latex = graph_to_latex(context.target) or ""
         pred = self.predict(
-            context=context,
-            context_id=context_id,
+            start_latex=start_latex,
+            target_latex=target_latex,
+            domain=context.domain or "",
+            intent=context.intent or "",
             lesson_context=lesson_context,
             instruction=instruction,
         )
-        return [pred.trajectory]  # the canonical list[Output] (one trajectory)
+        traj = pred.trajectory
+        # attach the endpoints so the trajectory is self-contained (not LM output)
+        traj.start_latex = start_latex or None
+        traj.target_latex = target_latex or None
+        return [traj]  # the canonical list[Output] (one trajectory)

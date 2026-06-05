@@ -160,7 +160,14 @@ class GraphTrajectory(Output):
     graphs (and the atomic edits between them, for animation) are derived in code
     from ``steps`` — the model only supplies the math. ``kind`` is the
     consumer-facing dispatch key.
+
+    ``start_latex`` / ``target_latex`` are the **reconstructed ("proper") LaTeX**
+    of the start and target graphs, attached by the expert after inference so the
+    trajectory is self-contained (the endpoints it derived between travel with
+    it). They are NOT produced by the model.
     """
 
     kind: Literal["graph_trajectory"] = "graph_trajectory"
+    start_latex: Optional[str] = None
+    target_latex: Optional[str] = None
     steps: List[DerivationStep] = Field(default_factory=list)

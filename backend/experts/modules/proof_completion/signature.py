@@ -1,10 +1,11 @@
 """DSPy signatures.
 
-A signature is parameterized by its expert's context model. The standard input
-fields (``context``, ``context_id``, ``lesson_context``, ``instruction``) are
-bound by name as kwargs in :func:`backend.experts.service.invoke` — we never
-construct a ``Signature`` ourselves. The docstring holds the expert's *static*
-role and is what the optimizer (MIPROv2/GEPA) rewrites.
+The model reasons in **math**, not graphs: it is given the start and target as
+LaTeX (``start_latex`` / ``target_latex``) and emits a derivation. The semantic
+graphs never reach the prompt — they are a code-side substrate (verification +
+animation). ``module.forward`` derives the LaTeX from the context graphs via
+``graph_to_latex`` and binds these fields. The docstring holds the expert's
+*static* role and is what the optimizer (MIPROv2/GEPA) rewrites.
 """
 
 from __future__ import annotations
@@ -12,20 +13,14 @@ from __future__ import annotations
 import dspy
 
 from .outputs import GraphTrajectory
-from .model import GraphTransition
 
 
 class ProofCompletionSig(dspy.Signature):
-    r"""Produce the math derivation that turns `start` into `target`, step by step.
+    r"""Produce the math derivation that turns `start_latex` into `target_latex`.
 
-    You are given two semantic graphs: a starting expression and a target
-    expression. Emit a single trajectory of derivation `steps`. Each step is one
-    mathematical move and holds the COMPLETE expression you reach after it — not
-    a graph fragment, the whole expression as LaTeX.
-
-    Do NOT emit graph nodes or edges. Work purely in math: write the full
-    expression at each step and describe the move. The graphs (and the low-level
-    edits for animation) are reconstructed from your LaTeX automatically.
+    You are given a starting expression and a target expression, both as LaTeX.
+    Emit a single trajectory of derivation `steps`. Each step is one mathematical
+    move and holds the COMPLETE expression you reach after it, as LaTeX.
 
     Rules:
     - Each step has: `step` (1-based index), `operation` (the move in plain math
@@ -43,15 +38,15 @@ class ProofCompletionSig(dspy.Signature):
     - Make each step small enough that its `expr_latex` is a clean intermediate
       expression. If a transformation is large, split it into as many smaller
       steps as needed. Prefer more small, valid steps over one big jump.
-    - The final step's `expr_latex` must equal the target expression.
+    - The final step's `expr_latex` must equal `target_latex`.
     """
 
-    context: GraphTransition = dspy.InputField(
-        desc="the start graph, the target graph, the domain, and the intent"
-    )
-    context_id: str = dspy.InputField(desc="id of the semantic graph being transformed")
+    start_latex: str = dspy.InputField(desc="the starting expression, as LaTeX")
+    target_latex: str = dspy.InputField(desc="the target expression to reach, as LaTeX")
+    domain: str = dspy.InputField(desc="math domain hint (e.g. algebra, calculus), may be empty")
+    intent: str = dspy.InputField(desc="what the derivation should accomplish, may be empty")
     lesson_context: str = dspy.InputField(desc="surrounding lesson summary, may be empty")
-    instruction: str = dspy.InputField(desc="the user's request")
+    instruction: str = dspy.InputField(desc="the user's request, may be empty")
     trajectory: GraphTrajectory = dspy.OutputField(
         desc="the ordered derivation steps, each a complete expression, from start to target"
     )
