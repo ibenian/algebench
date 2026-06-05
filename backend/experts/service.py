@@ -54,7 +54,12 @@ def invoke(
 
 
 def _normalize(raw) -> list[Output]:
-    """Normalize a module's return into a flat list of typed Outputs."""
+    """Normalize a module's return into a flat list of typed Outputs.
+
+    Contract: an expert's ``forward`` returns an ``Output`` or a list of them.
+    Unwrapping any DSPy ``Prediction`` into its typed output(s) is the *module's*
+    job (it knows its own OutputField name) — the framework stays expert-agnostic.
+    """
     if isinstance(raw, Output):
         return [raw]
     if isinstance(raw, (list, tuple)):
@@ -62,8 +67,6 @@ def _normalize(raw) -> list[Output]:
         for item in raw:
             flat.extend(_normalize(item))
         return flat
-    # a dspy.Prediction or similar — pull the obvious output field(s)
-    for attr in ("outputs", "trajectory"):
-        if hasattr(raw, attr):
-            return _normalize(getattr(raw, attr))
-    raise TypeError(f"cannot normalize module output of type {type(raw).__name__}")
+    raise TypeError(
+        f"expert returned {type(raw).__name__}; expected an Output or list[Output]"
+    )
