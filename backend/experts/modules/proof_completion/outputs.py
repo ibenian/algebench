@@ -97,8 +97,11 @@ GraphOp = Annotated[
 GRAPH_OP_ADAPTER: TypeAdapter = TypeAdapter(GraphOp)
 
 
-class GraphTrajectory(Output, output_kind="graph_trajectory"):
-    """An ordered list of atomic graph edits transforming start into target."""
+class GraphTrajectory(Output):
+    """An ordered list of atomic graph edits transforming start into target.
+
+    ``kind`` is the dispatch key (matches ``@register_handler("graph_trajectory")``).
+    """
 
     kind: Literal["graph_trajectory"] = "graph_trajectory"
     ops: List[GraphOp] = Field(default_factory=list)

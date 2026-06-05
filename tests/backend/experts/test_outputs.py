@@ -54,3 +54,20 @@ def test_trajectory_roundtrips_mixed_ops():
     assert isinstance(back.ops[0], AddNode)
     assert isinstance(back.ops[1], RemoveNode)
     assert back.ops[0].node.id == "y"
+
+
+def test_expert_result_preserves_subclass_fields_on_dump():
+    # ExpertResult.outputs is list[SerializeAsAny[Output]] — dumping must keep
+    # the concrete subclass fields (e.g. GraphTrajectory.ops), not just the base.
+    from backend.experts.outputs import ExpertResult
+
+    traj = GraphTrajectory(
+        context_id="semanticGraph",
+        ops=[AddNode(node=_node("y"), explanation="add y", justification="j")],
+    )
+    result = ExpertResult(expert="proof_completion", context_id="semanticGraph",
+                          outputs=[traj])
+    d = result.model_dump(by_alias=True)
+    assert d["outputs"][0]["kind"] == "graph_trajectory"
+    assert len(d["outputs"][0]["ops"]) == 1          # subclass field survived
+    assert d["outputs"][0]["ops"][0]["op"] == "add_node"

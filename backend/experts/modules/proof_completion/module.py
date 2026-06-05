@@ -7,6 +7,7 @@ an artifact and loaded back here.
 
 from __future__ import annotations
 
+import os
 
 import dspy
 
@@ -37,4 +38,4 @@ class ProofCompletionExpert(dspy.Module):
             lesson_context=lesson_context,
             instruction=instruction,
         )
-        return pred.outputs
+        return pred.trajectory  # a single GraphTrajectory

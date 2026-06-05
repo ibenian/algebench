@@ -9,8 +9,6 @@ role and is what the optimizer (MIPROv2/GEPA) rewrites.
 
 from __future__ import annotations
 
-from typing import List
-
 import dspy
 
 from .outputs import GraphTrajectory
@@ -44,6 +42,6 @@ class ProofCompletionSig(dspy.Signature):
     context_id: str = dspy.InputField(desc="id of the semantic graph being transformed")
     lesson_context: str = dspy.InputField(desc="surrounding lesson summary, may be empty")
     instruction: str = dspy.InputField(desc="the user's request")
-    outputs: List[GraphTrajectory] = dspy.OutputField(
-        desc="exactly one GraphTrajectory whose ops transform start into target"
+    trajectory: GraphTrajectory = dspy.OutputField(
+        desc="the trajectory whose ops transform the start graph into the target"
     )

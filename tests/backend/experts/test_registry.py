@@ -10,7 +10,6 @@ from backend.experts.registry import (
     EXPERT_REGISTRY,
     HANDLER_REGISTRY,
     METRIC_REGISTRY,
-    OUTPUT_REGISTRY,
     resolve_context_model,
 )
 
@@ -25,19 +24,17 @@ def test_proof_completion_is_registered():
     spec = EXPERT_REGISTRY["proof_completion"]
     assert spec.context_scope == "semanticGraph"
     assert spec.context_model is not None
-    assert "graph_trajectory" in OUTPUT_REGISTRY
     assert "graph_trajectory" in HANDLER_REGISTRY
     assert "proof_completion" in METRIC_REGISTRY
 
 
 def test_registries_are_internally_consistent():
-    # every registered expert resolves a context model, and its output kinds
-    # have both an Output type and a handler (no central config needed)
+    # every registered expert resolves a context model and has a metric
+    # (no central config needed — decorators are the source of truth)
     for name, spec in EXPERT_REGISTRY.items():
         assert resolve_context_model(spec) is not None
         assert name in METRIC_REGISTRY, f"{name} has no metric"
-    for kind in OUTPUT_REGISTRY:
-        assert kind in HANDLER_REGISTRY, f"output {kind} has no handler"
+    assert HANDLER_REGISTRY, "no output handlers registered"
 
 
 def test_resolve_context_model_uses_override():

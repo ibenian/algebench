@@ -1,29 +1,25 @@
 """Stateless expert invocation — the one place a request becomes signature input.
 
-``invoke`` is the single converter:
+``invoke`` is the single converter, fully typed end to end:
 
 1. ``scope = parse(context_id).terminal``                  (string key)
 2. ``Model = resolve_context_model(spec)``                 (override or scope default)
 3. ``ctx = Model.model_validate(payload)``                 (Pydantic validation gate)
 4. ``module = spec.factory()``                             (a dspy.Module)
-5. ``outputs = module(context=ctx, ...)``                  (kwarg binding → DSPy renders)
-6. ``HANDLER_REGISTRY[out.kind](out, ...)`` for each       (registry lookup, no branching)
+5. ``outputs = module(context=ctx, ...)``                  (typed Output(s) back)
+6. ``HANDLER_REGISTRY[out.kind](out, ...)`` per output     (typed-in / typed-out)
+7. wrap everything in a single typed ``ExpertResult``
 
-The backend stores nothing between calls. No ``Signature`` is ever constructed
-here — kwargs bind to the signature's ``InputField`` names and DSPy renders the
-prompt.
+No dicts are produced here — serialization happens at the transport edge. The
+backend stores nothing between calls, and no ``Signature`` is constructed (kwargs
+bind to the signature's ``InputField`` names).
 """
 
 from __future__ import annotations
 
-from typing import Any
-
 from .context_id import parse
-from .registry import (
-    EXPERT_REGISTRY,
-    HANDLER_REGISTRY,
-    resolve_context_model,
-)
+from .outputs import ExpertResult, Output
+from .registry import EXPERT_REGISTRY, HANDLER_REGISTRY, resolve_context_model
 
 
 def invoke(
@@ -32,8 +28,8 @@ def invoke(
     payload: dict,
     instruction: str = "",
     lesson_context: str = "",
-) -> list[dict]:
-    """Run expert ``name`` against ``context_id`` and return normalized results."""
+) -> ExpertResult:
+    """Run expert ``name`` against ``context_id``; return a typed ExpertResult."""
     spec = EXPERT_REGISTRY[name]  # KeyError = unknown expert (caller's bug)
 
     scope = parse(context_id).terminal
@@ -47,16 +43,33 @@ def invoke(
     ctx = model.model_validate(payload)  # <-- validation / injection gate
 
     module = spec.factory()
-    outputs = module(
+    raw = module(
         context=ctx,
         context_id=context_id,
         lesson_context=lesson_context,
         instruction=instruction,
     )
 
-    return [_handle(out, context_id=context_id) for out in outputs]
+    outputs = [_handle(out, context_id=context_id) for out in _normalize(raw)]
+    return ExpertResult(expert=name, context_id=context_id, outputs=outputs)
 
 
-def _handle(out: Any, *, context_id: str) -> dict:
+def _normalize(raw) -> list[Output]:
+    """Normalize a module's return into a flat list of typed Outputs."""
+    if isinstance(raw, Output):
+        return [raw]
+    if isinstance(raw, (list, tuple)):
+        flat: list[Output] = []
+        for item in raw:
+            flat.extend(_normalize(item))
+        return flat
+    # a dspy.Prediction or similar — pull the obvious output field(s)
+    for attr in ("outputs", "trajectory"):
+        if hasattr(raw, attr):
+            return _normalize(getattr(raw, attr))
+    raise TypeError(f"cannot normalize module output of type {type(raw).__name__}")
+
+
+def _handle(out: Output, *, context_id: str) -> Output:
     handler = HANDLER_REGISTRY[out.kind]  # KeyError = output kind has no handler
     return handler(out, context_id=context_id)

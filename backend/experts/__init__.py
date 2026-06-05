@@ -13,7 +13,6 @@ from .registry import (  # re-exported for convenience
     EXPERT_REGISTRY,
     HANDLER_REGISTRY,
     METRIC_REGISTRY,
-    OUTPUT_REGISTRY,
     resolve_context_model,
 )
 

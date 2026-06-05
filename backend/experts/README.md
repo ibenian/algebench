@@ -17,7 +17,7 @@ Generic framework (top level):
 __init__.py    init_experts(): configure DSPy + discover (import expert packages)
 registry.py    EXPERT/CONTEXT_MODELS/OUTPUT/HANDLER/METRIC registries + decorators
 context_id.py  hierarchical target id: build / parse / terminal (the scope key)
-outputs.py     the Output base (subclasses self-register by `output_kind`)
+outputs.py     the Output base (subclasses declare a `kind` Literal) + ExpertResult
 service.py     stateless invoke(): payload -> validated context -> module -> handler
 llm_config.py  configure_dspy() -> Gemini via litellm
 modules/       one self-contained expert *package* each (discovered on startup)
@@ -38,9 +38,10 @@ the decorators fire:
 - `@register_expert(name, context_scope=…, context_model=…)` on the `dspy.Module`
 - `@register_handler(kind)` on the output handler
 - `@register_metric(name)` on the metric
-- the `Output` base self-registers subclasses by `output_kind`
+- `Output` subclasses declare a `kind` Literal; dispatch is `HANDLER_REGISTRY[out.kind]`
 
-No central catalog file — the registries *are* the source of truth.
+`invoke` returns a typed `ExpertResult` (no dicts); the transport edge serializes
+it once. No central catalog file — the registries *are* the source of truth.
 
 ## Adding another expert
 

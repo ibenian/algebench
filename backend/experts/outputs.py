@@ -1,25 +1,23 @@
-"""The ``Output`` base class for every structured result an expert can emit.
+"""The ``Output`` base class + the typed ``ExpertResult`` container.
 
-Generic framework code: expert-specific output types live in the expert's own
-package (e.g. ``modules/proof_completion/outputs.py``). Each subclass declares a
-snake_case ``kind`` and self-registers by passing ``output_kind=`` as a class
-keyword argument — no central config.
+Generic framework code. Expert-specific output types live in the expert's own
+package (e.g. ``modules/proof_completion/outputs.py``) and subclass ``Output``,
+declaring a snake_case ``kind`` Literal. That ``kind`` field is the dispatch key
+(``HANDLER_REGISTRY[out.kind]``); there is no separate output registry.
 """
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from .registry import OUTPUT_REGISTRY
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny
 
 
 class Output(BaseModel):
     """Base class for all expert outputs.
 
-    Subclasses self-register by passing ``output_kind="..."`` in the class
-    header, e.g. ``class GraphTrajectory(Output, output_kind="graph_trajectory")``.
+    Subclasses declare a ``kind: Literal["..."]`` field (the dispatch key) plus
+    their own payload fields.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -27,10 +25,20 @@ class Output(BaseModel):
     kind: str
     context_id: str = Field(min_length=1, max_length=200)
 
-    def __init_subclass__(cls, *, output_kind: Optional[str] = None, **kwargs):
-        super().__init_subclass__(**kwargs)
-        if output_kind:
-            if output_kind in OUTPUT_REGISTRY:
-                raise ValueError(f"output kind {output_kind!r} already registered")
-            cls.__output_kind__ = output_kind
-            OUTPUT_REGISTRY[output_kind] = cls
+
+class ExpertResult(BaseModel):
+    """Typed container for everything one ``invoke`` returns.
+
+    Stays typed through the framework; the transport edge serializes it once
+    (``result.model_dump()``).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    expert: str
+    context_id: str
+    # SerializeAsAny so each output dumps with its *concrete* subclass fields
+    # (a plain list[Output] would serialize only the base fields, dropping e.g.
+    # GraphTrajectory.ops).
+    outputs: List[SerializeAsAny[Output]] = Field(default_factory=list)
+    invoke_id: Optional[str] = None
