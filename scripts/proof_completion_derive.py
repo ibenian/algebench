@@ -126,19 +126,23 @@ def main() -> int:
     for k, ltx in waypoints:
         print(f"   step {k}:  {ltx}")
 
-    # opt-in detail: trajectory ops / explanations / justifications
+    # opt-in detail: the flat trajectory — it is ONE ordered list of ops, and
+    # each op carries exactly one explanation and one justification. We also
+    # show the LaTeX buildable from the graph *after* this op is applied
+    # (cumulative best-effort apply), so you can watch the expression evolve
+    # op by op. ``step`` is just a grouping tag, printed for reference.
     if args.trajectory or args.explanation or args.justification:
-        print(f"\n=== detail ({len(ops)} op(s)) ===")
-        for k, ltx in waypoints:
-            print(f"\nStep {k}:   {ltx}")
-            for op in (o for o in ops if o.step == k):
-                if args.trajectory:
-                    print(f"   {_describe(op)}")
-                pad = "      " if args.trajectory else "   "
-                if args.explanation:
-                    print(f"{pad}explanation:   {op.explanation}")
-                if args.justification:
-                    print(f"{pad}justification: {op.justification}")
+        print(f"\n=== trajectory ({len(ops)} op(s)) ===")
+        for i, op in enumerate(ops, start=1):
+            gi, _ = safe_apply(start_g, ops[:i])
+            ltx = graph_to_latex(gi) or "[not yet renderable]"
+            head = f"{_describe(op)}   " if args.trajectory else ""
+            print(f"\n{i:2}. {head}[step {op.step}]")
+            print(f"      latex:         {ltx}")
+            if args.explanation:
+                print(f"      explanation:   {op.explanation}")
+            if args.justification:
+                print(f"      justification: {op.justification}")
 
     # verification — three independent checks
     try:

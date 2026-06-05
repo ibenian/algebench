@@ -162,19 +162,32 @@ def score_components(example, pred) -> dict:
 # --------------------------------------------------------------------------- #
 
 def proof_completion_metric(example, pred, trace=None) -> float:
-    """Scalar reward that also rewards valid intermediate waypoints.
+    """Scalar reward **gated on per-step sympy-convertibility**.
+
+    The rule this encodes: *every* step boundary must reconstruct to a single,
+    sympy-convertible expression (``graph → sympy → latex``). The endpoint
+    quality (exact / coverage / op-F1) only counts **in proportion to** the
+    fraction of convertible waypoints — so a trajectory with un-renderable
+    intermediate states is capped low no matter how good its endpoint looks.
+
+    This is what forces decomposition: if a big jump leaves a mid-build,
+    disconnected (un-convertible) graph at a step boundary, the model is
+    rewarded for splitting it into as many smaller, individually-convertible
+    steps as it needs before assembling the final result. Convertibility is a
+    necessary condition, not a bonus.
 
     Bootstrapping (trace set) → hard pass/fail: a demo must reach the target
-    *and* have every step grounded (a fully-valid derivation). Otherwise a
-    blend where ``step_grounded`` carries real weight, so the optimizer steers
-    toward trajectories whose every waypoint is valid math, not just the
-    endpoint.
+    *and* have every step convertible (a fully-valid, fully-renderable chain).
     """
     c = score_components(example, pred)
     if trace is not None:
         return bool(c["exact"] == 1.0 and c["step_grounded"] == 1.0)
-    return (0.45 * c["exact"] + 0.20 * c["coverage"]
-            + 0.25 * c["step_grounded"] + 0.10 * c["op_f1"])
+
+    endpoint = 0.6 * c["exact"] + 0.3 * c["coverage"] + 0.1 * c["op_f1"]
+    # step_grounded is the gate: all-convertible → full endpoint credit; any
+    # un-renderable waypoint scales the whole reward down. A small coverage
+    # crumb keeps a usable gradient alive when nothing converts yet.
+    return 0.05 * c["coverage"] + 0.95 * c["step_grounded"] * (0.4 + 0.6 * endpoint)
 
 
 # self-register this expert's metric (no central config)

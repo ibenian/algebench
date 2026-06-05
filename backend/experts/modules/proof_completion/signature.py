@@ -26,11 +26,13 @@ class ProofCompletionSig(dspy.Signature):
     Rules:
     - Reference existing nodes/edges by their ids; choose fresh, descriptive ids
       for new nodes (ids must not contain a hyphen).
-    - Group the operations into derivation `step`s (1-based). Each step is a
-      complete rewrite: after applying all ops up to and including step k, the
-      graph must be a valid, complete expression (a sensible waypoint), not a
-      half-edited fragment. Use one step for a single rewrite; use several for a
-      multi-step derivation.
+    - Group the operations into derivation `step`s (1-based). After applying
+      all ops up to and including step k, the graph MUST reconstruct to a single
+      connected, sympy-convertible expression (one root, every node wired in) —
+      a valid math waypoint, never a half-edited or disconnected fragment. If a
+      transformation is too large to leave the graph convertible in one step,
+      split it into as many smaller steps as needed so that *every* step
+      boundary is convertible. Prefer more small, valid steps over one big jump.
     - Every operation needs a one-line `explanation` (what changes) and a
       `justification` (the mathematical reason it is valid).
     - The cumulative result must equal the target graph exactly.
