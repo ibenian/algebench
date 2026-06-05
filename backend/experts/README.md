@@ -102,11 +102,11 @@ shared fields on `GraphOpBase` and behavior provided polymorphically via
 # 3. optimize (bootstrap demos is fast; --optimizer mipro for instruction search;
 #    gepa requires dspy>=3.0 — this project pins dspy>=2.6,<3.0)
 ./run.sh scripts/proof_completion_optimize.py --train data/proof_completion/train.jsonl \
-    --optimizer bootstrap --out backend/experts/artifacts/proof_completion.json
+    --optimizer bootstrap --out backend/experts/modules/proof_completion/artifacts/proof_completion.json
 
 # 4. re-evaluate with the compiled program and compare the lift
 ./run.sh scripts/proof_completion_evaluate.py --data data/proof_completion/eval.jsonl \
-    --program backend/experts/artifacts/proof_completion.json
+    --program backend/experts/modules/proof_completion/artifacts/proof_completion.json
 ```
 
 Env: needs `GEMINI_API_KEY`. `ALGEBENCH_LM_MODEL` overrides the model

@@ -9,7 +9,7 @@ optimization to measure the lift.
 Usage:
     ./run.sh scripts/proof_completion_evaluate.py --data data/proof_completion/eval.jsonl
     ./run.sh scripts/proof_completion_evaluate.py --data data/proof_completion/eval.jsonl \\
-        --program backend/experts/artifacts/proof_completion.json
+        --program backend/experts/modules/proof_completion/artifacts/proof_completion.json
 """
 
 from __future__ import annotations
