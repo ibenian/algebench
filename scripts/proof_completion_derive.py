@@ -79,12 +79,16 @@ def main() -> int:
     ctx = GraphTransition(start=start_g, target=target_g,
                           domain=args.domain, intent=intent)
     prog = ProofCompletionExpert(artifact=args.program)
-    outputs = prog(
-        context=ctx,
-        context_id=build_context_id(scene="adhoc", semantic_graph=True),
-        lesson_context="",
-        instruction=intent,
-    )
+    try:
+        outputs = prog(
+            context=ctx,
+            context_id=build_context_id(scene="adhoc", semantic_graph=True),
+            lesson_context="",
+            instruction=intent,
+        )
+    except Exception as exc:
+        print(f"the expert's structured output could not be parsed:\n  {exc}")
+        return 1
     traj = outputs[0]
     ops = list(traj.ops)
     if not ops:

@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from typing import Annotated, List, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import (
+    BaseModel, ConfigDict, Discriminator, Field, Tag, TypeAdapter,
+)
 
 from backend.model.semantic_graph import SemanticGraphEdge, SemanticGraphNode
 
@@ -87,10 +89,38 @@ class RemoveEdge(GraphOpBase):
         raise GraphOpError(f"remove_edge: no edge {self.edge_from!r}->{self.edge_to!r}")
 
 
-# The discriminated union the LM (and our code) work with.
+def _op_discriminator(v) -> Optional[str]:
+    """Pick the op subclass — robustly.
+
+    LMs reliably emit the *fields* of an op but often omit the explicit ``op``
+    discriminator. Fall back to inferring it from which fields are present, so
+    the union still parses (the subclass then sets ``op`` via its default).
+    """
+    if isinstance(v, dict):
+        if v.get("op"):
+            return v["op"]
+        if "node" in v:
+            return "add_node"
+        if "node_id" in v:
+            return "remove_node"
+        if "edge" in v:
+            return "add_edge"
+        if "edge_from" in v or "edge_to" in v:
+            return "remove_edge"
+        return None
+    return getattr(v, "op", None)
+
+
+# The discriminated union the LM (and our code) work with. A *callable*
+# discriminator makes it tolerant of a missing ``op`` tag (see above).
 GraphOp = Annotated[
-    Union[AddNode, RemoveNode, AddEdge, RemoveEdge],
-    Field(discriminator="op"),
+    Union[
+        Annotated[AddNode, Tag("add_node")],
+        Annotated[RemoveNode, Tag("remove_node")],
+        Annotated[AddEdge, Tag("add_edge")],
+        Annotated[RemoveEdge, Tag("remove_edge")],
+    ],
+    Discriminator(_op_discriminator),
 ]
 
 # For (de)serializing a single op from/to a plain dict.
