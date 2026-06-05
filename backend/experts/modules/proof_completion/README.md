@@ -14,7 +14,6 @@ __init__.py    imports submodules so decorators fire; re-exports the expert clas
 module.py      @register_expert  (the dspy.Module)
 signature.py   the DSPy signature
 outputs.py     this expert's Output subclass(es) + the GraphOp union
-handler.py     @register_handler
 metric.py      the metric + @register_metric
 model.py       context model (GraphTransition)
 graph_ops.py   apply / diff / canonical_equal

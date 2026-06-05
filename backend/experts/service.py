@@ -7,19 +7,19 @@
 3. ``ctx = Model.model_validate(payload)``                 (Pydantic validation gate)
 4. ``module = spec.factory()``                             (a dspy.Module)
 5. ``outputs = module(context=ctx, ...)``                  (typed Output(s) back)
-6. ``HANDLER_REGISTRY[out.kind](out, ...)`` per output     (typed-in / typed-out)
-7. wrap everything in a single typed ``ExpertResult``
+6. wrap everything in a single typed ``ExpertResult``
 
-No dicts are produced here — serialization happens at the transport edge. The
-backend stores nothing between calls, and no ``Signature`` is constructed (kwargs
-bind to the signature's ``InputField`` names).
+No dicts are produced here — serialization happens at the transport edge. Outputs
+are typed payloads keyed by their ``kind``; the consumer dispatches on ``kind``.
+The backend stores nothing between calls, and no ``Signature`` is constructed
+(kwargs bind to the signature's ``InputField`` names).
 """
 
 from __future__ import annotations
 
 from .context_id import parse
 from .outputs import ExpertResult, Output
-from .registry import EXPERT_REGISTRY, HANDLER_REGISTRY, resolve_context_model
+from .registry import EXPERT_REGISTRY, resolve_context_model
 
 
 def invoke(
@@ -50,8 +50,7 @@ def invoke(
         instruction=instruction,
     )
 
-    outputs = [_handle(out, context_id=context_id) for out in _normalize(raw)]
-    return ExpertResult(expert=name, context_id=context_id, outputs=outputs)
+    return ExpertResult(expert=name, context_id=context_id, outputs=_normalize(raw))
 
 
 def _normalize(raw) -> list[Output]:
@@ -68,8 +67,3 @@ def _normalize(raw) -> list[Output]:
         if hasattr(raw, attr):
             return _normalize(getattr(raw, attr))
     raise TypeError(f"cannot normalize module output of type {type(raw).__name__}")
-
-
-def _handle(out: Output, *, context_id: str) -> Output:
-    handler = HANDLER_REGISTRY[out.kind]  # KeyError = output kind has no handler
-    return handler(out, context_id=context_id)

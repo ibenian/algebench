@@ -8,7 +8,6 @@ from backend.experts import discover
 from backend.experts.context_id import build, parse
 from backend.experts.registry import (
     EXPERT_REGISTRY,
-    HANDLER_REGISTRY,
     METRIC_REGISTRY,
     resolve_context_model,
 )
@@ -24,7 +23,6 @@ def test_proof_completion_is_registered():
     spec = EXPERT_REGISTRY["proof_completion"]
     assert spec.context_scope == "semanticGraph"
     assert spec.context_model is not None
-    assert "graph_trajectory" in HANDLER_REGISTRY
     assert "proof_completion" in METRIC_REGISTRY
 
 
@@ -34,7 +32,6 @@ def test_registries_are_internally_consistent():
     for name, spec in EXPERT_REGISTRY.items():
         assert resolve_context_model(spec) is not None
         assert name in METRIC_REGISTRY, f"{name} has no metric"
-    assert HANDLER_REGISTRY, "no output handlers registered"
 
 
 def test_resolve_context_model_uses_override():

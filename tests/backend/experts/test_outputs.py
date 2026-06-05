@@ -43,7 +43,6 @@ def test_unknown_discriminator_is_rejected():
 
 def test_trajectory_roundtrips_mixed_ops():
     traj = GraphTrajectory(
-        context_id="semanticGraph",
         ops=[
             AddNode(node=_node("y"), explanation="add y", justification="j"),
             RemoveNode(node_id="x", explanation="drop x", justification="j"),
@@ -62,7 +61,6 @@ def test_expert_result_preserves_subclass_fields_on_dump():
     from backend.experts.outputs import ExpertResult
 
     traj = GraphTrajectory(
-        context_id="semanticGraph",
         ops=[AddNode(node=_node("y"), explanation="add y", justification="j")],
     )
     result = ExpertResult(expert="proof_completion", context_id="semanticGraph",

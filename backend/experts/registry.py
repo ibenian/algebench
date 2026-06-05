@@ -40,8 +40,6 @@ class ExpertSpec:
 EXPERT_REGISTRY: dict[str, ExpertSpec] = {}
 # context_id terminal type -> default Pydantic context model
 CONTEXT_MODELS: dict[str, type] = {}
-# output kind -> handler callable (the kind comes from the Output's `kind` field)
-HANDLER_REGISTRY: dict[str, Callable[..., Any]] = {}
 # expert name -> DSPy metric callable
 METRIC_REGISTRY: dict[str, Callable[..., Any]] = {}
 
@@ -72,18 +70,6 @@ def register_expert(
         cls.context_scope = context_scope  # type: ignore[attr-defined]
         cls.context_model = context_model  # type: ignore[attr-defined]
         return cls
-
-    return deco
-
-
-def register_handler(kind: str) -> Callable[[Callable], Callable]:
-    """Decorator: register an output-kind handler."""
-
-    def deco(fn: Callable) -> Callable:
-        if kind in HANDLER_REGISTRY:
-            raise ValueError(f"handler for kind {kind!r} already registered")
-        HANDLER_REGISTRY[kind] = fn
-        return fn
 
     return deco
 

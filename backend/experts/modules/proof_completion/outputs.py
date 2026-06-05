@@ -100,7 +100,7 @@ GRAPH_OP_ADAPTER: TypeAdapter = TypeAdapter(GraphOp)
 class GraphTrajectory(Output):
     """An ordered list of atomic graph edits transforming start into target.
 
-    ``kind`` is the dispatch key (matches ``@register_handler("graph_trajectory")``).
+    ``kind`` is the consumer-facing dispatch key.
     """
 
     kind: Literal["graph_trajectory"] = "graph_trajectory"

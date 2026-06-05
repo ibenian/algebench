@@ -36,19 +36,19 @@ package under `modules/`. Each package's `__init__.py` imports its submodules so
 the decorators fire:
 
 - `@register_expert(name, context_scope=…, context_model=…)` on the `dspy.Module`
-- `@register_handler(kind)` on the output handler
 - `@register_metric(name)` on the metric
-- `Output` subclasses declare a `kind` Literal; dispatch is `HANDLER_REGISTRY[out.kind]`
+- `Output` subclasses declare a `kind` Literal (consumers dispatch on it)
 
-`invoke` returns a typed `ExpertResult` (no dicts); the transport edge serializes
-it once. No central catalog file — the registries *are* the source of truth.
+`invoke` returns a typed `ExpertResult` holding the typed outputs (no dicts, no
+output/handler registries); the transport edge serializes it once. No central
+catalog file — the registries *are* the source of truth.
 
 ## Adding another expert
 
 Drop a new package under `modules/<name>/` with: `module.py`
 (`@register_expert`), `signature.py`, `metric.py` (`@register_metric`), and —
-if it introduces a new output kind — `outputs.py` (an `Output` subclass) and
-`handler.py` (`@register_handler`). Its `__init__.py` imports those submodules so
-the decorators fire; discovery picks the package up automatically. The
-dispatcher, registries, `service.py`, and `context_id.py` are never touched, and
-there is no config file to edit. Add a `README.md` in the package documenting it.
+if it introduces a new output kind — `outputs.py` (an `Output` subclass with its
+own `kind` Literal). Its `__init__.py` imports those submodules so the decorators
+fire; discovery picks the package up automatically. `service.py`,
+`context_id.py`, and the registries are never touched, and there is no config
+file to edit. Add a `README.md` in the package documenting it.

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from . import outputs        # registers the graph_trajectory output kind
 from . import signature      # ProofCompletionSig (uses outputs)
-from . import handler        # @register_handler("graph_trajectory")
 from . import metric         # @register_metric("proof_completion")
 from . import module         # @register_expert("proof_completion")
 from .domains import discover_domains
