@@ -25,7 +25,7 @@ load_env_local()
 from backend.experts import init_experts  # noqa: E402
 from backend.experts.modules.proof_completion import ProofCompletionExpert  # noqa: E402
 from backend.experts.proof_completion import dataset as D  # noqa: E402
-from backend.experts.proof_completion.metric import score_components  # noqa: E402
+from backend.experts.proof_completion.metric import extract_ops, score_components  # noqa: E402
 
 
 def _agg(rows: list[dict]) -> dict:
@@ -59,6 +59,8 @@ def main() -> int:
     ap.add_argument("--tag", default=None, help="label this run in the results log")
     ap.add_argument("--results-log", default=None,
                     help="append a one-line JSON summary to this file")
+    ap.add_argument("--per-example-log", default=None,
+                    help="write one JSON record per example (predicted vs gold on failures)")
     args = ap.parse_args()
 
     init_experts()  # configures the DSPy LM + discovers registrations
@@ -116,6 +118,56 @@ def main() -> int:
     avg_fail = sum(r["n_failed_ops"] for r in rows) / len(rows)
     print(f"\nops: avg predicted {avg_pred:.1f}  avg gold {avg_gold:.1f}  "
           f"avg failed-to-apply {avg_fail:.1f}")
+
+    # ----- per-example records + failure reporting -----
+    def _reasons(r: dict) -> list:
+        out = []
+        if r["exact"] < 1.0:
+            out.append("endpoint")          # didn't reach the target graph
+        if r["step_grounded"] < 1.0:
+            out.append("intermediate")      # some waypoint isn't valid math
+        if r.get("groundable", 0.0) == 1.0 and r["grounded"] < 1.0:
+            out.append("wrong_math")        # final graph grounds, but to the wrong thing
+        if r["n_failed_ops"] > 0:
+            out.append("illegal_ops")       # some op couldn't be applied
+        return out
+
+    records = []
+    for i, (ex, pred, r) in enumerate(zip(data, preds, rows)):
+        reasons = _reasons(r)
+        rec = {
+            "i": i, "domain": r["domain"], "intent": ex.context.intent,
+            "n_steps": r["n_steps"],
+            "exact": r["exact"], "coverage": round(r["coverage"], 3),
+            "op_f1": round(r["op_f1"], 3), "grounded": r["grounded"],
+            "step_grounded": round(r["step_grounded"], 3),
+            "n_pred_ops": r["n_pred_ops"], "n_gold_ops": r["n_gold_ops"],
+            "n_failed_ops": r["n_failed_ops"], "fail_reasons": reasons,
+            "start_expr": ex.start_expr, "target_expr": ex.target_expr,
+        }
+        if reasons:  # attach trajectories only for failures, to keep files small
+            rec["pred_ops"] = [op.model_dump(by_alias=True, exclude_none=True)
+                               for op in extract_ops(pred)]
+            rec["gold_ops"] = [op.model_dump(by_alias=True, exclude_none=True)
+                               for op in ex.gold_ops]
+        records.append(rec)
+
+    failures = [r for r in records if r["fail_reasons"]]
+    print(f"\n=== FAILURES: {len(failures)}/{len(records)} ===")
+    for rec in failures[:25]:
+        print(f"  [{rec['domain']:16}] {rec['intent'][:38]:38} steps={rec['n_steps']} "
+              f"reasons={','.join(rec['fail_reasons'])}  "
+              f"({rec['start_expr']} -> {rec['target_expr']})")
+    if len(failures) > 25:
+        print(f"  ... and {len(failures) - 25} more")
+
+    if args.per_example_log:
+        import json
+        os.makedirs(os.path.dirname(args.per_example_log) or ".", exist_ok=True)
+        with open(args.per_example_log, "w", encoding="utf-8") as fh:
+            for rec in records:
+                fh.write(json.dumps(rec) + "\n")
+        print(f"  per-example records -> {args.per_example_log}")
     return 0
 
 
