@@ -6,9 +6,9 @@ import sympy as sp
 import pytest
 
 from backend.semantic_graph.service import SemanticGraphService
-from backend.experts.proof_completion import dataset as D
-from backend.experts.proof_completion.graph_ops import apply
-from backend.experts.proof_completion.grounding import (
+from backend.experts.modules.proof_completion import dataset as D
+from backend.experts.modules.proof_completion.graph_ops import apply
+from backend.experts.modules.proof_completion.grounding import (
     graph_to_sympy,
     is_grounded,
     per_step_groundable,

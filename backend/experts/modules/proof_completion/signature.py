@@ -14,7 +14,7 @@ from typing import List
 import dspy
 
 from .outputs import GraphTrajectory
-from .proof_completion.models import GraphTransition
+from .models import GraphTransition
 
 
 class ProofCompletionSig(dspy.Signature):

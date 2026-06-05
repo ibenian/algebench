@@ -2,28 +2,43 @@
 
 An extensible framework of optimizable AI **experts**: each is a `dspy.Module`
 that takes typed, Pydantic-validated input and emits typed, validated output.
-Experts self-register — adding one is a few files + an `experts.json` entry,
-with **no core-loop edits and no name-branching** (every dispatch is a dict
-lookup).
+Everything self-registers via **decorators** — there is **no config file**.
+Adding an expert = drop a self-contained package under `modules/`; the registries
+are the single source of truth, and every dispatch is a dict lookup (no
+name-branching).
 
 This package is independent of the chat/server stack and the pydantic-ai
 enricher; it is never imported by `server.py`.
 
 ## Layout
 
+Generic framework (top level):
 ```
+__init__.py        init_experts(): configure DSPy + discover (import expert packages)
 registry.py        EXPERT/CONTEXT_MODELS/OUTPUT/HANDLER/METRIC registries + decorators
 context_id.py      hierarchical target id: build / parse / terminal (the scope key)
-outputs.py         Output base (self-registers by `output_kind`) + GraphTrajectory
-signatures.py      DSPy signatures (input fields bound by name)
+outputs.py         the Output base (subclasses self-register by `output_kind`)
 service.py         stateless invoke(): payload -> validated context -> module -> handler
 llm_config.py      configure_dspy() -> Gemini via litellm
-experts.json       declarative catalog (name -> scope, context_model, output kinds)
-modules/           one self-registering dspy.Module per expert
-handlers/          one self-registering handler per output kind
-metrics.py         registers each expert's metric
-proof_completion/  the ProofCompletionExpert: models, graph_ops, dataset, metric
+modules/           one self-contained expert *package* each (discovered on startup)
 artifacts/         compiled DSPy programs (gitignored)
+```
+
+Each expert is a self-contained package under `modules/` — e.g.
+`modules/proof_completion/`:
+```
+__init__.py    imports submodules so decorators fire; re-exports the expert class
+module.py      @register_expert  (the dspy.Module)
+signature.py   the DSPy signature
+outputs.py     this expert's Output subclass(es) + the GraphOp union
+handler.py     @register_handler
+metric.py      the metric + @register_metric
+models.py      context model (GraphTransition)
+graph_ops.py   apply / diff / canonical_equal
+grounding.py   graph -> sympy + equivalence + per-step grounding
+dataset.py     sympy example generator
+domains/       one file per domain (algebra, calculus, rational, equation_solving,
+               inequalities, logic), each @register_domain
 ```
 
 ## The seed expert: `proof_completion`
@@ -100,8 +115,10 @@ thinking budget to cut latency during optimization.
 
 ## Adding another expert
 
-Reusing an existing output kind: append a signature, add a
-`modules/<name>.py` (`@register_expert`), register a metric, add an
-`experts.json` entry. A new output kind also needs one `outputs.py` class and
-one `handlers/<kind>.py`. The dispatcher, registries, `service.py`, and
-`context_id.py` are never touched.
+Drop a new package under `modules/<name>/` with: `module.py`
+(`@register_expert`), `signature.py`, `metric.py` (`@register_metric`), and —
+if it introduces a new output kind — `outputs.py` (an `Output` subclass) and
+`handler.py` (`@register_handler`). Its `__init__.py` imports those submodules so
+the decorators fire; `discover_experts()` picks the package up automatically.
+The dispatcher, registries, `service.py`, and `context_id.py` are never touched,
+and there is no config file to edit.

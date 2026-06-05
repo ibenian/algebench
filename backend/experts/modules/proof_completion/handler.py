@@ -7,8 +7,8 @@ here; for this backend-only slice it just produces a plain dict.)
 
 from __future__ import annotations
 
-from ..outputs import GraphTrajectory
-from ..registry import register_handler
+from .outputs import GraphTrajectory
+from backend.experts.registry import register_handler
 
 
 @register_handler("graph_trajectory")

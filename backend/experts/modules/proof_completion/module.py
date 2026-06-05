@@ -11,13 +11,9 @@ import os
 
 import dspy
 
-from ..registry import register_expert
-from ..signatures import ProofCompletionSig
-from ..proof_completion.models import GraphTransition
-
-DEFAULT_ARTIFACT = os.path.join(
-    os.path.dirname(__file__), "..", "artifacts", "proof_completion.json"
-)
+from backend.experts.registry import register_expert
+from .signature import ProofCompletionSig
+from .models import GraphTransition
 
 
 @register_expert(

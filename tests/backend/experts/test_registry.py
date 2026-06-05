@@ -1,10 +1,10 @@
-"""Tests for framework discovery + config cross-checking (no LLM)."""
+"""Tests for framework discovery via decorator self-registration (no LLM)."""
 
 from __future__ import annotations
 
 import pytest
 
-from backend.experts import discover, load_config, validate
+from backend.experts import discover
 from backend.experts.context_id import build, parse
 from backend.experts.registry import (
     EXPERT_REGISTRY,
@@ -30,12 +30,18 @@ def test_proof_completion_is_registered():
     assert "proof_completion" in METRIC_REGISTRY
 
 
-def test_config_cross_check_passes():
-    validate(load_config())
+def test_registries_are_internally_consistent():
+    # every registered expert resolves a context model, and its output kinds
+    # have both an Output type and a handler (no central config needed)
+    for name, spec in EXPERT_REGISTRY.items():
+        assert resolve_context_model(spec) is not None
+        assert name in METRIC_REGISTRY, f"{name} has no metric"
+    for kind in OUTPUT_REGISTRY:
+        assert kind in HANDLER_REGISTRY, f"output {kind} has no handler"
 
 
 def test_resolve_context_model_uses_override():
-    from backend.experts.proof_completion.models import GraphTransition
+    from backend.experts.modules.proof_completion.models import GraphTransition
 
     spec = EXPERT_REGISTRY["proof_completion"]
     assert resolve_context_model(spec) is GraphTransition

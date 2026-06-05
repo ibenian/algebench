@@ -24,8 +24,8 @@ load_env_local()
 
 from backend.experts import init_experts  # noqa: E402
 from backend.experts.modules.proof_completion import ProofCompletionExpert  # noqa: E402
-from backend.experts.proof_completion import dataset as D  # noqa: E402
-from backend.experts.proof_completion.metric import extract_ops, score_components  # noqa: E402
+from backend.experts.modules.proof_completion import dataset as D  # noqa: E402
+from backend.experts.modules.proof_completion.metric import extract_ops, score_components  # noqa: E402
 
 
 def _agg(rows: list[dict]) -> dict:

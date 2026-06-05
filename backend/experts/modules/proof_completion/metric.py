@@ -13,7 +13,7 @@ from typing import Any, Iterable
 
 from backend.model.semantic_graph import SemanticGraph
 
-from ..outputs import (
+from .outputs import (
     AddEdge,
     AddNode,
     GraphOpBase,
@@ -24,6 +24,7 @@ from ..outputs import (
 )
 from .graph_ops import apply, canonical_equal, wl_colors, _content
 from .grounding import is_grounded, per_step_groundable
+from backend.experts.registry import register_metric
 
 
 # --------------------------------------------------------------------------- #
@@ -174,3 +175,7 @@ def proof_completion_metric(example, pred, trace=None) -> float:
         return bool(c["exact"] == 1.0 and c["step_grounded"] == 1.0)
     return (0.45 * c["exact"] + 0.20 * c["coverage"]
             + 0.25 * c["step_grounded"] + 0.10 * c["op_f1"])
+
+
+# self-register this expert's metric (no central config)
+register_metric("proof_completion")(proof_completion_metric)

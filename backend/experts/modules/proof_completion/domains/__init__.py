@@ -8,8 +8,6 @@ import pkgutil
 
 def discover_domains() -> None:
     """Import every domain module so it self-registers into DOMAIN_REGISTRY."""
-    import backend.experts.proof_completion.domains as pkg
-
-    for info in pkgutil.iter_modules(pkg.__path__):
+    for info in pkgutil.iter_modules(__path__):
         if info.name != "base":
-            importlib.import_module(f"{pkg.__name__}.{info.name}")
+            importlib.import_module(f"{__name__}.{info.name}")

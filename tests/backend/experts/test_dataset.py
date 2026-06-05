@@ -5,8 +5,8 @@ from __future__ import annotations
 import os
 import tempfile
 
-from backend.experts.proof_completion import dataset as D
-from backend.experts.proof_completion.graph_ops import apply, canonical_equal
+from backend.experts.modules.proof_completion import dataset as D
+from backend.experts.modules.proof_completion.graph_ops import apply, canonical_equal
 
 
 def test_generate_is_deterministic():

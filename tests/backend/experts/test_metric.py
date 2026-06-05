@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from backend.experts.outputs import GraphTrajectory
-from backend.experts.proof_completion import dataset as D
-from backend.experts.proof_completion.metric import (
+from backend.experts.modules.proof_completion.outputs import GraphTrajectory
+from backend.experts.modules.proof_completion import dataset as D
+from backend.experts.modules.proof_completion.metric import (
     proof_completion_metric,
     score_components,
 )

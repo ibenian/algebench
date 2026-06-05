@@ -23,8 +23,8 @@ load_env_local()
 import dspy  # noqa: E402
 from backend.experts import init_experts  # noqa: E402
 from backend.experts.modules.proof_completion import ProofCompletionExpert  # noqa: E402
-from backend.experts.proof_completion import dataset as D  # noqa: E402
-from backend.experts.proof_completion.metric import proof_completion_metric  # noqa: E402
+from backend.experts.modules.proof_completion import dataset as D  # noqa: E402
+from backend.experts.modules.proof_completion.metric import proof_completion_metric  # noqa: E402
 
 
 def main() -> int:

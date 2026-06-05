@@ -19,9 +19,9 @@ import os
 import statistics
 from collections import Counter
 
-from backend.experts.proof_completion import dataset as D
-from backend.experts.proof_completion.graph_ops import apply, canonical_equal
-from backend.experts.proof_completion.grounding import is_grounded, step_groundings
+from backend.experts.modules.proof_completion import dataset as D
+from backend.experts.modules.proof_completion.graph_ops import apply, canonical_equal
+from backend.experts.modules.proof_completion.grounding import is_grounded, step_groundings
 
 
 def main() -> int:

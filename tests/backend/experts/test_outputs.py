@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from backend.experts.outputs import (
+from backend.experts.modules.proof_completion.outputs import (
     GRAPH_OP_ADAPTER,
     AddNode,
     GraphTrajectory,

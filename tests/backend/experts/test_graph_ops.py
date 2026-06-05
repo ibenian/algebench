@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from backend.semantic_graph.service import SemanticGraphService
-from backend.experts.outputs import AddEdge, AddNode, GraphOpError, RemoveNode
-from backend.experts.proof_completion.graph_ops import (
+from backend.experts.modules.proof_completion.outputs import AddEdge, AddNode, GraphOpError, RemoveNode
+from backend.experts.modules.proof_completion.graph_ops import (
     apply,
     canonical_equal,
     diff,

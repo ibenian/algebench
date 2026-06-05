@@ -24,7 +24,7 @@ from typing import Iterable
 
 from backend.model.semantic_graph import SemanticGraph, SemanticGraphEdge
 
-from ..outputs import AddEdge, AddNode, GraphOpError, RemoveEdge, RemoveNode
+from .outputs import AddEdge, AddNode, GraphOpError, RemoveEdge, RemoveNode
 
 # Node types whose id is the symbol name (semantically meaningful).
 _ID_MEANINGFUL_TYPES = frozenset({"scalar", "vector", "constant"})
