@@ -194,17 +194,28 @@ def _eval_relation(op, ins, ev) -> sp.Expr:
 
 
 def graph_to_latex(graph: SemanticGraph) -> Optional[str]:
-    """Best-effort latex: structural sympy if possible, else the root's subexpr."""
+    """Faithful LaTeX for a *well-formed* graph.
+
+    1. **structural** — reconstruct via ``graph_to_sympy`` and render (faithful).
+    2. **single-root subexpr** — if the graph has exactly one root (no outgoing
+       edge) carrying a ``subexpr``, use it.
+
+    Returns ``None`` for a malformed graph (no single root / ungroundable). We do
+    *not* guess from stale subexprs — a wrong-but-confident expression is worse
+    than honestly flagging an un-renderable intermediate.
+    """
     try:
         return sp.latex(graph_to_sympy(graph))
     except Exception:
-        outdeg = {n.id: 0 for n in graph.nodes}
-        for e in graph.edges:
-            outdeg[e.from_] = outdeg.get(e.from_, 0) + 1
-        roots = [n for n in graph.nodes if outdeg.get(n.id, 0) == 0]
-        if len(roots) == 1 and roots[0].subexpr:
-            return roots[0].subexpr
-        return None
+        pass
+
+    outdeg = {n.id: 0 for n in graph.nodes}
+    for e in graph.edges:
+        outdeg[e.from_] = outdeg.get(e.from_, 0) + 1
+    roots = [n for n in graph.nodes if outdeg.get(n.id, 0) == 0]
+    if len(roots) == 1 and roots[0].subexpr:
+        return roots[0].subexpr
+    return None
 
 
 # --------------------------------------------------------------------------- #

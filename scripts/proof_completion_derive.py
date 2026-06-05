@@ -110,7 +110,14 @@ def main() -> int:
     waypoints = []  # (step, latex)
     for k in steps:
         gk, _ = safe_apply(start_g, [o for o in ops if o.step <= k])
-        waypoints.append((k, graph_to_latex(gk) or "(unverifiable)"))
+        ltx = graph_to_latex(gk)
+        if ltx is None:  # malformed intermediate — say why, don't fake it
+            outdeg = {n.id: 0 for n in gk.nodes}
+            for e in gk.edges:
+                outdeg[e.from_] = outdeg.get(e.from_, 0) + 1
+            roots = sum(1 for n in gk.nodes if outdeg.get(n.id, 0) == 0)
+            ltx = f"[malformed intermediate: {roots} disconnected roots]"
+        waypoints.append((k, ltx))
 
     # always: the LaTeX chain (start -> each step)
     start_latex = graph_to_latex(start_g) or args.start
