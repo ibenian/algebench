@@ -38,4 +38,4 @@ class ProofCompletionExpert(dspy.Module):
             lesson_context=lesson_context,
             instruction=instruction,
         )
-        return pred.trajectory  # a single GraphTrajectory
+        return [pred.trajectory]  # the canonical list[Output] (one trajectory)
