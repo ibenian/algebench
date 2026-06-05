@@ -69,3 +69,8 @@ def test_expert_result_preserves_subclass_fields_on_dump():
     assert d["outputs"][0]["kind"] == "graph_trajectory"
     assert len(d["outputs"][0]["ops"]) == 1          # subclass field survived
     assert d["outputs"][0]["ops"][0]["op"] == "add_node"
+    # single() returns the one output for single-output experts
+    assert result.single() is traj
+    import pytest
+    with pytest.raises(ValueError):
+        ExpertResult(expert="e", context_id="c", outputs=[traj, traj]).single()
