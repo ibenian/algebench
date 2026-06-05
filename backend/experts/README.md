@@ -21,7 +21,6 @@ outputs.py         the Output base (subclasses self-register by `output_kind`)
 service.py         stateless invoke(): payload -> validated context -> module -> handler
 llm_config.py      configure_dspy() -> Gemini via litellm
 modules/           one self-contained expert *package* each (discovered on startup)
-artifacts/         compiled DSPy programs (gitignored)
 ```
 
 Each expert is a self-contained package under `modules/` — e.g.
@@ -33,12 +32,13 @@ signature.py   the DSPy signature
 outputs.py     this expert's Output subclass(es) + the GraphOp union
 handler.py     @register_handler
 metric.py      the metric + @register_metric
-models.py      context model (GraphTransition)
+model.py       context model (GraphTransition)
 graph_ops.py   apply / diff / canonical_equal
 grounding.py   graph -> sympy + equivalence + per-step grounding
 dataset.py     sympy example generator
 domains/       one file per domain (algebra, calculus, rational, equation_solving,
                inequalities, logic), each @register_domain
+artifacts/     compiled DSPy programs for this expert (gitignored)
 ```
 
 ## The seed expert: `proof_completion`

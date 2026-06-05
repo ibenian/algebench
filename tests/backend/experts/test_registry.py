@@ -41,7 +41,7 @@ def test_registries_are_internally_consistent():
 
 
 def test_resolve_context_model_uses_override():
-    from backend.experts.modules.proof_completion.models import GraphTransition
+    from backend.experts.modules.proof_completion.model import GraphTransition
 
     spec = EXPERT_REGISTRY["proof_completion"]
     assert resolve_context_model(spec) is GraphTransition

@@ -26,7 +26,7 @@ from backend.experts.context_id import build as build_context_id
 from .outputs import GRAPH_OP_ADAPTER
 from .graph_ops import apply, canonical_equal, diff
 from .grounding import is_grounded
-from .models import GraphTransition
+from .model import GraphTransition
 
 _SVC = SemanticGraphService()
 

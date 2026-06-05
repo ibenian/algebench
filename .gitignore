@@ -12,7 +12,7 @@ settings.local.json
 
 # Expert framework: generated datasets + compiled DSPy artifacts
 /data/
-backend/experts/artifacts/
+backend/experts/modules/*/artifacts/
 
 # Override global gitignore to include project-level agent skill definitions
 !.agents/

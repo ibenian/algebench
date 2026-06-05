@@ -8,7 +8,7 @@ an artifact that ``proof_completion_evaluate.py --program`` can load.
 Usage:
     ./run.sh scripts/proof_completion_optimize.py \\
         --train data/proof_completion/train.jsonl \\
-        --out backend/experts/artifacts/proof_completion.json --auto light
+        --out backend/experts/modules/proof_completion/artifacts/proof_completion.json --auto light
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from backend.experts.modules.proof_completion.metric import proof_completion_met
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--train", required=True, help="train .jsonl")
-    ap.add_argument("--out", default="backend/experts/artifacts/proof_completion.json")
+    ap.add_argument("--out", default="backend/experts/modules/proof_completion/artifacts/proof_completion.json")
     ap.add_argument("--optimizer", choices=["mipro", "gepa", "bootstrap"], default="mipro")
     ap.add_argument("--auto", choices=["light", "medium", "heavy"], default="light")
     ap.add_argument("--limit", type=int, default=None)

@@ -7,13 +7,12 @@ an artifact and loaded back here.
 
 from __future__ import annotations
 
-import os
 
 import dspy
 
 from backend.experts.registry import register_expert
 from .signature import ProofCompletionSig
-from .models import GraphTransition
+from .model import GraphTransition
 
 
 @register_expert(
