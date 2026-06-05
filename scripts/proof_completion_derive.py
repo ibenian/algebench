@@ -62,6 +62,12 @@ def main() -> int:
     ap.add_argument("--program", default=None, help="optimized artifact to load")
     ap.add_argument("--baseline", action="store_true",
                     help="force the uncompiled model (ignore the default artifact)")
+    ap.add_argument("--trajectory", action="store_true",
+                    help="print the trajectory op(s) at each step")
+    ap.add_argument("--explanation", action="store_true",
+                    help="print each op's explanation")
+    ap.add_argument("--justification", action="store_true",
+                    help="print each op's justification")
     args = ap.parse_args()
 
     init_experts()  # configure the DSPy LM
@@ -106,18 +112,26 @@ def main() -> int:
         gk, _ = safe_apply(start_g, [o for o in ops if o.step <= k])
         waypoints.append((k, graph_to_latex(gk) or "(unverifiable)"))
 
+    # always: the LaTeX chain (start -> each step)
     start_latex = graph_to_latex(start_g) or args.start
     print(f"\n=== derivation (LaTeX): {len(steps)} step(s) ===")
     print(f"   start :  {start_latex}")
     for k, ltx in waypoints:
         print(f"   step {k}:  {ltx}")
 
-    print(f"\n=== operations ({len(ops)} total) ===")
-    for k, ltx in waypoints:
-        print(f"\nStep {k}:   {ltx}")
-        for op in (o for o in ops if o.step == k):
-            print(f"   {_describe(op):28}  {op.explanation}")
-            print(f"   {'':28}  ↳ {op.justification}")
+    # opt-in detail: trajectory ops / explanations / justifications
+    if args.trajectory or args.explanation or args.justification:
+        print(f"\n=== detail ({len(ops)} op(s)) ===")
+        for k, ltx in waypoints:
+            print(f"\nStep {k}:   {ltx}")
+            for op in (o for o in ops if o.step == k):
+                if args.trajectory:
+                    print(f"   {_describe(op)}")
+                pad = "      " if args.trajectory else "   "
+                if args.explanation:
+                    print(f"{pad}explanation:   {op.explanation}")
+                if args.justification:
+                    print(f"{pad}justification: {op.justification}")
 
     # verification — three independent checks
     try:
