@@ -31,7 +31,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--train", required=True, help="train .jsonl")
     ap.add_argument("--out", default="backend/experts/modules/proof_completion/artifacts/proof_completion.json")
-    ap.add_argument("--optimizer", choices=["mipro", "gepa", "bootstrap"], default="mipro")
+    ap.add_argument("--optimizer", choices=["mipro", "gepa", "bootstrap", "labeled"],
+                    default="mipro")
     ap.add_argument("--auto", choices=["light", "medium", "heavy"], default="light")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--threads", type=int, default=4)
@@ -44,9 +45,13 @@ def main() -> int:
         train = train[: args.limit]
     print(f"optimizing on {len(train)} examples with {args.optimizer} (auto={args.auto})")
 
-    student = ProofCompletionExpert()
+    student = ProofCompletionExpert(load_default=False)  # compile from baseline
 
-    if args.optimizer == "gepa":
+    if args.optimizer == "labeled":
+        from dspy.teleprompt import LabeledFewShot
+        # seed few-shot demos directly from gold examples — no LM calls, instant
+        compiled = LabeledFewShot(k=args.demos).compile(student, trainset=train)
+    elif args.optimizer == "gepa":
         if not hasattr(dspy, "GEPA"):
             raise SystemExit(
                 "GEPA is not available in this dspy version "

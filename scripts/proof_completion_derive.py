@@ -99,13 +99,22 @@ def main() -> int:
         return 1
 
     steps = sorted({op.step for op in ops})
-    print(f"=== derivation: {len(steps)} step(s), {len(ops)} op(s) ===")
+    # the LaTeX expression at each waypoint (best-effort apply so it renders even
+    # if op ordering is imperfect)
+    waypoints = []  # (step, latex)
     for k in steps:
-        cumulative = [op for op in ops if op.step <= k]
-        # best-effort apply so the waypoint renders even if op ordering is imperfect
-        gk, _ = safe_apply(start_g, cumulative)
-        expr = graph_to_latex(gk) or "(unverifiable)"
-        print(f"\nStep {k}:   {expr}")
+        gk, _ = safe_apply(start_g, [o for o in ops if o.step <= k])
+        waypoints.append((k, graph_to_latex(gk) or "(unverifiable)"))
+
+    start_latex = graph_to_latex(start_g) or args.start
+    print(f"\n=== derivation (LaTeX): {len(steps)} step(s) ===")
+    print(f"   start :  {start_latex}")
+    for k, ltx in waypoints:
+        print(f"   step {k}:  {ltx}")
+
+    print(f"\n=== operations ({len(ops)} total) ===")
+    for k, ltx in waypoints:
+        print(f"\nStep {k}:   {ltx}")
         for op in (o for o in ops if o.step == k):
             print(f"   {_describe(op):28}  {op.explanation}")
             print(f"   {'':28}  ↳ {op.justification}")
