@@ -15,6 +15,12 @@ from backend.experts.registry import register_expert
 from .signature import ProofCompletionSig
 from .model import GraphTransition
 
+# The "blessed" compiled program. If this file exists it is loaded by default —
+# so service.invoke and the CLI use the optimized expert without --program.
+# (gitignored; produced by proof_completion_optimize.py --out <this path>.)
+DEFAULT_ARTIFACT = os.path.join(os.path.dirname(__file__), "artifacts",
+                                "proof_completion.json")
+
 
 @register_expert(
     "proof_completion",
@@ -27,8 +33,14 @@ class ProofCompletionExpert(dspy.Module):
     def __init__(self, artifact: str | None = None):
         super().__init__()
         self.predict = dspy.ChainOfThought(ProofCompletionSig)
-        if artifact and os.path.exists(artifact):
-            self.load(artifact)
+        # explicit artifact wins; otherwise load the blessed default if present;
+        # otherwise run uncompiled (baseline).
+        path = artifact or DEFAULT_ARTIFACT
+        if path and os.path.exists(path):
+            self.load(path)
+            self.loaded_artifact = path
+        else:
+            self.loaded_artifact = None
 
     def forward(self, *, context: GraphTransition, context_id: str,
                 lesson_context: str = "", instruction: str = ""):

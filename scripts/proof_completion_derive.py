@@ -74,11 +74,11 @@ def main() -> int:
     intent = args.intent or "Transform the start expression into the target."
     print(f"start : {args.start}")
     print(f"target: {args.target}")
-    print(f"\nasking the expert{' (compiled)' if args.program else ' (baseline)'}…\n")
 
     ctx = GraphTransition(start=start_g, target=target_g,
                           domain=args.domain, intent=intent)
     prog = ProofCompletionExpert(artifact=args.program)
+    print(f"(model: {prog.loaded_artifact or 'baseline (uncompiled)'})")
     try:
         outputs = prog(
             context=ctx,
