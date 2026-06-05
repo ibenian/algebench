@@ -8,11 +8,17 @@ from pydantic import ValidationError
 from backend.experts.modules.proof_completion.outputs import (
     GRAPH_OP_ADAPTER,
     AddNode,
+    DerivationStep,
     GraphTrajectory,
     RemoveEdge,
     RemoveNode,
 )
 from backend.model.semantic_graph import SemanticGraphNode
+
+
+def _step(i=1, expr="x^2 = 4"):
+    return DerivationStep(step=i, operation="rewrite", expr_latex=expr,
+                          justification="valid")
 
 
 def _node(nid="x"):
@@ -41,34 +47,28 @@ def test_unknown_discriminator_is_rejected():
         )
 
 
-def test_trajectory_roundtrips_mixed_ops():
+def test_trajectory_roundtrips_steps():
     traj = GraphTrajectory(
-        ops=[
-            AddNode(node=_node("y"), explanation="add y", justification="j"),
-            RemoveNode(node_id="x", explanation="drop x", justification="j"),
-        ],
+        steps=[_step(1, "x^2 - 4 = 0"), _step(2, "x^2 = 4")],
     )
     dumped = traj.model_dump(by_alias=True)
     back = GraphTrajectory.model_validate(dumped)
-    assert isinstance(back.ops[0], AddNode)
-    assert isinstance(back.ops[1], RemoveNode)
-    assert back.ops[0].node.id == "y"
+    assert [s.expr_latex for s in back.steps] == ["x^2 - 4 = 0", "x^2 = 4"]
+    assert back.steps[1].step == 2
 
 
 def test_expert_result_preserves_subclass_fields_on_dump():
     # ExpertResult.outputs is list[SerializeAsAny[Output]] — dumping must keep
-    # the concrete subclass fields (e.g. GraphTrajectory.ops), not just the base.
+    # the concrete subclass fields (e.g. GraphTrajectory.steps), not just the base.
     from backend.experts.outputs import ExpertResult
 
-    traj = GraphTrajectory(
-        ops=[AddNode(node=_node("y"), explanation="add y", justification="j")],
-    )
+    traj = GraphTrajectory(steps=[_step(1, "x = 2")])
     result = ExpertResult(expert="proof_completion", context_id="semanticGraph",
                           outputs=[traj])
     d = result.model_dump(by_alias=True)
     assert d["outputs"][0]["kind"] == "graph_trajectory"
-    assert len(d["outputs"][0]["ops"]) == 1          # subclass field survived
-    assert d["outputs"][0]["ops"][0]["op"] == "add_node"
+    assert len(d["outputs"][0]["steps"]) == 1          # subclass field survived
+    assert d["outputs"][0]["steps"][0]["expr_latex"] == "x = 2"
     # single() returns the one output for single-output experts
     assert result.single() is traj
     import pytest

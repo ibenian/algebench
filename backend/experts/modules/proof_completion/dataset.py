@@ -23,7 +23,7 @@ from backend.model.semantic_graph import SemanticGraph
 from backend.semantic_graph.service import SemanticGraphService
 
 from backend.experts.context_id import build as build_context_id
-from .outputs import GRAPH_OP_ADAPTER
+from .outputs import GRAPH_OP_ADAPTER, DerivationStep, GraphTrajectory
 from .graph_ops import apply, canonical_equal, diff
 from .grounding import is_grounded
 from .model import GraphTransition
@@ -143,11 +143,27 @@ def build_example(seed: Seed, rng: random.Random, max_steps: int, max_ops: int =
         start=start, target=target, domain=seed.domain, intent=seed.intent
     )
     context_id = build_context_id(scene="g", semantic_graph=True)
+    # gold derivation as complete reachable states (the model-facing output): one
+    # step per kept transition, carrying the FULL LaTeX of that state. Deriving
+    # each expr_latex reproduces the gold graph, so this is self-consistent.
+    gold_steps = [
+        DerivationStep(
+            step=i,
+            operation=seed.intent or "rewrite to the next equivalent form",
+            expr_latex=sp.latex(e),
+            justification="equivalent transformation (sympy-verified)",
+        )
+        for i, (e, _g) in enumerate(kept[1:], start=1)
+    ]
     return dspy.Example(
         context=context,
         context_id=context_id,
         lesson_context="",
         instruction=f"{seed.intent}: transform the start graph into the target graph.",
+        # gold output the optimizer can demonstrate from (matches the sig's
+        # `trajectory` OutputField), plus the atomic gold ops for internal checks
+        trajectory=GraphTrajectory(steps=gold_steps),
+        gold_steps=gold_steps,
         gold_ops=gold_ops,
         domain=seed.domain,
         n_steps=len(graphs) - 1,
@@ -190,6 +206,7 @@ def example_to_dict(ex) -> dict:
         "context_id": ex.context_id,
         "lesson_context": ex.lesson_context,
         "instruction": ex.instruction,
+        "gold_steps": [s.model_dump() for s in (ex.get("gold_steps") or [])],
         "gold_ops": [op.model_dump(by_alias=True, exclude_none=True) for op in ex.gold_ops],
         "domain": ex.domain,
         "n_steps": ex.n_steps,
@@ -212,11 +229,14 @@ def _sympify_or_none(s):
 def example_from_dict(d: dict):
     import dspy
 
+    gold_steps = [DerivationStep.model_validate(s) for s in d.get("gold_steps", [])]
     return dspy.Example(
         context=GraphTransition.model_validate(d["context"]),
         context_id=d["context_id"],
         lesson_context=d.get("lesson_context", ""),
         instruction=d.get("instruction", ""),
+        trajectory=GraphTrajectory(steps=gold_steps),
+        gold_steps=gold_steps,
         gold_ops=[GRAPH_OP_ADAPTER.validate_python(o) for o in d.get("gold_ops", [])],
         domain=d.get("domain"),
         n_steps=d.get("n_steps"),

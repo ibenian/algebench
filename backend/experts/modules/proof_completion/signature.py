@@ -16,26 +16,34 @@ from .model import GraphTransition
 
 
 class ProofCompletionSig(dspy.Signature):
-    """Produce the ordered atomic graph edits that turn `start` into `target`.
+    r"""Produce the math derivation that turns `start` into `target`, step by step.
 
-    You are given two semantic graphs: a starting graph and a target graph.
-    Emit a single trajectory of atomic operations — add_node, remove_node,
-    add_edge, remove_edge — that, applied in order to the start graph, yields a
-    graph structurally and semantically identical to the target graph.
+    You are given two semantic graphs: a starting expression and a target
+    expression. Emit a single trajectory of derivation `steps`. Each step is one
+    mathematical move and holds the COMPLETE expression you reach after it — not
+    a graph fragment, the whole expression as LaTeX.
+
+    Do NOT emit graph nodes or edges. Work purely in math: write the full
+    expression at each step and describe the move. The graphs (and the low-level
+    edits for animation) are reconstructed from your LaTeX automatically.
 
     Rules:
-    - Reference existing nodes/edges by their ids; choose fresh, descriptive ids
-      for new nodes (ids must not contain a hyphen).
-    - Group the operations into derivation `step`s (1-based). After applying
-      all ops up to and including step k, the graph MUST reconstruct to a single
-      connected, sympy-convertible expression (one root, every node wired in) —
-      a valid math waypoint, never a half-edited or disconnected fragment. If a
-      transformation is too large to leave the graph convertible in one step,
-      split it into as many smaller steps as needed so that *every* step
-      boundary is convertible. Prefer more small, valid steps over one big jump.
-    - Every operation needs a one-line `explanation` (what changes) and a
-      `justification` (the mathematical reason it is valid).
-    - The cumulative result must equal the target graph exactly.
+    - Each step has: `step` (1-based index), `operation` (the move in plain math
+      terms, e.g. "add 4 to both sides", "take the square root of both sides"),
+      `expr_latex` (the COMPLETE, valid LaTeX of the expression after this move),
+      and `justification` (why the move is mathematically valid).
+    - Every `expr_latex` MUST be a single, complete, parseable expression — one
+      you could hand to a CAS. Never a partial or malformed fragment.
+    - Write EVERY multiplication explicitly with `\cdot`. A symbol written
+      directly before a parenthesis is read as a FUNCTION CALL, not a product:
+      `n(n+1)` means "apply function n to (n+1)" and is INVALID. Write
+      `n \cdot (n+1)`, `r \cdot (\cos\theta + i\sin\theta)`, `2 \cdot (x+3)`.
+      (Coefficient juxtaposition like `2x` or `a x^2` is fine; the hazard is a
+      symbol immediately followed by `(`.)
+    - Make each step small enough that its `expr_latex` is a clean intermediate
+      expression. If a transformation is large, split it into as many smaller
+      steps as needed. Prefer more small, valid steps over one big jump.
+    - The final step's `expr_latex` must equal the target expression.
     """
 
     context: GraphTransition = dspy.InputField(
@@ -45,5 +53,5 @@ class ProofCompletionSig(dspy.Signature):
     lesson_context: str = dspy.InputField(desc="surrounding lesson summary, may be empty")
     instruction: str = dspy.InputField(desc="the user's request")
     trajectory: GraphTrajectory = dspy.OutputField(
-        desc="the trajectory whose ops transform the start graph into the target"
+        desc="the ordered derivation steps, each a complete expression, from start to target"
     )

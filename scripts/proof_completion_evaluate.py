@@ -25,7 +25,7 @@ load_env_local()
 from backend.experts import init_experts  # noqa: E402
 from backend.experts.modules.proof_completion import ProofCompletionExpert  # noqa: E402
 from backend.experts.modules.proof_completion import dataset as D  # noqa: E402
-from backend.experts.modules.proof_completion.metric import extract_ops, score_components  # noqa: E402
+from backend.experts.modules.proof_completion.metric import extract_steps, score_components  # noqa: E402
 
 
 def _agg(rows: list[dict]) -> dict:
@@ -116,11 +116,11 @@ def main() -> int:
     for s in sorted(by_steps, key=lambda v: (v is None, v)):
         print(f"  steps={s}  {_fmt(_agg(by_steps[s]))}")
 
-    avg_pred = sum(r["n_pred_ops"] for r in rows) / len(rows)
+    avg_pred = sum(r["n_pred_steps"] for r in rows) / len(rows)
     avg_gold = sum(r["n_gold_ops"] for r in rows) / len(rows)
     avg_fail = sum(r["n_failed_ops"] for r in rows) / len(rows)
-    print(f"\nops: avg predicted {avg_pred:.1f}  avg gold {avg_gold:.1f}  "
-          f"avg failed-to-apply {avg_fail:.1f}")
+    print(f"\nsteps: avg predicted {avg_pred:.1f}  avg gold ops {avg_gold:.1f}  "
+          f"avg unconvertible states {avg_fail:.1f}")
 
     # ----- per-example records + failure reporting -----
     def _reasons(r: dict) -> list:
@@ -128,11 +128,11 @@ def main() -> int:
         if r["exact"] < 1.0:
             out.append("endpoint")          # didn't reach the target graph
         if r["step_grounded"] < 1.0:
-            out.append("intermediate")      # some waypoint isn't valid math
+            out.append("intermediate")      # some state isn't sympy-convertible
         if r.get("groundable", 0.0) == 1.0 and r["grounded"] < 1.0:
-            out.append("wrong_math")        # final graph grounds, but to the wrong thing
+            out.append("wrong_math")        # final state grounds, but to the wrong thing
         if r["n_failed_ops"] > 0:
-            out.append("illegal_ops")       # some op couldn't be applied
+            out.append("unconvertible")     # some state's LaTeX didn't parse to a graph
         return out
 
     records = []
@@ -148,11 +148,9 @@ def main() -> int:
             "n_failed_ops": r["n_failed_ops"], "fail_reasons": reasons,
             "start_expr": ex.start_expr, "target_expr": ex.target_expr,
         }
-        if reasons:  # attach trajectories only for failures, to keep files small
-            rec["pred_ops"] = [op.model_dump(by_alias=True, exclude_none=True)
-                               for op in extract_ops(pred)]
-            rec["gold_ops"] = [op.model_dump(by_alias=True, exclude_none=True)
-                               for op in ex.gold_ops]
+        if reasons:  # attach derivations only for failures, to keep files small
+            rec["pred_steps"] = [s.model_dump() for s in extract_steps(pred)]
+            rec["gold_steps"] = [s.model_dump() for s in (ex.get("gold_steps") or [])]
         records.append(rec)
 
     failures = [r for r in records if r["fail_reasons"]]

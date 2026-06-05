@@ -19,6 +19,7 @@ ALGEBENCH_LM_REASONING / ALGEBENCH_LM_TEMPERATURE tune the model.
 from __future__ import annotations
 
 import argparse
+import json
 
 from _pc_env import load_env_local
 
@@ -29,11 +30,10 @@ from backend.semantic_graph.service import SemanticGraphService  # noqa: E402
 from backend.experts.context_id import build as build_context_id  # noqa: E402
 from backend.experts.modules.proof_completion.model import GraphTransition  # noqa: E402
 from backend.experts.modules.proof_completion.module import ProofCompletionExpert  # noqa: E402
-from backend.experts.modules.proof_completion.graph_ops import apply, canonical_equal  # noqa: E402
+from backend.experts.modules.proof_completion.graph_ops import canonical_equal, diff  # noqa: E402
 from backend.experts.modules.proof_completion.grounding import (  # noqa: E402
     graph_to_latex, graph_to_sympy, sympy_equiv,
 )
-from backend.experts.modules.proof_completion.metric import safe_apply  # noqa: E402
 from backend.experts.modules.proof_completion.outputs import (  # noqa: E402
     AddEdge, AddNode, RemoveEdge, RemoveNode,
 )
@@ -53,6 +53,35 @@ def _describe(op) -> str:
     return op.op
 
 
+# Placeholder/ellipsis tokens that are NOT valid math — a state containing one
+# (e.g. "1 + 2 + \dots + n") cannot be a real sympy expression even if the
+# parser tolerates the token.
+_PLACEHOLDER = ("\\dots", "\\ldots", "\\cdots", "\\dotsb", "\\ddots",
+                "\\vdots", "\\dotsc", "...")
+
+
+def state_graph(svc, expr_latex: str, domain):
+    """Derive a graph for one state, or None if it is not a valid sympy expr.
+
+    Convertibility = parses to a graph AND that graph reconstructs to a single
+    sympy expression. Any failure (unparseable, placeholder token, malformed /
+    disconnected) returns None — never raises.
+    """
+    if any(tok in expr_latex for tok in _PLACEHOLDER):
+        return None
+    try:
+        g = svc.derive(expr_latex, domain=domain)
+    except Exception:
+        return None
+    if g is None:
+        return None
+    try:
+        graph_to_sympy(g)  # require a single connected, sympy-convertible root
+    except Exception:
+        return None
+    return g
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("start", help="starting LaTeX expression")
@@ -68,6 +97,8 @@ def main() -> int:
                     help="print each op's explanation")
     ap.add_argument("--justification", action="store_true",
                     help="print each op's justification")
+    ap.add_argument("--json", action="store_true",
+                    help="dump the raw model output (the trajectory) as JSON and exit")
     args = ap.parse_args()
 
     init_experts()  # configure the DSPy LM
@@ -80,14 +111,16 @@ def main() -> int:
         return 1
 
     intent = args.intent or "Transform the start expression into the target."
-    print(f"start : {args.start}")
-    print(f"target: {args.target}")
+    if not args.json:
+        print(f"start : {args.start}")
+        print(f"target: {args.target}")
 
     ctx = GraphTransition(start=start_g, target=target_g,
                           domain=args.domain, intent=intent)
     prog = ProofCompletionExpert(artifact=args.program,
                                  load_default=not args.baseline)
-    print(f"(model: {prog.loaded_artifact or 'baseline (uncompiled)'})")
+    if not args.json:
+        print(f"(model: {prog.loaded_artifact or 'baseline (uncompiled)'})")
     try:
         outputs = prog(
             context=ctx,
@@ -99,69 +132,81 @@ def main() -> int:
         print(f"the expert's structured output could not be parsed:\n  {exc}")
         return 1
     traj = outputs[0]
-    ops = list(traj.ops)
-    if not ops:
-        print("the expert returned no operations.")
+
+    # --json: dump the raw model output (the trajectory) and exit. This is
+    # exactly what the model produced — ordered steps, each a math operation +
+    # complete expression + justification — with no code-side reconstruction.
+    if args.json:
+        print(json.dumps(traj.model_dump(), indent=2, ensure_ascii=False))
+        return 0
+
+    steps = list(traj.steps)
+    if not steps:
+        print("the expert returned no steps.")
         return 1
 
-    steps = sorted({op.step for op in ops})
-    # the LaTeX expression at each waypoint (best-effort apply so it renders even
-    # if op ordering is imperfect)
-    waypoints = []  # (step, latex)
-    for k in steps:
-        gk, _ = safe_apply(start_g, [o for o in ops if o.step <= k])
-        ltx = graph_to_latex(gk)
-        if ltx is None:  # malformed intermediate — say why, don't fake it
-            outdeg = {n.id: 0 for n in gk.nodes}
-            for e in gk.edges:
-                outdeg[e.from_] = outdeg.get(e.from_, 0) + 1
-            roots = sum(1 for n in gk.nodes if outdeg.get(n.id, 0) == 0)
-            ltx = f"[malformed intermediate: {roots} disconnected roots]"
-        waypoints.append((k, ltx))
+    # Each step holds the FULL expression (LaTeX) the model reached. We derive a
+    # graph per state and re-render its LaTeX from the graph, so what we show is
+    # the *reconstructed* state — proof the expression is well-formed (single
+    # connected, sympy-convertible) and not just free text.
+    derived = []  # (step, graph_or_None, recon_latex_or_annotated)
+    for s in steps:
+        g = state_graph(svc, s.expr_latex, args.domain)
+        if g is None:
+            # not convertible — still show the model's expression, annotated
+            derived.append((s, None, f"{s.expr_latex}   (not a valid SymPy expression)"))
+            continue
+        recon = graph_to_latex(g) or f"{s.expr_latex}   (not a valid SymPy expression)"
+        derived.append((s, g, recon))
 
-    # always: the LaTeX chain (start -> each step)
+    # always: the LaTeX chain (start -> each state), reconstructed from the graph
     start_latex = graph_to_latex(start_g) or args.start
     print(f"\n=== derivation (LaTeX): {len(steps)} step(s) ===")
-    print(f"   start :  {start_latex}")
-    for k, ltx in waypoints:
-        print(f"   step {k}:  {ltx}")
+    print(f"   start :   {start_latex}")
+    for s, _g, recon in derived:
+        print(f"   step {s.step}:  {recon}")
 
-    # opt-in detail: the flat trajectory — it is ONE ordered list of ops, and
-    # each op carries exactly one explanation and one justification. We also
-    # show the LaTeX buildable from the graph *after* this op is applied
-    # (cumulative best-effort apply), so you can watch the expression evolve
-    # op by op. ``step`` is just a grouping tag, printed for reference.
+    # opt-in detail: one step = one math operation + one full state + one
+    # justification. With --trajectory we also recover the atomic graph edits
+    # between consecutive states (computed by diff, not by the model).
     if args.trajectory or args.explanation or args.justification:
-        print(f"\n=== trajectory ({len(ops)} op(s)) ===")
-        for i, op in enumerate(ops, start=1):
-            gi, _ = safe_apply(start_g, ops[:i])
-            ltx = graph_to_latex(gi) or "[not yet renderable]"
-            head = f"{_describe(op)}   " if args.trajectory else ""
-            print(f"\n{i:2}. {head}[step {op.step}]")
-            print(f"      latex:         {ltx}")
+        print(f"\n=== trajectory ({len(steps)} step(s)) ===")
+        prev_g = start_g
+        for s, g, recon in derived:
+            print(f"\n{s.step:2}. {s.operation}")
+            print(f"      latex:         {recon}")
             if args.explanation:
-                print(f"      explanation:   {op.explanation}")
+                print(f"      operation:     {s.operation}")
             if args.justification:
-                print(f"      justification: {op.justification}")
+                print(f"      justification: {s.justification}")
+            if args.trajectory and g is not None:
+                try:
+                    edits = diff(prev_g, g)
+                    for op in edits:
+                        print(f"        · {_describe(op)}")
+                except Exception:
+                    print("        · (atomic edits unavailable — state not diffable)")
+            if g is not None:
+                prev_g = g
 
-    # verification — three independent checks
-    try:
-        final = apply(start_g, ops)
-        clean = "yes"
-    except Exception:
-        final, failed = safe_apply(start_g, ops)
-        clean = f"no ({failed} op(s) skipped — usually bad ordering)"
-    try:
-        math_ok = sympy_equiv(graph_to_sympy(final), graph_to_sympy(target_g))
-        math = "✓" if math_ok else "✗"
-    except Exception:
-        math = "? (result not reconstructable)"
-    struct = "✓" if canonical_equal(final, target_g) else "✗"
+    # verification — derive the final state and compare to the target
+    final = next((g for s, g, _ in reversed(derived) if g is not None), None)
+    convertible = sum(1 for _s, g, _ in derived if g is not None)
+    if final is None:
+        math = struct = "✗"
+    else:
+        try:
+            math_ok = sympy_equiv(graph_to_sympy(final), graph_to_sympy(target_g))
+            math = "✓" if math_ok else "✗"
+        except Exception:
+            math = "? (result not reconstructable)"
+        struct = "✓" if canonical_equal(final, target_g) else "✗"
 
     print("\nresult:")
-    print(f"  applies cleanly : {clean}")
-    print(f"  math correct    : {math}    (reaches the target expression)")
-    print(f"  exact graph     : {struct}    (identical structure to the parsed target)")
+    print(f"  steps convertible : {convertible}/{len(steps)}    "
+          f"(each state is a single sympy-convertible expression)")
+    print(f"  math correct      : {math}    (final state reaches the target expression)")
+    print(f"  exact graph       : {struct}    (identical structure to the parsed target)")
     return 0
 
 

@@ -127,11 +127,40 @@ GraphOp = Annotated[
 GRAPH_OP_ADAPTER: TypeAdapter = TypeAdapter(GraphOp)
 
 
-class GraphTrajectory(Output):
-    """An ordered list of atomic graph edits transforming start into target.
+class DerivationStep(BaseModel):
+    """One derivation step: a complete reachable state + the move that reached it.
 
-    ``kind`` is the consumer-facing dispatch key.
+    The model emits what it is good at — a *full* expression — not low-level
+    graph edits. ``expr_latex`` is the COMPLETE LaTeX of the expression after
+    this step (e.g. ``x^2 = 4``), and ``operation`` describes the move in plain
+    math terms (e.g. ``add 4 to both sides``).
+
+    The graph for each state is derived deterministically in code via
+    ``SemanticGraphService.derive``; the atomic node/edge edits between
+    consecutive states are recovered with ``diff``. So every step is a
+    single-root, sympy-convertible expression *by construction* — the model
+    never does graph bookkeeping.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    step: int = Field(default=1, ge=1, description="1-based derivation step index")
+    operation: str = Field(min_length=1, max_length=200,
+                           description="the math move, e.g. 'add 4 to both sides'")
+    expr_latex: str = Field(min_length=1, max_length=600,
+                            description="the COMPLETE LaTeX of the resulting expression")
+    justification: str = Field(min_length=1, max_length=400,
+                               description="why this step is mathematically valid")
+
+
+class GraphTrajectory(Output):
+    """A derivation as an ordered list of complete reachable states.
+
+    Each step holds the full expression after one math operation. The per-state
+    graphs (and the atomic edits between them, for animation) are derived in code
+    from ``steps`` — the model only supplies the math. ``kind`` is the
+    consumer-facing dispatch key.
     """
 
     kind: Literal["graph_trajectory"] = "graph_trajectory"
-    ops: List[GraphOp] = Field(default_factory=list)
+    steps: List[DerivationStep] = Field(default_factory=list)
