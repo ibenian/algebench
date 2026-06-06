@@ -40,8 +40,31 @@ export class ProofAnimator {
     this._ghosts = [];
     this._token = null;
     this._build();
+    this._fixStageSize();   // pin the stage to the largest step so it never resizes
     this._renderInto(this.stage, this.data.steps[0].latex);
     this._syncUI();
+  }
+
+  // Measure every step and lock the stage to the max width/height, so the canvas
+  // (and the controls below it) never jump as expressions grow or shrink between
+  // steps. Each step then renders centered inside this fixed box.
+  _fixStageSize() {
+    const probe = document.createElement("span");
+    probe.style.cssText =
+      "position:absolute; visibility:hidden; left:-9999px; top:0; white-space:nowrap;";
+    this.stage.appendChild(probe);
+    let w = 0, h = 0;
+    for (const step of this.data.steps) {
+      this._renderInto(probe, step.latex);
+      const r = probe.getBoundingClientRect();
+      w = Math.max(w, r.width);
+      h = Math.max(h, r.height);
+    }
+    probe.remove();
+    // Height is the only dimension that varies (the stage already stretches to
+    // the fixed panel width), so pinning it stops the vertical jump. Add a little
+    // headroom so nothing clips.
+    if (h > 0) this.stage.style.height = Math.ceil(h + 8) + "px";
   }
 
   _build() {
@@ -198,9 +221,15 @@ export class ProofAnimator {
       cloneOf.set(id, el.cloneNode(true));
       fromFontSize.set(id, getComputedStyle(el).fontSize);
     });
-    // how many of each structural decoration exist now (to detect new ones)
-    const fromDeco = {};
-    DECORATIONS.forEach((sel) => (fromDeco[sel] = this.stage.querySelectorAll(sel).length));
+    // which (node, decoration-type) pairs the SOURCE already had — used to tell a
+    // genuinely new fraction/root apart from one whose node id was merely reused.
+    const fromDecoKeys = new Set();
+    for (const sel of DECORATIONS) {
+      this.stage.querySelectorAll(sel).forEach((el) => {
+        const o = el.closest("[data-n]");
+        if (o) fromDecoKeys.add(o.getAttribute("data-n") + "|" + sel);
+      });
+    }
 
     this._cancel();
     this.current = target;
@@ -237,12 +266,23 @@ export class ProofAnimator {
       if (!fromRects.has(id)) { el.style.opacity = "0"; insertEls.push(el); }
     });
 
-    // newly-introduced structural decorations → also fade in last. Only when the
-    // source had none of that type, so a persisting fraction/root never blinks.
+    // newly-introduced structural decorations → also fade in last. A decoration
+    // (fraction bar, radical, delimiter) belongs to the node that emitted it: its
+    // nearest [data-n] ancestor. If that subtree already existed in the source the
+    // decoration persists (never blink it); if the subtree is new, so is the
+    // decoration → fade it in. This catches a *new inner* fraction even when an
+    // outer fraction is already on screen.
     const decoEls = [];
     for (const sel of DECORATIONS) {
-      if (fromDeco[sel]) continue;
-      this.stage.querySelectorAll(sel).forEach((el) => { el.style.opacity = "0"; decoEls.push(el); });
+      this.stage.querySelectorAll(sel).forEach((el) => {
+        const owner = el.closest("[data-n]");
+        const ownerId = owner && owner.getAttribute("data-n");
+        // keep visible only if that very node already had this decoration in the
+        // source (so the outer fraction persists, but a new inner one fades in).
+        if (ownerId && fromDecoKeys.has(ownerId + "|" + sel)) return;
+        el.style.opacity = "0";
+        decoEls.push(el);
+      });
     }
 
     // source-only glyphs → DELETE ghosts: clones placed at their old spot. Each
