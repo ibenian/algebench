@@ -185,7 +185,11 @@ export class ProofAnimator {
     const fromRects = this._nodeRects(this.stage);    // all nodes, not just leaves
     const stageRect = this.stage.getBoundingClientRect();
     const cloneOf = new Map();
-    fromLeaves.forEach((el, id) => cloneOf.set(id, el.cloneNode(true)));
+    const fromFontSize = new Map();   // exact rendered size (encodes scriptstyle etc.)
+    fromLeaves.forEach((el, id) => {
+      cloneOf.set(id, el.cloneNode(true));
+      fromFontSize.set(id, getComputedStyle(el).fontSize);
+    });
     // how many of each structural decoration exist now (to detect new ones)
     const fromDeco = {};
     DECORATIONS.forEach((sel) => (fromDeco[sel] = this.stage.querySelectorAll(sel).length));
@@ -247,6 +251,10 @@ export class ProofAnimator {
         position: "absolute", margin: "0",
         left: f.left - stageRect.left + "px",
         top: f.top - stageRect.top + "px",
+        // pin the exact rendered size — the leaf's scriptstyle shrink lives on an
+        // ancestor we no longer have, so without this an exponent/subscript would
+        // jump to full size for a frame before fading.
+        fontSize: fromFontSize.get(id),
       });
       host.appendChild(cloneOf.get(id));
       this.stage.appendChild(host);
