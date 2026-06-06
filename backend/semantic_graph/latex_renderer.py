@@ -7,18 +7,14 @@ walks the graph **structurally** — node-by-node, 1:1 — so the rendered LaTeX
 mirrors the graph exactly. That structural fidelity is what the proof-animation
 engine needs (each glyph traces back to a node).
 
-``with_ids=True`` wraps every node's sub-expression in its id via ``wrap`` —
-default KaTeX ``\\htmlData{n=<id>}{...}``, so the rendered DOM carries
-``data-n="<id>"`` per node. ``with_ids=False`` emits the identical LaTeX without
-the wrappers.
+``with_ids=True`` wraps every node's sub-expression — AND every operator glyph
+(``+``, ``=``, ``\\cdot``, ``-``) and exponent — in its own id via ``wrap``
+(default KaTeX ``\\htmlData{n=<id>}{...}`` → ``data-n``). Tagging operators too
+lets the animator move them (not just variables). Each occurrence of a shared
+node gets a distinct id (``a``, ``a__1`` …) so the DOM never has duplicate
+``data-n``; the first occurrence keeps the bare id for cross-state matching.
 
-A shared node (a DAG — e.g. ``a`` in ``(a-b)(a+b)``) is emitted once per
-occurrence with a **distinct** id (``a``, ``a~1``, …) so the DOM never has
-duplicate ``data-n`` (which the animator would collapse). The first occurrence
-keeps the bare id, so cross-state correspondence still holds.
-
-Mirrors ``graph_to_sympy``'s coverage; raises ``StructuralRenderError`` on an
-unmodeled construct or a non-single-root graph.
+Raises ``StructuralRenderError`` on an unmodeled construct / non-single-root graph.
 """
 
 from __future__ import annotations
@@ -32,8 +28,6 @@ class StructuralRenderError(ValueError):
     """The graph uses a construct the structural renderer does not model."""
 
 
-# Operator precedence (higher binds tighter). A child is parenthesized when its
-# precedence is below the threshold the parent requires for that slot.
 _LOGIC, _REL, _ADD, _ADDSUB, _MUL, _FRAC, _POW, _ATOM = 5, 10, 20, 25, 30, 30, 40, 100
 
 _FUNC_LATEX = {
@@ -41,7 +35,7 @@ _FUNC_LATEX = {
     "asin": r"\arcsin", "acos": r"\arccos", "atan": r"\arctan",
     "sinh": r"\sinh", "cosh": r"\cosh", "tanh": r"\tanh",
     "log": r"\log", "ln": r"\ln", "exp": r"\exp",
-}  # sqrt / abs handled specially
+}
 _REL_LATEX = {
     "equals": "=", "not_equal": r"\neq",
     "less_than": "<", "greater_than": ">",
@@ -69,7 +63,7 @@ def to_latex(
     wrap: Optional[Callable[[str, str], str]] = None,
 ) -> str:
     """Render ``graph`` to LaTeX by a structural walk (see module docstring)."""
-    wrapper = (wrap or _htmldata) if with_ids else _identity
+    gw = (wrap or _htmldata) if with_ids else _identity   # glyph + node wrapper
 
     nodes = {n.id: n for n in graph.nodes}
     if not nodes:
@@ -87,21 +81,19 @@ def to_latex(
     if len(roots) != 1:
         raise StructuralRenderError(f"expected one root, found {len(roots)}")
 
-    counts: dict[str, int] = {}   # emissions per node id → unique occurrence ids
+    counts: dict[str, int] = {}
     visiting: set[str] = set()
 
     def emit(nid: str) -> tuple[str, int]:
         if nid in visiting:
             raise StructuralRenderError("cycle")
         visiting.add(nid)
-        body, prec = _emit_body(nodes[nid], incoming[nid], nodes, incoming, child)
-        visiting.discard(nid)
         k = counts.get(nid, 0)
         counts[nid] = k + 1
-        # "~" is a LaTeX active char (KaTeX turns it into \nobreakspace inside the
-        # data value); "__" survives intact, like the parser's own ids.
-        out_id = nid if k == 0 else f"{nid}__{k}"
-        return (wrapper(out_id, body), prec)
+        oid = nid if k == 0 else f"{nid}__{k}"   # unique per occurrence ("~" is LaTeX-active)
+        body, prec = _emit_body(nodes[nid], incoming[nid], nodes, incoming, child, oid, gw)
+        visiting.discard(nid)
+        return (gw(oid, body), prec)
 
     def child(nid: str, threshold: int) -> str:
         s, prec = emit(nid)
@@ -111,7 +103,6 @@ def to_latex(
 
 
 def _starts_negative(node) -> bool:
-    """True if this term renders with a leading minus (negation op / negative number)."""
     if node.type == "operator" and node.op == "negation":
         return True
     if node.type == "number":
@@ -121,7 +112,6 @@ def _starts_negative(node) -> bool:
 
 
 def _binary(ins) -> tuple[str, str]:
-    """(lhs_id, rhs_id) for a binary node, honoring lhs/rhs roles."""
     if len(ins) != 2:
         raise StructuralRenderError(f"binary arity {len(ins)}")
     roles = {r: c for r, c in ins}
@@ -131,8 +121,6 @@ def _binary(ins) -> tuple[str, str]:
 
 
 def _neg_power(node, node_ins):
-    """If ``node`` is a power with a negative exponent, return (base_id, mag) where
-    mag is the magnitude exponent ("" for 1). Else None. Used to build fractions."""
     if node.type == "operator" and node.op == "power" and node.exponent is not None:
         e = str(node.exponent)
         if e.startswith("-"):
@@ -143,7 +131,7 @@ def _neg_power(node, node_ins):
     return None
 
 
-def _emit_body(n, ins, nodes, incoming, child) -> tuple[str, int]:
+def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
     t, op = n.type, n.op
 
     if t in ("scalar", "vector"):
@@ -171,13 +159,13 @@ def _emit_body(n, ins, nodes, incoming, child) -> tuple[str, int]:
         if sym is None:
             raise StructuralRenderError(f"relation {op!r}")
         l, r = _binary(ins)
-        return (f"{child(l, _REL)} {sym} {child(r, _REL)}", _REL)
+        return (f"{child(l, _REL)} {gw(oid + '__op', sym)} {child(r, _REL)}", _REL)
     if t == "operator":
-        return _emit_operator(n, op, ins, nodes, incoming, child)
+        return _emit_operator(n, op, ins, nodes, incoming, child, oid, gw)
     raise StructuralRenderError(f"node type {t!r}")
 
 
-def _emit_operator(n, op, ins, nodes, incoming, child) -> tuple[str, int]:
+def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
     if op == "add":
         parts = []
         for i, (_role, c) in enumerate(ins):
@@ -185,9 +173,9 @@ def _emit_operator(n, op, ins, nodes, incoming, child) -> tuple[str, int]:
             if i == 0:
                 parts.append(cs)
             elif _starts_negative(nodes[c]):
-                parts.append(" " + cs)       # cs already begins with "-"
+                parts.append(" " + cs)                    # cs already begins with a (tagged) "-"
             else:
-                parts.append(" + " + cs)
+                parts.append(f" {gw(oid + '__op' + str(i), '+')} {cs}")
         return ("".join(parts), _ADD)
 
     if op == "multiply":
@@ -197,18 +185,28 @@ def _emit_operator(n, op, ins, nodes, incoming, child) -> tuple[str, int]:
             if neg:
                 base_id, mag = neg
                 den.append((child(base_id, _POW + 1) + f"^{{{mag}}}") if mag
-                           else child(base_id, _MUL))   # {} already groups → no parens
+                           else child(base_id, _MUL))
             else:
                 num.append(child(c, _MUL))
-        num_s = " \\cdot ".join(num) if num else "1"
+
+        def joinmul(items, tag):
+            if not items:
+                return "1"
+            out = items[0]
+            for i, it in enumerate(items[1:], start=1):
+                out += f" {gw(oid + '__' + tag + str(i), chr(92) + 'cdot')} {it}"
+            return out
+
+        num_s = joinmul(num, "m")
         if den:
-            return (f"\\frac{{{num_s}}}{{{' \\cdot '.join(den)}}}", _FRAC)
+            den_s = den[0] if len(den) == 1 else joinmul(den, "d")
+            return (f"\\frac{{{num_s}}}{{{den_s}}}", _FRAC)
         return (num_s, _MUL)
 
     if op == "negation":
         if len(ins) != 1:
             raise StructuralRenderError("negation arity")
-        return ("- " + child(ins[0][1], _ADDSUB), _ADDSUB)
+        return (f"{gw(oid + '__op', '-')} {child(ins[0][1], _ADDSUB)}", _ADDSUB)
 
     if op == "power":
         bases = [c for role, c in ins if role != "exp"]
@@ -217,18 +215,20 @@ def _emit_operator(n, op, ins, nodes, incoming, child) -> tuple[str, int]:
             raise StructuralRenderError("power base")
         if n.exponent is not None:
             exp_s = str(n.exponent)
+            exp_tagged = gw(oid + "__exp", exp_s)
         elif exps:
             exp_s = child(exps[0], _LOGIC)
+            exp_tagged = exp_s
         else:
             raise StructuralRenderError("power exponent")
-        if exp_s in ("1/2", "0.5"):                       # square root
+        if exp_s in ("1/2", "0.5"):
             return (f"\\sqrt{{{child(bases[0], _LOGIC)}}}", _ATOM)
-        if exp_s.startswith("-"):                          # reciprocal → fraction
+        if exp_s.startswith("-"):
             mag = exp_s[1:]
             inner = (child(bases[0], _MUL) if mag == "1"
                      else child(bases[0], _POW + 1) + f"^{{{mag}}}")
             return (f"\\frac{{1}}{{{inner}}}", _FRAC)
-        return (f"{child(bases[0], _POW + 1)}^{{{exp_s}}}", _POW)
+        return (f"{child(bases[0], _POW + 1)}^{{{exp_tagged}}}", _POW)
 
     if op == "derivative":
         operands = [c for role, c in ins if role != "wrt"]
@@ -244,6 +244,6 @@ def _emit_operator(n, op, ins, nodes, incoming, child) -> tuple[str, int]:
 
     if op in _LOGIC_LATEX:
         l, r = _binary(ins)
-        return (f"{child(l, _LOGIC)} {_LOGIC_LATEX[op]} {child(r, _LOGIC)}", _LOGIC)
+        return (f"{child(l, _LOGIC)} {gw(oid + '__op', _LOGIC_LATEX[op])} {child(r, _LOGIC)}", _LOGIC)
 
     raise StructuralRenderError(f"operator {op!r}")

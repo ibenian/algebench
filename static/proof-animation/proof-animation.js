@@ -1,20 +1,21 @@
 /**
  * proof-animation.js — realtime, Manim-style morphing of a derivation.
  *
- * Mirrors the graph-panel pattern: a framework-free ES-module class you point at
- * a container + data, embeddable in the AlgeBench app and runnable standalone
- * from a local launcher.
+ * Framework-free ES-module class (graph-panel pattern): point it at a container
+ * + data; embeddable in the app and runnable from the local launcher.
  *
- * Input `data` = { title, steps: [ { index, operation, justification,
- *   latex (annotated with \htmlData{n=<id>}), plain } ] }, where a sub-expression
- * that persists across steps carries the SAME `data-n` id (threaded server-side).
+ * data = { title, steps: [ { index, operation, justification, latex, plain } ] }
+ * where `latex` is annotated (\htmlData{n=<id>}) on EVERY glyph — variables,
+ * numbers, operators (+ = · −) and exponents — and a piece that persists across
+ * steps keeps the same id (threaded server-side). The id IS the correspondence.
  *
- * Morph = FLIP on the **leaf** `data-n` spans (tokens), keyed by id:
- *   - id in both states  → tween from old → new position (match / move)
- *   - id only in target  → fade / grow in (insert)
- *   - id only in current → ghost fade out (delete)
- * Leaf-level avoids nested-span transform compounding; the stable id IS the
- * correspondence, so any-to-any jumps (1→5, 5→2, …) work by id-set comparison.
+ * Morph (FLIP on the leaf `data-n` glyphs, keyed by id):
+ *   - id in both states  → MOVE: translate old → new position (coordinate interp)
+ *   - id only in current → DELETE: ghost fades out (during motion, phase 1)
+ *   - id only in target  → INSERT: fades in AFTER all motion completes (phase 2)
+ * So everything that persists (incl. operators/powers) interpolates; only new
+ * items fade in and only removed items fade out. Any-to-any jumps work by id;
+ * an interrupting click cancels the in-flight morph and retargets from live pos.
  */
 
 const EASE = "cubic-bezier(0.42, 0, 0.58, 1)"; // ease-in-out
@@ -26,16 +27,17 @@ export class ProofAnimator {
     this.katex = opts.katex || (typeof window !== "undefined" && window.katex);
     if (!this.katex) throw new Error("ProofAnimator: KaTeX not available");
     this.duration = opts.duration ?? 650;
-    this.mode = opts.mode || "parallel"; // 'parallel' | 'sequential'
+    this.mode = opts.mode || "parallel";    // 'parallel' | 'sequential'
+    this.staggerMs = opts.staggerMs ?? 200;  // sequential per-item lag (specifiable; ~2× the old)
     this.current = 0;
-    this._running = [];   // in-flight WAAPI animations (cancel to interrupt)
-    this._ghosts = [];    // delete-ghost elements to clean up
+    this._running = [];
+    this._ghosts = [];
+    this._token = null;
     this._build();
     this._renderInto(this.stage, this.data.steps[0].latex);
     this._syncUI();
   }
 
-  // ---- DOM scaffold ------------------------------------------------------
   _build() {
     this.container.classList.add("pa-root");
     this.container.innerHTML = `
@@ -65,7 +67,6 @@ export class ProofAnimator {
       (this.mode = e.target.checked ? "sequential" : "parallel");
   }
 
-  // ---- rendering ---------------------------------------------------------
   _renderInto(el, latex) {
     el.innerHTML = "";
     const host = document.createElement("span");
@@ -80,16 +81,15 @@ export class ProofAnimator {
     return host;
   }
 
-  // visible leaf `[data-n]` spans (no nested data-n; excludes hidden MathML)
+  // leaf glyph spans: a `data-n` with no nested `data-n` (excludes hidden MathML)
   _leaves(root) {
     const map = new Map();
     root.querySelectorAll(".katex-html [data-n]").forEach((el) => {
-      if (el.querySelector("[data-n]")) return; // not a leaf
+      if (el.querySelector("[data-n]")) return;
       map.set(el.getAttribute("data-n"), el);
     });
     return map;
   }
-
   _rects(map) {
     const r = new Map();
     map.forEach((el, id) => r.set(id, el.getBoundingClientRect()));
@@ -103,95 +103,91 @@ export class ProofAnimator {
     this._ghosts = [];
   }
 
-  // ---- the morph ---------------------------------------------------------
   async goTo(target) {
     target = Math.max(0, Math.min(this.data.steps.length - 1, target));
     if (target === this.current && this._running.length === 0) return;
+    const token = (this._token = {});
+    const seq = this.mode === "sequential";
 
-    // FIRST: measure where leaves are *right now* — getBoundingClientRect
-    // includes any in-flight transform, so an interrupting click retargets
-    // from the live on-screen position (no snap, no stuck state).
+    // FIRST: measure current glyphs (incl. in-flight transforms → retarget) and
+    // clone them now (the DOM is destroyed on re-render, needed for delete ghosts)
     const fromLeaves = this._leaves(this.stage);
     const fromRects = this._rects(fromLeaves);
     const stageRect = this.stage.getBoundingClientRect();
+    const cloneOf = new Map();
+    fromLeaves.forEach((el, id) => cloneOf.set(id, el.cloneNode(true)));
 
-    // interrupt any running morph + clear old ghosts, then commit the target
     this._cancel();
     this.current = target;
     this._syncUI();
 
-    // LAST: render target, measure final positions
+    // LAST: render target, measure
     this._renderInto(this.stage, this.data.steps[target].latex);
     const toLeaves = this._leaves(this.stage);
     const toRects = this._rects(toLeaves);
 
-    const dur = this.duration;
-    const seq = this.mode === "sequential";
-    const step = seq ? Math.min(140, (dur * 0.8) / Math.max(1, toLeaves.size)) : 0;
-    const anims = [];
-    const ghosts = [];
-    let i = 0;
+    const moveAnims = [], delAnims = [], insertEls = [];
+    let mi = 0;
 
-    // matched/move (tween) + insert (fade in)
+    // matched → MOVE (coordinate interpolation); target-only → defer to phase 2
     toLeaves.forEach((el, id) => {
-      const delay = seq ? i++ * step : 0;
-      const from = fromRects.get(id);
-      const to = toRects.get(id);
-      if (from) {
-        // pure coordinate interpolation: glide the token from its old (x,y) to
-        // its new (x,y) — no scale, so matched tokens move cleanly.
-        const dx = from.left - to.left, dy = from.top - to.top;
+      if (fromRects.has(id)) {
+        const f = fromRects.get(id), t = toRects.get(id);
+        const dx = f.left - t.left, dy = f.top - t.top;
         if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
           el.classList.add("pa-move");
-          anims.push(el.animate(
+          moveAnims.push(el.animate(
             [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0px, 0px)" }],
-            { duration: dur, delay, easing: EASE, fill: "backwards" }
+            { duration: this.duration, delay: seq ? mi++ * this.staggerMs : 0, easing: EASE, fill: "backwards" }
           ));
         }
       } else {
-        el.classList.add("pa-move");      // inline-block so the scale applies
-        el.style.opacity = "0";
-        const a = el.animate(
-          [{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "none" }],
-          { duration: dur, delay, easing: EASE, fill: "backwards" }
-        );
-        a.onfinish = () => (el.style.opacity = "");
-        anims.push(a);
+        el.style.opacity = "0";   // INSERT — hidden until motion completes
+        insertEls.push(el);
       }
     });
 
-    // delete (ghost fade out): clone old leaves over the stage at their old spot
+    // source-only → DELETE: ghost (clone) fades out during motion (phase 1)
     fromLeaves.forEach((el, id) => {
       if (toLeaves.has(id)) return;
-      const from = fromRects.get(id);
-      const ghost = el.cloneNode(true);
-      ghost.className = (el.className || "") + " pa-ghost";
+      const f = fromRects.get(id);
+      const ghost = cloneOf.get(id);
+      ghost.classList.add("pa-ghost", "pa-move");
       Object.assign(ghost.style, {
         position: "absolute", margin: "0",
-        left: from.left - stageRect.left + "px",
-        top: from.top - stageRect.top + "px",
+        left: f.left - stageRect.left + "px",
+        top: f.top - stageRect.top + "px",
       });
       this.stage.appendChild(ghost);
-      const a = ghost.animate(
-        [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(.6)" }],
-        { duration: dur * 0.7, easing: EASE, fill: "forwards" }
+      this._ghosts.push(ghost);
+      const ga = ghost.animate(
+        [{ opacity: 1 }, { opacity: 0 }],
+        { duration: this.duration * 0.6, easing: EASE, fill: "forwards" }
       );
-      a.onfinish = () => ghost.remove();
-      ghosts.push(ghost);
-      anims.push(a);
+      ga.onfinish = () => ghost.remove();
+      delAnims.push(ga);
     });
 
-    this._running = anims;
-    this._ghosts = ghosts;
-    try {
-      await Promise.all(anims.map((a) => a.finished.catch(() => {})));
-    } finally {
-      if (this._running === anims) {     // not interrupted by a newer goTo
-        this._running = [];
-        ghosts.forEach((g) => g.remove());
-        this._ghosts = [];
-      }
+    // phase 1: motion (moves + deletes) — wait for ALL of it
+    this._running = [...moveAnims, ...delAnims];
+    await Promise.all(this._running.map((a) => a.finished.catch(() => {})));
+    if (this._token !== token) return;   // interrupted by a newer goTo
+
+    // phase 2: new items fade in, only now that motion is done
+    const insAnims = [];
+    let ii = 0;
+    for (const el of insertEls) {
+      el.classList.add("pa-move");
+      const a = el.animate(
+        [{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "none" }],
+        { duration: this.duration * 0.7, delay: seq ? ii++ * this.staggerMs : 0, easing: EASE, fill: "backwards" }
+      );
+      a.onfinish = () => (el.style.opacity = "");
+      insAnims.push(a);
     }
+    this._running = insAnims;
+    await Promise.all(insAnims.map((a) => a.finished.catch(() => {})));
+    if (this._token === token) this._running = [];
   }
 
   async play() {
@@ -201,7 +197,6 @@ export class ProofAnimator {
     }
   }
 
-  // ---- UI sync -----------------------------------------------------------
   _syncUI() {
     this.container.querySelectorAll(".pa-step").forEach((b, i) =>
       b.classList.toggle("pa-active", i === this.current));
