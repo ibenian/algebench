@@ -17,7 +17,7 @@
  * correspondence, so any-to-any jumps (1→5, 5→2, …) work by id-set comparison.
  */
 
-const EASE = "cubic-bezier(.4,0,.2,1)";
+const EASE = "cubic-bezier(0.42, 0, 0.58, 1)"; // ease-in-out
 
 export class ProofAnimator {
   constructor(container, data, opts = {}) {
@@ -138,13 +138,13 @@ export class ProofAnimator {
       const from = fromRects.get(id);
       const to = toRects.get(id);
       if (from) {
+        // pure coordinate interpolation: glide the token from its old (x,y) to
+        // its new (x,y) — no scale, so matched tokens move cleanly.
         const dx = from.left - to.left, dy = from.top - to.top;
-        const sx = from.width / Math.max(1, to.width);
-        const sy = from.height / Math.max(1, to.height);
-        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5 || Math.abs(sx - 1) > 0.02) {
+        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
           el.classList.add("pa-move");
           anims.push(el.animate(
-            [{ transform: `translate(${dx}px,${dy}px) scale(${sx},${sy})` }, { transform: "none" }],
+            [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0px, 0px)" }],
             { duration: dur, delay, easing: EASE, fill: "backwards" }
           ));
         }
@@ -173,7 +173,7 @@ export class ProofAnimator {
       this.stage.appendChild(ghost);
       const a = ghost.animate(
         [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(.6)" }],
-        { duration: dur * 0.7, easing: "ease-in", fill: "forwards" }
+        { duration: dur * 0.7, easing: EASE, fill: "forwards" }
       );
       a.onfinish = () => ghost.remove();
       ghosts.push(ghost);
