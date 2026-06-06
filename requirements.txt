@@ -11,3 +11,8 @@ dspy>=2.6,<3.0
 # SECURITY: litellm 1.82.7 / 1.82.8 were compromised (Mar 2025 supply chain attack).
 # Floor of 1.82.9 guarantees a fresh resolve can never land on the malicious versions.
 litellm>=1.82.9
+# BUILD: litellm[proxy] (pulled by dspy) allows orjson>=3.9.7, but a fresh resolve
+# can backtrack to orjson 3.10.x, whose bundled PyO3 0.23 cannot build on Python
+# 3.14 (CI) — no cp314 wheel, source build fails. Floor at 3.11.9, which ships a
+# prebuilt cp314 wheel (and a 3.14-capable PyO3). Keep in range of litellm's <4.0.0.
+orjson>=3.11.9
