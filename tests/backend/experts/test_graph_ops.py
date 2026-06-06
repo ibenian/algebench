@@ -25,21 +25,21 @@ PAIRS = [
 
 @pytest.mark.parametrize("start_latex,target_latex", PAIRS)
 def test_diff_then_apply_reaches_target(start_latex, target_latex):
-    gs, gt = SVC.derive(start_latex), SVC.derive(target_latex)
+    gs, gt = SVC.latex_to_graph(start_latex), SVC.latex_to_graph(target_latex)
     ops = diff(gs, gt)
     result = apply(gs, ops)
     assert canonical_equal(result, gt)
 
 
 def test_identical_graphs_have_empty_diff():
-    g = SVC.derive(r"F = m a")
+    g = SVC.latex_to_graph(r"F = m a")
     assert diff(g, g) == []
     assert canonical_equal(g, apply(g, []))
 
 
 def test_canonical_equal_is_synthetic_id_invariant():
     # Renaming a synthetic (operator) id must not change canonical identity.
-    g = SVC.derive(r"x^2 + 2 x + 1")
+    g = SVC.latex_to_graph(r"x^2 + 2 x + 1")
     renamed = g.model_copy(deep=True)
     syn = next(n.id for n in renamed.nodes if n.id.startswith("__"))
     new_id = "OP_RENAMED"
@@ -56,18 +56,18 @@ def test_canonical_equal_is_synthetic_id_invariant():
 
 def test_canonical_equal_distinguishes_variable_names():
     # The variable name (a leaf id) is meaningful: x+y != x+x structurally.
-    assert not canonical_equal(SVC.derive(r"x + y"), SVC.derive(r"x + x"))
+    assert not canonical_equal(SVC.latex_to_graph(r"x + y"), SVC.latex_to_graph(r"x + x"))
 
 
 def test_apply_raises_on_duplicate_node():
-    g = SVC.derive(r"x + 1")
+    g = SVC.latex_to_graph(r"x + 1")
     op = AddNode(node=g.nodes[0], explanation="dup", justification="dup")
     with pytest.raises(GraphOpError):
         apply(g, [op])
 
 
 def test_apply_raises_on_missing_remove():
-    g = SVC.derive(r"x + 1")
+    g = SVC.latex_to_graph(r"x + 1")
     op = RemoveNode(node_id="does_not_exist", explanation="x", justification="x")
     with pytest.raises(GraphOpError):
         apply(g, [op])
@@ -76,7 +76,7 @@ def test_apply_raises_on_missing_remove():
 def test_apply_raises_on_dangling_edge():
     from backend.model.semantic_graph import SemanticGraphEdge
 
-    g = SVC.derive(r"x + 1")
+    g = SVC.latex_to_graph(r"x + 1")
     edge = SemanticGraphEdge(**{"from": "ghost", "to": g.nodes[0].id})
     op = AddEdge(edge=edge, explanation="x", justification="x")
     with pytest.raises(GraphOpError):

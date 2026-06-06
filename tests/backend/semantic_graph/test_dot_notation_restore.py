@@ -19,7 +19,7 @@ from backend.semantic_graph.preprocessor import LaTeXPreprocessor
 
 _strip_accent_commands = LaTeXPreprocessor.strip_accent_commands
 _svc = SemanticGraphService()
-_derive_semantic_graph = _svc.derive
+_derive_semantic_graph = _svc.latex_to_graph
 
 
 # ---------------------------------------------------------------------------

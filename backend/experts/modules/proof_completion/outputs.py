@@ -136,7 +136,7 @@ class DerivationStep(BaseModel):
     math terms (e.g. ``add 4 to both sides``).
 
     The graph for each state is derived deterministically in code via
-    ``SemanticGraphService.derive``; the atomic node/edge edits between
+    ``SemanticGraphService.latex_to_graph``; the atomic node/edge edits between
     consecutive states are recovered with ``diff``. So every step is a
     single-root, sympy-convertible expression *by construction* — the model
     never does graph bookkeeping.

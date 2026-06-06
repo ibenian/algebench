@@ -99,7 +99,7 @@ def test_autofill_attaches_error_when_parser_returns_none(monkeypatch):
     """Issue #137: when the parser returns None, the step should carry an
     error record inside ``semanticGraph`` so the UI can surface the failure."""
     monkeypatch.setattr(
-        server._graph_service, "derive", lambda latex, **kw: None,
+        server._graph_service, "latex_to_graph", lambda latex, **kw: None,
     )
     spec = {
         "scenes": [
@@ -126,7 +126,7 @@ def test_autofill_attaches_error_when_parser_raises(monkeypatch):
     inside ``semanticGraph``, not silently dropped."""
     def boom(_latex):
         raise RuntimeError("synthetic parse crash")
-    monkeypatch.setattr(server._graph_service, "derive", boom)
+    monkeypatch.setattr(server._graph_service, "latex_to_graph", boom)
     spec = {
         "scenes": [
             {

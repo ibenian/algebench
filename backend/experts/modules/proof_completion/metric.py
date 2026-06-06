@@ -73,7 +73,7 @@ def _state_graph(expr_latex: str, domain) -> SemanticGraph | None:
     if any(tok in expr_latex for tok in _PLACEHOLDER):
         return None  # ellipsis / placeholder — not a valid sympy expression
     try:
-        g = _SVC.derive(expr_latex, domain=domain)
+        g = _SVC.latex_to_graph(expr_latex, domain=domain)
     except Exception:
         return None
     if g is None:

@@ -70,7 +70,7 @@ def state_graph(svc, expr_latex: str, domain):
     if any(tok in expr_latex for tok in _PLACEHOLDER):
         return None
     try:
-        g = svc.derive(expr_latex, domain=domain)
+        g = svc.latex_to_graph(expr_latex, domain=domain)
     except Exception:
         return None
     if g is None:
@@ -104,8 +104,8 @@ def main() -> int:
     init_experts()  # configure the DSPy LM
     svc = SemanticGraphService()
 
-    start_g = svc.derive(args.start, domain=args.domain)
-    target_g = svc.derive(args.target, domain=args.domain)
+    start_g = svc.latex_to_graph(args.start, domain=args.domain)
+    target_g = svc.latex_to_graph(args.target, domain=args.domain)
     if start_g is None or target_g is None:
         print(f"could not parse {'start' if start_g is None else 'target'} expression")
         return 1

@@ -85,7 +85,7 @@ def make_expr_chain(expr0: sp.Expr, rng: random.Random, max_steps: int) -> list[
 # --------------------------------------------------------------------------- #
 
 def _expr_to_graph(expr: sp.Expr, domain: str) -> Optional[SemanticGraph]:
-    return _SVC.derive(sp.latex(expr), domain=domain)
+    return _SVC.latex_to_graph(sp.latex(expr), domain=domain)
 
 
 def thread_gold(graphs: list[SemanticGraph]) -> tuple[list, SemanticGraph]:

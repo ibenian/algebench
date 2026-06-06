@@ -33,18 +33,18 @@ ROUNDTRIP = [
 
 @pytest.mark.parametrize("latex,expected", ROUNDTRIP)
 def test_graph_grounds_to_source_expression(latex, expected):
-    g = SVC.derive(latex)
+    g = SVC.latex_to_graph(latex)
     assert sympy_equiv(graph_to_sympy(g), expected)
     assert is_grounded(g, expected) is True
 
 
 def test_grounding_rejects_wrong_expression():
-    g = SVC.derive(r"x^2 + 2 x + 1")
+    g = SVC.latex_to_graph(r"x^2 + 2 x + 1")
     assert is_grounded(g, x ** 2 + 3 * x + 1) is False
 
 
 def test_equations_ground_up_to_sign():
-    g = SVC.derive(r"F = m a")
+    g = SVC.latex_to_graph(r"F = m a")
     F, m, aa = sp.symbols("F m a")
     assert is_grounded(g, sp.Eq(F, m * aa)) is True
     assert is_grounded(g, sp.Eq(m * aa, F)) is True  # sides swapped
@@ -52,7 +52,7 @@ def test_equations_ground_up_to_sign():
 
 def test_expanded_and_factored_forms_are_equivalent():
     # different graphs, same math: factored vs expanded both ground equal
-    factored = SVC.derive(r"(a-b)(a+b)")
+    factored = SVC.latex_to_graph(r"(a-b)(a+b)")
     assert is_grounded(factored, a ** 2 - b ** 2) is True
 
 
@@ -65,7 +65,7 @@ def test_inequalities_and_logic_ground():
         (r"x > 2 \implies x > 0", sp.Implies(sp.Gt(x, 2), sp.Gt(x, 0))),
     ]
     for latex, expected in cases:
-        g = SVC.derive(latex)
+        g = SVC.latex_to_graph(latex)
         assert is_grounded(g, expected) is True, latex
 
 
