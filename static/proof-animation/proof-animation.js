@@ -20,6 +20,12 @@
 
 const EASE = "cubic-bezier(0.42, 0, 0.58, 1)"; // ease-in-out
 
+// Untagged structural decorations KaTeX draws (no data-n of their own): the
+// fraction bar, the radical sign, and stretchy delimiters. When newly
+// introduced they must fade in LAST with the other new items — never instantly.
+// (These selectors hold no tagged glyphs, so hiding them won't hide content.)
+const DECORATIONS = [".frac-line", ".sqrt svg", ".delimsizing"];
+
 export class ProofAnimator {
   constructor(container, data, opts = {}) {
     this.container = container;
@@ -180,6 +186,9 @@ export class ProofAnimator {
     const stageRect = this.stage.getBoundingClientRect();
     const cloneOf = new Map();
     fromLeaves.forEach((el, id) => cloneOf.set(id, el.cloneNode(true)));
+    // how many of each structural decoration exist now (to detect new ones)
+    const fromDeco = {};
+    DECORATIONS.forEach((sel) => (fromDeco[sel] = this.stage.querySelectorAll(sel).length));
 
     this._cancel();
     this.current = target;
@@ -221,6 +230,14 @@ export class ProofAnimator {
       if (!fromRects.has(id)) { el.style.opacity = "0"; insertEls.push(el); }
     });
 
+    // newly-introduced structural decorations → also fade in last. Only when the
+    // source had none of that type, so a persisting fraction/root never blinks.
+    const decoEls = [];
+    for (const sel of DECORATIONS) {
+      if (fromDeco[sel]) continue;
+      this.stage.querySelectorAll(sel).forEach((el) => { el.style.opacity = "0"; decoEls.push(el); });
+    }
+
     // source-only glyphs → DELETE: ghost (clone) fades out during motion (phase 1)
     fromLeaves.forEach((el, id) => {
       if (toRects.has(id)) return;   // still present (as glyph or subtree)
@@ -254,6 +271,15 @@ export class ProofAnimator {
       el.classList.add("pa-move");
       const a = el.animate(
         [{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "none" }],
+        { duration: this.duration * 0.7, delay: seq ? ii++ * this.staggerMs : 0, easing: EASE, fill: "backwards" }
+      );
+      a.onfinish = () => (el.style.opacity = "");
+      insAnims.push(a);
+    }
+    // structural decorations fade in by opacity only (no scale → no layout shift)
+    for (const el of decoEls) {
+      const a = el.animate(
+        [{ opacity: 0 }, { opacity: 1 }],
         { duration: this.duration * 0.7, delay: seq ? ii++ * this.staggerMs : 0, easing: EASE, fill: "backwards" }
       );
       a.onfinish = () => (el.style.opacity = "");
