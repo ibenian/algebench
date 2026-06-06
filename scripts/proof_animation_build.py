@@ -99,6 +99,20 @@ SAMPLES = [
              "justification": "a² − b² = (a−b)(a+b)"},
         ],
     },
+    {
+        "title": "Relativistic energy–momentum",
+        "domain": "algebra",
+        "states": [
+            {"latex": r"E^2 = (m c^2)^2 + (p c)^2", "operation": "start",
+             "justification": "the energy–momentum relation"},
+            {"latex": r"E = \sqrt{(m c^2)^2 + (p c)^2}", "operation": "take the square root"},
+            {"latex": r"E = \sqrt{m^2 c^4 + p^2 c^2}", "operation": "expand the squares"},
+            {"latex": r"E = \sqrt{c^2 \cdot (m^2 c^2 + p^2)}", "operation": "factor out c²"},
+            {"latex": r"E = c \sqrt{m^2 c^2 + p^2}", "operation": "pull c out of the root"},
+            {"latex": r"E = m c^2 \sqrt{1 + \frac{p^2}{m^2 c^2}}", "operation": "factor out m²c²",
+             "justification": "E = mc²·√(1 + (p/mc)²)"},
+        ],
+    },
 ]
 
 
