@@ -114,7 +114,7 @@ def main() -> int:
     elif args.states:
         traj = ProofTrajectory(
             start_latex=args.states[0],
-            steps=[DerivationStep(step=i, operation=f"step {i}", expr_latex=s,
+            steps=[DerivationStep(operation=f"step {i}", expr_latex=s,
                                   justification="(manual)")
                    for i, s in enumerate(args.states[1:], start=1)],
         )
@@ -126,7 +126,18 @@ def main() -> int:
     else:                          # fallback if the suite file is missing
         animations = [build(s.trajectory, s.domain, s.title) for s in SAMPLES]
 
-    out = Path(args.outdir)
+    out = render_site(animations, args.outdir)
+    print(f"wrote {out}/  ({len(animations)} animation(s))")
+    return 0
+
+
+def render_site(animations: list[dict], outdir) -> Path:
+    """Write a self-contained proof-animation page (index.html + data + engine).
+
+    Reusable by other scripts (e.g. proof_animation_derive --render). ``animations``
+    is a list of built animation dicts (as ``build()`` returns).
+    """
+    out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
     (out / "animations.json").write_text(json.dumps(animations, indent=2, ensure_ascii=False))
     shutil.copy(_ASSETS / "proof-animation.js", out / "proof-animation.js")
@@ -138,8 +149,7 @@ def main() -> int:
             .replace("./proof-animation.js", f"./proof-animation.js?v={ver}")
             .replace("./proof-animation.css", f"./proof-animation.css?v={ver}"))
     (out / "index.html").write_text(html)
-    print(f"wrote {out}/  ({len(animations)} animation(s), v={ver})")
-    return 0
+    return out
 
 
 if __name__ == "__main__":
