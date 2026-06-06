@@ -19,9 +19,14 @@ import json
 
 from collections import defaultdict
 
+from pydantic import BaseModel, ConfigDict
+
 from backend.semantic_graph.service import SemanticGraphService
 from backend.semantic_graph.latex_renderer import to_latex
 from backend.experts.modules.proof_completion.graph_ops import wl_colors, _content
+from backend.experts.modules.proof_completion.outputs import (
+    GraphTrajectory, DerivationStep,
+)
 
 
 def _children(graph):
@@ -126,91 +131,95 @@ def _rebase(prev, gnew):
         e.from_, e.to = final[e.from_], final[e.to]
     return g
 
-# Deterministic demos. Each state carries BOTH an explanation (`operation`) and a
-# `justification`; either may use inline LaTeX in $…$ (the engine renders it).
-SAMPLE = {
-    "title": "Isolate a",
-    "domain": "algebra",
-    "states": [
-        {"latex": r"a + b - c = 0", "operation": "start",
-         "justification": r"solve for $a$"},
-        {"latex": r"a + b = c", "operation": r"add $c$ to both sides",
-         "justification": r"$c$ crosses the $=$ and flips sign"},
-        {"latex": r"a = c - b", "operation": r"subtract $b$ from both sides",
-         "justification": r"$b$ crosses over, leaving $a$ isolated"},
+class ProofAnimation(BaseModel):
+    """One animation = a ProofCompletionExpert ``GraphTrajectory`` + display meta.
+
+    The ``trajectory`` is the expert's output type **verbatim**, so a real expert
+    result animates with zero conversion. ``title``/``domain`` are the only
+    animation-side additions — a trajectory carries no display label and no parser
+    domain of its own.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    title: str
+    domain: str = "algebra"
+    trajectory: GraphTrajectory
+
+
+def _anim(title: str, start: str,
+          steps: list[tuple[str, str, str]], domain: str = "algebra") -> ProofAnimation:
+    """Author a ProofAnimation from a start state + (operation, latex, justification) steps."""
+    return ProofAnimation(
+        title=title,
+        domain=domain,
+        trajectory=GraphTrajectory(
+            start_latex=start,
+            target_latex=steps[-1][1] if steps else start,
+            steps=[DerivationStep(step=i + 1, operation=op, expr_latex=ex, justification=ju)
+                   for i, (op, ex, ju) in enumerate(steps)],
+        ),
+    )
+
+
+# Deterministic demos, authored in the expert's own output shape (a
+# GraphTrajectory: a start state + ordered DerivationSteps). operation/justification
+# may use inline LaTeX in $…$ (the engine renders it).
+SAMPLE = _anim(
+    "Isolate a", r"a + b - c = 0",
+    [
+        (r"add $c$ to both sides", r"a + b = c", r"$c$ crosses the $=$ and flips sign"),
+        (r"subtract $b$ from both sides", r"a = c - b", r"$b$ crosses over, leaving $a$ isolated"),
     ],
-}
+)
 
 SAMPLES = [
     SAMPLE,
-    {
-        "title": "Expand the binomial",
-        "domain": "algebra",
-        "states": [
-            {"latex": r"(x + 1)^2", "operation": "start",
-             "justification": r"a perfect square"},
-            {"latex": r"x^2 + 2 x + 1", "operation": r"expand $(x+1)^2$",
-             "justification": r"$(x+1)^2 = x^2 + 2x + 1$"},
-        ],
-    },
-    {
-        "title": "Factor the difference of squares",
-        "domain": "algebra",
-        "states": [
-            {"latex": r"a^2 - b^2", "operation": "start",
-             "justification": r"a difference of two squares"},
-            {"latex": r"(a - b)(a + b)", "operation": r"factor",
-             "justification": r"$a^2 - b^2 = (a-b)(a+b)$"},
-        ],
-    },
-    {
-        "title": "Relativistic energy–momentum",
-        "domain": "algebra",
-        "states": [
-            {"latex": r"E^2 = (m c^2)^2 + (p c)^2", "operation": "start",
-             "justification": r"the energy–momentum relation"},
-            {"latex": r"E = \sqrt{(m c^2)^2 + (p c)^2}", "operation": r"take the square root",
-             "justification": r"solve for $E$ (positive root)"},
-            {"latex": r"E = \sqrt{m^2 c^4 + p^2 c^2}", "operation": r"expand the squares",
-             "justification": r"$(m c^2)^2 = m^2 c^4,\ (p c)^2 = p^2 c^2$"},
-            {"latex": r"E = \sqrt{c^2 \cdot (m^2 c^2 + p^2)}", "operation": r"factor out $c^2$",
-             "justification": r"$c^2$ is common to both terms"},
-            {"latex": r"E = c \sqrt{m^2 c^2 + p^2}", "operation": r"pull $c$ out of the root",
-             "justification": r"$\sqrt{c^2 x} = c \sqrt{x}$"},
-            {"latex": r"E = m c^2 \sqrt{1 + \frac{p^2}{m^2 c^2}}", "operation": r"factor out $m^2 c^2$",
-             "justification": r"the standard Lorentz-factor form"},
-        ],
-    },
-    {
-        "title": "Lorentz time dilation",
-        "domain": "algebra",
-        "states": [
-            {"latex": r"(c t)^2 = (c t_0)^2 + (v t)^2", "operation": "start",
-             "justification": r"light-clock relation (invariant $c$)"},
-            {"latex": r"c^2 t^2 = c^2 t_0^2 + v^2 t^2", "operation": r"expand the squares",
-             "justification": r"$(c t)^2 = c^2 t^2$, etc."},
-            {"latex": r"c^2 t^2 - v^2 t^2 = c^2 t_0^2", "operation": r"collect the $t$ terms",
-             "justification": r"move $v^2 t^2$ to the left"},
-            {"latex": r"t^2 \cdot (c^2 - v^2) = c^2 t_0^2", "operation": r"factor out $t^2$",
-             "justification": r"$t^2$ is common on the left"},
-            {"latex": r"t^2 = \frac{c^2 t_0^2}{c^2 - v^2}", "operation": r"divide by $c^2 - v^2$",
-             "justification": r"isolate $t^2$"},
-            {"latex": r"t^2 = \frac{t_0^2}{1 - \frac{v^2}{c^2}}", "operation": r"divide top and bottom by $c^2$",
-             "justification": r"introduce $\frac{v^2}{c^2}$"},
-            {"latex": r"t = \frac{t_0}{\sqrt{1 - \frac{v^2}{c^2}}}", "operation": r"take the square root",
-             "justification": r"moving clocks run slow by $\gamma$"},
-        ],
-    },
+    _anim("Expand the binomial", r"(x + 1)^2", [
+        (r"expand $(x+1)^2$", r"x^2 + 2 x + 1", r"$(x+1)^2 = x^2 + 2x + 1$"),
+    ]),
+    _anim("Factor the difference of squares", r"a^2 - b^2", [
+        (r"factor", r"(a - b)(a + b)", r"$a^2 - b^2 = (a-b)(a+b)$"),
+    ]),
+    _anim("Relativistic energy–momentum", r"E^2 = (m c^2)^2 + (p c)^2", [
+        (r"take the square root", r"E = \sqrt{(m c^2)^2 + (p c)^2}", r"solve for $E$ (positive root)"),
+        (r"expand the squares", r"E = \sqrt{m^2 c^4 + p^2 c^2}", r"$(m c^2)^2 = m^2 c^4,\ (p c)^2 = p^2 c^2$"),
+        (r"factor out $c^2$", r"E = \sqrt{c^2 \cdot (m^2 c^2 + p^2)}", r"$c^2$ is common to both terms"),
+        (r"pull $c$ out of the root", r"E = c \sqrt{m^2 c^2 + p^2}", r"$\sqrt{c^2 x} = c \sqrt{x}$"),
+        (r"factor out $m^2 c^2$", r"E = m c^2 \sqrt{1 + \frac{p^2}{m^2 c^2}}", r"the standard Lorentz-factor form"),
+    ]),
+    _anim("Lorentz time dilation", r"(c t)^2 = (c t_0)^2 + (v t)^2", [
+        (r"expand the squares", r"c^2 t^2 = c^2 t_0^2 + v^2 t^2", r"$(c t)^2 = c^2 t^2$, etc."),
+        (r"collect the $t$ terms", r"c^2 t^2 - v^2 t^2 = c^2 t_0^2", r"move $v^2 t^2$ to the left"),
+        (r"factor out $t^2$", r"t^2 \cdot (c^2 - v^2) = c^2 t_0^2", r"$t^2$ is common on the left"),
+        (r"divide by $c^2 - v^2$", r"t^2 = \frac{c^2 t_0^2}{c^2 - v^2}", r"isolate $t^2$"),
+        (r"divide top and bottom by $c^2$", r"t^2 = \frac{t_0^2}{1 - \frac{v^2}{c^2}}", r"introduce $\frac{v^2}{c^2}$"),
+        (r"take the square root", r"t = \frac{t_0}{\sqrt{1 - \frac{v^2}{c^2}}}", r"moving clocks run slow by $\gamma$"),
+    ]),
 ]
 
 
-def build(states: list[dict], domain: str, title: str = "") -> dict:
-    """Thread states to stable ids and render annotated LaTeX per state."""
+def build(trajectory: GraphTrajectory, domain: str, title: str = "") -> dict:
+    """Render a ProofCompletionExpert ``GraphTrajectory`` into animation data.
+
+    The trajectory is the expert's output: ``start_latex`` plus ordered
+    ``DerivationStep``s (each a complete ``expr_latex`` reached by one
+    ``operation``). The animation chain is the start state followed by each step's
+    expression; we parse each, rebase onto the previous so persisting parts keep
+    stable ids, and emit id-annotated LaTeX for the FLIP engine.
+    """
+    # (operation, justification, latex) for every state, starting from the start.
+    chain: list[tuple[str, str, str]] = []
+    if trajectory.start_latex:
+        chain.append(("start", "", trajectory.start_latex))
+    for s in trajectory.steps:
+        chain.append((s.operation, s.justification, s.expr_latex))
+    if not chain:
+        raise SystemExit("trajectory has no states (need start_latex or steps)")
+
     svc = SemanticGraphService()
     working = None
     out = []
-    for i, st in enumerate(states):
-        ltx = st["latex"]
+    for i, (operation, justification, ltx) in enumerate(chain):
         g = svc.latex_to_graph(ltx, domain=domain)
         if g is None:
             raise SystemExit(f"could not parse state {i}: {ltx!r}")
@@ -218,9 +227,9 @@ def build(states: list[dict], domain: str, title: str = "") -> dict:
         working = g if working is None else _rebase(working, g)
         out.append({
             "index": i,
-            "operation": st.get("operation", ""),
-            "justification": st.get("justification", ""),
-            "input_latex": ltx,                       # what was authored
+            "operation": operation,
+            "justification": justification,
+            "input_latex": ltx,                         # what was authored
             "latex": to_latex(working, with_ids=True),  # annotated, stable ids
             "plain": to_latex(working),                 # for labels/fallback
         })
@@ -234,21 +243,25 @@ def main() -> int:
     ap.add_argument("--title", default="")
     ap.add_argument("--sample", action="store_true", help="use the baked sample chain")
     ap.add_argument("--from-json", default=None,
-                    help="a derive --json trajectory (uses start_latex + steps[].expr_latex)")
+                    help="a ProofCompletionExpert GraphTrajectory (JSON) to animate")
     ap.add_argument("--out", default="/tmp/animation.json")
     args = ap.parse_args()
 
     if args.sample:
-        data = build(SAMPLE["states"], SAMPLE["domain"], SAMPLE["title"])
+        data = build(SAMPLE.trajectory, SAMPLE.domain, args.title or SAMPLE.title)
     elif args.from_json:
-        traj = json.load(open(args.from_json))
-        states = ([{"latex": traj["start_latex"], "operation": "start"}]
-                  + [{"latex": s["expr_latex"], "operation": s.get("operation", ""),
-                      "justification": s.get("justification", "")}
-                     for s in traj["steps"]])
-        data = build(states, args.domain, args.title or traj.get("kind", ""))
+        with open(args.from_json, encoding="utf-8") as fh:
+            traj = GraphTrajectory.model_validate_json(fh.read())
+        data = build(traj, args.domain, args.title or "derivation")
     elif args.states:
-        data = build([{"latex": s} for s in args.states], args.domain, args.title)
+        # raw LaTeX states (dev convenience) → a trajectory with placeholder captions
+        traj = GraphTrajectory(
+            start_latex=args.states[0],
+            steps=[DerivationStep(step=i, operation=f"step {i}", expr_latex=s,
+                                  justification="(manual)")
+                   for i, s in enumerate(args.states[1:], start=1)],
+        )
+        data = build(traj, args.domain, args.title)
     else:
         ap.error("provide states, --sample, or --from-json")
 

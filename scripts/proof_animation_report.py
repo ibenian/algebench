@@ -14,6 +14,7 @@ import shutil
 from pathlib import Path
 
 from proof_animation_build import build, SAMPLES  # sibling script
+from backend.experts.modules.proof_completion.outputs import GraphTrajectory, DerivationStep
 
 _ROOT = Path(__file__).resolve().parent.parent
 _ASSETS = _ROOT / "static" / "proof-animation"
@@ -77,15 +78,19 @@ def main() -> int:
     args = ap.parse_args()
 
     if args.from_json:
-        traj = json.load(open(args.from_json))
-        states = ([{"latex": traj["start_latex"], "operation": "start"}]
-                  + [{"latex": s["expr_latex"], "operation": s.get("operation", ""),
-                      "justification": s.get("justification", "")} for s in traj["steps"]])
-        animations = [build(states, args.domain, args.title or traj.get("kind", ""))]
+        with open(args.from_json, encoding="utf-8") as fh:
+            traj = GraphTrajectory.model_validate_json(fh.read())
+        animations = [build(traj, args.domain, args.title or "derivation")]
     elif args.states:
-        animations = [build([{"latex": s} for s in args.states], args.domain, args.title)]
-    else:  # default: render all the demo samples on one page
-        animations = [build(s["states"], s["domain"], s["title"]) for s in SAMPLES]
+        traj = GraphTrajectory(
+            start_latex=args.states[0],
+            steps=[DerivationStep(step=i, operation=f"step {i}", expr_latex=s,
+                                  justification="(manual)")
+                   for i, s in enumerate(args.states[1:], start=1)],
+        )
+        animations = [build(traj, args.domain, args.title)]
+    else:  # default: render all the demo samples (typed ProofAnimation objects)
+        animations = [build(s.trajectory, s.domain, s.title) for s in SAMPLES]
 
     out = Path(args.outdir)
     out.mkdir(parents=True, exist_ok=True)
