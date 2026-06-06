@@ -92,8 +92,14 @@ def main() -> int:
     (out / "animations.json").write_text(json.dumps(animations, indent=2, ensure_ascii=False))
     shutil.copy(_ASSETS / "proof-animation.js", out / "proof-animation.js")
     shutil.copy(_ASSETS / "proof-animation.css", out / "proof-animation.css")
-    (out / "index.html").write_text(_INDEX)
-    print(f"wrote {out}/  ({len(animations)} animation(s))")
+    # cache-bust the engine on every (re)generation so a reload never serves a
+    # stale module (browsers cache ES modules aggressively).
+    ver = str(int((out / "proof-animation.js").stat().st_mtime))
+    html = (_INDEX
+            .replace("./proof-animation.js", f"./proof-animation.js?v={ver}")
+            .replace("./proof-animation.css", f"./proof-animation.css?v={ver}"))
+    (out / "index.html").write_text(html)
+    print(f"wrote {out}/  ({len(animations)} animation(s), v={ver})")
     return 0
 
 

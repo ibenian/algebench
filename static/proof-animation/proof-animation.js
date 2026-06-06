@@ -149,6 +149,7 @@ export class ProofAnimator {
           ));
         }
       } else {
+        el.classList.add("pa-move");      // inline-block so the scale applies
         el.style.opacity = "0";
         const a = el.animate(
           [{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "none" }],

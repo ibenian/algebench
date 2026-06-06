@@ -32,8 +32,16 @@
 }
 .pa-stage .katex { color: var(--pa-fg); }
 
-/* keep a moving/ghost token painting above siblings during transit */
-.pa-move { position: relative; z-index: 2; will-change: transform; }
+/* Animated tokens must be inline-block — CSS transforms are IGNORED on
+   display:inline elements (KaTeX renders tokens inline), so without this the
+   translate/scale has no visual effect. baseline keeps vertical alignment. */
+.pa-move {
+  display: inline-block;
+  vertical-align: baseline;
+  position: relative;
+  z-index: 2;
+  will-change: transform;
+}
 .pa-ghost { pointer-events: none; z-index: 1; }
 
 /* operation + justification line */
