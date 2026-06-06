@@ -55,6 +55,13 @@
       "runtimeArgs": ["--port", "5740"],
       "port": 5740,
       "autoPort": false
+    },
+    {
+      "name": "proof-animation",
+      "runtimeExecutable": "./scripts/serve_proof_animation.sh",
+      "runtimeArgs": ["--port", "5750", "--sample"],
+      "port": 5750,
+      "autoPort": false
     }
   ]
 }
