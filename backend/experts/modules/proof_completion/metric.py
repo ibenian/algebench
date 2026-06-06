@@ -232,6 +232,7 @@ def score_components(example, pred) -> dict:
 # the DSPy metric
 # --------------------------------------------------------------------------- #
 
+@register_metric("proof_completion")
 def proof_completion_metric(example, pred, trace=None) -> float:
     """Scalar reward **gated on per-step sympy-convertibility**.
 
@@ -262,7 +263,3 @@ def proof_completion_metric(example, pred, trace=None) -> float:
     # un-parseable state scales the whole reward down. A small coverage crumb
     # keeps a usable gradient alive when nothing converts yet.
     return 0.05 * c["coverage"] + 0.95 * c["step_grounded"] * (0.4 + 0.6 * endpoint)
-
-
-# self-register this expert's metric (no central config)
-register_metric("proof_completion")(proof_completion_metric)
