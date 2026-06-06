@@ -96,6 +96,69 @@ export class ProofAnimator {
     return r;
   }
 
+  // rects for EVERY tagged node (internal subexpressions too, not just leaves) —
+  // ids are occurrence-unique so there are no collisions.
+  _nodeRects(root) {
+    const r = new Map();
+    root.querySelectorAll(".katex-html [data-n]").forEach((el) =>
+      r.set(el.getAttribute("data-n"), el.getBoundingClientRect()));
+    return r;
+  }
+
+  // Discover the LARGEST subtrees that move as ONE rigid group, so a whole
+  // sub-expression glides (and, inside a fraction, shrinks) into place together
+  // instead of each glyph flying independently. A group may be *scaled* — e.g. a
+  // numerator drops to scriptstyle — so we detect a uniform SIMILARITY transform
+  // (translate + single scale), not just a translation.
+  //
+  // Greedy top-down (shallow first) so we always pick the maximal block; a node
+  // qualifies iff it exists in both states, holds no inserted glyph, and every
+  // descendant glyph maps from→to under one shared (scale s about the block's
+  // top-left, then translate). Singletons (lone glyphs) fall out as size-1 blocks.
+  // Returns { blocks: [{el, dx, dy, scale, single}] }.
+  _rigidBlocks(stage, fromRects, toRects) {
+    const els = [...stage.querySelectorAll(".katex-html [data-n]")];
+    const depth = (el) => {
+      let d = 0, p = el.parentElement;
+      while (p) { if (p.hasAttribute && p.hasAttribute("data-n")) d++; p = p.parentElement; }
+      return d;
+    };
+    els.sort((a, b) => depth(a) - depth(b));   // shallow → deep (maximal first)
+
+    const claimed = new WeakSet();
+    const blocks = [];
+
+    for (const el of els) {
+      if (claimed.has(el)) continue;
+      const id = el.getAttribute("data-n");
+      if (!fromRects.has(id) || !toRects.has(id)) continue;       // inserted node
+      const fb = fromRects.get(id), tb = toRects.get(id);
+      const inner = el.querySelectorAll("[data-n]");
+      const leafEls = inner.length
+        ? [...inner].filter((x) => !x.querySelector("[data-n]"))
+        : [el];
+      const leafIds = leafEls.map((x) => x.getAttribute("data-n"));
+      if (!leafIds.every((lid) => fromRects.has(lid))) continue;  // holds an inserted glyph → not rigid
+
+      // similarity transform mapping the to-box onto the from-box (top-left origin)
+      let s = tb.width > 1 ? fb.width / tb.width : (tb.height > 1 ? fb.height / tb.height : 1);
+      if (!(s > 0.02 && s < 50)) s = 1;
+      const tol = 2 + 0.04 * Math.max(fb.width, fb.height);
+      const fits = leafIds.every((lid) => {
+        const lf = fromRects.get(lid), lt = toRects.get(lid);
+        const ex = fb.left + s * (lt.left - tb.left);   // predicted from-pos under the affine
+        const ey = fb.top + s * (lt.top - tb.top);
+        return Math.abs(ex - lf.left) < tol && Math.abs(ey - lf.top) < tol;
+      });
+      if (!fits) continue;                                        // parts move/scale independently → recurse to children
+
+      blocks.push({ el, dx: fb.left - tb.left, dy: fb.top - tb.top, scale: s, single: leafEls.length === 1 });
+      el.querySelectorAll("[data-n]").forEach((c) => claimed.add(c));
+      claimed.add(el);
+    }
+    return { blocks };
+  }
+
   _cancel() {
     this._running.forEach((a) => { try { a.cancel(); } catch (e) {} });
     this._running = [];
@@ -109,10 +172,11 @@ export class ProofAnimator {
     const token = (this._token = {});
     const seq = this.mode === "sequential";
 
-    // FIRST: measure current glyphs (incl. in-flight transforms → retarget) and
-    // clone them now (the DOM is destroyed on re-render, needed for delete ghosts)
+    // FIRST: measure current glyphs + every tagged subtree (for rigid grouping),
+    // incl. in-flight transforms → retarget; clone leaves now (DOM is destroyed
+    // on re-render, needed for delete ghosts).
     const fromLeaves = this._leaves(this.stage);
-    const fromRects = this._rects(fromLeaves);
+    const fromRects = this._nodeRects(this.stage);    // all nodes, not just leaves
     const stageRect = this.stage.getBoundingClientRect();
     const cloneOf = new Map();
     fromLeaves.forEach((el, id) => cloneOf.set(id, el.cloneNode(true)));
@@ -124,32 +188,42 @@ export class ProofAnimator {
     // LAST: render target, measure
     this._renderInto(this.stage, this.data.steps[target].latex);
     const toLeaves = this._leaves(this.stage);
-    const toRects = this._rects(toLeaves);
+    const toRects = this._nodeRects(this.stage);
 
     const moveAnims = [], delAnims = [], insertEls = [];
     let mi = 0;
 
-    // matched → MOVE (coordinate interpolation); target-only → defer to phase 2
+    // matched → MOVE the LARGEST rigid groups together (translate + uniform scale,
+    // about each block's top-left, so a sub-expression glides/shrinks as one unit)
+    const { blocks } = this._rigidBlocks(this.stage, fromRects, toRects);
+    for (const blk of blocks) {
+      const moved = Math.abs(blk.dx) > 0.5 || Math.abs(blk.dy) > 0.5;
+      const scaled = Math.abs(blk.scale - 1) > 0.01;
+      if (!moved && !scaled) continue;                 // identity → nothing to do
+      blk.el.classList.add("pa-move");
+      blk.el.style.transformOrigin = "0 0";            // deltas/scale are top-left based
+      const a = blk.el.animate(
+        [{ transform: `translate(${blk.dx}px, ${blk.dy}px) scale(${blk.scale})` },
+         { transform: "translate(0px, 0px) scale(1)" }],
+        { duration: this.duration, delay: seq ? mi++ * this.staggerMs : 0, easing: EASE, fill: "backwards" }
+      );
+      // a multi-glyph block is an internal span; inline-block can perturb math
+      // spacing at rest, so drop it back to normal flow once the move is done.
+      if (!blk.single) a.onfinish = () => {
+        blk.el.classList.remove("pa-move");
+        blk.el.style.transformOrigin = "";
+      };
+      moveAnims.push(a);
+    }
+
+    // target-only glyphs → INSERT (deferred to phase 2)
     toLeaves.forEach((el, id) => {
-      if (fromRects.has(id)) {
-        const f = fromRects.get(id), t = toRects.get(id);
-        const dx = f.left - t.left, dy = f.top - t.top;
-        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-          el.classList.add("pa-move");
-          moveAnims.push(el.animate(
-            [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0px, 0px)" }],
-            { duration: this.duration, delay: seq ? mi++ * this.staggerMs : 0, easing: EASE, fill: "backwards" }
-          ));
-        }
-      } else {
-        el.style.opacity = "0";   // INSERT — hidden until motion completes
-        insertEls.push(el);
-      }
+      if (!fromRects.has(id)) { el.style.opacity = "0"; insertEls.push(el); }
     });
 
-    // source-only → DELETE: ghost (clone) fades out during motion (phase 1)
+    // source-only glyphs → DELETE: ghost (clone) fades out during motion (phase 1)
     fromLeaves.forEach((el, id) => {
-      if (toLeaves.has(id)) return;
+      if (toRects.has(id)) return;   // still present (as glyph or subtree)
       const f = fromRects.get(id);
       const ghost = cloneOf.get(id);
       ghost.classList.add("pa-ghost", "pa-move");

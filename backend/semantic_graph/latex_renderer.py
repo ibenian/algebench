@@ -81,23 +81,34 @@ def to_latex(
     if len(roots) != 1:
         raise StructuralRenderError(f"expected one root, found {len(roots)}")
 
-    counts: dict[str, int] = {}
+    occ: dict[tuple[str, str], int] = {}
     visiting: set[str] = set()
 
-    def emit(nid: str) -> tuple[str, int]:
+    def emit(nid: str, parent_oid: str = "") -> tuple[str, int]:
         if nid in visiting:
             raise StructuralRenderError("cycle")
         visiting.add(nid)
-        k = counts.get(nid, 0)
-        counts[nid] = k + 1
-        oid = nid if k == 0 else f"{nid}__{k}"   # unique per occurrence ("~" is LaTeX-active)
+        # A shared (DAG) node is emitted once per parent; disambiguate each
+        # occurrence by its STABLE parent id (not a render-order counter) so the
+        # same physical spot keeps the same id across states even when the
+        # structure reorders (e.g. an RHS term becoming a fraction numerator).
+        # Non-shared nodes keep their bare id (the cross-state match key). ("~"
+        # is LaTeX-active, so the separator is "__".)
+        if outdeg[nid] > 1 and parent_oid:
+            key = (nid, parent_oid)
+            j = occ.get(key, 0)
+            occ[key] = j + 1
+            oid = f"{nid}__{parent_oid}" if j == 0 else f"{nid}__{parent_oid}_{j}"
+        else:
+            oid = nid
+
+        def child(cid: str, threshold: int) -> str:
+            s, prec = emit(cid, oid)
+            return f"\\left({s}\\right)" if prec < threshold else s
+
         body, prec = _emit_body(nodes[nid], incoming[nid], nodes, incoming, child, oid, gw)
         visiting.discard(nid)
         return (gw(oid, body), prec)
-
-    def child(nid: str, threshold: int) -> str:
-        s, prec = emit(nid)
-        return f"\\left({s}\\right)" if prec < threshold else s
 
     return emit(roots[0])[0]
 
