@@ -122,7 +122,7 @@ export class ProofAnimator {
   // descendant glyph maps from→to under one shared (scale s about the block's
   // top-left, then translate). Singletons (lone glyphs) fall out as size-1 blocks.
   // Returns { blocks: [{el, dx, dy, scale, single}] }.
-  _rigidBlocks(stage, fromRects, toRects) {
+  _rigidBlocks(stage, fromRects, toRects, fromFontSize) {
     const els = [...stage.querySelectorAll(".katex-html [data-n]")];
     const depth = (el) => {
       let d = 0, p = el.parentElement;
@@ -146,13 +146,17 @@ export class ProofAnimator {
       const leafIds = leafEls.map((x) => x.getAttribute("data-n"));
       if (!leafIds.every((lid) => fromRects.has(lid))) continue;  // holds an inserted glyph → not rigid
 
-      // similarity transform mapping the to-box onto the from-box (top-left origin)
-      let s = tb.width > 1 ? fb.width / tb.width : (tb.height > 1 ? fb.height / tb.height : 1);
+      // Scale = the glyph FONT-SIZE ratio, NOT the box-width ratio. Box width
+      // changes when content restructures (parens removed, c^2→c^4) even though
+      // the glyphs keep their size — using it stretched every glyph in the block.
+      // Font size only changes on a real scriptstyle shift, which is uniform
+      // across the whole subtree, so any representative leaf gives the true scale.
+      let s = 1;
+      const ffs = parseFloat(fromFontSize.get(leafIds[0]));
+      const tfs = parseFloat(getComputedStyle(leafEls[0]).fontSize);
+      if (ffs > 0 && tfs > 0) s = ffs / tfs;
       if (!(s > 0.02 && s < 50)) s = 1;
-      // Snap near-unity scale to exactly 1: a genuine size change (scriptstyle) is
-      // ~0.7, so anything close to 1 is just sub-pixel / italic-spacing box noise.
-      // Animating that noise makes glyphs do a small, wrong size jump.
-      if (Math.abs(s - 1) < 0.15) s = 1;
+      if (Math.abs(s - 1) < 0.02) s = 1;   // exact-equal sizes → no scale
       const tol = 2 + 0.04 * Math.max(fb.width, fb.height);
       const fits = leafIds.every((lid) => {
         const lf = fromRects.get(lid), lt = toRects.get(lid);
@@ -214,7 +218,7 @@ export class ProofAnimator {
     // stage still looks like the source state while dropped items fade out ──
     // matched → MOVE the LARGEST rigid groups together (translate + uniform scale,
     // about each block's top-left, so a sub-expression glides/shrinks as one unit)
-    const { blocks } = this._rigidBlocks(this.stage, fromRects, toRects);
+    const { blocks } = this._rigidBlocks(this.stage, fromRects, toRects, fromFontSize);
     const movers = [];
     for (const blk of blocks) {
       const moved = Math.abs(blk.dx) > 0.5 || Math.abs(blk.dy) > 0.5;
