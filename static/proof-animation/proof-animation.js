@@ -28,7 +28,8 @@ export class ProofAnimator {
     this.duration = opts.duration ?? 650;
     this.mode = opts.mode || "parallel"; // 'parallel' | 'sequential'
     this.current = 0;
-    this._animating = false;
+    this._running = [];   // in-flight WAAPI animations (cancel to interrupt)
+    this._ghosts = [];    // delete-ghost elements to clean up
     this._build();
     this._renderInto(this.stage, this.data.steps[0].latex);
     this._syncUI();
@@ -95,16 +96,29 @@ export class ProofAnimator {
     return r;
   }
 
+  _cancel() {
+    this._running.forEach((a) => { try { a.cancel(); } catch (e) {} });
+    this._running = [];
+    this._ghosts.forEach((g) => g.remove());
+    this._ghosts = [];
+  }
+
   // ---- the morph ---------------------------------------------------------
   async goTo(target) {
     target = Math.max(0, Math.min(this.data.steps.length - 1, target));
-    if (target === this.current || this._animating) return;
-    this._animating = true;
+    if (target === this.current && this._running.length === 0) return;
 
-    // FIRST: measure where leaves are *right now* (live — survives interrupts)
+    // FIRST: measure where leaves are *right now* — getBoundingClientRect
+    // includes any in-flight transform, so an interrupting click retargets
+    // from the live on-screen position (no snap, no stuck state).
     const fromLeaves = this._leaves(this.stage);
     const fromRects = this._rects(fromLeaves);
     const stageRect = this.stage.getBoundingClientRect();
+
+    // interrupt any running morph + clear old ghosts, then commit the target
+    this._cancel();
+    this.current = target;
+    this._syncUI();
 
     // LAST: render target, measure final positions
     this._renderInto(this.stage, this.data.steps[target].latex);
@@ -115,6 +129,7 @@ export class ProofAnimator {
     const seq = this.mode === "sequential";
     const step = seq ? Math.min(140, (dur * 0.8) / Math.max(1, toLeaves.size)) : 0;
     const anims = [];
+    const ghosts = [];
     let i = 0;
 
     // matched/move (tween) + insert (fade in)
@@ -161,12 +176,21 @@ export class ProofAnimator {
         { duration: dur * 0.7, easing: "ease-in", fill: "forwards" }
       );
       a.onfinish = () => ghost.remove();
+      ghosts.push(ghost);
+      anims.push(a);
     });
 
-    await Promise.all(anims.map((a) => a.finished.catch(() => {})));
-    this.current = target;
-    this._animating = false;
-    this._syncUI();
+    this._running = anims;
+    this._ghosts = ghosts;
+    try {
+      await Promise.all(anims.map((a) => a.finished.catch(() => {})));
+    } finally {
+      if (this._running === anims) {     // not interrupted by a newer goTo
+        this._running = [];
+        ghosts.forEach((g) => g.remove());
+        this._ghosts = [];
+      }
+    }
   }
 
   async play() {
