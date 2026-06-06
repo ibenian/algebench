@@ -17,9 +17,53 @@ from __future__ import annotations
 import argparse
 import json
 
+from collections import defaultdict
+
 from backend.semantic_graph.service import SemanticGraphService
 from backend.semantic_graph.latex_renderer import to_latex
-from backend.experts.modules.proof_completion.graph_ops import diff, apply
+from backend.experts.modules.proof_completion.graph_ops import wl_colors
+
+
+def _rebase(prev, gnew):
+    """Relabel gnew so a sub-expression that persists keeps prev's id, while
+    preserving gnew's OWN structure (authored side order).
+
+    This is the #353 rebase done simply: match nodes by content-only WL color
+    (same as ``diff``) and reuse the previous state's id for matched nodes; mint
+    a fresh, collision-free id for genuinely new ones. Unlike ``apply(prev,
+    diff(prev, gnew))`` (which rebuilds from prev and can reorder ``=`` sides),
+    this leaves gnew's layout intact — so the morph shows just the terms that
+    move, not a spurious left↔right flip of the whole equation.
+    """
+    cp, cn = wl_colors(prev, rounds=0), wl_colors(gnew, rounds=0)
+    prev_by = defaultdict(list)
+    for nid in sorted(cp):
+        prev_by[cp[nid]].append(nid)
+    new_by = defaultdict(list)
+    for nid in sorted(cn):
+        new_by[cn[nid]].append(nid)
+
+    final, taken, unmatched = {}, set(), []
+    for col, news in new_by.items():
+        prevs, pi = prev_by.get(col, []), 0
+        for nid in news:
+            if pi < len(prevs):           # matched → reuse prev id
+                final[nid] = prevs[pi]; taken.add(prevs[pi]); pi += 1
+            else:
+                unmatched.append(nid)
+    k = 0
+    for nid in unmatched:                  # new node → keep own id, dedup if needed
+        tgt = nid
+        while tgt in taken:
+            k += 1; tgt = f"_r{k}_{nid}"
+        final[nid] = tgt; taken.add(tgt)
+
+    g = gnew.model_copy(deep=True)
+    for n in g.nodes:
+        n.id = final[n.id]
+    for e in g.edges:
+        e.from_, e.to = final[e.from_], final[e.to]
+    return g
 
 # A deterministic sample derivation (no fractions → renders cleanly in v1).
 SAMPLE = {
@@ -34,6 +78,29 @@ SAMPLE = {
     ],
 }
 
+# A few demos for the local launcher (each renders cleanly + threads stably).
+SAMPLES = [
+    SAMPLE,
+    {
+        "title": "Expand the binomial",
+        "domain": "algebra",
+        "states": [
+            {"latex": r"(x + 1)^2", "operation": "start"},
+            {"latex": r"x^2 + 2 x + 1", "operation": "expand",
+             "justification": "(x+1)² = x² + 2x + 1"},
+        ],
+    },
+    {
+        "title": "Factor the difference of squares",
+        "domain": "algebra",
+        "states": [
+            {"latex": r"a^2 - b^2", "operation": "start"},
+            {"latex": r"(a - b)(a + b)", "operation": "factor",
+             "justification": "a² − b² = (a−b)(a+b)"},
+        ],
+    },
+]
+
 
 def build(states: list[dict], domain: str, title: str = "") -> dict:
     """Thread states to stable ids and render annotated LaTeX per state."""
@@ -45,8 +112,8 @@ def build(states: list[dict], domain: str, title: str = "") -> dict:
         g = svc.latex_to_graph(ltx, domain=domain)
         if g is None:
             raise SystemExit(f"could not parse state {i}: {ltx!r}")
-        # thread: keep stable ids for sub-expressions that persist
-        working = g if working is None else apply(working, diff(working, g))
+        # rebase: keep g's authored structure, reuse stable ids for persisting parts
+        working = g if working is None else _rebase(working, g)
         out.append({
             "index": i,
             "operation": st.get("operation", ""),

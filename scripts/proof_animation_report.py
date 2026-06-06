@@ -13,7 +13,7 @@ import json
 import shutil
 from pathlib import Path
 
-from proof_animation_build import build, SAMPLE  # sibling script
+from proof_animation_build import build, SAMPLES  # sibling script
 
 _ROOT = Path(__file__).resolve().parent.parent
 _ASSETS = _ROOT / "static" / "proof-animation"
@@ -31,26 +31,34 @@ _INDEX = """<!DOCTYPE html>
     body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
            margin: 0; padding: 40px 20px; background: #f6f7fb; color: #1a1a2e; }
     .wrap { max-width: 780px; margin: 0 auto; }
-    h1 { font-size: 1.15rem; font-weight: 600; color: #374151; margin: 0 0 16px; }
-    .hint { color: #6b7280; font-size: .9rem; margin-top: 14px; }
+    h1 { font-size: 1.15rem; font-weight: 600; color: #374151; margin: 0 0 8px; }
+    .pa-title { font-size: 1rem; font-weight: 600; color: #4b5563; margin: 28px 0 8px; }
+    .hint { color: #6b7280; font-size: .9rem; margin: 0 0 8px; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1 id="title">Proof Animation</h1>
-    <div id="anim"></div>
+    <h1>Proof Animation — examples</h1>
     <p class="hint">Click any step (0,1,2,…) to jump there — the morph runs between
     the current state and the one you pick. Toggle “sequential” to stagger the moves.</p>
+    <div id="root"></div>
   </div>
   <script type="module">
     import { ProofAnimator } from "./proof-animation.js";
     (async () => {
       for (let i = 0; i < 100 && !window.katex; i++)
         await new Promise(r => setTimeout(r, 30));
-      const data = await (await fetch("./animation.json")).json();
-      document.getElementById("title").textContent = data.title || "Proof Animation";
-      window.animator = new ProofAnimator(
-        document.getElementById("anim"), data, { katex: window.katex });
+      const list = await (await fetch("./animations.json")).json();
+      const root = document.getElementById("root");
+      window.animators = list.map((data) => {
+        const h = document.createElement("h2");
+        h.className = "pa-title";
+        h.textContent = data.title || "derivation";
+        const div = document.createElement("div");
+        root.appendChild(h);
+        root.appendChild(div);
+        return new ProofAnimator(div, data, { katex: window.katex });
+      });
     })();
   </script>
 </body>
@@ -73,19 +81,19 @@ def main() -> int:
         states = ([{"latex": traj["start_latex"], "operation": "start"}]
                   + [{"latex": s["expr_latex"], "operation": s.get("operation", ""),
                       "justification": s.get("justification", "")} for s in traj["steps"]])
-        data = build(states, args.domain, args.title or traj.get("kind", ""))
+        animations = [build(states, args.domain, args.title or traj.get("kind", ""))]
     elif args.states:
-        data = build([{"latex": s} for s in args.states], args.domain, args.title)
-    else:  # default to the sample
-        data = build(SAMPLE["states"], SAMPLE["domain"], args.title or SAMPLE["title"])
+        animations = [build([{"latex": s} for s in args.states], args.domain, args.title)]
+    else:  # default: render all the demo samples on one page
+        animations = [build(s["states"], s["domain"], s["title"]) for s in SAMPLES]
 
     out = Path(args.outdir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "animation.json").write_text(json.dumps(data, indent=2, ensure_ascii=False))
+    (out / "animations.json").write_text(json.dumps(animations, indent=2, ensure_ascii=False))
     shutil.copy(_ASSETS / "proof-animation.js", out / "proof-animation.js")
     shutil.copy(_ASSETS / "proof-animation.css", out / "proof-animation.css")
     (out / "index.html").write_text(_INDEX)
-    print(f"wrote {out}/  ({len(data['steps'])} states)")
+    print(f"wrote {out}/  ({len(animations)} animation(s))")
     return 0
 
 
