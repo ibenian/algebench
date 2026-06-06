@@ -86,7 +86,7 @@ def derive_trajectory(start, target, *, domain=None, intent=None,
                       program=None, baseline=False):
     """Run the ProofCompletionExpert on (start, target) → a ProofTrajectory.
 
-    Reusable core of this script (also used by proof_animation_derive). The
+    Reusable core of this script (also used by proof_animation/derive.py). The
     caller must have called ``init_experts()`` first (it configures the DSPy LM).
     Raises ValueError if either endpoint fails to parse.
     """

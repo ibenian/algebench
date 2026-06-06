@@ -73,19 +73,19 @@ shared fields on `GraphOpBase` and behavior provided polymorphically via
 
 ```bash
 # 1. generate held-out datasets (no LLM; sympy is the source of truth)
-./run.sh scripts/proof_completion_dataset.py --n 200 --seed 1 --out data/proof_completion/train.jsonl
-./run.sh scripts/proof_completion_dataset.py --n 60  --seed 2 --out data/proof_completion/eval.jsonl
+./run.sh scripts/proof_completion/dataset.py --n 200 --seed 1 --out data/proof_completion/train.jsonl
+./run.sh scripts/proof_completion/dataset.py --n 60  --seed 2 --out data/proof_completion/eval.jsonl
 
 # 2. baseline performance
-./run.sh scripts/proof_completion_evaluate.py --data data/proof_completion/eval.jsonl
+./run.sh scripts/proof_completion/evaluate.py --data data/proof_completion/eval.jsonl
 
 # 3. optimize (bootstrap demos is fast; --optimizer mipro for instruction search;
 #    gepa requires dspy>=3.0 — this project pins dspy>=2.6,<3.0)
-./run.sh scripts/proof_completion_optimize.py --train data/proof_completion/train.jsonl \
+./run.sh scripts/proof_completion/optimize.py --train data/proof_completion/train.jsonl \
     --optimizer bootstrap --out backend/experts/modules/proof_completion/artifacts/proof_completion.json
 
 # 4. re-evaluate with the compiled program and compare the lift
-./run.sh scripts/proof_completion_evaluate.py --data data/proof_completion/eval.jsonl \
+./run.sh scripts/proof_completion/evaluate.py --data data/proof_completion/eval.jsonl \
     --program backend/experts/modules/proof_completion/artifacts/proof_completion.json
 ```
 

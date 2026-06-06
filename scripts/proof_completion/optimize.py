@@ -3,10 +3,10 @@
 
 The metric is ``proof_completion_metric`` (endpoint match + partial credit).
 The compiled program (optimized instructions + bootstrapped demos) is saved to
-an artifact that ``proof_completion_evaluate.py --program`` can load.
+an artifact that ``proof_completion/evaluate.py --program`` can load.
 
 Usage:
-    ./run.sh scripts/proof_completion_optimize.py \\
+    ./run.sh scripts/proof_completion/optimize.py \\
         --train data/proof_completion/train.jsonl \\
         --out backend/experts/modules/proof_completion/artifacts/proof_completion.json --auto light
 """

@@ -18,7 +18,7 @@ from .grounding import graph_to_latex
 
 # The "blessed" compiled program. If this file exists it is loaded by default —
 # so service.invoke and the CLI use the optimized expert without --program.
-# (gitignored; produced by proof_completion_optimize.py --out <this path>.)
+# (gitignored; produced by proof_completion/optimize.py --out <this path>.)
 DEFAULT_ARTIFACT = os.path.join(os.path.dirname(__file__), "artifacts",
                                 "proof_completion.json")
 

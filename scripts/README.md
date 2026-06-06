@@ -17,36 +17,35 @@ animation* is a chain of complete expressions that the engine FLIP-morphs betwee
 The data pipeline is deterministic (sympy parse + render); only **derivation**
 calls the model.
 
+Lives in `scripts/proof_animation/`. Three jobs: **convert**, **render**, **derive**.
+
 | Script | What it does |
 | --- | --- |
-| `proof_animation_build.py` | Library + CLI. Turns a typed `ProofTrajectory` (the expert's output) into animation data: parses each state, threads stable per-glyph ids across states, emits `\htmlData`-annotated LaTeX. Holds the baked `SAMPLES` and the `ProofAnimation` model. |
-| `proof_animation_derive.py` | **Local / needs `GEMINI_API_KEY`.** Runs the `ProofCompletionExpert` and `--append`s the resulting `ProofAnimation` to a proofs JSON (the test suite). Endpoints come from explicit `START TARGET`, or from `--prompt "…"` (the model picks start/target/domain/title). Add `--render` to also (re)generate the HTML page via the report generator into `--outdir` (the whole suite when `--append`ing, else just this proof) so a running serve picks it up on refresh. |
-| `proof_animation_report.py` | Generates a self-contained HTML page (engine + data) for a proof suite. `--from-file proofs.json` (default: the test suite) renders many; `--from-json` animates one `ProofTrajectory`; `--derive START TARGET` derives then renders. |
-| `serve_proof_animation.sh` | Generate the page and serve it on `:5750` (defaults to the test suite). |
+| `proof_animation/build.py` | **Conversion library** (no CLI). Turns a typed `ProofTrajectory` (the expert's output) into animation data: parses each state, threads stable per-glyph ids across states (`_rebase`), emits `\htmlData`-annotated LaTeX. Defines `build()` / `build_animation()` and the `ProofAnimation` model. |
+| `proof_animation/report.py` | **Render.** Generates a self-contained HTML page (engine + data). `--from-file proofs.json` (default: the suite) renders many; `--from-json` animates one `ProofTrajectory`; bare LaTeX states render a one-off chain. No model. |
+| `proof_animation/derive.py` | **Derive (local / needs `GEMINI_API_KEY`).** Runs the `ProofCompletionExpert` and prints (or `--out`s) a `ProofAnimation` for review; `--render` previews it. Endpoints from explicit `START TARGET` or `--prompt "…"`. To add to the suite, paste the JSON into `proofs.json` by hand. |
+| `proof_animation/serve.sh` | Generate the page and serve it on `:5750` (defaults to the suite). |
 
 ```bash
-# add a derived proof to the suite (local), then commit the JSON
-./run.sh scripts/proof_animation_derive.py "x^2 - 4 = 0" "x = 2" \
-    --title "Solve x^2 = 4" --append tests/proof_animation/proofs.json
+# derive a proof for review (prompt, or explicit endpoints)
+./run.sh scripts/proof_animation/derive.py --prompt "derive Lorentz time dilation"
+./run.sh scripts/proof_animation/derive.py "x^2 - 4 = 0" "x = 2" --title "Solve x^2 = 4"
+#   → review the printed JSON, then paste it into tests/proof_animation/proofs.json
 
-# …or from a single prompt (the model picks the endpoints)
-./run.sh scripts/proof_animation_derive.py --prompt "derive Lorentz time dilation" \
-    --append tests/proof_animation/proofs.json
-
-# derive + render in one shot (refresh a running serve to see it)
-./run.sh scripts/proof_animation_derive.py --prompt "expand (x+1)^2" --render
+# derive + preview in the browser (refresh a running serve to see it)
+./run.sh scripts/proof_animation/derive.py --prompt "expand (x+1)^2" --render
 
 # preview the suite locally
-./scripts/serve_proof_animation.sh                       # http://localhost:5750
+./scripts/proof_animation/serve.sh                       # http://localhost:5750
 
 # render the suite to a static site (the CI / Pages path — no model)
-./run.sh scripts/proof_animation_report.py \
+./run.sh scripts/proof_animation/report.py \
     --from-file tests/proof_animation/proofs.json --outdir _site
 ```
 
-The suite lives in `tests/proof_animation/proofs.json` (see its README). CI
-(`.github/workflows/proof-animation.yml`) renders the committed suite to Pages;
-it never derives.
+The suite lives in `tests/proof_animation/proofs.json` (see its README) and is
+hand-maintained. CI (`.github/workflows/proof-animation.yml`) renders the
+committed suite to Pages; it never derives.
 
 ## Proof completion (the expert)
 
@@ -55,16 +54,16 @@ sympy is the ground truth for data + scoring; the model only emits math (LaTeX).
 
 | Script | What it does |
 | --- | --- |
-| `proof_completion_dataset.py` | Generate a sympy-grounded train/eval dataset (`.jsonl`). No LLM — every example is a real algebraic transformation with a verified gold trajectory. Use different `--seed`s for train vs eval. |
-| `proof_completion_optimize.py` | Optimize the expert with MIPROv2 (or GEPA) on a train set and save the compiled artifact. |
-| `proof_completion_evaluate.py` | Evaluate the expert on a held-out dataset (baseline vs optimized) and report metrics. |
-| `proof_completion_derive.py` | **Needs `GEMINI_API_KEY`.** Derive the steps between two LaTeX expressions and print them; `--json` dumps the raw `ProofTrajectory`. Exposes `derive_trajectory()`, reused by `proof_animation_derive.py`. |
+| `proof_completion/dataset.py` | Generate a sympy-grounded train/eval dataset (`.jsonl`). No LLM — every example is a real algebraic transformation with a verified gold trajectory. Use different `--seed`s for train vs eval. |
+| `proof_completion/optimize.py` | Optimize the expert with MIPROv2 (or GEPA) on a train set and save the compiled artifact. |
+| `proof_completion/evaluate.py` | Evaluate the expert on a held-out dataset (baseline vs optimized) and report metrics. |
+| `proof_completion_derive.py` | **Needs `GEMINI_API_KEY`.** Derive the steps between two LaTeX expressions and print them; `--json` dumps the raw `ProofTrajectory`. Exposes `derive_trajectory()`, reused by `proof_animation/derive.py`. |
 | `_pc_env.py` | Shared helper: load `.env.local` for the proof-completion scripts. |
 
 ```bash
-./run.sh scripts/proof_completion_dataset.py --n 200 --seed 1 --out data/proof_completion/train.jsonl
-./run.sh scripts/proof_completion_optimize.py --train data/proof_completion/train.jsonl
-./run.sh scripts/proof_completion_evaluate.py --data data/proof_completion/eval.jsonl
+./run.sh scripts/proof_completion/dataset.py --n 200 --seed 1 --out data/proof_completion/train.jsonl
+./run.sh scripts/proof_completion/optimize.py --train data/proof_completion/train.jsonl
+./run.sh scripts/proof_completion/evaluate.py --data data/proof_completion/eval.jsonl
 ./run.sh scripts/proof_completion_derive.py "\frac{d}{dx} x^2" "2 x"
 ```
 

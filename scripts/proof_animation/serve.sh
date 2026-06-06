@@ -1,17 +1,17 @@
 #!/bin/bash
-# serve_proof_animation.sh — Generate the proof-animation page and serve it locally.
+# serve.sh — Generate the proof-animation page and serve it locally.
 #
 # Usage:
-#   ./scripts/serve_proof_animation.sh [--port PORT] [--outdir DIR] [--sample]
-#   ./scripts/serve_proof_animation.sh --from-json /tmp/traj.json
-#   ./scripts/serve_proof_animation.sh "a + b = c" "a = c - b"
+#   ./scripts/proof_animation/serve.sh [--port PORT] [--outdir DIR]
+#   ./scripts/proof_animation/serve.sh --from-json /tmp/traj.json
+#   ./scripts/proof_animation/serve.sh "a + b = c" "a = c - b"
 #
 # Generates a self-contained page (index.html + engine + animation.json) into
 # DIR (default /tmp/proof_anim), then serves it on PORT (default 5750).
 
 set -euo pipefail
 
-DIR="$(cd "$(dirname "$0")/.." && pwd)"
+DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 PORT=5750
 OUTDIR="/tmp/proof_anim"
 ARGS=()
@@ -27,7 +27,7 @@ done
 # With no args the report renders the curated test suite (tests/proof_animation/proofs.json).
 
 echo "▶ Generating proof-animation page → $OUTDIR"
-"$DIR/run.sh" scripts/proof_animation_report.py --outdir "$OUTDIR" "${ARGS[@]}"
+"$DIR/run.sh" scripts/proof_animation/report.py --outdir "$OUTDIR" "${ARGS[@]}"
 
 echo "▶ Serving on http://localhost:$PORT"
 python3 -m http.server "$PORT" -d "$OUTDIR"

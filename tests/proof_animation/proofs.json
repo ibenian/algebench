@@ -2,6 +2,8 @@
   {
     "title": "Isolate a",
     "domain": "algebra",
+    "start_operation": "Given",
+    "start_justification": "solve for $a$",
     "trajectory": {
       "kind": "proof_trajectory",
       "start_latex": "a + b - c = 0",
@@ -23,6 +25,8 @@
   {
     "title": "Expand the binomial",
     "domain": "algebra",
+    "start_operation": "Given",
+    "start_justification": "a perfect square to expand",
     "trajectory": {
       "kind": "proof_trajectory",
       "start_latex": "(x + 1)^2",
@@ -39,6 +43,8 @@
   {
     "title": "Factor the difference of squares",
     "domain": "algebra",
+    "start_operation": "Given",
+    "start_justification": "a difference of two squares",
     "trajectory": {
       "kind": "proof_trajectory",
       "start_latex": "a^2 - b^2",
@@ -55,6 +61,8 @@
   {
     "title": "Relativistic energy–momentum",
     "domain": "algebra",
+    "start_operation": "Given",
+    "start_justification": "the energy–momentum relation",
     "trajectory": {
       "kind": "proof_trajectory",
       "start_latex": "E^2 = (m c^2)^2 + (p c)^2",
@@ -91,6 +99,8 @@
   {
     "title": "Lorentz time dilation",
     "domain": "algebra",
+    "start_operation": "Given",
+    "start_justification": "light-clock relation (invariant $c$)",
     "trajectory": {
       "kind": "proof_trajectory",
       "start_latex": "(c t)^2 = (c t_0)^2 + (v t)^2",

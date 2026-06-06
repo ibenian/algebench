@@ -2,9 +2,9 @@
 """Generate a self-contained proof-animation page (for the local launcher).
 
 Mirrors semantic_graph_report.py: builds the animation data, copies the engine
-JS/CSS, and writes an index.html into an output dir that ``serve_proof_animation.sh``
-then serves with ``python3 -m http.server``. The page loads KaTeX from CDN,
-imports the engine, fetches animation.json, and instantiates ProofAnimator.
+JS/CSS, and writes an index.html into an output dir that ``serve.sh`` then serves
+with ``python3 -m http.server``. The page loads KaTeX from CDN, imports the
+engine, fetches animation.json, and instantiates ProofAnimator.
 """
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ import json
 import shutil
 from pathlib import Path
 
-from proof_animation_build import build, SAMPLES, ProofAnimation  # sibling script
+from proof_animation.build import build, build_animation, ProofAnimation
 from backend.experts.modules.proof_completion.outputs import ProofTrajectory, DerivationStep
 
-_ROOT = Path(__file__).resolve().parent.parent
+_ROOT = Path(__file__).resolve().parent.parent.parent   # scripts/proof_animation/report.py → repo root
 _ASSETS = _ROOT / "static" / "proof-animation"
 # The curated test suite: a list of ProofAnimation objects we keep growing. The
 # report renders these by default (and CI deploys them — see proof-animation.yml).
@@ -26,8 +26,7 @@ _FIXTURES = _ROOT / "tests" / "proof_animation" / "proofs.json"
 def _animations_from_file(path: Path, domain: str) -> list[dict]:
     """Load a proofs JSON (list of ProofAnimation) and build each into animation data."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    return [build(a.trajectory, a.domain, a.title)
-            for a in (ProofAnimation.model_validate(d) for d in data)]
+    return [build_animation(ProofAnimation.model_validate(d)) for d in data]
 
 _INDEX = """<!DOCTYPE html>
 <html lang="en">
@@ -79,18 +78,14 @@ _INDEX = """<!DOCTYPE html>
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("states", nargs="*", help="LaTeX states, or START TARGET with --derive")
+    ap.add_argument("states", nargs="*", help="raw LaTeX states (a one-off derivation chain)")
     ap.add_argument("--domain", default="algebra")
     ap.add_argument("--title", default="")
     ap.add_argument("--from-file", default=None,
-                    help="a proofs JSON (list of ProofAnimation) — the test suite to render")
+                    help="a proofs JSON (list of ProofAnimation) — the test suite to render "
+                         f"(default: {_FIXTURES})")
     ap.add_argument("--from-json", default=None,
                     help="a single ProofTrajectory (JSON) to animate")
-    ap.add_argument("--derive", action="store_true",
-                    help="treat the two positional args as START TARGET and derive via the expert (needs GEMINI_API_KEY)")
-    ap.add_argument("--intent", default=None, help="derivation intent (with --derive)")
-    ap.add_argument("--program", default=None, help="optimized artifact (with --derive)")
-    ap.add_argument("--sample", action="store_true", help="render the baked SAMPLES instead of the suite")
     ap.add_argument("--outdir", default="/tmp/proof_anim")
     args = ap.parse_args()
 
@@ -100,17 +95,6 @@ def main() -> int:
         with open(args.from_json, encoding="utf-8") as fh:
             traj = ProofTrajectory.model_validate_json(fh.read())
         animations = [build(traj, args.domain, args.title or "derivation")]
-    elif args.derive:
-        if len(args.states) < 2:
-            ap.error("--derive needs START and TARGET positional arguments")
-        from _pc_env import load_env_local        # lazy: only the LM path needs these
-        load_env_local()
-        from backend.experts import init_experts
-        from proof_completion_derive import derive_trajectory
-        init_experts()
-        traj = derive_trajectory(args.states[0], args.states[1], domain=args.domain,
-                                 intent=args.intent, program=args.program)
-        animations = [build(traj, args.domain, args.title or "derivation")]
     elif args.states:
         traj = ProofTrajectory(
             start_latex=args.states[0],
@@ -119,12 +103,10 @@ def main() -> int:
                    for i, s in enumerate(args.states[1:], start=1)],
         )
         animations = [build(traj, args.domain, args.title)]
-    elif args.sample:
-        animations = [build(s.trajectory, s.domain, s.title) for s in SAMPLES]
     elif _FIXTURES.exists():       # default: render the curated test suite
         animations = _animations_from_file(_FIXTURES, args.domain)
-    else:                          # fallback if the suite file is missing
-        animations = [build(s.trajectory, s.domain, s.title) for s in SAMPLES]
+    else:
+        ap.error(f"no proofs to render: pass --from-file/--from-json/states, or create {_FIXTURES}")
 
     out = render_site(animations, args.outdir)
     print(f"wrote {out}/  ({len(animations)} animation(s))")
@@ -134,7 +116,7 @@ def main() -> int:
 def render_site(animations: list[dict], outdir) -> Path:
     """Write a self-contained proof-animation page (index.html + data + engine).
 
-    Reusable by other scripts (e.g. proof_animation_derive --render). ``animations``
+    Reusable by other scripts (e.g. derive.py --render). ``animations``
     is a list of built animation dicts (as ``build()`` returns).
     """
     out = Path(outdir)

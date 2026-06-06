@@ -20,7 +20,7 @@ where each `latex` is **annotated** — every sub-expression wrapped in
 sub-expression that **persists across steps carries the same `<id>`** (threaded
 server-side). That stable id *is* the correspondence.
 
-Build `data` with `scripts/proof_animation_build.py` (it parses each state with
+Build `data` with `scripts/proof_animation/build.py` (it parses each state with
 `SemanticGraphService.latex_to_graph`, threads stable ids via `graph_ops.diff`,
 and renders annotated LaTeX via `backend/semantic_graph/latex_renderer.to_latex`).
 
@@ -37,9 +37,9 @@ tokens at once; `'sequential'` staggers them.
 
 ## Run it locally
 ```bash
-./scripts/serve_proof_animation.sh                 # baked sample, http://localhost:5750
-./scripts/serve_proof_animation.sh "a + b = c" "a = c - b"   # your own chain
-./scripts/serve_proof_animation.sh --from-json /tmp/traj.json  # a derive --json trajectory
+./scripts/proof_animation/serve.sh                 # the test suite, http://localhost:5750
+./scripts/proof_animation/serve.sh "a + b = c" "a = c - b"   # your own chain
+./scripts/proof_animation/serve.sh --from-json /tmp/traj.json  # a ProofTrajectory JSON
 ```
 (or the `proof-animation` config in `.claude/launch.json`).
 

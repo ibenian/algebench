@@ -3,8 +3,7 @@ name: Proof Animation Visual Report
 on:
   pull_request:
     paths:
-      - 'scripts/proof_animation_build.py'
-      - 'scripts/proof_animation_report.py'
+      - 'scripts/proof_animation/**'
       - 'static/proof-animation/**'
       - 'tests/proof_animation/**'
       - 'backend/semantic_graph/**'
@@ -13,8 +12,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'scripts/proof_animation_build.py'
-      - 'scripts/proof_animation_report.py'
+      - 'scripts/proof_animation/**'
       - 'static/proof-animation/**'
       - 'tests/proof_animation/**'
       - 'backend/semantic_graph/**'
@@ -54,7 +52,7 @@ jobs:
       - name: Generate site
         run: |
           mkdir -p _site
-          ./run.sh scripts/proof_animation_report.py \
+          ./run.sh scripts/proof_animation/report.py \
             --from-file tests/proof_animation/proofs.json --outdir _site
 
       - name: Deploy to GitHub Pages
