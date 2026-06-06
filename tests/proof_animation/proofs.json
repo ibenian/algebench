@@ -1,0 +1,147 @@
+[
+  {
+    "title": "Isolate a",
+    "domain": "algebra",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "a + b - c = 0",
+      "target_latex": "a = c - b",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "add $c$ to both sides",
+          "expr_latex": "a + b = c",
+          "justification": "$c$ crosses the $=$ and flips sign"
+        },
+        {
+          "step": 2,
+          "operation": "subtract $b$ from both sides",
+          "expr_latex": "a = c - b",
+          "justification": "$b$ crosses over, leaving $a$ isolated"
+        }
+      ]
+    }
+  },
+  {
+    "title": "Expand the binomial",
+    "domain": "algebra",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "(x + 1)^2",
+      "target_latex": "x^2 + 2 x + 1",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "expand $(x+1)^2$",
+          "expr_latex": "x^2 + 2 x + 1",
+          "justification": "$(x+1)^2 = x^2 + 2x + 1$"
+        }
+      ]
+    }
+  },
+  {
+    "title": "Factor the difference of squares",
+    "domain": "algebra",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "a^2 - b^2",
+      "target_latex": "(a - b)(a + b)",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "factor",
+          "expr_latex": "(a - b)(a + b)",
+          "justification": "$a^2 - b^2 = (a-b)(a+b)$"
+        }
+      ]
+    }
+  },
+  {
+    "title": "Relativistic energy–momentum",
+    "domain": "algebra",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "E^2 = (m c^2)^2 + (p c)^2",
+      "target_latex": "E = m c^2 \\sqrt{1 + \\frac{p^2}{m^2 c^2}}",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "take the square root",
+          "expr_latex": "E = \\sqrt{(m c^2)^2 + (p c)^2}",
+          "justification": "solve for $E$ (positive root)"
+        },
+        {
+          "step": 2,
+          "operation": "expand the squares",
+          "expr_latex": "E = \\sqrt{m^2 c^4 + p^2 c^2}",
+          "justification": "$(m c^2)^2 = m^2 c^4,\\ (p c)^2 = p^2 c^2$"
+        },
+        {
+          "step": 3,
+          "operation": "factor out $c^2$",
+          "expr_latex": "E = \\sqrt{c^2 \\cdot (m^2 c^2 + p^2)}",
+          "justification": "$c^2$ is common to both terms"
+        },
+        {
+          "step": 4,
+          "operation": "pull $c$ out of the root",
+          "expr_latex": "E = c \\sqrt{m^2 c^2 + p^2}",
+          "justification": "$\\sqrt{c^2 x} = c \\sqrt{x}$"
+        },
+        {
+          "step": 5,
+          "operation": "factor out $m^2 c^2$",
+          "expr_latex": "E = m c^2 \\sqrt{1 + \\frac{p^2}{m^2 c^2}}",
+          "justification": "the standard Lorentz-factor form"
+        }
+      ]
+    }
+  },
+  {
+    "title": "Lorentz time dilation",
+    "domain": "algebra",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "(c t)^2 = (c t_0)^2 + (v t)^2",
+      "target_latex": "t = \\frac{t_0}{\\sqrt{1 - \\frac{v^2}{c^2}}}",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "expand the squares",
+          "expr_latex": "c^2 t^2 = c^2 t_0^2 + v^2 t^2",
+          "justification": "$(c t)^2 = c^2 t^2$, etc."
+        },
+        {
+          "step": 2,
+          "operation": "collect the $t$ terms",
+          "expr_latex": "c^2 t^2 - v^2 t^2 = c^2 t_0^2",
+          "justification": "move $v^2 t^2$ to the left"
+        },
+        {
+          "step": 3,
+          "operation": "factor out $t^2$",
+          "expr_latex": "t^2 \\cdot (c^2 - v^2) = c^2 t_0^2",
+          "justification": "$t^2$ is common on the left"
+        },
+        {
+          "step": 4,
+          "operation": "divide by $c^2 - v^2$",
+          "expr_latex": "t^2 = \\frac{c^2 t_0^2}{c^2 - v^2}",
+          "justification": "isolate $t^2$"
+        },
+        {
+          "step": 5,
+          "operation": "divide top and bottom by $c^2$",
+          "expr_latex": "t^2 = \\frac{t_0^2}{1 - \\frac{v^2}{c^2}}",
+          "justification": "introduce $\\frac{v^2}{c^2}$"
+        },
+        {
+          "step": 6,
+          "operation": "take the square root",
+          "expr_latex": "t = \\frac{t_0}{\\sqrt{1 - \\frac{v^2}{c^2}}}",
+          "justification": "moving clocks run slow by $\\gamma$"
+        }
+      ]
+    }
+  }
+]

@@ -82,6 +82,32 @@ def state_graph(svc, expr_latex: str, domain):
     return g
 
 
+def derive_trajectory(start, target, *, domain=None, intent=None,
+                      program=None, baseline=False):
+    """Run the ProofCompletionExpert on (start, target) → a ProofTrajectory.
+
+    Reusable core of this script (also used by proof_animation_derive). The
+    caller must have called ``init_experts()`` first (it configures the DSPy LM).
+    Raises ValueError if either endpoint fails to parse.
+    """
+    svc = SemanticGraphService()
+    start_g = svc.latex_to_graph(start, domain=domain)
+    target_g = svc.latex_to_graph(target, domain=domain)
+    if start_g is None or target_g is None:
+        which = "start" if start_g is None else "target"
+        raise ValueError(f"could not parse {which} expression")
+    intent = intent or "Transform the start expression into the target."
+    ctx = GraphTransition(start=start_g, target=target_g, domain=domain, intent=intent)
+    prog = ProofCompletionExpert(artifact=program, load_default=not baseline)
+    outputs = prog(
+        context=ctx,
+        context_id=build_context_id(scene="adhoc", semantic_graph=True),
+        lesson_context="",
+        instruction=intent,
+    )
+    return outputs[0]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("start", help="starting LaTeX expression")

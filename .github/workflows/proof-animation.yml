@@ -1,0 +1,81 @@
+name: Proof Animation Visual Report
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/proof_animation_build.py'
+      - 'scripts/proof_animation_report.py'
+      - 'static/proof-animation/**'
+      - 'tests/proof_animation/**'
+      - 'backend/semantic_graph/**'
+      - 'backend/model/semantic_graph.py'
+      - 'backend/experts/modules/proof_completion/outputs.py'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/proof_animation_build.py'
+      - 'scripts/proof_animation_report.py'
+      - 'static/proof-animation/**'
+      - 'tests/proof_animation/**'
+      - 'backend/semantic_graph/**'
+      - 'backend/model/semantic_graph.py'
+      - 'backend/experts/modules/proof_completion/outputs.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build-and-deploy:
+    name: Generate & deploy proof-animation report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: ./run.sh -m pip install pytest -q
+
+      - name: Determine destination directory
+        id: dest
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "dir=proof-animation/pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=proof-animation" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate site
+        run: |
+          mkdir -p _site
+          ./run.sh scripts/proof_animation_report.py \
+            --from-file tests/proof_animation/proofs.json --outdir _site
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          destination_dir: ${{ steps.dest.outputs.dir }}
+          keep_files: true
+
+      - name: Post preview URL
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PREVIEW_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ steps.dest.outputs.dir }}/"
+          echo "## 🎬 Proof Animation Visual Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "Preview: ${PREVIEW_URL}" >> "$GITHUB_STEP_SUMMARY"
+          EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '[.comments[] | select(.body | contains("Proof Animation Visual Report"))] | length')
+          if [ "$EXISTING" = "0" ]; then
+            BODY="$(printf '## 🎬 Proof Animation Visual Report\n**Preview:** %s' "$PREVIEW_URL")"
+            gh pr comment ${{ github.event.pull_request.number }} --body "$BODY"
+          fi

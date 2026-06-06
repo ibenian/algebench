@@ -24,8 +24,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# default to the baked sample if no states/source given
-if [[ ${#ARGS[@]} -eq 0 ]]; then ARGS=(--sample); fi
+# With no args the report renders the curated test suite (tests/proof_animation/proofs.json).
 
 echo "▶ Generating proof-animation page → $OUTDIR"
 "$DIR/run.sh" scripts/proof_animation_report.py --outdir "$OUTDIR" "${ARGS[@]}"

@@ -59,7 +59,7 @@
     {
       "name": "proof-animation",
       "runtimeExecutable": "./scripts/serve_proof_animation.sh",
-      "runtimeArgs": ["--port", "5750", "--sample"],
+      "runtimeArgs": ["--port", "5750"],
       "port": 5750,
       "autoPort": false
     }

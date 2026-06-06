@@ -18,6 +18,7 @@ import argparse
 import json
 
 from collections import defaultdict
+from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
@@ -244,8 +245,20 @@ def main() -> int:
     ap.add_argument("--sample", action="store_true", help="use the baked sample chain")
     ap.add_argument("--from-json", default=None,
                     help="a ProofCompletionExpert ProofTrajectory (JSON) to animate")
+    ap.add_argument("--dump-samples", default=None,
+                    help="write the baked SAMPLES to a proofs JSON file (the test suite) and exit")
     ap.add_argument("--out", default="/tmp/animation.json")
     args = ap.parse_args()
+
+    if args.dump_samples:
+        path = Path(args.dump_samples)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps([a.model_dump() for a in SAMPLES], indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        print(f"wrote {path}  ({len(SAMPLES)} proofs)")
+        return 0
 
     if args.sample:
         data = build(SAMPLE.trajectory, SAMPLE.domain, args.title or SAMPLE.title)
