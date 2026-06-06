@@ -197,12 +197,31 @@ export class ProofAnimator {
     }
   }
 
+  // render a caption with inline LaTeX ($...$) interspersed with plain text
+  _caption(el, text) {
+    el.innerHTML = "";
+    for (const part of String(text).split(/(\$[^$]*\$)/g)) {
+      if (part.length >= 2 && part[0] === "$" && part[part.length - 1] === "$") {
+        const span = document.createElement("span");
+        try {
+          this.katex.render(part.slice(1, -1), span, { throwOnError: false, displayMode: false });
+        } catch (e) {
+          span.textContent = part;
+        }
+        el.appendChild(span);
+      } else if (part) {
+        el.appendChild(document.createTextNode(part));
+      }
+    }
+  }
+
   _syncUI() {
     this.container.querySelectorAll(".pa-step").forEach((b, i) =>
       b.classList.toggle("pa-active", i === this.current));
     const s = this.data.steps[this.current];
-    this.container.querySelector(".pa-op").textContent =
-      s.operation ? `${this.current}. ${s.operation}` : `state ${this.current}`;
-    this.container.querySelector(".pa-just").textContent = s.justification || "";
+    // both the explanation (operation) and the justification — each may use $…$ LaTeX
+    this._caption(this.container.querySelector(".pa-op"),
+      s.operation ? `${this.current}. ${s.operation}` : `state ${this.current}`);
+    this._caption(this.container.querySelector(".pa-just"), s.justification || "");
   }
 }
