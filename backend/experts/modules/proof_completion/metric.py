@@ -20,7 +20,7 @@ from .outputs import (
     DerivationStep,
     GraphOpBase,
     GraphOpError,
-    GraphTrajectory,
+    ProofTrajectory,
     RemoveEdge,
     RemoveNode,
 )
@@ -41,7 +41,7 @@ def extract_steps(pred: Any) -> list:
     """Pull the ordered derivation steps out of a prediction."""
     if pred is None:
         return []
-    if isinstance(pred, GraphTrajectory):
+    if isinstance(pred, ProofTrajectory):
         return list(pred.steps)
     if isinstance(pred, DerivationStep):
         return [pred]

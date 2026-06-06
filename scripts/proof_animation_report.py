@@ -14,7 +14,7 @@ import shutil
 from pathlib import Path
 
 from proof_animation_build import build, SAMPLES  # sibling script
-from backend.experts.modules.proof_completion.outputs import GraphTrajectory, DerivationStep
+from backend.experts.modules.proof_completion.outputs import ProofTrajectory, DerivationStep
 
 _ROOT = Path(__file__).resolve().parent.parent
 _ASSETS = _ROOT / "static" / "proof-animation"
@@ -79,10 +79,10 @@ def main() -> int:
 
     if args.from_json:
         with open(args.from_json, encoding="utf-8") as fh:
-            traj = GraphTrajectory.model_validate_json(fh.read())
+            traj = ProofTrajectory.model_validate_json(fh.read())
         animations = [build(traj, args.domain, args.title or "derivation")]
     elif args.states:
-        traj = GraphTrajectory(
+        traj = ProofTrajectory(
             start_latex=args.states[0],
             steps=[DerivationStep(step=i, operation=f"step {i}", expr_latex=s,
                                   justification="(manual)")

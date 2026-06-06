@@ -6,7 +6,7 @@ config): the expert module and its metric.
 
 from __future__ import annotations
 
-from . import outputs        # registers the graph_trajectory output kind
+from . import outputs        # registers the proof_trajectory output kind
 from . import signature      # ProofCompletionSig (uses outputs)
 from . import metric         # @register_metric("proof_completion")
 from . import module         # @register_expert("proof_completion")

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import dspy
 
-from .outputs import GraphTrajectory
+from .outputs import ProofTrajectory
 
 
 class ProofCompletionSig(dspy.Signature):
@@ -47,6 +47,6 @@ class ProofCompletionSig(dspy.Signature):
     intent: str = dspy.InputField(desc="what the derivation should accomplish, may be empty")
     lesson_context: str = dspy.InputField(desc="surrounding lesson summary, may be empty")
     instruction: str = dspy.InputField(desc="the user's request, may be empty")
-    trajectory: GraphTrajectory = dspy.OutputField(
+    trajectory: ProofTrajectory = dspy.OutputField(
         desc="the ordered derivation steps, each a complete expression, from start to target"
     )

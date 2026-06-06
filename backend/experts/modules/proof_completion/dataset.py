@@ -23,7 +23,7 @@ from backend.model.semantic_graph import SemanticGraph
 from backend.semantic_graph.service import SemanticGraphService
 
 from backend.experts.context_id import build as build_context_id
-from .outputs import GRAPH_OP_ADAPTER, DerivationStep, GraphTrajectory
+from .outputs import GRAPH_OP_ADAPTER, DerivationStep, ProofTrajectory
 from .graph_ops import apply, canonical_equal, diff
 from .grounding import graph_to_latex, is_grounded
 from .model import GraphTransition
@@ -167,7 +167,7 @@ def build_example(seed: Seed, rng: random.Random, max_steps: int, max_ops: int =
         instruction=f"{seed.intent}: transform the start graph into the target graph.",
         # gold output the optimizer can demonstrate from (matches the sig's
         # `trajectory` OutputField), plus the atomic gold ops for internal checks
-        trajectory=GraphTrajectory(steps=gold_steps,
+        trajectory=ProofTrajectory(steps=gold_steps,
                                    start_latex=graph_to_latex(start),
                                    target_latex=graph_to_latex(target)),
         gold_steps=gold_steps,
@@ -243,7 +243,7 @@ def example_from_dict(d: dict):
         context_id=d["context_id"],
         lesson_context=d.get("lesson_context", ""),
         instruction=d.get("instruction", ""),
-        trajectory=GraphTrajectory(steps=gold_steps,
+        trajectory=ProofTrajectory(steps=gold_steps,
                                    start_latex=graph_to_latex(context.start),
                                    target_latex=graph_to_latex(context.target)),
         gold_steps=gold_steps,

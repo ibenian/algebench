@@ -71,7 +71,7 @@ generate(n, seed) →
   → for each expr: latex_to_graph(latex(expr), domain) → SemanticGraph
   → thread per-step diffs into a gold trajectory (apply(start, gold) ≅ target)
   → dspy.Example(context=GraphTransition(start, target, domain, intent),
-                 trajectory=GraphTrajectory(gold steps), gold_ops, step_exprs, …)
+                 trajectory=ProofTrajectory(gold steps), gold_ops, step_exprs, …)
 ```
 
 Every example is **filtered**: each step must be sympy-groundable, the chain must

@@ -31,7 +31,7 @@ DEFAULT_ARTIFACT = os.path.join(os.path.dirname(__file__), "artifacts",
 class ProofCompletionExpert(dspy.Module):
     """Produce the step-by-step derivation transforming start into target.
 
-    Returns a single ``GraphTrajectory`` of derivation *states* (each a complete
+    Returns a single ``ProofTrajectory`` of derivation *states* (each a complete
     ``expr_latex`` + operation + justification). The model emits math, not graph
     edits; the per-state graphs and the atomic edits between them are recovered
     deterministically in code (``latex_to_graph`` + ``diff``).

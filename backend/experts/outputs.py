@@ -40,7 +40,7 @@ class ExpertResult(BaseModel):
     # Always a list (consumers iterate it uniformly; the UI gets a JSON array).
     # SerializeAsAny so each output dumps with its *concrete* subclass fields
     # (a plain list[Output] would serialize only the base fields, dropping e.g.
-    # GraphTrajectory.ops).
+    # ProofTrajectory.ops).
     outputs: List[SerializeAsAny[Output]] = Field(default_factory=list)
     invoke_id: Optional[str] = None
 

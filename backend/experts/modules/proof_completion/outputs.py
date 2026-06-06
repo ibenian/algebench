@@ -1,4 +1,4 @@
-"""ProofCompletion outputs: the ``graph_trajectory`` discriminated union.
+"""ProofCompletion outputs: the ``proof_trajectory`` discriminated union.
 
 One strongly-typed class per atomic op (``AddNode`` / ``RemoveNode`` /
 ``AddEdge`` / ``RemoveEdge``), each carrying exactly its own fields, with shared
@@ -153,7 +153,7 @@ class DerivationStep(BaseModel):
                                description="why this step is mathematically valid")
 
 
-class GraphTrajectory(Output):
+class ProofTrajectory(Output):
     """A derivation as an ordered list of complete reachable states.
 
     Each step holds the full expression after one math operation. The per-state
@@ -167,7 +167,7 @@ class GraphTrajectory(Output):
     it). They are NOT produced by the model.
     """
 
-    kind: Literal["graph_trajectory"] = "graph_trajectory"
+    kind: Literal["proof_trajectory"] = "proof_trajectory"
     start_latex: Optional[str] = None
     target_latex: Optional[str] = None
     steps: List[DerivationStep] = Field(default_factory=list)

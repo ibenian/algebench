@@ -25,7 +25,7 @@ from backend.semantic_graph.service import SemanticGraphService
 from backend.semantic_graph.latex_renderer import to_latex
 from backend.experts.modules.proof_completion.graph_ops import wl_colors, _content
 from backend.experts.modules.proof_completion.outputs import (
-    GraphTrajectory, DerivationStep,
+    ProofTrajectory, DerivationStep,
 )
 
 
@@ -132,7 +132,7 @@ def _rebase(prev, gnew):
     return g
 
 class ProofAnimation(BaseModel):
-    """One animation = a ProofCompletionExpert ``GraphTrajectory`` + display meta.
+    """One animation = a ProofCompletionExpert ``ProofTrajectory`` + display meta.
 
     The ``trajectory`` is the expert's output type **verbatim**, so a real expert
     result animates with zero conversion. ``title``/``domain`` are the only
@@ -143,7 +143,7 @@ class ProofAnimation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     title: str
     domain: str = "algebra"
-    trajectory: GraphTrajectory
+    trajectory: ProofTrajectory
 
 
 def _anim(title: str, start: str,
@@ -152,7 +152,7 @@ def _anim(title: str, start: str,
     return ProofAnimation(
         title=title,
         domain=domain,
-        trajectory=GraphTrajectory(
+        trajectory=ProofTrajectory(
             start_latex=start,
             target_latex=steps[-1][1] if steps else start,
             steps=[DerivationStep(step=i + 1, operation=op, expr_latex=ex, justification=ju)
@@ -162,7 +162,7 @@ def _anim(title: str, start: str,
 
 
 # Deterministic demos, authored in the expert's own output shape (a
-# GraphTrajectory: a start state + ordered DerivationSteps). operation/justification
+# ProofTrajectory: a start state + ordered DerivationSteps). operation/justification
 # may use inline LaTeX in $…$ (the engine renders it).
 SAMPLE = _anim(
     "Isolate a", r"a + b - c = 0",
@@ -198,8 +198,8 @@ SAMPLES = [
 ]
 
 
-def build(trajectory: GraphTrajectory, domain: str, title: str = "") -> dict:
-    """Render a ProofCompletionExpert ``GraphTrajectory`` into animation data.
+def build(trajectory: ProofTrajectory, domain: str, title: str = "") -> dict:
+    """Render a ProofCompletionExpert ``ProofTrajectory`` into animation data.
 
     The trajectory is the expert's output: ``start_latex`` plus ordered
     ``DerivationStep``s (each a complete ``expr_latex`` reached by one
@@ -243,7 +243,7 @@ def main() -> int:
     ap.add_argument("--title", default="")
     ap.add_argument("--sample", action="store_true", help="use the baked sample chain")
     ap.add_argument("--from-json", default=None,
-                    help="a ProofCompletionExpert GraphTrajectory (JSON) to animate")
+                    help="a ProofCompletionExpert ProofTrajectory (JSON) to animate")
     ap.add_argument("--out", default="/tmp/animation.json")
     args = ap.parse_args()
 
@@ -251,11 +251,11 @@ def main() -> int:
         data = build(SAMPLE.trajectory, SAMPLE.domain, args.title or SAMPLE.title)
     elif args.from_json:
         with open(args.from_json, encoding="utf-8") as fh:
-            traj = GraphTrajectory.model_validate_json(fh.read())
+            traj = ProofTrajectory.model_validate_json(fh.read())
         data = build(traj, args.domain, args.title or "derivation")
     elif args.states:
         # raw LaTeX states (dev convenience) → a trajectory with placeholder captions
-        traj = GraphTrajectory(
+        traj = ProofTrajectory(
             start_latex=args.states[0],
             steps=[DerivationStep(step=i, operation=f"step {i}", expr_latex=s,
                                   justification="(manual)")
