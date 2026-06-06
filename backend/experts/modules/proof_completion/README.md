@@ -73,8 +73,8 @@ shared fields on `GraphOpBase` and behavior provided polymorphically via
 
 ```bash
 # 1. generate held-out datasets (no LLM; sympy is the source of truth)
-./run.sh scripts/proof_completion_generate.py --n 200 --seed 1 --out data/proof_completion/train.jsonl
-./run.sh scripts/proof_completion_generate.py --n 60  --seed 2 --out data/proof_completion/eval.jsonl
+./run.sh scripts/proof_completion_train_test_split.py --n 200 --seed 1 --out data/proof_completion/train.jsonl
+./run.sh scripts/proof_completion_train_test_split.py --n 60  --seed 2 --out data/proof_completion/eval.jsonl
 
 # 2. baseline performance
 ./run.sh scripts/proof_completion_evaluate.py --data data/proof_completion/eval.jsonl
