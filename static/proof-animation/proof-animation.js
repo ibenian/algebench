@@ -149,6 +149,10 @@ export class ProofAnimator {
       // similarity transform mapping the to-box onto the from-box (top-left origin)
       let s = tb.width > 1 ? fb.width / tb.width : (tb.height > 1 ? fb.height / tb.height : 1);
       if (!(s > 0.02 && s < 50)) s = 1;
+      // Snap near-unity scale to exactly 1: a genuine size change (scriptstyle) is
+      // ~0.7, so anything close to 1 is just sub-pixel / italic-spacing box noise.
+      // Animating that noise makes glyphs do a small, wrong size jump.
+      if (Math.abs(s - 1) < 0.15) s = 1;
       const tol = 2 + 0.04 * Math.max(fb.width, fb.height);
       const fits = leafIds.every((lid) => {
         const lf = fromRects.get(lid), lt = toRects.get(lid);
