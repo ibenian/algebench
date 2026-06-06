@@ -199,33 +199,28 @@ export class ProofAnimator {
     const toLeaves = this._leaves(this.stage);
     const toRects = this._nodeRects(this.stage);
 
-    const moveAnims = [], delAnims = [], insertEls = [];
-    let mi = 0;
+    const await_ = (anims) =>
+      Promise.all(anims.map((a) => a.finished.catch(() => {})));
 
+    // ── set up MOVES, but hold each group STATICALLY at its from-pose so the
+    // stage still looks like the source state while dropped items fade out ──
     // matched → MOVE the LARGEST rigid groups together (translate + uniform scale,
     // about each block's top-left, so a sub-expression glides/shrinks as one unit)
     const { blocks } = this._rigidBlocks(this.stage, fromRects, toRects);
+    const movers = [];
     for (const blk of blocks) {
       const moved = Math.abs(blk.dx) > 0.5 || Math.abs(blk.dy) > 0.5;
       const scaled = Math.abs(blk.scale - 1) > 0.01;
       if (!moved && !scaled) continue;                 // identity → nothing to do
       blk.el.classList.add("pa-move");
       blk.el.style.transformOrigin = "0 0";            // deltas/scale are top-left based
-      const a = blk.el.animate(
-        [{ transform: `translate(${blk.dx}px, ${blk.dy}px) scale(${blk.scale})` },
-         { transform: "translate(0px, 0px) scale(1)" }],
-        { duration: this.duration, delay: seq ? mi++ * this.staggerMs : 0, easing: EASE, fill: "backwards" }
-      );
-      // a multi-glyph block is an internal span; inline-block can perturb math
-      // spacing at rest, so drop it back to normal flow once the move is done.
-      if (!blk.single) a.onfinish = () => {
-        blk.el.classList.remove("pa-move");
-        blk.el.style.transformOrigin = "";
-      };
-      moveAnims.push(a);
+      blk.el.style.transform =                         // hold at the OLD position for now
+        `translate(${blk.dx}px, ${blk.dy}px) scale(${blk.scale})`;
+      movers.push(blk);
     }
 
-    // target-only glyphs → INSERT (deferred to phase 2)
+    // target-only glyphs → INSERT (hidden until the very end)
+    const insertEls = [];
     toLeaves.forEach((el, id) => {
       if (!fromRects.has(id)) { el.style.opacity = "0"; insertEls.push(el); }
     });
@@ -238,33 +233,63 @@ export class ProofAnimator {
       this.stage.querySelectorAll(sel).forEach((el) => { el.style.opacity = "0"; decoEls.push(el); });
     }
 
-    // source-only glyphs → DELETE: ghost (clone) fades out during motion (phase 1)
+    // source-only glyphs → DELETE ghosts: clones placed at their old spot. Each
+    // ghost is wrapped in a `.katex` host so KaTeX's font CSS (scoped under
+    // `.katex …`) still applies — otherwise the glyph reverts to the default
+    // font for a frame before fading.
+    const ghosts = [];
     fromLeaves.forEach((el, id) => {
       if (toRects.has(id)) return;   // still present (as glyph or subtree)
       const f = fromRects.get(id);
-      const ghost = cloneOf.get(id);
-      ghost.classList.add("pa-ghost", "pa-move");
-      Object.assign(ghost.style, {
+      const host = document.createElement("span");
+      host.className = "katex pa-ghost";
+      Object.assign(host.style, {
         position: "absolute", margin: "0",
         left: f.left - stageRect.left + "px",
         top: f.top - stageRect.top + "px",
       });
-      this.stage.appendChild(ghost);
-      this._ghosts.push(ghost);
-      const ga = ghost.animate(
-        [{ opacity: 1 }, { opacity: 0 }],
-        { duration: this.duration * 0.6, easing: EASE, fill: "forwards" }
-      );
-      ga.onfinish = () => ghost.remove();
-      delAnims.push(ga);
+      host.appendChild(cloneOf.get(id));
+      this.stage.appendChild(host);
+      this._ghosts.push(host);
+      ghosts.push(host);
     });
 
-    // phase 1: motion (moves + deletes) — wait for ALL of it
-    this._running = [...moveAnims, ...delAnims];
-    await Promise.all(this._running.map((a) => a.finished.catch(() => {})));
+    // ── PHASE 0: dropped items fade OUT first, before any motion ──
+    const delAnims = [];
+    let di = 0;
+    for (const host of ghosts) {
+      const a = host.animate(
+        [{ opacity: 1 }, { opacity: 0 }],
+        { duration: this.duration * 0.6, delay: seq ? di++ * this.staggerMs : 0, easing: EASE, fill: "forwards" }
+      );
+      a.onfinish = () => host.remove();
+      delAnims.push(a);
+    }
+    this._running = delAnims;
+    await await_(delAnims);
     if (this._token !== token) return;   // interrupted by a newer goTo
 
-    // phase 2: new items fade in, only now that motion is done
+    // ── PHASE 1: matched groups MOVE into place (from held pose → identity) ──
+    const moveAnims = [];
+    let mi = 0;
+    for (const blk of movers) {
+      const a = blk.el.animate(
+        [{ transform: `translate(${blk.dx}px, ${blk.dy}px) scale(${blk.scale})` },
+         { transform: "translate(0px, 0px) scale(1)" }],
+        { duration: this.duration, delay: seq ? mi++ * this.staggerMs : 0, easing: EASE, fill: "backwards" }
+      );
+      a.onfinish = () => {                              // restore normal flow at rest
+        blk.el.style.transform = "";
+        blk.el.style.transformOrigin = "";
+        if (!blk.single) blk.el.classList.remove("pa-move");
+      };
+      moveAnims.push(a);
+    }
+    this._running = moveAnims;
+    await await_(moveAnims);
+    if (this._token !== token) return;
+
+    // ── PHASE 2: new items fade IN last (glyphs + structural decorations) ──
     const insAnims = [];
     let ii = 0;
     for (const el of insertEls) {
@@ -276,7 +301,7 @@ export class ProofAnimator {
       a.onfinish = () => (el.style.opacity = "");
       insAnims.push(a);
     }
-    // structural decorations fade in by opacity only (no scale → no layout shift)
+    // decorations fade in by opacity only (no scale → no layout shift)
     for (const el of decoEls) {
       const a = el.animate(
         [{ opacity: 0 }, { opacity: 1 }],
@@ -286,7 +311,7 @@ export class ProofAnimator {
       insAnims.push(a);
     }
     this._running = insAnims;
-    await Promise.all(insAnims.map((a) => a.finished.catch(() => {})));
+    await await_(insAnims);
     if (this._token === token) this._running = [];
   }
 
