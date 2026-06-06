@@ -105,7 +105,7 @@ It flows: `GraphTransition.domain` → `module.forward` → both `latex_to_graph
            # Seed("trig", "prove ...", chain[0], chain=(e0, e1, e2)),
        ]
    ```
-3. Regenerate the datasets (`scripts/proof_completion_train_test_split.py`). No other edits —
+3. Regenerate the datasets (`scripts/proof_completion_dataset.py`). No other edits —
    `discover_domains()` picks the file up automatically.
 
 ## Tuning the training set
