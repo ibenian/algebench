@@ -87,7 +87,7 @@ SAMPLES = [
         "states": [
             {"latex": r"(x + 1)^2", "operation": "start"},
             {"latex": r"x^2 + 2 x + 1", "operation": "expand",
-             "justification": "(x+1)² = x² + 2x + 1"},
+             "justification": "multiply out and collect like terms"},
         ],
     },
     {
@@ -96,7 +96,7 @@ SAMPLES = [
         "states": [
             {"latex": r"a^2 - b^2", "operation": "start"},
             {"latex": r"(a - b)(a + b)", "operation": "factor",
-             "justification": "a² − b² = (a−b)(a+b)"},
+             "justification": "difference of squares"},
         ],
     },
     {
@@ -110,7 +110,22 @@ SAMPLES = [
             {"latex": r"E = \sqrt{c^2 \cdot (m^2 c^2 + p^2)}", "operation": "factor out c²"},
             {"latex": r"E = c \sqrt{m^2 c^2 + p^2}", "operation": "pull c out of the root"},
             {"latex": r"E = m c^2 \sqrt{1 + \frac{p^2}{m^2 c^2}}", "operation": "factor out m²c²",
-             "justification": "E = mc²·√(1 + (p/mc)²)"},
+             "justification": "the standard Lorentz-factor form"},
+        ],
+    },
+    {
+        "title": "Lorentz time dilation",
+        "domain": "algebra",
+        "states": [
+            {"latex": r"(c t)^2 = (c t_0)^2 + (v t)^2", "operation": "start",
+             "justification": "light-clock Pythagorean relation"},
+            {"latex": r"c^2 t^2 = c^2 t_0^2 + v^2 t^2", "operation": "expand the squares"},
+            {"latex": r"c^2 t^2 - v^2 t^2 = c^2 t_0^2", "operation": "collect the t terms"},
+            {"latex": r"t^2 \cdot (c^2 - v^2) = c^2 t_0^2", "operation": "factor out t²"},
+            {"latex": r"t^2 = \frac{c^2 t_0^2}{c^2 - v^2}", "operation": "divide by (c² − v²)"},
+            {"latex": r"t^2 = \frac{t_0^2}{1 - \frac{v^2}{c^2}}", "operation": "divide top and bottom by c²"},
+            {"latex": r"t = \frac{t_0}{\sqrt{1 - \frac{v^2}{c^2}}}", "operation": "take the square root",
+             "justification": "moving clocks run slow by the Lorentz factor"},
         ],
     },
 ]

@@ -179,13 +179,11 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         return ("".join(parts), _ADD)
 
     if op == "multiply":
-        num, den = [], []
+        num, den_specs = [], []
         for _r, c in ins:
             neg = _neg_power(nodes[c], incoming.get(c, []))
             if neg:
-                base_id, mag = neg
-                den.append((child(base_id, _POW + 1) + f"^{{{mag}}}") if mag
-                           else child(base_id, _MUL))
+                den_specs.append(neg)             # (base_id, mag)
             else:
                 num.append(child(c, _MUL))
 
@@ -198,7 +196,11 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
             return out
 
         num_s = joinmul(num, "m")
-        if den:
+        if den_specs:
+            # {} already groups the denominator, so a single factor needs no parens
+            thr = _LOGIC if len(den_specs) == 1 else _MUL
+            den = [(child(b, _POW + 1) + f"^{{{m}}}") if m else child(b, thr)
+                   for b, m in den_specs]
             den_s = den[0] if len(den) == 1 else joinmul(den, "d")
             return (f"\\frac{{{num_s}}}{{{den_s}}}", _FRAC)
         return (num_s, _MUL)
@@ -225,7 +227,7 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
             return (f"\\sqrt{{{child(bases[0], _LOGIC)}}}", _ATOM)
         if exp_s.startswith("-"):
             mag = exp_s[1:]
-            inner = (child(bases[0], _MUL) if mag == "1"
+            inner = (child(bases[0], _LOGIC) if mag == "1"   # {} groups → no parens
                      else child(bases[0], _POW + 1) + f"^{{{mag}}}")
             return (f"\\frac{{1}}{{{inner}}}", _FRAC)
         return (f"{child(bases[0], _POW + 1)}^{{{exp_tagged}}}", _POW)
