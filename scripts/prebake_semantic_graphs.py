@@ -149,7 +149,7 @@ def _derive_step_graph(step):
     # degrades to a counted error so the rest of the lesson still processes —
     # one bad step never aborts the batch.
     try:
-        graph = _graph_service.derive(cleaned)
+        graph = _graph_service.latex_to_graph(cleaned)
     except Exception as e:  # parse crash — same class the server guards
         return None, f"parse_crashed: {str(e).strip() or type(e).__name__}", time.perf_counter() - t0
     if not graph:

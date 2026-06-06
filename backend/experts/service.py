@@ -1,0 +1,54 @@
+"""Stateless expert invocation — the one place a request becomes signature input.
+
+``invoke`` is the single converter, fully typed end to end:
+
+1. ``scope = parse(context_id).terminal``                  (string key)
+2. ``Model = resolve_context_model(spec)``                 (override or scope default)
+3. ``ctx = Model.model_validate(payload)``                 (Pydantic validation gate)
+4. ``module = spec.factory()``                             (a dspy.Module)
+5. ``outputs = module(context=ctx, ...)``                  (a list[Output])
+6. wrap in a single typed ``ExpertResult``
+
+Contract: an expert's ``forward`` returns a ``list[Output]`` (it unwraps its own
+DSPy ``Prediction`` field). ``ExpertResult`` validates that shape via Pydantic.
+No dicts are produced here — serialization happens at the transport edge; the
+consumer dispatches each output on its ``kind``. The backend stores nothing
+between calls, and no ``Signature`` is constructed.
+"""
+
+from __future__ import annotations
+
+from .context_id import parse
+from .outputs import ExpertResult
+from .registry import EXPERT_REGISTRY, resolve_context_model
+
+
+def invoke(
+    name: str,
+    context_id: str,
+    payload: dict,
+    instruction: str = "",
+    lesson_context: str = "",
+) -> ExpertResult:
+    """Run expert ``name`` against ``context_id``; return a typed ExpertResult."""
+    spec = EXPERT_REGISTRY[name]  # KeyError = unknown expert (caller's bug)
+
+    scope = parse(context_id).terminal
+    if scope != spec.context_scope:
+        raise ValueError(
+            f"expert {name!r} expects scope {spec.context_scope!r} "
+            f"but context_id {context_id!r} has terminal {scope!r}"
+        )
+
+    model = resolve_context_model(spec)
+    ctx = model.model_validate(payload)  # <-- validation / injection gate
+
+    module = spec.factory()
+    outputs = module(
+        context=ctx,
+        context_id=context_id,
+        lesson_context=lesson_context,
+        instruction=instruction,
+    )  # list[Output]; ExpertResult validates the shape
+
+    return ExpertResult(expert=name, context_id=context_id, outputs=outputs)

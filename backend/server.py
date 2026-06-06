@@ -294,7 +294,7 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
                 error_reason = None
                 error_message = None
                 try:
-                    graph = _graph_service.derive(cleaned)
+                    graph = _graph_service.latex_to_graph(cleaned)
                 except Exception as e:
                     print(f"   ⚠️  auto-graph crashed for {math_src!r}: {e}")
                     graph = None
@@ -1402,7 +1402,7 @@ def create_app(initial_scene_path=None, debug=False,
             # Offload the synchronous parse to a worker thread so a burst of
             # graph derivations can't monopolize the event loop and starve
             # /api/health (Render's probe). See also _load_scene callers below.
-            graph = await asyncio.to_thread(_graph_service.derive, req.latex, domain=req.domain)
+            graph = await asyncio.to_thread(_graph_service.latex_to_graph, req.latex, domain=req.domain)
             return JSONResponse({"graph": graph.model_dump(by_alias=True, exclude_none=True) if graph else None})
         except (ValueError, SyntaxError, KeyError) as e:
             print(f"   ⚠️ /api/graph/from-latex parse error: {e}", flush=True)

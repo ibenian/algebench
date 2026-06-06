@@ -108,7 +108,7 @@ class TestKnownVariables:
     def test_vec_accent_assigns_vector_type(self):
         from backend.semantic_graph import SemanticGraphService
         svc = SemanticGraphService()
-        g = svc.derive(r"\vec{F} = m \vec{a}")
+        g = svc.latex_to_graph(r"\vec{F} = m \vec{a}")
         f_node = _find_node(g, id="F")
         assert f_node is not None
         assert f_node.type == "vector"
