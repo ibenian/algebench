@@ -29,7 +29,13 @@ DEFAULT_ARTIFACT = os.path.join(os.path.dirname(__file__), "artifacts",
     context_model=GraphTransition,
 )
 class ProofCompletionExpert(dspy.Module):
-    """Produce the ordered atomic graph edits transforming start into target."""
+    """Produce the step-by-step derivation transforming start into target.
+
+    Returns a single ``GraphTrajectory`` of derivation *states* (each a complete
+    ``expr_latex`` + operation + justification). The model emits math, not graph
+    edits; the per-state graphs and the atomic edits between them are recovered
+    deterministically in code (``latex_to_graph`` + ``diff``).
+    """
 
     def __init__(self, artifact: str | None = None, load_default: bool = True):
         super().__init__()

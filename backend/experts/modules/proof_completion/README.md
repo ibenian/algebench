@@ -1,8 +1,11 @@
 # ProofCompletionExpert
 
-Given a **start** semantic graph and a **target** semantic graph, emit an
-ordered trajectory of atomic edits, each with an explanation + justification,
-such that applying the trajectory to the start graph yields the target.
+Given a **start** and **target** expression, emit a step-by-step **derivation**:
+an ordered trajectory of *states*, each a complete expression (`expr_latex`) plus
+the math `operation` and a `justification`. The model works in math (LaTeX), not
+graphs — the per-state semantic graphs and the atomic edits between consecutive
+states are reconstructed deterministically in code (`latex_to_graph` + `diff`),
+and each state is SymPy-verified.
 
 A self-contained expert package (see the framework README in
 `backend/experts/README.md` for the generic plumbing).

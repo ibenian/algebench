@@ -1,7 +1,7 @@
 """ProofCompletionExpert — a self-contained expert package.
 
 Importing this package self-registers everything via decorators (no central
-config): the output kind, the handler, the metric, and the expert module.
+config): the expert module and its metric.
 """
 
 from __future__ import annotations

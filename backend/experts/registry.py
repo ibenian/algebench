@@ -1,13 +1,18 @@
 """Registries for the expert framework.
 
 Everything extensible is a plain ``dict`` looked up by a string key — there is
-**no** ``if``/``switch`` on expert names, context scopes, output kinds, or
-handler names anywhere in the framework. Experts, output types, handlers, and
-metrics *self-register* via the decorators below (or, for outputs, via the
-``__init_subclass__`` hook in :mod:`backend.experts.outputs`).
+**no** ``if``/``switch`` on expert names or context scopes anywhere in the
+framework. Experts and metrics *self-register* via the decorators below, and
+``discover_experts()`` imports the modules so registration happens on load.
 
-Adding an expert = drop a self-registering module + a handler + an
-``experts.json`` entry. No core-loop edits.
+Three registries: ``EXPERT_REGISTRY`` (name → :class:`ExpertSpec`),
+``CONTEXT_MODELS`` (context_id terminal scope → default Pydantic model), and
+``METRIC_REGISTRY`` (name → DSPy metric). There is no output/handler registry —
+experts return typed ``Output`` objects directly and ``service.invoke`` wraps
+them in an :class:`~backend.experts.outputs.ExpertResult` (no dispatch layer).
+
+Adding an expert = drop a self-registering module under ``modules/``. No
+core-loop edits, no config file.
 """
 
 from __future__ import annotations

@@ -15,10 +15,10 @@ enricher; it is never imported by `server.py`.
 Generic framework (top level):
 ```
 __init__.py    init_experts(): configure DSPy + discover (import expert packages)
-registry.py    EXPERT/CONTEXT_MODELS/OUTPUT/HANDLER/METRIC registries + decorators
+registry.py    EXPERT / CONTEXT_MODELS / METRIC registries + decorators
 context_id.py  hierarchical target id: build / parse / terminal (the scope key)
 outputs.py     the Output base (subclasses declare a `kind` Literal) + ExpertResult
-service.py     stateless invoke(): payload -> validated context -> module -> handler
+service.py     stateless invoke(): payload -> validated context -> module -> ExpertResult
 llm_config.py  configure_dspy() -> Gemini via litellm
 modules/       one self-contained expert *package* each (discovered on startup)
 ```
@@ -26,8 +26,9 @@ modules/       one self-contained expert *package* each (discovered on startup)
 Each expert lives in its own package under `modules/<name>/` and documents
 itself in its own `README.md`. Current experts:
 
-- **`modules/proof_completion/`** — start graph + target graph → trajectory of
-  atomic graph edits (sympy-grounded). See `modules/proof_completion/README.md`.
+- **`modules/proof_completion/`** — start + target expression → a step-by-step
+  derivation (trajectory of complete-expression *states*; atomic graph edits are
+  recovered in code, each state SymPy-verified). See `modules/proof_completion/README.md`.
 
 ## How registration works
 

@@ -1,5 +1,5 @@
 """Expert packages. Each subpackage is one self-contained expert that
-self-registers (module, handler, outputs, metric) on import. Adding an expert =
+self-registers (the expert module + its metric) on import. Adding an expert =
 drop a package here.
 """
 

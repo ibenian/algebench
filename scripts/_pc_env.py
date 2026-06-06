@@ -44,20 +44,24 @@ def run_program(prog, example):
 def predict_all(prog, data, label="predict", threads=8):
     """Run a program over a dataset concurrently, returning predictions in order."""
     from concurrent.futures import ThreadPoolExecutor
+    import threading
 
     n = len(data)
     preds: list = [None] * n
     t0 = time.time()
     done = {"count": 0, "errors": 0}
+    lock = threading.Lock()  # guard the shared counters across worker threads
 
     def work(idx_ex):
         idx, ex = idx_ex
         pred, err = run_program(prog, ex)
-        done["count"] += 1
-        if err is not None:
-            done["errors"] += 1
-        if done["count"] % 5 == 0 or done["count"] == n:
-            print(f"  [{label}] {done['count']}/{n}  errors={done['errors']}  "
+        with lock:
+            done["count"] += 1
+            if err is not None:
+                done["errors"] += 1
+            count, errors = done["count"], done["errors"]
+        if count % 5 == 0 or count == n:
+            print(f"  [{label}] {count}/{n}  errors={errors}  "
                   f"({time.time() - t0:.0f}s)", flush=True)
         return idx, pred
 

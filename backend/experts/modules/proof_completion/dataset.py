@@ -85,7 +85,10 @@ def make_expr_chain(expr0: sp.Expr, rng: random.Random, max_steps: int) -> list[
 # --------------------------------------------------------------------------- #
 
 def _expr_to_graph(expr: sp.Expr, domain: str) -> Optional[SemanticGraph]:
-    return _SVC.latex_to_graph(sp.latex(expr), domain=domain)
+    # mul_symbol="dot": emit explicit \cdot so a symbol before "(" (e.g. n(n+1))
+    # isn't produced — that parses as a function call, not a product, and would
+    # make the example ungroundable (and silently dropped).
+    return _SVC.latex_to_graph(sp.latex(expr, mul_symbol="dot"), domain=domain)
 
 
 def thread_gold(graphs: list[SemanticGraph]) -> tuple[list, SemanticGraph]:
@@ -150,7 +153,9 @@ def build_example(seed: Seed, rng: random.Random, max_steps: int, max_ops: int =
         DerivationStep(
             step=i,
             operation=seed.intent or "rewrite to the next equivalent form",
-            expr_latex=sp.latex(e),
+            # mul_symbol="dot": explicit \cdot so gold demos obey the signature's
+            # rule (a symbol before "(" is a function call, not multiplication).
+            expr_latex=sp.latex(e, mul_symbol="dot"),
             justification="equivalent transformation (sympy-verified)",
         )
         for i, (e, _g) in enumerate(kept[1:], start=1)

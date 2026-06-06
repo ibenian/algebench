@@ -22,7 +22,9 @@ import hashlib
 from collections import defaultdict
 from typing import Iterable
 
-from backend.model.semantic_graph import SemanticGraph, SemanticGraphEdge
+from backend.model.semantic_graph import (
+    SemanticGraph, SemanticGraphEdge, SemanticGraphNode,
+)
 
 from .outputs import AddEdge, AddNode, GraphOpError, RemoveEdge, RemoveNode
 
@@ -142,8 +144,9 @@ def diff(a: SemanticGraph, b: SemanticGraph) -> list:
     those in ``b`` are added. Resulting ids: matched nodes keep ``a``'s ids,
     added nodes keep ``b``'s ids — canonically equal to ``b``.
 
-    Matching uses a shallow (1-round) coloring so shared leaves/subexpressions
-    persist across an edit, keeping the trajectory small; correctness
+    Matching uses content-only coloring (``rounds=0`` — each node keyed by its own
+    content, no neighborhood refinement) so shared leaves/subexpressions persist
+    across an edit, keeping the trajectory small; correctness
     (``apply(a, diff(a,b)) ≅ b``) holds regardless of match quality.
     """
     ca = wl_colors(a, rounds=0)

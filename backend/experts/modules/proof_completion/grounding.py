@@ -205,7 +205,10 @@ def graph_to_latex(graph: SemanticGraph) -> Optional[str]:
     than honestly flagging an un-renderable intermediate.
     """
     try:
-        return sp.latex(graph_to_sympy(graph))
+        # mul_symbol="dot": explicit \cdot so start_latex/target_latex round-trip
+        # through latex_to_graph (a symbol before "(" would parse as a function
+        # call, not a product).
+        return sp.latex(graph_to_sympy(graph), mul_symbol="dot")
     except Exception:
         pass
 
