@@ -17,8 +17,7 @@ from backend.model.semantic_graph import SemanticGraphNode
 
 
 def _step(i=1, expr="x^2 = 4"):
-    return DerivationStep(step=i, operation="rewrite", expr_latex=expr,
-                          justification="valid")
+    return DerivationStep(operation="rewrite", expr_latex=expr, justification="valid")
 
 
 def _node(nid="x"):
@@ -54,7 +53,6 @@ def test_trajectory_roundtrips_steps():
     dumped = traj.model_dump(by_alias=True)
     back = ProofTrajectory.model_validate(dumped)
     assert [s.expr_latex for s in back.steps] == ["x^2 - 4 = 0", "x^2 = 4"]
-    assert back.steps[1].step == 2
 
 
 def test_expert_result_preserves_subclass_fields_on_dump():

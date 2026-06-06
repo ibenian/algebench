@@ -144,7 +144,6 @@ class DerivationStep(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    step: int = Field(default=1, ge=1, description="1-based derivation step index")
     operation: str = Field(min_length=1, max_length=200,
                            description="the math move, e.g. 'add 4 to both sides'")
     expr_latex: str = Field(min_length=1, max_length=600,

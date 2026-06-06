@@ -156,8 +156,8 @@ def _anim(title: str, start: str,
         trajectory=ProofTrajectory(
             start_latex=start,
             target_latex=steps[-1][1] if steps else start,
-            steps=[DerivationStep(step=i + 1, operation=op, expr_latex=ex, justification=ju)
-                   for i, (op, ex, ju) in enumerate(steps)],
+            steps=[DerivationStep(operation=op, expr_latex=ex, justification=ju)
+                   for (op, ex, ju) in steps],
         ),
     )
 
@@ -270,7 +270,7 @@ def main() -> int:
         # raw LaTeX states (dev convenience) → a trajectory with placeholder captions
         traj = ProofTrajectory(
             start_latex=args.states[0],
-            steps=[DerivationStep(step=i, operation=f"step {i}", expr_latex=s,
+            steps=[DerivationStep(operation=f"step {i}", expr_latex=s,
                                   justification="(manual)")
                    for i, s in enumerate(args.states[1:], start=1)],
         )

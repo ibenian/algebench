@@ -189,8 +189,8 @@ def main() -> int:
     start_latex = graph_to_latex(start_g) or args.start
     print(f"\n=== derivation (LaTeX): {len(steps)} step(s) ===")
     print(f"   start :   {start_latex}")
-    for s, _g, recon in derived:
-        print(f"   step {s.step}:  {recon}")
+    for i, (s, _g, recon) in enumerate(derived, start=1):
+        print(f"   step {i}:  {recon}")
 
     # opt-in detail: one step = one math operation + one full state + one
     # justification. With --trajectory we also recover the atomic graph edits
@@ -198,8 +198,8 @@ def main() -> int:
     if args.trajectory or args.explanation or args.justification:
         print(f"\n=== trajectory ({len(steps)} step(s)) ===")
         prev_g = start_g
-        for s, g, recon in derived:
-            print(f"\n{s.step:2}. {s.operation}")
+        for i, (s, g, recon) in enumerate(derived, start=1):
+            print(f"\n{i:2}. {s.operation}")
             print(f"      latex:         {recon}")
             if args.explanation:
                 print(f"      operation:     {s.operation}")

@@ -151,14 +151,13 @@ def build_example(seed: Seed, rng: random.Random, max_steps: int, max_ops: int =
     # each expr_latex reproduces the gold graph, so this is self-consistent.
     gold_steps = [
         DerivationStep(
-            step=i,
             operation=seed.intent or "rewrite to the next equivalent form",
             # mul_symbol="dot": explicit \cdot so gold demos obey the signature's
             # rule (a symbol before "(" is a function call, not multiplication).
             expr_latex=sp.latex(e, mul_symbol="dot"),
             justification="equivalent transformation (sympy-verified)",
         )
-        for i, (e, _g) in enumerate(kept[1:], start=1)
+        for (e, _g) in kept[1:]
     ]
     return dspy.Example(
         context=context,
