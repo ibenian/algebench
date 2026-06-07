@@ -28,6 +28,9 @@ const DECORATIONS = [".frac-line", ".sqrt svg", ".delimsizing"];
 
 // Playback speed multipliers the speed button cycles through (click → next).
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
+
+// Caption LaTeX delimiters: $…$, `…` (backticks — what the LM emits), \(…\), \[…\].
+const _CAPTION_RE = /(\$[^$]+\$|`[^`]+`|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\])/g;
 const _speedLabel = (s) => ({ 0.25: "¼×", 0.5: "½×" }[s] || `${s}×`);
 
 export class ProofAnimator {
@@ -409,22 +412,28 @@ export class ProofAnimator {
     }
   }
 
-  // render a caption with inline LaTeX ($...$) interspersed with plain text
+  // Render a caption: inline LaTeX interspersed with plain text. LaTeX may be
+  // delimited by $…$, `…` (backticks — what the LM tends to emit), \(…\) or \[…\];
+  // everything else is plain text.
   _caption(el, text) {
     el.innerHTML = "";
-    for (const part of String(text).split(/(\$[^$]*\$)/g)) {
-      if (part.length >= 2 && part[0] === "$" && part[part.length - 1] === "$") {
-        const span = document.createElement("span");
-        try {
-          this.katex.render(part.slice(1, -1), span, { throwOnError: false, displayMode: false });
-        } catch (e) {
-          span.textContent = part;
-        }
-        el.appendChild(span);
-      } else if (part) {
-        el.appendChild(document.createTextNode(part));
+    const s = String(text);
+    let last = 0, m;
+    _CAPTION_RE.lastIndex = 0;
+    while ((m = _CAPTION_RE.exec(s)) !== null) {
+      if (m.index > last) el.appendChild(document.createTextNode(s.slice(last, m.index)));
+      const tok = m[0];
+      const inner = (tok[0] === "$" || tok[0] === "`") ? tok.slice(1, -1) : tok.slice(2, -2);
+      const span = document.createElement("span");
+      try {
+        this.katex.render(inner, span, { throwOnError: false, displayMode: false });
+      } catch (e) {
+        span.textContent = inner;
       }
+      el.appendChild(span);
+      last = m.index + tok.length;
     }
+    if (last < s.length) el.appendChild(document.createTextNode(s.slice(last)));
   }
 
   _syncUI() {
