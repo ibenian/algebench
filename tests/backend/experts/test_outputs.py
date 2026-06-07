@@ -16,7 +16,7 @@ from backend.experts.modules.proof_completion.outputs import (
 from backend.model.semantic_graph import SemanticGraphNode
 
 
-def _step(i=1, expr="x^2 = 4"):
+def _step(_i=1, expr="x^2 = 4"):   # _i: positional index kept for call sites, unused now
     return DerivationStep(operation="rewrite", expr_latex=expr, justification="valid")
 
 

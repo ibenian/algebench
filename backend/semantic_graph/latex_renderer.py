@@ -10,9 +10,12 @@ engine needs (each glyph traces back to a node).
 ``with_ids=True`` wraps every node's sub-expression — AND every operator glyph
 (``+``, ``=``, ``\\cdot``, ``-``) and exponent — in its own id via ``wrap``
 (default KaTeX ``\\htmlData{n=<id>}{...}`` → ``data-n``). Tagging operators too
-lets the animator move them (not just variables). Each occurrence of a shared
-node gets a distinct id (``a``, ``a__1`` …) so the DOM never has duplicate
-``data-n``; the first occurrence keeps the bare id for cross-state matching.
+lets the animator move them (not just variables). A non-shared node keeps its bare
+id (the cross-state match key). A *shared* (DAG) node — referenced by multiple
+parents — gets one id per occurrence, derived from its STABLE parent id
+(``<id>__<parent_oid>``), so the same physical spot keeps the same ``data-n``
+across states even when the structure reorders. The DOM thus never has duplicate
+``data-n``.
 
 Raises ``StructuralRenderError`` on an unmodeled construct / non-single-root graph.
 """

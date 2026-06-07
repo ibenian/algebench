@@ -150,44 +150,44 @@
       "target_latex": "x = \\frac{- b + \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
       "steps": [
         {
-          "operation": "Divide both sides by `a`.",
+          "operation": "Divide both sides by $a$.",
           "expr_latex": "x^{2} + \\frac{b}{a} \\cdot x + \\frac{c}{a} = 0",
           "justification": "Division property of equality: Dividing both sides of an equation by the same non-zero number maintains the equality."
         },
         {
-          "operation": "Subtract `\\frac{c}{a}` from both sides.",
+          "operation": "Subtract $\\frac{c}{a}$ from both sides.",
           "expr_latex": "x^{2} + \\frac{b}{a} \\cdot x = - \\frac{c}{a}",
           "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality."
         },
         {
-          "operation": "Add `\\left(\\frac{b}{2a}\\right)^{2}` to both sides to complete the square.",
+          "operation": "Add $\\left(\\frac{b}{2a}\\right)^{2}$ to both sides to complete the square.",
           "expr_latex": "x^{2} + \\frac{b}{a} \\cdot x + \\left(\\frac{b}{2a}\\right)^{2} = - \\frac{c}{a} + \\left(\\frac{b}{2a}\\right)^{2}",
           "justification": "Addition property of equality: Adding the same quantity to both sides of an equation maintains the equality. This step prepares the left side for factoring as a perfect square."
         },
         {
           "operation": "Factor the perfect square trinomial on the left side and expand the square on the right side.",
           "expr_latex": "\\left(x + \\frac{b}{2a}\\right)^{2} = - \\frac{c}{a} + \\frac{b^{2}}{4a^{2}}",
-          "justification": "Algebraic identity `(u+v)^2 = u^2 + 2uv + v^2` for the left side, and exponent rule `(uv)^n = u^n v^n` for the right side."
+          "justification": "Algebraic identity $(u+v)^2 = u^2 + 2uv + v^2$ for the left side, and exponent rule $(uv)^n = u^n v^n$ for the right side."
         },
         {
           "operation": "Find a common denominator and combine the terms on the right side.",
           "expr_latex": "\\left(x + \\frac{b}{2a}\\right)^{2} = \\frac{- 4 \\cdot a \\cdot c + b^{2}}{4 \\cdot a^{2}}",
-          "justification": "Arithmetic of fractions: To combine fractions, a common denominator `4a^2` is found, and the numerators are added."
+          "justification": "Arithmetic of fractions: To combine fractions, a common denominator $4a^2$ is found, and the numerators are added."
         },
         {
           "operation": "Take the positive square root of both sides.",
           "expr_latex": "x + \\frac{b}{2a} = \\sqrt{\\frac{- 4 \\cdot a \\cdot c + b^{2}}{4 \\cdot a^{2}}}",
-          "justification": "Square root property of equality: If `u^2 = v`, then `u = \\pm\\sqrt{v}`. We select the positive root as per the instruction."
+          "justification": "Square root property of equality: If $u^2 = v$, then $u = \\pm\\sqrt{v}$. We select the positive root as per the instruction."
         },
         {
           "operation": "Simplify the square root on the right side.",
           "expr_latex": "x + \\frac{b}{2a} = \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
-          "justification": "Property of square roots: `\\sqrt{\\frac{u}{v}} = \\frac{\\sqrt{u}}{\\sqrt{v}}` and `\\sqrt{4a^2} = 2a` (assuming `a` is positive, or considering the principal root)."
+          "justification": "Property of square roots: $\\sqrt{\\frac{u}{v}} = \\frac{\\sqrt{u}}{\\sqrt{v}}$ and $\\sqrt{4a^2} = 2a$ (assuming $a$ is positive, or considering the principal root)."
         },
         {
-          "operation": "Subtract `\\frac{b}{2a}` from both sides.",
+          "operation": "Subtract $\\frac{b}{2a}$ from both sides.",
           "expr_latex": "x = - \\frac{b}{2a} + \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
-          "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality, isolating `x`."
+          "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality, isolating $x$."
         },
         {
           "operation": "Combine the fractions on the right side.",

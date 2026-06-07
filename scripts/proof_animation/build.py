@@ -165,7 +165,7 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
     for s in trajectory.steps:
         chain.append((s.operation, s.justification, s.expr_latex))
     if not chain:
-        raise SystemExit("trajectory has no states (need start_latex or steps)")
+        raise ValueError("trajectory has no states (need start_latex or steps)")
 
     svc = SemanticGraphService()
     working = None
@@ -173,7 +173,7 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
     for i, (operation, justification, ltx) in enumerate(chain):
         g = svc.latex_to_graph(ltx, domain=domain)
         if g is None:
-            raise SystemExit(f"could not parse state {i}: {ltx!r}")
+            raise ValueError(f"could not parse state {i}: {ltx!r}")
         # rebase: keep g's authored structure, reuse stable ids for persisting parts
         working = g if working is None else _rebase(working, g)
         out.append({
