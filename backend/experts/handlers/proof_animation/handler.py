@@ -124,7 +124,7 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
         start, _lm_target, lm_domain, lm_title, given_label, start_note = \
             endpoints_from_prompt(prompt)
         if not start:
-            raise ValueError("could not infer a starting expression for this derivation")
+            return {"error": "Couldn't infer a starting expression for this derivation."}
 
     domain = (req.domain or lm_domain or "algebra").strip()
     intent = req.intent or (
@@ -135,11 +135,14 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
 
     # --- call: run the expert through the canonical invoke boundary -------------
     svc = SemanticGraphService()
-    start_g = svc.latex_to_graph(start, domain=domain)
-    target_g = svc.latex_to_graph(req.target_latex, domain=domain)
+    try:
+        start_g = svc.latex_to_graph(start, domain=domain)
+        target_g = svc.latex_to_graph(req.target_latex, domain=domain)
+    except Exception:
+        start_g = target_g = None
     if start_g is None or target_g is None:
         which = "start" if start_g is None else "target"
-        raise ValueError(f"could not parse {which} expression")
+        return {"error": f"Couldn't parse the {which} expression."}
 
     payload = {"start": start_g, "target": target_g, "domain": domain, "intent": intent}
     context_id = build_context_id(scene="adhoc", semantic_graph=True)
@@ -157,8 +160,7 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
         if traj.steps:
             break
     if not traj or not traj.steps:
-        raise ValueError(
-            f"No derivation found — couldn't get from ${start}$ to ${req.target_latex}$.")
+        return {"error": f"No derivation found — couldn't get from ${start}$ to ${req.target_latex}$."}
 
     # --- post: render the trajectory into FLIP animation data -------------------
     # Prefer a human-readable title (proof title) over the raw goal expression.

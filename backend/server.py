@@ -1512,17 +1512,23 @@ def create_app(initial_scene_path=None, debug=False,
         try:
             # The whole sync pipeline (validation + LM call + conversion) off-loop.
             result = await asyncio.to_thread(expert_service.run, name, body)
-            return JSONResponse(result)
         except ValidationError as e:
             print(f"   ⚠️  /api/expert/{name}: invalid request: {e.errors()}", flush=True)
             return JSONResponse({"error": "invalid request", "detail": e.errors()}, status_code=422)
-        except (ValueError, KeyError) as e:
-            print(f"   ⚠️  /api/expert/{name}: {e}", flush=True)
-            return JSONResponse({"error": str(e)}, status_code=400)
         except Exception as e:
+            # Never surface exception text to the client — log server-side, return
+            # a generic message.
             import traceback
-            print(f"   ❌ /api/expert/{name}: {e}\n{traceback.format_exc()}")
+            print(f"   ❌ /api/expert/{name}: {e}\n{traceback.format_exc()}", flush=True)
             return JSONResponse({"error": "internal error running expert"}, status_code=500)
+
+        # A handler reports an expected, user-facing failure as DATA — an
+        # ``{"error": <message>}`` dict with no ``steps`` — so the message is a
+        # controlled, handler-authored string, never an exception's str().
+        if isinstance(result, dict) and result.get("error") and "steps" not in result:
+            print(f"   ⚠️  /api/expert/{name}: {result['error']}", flush=True)
+            return JSONResponse({"error": result["error"]}, status_code=400)
+        return JSONResponse(result)
 
     class GraphEnrichRequest(BaseModel):
         graph: dict
@@ -1713,20 +1719,20 @@ def create_app(initial_scene_path=None, debug=False,
         return Response(content=content, media_type=media_type,
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
-    @fastapp.get("/proof-animation/{filename:path}")
+    @fastapp.get("/proof-animation/{filename}")
     async def get_proof_animation_file(filename: str):
-        """Serve files from static/proof-animation/ (the FLIP animation engine)."""
-        path = sanitize_path(static_dir / "proof-animation", filename)
-        if not path or not path.is_file():
+        """Serve a .js/.css file from static/proof-animation/ (the FLIP engine).
+
+        ``filename`` is constrained to a single flat ``<name>.js|.css`` segment —
+        no path separators, no ``..`` — so it can't escape the directory.
+        """
+        if not re.fullmatch(r"[A-Za-z0-9_-]+\.(?:js|css)", filename or ""):
             return Response(status_code=404)
-        suffix = path.suffix
-        if suffix == '.js':
-            media_type = "application/javascript"
-        elif suffix == '.css':
-            media_type = "text/css"
-        else:
-            media_type = "application/octet-stream"
-        with open(path, 'rb') as f:
+        path = static_dir / "proof-animation" / filename
+        if not path.is_file():
+            return Response(status_code=404)
+        media_type = "application/javascript" if path.suffix == ".js" else "text/css"
+        with open(path, "rb") as f:
             content = f.read()
         return Response(content=content, media_type=media_type,
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
