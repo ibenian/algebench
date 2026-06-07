@@ -9,16 +9,15 @@ from backend.experts.modules.proof_completion.outputs import (
     GRAPH_OP_ADAPTER,
     AddNode,
     DerivationStep,
-    GraphTrajectory,
+    ProofTrajectory,
     RemoveEdge,
     RemoveNode,
 )
 from backend.model.semantic_graph import SemanticGraphNode
 
 
-def _step(i=1, expr="x^2 = 4"):
-    return DerivationStep(step=i, operation="rewrite", expr_latex=expr,
-                          justification="valid")
+def _step(_i=1, expr="x^2 = 4"):   # _i: positional index kept for call sites, unused now
+    return DerivationStep(operation="rewrite", expr_latex=expr, justification="valid")
 
 
 def _node(nid="x"):
@@ -48,25 +47,24 @@ def test_unknown_discriminator_is_rejected():
 
 
 def test_trajectory_roundtrips_steps():
-    traj = GraphTrajectory(
+    traj = ProofTrajectory(
         steps=[_step(1, "x^2 - 4 = 0"), _step(2, "x^2 = 4")],
     )
     dumped = traj.model_dump(by_alias=True)
-    back = GraphTrajectory.model_validate(dumped)
+    back = ProofTrajectory.model_validate(dumped)
     assert [s.expr_latex for s in back.steps] == ["x^2 - 4 = 0", "x^2 = 4"]
-    assert back.steps[1].step == 2
 
 
 def test_expert_result_preserves_subclass_fields_on_dump():
     # ExpertResult.outputs is list[SerializeAsAny[Output]] — dumping must keep
-    # the concrete subclass fields (e.g. GraphTrajectory.steps), not just the base.
+    # the concrete subclass fields (e.g. ProofTrajectory.steps), not just the base.
     from backend.experts.outputs import ExpertResult
 
-    traj = GraphTrajectory(steps=[_step(1, "x = 2")])
+    traj = ProofTrajectory(steps=[_step(1, "x = 2")])
     result = ExpertResult(expert="proof_completion", context_id="semanticGraph",
                           outputs=[traj])
     d = result.model_dump(by_alias=True)
-    assert d["outputs"][0]["kind"] == "graph_trajectory"
+    assert d["outputs"][0]["kind"] == "proof_trajectory"
     assert len(d["outputs"][0]["steps"]) == 1          # subclass field survived
     assert d["outputs"][0]["steps"][0]["expr_latex"] == "x = 2"
     # single() returns the one output for single-output experts

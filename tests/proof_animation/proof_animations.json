@@ -1,0 +1,200 @@
+[
+  {
+    "title": "Isolate a",
+    "domain": "algebra",
+    "start_operation": "Given the equation",
+    "start_justification": "solve for $a$",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "a + b - c = 0",
+      "target_latex": "a = c - b",
+      "steps": [
+        {
+          "operation": "add $c$ to both sides",
+          "expr_latex": "a + b = c",
+          "justification": "$c$ crosses the $=$ and flips sign"
+        },
+        {
+          "operation": "subtract $b$ from both sides",
+          "expr_latex": "a = c - b",
+          "justification": "$b$ crosses over, leaving $a$ isolated"
+        }
+      ]
+    }
+  },
+  {
+    "title": "Expand the binomial",
+    "domain": "algebra",
+    "start_operation": "Given a perfect square",
+    "start_justification": "expand it",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "(x + 1)^2",
+      "target_latex": "x^2 + 2 x + 1",
+      "steps": [
+        {
+          "operation": "expand $(x+1)^2$",
+          "expr_latex": "x^2 + 2 x + 1",
+          "justification": "$(x+1)^2 = x^2 + 2x + 1$"
+        }
+      ]
+    }
+  },
+  {
+    "title": "Factor the difference of squares",
+    "domain": "algebra",
+    "start_operation": "Given a difference of squares",
+    "start_justification": "factor it",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "a^2 - b^2",
+      "target_latex": "(a - b)(a + b)",
+      "steps": [
+        {
+          "operation": "factor",
+          "expr_latex": "(a - b)(a + b)",
+          "justification": "$a^2 - b^2 = (a-b)(a+b)$"
+        }
+      ]
+    }
+  },
+  {
+    "title": "Relativistic energy–momentum",
+    "domain": "algebra",
+    "start_operation": "Given the energy–momentum relation",
+    "start_justification": "solve for $E$",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "E^2 = (m c^2)^2 + (p c)^2",
+      "target_latex": "E = m c^2 \\sqrt{1 + \\frac{p^2}{m^2 c^2}}",
+      "steps": [
+        {
+          "operation": "take the square root",
+          "expr_latex": "E = \\sqrt{(m c^2)^2 + (p c)^2}",
+          "justification": "solve for $E$ (positive root)"
+        },
+        {
+          "operation": "expand the squares",
+          "expr_latex": "E = \\sqrt{m^2 c^4 + p^2 c^2}",
+          "justification": "$(m c^2)^2 = m^2 c^4,\\ (p c)^2 = p^2 c^2$"
+        },
+        {
+          "operation": "factor out $c^2$",
+          "expr_latex": "E = \\sqrt{c^2 \\cdot (m^2 c^2 + p^2)}",
+          "justification": "$c^2$ is common to both terms"
+        },
+        {
+          "operation": "pull $c$ out of the root",
+          "expr_latex": "E = c \\sqrt{m^2 c^2 + p^2}",
+          "justification": "$\\sqrt{c^2 x} = c \\sqrt{x}$"
+        },
+        {
+          "operation": "factor out $m^2 c^2$",
+          "expr_latex": "E = m c^2 \\sqrt{1 + \\frac{p^2}{m^2 c^2}}",
+          "justification": "the standard Lorentz-factor form"
+        }
+      ]
+    }
+  },
+  {
+    "title": "Lorentz time dilation",
+    "domain": "algebra",
+    "start_operation": "Given the light-clock relation",
+    "start_justification": "solve for $t$ (invariant $c$)",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "(c t)^2 = (c t_0)^2 + (v t)^2",
+      "target_latex": "t = \\frac{t_0}{\\sqrt{1 - \\frac{v^2}{c^2}}}",
+      "steps": [
+        {
+          "operation": "expand the squares",
+          "expr_latex": "c^2 t^2 = c^2 t_0^2 + v^2 t^2",
+          "justification": "$(c t)^2 = c^2 t^2$, etc."
+        },
+        {
+          "operation": "collect the $t$ terms",
+          "expr_latex": "c^2 t^2 - v^2 t^2 = c^2 t_0^2",
+          "justification": "move $v^2 t^2$ to the left"
+        },
+        {
+          "operation": "factor out $t^2$",
+          "expr_latex": "t^2 \\cdot (c^2 - v^2) = c^2 t_0^2",
+          "justification": "$t^2$ is common on the left"
+        },
+        {
+          "operation": "divide by $c^2 - v^2$",
+          "expr_latex": "t^2 = \\frac{c^2 t_0^2}{c^2 - v^2}",
+          "justification": "isolate $t^2$"
+        },
+        {
+          "operation": "divide top and bottom by $c^2$",
+          "expr_latex": "t^2 = \\frac{t_0^2}{1 - \\frac{v^2}{c^2}}",
+          "justification": "introduce $\\frac{v^2}{c^2}$"
+        },
+        {
+          "operation": "take the square root",
+          "expr_latex": "t = \\frac{t_0}{\\sqrt{1 - \\frac{v^2}{c^2}}}",
+          "justification": "moving clocks run slow by $\\gamma$"
+        }
+      ]
+    }
+  },
+  {
+    "title": "Quadratic roots & discriminant",
+    "domain": "algebra",
+    "start_operation": "Given the quadratic equation",
+    "start_justification": "complete the square; the discriminant is $b^2 - 4ac$",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "a \\cdot x^{2} + b \\cdot x + c = 0",
+      "target_latex": "x = \\frac{- b + \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+      "steps": [
+        {
+          "operation": "Divide both sides by $a$.",
+          "expr_latex": "x^{2} + \\frac{b}{a} \\cdot x + \\frac{c}{a} = 0",
+          "justification": "Division property of equality: Dividing both sides of an equation by the same non-zero number maintains the equality."
+        },
+        {
+          "operation": "Subtract $\\frac{c}{a}$ from both sides.",
+          "expr_latex": "x^{2} + \\frac{b}{a} \\cdot x = - \\frac{c}{a}",
+          "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality."
+        },
+        {
+          "operation": "Add $\\left(\\frac{b}{2a}\\right)^{2}$ to both sides to complete the square.",
+          "expr_latex": "x^{2} + \\frac{b}{a} \\cdot x + \\left(\\frac{b}{2a}\\right)^{2} = - \\frac{c}{a} + \\left(\\frac{b}{2a}\\right)^{2}",
+          "justification": "Addition property of equality: Adding the same quantity to both sides of an equation maintains the equality. This step prepares the left side for factoring as a perfect square."
+        },
+        {
+          "operation": "Factor the perfect square trinomial on the left side and expand the square on the right side.",
+          "expr_latex": "\\left(x + \\frac{b}{2a}\\right)^{2} = - \\frac{c}{a} + \\frac{b^{2}}{4a^{2}}",
+          "justification": "Algebraic identity $(u+v)^2 = u^2 + 2uv + v^2$ for the left side, and exponent rule $(uv)^n = u^n v^n$ for the right side."
+        },
+        {
+          "operation": "Find a common denominator and combine the terms on the right side.",
+          "expr_latex": "\\left(x + \\frac{b}{2a}\\right)^{2} = \\frac{- 4 \\cdot a \\cdot c + b^{2}}{4 \\cdot a^{2}}",
+          "justification": "Arithmetic of fractions: To combine fractions, a common denominator $4a^2$ is found, and the numerators are added."
+        },
+        {
+          "operation": "Take the positive square root of both sides.",
+          "expr_latex": "x + \\frac{b}{2a} = \\sqrt{\\frac{- 4 \\cdot a \\cdot c + b^{2}}{4 \\cdot a^{2}}}",
+          "justification": "Square root property of equality: If $u^2 = v$, then $u = \\pm\\sqrt{v}$. We select the positive root as per the instruction."
+        },
+        {
+          "operation": "Simplify the square root on the right side.",
+          "expr_latex": "x + \\frac{b}{2a} = \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+          "justification": "Property of square roots: $\\sqrt{\\frac{u}{v}} = \\frac{\\sqrt{u}}{\\sqrt{v}}$ and $\\sqrt{4a^2} = 2a$ (assuming $a$ is positive, or considering the principal root)."
+        },
+        {
+          "operation": "Subtract $\\frac{b}{2a}$ from both sides.",
+          "expr_latex": "x = - \\frac{b}{2a} + \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+          "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality, isolating $x$."
+        },
+        {
+          "operation": "Combine the fractions on the right side.",
+          "expr_latex": "x = \\frac{- b + \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+          "justification": "Arithmetic of fractions: Since the terms on the right side have a common denominator, their numerators can be combined."
+        }
+      ]
+    }
+  }
+]

@@ -71,7 +71,7 @@ generate(n, seed) →
   → for each expr: latex_to_graph(latex(expr), domain) → SemanticGraph
   → thread per-step diffs into a gold trajectory (apply(start, gold) ≅ target)
   → dspy.Example(context=GraphTransition(start, target, domain, intent),
-                 trajectory=GraphTrajectory(gold steps), gold_ops, step_exprs, …)
+                 trajectory=ProofTrajectory(gold steps), gold_ops, step_exprs, …)
 ```
 
 Every example is **filtered**: each step must be sympy-groundable, the chain must
@@ -82,7 +82,7 @@ the target. **Train uses one seed, eval another**, so eval is genuinely held out
 
 1. **Dataset generation (here)** — the seed catalog; the only source of train/eval.
 2. **Parser/cache hint** — `domain` is passed to `SemanticGraphService.latex_to_graph(latex, domain=…)`.
-3. **Evaluation breakdown** — `proof_completion_evaluate.py` reports metrics per
+3. **Evaluation breakdown** — `proof_completion/evaluate.py` reports metrics per
    domain (the "BY DOMAIN" table).
 4. **Model input hint** — `domain` is a (possibly empty) input field on the
    signature, an advisory nudge about the kind of math.
@@ -105,7 +105,7 @@ It flows: `GraphTransition.domain` → `module.forward` → both `latex_to_graph
            # Seed("trig", "prove ...", chain[0], chain=(e0, e1, e2)),
        ]
    ```
-3. Regenerate the datasets (`scripts/proof_completion_generate.py`). No other edits —
+3. Regenerate the datasets (`scripts/proof_completion/dataset.py`). No other edits —
    `discover_domains()` picks the file up automatically.
 
 ## Tuning the training set

@@ -82,6 +82,32 @@ def state_graph(svc, expr_latex: str, domain):
     return g
 
 
+def derive_trajectory(start, target, *, domain=None, intent=None,
+                      program=None, baseline=False):
+    """Run the ProofCompletionExpert on (start, target) → a ProofTrajectory.
+
+    Reusable core of this script (also used by proof_animation/derive.py). The
+    caller must have called ``init_experts()`` first (it configures the DSPy LM).
+    Raises ValueError if either endpoint fails to parse.
+    """
+    svc = SemanticGraphService()
+    start_g = svc.latex_to_graph(start, domain=domain)
+    target_g = svc.latex_to_graph(target, domain=domain)
+    if start_g is None or target_g is None:
+        which = "start" if start_g is None else "target"
+        raise ValueError(f"could not parse {which} expression")
+    intent = intent or "Transform the start expression into the target."
+    ctx = GraphTransition(start=start_g, target=target_g, domain=domain, intent=intent)
+    prog = ProofCompletionExpert(artifact=program, load_default=not baseline)
+    outputs = prog(
+        context=ctx,
+        context_id=build_context_id(scene="adhoc", semantic_graph=True),
+        lesson_context="",
+        instruction=intent,
+    )
+    return outputs[0]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("start", help="starting LaTeX expression")
@@ -163,8 +189,8 @@ def main() -> int:
     start_latex = graph_to_latex(start_g) or args.start
     print(f"\n=== derivation (LaTeX): {len(steps)} step(s) ===")
     print(f"   start :   {start_latex}")
-    for s, _g, recon in derived:
-        print(f"   step {s.step}:  {recon}")
+    for i, (s, _g, recon) in enumerate(derived, start=1):
+        print(f"   step {i}:  {recon}")
 
     # opt-in detail: one step = one math operation + one full state + one
     # justification. With --trajectory we also recover the atomic graph edits
@@ -172,8 +198,8 @@ def main() -> int:
     if args.trajectory or args.explanation or args.justification:
         print(f"\n=== trajectory ({len(steps)} step(s)) ===")
         prev_g = start_g
-        for s, g, recon in derived:
-            print(f"\n{s.step:2}. {s.operation}")
+        for i, (s, g, recon) in enumerate(derived, start=1):
+            print(f"\n{i:2}. {s.operation}")
             print(f"      latex:         {recon}")
             if args.explanation:
                 print(f"      operation:     {s.operation}")

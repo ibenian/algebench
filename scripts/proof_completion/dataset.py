@@ -6,9 +6,9 @@ with a self-consistent gold trajectory of atomic graph edits. No LLM is used —
 sympy is the ground truth.
 
 Usage:
-    ./run.sh scripts/proof_completion_generate.py --n 200 --seed 1 \\
+    ./run.sh scripts/proof_completion/dataset.py --n 200 --seed 1 \\
         --out data/proof_completion/train.jsonl
-    ./run.sh scripts/proof_completion_generate.py --n 60 --seed 2 \\
+    ./run.sh scripts/proof_completion/dataset.py --n 60 --seed 2 \\
         --out data/proof_completion/eval.jsonl
 """
 

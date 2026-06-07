@@ -18,7 +18,7 @@ from .grounding import graph_to_latex
 
 # The "blessed" compiled program. If this file exists it is loaded by default —
 # so service.invoke and the CLI use the optimized expert without --program.
-# (gitignored; produced by proof_completion_optimize.py --out <this path>.)
+# (gitignored; produced by proof_completion/optimize.py --out <this path>.)
 DEFAULT_ARTIFACT = os.path.join(os.path.dirname(__file__), "artifacts",
                                 "proof_completion.json")
 
@@ -31,7 +31,7 @@ DEFAULT_ARTIFACT = os.path.join(os.path.dirname(__file__), "artifacts",
 class ProofCompletionExpert(dspy.Module):
     """Produce the step-by-step derivation transforming start into target.
 
-    Returns a single ``GraphTrajectory`` of derivation *states* (each a complete
+    Returns a single ``ProofTrajectory`` of derivation *states* (each a complete
     ``expr_latex`` + operation + justification). The model emits math, not graph
     edits; the per-state graphs and the atomic edits between them are recovered
     deterministically in code (``latex_to_graph`` + ``diff``).

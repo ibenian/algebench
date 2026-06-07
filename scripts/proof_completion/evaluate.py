@@ -7,8 +7,8 @@ uncompiled expert for a baseline, and again with ``--program <artifact>`` after
 optimization to measure the lift.
 
 Usage:
-    ./run.sh scripts/proof_completion_evaluate.py --data data/proof_completion/eval.jsonl
-    ./run.sh scripts/proof_completion_evaluate.py --data data/proof_completion/eval.jsonl \\
+    ./run.sh scripts/proof_completion/evaluate.py --data data/proof_completion/eval.jsonl
+    ./run.sh scripts/proof_completion/evaluate.py --data data/proof_completion/eval.jsonl \\
         --program backend/experts/modules/proof_completion/artifacts/proof_completion.json
 """
 

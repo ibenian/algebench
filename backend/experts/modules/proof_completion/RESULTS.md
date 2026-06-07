@@ -51,7 +51,7 @@ Held-out eval: `data/proof_completion/eval.jsonl`, **n=40** (multi-step: 20×1-s
 
 ```bash
 ALGEBENCH_LM_REASONING=low ALGEBENCH_LM_TEMPERATURE=0 \
-  ./run.sh scripts/proof_completion_evaluate.py --data data/proof_completion/eval.jsonl \
+  ./run.sh scripts/proof_completion/evaluate.py --data data/proof_completion/eval.jsonl \
   --tag baseline --results-log data/proof_completion/results.jsonl
 # + optimize (bootstrap | mipro) then evaluate --program <artifact> --tag <name>
 ```
