@@ -86,7 +86,7 @@
   color: var(--pa-active-fg);
   border-color: var(--pa-accent);
 }
-.pa-play { margin-left: auto; min-width: 5.5em; text-align: center; }
+.pa-play { margin-left: auto; width: 6em; box-sizing: border-box; text-align: center; }
 
 .pa-mode {
   display: inline-flex;
