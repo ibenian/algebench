@@ -145,11 +145,11 @@ class DerivationStep(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     operation: str = Field(min_length=1, max_length=200,
-                           description="the math move, e.g. 'add 4 to both sides'")
+                           description="the math move; wrap any math in $…$, e.g. 'add $\\frac{c}{a}$ to both sides'")
     expr_latex: str = Field(min_length=1, max_length=600,
                             description="the COMPLETE LaTeX of the resulting expression")
     justification: str = Field(min_length=1, max_length=400,
-                               description="why this step is mathematically valid")
+                               description="why this step is valid; wrap any math in $…$")
 
 
 class ProofTrajectory(Output):

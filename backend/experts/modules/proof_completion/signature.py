@@ -23,10 +23,12 @@ class ProofCompletionSig(dspy.Signature):
     move and holds the COMPLETE expression you reach after it, as LaTeX.
 
     Rules:
-    - Each step has: `step` (1-based index), `operation` (the move in plain math
-      terms, e.g. "add 4 to both sides", "take the square root of both sides"),
+    - Each step has: `operation` (the move, e.g. "add 4 to both sides"),
       `expr_latex` (the COMPLETE, valid LaTeX of the expression after this move),
       and `justification` (why the move is mathematically valid).
+    - In `operation` and `justification`, write ANY math as inline LaTeX delimited
+      by `$…$` — e.g. "add $\frac{c}{a}$ to both sides", "the discriminant is
+      $b^2 - 4ac$". Do NOT use backticks or bare text for math; plain words stay plain.
     - Every `expr_latex` MUST be a single, complete, parseable expression — one
       you could hand to a CAS. Never a partial or malformed fragment.
     - Write EVERY multiplication explicitly with `\cdot`. A symbol written
