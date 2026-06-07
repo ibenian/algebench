@@ -55,8 +55,32 @@ export class ProofAnimator {
     this._applySpeed();   // sets this.speed (needs _running to exist)
     this._build();
     this._fixStageSize();   // pin the stage to the largest step so it never resizes
+    this._fixMetaSize();    // pin the caption area to the tallest op+justification
     this._renderInto(this.stage, this.data.steps[0].latex);
     this._syncUI();
+  }
+
+  // Reserve the height of the tallest caption (operation + justification) so the
+  // controls below never shift as captions wrap to more/fewer lines per step.
+  _fixMetaSize() {
+    const meta = this.container.querySelector(".pa-meta");
+    if (!meta) return;
+    const probe = document.createElement("div");
+    probe.className = "pa-meta";
+    probe.style.cssText =
+      `position:absolute; visibility:hidden; left:-9999px; top:0; width:${meta.clientWidth}px;`;
+    const op = document.createElement("span"); op.className = "pa-op";
+    const just = document.createElement("span"); just.className = "pa-just";
+    probe.append(op, just);
+    this.container.appendChild(probe);
+    let h = 0;
+    for (const s of this.data.steps) {
+      this._caption(op, s.operation ? `${s.index}. ${s.operation}` : `state ${s.index}`);
+      this._caption(just, s.justification || "");
+      h = Math.max(h, probe.getBoundingClientRect().height);
+    }
+    probe.remove();
+    if (h > 0) meta.style.minHeight = Math.ceil(h) + "px";
   }
 
   // Measure every step and lock the stage to the max width/height, so the canvas
