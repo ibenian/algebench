@@ -8,7 +8,7 @@ renders each state to **annotated LaTeX** (``\\htmlData{n=<id>}{...}``) with tho
 stable ids. The JS engine FLIP-morphs between states keyed on ``data-n``.
 
 This module is the conversion only. The committed test cases live in
-``tests/proof_animation/proofs.json``; rendering to HTML is ``report.py``;
+``tests/proof_animation/proof_animations.json``; rendering to HTML is ``report.py``;
 deriving a proof from a prompt is ``derive.py``.
 """
 from __future__ import annotations

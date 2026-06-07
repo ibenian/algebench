@@ -4,7 +4,7 @@
 Runs the ProofCompletionExpert on a START → TARGET prompt, wraps the resulting
 ProofTrajectory as a ProofAnimation (title + domain + trajectory), and prints it
 (or writes it with --out) for review. To add it to the test suite, paste the JSON
-into tests/proof_animation/proofs.json by hand once you're happy with it.
+into tests/proof_animation/proof_animations.json by hand once you're happy with it.
 
 Needs GEMINI_API_KEY (LM inference, loaded from .env.local). Manual/local — this
 is NOT run in CI; CI only renders the committed suite.
@@ -122,7 +122,7 @@ def main() -> int:
                           start_operation="Given", start_justification=start_justification)
 
     # Output the ProofAnimation JSON for review — paste it into the test suite
-    # (tests/proof_animation/proofs.json) by hand once you're happy with it.
+    # (tests/proof_animation/proof_animations.json) by hand once you're happy with it.
     if args.out:
         Path(args.out).write_text(anim.model_dump_json(indent=2), encoding="utf-8")
         print(f"wrote {args.out}")

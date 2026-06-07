@@ -1,6 +1,6 @@
 # Proof Animation — test suite
 
-`proofs.json` is the curated suite of proof animations. It's a plain list of
+`proof_animations.json` is the curated suite of proof animations. It's a plain list of
 authored derivations that the proof-animation report renders into an interactive
 page — locally and on GitHub Pages — so the morph engine can be eyeballed on a
 real, growing set of proofs for every PR and on `main`.
@@ -12,7 +12,7 @@ proof needs the model; **rendering the committed suite does not**.
 
 ## Schema
 
-`proofs.json` is a JSON array of `ProofAnimation` objects (the typed model in
+`proof_animations.json` is a JSON array of `ProofAnimation` objects (the typed model in
 `scripts/proof_animation/build.py`). The `trajectory` is the
 `ProofCompletionExpert`'s own output type (`ProofTrajectory`) verbatim:
 
@@ -63,7 +63,7 @@ lands in the suite):
 ```
 
 Review the output (start/target sane? steps valid?), paste the object into
-`proofs.json`, and **commit** it. You can also hand-author an entry directly
+`proof_animations.json`, and **commit** it. You can also hand-author an entry directly
 (same schema). CI renders the committed file and never derives.
 
 ## Rendering / checking
@@ -78,7 +78,7 @@ Or generate the static site without serving:
 
 ```bash
 ./run.sh scripts/proof_animation/report.py \
-    --from-file tests/proof_animation/proofs.json --outdir _site
+    --from-file tests/proof_animation/proof_animations.json --outdir _site
 ```
 
 ## Deployed pages

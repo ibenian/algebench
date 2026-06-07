@@ -44,12 +44,12 @@ The server runs at `http://localhost:8785`.
 ```
 
 **Proof animation** (Manim-style derivation morphs) — the committed test suite is
-`tests/proof_animation/proofs.json` (proof trajectories, hand-maintained):
+`tests/proof_animation/proof_animations.json` (proof trajectories, hand-maintained):
 
 ```bash
 ./scripts/proof_animation/serve.sh                                     # render suite + serve on :5750
-./run.sh scripts/proof_animation/report.py --from-file tests/proof_animation/proofs.json --outdir _site   # CI/Pages render (no LM)
-# derive a proof (LM; needs GEMINI_API_KEY) — prints a ProofAnimation for review; paste into proofs.json by hand
+./run.sh scripts/proof_animation/report.py --from-file tests/proof_animation/proof_animations.json --outdir _site   # CI/Pages render (no LM)
+# derive a proof (LM; needs GEMINI_API_KEY) — prints a ProofAnimation for review; paste into proof_animations.json by hand
 ./run.sh scripts/proof_animation/derive.py --prompt "derive Lorentz time dilation"
 ./run.sh scripts/proof_animation/derive.py "x^2 - 4 = 0" "x = 2" --title "Solve x^2=4" --render
 ```
@@ -104,7 +104,7 @@ static/
 scripts/
   proof_animation/   Proof-animation data pipeline (build · report · derive · serve)
   proof_completion/  Expert train-eval pipeline (dataset · optimize · evaluate)
-tests/proof_animation/proofs.json   Curated proof-animation test suite (trajectories)
+tests/proof_animation/proof_animations.json   Curated proof-animation test suite (trajectories)
 docs/              Architecture, sandbox model, feature ideas
 ```
 

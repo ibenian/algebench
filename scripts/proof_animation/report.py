@@ -20,7 +20,7 @@ _ROOT = Path(__file__).resolve().parent.parent.parent   # scripts/proof_animatio
 _ASSETS = _ROOT / "static" / "proof-animation"
 # The curated test suite: a list of ProofAnimation objects we keep growing. The
 # report renders these by default (and CI deploys them — see proof-animation.yml).
-_FIXTURES = _ROOT / "tests" / "proof_animation" / "proofs.json"
+_FIXTURES = _ROOT / "tests" / "proof_animation" / "proof_animations.json"
 
 
 def _animations_from_file(path: Path, domain: str) -> list[dict]:

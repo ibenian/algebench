@@ -24,7 +24,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# With no args the report renders the curated test suite (tests/proof_animation/proofs.json).
+# With no args the report renders the curated test suite (tests/proof_animation/proof_animations.json).
 
 echo "▶ Generating proof-animation page → $OUTDIR"
 "$DIR/run.sh" scripts/proof_animation/report.py --outdir "$OUTDIR" "${ARGS[@]}"

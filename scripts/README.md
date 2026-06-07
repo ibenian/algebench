@@ -22,15 +22,15 @@ Lives in `scripts/proof_animation/`. Three jobs: **convert**, **render**, **deri
 | Script | What it does |
 | --- | --- |
 | `proof_animation/build.py` | **Conversion library** (no CLI). Turns a typed `ProofTrajectory` (the expert's output) into animation data: parses each state, threads stable per-glyph ids across states (`_rebase`), emits `\htmlData`-annotated LaTeX. Defines `build()` / `build_animation()` and the `ProofAnimation` model. |
-| `proof_animation/report.py` | **Render.** Generates a self-contained HTML page (engine + data). `--from-file proofs.json` (default: the suite) renders many; `--from-json` animates one `ProofTrajectory`; bare LaTeX states render a one-off chain. No model. |
-| `proof_animation/derive.py` | **Derive (local / needs `GEMINI_API_KEY`).** Runs the `ProofCompletionExpert` and prints (or `--out`s) a `ProofAnimation` for review; `--render` previews it. Endpoints from explicit `START TARGET` or `--prompt "…"`. To add to the suite, paste the JSON into `proofs.json` by hand. |
+| `proof_animation/report.py` | **Render.** Generates a self-contained HTML page (engine + data). `--from-file proof_animations.json` (default: the suite) renders many; `--from-json` animates one `ProofTrajectory`; bare LaTeX states render a one-off chain. No model. |
+| `proof_animation/derive.py` | **Derive (local / needs `GEMINI_API_KEY`).** Runs the `ProofCompletionExpert` and prints (or `--out`s) a `ProofAnimation` for review; `--render` previews it. Endpoints from explicit `START TARGET` or `--prompt "…"`. To add to the suite, paste the JSON into `proof_animations.json` by hand. |
 | `proof_animation/serve.sh` | Generate the page and serve it on `:5750` (defaults to the suite). |
 
 ```bash
 # derive a proof for review (prompt, or explicit endpoints)
 ./run.sh scripts/proof_animation/derive.py --prompt "derive Lorentz time dilation"
 ./run.sh scripts/proof_animation/derive.py "x^2 - 4 = 0" "x = 2" --title "Solve x^2 = 4"
-#   → review the printed JSON, then paste it into tests/proof_animation/proofs.json
+#   → review the printed JSON, then paste it into tests/proof_animation/proof_animations.json
 
 # derive + preview in the browser (refresh a running serve to see it)
 ./run.sh scripts/proof_animation/derive.py --prompt "expand (x+1)^2" --render
@@ -40,10 +40,10 @@ Lives in `scripts/proof_animation/`. Three jobs: **convert**, **render**, **deri
 
 # render the suite to a static site (the CI / Pages path — no model)
 ./run.sh scripts/proof_animation/report.py \
-    --from-file tests/proof_animation/proofs.json --outdir _site
+    --from-file tests/proof_animation/proof_animations.json --outdir _site
 ```
 
-The suite lives in `tests/proof_animation/proofs.json` (see its README) and is
+The suite lives in `tests/proof_animation/proof_animations.json` (see its README) and is
 hand-maintained. CI (`.github/workflows/proof-animation.yml`) renders the
 committed suite to Pages; it never derives.
 

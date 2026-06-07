@@ -53,7 +53,7 @@ jobs:
         run: |
           mkdir -p _site
           ./run.sh scripts/proof_animation/report.py \
-            --from-file tests/proof_animation/proofs.json --outdir _site
+            --from-file tests/proof_animation/proof_animations.json --outdir _site
 
       - name: Deploy to GitHub Pages
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
