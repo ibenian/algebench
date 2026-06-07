@@ -43,6 +43,7 @@ export class ProofAnimator {
     // Base timings; the speed multiplier scales them live via animation.playbackRate.
     this._baseDuration = opts.duration ?? 650;
     this._baseStagger = opts.staggerMs ?? 200;
+    this._baseStepPause = opts.stepPause ?? 1000;  // Play: reading pause between steps (1× ≈ 1s)
     this._speedIdx = SPEEDS.indexOf(opts.speed ?? 1);
     if (this._speedIdx < 0) this._speedIdx = SPEEDS.indexOf(1);
     this.current = 0;
@@ -406,9 +407,12 @@ export class ProofAnimator {
   }
 
   async play() {
+    // if we're already at the end, restart from the beginning
+    if (this.current >= this.data.steps.length - 1) await this.goTo(0);
     for (let t = this.current + 1; t < this.data.steps.length; t++) {
       await this.goTo(t);
-      await new Promise((r) => setTimeout(r, 280 / this.speed));
+      // reading pause between steps (≈1s at 1×), scaled by the speed multiplier
+      await new Promise((r) => setTimeout(r, this._baseStepPause / this.speed));
     }
   }
 
