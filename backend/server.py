@@ -2013,7 +2013,19 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
 
     url = f"http://localhost:{port}/"
     if initial_scene_path:
-        url = f"{url}?scene={quote(str(initial_scene_path))}"
+        # The frontend's ?scene= load path goes through /api/scene_file, which
+        # confines reads to scenes/ and REJECTS absolute paths. So only emit
+        # ?scene= for files inside scenes/ (as a scenes/<name> relative path
+        # that round-trips through resolve_scene_path_safe + reload). For paths
+        # outside scenes/, open the bare URL: the frontend then falls back to
+        # /api/scene, which serves the pre-loaded current_spec from the
+        # (trusted) absolute path and keeps working across reloads.
+        try:
+            rel = "scenes/" + Path(initial_scene_path).resolve().relative_to(
+                scenes_dir.resolve()).as_posix()
+            url = f"{url}?scene={quote(rel)}"
+        except ValueError:
+            pass
 
     if json_output:
         result = {
