@@ -50,17 +50,20 @@ class _ProofPromptSig(dspy.Signature):
     target_latex: str = dspy.OutputField(desc="canonical target/result expression, as LaTeX")
     domain: str = dspy.OutputField(desc="math domain: algebra, calculus, etc.")
     title: str = dspy.OutputField(desc="short display title for the derivation")
+    given_label: str = dspy.OutputField(
+        desc="a short 'Given …' label NAMING the starting expression, e.g. "
+             "'Given the quadratic equation', 'Given the energy–momentum relation'")
     start_note: str = dspy.OutputField(
-        desc="one short line describing the starting expression / what is given "
-             "(may use inline $…$ LaTeX)")
+        desc="one short line on the goal / what to do (e.g. 'solve for $x$'); "
+             "may use inline $…$ LaTeX")
 
 
-def _endpoints_from_prompt(prompt: str) -> tuple[str, str, str, str, str]:
-    """LM-propose (start, target, domain, title, start_note) for a request."""
+def _endpoints_from_prompt(prompt: str) -> tuple[str, str, str, str, str, str]:
+    """LM-propose (start, target, domain, title, given_label, start_note) for a request."""
     ep = dspy.Predict(_ProofPromptSig)(prompt=prompt)
     return (ep.start_latex.strip(), ep.target_latex.strip(),
             (ep.domain or "").strip(), (ep.title or "").strip(),
-            (ep.start_note or "").strip())
+            (ep.given_label or "").strip(), (ep.start_note or "").strip())
 
 
 def main() -> int:
@@ -89,12 +92,13 @@ def main() -> int:
 
     # Resolve the endpoints: from a prompt (LM picks them) or explicit START/TARGET.
     if args.prompt:
-        start, target, lm_domain, lm_title, lm_note = _endpoints_from_prompt(args.prompt)
+        start, target, lm_domain, lm_title, lm_given, lm_note = _endpoints_from_prompt(args.prompt)
         if not (start and target):
             print("the model did not return both a start and a target expression.")
             return 1
         domain = args.domain or lm_domain or "algebra"
         title = args.title or lm_title or args.prompt
+        start_operation = lm_given or "Given"           # names what's given (step 0)
         start_justification = lm_note or "the starting expression"
         print(f"prompt → start : {start}")
         print(f"prompt → target: {target}")
@@ -105,6 +109,7 @@ def main() -> int:
         start, target = args.start, args.target
         domain = args.domain or "algebra"
         title = args.title or f"{start} → {target}"
+        start_operation = "Given"
         start_justification = args.intent or "the starting expression"
 
     try:
@@ -119,7 +124,7 @@ def main() -> int:
         return 1
 
     anim = ProofAnimation(title=title, domain=domain, trajectory=traj,
-                          start_operation="Given", start_justification=start_justification)
+                          start_operation=start_operation, start_justification=start_justification)
 
     # Output the ProofAnimation JSON for review — paste it into the test suite
     # (tests/proof_animation/proof_animations.json) by hand once you're happy with it.
