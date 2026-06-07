@@ -29,6 +29,7 @@ let _activeStepForPanel = null;
 let _initDone = false;
 let _currentD3Renderer = null;
 let _currentChartManager = null;
+const _chartManagers = new Map();     // stepKey -> SgChartManager (per-step, persistent)
 let _currentProofManager = null;
 let _d3NodeAskBtn = null;
 let _d3NodeAskHideTimer = null;
@@ -719,10 +720,9 @@ function clearGraph() {
         try { _currentGraphPanel.destroy(); } catch {}
         _currentGraphPanel = null;
     }
-    if (_currentChartManager) {
-        try { _currentChartManager.destroy(); } catch {}
-        _currentChartManager = null;
-    }
+    // NOTE: chart managers are per-step and persistent — NOT destroyed here.
+    // Their charts re-attach to the card via reattach() on the next graph render
+    // (only the active step's manager is shown). Torn down on new-scene load.
     // NOTE: the proof manager is intentionally NOT destroyed here. Derivation
     // boxes persist for the session, scoped to the step they were derived on;
     // setCurrentStep() on the next graph render re-attaches the active step's
@@ -800,12 +800,20 @@ async function _renderWithD3(container, graph, step, key) {
 
     _d3ActiveGraph = graph;
 
-    if (_currentChartManager) {
-        try { _currentChartManager.destroy(); } catch {}
+    // Charts belong to their step too: reuse a per-step chart manager so open
+    // charts persist across navigation/re-renders (they re-attach to the fresh
+    // card via reattach() below). New managers are created lazily per step.
+    {
+        const ckey = stableStepKey(step);
+        let cm = _chartManagers.get(ckey);
+        if (!cm || cm._destroyed) {
+            cm = new SgChartManager(container, graph, { katex: window.katex });
+            _chartManagers.set(ckey, cm);
+        } else {
+            cm.setGraph(graph);
+        }
+        _currentChartManager = cm;
     }
-    _currentChartManager = new SgChartManager(container, graph, {
-        katex: window.katex,
-    });
 
     // Reuse the proof manager across re-renders (e.g. background enrichment) so
     // open derivation boxes — and in-flight derivations, which take many
@@ -885,6 +893,9 @@ async function _renderWithD3(container, graph, step, key) {
     await _currentD3Renderer.render(graph);
     _d3LastStepKey = stepKey;
     _currentSemanticKey = key;
+
+    // Re-attach this step's persisted charts to the freshly-recreated card.
+    if (_currentChartManager) { try { _currentChartManager.reattach(); } catch {} }
 
     // Derivation boxes belong to their step: show only the current step's boxes
     // (re-attaching to the freshly-recreated card), detach the rest. This also
@@ -1984,14 +1995,29 @@ function onGraphSelectionChange(e) {
     // loops when renderCurrentStepGraph preserves a prior selection.
 }
 
+let _lastLessonSpec = null;
+
 function onProofLoad() {
-    // NOTE: this fires on every proof-tree change (incl. navigation), so we do
-    // NOT tear down the proof manager here — derivation boxes persist for the
-    // session and survive navigation (the user's requirement).
+    // Charts and derivation boxes persist per-step across navigation (incl. proof
+    // switches). Only a *new lesson* invalidates them — step keys collide across
+    // lessons — so reset the per-step managers when the lesson actually changes.
+    if (state.lessonSpec !== _lastLessonSpec) {
+        _resetGraphSession();
+        _lastLessonSpec = state.lessonSpec;
+    }
     _d3StepStates.clear();
     _d3LastStepKey = null;
     rebuildProofTree();
     onStepChange();
+}
+
+// New lesson — tear down all per-step chart managers + derivation boxes (their
+// step context no longer applies).
+function _resetGraphSession() {
+    for (const cm of _chartManagers.values()) { try { cm.destroy(); } catch {} }
+    _chartManagers.clear();
+    _currentChartManager = null;
+    if (_currentProofManager) { try { _currentProofManager.destroy(); } catch {} _currentProofManager = null; }
 }
 
 // Monochrome unicode glyphs (LAST QUARTER MOON / BLACK SUN WITH RAYS).
