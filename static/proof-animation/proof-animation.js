@@ -37,16 +37,16 @@ export class ProofAnimator {
     this.katex = opts.katex || (typeof window !== "undefined" && window.katex);
     if (!this.katex) throw new Error("ProofAnimator: KaTeX not available");
     this.mode = opts.mode || "parallel";    // 'parallel' | 'sequential'
-    // Base timings; the speed multiplier scales them (this.duration / staggerMs).
+    // Base timings; the speed multiplier scales them live via animation.playbackRate.
     this._baseDuration = opts.duration ?? 650;
     this._baseStagger = opts.staggerMs ?? 200;
     this._speedIdx = SPEEDS.indexOf(opts.speed ?? 1);
     if (this._speedIdx < 0) this._speedIdx = SPEEDS.indexOf(1);
-    this._applySpeed();   // sets this.speed, this.duration, this.staggerMs
     this.current = 0;
     this._running = [];
     this._ghosts = [];
     this._token = null;
+    this._applySpeed();   // sets this.speed (needs _running to exist)
     this._build();
     this._fixStageSize();   // pin the stage to the largest step so it never resizes
     this._renderInto(this.stage, this.data.steps[0].latex);
@@ -75,14 +75,22 @@ export class ProofAnimator {
     if (h > 0) this.stage.style.height = Math.ceil(h + 8) + "px";
   }
 
-  // Apply the current speed multiplier to the effective durations (and update the
-  // button label if it exists). Higher speed ⇒ shorter durations.
+  // Apply the current speed multiplier. Animations are created at base duration
+  // and play at this.speed via playbackRate, so changing it here ALSO rescales
+  // whatever is mid-flight (immediate effect), then updates the button label.
   _applySpeed() {
     this.speed = SPEEDS[this._speedIdx];
-    this.duration = this._baseDuration / this.speed;
-    this.staggerMs = this._baseStagger / this.speed;
+    for (const a of this._running) { try { a.playbackRate = this.speed; } catch (e) {} }
     const btn = this.container.querySelector(".pa-speed");
     if (btn) btn.textContent = _speedLabel(this.speed);
+  }
+
+  // Create an animation already running at the current speed (via playbackRate),
+  // so _applySpeed can rescale it live. Durations/delays are in BASE units.
+  _tween(el, keyframes, opts) {
+    const a = el.animate(keyframes, opts);
+    a.playbackRate = this.speed;
+    return a;
   }
 
   _build() {
@@ -337,9 +345,9 @@ export class ProofAnimator {
     const delAnims = [];
     let di = 0;
     for (const host of ghosts) {
-      const a = host.animate(
+      const a = this._tween(host,
         [{ opacity: 1 }, { opacity: 0 }],
-        { duration: this.duration * 0.6, delay: seq ? di++ * this.staggerMs : 0, easing: EASE, fill: "forwards" }
+        { duration: this._baseDuration * 0.6, delay: seq ? di++ * this._baseStagger : 0, easing: EASE, fill: "forwards" }
       );
       a.onfinish = () => host.remove();
       delAnims.push(a);
@@ -352,10 +360,10 @@ export class ProofAnimator {
     const moveAnims = [];
     let mi = 0;
     for (const blk of movers) {
-      const a = blk.el.animate(
+      const a = this._tween(blk.el,
         [{ transform: `translate(${blk.dx}px, ${blk.dy}px) scale(${blk.scale})` },
          { transform: "translate(0px, 0px) scale(1)" }],
-        { duration: this.duration, delay: seq ? mi++ * this.staggerMs : 0, easing: EASE, fill: "backwards" }
+        { duration: this._baseDuration, delay: seq ? mi++ * this._baseStagger : 0, easing: EASE, fill: "backwards" }
       );
       a.onfinish = () => {                              // restore normal flow at rest
         blk.el.style.transform = "";
@@ -373,18 +381,18 @@ export class ProofAnimator {
     let ii = 0;
     for (const el of insertEls) {
       el.classList.add("pa-move");
-      const a = el.animate(
+      const a = this._tween(el,
         [{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "none" }],
-        { duration: this.duration * 0.7, delay: seq ? ii++ * this.staggerMs : 0, easing: EASE, fill: "backwards" }
+        { duration: this._baseDuration * 0.7, delay: seq ? ii++ * this._baseStagger : 0, easing: EASE, fill: "backwards" }
       );
       a.onfinish = () => (el.style.opacity = "");
       insAnims.push(a);
     }
     // decorations fade in by opacity only (no scale → no layout shift)
     for (const el of decoEls) {
-      const a = el.animate(
+      const a = this._tween(el,
         [{ opacity: 0 }, { opacity: 1 }],
-        { duration: this.duration * 0.7, delay: seq ? ii++ * this.staggerMs : 0, easing: EASE, fill: "backwards" }
+        { duration: this._baseDuration * 0.7, delay: seq ? ii++ * this._baseStagger : 0, easing: EASE, fill: "backwards" }
       );
       a.onfinish = () => (el.style.opacity = "");
       insAnims.push(a);
@@ -397,7 +405,7 @@ export class ProofAnimator {
   async play() {
     for (let t = this.current + 1; t < this.data.steps.length; t++) {
       await this.goTo(t);
-      await new Promise((r) => setTimeout(r, 280));
+      await new Promise((r) => setTimeout(r, 280 / this.speed));
     }
   }
 
