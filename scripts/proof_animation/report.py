@@ -44,6 +44,14 @@ _INDEX = """<!DOCTYPE html>
     h1 { font-size: 1.15rem; font-weight: 600; color: #374151; margin: 0 0 8px; }
     .pa-title { font-size: 1rem; font-weight: 600; color: #4b5563; margin: 28px 0 8px; }
     .hint { color: #6b7280; font-size: .9rem; margin: 0 0 8px; }
+    /* Match the proof container, which follows prefers-color-scheme: in dark mode
+       the panels go dark (#1a1a2e), so the page sits a touch darker behind them. */
+    @media (prefers-color-scheme: dark) {
+      body { background: #12121c; color: #e5e7eb; }
+      h1 { color: #cbd5e1; }
+      .pa-title { color: #cbd5e1; }
+      .hint { color: #9ca3af; }
+    }
   </style>
 </head>
 <body>
