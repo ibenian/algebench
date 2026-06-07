@@ -50,6 +50,7 @@ export class ProofAnimator {
     this._running = [];
     this._ghosts = [];
     this._token = null;
+    this._playId = null;  // identifies the active play() loop; user nav clears it
     this._applySpeed();   // sets this.speed (needs _running to exist)
     this._build();
     this._fixStageSize();   // pin the stage to the largest step so it never resizes
@@ -117,11 +118,11 @@ export class ProofAnimator {
       b.className = "pa-step";
       b.textContent = String(i);
       b.title = s.operation || `state ${i}`;
-      b.addEventListener("click", () => this.goTo(i));
+      b.addEventListener("click", () => this._userGoTo(i));
       steps.appendChild(b);
     });
-    this.container.querySelector(".pa-prev").onclick = () => this.goTo(this.current - 1);
-    this.container.querySelector(".pa-next").onclick = () => this.goTo(this.current + 1);
+    this.container.querySelector(".pa-prev").onclick = () => this._userGoTo(this.current - 1);
+    this.container.querySelector(".pa-next").onclick = () => this._userGoTo(this.current + 1);
     this.container.querySelector(".pa-play").onclick = () => this.play();
     this.container.querySelector(".pa-speed").onclick = () => {
       this._speedIdx = (this._speedIdx + 1) % SPEEDS.length;
@@ -406,11 +407,21 @@ export class ProofAnimator {
     if (this._token === token) this._running = [];
   }
 
+  // a user-initiated jump: cancels any running play() so autoplay never fights
+  // manual navigation, then goes to the step.
+  _userGoTo(target) {
+    this._playId = null;
+    return this.goTo(target);
+  }
+
   async play() {
+    const playId = (this._playId = {});   // user nav clears _playId, ending this loop
     // if we're already at the end, restart from the beginning
     if (this.current >= this.data.steps.length - 1) await this.goTo(0);
     for (let t = this.current + 1; t < this.data.steps.length; t++) {
+      if (this._playId !== playId) return;            // interrupted by the user
       await this.goTo(t);
+      if (this._playId !== playId) return;
       // reading pause between steps (≈1s at 1×), scaled by the speed multiplier
       await new Promise((r) => setTimeout(r, this._baseStepPause / this.speed));
     }
