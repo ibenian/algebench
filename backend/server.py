@@ -1719,20 +1719,24 @@ def create_app(initial_scene_path=None, debug=False,
         return Response(content=content, media_type=media_type,
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
-    @fastapp.get("/proof-animation/{filename}")
+    @fastapp.get("/proof-animation/{filename:path}")
     async def get_proof_animation_file(filename: str):
-        """Serve a .js/.css file from static/proof-animation/ (the FLIP engine).
+        """Serve files from static/proof-animation/ (the FLIP animation engine).
 
-        ``filename`` is constrained to a single flat ``<name>.js|.css`` segment —
-        no path separators, no ``..`` — so it can't escape the directory.
+        Path traversal is confined by ``sanitize_path`` (resolve() +
+        is_relative_to), the same blessed helper every other static route uses.
         """
-        if not re.fullmatch(r"[A-Za-z0-9_-]+\.(?:js|css)", filename or ""):
+        path = sanitize_path(static_dir / "proof-animation", filename)
+        if not path or not path.is_file():
             return Response(status_code=404)
-        path = static_dir / "proof-animation" / filename
-        if not path.is_file():
-            return Response(status_code=404)
-        media_type = "application/javascript" if path.suffix == ".js" else "text/css"
-        with open(path, "rb") as f:
+        suffix = path.suffix
+        if suffix == '.js':
+            media_type = "application/javascript"
+        elif suffix == '.css':
+            media_type = "text/css"
+        else:
+            media_type = "application/octet-stream"
+        with open(path, 'rb') as f:
             content = f.read()
         return Response(content=content, media_type=media_type,
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
