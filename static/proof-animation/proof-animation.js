@@ -51,6 +51,7 @@ export class ProofAnimator {
     this._ghosts = [];
     this._token = null;
     this._playId = null;  // identifies the active play() loop; user nav clears it
+    this._paused = false; // freeze in-flight animations (works mid-interpolation)
     this._applySpeed();   // sets this.speed (needs _running to exist)
     this._build();
     this._fixStageSize();   // pin the stage to the largest step so it never resizes
@@ -95,6 +96,7 @@ export class ProofAnimator {
   _tween(el, keyframes, opts) {
     const a = el.animate(keyframes, opts);
     a.playbackRate = this.speed;
+    if (this._paused) a.pause();   // stay frozen if paused mid-sequence
     return a;
   }
 
@@ -415,18 +417,29 @@ export class ProofAnimator {
     b.title = playing ? "Pause" : "Play through";
   }
   _togglePlay() {
-    if (this._playId) {           // currently playing → pause
-      this._playId = null;
-      this._setPlayLabel(false);
-    } else {
-      this.play();
-    }
+    if (this._paused) return this._resume();                          // frozen → resume
+    if (this._playId || this._running.length) return this._pause();   // animating/autoplaying → freeze
+    return this.play();                                               // idle → start autoplay
   }
 
-  // a user-initiated jump: cancels any running play() so autoplay never fights
-  // manual navigation, then goes to the step.
+  // Freeze whatever is mid-interpolation: pause the in-flight WAAPI animations
+  // (their `finished` stays pending, so goTo/play stall here until resumed).
+  _pause() {
+    this._paused = true;
+    for (const a of this._running) { try { a.pause(); } catch (e) {} }
+    this._setPlayLabel(false);
+  }
+  _resume() {
+    this._paused = false;
+    for (const a of this._running) { try { a.play(); } catch (e) {} }
+    this._setPlayLabel(true);
+  }
+
+  // a user-initiated jump: cancels any running play()/pause so autoplay never
+  // fights manual navigation, then goes to the step.
   _userGoTo(target) {
     this._playId = null;
+    this._paused = false;
     this._setPlayLabel(false);
     return this.goTo(target);
   }
