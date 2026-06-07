@@ -98,7 +98,7 @@ def main() -> int:
             return 1
         domain = args.domain or lm_domain or "algebra"
         title = args.title or lm_title or args.prompt
-        start_operation = lm_given or "Given"           # names what's given (step 0)
+        start_operation = lm_given or f"Given ${start}$"   # names what's given (step 0)
         start_justification = lm_note or "the starting expression"
         print(f"prompt → start : {start}")
         print(f"prompt → target: {target}")
@@ -109,7 +109,7 @@ def main() -> int:
         start, target = args.start, args.target
         domain = args.domain or "algebra"
         title = args.title or f"{start} → {target}"
-        start_operation = "Given"
+        start_operation = f"Given ${start}$"
         start_justification = args.intent or "the starting expression"
 
     try:
