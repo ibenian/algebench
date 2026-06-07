@@ -1,0 +1,108 @@
+/* proof-animation.css — styles for the ProofAnimator (themeable via CSS vars). */
+
+.pa-root {
+  --pa-fg: var(--text-color, #1a1a2e);
+  --pa-muted: var(--muted-color, #6b7280);
+  --pa-accent: var(--accent-color, #6366f1);
+  --pa-bg: var(--panel-bg, #ffffff);
+  --pa-border: var(--border-color, #e5e7eb);
+  --pa-active-fg: #ffffff;
+
+  font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
+  color: var(--pa-fg);
+  background: var(--pa-bg);
+  border: 1px solid var(--pa-border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* the expression canvas — relative so delete-ghosts can be absolutely placed */
+.pa-stage {
+  position: relative;
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  font-size: 1.9rem;
+  line-height: 1.2;
+}
+.pa-stage .katex { color: var(--pa-fg); }
+
+/* Animated tokens must be inline-block — CSS transforms are IGNORED on
+   display:inline elements (KaTeX renders tokens inline), so without this the
+   translate/scale has no visual effect. baseline keeps vertical alignment. */
+.pa-move {
+  display: inline-block;
+  vertical-align: baseline;
+  position: relative;
+  z-index: 2;
+  will-change: transform;
+}
+.pa-ghost { pointer-events: none; z-index: 1; }
+
+/* operation + justification line */
+.pa-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  min-height: 1.4em;
+  font-size: 0.95rem;
+}
+.pa-op { font-weight: 600; color: var(--pa-fg); }
+.pa-just { color: var(--pa-muted); font-style: italic; }
+
+/* controls */
+.pa-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--pa-border);
+  padding-top: 12px;
+}
+.pa-steps { display: flex; gap: 6px; }
+
+.pa-btn, .pa-step {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--pa-border);
+  background: var(--pa-bg);
+  color: var(--pa-fg);
+  border-radius: 8px;
+  padding: 6px 12px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.pa-step { min-width: 34px; text-align: center; }
+.pa-speed { min-width: 3em; text-align: center; font-variant-numeric: tabular-nums; }
+.pa-btn:hover, .pa-step:hover { border-color: var(--pa-accent); }
+
+.pa-step.pa-active {
+  background: var(--pa-accent);
+  color: var(--pa-active-fg);
+  border-color: var(--pa-accent);
+}
+.pa-play { margin-left: auto; }
+
+.pa-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pa-muted);
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+/* dark theme friendliness when the host sets a dark background var */
+@media (prefers-color-scheme: dark) {
+  .pa-root {
+    --pa-fg: var(--text-color, #e5e7eb);
+    --pa-bg: var(--panel-bg, #1a1a2e);
+    --pa-border: var(--border-color, #2d2d44);
+    --pa-muted: var(--muted-color, #9ca3af);
+  }
+}
