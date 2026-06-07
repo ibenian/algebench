@@ -11,11 +11,20 @@ import { ProofAnimator } from '/proof-animation/proof-animation.js';
 import { invokeExpert } from '/expert-client.js';
 import { nextDockSeq } from '/proof-animation/dock-seq.js';
 
-// Session-persistent cache of derivation results, keyed by the request shape.
-// Survives navigation/re-renders so a derived node is never recomputed and its
-// context is not lost.
+// Session-persistent cache of derivation results, keyed by the FULL request
+// shape (everything that affects the derivation — target/start/domain plus
+// goal/givens/intent/context), so different givens or lesson context never reuse
+// a wrong derivation. Cleared on a new lesson (see clearDeriveCache).
 const _DERIVE_CACHE = new Map();
-const _cacheKey = (p) => `${p.target_latex || ''}|${p.start_latex || ''}|${p.domain || ''}`;
+const _cacheKey = (p) => JSON.stringify({
+    t: p.target_latex || '', s: p.start_latex || '', d: p.domain || '',
+    g: p.goal || '', gv: p.givens || [], i: p.intent || '', c: p.context || null,
+});
+
+/** Drop all cached derivations (call on a new lesson — step keys/context change). */
+export function clearDeriveCache() {
+    _DERIVE_CACHE.clear();
+}
 
 const BOX_W = 360;            // natural render width of the animator (zoomed to fit the box)
 const GRID_COLS = 8;          // same grid as SgChartManager

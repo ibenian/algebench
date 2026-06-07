@@ -20,7 +20,7 @@ import { state } from '/state.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
 import { SgChartManager } from '/graph-panel/sg-chart.js';
-import { SgProofManager } from '/proof-animation/sg-proof.js';
+import { SgProofManager, clearDeriveCache } from '/proof-animation/sg-proof.js';
 import { makeAiAskButton, renderKaTeX } from '/labels.js';
 
 let _currentGraphPanel = null;
@@ -817,8 +817,8 @@ async function _renderWithD3(container, graph, step, key) {
 
     // Reuse the proof manager across re-renders (e.g. background enrichment) so
     // open derivation boxes — and in-flight derivations, which take many
-    // seconds — survive instead of being torn down. It's only destroyed when
-    // the graph view is cleared (see clearGraph).
+    // seconds — survive instead of being torn down. It is NOT destroyed by
+    // clearGraph; only a new lesson tears it down (see _resetGraphSession).
     if (!_currentProofManager || _currentProofManager._destroyed) {
         _currentProofManager = new SgProofManager(container, {
             katex: window.katex,
@@ -1045,28 +1045,34 @@ function _d3NodeElById(nodeId) {
 
 /** Strip KaTeX \htmlClass/\htmlData/\htmlId/\htmlStyle wrappers, keeping content.
  *  Proof-step ``math`` carries highlight annotations the LaTeX parser can't read. */
+const _HTML_MACROS = ['htmlClass', 'htmlData', 'htmlId', 'htmlStyle'];
+
 function _stripHtmlMacros(s) {
     if (!s) return s;
-    let out = String(s);
-    for (const m of ['htmlClass', 'htmlData', 'htmlId', 'htmlStyle']) {
-        const needle = '\\' + m + '{';
-        let idx;
-        while ((idx = out.indexOf(needle)) !== -1) {
-            // skip the first {…} (the class/data argument)
-            let i = idx + needle.length, depth = 1;
-            while (i < out.length && depth > 0) {
-                if (out[i] === '{') depth++; else if (out[i] === '}') depth--;
-                i++;
-            }
-            if (out[i] !== '{') { out = out.slice(0, idx) + out.slice(idx + 1); continue; }
-            const contentStart = i + 1;
-            let j = contentStart; depth = 1;
-            while (j < out.length && depth > 0) {
-                if (out[j] === '{') depth++; else if (out[j] === '}') depth--;
-                j++;
-            }
-            out = out.slice(0, idx) + out.slice(contentStart, j - 1) + out.slice(j);
+    const str = String(s);
+    // Return the index just past the '}' matching the '{' at k, or -1 if unbalanced.
+    const skipBalanced = (k) => {
+        let depth = 0;
+        for (; k < str.length; k++) {
+            if (str[k] === '{') depth++;
+            else if (str[k] === '}' && --depth === 0) return k + 1;
         }
+        return -1;
+    };
+    let out = '';
+    let i = 0;
+    while (i < str.length) {
+        const m = str[i] === '\\' && _HTML_MACROS.find(x => str.startsWith('\\' + x, i));
+        if (!m) { out += str[i++]; continue; }
+        let k = i + 1 + m.length;
+        while (k < str.length && /\s/.test(str[k])) k++;       // ws before the class/data arg
+        const arg1End = str[k] === '{' ? skipBalanced(k) : -1;
+        let c = arg1End;
+        if (c > 0) while (c < str.length && /\s/.test(str[c])) c++;   // ws before the content arg
+        const contentEnd = (c > 0 && str[c] === '{') ? skipBalanced(c) : -1;
+        if (contentEnd < 0) { out += str[i++]; continue; }     // malformed — leave intact, advance 1
+        out += _stripHtmlMacros(str.slice(c + 1, contentEnd - 1));   // recurse into the content
+        i = contentEnd;
     }
     return out;
 }
@@ -2028,6 +2034,7 @@ function _resetGraphSession() {
     _chartManagers.clear();
     _currentChartManager = null;
     if (_currentProofManager) { try { _currentProofManager.destroy(); } catch {} _currentProofManager = null; }
+    clearDeriveCache();   // derivation results are lesson-specific
 }
 
 // Monochrome unicode glyphs (LAST QUARTER MOON / BLACK SUN WITH RAYS).

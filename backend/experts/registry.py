@@ -54,10 +54,13 @@ class HandlerSpec:
     A handler is request→orchestration glue exposed at ``POST /api/expert/{name}``:
     ``fn`` takes a validated ``request_model`` instance and returns a JSON-able
     ``dict`` (it does the pre-processing, calls ``service.invoke`` for the actual
-    expert, and post-processes the outputs). ``requires_experts`` asks the
-    endpoint to ensure DSPy/experts are configured before the call (it almost
-    always does, since handlers run experts). Concurrency/abuse is handled by the
+    expert, and post-processes the outputs). Concurrency/abuse is handled by the
     shared per-IP rate limiter at the endpoint, not here.
+
+    ``requires_experts`` is currently **informational**: the endpoint always
+    configures DSPy + discovers handlers/experts (discovery is what populates
+    this very registry, so it can't be skipped). The flag documents intent and is
+    reserved for a future split of discovery from LM configuration.
     """
 
     name: str

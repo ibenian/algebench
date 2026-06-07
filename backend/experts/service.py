@@ -18,6 +18,8 @@ between calls, and no ``Signature`` is constructed.
 
 from __future__ import annotations
 
+from pydantic import BaseModel, ConfigDict
+
 from .context_id import parse
 from .outputs import ExpertResult
 from .registry import EXPERT_REGISTRY, HANDLER_REGISTRY, resolve_context_model
@@ -25,6 +27,18 @@ from .registry import EXPERT_REGISTRY, HANDLER_REGISTRY, resolve_context_model
 
 class UnknownExpert(KeyError):
     """Raised by ``run`` when ``name`` is neither a handler nor a registered expert."""
+
+
+class _ExpertCall(BaseModel):
+    """Shape of a generic (non-handler) expert request body — validated so a
+    malformed body surfaces as a 422 (pydantic ValidationError) at the endpoint
+    rather than a 500 KeyError."""
+
+    model_config = ConfigDict(extra="ignore")
+    context_id: str
+    payload: dict
+    instruction: str = ""
+    lesson_context: str = ""
 
 
 def run(name: str, body: dict) -> dict:
@@ -48,12 +62,13 @@ def run(name: str, body: dict) -> dict:
         return spec.fn(req)
 
     if name in EXPERT_REGISTRY:
+        call = _ExpertCall.model_validate(body)   # ValidationError -> 422 (not KeyError/500)
         result = invoke(
             name,
-            body["context_id"],
-            body["payload"],
-            instruction=body.get("instruction", ""),
-            lesson_context=body.get("lesson_context", ""),
+            call.context_id,
+            call.payload,
+            instruction=call.instruction,
+            lesson_context=call.lesson_context,
         )
         return result.model_dump()
 

@@ -1495,15 +1495,19 @@ def create_app(initial_scene_path=None, debug=False,
         if not isinstance(body, dict):
             return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
 
-        # One-line request log for observability.
-        print(f"   🧠 /api/expert/{name} {json.dumps(body, ensure_ascii=False)}", flush=True)
+        # One-line request log — single line (newlines escaped) and length-capped
+        # so a large/arbitrary LaTeX body can't flood the logs.
+        _body_log = json.dumps(body, ensure_ascii=False).replace("\n", "\\n")
+        if len(_body_log) > 2000:
+            _body_log = _body_log[:2000] + f"…(+{len(_body_log) - 2000} chars)"
+        print(f"   🧠 /api/expert/{name} {_body_log}", flush=True)
 
         try:
             # One-time DSPy config + discovery (imports/configures — off the loop).
             await asyncio.to_thread(_ensure_experts)
         except Exception as e:
             import traceback
-            print(f"   ❌ /api/expert/{name}: expert init failed: {e}\n{traceback.format_exc()}")
+            print(f"   ❌ /api/expert/{name}: expert init failed: {e}\n{traceback.format_exc()}", flush=True)
             return JSONResponse({"error": "expert framework unavailable"}, status_code=503)
 
         if name not in HANDLER_REGISTRY and name not in EXPERT_REGISTRY:
