@@ -1495,6 +1495,9 @@ def create_app(initial_scene_path=None, debug=False,
         if not isinstance(body, dict):
             return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
 
+        # One-line request log for observability.
+        print(f"   🧠 /api/expert/{name} {json.dumps(body, ensure_ascii=False)}", flush=True)
+
         try:
             # One-time DSPy config + discovery (imports/configures — off the loop).
             await asyncio.to_thread(_ensure_experts)
@@ -1511,8 +1514,10 @@ def create_app(initial_scene_path=None, debug=False,
             result = await asyncio.to_thread(expert_service.run, name, body)
             return JSONResponse(result)
         except ValidationError as e:
+            print(f"   ⚠️  /api/expert/{name}: invalid request: {e.errors()}", flush=True)
             return JSONResponse({"error": "invalid request", "detail": e.errors()}, status_code=422)
         except (ValueError, KeyError) as e:
+            print(f"   ⚠️  /api/expert/{name}: {e}", flush=True)
             return JSONResponse({"error": str(e)}, status_code=400)
         except Exception as e:
             import traceback

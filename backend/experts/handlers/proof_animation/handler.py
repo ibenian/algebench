@@ -50,18 +50,61 @@ class DeriveProofRequest(BaseModel):
     # A human-readable name for the derivation (e.g. the proof title). Used as
     # the animation title; falls back to the LM/goal/"Derivation".
     title: Optional[str] = None
+    # Lesson/scene/proof context (same shape the enrichment endpoint receives) —
+    # threaded to the expert's `lesson_context` so it derives in context.
+    context: Optional[dict] = None
     # The proof's `given` step when available — skips start inference.
     start_latex: Optional[str] = None
     intent: Optional[str] = None
 
 
+def _format_lesson_context(ctx: Optional[dict]) -> str:
+    """Flatten the lesson/scene/proof context dict into the expert's
+    ``lesson_context`` string (same fields the enrichment endpoint sends)."""
+    if not ctx:
+        return ""
+    fields = [
+        ("lessonTitle", "Lesson"),
+        ("lessonDescription", None),
+        ("sceneTitle", "Scene"),
+        ("sceneDescription", None),
+        ("proofTitle", "Proof"),
+        ("proofGoal", "Goal"),
+        ("proofTechnique", "Technique"),
+    ]
+    lines = []
+    for key, label in fields:
+        val = ctx.get(key)
+        if not isinstance(val, str) or not val.strip():
+            continue
+        val = val.strip()
+        lines.append(f"{label}: {val}" if label else val)
+    return "\n".join(lines)
+
+
+# GraphTransition.intent is capped at 400 chars; keep the givens clause well
+# under that so the assembled intent always validates (some scenes carry many
+# givens). Real proofs have a handful; this just bounds pathological cases.
+_GIVENS_CLAUSE_MAX = 240
+_INTENT_MAX = 400
+# Retries when the (stochastic) expert returns an empty trajectory for an
+# otherwise-derivable pair. Total attempts, not extra retries.
+_DERIVE_ATTEMPTS = 2
+
+
 def _givens_clause(req: DeriveProofRequest) -> str:
-    """A short 'given …' clause from the goal + given expressions (may be empty)."""
+    """A short 'given …' clause from the goal + given expressions (may be empty).
+
+    Bounded to `_GIVENS_CLAUSE_MAX` chars so the assembled intent stays valid.
+    """
     parts: list[str] = []
     if req.goal:
         parts.append(req.goal.strip())
     parts.extend(g.math.strip() for g in req.givens if g.math.strip())
-    return "; ".join(p for p in parts if p)
+    clause = "; ".join(p for p in parts if p)
+    if len(clause) > _GIVENS_CLAUSE_MAX:
+        clause = clause[:_GIVENS_CLAUSE_MAX].rstrip(" ;,") + "…"
+    return clause
 
 
 @register_handler("proof_animation", request_model=DeriveProofRequest)
@@ -87,6 +130,8 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     intent = req.intent or (
         f"Derive {req.target_latex}" + (f" given {givens}" if givens else "")
     )
+    if len(intent) > _INTENT_MAX:        # GraphTransition.intent hard limit
+        intent = intent[:_INTENT_MAX].rstrip()
 
     # --- call: run the expert through the canonical invoke boundary -------------
     svc = SemanticGraphService()
@@ -97,21 +142,30 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
         raise ValueError(f"could not parse {which} expression")
 
     payload = {"start": start_g, "target": target_g, "domain": domain, "intent": intent}
-    result = invoke(
-        "proof_completion",
-        build_context_id(scene="adhoc", semantic_graph=True),
-        payload,
-        instruction=intent,
-    )
-    traj = result.single()
-    if not traj.steps:
-        raise ValueError("the expert returned no derivation steps")
+    context_id = build_context_id(scene="adhoc", semantic_graph=True)
+    lesson_context = _format_lesson_context(req.context)
+
+    # The LM samples at temperature, so a derivable pair can occasionally come
+    # back empty — retry a couple of times before giving up. (A genuinely
+    # underivable pair, e.g. start == target, just costs the extra attempt.)
+    traj = None
+    for _attempt in range(_DERIVE_ATTEMPTS):
+        traj = invoke(
+            "proof_completion", context_id, payload,
+            instruction=intent, lesson_context=lesson_context,
+        ).single()
+        if traj.steps:
+            break
+    if not traj or not traj.steps:
+        raise ValueError(
+            f"No derivation found — couldn't get from ${start}$ to ${req.target_latex}$.")
 
     # --- post: render the trajectory into FLIP animation data -------------------
     # Prefer a human-readable title (proof title) over the raw goal expression.
     title = (req.title or lm_title or req.goal or "Derivation").strip()
     start_operation = given_label or f"Given ${start}$"
-    start_justification = start_note or req.goal or "the starting expression"
+    # A short caption for step 0 — never the goal formula (it renders as raw $…$).
+    start_justification = start_note or "the starting expression"
     return build(traj, domain, title,
                  start_operation=start_operation,
                  start_justification=start_justification)

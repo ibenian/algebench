@@ -723,10 +723,10 @@ function clearGraph() {
         try { _currentChartManager.destroy(); } catch {}
         _currentChartManager = null;
     }
-    if (_currentProofManager) {
-        try { _currentProofManager.destroy(); } catch {}
-        _currentProofManager = null;
-    }
+    // NOTE: the proof manager is intentionally NOT destroyed here. Derivation
+    // boxes persist for the session, scoped to the step they were derived on;
+    // setCurrentStep() on the next graph render re-attaches the active step's
+    // boxes. It's torn down only when a new scene is loaded.
     if (_currentD3Renderer) {
         try { _currentD3Renderer.destroy(); } catch {}
         _currentD3Renderer = null;
@@ -807,12 +807,15 @@ async function _renderWithD3(container, graph, step, key) {
         katex: window.katex,
     });
 
-    if (_currentProofManager) {
-        try { _currentProofManager.destroy(); } catch {}
+    // Reuse the proof manager across re-renders (e.g. background enrichment) so
+    // open derivation boxes — and in-flight derivations, which take many
+    // seconds — survive instead of being torn down. It's only destroyed when
+    // the graph view is cleared (see clearGraph).
+    if (!_currentProofManager || _currentProofManager._destroyed) {
+        _currentProofManager = new SgProofManager(container, {
+            katex: window.katex,
+        });
     }
-    _currentProofManager = new SgProofManager(container, {
-        katex: window.katex,
-    });
 
     // Reuse or create D3 renderer
     if (!_currentD3Renderer || _currentD3Renderer._destroyed) {
@@ -882,6 +885,11 @@ async function _renderWithD3(container, graph, step, key) {
     await _currentD3Renderer.render(graph);
     _d3LastStepKey = stepKey;
     _currentSemanticKey = key;
+
+    // Derivation boxes belong to their step: show only the current step's boxes
+    // (re-attaching to the freshly-recreated card), detach the rest. This also
+    // makes them survive re-renders within the same step.
+    if (_currentProofManager) _currentProofManager.setCurrentStep(stepKey);
 
     // Background enrichment (shared with Mermaid path)
     enrichGraphInBackground(graph, key, step);
@@ -1074,12 +1082,26 @@ function _buildDerivePayload(nodeId, fullNode, graph) {
             payload.givens = givens;
             // Use a proof given as the START — but never one equal to the target
             // (a definitional node is its own given, which would derive nothing).
+            // Compare loosely: ignore \text{}/\mathrm{} wrappers, braces, spacing
+            // and \le/\leq spelling, so e.g. \gamma_{steep} == \gamma_{\text{steep}}.
             // If every given equals the target, omit start so the LM infers one.
-            const norm = (s) => (s || '').replace(/\s+/g, '');
+            const norm = (s) => (s || '')
+                .replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, '$1')
+                .replace(/\\le(?![a-zA-Z])/g, '\\leq')
+                .replace(/\\ge(?![a-zA-Z])/g, '\\geq')
+                .replace(/[\s{}]/g, '');
             const startGiven = givens.find(g => norm(g.math) !== norm(target));
             if (startGiven) payload.start_latex = startGiven.math;
         }
     }
+
+    // Lesson/scene/proof context — the SAME shape we send to enrichment — so the
+    // expert derives with awareness of the surrounding lesson (passed through to
+    // the expert's lesson_context input).
+    const ctx = buildEnrichContext(
+        typeof currentProofStep === 'function' ? currentProofStep() : null);
+    if (ctx) payload.context = ctx;
+
     return payload;
 }
 
@@ -1963,6 +1985,9 @@ function onGraphSelectionChange(e) {
 }
 
 function onProofLoad() {
+    // NOTE: this fires on every proof-tree change (incl. navigation), so we do
+    // NOT tear down the proof manager here — derivation boxes persist for the
+    // session and survive navigation (the user's requirement).
     _d3StepStates.clear();
     _d3LastStepKey = null;
     rebuildProofTree();

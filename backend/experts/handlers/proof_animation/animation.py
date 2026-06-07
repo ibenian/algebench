@@ -152,17 +152,30 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
     working = None
     out = []
     for i, (operation, justification, ltx) in enumerate(chain):
-        g = svc.latex_to_graph(ltx, domain=domain)
-        if g is None:
-            raise ValueError(f"could not parse state {i}: {ltx!r}")
-        # rebase: keep g's authored structure, reuse stable ids for persisting parts
-        working = g if working is None else _rebase(working, g)
+        try:
+            g = svc.latex_to_graph(ltx, domain=domain)
+        except Exception:
+            g = None
+        # An ungroundable state — one that won't parse to a graph OR whose graph
+        # can't be re-rendered (e.g. an operator the renderer doesn't know) — is
+        # shown as raw LaTeX (no stable-id morphing) rather than failing the whole
+        # derivation. ``working`` only advances on a fully-rendered state, so the
+        # next good state rebases onto the last good one.
+        annotated = plain = ltx
+        if g is not None:
+            try:
+                cand = g if working is None else _rebase(working, g)
+                annotated = to_latex(cand, with_ids=True)   # annotated, stable ids
+                plain = to_latex(cand)                       # for labels/fallback
+                working = cand
+            except Exception:
+                annotated = plain = ltx
         out.append({
             "index": i,
             "operation": operation,
             "justification": justification,
-            "input_latex": ltx,                         # what was authored
-            "latex": to_latex(working, with_ids=True),  # annotated, stable ids
-            "plain": to_latex(working),                 # for labels/fallback
+            "input_latex": ltx,
+            "latex": annotated,
+            "plain": plain,
         })
     return {"title": title, "domain": domain, "steps": out}

@@ -1,23 +1,34 @@
 // SgProofManager — docks on-the-fly proof animations on the semantic graph.
 //
-// Mirrors SgChartManager's docking model (anchor a floating box to a node,
-// track the renderer's pan/zoom transform so it stays put, resolve collisions
-// between concurrent boxes) but mounts a ProofAnimator instead of a Chart.js
-// canvas. Each Derive click opens one box keyed by nodeId; multiple boxes can
-// derive and play at once. Concurrency/abuse is capped server-side by the
-// shared per-IP rate limiter — this manager just renders state.
+// Mirrors SgChartManager: a floating box anchored to a node that tracks the
+// renderer's pan/zoom, snap-to-grid resize, and a dock button that shares the
+// SAME overlay panel as pinned charts (so charts and proofs dock side by side).
+// It reuses the chart's CSS classes verbatim (.sgc-chart-box / .sgc-chart-header
+// / .sgc-btn / .sgc-resize-handle / .sgc-pinned) so borders and buttons match
+// the charts exactly; only the body hosts a ProofAnimator instead of a canvas.
 
 import { ProofAnimator } from '/proof-animation/proof-animation.js';
 import { invokeExpert } from '/expert-client.js';
 
-const BOX_W = 360;   // fixed dock width (the animator measures against this)
+// Session-persistent cache of derivation results, keyed by the request shape.
+// Survives navigation/re-renders so a derived node is never recomputed and its
+// context is not lost.
+const _DERIVE_CACHE = new Map();
+const _cacheKey = (p) => `${p.target_latex || ''}|${p.start_latex || ''}|${p.domain || ''}`;
+
+const BOX_W = 360;            // natural render width of the animator (zoomed to fit the box)
+const GRID_COLS = 8;          // same grid as SgChartManager
+const GRID_ROWS = 8;
+const GRID_GAP = 8;
+const DEFAULT_COLSPAN = 4;
+const DEFAULT_ROWSPAN = 3;
 
 export class SgProofManager {
     constructor(container, opts = {}) {
         this.container = container;
         this.katex = opts.katex || (typeof window !== 'undefined' && window.katex);
         this.boxes = new Map();      // boxId -> entry
-        this._byNode = new Map();    // nodeId -> boxId (dedup / re-focus)
+        this._byKey = new Map();     // `${stepKey}|${nodeId}` -> boxId (dedup / re-focus)
         this._transform = { x: 0, y: 0, k: 1 };
         this._renderer = null;
         this._rafId = null;
@@ -25,6 +36,7 @@ export class SgProofManager {
         this._destroyed = false;
         this._seq = 0;
         this._z = 30;                // proof boxes sit above charts (z 20)
+        this._stepKey = null;        // boxes belong to the step they were derived in
     }
 
     // ── Renderer wiring (identical contract to SgChartManager) ───────────────
@@ -41,6 +53,39 @@ export class SgProofManager {
 
     _card() {
         return this.container.querySelector('.d3-graph-card') || this.container;
+    }
+
+    // A derivation belongs to the step it was created on. ``setCurrentStep`` is
+    // called on every (re)render with the active step's key; only that step's
+    // boxes are shown — others are detached (kept in memory) and re-shown when
+    // their step is revisited. Their position/scale/dock are per-box, so docking
+    // on one step never carries over to another.
+    setCurrentStep(stepKey) {
+        this._stepKey = stepKey;
+        this._syncStep();
+    }
+
+    // Show this step's boxes (re-attaching to the freshly-recreated card / shared
+    // panel), detach all others.
+    _syncStep() {
+        if (this._destroyed) return;
+        const card = this._card();
+        if (!card) return;
+        for (const entry of this.boxes.values()) {
+            if (entry.stepKey === this._stepKey) {
+                const dest = entry.docked ? this._sharedPinnedPanel() : card;
+                if (entry.box.parentNode !== dest) dest.appendChild(entry.box);
+            } else if (entry.box.parentNode) {
+                entry.box.parentNode.removeChild(entry.box);   // hide (keep in memory)
+            }
+        }
+        // Re-observe the fresh card for resize, then re-snap positions.
+        if (this._resizeObserver) {
+            try { this._resizeObserver.disconnect(); } catch (_e) {}
+            this._resizeObserver = null;
+        }
+        this._observeResize();
+        this._updatePositions();
     }
 
     _startTransformPolling() {
@@ -61,18 +106,56 @@ export class SgProofManager {
 
     _observeResize() {
         if (this._resizeObserver) return;
-        this._resizeObserver = new ResizeObserver(() => this._updatePositions());
+        this._resizeObserver = new ResizeObserver(() => {
+            // Grid steps depend on the card size — re-snap every box, then refit.
+            for (const entry of this.boxes.values()) {
+                this._applyGridSize(entry);
+                this._fit(entry);
+            }
+            this._updatePositions();
+        });
         this._resizeObserver.observe(this._card());
     }
 
-    // Reposition every unpinned box from its stored graph-space anchor, re-clamp
-    // to the card, and nudge apart any that overlap (mirrors chart docking).
+    // ── Grid sizing (copied from SgChartManager so it snaps identically) ─────
+    _getGridSteps() {
+        const rect = this._card().getBoundingClientRect();
+        const availW = rect.width - 16;
+        const availH = rect.height - 16;
+        return {
+            w: Math.floor((availW - (GRID_COLS - 1) * GRID_GAP) / GRID_COLS),
+            h: Math.floor((availH - (GRID_ROWS - 1) * GRID_GAP) / GRID_ROWS),
+        };
+    }
+
+    _applyGridSize(entry) {
+        const step = this._getGridSteps();
+        const w = entry.colSpan * step.w + (entry.colSpan - 1) * GRID_GAP;
+        const h = entry.rowSpan * step.h + (entry.rowSpan - 1) * GRID_GAP;
+        entry.box.style.width = `${w}px`;
+        entry.box.style.height = `${h}px`;
+    }
+
+    // Zoom the animator (rendered at a fixed BOX_W) to fit the grid-sized body,
+    // preserving aspect — the body flex-centers it.
+    _fit(entry) {
+        const pa = entry.paWrap;
+        if (!pa) return;
+        pa.style.zoom = 1;
+        const natH = pa.offsetHeight || 1;
+        const bw = entry.body.clientWidth;
+        const bh = entry.body.clientHeight;
+        if (bw <= 0 || bh <= 0) return;
+        const scale = Math.max(0.35, Math.min(bw / BOX_W, bh / natH));
+        pa.style.zoom = scale;
+    }
+
     _updatePositions() {
         const rect = this._card().getBoundingClientRect();
         const { x: tx, y: ty, k } = this._transform;
         const placed = [];
         for (const entry of this.boxes.values()) {
-            if (entry.pinned) continue;
+            if (entry.docked || entry.stepKey !== this._stepKey) continue;  // only current step
             const w = entry.box.offsetWidth;
             const h = entry.box.offsetHeight;
             let left = entry.graphX * k + tx;
@@ -104,8 +187,8 @@ export class SgProofManager {
     openProof(nodeId, anchorEl, payload) {
         if (this._destroyed) return;
 
-        // Dedup: a node already has a box → re-focus (and retry if it errored).
-        const existingId = this._byNode.get(nodeId);
+        const dedupKey = `${this._stepKey}|${nodeId}`;   // one box per node PER STEP
+        const existingId = this._byKey.get(dedupKey);
         if (existingId && this.boxes.has(existingId)) {
             const e = this.boxes.get(existingId);
             e.box.style.zIndex = String(++this._z);
@@ -115,35 +198,45 @@ export class SgProofManager {
 
         const card = this._card();
         const box = document.createElement('div');
-        box.className = 'sgp-proof-box';
-        box.style.width = `${BOX_W}px`;
+        box.className = 'sgc-chart-box sgp-proof-box';
 
         const header = document.createElement('div');
-        header.className = 'sgp-header';
+        header.className = 'sgc-chart-header';
         const titleEl = document.createElement('span');
-        titleEl.className = 'sgp-title';
+        titleEl.className = 'sgc-chart-title';
         titleEl.textContent = 'Derivation';
+        const controls = document.createElement('div');
+        controls.className = 'sgc-chart-controls';
         const dockBtn = document.createElement('button');
-        dockBtn.className = 'sgp-dock-btn';
+        dockBtn.className = 'sgc-btn sgc-pin-btn';
         dockBtn.type = 'button';
-        dockBtn.title = 'Dock to overlay';
-        dockBtn.setAttribute('aria-label', 'Dock');
-        dockBtn.innerHTML = '\u{1F4CC}';   // 📌
+        dockBtn.title = 'Pin to overlay';
+        dockBtn.innerHTML = '&#x1F4CC;';   // 📌
         const closeBtn = document.createElement('button');
-        closeBtn.className = 'sgp-close';
+        closeBtn.className = 'sgc-btn sgc-close-btn';
         closeBtn.type = 'button';
-        closeBtn.setAttribute('aria-label', 'Close');
-        closeBtn.innerHTML = '&times;';
-        header.append(titleEl, dockBtn, closeBtn);
+        closeBtn.title = 'Close';
+        closeBtn.textContent = '×';
+        controls.append(dockBtn, closeBtn);
+        header.append(titleEl, controls);
 
         const body = document.createElement('div');
         body.className = 'sgp-body';
-
         box.append(header, body);
         card.appendChild(box);
 
-        // Anchor next to the node button, then store the graph-space coords so
-        // the box tracks pan/zoom (same math as SgChartManager.openChart).
+        const entry = {
+            boxId: `proof_${++this._seq}`, nodeId, stepKey: this._stepKey, box, body, titleEl, header, dockBtn,
+            paWrap: null,
+            colSpan: DEFAULT_COLSPAN, rowSpan: DEFAULT_ROWSPAN,
+            graphX: 0, graphY: 0,
+            pinned: false, docked: false,
+            state: 'loading', animator: null,
+        };
+        this._applyGridSize(entry);
+
+        // Anchor next to the node button, then store graph-space coords so the
+        // box tracks pan/zoom (same math as SgChartManager.openChart).
         const cardRect = card.getBoundingClientRect();
         let left = 4, top = 4;
         if (anchorEl) {
@@ -151,32 +244,23 @@ export class SgProofManager {
             left = r.right - cardRect.left + 8;
             top = r.top - cardRect.top;
         }
-        const w = box.offsetWidth || BOX_W;
-        const h = box.offsetHeight || 120;
+        const w = box.offsetWidth || 300;
+        const h = box.offsetHeight || 200;
         left = Math.max(4, Math.min(left, cardRect.width - w - 4));
         top = Math.max(4, Math.min(top, cardRect.height - h - 4));
         box.style.position = 'absolute';
         box.style.left = `${left}px`;
         box.style.top = `${top}px`;
         box.style.zIndex = String(++this._z);
-
         const { x: tx, y: ty, k } = this._transform;
-        const boxId = `proof_${++this._seq}`;
-        const entry = {
-            boxId, nodeId, box, body, titleEl, header, dockBtn,
-            graphX: (left - tx) / k,
-            graphY: (top - ty) / k,
-            pinned: false,
-            docked: false,
-            scale: 1,
-            state: 'loading',
-            animator: null,
-        };
-        this.boxes.set(boxId, entry);
-        this._byNode.set(nodeId, boxId);
+        entry.graphX = (left - tx) / k;
+        entry.graphY = (top - ty) / k;
 
-        closeBtn.addEventListener('click', () => this.closeBox(boxId));
-        dockBtn.addEventListener('click', () => this._toggleDock(boxId));
+        this.boxes.set(entry.boxId, entry);
+        this._byKey.set(dedupKey, entry.boxId);
+
+        closeBtn.addEventListener('click', () => this.closeBox(entry.boxId));
+        dockBtn.addEventListener('click', () => this._toggleDock(entry.boxId));
         this._makeDraggable(entry, header);
         this._addResizeHandle(entry);
 
@@ -185,12 +269,30 @@ export class SgProofManager {
     }
 
     async _runDerivation(entry, payload) {
+        // Guard non-derivable nodes (operators / structural nodes with no
+        // expression) — fire nothing, just explain.
+        if (!payload || !payload.target_latex || !String(payload.target_latex).trim()) {
+            entry.state = 'error';
+            this._renderError(entry, new Error('This node has no expression to derive.'));
+            return;
+        }
+        // Session cache: a previously-derived expression mounts instantly and is
+        // never recomputed (persists across navigation/re-renders).
+        const key = _cacheKey(payload);
+        const cached = _DERIVE_CACHE.get(key);
+        if (cached) {
+            if (cached.title) this._renderInlineMath(entry.titleEl, cached.title);
+            this._mountAnimator(entry, cached);
+            entry.state = 'ready';
+            return;
+        }
         entry.state = 'loading';
         this._renderLoading(entry);
         const pill = this._showPill();
         try {
             const data = await invokeExpert('proof_animation', payload);
             if (this._destroyed || !this.boxes.has(entry.boxId)) return;
+            _DERIVE_CACHE.set(key, data);
             if (data && data.title) this._renderInlineMath(entry.titleEl, data.title);
             this._mountAnimator(entry, data);
             entry.state = 'ready';
@@ -205,52 +307,44 @@ export class SgProofManager {
 
     _mountAnimator(entry, data) {
         entry.body.innerHTML = '';
+        entry.paWrap = null;
         if (!data || !Array.isArray(data.steps) || data.steps.length === 0) {
             this._renderError(entry, new Error('The derivation produced no steps.'));
             return;
         }
+        // Mount into a fixed-width wrapper so the animator renders at BOX_W; the
+        // wrapper is then `zoom`-scaled to fit the grid box (_fit).
+        const paWrap = document.createElement('div');
+        paWrap.className = 'sgp-pa';
+        entry.body.appendChild(paWrap);
+        entry.paWrap = paWrap;
         try {
-            entry.animator = new ProofAnimator(entry.body, data, { katex: this.katex });
+            entry.animator = new ProofAnimator(paWrap, data, { katex: this.katex });
         } catch (e) {
+            entry.paWrap = null;
             this._renderError(entry, e);
             return;
         }
-        // Re-apply any user zoom, then re-resolve overlaps (height changed).
-        if (entry.scale && entry.scale !== 1) this._applyScale(entry, entry.scale);
+        this._fit(entry);
         this._updatePositions();
     }
 
-    // Render a caption that may contain inline $…$ LaTeX (e.g. a proof goal) into
-    // an element, KaTeX-rendering the math segments and leaving prose as text.
-    _renderInlineMath(el, text) {
-        el.innerHTML = '';
-        if (!text) { el.textContent = 'Derivation'; return; }
-        for (const part of String(text).split(/(\$[^$]+\$)/g)) {
-            if (part.length > 1 && part.startsWith('$') && part.endsWith('$') && this.katex) {
-                const span = document.createElement('span');
-                try { this.katex.render(part.slice(1, -1), span, { throwOnError: false, displayMode: false }); }
-                catch (_e) { span.textContent = part; }
-                el.appendChild(span);
-            } else if (part) {
-                el.appendChild(document.createTextNode(part));
-            }
-        }
-    }
-
     _renderLoading(entry) {
+        entry.paWrap = null;
         entry.body.innerHTML =
             '<div class="sgp-status"><span class="sgp-dots"><span></span><span></span><span></span></span>'
             + '<span>Deriving proof…</span></div>';
     }
 
     _renderError(entry, err, payload) {
+        entry.paWrap = null;
         const msg = (err && err.message) || 'Derivation failed.';
         entry.body.innerHTML = '';
         const wrap = document.createElement('div');
         wrap.className = 'sgp-error';
         const m = document.createElement('div');
         m.className = 'sgp-error-msg';
-        m.textContent = msg;
+        this._renderInlineMath(m, msg);   // render any $…$ expressions as KaTeX
         wrap.appendChild(m);
         if (payload) {
             const retry = document.createElement('button');
@@ -261,7 +355,6 @@ export class SgProofManager {
             wrap.appendChild(retry);
         }
         entry.body.appendChild(wrap);
-        this._updatePositions();
     }
 
     closeBox(boxId) {
@@ -270,14 +363,13 @@ export class SgProofManager {
         try { entry.animator && entry.animator.destroy && entry.animator.destroy(); } catch (_e) {}
         if (entry.box.parentNode) entry.box.parentNode.removeChild(entry.box);
         this.boxes.delete(boxId);
-        if (this._byNode.get(entry.nodeId) === boxId) this._byNode.delete(entry.nodeId);
+        const k = `${entry.stepKey}|${entry.nodeId}`;
+        if (this._byKey.get(k) === boxId) this._byKey.delete(k);
     }
 
     // Drag the box by its header; update the stored graph anchor so it stays put
-    // under subsequent pan/zoom. Dragging marks the box "pinned" only while the
-    // pointer is down (so transform polling doesn't fight the drag).
+    // under subsequent pan/zoom.
     _makeDraggable(entry, handle) {
-        handle.style.cursor = 'grab';
         let startX = 0, startY = 0, baseLeft = 0, baseTop = 0;
         const onMove = (ev) => {
             const card = this._card().getBoundingClientRect();
@@ -289,39 +381,45 @@ export class SgProofManager {
             entry.box.style.top = `${top}px`;
         };
         const onUp = () => {
-            entry.pinned = false;
             const { x: tx, y: ty, k } = this._transform;
             entry.graphX = (parseFloat(entry.box.style.left) - tx) / k;
             entry.graphY = (parseFloat(entry.box.style.top) - ty) / k;
-            handle.style.cursor = 'grab';
             window.removeEventListener('pointermove', onMove);
             window.removeEventListener('pointerup', onUp);
         };
         handle.addEventListener('pointerdown', (ev) => {
-            if (entry.docked) return;                       // docked boxes flow in the panel
-            if (ev.target.closest('button')) return;        // not from header buttons
+            if (entry.docked) return;                  // docked boxes flow in the panel
+            if (ev.target.closest('button')) return;   // not from header buttons
             ev.preventDefault();
-            entry.pinned = true;                            // freeze transform-driven moves
             entry.box.style.zIndex = String(++this._z);
             startX = ev.clientX; startY = ev.clientY;
             baseLeft = parseFloat(entry.box.style.left) || 0;
             baseTop = parseFloat(entry.box.style.top) || 0;
-            handle.style.cursor = 'grabbing';
             window.addEventListener('pointermove', onMove);
             window.addEventListener('pointerup', onUp);
         });
     }
 
-    // ── Resize corner — drag to zoom the animation (scale the .pa-root) ──────
+    // ── Resize corner — snap-to-grid (col/row spans), identical to charts ────
     _addResizeHandle(entry) {
         const handle = document.createElement('div');
-        handle.className = 'sgp-resize-handle';
+        handle.className = 'sgc-resize-handle';
         handle.title = 'Resize';
         entry.box.appendChild(handle);
-        let startX = 0, startScale = 1;
+        let startX = 0, startY = 0, startCol = 0, startRow = 0;
         const onMove = (ev) => {
-            const s = Math.max(0.6, Math.min(2.4, startScale + (ev.clientX - startX) / BOX_W));
-            this._applyScale(entry, s);
+            const step = this._getGridSteps();
+            const unitW = step.w + GRID_GAP;
+            const unitH = step.h + GRID_GAP;
+            const col = Math.max(2, Math.min(GRID_COLS, startCol + Math.round((ev.clientX - startX) / unitW)));
+            const row = Math.max(2, Math.min(GRID_ROWS, startRow + Math.round((ev.clientY - startY) / unitH)));
+            if (col !== entry.colSpan || row !== entry.rowSpan) {
+                entry.colSpan = col;
+                entry.rowSpan = row;
+                this._applyGridSize(entry);
+                this._fit(entry);
+                if (!entry.docked) this._updatePositions();
+            }
         };
         const onUp = () => {
             window.removeEventListener('pointermove', onMove);
@@ -331,22 +429,11 @@ export class SgProofManager {
             ev.preventDefault();
             ev.stopPropagation();
             entry.box.style.zIndex = String(++this._z);
-            startX = ev.clientX;
-            startScale = entry.scale || 1;
+            startX = ev.clientX; startY = ev.clientY;
+            startCol = entry.colSpan; startRow = entry.rowSpan;
             window.addEventListener('pointermove', onMove);
             window.addEventListener('pointerup', onUp);
         });
-    }
-
-    // Zoom the animation content. ProofAnimator turns the body into the
-    // `.pa-root`, so we CSS-`zoom` that element (zoom reflows, so the box sizes
-    // to the scaled content with no gaps); the box width tracks the scale.
-    _applyScale(entry, s) {
-        entry.scale = s;
-        const pa = entry.box.querySelector('.pa-root') || entry.body;
-        pa.style.zoom = s;
-        entry.box.style.width = `${Math.round(BOX_W * s)}px`;
-        if (!entry.docked) this._updatePositions();
     }
 
     // ── Dock / undock — share the chart manager's pinned panel (side by side) ─
@@ -369,25 +456,44 @@ export class SgProofManager {
 
     _dock(entry) {
         entry.docked = true;
-        entry.pinned = true;                  // skip transform-driven repositioning
-        entry.box.classList.add('sgp-pinned');
+        entry.box.classList.add('sgc-pinned');
         entry.box.style.position = '';
         entry.box.style.left = '';
         entry.box.style.top = '';
         entry.box.style.zIndex = '';
         this._sharedPinnedPanel().appendChild(entry.box);
-        if (entry.dockBtn) { entry.dockBtn.classList.add('sgp-dock-active'); entry.dockBtn.title = 'Undock'; }
+        this._applyGridSize(entry);
+        this._fit(entry);
+        if (entry.dockBtn) { entry.dockBtn.classList.add('sgc-pin-active'); entry.dockBtn.title = 'Unpin from overlay'; }
     }
 
     _undock(entry) {
         entry.docked = false;
-        entry.pinned = false;
-        entry.box.classList.remove('sgp-pinned');
+        entry.box.classList.remove('sgc-pinned');
         this._card().appendChild(entry.box);
         entry.box.style.position = 'absolute';
         entry.box.style.zIndex = String(++this._z);
-        if (entry.dockBtn) { entry.dockBtn.classList.remove('sgp-dock-active'); entry.dockBtn.title = 'Dock to overlay'; }
-        this._updatePositions();          // re-anchor from stored graphX/graphY
+        this._applyGridSize(entry);
+        this._fit(entry);
+        if (entry.dockBtn) { entry.dockBtn.classList.remove('sgc-pin-active'); entry.dockBtn.title = 'Pin to overlay'; }
+        this._updatePositions();    // re-anchor from stored graphX/graphY
+    }
+
+    // Render a caption that may contain inline $…$ LaTeX (e.g. a proof goal) into
+    // an element, KaTeX-rendering the math segments and leaving prose as text.
+    _renderInlineMath(el, text) {
+        el.innerHTML = '';
+        if (!text) { el.textContent = 'Derivation'; return; }
+        for (const part of String(text).split(/(\$[^$]+\$)/g)) {
+            if (part.length > 1 && part.startsWith('$') && part.endsWith('$') && this.katex) {
+                const span = document.createElement('span');
+                try { this.katex.render(part.slice(1, -1), span, { throwOnError: false, displayMode: false }); }
+                catch (_e) { span.textContent = part; }
+                el.appendChild(span);
+            } else if (part) {
+                el.appendChild(document.createTextNode(part));
+            }
+        }
     }
 
     // ── "Deriving proof…" pill — coexists in the enrichment indicator stack ──

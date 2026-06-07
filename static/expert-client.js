@@ -37,9 +37,15 @@ export async function invokeExpert(name, body) {
             throw new ExpertError('Too many requests — please slow down and try again shortly.',
                                   { status: 429, retryAfter });
         }
-        const err = data && (data.error || data.detail);
-        const msg = (typeof err === 'string' && err) || `Request failed (${res.status}).`;
-        throw new ExpertError(msg, { status: res.status, detail: data && data.detail });
+        const detail = data && data.detail;
+        let msg = (data && typeof data.error === 'string' && data.error) || `Request failed (${res.status}).`;
+        // For a 422 (validation), surface the first field error so it's debuggable.
+        if (res.status === 422 && Array.isArray(detail) && detail.length) {
+            const d = detail[0];
+            const loc = Array.isArray(d.loc) ? d.loc.filter(x => x !== 'body').join('.') : '';
+            msg = loc ? `${loc}: ${d.msg}` : (d.msg || msg);
+        }
+        throw new ExpertError(msg, { status: res.status, detail });
     }
     return data;
 }
