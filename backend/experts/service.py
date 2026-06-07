@@ -18,9 +18,61 @@ between calls, and no ``Signature`` is constructed.
 
 from __future__ import annotations
 
+from pydantic import BaseModel, ConfigDict
+
 from .context_id import parse
 from .outputs import ExpertResult
-from .registry import EXPERT_REGISTRY, resolve_context_model
+from .registry import EXPERT_REGISTRY, HANDLER_REGISTRY, resolve_context_model
+
+
+class UnknownExpert(KeyError):
+    """Raised by ``run`` when ``name`` is neither a handler nor a registered expert."""
+
+
+class _ExpertCall(BaseModel):
+    """Shape of a generic (non-handler) expert request body — validated so a
+    malformed body surfaces as a 422 (pydantic ValidationError) at the endpoint
+    rather than a 500 KeyError."""
+
+    model_config = ConfigDict(extra="ignore")
+    context_id: str
+    payload: dict
+    instruction: str = ""
+    lesson_context: str = ""
+
+
+def run(name: str, body: dict) -> dict:
+    """Turn one HTTP request body into an expert run, returning a JSON-able dict.
+
+    The single dispatch point behind ``POST /api/expert/{name}``:
+
+    * If ``name`` has a registered **handler**, validate ``body`` against the
+      handler's ``request_model`` and let the handler do its pre/post-processing
+      around ``invoke`` (it returns the dict verbatim).
+    * Otherwise treat ``name`` as a plain expert: ``body`` carries
+      ``context_id`` + ``payload`` (and optional ``instruction`` /
+      ``lesson_context``); ``invoke`` runs it and we serialize the
+      ``ExpertResult``.
+
+    Adding an expert or handler needs no new endpoint — it self-registers.
+    """
+    spec = HANDLER_REGISTRY.get(name)
+    if spec is not None:
+        req = spec.request_model.model_validate(body)
+        return spec.fn(req)
+
+    if name in EXPERT_REGISTRY:
+        call = _ExpertCall.model_validate(body)   # ValidationError -> 422 (not KeyError/500)
+        result = invoke(
+            name,
+            call.context_id,
+            call.payload,
+            instruction=call.instruction,
+            lesson_context=call.lesson_context,
+        )
+        return result.model_dump()
+
+    raise UnknownExpert(name)
 
 
 def invoke(

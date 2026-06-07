@@ -20,6 +20,7 @@ import { state } from '/state.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
 import { SgChartManager } from '/graph-panel/sg-chart.js';
+import { SgProofManager, clearDeriveCache } from '/proof-animation/sg-proof.js';
 import { makeAiAskButton, renderKaTeX } from '/labels.js';
 
 let _currentGraphPanel = null;
@@ -28,6 +29,8 @@ let _activeStepForPanel = null;
 let _initDone = false;
 let _currentD3Renderer = null;
 let _currentChartManager = null;
+const _chartManagers = new Map();     // stepKey -> SgChartManager (per-step, persistent)
+let _currentProofManager = null;
 let _d3NodeAskBtn = null;
 let _d3NodeAskHideTimer = null;
 let _d3HoveredNodeId = null;
@@ -717,10 +720,13 @@ function clearGraph() {
         try { _currentGraphPanel.destroy(); } catch {}
         _currentGraphPanel = null;
     }
-    if (_currentChartManager) {
-        try { _currentChartManager.destroy(); } catch {}
-        _currentChartManager = null;
-    }
+    // NOTE: chart managers are per-step and persistent — NOT destroyed here.
+    // Their charts re-attach to the card via reattach() on the next graph render
+    // (only the active step's manager is shown). Torn down on new-scene load.
+    // NOTE: the proof manager is intentionally NOT destroyed here. Derivation
+    // boxes persist for the session, scoped to the step they were derived on;
+    // setCurrentStep() on the next graph render re-attaches the active step's
+    // boxes. It's torn down only when a new scene is loaded.
     if (_currentD3Renderer) {
         try { _currentD3Renderer.destroy(); } catch {}
         _currentD3Renderer = null;
@@ -794,12 +800,30 @@ async function _renderWithD3(container, graph, step, key) {
 
     _d3ActiveGraph = graph;
 
-    if (_currentChartManager) {
-        try { _currentChartManager.destroy(); } catch {}
+    // Charts belong to their step too: reuse a per-step chart manager so open
+    // charts persist across navigation/re-renders (they re-attach to the fresh
+    // card via reattach() below). New managers are created lazily per step.
+    {
+        const ckey = stableStepKey(step);
+        let cm = _chartManagers.get(ckey);
+        if (!cm || cm._destroyed) {
+            cm = new SgChartManager(container, graph, { katex: window.katex });
+            _chartManagers.set(ckey, cm);
+        } else {
+            cm.setGraph(graph);
+        }
+        _currentChartManager = cm;
     }
-    _currentChartManager = new SgChartManager(container, graph, {
-        katex: window.katex,
-    });
+
+    // Reuse the proof manager across re-renders (e.g. background enrichment) so
+    // open derivation boxes — and in-flight derivations, which take many
+    // seconds — survive instead of being torn down. It is NOT destroyed by
+    // clearGraph; only a new lesson tears it down (see _resetGraphSession).
+    if (!_currentProofManager || _currentProofManager._destroyed) {
+        _currentProofManager = new SgProofManager(container, {
+            katex: window.katex,
+        });
+    }
 
     // Reuse or create D3 renderer
     if (!_currentD3Renderer || _currentD3Renderer._destroyed) {
@@ -834,6 +858,7 @@ async function _renderWithD3(container, graph, step, key) {
             },
             onTransformChange: (t) => {
                 if (_currentChartManager) _currentChartManager.setTransform(t);
+                if (_currentProofManager) _currentProofManager.setTransform(t);
             },
             onChartClick: (nodeId, nodeData, btnEl) => {
                 if (!_currentChartManager) return;
@@ -848,6 +873,9 @@ async function _renderWithD3(container, graph, step, key) {
     // Connect chart manager to renderer for transform polling + resize observation
     if (_currentChartManager && _currentD3Renderer) {
         _currentChartManager.setRenderer(_currentD3Renderer);
+    }
+    if (_currentProofManager && _currentD3Renderer) {
+        _currentProofManager.setRenderer(_currentD3Renderer);
     }
 
     const stepKey = stableStepKey(step);
@@ -865,6 +893,24 @@ async function _renderWithD3(container, graph, step, key) {
     await _currentD3Renderer.render(graph);
     _d3LastStepKey = stepKey;
     _currentSemanticKey = key;
+
+    // Re-attach this step's persisted charts to the freshly-recreated card.
+    if (_currentChartManager) { try { _currentChartManager.reattach(); } catch {} }
+
+    // Derivation boxes belong to their step: show only the current step's boxes
+    // (re-attaching to the freshly-recreated card), detach the rest. This also
+    // makes them survive re-renders within the same step.
+    if (_currentProofManager) _currentProofManager.setCurrentStep(stepKey);
+
+    // Charts and proof boxes share the docked overlay panel but re-attach from
+    // two managers — keep their order stable (creation order) so it doesn't
+    // switch after navigation.
+    const dock = container.querySelector('.d3-graph-card .sgc-pinned-panel');
+    if (dock && dock.children.length > 1) {
+        [...dock.children]
+            .sort((a, b) => (+a.dataset.dockOrder || 0) - (+b.dataset.dockOrder || 0))
+            .forEach(c => dock.appendChild(c));
+    }
 
     // Background enrichment (shared with Mermaid path)
     enrichGraphInBackground(graph, key, step);
@@ -964,6 +1010,128 @@ function _hideD3NodeAskBtn() {
     }, 220);
 }
 
+// Derivation ("∴") glyph — a small three-step icon for the Derive button.
+const _DERIVE_SVG =
+    '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    + '<path d="M3 3h7"/><path d="M3 8h10"/><path d="M3 13h6"/>'
+    + '<path d="M12.5 11l2 2-2 2" transform="translate(-1 -3.5)"/></svg>';
+
+/** Build the Derive icon button (matches the AI ask-button styling). */
+function _makeDeriveButton(onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ai-ask-btn graph-panel-derive-btn';
+    btn.title = 'Derive this expression (proof animation)';
+    btn.setAttribute('aria-label', 'Derive this expression');
+    btn.innerHTML = _DERIVE_SVG;
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onClick();
+    });
+    return btn;
+}
+
+/** Find a rendered node's SVG <g> element by id (d3 binds the datum to it). */
+function _d3NodeElById(nodeId) {
+    const layer = document.querySelector('#graph-viewport .d3sg-nodes');
+    if (!layer) return null;
+    for (const g of layer.querySelectorAll(':scope > g')) {
+        const d = g.__data__;
+        if (d && d.data && d.data.id === nodeId) return g;
+    }
+    return null;
+}
+
+/** Strip KaTeX \htmlClass/\htmlData/\htmlId/\htmlStyle wrappers, keeping content.
+ *  Proof-step ``math`` carries highlight annotations the LaTeX parser can't read. */
+const _HTML_MACROS = ['htmlClass', 'htmlData', 'htmlId', 'htmlStyle'];
+
+function _stripHtmlMacros(s) {
+    if (!s) return s;
+    const str = String(s);
+    // Return the index just past the '}' matching the '{' at k, or -1 if unbalanced.
+    const skipBalanced = (k) => {
+        let depth = 0;
+        for (; k < str.length; k++) {
+            if (str[k] === '{') depth++;
+            else if (str[k] === '}' && --depth === 0) return k + 1;
+        }
+        return -1;
+    };
+    let out = '';
+    let i = 0;
+    while (i < str.length) {
+        const m = str[i] === '\\' && _HTML_MACROS.find(x => str.startsWith('\\' + x, i));
+        if (!m) { out += str[i++]; continue; }
+        let k = i + 1 + m.length;
+        while (k < str.length && /\s/.test(str[k])) k++;       // ws before the class/data arg
+        const arg1End = str[k] === '{' ? skipBalanced(k) : -1;
+        let c = arg1End;
+        if (c > 0) while (c < str.length && /\s/.test(str[c])) c++;   // ws before the content arg
+        const contentEnd = (c > 0 && str[c] === '{') ? skipBalanced(c) : -1;
+        if (contentEnd < 0) { out += str[i++]; continue; }     // malformed — leave intact, advance 1
+        out += _stripHtmlMacros(str.slice(c + 1, contentEnd - 1));   // recurse into the content
+        i = contentEnd;
+    }
+    return out;
+}
+
+/** The active proof in scope (graph-view proof tree), or null. */
+function _activeProof() {
+    const spec = state.proofSpec;
+    if (!spec || !spec.length) return null;
+    const entry = spec[state.proofActiveIndex] || spec[0];
+    return (entry && entry.proof) || null;
+}
+
+/** Assemble the DeriveProofRequest payload for a clicked node.
+ *  Target = the node's expression. Givens/goal/start come from the active proof:
+ *  goal + every ``type:"given"`` step's math; start = the first given when present
+ *  (else the backend infers it from a prompt). */
+function _buildDerivePayload(nodeId, fullNode, graph) {
+    const target = _stripHtmlMacros(nodeLongLabel(fullNode) || fullNode.subexpr || fullNode.label || '');
+    const payload = { target_latex: target };
+
+    const domain = graph && (graph.domain || (graph.meta && graph.meta.domain));
+    if (domain) payload.domain = domain;
+
+    const proof = _activeProof();
+    if (proof) {
+        if (proof.title) payload.title = _stripHtmlMacros(proof.title);
+        if (proof.goal) payload.goal = _stripHtmlMacros(proof.goal);
+        const givenSteps = (proof.steps || []).filter(s => s && s.type === 'given' && s.math);
+        const givens = givenSteps.map(s => ({
+            math: _stripHtmlMacros(s.math),
+            label: s.label || null,
+        })).filter(g => g.math);
+        if (givens.length) {
+            payload.givens = givens;
+            // Use a proof given as the START — but never one equal to the target
+            // (a definitional node is its own given, which would derive nothing).
+            // Compare loosely: ignore \text{}/\mathrm{} wrappers, braces, spacing
+            // and \le/\leq spelling, so e.g. \gamma_{steep} == \gamma_{\text{steep}}.
+            // If every given equals the target, omit start so the LM infers one.
+            const norm = (s) => (s || '')
+                .replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, '$1')
+                .replace(/\\le(?![a-zA-Z])/g, '\\leq')
+                .replace(/\\ge(?![a-zA-Z])/g, '\\geq')
+                .replace(/[\s{}]/g, '');
+            const startGiven = givens.find(g => norm(g.math) !== norm(target));
+            if (startGiven) payload.start_latex = startGiven.math;
+        }
+    }
+
+    // Lesson/scene/proof context — the SAME shape we send to enrichment — so the
+    // expert derives with awareness of the surrounding lesson (passed through to
+    // the expert's lesson_context input).
+    const ctx = buildEnrichContext(
+        typeof currentProofStep === 'function' ? currentProofStep() : null);
+    if (ctx) payload.context = ctx;
+
+    return payload;
+}
+
 function _showD3InfoPanel(nodeId, nodeData, graph) {
     const infoHost = document.getElementById('graph-info-panel-host');
     if (!infoHost) return;
@@ -991,6 +1159,16 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
             },
         );
         header.appendChild(askBtn);
+
+        // Derive button — derives a proof animation for this node's expression
+        // and docks it near the node (like the charts).
+        const deriveBtn = _makeDeriveButton(() => {
+            if (!_currentProofManager) return;
+            const payload = _buildDerivePayload(nodeId, fullNode, graph);
+            const anchor = _d3NodeElById(nodeId) || deriveBtn;
+            _currentProofManager.openProof(nodeId, anchor, payload);
+        });
+        header.appendChild(deriveBtn);
     }
 
     // Populate the inline panel
@@ -1833,11 +2011,30 @@ function onGraphSelectionChange(e) {
     // loops when renderCurrentStepGraph preserves a prior selection.
 }
 
+let _lastLessonSpec = null;
+
 function onProofLoad() {
+    // Charts and derivation boxes persist per-step across navigation (incl. proof
+    // switches). Only a *new lesson* invalidates them — step keys collide across
+    // lessons — so reset the per-step managers when the lesson actually changes.
+    if (state.lessonSpec !== _lastLessonSpec) {
+        _resetGraphSession();
+        _lastLessonSpec = state.lessonSpec;
+    }
     _d3StepStates.clear();
     _d3LastStepKey = null;
     rebuildProofTree();
     onStepChange();
+}
+
+// New lesson — tear down all per-step chart managers + derivation boxes (their
+// step context no longer applies).
+function _resetGraphSession() {
+    for (const cm of _chartManagers.values()) { try { cm.destroy(); } catch {} }
+    _chartManagers.clear();
+    _currentChartManager = null;
+    if (_currentProofManager) { try { _currentProofManager.destroy(); } catch {} _currentProofManager = null; }
+    clearDeriveCache();   // derivation results are lesson-specific
 }
 
 // Monochrome unicode glyphs (LAST QUARTER MOON / BLACK SUN WITH RAYS).

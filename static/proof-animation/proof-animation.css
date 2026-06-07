@@ -106,3 +106,110 @@
     --pa-muted: var(--muted-color, #9ca3af);
   }
 }
+
+
+/* ───────────────────────────────────────────────────────────────────────────
+   SgProofManager dock. The box REUSES the chart classes (.sgc-chart-box,
+   .sgc-chart-header, .sgc-btn, .sgc-resize-handle, .sgc-pinned) so borders and
+   buttons are identical to the charts; only these proof-specific rules remain:
+   the body lays out the animator, which is rendered at a fixed width and
+   `zoom`-scaled to fit the grid box.
+   ─────────────────────────────────────────────────────────────────────────── */
+.sgp-proof-box {
+    display: flex;
+    flex-direction: column;
+    color: rgba(210, 218, 245, 0.92);
+}
+
+.sgp-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* The animator renders at a fixed natural width; _fit() zooms it to the box. */
+.sgp-pa {
+    width: 360px;
+    flex: none;
+}
+.sgp-pa.pa-root {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 12px 14px;
+}
+
+.sgp-status,
+.sgp-error {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 14px;
+    font-size: 0.78rem;
+    color: rgba(210, 218, 245, 0.9);
+    text-align: center;
+}
+.sgp-error { flex-direction: column; }
+.sgp-error-msg { color: rgba(246, 200, 200, 0.95); line-height: 1.35; }
+.sgp-retry {
+    background: rgba(99, 102, 241, 0.18);
+    border: 1px solid rgba(120, 130, 200, 0.5);
+    color: rgba(220, 226, 252, 0.95);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.74rem;
+    cursor: pointer;
+}
+.sgp-retry:hover { background: rgba(99, 102, 241, 0.3); }
+
+/* Loading spinner dots — shared look with the enrichment pill. */
+.sgp-dots { display: inline-flex; align-items: center; gap: 3px; }
+.sgp-dots span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(166, 184, 240, 0.95);
+    animation: gei-dot-pulse 1.1s ease-in-out infinite;
+}
+.sgp-dots span:nth-child(2) { animation-delay: 0.18s; }
+.sgp-dots span:nth-child(3) { animation-delay: 0.36s; }
+
+/* "Deriving proof…" pill — lives in the shared .graph-enrich-indicator-stack
+   but with its own class so the enrichment step-visibility toggle never hides
+   it. Visual style mirrors .graph-enrich-indicator. */
+.sgp-derive-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px 6px 8px;
+    background: rgba(10, 12, 26, 0.78);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    color: rgba(210, 218, 245, 0.92);
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    user-select: none;
+    pointer-events: none;
+    animation: gei-fade-in 180ms ease-out;
+}
+.sgp-derive-indicator .gei-dots { display: inline-flex; align-items: center; gap: 3px; }
+.sgp-derive-indicator .gei-dots span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(166, 184, 240, 0.95);
+    animation: gei-dot-pulse 1.1s ease-in-out infinite;
+}
+.sgp-derive-indicator .gei-dots span:nth-child(2) { animation-delay: 0.18s; }
+.sgp-derive-indicator .gei-dots span:nth-child(3) { animation-delay: 0.36s; }
+
+/* In the docked proof box, the step (nav) buttons stretch to fill the row. */
+.sgp-proof-box .pa-controls { gap: 6px; }
+.sgp-proof-box .pa-steps { flex: 1 1 auto; }
+.sgp-proof-box .pa-steps .pa-step {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-left: 2px;
+    padding-right: 2px;
+}
