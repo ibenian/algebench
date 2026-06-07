@@ -44,11 +44,11 @@
 }
 .pa-ghost { pointer-events: none; z-index: 1; }
 
-/* operation + justification line */
+/* operation (explanation) stacked above justification */
 .pa-meta {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
+  flex-direction: column;
+  gap: 3px;
   min-height: 1.4em;
   font-size: 0.95rem;
 }
