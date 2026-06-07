@@ -130,9 +130,9 @@ export class ProofAnimator {
       <div class="pa-stage" aria-live="polite"></div>
       <div class="pa-meta"><span class="pa-op"></span><span class="pa-just"></span></div>
       <div class="pa-controls">
-        <button class="pa-btn pa-prev" title="Previous step">◀</button>
+        <button class="pa-btn pa-prev" title="Previous step" aria-label="Previous step">◀</button>
         <div class="pa-steps"></div>
-        <button class="pa-btn pa-next" title="Next step">▶</button>
+        <button class="pa-btn pa-next" title="Next step" aria-label="Next step">▶</button>
         <button class="pa-btn pa-play" title="Play through">▶ Play</button>
         <button class="pa-btn pa-speed" title="Animation speed (click to cycle)">${_speedLabel(this.speed)}</button>
         <label class="pa-mode"><input type="checkbox"> sequential</label>

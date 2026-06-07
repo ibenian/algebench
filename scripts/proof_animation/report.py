@@ -129,7 +129,8 @@ def render_site(animations: list[dict], outdir) -> Path:
     """
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "animations.json").write_text(json.dumps(animations, indent=2, ensure_ascii=False))
+    (out / "animations.json").write_text(
+        json.dumps(animations, indent=2, ensure_ascii=False), encoding="utf-8")
     shutil.copy(_ASSETS / "proof-animation.js", out / "proof-animation.js")
     shutil.copy(_ASSETS / "proof-animation.css", out / "proof-animation.css")
     # cache-bust the engine on every (re)generation so a reload never serves a
@@ -138,7 +139,7 @@ def render_site(animations: list[dict], outdir) -> Path:
     html = (_INDEX
             .replace("./proof-animation.js", f"./proof-animation.js?v={ver}")
             .replace("./proof-animation.css", f"./proof-animation.css?v={ver}"))
-    (out / "index.html").write_text(html)
+    (out / "index.html").write_text(html, encoding="utf-8")
     return out
 
 

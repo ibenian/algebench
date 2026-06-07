@@ -203,7 +203,7 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
 
         def joinmul(items, tag):
             if not items:
-                return "1"
+                return gw(oid + "__one", "1")   # tagged so the animator tracks it
             out = items[0]
             for i, it in enumerate(items[1:], start=1):
                 out += f" {gw(oid + '__' + tag + str(i), chr(92) + 'cdot')} {it}"
@@ -243,7 +243,7 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
             mag = exp_s[1:]
             inner = (child(bases[0], _LOGIC) if mag == "1"   # {} groups → no parens
                      else child(bases[0], _POW + 1) + f"^{{{mag}}}")
-            return (f"\\frac{{1}}{{{inner}}}", _FRAC)
+            return (f"\\frac{{{gw(oid + '__one', '1')}}}{{{inner}}}", _FRAC)
         return (f"{child(bases[0], _POW + 1)}^{{{exp_tagged}}}", _POW)
 
     if op == "derivative":

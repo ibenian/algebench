@@ -13,6 +13,7 @@ deriving a proof from a prompt is ``derive.py``.
 """
 from __future__ import annotations
 
+import hashlib
 from collections import defaultdict
 
 from pydantic import BaseModel, ConfigDict
@@ -44,7 +45,9 @@ def _subtree_sigs(graph):
         for _r, c in ch[nid]:
             walk(c)
         kids = tuple(sorted((r or "", sig[c]) for r, c in ch[nid]))
-        sig[nid] = hash((_content(nodes[nid]), kids))
+        # deterministic, collision-resistant digest (not Python's salted hash())
+        sig[nid] = hashlib.blake2b(repr((_content(nodes[nid]), kids)).encode(),
+                                   digest_size=16).hexdigest()
         size[nid] = 1 + sum(size[c] for _r, c in ch[nid])
 
     for nid in nodes:
