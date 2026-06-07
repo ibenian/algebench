@@ -1719,23 +1719,25 @@ def create_app(initial_scene_path=None, debug=False,
         return Response(content=content, media_type=media_type,
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
-    # The FLIP animation engine's static assets — a fixed, known set. Serving
-    # only these (exact-match whitelist) makes path traversal impossible by
-    # construction (no user-controlled value ever reaches the filesystem path).
+    # The FLIP animation engine's static assets — a fixed, known set. The request
+    # filename is only ever used to LOOK UP a constant (name, media_type); the
+    # filesystem path is built from the mapped constant ``name`` literal, so no
+    # user-controlled value reaches the path (no traversal possible).
     _PROOF_ANIM_ASSETS = {
-        "proof-animation.js": "application/javascript",
-        "proof-animation.css": "text/css",
-        "sg-proof.js": "application/javascript",
-        "dock-seq.js": "application/javascript",
+        "proof-animation.js": ("proof-animation.js", "application/javascript"),
+        "proof-animation.css": ("proof-animation.css", "text/css"),
+        "sg-proof.js": ("sg-proof.js", "application/javascript"),
+        "dock-seq.js": ("dock-seq.js", "application/javascript"),
     }
 
     @fastapp.get("/proof-animation/{filename:path}")
     async def get_proof_animation_file(filename: str):
         """Serve a known FLIP-engine asset from static/proof-animation/."""
-        media_type = _PROOF_ANIM_ASSETS.get(filename)
-        if media_type is None:
+        entry = _PROOF_ANIM_ASSETS.get(filename)
+        if entry is None:
             return Response(status_code=404)
-        path = static_dir / "proof-animation" / filename
+        name, media_type = entry                       # constants from the table
+        path = static_dir / "proof-animation" / name
         if not path.is_file():
             return Response(status_code=404)
         with open(path, "rb") as f:
