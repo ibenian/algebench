@@ -5,7 +5,7 @@
     "steps": [
       {
         "index": 0,
-        "operation": "Given",
+        "operation": "Given the equation",
         "justification": "solve for $a$",
         "input_latex": "a + b - c = 0",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=a}{a} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=b}{b}} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=c}{c}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__num_5}{0}}",
@@ -35,8 +35,8 @@
     "steps": [
       {
         "index": 0,
-        "operation": "Given",
-        "justification": "a perfect square to expand",
+        "operation": "Given a perfect square",
+        "justification": "expand it",
         "input_latex": "(x + 1)^2",
         "latex": "\\htmlData{n=__power_1}{\\left(\\htmlData{n=__add_2}{\\htmlData{n=x}{x} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__num_3}{1}}\\right)^{\\htmlData{n=__power_1__exp}{2}}}",
         "plain": "\\left(x + 1\\right)^{2}"
@@ -57,8 +57,8 @@
     "steps": [
       {
         "index": 0,
-        "operation": "Given",
-        "justification": "a difference of two squares",
+        "operation": "Given a difference of squares",
+        "justification": "factor it",
         "input_latex": "a^2 - b^2",
         "latex": "\\htmlData{n=__add_1}{\\htmlData{n=__power_2}{\\htmlData{n=a}{a}^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__power_4}{\\htmlData{n=b}{b}^{\\htmlData{n=__power_4__exp}{2}}}}}",
         "plain": "a^{2} - b^{2}"
@@ -79,8 +79,8 @@
     "steps": [
       {
         "index": 0,
-        "operation": "Given",
-        "justification": "the energy–momentum relation",
+        "operation": "Given the energy–momentum relation",
+        "justification": "solve for $E$",
         "input_latex": "E^2 = (m c^2)^2 + (p c)^2",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_2}{\\htmlData{n=E}{E}^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_3}{\\htmlData{n=__power_4}{\\left(\\htmlData{n=__multiply_5}{\\htmlData{n=m}{m} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}}\\right)^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\left(\\htmlData{n=__multiply_8}{\\htmlData{n=p}{p} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=c____multiply_8}{c}}\\right)^{\\htmlData{n=__power_7__exp}{2}}}}}",
         "plain": "E^{2} = \\left(m \\cdot c^{2}\\right)^{2} + \\left(p \\cdot c\\right)^{2}"
@@ -133,8 +133,8 @@
     "steps": [
       {
         "index": 0,
-        "operation": "Given",
-        "justification": "light-clock relation (invariant $c$)",
+        "operation": "Given the light-clock relation",
+        "justification": "solve for $t$ (invariant $c$)",
         "input_latex": "(c t)^2 = (c t_0)^2 + (v t)^2",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_2}{\\left(\\htmlData{n=__multiply_3}{\\htmlData{n=c____multiply_3}{c} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=t____multiply_3}{t}}\\right)^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_4}{\\htmlData{n=__power_5}{\\left(\\htmlData{n=__multiply_6}{\\htmlData{n=c____multiply_6}{c} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=t_0}{t_{0}}}\\right)^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=__power_7}{\\left(\\htmlData{n=__multiply_8}{\\htmlData{n=v}{v} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=t____multiply_8}{t}}\\right)^{\\htmlData{n=__power_7__exp}{2}}}}}",
         "plain": "\\left(c \\cdot t\\right)^{2} = \\left(c \\cdot t_{0}\\right)^{2} + \\left(v \\cdot t\\right)^{2}"
@@ -195,8 +195,8 @@
     "steps": [
       {
         "index": 0,
-        "operation": "Given",
-        "justification": "complete the square to find the roots; the discriminant is $b^2 - 4ac$",
+        "operation": "Given the quadratic equation",
+        "justification": "complete the square; the discriminant is $b^2 - 4ac$",
         "input_latex": "a \\cdot x^{2} + b \\cdot x + c = 0",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=a}{a} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_6}{\\htmlData{n=b}{b} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=x____multiply_6}{x}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=c}{c}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__num_7}{0}}",
         "plain": "a \\cdot x^{2} + b \\cdot x + c = 0"
