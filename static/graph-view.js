@@ -902,6 +902,16 @@ async function _renderWithD3(container, graph, step, key) {
     // makes them survive re-renders within the same step.
     if (_currentProofManager) _currentProofManager.setCurrentStep(stepKey);
 
+    // Charts and proof boxes share the docked overlay panel but re-attach from
+    // two managers — keep their order stable (creation order) so it doesn't
+    // switch after navigation.
+    const dock = container.querySelector('.d3-graph-card .sgc-pinned-panel');
+    if (dock && dock.children.length > 1) {
+        [...dock.children]
+            .sort((a, b) => (+a.dataset.dockOrder || 0) - (+b.dataset.dockOrder || 0))
+            .forEach(c => dock.appendChild(c));
+    }
+
     // Background enrichment (shared with Mermaid path)
     enrichGraphInBackground(graph, key, step);
 }

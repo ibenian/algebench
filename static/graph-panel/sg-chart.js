@@ -10,6 +10,7 @@
 
 import { SgChartScript } from './sg-chart-script.js';
 import { compileExpr, evalExpr } from '/expr.js';
+import { nextDockSeq } from '/proof-animation/dock-seq.js';
 
 const CHART_JS_CDN = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
 const NUM_POINTS = 200;
@@ -447,6 +448,7 @@ export class SgChartManager {
         box.className = 'sgc-chart-box';
         box.id = chartId;
         box.dataset.nodeId = nodeId;
+        box.dataset.dockOrder = String(nextDockSeq());   // stable shared dock order
 
         const header = document.createElement('div');
         header.className = 'sgc-chart-header';

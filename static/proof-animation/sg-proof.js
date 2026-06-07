@@ -9,6 +9,7 @@
 
 import { ProofAnimator } from '/proof-animation/proof-animation.js';
 import { invokeExpert } from '/expert-client.js';
+import { nextDockSeq } from '/proof-animation/dock-seq.js';
 
 // Session-persistent cache of derivation results, keyed by the request shape.
 // Survives navigation/re-renders so a derived node is never recomputed and its
@@ -199,6 +200,7 @@ export class SgProofManager {
         const card = this._card();
         const box = document.createElement('div');
         box.className = 'sgc-chart-box sgp-proof-box';
+        box.dataset.dockOrder = String(nextDockSeq());   // stable shared dock order
 
         const header = document.createElement('div');
         header.className = 'sgc-chart-header';
