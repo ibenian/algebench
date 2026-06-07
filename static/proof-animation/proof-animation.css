@@ -106,3 +106,166 @@
     --pa-muted: var(--muted-color, #9ca3af);
   }
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   SgProofManager dock — a floating box on the semantic graph that hosts a
+   ProofAnimator (matches the .sgc-chart-box glass styling). The animator's own
+   .pa-root supplies its inner padding/border; the box wraps it with a header.
+   ─────────────────────────────────────────────────────────────────────────── */
+.sgp-proof-box {
+    background: rgba(10, 12, 26, 0.92);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    color: rgba(210, 218, 245, 0.92);
+}
+.sgp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(110, 124, 180, 0.22);
+    user-select: none;
+    touch-action: none;
+}
+.sgp-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(220, 228, 252, 0.95);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sgp-close {
+    flex: none;
+    background: transparent;
+    border: none;
+    color: rgba(190, 200, 230, 0.7);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+}
+.sgp-close:hover { color: #fff; }
+
+.sgp-body { padding: 0; }
+/* The animator's .pa-root already brings border/radius; drop the doubled chrome
+   when it's mounted inside a dock body. */
+.sgp-body .pa-root {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 14px;
+}
+
+.sgp-status,
+.sgp-error {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 14px;
+    font-size: 0.78rem;
+    color: rgba(210, 218, 245, 0.9);
+}
+.sgp-error { flex-direction: column; align-items: stretch; gap: 10px; }
+.sgp-error-msg { color: rgba(246, 200, 200, 0.95); line-height: 1.35; }
+.sgp-retry {
+    align-self: flex-start;
+    background: rgba(99, 102, 241, 0.18);
+    border: 1px solid rgba(120, 130, 200, 0.5);
+    color: rgba(220, 226, 252, 0.95);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.74rem;
+    cursor: pointer;
+}
+.sgp-retry:hover { background: rgba(99, 102, 241, 0.3); }
+
+/* Animated three-dot spinner, shared look with the enrichment pill. */
+.sgp-dots { display: inline-flex; align-items: center; gap: 3px; }
+.sgp-dots span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(166, 184, 240, 0.95);
+    animation: gei-dot-pulse 1.1s ease-in-out infinite;
+}
+.sgp-dots span:nth-child(2) { animation-delay: 0.18s; }
+.sgp-dots span:nth-child(3) { animation-delay: 0.36s; }
+
+/* "Deriving proof…" pill — lives in the shared .graph-enrich-indicator-stack
+   but with its own class so the enrichment step-visibility toggle never hides
+   it. Visual style mirrors .graph-enrich-indicator. */
+.sgp-derive-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px 6px 8px;
+    background: rgba(10, 12, 26, 0.78);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    color: rgba(210, 218, 245, 0.92);
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    user-select: none;
+    pointer-events: none;
+    animation: gei-fade-in 180ms ease-out;
+}
+.sgp-derive-indicator .gei-dots { display: inline-flex; align-items: center; gap: 3px; }
+.sgp-derive-indicator .gei-dots span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(166, 184, 240, 0.95);
+    animation: gei-dot-pulse 1.1s ease-in-out infinite;
+}
+.sgp-derive-indicator .gei-dots span:nth-child(2) { animation-delay: 0.18s; }
+.sgp-derive-indicator .gei-dots span:nth-child(3) { animation-delay: 0.36s; }
+
+/* Header dock button (📌) — mirrors the chart pin button. */
+.sgp-dock-btn {
+    flex: none;
+    background: transparent;
+    border: none;
+    color: rgba(190, 200, 230, 0.7);
+    font-size: 0.82rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+    filter: grayscale(0.4) opacity(0.8);
+}
+.sgp-dock-btn:hover { filter: none; }
+.sgp-dock-btn.sgp-dock-active { filter: none; }
+
+/* Resize corner — drag to zoom the animation. */
+.sgp-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    cursor: nwse-resize;
+    z-index: 5;
+    touch-action: none;
+}
+.sgp-resize-handle::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid rgba(110, 124, 180, 0.45);
+    border-bottom: 2px solid rgba(110, 124, 180, 0.45);
+}
+.sgp-resize-handle:hover::after { border-color: rgba(140, 160, 220, 0.75); }
+
+/* Docked state — flows in the shared .sgc-pinned-panel beside pinned charts. */
+.sgp-proof-box.sgp-pinned {
+    position: relative;
+    flex-shrink: 0;
+    pointer-events: all;
+}
+.sgc-pinned-panel .sgp-proof-box { pointer-events: all; }

@@ -12,15 +12,18 @@ from __future__ import annotations
 
 from .registry import (  # re-exported for convenience
     EXPERT_REGISTRY,
+    HANDLER_REGISTRY,
     METRIC_REGISTRY,
     resolve_context_model,
 )
 
 
 def discover() -> None:
-    """Import every expert package so decorators populate the registries."""
+    """Import every expert + handler package so decorators populate the registries."""
     from .modules import discover_experts
     discover_experts()
+    from .handlers import discover_handlers
+    discover_handlers()
 
 
 def init_experts(configure_lm: bool = True) -> None:

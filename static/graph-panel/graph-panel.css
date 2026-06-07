@@ -94,7 +94,8 @@
   top: auto;
   right: auto;
 }
-.graph-panel-info .graph-panel-ai-btn {
+.graph-panel-info .graph-panel-ai-btn,
+.graph-panel-info .graph-panel-derive-btn {
   opacity: 1;
   pointer-events: auto;
 }

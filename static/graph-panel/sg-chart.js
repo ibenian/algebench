@@ -319,9 +319,14 @@ export class SgChartManager {
         }
 
         if (!this._pinnedPanel) {
-            this._pinnedPanel = document.createElement('div');
-            this._pinnedPanel.className = 'sgc-pinned-panel';
-            card.appendChild(this._pinnedPanel);
+            // Adopt an existing dock panel (e.g. one the proof manager created) so
+            // pinned charts and pinned proof animations share one row, side by side.
+            this._pinnedPanel = card.querySelector('.sgc-pinned-panel');
+            if (!this._pinnedPanel) {
+                this._pinnedPanel = document.createElement('div');
+                this._pinnedPanel.className = 'sgc-pinned-panel';
+                card.appendChild(this._pinnedPanel);
+            }
         }
 
         if (!this._legendPanel) {

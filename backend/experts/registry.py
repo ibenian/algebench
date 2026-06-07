@@ -5,14 +5,20 @@ Everything extensible is a plain ``dict`` looked up by a string key — there is
 framework. Experts and metrics *self-register* via the decorators below, and
 ``discover_experts()`` imports the modules so registration happens on load.
 
-Three registries: ``EXPERT_REGISTRY`` (name → :class:`ExpertSpec`),
-``CONTEXT_MODELS`` (context_id terminal scope → default Pydantic model), and
-``METRIC_REGISTRY`` (name → DSPy metric). There is no output/handler registry —
-experts return typed ``Output`` objects directly and ``service.invoke`` wraps
-them in an :class:`~backend.experts.outputs.ExpertResult` (no dispatch layer).
+Four registries: ``EXPERT_REGISTRY`` (name → :class:`ExpertSpec`),
+``CONTEXT_MODELS`` (context_id terminal scope → default Pydantic model),
+``METRIC_REGISTRY`` (name → DSPy metric), and ``HANDLER_REGISTRY`` (name →
+:class:`HandlerSpec`). A *handler* wraps an expert call with custom
+pre/post-processing (parse a feature request, build the context payload, call
+``service.invoke``, post-process the outputs) behind the generic
+``POST /api/expert/{name}`` endpoint; experts with no handler are reached
+through the default ``invoke`` path. Experts still return typed ``Output``
+objects directly and ``service.invoke`` wraps them in an
+:class:`~backend.experts.outputs.ExpertResult`.
 
-Adding an expert = drop a self-registering module under ``modules/``. No
-core-loop edits, no config file.
+Adding an expert = drop a self-registering module under ``modules/``; adding a
+handler = drop a self-registering module under ``handlers/``. No core-loop
+edits, no config file.
 """
 
 from __future__ import annotations
@@ -41,12 +47,33 @@ class ExpertSpec:
     context_model: Optional[type] = None
 
 
+@dataclass(frozen=True)
+class HandlerSpec:
+    """A handler's registration record.
+
+    A handler is request→orchestration glue exposed at ``POST /api/expert/{name}``:
+    ``fn`` takes a validated ``request_model`` instance and returns a JSON-able
+    ``dict`` (it does the pre-processing, calls ``service.invoke`` for the actual
+    expert, and post-processes the outputs). ``requires_experts`` asks the
+    endpoint to ensure DSPy/experts are configured before the call (it almost
+    always does, since handlers run experts). Concurrency/abuse is handled by the
+    shared per-IP rate limiter at the endpoint, not here.
+    """
+
+    name: str
+    fn: Callable[[Any], dict]
+    request_model: type
+    requires_experts: bool = True
+
+
 # name -> ExpertSpec
 EXPERT_REGISTRY: dict[str, ExpertSpec] = {}
 # context_id terminal type -> default Pydantic context model
 CONTEXT_MODELS: dict[str, type] = {}
 # expert name -> DSPy metric callable
 METRIC_REGISTRY: dict[str, Callable[..., Any]] = {}
+# handler name -> HandlerSpec (custom pre/post wrapper around an expert call)
+HANDLER_REGISTRY: dict[str, HandlerSpec] = {}
 
 
 # --------------------------------------------------------------------------- #
@@ -75,6 +102,33 @@ def register_expert(
         cls.context_scope = context_scope  # type: ignore[attr-defined]
         cls.context_model = context_model  # type: ignore[attr-defined]
         return cls
+
+    return deco
+
+
+def register_handler(
+    name: str,
+    *,
+    request_model: type,
+    requires_experts: bool = True,
+) -> Callable[[Callable], Callable]:
+    """Decorator: register a function as a handler for ``POST /api/expert/{name}``.
+
+    The decorated ``fn(req)`` receives a validated ``request_model`` instance and
+    returns a JSON-able ``dict``. The handler name is independent of the expert
+    name(s) it calls — it decides which expert(s) to invoke.
+    """
+
+    def deco(fn: Callable) -> Callable:
+        if name in HANDLER_REGISTRY:
+            raise ValueError(f"handler {name!r} already registered")
+        HANDLER_REGISTRY[name] = HandlerSpec(
+            name=name,
+            fn=fn,
+            request_model=request_model,
+            requires_experts=requires_experts,
+        )
+        return fn
 
     return deco
 

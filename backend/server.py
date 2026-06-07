@@ -380,7 +380,34 @@ from backend.util import sanitize_path, limiter_from_env, rate_limit_dependency 
 # Gemini spend on a public, unauthenticated deployment; the app is otherwise open.
 _chat_rate_limit = rate_limit_dependency(limiter_from_env("ALGEBENCH_RATELIMIT_CHAT", 20, 60))
 _tts_rate_limit = rate_limit_dependency(limiter_from_env("ALGEBENCH_RATELIMIT_TTS", 20, 60))
-_enrich_rate_limit = rate_limit_dependency(limiter_from_env("ALGEBENCH_RATELIMIT_ENRICH", 60, 60))
+# One shared limiter for ALL agentic/LM work (graph enrichment + the generic
+# expert endpoint). The backend is shared by many clients, so this is per-IP,
+# never a global cap.
+_agentic_rate_limit = rate_limit_dependency(limiter_from_env("ALGEBENCH_RATELIMIT_AGENTIC", 60, 60))
+
+
+# --- Expert framework: lazy one-time DSPy config + registry discovery --------
+_experts_ready = False
+_experts_lock = threading.Lock()
+
+
+def _ensure_experts() -> None:
+    """Configure DSPy and discover experts/handlers exactly once (idempotent).
+
+    Lazy so a missing GEMINI key never breaks startup — the first
+    ``/api/expert`` request pays the one-time cost. Safe to call from a worker
+    thread; ``init_experts`` itself is import-cached, the lock just avoids a
+    redundant first-call race.
+    """
+    global _experts_ready
+    if _experts_ready:
+        return
+    with _experts_lock:
+        if _experts_ready:
+            return
+        from backend.experts import init_experts
+        init_experts()
+        _experts_ready = True
 
 
 def _safe_open_scene_path(source) -> Path:
@@ -1336,7 +1363,7 @@ def create_app(initial_scene_path=None, debug=False,
     _TOP_LEVEL_MODULES = {
         'state', 'expr', 'trust', 'coords', 'labels', 'follow-cam', 'camera',
         'sliders', 'overlay', 'context-browser', 'scene-loader', 'ui',
-        'json-browser', 'main', 'proof', 'graph-view',
+        'json-browser', 'main', 'proof', 'graph-view', 'expert-client',
     }
 
     @fastapp.get("/api/graph/themes")
@@ -1444,12 +1471,60 @@ def create_app(initial_scene_path=None, debug=False,
                 status_code=500,
             )
 
+    @fastapp.post("/api/expert/{name}")
+    async def run_expert(name: str, request: Request, _rl: None = Depends(_agentic_rate_limit)):
+        """Generic expert/handler entry point.
+
+        ``name`` selects a registered expert or a handler (a custom pre/post
+        wrapper around an expert call). Adding an expert or handler needs no new
+        route — they self-register and are reachable here by name. The shared
+        per-IP ``_agentic_rate_limit`` (above) is the only throttle.
+
+        Status codes: 404 unknown name, 422 bad request body, 400 derivation
+        error (unparseable expression / empty result), 500 otherwise.
+        """
+        from pydantic import ValidationError
+
+        from backend.experts import service as expert_service
+        from backend.experts.registry import EXPERT_REGISTRY, HANDLER_REGISTRY
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "request body must be valid JSON"}, status_code=400)
+        if not isinstance(body, dict):
+            return JSONResponse({"error": "request body must be a JSON object"}, status_code=400)
+
+        try:
+            # One-time DSPy config + discovery (imports/configures — off the loop).
+            await asyncio.to_thread(_ensure_experts)
+        except Exception as e:
+            import traceback
+            print(f"   ❌ /api/expert/{name}: expert init failed: {e}\n{traceback.format_exc()}")
+            return JSONResponse({"error": "expert framework unavailable"}, status_code=503)
+
+        if name not in HANDLER_REGISTRY and name not in EXPERT_REGISTRY:
+            return JSONResponse({"error": f"unknown expert/handler: {name!r}"}, status_code=404)
+
+        try:
+            # The whole sync pipeline (validation + LM call + conversion) off-loop.
+            result = await asyncio.to_thread(expert_service.run, name, body)
+            return JSONResponse(result)
+        except ValidationError as e:
+            return JSONResponse({"error": "invalid request", "detail": e.errors()}, status_code=422)
+        except (ValueError, KeyError) as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+        except Exception as e:
+            import traceback
+            print(f"   ❌ /api/expert/{name}: {e}\n{traceback.format_exc()}")
+            return JSONResponse({"error": "internal error running expert"}, status_code=500)
+
     class GraphEnrichRequest(BaseModel):
         graph: dict
         context: dict | None = None
 
     @fastapp.post("/api/graph/enrich")
-    async def post_graph_enrich(req: GraphEnrichRequest, _rl: None = Depends(_enrich_rate_limit)):
+    async def post_graph_enrich(req: GraphEnrichRequest, _rl: None = Depends(_agentic_rate_limit)):
         """Enrich a semantic graph via Gemini (descriptions, emoji, color, corrections).
 
         Runtime in-memory cache keyed by ``sha256({graph, context})`` — the
@@ -1619,6 +1694,24 @@ def create_app(initial_scene_path=None, debug=False,
     async def get_graph_panel_file(filename: str):
         """Serve files from static/graph-panel/ subdirectory."""
         path = sanitize_path(static_dir / "graph-panel", filename)
+        if not path or not path.is_file():
+            return Response(status_code=404)
+        suffix = path.suffix
+        if suffix == '.js':
+            media_type = "application/javascript"
+        elif suffix == '.css':
+            media_type = "text/css"
+        else:
+            media_type = "application/octet-stream"
+        with open(path, 'rb') as f:
+            content = f.read()
+        return Response(content=content, media_type=media_type,
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+    @fastapp.get("/proof-animation/{filename:path}")
+    async def get_proof_animation_file(filename: str):
+        """Serve files from static/proof-animation/ (the FLIP animation engine)."""
+        path = sanitize_path(static_dir / "proof-animation", filename)
         if not path or not path.is_file():
             return Response(status_code=404)
         suffix = path.suffix
