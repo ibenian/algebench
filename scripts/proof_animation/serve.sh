@@ -27,7 +27,7 @@ done
 # With no args the report renders the curated test suite (tests/proof_animation/proof_animations.json).
 
 echo "▶ Generating proof-animation page → $OUTDIR"
-"$DIR/run.sh" scripts/proof_animation/report.py --outdir "$OUTDIR" "${ARGS[@]}"
+"$DIR/run.sh" scripts/proof_animation/report.py --outdir "$OUTDIR" ${ARGS[@]+"${ARGS[@]}"}
 
 echo "▶ Serving on http://localhost:$PORT"
 python3 -m http.server "$PORT" -d "$OUTDIR"

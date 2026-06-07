@@ -26,15 +26,23 @@ const EASE = "cubic-bezier(0.42, 0, 0.58, 1)"; // ease-in-out
 // (These selectors hold no tagged glyphs, so hiding them won't hide content.)
 const DECORATIONS = [".frac-line", ".sqrt svg", ".delimsizing"];
 
+// Playback speed multipliers the speed button cycles through (click → next).
+const SPEEDS = [0.25, 0.5, 1, 2, 4];
+const _speedLabel = (s) => ({ 0.25: "¼×", 0.5: "½×" }[s] || `${s}×`);
+
 export class ProofAnimator {
   constructor(container, data, opts = {}) {
     this.container = container;
     this.data = data;
     this.katex = opts.katex || (typeof window !== "undefined" && window.katex);
     if (!this.katex) throw new Error("ProofAnimator: KaTeX not available");
-    this.duration = opts.duration ?? 650;
     this.mode = opts.mode || "parallel";    // 'parallel' | 'sequential'
-    this.staggerMs = opts.staggerMs ?? 200;  // sequential per-item lag (specifiable; ~2× the old)
+    // Base timings; the speed multiplier scales them (this.duration / staggerMs).
+    this._baseDuration = opts.duration ?? 650;
+    this._baseStagger = opts.staggerMs ?? 200;
+    this._speedIdx = SPEEDS.indexOf(opts.speed ?? 1);
+    if (this._speedIdx < 0) this._speedIdx = SPEEDS.indexOf(1);
+    this._applySpeed();   // sets this.speed, this.duration, this.staggerMs
     this.current = 0;
     this._running = [];
     this._ghosts = [];
@@ -67,6 +75,16 @@ export class ProofAnimator {
     if (h > 0) this.stage.style.height = Math.ceil(h + 8) + "px";
   }
 
+  // Apply the current speed multiplier to the effective durations (and update the
+  // button label if it exists). Higher speed ⇒ shorter durations.
+  _applySpeed() {
+    this.speed = SPEEDS[this._speedIdx];
+    this.duration = this._baseDuration / this.speed;
+    this.staggerMs = this._baseStagger / this.speed;
+    const btn = this.container.querySelector(".pa-speed");
+    if (btn) btn.textContent = _speedLabel(this.speed);
+  }
+
   _build() {
     this.container.classList.add("pa-root");
     this.container.innerHTML = `
@@ -77,6 +95,7 @@ export class ProofAnimator {
         <div class="pa-steps"></div>
         <button class="pa-btn pa-next" title="Next step">▶</button>
         <button class="pa-btn pa-play" title="Play through">▶ Play</button>
+        <button class="pa-btn pa-speed" title="Animation speed (click to cycle)">${_speedLabel(this.speed)}</button>
         <label class="pa-mode"><input type="checkbox"> sequential</label>
       </div>`;
     this.stage = this.container.querySelector(".pa-stage");
@@ -92,6 +111,10 @@ export class ProofAnimator {
     this.container.querySelector(".pa-prev").onclick = () => this.goTo(this.current - 1);
     this.container.querySelector(".pa-next").onclick = () => this.goTo(this.current + 1);
     this.container.querySelector(".pa-play").onclick = () => this.play();
+    this.container.querySelector(".pa-speed").onclick = () => {
+      this._speedIdx = (this._speedIdx + 1) % SPEEDS.length;
+      this._applySpeed();
+    };
     this.container.querySelector(".pa-mode input").onchange = (e) =>
       (this.mode = e.target.checked ? "sequential" : "parallel");
   }

@@ -78,6 +78,7 @@
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .pa-step { min-width: 34px; text-align: center; }
+.pa-speed { min-width: 3em; text-align: center; font-variant-numeric: tabular-nums; }
 .pa-btn:hover, .pa-step:hover { border-color: var(--pa-accent); }
 
 .pa-step.pa-active {
