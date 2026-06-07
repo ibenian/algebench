@@ -123,7 +123,7 @@ export class ProofAnimator {
     });
     this.container.querySelector(".pa-prev").onclick = () => this._userGoTo(this.current - 1);
     this.container.querySelector(".pa-next").onclick = () => this._userGoTo(this.current + 1);
-    this.container.querySelector(".pa-play").onclick = () => this.play();
+    this.container.querySelector(".pa-play").onclick = () => this._togglePlay();
     this.container.querySelector(".pa-speed").onclick = () => {
       this._speedIdx = (this._speedIdx + 1) % SPEEDS.length;
       this._applySpeed();
@@ -407,23 +407,46 @@ export class ProofAnimator {
     if (this._token === token) this._running = [];
   }
 
+  // the one Play/Pause button — toggles its icon+label and starts/stops autoplay
+  _setPlayLabel(playing) {
+    const b = this.container.querySelector(".pa-play");
+    if (!b) return;
+    b.textContent = playing ? "⏸ Pause" : "▶ Play";
+    b.title = playing ? "Pause" : "Play through";
+  }
+  _togglePlay() {
+    if (this._playId) {           // currently playing → pause
+      this._playId = null;
+      this._setPlayLabel(false);
+    } else {
+      this.play();
+    }
+  }
+
   // a user-initiated jump: cancels any running play() so autoplay never fights
   // manual navigation, then goes to the step.
   _userGoTo(target) {
     this._playId = null;
+    this._setPlayLabel(false);
     return this.goTo(target);
   }
 
   async play() {
-    const playId = (this._playId = {});   // user nav clears _playId, ending this loop
-    // if we're already at the end, restart from the beginning
-    if (this.current >= this.data.steps.length - 1) await this.goTo(0);
-    for (let t = this.current + 1; t < this.data.steps.length; t++) {
-      if (this._playId !== playId) return;            // interrupted by the user
-      await this.goTo(t);
-      if (this._playId !== playId) return;
-      // reading pause between steps (≈1s at 1×), scaled by the speed multiplier
-      await new Promise((r) => setTimeout(r, this._baseStepPause / this.speed));
+    const playId = (this._playId = {});   // user nav / pause clears _playId, ending this loop
+    this._setPlayLabel(true);
+    try {
+      // if we're already at the end, restart from the beginning
+      if (this.current >= this.data.steps.length - 1) await this.goTo(0);
+      for (let t = this.current + 1; t < this.data.steps.length; t++) {
+        if (this._playId !== playId) return;          // interrupted (user nav or pause)
+        await this.goTo(t);
+        if (this._playId !== playId) return;
+        // reading pause between steps (≈1s at 1×), scaled by the speed multiplier
+        await new Promise((r) => setTimeout(r, this._baseStepPause / this.speed));
+      }
+    } finally {
+      // only reset if we're still the active loop (not superseded by a newer play)
+      if (this._playId === playId) { this._playId = null; this._setPlayLabel(false); }
     }
   }
 
