@@ -71,9 +71,11 @@ When this skill is invoked, follow these steps **in order**:
 ### Step 1: Fetch Latest State
 
 ```bash
-git fetch origin main deploy/on-render deploy/on-render-staging deploy/on-huggingface --tags
+git fetch origin main deploy/on-render deploy/on-render-staging --tags
+# deploy/on-huggingface may not exist until the first HF deploy — fetch it
+# separately and non-fatally (a single fetch errors out if any named ref is missing).
+git fetch origin deploy/on-huggingface 2>/dev/null || true
 ```
-(`deploy/on-huggingface` may not exist until the first HF deploy — that's fine.)
 
 ### Step 2: Gather Status Data
 

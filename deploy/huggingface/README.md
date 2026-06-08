@@ -79,7 +79,15 @@ scripts/deploy_hf.sh --source origin/main
 HF_TOKEN=hf_xxx scripts/deploy_hf.sh --source origin/main --yes
 ```
 
-(Clear it from shell history afterward: `history -d $(history 1)`.)
+The token reaches git via `GIT_ASKPASS` (never the command line), but the
+**inline `HF_TOKEN=` does land in your shell history** — clear that entry
+afterward with the offset of the last command:
+
+```bash
+history -d "$(history 1 | awk '{print $1}')"
+```
+
+(Option **A** avoids this entirely — the token lives only in the keychain.)
 
 ## Secrets on the Space
 

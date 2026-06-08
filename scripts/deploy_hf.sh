@@ -4,16 +4,19 @@
 #
 # Hugging Face Spaces build from the Space repo's own `main` branch and REJECT
 # binary files that appear anywhere in git history. So we can't push a normal
-# long-lived branch (the docs/*.png images live in history). Instead this script
-# builds a single-commit *snapshot* of the production app, overlays the HF deploy
-# config (Dockerfile + README metadata header), strips the binaries/dev tooling,
-# and force-pushes that one clean commit to the Space's main.
+# dev branch (the docs/*.png images live in its history). Instead this script
+# builds a clean *snapshot* of the production app, overlays the HF deploy config
+# (Dockerfile + README metadata header), strips the binaries/dev tooling, and
+# pushes that snapshot commit to the Space's main.
 #
-# The Space is a deploy MIRROR — GitHub keeps the full history. Re-running this
-# replaces the Space's single commit; there is never any binary history to reject.
+# The Space is a deploy MIRROR — GitHub keeps the full dev history. Each deploy
+# is chained onto the `deploy/on-huggingface` log (one commit per deploy, parent
+# = previous deploy), and the SAME commit is pushed to the Space's main. Every
+# commit is a clean snapshot, so the log stays binary-free and HF keeps accepting
+# it. (Use --keep N to trim that log; see below.)
 #
 # Usage:
-#   scripts/deploy_hf.sh [--source <ref>] [--dry-run] [--yes]
+#   scripts/deploy_hf.sh [--source <ref>] [--keep <N>] [--dry-run] [--yes]
 #
 #   --source <ref>   Git ref whose tree to deploy.
 #                    Default: $HF_SOURCE_REF, else origin/deploy/on-render
@@ -91,6 +94,7 @@ git -C "$REPO" rev-parse --verify --quiet "$SOURCE_REF^{commit}" >/dev/null \
     || die "source ref '$SOURCE_REF' not found (try --source origin/main)"
 
 SRC_SHA="$(git -C "$REPO" rev-parse --short "$SOURCE_REF")"
+SRC_FULL="$(git -C "$REPO" rev-parse "$SOURCE_REF")"   # full 40-char SHA for the durable record
 SRC_SUBJ="$(git -C "$REPO" log -1 --format=%s "$SOURCE_REF")"
 
 echo "→ Source:  $SOURCE_REF  ($SRC_SHA  $SRC_SUBJ)"
@@ -103,6 +107,7 @@ WORKTREE="$(mktemp -d "${TMPDIR:-/tmp}/algebench-hf.XXXXXX")"
 cleanup() {
     git -C "$REPO" worktree remove --force "$WORKTREE" >/dev/null 2>&1 || rm -rf "$WORKTREE"
     git -C "$REPO" worktree prune >/dev/null 2>&1 || true
+    [ -n "${ASKPASS:-}" ] && rm -f "$ASKPASS" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -184,7 +189,7 @@ PARENT_ARGS=""
 SNAP_COMMIT="$(printf '%s\n' \
 "AlgeBench — Hugging Face Space deploy
 
-Source: ${SRC_SHA} ${SRC_SUBJ}
+Source: ${SRC_FULL} ${SRC_SUBJ}
 Built by scripts/deploy_hf.sh from ${SOURCE_REF}.
 
 🤖 Co-Authored-By: Claude <81847+claude@users.noreply.github.com>" \
@@ -220,14 +225,32 @@ if [ "$ASSUME_YES" -ne 1 ]; then
     esac
 fi
 
+# Auth. When HF_TOKEN is set, feed it through GIT_ASKPASS (an env-fed helper
+# script) instead of embedding it in the URL — so the token never appears in
+# argv / `ps` / error output. The helper file contains no secret; it reads the
+# token from the environment of the git process. Otherwise rely on the git
+# credential helper (e.g. the macOS keychain).
+PUSH_URL="https://huggingface.co/spaces/${HF_SPACE}"
 if [ -n "${HF_TOKEN:-}" ]; then
-    PUSH_URL="https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}"
-else
-    PUSH_URL="https://huggingface.co/spaces/${HF_SPACE}"
+    PUSH_URL="https://${HF_USER}@huggingface.co/spaces/${HF_SPACE}"
+    ASKPASS="$(mktemp "${TMPDIR:-/tmp}/hf-askpass.XXXXXX")"
+    cat > "$ASKPASS" <<'AP'
+#!/bin/sh
+case "$1" in
+  *[Uu]sername*) printf '%s' "$HF_USER" ;;
+  *)             printf '%s' "$HF_TOKEN" ;;
+esac
+AP
+    chmod 700 "$ASKPASS"
 fi
 
 echo "→ Pushing to the Space…"
-git push --force "$PUSH_URL" "${SNAP_COMMIT}:refs/heads/main"
+if [ -n "${HF_TOKEN:-}" ]; then
+    GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0 HF_USER="$HF_USER" HF_TOKEN="$HF_TOKEN" \
+        git push --force "$PUSH_URL" "${SNAP_COMMIT}:refs/heads/main"
+else
+    git push --force "$PUSH_URL" "${SNAP_COMMIT}:refs/heads/main"
+fi
 
 # Record the deploy: advance deploy/on-huggingface to this commit (compare-and-swap
 # against the ORIGINAL tip we read), then push the log to origin. With --keep the
