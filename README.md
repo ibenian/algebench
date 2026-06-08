@@ -1,0 +1,209 @@
+---
+title: AlgeBench
+emoji: 📐
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+short_description: Interactive 3D math lessons with a live AI tutor
+---
+
+# AlgeBench
+
+[**ibenian.github.io/algebench**](https://ibenian.github.io/algebench/)
+
+**See and touch the math.**
+**Think with an AI.**
+
+> **AI for human understanding — not for outsourcing thought.**
+
+Interactive 3D lessons with a live AI narrator. Spin up a scene, listen to it explain itself, then interrupt and ask *what*, *how* and the *why* — the narrator answers in real time and the visualization responds.
+
+Step-by-step **proofs** walk through derivations alongside the 3D scene — each step shows the math, the justification, and highlighted regions you can click to see what changed. A **semantic graph** parses the current expression into an interactive flowchart of variables, operators, and relationships, so you can see the *structure* of an equation, not just its symbols. Proofs and the graph stay in sync: advance a proof step and the graph and 3D view update together.
+
+**Made for:** self-taught learners, students, and educators who think math makes more sense when you can see it move.
+
+![AlgeBench screenshot](https://raw.githubusercontent.com/ibenian/algebench/main/docs/rotating-space-habitat.png)
+
+
+---
+
+## See it in action
+
+**YouTube Channel:** [youtube.com/@AlgeBench](https://www.youtube.com/@AlgeBench)
+
+
+| Scene                             | Video                                                        |
+| --------------------------------- | ------------------------------------------------------------ |
+| Measurement Reads Latitude — Bloch Sphere Intuition | [Watch](https://youtu.be/Euj3QB_F9Qs) |
+| From Hilbert Space to the Bloch Sphere — Interactive Quantum Visualization | [Watch](https://youtu.be/mDEJHRxrtro) |
+| Orbital Flight Simulation         | [Watch](https://youtu.be/3m1NtT3EKH4)                       |
+| Pi and e — The Mathematical Duo   | [Watch](https://youtu.be/ebIaeCPCkx4)                        |
+| Rotating Space Habitat Simulation | [Watch](https://www.youtube.com/watch?v=HoZgrAxKKGA)         |
+
+
+**Try it yourself:** [Rotating Space Habitat](https://algebench-staging.onrender.com/?builtin=rotating-habitat)
+
+## Deployments
+|   |   |
+|---|---|
+| **Production** | [algebench.org](https://algebench.org) |
+| **Staging** | [algebench-staging.onrender.com](https://algebench-staging.onrender.com) |
+
+---
+
+
+## Vision
+
+My ultimate goal is to create an agentic system that can genuinely engage in the tangible learning process — fostering that explorative, experimental mindset, willing and courageous enough to ask daring questions freely, supported by an infinitely patient tutor that can meet you exactly where you are and take you wherever you want to go.
+
+The motto guides every design choice:
+
+> **AI for human understanding — not for outsourcing thought.**
+
+The AI's job is to set the table — pick what's worth showing, build the apparatus, prepare the ground — so the learner can do the seeing, the playing, and the understanding for themselves. Computation, plotting, axis-picking, and sensible defaults are scut work the AI is happy to do. Understanding is non-transferable; only the learner can do it, and they do it by interacting with the apparatus.
+
+**Active design proposals** (in [docs/proposals/](https://github.com/ibenian/algebench/blob/main/docs/proposals/)):
+- [Parametric Analysis Visualization](https://github.com/ibenian/algebench/blob/main/docs/proposals/parametric-analysis-proposal.md) — AI-assisted, multi-dimensional response charts with sliders, animation drivers, and dimension-pickers, built on top of the semantic graph.
+- [Proof Structure v2](https://github.com/ibenian/algebench/blob/main/docs/proposals/proof-structure-v2-proposal.md) — branching proofs, hypotheses, and proof techniques.
+- [Lesson Builder Agents](https://github.com/ibenian/algebench/blob/main/docs/proposals/lesson-builder-agents-proposal.md) — multi-agent pipeline for authoring full lessons.
+- [Citations](https://github.com/ibenian/algebench/blob/main/docs/proposals/citations-proposal.md) — academic-paper-grade source attribution.
+
+---
+
+## Quick Start
+
+**Prerequisites:** Python 3.10+, a [Gemini API key](https://aistudio.google.com/apikey)
+
+```bash
+git clone https://github.com/ibenian/algebench
+cd algebench
+pip install -r requirements.txt
+export GEMINI_API_KEY=your_key_here
+./algebench
+```
+
+Open [http://localhost:8785](http://localhost:8785) in your browser.
+
+To launch directly into a scene:
+
+```bash
+./algebench scenes/eigenvalues.json
+```
+
+To update to the latest version of `[gemini-live-tools](https://github.com/ibenian/gemini-live-tools)` (which includes new voice characters and the voice picker UI):
+
+```bash
+./algebench --update
+```
+
+This reinstalls `gemini-live-tools` from GitHub and copies the updated `voice-character-selector.js` into the app. Not ideal, but simple enough for now.
+
+For all available CLI options including TTS settings:
+
+```bash
+./algebench --help
+```
+
+### TTS Modes
+
+AlgeBench supports three TTS configurations, each with different trade-offs:
+
+
+| Flags                          | API                                   | Quality | Latency         | Cost                    | Best for                   |
+| ------------------------------ | ------------------------------------- | ------- | --------------- | ----------------------- | -------------------------- |
+| *(default)*                    | Gemini Live streaming                 | Good    | Low (~200ms)    | Single API call         | Interactive use, narration |
+| `--tts-buffered`               | Gemini Live, falls back to Gemini TTS | Mixed   | Varying (2–5s+) | Multiple parallel calls | Long-form, saving to file  |
+| `--tts-buffered --no-tts-live` | Gemini TTS                            | High    | Higher (3–10s+) | One call per sentence   | Highest quality output     |
+
+
+**Examples:**
+
+```bash
+./algebench                                    # realtime streaming (default)
+./algebench --tts-buffered                     # buffered with Live API + TTS fallback
+./algebench --tts-buffered --no-tts-live       # buffered with standard Gemini TTS only
+```
+
+**Buffered mode options** (only apply with `--tts-buffered`):
+
+
+| Flag                        | Default | Description                                         |
+| --------------------------- | ------- | --------------------------------------------------- |
+| `--tts-parallelism`         | 3       | Max concurrent sentence synthesis (1–4)             |
+| `--tts-min-buffer`          | 30.0    | Seconds of audio to buffer before playback          |
+| `--tts-min-sentence-chars`  | 100     | Merge short sentences up to this char count         |
+| `--tts-output-file out.wav` | —       | Save audio to WAV file (auto-enables buffered mode) |
+
+
+**Common options** (all modes):
+
+
+| Flag                | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| `--tts-style "..."` | Additional style guidance (e.g. "speak slowly") |
+
+
+`--no-tts-live` and `--tts-output-file` automatically enable buffered mode when used without `--tts-buffered`.
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add scenes, voice characters, and more.
+
+## Roadmap
+
+See [docs/feature-ideas.md](https://github.com/ibenian/algebench/blob/main/docs/feature-ideas.md) for technical directions and creative ideas under consideration, and [docs/lesson-ideas.md](https://github.com/ibenian/algebench/blob/main/docs/lesson-ideas.md) for lesson concepts and content proposals.
+
+## Documentation
+
+- [docs/architecture.md](https://github.com/ibenian/algebench/blob/main/docs/architecture.md) — System architecture, component overview, data flow
+- [docs/sandbox-model.md](https://github.com/ibenian/algebench/blob/main/docs/sandbox-model.md) — Expression evaluation, trust model, security boundary
+- [docs/sandboxing-plan.md](https://github.com/ibenian/algebench/blob/main/docs/sandboxing-plan.md) — Implementation status and backend sandboxing roadmap
+- [docs/feature-ideas.md](https://github.com/ibenian/algebench/blob/main/docs/feature-ideas.md) — Roadmap ideas and creative directions
+- [docs/lesson-ideas.md](https://github.com/ibenian/algebench/blob/main/docs/lesson-ideas.md) — Lesson concepts across probability, ML, calculus, physics, and more
+- [tests/proof_animation/](tests/proof_animation/README.md) — Proof-animation test suite (how to add/derive/render proofs)
+- [Codebase Statistics](https://ibenian.github.io/algebench/loc-report/) — Lines of code (LOC) by language, per-file breakdowns (auto-updated)
+- [Semantic Graph Report](https://ibenian.github.io/algebench/semantic-graph/) — Visual examination of the LaTeX → semantic graph pipeline (auto-deployed)
+- [Proof Animation Report](https://ibenian.github.io/algebench/proof-animation/) — Interactive, morph-animated derivations from the proof test suite (auto-deployed)
+
+---
+
+## Project Structure
+
+```
+algebench/
+├── algebench          Launcher (run this)
+├── server.py          Python server
+├── scenes/            Lesson JSON files (contribute here!)
+│   └── ...
+└── static/
+    ├── main.js        Entry point — wires all modules, exposes globals
+    ├── state.js       Shared mutable state
+    ├── scene-loader.js  Scene/lesson loading, step navigation & undo
+    ├── chat.js        AI chat panel, TTS, voice picker
+    ├── proof.js       Step-by-step proof panel with LaTeX rendering
+    ├── graph-view.js  Semantic graph tab (D3 expression flowcharts)
+    ├── graph-panel/   Graph renderers, themes, and layout engines
+    ├── proof-animation/  Realtime, Manim-style derivation morph engine (FLIP)
+    ├── objects/       Element renderers
+    │   ├── point.js, vector.js, polygon.js, sphere.js, …
+    ├── domains/       Domain library plugins
+    │   ├── astrodynamics/
+    │   └── ...
+    ├── index.html
+    └── ...
+```
+
+---
+
+## License
+
+[MIT](LICENSE)
+
+## Disclaimer
+
+This software is provided for educational and informational purposes only. The authors and contributors make no representations or warranties regarding the accuracy, completeness, or suitability of this software for any particular purpose. Use is entirely at your own risk. The authors shall not be held liable for any direct, indirect, incidental, special, or consequential damages arising from the use of or inability to use this software. Lesson scenes, mathematical visualizations, and AI-generated explanations are all works in progress — they may contain errors or approximations and should not be relied upon as authoritative references.

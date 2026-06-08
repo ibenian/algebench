@@ -1,0 +1,3645 @@
+{
+  "title": "Photons, Wavelength, and Energy: The Quantized Ripple",
+  "scenes": [
+    {
+      "title": "Light as a Wave: $c=f\\lambda$",
+      "description": "Start with the classical wave picture: stretching wavelength lowers frequency when the wave speed is fixed.",
+      "markdown": "# Light as a Wave\n\nClassical electromagnetism treats light as a wave moving at speed $c$ in vacuum. The basic kinematic link is\n\n$$c=f\\lambda.$$\n\nIf $c$ is fixed, wavelength and frequency must trade off:\n\n$$f=\\frac{c}{\\lambda}.$$\n\nA longer wavelength means fewer crests pass a point each second. This part is continuous: in free space, a photon can have any wavelength allowed by the source and propagation conditions.\n\n## What this wave is — and what it is not\n\nThe sine wave shown here represents the **electric field** component of a classical electromagnetic wave: $E_y(x,t)=A\\sin(kx-\\omega t)$, described by Maxwell's equations.\n\nA real EM wave has **two fields** oscillating in phase, perpendicular to each other and to the propagation direction:\n\n- **Electric field** $\\vec{E}$: shown here as the sine wave in the $y$-direction.\n- **Magnetic field** $\\vec{B}$: oscillates in the $z$-direction (perpendicular to the screen), with magnitude $B=E/c$.\n\nWe show only the electric field because it is the component that does most of the work on charged matter — it drives electron oscillations, photoelectric ejection, and detector responses. The magnetic component is always present but $c$ times smaller in SI units.\n\nThis wave does not depict a single photon. In quantum terms it corresponds to a **coherent state** — a huge number of photons all sharing the same frequency, direction, and phase, like a laser beam or a radio signal. The amplitude $A$ is the peak electric field strength. A brighter beam has a larger $A$, which means more photons per second, not more energetic photons.\n\nA single photon is one quantum excitation of the field mode. It has definite energy $E=hf$ and momentum $p=h/\\lambda$, but it does not have a definite classical electric field value. To depict a single photon, you would show a localized **wave packet** — a few oscillations that taper off — not an infinite plane wave.\n\nThe quantum content of this scene is the relation $E=hf$: the wave's energy is not continuous but comes in discrete packets, each carrying energy proportional to frequency. The wave picture gives wavelength and frequency; quantization gives the energy rule.\n\n## The historical pressure\n\nAt the turn of the twentieth century, classical blackbody theory led to the ultraviolet catastrophe: it predicted runaway short-wavelength emission. Planck's resolution was to make exchange of energy discrete, in units proportional to frequency. That idea became the first step toward quantum mechanics.\n\nReferences: https://en.wikipedia.org/wiki/Quantum and https://en.wikipedia.org/wiki/Photon_energy",
+      "prompt": "Teach the wave kinematics first. Keep the distinction clear: c = f lambda is a wave relation, while E = hf is the quantum energy relation introduced next. Emphasize that stretching wavelength lowers frequency for fixed c.",
+      "functions": [
+        {
+          "name": "photonEnergy",
+          "args": [
+            "lambda"
+          ],
+          "expr": "1/lambda"
+        },
+        {
+          "name": "freq",
+          "args": [
+            "lambda"
+          ],
+          "expr": "1/lambda"
+        }
+      ],
+      "range": [
+        [
+          -6,
+          6
+        ],
+        [
+          -6,
+          6
+        ],
+        [
+          -6,
+          6
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          -1,
+          1,
+          13
+        ],
+        "target": [
+          -1,
+          1,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Wave",
+          "position": [
+            0,
+            1,
+            12
+          ],
+          "target": [
+            0,
+            1,
+            0
+          ],
+          "description": "Face-on wave view"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            6,
+            5,
+            10
+          ],
+          "target": [
+            0,
+            1,
+            0
+          ],
+          "description": "Three-dimensional context"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s0_wave_axis",
+          "type": "line",
+          "points": [
+            [
+              0,
+              0,
+              0
+            ],
+            [
+              12,
+              0,
+              0
+            ]
+          ],
+          "color": "#555e6a",
+          "width": 1,
+          "legendGroup": "$\\text{EM wave}$"
+        },
+        {
+          "id": "s0_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -6,
+            6
+          ],
+          "color": [
+            0.28,
+            0.32,
+            0.38
+          ],
+          "opacity": 0.12,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "A travelling EM wave",
+          "description": "A sinusoidal electromagnetic wave gives the first mental model: a spatially spread disturbance with a wavelength $\\lambda$.",
+          "prompt": "Introduce wavelength as crest-to-crest spacing. Do not talk about photons as tiny balls.",
+          "sliders": [
+            {
+              "id": "lambda",
+              "label": "$\\lambda$",
+              "min": 0.1,
+              "max": 10,
+              "step": 0.1,
+              "default": 2
+            }
+          ],
+          "add": [
+            {
+              "id": "s0_wave",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "sin(2*pi*t/lambda)",
+              "z": "0",
+              "range": [
+                0,
+                12
+              ],
+              "samples": 300,
+              "color": "#2f9e9b",
+              "width": 4,
+              "legendGroup": "$\\text{EM wave}$"
+            },
+            {
+              "id": "s0_lambda_span",
+              "type": "animated_line",
+              "points": [
+                [
+                  "lambda/2",
+                  "0",
+                  "0"
+                ],
+                [
+                  "lambda/2 + lambda",
+                  "0",
+                  "0"
+                ]
+              ],
+              "color": "#f0b84b",
+              "width": 5,
+              "label": "$\\lambda$"
+            },
+            {
+              "id": "s0_tick_left",
+              "type": "animated_line",
+              "points": [
+                [
+                  "lambda/2",
+                  "-1.6",
+                  "0"
+                ],
+                [
+                  "lambda/2",
+                  "1.6",
+                  "0"
+                ]
+              ],
+              "color": "#f0b84b",
+              "width": 1,
+              "opacity": 0.35,
+              "legendGroup": "$\\lambda$"
+            },
+            {
+              "id": "s0_tick_right",
+              "type": "animated_line",
+              "points": [
+                [
+                  "lambda/2 + lambda",
+                  "-1.6",
+                  "0"
+                ],
+                [
+                  "lambda/2 + lambda",
+                  "1.6",
+                  "0"
+                ]
+              ],
+              "color": "#f0b84b",
+              "width": 1,
+              "opacity": 0.35,
+              "legendGroup": "$\\lambda$"
+            },
+            {
+              "id": "s0_wave_title",
+              "type": "text",
+              "text": "$\\text{EM wave}$",
+              "position": [
+                3,
+                -0.6,
+                0
+              ],
+              "color": "#2f9e9b",
+              "size": 15,
+              "label": "$\\text{EM wave}$"
+            }
+          ],
+          "info": [
+            {
+              "id": "s0_wave_info",
+              "position": "top-right",
+              "content": "$$c=f\\lambda$$\nFor fixed $c$, increasing $\\lambda$ decreases $f$."
+            }
+          ]
+        },
+        {
+          "title": "Frequency falls as wavelength grows",
+          "description": "With $c$ fixed, the frequency scales like $1/\\lambda$. The scale bars below compare $\\lambda$ to nanoscale objects: visible light wavelengths are on the order of viruses and bacteria.",
+          "prompt": "Use the slider to compare short and long wavelengths. Ask the learner what happens to f when lambda doubles. Draw attention to the scale bars: when lambda is around 1, the wavelength is about the size of a flu virus; at lambda 5, it matches the width of an E. coli bacterium. Visible light lives in this extraordinary nanoscale world.",
+          "add": [
+            {
+              "id": "s0_chart_lambda_axis",
+              "type": "line",
+              "points": [
+                [
+                  -5.5,
+                  0,
+                  0
+                ],
+                [
+                  -0.5,
+                  0,
+                  0
+                ]
+              ],
+              "color": "#555e6a",
+              "width": 1,
+              "legendGroup": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_chart_f_axis",
+              "type": "line",
+              "points": [
+                [
+                  -5.5,
+                  0,
+                  0
+                ],
+                [
+                  -5.5,
+                  3.5,
+                  0
+                ]
+              ],
+              "color": "#555e6a",
+              "width": 1,
+              "legendGroup": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_chart_label_lambda",
+              "type": "text",
+              "text": "$\\lambda$",
+              "position": [
+                -0.3,
+                -0.3,
+                0
+              ],
+              "color": "#f0b84b",
+              "size": 16,
+              "legendGroup": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_chart_label_f",
+              "type": "text",
+              "text": "$f$",
+              "position": [
+                -5.9,
+                3.6,
+                0
+              ],
+              "color": "#6ec6ff",
+              "size": 16,
+              "legendGroup": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_chart_curve",
+              "type": "parametric_curve",
+              "x": "t * 0.5 - 5.5",
+              "y": "3/t",
+              "z": "0",
+              "range": [
+                0.8,
+                10
+              ],
+              "samples": 120,
+              "color": "#6ec6ff",
+              "width": 3,
+              "legendGroup": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_chart_dot",
+              "type": "animated_point",
+              "positionExpr": [
+                "lambda * 0.5 - 5.5",
+                "3/lambda",
+                "0"
+              ],
+              "color": "#ffffff",
+              "radius": 0.12
+            },
+            {
+              "id": "s0_chart_vline",
+              "type": "animated_line",
+              "points": [
+                [
+                  "lambda * 0.5 - 5.5",
+                  "0",
+                  "0"
+                ],
+                [
+                  "lambda * 0.5 - 5.5",
+                  "3/lambda",
+                  "0"
+                ]
+              ],
+              "color": "#f0b84b",
+              "width": 1,
+              "opacity": 0.3,
+              "legendGroup": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_chart_hline",
+              "type": "animated_line",
+              "points": [
+                [
+                  "-5.5",
+                  "3/lambda",
+                  "0"
+                ],
+                [
+                  "lambda * 0.5 - 5.5",
+                  "3/lambda",
+                  "0"
+                ]
+              ],
+              "color": "#6ec6ff",
+              "width": 1,
+              "opacity": 0.3,
+              "legendGroup": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_chart_title",
+              "type": "text",
+              "text": "$f=c/\\lambda$",
+              "position": [
+                -3,
+                -0.6,
+                0
+              ],
+              "color": "#6ec6ff",
+              "size": 15,
+              "label": "$f=c/\\lambda$"
+            },
+            {
+              "id": "s0_scale_lambda",
+              "type": "animated_line",
+              "points": [
+                [
+                  "0",
+                  "-1.6",
+                  "0"
+                ],
+                [
+                  "lambda",
+                  "-1.6",
+                  "0"
+                ]
+              ],
+              "color": "#f0b84b",
+              "width": 5,
+              "label": "$\\lambda$",
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_lambda_tick",
+              "type": "animated_line",
+              "points": [
+                [
+                  "lambda",
+                  "-1.4",
+                  "0"
+                ],
+                [
+                  "lambda",
+                  "-1.8",
+                  "0"
+                ]
+              ],
+              "color": "#f0b84b",
+              "width": 2,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_lambda_nm",
+              "type": "text",
+              "text": "$200\\;\\text{nm}$",
+              "position": [
+                "lambda + 0.6",
+                "-1.6",
+                "0"
+              ],
+              "color": "#f0b84b",
+              "size": 12,
+              "textExpr": "lambda * 100",
+              "textFormat": "$%d\\;\\text{nm}$",
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_origin_tick",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -1.4,
+                  0
+                ],
+                [
+                  0,
+                  -4.0,
+                  0
+                ]
+              ],
+              "color": "#666666",
+              "width": 1,
+              "opacity": 0.4,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_flu",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -2.2,
+                  0
+                ],
+                [
+                  1,
+                  -2.2,
+                  0
+                ]
+              ],
+              "color": "#e85d75",
+              "width": 4,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_flu_tick",
+              "type": "line",
+              "points": [
+                [
+                  1,
+                  -2.05,
+                  0
+                ],
+                [
+                  1,
+                  -2.35,
+                  0
+                ]
+              ],
+              "color": "#e85d75",
+              "width": 2,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_flu_label",
+              "type": "text",
+              "text": "influenza virus $\\sim\\!100$ nm",
+              "position": [
+                -0.15,
+                -2.2,
+                0
+              ],
+              "color": "#e85d75",
+              "size": 10,
+              "align": "right",
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_phage",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -2.8,
+                  0
+                ],
+                [
+                  2,
+                  -2.8,
+                  0
+                ]
+              ],
+              "color": "#7fba5c",
+              "width": 4,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_phage_tick",
+              "type": "line",
+              "points": [
+                [
+                  2,
+                  -2.65,
+                  0
+                ],
+                [
+                  2,
+                  -2.95,
+                  0
+                ]
+              ],
+              "color": "#7fba5c",
+              "width": 2,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_phage_label",
+              "type": "text",
+              "text": "bacteriophage $\\sim\\!200$ nm",
+              "position": [
+                -0.15,
+                -2.8,
+                0
+              ],
+              "color": "#7fba5c",
+              "size": 10,
+              "align": "right",
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_myco",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -3.4,
+                  0
+                ],
+                [
+                  3,
+                  -3.4,
+                  0
+                ]
+              ],
+              "color": "#5cb8e8",
+              "width": 4,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_myco_tick",
+              "type": "line",
+              "points": [
+                [
+                  3,
+                  -3.25,
+                  0
+                ],
+                [
+                  3,
+                  -3.55,
+                  0
+                ]
+              ],
+              "color": "#5cb8e8",
+              "width": 2,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_myco_label",
+              "type": "text",
+              "text": "Mycoplasma $\\sim\\!300$ nm",
+              "position": [
+                -0.15,
+                -3.4,
+                0
+              ],
+              "color": "#5cb8e8",
+              "size": 10,
+              "align": "right",
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_ecoli",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -4.0,
+                  0
+                ],
+                [
+                  5,
+                  -4.0,
+                  0
+                ]
+              ],
+              "color": "#c49be8",
+              "width": 4,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_ecoli_tick",
+              "type": "line",
+              "points": [
+                [
+                  5,
+                  -3.85,
+                  0
+                ],
+                [
+                  5,
+                  -4.15,
+                  0
+                ]
+              ],
+              "color": "#c49be8",
+              "width": 2,
+              "legendGroup": "scale"
+            },
+            {
+              "id": "s0_scale_ecoli_label",
+              "type": "text",
+              "text": "$\\textit{E.\\,coli}$ width $\\sim\\!500$ nm",
+              "position": [
+                -0.15,
+                -4.0,
+                0
+              ],
+              "color": "#c49be8",
+              "size": 10,
+              "align": "right",
+              "legendGroup": "scale"
+            }
+          ],
+          "info": [
+            {
+              "id": "s0_kinematic_info",
+              "position": "bottom-right",
+              "content": "**Kinematic link**\n\nStretch the wave: fewer peaks pass per second.\n\n$$f=\\frac{c}{\\lambda}$$"
+            }
+          ]
+        },
+        {
+          "title": "The crisis of the infinite",
+          "description": "Classical prediction: short wavelengths run away. Planck's resolution: energy comes in quanta. Blackbody radiation forced a deeper idea \u2014 energy exchange is quantized.",
+          "prompt": "Frame the ultraviolet catastrophe as the reason the energy rule had to change. Avoid overclaiming: Planck quantized exchange of energy, not simply spatial wavelength.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [],
+          "info": [
+            {
+              "id": "s0_planck_info",
+              "position": "top-right",
+              "content": "**Planck's move**\n\nEnergy exchange is not arbitrary:\n\n$$E=hf$$\n\nThis is the bridge from the wave picture to photons."
+            }
+          ]
+        },
+        {
+          "title": "Visible light: real wavelengths",
+          "description": "Map the abstract $\\lambda$ to real wavelengths. The vertical spectrum bar shows how frequency maps to color. Note: the wave's amplitude represents the peak electric field strength, not its energy or wavelength\u2014amplitude depends on intensity (how many photons), not on color.",
+          "prompt": "Show how the abstract wavelength maps to visible light. The vertical color bar next to the f-axis shows the direct mapping: higher frequency means shorter wavelength and bluer color. Emphasize that our eyes only see a tiny slice of the full EM spectrum. Point out that the amplitude of the wave is the electric field strength and is independent of wavelength\u2014it depends on the light's intensity, not its color. A dim blue beam and a dim red beam have the same small amplitude; a bright red beam has a large amplitude.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [
+            {
+              "id": "s0_spec_01",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -7.3,
+                  0.0,
+                  0
+                ],
+                [
+                  -6.9,
+                  0.0,
+                  0
+                ],
+                [
+                  -6.9,
+                  0.35,
+                  0
+                ],
+                [
+                  -7.3,
+                  0.35,
+                  0
+                ]
+              ],
+              "color": "#990000",
+              "opacity": 0.9,
+              "shader": {
+                "shininess": 40,
+                "emissive": "#220000"
+              },
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_02",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -7.3,
+                  0.35,
+                  0
+                ],
+                [
+                  -6.9,
+                  0.35,
+                  0
+                ],
+                [
+                  -6.9,
+                  0.7,
+                  0
+                ],
+                [
+                  -7.3,
+                  0.7,
+                  0
+                ]
+              ],
+              "color": "#CC1100",
+              "opacity": 0.9,
+              "shader": {
+                "shininess": 40,
+                "emissive": "#2a0400"
+              },
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_03",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -7.3,
+                  0.7,
+                  0
+                ],
+                [
+                  -6.9,
+                  0.7,
+                  0
+                ],
+                [
+                  -6.9,
+                  1.05,
+                  0
+                ],
+                [
+                  -7.3,
+                  1.05,
+                  0
+                ]
+              ],
+              "color": "#FF5500",
+              "opacity": 0.9,
+              "shader": {
+                "shininess": 40,
+                "emissive": "#331100"
+              },
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_04",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -7.3,
+                  1.05,
+                  0
+                ],
+                [
+                  -6.9,
+                  1.05,
+                  0
+                ],
+                [
+                  -6.9,
+                  1.4,
+                  0
+                ],
+                [
+                  -7.3,
+                  1.4,
+                  0
+                ]
+              ],
+              "color": "#FFAA00",
+              "opacity": 0.9,
+              "shader": {
+                "shininess": 40,
+                "emissive": "#332200"
+              },
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_05",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -7.3,
+                  1.4,
+                  0
+                ],
+                [
+                  -6.9,
+                  1.4,
+                  0
+                ],
+                [
+                  -6.9,
+                  1.75,
+                  0
+                ],
+                [
+                  -7.3,
+                  1.75,
+                  0
+                ]
+              ],
+              "color": "#CCDD00",
+              "opacity": 0.9,
+              "shader": {
+                "shininess": 40,
+                "emissive": "#2a2d00"
+              },
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_06",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -7.3,
+                  1.75,
+                  0
+                ],
+                [
+                  -6.9,
+                  1.75,
+                  0
+                ],
+                [
+                  -6.9,
+                  2.1,
+                  0
+                ],
+                [
+                  -7.3,
+                  2.1,
+                  0
+                ]
+              ],
+              "color": "#22CC44",
+              "opacity": 0.9,
+              "shader": {
+                "shininess": 40,
+                "emissive": "#062a0e"
+              },
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_07",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -7.3,
+                  2.1,
+                  0
+                ],
+                [
+                  -6.9,
+                  2.1,
+                  0
+                ],
+                [
+                  -6.9,
+                  2.45,
+                  0
+                ],
+                [
+                  -7.3,
+                  2.45,
+                  0
+                ]
+              ],
+              "color": "#00BBCC",
+              "opacity": 0.9,
+              "shader": {
+                "shininess": 40,
+                "emissive": "#00262a"
+              },
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_08",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -7.3,
+                  2.45,
+                  0
+                ],
+                [
+                  -6.9,
+                  2.45,
+                  0
+                ],
+                [
+                  -6.9,
+                  2.8,
+                  0
+                ],
+                [
+                  -7.3,
+                  2.8,
+                  0
+                ]
+              ],
+              "color": "#0066FF",
+              "opacity": 0.9,
+              "shader": {
+                "shininess": 40,
+                "emissive": "#001533"
+              },
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_09",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -7.3,
+                  2.8,
+                  0
+                ],
+                [
+                  -6.9,
+                  2.8,
+                  0
+                ],
+                [
+                  -6.9,
+                  3.15,
+                  0
+                ],
+                [
+                  -7.3,
+                  3.15,
+                  0
+                ]
+              ],
+              "color": "#4400DD",
+              "opacity": 0.9,
+              "shader": {
+                "shininess": 40,
+                "emissive": "#0e002e"
+              },
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_10",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -7.3,
+                  3.15,
+                  0
+                ],
+                [
+                  -6.9,
+                  3.15,
+                  0
+                ],
+                [
+                  -6.9,
+                  3.5,
+                  0
+                ],
+                [
+                  -7.3,
+                  3.5,
+                  0
+                ]
+              ],
+              "color": "#8B00FF",
+              "opacity": 0.9,
+              "shader": {
+                "shininess": 40,
+                "emissive": "#1c0033"
+              },
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_gradient",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -6.8,
+                  0.0,
+                  0
+                ],
+                [
+                  -6.4,
+                  0.0,
+                  0
+                ],
+                [
+                  -6.4,
+                  3.5,
+                  0
+                ],
+                [
+                  -6.8,
+                  3.5,
+                  0
+                ]
+              ],
+              "opacity": 0.95,
+              "shader": {
+                "type": "basic"
+              },
+              "gradient": {
+                "direction": "y",
+                "stops": [
+                  {
+                    "t": 0.0,
+                    "color": "#990000"
+                  },
+                  {
+                    "t": 0.05,
+                    "color": "#990000"
+                  },
+                  {
+                    "t": 0.1,
+                    "color": "#CC1100"
+                  },
+                  {
+                    "t": 0.15,
+                    "color": "#CC1100"
+                  },
+                  {
+                    "t": 0.2,
+                    "color": "#FF5500"
+                  },
+                  {
+                    "t": 0.25,
+                    "color": "#FF5500"
+                  },
+                  {
+                    "t": 0.3,
+                    "color": "#FFAA00"
+                  },
+                  {
+                    "t": 0.35,
+                    "color": "#FFAA00"
+                  },
+                  {
+                    "t": 0.4,
+                    "color": "#CCDD00"
+                  },
+                  {
+                    "t": 0.45,
+                    "color": "#CCDD00"
+                  },
+                  {
+                    "t": 0.5,
+                    "color": "#22CC44"
+                  },
+                  {
+                    "t": 0.55,
+                    "color": "#22CC44"
+                  },
+                  {
+                    "t": 0.6,
+                    "color": "#00BBCC"
+                  },
+                  {
+                    "t": 0.65,
+                    "color": "#00BBCC"
+                  },
+                  {
+                    "t": 0.7,
+                    "color": "#0066FF"
+                  },
+                  {
+                    "t": 0.75,
+                    "color": "#0066FF"
+                  },
+                  {
+                    "t": 0.8,
+                    "color": "#4400DD"
+                  },
+                  {
+                    "t": 0.85,
+                    "color": "#4400DD"
+                  },
+                  {
+                    "t": 0.9,
+                    "color": "#8B00FF"
+                  },
+                  {
+                    "t": 0.95,
+                    "color": "#8B00FF"
+                  },
+                  {
+                    "t": 1.0,
+                    "color": "#8B00FF"
+                  }
+                ],
+                "segments": 70
+              },
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_spec_indicator",
+              "type": "animated_line",
+              "points": [
+                [
+                  "-7.45",
+                  "3/lambda",
+                  "0.1"
+                ],
+                [
+                  "-6.25",
+                  "3/lambda",
+                  "0.1"
+                ]
+              ],
+              "color": "#ffffff",
+              "width": 3,
+              "label": "current $f$"
+            },
+            {
+              "id": "s0_spec_dot",
+              "type": "animated_point",
+              "positionExpr": [
+                "-7.1",
+                "3/lambda",
+                "0.1"
+              ],
+              "color": "#ffffff",
+              "radius": 0.1,
+              "legendGroup": "current $f$"
+            },
+            {
+              "id": "s0_clabel_red",
+              "type": "text",
+              "text": "red",
+              "position": [
+                -7.75,
+                0.17,
+                0
+              ],
+              "color": "#CC1100",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_clabel_orange",
+              "type": "text",
+              "text": "orange",
+              "position": [
+                -7.75,
+                0.87,
+                0
+              ],
+              "color": "#FF5500",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_clabel_yellow",
+              "type": "text",
+              "text": "yellow",
+              "position": [
+                -7.75,
+                1.22,
+                0
+              ],
+              "color": "#FFAA00",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_clabel_green",
+              "type": "text",
+              "text": "green",
+              "position": [
+                -7.75,
+                1.92,
+                0
+              ],
+              "color": "#22CC44",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_clabel_cyan",
+              "type": "text",
+              "text": "cyan",
+              "position": [
+                -7.75,
+                2.27,
+                0
+              ],
+              "color": "#00BBCC",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_clabel_blue",
+              "type": "text",
+              "text": "blue",
+              "position": [
+                -7.75,
+                2.62,
+                0
+              ],
+              "color": "#0066FF",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_clabel_violet",
+              "type": "text",
+              "text": "violet",
+              "position": [
+                -7.75,
+                3.32,
+                0
+              ],
+              "color": "#8B00FF",
+              "size": 10,
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_nm_red",
+              "text": "$700\\,\\text{nm}$",
+              "position": [
+                -7.75,
+                -0.25,
+                0
+              ],
+              "color": "#CC1100",
+              "size": 11,
+              "type": "text",
+              "legendGroup": "visible spectrum"
+            },
+            {
+              "id": "s0_nm_violet",
+              "text": "$380\\,\\text{nm}$",
+              "position": [
+                -7.75,
+                3.6,
+                0
+              ],
+              "color": "#8B00FF",
+              "size": 11,
+              "type": "text",
+              "legendGroup": "visible spectrum"
+            }
+          ],
+          "info": [
+            {
+              "id": "s0_spectrum_info",
+              "position": "top-right",
+              "content": "**Visible spectrum**\n\n$$\\lambda_{real}=(300+80\\lambda)\\;\\text{nm}$$\n\n$$f=\\frac{c}{\\lambda_{real}}=\\frac{3\\times10^{8}}{\\lambda_{real}}\\;\\text{Hz}$$\n\nViolet: $380\\,\\text{nm}$, $789\\,\\text{THz}$\n\nRed: $700\\,\\text{nm}$, $428\\,\\text{THz}$"
+            },
+            {
+              "id": "s0_constants_info",
+              "position": "bottom-right",
+              "content": "**Physical constants**\n\n$c=3\\times10^{8}\\;\\text{m/s}$\n\n$h=6.626\\times10^{-34}\\;\\text{J}\\!\\cdot\\!\\text{s}$"
+            },
+            {
+              "id": "s0_wavelength_info",
+              "position": "top-left",
+              "content": "**Wavelength \u2192 frequency**\n\n$$f=\\frac{c}{\\lambda}$$\n\n| $\\lambda$ (nm) | $f$ (THz) | Color |\n|---|---|---|\n| 380 | 789 | violet |\n| 480 | 625 | cyan |\n| 550 | 545 | green |\n| 600 | 500 | orange |\n| 700 | 428 | red |"
+            }
+          ]
+        },
+        {
+          "title": "The full picture: $\\vec{E}$ and $\\vec{B}$",
+          "description": "An electromagnetic wave has two perpendicular oscillating fields. Until now we showed only the electric field $\\vec{E}$ (in $y$). The magnetic field $\\vec{B}$ oscillates in $z$, perpendicular to both $\\vec{E}$ and the propagation direction. Switch to the Iso view to see both components in 3D.",
+          "prompt": "Reveal the magnetic field component oscillating in the z-direction. Explain that every EM wave has both E and B perpendicular to each other and to the propagation direction. We showed only E because it dominates interactions with charged matter. Note B = E/c in SI units; we exaggerate B visually for clarity.",
+          "camera": {
+            "position": [6, 5, 10],
+            "target": [0, 1, 0]
+          },
+          "remove": [
+            { "type": "info" },
+            { "id": "s0_wave_title" }
+          ],
+          "add": [
+            {
+              "id": "s0_B_wave",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "0",
+              "z": "sin(2*pi*t/lambda)",
+              "range": [0, 12],
+              "samples": 300,
+              "color": "#e85d75",
+              "width": 4,
+              "label": "$\\vec{B}$ (magnetic)"
+            },
+            {
+              "id": "s0_z_ref",
+              "type": "line",
+              "points": [[0, 0, 0], [0, 0, 2]],
+              "color": "#555e6a",
+              "width": 1,
+              "opacity": 0.4,
+              "legendGroup": "$\\vec{B}$ (magnetic)"
+            },
+            {
+              "id": "s0_E_field_label",
+              "type": "text",
+              "text": "$\\vec{E}$ (electric)",
+              "position": [1, 1.4, 0],
+              "color": "#2f9e9b",
+              "size": 16
+            },
+            {
+              "id": "s0_B_field_label",
+              "type": "text",
+              "text": "$\\vec{B}$ (magnetic)",
+              "position": [1, 0, 1.4],
+              "color": "#e85d75",
+              "size": 16
+            },
+            {
+              "id": "s0_prop_label",
+              "type": "text",
+              "text": "propagation $\\rightarrow$",
+              "position": [10, -0.5, 0],
+              "color": "#9aa4ad",
+              "size": 14
+            }
+          ],
+          "info": [
+            {
+              "id": "s0_eb_info",
+              "position": "top-right",
+              "content": "**Complete EM wave**\n\n$$\\vec{E}=E_0\\sin(kx-\\omega t)\\,\\hat{y}$$\n\n$$\\vec{B}=\\frac{E_0}{c}\\sin(kx-\\omega t)\\,\\hat{z}$$\n\n$\\vec{E}\\perp\\vec{B}\\perp\\hat{x}$\n\nPrevious steps showed only $\\vec{E}$ because it dominates interactions with charged matter."
+            }
+          ]
+        }
+      ],
+      "proof": [
+        {
+          "id": "wave_kinematics",
+          "title": "From $x=vt$ to $c=f\\lambda$",
+          "technique": "derivation",
+          "goal": "Derive the wave relation $c=f\\lambda$ starting from the basic kinematic equation $x=vt$.",
+          "prompt": "Start from x=vt which every learner knows. Apply it to one wave cycle to get c=f*lambda. Emphasize this is the same formula, not a new law.",
+          "steps": [
+            {
+              "id": "basic_kinematics",
+              "type": "given",
+              "label": "Basic kinematics",
+              "math": "\\htmlClass{hl-dist}{x}=\\htmlClass{hl-speed}{v}\\cdot {}\\htmlClass{hl-time}{t}",
+              "highlights": {
+                "dist": {
+                  "color": "cyan",
+                  "label": "Distance travelled"
+                },
+                "speed": {
+                  "color": "orange",
+                  "label": "Speed"
+                },
+                "time": {
+                  "color": "yellow",
+                  "label": "Elapsed time"
+                }
+              },
+              "justification": "The fundamental kinematic relation for constant speed.",
+              "explanation": "Distance equals speed times time \u2014 the starting point for all wave relations.",
+              "prompt": "Start from the most basic formula the learner already knows.",
+              "sceneStep": 0
+            },
+            {
+              "id": "one_period",
+              "type": "step",
+              "label": "One period of a wave",
+              "math": "\\htmlClass{hl-wavelength}{\\lambda}=\\htmlClass{hl-speed}{c}\\cdot {}\\htmlClass{hl-period}{T}",
+              "highlights": {
+                "wavelength": {
+                  "color": "cyan",
+                  "label": "One wavelength (crest-to-crest)"
+                },
+                "speed": {
+                  "color": "orange",
+                  "label": "Wave speed (fixed at c)"
+                },
+                "period": {
+                  "color": "yellow",
+                  "label": "Period (time for one cycle)"
+                }
+              },
+              "justification": "In one period $T$, the wave advances exactly one wavelength $\\lambda$. Set $x=\\lambda$, $v=c$, $t=T$.",
+              "explanation": "A crest travels one full wavelength in one period, so $\\lambda = c \\cdot T$.",
+              "prompt": "Connect x=vt to the wave: x becomes lambda, v becomes c, t becomes T.",
+              "sceneStep": 0
+            },
+            {
+              "id": "solve_for_f",
+              "type": "step",
+              "label": "Solve for frequency",
+              "math": "\\htmlClass{hl-freq}{f}=\\frac{1}{\\htmlClass{hl-period}{T}}=\\frac{\\htmlClass{hl-speed}{c}}{\\htmlClass{hl-wavelength}{\\lambda}}",
+              "highlights": {
+                "freq": {
+                  "color": "green",
+                  "label": "Frequency (cycles per second)"
+                },
+                "period": {
+                  "color": "yellow",
+                  "label": "Period"
+                },
+                "speed": {
+                  "color": "orange",
+                  "label": "Wave speed"
+                },
+                "wavelength": {
+                  "color": "cyan",
+                  "label": "Wavelength"
+                }
+              },
+              "justification": "Frequency is the reciprocal of period: $f=1/T$. Substitute $T=\\lambda/c$.",
+              "explanation": "Rearranging gives the wave relation: frequency equals speed divided by wavelength.",
+              "prompt": "Show the algebra step by step: T = lambda/c, so f = 1/T = c/lambda.",
+              "sceneStep": 1
+            },
+            {
+              "id": "wave_equation",
+              "type": "conclusion",
+              "label": "The wave equation",
+              "math": "\\htmlClass{hl-speed}{c}=\\htmlClass{hl-freq}{f}\\,\\htmlClass{hl-wavelength}{\\lambda}",
+              "highlights": {
+                "speed": {
+                  "color": "orange",
+                  "label": "Wave speed"
+                },
+                "freq": {
+                  "color": "green",
+                  "label": "Frequency"
+                },
+                "wavelength": {
+                  "color": "cyan",
+                  "label": "Wavelength"
+                }
+              },
+              "justification": "Multiply both sides of $f=c/\\lambda$ by $\\lambda$.",
+              "explanation": "This is just $x=vt$ applied to one cycle: speed equals frequency times wavelength.",
+              "prompt": "Emphasize that c = f lambda is not a new law \u2014 it is x = v t for one wave cycle.",
+              "sceneStep": 1
+            }
+          ]
+        },
+        {
+          "id": "em_wave_equation",
+          "title": "Maxwell to $\\vec{E}=E_0\\sin(kx-\\omega t)\\,\\hat{y}$",
+          "technique": "derivation",
+          "goal": "Derive the electromagnetic wave equation from Maxwell's equations and show that a sinusoidal $\\vec{E}$ field is a solution.",
+          "prompt": "Start from Maxwell's curl equations in free space. Take the curl of Faraday's law and use the vector identity to get the wave equation. Show the sinusoidal solution and extract the dispersion relation omega = ck.",
+          "steps": [
+            {
+              "id": "maxwell_faraday",
+              "type": "given",
+              "label": "Faraday's law (free space)",
+              "math": "\\htmlClass{hl-curl}{\\nabla\\times}\\htmlClass{hl-E}{\\vec{E}}=-\\htmlClass{hl-dtB}{\\frac{\\partial\\vec{B}}{\\partial t}}",
+              "highlights": {
+                "curl": {
+                  "color": "purple",
+                  "label": "Curl operator"
+                },
+                "E": {
+                  "color": "cyan",
+                  "label": "Electric field"
+                },
+                "dtB": {
+                  "color": "pink",
+                  "label": "Time rate of change of B"
+                }
+              },
+              "justification": "One of Maxwell's four equations: a changing magnetic field induces a curling electric field.",
+              "explanation": "Faraday's law says a time-varying magnetic field creates a circulating electric field.",
+              "prompt": "Introduce Faraday's law as the starting point. This is one of Maxwell's four equations.",
+              "sceneStep": 0
+            },
+            {
+              "id": "maxwell_ampere",
+              "type": "given",
+              "label": "Amp\u00e8re\u2013Maxwell law (free space)",
+              "math": "\\htmlClass{hl-curl}{\\nabla\\times}\\htmlClass{hl-B}{\\vec{B}}=\\htmlClass{hl-mu}{\\mu_0}\\htmlClass{hl-eps}{\\epsilon_0}\\htmlClass{hl-dtE}{\\frac{\\partial\\vec{E}}{\\partial t}}",
+              "highlights": {
+                "curl": {
+                  "color": "purple",
+                  "label": "Curl operator"
+                },
+                "B": {
+                  "color": "pink",
+                  "label": "Magnetic field"
+                },
+                "mu": {
+                  "color": "orange",
+                  "label": "Permeability of free space"
+                },
+                "eps": {
+                  "color": "yellow",
+                  "label": "Permittivity of free space"
+                },
+                "dtE": {
+                  "color": "cyan",
+                  "label": "Time rate of change of E"
+                }
+              },
+              "justification": "In free space (no currents), Amp\u00e8re's law with Maxwell's displacement current term.",
+              "explanation": "A time-varying electric field creates a curling magnetic field \u2014 Maxwell's crucial addition to Amp\u00e8re's law.",
+              "prompt": "Present the second curl equation. Note Maxwell's displacement current term is what makes waves possible.",
+              "sceneStep": 0
+            },
+            {
+              "id": "curl_of_curl",
+              "type": "step",
+              "label": "Take the curl of Faraday's law",
+              "math": "\\htmlClass{hl-curl}{\\nabla\\times(\\nabla\\times}\\htmlClass{hl-E}{\\vec{E}}\\htmlClass{hl-curl}{)}=-\\frac{\\partial}{\\partial t}(\\htmlClass{hl-curl}{\\nabla\\times}\\htmlClass{hl-B}{\\vec{B}})=-\\htmlClass{hl-mu}{\\mu_0}\\htmlClass{hl-eps}{\\epsilon_0}\\htmlClass{hl-d2E}{\\frac{\\partial^2\\vec{E}}{\\partial t^2}}",
+              "highlights": {
+                "curl": {
+                  "color": "purple",
+                  "label": "Curl operator"
+                },
+                "E": {
+                  "color": "cyan",
+                  "label": "Electric field"
+                },
+                "B": {
+                  "color": "pink",
+                  "label": "Magnetic field"
+                },
+                "mu": {
+                  "color": "orange",
+                  "label": "Permeability of free space"
+                },
+                "eps": {
+                  "color": "yellow",
+                  "label": "Permittivity of free space"
+                },
+                "d2E": {
+                  "color": "cyan",
+                  "label": "Second time derivative of E"
+                }
+              },
+              "justification": "Apply $\\nabla\\times$ to Faraday's law; on the right side, swap $\\nabla\\times$ with $\\partial/\\partial t$ and substitute Amp\u00e8re\u2013Maxwell.",
+              "explanation": "Taking the curl of both sides of Faraday's law and substituting the Amp\u00e8re\u2013Maxwell law eliminates $\\vec{B}$, leaving an equation in $\\vec{E}$ alone.",
+              "prompt": "This is the key step: curl of curl on the left, and on the right we substitute Amp\u00e8re\u2013Maxwell to eliminate B entirely.",
+              "sceneStep": 0
+            },
+            {
+              "id": "vector_identity",
+              "type": "step",
+              "label": "Apply the vector identity",
+              "math": "\\htmlClass{hl-grad}{\\nabla(\\underbrace{\\nabla\\cdot\\vec{E}}_{=\\,0})}-\\htmlClass{hl-lap}{\\nabla^2\\vec{E}}=-\\htmlClass{hl-mu}{\\mu_0}\\htmlClass{hl-eps}{\\epsilon_0}\\htmlClass{hl-d2E}{\\frac{\\partial^2\\vec{E}}{\\partial t^2}}",
+              "highlights": {
+                "grad": {
+                  "color": "green",
+                  "label": "Gradient of divergence (vanishes in free space)"
+                },
+                "lap": {
+                  "color": "cyan",
+                  "label": "Laplacian of E"
+                },
+                "mu": {
+                  "color": "orange",
+                  "label": "Permeability"
+                },
+                "eps": {
+                  "color": "yellow",
+                  "label": "Permittivity"
+                },
+                "d2E": {
+                  "color": "cyan",
+                  "label": "Second time derivative"
+                }
+              },
+              "justification": "The identity $\\nabla\\times(\\nabla\\times\\vec{E})=\\nabla(\\nabla\\cdot\\vec{E})-\\nabla^2\\vec{E}$. Gauss's law in free space gives $\\nabla\\cdot\\vec{E}=0$.",
+              "explanation": "The double-curl simplifies because in free space there are no charges, so the divergence of $\\vec{E}$ is zero.",
+              "prompt": "Use the standard vector identity. Gauss's law kills the first term, leaving just the Laplacian.",
+              "sceneStep": 0
+            },
+            {
+              "id": "wave_eq",
+              "type": "step",
+              "label": "The electromagnetic wave equation",
+              "math": "\\htmlClass{hl-lap}{\\nabla^2}\\htmlClass{hl-E}{\\vec{E}}=\\frac{1}{\\htmlClass{hl-c}{c}^2}\\htmlClass{hl-d2E}{\\frac{\\partial^2\\vec{E}}{\\partial t^2}},\\qquad \\htmlClass{hl-c}{c}=\\frac{1}{\\sqrt{\\htmlClass{hl-mu}{\\mu_0}\\htmlClass{hl-eps}{\\epsilon_0}}}",
+              "highlights": {
+                "lap": {
+                  "color": "purple",
+                  "label": "Laplacian (spatial second derivative)"
+                },
+                "E": {
+                  "color": "cyan",
+                  "label": "Electric field"
+                },
+                "c": {
+                  "color": "orange",
+                  "label": "Speed of light"
+                },
+                "d2E": {
+                  "color": "cyan",
+                  "label": "Second time derivative"
+                },
+                "mu": {
+                  "color": "orange",
+                  "label": "Permeability"
+                },
+                "eps": {
+                  "color": "yellow",
+                  "label": "Permittivity"
+                }
+              },
+              "justification": "Define $c^2=1/(\\mu_0\\epsilon_0)$ and rearrange. This is the standard wave equation.",
+              "explanation": "Maxwell's equations predict that $\\vec{E}$ satisfies a wave equation with speed $c=1/\\sqrt{\\mu_0\\epsilon_0}\\approx 3\\times 10^8$ m/s \u2014 the speed of light.",
+              "prompt": "This is the historic result: Maxwell's equations predict electromagnetic waves travelling at the speed of light. Light IS an electromagnetic wave.",
+              "sceneStep": 0
+            },
+            {
+              "id": "sinusoidal_ansatz",
+              "type": "step",
+              "label": "Try a sinusoidal solution",
+              "math": "\\htmlClass{hl-E}{E_y}=\\htmlClass{hl-amp}{E_0}\\sin(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)",
+              "highlights": {
+                "E": {
+                  "color": "cyan",
+                  "label": "y-component of electric field"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Peak electric field amplitude"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number (k = 2\u03c0/\u03bb)"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency (\u03c9 = 2\u03c0f)"
+                }
+              },
+              "justification": "Substitute the simplest plane-wave ansatz propagating in the $x$-direction with $\\vec{E}$ polarized in $\\hat{y}$.",
+              "explanation": "We guess a sinusoidal form \u2014 a plane wave moving in the $x$-direction with the electric field oscillating in $y$.",
+              "prompt": "Try the simplest wave-like solution. The sine function naturally describes oscillations.",
+              "sceneStep": 0
+            },
+            {
+              "id": "dispersion",
+              "type": "step",
+              "label": "Dispersion relation",
+              "math": "\\htmlClass{hl-k}{k}^2=\\frac{\\htmlClass{hl-omega}{\\omega}^2}{\\htmlClass{hl-c}{c}^2}\\quad\\Longrightarrow\\quad \\htmlClass{hl-omega}{\\omega}=\\htmlClass{hl-c}{c}\\,\\htmlClass{hl-k}{k}",
+              "highlights": {
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency"
+                },
+                "c": {
+                  "color": "cyan",
+                  "label": "Speed of light"
+                }
+              },
+              "justification": "Substituting the ansatz: $\\partial^2 E_y/\\partial x^2=-k^2 E_y$ and $\\partial^2 E_y/\\partial t^2=-\\omega^2 E_y$. The wave equation gives $k^2=\\omega^2/c^2$.",
+              "explanation": "Plugging the sine into the wave equation forces $\\omega=ck$ \u2014 the frequency and wave number are locked together by the speed of light.",
+              "prompt": "Compute the second derivatives and substitute. The sine cancels, leaving the algebraic constraint omega = ck.",
+              "sceneStep": 0
+            },
+            {
+              "id": "E_solution",
+              "type": "conclusion",
+              "label": "The electric field of an EM wave",
+              "math": "\\htmlClass{hl-E}{\\vec{E}}=\\htmlClass{hl-amp}{E_0}\\sin(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)\\,\\htmlClass{hl-dir}{\\hat{y}}",
+              "highlights": {
+                "E": {
+                  "color": "cyan",
+                  "label": "Electric field vector"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Peak amplitude"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "k = 2\u03c0/\u03bb"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "\u03c9 = 2\u03c0f = ck"
+                },
+                "dir": {
+                  "color": "pink",
+                  "label": "Polarization direction"
+                }
+              },
+              "justification": "The sinusoidal ansatz satisfies Maxwell's wave equation provided $\\omega=ck$. This is the wave shown in the 3D view.",
+              "explanation": "A sinusoidal electric field oscillating in $\\hat{y}$ and propagating in $\\hat{x}$ is a valid electromagnetic wave \u2014 exactly what the teal curve shows.",
+              "prompt": "This is the equation behind the visualization. The teal curve is E_0 sin(kx - \u03c9t) in the y-direction.",
+              "sceneStep": 4
+            }
+          ]
+        },
+        {
+          "id": "B_from_E",
+          "title": "Faraday's law: $\\vec{B}$ from $\\vec{E}$",
+          "technique": "derivation",
+          "goal": "Derive the magnetic field $\\vec{B}=\\frac{E_0}{c}\\sin(kx-\\omega t)\\,\\hat{z}$ from the electric field using Faraday's law.",
+          "prompt": "Start from the known E field solution and apply Faraday's law to derive B. Compute the curl component by component, integrate in time, and use omega=ck to get B=E/c.",
+          "steps": [
+            {
+              "id": "start_from_E",
+              "type": "given",
+              "label": "The known $\\vec{E}$ field",
+              "math": "\\htmlClass{hl-E}{\\vec{E}}=\\htmlClass{hl-amp}{E_0}\\sin(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)\\,\\htmlClass{hl-yhat}{\\hat{y}}",
+              "highlights": {
+                "E": {
+                  "color": "cyan",
+                  "label": "Electric field"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Peak amplitude"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency"
+                },
+                "yhat": {
+                  "color": "cyan",
+                  "label": "y-direction (polarization)"
+                }
+              },
+              "justification": "From the previous proof: this $\\vec{E}$ solves Maxwell's wave equation.",
+              "explanation": "We start with the electric field we already derived \u2014 now we use it to find the magnetic field.",
+              "prompt": "Recall the E field solution from the previous proof. Now we will find B.",
+              "sceneStep": 4
+            },
+            {
+              "id": "faraday_applied",
+              "type": "given",
+              "label": "Faraday's law",
+              "math": "\\htmlClass{hl-curl}{\\nabla\\times}\\htmlClass{hl-E}{\\vec{E}}=-\\htmlClass{hl-dtB}{\\frac{\\partial\\vec{B}}{\\partial t}}",
+              "highlights": {
+                "curl": {
+                  "color": "purple",
+                  "label": "Curl operator"
+                },
+                "E": {
+                  "color": "cyan",
+                  "label": "Electric field"
+                },
+                "dtB": {
+                  "color": "pink",
+                  "label": "Time derivative of B"
+                }
+              },
+              "justification": "Faraday's law connects the spatial variation of $\\vec{E}$ to the time variation of $\\vec{B}$.",
+              "explanation": "If $\\vec{E}$ varies in space, Faraday's law tells us $\\vec{B}$ must be changing in time.",
+              "prompt": "Faraday's law is the bridge: given E, it tells us what B must be.",
+              "sceneStep": 4
+            },
+            {
+              "id": "compute_curl",
+              "type": "step",
+              "label": "Compute the curl",
+              "math": "(\\htmlClass{hl-curl}{\\nabla\\times\\vec{E}})_z=\\frac{\\partial \\htmlClass{hl-Ey}{E_y}}{\\partial x}=\\htmlClass{hl-amp}{E_0}\\htmlClass{hl-k}{k}\\cos(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)",
+              "highlights": {
+                "curl": {
+                  "color": "purple",
+                  "label": "z-component of curl"
+                },
+                "Ey": {
+                  "color": "cyan",
+                  "label": "y-component of E"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Amplitude"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency"
+                }
+              },
+              "justification": "Since $\\vec{E}$ has only a $y$-component that depends on $x$, the only nonzero curl component is $\\partial E_y/\\partial x$ in the $\\hat{z}$ direction.",
+              "explanation": "The curl picks out how the $y$-field changes along $x$ \u2014 and points it in the $z$-direction. This is why $\\vec{B}$ will be in $\\hat{z}$.",
+              "prompt": "Only one component of the curl survives: dEy/dx gives a z-component. This determines the direction of B.",
+              "sceneStep": 4
+            },
+            {
+              "id": "faraday_z",
+              "type": "step",
+              "label": "Faraday's law, $z$-component",
+              "math": "-\\htmlClass{hl-dtBz}{\\frac{\\partial B_z}{\\partial t}}=\\htmlClass{hl-amp}{E_0}\\htmlClass{hl-k}{k}\\cos(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)",
+              "highlights": {
+                "dtBz": {
+                  "color": "pink",
+                  "label": "Time derivative of Bz"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Amplitude"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency"
+                }
+              },
+              "justification": "Equate the $z$-component of the curl to $-\\partial B_z/\\partial t$.",
+              "explanation": "Faraday's law now gives us a simple equation: the time derivative of $B_z$ equals $-E_0 k\\cos(kx-\\omega t)$.",
+              "prompt": "Write out the z-component of Faraday's law explicitly.",
+              "sceneStep": 4
+            },
+            {
+              "id": "integrate",
+              "type": "step",
+              "label": "Integrate in time",
+              "math": "\\htmlClass{hl-Bz}{B_z}=\\frac{\\htmlClass{hl-amp}{E_0}\\htmlClass{hl-k}{k}}{\\htmlClass{hl-omega}{\\omega}}\\sin(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)",
+              "highlights": {
+                "Bz": {
+                  "color": "pink",
+                  "label": "z-component of magnetic field"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Amplitude"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency"
+                }
+              },
+              "justification": "Integrate $-\\partial B_z/\\partial t$ with respect to $t$. The integral of $\\cos(kx-\\omega t)$ with respect to $t$ is $\\frac{1}{\\omega}\\sin(kx-\\omega t)$.",
+              "explanation": "Integrating the cosine in time gives back a sine \u2014 the magnetic field oscillates in phase with the electric field, with amplitude $E_0 k/\\omega$.",
+              "prompt": "Integrate both sides with respect to time. The cosine integrates to sine, picking up a factor of 1/omega.",
+              "sceneStep": 4
+            },
+            {
+              "id": "use_dispersion",
+              "type": "step",
+              "label": "Apply $\\omega=ck$",
+              "math": "\\frac{\\htmlClass{hl-k}{k}}{\\htmlClass{hl-omega}{\\omega}}=\\frac{\\htmlClass{hl-k}{k}}{\\htmlClass{hl-c}{c}\\,\\htmlClass{hl-k}{k}}=\\frac{1}{\\htmlClass{hl-c}{c}}",
+              "highlights": {
+                "k": {
+                  "color": "yellow",
+                  "label": "Wave number (cancels)"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "Angular frequency"
+                },
+                "c": {
+                  "color": "cyan",
+                  "label": "Speed of light"
+                }
+              },
+              "justification": "The dispersion relation $\\omega=ck$ from the wave equation simplifies $k/\\omega$ to $1/c$.",
+              "explanation": "The ratio $k/\\omega$ collapses to $1/c$ \u2014 the wave number and frequency are locked together by the speed of light.",
+              "prompt": "This is where the dispersion relation omega=ck pays off. The k cancels beautifully.",
+              "sceneStep": 4
+            },
+            {
+              "id": "B_solution",
+              "type": "conclusion",
+              "label": "The magnetic field of an EM wave",
+              "math": "\\htmlClass{hl-B}{\\vec{B}}=\\frac{\\htmlClass{hl-amp}{E_0}}{\\htmlClass{hl-c}{c}}\\sin(\\htmlClass{hl-k}{k}x-\\htmlClass{hl-omega}{\\omega}t)\\,\\htmlClass{hl-zhat}{\\hat{z}}",
+              "highlights": {
+                "B": {
+                  "color": "pink",
+                  "label": "Magnetic field vector"
+                },
+                "amp": {
+                  "color": "green",
+                  "label": "Electric field amplitude"
+                },
+                "c": {
+                  "color": "cyan",
+                  "label": "Speed of light"
+                },
+                "k": {
+                  "color": "yellow",
+                  "label": "k = 2\u03c0/\u03bb"
+                },
+                "omega": {
+                  "color": "orange",
+                  "label": "\u03c9 = 2\u03c0f"
+                },
+                "zhat": {
+                  "color": "pink",
+                  "label": "z-direction (\u22a5 to E and propagation)"
+                }
+              },
+              "justification": "Substitute $k/\\omega=1/c$. The magnetic field is perpendicular to $\\vec{E}$ and to the propagation direction, with magnitude $B_0=E_0/c$.",
+              "explanation": "$\\vec{B}$ oscillates in $\\hat{z}$, perpendicular to both $\\vec{E}$ (in $\\hat{y}$) and propagation (in $\\hat{x}$). Its amplitude is $E_0/c$ \u2014 about $3\\times 10^{-9}$ times smaller in SI units, which is why $\\vec{E}$ dominates interactions with matter.",
+              "prompt": "This is the red curve in the 3D view. B is perpendicular to E, in phase, and c times smaller. That's why we usually only need to think about E.",
+              "sceneStep": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "One Photon Energy vs Light Intensity",
+      "description": "The energy of one photon depends on frequency; intensity depends on how many photons arrive.",
+      "markdown": "# Photon Energy\n\nThe Planck-Einstein relation is\n\n$$E=hf=\\frac{hc}{\\lambda}.$$\n\nA shorter-wavelength blue photon has more energy than a longer-wavelength red photon. But that statement is about **one photon**.\n\nA beam's total delivered energy also depends on photon count:\n\n$$E_{\\text{total}}=Nhf.$$\n\nSo the useful correction is:\n\n- Blue photon: higher energy per photon than red.\n- Many red photons: can carry more total energy than one blue photon.\n- Intensity: mainly photon number flux.\n- Color/frequency: energy per photon.",
+      "prompt": "Correct the common misconception directly. Say: one blue photon has more energy than one red photon, but many red photons can carry more total energy. Separate energy per photon from photon count/intensity.",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -1,
+          7
+        ],
+        [
+          -3,
+          3
+        ]
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          10
+        ],
+        "target": [
+          0,
+          3,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Bars",
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            3,
+            0
+          ],
+          "description": "Energy comparison"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            6,
+            5,
+            8
+          ],
+          "target": [
+            0,
+            2.5,
+            0
+          ],
+          "description": "Perspective view"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s1_y_axis",
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            0,
+            7
+          ],
+          "color": "#9aa4ad",
+          "width": 1.2,
+          "label": "$E\\;(\\text{eV})$"
+        },
+        {
+          "id": "s1_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -5,
+            7
+          ],
+          "color": [
+            0.25,
+            0.29,
+            0.34
+          ],
+          "opacity": 0.14,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "Energy per photon",
+          "description": "A red photon ($\\lambda=700$ nm) carries $1.77$ eV; a blue photon ($\\lambda=450$ nm) carries $2.76$ eV. The blue photon has more energy because $E=hf$.",
+          "prompt": "Emphasize that energy per photon is set by frequency. Use the eV numbers on the bars to ground the comparison.",
+          "add": [
+            {
+              "id": "s1_red_bar",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -3.4,
+                  0,
+                  0
+                ],
+                [
+                  -2.4,
+                  0,
+                  0
+                ],
+                [
+                  -2.4,
+                  1.77,
+                  0
+                ],
+                [
+                  -3.4,
+                  1.77,
+                  0
+                ]
+              ],
+              "color": "#d84a3a",
+              "opacity": 0.75,
+              "outlineColor": "#ff9a8f",
+              "outlineWidth": 1.2,
+              "label": "one red photon"
+            },
+            {
+              "id": "s1_blue_bar",
+              "type": "polygon",
+              "vertices": [
+                [
+                  1.8,
+                  0,
+                  0
+                ],
+                [
+                  2.8,
+                  0,
+                  0
+                ],
+                [
+                  2.8,
+                  2.76,
+                  0
+                ],
+                [
+                  1.8,
+                  2.76,
+                  0
+                ]
+              ],
+              "color": "#3c8cff",
+              "opacity": 0.75,
+              "outlineColor": "#9dccff",
+              "outlineWidth": 1.2,
+              "label": "one blue photon"
+            },
+            {
+              "id": "s1_red_label",
+              "type": "text",
+              "text": "$E_R=hf_R$",
+              "position": [
+                -3.75,
+                2.15,
+                0
+              ],
+              "color": "#ff9a8f",
+              "size": 15
+            },
+            {
+              "id": "s1_red_ev",
+              "type": "text",
+              "text": "$1.77\\;\\text{eV}$",
+              "position": [
+                -3.5,
+                0.85,
+                0
+              ],
+              "color": "#ff9a8f",
+              "size": 14
+            },
+            {
+              "id": "s1_red_wl",
+              "type": "text",
+              "text": "$\\lambda=700\\;\\text{nm}$",
+              "position": [
+                -3.55,
+                -0.45,
+                0
+              ],
+              "color": "#ff9a8f",
+              "size": 12
+            },
+            {
+              "id": "s1_blue_label",
+              "type": "text",
+              "text": "$E_B=hf_B$",
+              "position": [
+                1.45,
+                3.15,
+                0
+              ],
+              "color": "#9dccff",
+              "size": 15
+            },
+            {
+              "id": "s1_blue_ev",
+              "type": "text",
+              "text": "$2.76\\;\\text{eV}$",
+              "position": [
+                1.7,
+                1.35,
+                0
+              ],
+              "color": "#9dccff",
+              "size": 14
+            },
+            {
+              "id": "s1_blue_wl",
+              "type": "text",
+              "text": "$\\lambda=450\\;\\text{nm}$",
+              "position": [
+                1.65,
+                -0.45,
+                0
+              ],
+              "color": "#9dccff",
+              "size": 12
+            }
+          ],
+          "info": [
+            {
+              "id": "s1_per_photon_info",
+              "position": "top-right",
+              "content": "$$E_B>E_R$$\nwhen $f_B>f_R$.\n\nThis compares **one photon to one photon**."
+            }
+          ]
+        },
+        {
+          "title": "Photon count changes total energy",
+          "description": "Use the red photon count slider. Many lower-energy photons can exceed the energy of one higher-energy photon.",
+          "prompt": "Let the learner move N_red. Emphasize that intensity is count per area per time, while frequency sets energy per photon.",
+          "remove": [
+            {
+              "id": "s1_per_photon_info"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "Nred",
+              "label": "$N_{red}$",
+              "min": 1,
+              "max": 4,
+              "step": 1,
+              "default": 2
+            }
+          ],
+          "add": [
+            {
+              "id": "s1_red_total",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "-0.6",
+                  "0",
+                  "0"
+                ],
+                [
+                  "0.4",
+                  "0",
+                  "0"
+                ],
+                [
+                  "0.4",
+                  "Nred * 1.77",
+                  "0"
+                ],
+                [
+                  "-0.6",
+                  "Nred * 1.77",
+                  "0"
+                ]
+              ],
+              "color": "#d84a3a",
+              "opacity": 0.45,
+              "outlineColor": "#ffd0ca",
+              "outlineWidth": 1.3,
+              "label": "$N_{red}E_R$"
+            },
+            {
+              "id": "s1_total_label",
+              "type": "text",
+              "text": "$E_{total}=Nhf$",
+              "position": [
+                -0.9,
+                6.35,
+                0
+              ],
+              "color": "#f0b84b",
+              "size": 16
+            }
+          ],
+          "info": [
+            {
+              "id": "s1_count_info",
+              "position": "top-right",
+              "content": "**Correct comparison**\n\nA blue photon has more energy than a red photon.\n\nBut $N$ red photons carry\n\n$$E_{total}=Nhf_R.$$\n\nFor large enough $N$, that total can exceed one blue photon."
+            }
+          ]
+        },
+        {
+          "title": "Color is not brightness",
+          "description": "Frequency controls energy per photon. Photon number controls intensity. The two knobs are different.",
+          "prompt": "Finish by separating two axes: frequency/color and intensity/count. Mention that real beams also involve area and time.",
+          "add": [
+            {
+              "id": "s1_frequency_axis_text",
+              "type": "text",
+              "text": "frequency: energy per photon",
+              "position": [
+                -4.45,
+                5.8,
+                0
+              ],
+              "color": "#6ec6ff",
+              "size": 15
+            },
+            {
+              "id": "s1_intensity_axis_text",
+              "type": "text",
+              "text": "intensity: photon arrival rate",
+              "position": [
+                -4.45,
+                5.35,
+                0
+              ],
+              "color": "#7bd389",
+              "size": 15
+            }
+          ],
+          "info": [
+            {
+              "id": "s1_distinction_info",
+              "position": "bottom-right",
+              "content": "| Quantity | Meaning |\n|---|---|\n| $f$ | energy per photon |\n| $N$ | number of photons |\n| intensity | photon flux and total power |"
+            }
+          ]
+        }
+      ],
+      "proof": {
+        "id": "total_energy",
+        "title": "Total energy of $N$ photons",
+        "technique": "derivation",
+        "goal": "Show that $N$ identical photons of frequency $f$ carry total energy $E_{total}=Nhf$.",
+        "prompt": "Keep this derivation simple. The key insight is linearity: each photon independently carries $hf$.",
+        "steps": [
+          {
+            "id": "single_photon",
+            "type": "given",
+            "label": "Single photon energy",
+            "math": "\\htmlClass{hl-energy}{E}=\\htmlClass{hl-planck}{h}\\htmlClass{hl-freq}{f}",
+            "highlights": {
+              "energy": {
+                "color": "orange",
+                "label": "Energy of one photon"
+              },
+              "planck": {
+                "color": "yellow",
+                "label": "Planck constant"
+              },
+              "freq": {
+                "color": "cyan",
+                "label": "Frequency"
+              }
+            },
+            "justification": "Planck-Einstein relation.",
+            "explanation": "Each photon carries energy proportional to its frequency.",
+            "sceneStep": 0
+          },
+          {
+            "id": "n_photons",
+            "type": "step",
+            "label": "N identical photons",
+            "math": "\\htmlClass{hl-total}{E_{total}}=\\htmlClass{hl-count}{N}\\cdot {}\\htmlClass{hl-energy}{hf}",
+            "highlights": {
+              "total": {
+                "color": "green",
+                "label": "Total beam energy"
+              },
+              "count": {
+                "color": "magenta",
+                "label": "Photon count"
+              },
+              "energy": {
+                "color": "orange",
+                "label": "Energy per photon"
+              }
+            },
+            "justification": "Photon energies add independently.",
+            "explanation": "Total energy scales linearly with photon count.",
+            "sceneStep": 1
+          },
+          {
+            "id": "intensity_distinction",
+            "type": "conclusion",
+            "label": "Intensity vs color",
+            "math": "\\text{intensity}\\propto N,\\quad \\text{color}\\propto f",
+            "justification": "Frequency sets energy per photon; count sets total energy.",
+            "explanation": "Brightness and color are independent controls.",
+            "sceneStep": 2
+          }
+        ]
+      }
+    },
+    {
+      "title": "When Wavelengths Become Discrete",
+      "description": "Free waves can vary continuously; constrained waves must fit boundary conditions.",
+      "markdown": "# Continuous vs Discrete Wavelengths\n\nFree photons in open space can have a continuous range of wavelengths. Discrete spectra appear when a system is constrained.\n\nThe simplest analogy is a standing wave in a box of length $L$. If the wave must vanish at both walls, only waves that fit are allowed:\n\n$$L=n\\frac{\\lambda}{2},\\qquad n=1,2,3,\\ldots$$\n\nFor a nonrelativistic particle in a box, the energy levels scale as\n\n$$E_n=\\frac{n^2h^2}{8mL^2}.$$\n\nSo a useful correction is: the allowed wavelengths scale like $1/n$, but the particle-in-a-box energies scale like $n^2$, not like $n$.\n\nAtoms are more complicated than a literal box, but the same structural idea survives: boundary conditions and allowed quantum states produce discrete emission lines.",
+      "prompt": "Teach quantization as a boundary-condition effect. Make clear that free photons are not forced into a discrete wavelength ladder; confinement or bound-state structure creates discreteness.",
+      "range": [
+        [
+          -0.5,
+          6.5
+        ],
+        [
+          -2.5,
+          3.5
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          3,
+          0.4,
+          9
+        ],
+        "target": [
+          3,
+          0.2,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Box",
+          "position": [
+            3,
+            0.4,
+            9
+          ],
+          "target": [
+            3,
+            0.2,
+            0
+          ],
+          "description": "Standing-wave view"
+        },
+        {
+          "name": "Energy",
+          "position": [
+            6,
+            4,
+            8
+          ],
+          "target": [
+            3,
+            1,
+            0
+          ],
+          "description": "Energy-level view"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s2_box_axis",
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            0,
+            6
+          ],
+          "color": "#d04f4f",
+          "width": 1.5,
+          "label": "$x$"
+        },
+        {
+          "id": "s2_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -1,
+            6
+          ],
+          "color": [
+            0.25,
+            0.29,
+            0.34
+          ],
+          "opacity": 0.14,
+          "divisions": 12
+        },
+        {
+          "id": "s2_left_wall",
+          "type": "line",
+          "points": [
+            [
+              0,
+              -2,
+              0
+            ],
+            [
+              0,
+              2,
+              0
+            ]
+          ],
+          "color": "#d8dee9",
+          "width": 5,
+          "label": "wall"
+        },
+        {
+          "id": "s2_right_wall",
+          "type": "animated_line",
+          "points": [
+            [
+              "L",
+              "-2",
+              "0"
+            ],
+            [
+              "L",
+              "2",
+              "0"
+            ]
+          ],
+          "color": "#d8dee9",
+          "width": 5,
+          "legendGroup": "wall"
+        }
+      ],
+      "steps": [
+        {
+          "title": "A free spectrum is continuous",
+          "description": "Without boundary conditions selecting modes, wavelength can vary continuously.",
+          "prompt": "Start from the contrast: free space permits a continuum. Bound systems create a ladder.",
+          "add": [
+            {
+              "id": "s2_spectrum_line",
+              "type": "line",
+              "points": [
+                [
+                  0.4,
+                  2.6,
+                  0
+                ],
+                [
+                  5.6,
+                  2.6,
+                  0
+                ]
+              ],
+              "color": "#8bd3dd",
+              "width": 8,
+              "label": "continuous spectrum"
+            },
+            {
+              "id": "s2_spectrum_label",
+              "type": "text",
+              "text": "free photons: continuum",
+              "position": [
+                1.55,
+                3.0,
+                0
+              ],
+              "color": "#8bd3dd",
+              "size": 15
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_continuum_info",
+              "position": "top-right",
+              "content": "**Free system**\n\nNo wall condition forces a specific wavelength ladder.\n\nWavelength is continuous in the ideal free-space model."
+            }
+          ]
+        },
+        {
+          "title": "Boundary conditions pick standing waves",
+          "description": "The wave must have nodes at both walls, so only integer half-wavelengths fit: $L=n\\lambda/2$.",
+          "prompt": "Use the n slider to show exactly fitting waves. The walls require zero amplitude at both ends.",
+          "remove": [
+            {
+              "id": "s2_continuum_info"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "n",
+              "label": "$n$",
+              "min": 1,
+              "max": 5,
+              "step": 1,
+              "default": 2
+            },
+            {
+              "id": "L",
+              "label": "$L$ (box length)",
+              "min": 3,
+              "max": 6,
+              "step": 0.5,
+              "default": 6
+            }
+          ],
+          "add": [
+            {
+              "id": "s2_standing_wave",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "1.25*sin(n*pi*t/L)",
+              "z": "0",
+              "range": [
+                0,
+                6
+              ],
+              "samples": 240,
+              "color": "#f0b84b",
+              "width": 4,
+              "label": "$\\psi_n(x)$"
+            },
+            {
+              "id": "s2_fit_text",
+              "type": "text",
+              "text": "$L=n\\lambda/2$",
+              "position": [
+                0.5,
+                -2.25,
+                0
+              ],
+              "color": "#f0b84b",
+              "size": 16
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_fit_info",
+              "position": "top-right",
+              "content": "**Allowed wavelengths**\n\n$$L=n\\frac{\\lambda}{2}$$\n\n$$\\lambda_n=\\frac{2L}{n}$$"
+            }
+          ]
+        },
+        {
+          "title": "Energy scales as $n^2$",
+          "description": "For the particle-in-a-box model, the energy ladder is quadratic: $E_n\\propto n^2$.",
+          "prompt": "Correct the linear-energy misconception. Explain that momentum scales like n, and kinetic energy goes like p^2.",
+          "add": [
+            {
+              "id": "s2_e1",
+              "type": "line",
+              "points": [
+                [
+                  4.2,
+                  0.25,
+                  0
+                ],
+                [
+                  5.7,
+                  0.25,
+                  0
+                ]
+              ],
+              "color": "#7bd389",
+              "width": 3,
+              "label": "$E_1$"
+            },
+            {
+              "id": "s2_e2",
+              "type": "line",
+              "points": [
+                [
+                  4.2,
+                  1.0,
+                  0
+                ],
+                [
+                  5.7,
+                  1.0,
+                  0
+                ]
+              ],
+              "color": "#7bd389",
+              "width": 3,
+              "label": "$E_2=4E_1$"
+            },
+            {
+              "id": "s2_e3",
+              "type": "line",
+              "points": [
+                [
+                  4.2,
+                  2.25,
+                  0
+                ],
+                [
+                  5.7,
+                  2.25,
+                  0
+                ]
+              ],
+              "color": "#7bd389",
+              "width": 3,
+              "label": "$E_3=9E_1$"
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_energy_info",
+              "position": "bottom-right",
+              "content": "**Correction**\n\nNot $E_n=nhc/(2L)$ for a massive particle in a box.\n\nInstead:\n\n$$E_n=\\frac{n^2h^2}{8mL^2}$$"
+            }
+          ]
+        },
+        {
+          "title": "Emission lines are energy differences",
+          "description": "Atoms emit photons when electrons move between allowed energy levels: $E_{photon}=E_{high}-E_{low}$.",
+          "prompt": "Use this as the bridge from box analogy to atomic spectra. Avoid saying atoms are literal boxes.",
+          "add": [
+            {
+              "id": "s2_transition",
+              "type": "vector",
+              "from": [
+                5.95,
+                2.25,
+                0
+              ],
+              "to": [
+                5.95,
+                0.25,
+                0
+              ],
+              "color": "#ff7b72",
+              "width": 4,
+              "label": "$E_{photon}$"
+            },
+            {
+              "id": "s2_photon_line",
+              "type": "parametric_curve",
+              "x": "0.35*t + 0.4",
+              "y": "-1.15 + 0.25*sin(2*pi*t)",
+              "z": "0",
+              "range": [
+                0,
+                10
+              ],
+              "samples": 160,
+              "color": "#6ec6ff",
+              "width": 3,
+              "label": "emitted photon"
+            }
+          ],
+          "info": [
+            {
+              "id": "s2_atomic_info",
+              "position": "top-right",
+              "content": "**Atomic emission**\n\n$$E_{photon}=E_{high}-E_{low}$$\n\nDiscrete energy levels create spectral lines."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Spreading Is Not Stretching",
+      "description": "A wave packet can spread through space while each photon's energy stays fixed; redshift changes energy per photon.",
+      "markdown": "# Spreading vs Stretching\n\nThis is the most important distinction in the lesson.\n\n## Spreading\n\nA beam or wave packet expands over a larger area. The same photon energy is distributed across a larger cross-section, so intensity drops. Energy per photon stays the same.\n\n## Stretching\n\nThe wavelength itself grows. Since\n\n$$E=\\frac{hc}{\\lambda},$$\n\nstretching the wavelength lowers the energy per photon.\n\nRedshift is a stretching effect. Doppler redshift comes from relative motion. Gravitational redshift comes from climbing out of a gravitational field. Cosmological redshift is described by\n\n$$\\lambda_{obs}=\\lambda_{em}(1+z).$$\n\nIn expanding spacetime, local conservation laws still hold, but a single global total energy for the universe is not generally well-defined.",
+      "prompt": "Make the distinction crisp: spreading changes intensity, stretching changes photon energy. For cosmological redshift, say global total energy is not generally well-defined in GR rather than saying energy disappears.",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          10
+        ],
+        "target": [
+          0,
+          0.5,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            0.5,
+            0
+          ],
+          "description": "Compare spreading and stretching"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            5,
+            4,
+            8
+          ],
+          "target": [
+            0,
+            0.5,
+            0
+          ],
+          "description": "Perspective view"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s3_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -5,
+            5
+          ],
+          "color": [
+            0.25,
+            0.29,
+            0.34
+          ],
+          "opacity": 0.14,
+          "divisions": 10
+        },
+        {
+          "id": "s3_midline",
+          "type": "line",
+          "points": [
+            [
+              0,
+              -3,
+              0
+            ],
+            [
+              0,
+              4,
+              0
+            ]
+          ],
+          "color": "#4b5563",
+          "width": 2
+        }
+      ],
+      "steps": [
+        {
+          "title": "Spreading dims the beam",
+          "description": "Move the radius slider. The footprint grows, so intensity drops, but the photon energy label stays unchanged.",
+          "prompt": "Explain inverse-area intuition without over-formalizing it. Energy per photon is unchanged by spreading alone.",
+          "sliders": [
+            {
+              "id": "R",
+              "label": "$R$ (beam radius)",
+              "min": 0.8,
+              "max": 2.6,
+              "step": 0.1,
+              "default": 1.5
+            }
+          ],
+          "add": [
+            {
+              "id": "s3_spread_circle",
+              "type": "parametric_curve",
+              "x": "-2.5 + R*cos(t)",
+              "y": "0.2 + R*sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 160,
+              "color": "#7bd389",
+              "width": 3,
+              "label": "beam footprint"
+            },
+            {
+              "id": "s3_spread_center",
+              "type": "animated_point",
+              "expr": [
+                "-2.5",
+                "0.2",
+                "0"
+              ],
+              "color": "#7bd389",
+              "size": 10,
+              "label": "$E=hf$"
+            },
+            {
+              "id": "s3_spread_text",
+              "type": "text",
+              "text": "spreading: dimmer",
+              "position": [
+                -4.6,
+                3.25,
+                0
+              ],
+              "color": "#7bd389",
+              "size": 16
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_spread_info",
+              "position": "top-left",
+              "content": "**Spreading**\n\nBigger footprint means lower intensity.\n\nEnergy per photon remains $E=hf$."
+            }
+          ]
+        },
+        {
+          "title": "Stretching lowers photon energy",
+          "description": "Redshift increases wavelength. The wave becomes longer and $E=hc/\\lambda$ decreases.",
+          "prompt": "Use the z slider to show wavelength stretching. Emphasize energy per photon, not photon count.",
+          "sliders": [
+            {
+              "id": "zshift",
+              "label": "$z$",
+              "min": 0,
+              "max": 2,
+              "step": 0.05,
+              "default": 0.6
+            }
+          ],
+          "add": [
+            {
+              "id": "s3_redshift_wave",
+              "type": "parametric_curve",
+              "x": "1.1 + 0.7*t",
+              "y": "0.2 + 0.55*sin(2*pi*t/(1+zshift))",
+              "z": "0",
+              "range": [
+                0,
+                6
+              ],
+              "samples": 200,
+              "color": "#ff7b72",
+              "width": 4,
+              "label": "$\\lambda_{obs}=\\lambda_{em}(1+z)$"
+            },
+            {
+              "id": "s3_energy_bar_bg",
+              "type": "line",
+              "points": [
+                [
+                  4.25,
+                  -2.2,
+                  0
+                ],
+                [
+                  4.25,
+                  2.2,
+                  0
+                ]
+              ],
+              "color": "#3b4652",
+              "width": 9,
+              "legendGroup": "$E\\propto 1/(1+z)$"
+            },
+            {
+              "id": "s3_energy_bar",
+              "type": "animated_line",
+              "points": [
+                [
+                  "4.25",
+                  "-2.2",
+                  "0"
+                ],
+                [
+                  "4.25",
+                  "-2.2 + 4.4/(1+zshift)",
+                  "0"
+                ]
+              ],
+              "color": "#f0b84b",
+              "width": 9,
+              "label": "$E\\propto 1/(1+z)$"
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_stretch_info",
+              "position": "top-right",
+              "content": "**Stretching**\n\n$$\\lambda_{obs}=\\lambda_{em}(1+z)$$\n\n$$E_{obs}=\\frac{E_{em}}{1+z}$$"
+            }
+          ]
+        },
+        {
+          "title": "Cosmological caution",
+          "description": "In expanding spacetime, local conservation remains meaningful. A global total energy for the whole universe is not generally well-defined.",
+          "prompt": "State the GR caveat carefully. Avoid saying the energy simply disappears.",
+          "add": [
+            {
+              "id": "s3_gr_note",
+              "type": "text",
+              "text": "local conservation: yes",
+              "position": [
+                -4.55,
+                -2.15,
+                0
+              ],
+              "color": "#7bd389",
+              "size": 15
+            },
+            {
+              "id": "s3_global_note",
+              "type": "text",
+              "text": "global total energy: not generally defined",
+              "position": [
+                -4.55,
+                -2.55,
+                0
+              ],
+              "color": "#f0b84b",
+              "size": 15
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_energy_conservation_info",
+              "position": "bottom-right",
+              "content": "**Better statement**\n\nNot: energy disappears.\n\nInstead: in general relativity, a global total energy for an expanding universe is not generally well-defined."
+            }
+          ]
+        }
+      ],
+      "proof": {
+        "id": "redshift_energy",
+        "title": "Redshifted photon energy",
+        "technique": "derivation",
+        "goal": "Show that cosmological redshift reduces photon energy: $E_{obs}=E_{em}/(1+z)$.",
+        "prompt": "Derive from the wavelength relation and E = hc/lambda. Keep it algebraic.",
+        "steps": [
+          {
+            "id": "redshift_def",
+            "type": "given",
+            "label": "Redshift relation",
+            "math": "\\htmlClass{hl-obs}{\\lambda_{obs}}=\\htmlClass{hl-em}{\\lambda_{em}}(1+\\htmlClass{hl-z}{z})",
+            "highlights": {
+              "obs": {
+                "color": "orange",
+                "label": "Observed wavelength"
+              },
+              "em": {
+                "color": "cyan",
+                "label": "Emitted wavelength"
+              },
+              "z": {
+                "color": "yellow",
+                "label": "Redshift parameter"
+              }
+            },
+            "justification": "Definition of cosmological redshift.",
+            "explanation": "Space expansion stretches the wavelength by a factor $(1+z)$.",
+            "sceneStep": 1
+          },
+          {
+            "id": "energy_substitution",
+            "type": "step",
+            "label": "Substitute into $E=hc/\\lambda$",
+            "math": "\\htmlClass{hl-eobs}{E_{obs}}=\\frac{hc}{\\htmlClass{hl-obs}{\\lambda_{obs}}}=\\frac{hc}{\\htmlClass{hl-em}{\\lambda_{em}}(1+\\htmlClass{hl-z}{z})}",
+            "highlights": {
+              "eobs": {
+                "color": "green",
+                "label": "Observed energy"
+              },
+              "obs": {
+                "color": "orange",
+                "label": "Observed wavelength"
+              },
+              "em": {
+                "color": "cyan",
+                "label": "Emitted wavelength"
+              },
+              "z": {
+                "color": "yellow",
+                "label": "Redshift parameter"
+              }
+            },
+            "justification": "Replace $\\lambda_{obs}$ with the redshift expression.",
+            "explanation": "The longer wavelength means less energy per photon.",
+            "sceneStep": 1
+          },
+          {
+            "id": "energy_result",
+            "type": "conclusion",
+            "label": "Redshifted energy",
+            "math": "\\htmlClass{hl-eobs}{E_{obs}}=\\frac{\\htmlClass{hl-eem}{E_{em}}}{1+\\htmlClass{hl-z}{z}}",
+            "highlights": {
+              "eobs": {
+                "color": "green",
+                "label": "Observed energy"
+              },
+              "eem": {
+                "color": "cyan",
+                "label": "Emitted energy"
+              },
+              "z": {
+                "color": "yellow",
+                "label": "Redshift parameter"
+              }
+            },
+            "justification": "Recognize $hc/\\lambda_{em}=E_{em}$.",
+            "explanation": "Stretching lowers energy per photon by exactly the redshift factor.",
+            "sceneStep": 1
+          }
+        ]
+      }
+    },
+    {
+      "title": "Photon as Wave Packet and Detection Event",
+      "description": "A photon is a quantum excitation: spread out in possibility, localized in interaction.",
+      "markdown": "# What Is a Photon?\n\nA photon is a quantized excitation of the electromagnetic field. It is not a tiny classical ball and not a classical water wave.\n\nThe useful synthesis is a wave packet:\n\n$$\\Psi(x,t)=\\int A(k)e^{i(kx-\\omega t)}\\,dk.$$\n\nBefore detection, the quantum state can be spatially spread out. Detection is localized and all-or-nothing: a detector either records an interaction or it does not.\n\nA careful wording is:\n\n- Before measurement: spread-out quantum state or probability amplitude.\n- At measurement: localized detection event.\n- Measurement updates the quantum state description.\n\nThis avoids the misleading picture of a physical classical wave instantly collapsing across the universe.",
+      "prompt": "Use cautious quantum language. Say the photon is a quantized field excitation, described by a state that can be spatially spread out, with localized detection. Avoid implying a classical physical wave literally collapses.",
+      "range": [
+        [
+          -6,
+          6
+        ],
+        [
+          -6,
+          6
+        ],
+        [
+          -6,
+          6
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          9
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Packet",
+          "position": [
+            0,
+            0,
+            9
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Wave-packet view"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            6,
+            4,
+            7
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Perspective view"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s4_x_axis",
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -6,
+            6
+          ],
+          "color": "#d04f4f",
+          "width": 1.2,
+          "label": "$x$"
+        },
+        {
+          "id": "s4_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -6,
+            6
+          ],
+          "color": [
+            0.25,
+            0.29,
+            0.34
+          ],
+          "opacity": 0.14,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "A localized packet is built from many waves",
+          "description": "A packet is made by superposing many wave numbers $k$. Narrower packets require a broader spread of wavelengths.",
+          "prompt": "Introduce superposition qualitatively. This is a conceptual visualization, not a full photon field calculation.",
+          "sliders": [
+            {
+              "id": "sigma",
+              "label": "$\\sigma$",
+              "min": 0.8,
+              "max": 2.6,
+              "step": 0.1,
+              "default": 1.4
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_packet",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "exp(-(t*t)/(2*sigma*sigma))*cos(7*t)",
+              "z": "0",
+              "range": [
+                -6,
+                6
+              ],
+              "samples": 320,
+              "color": "#6ec6ff",
+              "width": 4,
+              "label": "$\\Psi(x)$"
+            },
+            {
+              "id": "s4_envelope_pos",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "exp(-(t*t)/(2*sigma*sigma))",
+              "z": "0",
+              "range": [
+                -6,
+                6
+              ],
+              "samples": 240,
+              "color": "#f0b84b",
+              "width": 2,
+              "opacity": 0.65,
+              "label": "packet envelope"
+            },
+            {
+              "id": "s4_envelope_neg",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "-exp(-(t*t)/(2*sigma*sigma))",
+              "z": "0",
+              "range": [
+                -6,
+                6
+              ],
+              "samples": 240,
+              "color": "#f0b84b",
+              "width": 2,
+              "opacity": 0.65,
+              "legendGroup": "packet envelope"
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_packet_info",
+              "position": "top-right",
+              "content": "$$\\Psi(x,t)=\\int A(k)e^{i(kx-\\omega t)}\\,dk$$\n\nA packet is spread out, but not infinitely uniform."
+            }
+          ]
+        },
+        {
+          "title": "Detection is localized",
+          "description": "The spread-out state predicts probabilities. The detector records a localized event.",
+          "prompt": "Use the detector point to distinguish state description from detection event.",
+          "add": [
+            {
+              "id": "s4_detector",
+              "type": "line",
+              "points": [
+                [
+                  2.6,
+                  -2.1,
+                  0
+                ],
+                [
+                  2.6,
+                  2.1,
+                  0
+                ]
+              ],
+              "color": "#ff7b72",
+              "width": 5,
+              "label": "detector"
+            },
+            {
+              "id": "s4_click",
+              "type": "point",
+              "position": [
+                2.6,
+                0.25,
+                0
+              ],
+              "color": "#ff7b72",
+              "size": 18,
+              "label": "click"
+            },
+            {
+              "id": "s4_detection_text",
+              "type": "text",
+              "text": "localized interaction",
+              "position": [
+                2.85,
+                1.85,
+                0
+              ],
+              "color": "#ff7b72",
+              "size": 15
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_detection_info",
+              "position": "bottom-right",
+              "content": "**Photon detection**\n\nSpread-out state.\n\nLocalized interaction.\n\nAll-or-nothing detector click."
+            }
+          ]
+        },
+        {
+          "title": "The final mental model",
+          "description": "A photon is spread out in possibility and localized in interaction. Wave and particle are incomplete classical metaphors.",
+          "prompt": "Close the lesson with the core insight. Invite questions about particle in a box, atomic orbitals, or black holes as next topics.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_summary_1",
+              "type": "text",
+              "text": "quantized excitation",
+              "position": [
+                -5.2,
+                2.2,
+                0
+              ],
+              "color": "#6ec6ff",
+              "size": 16
+            },
+            {
+              "id": "s4_summary_2",
+              "type": "text",
+              "text": "continuous wavelength in free space",
+              "position": [
+                -5.2,
+                1.75,
+                0
+              ],
+              "color": "#8bd3dd",
+              "size": 16
+            },
+            {
+              "id": "s4_summary_3",
+              "type": "text",
+              "text": "discrete spectra from constraints",
+              "position": [
+                -5.2,
+                1.3,
+                0
+              ],
+              "color": "#7bd389",
+              "size": 16
+            },
+            {
+              "id": "s4_summary_4",
+              "type": "text",
+              "text": "$E=hf=hc/\\lambda$",
+              "position": [
+                -5.2,
+                0.85,
+                0
+              ],
+              "color": "#f0b84b",
+              "size": 18
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_summary_info",
+              "position": "top-right",
+              "content": "**Core insight**\n\nA photon is not a tiny ball flying through space.\n\nIt is a quantum entity: spread out in possibility, localized in interaction."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Where Intuition Breaks: Black Holes",
+      "description": "Extreme gravity sharpens the lesson: photon energy depends on observer and spacetime, and singularities require unfinished physics.",
+      "markdown": "# Black Holes and the Limits of the Picture\n\nNear a black hole, intuition based on ordinary wave packets becomes unreliable.\n\nCorrect statements:\n\n- Falling photons can blueshift for local observers.\n- Photon energy contributes to the black hole's mass-energy when absorbed.\n- Photons do not become little classical balls compressed to a mathematical point.\n- Singularities are not fully described by established quantum theory and general relativity together.\n\nThe honest ending is that black holes point toward quantum gravity, which remains unsolved.",
+      "prompt": "Use this as a careful epilogue. State what is known without pretending the lesson solves quantum gravity. Correct the idea that photons literally collapse into a point.",
+      "range": [
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ],
+        [
+          -5,
+          5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          2,
+          9
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            2,
+            9
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Black-hole sketch"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            5,
+            4,
+            8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Perspective view"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s5_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -5,
+            5
+          ],
+          "color": [
+            0.18,
+            0.2,
+            0.25
+          ],
+          "opacity": 0.14,
+          "divisions": 10
+        },
+        {
+          "id": "s5_horizon",
+          "type": "parametric_curve",
+          "x": "1.3*cos(t)",
+          "y": "1.3*sin(t)",
+          "z": "0",
+          "range": [
+            0,
+            6.283185307179586
+          ],
+          "samples": 180,
+          "color": "#9aa4ad",
+          "width": 4,
+          "label": "event horizon"
+        },
+        {
+          "id": "s5_dark_core",
+          "type": "sphere",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "radius": 1.2,
+          "color": "#050507",
+          "opacity": 0.92,
+          "label": "black hole"
+        }
+      ],
+      "steps": [
+        {
+          "title": "Falling light blueshifts locally",
+          "description": "A falling photon can be measured with increasing frequency by local observers deeper in the gravitational field.",
+          "prompt": "State observer dependence. Do not imply there is one universal photon energy in curved spacetime.",
+          "sliders": [
+            {
+              "id": "grav",
+              "label": "$g$ (gravity strength)",
+              "min": 1,
+              "max": 4,
+              "step": 0.1,
+              "default": 2
+            }
+          ],
+          "add": [
+            {
+              "id": "s5_photon_path",
+              "type": "parametric_curve",
+              "x": "-4 + 4*t",
+              "y": "2.4 - 2.1*t + 0.25*sin((4+grav*4)*pi*t)",
+              "z": "0",
+              "range": [
+                0,
+                1
+              ],
+              "samples": 200,
+              "color": "#6ec6ff",
+              "width": 4,
+              "label": "incoming photon"
+            },
+            {
+              "id": "s5_blue_note",
+              "type": "text",
+              "text": "falling: local blueshift",
+              "position": [
+                -4.55,
+                3.15,
+                0
+              ],
+              "color": "#6ec6ff",
+              "size": 16
+            }
+          ],
+          "info": [
+            {
+              "id": "s5_blueshift_info",
+              "position": "top-right",
+              "content": "**Near strong gravity**\n\nObserved photon frequency depends on observer and spacetime geometry.\n\nFalling photons can blueshift locally."
+            }
+          ]
+        },
+        {
+          "title": "Absorbed energy changes the black hole",
+          "description": "If the photon is absorbed, its energy contributes to the black hole's mass-energy.",
+          "prompt": "Make this conservative: absorbed energy contributes to mass-energy. Avoid details of horizon thermodynamics.",
+          "add": [
+            {
+              "id": "s5_mass_ring",
+              "type": "parametric_curve",
+              "x": "1.55*cos(t)",
+              "y": "1.55*sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.283185307179586
+              ],
+              "samples": 180,
+              "color": "#f0b84b",
+              "width": 2,
+              "label": "mass-energy increases"
+            },
+            {
+              "id": "s5_energy_note",
+              "type": "text",
+              "text": "$\\Delta M=E/c^2$",
+              "position": [
+                1.9,
+                -1.9,
+                0
+              ],
+              "color": "#f0b84b",
+              "size": 17
+            }
+          ],
+          "info": [
+            {
+              "id": "s5_absorb_info",
+              "position": "bottom-right",
+              "content": "**Absorption**\n\nPhoton energy is not ignored.\n\nAbsorbed energy contributes to black-hole mass-energy."
+            }
+          ]
+        },
+        {
+          "title": "Do not overextend the picture",
+          "description": "Photons do not literally collapse into a classical point. The singularity problem needs quantum gravity.",
+          "prompt": "Close by acknowledging the unsolved part. Use this as a boundary on the model, not a mystery flourish.",
+          "add": [
+            {
+              "id": "s5_limit_text",
+              "type": "text",
+              "text": "singularity physics: unresolved",
+              "position": [
+                -4.45,
+                -3.05,
+                0
+              ],
+              "color": "#ff7b72",
+              "size": 16
+            },
+            {
+              "id": "s5_qg_text",
+              "type": "text",
+              "text": "requires quantum gravity",
+              "position": [
+                -4.45,
+                -3.5,
+                0
+              ],
+              "color": "#f0b84b",
+              "size": 16
+            }
+          ],
+          "info": [
+            {
+              "id": "s5_limits_info",
+              "position": "top-left",
+              "content": "**Model boundary**\n\nNot: photons collapse into one physical point.\n\nBetter: established physics becomes incomplete at singularities."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

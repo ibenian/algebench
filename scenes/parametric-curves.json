@@ -1,0 +1,1454 @@
+{
+  "title": "Parametric Curves in Space",
+  "scenes": [
+    {
+      "title": "The Circle and Helix",
+      "description": "A circle in the xy-plane is defined by $x = \\cos t$, $y = \\sin t$. Adding a $z$-component that grows with $t$ unwinds the circle into a helix ascending through space.",
+      "markdown": "# The Circle and Helix\n\nA **parametric curve** in 3D assigns a point $(x, y, z)$ to each value of a parameter $t$:\n\n$$\\mathbf{r}(t) = \\bigl(x(t),\\; y(t),\\; z(t)\\bigr)$$\n\n## The Circle\n\nThe unit circle in the $xy$-plane is:\n\n$$\\mathbf{r}(t) = (\\cos t,\\; \\sin t,\\; 0), \\quad t \\in [0, 2\\pi]$$\n\nEvery point stays at height $z = 0$.\n\n## The Helix\n\nLift the circle by letting $z$ grow proportionally to $t$:\n\n$$\\mathbf{r}(t) = \\left(\\cos t,\\; \\sin t,\\; \\frac{t}{2\\pi}\\right), \\quad t \\in [0, 4\\pi]$$\n\nAfter one full revolution ($t = 2\\pi$) the curve has risen by 1 unit. This is a **right circular helix**.\n\n## Pitch\n\nThe **pitch** $h$ controls how fast the helix rises per revolution:\n\n$$\\mathbf{r}(t) = \\left(\\cos t,\\; \\sin t,\\; \\frac{h\\,t}{2\\pi}\\right)$$\n\n- $h = 0$: flat circle\n- $h = 1$: rises 1 unit per turn\n- $h = 3$: steeply rising helix\n\nThe arc length of one turn is $\\sqrt{(2\\pi)^2 + h^2}$.\n\n> **Tip**: Use the pitch slider to watch the circle smoothly stretch into a helix.",
+      "range": [
+        [
+          -2,
+          2
+        ],
+        [
+          -2,
+          2
+        ],
+        [
+          -0.5,
+          4
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          4,
+          3,
+          4
+        ],
+        "target": [
+          0,
+          0,
+          1.5
+        ]
+      },
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            6,
+            5,
+            6
+          ],
+          "target": [
+            0,
+            0,
+            1.5
+          ],
+          "description": "Wide isometric view — see the circle and helix together in 3D"
+        },
+        {
+          "name": "Top",
+          "position": [
+            0,
+            8,
+            1.5
+          ],
+          "target": [
+            0,
+            0,
+            1.5
+          ],
+          "description": "Top view — see the helix projected as concentric rings from above"
+        },
+        {
+          "name": "Front",
+          "position": [
+            0,
+            0,
+            8
+          ],
+          "target": [
+            0,
+            0,
+            1.5
+          ],
+          "description": "Front view — see the helix height along Z"
+        },
+        {
+          "name": "Side",
+          "position": [
+            8,
+            0,
+            1.5
+          ],
+          "target": [
+            0,
+            0,
+            1.5
+          ],
+          "description": "Side view of the helix"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -2,
+            2
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.15,
+          "divisions": 8
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -2,
+            2
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -2,
+            2
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -0.5,
+            4
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "Draw the unit circle",
+          "description": "The unit circle $\\mathbf{r}(t) = (\\cos t, \\sin t, 0)$ traces a flat circle in the $xy$-plane.",
+          "add": [
+            {
+              "id": "circle",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 128,
+              "color": "#4488ff",
+              "width": 4,
+              "label": "$\\mathbf{r}(t) = (\\cos t, \\sin t, 0)$"
+            },
+            {
+              "id": "circle-pt",
+              "type": "point",
+              "position": [
+                1,
+                0,
+                0
+              ],
+              "color": "#4488ff",
+              "size": 8,
+              "label": "$t=0$"
+            }
+          ]
+        },
+        {
+          "title": "Rise into a helix",
+          "description": "Add $z = t/(2\\pi)$. The curve spirals upward through two full turns, rising 2 units total.",
+          "add": [
+            {
+              "id": "helix",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "t/(2*pi)",
+              "range": [
+                0,
+                12.5664
+              ],
+              "samples": 256,
+              "color": "#ff6644",
+              "width": 4,
+              "label": "$\\mathbf{r}(t) = (\\cos t, \\sin t, t/2\\pi)$"
+            }
+          ]
+        },
+        {
+          "title": "Compare circle and helix",
+          "description": "Both curves share the same $xy$ projection but the helix climbs upward. Rotate to see the difference from the top vs. side view.",
+          "add": [
+            {
+              "id": "compare-text",
+              "type": "text",
+              "position": [
+                1.5,
+                0,
+                3
+              ],
+              "text": "2 turns = 2 units rise",
+              "color": "#ffcc00",
+              "size": 14
+            }
+          ]
+        },
+        {
+          "title": "Interactive: adjust the pitch",
+          "description": "Drag the pitch slider $h$. At $h=0$ you get a flat circle; larger values produce a steeper helix.",
+          "remove": [
+            {
+              "id": "*"
+            }
+          ],
+          "add": [
+            {
+              "id": "helix-interactive",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "h*t/(2*pi)",
+              "range": [
+                0,
+                12.5664
+              ],
+              "samples": 256,
+              "color": "#ff6644",
+              "width": 5,
+              "label": "$z = h\\,t / 2\\pi$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "h",
+              "label": "$h$ (pitch)",
+              "min": 0,
+              "max": 3,
+              "step": 0.1,
+              "default": 1
+            }
+          ],
+          "info": [
+            {
+              "id": "pitch_live",
+              "position": "top-right",
+              "content": "$$h={{toFixed(h,2)}},\\quad z(t)=\\frac{h t}{2\\pi},\\quad \\Delta z_{\\text{1 turn}}=h={{toFixed(h,2)}}$$"
+            }
+          ]
+        }
+      ],
+      "prompt": "Teach parametric curves as motion over t, emphasizing projection vs height evolution. Use the pitch slider to connect algebraic z(t) to geometric rise per turn."
+    },
+    {
+      "title": "Lissajous Figures",
+      "description": "Lissajous curves $x = \\sin(at + \\varphi)$, $y = \\sin(bt)$ arise when two perpendicular oscillations have different frequencies $a$ and $b$.",
+      "markdown": "# Lissajous Figures\n\nA **Lissajous figure** is the path traced by a point undergoing two independent sinusoidal oscillations at right angles:\n\n$$x(t) = \\sin(a\\,t + \\varphi), \\quad y(t) = \\sin(b\\,t), \\quad z(t) = 0$$\n\n## Frequency Ratio\n\nThe shape depends on the ratio $a : b$:\n\n| $a$ | $b$ | Shape |\n|-----|-----|-------|\n| 1 | 1 | Circle / ellipse |\n| 2 | 1 | Figure-eight |\n| 3 | 2 | Pretzel / bow-tie |\n| 3 | 1 | Triple loop |\n\nWhen $a/b$ is rational the curve closes after finite time. When irrational it fills a rectangle densely.\n\n## Phase Shift $\\varphi$\n\nThe phase $\\varphi$ rotates and deforms the figure:\n\n- $\\varphi = 0$: straight line (when $a = b$)\n- $\\varphi = \\pi/2$: circle (when $a = b = 1$)\n\n## Applications\n\nLissajous figures appear in:\n- **Electronics**: visualizing phase and frequency on oscilloscopes\n- **Mechanics**: coupled pendula\n- **Acoustics**: visualizing harmonic ratios\n\n> **Tip**: Try $a=3, b=2, \\varphi=\\pi/4$ for a beautiful pretzel shape.",
+      "range": [
+        [
+          -1.5,
+          1.5
+        ],
+        [
+          -1.5,
+          1.5
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          6
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            0,
+            8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Wider face-on view — see the full Lissajous figure in the XY plane"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            3,
+            2,
+            3
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "3D perspective — notice the Lissajous figure has no Z extent"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            6,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down from above"
+        },
+        {
+          "name": "Side",
+          "position": [
+            6,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Side view along X — see the figure edge-on"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -2,
+            2
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.15,
+          "divisions": 8
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -1.5,
+            1.5
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -1.5,
+            1.5
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "$a=1, b=1$: Circle",
+          "description": "When $a = b = 1$ and $\\varphi = \\pi/2$, the Lissajous curve is a perfect circle.",
+          "add": [
+            {
+              "id": "lissa-1-1",
+              "type": "parametric_curve",
+              "x": "sin(1*t + pi/2)",
+              "y": "sin(1*t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 256,
+              "color": "#4488ff",
+              "width": 4,
+              "label": "$a=1, b=1$"
+            }
+          ]
+        },
+        {
+          "title": "$a=2, b=1$: Figure-eight",
+          "description": "Doubling the $x$-frequency creates the classic figure-eight. The curve has 2 horizontal lobes.",
+          "add": [
+            {
+              "id": "lissa-2-1",
+              "type": "parametric_curve",
+              "x": "sin(2*t + pi/2)",
+              "y": "sin(1*t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 512,
+              "color": "#ff6644",
+              "width": 4,
+              "label": "$a=2, b=1$"
+            }
+          ]
+        },
+        {
+          "title": "$a=3, b=2$: Pretzel curve",
+          "description": "The ratio 3:2 produces an interlocking pretzel shape with 3 lobes horizontally and 2 vertically.",
+          "add": [
+            {
+              "id": "lissa-3-2",
+              "type": "parametric_curve",
+              "x": "sin(3*t + pi/4)",
+              "y": "sin(2*t)",
+              "z": "0",
+              "range": [
+                0,
+                12.5664
+              ],
+              "samples": 512,
+              "color": "#44ffaa",
+              "width": 4,
+              "label": "$a=3, b=2$"
+            }
+          ]
+        },
+        {
+          "title": "Interactive: choose frequencies and phase",
+          "description": "Adjust $a$, $b$, and $\\varphi$ to explore the full family of Lissajous curves.",
+          "remove": [
+            {
+              "id": "*"
+            }
+          ],
+          "add": [
+            {
+              "id": "lissa-interactive",
+              "type": "parametric_curve",
+              "x": "sin(a*t + phi)",
+              "y": "sin(b*t)",
+              "z": "0",
+              "range": [
+                0,
+                62.8318
+              ],
+              "samples": 1024,
+              "color": "#ffcc00",
+              "width": 4,
+              "label": "$x=\\sin(at+\\varphi),\\;y=\\sin(bt)$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": 1,
+              "max": 5,
+              "step": 1,
+              "default": 2
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": 1,
+              "max": 5,
+              "step": 1,
+              "default": 1
+            },
+            {
+              "id": "phi",
+              "label": "$\\varphi$",
+              "min": 0,
+              "max": 3.14159,
+              "step": 0.05,
+              "default": 1.5708
+            }
+          ],
+          "info": [
+            {
+              "id": "lissa_live",
+              "position": "top-right",
+              "content": "$$x=\\sin({{a}}t+{{toFixed(phi,2)}}),\\;y=\\sin({{b}}t),\\quad a:b={{a}}:{{b}}$$"
+            }
+          ]
+        }
+      ],
+      "prompt": "Explain how frequency ratio a:b and phase phi control closure, symmetry, and lobe count. Encourage comparing rational ratios by switching camera views."
+    },
+    {
+      "title": "Building the Torus",
+      "description": "A torus is built by sweeping a circle of radius $r$ along a circular spine of radius $R$. Two angles $\\phi$ and $\\theta$ locate any point on the surface.",
+      "markdown": "# Building the Torus\n\nA **torus** is generated by revolving a circle of radius $r$ around an axis at distance $R$ from its centre:\n\n$$\\mathbf{r}(\\phi, \\theta) = \\begin{pmatrix}(R + r\\cos\\theta)\\cos\\phi \\\\ (R + r\\cos\\theta)\\sin\\phi \\\\ r\\sin\\theta\\end{pmatrix}, \\quad \\phi,\\theta \\in [0, 2\\pi)$$\n\n## The Two Parameters\n\n| Symbol | Name | Role |\n|--------|------|------|\n| $R$ | Major radius | Distance from $z$-axis to tube centre |\n| $r$ | Minor radius | Radius of the tube cross-section |\n| $\\phi$ | Longitude | Angle around the central spine circle |\n| $\\theta$ | Tube angle | Angle around the cross-section circle |\n\n## Construction Steps\n\n1. **Spine circle** — a circle of radius $R$ in the $xy$-plane\n2. **Cross-section** — a circle of radius $r$ centred at $(R,0,0)$ in the $xz$-plane\n3. **Sweep** — rotate the cross-section around the $z$-axis through angle $\\phi \\in [0,2\\pi]$\n4. **Complete torus** — the swept surface\n\nEvery point on the surface is reached by choosing exactly one $(\\phi, \\theta)$.",
+      "range": [
+        [
+          -3.5,
+          3.5
+        ],
+        [
+          -3.5,
+          3.5
+        ],
+        [
+          -1.5,
+          1.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          5,
+          3.5,
+          3
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            7,
+            5,
+            4
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Wide isometric view of the torus"
+        },
+        {
+          "name": "Top",
+          "position": [
+            0,
+            8,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down the Y axis — see the torus ring from above"
+        },
+        {
+          "name": "Front",
+          "position": [
+            0,
+            0,
+            7
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Front view — see the torus cross-section"
+        },
+        {
+          "name": "Side",
+          "position": [
+            9,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Side view of the torus"
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -3.5,
+            3.5
+          ],
+          "color": "#333355",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -3.5,
+            3.5
+          ],
+          "color": "#333355",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -1.5,
+            1.5
+          ],
+          "color": "#333355",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "The spine circle",
+          "description": "The torus starts with a circle of radius $R=2$ in the $xy$-plane. This is the **spine** — the path that the centre of every cross-section will follow.",
+          "add": [
+            {
+              "id": "spine-circle",
+              "type": "parametric_curve",
+              "x": "2*cos(t)",
+              "y": "2*sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 128,
+              "color": "#ffffff",
+              "width": 3
+            },
+            {
+              "id": "R-arrow",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                2,
+                0,
+                0
+              ],
+              "color": "#ff4422",
+              "label": "$R = 2$"
+            },
+            {
+              "id": "origin-dot",
+              "type": "point",
+              "position": [
+                0,
+                0,
+                0
+              ],
+              "color": "#ff4422",
+              "size": 8
+            }
+          ]
+        },
+        {
+          "title": "The cross-section circle",
+          "description": "At the point $(R, 0, 0)$ on the spine, draw a small circle of radius $r = 0.6$ in the $xz$-plane. Every slice through the torus perpendicular to the spine is a copy of this circle.",
+          "add": [
+            {
+              "id": "minor-circle-static",
+              "type": "parametric_curve",
+              "x": "2 + 0.6*cos(t)",
+              "y": "0",
+              "z": "0.6*sin(t)",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 64,
+              "color": "#ffcc00",
+              "width": 4,
+              "label": "$r = 0.6$"
+            },
+            {
+              "id": "r-arrow-static",
+              "type": "animated_vector",
+              "from": [
+                2,
+                0,
+                0
+              ],
+              "to": [
+                2.6,
+                0,
+                0
+              ],
+              "color": "#ff8822",
+              "label": "$r$"
+            }
+          ]
+        },
+        {
+          "title": "Sweeping halfway",
+          "description": "Rotate the cross-section circle around the $z$-axis from $\\phi = 0$ to $\\phi = \\pi$. Each value of $\\phi$ adds one ring to the surface, building up the first half of the torus.",
+          "add": [
+            {
+              "id": "half-torus",
+              "type": "parametric_surface",
+              "x": "(2 + 0.6*cos(v))*cos(u)",
+              "y": "(2 + 0.6*cos(v))*sin(u)",
+              "z": "0.6*sin(v)",
+              "uRange": [
+                0,
+                3.1416
+              ],
+              "vRange": [
+                0,
+                6.2832
+              ],
+              "uSamples": 24,
+              "vSamples": 24,
+              "color": "#1a3a8a",
+              "opacity": 0.65
+            }
+          ]
+        },
+        {
+          "title": "The complete torus",
+          "description": "Continue sweeping to $\\phi = 2\\pi$ to close the surface. Every point on the torus is now addressed by exactly two angles: $\\phi$ (longitude, around the spine) and $\\theta$ (tube angle, around the cross-section).",
+          "remove": [
+            {
+              "id": "half-torus"
+            },
+            {
+              "id": "minor-circle-static"
+            },
+            {
+              "id": "r-arrow-static"
+            }
+          ],
+          "add": [
+            {
+              "id": "full-torus",
+              "type": "parametric_surface",
+              "x": "(2 + 0.6*cos(v))*cos(u)",
+              "y": "(2 + 0.6*cos(v))*sin(u)",
+              "z": "0.6*sin(v)",
+              "uRange": [
+                0,
+                6.2832
+              ],
+              "vRange": [
+                0,
+                6.2832
+              ],
+              "uSamples": 56,
+              "vSamples": 28,
+              "color": "#1a3a8a",
+              "opacity": 0.55
+            }
+          ]
+        },
+        {
+          "title": "Interactive: pick any point",
+          "description": "Drag $\\phi$ and $\\theta$ to move a point anywhere on the torus. The **red arrow $R$** runs from the origin to the centre of the cross-section at longitude $\\phi$. The **orange arrow $r$** runs from that centre to your chosen point. The gold ring is the cross-section circle at $\\phi$.",
+          "remove": [
+            {
+              "id": "R-arrow"
+            },
+            {
+              "id": "origin-dot"
+            },
+            {
+              "id": "full-torus"
+            }
+          ],
+          "add": [
+            {
+              "id": "torus-interactive-bg",
+              "type": "parametric_surface",
+              "x": "(2 + 0.6*cos(v))*cos(u)",
+              "y": "(2 + 0.6*cos(v))*sin(u)",
+              "z": "0.6*sin(v)",
+              "uRange": [
+                0,
+                6.2832
+              ],
+              "vRange": [
+                0,
+                6.2832
+              ],
+              "uSamples": 56,
+              "vSamples": 28,
+              "color": "#1a3a8a",
+              "opacity": 0.28
+            },
+            {
+              "id": "cross-section-ring",
+              "type": "parametric_curve",
+              "x": "(2 + 0.6*cos(t))*cos(phi)",
+              "y": "(2 + 0.6*cos(t))*sin(phi)",
+              "z": "0.6*sin(t)",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 64,
+              "color": "#ffcc00",
+              "width": 3
+            },
+            {
+              "id": "R-interactive",
+              "type": "animated_vector",
+              "fromExpr": [
+                "0",
+                "0",
+                "0"
+              ],
+              "toExpr": [
+                "2*cos(phi)",
+                "2*sin(phi)",
+                "0"
+              ],
+              "color": "#ff4422",
+              "label": "$R$"
+            },
+            {
+              "id": "r-interactive",
+              "type": "animated_vector",
+              "fromExpr": [
+                "2*cos(phi)",
+                "2*sin(phi)",
+                "0"
+              ],
+              "toExpr": [
+                "(2 + 0.6*cos(theta))*cos(phi)",
+                "(2 + 0.6*cos(theta))*sin(phi)",
+                "0.6*sin(theta)"
+              ],
+              "color": "#ff8822",
+              "label": "$r \\to P(\\phi,\\theta)$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "phi",
+              "label": "$\\phi$ (longitude)",
+              "min": 0,
+              "max": 6.28,
+              "step": 0.05,
+              "default": 0.8
+            },
+            {
+              "id": "theta",
+              "label": "$\\theta$ (tube angle)",
+              "min": 0,
+              "max": 6.28,
+              "step": 0.05,
+              "default": 1
+            }
+          ],
+          "info": [
+            {
+              "id": "torus_point_live",
+              "position": "top-right",
+              "content": "$$\\phi={{toFixed(phi,2)}},\\;\\theta={{toFixed(theta,2)}}\\\\\\mathbf r=({{toFixed((2+0.6*cos(theta))*cos(phi),2)}},\\;{{toFixed((2+0.6*cos(theta))*sin(phi),2)}},\\;{{toFixed(0.6*sin(theta),2)}})$$"
+            }
+          ]
+        }
+      ],
+      "prompt": "Teach the torus from construction primitives: spine circle + cross-section + sweep. Reinforce the roles of phi (longitude) and theta (tube angle)."
+    },
+    {
+      "title": "Torus Knot",
+      "description": "The $(2,3)$ torus knot winds 2 times around the torus the long way and 3 times through the hole, forming the trefoil knot.",
+      "markdown": "# The Torus Knot\n\nA **torus knot** $T(p,q)$ is a curve that wraps around the surface of a torus:\n- $p$ times in the **longitudinal** direction (around the big circle)\n- $q$ times in the **meridional** direction (through the hole)\n\n## Parametric Equations\n\nThe $(2,3)$ torus knot lives on a torus with major radius $R=2$:\n\n$$x(t) = \\bigl(2 + \\cos(3t)\\bigr)\\cos(2t)$$\n$$y(t) = \\bigl(2 + \\cos(3t)\\bigr)\\sin(2t)$$\n$$z(t) = \\sin(3t)$$\n\nfor $t \\in [0, 2\\pi]$.\n\n## The Torus Surface\n\nThe underlying torus is parameterized by $(u, v) \\in [0, 2\\pi]^2$:\n\n$$x = (2 + 0.6\\cos v)\\cos u, \\quad y = (2 + 0.6\\cos v)\\sin u, \\quad z = 0.6\\sin v$$\n\nThe knot rides along this surface.\n\n## Knot Theory\n\nThe $(2,3)$ torus knot is the **trefoil knot** — the simplest non-trivial knot.\n\n- It **cannot** be untangled into a circle without cutting\n- Its **crossing number** is 3 (minimum for any non-trivial knot)\n- $\\gcd(2,3) = 1$ ensures it is a single connected curve\n\nWhen $\\gcd(p,q) > 1$, you get a **torus link** with multiple components.",
+      "range": [
+        [
+          -4,
+          4
+        ],
+        [
+          -4,
+          4
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          6,
+          4,
+          4
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            8,
+            5,
+            6
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Wide isometric view of the torus knot"
+        },
+        {
+          "name": "Top",
+          "position": [
+            0,
+            9,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down the Y axis — see the winding pattern from above"
+        },
+        {
+          "name": "Front",
+          "position": [
+            0,
+            0,
+            9
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Front view — see the knot path face-on"
+        },
+        {
+          "name": "Side",
+          "position": [
+            9,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Side view of the torus knot"
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -4,
+            4
+          ],
+          "color": "#444466",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -4,
+            4
+          ],
+          "color": "#444466",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -2,
+            2
+          ],
+          "color": "#444466",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "The torus surface",
+          "description": "First the torus: major radius 2, minor radius 0.6. The knot will live on this surface.",
+          "add": [
+            {
+              "id": "torus-surface",
+              "type": "parametric_surface",
+              "x": "(2 + 0.6*cos(v))*cos(u)",
+              "y": "(2 + 0.6*cos(v))*sin(u)",
+              "z": "0.6*sin(v)",
+              "uRange": [
+                0,
+                6.2832
+              ],
+              "vRange": [
+                0,
+                6.2832
+              ],
+              "uSamples": 48,
+              "vSamples": 24,
+              "color": "#334466",
+              "opacity": 0.35,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#111133",
+                "specular": "#8888cc"
+              }
+            }
+          ]
+        },
+        {
+          "title": "The trefoil knot in gold",
+          "description": "The $(2,3)$ torus knot wraps twice longitudinally and three times meridionally, closing back after $t = 2\\pi$.",
+          "add": [
+            {
+              "id": "trefoil",
+              "type": "parametric_curve",
+              "x": "(2 + cos(3*t))*cos(2*t)",
+              "y": "(2 + cos(3*t))*sin(2*t)",
+              "z": "sin(3*t)",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 512,
+              "color": "#ffcc00",
+              "width": 6,
+              "label": "$T(2,3)$ trefoil"
+            },
+            {
+              "id": "trefoil-start",
+              "type": "point",
+              "position": [
+                3,
+                0,
+                0
+              ],
+              "color": "#ffcc00",
+              "size": 10,
+              "label": "$t=0$"
+            }
+          ]
+        },
+        {
+          "title": "First half of the knot",
+          "description": "The first half ($t \\in [0,\\pi]$) highlighted in pink. Notice it crosses over and under the second half, creating the trefoil's 3 crossings.",
+          "add": [
+            {
+              "id": "half-knot",
+              "type": "parametric_curve",
+              "x": "(2 + cos(3*t))*cos(2*t)",
+              "y": "(2 + cos(3*t))*sin(2*t)",
+              "z": "sin(3*t)",
+              "range": [
+                0,
+                3.1416
+              ],
+              "samples": 256,
+              "color": "#ff4488",
+              "width": 8,
+              "label": "$t \\in [0, \\pi]$"
+            }
+          ]
+        },
+        {
+          "title": "Interactive: lift the knot",
+          "description": "Drag the slider to change the knot's wrapping radius $s$. At $s = 0.6$ the knot rides exactly on the torus surface. Increase $s$ and it peels away into free space — still the same trefoil topology, but no longer confined to the torus.",
+          "add": [
+            {
+              "id": "torus-bg-interactive",
+              "type": "parametric_surface",
+              "x": "(2 + 0.6*cos(v))*cos(u)",
+              "y": "(2 + 0.6*cos(v))*sin(u)",
+              "z": "0.6*sin(v)",
+              "uRange": [
+                0,
+                6.2832
+              ],
+              "vRange": [
+                0,
+                6.2832
+              ],
+              "uSamples": 48,
+              "vSamples": 24,
+              "color": "#334466",
+              "opacity": 0.3
+            },
+            {
+              "id": "knot-interactive",
+              "type": "parametric_curve",
+              "x": "(2 + s*cos(3*t))*cos(2*t)",
+              "y": "(2 + s*cos(3*t))*sin(2*t)",
+              "z": "s*sin(3*t)",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 512,
+              "color": "#ffcc00",
+              "width": 6,
+              "label": "$T(2,3)$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "s",
+              "label": "knot radius $s$",
+              "min": 0,
+              "max": 2.5,
+              "step": 0.05,
+              "default": 0.6
+            }
+          ],
+          "info": [
+            {
+              "id": "knot_lift_live",
+              "position": "top-right",
+              "content": "$$s={{toFixed(s,2)}},\\quad x=(2+s\\cos 3t)\\cos 2t,\\;y=(2+s\\cos 3t)\\sin 2t,\\;z=s\\sin 3t$$"
+            }
+          ]
+        },
+        {
+          "title": "Interactive: explore T(p, q)",
+          "description": "Slide $p$ and $q$ to change the winding numbers. **$p$** counts how many times the curve goes the long way around the torus; **$q$** counts trips through the hole. When $\\gcd(p,q)=1$ you get a true knot. When they share a common factor $d = \\gcd(p,q)$, the curve closes after only $1/d$ of its range — you have a $d$-component link rather than a knot. Try $p=2, q=3$ (trefoil), then $p=2, q=4$ (2-component link), then $p=3, q=6$ (3 loops).",
+          "add": [
+            {
+              "id": "torus-pq-bg",
+              "type": "parametric_surface",
+              "x": "(2 + 0.6*cos(v))*cos(u)",
+              "y": "(2 + 0.6*cos(v))*sin(u)",
+              "z": "0.6*sin(v)",
+              "uRange": [
+                0,
+                6.2832
+              ],
+              "vRange": [
+                0,
+                6.2832
+              ],
+              "uSamples": 48,
+              "vSamples": 24,
+              "color": "#223355",
+              "opacity": 0.25
+            },
+            {
+              "id": "torus-knot-pq",
+              "type": "parametric_curve",
+              "x": "(2 + 0.6*cos(q*t))*cos(p*t)",
+              "y": "(2 + 0.6*cos(q*t))*sin(p*t)",
+              "z": "0.6*sin(q*t)",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 800,
+              "color": "#ffcc00",
+              "width": 5,
+              "label": "$T(p,q)$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "p",
+              "label": "$p$ (longitudinal wraps)",
+              "min": 1,
+              "max": 7,
+              "step": 1,
+              "default": 2
+            },
+            {
+              "id": "q",
+              "label": "$q$ (meridional wraps)",
+              "min": 1,
+              "max": 7,
+              "step": 1,
+              "default": 3
+            }
+          ],
+          "info": [
+            {
+              "id": "pq_live",
+              "position": "top-right",
+              "content": "$$p={{p}},\\;q={{q}},\\quad x=(2+0.6\\cos(qt))\\cos(pt),\\;y=(2+0.6\\cos(qt))\\sin(pt),\\;z=0.6\\sin(qt)$$"
+            }
+          ]
+        }
+      ],
+      "prompt": "Explain torus-knot winding intuition and how amplitude changes embedding without changing knot type. Distinguish knot vs link behavior conceptually."
+    },
+    {
+      "title": "Knot on a Torus",
+      "description": "A torus knot lives on the surface of a torus. Drag the slider to see the knot swell from touching the surface to looping freely in space.",
+      "markdown": "# Knot on a Torus\n\nA **torus knot** $T(p,q)$ is a curve that wraps around the surface of a torus without crossing itself:\n\n$$\\mathbf{r}(t) = \\bigl((R + r\\cos qt)\\cos pt,\\;(R + r\\cos qt)\\sin pt,\\;r\\sin qt\\bigr)$$\n\nwhen the wrapping amplitude $r$ equals the torus tube radius, the knot lies **exactly on the surface**.\n\n## On the Surface vs. Off\n\nIf we scale the meridional amplitude independently from the tube radius, the knot can:\n\n| $s$ | Position |\n|-----|----------|\n| $s < r$ | Inside the torus tube |\n| $s = r = 0.6$ | Exactly on the surface |\n| $s > r$ | Lifted above the surface |\n\nThe topology of the knot is unchanged — it is still a trefoil, still $T(2,3)$ — only its embedding in space changes.\n\n## Why Tori?\n\nThe torus is the natural habitat for this family of curves because:\n- Longitude and meridian provide **two independent winding directions**\n- The curve closes when $t = 2\\pi$ (if $\\gcd(p,q)=1$)\n- The winding numbers $(p,q)$ completely classify the knot type",
+      "range": [
+        [
+          -4,
+          4
+        ],
+        [
+          -4,
+          4
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          6,
+          4,
+          4
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -4,
+            4
+          ],
+          "color": "#444466",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -4,
+            4
+          ],
+          "color": "#444466",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -2,
+            2
+          ],
+          "color": "#444466",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "The torus surface",
+          "description": "Major radius $R=2$, tube radius $r=0.6$. Every point on the surface is specified by two angles: $u$ going around the big circle, $v$ going around the tube.",
+          "add": [
+            {
+              "id": "torus-knot-scene-bg",
+              "type": "parametric_surface",
+              "x": "(2 + 0.6*cos(v))*cos(u)",
+              "y": "(2 + 0.6*cos(v))*sin(u)",
+              "z": "0.6*sin(v)",
+              "uRange": [
+                0,
+                6.2832
+              ],
+              "vRange": [
+                0,
+                6.2832
+              ],
+              "uSamples": 56,
+              "vSamples": 28,
+              "color": "#2244aa",
+              "opacity": 0.45
+            }
+          ]
+        },
+        {
+          "title": "T(2, 3) trefoil on the surface",
+          "description": "The trefoil knot $T(2,3)$ sits exactly on the torus. Each time it goes around the big circle it also completes part of a loop through the hole, weaving over and under itself 3 times.",
+          "add": [
+            {
+              "id": "trefoil-on-surface",
+              "type": "parametric_curve",
+              "x": "(2 + 0.6*cos(3*t))*cos(2*t)",
+              "y": "(2 + 0.6*cos(3*t))*sin(2*t)",
+              "z": "0.6*sin(3*t)",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 512,
+              "color": "#ffcc00",
+              "width": 6,
+              "label": "$T(2,3)$ on surface"
+            }
+          ]
+        },
+        {
+          "title": "Interactive: lift the knot off the surface",
+          "description": "The slider $s$ controls the knot's meridional amplitude independently of the torus tube radius. At $s=0.6$ the knot is flush with the surface. Pull it higher and the knot detaches, becoming a free-floating trefoil in space — same topological type, different geometric embedding.",
+          "remove": [
+            {
+              "id": "trefoil-on-surface"
+            }
+          ],
+          "add": [
+            {
+              "id": "trefoil-slider",
+              "type": "parametric_curve",
+              "x": "(2 + s*cos(3*t))*cos(2*t)",
+              "y": "(2 + s*cos(3*t))*sin(2*t)",
+              "z": "s*sin(3*t)",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 512,
+              "color": "#ffcc00",
+              "width": 6,
+              "label": "$T(2,3)$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "s",
+              "label": "knot radius $s$",
+              "min": 0,
+              "max": 2.5,
+              "step": 0.05,
+              "default": 0.6
+            }
+          ],
+          "info": [
+            {
+              "id": "lift_surface_live",
+              "position": "top-right",
+              "content": "$$s={{toFixed(s,2)}},\\quad s=0.6\\Rightarrow\\text{on torus surface},\\;s>0.6\\Rightarrow\\text{lifted embedding}$$"
+            }
+          ]
+        }
+      ],
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            8,
+            5,
+            6
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Wide isometric view of the knot on the torus"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            9,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down from above"
+        },
+        {
+          "name": "Front",
+          "position": [
+            0,
+            0,
+            9
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Front view — see the knot path"
+        },
+        {
+          "name": "Side",
+          "position": [
+            9,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Side view"
+        }
+      ],
+      "prompt": "Connect the torus surface and knot embedding, emphasizing how slider s moves between on-surface and lifted embeddings while preserving topology."
+    }
+  ]
+}

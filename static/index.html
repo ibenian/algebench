@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlgeBench</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.ico">
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/TrackballControls.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mathbox@2.3.1/build/mathbox.css">
+<script src="https://cdn.jsdelivr.net/npm/mathbox@2.3.1/build/bundle/mathbox.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@13.0.0/lib/browser/math.js"></script>
+<!-- mermaid.min.js is loaded lazily from graph-view.js the first time the
+     Math tab is activated — see loadMermaidLib(). Keeps the ~700 KB gzipped
+     bundle off the critical path for users who stay in the 3D view. -->
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/graph-panel/graph-panel.css">
+<link rel="stylesheet" href="/graph-panel/d3-semantic-graph.css">
+<link rel="stylesheet" href="/graph-panel/sg-chart.css">
+<link rel="stylesheet" href="/proof-animation/proof-animation.css">
+</head>
+<body data-debug-mode="__DEBUG_MODE__">
+<div id="app">
+    <div id="title-bar">
+        <div id="title-content">
+            <div id="scene-title-row">
+                <div id="scene-dock-toggle" title="Scene tree (T)">&#9776;</div>
+                <div id="scene-title">AlgeBench</div>
+                <span id="scene-source-file" title="">- no file</span>
+            </div>
+        </div>
+        <div id="toolbar">
+            <button class="tb-btn" id="btn-load" title="Load JSON file">Load JSON</button>
+            <div id="scenes-dropdown">
+                <button class="tb-btn" id="btn-scenes">Built-in Scenes &#9662;</button>
+                <div id="scenes-menu"></div>
+            </div>
+            <button class="tb-btn" id="btn-show-json" title="Show current scene JSON">{ }</button>
+            <div id="video-export-format-dropdown" class="toolbar-dropdown">
+                <button class="tb-btn tb-btn-split" id="btn-video-record" title="Record current tab video with TTS audio">
+                    <span>Record <span id="video-export-format-label">(Auto)</span></span>
+                    <span class="tb-btn-caret">&#9662;</span>
+                </button>
+                <div id="video-export-format-menu" class="toolbar-menu">
+                    <button class="toolbar-menu-item" type="button" data-format="auto">Auto</button>
+                    <button class="toolbar-menu-item" type="button" data-format="webm">WebM</button>
+                    <button class="toolbar-menu-item" type="button" data-format="mp4">MP4</button>
+                </div>
+            </div>
+            <div id="explain-toggle" title="Toggle explanation panel (E)">&#9776;</div>
+        </div>
+    </div>
+    <div id="main-content">
+        <div id="scene-dock">
+            <div id="scene-dock-panel">
+                <div id="dock-tabs">
+                    <button class="dock-tab active" data-dock-tab="scenes" title="Scene tree">Scenes</button>
+                    <button class="dock-tab" data-dock-tab="graph" title="Semantic math graph">Math</button>
+                </div>
+                <div id="dock-tab-scenes" class="dock-tab-content active">
+                    <div id="scene-dock-header">
+                        <div id="scene-dock-title">Scenes</div>
+                    </div>
+                    <div id="scene-tree"></div>
+                </div>
+                <div id="dock-tab-graph" class="dock-tab-content">
+                    <div id="graph-proof-tree"></div>
+                    <div id="graph-info-panel-host"></div>
+                </div>
+            </div>
+        </div>
+        <div id="viewport">
+            <div id="mathbox-wrapper">
+            <div id="mathbox-container"></div>
+            <div id="camera-buttons"></div>
+            <div id="viewport-top-left">
+                <div id="settings-toggle" title="Display settings">&#9881;</div>
+                <div id="projection-toggle">
+                    <button class="proj-btn active" data-proj="perspective" title="Perspective projection">Perspective</button>
+                    <button class="proj-btn" data-proj="orthographic" title="Orthographic projection">Orthographic</button>
+                </div>
+            </div>
+            <div id="labels-container"></div>
+            <div id="legend" class="hidden"></div>
+            <div id="follow-angle-lock-toggle" title="Toggle angle-lock for follow camera">&#10227;</div>
+            <div id="settings-panel" class="hidden">
+                <div class="sp-header"><span></span><span class="sp-col-label">Size</span><span class="sp-col-label">Opacity</span></div>
+                <div class="sp-row"><span>Labels</span><span class="sp-ctrl"><button class="sp-btn" data-param="labelScale" data-dir="-">&minus;</button><span class="sp-val" id="val-labelScale">1.0</span><button class="sp-btn" data-param="labelScale" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="labelOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-labelOpacity">1.0</span><button class="sp-btn" data-param="labelOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Arrows</span><span class="sp-ctrl"><button class="sp-btn" data-param="arrowScale" data-dir="-">&minus;</button><span class="sp-val" id="val-arrowScale">1.0</span><button class="sp-btn" data-param="arrowScale" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="arrowOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-arrowOpacity">1.0</span><button class="sp-btn" data-param="arrowOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Axes</span><span class="sp-ctrl"><button class="sp-btn" data-param="axisWidth" data-dir="-">&minus;</button><span class="sp-val" id="val-axisWidth">1.0</span><button class="sp-btn" data-param="axisWidth" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="axisOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-axisOpacity">1.0</span><button class="sp-btn" data-param="axisOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Vectors</span><span class="sp-ctrl"><button class="sp-btn" data-param="vectorWidth" data-dir="-">&minus;</button><span class="sp-val" id="val-vectorWidth">1.0</span><button class="sp-btn" data-param="vectorWidth" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="vectorOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-vectorOpacity">1.0</span><button class="sp-btn" data-param="vectorOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Lines</span><span class="sp-ctrl"><button class="sp-btn" data-param="lineWidth" data-dir="-">&minus;</button><span class="sp-val" id="val-lineWidth">1.0</span><button class="sp-btn" data-param="lineWidth" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="lineOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-lineOpacity">1.0</span><button class="sp-btn" data-param="lineOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Planes</span><span class="sp-ctrl"><button class="sp-btn" data-param="planeScale" data-dir="-">&minus;</button><span class="sp-val" id="val-planeScale">1.0</span><button class="sp-btn" data-param="planeScale" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="planeOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-planeOpacity">0.2</span><button class="sp-btn" data-param="planeOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Caption</span><span class="sp-ctrl"><button class="sp-btn" data-param="captionScale" data-dir="-">&minus;</button><span class="sp-val" id="val-captionScale">1.0</span><button class="sp-btn" data-param="captionScale" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="overlayOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-overlayOpacity">0.7</span><button class="sp-btn" data-param="overlayOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-divider"></div>
+                <div class="sp-section-label">Light</div>
+                <div class="sp-light-row"><span>Azimuth</span><input type="range" id="light-az" min="0" max="360" value="35" class="sp-light-slider"><span class="sp-light-val" id="val-light-az">35°</span></div>
+                <div class="sp-light-row"><span>Elevation</span><input type="range" id="light-el" min="10" max="90" value="50" class="sp-light-slider"><span class="sp-light-val" id="val-light-el">50°</span></div>
+                <div class="sp-light-row"><span>Brightness</span><input type="range" id="light-int" min="10" max="250" value="80" class="sp-light-slider"><span class="sp-light-val" id="val-light-int">0.80</span></div>
+                <div class="sp-divider"></div>
+                <div class="sp-section-label">Controls</div>
+                <div class="sp-light-row"><span>Momentum</span><input type="range" id="momentum-slider" min="0" max="100" value="50" class="sp-light-slider"><span class="sp-light-val" id="val-momentum">50%</span></div>
+                <div class="sp-help">
+                    <div>Drag: rotate</div>
+                    <div>Shift+drag: pan</div>
+                    <div>Wheel / pinch: zoom</div>
+                    <div>&#8997;+drag: roll</div>
+                </div>
+            </div>
+            <div id="controls-hint">Drag: rotate &middot; Shift+drag: pan &middot; Zoom: pinch/wheel &middot; &#8997;+drag: roll</div>
+            <div id="drop-overlay">Drop JSON file here</div>
+            <div id="scene-loading" aria-live="polite" aria-busy="false">
+                <div class="scene-loading-spinner"></div>
+                <div class="scene-loading-text">Loading scene&hellip;</div>
+            </div>
+            <div id="empty-state">
+                <h2>AlgeBench</h2>
+                <p>Drag &amp; drop a scene JSON, or use the toolbar above</p>
+            </div>
+            <div id="step-caption" class="hidden"></div>
+            <div id="scene-description"></div>
+            <div id="info-overlays"></div>
+            <div id="slider-overlay" class="hidden"></div>
+            <div id="scene-nav">
+                <button id="nav-prev" class="nav-btn" title="Previous (&#8593;)">&lsaquo;</button>
+                <button id="nav-play" class="nav-btn" title="Play (Space)">&#9654;</button>
+                <button id="nav-next" class="nav-btn" title="Next (&#8595;)">&rsaquo;</button>
+            </div>
+            </div><!-- /mathbox-wrapper -->
+            <div id="graph-dock-resize-handle"></div>
+            <div id="graph-viewport" class="hidden">
+                <div id="graph-controls-left" class="graph-controls">
+                    <button id="graph-dock-toggle" class="graph-ctrl-btn" title="Dock graph alongside 3D viewport (D)" aria-label="Toggle docked split view">
+                        <svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                            <rect x="1" y="1" width="14" height="12" rx="1.5"/>
+                            <line x1="8" y1="1" x2="8" y2="13"/>
+                        </svg>
+                    </button>
+                    <button id="graph-mode-toggle" class="graph-ctrl-btn" title="Switch between dark and light themes" aria-label="Theme mode">&#x263E;&#xFE0E;</button>
+                    <label for="graph-theme-select" class="graph-ctrl-label">Theme</label>
+                    <select id="graph-theme-select" class="graph-ctrl-select"></select>
+                    <label for="graph-labels-select" class="graph-ctrl-label">Labels</label>
+                    <select id="graph-labels-select" class="graph-ctrl-select">
+                        <option value="minimal">Symbol only</option>
+                        <option value="description" selected>Description</option>
+                        <option value="full">Full details</option>
+                    </select>
+                </div>
+                <div id="graph-controls-right" class="graph-controls">
+                    <label for="graph-renderer-select" class="graph-ctrl-label">Renderer</label>
+                    <select id="graph-renderer-select" class="graph-ctrl-select">
+                        <option value="mermaid">Mermaid</option>
+                        <option value="d3" selected>D3</option>
+                    </select>
+                    <button id="graph-show-json" class="graph-ctrl-btn" title="Show semantic graph in JSON browser" aria-label="Show semantic graph JSON" disabled>{ }</button>
+                    <div id="graph-zoom-controls">
+                        <button id="graph-zoom-out" class="graph-ctrl-btn" title="Zoom out" aria-label="Zoom out">&minus;</button>
+                        <span id="graph-zoom-level" class="graph-ctrl-label" style="cursor:pointer" title="Double-click to fit" aria-live="polite">100%</span>
+                        <button id="graph-zoom-in" class="graph-ctrl-btn" title="Zoom in" aria-label="Zoom in">+</button>
+                        <button id="graph-zoom-fit" class="graph-ctrl-btn" title="Zoom to fit" aria-label="Zoom to fit">⊡</button>
+                    </div>
+                    <label for="graph-direction-select" class="graph-ctrl-label">Direction</label>
+                    <select id="graph-direction-select" class="graph-ctrl-select">
+                        <option value="top-down">Top-Down</option>
+                        <option value="left-right" selected>Left-Right</option>
+                        <option value="right-left">Right-Left</option>
+                        <option value="bottom-up">Bottom-Up</option>
+                    </select>
+                </div>
+                <div id="graph-mermaid-container"></div>
+                <div id="graph-edge-legend" class="graph-edge-legend hidden" aria-label="Edge semantics legend"></div>
+                <div id="graph-empty-state">Select a proof step with a semantic graph to view it here.</div>
+                <div id="graph-error-state" class="hidden" role="alert" aria-live="polite"></div>
+            </div>
+        </div>
+        <div id="panel-resize-handle"></div>
+        <div id="explanation-panel" class="hidden">
+            <div id="panel-tabs">
+                <button class="panel-tab active" data-tab="doc">Doc</button>
+                <button class="panel-tab" data-tab="chat">Chat</button>
+            </div>
+            <div id="tab-doc" class="tab-content active">
+                <div id="doc-toolbar">
+                    <button id="doc-speak-btn" title="Read the document aloud">🔊 Speak</button>
+                    <button id="doc-commentate-btn" title="AI commentary on this document">💬 Commentate</button>
+                </div>
+                <div id="explanation-content"></div>
+            </div>
+            <div id="tab-chat" class="tab-content">
+                <div id="chat-tts-controls">
+                    <div class="style-picker">
+                        <button id="chatCharacterBtn" class="chat-control-btn style-btn" title="Voice character (Ctrl/Cmd+K)">Character</button>
+                        <div id="chatCharacterPalette" class="style-palette" hidden>
+                            <input id="chatCharacterSearch" class="style-search" type="text" placeholder="Search characters..." />
+                            <div id="chatCharacterList" class="style-list"></div>
+                        </div>
+                    </div>
+                    <select id="chatVoiceSelect" class="chat-control-btn" title="Gemini voice"></select>
+                    <select id="chatTtsModeSelect" class="chat-control-btn" title="Read: verbatim · Perform: character interprets first · Silent: no TTS">
+                        <option value="read">Read</option>
+                        <option value="perform">Perform</option>
+                        <option value="silent">Silent</option>
+                    </select>
+                    <span id="ttsVolumeIcon" class="tts-volume-icon" title="Mute/Unmute"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1.3L4.63 4H2.5A1.5 1.5 0 001 5.5v5A1.5 1.5 0 002.5 12h2.13L8 14.7V1.3zm3.74 2.04a4.5 4.5 0 010 9.32l-.55-.96a3.5 3.5 0 000-7.4l.55-.96zm-.93 2.17a2.5 2.5 0 010 4.98l-.55-.96a1.5 1.5 0 000-3.06l.55-.96z"/></svg></span>
+                    <input type="range" id="ttsVolumeSlider" min="0" max="1" step="0.05" value="0.5" title="TTS Volume">
+                    <button id="proof-toggle-btn" class="chat-control-btn" title="Toggle proof panel" style="display:none">&#x1F4D0; Proof</button>
+                </div>
+                <!-- Proof panel (inside chat tab, above chat messages) -->
+                <div id="proof-panel" class="hidden">
+                    <div id="proof-panel-header">
+                        <div id="proof-panel-tabs">
+                            <button class="proof-tab active" data-proof-tab="context">Proofs in Context</button>
+                            <button class="proof-tab" data-proof-tab="all">All Proofs</button>
+                        </div>
+                        <div id="proof-panel-controls">
+                            <button id="proof-mode-toggle" class="proof-ctrl-btn" title="Toggle progressive/verbose view">Progressive</button>
+                            <button id="proof-sync-btn" class="proof-ctrl-btn active" title="Sync with scene steps">&#x21C4;</button>
+                        </div>
+                    </div>
+                    <div id="proof-tab-context" class="proof-tab-content active">
+                        <div id="proof-context-content"></div>
+                    </div>
+                    <div id="proof-nav">
+                        <button id="proof-first" class="nav-btn" title="First step">|&lsaquo;</button>
+                        <button id="proof-prev" class="nav-btn" title="Previous step">&lsaquo;</button>
+                        <span id="proof-counter"></span>
+                        <button id="proof-next" class="nav-btn" title="Next step">&rsaquo;</button>
+                        <button id="proof-last" class="nav-btn" title="Last step">&rsaquo;|</button>
+                    </div>
+                </div>
+                <div id="proof-resize-handle" class="hidden"></div>
+                <div id="chat-unavailable-msg" class="hidden">
+                    <p>AI chat requires a Gemini API key.</p>
+                    <p>Set the <code>GEMINI_API_KEY</code> environment variable and restart the server to enable this feature.</p>
+                </div>
+                <div id="chat-messages"></div>
+                <div id="preset-prompts" class="hidden"></div>
+                <div id="chat-input-area">
+                    <textarea id="chat-input" placeholder="Ask about this visualization..." rows="1"></textarea>
+                    <button id="chat-send" title="Send">&#10148;</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="chatCharacterBackdrop" class="style-backdrop" hidden></div>
+
+    <!-- Trust Dialog Overlay -->
+    <div id="trust-dialog-overlay" class="hidden">
+        <div id="trust-dialog">
+            <div id="trust-dialog-title">⚠ Untrusted JavaScript Detected</div>
+            <div id="trust-dialog-body"></div>
+            <div id="trust-dialog-buttons">
+                <button id="trust-btn-deny" class="trust-btn trust-btn-deny">Run Safely (math.js only)</button>
+                <button id="trust-btn-allow" class="trust-btn trust-btn-allow">Trust &amp; Enable JS</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="status-bar">
+        <span id="js-trust-pill" class="hidden">
+            <span id="js-trust-pill-icon"></span><span id="js-trust-pill-label"></span>
+        </span>
+        <span id="slider-status" class="hidden">
+            <span class="slider-status-icon">🎚️</span><span class="slider-status-count"></span>
+            <div class="slider-status-tooltip"></div>
+        </span>
+        <span id="memory-status" class="hidden">
+            <span class="memory-status-icon">💾</span><span class="memory-status-count"></span>
+        </span>
+        <span id="context-status" class="hidden" title="Show current prompt context">
+            <span class="context-status-icon">CTX</span>
+        </span>
+        <span id="cam-status">
+            <span class="cam-status-icon">📷</span>
+            <div class="cam-status-popup" id="cam-popup-content">
+                <div class="cam-popup-header">
+                    <span>Camera</span>
+                    <div class="cam-popup-actions">
+                        <button id="cam-popup-copy" title="Copy camera state">Copy</button>
+                        <button id="cam-popup-close" title="Close">&times;</button>
+                    </div>
+                </div>
+                <div id="cam-popup-text"></div>
+            </div>
+        </span>
+        <span id="debug-status-text"></span>
+    </div>
+
+    <!-- Memory popup -->
+    <div id="memory-popup" class="hidden">
+        <div id="memory-popup-header">
+            <span>Agent Memory</span>
+            <button id="memory-popup-close">&times;</button>
+        </div>
+        <div id="memory-popup-search-wrap">
+            <input id="memory-popup-search" type="text" placeholder="Search keys or values..." autocomplete="off">
+        </div>
+    <div id="memory-popup-body"></div>
+    </div>
+
+    <!-- Context popup -->
+    <div id="context-popup" class="hidden">
+        <div id="context-popup-top-resize" title="Resize height from top edge"></div>
+        <div id="context-popup-header">
+            <span>Prompt Context</span>
+            <div id="context-popup-actions">
+                <button id="context-popup-refresh" title="Refresh context">&#x21bb;</button>
+                <button id="context-popup-toggle" title="Collapse or expand text pane">&#9776;</button>
+                <button id="context-popup-copy" title="Copy system prompt">Copy</button>
+                <button id="context-popup-close">&times;</button>
+            </div>
+        </div>
+        <div id="context-popup-meta"></div>
+        <div id="context-popup-layout">
+            <nav id="context-popup-nav"></nav>
+            <div id="context-popup-body"></div>
+        </div>
+        <div id="context-popup-right-resize" title="Resize width from right edge"></div>
+    </div>
+</div>
+<input type="file" id="file-input" accept=".json">
+<script type="module" src="/main.js"></script>
+<script type="module" src="/graph-view.js"></script>
+<script src="/gemini-live-tools/js/voice-character-selector.js"></script>
+<script src="/gemini-live-tools/js/tts-audio-player.js"></script>
+<script src="/chat.js"></script>
+<div id="json-viewer-overlay" class="hidden">
+    <div id="json-viewer-header">
+        <span>Scene JSON</span>
+        <button id="json-viewer-copy" title="Copy to clipboard">Copy</button>
+        <button id="json-viewer-close" title="Close">&times;</button>
+    </div>
+    <div id="json-viewer-imports" class="hidden"></div>
+    <div id="json-viewer-summary" class="hidden"></div>
+    <div id="json-viewer-issues" class="hidden"></div>
+    <div id="json-search-bar">
+        <div class="jsb-group">
+            <span class="jsb-label">key</span>
+            <input id="json-search-key" type="text" placeholder="filter keys…" autocomplete="off" spellcheck="false" />
+            <span id="json-search-key-count" class="jsb-count"></span>
+        </div>
+        <div class="jsb-group">
+            <span class="jsb-label">value</span>
+            <input id="json-search-val" type="text" placeholder="search values…" autocomplete="off" spellcheck="false" />
+            <span id="json-search-val-count" class="jsb-count"></span>
+            <button id="json-search-prev" class="jsb-nav" title="Previous (Shift+Enter)">↑</button>
+            <button id="json-search-next" class="jsb-nav" title="Next (Enter)">↓</button>
+        </div>
+        <button id="json-search-clear" class="jsb-clear" title="Clear search">✕</button>
+    </div>
+    <div id="json-viewer-body">
+        <div id="json-tree-panel"><div class="jt-empty">No scene loaded</div></div>
+        <div id="json-tree-resize-handle"></div>
+        <pre id="json-viewer-content"></pre>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+.env.local
+.env.*.local
+*.wav
+*.m4a
+settings.local.json
+
+# Expert framework: generated datasets + compiled DSPy artifacts
+/data/
+backend/experts/modules/*/artifacts/
+
+# Override global gitignore to include project-level agent skill definitions
+!.agents/
+!.claude/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+!AGENTS.md
+!CLAUDE.md

@@ -1,0 +1,27 @@
+{
+  "name": "minimal-dark",
+  "mode": "dark",
+  "direction": "TB",
+  "labelMode": "emoji",
+  "nodeStyles": {
+    "scalar":   { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" },
+    "vector":   { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" },
+    "constant": { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" },
+    "number":     { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" },
+    "expression": { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" },
+    "text":       { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" },
+    "operator":   { "shape": "circle", "fill": "#2a2a3a", "stroke": "#555", "color": "#ccc" },
+    "function": { "shape": "circle", "fill": "#2a2a3a", "stroke": "#555", "color": "#ccc" },
+    "relation": { "shape": "diamond","fill": "#2a2a3a", "stroke": "#555", "color": "#ccc" },
+    "result":   { "shape": "rect",   "fill": "none",    "stroke": "none", "color": "#ccc" },
+    "annotation": { "shape": "circle",  "fill": "#1a1a28", "stroke": "#505060", "color": "#aaa" }
+  },
+  "edgeStyles": {
+    "direct":   { "stroke": "#ef5350", "strokeWidth": 4 },
+    "inverse":  { "stroke": "#42a5f5", "strokeWidth": 1 },
+    "neutral":  { "stroke": "#777",    "strokeWidth": 2 },
+    "logical":  { "stroke": "#bdbdbd", "strokeWidth": 2, "arrow": "-.->" }
+  },
+  "paintBySemantic": true,
+  "fontSize": 20
+}

@@ -1,0 +1,1371 @@
+{
+  "title": "Eigenvalues & Eigenvectors",
+  "scenes": [
+    {
+      "title": "Vectors That Don't Rotate",
+      "description": "Most vectors change direction under a matrix transformation. **Eigenvectors** are the special exceptions: they only get stretched or shrunk, never rotated.",
+      "prompt": "Teach eigenvectors with geometric contrast: most vectors rotate under $A$, eigenvectors do not. Keep explanations concise and visual-first. When the user asks for proof, reference $A\\mathbf{v}=\\lambda\\mathbf{v}$ and explicitly compare original vs transformed direction. If asked for intuition, describe eigenvectors as the matrix's natural action directions.",
+      "markdown": "# Vectors That Don't Rotate\n\nFor matrix $A = \\begin{pmatrix}3&1\\\\1&3\\end{pmatrix}$, most vectors $\\mathbf{v}$ satisfy $A\\mathbf{v} \\neq \\lambda\\mathbf{v}$ for any scalar $\\lambda$ — $A$ changes their direction.\n\n## The Eigenvalue Equation\n\nA nonzero vector $\\mathbf{v}$ is an **eigenvector** of $A$ with **eigenvalue** $\\lambda$ if:\n\n$$A\\mathbf{v} = \\lambda\\mathbf{v}$$\n\nThe transformation only **scales** $\\mathbf{v}$, never rotates it.\n\n## Matrix $A = \\begin{pmatrix}3&1\\\\1&3\\end{pmatrix}$\n\nThe eigenvalues are $\\lambda_1 = 4$ and $\\lambda_2 = 2$.\n\n**Eigenvector for $\\lambda_1 = 4$:**\n$$\\mathbf{v}_1 = \\frac{1}{\\sqrt{2}}\\begin{pmatrix}1\\\\1\\end{pmatrix}, \\quad A\\mathbf{v}_1 = 4\\mathbf{v}_1$$\n\n**Eigenvector for $\\lambda_2 = 2$:**\n$$\\mathbf{v}_2 = \\frac{1}{\\sqrt{2}}\\begin{pmatrix}1\\\\-1\\end{pmatrix}, \\quad A\\mathbf{v}_2 = 2\\mathbf{v}_2$$\n\n## Verification\n\n$$A\\mathbf{v}_1 = \\begin{pmatrix}3&1\\\\1&3\\end{pmatrix}\\begin{pmatrix}0.707\\\\0.707\\end{pmatrix} = \\begin{pmatrix}2.828\\\\2.828\\end{pmatrix} = 4 \\times \\begin{pmatrix}0.707\\\\0.707\\end{pmatrix}$$\n\n> **Key insight**: Eigenvectors point along the transformation's natural axes. In these directions, $A$ acts like simple multiplication.",
+      "range": [
+        [
+          -3,
+          3
+        ],
+        [
+          -3,
+          3
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Zoomed-out face-on view — see the full eigenvector / transformation plane"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            4,
+            3,
+            4
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "3D perspective — notice eigenvectors lie in the XY plane (no Z extent)"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            8,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down — edge-on view of the XY plane"
+        },
+        {
+          "name": "Side",
+          "position": [
+            8,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Side view along X — edge-on, shows only Y-axis extent"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -3,
+            3
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.15,
+          "divisions": 12
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -3,
+            3
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -3,
+            3
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "Non-eigenvector: $\\mathbf{v} = (1, 0)$",
+          "description": "$A\\mathbf{v} = (3,1)$ — the image points in a completely different direction. This vector is NOT an eigenvector.",
+          "add": [
+            {
+              "id": "v1-orig",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#4488ff",
+              "label": "$\\mathbf{v} = (1,0)$"
+            },
+            {
+              "id": "v1-image",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                3,
+                1,
+                0
+              ],
+              "color": "#ff4488",
+              "label": "$A\\mathbf{v} = (3,1)$"
+            },
+            {
+              "id": "v1-text",
+              "type": "text",
+              "position": [
+                2.5,
+                -0.4,
+                0
+              ],
+              "text": "Direction changed!",
+              "color": "#ff4488",
+              "size": 12
+            }
+          ],
+          "info": [
+            {
+              "id": "non-eig-check-1",
+              "content": "$$\\mathbf{v}=(1,0),\\quad A\\mathbf{v}=(3,1),\\quad A\\mathbf{v}\\not\\parallel\\mathbf{v}$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Another non-eigenvector: $\\mathbf{v} = (0, 1)$",
+          "description": "$A(0,1) = (1,3)$ — again the direction changes. $\\mathbf{e}_2$ is not an eigenvector of $A$.",
+          "add": [
+            {
+              "id": "v2-orig",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                1,
+                0
+              ],
+              "color": "#44ff88",
+              "label": "$\\mathbf{v} = (0,1)$"
+            },
+            {
+              "id": "v2-image",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                3,
+                0
+              ],
+              "color": "#ff8844",
+              "label": "$A\\mathbf{v} = (1,3)$"
+            }
+          ]
+        },
+        {
+          "title": "Eigenvector $\\mathbf{v}_1 = (1,1)/\\sqrt{2}$: stretched 4x",
+          "description": "$A\\mathbf{v}_1 = 4\\mathbf{v}_1 = (2.828, 2.828)$. The direction is PRESERVED — only the length changes. This is eigenvector for $\\lambda_1 = 4$.",
+          "remove": [
+            {
+              "id": "v1-orig"
+            },
+            {
+              "id": "v1-image"
+            },
+            {
+              "id": "v1-text"
+            },
+            {
+              "id": "v2-orig"
+            },
+            {
+              "id": "v2-image"
+            }
+          ],
+          "add": [
+            {
+              "id": "ev1-orig",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0.7071,
+                0.7071,
+                0
+              ],
+              "color": "#ffcc00",
+              "label": "$\\mathbf{v}_1 = (1,1)/\\sqrt{2}$"
+            },
+            {
+              "id": "ev1-image",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                2.8284,
+                2.8284,
+                0
+              ],
+              "color": "#ffcc00",
+              "label": "$A\\mathbf{v}_1 = 4\\mathbf{v}_1$"
+            },
+            {
+              "id": "ev1-line",
+              "type": "line",
+              "from": [
+                -2.5,
+                -2.5,
+                0
+              ],
+              "to": [
+                2.5,
+                2.5,
+                0
+              ],
+              "color": "#ffcc0044",
+              "width": 1
+            }
+          ],
+          "info": [
+            {
+              "id": "eig-check-1",
+              "content": "$$\\mathbf{v}_1=\\frac{1}{\\sqrt2}(1,1),\\quad A\\mathbf{v}_1=(2.828,2.828)=4\\mathbf{v}_1$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Eigenvector $\\mathbf{v}_2 = (1,-1)/\\sqrt{2}$: stretched 2x",
+          "description": "$A\\mathbf{v}_2 = 2\\mathbf{v}_2 = (1.414, -1.414)$. Again the direction is preserved — stretched by $\\lambda_2 = 2$. Both gold eigenvectors are the natural axes of $A$.",
+          "add": [
+            {
+              "id": "ev2-orig",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0.7071,
+                -0.7071,
+                0
+              ],
+              "color": "#ff8800",
+              "label": "$\\mathbf{v}_2 = (1,-1)/\\sqrt{2}$"
+            },
+            {
+              "id": "ev2-image",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1.4142,
+                -1.4142,
+                0
+              ],
+              "color": "#ff8800",
+              "label": "$A\\mathbf{v}_2 = 2\\mathbf{v}_2$"
+            },
+            {
+              "id": "ev2-line",
+              "type": "line",
+              "from": [
+                -2.5,
+                2.5,
+                0
+              ],
+              "to": [
+                2.5,
+                -2.5,
+                0
+              ],
+              "color": "#ff880044",
+              "width": 1
+            }
+          ],
+          "info": [
+            {
+              "id": "eig-check-2",
+              "content": "$$\\mathbf{v}_2=\\frac{1}{\\sqrt2}(1,-1),\\quad A\\mathbf{v}_2=(1.414,-1.414)=2\\mathbf{v}_2$$",
+              "position": "top-left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Finding Eigenvalues",
+      "description": "The eigenvalues of $A$ are the roots of the characteristic polynomial $\\det(A - \\lambda I) = 0$. For $A = [[3,1],[1,3]]$, this gives $(\\lambda-4)(\\lambda-2) = 0$.",
+      "prompt": "Teach eigenvalue computation procedurally: (1) set up $\\det(A-\\lambda I)=0$, (2) simplify characteristic polynomial, (3) solve for roots, (4) map each root to its eigenspace direction. Keep algebra concise and always tie each symbolic step back to geometry in the scene.",
+      "markdown": "# Finding Eigenvalues\n\nTo find eigenvalues, we need $A\\mathbf{v} = \\lambda\\mathbf{v}$ with $\\mathbf{v} \\neq \\mathbf{0}$.\n\nRearranging: $(A - \\lambda I)\\mathbf{v} = \\mathbf{0}$\n\nThis has a non-zero solution iff $A - \\lambda I$ is **singular**:\n\n$$\\det(A - \\lambda I) = 0$$\n\n## Characteristic Equation for $A = \\begin{pmatrix}3&1\\\\1&3\\end{pmatrix}$\n\n$$\\det\\begin{pmatrix}3-\\lambda & 1\\\\1 & 3-\\lambda\\end{pmatrix} = (3-\\lambda)^2 - 1 = 0$$\n\n$$\\lambda^2 - 6\\lambda + 8 = 0$$\n\n$$(\\lambda - 4)(\\lambda - 2) = 0$$\n\n$$\\boxed{\\lambda_1 = 4, \\quad \\lambda_2 = 2}$$\n\n## Finding the Eigenvectors\n\n**For $\\lambda_1 = 4$:** Solve $(A - 4I)\\mathbf{v} = \\mathbf{0}$:\n$$\\begin{pmatrix}-1&1\\\\1&-1\\end{pmatrix}\\mathbf{v} = \\mathbf{0} \\implies v_1 = v_2 \\implies \\mathbf{v}_1 = \\begin{pmatrix}1\\\\1\\end{pmatrix}$$\n\n**For $\\lambda_2 = 2$:** Solve $(A - 2I)\\mathbf{v} = \\mathbf{0}$:\n$$\\begin{pmatrix}1&1\\\\1&1\\end{pmatrix}\\mathbf{v} = \\mathbf{0} \\implies v_1 = -v_2 \\implies \\mathbf{v}_2 = \\begin{pmatrix}1\\\\-1\\end{pmatrix}$$\n\n## Eigendecomposition\n\nEvery vector $\\mathbf{w}$ decomposes into eigenvector components:\n$$\\mathbf{w} = c_1\\mathbf{v}_1 + c_2\\mathbf{v}_2 \\implies A\\mathbf{w} = 4c_1\\mathbf{v}_1 + 2c_2\\mathbf{v}_2$$",
+      "range": [
+        [
+          -3,
+          3
+        ],
+        [
+          -3,
+          3
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Zoomed-out face-on view — see the full eigenvector / transformation plane"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            4,
+            3,
+            4
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "3D perspective — notice eigenvectors lie in the XY plane (no Z extent)"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            8,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down — edge-on view of the XY plane"
+        },
+        {
+          "name": "Side",
+          "position": [
+            8,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Side view along X — edge-on, shows only Y-axis extent"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -3,
+            3
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.15,
+          "divisions": 12
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -3,
+            3
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -3,
+            3
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "Both eigenvectors",
+          "description": "The two eigenvectors are at 45° and -45°: $\\mathbf{v}_1 = (1,1)/\\sqrt{2}$ for $\\lambda_1=4$ (gold) and $\\mathbf{v}_2 = (1,-1)/\\sqrt{2}$ for $\\lambda_2=2$ (orange).",
+          "add": [
+            {
+              "id": "ev1",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0.7071,
+                0.7071,
+                0
+              ],
+              "color": "#ffcc00",
+              "label": "$\\mathbf{v}_1, \\lambda=4$"
+            },
+            {
+              "id": "ev2",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0.7071,
+                -0.7071,
+                0
+              ],
+              "color": "#ff8800",
+              "label": "$\\mathbf{v}_2, \\lambda=2$"
+            }
+          ],
+          "info": [
+            {
+              "id": "char-poly",
+              "content": "$$\\det(A-\\lambda I)=\\lambda^2-6\\lambda+8=(\\lambda-4)(\\lambda-2)$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "The eigenspaces (spans)",
+          "description": "Each eigenvector generates a whole **eigenspace** — a line through the origin. $A$ acts as multiplication by $\\lambda$ along each eigenspace.",
+          "add": [
+            {
+              "id": "span1",
+              "type": "line",
+              "from": [
+                -2.5,
+                -2.5,
+                0
+              ],
+              "to": [
+                2.5,
+                2.5,
+                0
+              ],
+              "color": "#ffcc0066",
+              "width": 2,
+              "label": "$\\text{span}(\\mathbf{v}_1)$"
+            },
+            {
+              "id": "span2",
+              "type": "line",
+              "from": [
+                -2.5,
+                2.5,
+                0
+              ],
+              "to": [
+                2.5,
+                -2.5,
+                0
+              ],
+              "color": "#ff880066",
+              "width": 2,
+              "label": "$\\text{span}(\\mathbf{v}_2)$"
+            }
+          ]
+        },
+        {
+          "title": "Decomposing an arbitrary vector",
+          "description": "Any vector $\\mathbf{w}$ in the plane can be written as $c_1\\mathbf{v}_1 + c_2\\mathbf{v}_2$. Then $A\\mathbf{w} = 4c_1\\mathbf{v}_1 + 2c_2\\mathbf{v}_2$ — no matrix multiplication needed!",
+          "add": [
+            {
+              "id": "w-vec",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                2,
+                1,
+                0
+              ],
+              "color": "#44aaff",
+              "label": "$\\mathbf{w} = (2,1)$"
+            },
+            {
+              "id": "comp1",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1.0607,
+                1.0607,
+                0
+              ],
+              "color": "#ffcc0088",
+              "label": "$c_1\\mathbf{v}_1$"
+            },
+            {
+              "id": "comp2",
+              "type": "vector",
+              "from": [
+                1.0607,
+                1.0607,
+                0
+              ],
+              "to": [
+                2,
+                1,
+                0
+              ],
+              "color": "#ff880088",
+              "label": "$c_2\\mathbf{v}_2$"
+            },
+            {
+              "id": "aw-vec",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                7,
+                5,
+                0
+              ],
+              "color": "#ff44aa",
+              "label": "$A\\mathbf{w} = (7,5)$"
+            }
+          ],
+          "info": [
+            {
+              "id": "decomp-formula",
+              "content": "$$\\mathbf{w}=c_1\\mathbf{v}_1+c_2\\mathbf{v}_2,\\; c_1=\\tfrac{3}{\\sqrt2},\\; c_2=\\tfrac{1}{\\sqrt2},\\; A\\mathbf{w}=(7,5)$$",
+              "position": "top-left"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Why $(A-\\lambda I)$ Collapses to 1D",
+      "description": "The matrix $A$ itself does NOT collapse the plane here, but $(A-\\lambda I)$ does collapse it exactly at eigenvalues.",
+      "prompt": "Teach this contrast explicitly: $A$ is invertible and keeps the plane 2D, while $(A-\\lambda I)$ becomes singular at eigenvalues and collapses vectors into a line. Always mention determinant status and connect the 1D image to loss of one degree of freedom.",
+      "markdown": "# 1D Collapse and Its Meaning\n\nFor\n\n$$A=\\begin{pmatrix}3&1\\\\1&3\\end{pmatrix},$$\n\nwe have eigenvalues $4$ and $2$.\n\n## Key Distinction\n\n- $A$ itself **does not collapse**: since $\\det(A)=8\\neq 0$, $A$ is invertible and maps the plane to the plane.\n- $(A-\\lambda I)$ **does collapse** (at eigenvalues): subtracting an eigenvalue from the diagonal \"tunes\" the matrix to singularity.\n\n## At $\\lambda=4$\n\n$$A-4I=\\begin{pmatrix}-1&1\\\\1&-1\\end{pmatrix},\\quad \\det(A-4I)=0.$$\n\nTwo independent input directions map into the same 1D output line ($y=-x$).\n\n## At $\\lambda=2$\n\n$$A-2I=\\begin{pmatrix}1&1\\\\1&1\\end{pmatrix},\\quad \\det(A-2I)=0.$$\n\nAgain, outputs collapse to one line (here $y=x$).\n\n## Meaning\n\nCollapse to 1D means one dimension is lost: a nonzero direction gets mapped to zero.\nThat null direction is exactly the eigenvector condition:\n\n$$(A-\\lambda I)\\mathbf{v}=0 \\iff A\\mathbf{v}=\\lambda\\mathbf{v}.$$",
+      "range": [
+        [
+          -3,
+          3
+        ],
+        [
+          -3,
+          3
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Best view to compare 2D action vs 1D collapse"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            4,
+            3,
+            4
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Perspective confirmation that all vectors lie in the XY plane"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -3,
+            3
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.15,
+          "divisions": 12
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -3,
+            3
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -3,
+            3
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "$A$ keeps the plane 2D",
+          "description": "Under $A$, two independent basis vectors map to two non-collinear outputs, so area stays nonzero and no dimensional collapse occurs.",
+          "add": [
+            {
+              "id": "a-u",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                3,
+                1,
+                0
+              ],
+              "color": "#44aaff",
+              "label": "$A(1,0)=(3,1)$"
+            },
+            {
+              "id": "a-v",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                3,
+                0
+              ],
+              "color": "#ff8844",
+              "label": "$A(0,1)=(1,3)$"
+            },
+            {
+              "id": "a-area",
+              "type": "polygon",
+              "vertices": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  3,
+                  1,
+                  0
+                ],
+                [
+                  4,
+                  4,
+                  0
+                ],
+                [
+                  1,
+                  3,
+                  0
+                ]
+              ],
+              "color": "#44ffaa",
+              "opacity": 0.15
+            }
+          ],
+          "info": [
+            {
+              "id": "det-a",
+              "content": "$$\\det(A)=8\\neq0\\;\\Rightarrow\\;\\text{invertible, no collapse}$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "$(A-4I)$ collapses to a line",
+          "description": "At eigenvalue $\\lambda=4$, the tuned matrix becomes singular and outputs align on one 1D line.",
+          "remove": [
+            {
+              "id": "a-u"
+            },
+            {
+              "id": "a-v"
+            },
+            {
+              "id": "a-area"
+            }
+          ],
+          "add": [
+            {
+              "id": "m4-u",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                -1,
+                1,
+                0
+              ],
+              "color": "#ffcc00",
+              "label": "$(A-4I)(1,0)$"
+            },
+            {
+              "id": "m4-v",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                -1,
+                0
+              ],
+              "color": "#ff66aa",
+              "label": "$(A-4I)(0,1)$"
+            },
+            {
+              "id": "m4-line",
+              "type": "line",
+              "from": [
+                -2.5,
+                2.5,
+                0
+              ],
+              "to": [
+                2.5,
+                -2.5,
+                0
+              ],
+              "color": "#ffcc0066",
+              "width": 2,
+              "label": "$\\text{image is 1D: }y=-x$"
+            }
+          ],
+          "info": [
+            {
+              "id": "det-m4",
+              "content": "$$A-4I=\\begin{pmatrix}-1&1\\\\1&-1\\end{pmatrix},\\;\\det(A-4I)=0$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "$(A-2I)$ collapses to a (different) line",
+          "description": "At $\\lambda=2$, the singular collapse still happens, but now the image line is the $y=x$ direction.",
+          "remove": [
+            {
+              "id": "m4-u"
+            },
+            {
+              "id": "m4-v"
+            },
+            {
+              "id": "m4-line"
+            }
+          ],
+          "add": [
+            {
+              "id": "m2-u",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                1,
+                0
+              ],
+              "color": "#ffaa44",
+              "label": "$(A-2I)(1,0)$"
+            },
+            {
+              "id": "m2-v",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                1,
+                0
+              ],
+              "color": "#44ffcc",
+              "label": "$(A-2I)(0,1)$"
+            },
+            {
+              "id": "m2-line",
+              "type": "line",
+              "from": [
+                -2.5,
+                -2.5,
+                0
+              ],
+              "to": [
+                2.5,
+                2.5,
+                0
+              ],
+              "color": "#ffaa4466",
+              "width": 2,
+              "label": "$\\text{image is 1D: }y=x$"
+            },
+            {
+              "id": "null-note",
+              "type": "text",
+              "position": [
+                0.3,
+                -2.3,
+                0
+              ],
+              "text": "Nonzero direction maps to zero => dimensional loss",
+              "color": "#ffcc66",
+              "size": 11
+            }
+          ],
+          "info": [
+            {
+              "id": "det-m2",
+              "content": "$$A-2I=\\begin{pmatrix}1&1\\\\1&1\\end{pmatrix},\\;\\det(A-2I)=0,\\;(A-\\lambda I)\\mathbf{v}=0$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Interactive: tune $\\lambda$ and watch collapse",
+          "description": "Move $\\lambda$ in $(A-\\lambda I)$. At $\\lambda=2$ or $4$, the determinant hits 0 and the image collapses to 1D. Away from those values, the image is full 2D.",
+          "remove": [
+            {
+              "id": "*"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "lam",
+              "label": "$\\lambda$",
+              "min": 1,
+              "max": 5,
+              "step": 0.02,
+              "default": 4
+            }
+          ],
+          "add": [
+            {
+              "id": "im-e1",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "3-lam",
+                "1",
+                "0"
+              ],
+              "color": "#44aaff",
+              "label": "$(A-\\lambda I)\\mathbf{e}_1$"
+            },
+            {
+              "id": "im-e2",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "1",
+                "3-lam",
+                "0"
+              ],
+              "color": "#ff8844",
+              "label": "$(A-\\lambda I)\\mathbf{e}_2$"
+            },
+            {
+              "id": "im-par",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "3-lam",
+                  "1",
+                  "0"
+                ],
+                [
+                  "4-lam",
+                  "4-lam",
+                  "0"
+                ],
+                [
+                  "1",
+                  "3-lam",
+                  "0"
+                ]
+              ],
+              "color": "#aa66ff",
+              "opacity": 0.25
+            }
+          ],
+          "info": [
+            {
+              "id": "det-live",
+              "content": "$$M(\\lambda)=A-\\lambda I=\\begin{pmatrix}3-\\lambda&1\\\\1&3-\\lambda\\end{pmatrix},\\quad \\det M={{(3-lam)*(3-lam)-1}}$$",
+              "position": "top-left"
+            },
+            {
+              "id": "collapse-live",
+              "content": "Status: {{(abs((3-lam)*(3-lam)-1) < 0.05) ? 'near 1D collapse' : 'full 2D image'}}",
+              "position": "top-right"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "3D: Rotation Axis is an Eigenvector",
+      "description": "When a 3D rotation fixes an axis, that axis is an eigenvector with eigenvalue $\\lambda = 1$. Vectors in the perpendicular plane rotate, but the axis stays put.",
+      "prompt": "Teach 3D rotation eigenstructure with one core message: the fixed rotation axis is an eigenvector with $\\lambda=1$. Distinguish clearly between vectors on the axis (unchanged direction and magnitude) and vectors in the perpendicular plane (direction changes). In interactive mode, reference the live $\\theta$ value and the rotated coordinates.",
+      "markdown": "# 3D Rotation: The Axis is an Eigenvector\n\nConsider rotation by $45^\\circ$ about the $z$-axis:\n\n$$R_z(45^\\circ) = \\begin{pmatrix}\\frac{\\sqrt{2}}{2} & -\\frac{\\sqrt{2}}{2} & 0\\\\ \\frac{\\sqrt{2}}{2} & \\frac{\\sqrt{2}}{2} & 0\\\\ 0 & 0 & 1\\end{pmatrix}$$\n\n## The $z$-Axis is Fixed\n\n$$R_z\\begin{pmatrix}0\\\\0\\\\1\\end{pmatrix} = \\begin{pmatrix}0\\\\0\\\\1\\end{pmatrix} = 1 \\cdot \\begin{pmatrix}0\\\\0\\\\1\\end{pmatrix}$$\n\nSo $(0,0,1)$ is an **eigenvector** with eigenvalue $\\lambda = 1$.\n\n## Vectors in the $xy$-Plane Rotate\n\n$$R_z(45^\\circ)\\begin{pmatrix}1\\\\0\\\\0\\end{pmatrix} = \\begin{pmatrix}0.707\\\\0.707\\\\0\\end{pmatrix}$$\n\nThe $z$-component is preserved; the $xy$-components rotate.\n\n## General 3D Rotation\n\nBy **Euler's Rotation Theorem**, every rotation in 3D has a fixed axis. The rotation axis is always an eigenvector with $\\lambda = 1$.\n\nThe other two eigenvalues are complex: $e^{\\pm i\\theta}$, encoding the rotation angle $\\theta$.\n\n## Why This Matters\n\nThis connects eigenvalue theory to geometry:\n- Find the eigenvalue-1 eigenvector → you have found the rotation axis\n- The angle $\\theta$ is encoded in the complex eigenvalues: $\\lambda = e^{\\pm i\\theta}$",
+      "range": [
+        [
+          -2,
+          2
+        ],
+        [
+          -2,
+          2
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          4,
+          3,
+          4
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            6,
+            5,
+            6
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Wide isometric view — see the rotation and its eigenvector (the rotation axis)"
+        },
+        {
+          "name": "Top",
+          "position": [
+            0,
+            8,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking down the Y axis — see the rotation plane from above"
+        },
+        {
+          "name": "Front",
+          "position": [
+            0,
+            0,
+            8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Front view — see the rotation axis pointing toward you"
+        },
+        {
+          "name": "Side",
+          "position": [
+            8,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Side view along X"
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -2,
+            2
+          ],
+          "color": "#cc4444",
+          "width": 2
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -2,
+            2
+          ],
+          "color": "#44cc44",
+          "width": 2
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -2,
+            2
+          ],
+          "color": "#4444cc",
+          "width": 2
+        }
+      ],
+      "steps": [
+        {
+          "title": "Rotating a vector in the $xy$-plane",
+          "description": "$\\mathbf{v} = (1, 0, 0)$ is rotated to $(0.707, 0.707, 0)$ by $R_z(45^\\circ)$. Its $z$-component remains 0.",
+          "add": [
+            {
+              "id": "v-before",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#4488ff",
+              "label": "$\\mathbf{v} = (1,0,0)$"
+            },
+            {
+              "id": "v-after",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0.7071,
+                0.7071,
+                0
+              ],
+              "color": "#ff6644",
+              "label": "$R_z(45^\\circ)\\mathbf{v}$"
+            }
+          ]
+        },
+        {
+          "title": "The $z$-axis eigenvector is unchanged",
+          "description": "$R_z(45^\\circ)(0,0,1) = (0,0,1)$ — the $z$-axis vector is completely unchanged by the rotation. It is an eigenvector with $\\lambda = 1$.",
+          "add": [
+            {
+              "id": "z-eigen",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                0,
+                1.5
+              ],
+              "color": "#ffcc00",
+              "label": "$\\mathbf{z}, \\lambda=1$"
+            },
+            {
+              "id": "fixed-text",
+              "type": "text",
+              "position": [
+                0.2,
+                0.2,
+                1.5
+              ],
+              "text": "Fixed axis!",
+              "color": "#ffcc00",
+              "size": 13
+            }
+          ]
+        },
+        {
+          "title": "Interactive: rotate a 3D vector",
+          "description": "Rotate $\\mathbf{w} = (0.6, 0.5, 0.8)$ about the $z$-axis by angle $\\theta$. Notice the $z$-component always stays at 0.8 — the rotation axis ($z$) is always the fixed eigenvector.",
+          "remove": [
+            {
+              "id": "v-before"
+            },
+            {
+              "id": "v-after"
+            },
+            {
+              "id": "fixed-text"
+            }
+          ],
+          "add": [
+            {
+              "id": "w-orig",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0.6,
+                0.5,
+                0.8
+              ],
+              "color": "#4488ff",
+              "label": "$\\mathbf{w}$"
+            },
+            {
+              "id": "w-rotated",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "0.6*cos(theta) - 0.5*sin(theta)",
+                "0.6*sin(theta) + 0.5*cos(theta)",
+                "0.8"
+              ],
+              "color": "#ff6644",
+              "label": "$R_z(\\theta)\\mathbf{w}$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "theta",
+              "label": "$\\theta$ (radians)",
+              "min": 0,
+              "max": 6.2832,
+              "step": 0.05,
+              "default": 0
+            }
+          ],
+          "info": [
+            {
+              "id": "rz-live",
+              "content": "$$\\theta={{theta}}\\;\\text{rad},\\quad R_z(\\theta)\\mathbf{w}=\\big({{0.6*cos(theta) - 0.5*sin(theta)}},\\;{{0.6*sin(theta) + 0.5*cos(theta)}},\\;0.800\\big)$$",
+              "position": "top-left"
+            },
+            {
+              "id": "axis-eigen-live",
+              "content": "$$(0,0,1)\\xrightarrow{R_z(\\theta)}(0,0,1),\\quad \\lambda=1$$",
+              "position": "top-right"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

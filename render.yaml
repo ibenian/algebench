@@ -1,0 +1,34 @@
+# Render Blueprint defining BOTH environments. This file is intentionally
+# identical on the deploy/on-render and deploy/on-render-staging branches so
+# the two never diverge (promoting staging -> prod stays a clean merge).
+#
+# A single Blueprint manages both services; each deploys from the branch it
+# pins via `branch:`, regardless of which branch the Blueprint reads this file
+# from. Per-environment secrets (GEMINI_API_KEY, ALGEBENCH_TTS_REALTIME,
+# ALGEBENCH_RATELIMIT_*) are set in each service's dashboard, not here.
+services:
+  # --- Production: deploys from deploy/on-render ---
+  - type: web
+    name: algebench-prod
+    runtime: python
+    plan: free
+    branch: deploy/on-render
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.asgi:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+
+  # --- Staging: deploys from deploy/on-render-staging ---
+  - type: web
+    name: algebench-staging
+    runtime: python
+    plan: free
+    branch: deploy/on-render-staging
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.asgi:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"

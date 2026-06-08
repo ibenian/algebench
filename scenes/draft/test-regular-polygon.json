@@ -1,0 +1,309 @@
+{
+  "title": "Test — Regular Polygon",
+  "scenes": [
+    {
+      "title": "Regular Polygon",
+      "description": "Tests the `regular` substructure on `animated_polygon` and `polygon`. Use the Doc tab for full reference.",
+      "markdown": "# Regular Polygon\n\nBoth `polygon` (static) and `animated_polygon` support a `regular` substructure that computes vertices for a regular N-gon instead of requiring an explicit vertex list.\n\n---\n\n## `polygon` — Static\n\nUse when the shape is **fixed at scene-load time** and never needs to change.\n\nGeometry is built once. **Zero per-frame cost.**\n\n```json\n{\n  \"type\": \"polygon\",\n  \"regular\": { \"n\": 6, \"radius\": 1, \"center\": [0, 0, 0], \"rotation\": 0 },\n  \"color\": \"#66cc88\",\n  \"opacity\": 0.4,\n  \"outlineWidth\": 2\n}\n```\n\nAll fields inside `regular` are **plain numbers**.\n\n---\n\n## `animated_polygon` — Live Expressions\n\nUse when the shape must **respond to sliders, time $t$, or scene functions**.\n\nGeometry is rebuilt every frame. Expressions evaluated on each update.\n\n```json\n{\n  \"type\": \"animated_polygon\",\n  \"regular\": { \"n\": \"N\", \"radius\": \"R\", \"center\": [\"cx\",\"cy\",\"0\"], \"rotation\": \"t\" },\n  \"opacity\": \"fill_opacity\",\n  \"outlineWidth\": \"outline_width\",\n  \"outlineOpacity\": \"outline_opacity\"\n}\n```\n\nAll fields inside `regular` are **expression strings**. `opacity`, `outlineWidth`, and `outlineOpacity` also accept expressions.\n\n---\n\n## `regular` Fields\n\n| Field | Default | Description |\n|---|---|---|\n| `n` | `3` | Number of sides — clamped to $\\max(3, \\text{round}(n))$ |\n| `radius` | `1` | Circumradius — distance from center to each vertex |\n| `center` | `[0,0,0]` | Center position |\n| `rotation` | `0` | Rotation offset in radians |\n\n---\n\n## Outline Fields\n\n| Field | Default | Description |\n|---|---|---|\n| `outlineWidth` | `1.5` (regular) / `0` (explicit) | Line width in pixels. Uses MathBox geometry-based rendering — works in WebGL |\n| `outlineColor` | inherits `color` | Outline color |\n| `outlineOpacity` | `min(1, fillOpacity × 2)` | Independent opacity. When omitted, tracks fill opacity |\n\n---\n\n## When to Use Which\n\n| Situation | Use |\n|---|---|\n| Fixed reference shape, background geometry | `polygon` |\n| Shape driven by a slider | `animated_polygon` |\n| N-gon converging to a circle | `animated_polygon` |\n| Rotation driven by time $t$ | `animated_polygon` |\n| Many polygons, performance matters | `polygon` where possible |\n\n**Rule of thumb:** start with `polygon`. Switch to `animated_polygon` only when interactivity or animation is required.\n\n---\n\n## Performance\n\n- **`polygon`** — one-time geometry build at load. No updater. Static GPU mesh.\n- **`animated_polygon`** — updater fires ~60×/sec: expression eval → rebuild geometry → GPU upload → compute normals → outline update.",
+      "range": [[-2.5, 2.5], [-2.5, 2.5], [-1, 1]],
+      "camera": { "position": [2, -3, 7], "target": [0, 0, 0] },
+      "elements": [
+        { "type": "axis", "axis": "x", "range": [-2.5, 2.5], "color": "#444444" },
+        { "type": "axis", "axis": "y", "range": [-2.5, 2.5], "color": "#444444" }
+      ],
+      "steps": [
+        {
+          "title": "N-gon converges to a circle as N → ∞",
+          "description": "Drag **N** to watch a regular N-gon reshape in real time. At large N the polygon approaches a circle and its perimeter approaches 2π. Each field inside `regular` is a live expression re-evaluated every frame.",
+          "add": [
+            {
+              "id": "unit-circle",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [0, 6.2832],
+              "samples": 128,
+              "color": "#555555",
+              "opacity": 0.5,
+              "width": 1
+            },
+            {
+              "id": "ngon",
+              "type": "animated_polygon",
+              "regular": {
+                "n": "N",
+                "radius": "1",
+                "center": ["0", "0", "0"],
+                "rotation": "0"
+              },
+              "color": "#4da6ff",
+              "opacity": "fill_opacity",
+              "outlineWidth": "outline_width",
+              "outlineOpacity": "outline_opacity",
+              "outlineColor": "#88ccff"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "N",
+              "label": "$N$ (sides)",
+              "min": 3,
+              "max": 50,
+              "step": 1,
+              "default": 6
+            },
+            {
+              "id": "fill_opacity",
+              "label": "fill opacity",
+              "min": 0,
+              "max": 0.8,
+              "step": 0.05,
+              "default": 0.35
+            },
+            {
+              "id": "outline_width",
+              "label": "outline width",
+              "min": 0,
+              "max": 6,
+              "step": 0.5,
+              "default": 2
+            },
+            {
+              "id": "outline_opacity",
+              "label": "outline opacity",
+              "min": 0,
+              "max": 1,
+              "step": 0.05,
+              "default": 0.9
+            }
+          ],
+          "info": [
+            {
+              "id": "info",
+              "content": "$$N = {{N}} \\qquad P = N \\cdot 2\\sin\\!\\frac{\\pi}{N} \\approx {{toFixed(N * 2 * sin(pi / N), 4)}} \\xrightarrow{N\\to\\infty} 2\\pi \\approx 6.2832$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Live: all four regular fields (n, R, center, rotation)",
+          "description": "All four `regular` fields driven independently: **N** (sides), **R** (radius), **center** (x, y). Rotation is wired to wall-clock time `t` — it spins continuously without a slider. Drag any control to see its effect in isolation.",
+          "remove": [
+            { "id": "ngon" },
+            { "id": "unit-circle" }
+          ],
+          "add": [
+            {
+              "id": "ngon2",
+              "type": "animated_polygon",
+              "regular": {
+                "n": "N",
+                "radius": "R",
+                "center": ["cx", "cy", "0"],
+                "rotation": "t"
+              },
+              "color": "#ff9944",
+              "opacity": "fill_opacity",
+              "outlineWidth": "outline_width",
+              "outlineOpacity": "outline_opacity",
+              "outlineColor": "#ffcc88"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "N",
+              "label": "$N$ (sides)",
+              "min": 3,
+              "max": 50,
+              "step": 1,
+              "default": 5
+            },
+            {
+              "id": "R",
+              "label": "$R$ (radius)",
+              "min": 0.5,
+              "max": 2,
+              "step": 0.1,
+              "default": 1
+            },
+            {
+              "id": "cx",
+              "label": "$c_x$",
+              "min": -1,
+              "max": 1,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "cy",
+              "label": "$c_y$",
+              "min": -1,
+              "max": 1,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "fill_opacity",
+              "label": "fill opacity",
+              "min": 0,
+              "max": 0.8,
+              "step": 0.05,
+              "default": 0.35
+            },
+            {
+              "id": "outline_width",
+              "label": "outline width",
+              "min": 0,
+              "max": 6,
+              "step": 0.5,
+              "default": 2
+            },
+            {
+              "id": "outline_opacity",
+              "label": "outline opacity",
+              "min": 0,
+              "max": 1,
+              "step": 0.05,
+              "default": 0.9
+            }
+          ],
+          "info": [
+            {
+              "id": "info2",
+              "content": "$$N={{N}},\\quad R={{R}},\\quad \\text{center}=({{cx}},\\,{{cy}}) \\qquad P={{toFixed(N * 2 * R * sin(pi / N), 3)}} \\qquad A={{toFixed(0.5 * N * R * R * sin(2 * pi / N), 3)}}$$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "Static polygon — geometry built once at load",
+          "description": "Three static polygons (triangle, hexagon, octagon) built once at load — no updater, no per-frame cost. Use `polygon` with `regular` for fixed background geometry where interactivity isn't needed.",
+          "remove": [
+            { "id": "ngon2" },
+            { "type": "slider" }
+          ],
+
+          "add": [
+            {
+              "id": "static-tri",
+              "type": "polygon",
+              "regular": { "n": 3, "radius": 0.8, "center": [-1.2, 0, 0], "rotation": 0 },
+              "color": "#ff6666",
+              "opacity": 0.4,
+              "outlineWidth": 2,
+              "outlineColor": "#ff9999"
+            },
+            {
+              "id": "static-hex",
+              "type": "polygon",
+              "regular": { "n": 6, "radius": 0.8, "center": [0, 0, 0], "rotation": 0 },
+              "color": "#66cc88",
+              "opacity": 0.4,
+              "outlineWidth": 2,
+              "outlineColor": "#99ffbb"
+            },
+            {
+              "id": "static-oct",
+              "type": "polygon",
+              "regular": { "n": 8, "radius": 0.8, "center": [1.2, 0, 0], "rotation": 0.39 },
+              "color": "#aa88ff",
+              "opacity": 0.4,
+              "outlineWidth": 2,
+              "outlineColor": "#ccbbff",
+              "outlineOpacity": 0.9
+            }
+          ],
+          "info": [
+            {
+              "id": "info3",
+              "content": "Interior angle $= \\dfrac{(N-2)\\cdot 180^\\circ}{N}$: $\\quad 60^\\circ\\ (N\\!=\\!3),\\quad 120^\\circ\\ (N\\!=\\!6),\\quad 135^\\circ\\ (N\\!=\\!8)$",
+              "position": "top-left"
+            }
+          ]
+        },
+        {
+          "title": "3D — Hexagonal helix",
+          "description": "Six static hexagons arranged in a helix: each step rotates 60° around the Z axis and rises by 0.3 in z. The color shifts warm → cool as you ascend. A small central hexagon marks the axis.",
+          "remove": [
+            { "id": "static-tri" },
+            { "id": "static-hex" },
+            { "id": "static-oct" }
+          ],
+          "add": [
+            {
+              "id": "helix-axis",
+              "type": "polygon",
+              "regular": { "n": 6, "radius": 0.22, "center": [0, 0, 0], "rotation": 0 },
+              "color": "#ffffff",
+              "opacity": 0.7,
+              "outlineWidth": 1.5,
+              "outlineColor": "#aaaaaa"
+            },
+            {
+              "id": "helix-0",
+              "type": "polygon",
+              "regular": { "n": 6, "radius": 0.45, "center": [1.2, 0, -0.75], "rotation": 0 },
+              "color": "#ff4455",
+              "opacity": 0.55,
+              "outlineWidth": 1.5,
+              "outlineColor": "#ff8899"
+            },
+            {
+              "id": "helix-1",
+              "type": "polygon",
+              "regular": { "n": 6, "radius": 0.45, "center": [0.6, 1.04, -0.45], "rotation": 1.05 },
+              "color": "#ff8833",
+              "opacity": 0.55,
+              "outlineWidth": 1.5,
+              "outlineColor": "#ffaa77"
+            },
+            {
+              "id": "helix-2",
+              "type": "polygon",
+              "regular": { "n": 6, "radius": 0.45, "center": [-0.6, 1.04, -0.15], "rotation": 2.09 },
+              "color": "#eecc22",
+              "opacity": 0.55,
+              "outlineWidth": 1.5,
+              "outlineColor": "#ffee77"
+            },
+            {
+              "id": "helix-3",
+              "type": "polygon",
+              "regular": { "n": 6, "radius": 0.45, "center": [-1.2, 0, 0.15], "rotation": 3.14 },
+              "color": "#44cc66",
+              "opacity": 0.55,
+              "outlineWidth": 1.5,
+              "outlineColor": "#88ffaa"
+            },
+            {
+              "id": "helix-4",
+              "type": "polygon",
+              "regular": { "n": 6, "radius": 0.45, "center": [-0.6, -1.04, 0.45], "rotation": 4.19 },
+              "color": "#3399ff",
+              "opacity": 0.55,
+              "outlineWidth": 1.5,
+              "outlineColor": "#88ccff"
+            },
+            {
+              "id": "helix-5",
+              "type": "polygon",
+              "regular": { "n": 6, "radius": 0.45, "center": [0.6, -1.04, 0.75], "rotation": 5.24 },
+              "color": "#aa44ff",
+              "opacity": 0.55,
+              "outlineWidth": 1.5,
+              "outlineColor": "#cc88ff"
+            }
+          ],
+          "info": [
+            {
+              "id": "info4",
+              "content": "Helix: $\\theta_k = k\\cdot 60°$,\\; $z_k = k/4 - 0.75$,\\; $r_{\\text{helix}} = 1.2$ — six hexagons, one full turn.",
+              "position": "top-left"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

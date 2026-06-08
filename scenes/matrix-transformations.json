@@ -1,0 +1,3356 @@
+{
+  "title": "Linear Transformations",
+  "scenes": [
+    {
+      "title": "Basis Vectors and Linear Maps",
+      "description": "A linear map is completely determined by where it sends the standard basis vectors $\\mathbf{e}_1$ and $\\mathbf{e}_2$. The columns of the matrix ARE the images of the basis.",
+      "markdown": "# Basis Vectors and Linear Maps\n\nA **linear transformation** $T: \\mathbb{R}^2 \\to \\mathbb{R}^2$ satisfies:\n\n$$T(\\mathbf{u} + \\mathbf{v}) = T(\\mathbf{u}) + T(\\mathbf{v}), \\qquad T(c\\mathbf{u}) = c\\,T(\\mathbf{u})$$\n\n## The Standard Basis\n\n$$\\mathbf{e}_1 = \\begin{pmatrix}1\\\\0\\end{pmatrix}, \\quad \\mathbf{e}_2 = \\begin{pmatrix}0\\\\1\\end{pmatrix}$$\n\nEvery vector $\\mathbf{v} = (a, b)$ can be written $\\mathbf{v} = a\\,\\mathbf{e}_1 + b\\,\\mathbf{e}_2$, so:\n\n$$T(\\mathbf{v}) = a\\,T(\\mathbf{e}_1) + b\\,T(\\mathbf{e}_2)$$\n\n## The Matrix\n\nIf $T(\\mathbf{e}_1) = (m_{11}, m_{21})$ and $T(\\mathbf{e}_2) = (m_{12}, m_{22})$, then:\n\n$$T = \\begin{pmatrix}m_{11} & m_{12}\\\\ m_{21} & m_{22}\\end{pmatrix}$$\n\nThe **columns** of the matrix are exactly the images of the basis vectors.\n\n## Examples\n\n**Identity**: $\\mathbf{e}_1 \\to (1,0)$, $\\mathbf{e}_2 \\to (0,1)$ — no change.\n\n**Rotation by 45°**: $\\mathbf{e}_1 \\to (\\frac{\\sqrt{2}}{2}, \\frac{\\sqrt{2}}{2})$, $\\mathbf{e}_2 \\to (-\\frac{\\sqrt{2}}{2}, \\frac{\\sqrt{2}}{2})$\n\n**Shear** $[[1,1],[0,1]]$: $\\mathbf{e}_1 \\to (1,0)$, $\\mathbf{e}_2 \\to (1,1)$ — slides horizontally.\n\n> **Key insight**: The transformation is completely encoded in two vectors — where the basis lands.",
+      "range": [
+        [
+          -3,
+          3
+        ],
+        [
+          -3,
+          3
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Zoomed-out face-on view — see the full XY transformation plane"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            4,
+            3,
+            4
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "3D perspective — notice that transformed vectors stay in the XY plane (no Z extent)"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            8,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down from above — edge-on view of the XY plane"
+        },
+        {
+          "name": "Side",
+          "position": [
+            8,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Side view along X — edge-on, shows only Y-axis extent"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -3,
+            3
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.15,
+          "divisions": 12
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -3,
+            3
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -3,
+            3
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "Standard basis vectors",
+          "description": "The two standard basis vectors $\\mathbf{e}_1 = (1,0,0)$ in red and $\\mathbf{e}_2 = (0,1,0)$ in green span the entire plane.",
+          "add": [
+            {
+              "id": "e1",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ff4444",
+              "label": "$\\mathbf{e}_1 = (1,0)$"
+            },
+            {
+              "id": "e2",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                1,
+                0
+              ],
+              "color": "#44ff44",
+              "label": "$\\mathbf{e}_2 = (0,1)$"
+            },
+            {
+              "id": "unit-sq",
+              "type": "polygon",
+              "vertices": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0
+                ]
+              ],
+              "color": "#8866cc",
+              "opacity": 0.2,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#443388",
+                "specular": "#aaaaff"
+              }
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M = \\begin{pmatrix}1 & 0\\\\ 0 & 1\\end{pmatrix}$$"
+            }
+          ]
+        },
+        {
+          "title": "Identity transformation",
+          "description": "The identity sends $\\mathbf{e}_1 \\to (1,0)$ and $\\mathbf{e}_2 \\to (0,1)$. Every vector maps to itself.",
+          "add": [
+            {
+              "id": "id-e1",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ff8888",
+              "label": "$T(\\mathbf{e}_1) = (1,0)$"
+            },
+            {
+              "id": "id-e2",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                1,
+                0
+              ],
+              "color": "#88ff88",
+              "label": "$T(\\mathbf{e}_2) = (0,1)$"
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M = \\begin{pmatrix}1 & 0\\\\ 0 & 1\\end{pmatrix}$$"
+            }
+          ]
+        },
+        {
+          "title": "Rotation by 45 degrees",
+          "description": "Rotation by $45^\\circ$ sends $\\mathbf{e}_1 \\to (\\frac{\\sqrt2}{2}, \\frac{\\sqrt2}{2})$ and $\\mathbf{e}_2 \\to (-\\frac{\\sqrt2}{2}, \\frac{\\sqrt2}{2})$.",
+          "remove": [
+            {
+              "id": "id-e1"
+            },
+            {
+              "id": "id-e2"
+            }
+          ],
+          "add": [
+            {
+              "id": "rot-e1",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0.7071,
+                0.7071,
+                0
+              ],
+              "color": "#ff8800",
+              "label": "$T(\\mathbf{e}_1)$"
+            },
+            {
+              "id": "rot-e2",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                -0.7071,
+                0.7071,
+                0
+              ],
+              "color": "#00cc44",
+              "label": "$T(\\mathbf{e}_2)$"
+            },
+            {
+              "id": "rot-sq",
+              "type": "polygon",
+              "vertices": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  0.7071,
+                  0.7071,
+                  0
+                ],
+                [
+                  0,
+                  1.4142,
+                  0
+                ],
+                [
+                  -0.7071,
+                  0.7071,
+                  0
+                ]
+              ],
+              "color": "#ff8800",
+              "opacity": 0.2,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#884400",
+                "specular": "#ffccaa"
+              }
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M = \\begin{pmatrix}\\frac{\\sqrt{2}}{{2}} & -\\frac{\\sqrt{2}}{{2}}\\\\ \\frac{\\sqrt{2}}{{2}} & \\frac{\\sqrt{2}}{{2}}\\end{pmatrix}$$"
+            }
+          ]
+        },
+        {
+          "title": "Interactive: arbitrary matrix",
+          "description": "Use the sliders to set $m_{11}, m_{12}, m_{21}, m_{22}$. Watch the transformed basis vectors move and the unit square shear.",
+          "remove": [
+            {
+              "id": "*"
+            }
+          ],
+          "add": [
+            {
+              "id": "e1-orig",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ff444488",
+              "label": "$\\mathbf{e}_1$"
+            },
+            {
+              "id": "e2-orig",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                1,
+                0
+              ],
+              "color": "#44ff4488",
+              "label": "$\\mathbf{e}_2$"
+            },
+            {
+              "id": "Te1",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "m11",
+                "m21",
+                "0"
+              ],
+              "color": "#ff6600",
+              "label": "$T(\\mathbf{e}_1)$"
+            },
+            {
+              "id": "Te2",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "m12",
+                "m22",
+                "0"
+              ],
+              "color": "#00cc44",
+              "label": "$T(\\mathbf{e}_2)$"
+            },
+            {
+              "id": "transformed-sq",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "m11",
+                  "m21",
+                  "0"
+                ],
+                [
+                  "m11+m12",
+                  "m21+m22",
+                  "0"
+                ],
+                [
+                  "m12",
+                  "m22",
+                  "0"
+                ]
+              ],
+              "color": "#aa66ff",
+              "opacity": 0.25,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#553388",
+                "specular": "#ccaaff"
+              }
+            }
+          ],
+          "sliders": [
+            {
+              "id": "m11",
+              "label": "$m_{11}$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 1
+            },
+            {
+              "id": "m12",
+              "label": "$m_{12}$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "m21",
+              "label": "$m_{21}$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "m22",
+              "label": "$m_{22}$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 1
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M = \\begin{pmatrix}{{m11}} & {{m12}}\\\\ {{m21}} & {{m22}}\\end{pmatrix}$$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Anatomy of a Transformation Matrix",
+      "description": "Every entry of $M = \\begin{pmatrix}a & b\\\\ c & d\\end{pmatrix}$ has a precise geometric role. Diagonal entries scale each axis; off-diagonal entries introduce shearing.",
+      "markdown": "# Anatomy of a Transformation Matrix\n\n$$M = \\begin{pmatrix}a & b\\\\ c & d\\end{pmatrix}$$\n\nEach of the four entries has a distinct geometric role.\n\n## The Column View\n\n- **Column 1** $(a,\\ c)$ = where $\\mathbf{e}_1 = (1,0)$ lands\n- **Column 2** $(b,\\ d)$ = where $\\mathbf{e}_2 = (0,1)$ lands\n\nAny vector $(x, y) = x\\,\\mathbf{e}_1 + y\\,\\mathbf{e}_2$ maps to:\n\n$$M\\begin{pmatrix}x\\\\y\\end{pmatrix} = x\\begin{pmatrix}a\\\\c\\end{pmatrix} + y\\begin{pmatrix}b\\\\d\\end{pmatrix}$$\n\n## Diagonal Entries — Scaling\n\n| Entry | Position | Geometric meaning |\n|---|---|---|\n| $a$ | top-left | $x$-scale: how far $\\mathbf{e}_1$ moves along $x$ |\n| $d$ | bottom-right | $y$-scale: how far $\\mathbf{e}_2$ moves along $y$ |\n\nWith $b = c = 0$ the transformation is a **pure axis-aligned scaling** — axes stay perpendicular.\n\n## Off-Diagonal Entries — Shearing\n\n| Entry | Position | Geometric meaning |\n|---|---|---|\n| $c$ | bottom-left | $y$-component of $T(\\mathbf{e}_1)$ — tilts column 1 into the $y$-direction |\n| $b$ | top-right | $x$-component of $T(\\mathbf{e}_2)$ — tilts column 2 into the $x$-direction |\n\nWhen $c \\neq 0$: horizontal input produces a $y$-component — **vertical shear**.\nWhen $b \\neq 0$: vertical input produces an $x$-component — **horizontal shear**.\n\n## The Row View\n\nRows of $M$ act as dot products with the input:\n\n$$M\\begin{pmatrix}x\\\\y\\end{pmatrix} = \\begin{pmatrix}ax + by\\\\ cx + dy\\end{pmatrix}$$\n\n- **Row 1** $(a,\\ b)$: computes the $x$-component of the output\n- **Row 2** $(c,\\ d)$: computes the $y$-component of the output\n\n> **Key insight**: Zero out the off-diagonals for pure scaling. For a 90° rotation, try $a=0,\\ b=-1,\\ c=1,\\ d=0$.",
+      "range": [
+        [
+          -3,
+          3
+        ],
+        [
+          -3,
+          3
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          9
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Face-on — best view for reading 2D transformations"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            4,
+            3,
+            5
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "3D perspective — transformed vectors stay in the XY plane"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -3,
+            3
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.15,
+          "divisions": 12
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -3,
+            3
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -3,
+            3
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "The standard basis",
+          "description": "The matrix $M = \\begin{pmatrix}a & b\\\\ c & d\\end{pmatrix}$ is fully defined by where it sends $\\mathbf{e}_1$ (red) and $\\mathbf{e}_2$ (green). Its **columns** ARE those images: column 1 = $T(\\mathbf{e}_1)$, column 2 = $T(\\mathbf{e}_2)$.",
+          "add": [
+            {
+              "id": "e1",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ff4444",
+              "label": "$\\mathbf{e}_1 = (1,0)$"
+            },
+            {
+              "id": "e2",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                1,
+                0
+              ],
+              "color": "#44ff44",
+              "label": "$\\mathbf{e}_2 = (0,1)$"
+            },
+            {
+              "id": "unit-sq",
+              "type": "polygon",
+              "vertices": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0
+                ]
+              ],
+              "color": "#8866cc",
+              "opacity": 0.2,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#443388",
+                "specular": "#aaaaff"
+              }
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M = \\begin{pmatrix}a & b\\\\ c & d\\end{pmatrix}$$"
+            }
+          ]
+        },
+        {
+          "title": "Diagonal entries $a$ and $d$ — pure scaling",
+          "description": "With $b = c = 0$: entry $a$ (top-left) scales $\\mathbf{e}_1$ along $x$; entry $d$ (bottom-right) scales $\\mathbf{e}_2$ along $y$. The axes stay perpendicular — no shearing.",
+          "remove": [
+            {
+              "id": "*"
+            }
+          ],
+          "add": [
+            {
+              "id": "e1-ghost",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ff444430"
+            },
+            {
+              "id": "e2-ghost",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                1,
+                0
+              ],
+              "color": "#44ff4430"
+            },
+            {
+              "id": "Te1-diag",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "a",
+                "0",
+                "0"
+              ],
+              "color": "#ff6600",
+              "label": "$T(\\mathbf{e}_1) = (a,\\ 0)$"
+            },
+            {
+              "id": "Te2-diag",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "0",
+                "d",
+                "0"
+              ],
+              "color": "#00cc44",
+              "label": "$T(\\mathbf{e}_2) = (0,\\ d)$"
+            },
+            {
+              "id": "rect-diag",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "a",
+                  "0",
+                  "0"
+                ],
+                [
+                  "a",
+                  "d",
+                  "0"
+                ],
+                [
+                  "0",
+                  "d",
+                  "0"
+                ]
+              ],
+              "color": "#aa66ff",
+              "opacity": 0.25,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#553388",
+                "specular": "#ccaaff"
+              }
+            }
+          ],
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$ — top-left, x-scale",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 1.5
+            },
+            {
+              "id": "d",
+              "label": "$d$ — bottom-right, y-scale",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 1
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M = \\begin{pmatrix}{{a}} & 0\\\\ 0 & {{d}}\\end{pmatrix}$$"
+            }
+          ]
+        },
+        {
+          "title": "Entry $c$ (bottom-left) — vertical shear",
+          "description": "Entry $c$ is the $y$-component of $T(\\mathbf{e}_1)$. When $c \\neq 0$, column 1 tilts to $(1,\\ c)$ — the orange vector leans off the $x$-axis. This is a **vertical shear**: $x$-input gains a $y$-component.",
+          "remove": [
+            {
+              "id": "*"
+            }
+          ],
+          "add": [
+            {
+              "id": "e1-ghost",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ff444430"
+            },
+            {
+              "id": "e2-ghost",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                1,
+                0
+              ],
+              "color": "#44ff4430"
+            },
+            {
+              "id": "Te2-fixed",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                1,
+                0
+              ],
+              "color": "#00cc44",
+              "label": "$T(\\mathbf{e}_2) = (0,\\ 1)$"
+            },
+            {
+              "id": "Te1-c",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "1",
+                "c",
+                "0"
+              ],
+              "color": "#ff6600",
+              "label": "$T(\\mathbf{e}_1) = (1,\\ c)$"
+            },
+            {
+              "id": "para-c",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "1",
+                  "c",
+                  "0"
+                ],
+                [
+                  "1",
+                  "c+1",
+                  "0"
+                ],
+                [
+                  "0",
+                  "1",
+                  "0"
+                ]
+              ],
+              "color": "#aa66ff",
+              "opacity": 0.25,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#553388",
+                "specular": "#ccaaff"
+              }
+            }
+          ],
+          "sliders": [
+            {
+              "id": "c",
+              "label": "$c$ — bottom-left, y-shear of $\\mathbf{e}_1$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 0
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M = \\begin{pmatrix}1 & 0\\\\ {{c}} & 1\\end{pmatrix}$$"
+            }
+          ]
+        },
+        {
+          "title": "Entry $b$ (top-right) — horizontal shear",
+          "description": "Entry $b$ is the $x$-component of $T(\\mathbf{e}_2)$. When $b \\neq 0$, column 2 tilts to $(b,\\ 1)$ — the green vector leans off the $y$-axis. This is a **horizontal shear**: $y$-input gains an $x$-component.",
+          "remove": [
+            {
+              "id": "*"
+            }
+          ],
+          "add": [
+            {
+              "id": "e1-ghost",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ff444430"
+            },
+            {
+              "id": "e2-ghost",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                1,
+                0
+              ],
+              "color": "#44ff4430"
+            },
+            {
+              "id": "Te1-fixed",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ff6600",
+              "label": "$T(\\mathbf{e}_1) = (1,\\ 0)$"
+            },
+            {
+              "id": "Te2-b",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "b",
+                "1",
+                "0"
+              ],
+              "color": "#00cc44",
+              "label": "$T(\\mathbf{e}_2) = (b,\\ 1)$"
+            },
+            {
+              "id": "para-b",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "1",
+                  "0",
+                  "0"
+                ],
+                [
+                  "1+b",
+                  "1",
+                  "0"
+                ],
+                [
+                  "b",
+                  "1",
+                  "0"
+                ]
+              ],
+              "color": "#aa66ff",
+              "opacity": 0.25,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#553388",
+                "specular": "#ccaaff"
+              }
+            }
+          ],
+          "sliders": [
+            {
+              "id": "b",
+              "label": "$b$ — top-right, x-shear of $\\mathbf{e}_2$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 0
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M = \\begin{pmatrix}1 & {{b}}\\\\ 0 & 1\\end{pmatrix}$$"
+            }
+          ]
+        },
+        {
+          "title": "All four entries — full anatomy",
+          "description": "The complete matrix: column 1 = $T(\\mathbf{e}_1) = (a,\\ c)$, column 2 = $T(\\mathbf{e}_2) = (b,\\ d)$. Try $a=0,\\ b=-1,\\ c=1,\\ d=0$ for a 90° rotation, or $a=d=0,\\ b=c=1$ for a reflection across $y=x$.",
+          "remove": [
+            {
+              "id": "*"
+            }
+          ],
+          "add": [
+            {
+              "id": "e1-ghost",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ff444430"
+            },
+            {
+              "id": "e2-ghost",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                1,
+                0
+              ],
+              "color": "#44ff4430"
+            },
+            {
+              "id": "Te1-full",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "a",
+                "c",
+                "0"
+              ],
+              "color": "#ff6600",
+              "label": "$T(\\mathbf{e}_1) = (a,\\ c)$"
+            },
+            {
+              "id": "Te2-full",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "b",
+                "d",
+                "0"
+              ],
+              "color": "#00cc44",
+              "label": "$T(\\mathbf{e}_2) = (b,\\ d)$"
+            },
+            {
+              "id": "para-full",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "a",
+                  "c",
+                  "0"
+                ],
+                [
+                  "a+b",
+                  "c+d",
+                  "0"
+                ],
+                [
+                  "b",
+                  "d",
+                  "0"
+                ]
+              ],
+              "color": "#aa66ff",
+              "opacity": 0.25,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#553388",
+                "specular": "#ccaaff"
+              }
+            }
+          ],
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$ — top-left",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 1
+            },
+            {
+              "id": "b",
+              "label": "$b$ — top-right",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "c",
+              "label": "$c$ — bottom-left",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "d",
+              "label": "$d$ — bottom-right",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 1
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M = \\begin{pmatrix}{{a}} & {{b}}\\\\ {{c}} & {{d}}\\end{pmatrix}$$"
+            }
+          ]
+        },
+        {
+          "title": "Transformation morphing animation",
+          "description": "Watch the unit square continuously morph into the transformed parallelogram. Each vertex travels in a straight line from its original position to its image under $M$. Hit ▶ to animate, or scrub $t$ manually.",
+          "remove": [
+            {
+              "id": "*"
+            }
+          ],
+          "add": [
+            {
+              "id": "orig-sq",
+              "type": "polygon",
+              "vertices": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0
+                ]
+              ],
+              "color": "#4488ff",
+              "opacity": 0.15,
+              "shader": {
+                "shininess": 40,
+                "emissive": "#112244",
+                "specular": "#aaccff"
+              }
+            },
+            {
+              "id": "e1-ghost",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ff444430"
+            },
+            {
+              "id": "e2-ghost",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                1,
+                0
+              ],
+              "color": "#44ff4430"
+            },
+            {
+              "id": "Te1-morph",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "1-t+t*a",
+                "t*c",
+                "0"
+              ],
+              "color": "#ff6600",
+              "label": "$T(\\mathbf{e}_1)$"
+            },
+            {
+              "id": "Te2-morph",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "t*b",
+                "1-t+t*d",
+                "0"
+              ],
+              "color": "#00cc44",
+              "label": "$T(\\mathbf{e}_2)$"
+            },
+            {
+              "id": "morph-poly",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "1-t+t*a",
+                  "t*c",
+                  "0"
+                ],
+                [
+                  "1-t+t*(a+b)",
+                  "1-t+t*(c+d)",
+                  "0"
+                ],
+                [
+                  "t*b",
+                  "1-t+t*d",
+                  "0"
+                ]
+              ],
+              "color": "#aa66ff",
+              "opacity": 0.4,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#553388",
+                "specular": "#ccaaff"
+              }
+            }
+          ],
+          "sliders": [
+            {
+              "id": "t",
+              "label": "$t$ — interpolation",
+              "min": 0,
+              "max": 1,
+              "step": 0.01,
+              "default": 1,
+              "animate": true,
+              "duration": 2500
+            },
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 1.5
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 0.5
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 0.5
+            },
+            {
+              "id": "d",
+              "label": "$d$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 1.2
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M(t) = \\begin{pmatrix}{{1-t+t*a}} & {{t*b}}\\\\ {{t*c}} & {{1-t+t*d}}\\end{pmatrix}$$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Matrix–Vector Multiplication",
+      "description": "The product $A\\mathbf{v}$ maps input $\\mathbf{v}$ to a new vector via the column interpretation: $A\\mathbf{v} = x\\,\\mathbf{a}_1 + y\\,\\mathbf{a}_2$.",
+      "markdown": "# Matrix–Vector Multiplication\n\nGiven matrix $A$ and vector $\\mathbf{v}$:\n\n$$A\\mathbf{v} = \\begin{pmatrix}a & b\\\\ c & d\\end{pmatrix}\\begin{pmatrix}x\\\\ y\\end{pmatrix} = \\begin{pmatrix}ax+by\\\\ cx+dy\\end{pmatrix}$$\n\n## The Column Interpretation\n\nLet $\\mathbf{a}_1, \\mathbf{a}_2$ be the columns of $A$:\n\n$$A\\mathbf{v} = x\\,\\mathbf{a}_1 + y\\,\\mathbf{a}_2$$\n\nThe output is a **linear combination** of the columns, weighted by the components of $\\mathbf{v}$.\n\n## Reading the Visualization\n\n- **Gold** $\\mathbf{v}$: the input vector\n- **Blue** $\\mathbf{a}_1$: first column — image of $\\mathbf{e}_1$\n- **Orange** $\\mathbf{a}_2$: second column — image of $\\mathbf{e}_2$\n- **Green** $A\\mathbf{v}$: the output — closes the parallelogram\n\nSliders control both $\\mathbf{v}$ and the matrix entries interactively.",
+      "range": [
+        [
+          -3.5,
+          3.5
+        ],
+        [
+          -3.5,
+          3.5
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          9
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Face-on view of the XY plane"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            4,
+            3,
+            4
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Isometric perspective"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -3.5,
+            3.5
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.15,
+          "divisions": 14
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -3.5,
+            3.5
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -3.5,
+            3.5
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "1) The input vector $\\mathbf{v}$",
+          "description": "Start with a 2D input vector $\\mathbf{v} = (x, y)$. Use the sliders to move it anywhere in the plane.",
+          "add": [
+            {
+              "id": "v-vec",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "x",
+                "y",
+                "0"
+              ],
+              "color": "#ffcc44",
+              "label": "$\\mathbf{v}$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "x",
+              "label": "$x$",
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": 1.5
+            },
+            {
+              "id": "y",
+              "label": "$y$",
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": 1
+            }
+          ],
+          "info": [
+            {
+              "id": "vec-v",
+              "position": "bottom-left",
+              "content": "$$ \\mathbf{v} = \\begin{pmatrix}{{x}}\\\\ {{y}} \\end{pmatrix} $$"
+            }
+          ]
+        },
+        {
+          "title": "2) The matrix $A$ and its columns",
+          "description": "Matrix $A$ has two column vectors $\\mathbf{a}_1$ (blue) and $\\mathbf{a}_2$ (orange). These are where the standard basis vectors $\\mathbf{e}_1$ and $\\mathbf{e}_2$ get sent.",
+          "add": [
+            {
+              "id": "col1",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "a",
+                "c",
+                "0"
+              ],
+              "color": "#44aaff",
+              "label": "$\\mathbf{a}_1$"
+            },
+            {
+              "id": "col2",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "b",
+                "d",
+                "0"
+              ],
+              "color": "#ff8844",
+              "label": "$\\mathbf{a}_2$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": 2
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": 0.5
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": 0.5
+            },
+            {
+              "id": "d",
+              "label": "$d$",
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": 1.5
+            }
+          ],
+          "info": [
+            {
+              "id": "mat-A",
+              "position": "top-left",
+              "content": "$$ A = \\begin{pmatrix}{{a}} & {{b}}\\\\ {{c}} & {{d}} \\end{pmatrix} $$"
+            },
+            {
+              "id": "vec-v",
+              "position": "bottom-left",
+              "content": "$$ \\mathbf{v} = \\begin{pmatrix}{{x}}\\\\ {{y}} \\end{pmatrix} $$"
+            }
+          ]
+        },
+        {
+          "title": "3) The result $A\\mathbf{v}$",
+          "description": "The green vector is $A\\mathbf{v}$: the input $\\mathbf{v}$ transformed by $A$. Each output component is a dot product of a row of $A$ with $\\mathbf{v}$.",
+          "remove": [
+            {
+              "id": "col1"
+            },
+            {
+              "id": "col2"
+            }
+          ],
+          "add": [
+            {
+              "id": "av-vec",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "a*x+b*y",
+                "c*x+d*y",
+                "0"
+              ],
+              "color": "#55ff88",
+              "label": "$A\\mathbf{v}$"
+            }
+          ],
+          "info": [
+            {
+              "id": "mat-A",
+              "position": "top-left",
+              "content": "$$ A = \\begin{pmatrix}{{a}} & {{b}}\\\\ {{c}} & {{d}} \\end{pmatrix} $$"
+            },
+            {
+              "id": "vec-v",
+              "position": "bottom-left",
+              "content": "$$ \\mathbf{v} = \\begin{pmatrix}{{x}}\\\\ {{y}} \\end{pmatrix} $$"
+            },
+            {
+              "id": "vec-av",
+              "position": "bottom-right",
+              "content": "$$ A\\mathbf{v} = \\begin{pmatrix}{{(a*x+b*y)}}\\\\ {{(c*x+d*y)}} \\end{pmatrix} $$"
+            }
+          ]
+        },
+        {
+          "title": "4) Column decomposition: $A\\mathbf{v} = x\\mathbf{a}_1 + y\\mathbf{a}_2$",
+          "description": "The output is built tip-to-tail: $x$ copies of $\\mathbf{a}_1$ (blue), then $y$ copies of $\\mathbf{a}_2$ (orange, translated). Their sum is $A\\mathbf{v}$ (green). Adjust all six sliders to explore.",
+          "remove": [
+            {
+              "id": "av-vec"
+            }
+          ],
+          "add": [
+            {
+              "id": "scaled-col1",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "a*x",
+                "c*x",
+                "0"
+              ],
+              "color": "#44aaff",
+              "label": "$x\\mathbf{a}_1$"
+            },
+            {
+              "id": "scaled-col2-shift",
+              "type": "animated_line",
+              "points": [
+                [
+                  "a*x",
+                  "c*x",
+                  "0"
+                ],
+                [
+                  "a*x+b*y",
+                  "c*x+d*y",
+                  "0"
+                ]
+              ],
+              "color": "#ff8844",
+              "width": 5
+            },
+            {
+              "id": "scaled-col2-origin",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "b*y",
+                "d*y",
+                "0"
+              ],
+              "color": "#ff8844",
+              "label": "$y\\mathbf{a}_2$"
+            },
+            {
+              "id": "av-result",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "a*x+b*y",
+                "c*x+d*y",
+                "0"
+              ],
+              "color": "#55ff88",
+              "label": "$A\\mathbf{v}$"
+            }
+          ],
+          "info": [
+            {
+              "id": "decomp",
+              "position": "top-left",
+              "content": "$$ A\\mathbf{v} = {{x}}\\!\\begin{pmatrix}{{a}}\\\\ {{c}}\\end{pmatrix} + {{y}}\\!\\begin{pmatrix}{{b}}\\\\ {{d}}\\end{pmatrix} $$"
+            },
+            {
+              "id": "vec-v",
+              "position": "bottom-left",
+              "content": "$$ \\mathbf{v} = \\begin{pmatrix}{{x}}\\\\ {{y}} \\end{pmatrix} $$"
+            },
+            {
+              "id": "vec-av",
+              "position": "bottom-right",
+              "content": "$$ A\\mathbf{v} = \\begin{pmatrix}{{(a*x+b*y)}}\\\\ {{(c*x+d*y)}} \\end{pmatrix} $$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "2D Rotation Matrix",
+      "description": "The rotation matrix $R(\\theta)$ rotates every vector by angle $\\theta$ counterclockwise. Its columns trace the unit circle as $\\theta$ varies.",
+      "markdown": "# The 2D Rotation Matrix\n\nRotation by angle $\\theta$ counterclockwise:\n\n$$R(\\theta) = \\begin{pmatrix}\\cos\\theta & -\\sin\\theta\\\\ \\sin\\theta & \\cos\\theta\\end{pmatrix}$$\n\n## Why This Works\n\nA unit vector at angle $\\alpha$ is $(\\cos\\alpha, \\sin\\alpha)$. After rotation by $\\theta$:\n\n$$R(\\theta)\\begin{pmatrix}\\cos\\alpha\\\\\\sin\\alpha\\end{pmatrix} = \\begin{pmatrix}\\cos(\\alpha+\\theta)\\\\\\sin(\\alpha+\\theta)\\end{pmatrix}$$\n\nusing the angle addition formulas.\n\n## Key Properties\n\n- $\\det(R(\\theta)) = \\cos^2\\theta + \\sin^2\\theta = 1$ — rotation preserves area\n- $R(\\theta)^{-1} = R(-\\theta) = R(\\theta)^T$ — inverse is transpose\n- $R(\\theta_1)\\,R(\\theta_2) = R(\\theta_1 + \\theta_2)$ — composition adds angles\n- Eigenvalues: $e^{\\pm i\\theta}$ (complex — no real eigenvectors unless $\\theta = 0, \\pi$)\n\n## Columns are Basis Images\n\n- First column: $R(\\theta)\\,\\mathbf{e}_1 = (\\cos\\theta, \\sin\\theta)$ — rotated $x$-axis\n- Second column: $R(\\theta)\\,\\mathbf{e}_2 = (-\\sin\\theta, \\cos\\theta)$ — rotated $y$-axis\n\n> **Try it**: As $\\theta$ goes from $0$ to $2\\pi$, the rotated vector traces the unit circle.",
+      "range": [
+        [
+          -2,
+          2
+        ],
+        [
+          -2,
+          2
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          7
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            0,
+            9
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Zoomed-out face-on view — see the full XY transformation plane"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            4,
+            3,
+            4
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "3D perspective — notice that transformed vectors stay in the XY plane (no Z extent)"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            7,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down from above — edge-on view of the XY plane"
+        },
+        {
+          "name": "Side",
+          "position": [
+            7,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Side view along X — edge-on, shows only Y-axis extent"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -2,
+            2
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.15,
+          "divisions": 8
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -2,
+            2
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -2,
+            2
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "The original vector $(1, 0)$",
+          "description": "Start with the standard basis vector $\\mathbf{e}_1 = (1,0)$ pointing along the positive $x$-axis.",
+          "add": [
+            {
+              "id": "unit-circle",
+              "type": "parametric_curve",
+              "x": "cos(t)",
+              "y": "sin(t)",
+              "z": "0",
+              "range": [
+                0,
+                6.2832
+              ],
+              "samples": 128,
+              "color": "#334466",
+              "width": 2,
+              "label": "unit circle"
+            },
+            {
+              "id": "vec-orig",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#4488ff",
+              "label": "$\\mathbf{e}_1 = (1,0)$"
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$R = \\begin{pmatrix}1 & 0\\\\ 0 & 1\\end{pmatrix}$$"
+            }
+          ]
+        },
+        {
+          "title": "Rotation by $\\theta = 45^\\circ$",
+          "description": "$R(45^\\circ)\\,\\mathbf{e}_1 = (\\cos 45^\\circ, \\sin 45^\\circ) = (\\frac{\\sqrt{2}}{2}, \\frac{\\sqrt{2}}{2})$. The vector rotates onto the unit circle.",
+          "add": [
+            {
+              "id": "vec-rot45",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0.7071,
+                0.7071,
+                0
+              ],
+              "color": "#ff6644",
+              "label": "$R(45^\\circ)\\,\\mathbf{e}_1$"
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$R(45^\\circ) = \\begin{pmatrix}\\frac{\\sqrt{2}}{{2}} & -\\frac{\\sqrt{2}}{{2}}\\\\ \\frac{\\sqrt{2}}{{2}} & \\frac{\\sqrt{2}}{{2}}\\end{pmatrix}$$"
+            }
+          ]
+        },
+        {
+          "title": "Interactive: rotate by $\\theta$",
+          "description": "Drag $\\theta$ to watch the vector sweep around the unit circle. The rotated vector is always on the circle.",
+          "remove": [
+            {
+              "id": "vec-rot45"
+            }
+          ],
+          "add": [
+            {
+              "id": "vec-rotated",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "cos(theta)",
+                "sin(theta)",
+                "0"
+              ],
+              "color": "#ff6644",
+              "label": "$R(\\theta)\\,\\mathbf{e}_1$"
+            },
+            {
+              "id": "col2-rotated",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "-sin(theta)",
+                "cos(theta)",
+                "0"
+              ],
+              "color": "#44cc88",
+              "label": "$R(\\theta)\\,\\mathbf{e}_2$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "theta",
+              "label": "$\\theta$ (radians)",
+              "min": 0,
+              "max": 6.2832,
+              "step": 0.05,
+              "default": 0.7854
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$R(\\theta) = \\begin{pmatrix}{{cos(theta)}} & {{-sin(theta)}}\\\\ {{sin(theta)}} & {{cos(theta)}}\\end{pmatrix}$$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Determinant as Area",
+      "description": "The absolute value of the determinant $|ad - bc|$ equals the area of the parallelogram formed by the transformed unit square.",
+      "markdown": "# Determinant as Area\n\nFor a $2 \\times 2$ matrix $M = \\begin{pmatrix}a & b\\\\ c & d\\end{pmatrix}$:\n\n$$\\det(M) = ad - bc$$\n\n## Geometric Meaning\n\nThe unit square with vertices $(0,0), (1,0), (1,1), (0,1)$ is mapped to a **parallelogram** with vertices:\n\n$$(0,0),\\quad (a,c),\\quad (a+b, c+d),\\quad (b,d)$$\n\nThe **area** of this parallelogram equals $|\\det(M)| = |ad - bc|$.\n\n## Sign of the Determinant\n\n- $\\det > 0$: transformation preserves orientation (counterclockwise)\n- $\\det < 0$: transformation reverses orientation (reflection)\n- $\\det = 0$: the parallelogram collapses to a line — the transformation is **singular** (not invertible)\n\n## Cross Product Connection\n\nIn 3D, $|\\mathbf{u} \\times \\mathbf{v}|$ gives the area of the parallelogram spanned by $\\mathbf{u}$ and $\\mathbf{v}$, analogously to the 2D determinant.\n\n## Scale Factor\n\nFor an $n \\times n$ matrix, $|\\det(M)|$ is the **volume scale factor** — how much the transformation stretches or squishes $n$-dimensional volumes.\n\n> **Insight**: A matrix with $\\det = 2$ doubles every area; $\\det = 0.5$ halves every area.",
+      "range": [
+        [
+          -3,
+          3
+        ],
+        [
+          -3,
+          3
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          8
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            0,
+            10
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Zoomed-out face-on view — see the full XY transformation plane"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            4,
+            3,
+            4
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "3D perspective — notice that transformed vectors stay in the XY plane (no Z extent)"
+        },
+        {
+          "name": "Top Down",
+          "position": [
+            0,
+            8,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down from above — edge-on view of the XY plane"
+        },
+        {
+          "name": "Side",
+          "position": [
+            8,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Side view along X — edge-on, shows only Y-axis extent"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -3,
+            3
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.15,
+          "divisions": 12
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -3,
+            3
+          ],
+          "color": "#666699",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -3,
+            3
+          ],
+          "color": "#666699",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "The unit square",
+          "description": "The unit square has area 1. Under any linear transformation, its image has area $|\\det(M)|$.",
+          "add": [
+            {
+              "id": "unit-sq",
+              "type": "polygon",
+              "vertices": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0
+                ]
+              ],
+              "color": "#4488ff",
+              "opacity": 0.4,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#224488",
+                "specular": "#aaccff"
+              }
+            },
+            {
+              "id": "col1-vec",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                0,
+                0
+              ],
+              "color": "#ff4444",
+              "label": "$\\mathbf{e}_1$"
+            },
+            {
+              "id": "col2-vec",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                1,
+                0
+              ],
+              "color": "#44ff44",
+              "label": "$\\mathbf{e}_2$"
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M = \\begin{pmatrix}1 & 0\\\\ 0 & 1\\end{pmatrix}, \\quad \\det(M) = 1$$"
+            }
+          ]
+        },
+        {
+          "title": "Apply shear $[[2,1],[0,1]]$: det = 2",
+          "description": "The shear matrix $\\begin{pmatrix}2&1\\\\0&1\\end{pmatrix}$ has $\\det = 2$. The unit square becomes a parallelogram with area 2.",
+          "add": [
+            {
+              "id": "shear-sq",
+              "type": "polygon",
+              "vertices": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  2,
+                  0,
+                  0
+                ],
+                [
+                  3,
+                  1,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  0
+                ]
+              ],
+              "color": "#ffaa00",
+              "opacity": 0.4,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#886600",
+                "specular": "#ffddaa"
+              }
+            },
+            {
+              "id": "shear-col1",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                2,
+                0,
+                0
+              ],
+              "color": "#ff6600",
+              "label": "$M\\mathbf{e}_1 = (2,0)$"
+            },
+            {
+              "id": "shear-col2",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                1,
+                1,
+                0
+              ],
+              "color": "#00cc44",
+              "label": "$M\\mathbf{e}_2 = (1,1)$"
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M = \\begin{pmatrix}2 & 1\\\\ 0 & 1\\end{pmatrix}, \\quad \\det(M) = 2$$"
+            }
+          ]
+        },
+        {
+          "title": "Interactive: adjust the matrix",
+          "description": "Drag $a, b, c, d$ to reshape the parallelogram. Watch the area $|ad-bc|$ change. When the determinant hits 0, the square collapses!",
+          "remove": [
+            {
+              "id": "*"
+            }
+          ],
+          "add": [
+            {
+              "id": "sq-orig",
+              "type": "polygon",
+              "vertices": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  0
+                ],
+                [
+                  0,
+                  1,
+                  0
+                ]
+              ],
+              "color": "#4488ff",
+              "opacity": 0.15,
+              "shader": {
+                "shininess": 40,
+                "emissive": "#112244",
+                "specular": "#aaccff"
+              }
+            },
+            {
+              "id": "parallelogram",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "a",
+                  "c",
+                  "0"
+                ],
+                [
+                  "a+b",
+                  "c+d",
+                  "0"
+                ],
+                [
+                  "b",
+                  "d",
+                  "0"
+                ]
+              ],
+              "color": "#ffaa00",
+              "opacity": 0.4,
+              "shader": {
+                "shininess": 60,
+                "emissive": "#886600",
+                "specular": "#ffddaa"
+              }
+            },
+            {
+              "id": "col1-anim",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "a",
+                "c",
+                "0"
+              ],
+              "color": "#ff4444",
+              "label": "$M\\mathbf{e}_1$"
+            },
+            {
+              "id": "col2-anim",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "b",
+                "d",
+                "0"
+              ],
+              "color": "#44ff44",
+              "label": "$M\\mathbf{e}_2$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 1
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 0
+            },
+            {
+              "id": "d",
+              "label": "$d$",
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": 1
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$M = \\begin{pmatrix}{{a}} & {{b}}\\\\ {{c}} & {{d}}\\end{pmatrix}, \\quad \\det(M) = {{(a*d - b*c)}}$$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Geometric Proof of Determinant Area",
+      "description": "We prove $\\det(M) = ad - bc$ equals the parallelogram area by embedding it in a bounding box and subtracting exactly the right pieces.",
+      "markdown": "# Geometric Proof: det = Area\n\nFor $M = \\begin{pmatrix}a & b\\\\ c & d\\end{pmatrix}$, the parallelogram formed by columns $(a,c)$ and $(b,d)$ has area $= |ad - bc|$.\n\n## The Proof\n\nEmbed the parallelogram in its **bounding box** of size $(a+b) \\times (c+d)$:\n\n$$\\text{bbox area} = (a+b)(c+d) = ac + ad + bc + bd$$\n\nSubtract the pieces outside the parallelogram:\n\n- **2 rectangles** of size $b \\times c$: total $= 2bc$\n- **2 triangles** with legs $a, c$: total $= ac$\n- **2 triangles** with legs $b, d$: total $= bd$\n\n$$\\text{parallelogram} = (a+b)(c+d) - 2bc - ac - bd$$\n$$= ac + ad + bc + bd - 2bc - ac - bd = ad - bc \\checkmark$$\n\n## Key Insight\n\nEach pair of triangles can be **slid** to fill the complementary gap on the opposite side of the bounding box, making it visually clear they exactly account for the surplus area.",
+      "range": [
+        [
+          -0.5,
+          4.5
+        ],
+        [
+          -0.5,
+          3.5
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          1.5,
+          1,
+          9
+        ],
+        "target": [
+          1.5,
+          1,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            1.5,
+            1,
+            10
+          ],
+          "target": [
+            1.5,
+            1,
+            0
+          ],
+          "description": "Direct overhead view — see the parallelogram in the XY plane"
+        }
+      ],
+      "elements": [
+        {
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -0.5,
+            4.5
+          ],
+          "color": [
+            0.25,
+            0.25,
+            0.4
+          ],
+          "opacity": 0.12,
+          "divisions": 10
+        },
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -0.5,
+            4.5
+          ],
+          "color": "#555577",
+          "width": 1
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -0.5,
+            3.5
+          ],
+          "color": "#555577",
+          "width": 1
+        }
+      ],
+      "steps": [
+        {
+          "title": "The Parallelogram",
+          "description": "The matrix $M = \\begin{pmatrix}a & b\\\\ c & d\\end{pmatrix}$ maps the unit square to a parallelogram with vertices $(0,0)$, $(a,c)$, $(a+b,c+d)$, $(b,d)$. Its area equals $|\\det(M)| = |ad - bc|$.",
+          "add": [
+            {
+              "id": "para",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "a",
+                  "c",
+                  "0"
+                ],
+                [
+                  "a+b",
+                  "c+d",
+                  "0"
+                ],
+                [
+                  "b",
+                  "d",
+                  "0"
+                ]
+              ],
+              "color": "#c8a030",
+              "opacity": 0.55,
+              "shader": {
+                "emissive": "#664400",
+                "shininess": 50
+              }
+            },
+            {
+              "id": "col1-vec",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "a",
+                "c",
+                "0"
+              ],
+              "color": "#ff4444",
+              "label": "$(a,c)$"
+            },
+            {
+              "id": "col2-vec",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "b",
+                "d",
+                "0"
+              ],
+              "color": "#44cc44",
+              "label": "$(b,d)$"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$",
+              "min": 0.5,
+              "max": 3,
+              "step": 0.1,
+              "default": 2
+            },
+            {
+              "id": "b",
+              "label": "$b$",
+              "min": 0.1,
+              "max": 2,
+              "step": 0.1,
+              "default": 0.5
+            },
+            {
+              "id": "c",
+              "label": "$c$",
+              "min": 0.1,
+              "max": 2,
+              "step": 0.1,
+              "default": 0.5
+            },
+            {
+              "id": "d",
+              "label": "$d$",
+              "min": 0.5,
+              "max": 3,
+              "step": 0.1,
+              "default": 1.5
+            }
+          ],
+          "info": [
+            {
+              "id": "det-info",
+              "pos": "bottom-right",
+              "content": "$$M = \\begin{pmatrix}{{a}} & {{b}}\\\\ {{c}} & {{d}}\\end{pmatrix}$$\n\nParallelogram area $= |ad - bc| = {{abs(a*d - b*c)}}$"
+            }
+          ]
+        },
+        {
+          "title": "The Bounding Box",
+          "description": "Draw the bounding rectangle of size $(a+b) \\times (c+d)$. Its area is $(a+b)(c+d) = ac + ad + bc + bd$. Our goal: subtract what's outside the parallelogram.",
+          "add": [
+            {
+              "id": "bbox",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "a+b",
+                  "0",
+                  "0"
+                ],
+                [
+                  "a+b",
+                  "c+d",
+                  "0"
+                ],
+                [
+                  "0",
+                  "c+d",
+                  "0"
+                ]
+              ],
+              "color": "#8888aa",
+              "opacity": 0.18,
+              "shader": {
+                "emissive": "#222233",
+                "shininess": 20
+              }
+            }
+          ],
+          "info": [
+            {
+              "id": "det-info",
+              "pos": "bottom-right",
+              "content": "Bounding box $= (a+b)(c+d)$\n\n$= ({{a}}+{{b}})({{c}}+{{d}}) = {{((a+b)*(c+d))}}$\n\nParallelogram $= {{abs(a*d - b*c)}}$"
+            }
+          ]
+        },
+        {
+          "title": "Subtracting Rectangles",
+          "description": "Two congruent $b \\times c$ rectangles sit in opposite corners of the bounding box, completely outside the parallelogram. Subtracting them removes $2bc$ from the total.",
+          "remove": [
+            {
+              "id": "col1-vec"
+            },
+            {
+              "id": "col2-vec"
+            }
+          ],
+          "add": [
+            {
+              "id": "rect-bc1",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "a",
+                  "0",
+                  "0"
+                ],
+                [
+                  "a+b",
+                  "0",
+                  "0"
+                ],
+                [
+                  "a+b",
+                  "c",
+                  "0"
+                ],
+                [
+                  "a",
+                  "c",
+                  "0"
+                ]
+              ],
+              "color": "#3366ff",
+              "opacity": 0.55,
+              "shader": {
+                "emissive": "#112266",
+                "shininess": 40
+              }
+            },
+            {
+              "id": "rect-bc2",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "d",
+                  "0"
+                ],
+                [
+                  "b",
+                  "d",
+                  "0"
+                ],
+                [
+                  "b",
+                  "c+d",
+                  "0"
+                ],
+                [
+                  "0",
+                  "c+d",
+                  "0"
+                ]
+              ],
+              "color": "#3366ff",
+              "opacity": 0.55,
+              "shader": {
+                "emissive": "#112266",
+                "shininess": 40
+              }
+            }
+          ],
+          "info": [
+            {
+              "id": "det-info",
+              "pos": "bottom-right",
+              "content": "Subtract **2 rectangles** of $b \\times c$:\n\n$2bc = 2({{b}})({{c}}) = {{(2*b*c)}}$\n\nRunning total removed: ${{(2*b*c)}}$"
+            }
+          ]
+        },
+        {
+          "title": "Subtracting Triangles (ac)",
+          "description": "Two right triangles with legs $a$ and $c$ occupy opposite corners. Drag slider $t$ (or hit ▶) to watch each triangle slide to its complementary position, proving it exactly fills the surplus.",
+          "add": [
+            {
+              "id": "tri-ac1",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "b*t",
+                  "(c+d)*t",
+                  "0"
+                ],
+                [
+                  "a+b*t",
+                  "(c+d)*t",
+                  "0"
+                ],
+                [
+                  "a*(1-t)+b*t",
+                  "c*(1-t)+d*t",
+                  "0"
+                ]
+              ],
+              "color": "#ff6633",
+              "opacity": 0.7,
+              "shader": {
+                "emissive": "#441100",
+                "shininess": 40
+              }
+            },
+            {
+              "id": "tri-ac1-ghost",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "a",
+                  "0",
+                  "0"
+                ],
+                [
+                  "a",
+                  "c",
+                  "0"
+                ]
+              ],
+              "color": "#ff6633",
+              "opacity": 0.18,
+              "shader": {
+                "emissive": "#220800",
+                "shininess": 20
+              }
+            },
+            {
+              "id": "tri-ac2",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "b*(1-t)",
+                  "(c+d)*(1-t)",
+                  "0"
+                ],
+                [
+                  "a+b*(1-t)",
+                  "(c+d)*(1-t)",
+                  "0"
+                ],
+                [
+                  "b*(1-t)+a*t",
+                  "d*(1-t)+c*t",
+                  "0"
+                ]
+              ],
+              "color": "#ff6633",
+              "opacity": 0.7,
+              "shader": {
+                "emissive": "#441100",
+                "shininess": 40
+              }
+            },
+            {
+              "id": "tri-ac2-ghost",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "b",
+                  "c+d",
+                  "0"
+                ],
+                [
+                  "a+b",
+                  "c+d",
+                  "0"
+                ],
+                [
+                  "b",
+                  "d",
+                  "0"
+                ]
+              ],
+              "color": "#ff6633",
+              "opacity": 0.18,
+              "shader": {
+                "emissive": "#220800",
+                "shininess": 20
+              }
+            }
+          ],
+          "sliders": [
+            {
+              "id": "t",
+              "label": "$t$ (slide triangles)",
+              "min": 0,
+              "max": 1,
+              "step": 0.01,
+              "default": 0,
+              "animate": true,
+              "duration": 2000
+            }
+          ],
+          "info": [
+            {
+              "id": "det-info",
+              "pos": "bottom-right",
+              "content": "Subtract **2 ac-triangles** of $\\frac{1}{2}ac$:\n\n$\\frac{1}{2}({{a}})({{c}}) = {{(a*c/2)}}$ each\n\nTotal $ac = {{(a*c)}}$\n\nRunning total removed: ${{(2*b*c + a*c)}}$"
+            }
+          ]
+        },
+        {
+          "title": "Subtracting Triangles (bd)",
+          "description": "Two right triangles with legs $b$ and $d$ fill the remaining surplus. Watch them slide to their complementary positions. After all subtractions, only the parallelogram area $ad - bc$ remains.",
+          "remove": [
+            {
+              "id": "tri-ac1"
+            },
+            {
+              "id": "tri-ac1-ghost"
+            },
+            {
+              "id": "tri-ac2"
+            },
+            {
+              "id": "tri-ac2-ghost"
+            }
+          ],
+          "add": [
+            {
+              "id": "tri-bd1",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "a*t",
+                  "c*t",
+                  "0"
+                ],
+                [
+                  "(a+b)*t",
+                  "d+(c-d)*t",
+                  "0"
+                ],
+                [
+                  "b+a*t",
+                  "d+c*t",
+                  "0"
+                ]
+              ],
+              "color": "#aa44ff",
+              "opacity": 0.7,
+              "shader": {
+                "emissive": "#330066",
+                "shininess": 40
+              }
+            },
+            {
+              "id": "tri-bd1-ghost",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "0",
+                  "0",
+                  "0"
+                ],
+                [
+                  "0",
+                  "d",
+                  "0"
+                ],
+                [
+                  "b",
+                  "d",
+                  "0"
+                ]
+              ],
+              "color": "#aa44ff",
+              "opacity": 0.18,
+              "shader": {
+                "emissive": "#1a0033",
+                "shininess": 20
+              }
+            },
+            {
+              "id": "tri-bd2",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "a*(1-t)",
+                  "c*(1-t)",
+                  "0"
+                ],
+                [
+                  "(a+b)*(1-t)",
+                  "c*(1-t)+d*t",
+                  "0"
+                ],
+                [
+                  "a*(1-t)+b",
+                  "c*(1-t)+d",
+                  "0"
+                ]
+              ],
+              "color": "#aa44ff",
+              "opacity": 0.7,
+              "shader": {
+                "emissive": "#330066",
+                "shininess": 40
+              }
+            },
+            {
+              "id": "tri-bd2-ghost",
+              "type": "animated_polygon",
+              "vertices": [
+                [
+                  "a",
+                  "c",
+                  "0"
+                ],
+                [
+                  "a+b",
+                  "c",
+                  "0"
+                ],
+                [
+                  "a+b",
+                  "c+d",
+                  "0"
+                ]
+              ],
+              "color": "#aa44ff",
+              "opacity": 0.18,
+              "shader": {
+                "emissive": "#1a0033",
+                "shininess": 20
+              }
+            }
+          ],
+          "info": [
+            {
+              "id": "det-info",
+              "pos": "bottom-right",
+              "content": "Subtract **2 bd-triangles** of $\\frac{1}{2}bd$:\n\n$\\frac{1}{2}({{b}})({{d}}) = {{(b*d/2)}}$ each\n\nTotal $bd = {{(b*d)}}$\n\nRunning total removed: ${{(2*b*c + a*c + b*d)}}$"
+            }
+          ]
+        },
+        {
+          "title": "The Result: $ad - bc$",
+          "description": "After removing the 2 bc-rectangles, 2 ac-triangles, and 2 bd-triangles from the bounding box, exactly the parallelogram remains. The formula confirms $\\det(M) = ad - bc$.",
+          "remove": [
+            {
+              "id": "tri-bd1"
+            },
+            {
+              "id": "tri-bd1-ghost"
+            },
+            {
+              "id": "tri-bd2"
+            },
+            {
+              "id": "tri-bd2-ghost"
+            },
+            {
+              "id": "rect-bc1"
+            },
+            {
+              "id": "rect-bc2"
+            },
+            {
+              "id": "bbox"
+            }
+          ],
+          "info": [
+            {
+              "id": "det-info",
+              "pos": "bottom-right",
+              "content": "$(a+b)(c+d) - ac - bd - 2bc = ad - bc$\n\n$= ({{a}})({{d}}) - ({{b}})({{c}}) = {{(a*d-b*c)}}$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "3D Rotation Matrices",
+      "description": "Three fundamental rotations — about the $x$, $y$, and $z$ axes — are the building blocks for all 3D rotations.",
+      "markdown": "# 3D Rotation Matrices\n\nRotation about the coordinate axes by angle $\\theta$:\n\n$$R_x(\\theta) = \\begin{pmatrix}1&0&0\\\\0&\\cos\\theta&-\\sin\\theta\\\\0&\\sin\\theta&\\cos\\theta\\end{pmatrix}$$\n\n$$R_y(\\theta) = \\begin{pmatrix}\\cos\\theta&0&\\sin\\theta\\\\0&1&0\\\\-\\sin\\theta&0&\\cos\\theta\\end{pmatrix}$$\n\n$$R_z(\\theta) = \\begin{pmatrix}\\cos\\theta&-\\sin\\theta&0\\\\\\sin\\theta&\\cos\\theta&0\\\\0&0&1\\end{pmatrix}$$\n\n## Properties of All Rotation Matrices\n\n- $\\det(R) = 1$ — preserves orientation and volume\n- $R^T R = I$ — columns and rows are orthonormal\n- $R^{-1} = R^T$ — transpose is the inverse\n- Eigenvalues are $1, e^{i\\theta}, e^{-i\\theta}$\n\n## The Rotation Axis\n\nFor $R_x$: the $x$-axis is fixed (eigenvalue 1)\nFor $R_y$: the $y$-axis is fixed\nFor $R_z$: the $z$-axis is fixed\n\nThis is why the **rotation axis is an eigenvector** with eigenvalue 1 — the key insight connecting rotation and eigenvalues!\n\n> **Euler's Theorem**: Any 3D rotation can be written as a rotation about a single axis by some angle.",
+      "range": [
+        [
+          -2,
+          2
+        ],
+        [
+          -2,
+          2
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          4,
+          3,
+          4
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Iso",
+          "position": [
+            6,
+            5,
+            6
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Wide isometric view of the 3D rotation"
+        },
+        {
+          "name": "Top",
+          "position": [
+            0,
+            8,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Looking straight down the Y axis — see the rotation plane from above"
+        },
+        {
+          "name": "Front",
+          "position": [
+            0,
+            0,
+            8
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Front view along Z — see the rotation axis"
+        },
+        {
+          "name": "Side",
+          "position": [
+            8,
+            0,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Side view along X"
+        }
+      ],
+      "elements": [
+        {
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -2,
+            2
+          ],
+          "color": "#cc4444",
+          "width": 2
+        },
+        {
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            -2,
+            2
+          ],
+          "color": "#44cc44",
+          "width": 2
+        },
+        {
+          "type": "axis",
+          "axis": "z",
+          "range": [
+            -2,
+            2
+          ],
+          "color": "#4444cc",
+          "width": 2
+        }
+      ],
+      "steps": [
+        {
+          "title": "A 3D reference vector",
+          "description": "Start with the vector $\\mathbf{v} = (1, 1, 1)/\\sqrt{3}$ shown in gold. We will rotate it about each coordinate axis.",
+          "add": [
+            {
+              "id": "vec-orig",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0.577,
+                0.577,
+                0.577
+              ],
+              "color": "#ffcc00",
+              "label": "$\\mathbf{v} = (1,1,1)/\\sqrt{3}$"
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$R = \\begin{pmatrix}1 & 0 & 0\\\\ 0 & 1 & 0\\\\ 0 & 0 & 1\\end{pmatrix}$$"
+            }
+          ]
+        },
+        {
+          "title": "Rotation about $z$-axis",
+          "description": "$R_z(\\theta)$ rotates in the $xy$-plane. The $z$-component of $\\mathbf{v}$ is preserved. The $z$-axis is the **fixed** direction.",
+          "add": [
+            {
+              "id": "z-axis-line",
+              "type": "line",
+              "from": [
+                0,
+                0,
+                -2
+              ],
+              "to": [
+                0,
+                0,
+                2
+              ],
+              "color": "#4444ff",
+              "width": 3,
+              "label": "rotation axis"
+            },
+            {
+              "id": "vec-rz",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                0.8165,
+                0.577
+              ],
+              "color": "#ff8844",
+              "label": "$R_z(90^\\circ)\\,\\mathbf{v}$"
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$R_z(90^\\circ) = \\begin{pmatrix}0 & -1 & 0\\\\ 1 & 0 & 0\\\\ 0 & 0 & 1\\end{pmatrix}$$"
+            }
+          ]
+        },
+        {
+          "title": "Interactive: choose axis and angle",
+          "description": "Use slider $\\theta$ to rotate. The $x$-component of the rotated vector follows $R_z$: $(v_x\\cos\\theta - v_y\\sin\\theta, v_x\\sin\\theta + v_y\\cos\\theta, v_z)$.",
+          "remove": [
+            {
+              "id": "vec-rz"
+            },
+            {
+              "id": "z-axis-line"
+            }
+          ],
+          "add": [
+            {
+              "id": "vec-rotated-3d",
+              "type": "animated_vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "expr": [
+                "0.577*cos(theta) - 0.577*sin(theta)",
+                "0.577*sin(theta) + 0.577*cos(theta)",
+                "0.577"
+              ],
+              "color": "#ff6644",
+              "label": "$R_z(\\theta)\\,\\mathbf{v}$"
+            },
+            {
+              "id": "z-fixed-axis",
+              "type": "vector",
+              "from": [
+                0,
+                0,
+                0
+              ],
+              "to": [
+                0,
+                0,
+                1.5
+              ],
+              "color": "#4488ff",
+              "label": "Fixed $z$-axis"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "theta",
+              "label": "$\\theta$ (radians)",
+              "min": 0,
+              "max": 6.2832,
+              "step": 0.05,
+              "default": 0
+            }
+          ],
+          "info": [
+            {
+              "id": "matrix",
+              "content": "$$R_z(\\theta) = \\begin{pmatrix}{{cos(theta)}} & {{-sin(theta)}} & 0\\\\ {{sin(theta)}} & {{cos(theta)}} & 0\\\\ 0 & 0 & 1\\end{pmatrix}$$"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

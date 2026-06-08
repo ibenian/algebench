@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://algebench.dev/schemas/semantic-graph.schema.json",
+  "title": "Semantic Graph",
+  "description": "Schema for the semantic graph produced by latex_to_graph.py. Represents a LaTeX expression as a directed graph of typed nodes (variables, operators, numbers) connected by edges.",
+  "type": "object",
+  "required": ["nodes", "edges"],
+  "additionalProperties": false,
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "description": "Ordered list of graph nodes. Each node represents a symbol, operator, number, or composite expression.",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "description": "Directed edges connecting nodes. Direction flows from operand to operator (e.g. m → multiply).",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "classification": {
+      "$ref": "#/$defs/classification",
+      "description": "Expression classification metadata (algebraic, ODE, PDE)."
+    },
+    "domain": {
+      "type": "string",
+      "description": "The mathematical or scientific domain of this expression (e.g. \"thermodynamics\", \"electromagnetism\", \"linear_algebra\", \"topology\"). Declared once for the whole graph; disambiguates symbols like P (power vs pressure) and informs how variables should be interpreted."
+    }
+  },
+  "$defs": {
+    "nodeType": {
+      "type": "string",
+      "enum": ["scalar", "vector", "constant", "number", "operator", "function", "relation", "expression", "text", "annotation", "ket", "bra", "braket"],
+      "description": "The semantic role of the node. ``ket`` / ``bra`` are Dirac-notation state vectors (``|ψ⟩`` / ``⟨ψ|``); ``braket`` is reserved for legacy graphs — newer parses emit inner products as ``type=operator`` with ``op=inner_product``."
+    },
+    "operatorOp": {
+      "type": "string",
+      "enum": [
+        "add", "subtract", "multiply", "divide", "power", "equals", "negation",
+        "derivative", "partial_derivative",
+        "integral", "closed_integral", "limit", "tends_to", "sum", "product",
+        "sin", "cos", "tan", "log", "exp", "sqrt", "abs",
+        "arcsin", "arccos", "arctan",
+        "factorial", "choose",
+        "greater_than", "less_than", "greater_equal", "less_equal",
+        "not_equal", "approximately", "proportional",
+        "implies", "iff",
+        "element_of", "not_element_of",
+        "inner_product",
+        "piecewise", "branch"
+      ],
+      "description": "The mathematical operation this operator or function performs."
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique node identifier. Variables use their symbol name (e.g. \"m\"); generated nodes use a prefix with counter (e.g. \"__multiply_1\")."
+        },
+        "type": {
+          "$ref": "#/$defs/nodeType"
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable descriptive name (e.g. \"mass\", \"acceleration\"). Present on symbols and numbers."
+        },
+        "emoji": {
+          "type": "string",
+          "description": "Emoji representing the physical or mathematical concept (e.g. \"⚖️\" for mass)."
+        },
+        "latex": {
+          "type": "string",
+          "description": "LaTeX rendering of the symbol (e.g. \"\\\\psi\", \"\\\\hbar\"). Present on symbols; may differ from the id when the symbol has a special LaTeX command."
+        },
+        "op": {
+          "type": "string",
+          "description": "Operation name for operator, function, relation, and expression nodes. Standard operators use values from the operatorOp enum; expressions use the SymPy class name (e.g. \"Tuple\"); relations use the relation name (e.g. \"equals\", \"greater_than\")."
+        },
+        "exponent": {
+          "type": "string",
+          "description": "Literal exponent value, present only on power operators with a constant exponent (e.g. \"2\" for x²). The exponent is absorbed into the operator node rather than represented as a separate number child."
+        },
+        "with_respect_to": {
+          "type": "string",
+          "description": "Comma-separated node ID(s) of the variable(s) of operation for derivative, integral, sum, product, and tends_to operators (e.g. \"x\" for d/dx, \"x, y\" for ∂²/∂x∂y, \"x\" for lim x→a). Each ID references a node in the graph."
+        },
+        "lower_bound": {
+          "type": "string",
+          "description": "Node ID of the lower bound for definite integrals, sums, and products. References a node in the graph (e.g. \"a\" for a variable node, \"__num_4\" for a number node). Present only when bounds are specified."
+        },
+        "upper_bound": {
+          "type": "string",
+          "description": "Node ID of the upper bound for definite integrals, sums, and products. References a node in the graph (e.g. \"b\" for a variable node, \"__const_5\" for an infinity node). Present only when bounds are specified."
+        },
+        "limit_point": {
+          "type": "string",
+          "description": "Node ID of the point being approached (e.g. \"__num_3\" for lim x→0, \"__const_5\" for lim x→∞). References a node in the graph. Present only on tends_to operator nodes (the approach specification inside a limit, not on the limit node itself)."
+        },
+        "limit_direction": {
+          "type": "string",
+          "enum": ["+", "-"],
+          "description": "Direction of approach for one-sided limits: \"+\" for right-hand (x→a⁺), \"-\" for left-hand (x→a⁻). Omitted for bilateral limits (the default). Present only on tends_to operator nodes."
+        },
+        "modulus": {
+          "type": "string",
+          "description": "Modulus value for congruence relations (e.g. \"p\" for a ≡ b (mod p)). Present only on relation nodes with op=\"congruent\"."
+        },
+        "subexpr": {
+          "type": "string",
+          "description": "LaTeX sub-expression reconstructed by sympy.latex() for the SymPy expression rooted at this node. Used for interactive hover tooltips."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable explanation of what this node represents in context (e.g. \"rest mass times speed of light squared — the mass-energy equivalence term\"). Can be author-provided via overrides or AI-generated."
+        },
+        "quantity": {
+          "type": "string",
+          "description": "Physical quantity from a controlled vocabulary (e.g. \"pressure\", \"velocity\", \"energy\"). Enables semantic matching — two variables with the same quantity represent the same physical concept regardless of symbol name."
+        },
+        "dimension": {
+          "type": "string",
+          "pattern": "^1$|^[MLTIΘNJ](⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)?(·[MLTIΘNJ](⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)?)*$",
+          "description": "SI dimensional formula using the 7 base dimension symbols: M (mass), L (length), T (time), I (electric current), Θ (temperature), N (amount of substance), J (luminous intensity). Use '1' for dimensionless. Exponents use Unicode superscripts (e.g. \"M·L⁻¹·T⁻²\" for pressure, \"L·T⁻¹\" for velocity). Separator is middle dot '·'."
+        },
+        "unit": {
+          "type": "string",
+          "description": "Default SI unit (e.g. \"Pa\", \"m/s\", \"kg\"). Informational; does not imply the expression is in these units."
+        },
+        "value": {
+          "type": ["number", "string"],
+          "description": "Known numerical value for constants (e.g. 299792458, \"6.674e-11\"). Use string for values that need scientific notation or exact representation."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["state_variable", "parameter", "constant", "coefficient", "index", "dependent", "independent", "observable", "field"],
+          "description": "The role this variable plays in the equation. Distinguishes constants from variables, independent from dependent quantities, etc."
+        },
+        "color": {
+          "type": "string",
+          "description": "Optional presentation override for the node's text color (any CSS color, e.g. \"#0d47a1\"). When present, the mermaid renderer prefers this over the role-based palette. Also used by the server-side highlight overlay to mirror step highlight colors onto matched nodes."
+        },
+        "highlight": {
+          "type": "string",
+          "description": "Name of the proof-step highlight that matched this node — the key used in ``proofStep.highlights`` (e.g. \"m\" for the highlight authored as ``\\htmlClass{hl-m}{...}``). Informational only at render time; reserved for downstream visualizations that want to cross-reference graph nodes with their originating highlight."
+        },
+        "variant": {
+          "type": "string",
+          "enum": ["direct", "inverse", "neutral"],
+          "description": "Optional proportionality variant for the node, mirroring the edge ``semantic`` values (direct, inverse, neutral)."
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Source node id (operand)."
+        },
+        "to": {
+          "type": "string",
+          "description": "Target node id (operator or result)."
+        },
+        "label": {
+          "type": "string",
+          "description": "Optional edge label displayed on the diagram."
+        },
+        "semantic": {
+          "type": "string",
+          "enum": ["direct", "inverse", "neutral"],
+          "description": "Proportionality of the edge: direct (more input → more output), inverse (more input → less output), or neutral."
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Strength of the relationship. For a base→power edge, this is the absolute value of the exponent (e.g. 2 for x², 3 for x⁻³). Renderers multiply this by a base stroke width and clamp to [1, 8] so very large exponents stay visually sane. Omit for edges where strength is undefined (addition, structural)."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["lhs", "rhs", "wrt", "exp", "base", "lb", "ub", "value", "condition", "modulus", "assertion"],
+          "description": "Operand position or relationship. 'lhs'/'rhs' for asymmetric operators (comparisons, tends_to). 'wrt' for the differentiation/integration variable edge into derivative/integral nodes. 'exp' for the exponent edge into a power node with symbolic exponent. 'base' for the base argument edge into a log function node. 'lb'/'ub' for lower/upper bound edges into sum/product nodes. 'value'/'condition' for piecewise branch nodes — 'value' is the branch result, 'condition' is the guard predicate. 'modulus' for the modulus operand of a congruence relation. 'assertion' for an assertion-form relation (e.g. X=k) feeding into a probability function P(X=k). Omit for symmetric operators (add, multiply, equals)."
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["algebraic", "ODE", "PDE", "statements", "piecewise"],
+          "description": "Expression type: algebraic (no derivatives), ODE (single independent variable), PDE (multiple independent variables), statements (top-level comma-separated clauses — each clause is an independent statement emitted as its own subtree; see issue #144), or piecewise (expression defined by cases/branches via \\begin{cases}...\\end{cases})."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "Number of independent statements in the graph. Present only when kind = \"statements\". Redundant with clauses.length but kept for quick access."
+        },
+        "branches": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of case branches in a piecewise expression. Present only when kind = \"piecewise\"."
+        },
+        "clauses": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/classification" },
+          "description": "Per-clause classifications. Each entry is a full classification object for one comma-separated clause — lets downstream consumers see that, e.g., statement 0 is a PDE while statement 1 is algebraic, without re-walking the clause subtrees. Present only when kind = \"statements\"."
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Highest derivative order. Present only for ODE/PDE."
+        },
+        "dependent_variables": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Variables being differentiated (e.g. [\"psi\"]). Present only for ODE/PDE."
+        },
+        "independent_variables": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Variables differentiated with respect to (e.g. [\"t\", \"x\"]). Present only for ODE/PDE."
+        },
+        "sympy_hints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "SymPy classify_ode hint strings (e.g. [\"separable\", \"1st_linear\"]). Present only for single-variable ODEs."
+        },
+        "linear": {
+          "type": "boolean",
+          "description": "Whether the ODE is linear. Present only for single-variable ODEs."
+        },
+        "homogeneous": {
+          "type": "boolean",
+          "description": "Whether the ODE is homogeneous. Present only for single-variable ODEs."
+        },
+        "constant_coefficients": {
+          "type": "boolean",
+          "description": "Whether the ODE has constant coefficients. Present only for single-variable ODEs."
+        }
+      }
+    }
+  }
+}
