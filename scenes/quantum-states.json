@@ -2040,25 +2040,25 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "c0___equals_1", "type": "relation", "op": "equals", "subexpr": "|\\psi\\rangle = \\alpha| 0\\rangle + \\beta| 1\\rangle", "description": "A general qubit state is a linear combination of the basis states $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$."},
-                    {"id": "c0___ket_2", "type": "ket", "emoji": "🌀", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle", "description": "A general pure state of a qubit, denoted by $\\lvert\\psi\\rangle$.", "quantity": "quantum_state"},
-                    {"id": "c0___add_3", "type": "operator", "op": "add", "subexpr": "\\alpha {\\left|0\\right\\rangle } + \\beta {\\left|1\\right\\rangle }", "description": "The superposition of the basis states, weighted by their complex amplitudes $\\alpha$ and $\\beta$."},
-                    {"id": "c0___multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\alpha {\\left|0\\right\\rangle }", "description": "The basis state $\\lvert 0\\rangle$ scaled by its complex amplitude $\\alpha$."},
-                    {"id": "alpha", "type": "scalar", "emoji": "🔢", "latex": "\\alpha", "subexpr": "\\alpha", "description": "The complex amplitude $\\alpha$ for the qubit being in the basis state $\\lvert 0\\rangle$.", "quantity": "probability_amplitude", "dimension": "1", "unit": "", "role": "coefficient"},
-                    {"id": "c0___ket_5", "type": "ket", "emoji": "⬇️", "latex": "\\left|0\\right\\rangle", "subexpr": "\\left|0\\right\\rangle", "description": "The 'ground' or 'spin-down' computational basis state, $\\lvert 0\\rangle$.", "quantity": "basis_state"},
-                    {"id": "c0___multiply_6", "type": "operator", "op": "multiply", "subexpr": "\\beta {\\left|1\\right\\rangle }", "description": "The basis state $\\lvert 1\\rangle$ scaled by its complex amplitude $\\beta$."},
-                    {"id": "beta", "type": "scalar", "emoji": "🔢", "latex": "\\beta", "subexpr": "\\beta", "description": "The complex amplitude $\\beta$ for the qubit being in the basis state $\\lvert 1\\rangle$.", "quantity": "probability_amplitude", "dimension": "1", "unit": "", "role": "coefficient"},
-                    {"id": "c0___ket_7", "type": "ket", "emoji": "⬆️", "latex": "\\left|1\\right\\rangle", "subexpr": "\\left|1\\right\\rangle", "description": "The 'excited' or 'spin-up' computational basis state, $\\lvert 1\\rangle$.", "quantity": "basis_state"},
-                    {"id": "c1___and_1", "type": "operator", "label": "and", "emoji": ",", "op": "and", "subexpr": "\\alpha,\\beta", "description": "The complex amplitudes $\\alpha$ and $\\beta$."},
-                    {"id": "C", "type": "scalar", "latex": "\\mathbb{C}", "subexpr": "{C}", "description": "The set of complex numbers, $\\mathbb{C}$."},
-                    {"id": "c1___element_of_2", "type": "relation", "label": "element of", "emoji": "∈", "op": "element_of", "subexpr": "\\alpha,\\beta\\in\\mathbb{C}", "description": "The amplitudes $\\alpha$ and $\\beta$ are elements of the set of complex numbers."},
-                    {"id": "c2___equals_1", "type": "relation", "emoji": "⚖️", "op": "equals", "subexpr": "|\\alpha|^2 + |\\beta|^2 = 1", "description": "The normalization condition for the qubit state, ensuring the total probability is 1."},
-                    {"id": "c2___add_2", "type": "operator", "op": "add", "subexpr": "\\left|{\\alpha}\\right|^{2} + \\left|{\\beta}\\right|^{2}", "description": "The sum of the probabilities of measuring the qubit in the basis states $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$.", "quantity": "probability", "dimension": "1", "unit": ""},
-                    {"id": "c2___power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left|{\\alpha}\\right|^{2}", "description": "The probability of measuring the qubit in state $\\lvert 0\\rangle$, given by the squared modulus of amplitude $\\alpha$.", "quantity": "probability", "dimension": "1", "unit": ""},
-                    {"id": "c2___abs_4", "type": "function", "op": "abs", "subexpr": "\\left|{\\alpha}\\right|", "description": "The modulus of the complex amplitude $\\alpha$.", "quantity": "modulus", "dimension": "1", "unit": ""},
-                    {"id": "c2___power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left|{\\beta}\\right|^{2}", "description": "The probability of measuring the qubit in state $\\lvert 1\\rangle$, given by the squared modulus of amplitude $\\beta$.", "quantity": "probability", "dimension": "1", "unit": ""},
-                    {"id": "c2___abs_6", "type": "function", "op": "abs", "subexpr": "\\left|{\\beta}\\right|", "description": "The modulus of the complex amplitude $\\beta$.", "quantity": "modulus", "dimension": "1", "unit": ""},
-                    {"id": "c2___num_7", "type": "number", "label": "1", "emoji": "1️⃣", "subexpr": "1", "description": "The total probability of finding the qubit in any state, which must be 1.", "quantity": "probability", "dimension": "1", "unit": "", "value": 1}
+                    {"id": "c0___equals_1", "type": "relation", "op": "equals", "subexpr": "|\\psi\\rangle = \\alpha| 0\\rangle + \\beta| 1\\rangle"},
+                    {"id": "c0___ket_2", "type": "ket", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle"},
+                    {"id": "c0___add_3", "type": "operator", "op": "add", "subexpr": "\\alpha {\\left|0\\right\\rangle } + \\beta {\\left|1\\right\\rangle }"},
+                    {"id": "c0___multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\alpha {\\left|0\\right\\rangle }"},
+                    {"id": "alpha", "type": "scalar", "latex": "\\alpha", "subexpr": "\\alpha"},
+                    {"id": "c0___ket_5", "type": "ket", "latex": "\\left|0\\right\\rangle", "subexpr": "\\left|0\\right\\rangle"},
+                    {"id": "c0___multiply_6", "type": "operator", "op": "multiply", "subexpr": "\\beta {\\left|1\\right\\rangle }"},
+                    {"id": "beta", "type": "scalar", "latex": "\\beta", "subexpr": "\\beta"},
+                    {"id": "c0___ket_7", "type": "ket", "latex": "\\left|1\\right\\rangle", "subexpr": "\\left|1\\right\\rangle"},
+                    {"id": "c1___and_1", "type": "operator", "label": "and", "emoji": ",", "op": "and", "subexpr": "\\alpha,\\beta"},
+                    {"id": "C", "type": "scalar", "latex": "\\mathbb{C}", "subexpr": "{C}"},
+                    {"id": "c1___element_of_2", "type": "relation", "label": "element of", "emoji": "∈", "op": "element_of", "subexpr": "\\alpha,\\beta\\in\\mathbb{C}"},
+                    {"id": "c2___equals_1", "type": "relation", "op": "equals", "subexpr": "|\\alpha|^2 + |\\beta|^2 = 1"},
+                    {"id": "c2___add_2", "type": "operator", "op": "add", "subexpr": "\\left|{\\alpha}\\right|^{2} + \\left|{\\beta}\\right|^{2}"},
+                    {"id": "c2___power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left|{\\alpha}\\right|^{2}"},
+                    {"id": "c2___abs_4", "type": "function", "op": "abs", "subexpr": "\\left|{\\alpha}\\right|"},
+                    {"id": "c2___power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left|{\\beta}\\right|^{2}"},
+                    {"id": "c2___abs_6", "type": "function", "op": "abs", "subexpr": "\\left|{\\beta}\\right|"},
+                    {"id": "c2___num_7", "type": "number", "label": "1", "subexpr": "1"}
                   ],
                   "edges": [
                     {"from": "c0___ket_2", "to": "c0___equals_1"},
@@ -2090,11 +2090,6 @@
                       {"kind": "algebraic"},
                       {"kind": "algebraic"}
                     ]
-                  },
-                  "domain": "quantum_mechanics",
-                  "enrichment": {
-                    "reasoning": "The context describes a qubit on the Bloch sphere, so the domain is `quantum_mechanics`. The symbols $\\alpha$ and $\\beta$ are complex probability amplitudes.",
-                    "fields": ["domain", "nodes.c0___equals_1.description", "nodes.c0___ket_2.description", "nodes.c0___ket_2.emoji", "nodes.c0___ket_2.quantity", "nodes.c0___add_3.description", "nodes.c0___multiply_4.description", "nodes.alpha.description", "nodes.alpha.dimension", "nodes.alpha.emoji", "nodes.alpha.quantity", "nodes.alpha.role", "nodes.alpha.unit", "nodes.c0___ket_5.description", "nodes.c0___ket_5.emoji", "nodes.c0___ket_5.quantity", "nodes.c0___multiply_6.description", "nodes.beta.description", "nodes.beta.dimension", "nodes.beta.emoji", "nodes.beta.quantity", "nodes.beta.role", "nodes.beta.unit", "nodes.c0___ket_7.description", "nodes.c0___ket_7.emoji", "nodes.c0___ket_7.quantity", "nodes.c1___and_1.description", "nodes.C.description", "nodes.c1___element_of_2.description", "nodes.c2___equals_1.description", "nodes.c2___equals_1.emoji", "nodes.c2___add_2.description", "nodes.c2___add_2.dimension", "nodes.c2___add_2.quantity", "nodes.c2___add_2.unit", "nodes.c2___power_3.description", "nodes.c2___power_3.dimension", "nodes.c2___power_3.quantity", "nodes.c2___power_3.unit", "nodes.c2___abs_4.description", "nodes.c2___abs_4.dimension", "nodes.c2___abs_4.quantity", "nodes.c2___abs_4.unit", "nodes.c2___power_5.description", "nodes.c2___power_5.dimension", "nodes.c2___power_5.quantity", "nodes.c2___power_5.unit", "nodes.c2___abs_6.description", "nodes.c2___abs_6.dimension", "nodes.c2___abs_6.quantity", "nodes.c2___abs_6.unit", "nodes.c2___num_7.description", "nodes.c2___num_7.dimension", "nodes.c2___num_7.emoji", "nodes.c2___num_7.quantity", "nodes.c2___num_7.unit", "nodes.c2___num_7.value"]
                   }
                 }
               }
@@ -2114,48 +2109,50 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "c0___equals_1", "type": "relation", "op": "equals", "subexpr": "\\alpha = r_\\alpha\\, e^{i\\gamma_\\alpha}", "description": "Relates the complex amplitude $\\alpha$ to its polar form, $r_\\alpha e^{i\\gamma_\\alpha}$."},
-                    {"id": "alpha", "type": "scalar", "emoji": "🧊", "latex": "\\alpha", "subexpr": "\\alpha", "description": "The complex amplitude $\\alpha$ for the qubit's $\\lvert 0\\rangle$ state.", "quantity": "amplitude", "dimension": "1", "unit": ""},
-                    {"id": "c0___multiply_2", "type": "operator", "op": "multiply", "subexpr": "e^{\\gamma_{\\alpha} i} r_{\\alpha}", "description": "Multiplies the magnitude $r_\\alpha$ by the phase factor $e^{i\\gamma_\\alpha}$ to form the complex amplitude $\\alpha$.", "quantity": "amplitude", "dimension": "1", "unit": ""},
-                    {"id": "r_alpha", "type": "scalar", "latex": "r_{\\alpha}", "subexpr": "r_{\\alpha}", "description": "The magnitude (a real number) of the complex amplitude $\\alpha$.", "quantity": "magnitude", "dimension": "1", "unit": ""},
-                    {"id": "c0___power_3", "type": "operator", "op": "power", "subexpr": "e^{\\gamma_{\\alpha} i}", "description": "Euler's formula gives the phase factor for amplitude $\\alpha$.", "quantity": "phase", "dimension": "1", "unit": ""},
-                    {"id": "e", "type": "scalar", "emoji": "🌳", "latex": "e", "subexpr": "e", "description": "The base of the natural logarithm, Euler's number $e \\approx 2.718$.", "quantity": "e", "dimension": "1", "unit": "", "value": 2.71828, "role": "constant"},
-                    {"id": "c0___multiply_4", "type": "operator", "op": "multiply", "subexpr": "i \\gamma_{\\alpha}", "description": "The imaginary exponent representing the phase angle $\\gamma_\\alpha$.", "dimension": "1", "unit": ""},
-                    {"id": "i", "type": "scalar", "emoji": "👻", "latex": "i", "subexpr": "i", "description": "The imaginary unit, $i = \\sqrt{-1}$.", "quantity": "imaginary_unit", "dimension": "1", "unit": "", "role": "constant"},
-                    {"id": "gamma_alpha", "type": "scalar", "latex": "\\gamma_{\\alpha}", "subexpr": "\\gamma_{\\alpha}", "description": "The phase angle of the complex amplitude $\\alpha$.", "quantity": "phase_angle", "dimension": "1", "unit": "rad"},
-                    {"id": "c1___equals_1", "type": "relation", "op": "equals", "subexpr": "\\beta = r_\\beta\\, e^{i\\gamma_\\beta}", "description": "Relates the complex amplitude $\\beta$ to its polar form, $r_\\beta e^{i\\gamma_\\beta}$."},
-                    {"id": "beta", "type": "scalar", "emoji": "🔥", "latex": "\\beta", "subexpr": "\\beta", "description": "The complex amplitude $\\beta$ for the qubit's $\\lvert 1\\rangle$ state.", "quantity": "amplitude", "dimension": "1", "unit": ""},
-                    {"id": "c1___multiply_2", "type": "operator", "op": "multiply", "subexpr": "e^{\\gamma_{\\beta} i} r_{\\beta}", "description": "Multiplies the magnitude $r_\\beta$ by the phase factor $e^{i\\gamma_\\beta}$ to form the complex amplitude $\\beta$.", "quantity": "amplitude", "dimension": "1", "unit": ""},
-                    {"id": "r_beta", "type": "scalar", "latex": "r_{\\beta}", "subexpr": "r_{\\beta}", "description": "The magnitude (a real number) of the complex amplitude $\\beta$.", "quantity": "magnitude", "dimension": "1", "unit": ""},
-                    {"id": "c1___power_3", "type": "operator", "op": "power", "subexpr": "e^{\\gamma_{\\beta} i}", "description": "Euler's formula gives the phase factor for amplitude $\\beta$.", "quantity": "phase", "dimension": "1", "unit": ""},
-                    {"id": "c1___multiply_4", "type": "operator", "op": "multiply", "subexpr": "i \\gamma_{\\beta}", "description": "The imaginary exponent representing the phase angle $\\gamma_\\beta$.", "dimension": "1", "unit": ""},
-                    {"id": "gamma_beta", "type": "scalar", "latex": "\\gamma_{\\beta}", "subexpr": "\\gamma_{\\beta}", "description": "The phase angle of the complex amplitude $\\beta$.", "quantity": "phase_angle", "dimension": "1", "unit": "rad"},
-                    {"id": "c2___equals_1", "type": "relation", "op": "equals", "subexpr": "r_\\alpha^2 + r_\\beta^2 = 1", "description": "The normalization condition for the qubit state, ensuring total probability is one."},
-                    {"id": "c2___add_2", "type": "operator", "op": "add", "subexpr": "r_{\\alpha}^{2} + r_{\\beta}^{2}", "description": "The sum of the squared magnitudes of the amplitudes, which must equal one.", "quantity": "probability", "dimension": "1", "unit": ""},
-                    {"id": "c2___power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "r_{\\alpha}^{2}", "description": "The squared magnitude of $\\alpha$, representing the probability of measuring the $\\lvert 0\\rangle$ state.", "quantity": "probability", "dimension": "1", "unit": ""},
-                    {"id": "c2___power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "r_{\\beta}^{2}", "description": "The squared magnitude of $\\beta$, representing the probability of measuring the $\\lvert 1\\rangle$ state.", "quantity": "probability", "dimension": "1", "unit": ""},
-                    {"id": "c2___num_5", "type": "number", "label": "1", "subexpr": "1", "description": "The total probability of finding the qubit in any state, which must be one.", "quantity": "probability", "dimension": "1", "unit": "", "value": 1}
+                    {"id": "c0___equals_1", "type": "relation", "op": "equals", "subexpr": "\\alpha = r_\\alpha\\, e^{i\\gamma_\\alpha}"},
+                    {"id": "alpha", "type": "scalar", "latex": "\\alpha", "subexpr": "\\alpha"},
+                    {"id": "c0___multiply_2", "type": "operator", "op": "multiply", "subexpr": "e^{\\gamma_{\\alpha} i} r_{\\alpha}"},
+                    {"id": "c0_r_{\\alpha}", "type": "scalar", "latex": "r_{\\alpha}", "subexpr": "r_{\\alpha}"},
+                    {"id": "c0___power_3", "type": "operator", "op": "power", "subexpr": "e^{\\gamma_{\\alpha} i}"},
+                    {"id": "e", "type": "scalar", "latex": "e", "subexpr": "e"},
+                    {"id": "c0___multiply_4", "type": "operator", "op": "multiply", "subexpr": "i \\gamma_{\\alpha}"},
+                    {"id": "i", "type": "scalar", "latex": "i", "subexpr": "i"},
+                    {"id": "c0_\\gamma_{\\alpha}", "type": "scalar", "latex": "\\gamma_{\\alpha}", "subexpr": "\\gamma_{\\alpha}"},
+                    {"id": "c1___equals_1", "type": "relation", "op": "equals", "subexpr": "\\beta = r_\\beta\\, e^{i\\gamma_\\beta}"},
+                    {"id": "beta", "type": "scalar", "latex": "\\beta", "subexpr": "\\beta"},
+                    {"id": "c1___multiply_2", "type": "operator", "op": "multiply", "subexpr": "e^{\\gamma_{\\beta} i} r_{\\beta}"},
+                    {"id": "c1_r_{\\beta}", "type": "scalar", "latex": "r_{\\beta}", "subexpr": "r_{\\beta}"},
+                    {"id": "c1___power_3", "type": "operator", "op": "power", "subexpr": "e^{\\gamma_{\\beta} i}"},
+                    {"id": "c1___multiply_4", "type": "operator", "op": "multiply", "subexpr": "i \\gamma_{\\beta}"},
+                    {"id": "c1_\\gamma_{\\beta}", "type": "scalar", "latex": "\\gamma_{\\beta}", "subexpr": "\\gamma_{\\beta}"},
+                    {"id": "c2___equals_1", "type": "relation", "op": "equals", "subexpr": "r_\\alpha^2 + r_\\beta^2 = 1"},
+                    {"id": "c2___add_2", "type": "operator", "op": "add", "subexpr": "r_{\\alpha}^{2} + r_{\\beta}^{2}"},
+                    {"id": "c2___power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "r_{\\alpha}^{2}"},
+                    {"id": "c2_r_{\\alpha}", "type": "scalar", "latex": "r_{\\alpha}", "subexpr": "r_{\\alpha}"},
+                    {"id": "c2___power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "r_{\\beta}^{2}"},
+                    {"id": "c2_r_{\\beta}", "type": "scalar", "latex": "r_{\\beta}", "subexpr": "r_{\\beta}"},
+                    {"id": "c2___num_5", "type": "number", "label": "1", "subexpr": "1"}
                   ],
                   "edges": [
                     {"from": "alpha", "to": "c0___equals_1"},
-                    {"from": "r_alpha", "to": "c0___multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "c0_r_{\\alpha}", "to": "c0___multiply_2", "semantic": "direct", "weight": 1.0},
                     {"from": "e", "to": "c0___power_3"},
                     {"from": "i", "to": "c0___multiply_4", "semantic": "direct", "weight": 1.0},
-                    {"from": "gamma_alpha", "to": "c0___multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "c0_\\gamma_{\\alpha}", "to": "c0___multiply_4", "semantic": "direct", "weight": 1.0},
                     {"from": "c0___multiply_4", "to": "c0___power_3", "role": "exp"},
                     {"from": "c0___power_3", "to": "c0___multiply_2", "semantic": "direct", "weight": 1.0},
                     {"from": "c0___multiply_2", "to": "c0___equals_1"},
                     {"from": "beta", "to": "c1___equals_1"},
-                    {"from": "r_beta", "to": "c1___multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "c1_r_{\\beta}", "to": "c1___multiply_2", "semantic": "direct", "weight": 1.0},
                     {"from": "e", "to": "c1___power_3"},
                     {"from": "i", "to": "c1___multiply_4", "semantic": "direct", "weight": 1.0},
-                    {"from": "gamma_beta", "to": "c1___multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "c1_\\gamma_{\\beta}", "to": "c1___multiply_4", "semantic": "direct", "weight": 1.0},
                     {"from": "c1___multiply_4", "to": "c1___power_3", "role": "exp"},
                     {"from": "c1___power_3", "to": "c1___multiply_2", "semantic": "direct", "weight": 1.0},
                     {"from": "c1___multiply_2", "to": "c1___equals_1"},
-                    {"from": "r_alpha", "to": "c2___power_3"},
+                    {"from": "c2_r_{\\alpha}", "to": "c2___power_3"},
                     {"from": "c2___power_3", "to": "c2___add_2"},
-                    {"from": "r_beta", "to": "c2___power_4"},
+                    {"from": "c2_r_{\\beta}", "to": "c2___power_4"},
                     {"from": "c2___power_4", "to": "c2___add_2"},
                     {"from": "c2___add_2", "to": "c2___equals_1"},
                     {"from": "c2___num_5", "to": "c2___equals_1"}
@@ -2168,11 +2165,6 @@
                       {"kind": "algebraic"},
                       {"kind": "algebraic"}
                     ]
-                  },
-                  "domain": "quantum_mechanics",
-                  "enrichment": {
-                    "reasoning": "The context describes qubit states, so the domain is quantum mechanics. The symbols $\\alpha$ and $\\beta$ are complex amplitudes, and $r, \\gamma$ are their respective magnitudes and phases.",
-                    "fields": ["domain", "nodes.c0___equals_1.description", "nodes.alpha.description", "nodes.alpha.dimension", "nodes.alpha.emoji", "nodes.alpha.quantity", "nodes.alpha.unit", "nodes.c0___multiply_2.description", "nodes.c0___multiply_2.dimension", "nodes.c0___multiply_2.quantity", "nodes.c0___multiply_2.unit", "nodes.r_alpha.description", "nodes.r_alpha.dimension", "nodes.r_alpha.quantity", "nodes.r_alpha.unit", "nodes.c0___power_3.description", "nodes.c0___power_3.dimension", "nodes.c0___power_3.quantity", "nodes.c0___power_3.unit", "nodes.e.description", "nodes.e.dimension", "nodes.e.emoji", "nodes.e.quantity", "nodes.e.role", "nodes.e.unit", "nodes.e.value", "nodes.c0___multiply_4.description", "nodes.c0___multiply_4.dimension", "nodes.c0___multiply_4.unit", "nodes.i.description", "nodes.i.dimension", "nodes.i.emoji", "nodes.i.quantity", "nodes.i.role", "nodes.i.unit", "nodes.gamma_alpha.description", "nodes.gamma_alpha.dimension", "nodes.gamma_alpha.quantity", "nodes.gamma_alpha.unit", "nodes.c1___equals_1.description", "nodes.beta.description", "nodes.beta.dimension", "nodes.beta.emoji", "nodes.beta.quantity", "nodes.beta.unit", "nodes.c1___multiply_2.description", "nodes.c1___multiply_2.dimension", "nodes.c1___multiply_2.quantity", "nodes.c1___multiply_2.unit", "nodes.r_beta.description", "nodes.r_beta.dimension", "nodes.r_beta.quantity", "nodes.r_beta.unit", "nodes.c1___power_3.description", "nodes.c1___power_3.dimension", "nodes.c1___power_3.quantity", "nodes.c1___power_3.unit", "nodes.c1___multiply_4.description", "nodes.c1___multiply_4.dimension", "nodes.c1___multiply_4.unit", "nodes.gamma_beta.description", "nodes.gamma_beta.dimension", "nodes.gamma_beta.quantity", "nodes.gamma_beta.unit", "nodes.c2___equals_1.description", "nodes.c2___add_2.description", "nodes.c2___add_2.dimension", "nodes.c2___add_2.quantity", "nodes.c2___add_2.unit", "nodes.c2___power_3.description", "nodes.c2___power_3.dimension", "nodes.c2___power_3.quantity", "nodes.c2___power_3.unit", "nodes.c2___power_4.description", "nodes.c2___power_4.dimension", "nodes.c2___power_4.quantity", "nodes.c2___power_4.unit", "nodes.c2___num_5.description", "nodes.c2___num_5.dimension", "nodes.c2___num_5.quantity", "nodes.c2___num_5.unit", "nodes.c2___num_5.value"]
                   }
                 }
               }
@@ -2191,45 +2183,45 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "emoji": "⚖️", "op": "equals", "subexpr": "|\\psi\\rangle = e^{i\\gamma_\\alpha} \\bigl( r_\\alpha| 0\\rangle + r_\\beta\\, e^{i(\\gamma_\\beta - \\gamma_\\alpha)}| 1\\rangle \\bigr)", "description": "Equation showing the qubit state $\\lvert\\psi\\rangle$ with its global phase factored out."},
-                    {"id": "__ket_2", "type": "ket", "emoji": "🪙", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle", "description": "The quantum state of a qubit, denoted by $\\lvert\\psi\\rangle$.", "quantity": "quantum_state", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "e^{\\gamma_{\\alpha} i} \\operatorname{bigl}{\\left(r_{\\alpha} {\\left|0\\right\\rangle } + r_{\\beta} e^{i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}} {\\left|1\\right\\rangle } \\bigr \\right)}", "description": "The product of the global phase factor and the remaining state vector in parentheses."},
-                    {"id": "__power_4", "type": "operator", "op": "power", "subexpr": "e^{\\gamma_{\\alpha} i}", "description": "The exponential form of the global phase factor, $e^{i\\gamma_{\\alpha}}$."},
-                    {"id": "e", "type": "scalar", "emoji": "📈", "latex": "e", "subexpr": "e", "description": "The base of the natural logarithm, Euler's number $e$.", "quantity": "eulers_number", "dimension": "1", "unit": "", "value": 2.71828},
-                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "i \\gamma_{\\alpha}", "description": "The product of the imaginary unit $i$ and the phase angle $\\gamma_{\\alpha}$."},
-                    {"id": "i", "type": "scalar", "emoji": "🧠", "latex": "i", "subexpr": "i", "description": "The imaginary unit, $i = \\sqrt{-1}$.", "quantity": "imaginary_unit", "dimension": "1", "unit": ""},
-                    {"id": "gamma_alpha", "type": "scalar", "emoji": "📐", "latex": "\\gamma_{\\alpha}", "subexpr": "\\gamma_{\\alpha}", "description": "The phase angle $\\gamma_{\\alpha}$ associated with the amplitude of the $\\lvert 0\\rangle$ state.", "quantity": "phase_angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__bigl_6", "type": "function", "latex": "\\bigl", "op": "bigl", "subexpr": "\\operatorname{bigl}{\\left(r_{\\alpha} {\\left|0\\right\\rangle } + r_{\\beta} e^{i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}} {\\left|1\\right\\rangle } \\bigr \\right)}", "description": "A grouping parenthesis containing the state vector after factoring out the global phase."},
-                    {"id": "__add_7", "type": "operator", "op": "add", "subexpr": "r_{\\alpha} {\\left|0\\right\\rangle } + r_{\\beta} e^{i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}} \\bigr {\\left|1\\right\\rangle }", "description": "The superposition of the basis states $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$ with their respective amplitudes."},
-                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "r_{\\alpha} {\\left|0\\right\\rangle }", "description": "The amplitude $r_{\\alpha}$ multiplying the basis state $\\lvert 0\\rangle$."},
-                    {"id": "r_alpha", "type": "scalar", "emoji": "📏", "latex": "r_{\\alpha}", "subexpr": "r_{\\alpha}", "description": "The real-valued amplitude $r_{\\alpha}$ of the basis state $\\lvert 0\\rangle$.", "quantity": "amplitude", "dimension": "1", "unit": ""},
-                    {"id": "__ket_9", "type": "ket", "emoji": "⬆️", "latex": "\\left|0\\right\\rangle", "subexpr": "\\left|0\\right\\rangle", "description": "The computational basis state '0' for a qubit, often representing spin-up.", "quantity": "basis_state", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "r_{\\beta} e^{i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}} \\bigr {\\left|1\\right\\rangle }", "description": "The product of the amplitude $r_{\\beta}$ and the relative phase factor multiplying the basis state $\\lvert 1\\rangle$."},
-                    {"id": "r_beta", "type": "scalar", "emoji": "📏", "latex": "r_{\\beta}", "subexpr": "r_{\\beta}", "description": "The real-valued amplitude $r_{\\beta}$ of the basis state $\\lvert 1\\rangle$.", "quantity": "amplitude", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_11", "type": "operator", "op": "multiply", "subexpr": "e^{i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}} \\bigr {\\left|1\\right\\rangle }", "description": "The product of the relative phase factor and the basis state $\\lvert 1\\rangle$."},
-                    {"id": "__power_12", "type": "operator", "op": "power", "subexpr": "e^{i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}}", "description": "The exponential form of the relative phase factor, $e^{i(\\gamma_{\\beta} - \\gamma_{\\alpha})}$."},
-                    {"id": "__i_13", "type": "function", "op": "i", "subexpr": "i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}", "description": "Multiplication by the imaginary unit $i$ in the exponent."},
-                    {"id": "__add_14", "type": "operator", "op": "add", "subexpr": "-\\gamma_{\\alpha} + \\gamma_{\\beta}", "description": "The difference between the phase angles, forming the relative phase $\\phi = \\gamma_{\\beta} - \\gamma_{\\alpha}$."},
-                    {"id": "gamma_beta", "type": "scalar", "emoji": "📐", "latex": "\\gamma_{\\beta}", "subexpr": "\\gamma_{\\beta}", "description": "The phase angle $\\gamma_{\\beta}$ associated with the amplitude of the $\\lvert 1\\rangle$ state.", "quantity": "phase_angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__negation_15", "type": "operator", "op": "negation", "subexpr": "-\\gamma_{\\alpha}", "description": "The negation of the phase angle $\\gamma_{\\alpha}$."},
-                    {"id": "__multiply_16", "type": "operator", "op": "multiply", "subexpr": "\\bigr {\\left|1\\right\\rangle }", "description": "A grouping parenthesis multiplying the basis state $\\lvert 1\\rangle$."},
-                    {"id": "__ket_17", "type": "ket", "emoji": "⬇️", "latex": "\\left|1\\right\\rangle", "subexpr": "\\left|1\\right\\rangle", "description": "The computational basis state '1' for a qubit, often representing spin-down.", "quantity": "basis_state", "dimension": "1", "unit": ""},
-                    {"id": "bigr", "type": "scalar", "latex": "\\bigr", "subexpr": "\\bigr", "description": "A right parenthesis for grouping, part of the mathematical notation."}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "|\\psi\\rangle = e^{i\\gamma_\\alpha} \\bigl( r_\\alpha| 0\\rangle + r_\\beta\\, e^{i(\\gamma_\\beta - \\gamma_\\alpha)}| 1\\rangle \\bigr)"},
+                    {"id": "__ket_2", "type": "ket", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "e^{\\gamma_{\\alpha} i} \\operatorname{bigl}{\\left(r_{\\alpha} {\\left|0\\right\\rangle } + r_{\\beta} e^{i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}} {\\left|1\\right\\rangle } \\bigr \\right)}"},
+                    {"id": "__power_4", "type": "operator", "op": "power", "subexpr": "e^{\\gamma_{\\alpha} i}"},
+                    {"id": "e", "type": "scalar", "latex": "e", "subexpr": "e"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "i \\gamma_{\\alpha}"},
+                    {"id": "i", "type": "scalar", "latex": "i", "subexpr": "i"},
+                    {"id": "\\gamma_{\\alpha}", "type": "scalar", "latex": "\\gamma_{\\alpha}", "subexpr": "\\gamma_{\\alpha}"},
+                    {"id": "__bigl_6", "type": "function", "latex": "\\bigl", "op": "bigl", "subexpr": "\\operatorname{bigl}{\\left(r_{\\alpha} {\\left|0\\right\\rangle } + r_{\\beta} e^{i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}} {\\left|1\\right\\rangle } \\bigr \\right)}"},
+                    {"id": "__add_7", "type": "operator", "op": "add", "subexpr": "r_{\\alpha} {\\left|0\\right\\rangle } + r_{\\beta} e^{i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}} \\bigr {\\left|1\\right\\rangle }"},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "r_{\\alpha} {\\left|0\\right\\rangle }"},
+                    {"id": "r_{\\alpha}", "type": "scalar", "latex": "r_{\\alpha}", "subexpr": "r_{\\alpha}"},
+                    {"id": "__ket_9", "type": "ket", "latex": "\\left|0\\right\\rangle", "subexpr": "\\left|0\\right\\rangle"},
+                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "r_{\\beta} e^{i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}} \\bigr {\\left|1\\right\\rangle }"},
+                    {"id": "r_{\\beta}", "type": "scalar", "latex": "r_{\\beta}", "subexpr": "r_{\\beta}"},
+                    {"id": "__multiply_11", "type": "operator", "op": "multiply", "subexpr": "e^{i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}} \\bigr {\\left|1\\right\\rangle }"},
+                    {"id": "__power_12", "type": "operator", "op": "power", "subexpr": "e^{i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}}"},
+                    {"id": "__i_13", "type": "function", "op": "i", "subexpr": "i{\\left(- \\gamma_{\\alpha} + \\gamma_{\\beta} \\right)}"},
+                    {"id": "__add_14", "type": "operator", "op": "add", "subexpr": "-\\gamma_{\\alpha} + \\gamma_{\\beta}"},
+                    {"id": "\\gamma_{\\beta}", "type": "scalar", "latex": "\\gamma_{\\beta}", "subexpr": "\\gamma_{\\beta}"},
+                    {"id": "__negation_15", "type": "operator", "op": "negation", "subexpr": "-\\gamma_{\\alpha}"},
+                    {"id": "__multiply_16", "type": "operator", "op": "multiply", "subexpr": "\\bigr {\\left|1\\right\\rangle }"},
+                    {"id": "__ket_17", "type": "ket", "latex": "\\left|1\\right\\rangle", "subexpr": "\\left|1\\right\\rangle"},
+                    {"id": "bigr", "type": "scalar", "latex": "\\bigr", "subexpr": "\\bigr"}
                   ],
                   "edges": [
                     {"from": "__ket_2", "to": "__equals_1"},
                     {"from": "e", "to": "__power_4"},
                     {"from": "i", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
-                    {"from": "gamma_alpha", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "\\gamma_{\\alpha}", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
                     {"from": "__multiply_5", "to": "__power_4", "role": "exp"},
                     {"from": "__power_4", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
-                    {"from": "r_alpha", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
+                    {"from": "r_{\\alpha}", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
                     {"from": "__ket_9", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
                     {"from": "__multiply_8", "to": "__add_7"},
-                    {"from": "r_beta", "to": "__multiply_10", "semantic": "direct", "weight": 1.0},
+                    {"from": "r_{\\beta}", "to": "__multiply_10", "semantic": "direct", "weight": 1.0},
                     {"from": "e", "to": "__power_12"},
-                    {"from": "gamma_beta", "to": "__add_14"},
-                    {"from": "gamma_alpha", "to": "__negation_15"},
+                    {"from": "\\gamma_{\\beta}", "to": "__add_14"},
+                    {"from": "\\gamma_{\\alpha}", "to": "__negation_15"},
                     {"from": "__negation_15", "to": "__add_14"},
                     {"from": "__add_14", "to": "__i_13"},
                     {"from": "__i_13", "to": "__power_12", "role": "exp"},
@@ -2243,12 +2235,7 @@
                     {"from": "__bigl_6", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
                     {"from": "__multiply_3", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"},
-                  "domain": "quantum_mechanics",
-                  "enrichment": {
-                    "reasoning": "The context is quantum mechanics, specifically qubit states on the Bloch sphere. Symbols like $\\lvert\\psi\\rangle$, $\\gamma$, and $r$ represent quantum states, phase angles, and amplitudes.",
-                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.__ket_2.description", "nodes.__ket_2.dimension", "nodes.__ket_2.emoji", "nodes.__ket_2.quantity", "nodes.__ket_2.unit", "nodes.__multiply_3.description", "nodes.__power_4.description", "nodes.e.description", "nodes.e.dimension", "nodes.e.emoji", "nodes.e.quantity", "nodes.e.unit", "nodes.e.value", "nodes.__multiply_5.description", "nodes.i.description", "nodes.i.dimension", "nodes.i.emoji", "nodes.i.quantity", "nodes.i.unit", "nodes.gamma_alpha.description", "nodes.gamma_alpha.dimension", "nodes.gamma_alpha.emoji", "nodes.gamma_alpha.quantity", "nodes.gamma_alpha.unit", "nodes.__bigl_6.description", "nodes.__add_7.description", "nodes.__multiply_8.description", "nodes.r_alpha.description", "nodes.r_alpha.dimension", "nodes.r_alpha.emoji", "nodes.r_alpha.quantity", "nodes.r_alpha.unit", "nodes.__ket_9.description", "nodes.__ket_9.dimension", "nodes.__ket_9.emoji", "nodes.__ket_9.quantity", "nodes.__ket_9.unit", "nodes.__multiply_10.description", "nodes.r_beta.description", "nodes.r_beta.dimension", "nodes.r_beta.emoji", "nodes.r_beta.quantity", "nodes.r_beta.unit", "nodes.__multiply_11.description", "nodes.__power_12.description", "nodes.__i_13.description", "nodes.__add_14.description", "nodes.gamma_beta.description", "nodes.gamma_beta.dimension", "nodes.gamma_beta.emoji", "nodes.gamma_beta.quantity", "nodes.gamma_beta.unit", "nodes.__negation_15.description", "nodes.__multiply_16.description", "nodes.__ket_17.description", "nodes.__ket_17.dimension", "nodes.__ket_17.emoji", "nodes.__ket_17.quantity", "nodes.__ket_17.unit", "nodes.bigr.description"]
-                  }
+                  "classification": {"kind": "algebraic"}
                 }
               }
             },
@@ -2267,41 +2254,41 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "r_{\\alpha}^2 + r_{\\beta}^2 = 1", "description": "The normalization condition, stating that the sum of the squared magnitudes of the probability amplitudes equals 1."},
-                    {"id": "__add_2", "type": "operator", "op": "add", "subexpr": "r_{\\alpha}^{2} + r_{\\beta}^{2}", "description": "The sum of the squared magnitudes of the probability amplitudes, which must equal 1 for a valid quantum state.", "dimension": "1", "unit": ""},
-                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "r_{\\alpha}^{2}", "description": "The squared magnitude of the probability amplitude for the basis state $|0\\rangle$, representing a probability.", "dimension": "1", "unit": ""},
-                    {"id": "r_alpha", "type": "scalar", "emoji": "🧊", "latex": "r_{\\alpha}", "subexpr": "r_{\\alpha}", "description": "The magnitude of the probability amplitude for the basis state $|0\\rangle$.", "quantity": "amplitude_magnitude", "dimension": "1", "unit": ""},
-                    {"id": "__power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "r_{\\beta}^{2}", "description": "The squared magnitude of the probability amplitude for the basis state $|1\\rangle$, representing a probability.", "dimension": "1", "unit": ""},
-                    {"id": "r_beta", "type": "scalar", "emoji": "🔥", "latex": "r_{\\beta}", "subexpr": "r_{\\beta}", "description": "The magnitude of the probability amplitude for the basis state $|1\\rangle$.", "quantity": "amplitude_magnitude", "dimension": "1", "unit": ""},
-                    {"id": "__num_5", "type": "number", "label": "1", "emoji": "💯", "subexpr": "1", "description": "The total probability, which must be 1 for a normalized quantum state.", "dimension": "1", "unit": ""},
-                    {"id": "__equals_6", "type": "relation", "op": "equals", "subexpr": "r_{\\alpha} = \\cos \\left(\\frac{\\theta}{2}\\right)", "description": "Parameterization of the amplitude magnitude $r_{\\alpha}$ using the polar angle $\\theta$."},
-                    {"id": "__cos_7", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}", "description": "The cosine of the half-angle $\\theta/2$, defining the magnitude of the amplitude for the state $|0\\rangle$.", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "The half-angle $\\theta/2$, used to parameterize the amplitudes on the Bloch sphere.", "dimension": "1", "unit": "rad"},
-                    {"id": "theta", "type": "scalar", "emoji": "🧭", "latex": "\\theta", "subexpr": "\\theta", "description": "The polar angle on the Bloch sphere, ranging from 0 to $\\pi$.", "quantity": "polar_angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The fraction 1/2, used to create the half-angle for the Bloch sphere parameterization.", "dimension": "1", "unit": ""},
-                    {"id": "__num_10", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2, used as the denominator for the half-angle calculation.", "dimension": "1", "unit": ""},
-                    {"id": "__equals_11", "type": "relation", "op": "equals", "subexpr": "r_{\\beta} = \\sin \\left(\\frac{\\theta}{2}\\right)", "description": "Parameterization of the amplitude magnitude $r_{\\beta}$ using the polar angle $\\theta$."},
-                    {"id": "__sin_12", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}", "description": "The sine of the half-angle $\\theta/2$, defining the magnitude of the amplitude for the state $|1\\rangle$.", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "The half-angle $\\theta/2$, used to parameterize the amplitudes on the Bloch sphere.", "dimension": "1", "unit": "rad"},
-                    {"id": "__power_14", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The fraction 1/2, used to create the half-angle for the Bloch sphere parameterization.", "dimension": "1", "unit": ""},
-                    {"id": "__num_15", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2, used as the denominator for the half-angle calculation.", "dimension": "1", "unit": ""},
-                    {"id": "__and_16", "type": "operator", "label": "and", "emoji": ",", "op": "and", "subexpr": "r_{\\alpha} = \\cos \\left(\\frac{\\theta}{2}\\right),  r_{\\beta} = \\sin \\left(\\frac{\\theta}{2}\\right)", "description": "The combined trigonometric parameterization for the amplitude magnitudes $r_\\alpha$ and $r_\\beta$."},
-                    {"id": "__implies_17", "type": "operator", "label": "implies", "emoji": "➡️", "op": "implies", "subexpr": "r_\\alpha^2 + r_\\beta^2 = 1 \\;\\Longrightarrow\\; r_\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right), \\; r_\\beta = \\sin\\!\\left(\\frac{\\theta}{2}\\right)", "description": "The implication that the normalization condition allows the amplitudes to be parameterized by a single angle $\\theta$."}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "r_{\\alpha}^2 + r_{\\beta}^2 = 1"},
+                    {"id": "__add_2", "type": "operator", "op": "add", "subexpr": "r_{\\alpha}^{2} + r_{\\beta}^{2}"},
+                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "r_{\\alpha}^{2}"},
+                    {"id": "r_{\\alpha}", "type": "scalar", "latex": "r_{\\alpha}", "subexpr": "r_{\\alpha}"},
+                    {"id": "__power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "r_{\\beta}^{2}"},
+                    {"id": "r_{\\beta}", "type": "scalar", "latex": "r_{\\beta}", "subexpr": "r_{\\beta}"},
+                    {"id": "__num_5", "type": "number", "label": "1", "subexpr": "1"},
+                    {"id": "__equals_6", "type": "relation", "op": "equals", "subexpr": "r_{\\alpha} = \\cos \\left(\\frac{\\theta}{2}\\right)"},
+                    {"id": "__cos_7", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                    {"id": "theta", "type": "scalar", "latex": "\\theta", "subexpr": "\\theta"},
+                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                    {"id": "__num_10", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "__equals_11", "type": "relation", "op": "equals", "subexpr": "r_{\\beta} = \\sin \\left(\\frac{\\theta}{2}\\right)"},
+                    {"id": "__sin_12", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                    {"id": "__power_14", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                    {"id": "__num_15", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "__and_16", "type": "operator", "label": "and", "emoji": ",", "op": "and", "subexpr": "r_{\\alpha} = \\cos \\left(\\frac{\\theta}{2}\\right),  r_{\\beta} = \\sin \\left(\\frac{\\theta}{2}\\right)"},
+                    {"id": "__implies_17", "type": "operator", "label": "implies", "emoji": "⟹", "op": "implies", "subexpr": "r_\\alpha^2 + r_\\beta^2 = 1 \\;\\Longrightarrow\\; r_\\alpha = \\cos\\!\\left(\\frac{\\theta}{2}\\right), \\; r_\\beta = \\sin\\!\\left(\\frac{\\theta}{2}\\right)"}
                   ],
                   "edges": [
-                    {"from": "r_alpha", "to": "__power_3"},
+                    {"from": "r_{\\alpha}", "to": "__power_3"},
                     {"from": "__power_3", "to": "__add_2"},
-                    {"from": "r_beta", "to": "__power_4"},
+                    {"from": "r_{\\beta}", "to": "__power_4"},
                     {"from": "__power_4", "to": "__add_2"},
                     {"from": "__add_2", "to": "__equals_1"},
                     {"from": "__num_5", "to": "__equals_1"},
-                    {"from": "r_alpha", "to": "__equals_6"},
+                    {"from": "r_{\\alpha}", "to": "__equals_6"},
                     {"from": "theta", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
                     {"from": "__num_10", "to": "__power_9"},
                     {"from": "__power_9", "to": "__multiply_8"},
                     {"from": "__multiply_8", "to": "__cos_7"},
                     {"from": "__cos_7", "to": "__equals_6"},
-                    {"from": "r_beta", "to": "__equals_11"},
+                    {"from": "r_{\\beta}", "to": "__equals_11"},
                     {"from": "theta", "to": "__multiply_13", "semantic": "direct", "weight": 1.0},
                     {"from": "__num_15", "to": "__power_14"},
                     {"from": "__power_14", "to": "__multiply_13"},
@@ -2312,12 +2299,7 @@
                     {"from": "__equals_1", "to": "__implies_17", "role": "lhs"},
                     {"from": "__and_16", "to": "__implies_17", "role": "rhs"}
                   ],
-                  "classification": {"kind": "algebraic"},
-                  "domain": "quantum_mechanics",
-                  "enrichment": {
-                    "reasoning": "The context describes a qubit on the Bloch sphere, so the domain is `quantum_mechanics`. The symbols $r_\\alpha$ and $r_\\beta$ are probability amplitude magnitudes, and $\\theta$ is the polar angle.",
-                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__add_2.description", "nodes.__add_2.dimension", "nodes.__add_2.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.unit", "nodes.r_alpha.description", "nodes.r_alpha.dimension", "nodes.r_alpha.emoji", "nodes.r_alpha.quantity", "nodes.r_alpha.unit", "nodes.__power_4.description", "nodes.__power_4.dimension", "nodes.__power_4.unit", "nodes.r_beta.description", "nodes.r_beta.dimension", "nodes.r_beta.emoji", "nodes.r_beta.quantity", "nodes.r_beta.unit", "nodes.__num_5.description", "nodes.__num_5.dimension", "nodes.__num_5.emoji", "nodes.__num_5.unit", "nodes.__equals_6.description", "nodes.__cos_7.description", "nodes.__cos_7.dimension", "nodes.__cos_7.unit", "nodes.__multiply_8.description", "nodes.__multiply_8.dimension", "nodes.__multiply_8.unit", "nodes.theta.description", "nodes.theta.dimension", "nodes.theta.emoji", "nodes.theta.quantity", "nodes.theta.unit", "nodes.__power_9.description", "nodes.__power_9.dimension", "nodes.__power_9.unit", "nodes.__num_10.description", "nodes.__num_10.dimension", "nodes.__num_10.unit", "nodes.__equals_11.description", "nodes.__sin_12.description", "nodes.__sin_12.dimension", "nodes.__sin_12.unit", "nodes.__multiply_13.description", "nodes.__multiply_13.dimension", "nodes.__multiply_13.unit", "nodes.__power_14.description", "nodes.__power_14.dimension", "nodes.__power_14.unit", "nodes.__num_15.description", "nodes.__num_15.dimension", "nodes.__num_15.unit", "nodes.__and_16.description", "nodes.__implies_17.description", "nodes.__implies_17.emoji"]
-                  }
+                  "classification": {"kind": "algebraic"}
                 }
               }
             },
@@ -2335,28 +2317,28 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "|\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)| 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)| 1\\rangle", "description": "The Bloch sphere parameterization of a pure qubit state."},
-                    {"id": "__ket_2", "type": "ket", "emoji": "⚛️", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle", "description": "The quantum state of a pure qubit, denoted by $\\psi$."},
-                    {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "e^{i \\phi} \\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle } + \\cos{\\left(\\frac{\\theta}{2} \\right)} {\\left|0\\right\\rangle }", "description": "The superposition of the basis states $\\lvert 0\\rangle$ and $\\lvert 1\\rangle$ to form the qubit state $\\lvert\\psi\\rangle$."},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)} {\\left|0\\right\\rangle }", "description": "The amplitude of the basis state $\\lvert 0\\rangle$, determined by the polar angle $\\theta$."},
-                    {"id": "__cos_5", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}", "description": "The cosine of half the polar angle, giving the amplitude for the $\\lvert 0\\rangle$ state.", "quantity": "amplitude", "dimension": "1", "unit": "\""},
-                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "Half the polar angle $\\theta$, used as the argument for the trigonometric functions.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                    {"id": "theta", "type": "scalar", "emoji": "🧭", "latex": "\\theta", "subexpr": "\\theta", "description": "The polar angle on the Bloch sphere, representing the qubit's state relative to the z-axis. Ranges from $0$ to $\\pi$.", "quantity": "polar_angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "Division by two, scaling the angle $\\theta$ for the amplitude calculation."},
-                    {"id": "__num_8", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2, used to divide the angles.", "value": 2},
-                    {"id": "__ket_9", "type": "ket", "emoji": "⬆️", "latex": "\\left|0\\right\\rangle", "subexpr": "\\left|0\\right\\rangle", "description": "The computational basis state corresponding to the north pole of the Bloch sphere, often representing spin up."},
-                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "e^{i \\phi} \\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle }", "description": "The complex amplitude of the basis state $\\lvert 1\\rangle$, determined by both angles $\\theta$ and $\\phi$."},
-                    {"id": "__power_11", "type": "operator", "op": "power", "subexpr": "e^{i \\phi}", "description": "The complex phase factor, determined by the azimuthal angle $\\phi$.", "quantity": "phase_factor", "dimension": "1", "unit": "\""},
-                    {"id": "e", "type": "scalar", "emoji": "🔢", "latex": "e", "subexpr": "e", "description": "Euler's number, the base of the natural logarithm.", "quantity": "eulers_number", "value": 2.71828, "role": "constant"},
-                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "i \\phi", "description": "The product of the imaginary unit and the azimuthal angle, forming the exponent of the phase factor.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                    {"id": "i", "type": "scalar", "emoji": "🔢", "latex": "i", "subexpr": "i", "description": "The imaginary unit, where $i^2 = -1$.", "quantity": "imaginary_unit", "role": "constant"},
-                    {"id": "phi", "type": "scalar", "emoji": "🧭", "latex": "\\phi", "subexpr": "\\phi", "description": "The azimuthal angle on the Bloch sphere, representing the relative phase of the qubit. Ranges from $0$ to $2\\pi$.", "quantity": "azimuthal_angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle }", "description": "The amplitude of the basis state $\\lvert 1\\rangle$, determined by the polar angle $\\theta$."},
-                    {"id": "__sin_14", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}", "description": "The sine of half the polar angle, giving the magnitude of the amplitude for the $\\lvert 1\\rangle$ state.", "quantity": "amplitude", "dimension": "1", "unit": "\""},
-                    {"id": "__multiply_15", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "Half the polar angle $\\theta$, used as the argument for the trigonometric functions.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__power_16", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "Division by two, scaling the angle $\\theta$ for the amplitude calculation."},
-                    {"id": "__num_17", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2, used to divide the angles.", "value": 2},
-                    {"id": "__ket_18", "type": "ket", "emoji": "⬇️", "latex": "\\left|1\\right\\rangle", "subexpr": "\\left|1\\right\\rangle", "description": "The computational basis state corresponding to the south pole of the Bloch sphere, often representing spin down."}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "|\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)| 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)| 1\\rangle"},
+                    {"id": "__ket_2", "type": "ket", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle"},
+                    {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "e^{i \\phi} \\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle } + \\cos{\\left(\\frac{\\theta}{2} \\right)} {\\left|0\\right\\rangle }"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)} {\\left|0\\right\\rangle }"},
+                    {"id": "__cos_5", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                    {"id": "theta", "type": "scalar", "latex": "\\theta", "subexpr": "\\theta"},
+                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                    {"id": "__num_8", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "__ket_9", "type": "ket", "latex": "\\left|0\\right\\rangle", "subexpr": "\\left|0\\right\\rangle"},
+                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "e^{i \\phi} \\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle }"},
+                    {"id": "__power_11", "type": "operator", "op": "power", "subexpr": "e^{i \\phi}"},
+                    {"id": "e", "type": "scalar", "latex": "e", "subexpr": "e"},
+                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "i \\phi"},
+                    {"id": "i", "type": "scalar", "latex": "i", "subexpr": "i"},
+                    {"id": "phi", "type": "scalar", "latex": "\\phi", "subexpr": "\\phi"},
+                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle }"},
+                    {"id": "__sin_14", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__multiply_15", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                    {"id": "__power_16", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                    {"id": "__num_17", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "__ket_18", "type": "ket", "latex": "\\left|1\\right\\rangle", "subexpr": "\\left|1\\right\\rangle"}
                   ],
                   "edges": [
                     {"from": "__ket_2", "to": "__equals_1"},
@@ -2382,12 +2364,7 @@
                     {"from": "__multiply_10", "to": "__add_3"},
                     {"from": "__add_3", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"},
-                  "domain": "quantum_mechanics",
-                  "enrichment": {
-                    "reasoning": "The context describes a qubit on the Bloch sphere using ket notation, so the domain is `quantum_mechanics`. The angles $\\theta$ and $\\phi$ are dimensionless but have units of radians.",
-                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__ket_2.description", "nodes.__ket_2.emoji", "nodes.__add_3.description", "nodes.__multiply_4.description", "nodes.__cos_5.description", "nodes.__cos_5.dimension", "nodes.__cos_5.quantity", "nodes.__cos_5.unit", "nodes.__multiply_6.description", "nodes.__multiply_6.dimension", "nodes.__multiply_6.quantity", "nodes.__multiply_6.unit", "nodes.theta.description", "nodes.theta.dimension", "nodes.theta.emoji", "nodes.theta.quantity", "nodes.theta.unit", "nodes.__power_7.description", "nodes.__num_8.description", "nodes.__num_8.value", "nodes.__ket_9.description", "nodes.__ket_9.emoji", "nodes.__multiply_10.description", "nodes.__power_11.description", "nodes.__power_11.dimension", "nodes.__power_11.quantity", "nodes.__power_11.unit", "nodes.e.description", "nodes.e.emoji", "nodes.e.quantity", "nodes.e.role", "nodes.e.value", "nodes.__multiply_12.description", "nodes.__multiply_12.dimension", "nodes.__multiply_12.quantity", "nodes.__multiply_12.unit", "nodes.i.description", "nodes.i.emoji", "nodes.i.quantity", "nodes.i.role", "nodes.phi.description", "nodes.phi.dimension", "nodes.phi.emoji", "nodes.phi.quantity", "nodes.phi.unit", "nodes.__multiply_13.description", "nodes.__sin_14.description", "nodes.__sin_14.dimension", "nodes.__sin_14.quantity", "nodes.__sin_14.unit", "nodes.__multiply_15.description", "nodes.__multiply_15.dimension", "nodes.__multiply_15.quantity", "nodes.__multiply_15.unit", "nodes.__power_16.description", "nodes.__num_17.description", "nodes.__num_17.value", "nodes.__ket_18.description", "nodes.__ket_18.emoji"]
-                  }
+                  "classification": {"kind": "algebraic"}
                 }
               }
             }
@@ -2415,28 +2392,28 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "|\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)| 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)| 1\\rangle", "description": "This equation defines the quantum state of a single qubit, $|\\psi\\rangle$, in terms of its Bloch sphere angles."},
-                    {"id": "__ket_2", "type": "ket", "emoji": "❓", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle", "description": "The quantum state vector $|\\psi\\rangle$ for a single qubit."},
-                    {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "e^{i \\phi} \\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle } + \\cos{\\left(\\frac{\\theta}{2} \\right)} {\\left|0\\right\\rangle }", "description": "Superposition of the basis states $|0\\rangle$ and $|1\\rangle$ to form the qubit state $|\\psi\\rangle$."},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)} {\\left|0\\right\\rangle }", "description": "The component of the state vector along the basis state $|0\\rangle$."},
-                    {"id": "__cos_5", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}", "description": "The cosine function, used here to calculate the probability amplitude for the $|0\\rangle$ state.", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "The polar angle divided by two, argument to the trigonometric functions.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                    {"id": "theta", "type": "scalar", "emoji": "🧭", "latex": "\\theta", "subexpr": "\\theta", "description": "The polar angle $\\theta$ on the Bloch sphere, which determines the mixture of basis states $|0\\rangle$ and $|1\\rangle$.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "Division by 2."},
-                    {"id": "__num_8", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "value": 2},
-                    {"id": "__ket_9", "type": "ket", "emoji": "⬆️", "latex": "\\left|0\\right\\rangle", "subexpr": "\\left|0\\right\\rangle", "description": "The computational basis state $|0\\rangle$, corresponding to the north pole of the Bloch sphere."},
-                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "e^{i \\phi} \\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle }", "description": "The component of the state vector along the basis state $|1\\rangle$, including its complex phase."},
-                    {"id": "__power_11", "type": "operator", "op": "power", "subexpr": "e^{i \\phi}", "description": "The complex phase factor $e^{i\\phi}$ associated with the $|1\\rangle$ state component.", "dimension": "1", "unit": ""},
-                    {"id": "e", "type": "scalar", "emoji": "🧮", "latex": "e", "subexpr": "e", "description": "Euler's number $e$, the base of the natural logarithm.", "quantity": "eulers_number", "dimension": "1", "unit": "", "role": "constant"},
-                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "i \\phi", "description": "The phase angle $i\\phi$, which determines the relative phase of the qubit's basis state components.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                    {"id": "i", "type": "scalar", "latex": "i", "subexpr": "i", "description": "The imaginary unit $i$, where $i^2 = -1$.", "quantity": "imaginary_unit", "dimension": "1", "unit": "", "role": "constant"},
-                    {"id": "phi", "type": "scalar", "emoji": "🧭", "latex": "\\phi", "subexpr": "\\phi", "description": "The azimuthal angle $\\phi$ on the Bloch sphere, which determines the relative phase between basis states.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle }", "description": "The component of the state vector along the basis state $|1\\rangle$ before applying the phase factor."},
-                    {"id": "__sin_14", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}", "description": "The sine function, used here to calculate the probability amplitude for the $|1\\rangle$ state.", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_15", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "The polar angle divided by two, argument to the trigonometric functions.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__power_16", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "Division by 2."},
-                    {"id": "__num_17", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "value": 2},
-                    {"id": "__ket_18", "type": "ket", "emoji": "⬇️", "latex": "\\left|1\\right\\rangle", "subexpr": "\\left|1\\right\\rangle", "description": "The computational basis state $|1\\rangle$, corresponding to the south pole of the Bloch sphere."}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "|\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)| 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)| 1\\rangle"},
+                    {"id": "__ket_2", "type": "ket", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle"},
+                    {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "e^{i \\phi} \\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle } + \\cos{\\left(\\frac{\\theta}{2} \\right)} {\\left|0\\right\\rangle }"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)} {\\left|0\\right\\rangle }"},
+                    {"id": "__cos_5", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                    {"id": "theta", "type": "scalar", "latex": "\\theta", "subexpr": "\\theta"},
+                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                    {"id": "__num_8", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "__ket_9", "type": "ket", "latex": "\\left|0\\right\\rangle", "subexpr": "\\left|0\\right\\rangle"},
+                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "e^{i \\phi} \\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle }"},
+                    {"id": "__power_11", "type": "operator", "op": "power", "subexpr": "e^{i \\phi}"},
+                    {"id": "e", "type": "scalar", "latex": "e", "subexpr": "e"},
+                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "i \\phi"},
+                    {"id": "i", "type": "scalar", "latex": "i", "subexpr": "i"},
+                    {"id": "phi", "type": "scalar", "latex": "\\phi", "subexpr": "\\phi"},
+                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle }"},
+                    {"id": "__sin_14", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__multiply_15", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                    {"id": "__power_16", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                    {"id": "__num_17", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "__ket_18", "type": "ket", "latex": "\\left|1\\right\\rangle", "subexpr": "\\left|1\\right\\rangle"}
                   ],
                   "edges": [
                     {"from": "__ket_2", "to": "__equals_1"},
@@ -2462,12 +2439,7 @@
                     {"from": "__multiply_10", "to": "__add_3"},
                     {"from": "__add_3", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"},
-                  "domain": "quantum_mechanics",
-                  "enrichment": {
-                    "reasoning": "The context describes a qubit state on the Bloch sphere, so the domain is quantum mechanics. The angles $\\theta$ and $\\phi$ are identified as the polar and azimuthal angles.",
-                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__ket_2.description", "nodes.__ket_2.emoji", "nodes.__add_3.description", "nodes.__multiply_4.description", "nodes.__cos_5.description", "nodes.__cos_5.dimension", "nodes.__cos_5.unit", "nodes.__multiply_6.description", "nodes.__multiply_6.dimension", "nodes.__multiply_6.quantity", "nodes.__multiply_6.unit", "nodes.theta.description", "nodes.theta.dimension", "nodes.theta.emoji", "nodes.theta.quantity", "nodes.theta.unit", "nodes.__power_7.description", "nodes.__num_8.description", "nodes.__num_8.value", "nodes.__ket_9.description", "nodes.__ket_9.emoji", "nodes.__multiply_10.description", "nodes.__power_11.description", "nodes.__power_11.dimension", "nodes.__power_11.unit", "nodes.e.description", "nodes.e.dimension", "nodes.e.emoji", "nodes.e.quantity", "nodes.e.role", "nodes.e.unit", "nodes.__multiply_12.description", "nodes.__multiply_12.dimension", "nodes.__multiply_12.quantity", "nodes.__multiply_12.unit", "nodes.i.description", "nodes.i.dimension", "nodes.i.quantity", "nodes.i.role", "nodes.i.unit", "nodes.phi.description", "nodes.phi.dimension", "nodes.phi.emoji", "nodes.phi.quantity", "nodes.phi.unit", "nodes.__multiply_13.description", "nodes.__sin_14.description", "nodes.__sin_14.dimension", "nodes.__sin_14.unit", "nodes.__multiply_15.description", "nodes.__multiply_15.dimension", "nodes.__multiply_15.quantity", "nodes.__multiply_15.unit", "nodes.__power_16.description", "nodes.__num_17.description", "nodes.__num_17.value", "nodes.__ket_18.description", "nodes.__ket_18.emoji"]
-                  }
+                  "classification": {"kind": "algebraic"}
                 }
               }
             },
@@ -2498,28 +2470,28 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\langle\\psi| Z|\\psi\\rangle = \\cos^2\\!\\left(\\frac{\\theta}{2}\\right) \\cdot(+1) + \\sin^2\\!\\left(\\frac{\\theta}{2}\\right) \\cdot(-1)", "description": "Equation for the expectation value of the Pauli Z operator for a qubit state."},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "{\\left\\langle \\psi\\right|} Z {\\left|\\psi\\right\\rangle }", "description": "The full expression for the expectation value of the operator $Z$ for the state $\\lvert\\psi\\rangle$.", "quantity": "expectation_value", "dimension": "1", "unit": ""},
-                    {"id": "__bra_3", "type": "bra", "emoji": "⟨", "latex": "\\left\\langle \\psi\\right|", "subexpr": "\\left\\langle \\psi\\right|", "description": "The bra vector $\\langle\\psi\\rvert$, representing the conjugate transpose of the qubit's state vector.", "quantity": "state_vector"},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "Z {\\left|\\psi\\right\\rangle }", "description": "The Pauli Z operator $Z$ acting on the state vector $\\lvert\\psi\\rangle$."},
-                    {"id": "Z", "type": "scalar", "emoji": "🇿", "latex": "Z", "subexpr": "Z", "description": "The Pauli Z operator, which measures the qubit's state in the computational basis.", "quantity": "pauli_operator", "dimension": "1", "unit": ""},
-                    {"id": "__ket_5", "type": "ket", "emoji": "⟩", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle", "description": "The ket vector $\\lvert\\psi\\rangle$, representing the state of the qubit.", "quantity": "state_vector"},
-                    {"id": "__add_6", "type": "operator", "op": "add", "subexpr": "\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)} -1 + \\cos^{2}{\\left(\\frac{\\theta}{2} \\right)} 1", "description": "The sum of the eigenvalues of $Z$ weighted by their respective probabilities, yielding the expectation value.", "quantity": "expectation_value", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\cos^{2}{\\left(\\frac{\\theta}{2} \\right)} 1", "description": "The probability of measuring the eigenvalue $+1$, weighted by that eigenvalue.", "quantity": "weighted_probability", "dimension": "1", "unit": ""},
-                    {"id": "__power_8", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\cos^{2}{\\left(\\frac{\\theta}{2} \\right)}", "description": "The Born rule probability, $\\cos^{2}(\\theta/2)$, of measuring the qubit in the 'spin up' or $\\lvert 0 \\rangle$ state.", "quantity": "probability", "dimension": "1", "unit": ""},
-                    {"id": "__cos_9", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}", "description": "The cosine of half the polar angle $\\theta$, which is the amplitude of the 'spin up' or $\\lvert 0 \\rangle$ state.", "quantity": "amplitude", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "Half the polar angle $\\theta$ of the state on the Bloch sphere.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                    {"id": "theta", "type": "scalar", "emoji": "🧭", "latex": "\\theta", "subexpr": "\\theta", "description": "The polar angle $\\theta$ on the Bloch sphere, which determines the probability of measuring spin up or down.", "quantity": "polar_angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__power_11", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The reciprocal of 2, representing the fraction $1/2$.", "dimension": "1", "unit": "", "value": 0.5},
-                    {"id": "__num_12", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "dimension": "1", "unit": "", "value": 2},
-                    {"id": "__num_13", "type": "number", "label": "1", "subexpr": "1", "description": "The eigenvalue $+1$ of the Pauli Z operator, corresponding to the 'spin up' or $\\lvert 0 \\rangle$ state.", "quantity": "eigenvalue", "dimension": "1", "unit": "", "value": 1},
-                    {"id": "__multiply_14", "type": "operator", "op": "multiply", "subexpr": "\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)} -1", "description": "The probability of measuring the eigenvalue $-1$, weighted by that eigenvalue.", "quantity": "weighted_probability", "dimension": "1", "unit": ""},
-                    {"id": "__power_15", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)}", "description": "The Born rule probability, $\\sin^{2}(\\theta/2)$, of measuring the qubit in the 'spin down' or $\\lvert 1 \\rangle$ state.", "quantity": "probability", "dimension": "1", "unit": ""},
-                    {"id": "__sin_16", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}", "description": "The sine of half the polar angle $\\theta$, related to the amplitude of the 'spin down' or $\\lvert 1 \\rangle$ state.", "quantity": "amplitude", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_17", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "Half the polar angle $\\theta$ of the state on the Bloch sphere.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__power_18", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The reciprocal of 2, representing the fraction $1/2$.", "dimension": "1", "unit": "", "value": 0.5},
-                    {"id": "__num_19", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "dimension": "1", "unit": "", "value": 2},
-                    {"id": "__num_20", "type": "number", "label": "-1", "subexpr": "-1", "description": "The eigenvalue $-1$ of the Pauli Z operator, corresponding to the 'spin down' or $\\lvert 1 \\rangle$ state.", "quantity": "eigenvalue", "dimension": "1", "unit": "", "value": -1}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\langle\\psi| Z|\\psi\\rangle = \\cos^2\\!\\left(\\frac{\\theta}{2}\\right) \\cdot(+1) + \\sin^2\\!\\left(\\frac{\\theta}{2}\\right) \\cdot(-1)"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "{\\left\\langle \\psi\\right|} Z {\\left|\\psi\\right\\rangle }"},
+                    {"id": "__bra_3", "type": "bra", "latex": "\\left\\langle \\psi\\right|", "subexpr": "\\left\\langle \\psi\\right|"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "Z {\\left|\\psi\\right\\rangle }"},
+                    {"id": "Z", "type": "scalar", "latex": "Z", "subexpr": "Z"},
+                    {"id": "__ket_5", "type": "ket", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle"},
+                    {"id": "__add_6", "type": "operator", "op": "add", "subexpr": "\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)} -1 + \\cos^{2}{\\left(\\frac{\\theta}{2} \\right)} 1"},
+                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\cos^{2}{\\left(\\frac{\\theta}{2} \\right)} 1"},
+                    {"id": "__power_8", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\cos^{2}{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__cos_9", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                    {"id": "theta", "type": "scalar", "latex": "\\theta", "subexpr": "\\theta"},
+                    {"id": "__power_11", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                    {"id": "__num_12", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "__num_13", "type": "number", "label": "1", "subexpr": "1"},
+                    {"id": "__multiply_14", "type": "operator", "op": "multiply", "subexpr": "\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)} -1"},
+                    {"id": "__power_15", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__sin_16", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__multiply_17", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                    {"id": "__power_18", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                    {"id": "__num_19", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "__num_20", "type": "number", "label": "-1", "subexpr": "-1"}
                   ],
                   "edges": [
                     {"from": "__bra_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
@@ -2545,12 +2517,7 @@
                     {"from": "__multiply_14", "to": "__add_6"},
                     {"from": "__add_6", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"},
-                  "domain": "quantum_mechanics",
-                  "enrichment": {
-                    "reasoning": "The context is about qubits and the Bloch sphere, so the domain is `quantum_mechanics`. `Z` is the Pauli Z operator, and `θ` is the polar angle.",
-                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__bra_3.description", "nodes.__bra_3.emoji", "nodes.__bra_3.quantity", "nodes.__multiply_4.description", "nodes.Z.description", "nodes.Z.dimension", "nodes.Z.emoji", "nodes.Z.quantity", "nodes.Z.unit", "nodes.__ket_5.description", "nodes.__ket_5.emoji", "nodes.__ket_5.quantity", "nodes.__add_6.description", "nodes.__add_6.dimension", "nodes.__add_6.quantity", "nodes.__add_6.unit", "nodes.__multiply_7.description", "nodes.__multiply_7.dimension", "nodes.__multiply_7.quantity", "nodes.__multiply_7.unit", "nodes.__power_8.description", "nodes.__power_8.dimension", "nodes.__power_8.quantity", "nodes.__power_8.unit", "nodes.__cos_9.description", "nodes.__cos_9.dimension", "nodes.__cos_9.quantity", "nodes.__cos_9.unit", "nodes.__multiply_10.description", "nodes.__multiply_10.dimension", "nodes.__multiply_10.quantity", "nodes.__multiply_10.unit", "nodes.theta.description", "nodes.theta.dimension", "nodes.theta.emoji", "nodes.theta.quantity", "nodes.theta.unit", "nodes.__power_11.description", "nodes.__power_11.dimension", "nodes.__power_11.unit", "nodes.__power_11.value", "nodes.__num_12.description", "nodes.__num_12.dimension", "nodes.__num_12.unit", "nodes.__num_12.value", "nodes.__num_13.description", "nodes.__num_13.dimension", "nodes.__num_13.quantity", "nodes.__num_13.unit", "nodes.__num_13.value", "nodes.__multiply_14.description", "nodes.__multiply_14.dimension", "nodes.__multiply_14.quantity", "nodes.__multiply_14.unit", "nodes.__power_15.description", "nodes.__power_15.dimension", "nodes.__power_15.quantity", "nodes.__power_15.unit", "nodes.__sin_16.description", "nodes.__sin_16.dimension", "nodes.__sin_16.quantity", "nodes.__sin_16.unit", "nodes.__multiply_17.description", "nodes.__multiply_17.dimension", "nodes.__multiply_17.quantity", "nodes.__multiply_17.unit", "nodes.__power_18.description", "nodes.__power_18.dimension", "nodes.__power_18.unit", "nodes.__power_18.value", "nodes.__num_19.description", "nodes.__num_19.dimension", "nodes.__num_19.unit", "nodes.__num_19.value", "nodes.__num_20.description", "nodes.__num_20.dimension", "nodes.__num_20.quantity", "nodes.__num_20.unit", "nodes.__num_20.value"]
-                  }
+                  "classification": {"kind": "algebraic"}
                 }
               }
             },
@@ -2568,21 +2535,21 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\cos^2\\!\\left(\\frac{\\theta}{2}\\right) - \\sin^2\\!\\left(\\frac{\\theta}{2}\\right) = \\cos\\theta", "description": "The double-angle identity for cosine, which simplifies the expression for the z-component of the Bloch vector."},
-                    {"id": "__add_2", "type": "operator", "op": "add", "subexpr": "-\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)} + \\cos^{2}{\\left(\\frac{\\theta}{2} \\right)}", "description": "The difference of the squared cosine and sine of half the polar angle, which equals the cosine of the full angle.", "dimension": "1", "unit": ""},
-                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\cos^{2}{\\left(\\frac{\\theta}{2} \\right)}", "description": "The square of the cosine of half the polar angle, $\\\\theta/2$.", "dimension": "1", "unit": ""},
-                    {"id": "__cos_4", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}", "description": "The cosine of half the polar angle, $\\\\theta/2$, a component of the qubit's state vector.", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "Division of the polar angle $\\\\theta$ by two, providing the argument for the trigonometric functions.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                    {"id": "theta", "type": "scalar", "emoji": "🧭", "latex": "\\theta", "subexpr": "\\theta", "description": "The polar angle $\\\\theta$ of a qubit's state vector on the Bloch sphere.", "quantity": "angle", "dimension": "1", "unit": "rad", "role": "parameter"},
-                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The reciprocal of 2, representing division by 2.", "dimension": "1", "unit": ""},
-                    {"id": "__num_7", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "dimension": "1", "unit": "", "value": 2},
-                    {"id": "__negation_8", "type": "operator", "op": "negation", "subexpr": "-\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)}", "description": "The negation of the squared sine of half the polar angle.", "dimension": "1", "unit": ""},
-                    {"id": "__power_9", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)}", "description": "The square of the sine of half the polar angle, $\\\\theta/2$.", "dimension": "1", "unit": ""},
-                    {"id": "__sin_10", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}", "description": "The sine of half the polar angle, $\\\\theta/2$, a component of the qubit's state vector.", "dimension": "1", "unit": ""},
-                    {"id": "__multiply_11", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "Division of the polar angle $\\\\theta$ by two, providing the argument for the trigonometric functions.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__power_12", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The reciprocal of 2, representing division by 2.", "dimension": "1", "unit": ""},
-                    {"id": "__num_13", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "dimension": "1", "unit": "", "value": 2},
-                    {"id": "__cos_14", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\theta \\right)}", "description": "The cosine of the polar angle $\\\\theta$, which is the z-component of the qubit's state on the Bloch sphere.", "dimension": "1", "unit": ""}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\cos^2\\!\\left(\\frac{\\theta}{2}\\right) - \\sin^2\\!\\left(\\frac{\\theta}{2}\\right) = \\cos\\theta"},
+                    {"id": "__add_2", "type": "operator", "op": "add", "subexpr": "-\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)} + \\cos^{2}{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\cos^{2}{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__cos_4", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                    {"id": "theta", "type": "scalar", "latex": "\\theta", "subexpr": "\\theta"},
+                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                    {"id": "__num_7", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "__negation_8", "type": "operator", "op": "negation", "subexpr": "-\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__power_9", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__sin_10", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}"},
+                    {"id": "__multiply_11", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                    {"id": "__power_12", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                    {"id": "__num_13", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "__cos_14", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\theta \\right)}"}
                   ],
                   "edges": [
                     {"from": "theta", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
@@ -2598,16 +2565,11 @@
                     {"from": "__sin_10", "to": "__power_9"},
                     {"from": "__power_9", "to": "__negation_8"},
                     {"from": "__negation_8", "to": "__add_2"},
-                    {"from": "__add_2", "to": "__equals_1", "role": "lhs"},
-                    {"from": "__cos_14", "to": "__equals_1", "role": "rhs"},
-                    {"from": "theta", "to": "__cos_14"}
+                    {"from": "__add_2", "to": "__equals_1"},
+                    {"from": "theta", "to": "__cos_14"},
+                    {"from": "__cos_14", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"},
-                  "domain": "quantum_mechanics",
-                  "enrichment": {
-                    "reasoning": "The context describes a qubit on the Bloch sphere, so the domain is `quantum_mechanics`. The variable $\\theta$ is the polar angle.",
-                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__add_2.description", "nodes.__add_2.dimension", "nodes.__add_2.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.unit", "nodes.__cos_4.description", "nodes.__cos_4.dimension", "nodes.__cos_4.unit", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.quantity", "nodes.__multiply_5.unit", "nodes.theta.description", "nodes.theta.dimension", "nodes.theta.emoji", "nodes.theta.quantity", "nodes.theta.role", "nodes.theta.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.unit", "nodes.__num_7.description", "nodes.__num_7.dimension", "nodes.__num_7.unit", "nodes.__num_7.value", "nodes.__negation_8.description", "nodes.__negation_8.dimension", "nodes.__negation_8.unit", "nodes.__power_9.description", "nodes.__power_9.dimension", "nodes.__power_9.unit", "nodes.__sin_10.description", "nodes.__sin_10.dimension", "nodes.__sin_10.unit", "nodes.__multiply_11.description", "nodes.__multiply_11.dimension", "nodes.__multiply_11.quantity", "nodes.__multiply_11.unit", "nodes.__power_12.description", "nodes.__power_12.dimension", "nodes.__power_12.unit", "nodes.__num_13.description", "nodes.__num_13.dimension", "nodes.__num_13.unit", "nodes.__num_13.value", "nodes.__cos_14.description", "nodes.__cos_14.dimension", "nodes.__cos_14.unit"]
-                  }
+                  "classification": {"kind": "algebraic"}
                 }
               }
             },
@@ -2625,15 +2587,15 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "z", "type": "scalar", "emoji": "↕️", "latex": "z", "subexpr": "z", "description": "The z-coordinate of the state vector on the Bloch sphere.", "quantity": "bloch_z_coordinate", "dimension": "1", "unit": "\"\""},
-                    {"id": "s1___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\langle\\psi| Z|\\psi\\rangle", "description": "The expectation value of the Pauli Z operator for the quantum state $|\\psi\\rangle$.", "quantity": "expectation_value", "dimension": "1", "unit": "\"\""},
-                    {"id": "s1___bra_2", "type": "bra", "emoji": "🧠", "latex": "\\left\\langle \\psi\\right|", "subexpr": "\\left\\langle \\psi\\right|", "description": "Bra vector $\\langle\\psi|$, representing the quantum state of the qubit.", "quantity": "quantum_state", "dimension": "1", "unit": "\"\""},
-                    {"id": "s1___multiply_3", "type": "operator", "op": "multiply", "subexpr": "Z {\\left|\\psi\\right\\rangle }", "description": "The Pauli Z operator $Z$ acting on the state vector $|\\psi\\rangle$.", "quantity": "state_vector", "dimension": "1", "unit": "\"\""},
-                    {"id": "Z", "type": "scalar", "emoji": "🇿", "latex": "Z", "subexpr": "Z", "description": "The Pauli Z operator, a quantum mechanical observable corresponding to the spin component in the z-direction.", "quantity": "pauli_z_operator", "dimension": "1", "unit": "\"\"", "role": "observable"},
-                    {"id": "s1___ket_4", "type": "ket", "emoji": "🧠", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle", "description": "Ket vector $|\\psi\\rangle$, representing the quantum state of the qubit.", "quantity": "quantum_state", "dimension": "1", "unit": "\"\""},
-                    {"id": "s2___cos_1", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos\\theta", "description": "The cosine of the polar angle $\\theta$, which equals the z-component of the state vector on the Bloch sphere.", "quantity": "z_coordinate", "dimension": "1", "unit": "\"\""},
-                    {"id": "theta", "type": "scalar", "emoji": "🧭", "latex": "\\theta", "subexpr": "\\theta", "description": "The polar angle $\\theta$ on the Bloch sphere, which determines the probability amplitudes of the basis states.", "quantity": "polar_angle", "dimension": "1", "unit": "rad"},
-                    {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "z = \\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\cos\\theta", "description": "Equates the Bloch z-coordinate with the expectation value of the Pauli Z operator, which is equal to $\\cos\\theta$.", "color": "green", "highlight": "result"}
+                    {"id": "z", "type": "scalar", "latex": "z", "subexpr": "z"},
+                    {"id": "s1___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\langle\\psi| Z|\\psi\\rangle"},
+                    {"id": "s1___bra_2", "type": "bra", "latex": "\\left\\langle \\psi\\right|", "subexpr": "\\left\\langle \\psi\\right|"},
+                    {"id": "s1___multiply_3", "type": "operator", "op": "multiply", "subexpr": "Z {\\left|\\psi\\right\\rangle }"},
+                    {"id": "Z", "type": "scalar", "latex": "Z", "subexpr": "Z"},
+                    {"id": "s1___ket_4", "type": "ket", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle"},
+                    {"id": "s2___cos_1", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos\\theta"},
+                    {"id": "theta", "type": "scalar", "latex": "\\theta", "subexpr": "\\theta"},
+                    {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "z = \\langle\\psi\\lvert Z\\rvert\\psi\\rangle = \\cos\\theta", "description": "Height on the Bloch sphere = expectation of Pauli Z", "color": "green", "highlight": "result"}
                   ],
                   "edges": [
                     {"from": "s1___bra_2", "to": "s1___multiply_1"},
@@ -2645,12 +2607,7 @@
                     {"from": "s1___multiply_1", "to": "__equals_1"},
                     {"from": "s2___cos_1", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"},
-                  "domain": "quantum_mechanics",
-                  "enrichment": {
-                    "reasoning": "Context is about qubits and the Bloch sphere, using bra-ket notation and Pauli operators, so the domain is `quantum_mechanics`. Z is the Pauli Z operator.",
-                    "fields": ["domain", "nodes.z.description", "nodes.z.dimension", "nodes.z.emoji", "nodes.z.quantity", "nodes.z.unit", "nodes.s1___multiply_1.description", "nodes.s1___multiply_1.dimension", "nodes.s1___multiply_1.quantity", "nodes.s1___multiply_1.unit", "nodes.s1___bra_2.description", "nodes.s1___bra_2.dimension", "nodes.s1___bra_2.emoji", "nodes.s1___bra_2.quantity", "nodes.s1___bra_2.unit", "nodes.s1___multiply_3.description", "nodes.s1___multiply_3.dimension", "nodes.s1___multiply_3.quantity", "nodes.s1___multiply_3.unit", "nodes.Z.description", "nodes.Z.dimension", "nodes.Z.emoji", "nodes.Z.quantity", "nodes.Z.role", "nodes.Z.unit", "nodes.s1___ket_4.description", "nodes.s1___ket_4.dimension", "nodes.s1___ket_4.emoji", "nodes.s1___ket_4.quantity", "nodes.s1___ket_4.unit", "nodes.s2___cos_1.description", "nodes.s2___cos_1.dimension", "nodes.s2___cos_1.quantity", "nodes.s2___cos_1.unit", "nodes.theta.description", "nodes.theta.dimension", "nodes.theta.emoji", "nodes.theta.quantity", "nodes.theta.unit", "nodes.__equals_1.description"]
-                  }
+                  "classification": {"kind": "algebraic"}
                 }
               }
             }
@@ -2841,28 +2798,28 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "|\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)| 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)| 1\\rangle", "description": "An equation defining a quantum state as a superposition of basis states."},
-                  {"id": "__ket_2", "type": "ket", "emoji": "🌊", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle", "description": "The state vector $|\\psi\\rangle$ for a single qubit.", "quantity": "state_vector", "dimension": "1", "unit": ""},
-                  {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "e^{i \\phi} \\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle } + \\cos{\\left(\\frac{\\theta}{2} \\right)} {\\left|0\\right\\rangle }", "description": "The superposition of the two computational basis states, $|0\\rangle$ and $|1\\rangle$."},
-                  {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)} {\\left|0\\right\\rangle }", "description": "The computational basis state $|0\\rangle$ scaled by its probability amplitude."},
-                  {"id": "__cos_5", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}", "description": "The cosine of half the polar angle, which gives the probability amplitude of the $|0\\rangle$ state.", "quantity": "probability_amplitude", "dimension": "1", "unit": ""},
-                  {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "The polar angle $\\theta$ divided by 2.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                  {"id": "theta", "type": "scalar", "emoji": "🌐", "latex": "\\theta", "subexpr": "\\theta", "description": "The polar angle $\\theta$ on the Bloch sphere, representing the qubit's latitude.", "quantity": "polar_angle", "dimension": "1", "unit": "rad"},
-                  {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The division of the angle $\\theta$ by 2."},
-                  {"id": "__num_8", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "value": 2},
-                  {"id": "__ket_9", "type": "ket", "emoji": "⬆️", "latex": "\\left|0\\right\\rangle", "subexpr": "\\left|0\\right\\rangle", "description": "The computational basis state $|0\\rangle$, corresponding to the north pole of the Bloch sphere (spin-up).", "quantity": "basis_state", "dimension": "1", "unit": ""},
-                  {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "e^{i \\phi} \\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle }", "description": "The computational basis state $|1\\rangle$ scaled by its complex probability amplitude."},
-                  {"id": "__power_11", "type": "operator", "op": "power", "subexpr": "e^{i \\phi}", "description": "The complex phase factor $e^{i\\phi}$ of the quantum state.", "quantity": "phase_factor", "dimension": "1", "unit": ""},
-                  {"id": "e", "type": "scalar", "emoji": "🇪", "latex": "e", "subexpr": "e", "description": "Euler's number, the base of the natural logarithm.", "quantity": "eulers_number", "dimension": "1", "unit": "", "value": 2.71828},
-                  {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "i \\phi", "description": "The exponent $i\\phi$, which determines the phase of the state.", "quantity": "phase_angle", "dimension": "1", "unit": "rad"},
-                  {"id": "i", "type": "scalar", "latex": "i", "subexpr": "i", "description": "The imaginary unit, $i = \\sqrt{-1}$.", "quantity": "imaginary_unit", "dimension": "1", "unit": "", "value": "i"},
-                  {"id": "phi", "type": "scalar", "emoji": "🧭", "latex": "\\phi", "subexpr": "\\phi", "description": "The azimuthal angle $\\phi$ on the Bloch sphere, representing the qubit's longitude.", "quantity": "azimuthal_angle", "dimension": "1", "unit": "rad"},
-                  {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle }", "description": "The computational basis state $|1\\rangle$ scaled by the magnitude of its probability amplitude."},
-                  {"id": "__sin_14", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}", "description": "The sine of half the polar angle, which gives the magnitude of the probability amplitude of the $|1\\rangle$ state.", "quantity": "probability_amplitude", "dimension": "1", "unit": ""},
-                  {"id": "__multiply_15", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "The polar angle $\\theta$ divided by 2.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                  {"id": "__power_16", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The division of the angle $\\theta$ by 2."},
-                  {"id": "__num_17", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "value": 2},
-                  {"id": "__ket_18", "type": "ket", "emoji": "⬇️", "latex": "\\left|1\\right\\rangle", "subexpr": "\\left|1\\right\\rangle", "description": "The computational basis state $|1\\rangle$, corresponding to the south pole of the Bloch sphere (spin-down).", "quantity": "basis_state", "dimension": "1", "unit": ""}
+                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "|\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)| 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)| 1\\rangle"},
+                  {"id": "__ket_2", "type": "ket", "latex": "\\left|\\psi\\right\\rangle", "subexpr": "\\left|\\psi\\right\\rangle"},
+                  {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "e^{i \\phi} \\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle } + \\cos{\\left(\\frac{\\theta}{2} \\right)} {\\left|0\\right\\rangle }"},
+                  {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)} {\\left|0\\right\\rangle }"},
+                  {"id": "__cos_5", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}"},
+                  {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                  {"id": "theta", "type": "scalar", "latex": "\\theta", "subexpr": "\\theta"},
+                  {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                  {"id": "__num_8", "type": "number", "label": "2", "subexpr": "2"},
+                  {"id": "__ket_9", "type": "ket", "latex": "\\left|0\\right\\rangle", "subexpr": "\\left|0\\right\\rangle"},
+                  {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "e^{i \\phi} \\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle }"},
+                  {"id": "__power_11", "type": "operator", "op": "power", "subexpr": "e^{i \\phi}"},
+                  {"id": "e", "type": "scalar", "latex": "e", "subexpr": "e"},
+                  {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "i \\phi"},
+                  {"id": "i", "type": "scalar", "latex": "i", "subexpr": "i"},
+                  {"id": "phi", "type": "scalar", "latex": "\\phi", "subexpr": "\\phi"},
+                  {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)} {\\left|1\\right\\rangle }"},
+                  {"id": "__sin_14", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}"},
+                  {"id": "__multiply_15", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                  {"id": "__power_16", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                  {"id": "__num_17", "type": "number", "label": "2", "subexpr": "2"},
+                  {"id": "__ket_18", "type": "ket", "latex": "\\left|1\\right\\rangle", "subexpr": "\\left|1\\right\\rangle"}
                 ],
                 "edges": [
                   {"from": "__ket_2", "to": "__equals_1"},
@@ -2888,12 +2845,7 @@
                   {"from": "__multiply_10", "to": "__add_3"},
                   {"from": "__add_3", "to": "__equals_1"}
                 ],
-                "classification": {"kind": "algebraic"},
-                "domain": "quantum_mechanics",
-                "enrichment": {
-                  "reasoning": "The context describes a quantum state on the Bloch sphere, so the domain is `quantum_mechanics`. Symbols $\\theta$ and $\\phi$ are the polar and azimuthal angles.",
-                  "fields": ["domain", "nodes.__equals_1.description", "nodes.__ket_2.description", "nodes.__ket_2.dimension", "nodes.__ket_2.emoji", "nodes.__ket_2.quantity", "nodes.__ket_2.unit", "nodes.__add_3.description", "nodes.__multiply_4.description", "nodes.__cos_5.description", "nodes.__cos_5.dimension", "nodes.__cos_5.quantity", "nodes.__cos_5.unit", "nodes.__multiply_6.description", "nodes.__multiply_6.dimension", "nodes.__multiply_6.quantity", "nodes.__multiply_6.unit", "nodes.theta.description", "nodes.theta.dimension", "nodes.theta.emoji", "nodes.theta.quantity", "nodes.theta.unit", "nodes.__power_7.description", "nodes.__num_8.description", "nodes.__num_8.value", "nodes.__ket_9.description", "nodes.__ket_9.dimension", "nodes.__ket_9.emoji", "nodes.__ket_9.quantity", "nodes.__ket_9.unit", "nodes.__multiply_10.description", "nodes.__power_11.description", "nodes.__power_11.dimension", "nodes.__power_11.quantity", "nodes.__power_11.unit", "nodes.e.description", "nodes.e.dimension", "nodes.e.emoji", "nodes.e.quantity", "nodes.e.unit", "nodes.e.value", "nodes.__multiply_12.description", "nodes.__multiply_12.dimension", "nodes.__multiply_12.quantity", "nodes.__multiply_12.unit", "nodes.i.description", "nodes.i.dimension", "nodes.i.quantity", "nodes.i.unit", "nodes.i.value", "nodes.phi.description", "nodes.phi.dimension", "nodes.phi.emoji", "nodes.phi.quantity", "nodes.phi.unit", "nodes.__multiply_13.description", "nodes.__sin_14.description", "nodes.__sin_14.dimension", "nodes.__sin_14.quantity", "nodes.__sin_14.unit", "nodes.__multiply_15.description", "nodes.__multiply_15.dimension", "nodes.__multiply_15.quantity", "nodes.__multiply_15.unit", "nodes.__power_16.description", "nodes.__num_17.description", "nodes.__num_17.value", "nodes.__ket_18.description", "nodes.__ket_18.dimension", "nodes.__ket_18.emoji", "nodes.__ket_18.quantity", "nodes.__ket_18.unit"]
-                }
+                "classification": {"kind": "algebraic"}
               }
             }
           },
@@ -2912,35 +2864,35 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "c0___p_1", "type": "function", "emoji": "🎲", "op": "p", "subexpr": "p(0)", "description": "The probability of measuring the quantum state as 0.", "quantity": "probability", "dimension": "1", "unit": ""},
-                  {"id": "c0___num_2", "type": "number", "label": "0", "emoji": "0️⃣", "subexpr": "0", "description": "The outcome of measuring the qubit in the '0' state of the computational basis.", "value": 0},
-                  {"id": "c0___power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "|{\\langle 0|\\psi\\rangle}|^2", "description": "The squared magnitude of the probability amplitude, which gives the measurement probability according to Born's rule.", "quantity": "probability", "dimension": "1", "unit": ""},
-                  {"id": "c0___abs_4", "type": "function", "op": "abs", "subexpr": "\\left|{{\\langle 0|\\psi\\rangle}}\\right|", "description": "The magnitude of the probability amplitude for measuring the state as '0'.", "quantity": "probability_amplitude_magnitude", "dimension": "1", "unit": ""},
-                  {"id": "langle_0_cdotrangle", "type": "operator", "latex": "\\langle 0\\,|\\,\\cdot\\rangle", "op": "inner_product", "subexpr": "\\langle 0|\\psi\\rangle", "description": "The inner product of the state vector $|\\psi\\rangle$ with the basis vector $\\langle 0|$, which gives the probability amplitude.", "quantity": "probability_amplitude", "dimension": "1", "unit": ""},
-                  {"id": "psi", "type": "scalar", "emoji": "🌀", "latex": "\\psi", "subexpr": "\\psi", "description": "The quantum state vector $|\\psi\\rangle$ of the qubit.", "quantity": "state_vector"},
-                  {"id": "c0___power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\cos^2 \\left(\\frac{\\theta}{2}\\right)", "description": "The expression for the probability of measuring the state as '0', derived from the polar angle $\\theta$ on the Bloch sphere.", "quantity": "probability", "dimension": "1", "unit": ""},
-                  {"id": "c0___cos_6", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}", "description": "The cosine of half the polar angle $\\theta$.", "dimension": "1", "unit": ""},
-                  {"id": "c0___multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "Half of the polar angle $\\theta$.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                  {"id": "theta", "type": "scalar", "emoji": "🧭", "latex": "\\theta", "subexpr": "\\theta", "description": "The polar angle $\\theta$ of the state vector on the Bloch sphere, measured from the +z axis.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                  {"id": "c0___power_8", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The fraction one-half, used to divide the polar angle $\\theta$.", "value": 0.5},
-                  {"id": "c0___num_9", "type": "number", "label": "2", "emoji": "2️⃣", "subexpr": "2", "description": "The number 2, the divisor for the polar angle $\\theta$.", "value": 2},
-                  {"id": "c0___equals_10", "type": "relation", "label": "equals", "emoji": "＝", "op": "equals", "subexpr": "p(0)=|\\langle 0|\\psi\\rangle|^2=\\cos^2\\!\\left(\\frac{\\theta}{2}\\right)", "description": "An equation stating that the probability of measuring state '0' is the squared amplitude, which equals $\\cos^2(\\theta/2)$."},
-                  {"id": "c1___p_1", "type": "function", "emoji": "🎲", "op": "p", "subexpr": "p(1)", "description": "The probability of measuring the quantum state as 1.", "quantity": "probability", "dimension": "1", "unit": ""},
-                  {"id": "c1___num_2", "type": "number", "label": "1", "emoji": "1️⃣", "subexpr": "1", "description": "The outcome of measuring the qubit in the '1' state of the computational basis.", "value": 1},
-                  {"id": "c1___power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "|{\\langle 1|\\psi\\rangle}|^2", "description": "The squared magnitude of the probability amplitude, which gives the measurement probability according to Born's rule.", "quantity": "probability", "dimension": "1", "unit": ""},
-                  {"id": "c1___abs_4", "type": "function", "op": "abs", "subexpr": "\\left|{{\\langle 1|\\psi\\rangle}}\\right|", "description": "The magnitude of the probability amplitude for measuring the state as '1'.", "quantity": "probability_amplitude_magnitude", "dimension": "1", "unit": ""},
-                  {"id": "langle_1_cdotrangle", "type": "operator", "latex": "\\langle 1\\,|\\,\\cdot\\rangle", "op": "inner_product", "subexpr": "\\langle 1|\\psi\\rangle", "description": "The inner product of the state vector $|\\psi\\rangle$ with the basis vector $\\langle 1|$, which gives the probability amplitude.", "quantity": "probability_amplitude", "dimension": "1", "unit": ""},
-                  {"id": "c1___power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\sin^2 \\left(\\frac{\\theta}{2}\\right)", "description": "The expression for the probability of measuring the state as '1', derived from the polar angle $\\theta$ on the Bloch sphere.", "quantity": "probability", "dimension": "1", "unit": ""},
-                  {"id": "c1___sin_6", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}", "description": "The sine of half the polar angle $\\theta$.", "dimension": "1", "unit": ""},
-                  {"id": "c1___multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "Half of the polar angle $\\theta$.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                  {"id": "c1___power_8", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The fraction one-half, used to divide the polar angle $\\theta$.", "value": 0.5},
-                  {"id": "c1___num_9", "type": "number", "label": "2", "emoji": "2️⃣", "subexpr": "2", "description": "The number 2, the divisor for the polar angle $\\theta$.", "value": 2},
-                  {"id": "c1___equals_10", "type": "relation", "label": "equals", "emoji": "＝", "op": "equals", "subexpr": "p(1)=|\\langle 1|\\psi\\rangle|^2=\\sin^2\\!\\left(\\frac{\\theta}{2}\\right)", "description": "An equation stating that the probability of measuring state '1' is the squared amplitude, which equals $\\sin^2(\\theta/2)$."}
+                  {"id": "c0___p_1", "type": "function", "op": "p", "subexpr": "p(0)"},
+                  {"id": "c0___num_2", "type": "number", "label": "0", "subexpr": "0"},
+                  {"id": "c0___power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "|{\\langle 0|\\psi\\rangle}|^2"},
+                  {"id": "c0___abs_4", "type": "function", "op": "abs", "subexpr": "\\left|{{\\langle 0|\\psi\\rangle}}\\right|"},
+                  {"id": "c0_Phi_{0}", "type": "operator", "latex": "\\langle 0\\,|\\,\\cdot\\rangle", "op": "inner_product", "subexpr": "\\langle 0|\\psi\\rangle"},
+                  {"id": "psi", "type": "scalar", "latex": "\\psi", "subexpr": "\\psi"},
+                  {"id": "c0___power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\cos^2 \\left(\\frac{\\theta}{2}\\right)"},
+                  {"id": "c0___cos_6", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}"},
+                  {"id": "c0___multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                  {"id": "theta", "type": "scalar", "latex": "\\theta", "subexpr": "\\theta"},
+                  {"id": "c0___power_8", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                  {"id": "c0___num_9", "type": "number", "label": "2", "subexpr": "2"},
+                  {"id": "c0___equals_10", "type": "relation", "label": "equals", "emoji": "=", "op": "equals", "subexpr": "p(0)=|\\langle 0|\\psi\\rangle|^2=\\cos^2\\!\\left(\\frac{\\theta}{2}\\right)"},
+                  {"id": "c1___p_1", "type": "function", "op": "p", "subexpr": "p(1)"},
+                  {"id": "c1___num_2", "type": "number", "label": "1", "subexpr": "1"},
+                  {"id": "c1___power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "|{\\langle 1|\\psi\\rangle}|^2"},
+                  {"id": "c1___abs_4", "type": "function", "op": "abs", "subexpr": "\\left|{{\\langle 1|\\psi\\rangle}}\\right|"},
+                  {"id": "c1_Phi_{0}", "type": "operator", "latex": "\\langle 1\\,|\\,\\cdot\\rangle", "op": "inner_product", "subexpr": "\\langle 1|\\psi\\rangle"},
+                  {"id": "c1___power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\sin^2 \\left(\\frac{\\theta}{2}\\right)"},
+                  {"id": "c1___sin_6", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}"},
+                  {"id": "c1___multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                  {"id": "c1___power_8", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                  {"id": "c1___num_9", "type": "number", "label": "2", "subexpr": "2"},
+                  {"id": "c1___equals_10", "type": "relation", "label": "equals", "emoji": "=", "op": "equals", "subexpr": "p(1)=|\\langle 1|\\psi\\rangle|^2=\\sin^2\\!\\left(\\frac{\\theta}{2}\\right)"}
                 ],
                 "edges": [
                   {"from": "c0___num_2", "to": "c0___p_1"},
-                  {"from": "psi", "to": "langle_0_cdotrangle", "role": "rhs"},
-                  {"from": "langle_0_cdotrangle", "to": "c0___abs_4"},
+                  {"from": "psi", "to": "c0_Phi_{0}", "role": "rhs"},
+                  {"from": "c0_Phi_{0}", "to": "c0___abs_4"},
                   {"from": "c0___abs_4", "to": "c0___power_3"},
                   {"from": "theta", "to": "c0___multiply_7", "semantic": "direct", "weight": 1.0},
                   {"from": "c0___num_9", "to": "c0___power_8"},
@@ -2951,8 +2903,8 @@
                   {"from": "c0___power_3", "to": "c0___equals_10"},
                   {"from": "c0___power_5", "to": "c0___equals_10"},
                   {"from": "c1___num_2", "to": "c1___p_1"},
-                  {"from": "psi", "to": "langle_1_cdotrangle", "role": "rhs"},
-                  {"from": "langle_1_cdotrangle", "to": "c1___abs_4"},
+                  {"from": "psi", "to": "c1_Phi_{0}", "role": "rhs"},
+                  {"from": "c1_Phi_{0}", "to": "c1___abs_4"},
                   {"from": "c1___abs_4", "to": "c1___power_3"},
                   {"from": "theta", "to": "c1___multiply_7", "semantic": "direct", "weight": 1.0},
                   {"from": "c1___num_9", "to": "c1___power_8"},
@@ -2970,11 +2922,6 @@
                     {"kind": "algebraic"},
                     {"kind": "algebraic"}
                   ]
-                },
-                "domain": "quantum_mechanics",
-                "enrichment": {
-                  "reasoning": "The context is quantum mechanics, specifically qubit states on the Bloch sphere. Probabilities and angles are dimensionless quantities. The state vector is $|\\psi\\rangle$.",
-                  "fields": ["domain", "nodes.c0___p_1.description", "nodes.c0___p_1.dimension", "nodes.c0___p_1.emoji", "nodes.c0___p_1.quantity", "nodes.c0___p_1.unit", "nodes.c0___num_2.description", "nodes.c0___num_2.emoji", "nodes.c0___num_2.value", "nodes.c0___power_3.description", "nodes.c0___power_3.dimension", "nodes.c0___power_3.quantity", "nodes.c0___power_3.unit", "nodes.c0___abs_4.description", "nodes.c0___abs_4.dimension", "nodes.c0___abs_4.quantity", "nodes.c0___abs_4.unit", "nodes.langle_0_cdotrangle.description", "nodes.langle_0_cdotrangle.dimension", "nodes.langle_0_cdotrangle.quantity", "nodes.langle_0_cdotrangle.unit", "nodes.psi.description", "nodes.psi.emoji", "nodes.psi.quantity", "nodes.c0___power_5.description", "nodes.c0___power_5.dimension", "nodes.c0___power_5.quantity", "nodes.c0___power_5.unit", "nodes.c0___cos_6.description", "nodes.c0___cos_6.dimension", "nodes.c0___cos_6.unit", "nodes.c0___multiply_7.description", "nodes.c0___multiply_7.dimension", "nodes.c0___multiply_7.quantity", "nodes.c0___multiply_7.unit", "nodes.theta.description", "nodes.theta.dimension", "nodes.theta.emoji", "nodes.theta.quantity", "nodes.theta.unit", "nodes.c0___power_8.description", "nodes.c0___power_8.value", "nodes.c0___num_9.description", "nodes.c0___num_9.emoji", "nodes.c0___num_9.value", "nodes.c0___equals_10.description", "nodes.c0___equals_10.emoji", "nodes.c1___p_1.description", "nodes.c1___p_1.dimension", "nodes.c1___p_1.emoji", "nodes.c1___p_1.quantity", "nodes.c1___p_1.unit", "nodes.c1___num_2.description", "nodes.c1___num_2.emoji", "nodes.c1___num_2.value", "nodes.c1___power_3.description", "nodes.c1___power_3.dimension", "nodes.c1___power_3.quantity", "nodes.c1___power_3.unit", "nodes.c1___abs_4.description", "nodes.c1___abs_4.dimension", "nodes.c1___abs_4.quantity", "nodes.c1___abs_4.unit", "nodes.langle_1_cdotrangle.description", "nodes.langle_1_cdotrangle.dimension", "nodes.langle_1_cdotrangle.quantity", "nodes.langle_1_cdotrangle.unit", "nodes.c1___power_5.description", "nodes.c1___power_5.dimension", "nodes.c1___power_5.quantity", "nodes.c1___power_5.unit", "nodes.c1___sin_6.description", "nodes.c1___sin_6.dimension", "nodes.c1___sin_6.unit", "nodes.c1___multiply_7.description", "nodes.c1___multiply_7.dimension", "nodes.c1___multiply_7.quantity", "nodes.c1___multiply_7.unit", "nodes.c1___power_8.description", "nodes.c1___power_8.value", "nodes.c1___num_9.description", "nodes.c1___num_9.emoji", "nodes.c1___num_9.value", "nodes.c1___equals_10.description", "nodes.c1___equals_10.emoji"]
                 }
               }
             }
@@ -2994,32 +2941,32 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "c0___equals_1", "type": "relation", "op": "equals", "subexpr": "\\cos^2\\left(\\frac{\\theta}{2}\\right)=\\frac{1+\\cos\\theta}{2}", "description": "Relates the squared cosine of half the polar angle to the cosine of the full angle, giving the probability of measuring the $|0\\rangle$ state."},
-                  {"id": "c0___power_2", "type": "operator", "emoji": "⬆️", "op": "power", "exponent": "2", "subexpr": "\\cos^{2}{\\left(\\frac{\\theta}{2} \\right)}", "description": "The squared amplitude for the $|0\\rangle$ state, which gives the probability $p(0)$ of measuring the qubit in the 'up' state.", "quantity": "probability", "dimension": "1", "unit": ""},
-                  {"id": "c0___cos_3", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}", "description": "The amplitude of the quantum state corresponding to the $|0\\rangle$ basis vector.", "quantity": "probability_amplitude", "dimension": "1", "unit": ""},
-                  {"id": "c0___multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "Calculates half the polar angle, $\\theta/2$, for the trigonometric function argument.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                  {"id": "theta", "type": "scalar", "emoji": "🧭", "latex": "\\theta", "subexpr": "\\theta", "description": "Polar angle of the quantum state on the Bloch sphere, measured from the positive z-axis.", "quantity": "polar_angle", "dimension": "1", "unit": "rad"},
-                  {"id": "c0___power_5", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The reciprocal of 2, used to divide the angle $\\theta$."},
-                  {"id": "c0___num_6", "type": "number", "label": "2", "emoji": "2️⃣", "subexpr": "2", "description": "The number 2.", "value": 2},
-                  {"id": "c0___multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\left(\\cos{\\left(\\theta \\right)} + 1\\right) \\frac{1}{2}", "description": "Calculates the probability of measuring the $|0\\rangle$ state from the z-component of the state vector.", "quantity": "probability", "dimension": "1", "unit": ""},
-                  {"id": "c0___add_8", "type": "operator", "op": "add", "subexpr": "\\cos{\\left(\\theta \\right)} + 1", "description": "The numerator of the probability expression, $1+z$, where $z=\\cos\\theta$.", "dimension": "1", "unit": ""},
-                  {"id": "c0___num_9", "type": "number", "label": "1", "emoji": "1️⃣", "subexpr": "1", "description": "The number 1.", "value": 1},
-                  {"id": "c0___cos_10", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\theta \\right)}", "description": "The z-component of the state vector on the Bloch sphere, often denoted as $z$.", "quantity": "z_component", "dimension": "1", "unit": ""},
-                  {"id": "c0___power_11", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The reciprocal of 2, used for division in the half-angle formula."},
-                  {"id": "c0___num_12", "type": "number", "label": "2", "emoji": "2️⃣", "subexpr": "2", "description": "The number 2.", "value": 2},
-                  {"id": "c1___equals_1", "type": "relation", "op": "equals", "subexpr": "\\sin^2\\left(\\frac{\\theta}{2}\\right)=\\frac{1-\\cos\\theta}{2}", "description": "Relates the squared sine of half the polar angle to the cosine of the full angle, giving the probability of measuring the $|1\\rangle$ state."},
-                  {"id": "c1___power_2", "type": "operator", "emoji": "⬇️", "op": "power", "exponent": "2", "subexpr": "\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)}", "description": "The squared amplitude for the $|1\\rangle$ state, which gives the probability $p(1)$ of measuring the qubit in the 'down' state.", "quantity": "probability", "dimension": "1", "unit": ""},
-                  {"id": "c1___sin_3", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}", "description": "The amplitude of the quantum state corresponding to the $|1\\rangle$ basis vector (up to a phase factor).", "quantity": "probability_amplitude", "dimension": "1", "unit": ""},
-                  {"id": "c1___multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}", "description": "Calculates half the polar angle, $\\theta/2$, for the trigonometric function argument.", "quantity": "angle", "dimension": "1", "unit": "rad"},
-                  {"id": "c1___power_5", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The reciprocal of 2, used to divide the angle $\\theta$."},
-                  {"id": "c1___num_6", "type": "number", "label": "2", "emoji": "2️⃣", "subexpr": "2", "description": "The number 2.", "value": 2},
-                  {"id": "c1___multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\left(1 - \\cos{\\left(\\theta \\right)}\\right) \\frac{1}{2}", "description": "Calculates the probability of measuring the $|1\\rangle$ state from the z-component of the state vector.", "quantity": "probability", "dimension": "1", "unit": ""},
-                  {"id": "c1___add_8", "type": "operator", "op": "add", "subexpr": "1 - \\cos{\\left(\\theta \\right)}", "description": "The numerator of the probability expression, $1-z$, where $z=\\cos\\theta$.", "dimension": "1", "unit": ""},
-                  {"id": "c1___num_9", "type": "number", "label": "1", "emoji": "1️⃣", "subexpr": "1", "description": "The number 1.", "value": 1},
-                  {"id": "c1___negation_10", "type": "operator", "op": "negation", "subexpr": "-\\cos{\\left(\\theta \\right)}", "description": "The negation of the z-component of the state vector on the Bloch sphere.", "quantity": "z_component", "dimension": "1", "unit": ""},
-                  {"id": "c1___cos_11", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\theta \\right)}", "description": "The z-component of the state vector on the Bloch sphere, often denoted as $z$.", "quantity": "z_component", "dimension": "1", "unit": ""},
-                  {"id": "c1___power_12", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The reciprocal of 2, used for division in the half-angle formula."},
-                  {"id": "c1___num_13", "type": "number", "label": "2", "emoji": "2️⃣", "subexpr": "2", "description": "The number 2.", "value": 2}
+                  {"id": "c0___equals_1", "type": "relation", "op": "equals", "subexpr": "\\cos^2\\left(\\frac{\\theta}{2}\\right)=\\frac{1+\\cos\\theta}{2}"},
+                  {"id": "c0___power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\cos^{2}{\\left(\\frac{\\theta}{2} \\right)}"},
+                  {"id": "c0___cos_3", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\frac{\\theta}{2} \\right)}"},
+                  {"id": "c0___multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                  {"id": "theta", "type": "scalar", "latex": "\\theta", "subexpr": "\\theta"},
+                  {"id": "c0___power_5", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                  {"id": "c0___num_6", "type": "number", "label": "2", "subexpr": "2"},
+                  {"id": "c0___multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\left(\\cos{\\left(\\theta \\right)} + 1\\right) \\frac{1}{2}"},
+                  {"id": "c0___add_8", "type": "operator", "op": "add", "subexpr": "\\cos{\\left(\\theta \\right)} + 1"},
+                  {"id": "c0___num_9", "type": "number", "label": "1", "subexpr": "1"},
+                  {"id": "c0___cos_10", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\theta \\right)}"},
+                  {"id": "c0___power_11", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                  {"id": "c0___num_12", "type": "number", "label": "2", "subexpr": "2"},
+                  {"id": "c1___equals_1", "type": "relation", "op": "equals", "subexpr": "\\sin^2\\left(\\frac{\\theta}{2}\\right)=\\frac{1-\\cos\\theta}{2}"},
+                  {"id": "c1___power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\sin^{2}{\\left(\\frac{\\theta}{2} \\right)}"},
+                  {"id": "c1___sin_3", "type": "function", "latex": "\\sin", "op": "sin", "subexpr": "\\sin{\\left(\\frac{\\theta}{2} \\right)}"},
+                  {"id": "c1___multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\theta \\frac{1}{2}"},
+                  {"id": "c1___power_5", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                  {"id": "c1___num_6", "type": "number", "label": "2", "subexpr": "2"},
+                  {"id": "c1___multiply_7", "type": "operator", "op": "multiply", "subexpr": "\\left(1 - \\cos{\\left(\\theta \\right)}\\right) \\frac{1}{2}"},
+                  {"id": "c1___add_8", "type": "operator", "op": "add", "subexpr": "1 - \\cos{\\left(\\theta \\right)}"},
+                  {"id": "c1___num_9", "type": "number", "label": "1", "subexpr": "1"},
+                  {"id": "c1___negation_10", "type": "operator", "op": "negation", "subexpr": "-\\cos{\\left(\\theta \\right)}"},
+                  {"id": "c1___cos_11", "type": "function", "latex": "\\cos", "op": "cos", "subexpr": "\\cos{\\left(\\theta \\right)}"},
+                  {"id": "c1___power_12", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
+                  {"id": "c1___num_13", "type": "number", "label": "2", "subexpr": "2"}
                 ],
                 "edges": [
                   {"from": "theta", "to": "c0___multiply_4", "semantic": "direct", "weight": 1.0},
@@ -3057,11 +3004,6 @@
                     {"kind": "algebraic"},
                     {"kind": "algebraic"}
                   ]
-                },
-                "domain": "quantum_mechanics",
-                "enrichment": {
-                  "reasoning": "The lesson context is \"Quantum States on the Bloch Sphere,\" so the domain is quantum mechanics. The angle $\\theta$ is the polar angle of the quantum state.",
-                  "fields": ["domain", "nodes.c0___equals_1.description", "nodes.c0___power_2.description", "nodes.c0___power_2.dimension", "nodes.c0___power_2.emoji", "nodes.c0___power_2.quantity", "nodes.c0___power_2.unit", "nodes.c0___cos_3.description", "nodes.c0___cos_3.dimension", "nodes.c0___cos_3.quantity", "nodes.c0___cos_3.unit", "nodes.c0___multiply_4.description", "nodes.c0___multiply_4.dimension", "nodes.c0___multiply_4.quantity", "nodes.c0___multiply_4.unit", "nodes.theta.description", "nodes.theta.dimension", "nodes.theta.emoji", "nodes.theta.quantity", "nodes.theta.unit", "nodes.c0___power_5.description", "nodes.c0___num_6.description", "nodes.c0___num_6.emoji", "nodes.c0___num_6.value", "nodes.c0___multiply_7.description", "nodes.c0___multiply_7.dimension", "nodes.c0___multiply_7.quantity", "nodes.c0___multiply_7.unit", "nodes.c0___add_8.description", "nodes.c0___add_8.dimension", "nodes.c0___add_8.unit", "nodes.c0___num_9.description", "nodes.c0___num_9.emoji", "nodes.c0___num_9.value", "nodes.c0___cos_10.description", "nodes.c0___cos_10.dimension", "nodes.c0___cos_10.quantity", "nodes.c0___cos_10.unit", "nodes.c0___power_11.description", "nodes.c0___num_12.description", "nodes.c0___num_12.emoji", "nodes.c0___num_12.value", "nodes.c1___equals_1.description", "nodes.c1___power_2.description", "nodes.c1___power_2.dimension", "nodes.c1___power_2.emoji", "nodes.c1___power_2.quantity", "nodes.c1___power_2.unit", "nodes.c1___sin_3.description", "nodes.c1___sin_3.dimension", "nodes.c1___sin_3.quantity", "nodes.c1___sin_3.unit", "nodes.c1___multiply_4.description", "nodes.c1___multiply_4.dimension", "nodes.c1___multiply_4.quantity", "nodes.c1___multiply_4.unit", "nodes.c1___power_5.description", "nodes.c1___num_6.description", "nodes.c1___num_6.emoji", "nodes.c1___num_6.value", "nodes.c1___multiply_7.description", "nodes.c1___multiply_7.dimension", "nodes.c1___multiply_7.quantity", "nodes.c1___multiply_7.unit", "nodes.c1___add_8.description", "nodes.c1___add_8.dimension", "nodes.c1___add_8.unit", "nodes.c1___num_9.description", "nodes.c1___num_9.emoji", "nodes.c1___num_9.value", "nodes.c1___negation_10.description", "nodes.c1___negation_10.dimension", "nodes.c1___negation_10.quantity", "nodes.c1___negation_10.unit", "nodes.c1___cos_11.description", "nodes.c1___cos_11.dimension", "nodes.c1___cos_11.quantity", "nodes.c1___cos_11.unit", "nodes.c1___power_12.description", "nodes.c1___num_13.description", "nodes.c1___num_13.emoji", "nodes.c1___num_13.value"]
                 }
               }
             }

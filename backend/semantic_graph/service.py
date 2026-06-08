@@ -19,7 +19,7 @@ class SemanticGraphService:
         self._preprocessor = LaTeXPreprocessor()
         self._postprocessor = GraphPostprocessor()
 
-    def latex_to_graph(self, latex: str, domain: str | None = None) -> SemanticGraph | None:
+    def derive(self, latex: str, domain: str | None = None) -> SemanticGraph | None:
         """Parse *latex* and return a ``SemanticGraph``, or None on failure.
 
         Results are memoized by (latex, domain).

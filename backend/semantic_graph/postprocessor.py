@@ -8,7 +8,6 @@ from typing import Any
 from backend.model.semantic_graph import SemanticGraph, SemanticGraphNode, SemanticGraphEdge
 
 from .constants import _ORDER_TO_ACCENT
-from .id_utils import _slug_id
 
 
 def _re_sub_literal(pattern: str, replacement: str, text: str) -> str:
@@ -161,16 +160,12 @@ class GraphPostprocessor:
 
         _TEXT_POLLUTION_KEYS = ("emoji", "quantity", "dimension", "unit", "value", "role")
 
-        # A node id is an internal wiring key, never a display string. When we
-        # restore a collapsed subscript we put the readable form in
-        # ``label`` / ``latex`` / ``subexpr`` and keep the id a clean slug —
-        # otherwise ``\text{exit}`` etc. would leak back into the id.
         for node in graph.nodes:
             node_id = node.id
             if node_id in mapping:
                 original = mapping[node_id]
                 display, is_text = _display_of(original)
-                node.id = _slug_id(display)
+                node.id = display
                 node.label = display
                 node.latex = original
                 if is_text:
@@ -181,9 +176,7 @@ class GraphPostprocessor:
                 if node.subexpr is not None:
                     node.subexpr = rewrite(node.subexpr)
                 continue
-            if isinstance(node.id, str):
-                node.id = _slug_id(rewrite(node.id))
-            for field in ("label", "latex", "subexpr"):
+            for field in ("id", "label", "latex", "subexpr"):
                 val = getattr(node, field, None)
                 if isinstance(val, str):
                     setattr(node, field, rewrite(val))
@@ -193,9 +186,9 @@ class GraphPostprocessor:
                 if isinstance(val, str):
                     if val in mapping:
                         display, _ = _display_of(mapping[val])
-                        setattr(edge, attr, _slug_id(display))
+                        setattr(edge, attr, display)
                     else:
-                        setattr(edge, attr, _slug_id(rewrite(val)))
+                        setattr(edge, attr, rewrite(val))
 
     @staticmethod
     def inject_annotations(

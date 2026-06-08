@@ -5,7 +5,7 @@ Public API::
     from backend.semantic_graph import SemanticGraphService
 
     svc = SemanticGraphService()
-    graph = svc.latex_to_graph("F = ma", domain="physics")
+    graph = svc.derive("F = ma", domain="physics")
 """
 
 from __future__ import annotations

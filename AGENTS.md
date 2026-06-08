@@ -43,26 +43,6 @@ The server runs at `http://localhost:8785`.
 ./run.sh scripts/render_math.py "E = mc^2" --mermaid --no-latex        # Mermaid only
 ```
 
-**Proof animation** (Manim-style derivation morphs) — the committed test suite is
-`tests/proof_animation/proof_animations.json` (proof trajectories, hand-maintained):
-
-```bash
-./scripts/proof_animation/serve.sh                                     # render suite + serve on :5750
-./run.sh scripts/proof_animation/report.py --from-file tests/proof_animation/proof_animations.json --outdir _site   # CI/Pages render (no LM)
-# derive a proof (LM; needs GEMINI_API_KEY) — prints a ProofAnimation for review; paste into proof_animations.json by hand
-./run.sh scripts/proof_animation/derive.py --prompt "derive Lorentz time dilation"
-./run.sh scripts/proof_animation/derive.py "x^2 - 4 = 0" "x = 2" --title "Solve x^2=4" --render
-```
-
-**Proof-completion expert** — sympy is ground truth; only inference/optimize call the LM:
-
-```bash
-./run.sh scripts/proof_completion/dataset.py --n 200 --seed 1 --out data/proof_completion/train.jsonl   # no LM
-./run.sh scripts/proof_completion/optimize.py --train data/proof_completion/train.jsonl                  # train (LM)
-./run.sh scripts/proof_completion/evaluate.py --data data/proof_completion/eval.jsonl                    # eval (LM)
-./run.sh scripts/proof_completion_derive.py "\frac{d}{dx} x^2" "2 x"                                     # inference CLI (LM)
-```
-
 ### Running Tests
 
 **Always use `./run.sh -m pytest` to run tests** — never invoke `pytest` or `python -m pytest` directly (the tests import `scripts.*` modules through the venv and fail outside it).
@@ -98,13 +78,8 @@ scenes/            Lesson JSON files
 static/
   app.js           3D scene rendering, sliders, camera
   chat.js          AI chat panel, TTS, voice picker
-  proof-animation/ Realtime, Manim-style derivation morph engine (FLIP)
   index.html
   style.css
-scripts/
-  proof_animation/   Proof-animation data pipeline (build · report · derive · serve)
-  proof_completion/  Expert train-eval pipeline (dataset · optimize · evaluate)
-tests/proof_animation/proof_animations.json   Curated proof-animation test suite (trajectories)
 docs/              Architecture, sandbox model, feature ideas
 ```
 

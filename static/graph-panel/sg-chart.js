@@ -10,7 +10,6 @@
 
 import { SgChartScript } from './sg-chart-script.js';
 import { compileExpr, evalExpr } from '/expr.js';
-import { nextDockSeq } from '/proof-animation/dock-seq.js';
 
 const CHART_JS_CDN = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
 const NUM_POINTS = 200;
@@ -214,51 +213,6 @@ export class SgChartManager {
         this._updateUnpinnedPositions();
     }
 
-    /** Point this (per-step, persistent) manager at the step's current graph
-     *  object — it may be replaced across re-renders (e.g. by enrichment). */
-    setGraph(graph) {
-        if (!graph || graph === this.graph) return;
-        this.graph = graph;
-        this._buildNodeIndex();
-        try { this._scriptService = new SgChartScript(graph); } catch (_e) {}
-    }
-
-    /** The renderer recreates .d3-graph-card (and wipes our overlays) on every
-     *  render. Re-create overlays in the fresh card and re-attach this step's
-     *  open charts, so charts persist across navigation/re-renders. */
-    reattach() {
-        if (this._destroyed || !this._ready) return;
-        this._sliderPanel = null;
-        this._pinnedPanel = null;
-        this._legendPanel = null;
-        this._ensureOverlays();
-        const card = this.container.querySelector('.d3-graph-card') || this.container;
-        for (const entry of this.charts.values()) {
-            const dest = entry.pinned ? this._pinnedPanel : card;
-            if (dest && entry.box.parentNode !== dest) dest.appendChild(entry.box);
-            this._applyGridSize(entry);
-        }
-        this._updateSliders();
-        this._updateLegend();
-        this._updateUnpinnedPositions();
-        if (this._resizeObserver) {
-            try { this._resizeObserver.disconnect(); } catch (_e) {}
-            this._resizeObserver = null;
-        }
-        this._observeContainerResize();
-        // Re-parenting a canvas can blank it, and resize() on a not-yet-laid-out
-        // card is a no-op — so redraw AFTER layout settles (two frames to be safe).
-        const redraw = () => {
-            if (this._destroyed) return;
-            for (const entry of this.charts.values()) {
-                if (entry.chart) {
-                    try { entry.chart.resize(); entry.chart.update('none'); } catch (_e) {}
-                }
-            }
-        };
-        requestAnimationFrame(() => { redraw(); requestAnimationFrame(redraw); });
-    }
-
     /**
      * Connect to a D3SemanticGraphRenderer so the chart manager can poll
      * its _currentTransform on every animation frame.  This catches ALL
@@ -365,14 +319,9 @@ export class SgChartManager {
         }
 
         if (!this._pinnedPanel) {
-            // Adopt an existing dock panel (e.g. one the proof manager created) so
-            // pinned charts and pinned proof animations share one row, side by side.
-            this._pinnedPanel = card.querySelector('.sgc-pinned-panel');
-            if (!this._pinnedPanel) {
-                this._pinnedPanel = document.createElement('div');
-                this._pinnedPanel.className = 'sgc-pinned-panel';
-                card.appendChild(this._pinnedPanel);
-            }
+            this._pinnedPanel = document.createElement('div');
+            this._pinnedPanel.className = 'sgc-pinned-panel';
+            card.appendChild(this._pinnedPanel);
         }
 
         if (!this._legendPanel) {
@@ -448,7 +397,6 @@ export class SgChartManager {
         box.className = 'sgc-chart-box';
         box.id = chartId;
         box.dataset.nodeId = nodeId;
-        box.dataset.dockOrder = String(nextDockSeq());   // stable shared dock order
 
         const header = document.createElement('div');
         header.className = 'sgc-chart-header';

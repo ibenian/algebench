@@ -41,9 +41,8 @@ if [ ! -d "$VENV" ]; then
     "$VENV/bin/pip" install -r "$DIR/requirements.txt"
 fi
 
-# Ensure the repo root AND scripts/ are on PYTHONPATH so 'backend.*' imports
-# resolve and scripts can import sibling helpers (e.g. _pc_env, proof_animation_build)
-# even from subdirectories like scripts/proof_completion/.
-export PYTHONPATH="${DIR}:${DIR}/scripts${PYTHONPATH:+:$PYTHONPATH}"
+# Ensure the repo root is on PYTHONPATH so 'backend.*' imports resolve
+# when scripts are run by path (e.g. ./run.sh scripts/render_math.py).
+export PYTHONPATH="${DIR}${PYTHONPATH:+:$PYTHONPATH}"
 
 exec "$VENV/bin/python3" "$@"

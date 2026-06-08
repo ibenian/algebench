@@ -649,11 +649,6 @@ def _stamp_enriched(
     _restore_structural_fields(input_graph, output_graph)
     _restore_edge_roles(input_graph, output_graph)
     _strip_bad_emojis(output_graph)
-    # ``classification`` is parser-owned structural metadata (kind=algebraic /
-    # ODE / statements / …), computed deterministically by ``_classify_expression``
-    # — the model has nothing to add and routinely omits it. Carry it over from
-    # the input verbatim so enrichment never silently drops it.
-    output_graph.classification = input_graph.classification
     fields = _diff_enriched_fields(input_graph, output_graph)
     if output_graph.enrichment is None:
         output_graph.enrichment = Enrichment(fields=fields)
