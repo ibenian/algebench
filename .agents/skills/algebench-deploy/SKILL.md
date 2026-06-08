@@ -22,7 +22,7 @@ or staging).
 ## Environment Links
 
 - **Production (Render)**: https://algebench.org/
-- **Production (Hugging Face mirror)**: https://huggingface.co/spaces/ibenian/algebench → https://ibenian-algebench.hf.space
+- 🤗 **Production (Hugging Face mirror)**: https://huggingface.co/spaces/ibenian/algebench → https://ibenian-algebench.hf.space
 - **Staging**: https://algebench-staging.onrender.com/
 - **Developers Page**: https://ibenian.github.io/algebench/developers.html
 
@@ -31,11 +31,11 @@ or staging).
 | Environment | Host | Deployed via | URL |
 |---|---|---|---|
 | Production | Render | `deploy/on-render` branch | https://algebench.org/ |
-| Production mirror | Hugging Face | `scripts/deploy_hf.sh` → Space `main`; logged on `deploy/on-huggingface` | https://ibenian-algebench.hf.space |
+| Production mirror | 🤗 Hugging Face | `scripts/deploy_hf.sh` → Space `main`; logged on `deploy/on-huggingface` | https://ibenian-algebench.hf.space |
 | Staging | Render | `deploy/on-render-staging` branch | https://algebench-staging.onrender.com/ |
 | Source | — | `main` | — |
 
-### Hugging Face deploy convention (know this; explain it when relevant)
+### 🤗 Hugging Face deploy convention (know this; explain it when relevant)
 
 Hugging Face is a **production mirror** (staging is Render-only). HF builds from
 the Space's own `main` and **rejects binaries anywhere in git history**, so we do
@@ -157,7 +157,7 @@ Display a clear status report with sections:
 - Changes on staging that are **not yet on prod** (staging → prod diff)
 - Changes on main that are **not yet on staging** (main → staging diff)
 
-#### Hugging Face Mirror Status
+#### 🤗 Hugging Face Mirror Status
 - Source commit the live Space snapshot was built from (`HF_SRC` from Step 2)
 - Whether Render prod is **ahead of** the HF mirror (the `${HF_SRC}..origin/deploy/on-render` list)
 - If `HF_SRC` is unknown (e.g. first-ever deploy), state that the mirror has not been deployed via the script yet
@@ -212,7 +212,7 @@ A production deploy is **two decisions**, asked with `AskUserQuestion` in order:
 
 **① Which host(s)?**
 - **Render** — push the source to `deploy/on-render`; Render auto-builds.
-- **Hugging Face** — squash-push the source to the Space via `scripts/deploy_hf.sh`.
+- 🤗 **Hugging Face** — squash-push the source to the Space via `scripts/deploy_hf.sh`.
 - **Both** — do Render and Hugging Face from the same source (keeps them in lockstep).
 
 **② Which source?**
@@ -242,7 +242,7 @@ Changes deployed to Render prod:
 git push --force-with-lease origin <SRC>:deploy/on-render
 ```
 
-**Hugging Face target** (run from a checkout that has `deploy/huggingface/`, i.e. `main`):
+**🤗 Hugging Face target** (run from a checkout that has `deploy/huggingface/`, i.e. `main`):
 ```
 This force-pushes a clean single-commit snapshot of <SRC> to the Space's main:
   scripts/deploy_hf.sh --source <SRC>
@@ -278,7 +278,7 @@ After a successful deployment:
 3. Remind user to verify at the appropriate URL:
    - Staging: https://algebench-staging.onrender.com/
    - Production (Render): https://algebench.org/
-   - Production (Hugging Face mirror): https://ibenian-algebench.hf.space
+   - 🤗 Production (Hugging Face mirror): https://ibenian-algebench.hf.space
 4. Note rebuild times: Render typically takes 1–3 minutes; the Hugging Face Docker Space takes ~3–6 minutes (longer on a cold build).
 
 ### Step 7: Offer a Version Bump (Production deploys only)
