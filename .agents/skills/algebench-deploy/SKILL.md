@@ -116,7 +116,7 @@ git describe --tags --abbrev=0 origin/deploy/on-render 2>/dev/null
 
 Then check **what the Hugging Face mirror currently runs** via the
 `deploy/on-huggingface` log (each deploy records its source as
-`Source: <short-sha> <subject>` — read it from `origin`, no HF fetch needed):
+`Source: <full-40-char-sha> <subject>` — read it from `origin`, no HF fetch needed):
 
 ```bash
 # Source commit of the latest HF deploy (empty if the mirror was never deployed)
@@ -244,7 +244,8 @@ git push --force-with-lease origin <SRC>:deploy/on-render
 
 **🤗 Hugging Face target** (run from a checkout that has `deploy/huggingface/`, i.e. `main`):
 ```
-This force-pushes a clean single-commit snapshot of <SRC> to the Space's main:
+This builds a clean snapshot commit of <SRC>, appends it to the deploy/on-huggingface
+log, and pushes that commit to the Space's main:
   scripts/deploy_hf.sh --source <SRC>
 Changes deployed to the HF mirror:
 <commit list: ${HF_SRC}..<SRC>>
@@ -306,7 +307,9 @@ at the latest tag, skip the offer.
   Staging is Render-only and skips both questions.
 - **Never deploy without showing the user what will change first**
 - **Render pushes use `--force-with-lease`** (not `--force`) for safety. The HF
-  script force-pushes a fresh snapshot by design (the Space is a single-commit mirror).
+  script appends one snapshot commit per deploy onto the binary-free
+  `deploy/on-huggingface` log (default `--keep 0`); `--keep 1` makes it a
+  single-commit mirror instead.
 - **Prefer remote refs** (`origin/main`, `origin/deploy/on-render-staging`) to avoid
   stale local state — the one exception is the **current branch** source, which
   deliberately deploys the local branch HEAD (push it to `origin` first for Render).
