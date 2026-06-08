@@ -38,6 +38,7 @@ Step-by-step **proofs** walk through derivations alongside the 3D scene — each
 |   |   |
 |---|---|
 | **Production** | [algebench.org](https://algebench.org) |
+| **Hugging Face mirror** | [ibenian-algebench.hf.space](https://ibenian-algebench.hf.space) |
 | **Staging** | [algebench-staging.onrender.com](https://algebench-staging.onrender.com) |
 
 ---
