@@ -1,0 +1,19 @@
+# Paths stripped from the Hugging Face deploy snapshot (scripts/deploy_hf.sh).
+#
+# The Space only needs to RUN the app — GitHub keeps the full repo. Dropping
+# these removes the binary files HF rejects (the docs/*.png images live in
+# git history) and trims dev-only tooling so the build stays small.
+#
+# Each non-comment line is a path (file or directory) relative to the repo
+# root, removed with `rm -rf`. No globs — keep it to explicit paths.
+# The script also hard-fails if any file >9MB survives, so a stray large
+# binary anywhere is caught even if it is not listed here.
+
+docs
+.github
+.vscode
+.pytest_cache
+.agents
+.claude
+deploy
+tests
