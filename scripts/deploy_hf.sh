@@ -264,6 +264,6 @@ else
     echo "  (note: couldn't push ${RECORD_BRANCH} to origin — kept locally; push it yourself if you want the shared log)"
 fi
 
-echo "✓ Deployed ${SRC_SHA} to https://huggingface.co/spaces/${HF_SPACE}"
+echo "🤗 Deployed ${SRC_SHA} to https://huggingface.co/spaces/${HF_SPACE}"
 echo "  App:  https://${HF_USER}-$(printf '%s' "$HF_SPACE" | cut -d/ -f2).hf.space"
 echo "  Watch the build on the Space's Logs tab (~3–6 min for a fresh build)."
