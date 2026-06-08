@@ -107,8 +107,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `feat/deploy-to-huggingface` |
-| **Commit** | `f748943` |
-| **Date** | 2026-06-07 21:47:26 -0400 |
+| **Commit** | `a33d976` |
+| **Date** | 2026-06-08 02:34:59 +0000 |
 
 > [!NOTE]
 > Charts render on GitHub and in Mermaid-compatible viewers.
@@ -117,7 +117,7 @@
 xychart-beta horizontal
   title "Code Lines by Directory"
   x-axis ["scenes", "static", "tests", "backend", "scripts", "docs", "schemas", "(other)", "themes"]
-  bar [55132, 23430, 11609, 10497, 6199, 2640, 1822, 768, 317]
+  bar [55132, 23430, 11609, 10497, 6213, 2640, 1822, 770, 317]
 ```
 
 ## By Directory
@@ -128,18 +128,18 @@ xychart-beta horizontal
 | `static/` | 23,430 | 1,549 | 1,974 |
 | `tests/` | 11,609 | 1,051 | 2,479 |
 | `backend/` | 10,497 | 1,322 | 1,583 |
-| `scripts/` | 6,199 | 676 | 865 |
+| `scripts/` | 6,213 | 685 | 865 |
 | `docs/` | 2,640 | 6,307 | 2,009 |
 | `schemas/` | 1,822 | 0 | 0 |
-| `(other)/` | 768 | 0 | 0 |
+| `(other)/` | 770 | 0 | 0 |
 | `themes/` | 317 | 0 | 0 |
-| **Total** | **112,414** | **10,905** | **8,911** |
+| **Total** | **112,430** | **10,914** | **8,911** |
 
 ```mermaid
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "Python", "JavaScript", "CSS", "HTML", "Shell", "BASH", "YAML", "Dockerfile"]
-  bar [57858, 27698, 18003, 4754, 773, 383, 34, 23, 16]
+  bar [57858, 27698, 18003, 4754, 773, 397, 34, 23, 16]
 ```
 
 ## Summary by Language
@@ -152,7 +152,7 @@ xychart-beta horizontal
  Python                  148        34964        27698         2526         4740
  JavaScript               52        21017        18003         1296         1718
  CSS                       5         5206         4754          208          244
- Shell                     5          574          383          121           70
+ Shell                     5          597          397          130           70
  BASH                      1           42           34            4            4
  YAML                      1           34           23           10            1
  Dockerfile                1           32           16            9            7
@@ -163,15 +163,15 @@ xychart-beta horizontal
  |- JavaScript             2          580          513           11           56
  (Total)                             1880         1703           56          121
 ─────────────────────────────────────────────────────────────────────────────────
- Markdown                 67        12408            0         9428         2980
- |- BASH                  21          277          208           44           25
+ Markdown                 67        12414            0         9432         2982
+ |- BASH                  21          281          210           46           25
  |- JavaScript             1           10            6            3            1
  |- JSON                  33         1318         1318            0            0
  |- Markdown               1            1            0            1            0
  |- Python                 5          449          410            7           32
- (Total)                            14463         1942         9483         3038
+ (Total)                            14473         1944         9489         3040
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   331       136108       112414        13749         9945
+ Total                   331       136141       112430        13764         9947
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -304,8 +304,8 @@ xychart-beta horizontal
  |ins/test_domain_quantum.py          293          232           17           44
  |s/test_domain_chemistry.py          291          229           20           42
  |t_autofill_proof_shapes.py          262          224            6           32
- |ripts/extract_structure.py          259          218            5           36
  |/test_domain_relativity.py          275          218           16           41
+ |ripts/extract_structure.py          259          218            5           36
  |ic_graph/latex_renderer.py          265          217            7           41
  |ic_graph/equation_chain.py          250          217            1           32
  |ins/test_domain_algebra.py          269          215           15           39
@@ -361,9 +361,9 @@ xychart-beta horizontal
  |est_coverage_exhaustive.py          102           75            4           23
  |resolve_scene_path_safe.py          100           72            4           24
  |/backend/util/ratelimit.py           88           71            0           17
- |oof_completion/optimize.py           85           68            4           13
  |ph/generators/variables.py           77           68            0            9
  |ntic_graph/test_service.py           90           68            0           22
+ |oof_completion/optimize.py           85           68            4           13
  |tic_graph/test_id_utils.py           89           65            8           16
  |test_loc_report_to_html.py           87           64            0           23
  |/experts/test_graph_ops.py           83           61            2           20
@@ -386,9 +386,9 @@ xychart-beta horizontal
  |on/domains/inequalities.py           52           40            0           12
  |end/experts/test_metric.py           57           40            2           15
  |backend/experts/outputs.py           55           39            4           12
- |s/proof_animation/build.py           53           37            8            8
  |/test_preprocess_result.py           44           37            0            7
  |d/experts/test_registry.py           55           37            2           16
+ |s/proof_animation/build.py           53           37            8            8
  |mation/prompt_endpoints.py           43           36            0            7
  |completion/domains/base.py           49           34            2           13
  |nd/experts/test_dataset.py           44           33            0           11
@@ -414,15 +414,15 @@ xychart-beta horizontal
  |/algebench/backend/asgi.py            9            7            0            2
  |roof_animation/__init__.py            5            3            0            2
  |ebench/backend/__init__.py            1            1            0            0
- |ebench/scripts/__init__.py            0            0            0            0
- |lgebench/tests/__init__.py            0            0            0            0
+ |semantic_graph/__init__.py            0            0            0            0
+ |_graph/domains/__init__.py            0            0            0            0
+ |/tests/backend/__init__.py            0            0            0            0
+ |s/backend/util/__init__.py            0            0            0            0
+ |/backend/model/__init__.py            0            0            0            0
  |backend/agents/__init__.py            0            0            0            0
  |ackend/experts/__init__.py            0            0            0            0
- |semantic_graph/__init__.py            0            0            0            0
- |s/backend/util/__init__.py            0            0            0            0
- |_graph/domains/__init__.py            0            0            0            0
- |/backend/model/__init__.py            0            0            0            0
- |/tests/backend/__init__.py            0            0            0            0
+ |lgebench/tests/__init__.py            0            0            0            0
+ |ebench/scripts/__init__.py            0            0            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Total                   148        34964        27698         2526         4740
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
