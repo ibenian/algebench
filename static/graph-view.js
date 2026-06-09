@@ -360,8 +360,11 @@ function setDockTab(name) {
 
     const graphVp = document.getElementById('graph-viewport');
     const mathWrap = document.getElementById('mathbox-wrapper');
-    if (!graphVp || !mathWrap) return;
+    if (!graphVp || !mathWrap) return Promise.resolve();
 
+    // Resolves when the graph (and its proof manager) has finished rendering, so
+    // callers that switch *in order to* act on the graph can await it.
+    let rendered = Promise.resolve();
     if (name === 'graph') {
         graphVp.classList.remove('hidden');
         if (_docked) {
@@ -371,13 +374,14 @@ function setDockTab(name) {
         }
         loadMermaidLib().catch(() => { /* error surfaced at render time */ });
         rebuildProofTree();
-        renderCurrentStepGraph(true);
+        rendered = renderCurrentStepGraph(true);
     } else {
         graphVp.classList.add('hidden');
         mathWrap.style.visibility = '';
         _removeDockedLayout();
     }
     _syncDockButton();
+    return rendered;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1159,14 +1163,18 @@ function _findNodeIdByLatex(graph, target) {
  *  exactly as if the user clicked a node's Derive button. Fire-and-forget: the
  *  SgProofManager runs the (verified) derivation and docks it; it persists on
  *  this step across navigation. ``args`` = { target_latex, start_latex?, prompt? }. */
-window.algebenchDeriveProof = function (args) {
-    if (!_currentProofManager) {
-        console.warn('algebenchDeriveProof: no active graph/proof manager to derive into');
-        return false;
-    }
+window.algebenchDeriveProof = async function (args) {
     const target = _stripHtmlMacros(((args && args.target_latex) || '')).trim();
     if (!target) {
         console.warn('algebenchDeriveProof: target_latex is required');
+        return false;
+    }
+    // Make the semantic graph visible first — switching to the Math view also
+    // renders the graph and wires its proof manager (awaited so the box docks on
+    // the right step). No-op if the graph is already showing.
+    await window.algebenchEnsureGraphVisible();
+    if (!_currentProofManager) {
+        console.warn('algebenchDeriveProof: no semantic graph to derive into');
         return false;
     }
     const graph = _d3ActiveGraph;
@@ -1184,6 +1192,35 @@ window.algebenchDeriveProof = function (args) {
     const nodeId = matchedId || ('agent::' + _normLatex(target));
     const anchor = matchedId ? _d3NodeElById(matchedId) : null;
     _currentProofManager.openProof(nodeId, anchor, payload);
+    return true;
+};
+
+/** After an agent-driven navigation, make sure the 3D scene is actually visible.
+ *  If the user is on the full-screen Math (semantic graph) view, switch back to
+ *  the Scenes tab so they see the scene they were moved to. In split/docked mode
+ *  the scene is already shown alongside the graph, so leave the view untouched.
+ *  Returns true if it switched tabs. */
+window.algebenchEnsureSceneVisible = function () {
+    if (isGraphModeActive() && !_docked) {
+        setDockTab('scenes');
+        return true;
+    }
+    return false;
+};
+
+/** Counterpart for derivations: make the semantic graph visible. Only relevant
+ *  for the agent-initiated path (the Derive button is already on the graph).
+ *  Switches to the Math view ONLY when the current step actually has a semantic
+ *  graph that's just hidden behind the active 3D viewport — never yanks the user
+ *  to an empty Math view. Awaits the render so the proof manager is ready to dock
+ *  onto. No-op when the graph is already visible or the step has no graph.
+ *  Returns true if it switched. */
+window.algebenchEnsureGraphVisible = async function () {
+    if (isGraphModeActive()) return false;          // already visible
+    const step = (typeof currentProofStep === 'function') ? currentProofStep() : null;
+    const hasGraph = !!(step && step.semanticGraph && step.semanticGraph.graph);
+    if (!hasGraph) return false;                     // nothing to show — don't switch
+    await setDockTab('graph');
     return true;
 };
 

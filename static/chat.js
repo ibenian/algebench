@@ -556,6 +556,9 @@ async function sendChatMessage(text, { silent = false } = {}) {
                         console.error('📍 navigate_to REJECTED: scene ' + agentScene + ' out of bounds (1-' + totalScenes + ')');
                     } else if (typeof navigateTo === 'function') {
                         navigateTo(internalScene, internalStep);
+                        // Surface the scene the agent moved to: if the user is on the
+                        // full-screen Math view, switch back to Scenes (unless split).
+                        if (typeof window.algebenchEnsureSceneVisible === 'function') window.algebenchEnsureSceneVisible();
                         console.log('%c📍 navigate_to result: %cnow at scene ' + (currentSceneIndex + 1) + ' step ' + (currentStepIndex + 1) +
                             (currentSceneIndex === beforeScene && currentStepIndex === beforeStep ? ' ⚠️ NO CHANGE' : ''),
                             'color: #ff8844; font-weight: bold', 'color: #ccc');
@@ -656,6 +659,9 @@ async function sendChatMessage(text, { silent = false } = {}) {
                         if (typeof buildSceneTree === 'function') buildSceneTree(lessonSpec);
                         if (typeof updateDockVisibility === 'function') updateDockVisibility();
                         if (typeof navigateTo === 'function') navigateTo(targetIdx, targetStep);
+                        // A freshly-added scene must be visible — switch off the Math
+                        // view if the user is on it (unless split-docked).
+                        if (typeof window.algebenchEnsureSceneVisible === 'function') window.algebenchEnsureSceneVisible();
                         console.log('%c🎬 add_scene complete', 'color: #44ff44; font-weight: bold');
                     } catch(e) {
                         console.error('add_scene: navigation/render failed:', e);

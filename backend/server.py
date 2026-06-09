@@ -1146,16 +1146,18 @@ def call_gemini_chat(message, history, context):
                     # graph. We only acknowledge — the steps never enter the chat.
                     target = (tc_args.get('target_latex') or '').strip()
                     reason = tc_args.get('reason', '')
-                    # A derivation docks onto a visible semantic graph; with none
-                    # open the client would silently no-op. Guard here so the agent
-                    # is told to ask the user to open one instead.
+                    # A derivation docks onto the current step's semantic graph. We
+                    # only require that a graph EXISTS for the step — the client
+                    # auto-switches to the Math view if it's hidden behind the 3D
+                    # viewport. With no graph at all there's nothing to derive on, so
+                    # tell the agent to send the user to a step that has one.
                     gp = (context.get('runtime') or {}).get('graphPanel') or {}
-                    graph_open = bool(gp.get('open') and gp.get('hasGraph'))
-                    if not graph_open:
+                    has_graph = bool(gp.get('hasGraph'))
+                    if not has_graph:
                         tc_result = {"status": "error", "needsGraph": True,
-                                     "error": ("No semantic graph is open. Ask the user to open the "
-                                               "Math (semantic graph) view on a step that has one before "
-                                               "deriving — do not call this tool again until then.")}
+                                     "error": ("This step has no semantic graph to derive on. Ask the user "
+                                               "to navigate to a step that has one before deriving — do not "
+                                               "call this tool again until then.")}
                     elif not target:
                         tc_result = {"status": "error",
                                      "error": "target_latex is required to derive."}
