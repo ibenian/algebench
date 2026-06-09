@@ -86,7 +86,7 @@ derive_proof_animation(target_latex="2x", start_latex="\\frac{d}{dx} x^2", promp
 derive_proof_animation(target_latex="x = 2")   // target only — starts from the current proof's givens
 ```
 
-Generates a SymPy-verified, step-by-step derivation and docks it into the **current step's** semantic graph — just like the user clicking a node's *Derive* button, but initiated by you. Fire-and-forget: the animation appears **on the graph, not in chat**, and persists on that step even if the user navigates away. After calling, briefly tell the user you're deriving it — **do not** write out the steps yourself. Requires a graph to be visible.
+Generates a SymPy-verified, step-by-step derivation and docks it into the **current step's** semantic graph — just like the user clicking a node's *Derive* button, but initiated by you. Fire-and-forget: the animation appears **on the graph, not in chat**, and persists on that step even if the user navigates away. After calling, briefly tell the user you're deriving it — **do not** write out the steps yourself. It auto-switches to the Math view to show the result (works even from the 3D scene); you don't need to open the graph first. The current step must have a semantic graph — if it doesn't, the tool reports back so you can ask the user to navigate to one.
 
 ---
 

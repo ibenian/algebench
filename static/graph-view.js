@@ -1216,12 +1216,33 @@ window.algebenchEnsureSceneVisible = function () {
  *  onto. No-op when the graph is already visible or the step has no graph.
  *  Returns true if it switched. */
 window.algebenchEnsureGraphVisible = async function () {
-    if (isGraphModeActive()) return false;          // already visible
     const step = (typeof currentProofStep === 'function') ? currentProofStep() : null;
     const hasGraph = !!(step && step.semanticGraph && step.semanticGraph.graph);
     if (!hasGraph) return false;                     // nothing to show — don't switch
-    await setDockTab('graph');
-    return true;
+
+    // Derivations dock only in the D3 renderer (SgProofManager is D3-only). Force
+    // D3 if the user picked Mermaid, else the proof manager is never created and
+    // the derivation would silently no-op.
+    let forcedD3 = false;
+    if (_currentRenderer !== 'd3') {
+        _currentRenderer = 'd3';
+        _lsSet(LS_KEYS.renderer, 'd3');
+        const sel = document.getElementById('graph-renderer-select');
+        if (sel) sel.value = 'd3';
+        _updateFitControls();
+        forcedD3 = true;
+    }
+
+    if (!isGraphModeActive()) {
+        await setDockTab('graph');                   // switch + render (D3) + wire the proof manager
+        return true;
+    }
+    // Already on the Math tab: re-render if we just forced D3, or if the proof
+    // manager isn't ready yet, so the box has something to dock onto.
+    if (forcedD3 || !_currentProofManager || _currentProofManager._destroyed) {
+        await renderCurrentStepGraph(true);
+    }
+    return forcedD3;
 };
 
 function _showD3InfoPanel(nodeId, nodeData, graph) {

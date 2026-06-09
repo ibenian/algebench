@@ -692,8 +692,12 @@ async function sendChatMessage(text, { silent = false } = {}) {
                 } else if (tc.name === 'derive_proof_animation') {
                     // Initiate a client-side derivation, docked into the current
                     // step's graph (same as clicking a node's Derive button). The
-                    // result lives on the graph, not in chat.
-                    if (typeof window.algebenchDeriveProof === 'function') {
+                    // result lives on the graph, not in chat. Respect the server
+                    // guard: a non-success result (e.g. needsGraph) means there's no
+                    // graph to derive on — skip it; the agent relays the message.
+                    if (tc.result && tc.result.status !== 'success') {
+                        console.log('derive_proof_animation: skipped —', tc.result.error || 'not permitted');
+                    } else if (typeof window.algebenchDeriveProof === 'function') {
                         window.algebenchDeriveProof(tc.args || {});
                     } else {
                         console.warn('derive_proof_animation: graph view not ready to derive');
