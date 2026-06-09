@@ -259,6 +259,11 @@ export class ProofAnimator {
       // they're not real glyphs and `String.trim()` doesn't remove them.
       const t = (el.textContent || "").replace(/[​-‍﻿]/g, "").trim();
       if (!t) return;
+      // A stretchy delimiter (\left(\right) around tall content) renders as a
+      // `.delimsizing` decoration that CONTAINS a glyph span — skip that inner
+      // glyph so the paren is handled once, by the decoration path (clone keeps
+      // its stretched size/position), not double-counted as a bare leaf.
+      if (el.closest(".delimsizing")) return;
       if (el.hasAttribute("data-n")) return;   // itself a tagged glyph
       const p = el.closest("[data-n]");
       // No tagged ancestor, OR the nearest tagged ancestor is STRUCTURAL (it has
@@ -428,13 +433,18 @@ export class ProofAnimator {
       rect: el.getBoundingClientRect(),
       fontSize: getComputedStyle(el).fontSize,
     }));
-    // which (node, decoration-type) pairs the SOURCE already had — used to tell a
-    // genuinely new fraction/root apart from one whose node id was merely reused.
+    // which (node, decoration-type) pairs the SOURCE had — used to tell a
+    // genuinely new fraction/root apart from one whose node id was merely reused,
+    // and (with the clones below) to FADE OUT decorations that disappear.
     const fromDecoKeys = new Set();
+    const fromDecos = [];
     for (const sel of DECORATIONS) {
       this.stage.querySelectorAll(sel).forEach((el) => {
         const o = el.closest("[data-n]");
-        if (o) fromDecoKeys.add(o.getAttribute("data-n") + "|" + sel);
+        if (!o) return;
+        const key = o.getAttribute("data-n") + "|" + sel;
+        fromDecoKeys.add(key);
+        fromDecos.push({ key, clone: el.cloneNode(true), rect: el.getBoundingClientRect(), fontSize: getComputedStyle(el).fontSize });
       });
     }
 
@@ -504,10 +514,12 @@ export class ProofAnimator {
     // decoration → fade it in. This catches a *new inner* fraction even when an
     // outer fraction is already on screen.
     const decoEls = [];
+    const toDecoKeys = new Set();
     for (const sel of DECORATIONS) {
       this.stage.querySelectorAll(sel).forEach((el) => {
         const owner = el.closest("[data-n]");
         const ownerId = owner && owner.getAttribute("data-n");
+        if (ownerId) toDecoKeys.add(ownerId + "|" + sel);
         // keep visible only if that very node already had this decoration in the
         // source (so the outer fraction persists, but a new inner one fades in).
         if (ownerId && fromDecoKeys.has(ownerId + "|" + sel)) return;
@@ -559,6 +571,36 @@ export class ProofAnimator {
         untagGhosts.push(host);
       }
     });
+    // Decorations (fraction bar, radical, stretchy delimiter) that DISAPPEARED →
+    // ghost the cloned decoration (which keeps its stretched size) at its old spot
+    // and fade it out with the other id-less items, instead of letting it vanish.
+    for (const d of fromDecos) {
+      if (toDecoKeys.has(d.key)) continue;   // still present → persists
+      const host = document.createElement("span");
+      host.className = "katex pa-ghost";
+      let left = d.rect.left - stageRect.left, top = d.rect.top - stageRect.top;
+      Object.assign(host.style, {
+        position: "absolute", margin: "0", lineHeight: "0",
+        left: left + "px", top: top + "px", fontSize: d.fontSize,
+      });
+      host.appendChild(d.clone);
+      this.stage.appendChild(host);
+      // A delimiter clone sits at a vertical-align offset inside its host, so its
+      // visual box lands above/below the source spot (looks like it "jumps up").
+      // Nudge the host to cancel that offset — comparing in STAGE-RELATIVE coords
+      // (re-measuring the stage now) so page scroll/reflow between the source
+      // snapshot and here can't skew the alignment.
+      const sr = this.stage.getBoundingClientRect();
+      const cr = d.clone.getBoundingClientRect();
+      const dx = (d.rect.left - stageRect.left) - (cr.left - sr.left);
+      const dy = (d.rect.top - stageRect.top) - (cr.top - sr.top);
+      if (dx || dy) {
+        host.style.left = (left + dx) + "px";
+        host.style.top = (top + dy) + "px";
+      }
+      this._ghosts.push(host);
+      untagGhosts.push(host);
+    }
 
     // ── PHASE 0: dropped items fade OUT first, before any motion ──
     const D_OUT = this._baseDuration * 0.6;
