@@ -7,25 +7,38 @@
 // .status and .retryAfter) on a non-2xx response.
 
 export class ExpertError extends Error {
-    constructor(message, { status = 0, retryAfter = null, detail = null } = {}) {
+    constructor(message, { status = 0, retryAfter = null, detail = null, timedOut = false } = {}) {
         super(message);
         this.name = 'ExpertError';
         this.status = status;
         this.retryAfter = retryAfter;   // seconds, from a 429 Retry-After header
         this.detail = detail;
+        this.timedOut = timedOut;       // true when aborted by the client timeout
     }
 }
 
-export async function invokeExpert(name, body) {
+// ``opts.timeoutMs`` (>0) aborts the request after that many ms so a hung or
+// pathologically slow handler (e.g. an LM derivation that never returns) fails
+// with a clear, retryable error instead of spinning forever. 0 = no timeout.
+export async function invokeExpert(name, body, { timeoutMs = 0 } = {}) {
     let res;
+    const ctrl = timeoutMs > 0 ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
     try {
         res = await fetch(`/api/expert/${encodeURIComponent(name)}`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(body || {}),
+            signal: ctrl ? ctrl.signal : undefined,
         });
     } catch (_e) {
+        if (ctrl && ctrl.signal.aborted) {
+            throw new ExpertError('This derivation took too long and was stopped — try again.',
+                                  { status: 0, timedOut: true });
+        }
         throw new ExpertError('Could not reach the server.', { status: 0 });
+    } finally {
+        if (timer) clearTimeout(timer);
     }
 
     let data = null;

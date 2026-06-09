@@ -138,6 +138,18 @@ set_camera(position=[0,0,8], target=[0,0,0], zoom=1.5)
 
 ---
 
+### `derive_proof_animation` — Derive a proof on the graph
+
+```
+derive_proof_animation(target_latex="x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}", start_latex="a x^2 + b x + c = 0")
+derive_proof_animation(target_latex="2x", start_latex="\\frac{d}{dx} x^2", prompt="differentiate using the power rule")
+derive_proof_animation(target_latex="x = 2")   // target only — starts from the current proof's givens
+```
+
+Generates a SymPy-verified, step-by-step derivation and docks it into the **current step's** semantic graph — just like the user clicking a node's *Derive* button, but initiated by you. Fire-and-forget: the animation appears **on the graph, not in chat**, and persists on that step even if the user navigates away. After calling, briefly tell the user you're deriving it — **do not** write out the steps yourself. Requires a graph to be visible.
+
+---
+
 ### `mem_get` / `mem_set` — Agent memory
 
 ```

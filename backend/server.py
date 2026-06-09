@@ -1140,6 +1140,37 @@ def call_gemini_chat(message, history, context):
                     }
                     if DEBUG_MODE:
                         print(f"   📐 navigate_proof: step={proof_step} reason={reason}")
+                elif tc_name == 'derive_proof_animation':
+                    # Fire-and-forget: the client runs the SymPy-verified derivation
+                    # (proof_animation handler) and docks it on the current step's
+                    # graph. We only acknowledge — the steps never enter the chat.
+                    target = (tc_args.get('target_latex') or '').strip()
+                    reason = tc_args.get('reason', '')
+                    # A derivation docks onto a visible semantic graph; with none
+                    # open the client would silently no-op. Guard here so the agent
+                    # is told to ask the user to open one instead.
+                    gp = (context.get('runtime') or {}).get('graphPanel') or {}
+                    graph_open = bool(gp.get('open') and gp.get('hasGraph'))
+                    if not graph_open:
+                        tc_result = {"status": "error", "needsGraph": True,
+                                     "error": ("No semantic graph is open. Ask the user to open the "
+                                               "Math (semantic graph) view on a step that has one before "
+                                               "deriving — do not call this tool again until then.")}
+                    elif not target:
+                        tc_result = {"status": "error",
+                                     "error": "target_latex is required to derive."}
+                    else:
+                        tc_result = {
+                            "status": "success",
+                            "initiated": True,
+                            "message": ("Derivation started on the graph — it will appear "
+                                        "docked on the current step. Briefly tell the user "
+                                        "you're deriving it; do NOT write the steps yourself."),
+                        }
+                    if DEBUG_MODE:
+                        print(f"   ∴ derive_proof_animation: target={target[:60]!r} "
+                              f"start={ (tc_args.get('start_latex') or '')[:40]!r} "
+                              f"prompt={ (tc_args.get('prompt') or '')[:40]!r} reason={reason}")
                 else:
                     tc_result = {"status": "success"}
                 tool_calls.append({

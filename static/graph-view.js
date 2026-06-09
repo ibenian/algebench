@@ -1085,14 +1085,22 @@ function _activeProof() {
     return (entry && entry.proof) || null;
 }
 
-/** Assemble the DeriveProofRequest payload for a clicked node.
- *  Target = the node's expression. Givens/goal/start come from the active proof:
- *  goal + every ``type:"given"`` step's math; start = the first given when present
- *  (else the backend infers it from a prompt). */
-function _buildDerivePayload(nodeId, fullNode, graph) {
-    const target = _stripHtmlMacros(nodeLongLabel(fullNode) || fullNode.subexpr || fullNode.label || '');
-    const payload = { target_latex: target };
+// Loose LaTeX comparison: ignore \text{}/\mathrm{} wrappers, braces, spacing and
+// \le/\leq spelling, so e.g. \gamma_{steep} == \gamma_{\text{steep}}.
+function _normLatex(s) {
+    return (s || '')
+        .replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, '$1')
+        .replace(/\\le(?![a-zA-Z])/g, '\\leq')
+        .replace(/\\ge(?![a-zA-Z])/g, '\\geq')
+        .replace(/[\s{}]/g, '');
+}
 
+/** Proof-context portion of a DeriveProofRequest (everything except target):
+ *  domain + the active proof's title/goal/givens + a sensible START given +
+ *  lesson/scene/proof context. ``target`` is used only to avoid picking a START
+ *  equal to it. Shared by the node Derive button and the agent's derive tool. */
+function _proofContextPayload(graph, target) {
+    const payload = {};
     const domain = graph && (graph.domain || (graph.meta && graph.meta.domain));
     if (domain) payload.domain = domain;
 
@@ -1109,15 +1117,10 @@ function _buildDerivePayload(nodeId, fullNode, graph) {
             payload.givens = givens;
             // Use a proof given as the START — but never one equal to the target
             // (a definitional node is its own given, which would derive nothing).
-            // Compare loosely: ignore \text{}/\mathrm{} wrappers, braces, spacing
-            // and \le/\leq spelling, so e.g. \gamma_{steep} == \gamma_{\text{steep}}.
             // If every given equals the target, omit start so the LM infers one.
-            const norm = (s) => (s || '')
-                .replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, '$1')
-                .replace(/\\le(?![a-zA-Z])/g, '\\leq')
-                .replace(/\\ge(?![a-zA-Z])/g, '\\geq')
-                .replace(/[\s{}]/g, '');
-            const startGiven = givens.find(g => norm(g.math) !== norm(target));
+            const startGiven = target
+                ? givens.find(g => _normLatex(g.math) !== _normLatex(target))
+                : givens[0];
             if (startGiven) payload.start_latex = startGiven.math;
         }
     }
@@ -1131,6 +1134,58 @@ function _buildDerivePayload(nodeId, fullNode, graph) {
 
     return payload;
 }
+
+/** Assemble the DeriveProofRequest payload for a clicked node.
+ *  Target = the node's expression; the rest comes from the active proof. */
+function _buildDerivePayload(nodeId, fullNode, graph) {
+    const target = _stripHtmlMacros(nodeLongLabel(fullNode) || fullNode.subexpr || fullNode.label || '');
+    return { ..._proofContextPayload(graph, target), target_latex: target };
+}
+
+/** Find a graph node whose displayed expression matches ``target`` (loose
+ *  compare), so an agent-initiated derivation can anchor to it like the Derive
+ *  button. Returns the node id, or null when nothing matches. */
+function _findNodeIdByLatex(graph, target) {
+    if (!graph || !Array.isArray(graph.nodes) || !target) return null;
+    const t = _normLatex(target);
+    for (const n of graph.nodes) {
+        const lbl = _stripHtmlMacros(nodeLongLabel(n) || n.subexpr || n.label || '');
+        if (lbl && _normLatex(lbl) === t) return n.id;
+    }
+    return null;
+}
+
+/** Agent entry point — initiate a proof derivation on the CURRENT step's graph,
+ *  exactly as if the user clicked a node's Derive button. Fire-and-forget: the
+ *  SgProofManager runs the (verified) derivation and docks it; it persists on
+ *  this step across navigation. ``args`` = { target_latex, start_latex?, prompt? }. */
+window.algebenchDeriveProof = function (args) {
+    if (!_currentProofManager) {
+        console.warn('algebenchDeriveProof: no active graph/proof manager to derive into');
+        return false;
+    }
+    const target = _stripHtmlMacros(((args && args.target_latex) || '')).trim();
+    if (!target) {
+        console.warn('algebenchDeriveProof: target_latex is required');
+        return false;
+    }
+    const graph = _d3ActiveGraph;
+    const payload = { ..._proofContextPayload(graph, target), target_latex: target };
+    // Agent overrides take precedence over the proof-derived defaults.
+    const start = ((args && args.start_latex) || '').trim();
+    if (start) payload.start_latex = start;
+    const prompt = ((args && args.prompt) || '').trim();
+    if (prompt) payload.intent = prompt;
+
+    // Anchor to a matching node when one exists (docks beside it); otherwise use
+    // a synthetic id keyed on the target so re-issuing the same derivation on the
+    // same step re-focuses its box instead of stacking duplicates.
+    const matchedId = _findNodeIdByLatex(graph, target);
+    const nodeId = matchedId || ('agent::' + _normLatex(target));
+    const anchor = matchedId ? _d3NodeElById(matchedId) : null;
+    _currentProofManager.openProof(nodeId, anchor, payload);
+    return true;
+};
 
 function _showD3InfoPanel(nodeId, nodeData, graph) {
     const infoHost = document.getElementById('graph-info-panel-host');

@@ -683,6 +683,15 @@ async function sendChatMessage(text, { silent = false } = {}) {
                     const proofStep = parseInt(tc.result?.step ?? tc.args?.step ?? 0);
                     // Agent uses 1-based, navigateProof uses 0-based (-1 = goal)
                     if (typeof navigateProof === 'function') navigateProof(proofStep - 1);
+                } else if (tc.name === 'derive_proof_animation') {
+                    // Initiate a client-side derivation, docked into the current
+                    // step's graph (same as clicking a node's Derive button). The
+                    // result lives on the graph, not in chat.
+                    if (typeof window.algebenchDeriveProof === 'function') {
+                        window.algebenchDeriveProof(tc.args || {});
+                    } else {
+                        console.warn('derive_proof_animation: graph view not ready to derive');
+                    }
                 }
             }
         }
