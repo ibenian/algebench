@@ -246,16 +246,19 @@ export class ProofAnimator {
   // Leaf glyph spans that carry NO id — e.g. parentheses, which the renderer
   // emits as `\left(\right)` without an \htmlData wrapper (and `\left…\right`
   // can't be split to tag each glyph). The morph keys off data-n, so these are
-  // invisible to it and would POP in/out; we fade them as a group when the
-  // untagged sequence changes between steps.
+  // invisible to it and would POP in/out; we fade in the ones that are genuinely
+  // ADDED and fade out the ones genuinely REMOVED (matched via _lcsMatch), so
+  // parentheses that persist across a step are left untouched.
   _untaggedGlyphs(root) {
     const html = root.querySelector(".katex-html");
     if (!html) return [];
     const out = [];
     html.querySelectorAll("*").forEach((el) => {
       if (el.firstElementChild) return;        // not a leaf element
-      const t = el.textContent;
-      if (!t || !t.trim()) return;
+      // Strip zero-width spacers (U+200B/C/D, BOM) KaTeX inserts for structure —
+      // they're not real glyphs and `String.trim()` doesn't remove them.
+      const t = (el.textContent || "").replace(/[​-‍﻿]/g, "").trim();
+      if (!t) return;
       if (el.hasAttribute("data-n")) return;   // itself a tagged glyph
       const p = el.closest("[data-n]");
       // No tagged ancestor, OR the nearest tagged ancestor is STRUCTURAL (it has
@@ -266,6 +269,25 @@ export class ProofAnimator {
       if (!p || p.querySelector("[data-n]")) out.push(el);
     });
     return out;
+  }
+
+  // Longest-common-subsequence match between two text sequences. Returns the sets
+  // of source/target indices that align (the items that PERSIST). Used to tell a
+  // parenthesis that stays put from one that was added or removed.
+  _lcsMatch(a, b) {
+    const n = a.length, m = b.length;
+    const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    for (let i = n - 1; i >= 0; i--)
+      for (let j = m - 1; j >= 0; j--)
+        dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    const aKeep = new Set(), bKeep = new Set();
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (a[i] === b[j]) { aKeep.add(i); bKeep.add(j); i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+      else j++;
+    }
+    return { aKeep, bKeep };
   }
 
   // leaf glyph spans: a `data-n` with no nested `data-n` (excludes hidden MathML)
@@ -462,16 +484,18 @@ export class ProofAnimator {
       if (!fromRects.has(id) || changedIds.has(id)) { el.style.opacity = "0"; insertEls.push(el); }
     });
 
-    // Untagged glyphs (parens etc.): only animate when the sequence actually
-    // CHANGED between states, so persistent parens never flicker. New untagged
-    // glyphs fade in (phase 2); disappeared ones ghost out (phase 0, below).
+    // Untagged glyphs (parens etc.): LCS-match source↔target by text so a paren
+    // that PERSISTS across the step is left untouched. Only genuinely ADDED ones
+    // fade in; genuinely REMOVED ones ghost out. They are kept SEPARATE from the
+    // id'd glyphs so they can animate in their own sub-phase — AFTER all id'd
+    // fades — with a PLAIN opacity tween (no scale/move, so they never shift).
     const toUntagged = this._untaggedGlyphs(this.stage);
-    const SEP = "";
-    const untaggedChanged =
-      fromUntagged.map((u) => u.text).join(SEP) !== toUntagged.map((el) => el.textContent).join(SEP);
-    if (untaggedChanged) {
-      for (const el of toUntagged) { el.style.opacity = "0"; insertEls.push(el); }
-    }
+    const _uMatch = this._lcsMatch(fromUntagged.map((u) => u.text), toUntagged.map((el) => el.textContent));
+    const _uFromKeep = _uMatch.aKeep;
+    const untagInserts = [];
+    toUntagged.forEach((el, j) => {
+      if (!_uMatch.bKeep.has(j)) { el.style.opacity = "0"; untagInserts.push(el); }  // newly added → fade in last
+    });
 
     // newly-introduced structural decorations → also fade in last. A decoration
     // (fraction bar, radical, delimiter) belongs to the node that emitted it: its
@@ -516,10 +540,11 @@ export class ProofAnimator {
       this._ghosts.push(host);
       ghosts.push(host);
     });
-    // Untagged source glyphs (parens etc.) that disappeared → ghost them out too,
-    // so removed parentheses FADE rather than pop. Only when the set changed.
-    if (untaggedChanged) {
-      for (const u of fromUntagged) {
+    // Untagged source glyphs (parens etc.) that were REMOVED (not LCS-matched)
+    // → ghost them out (in their own array, so they fade AFTER the id'd ghosts).
+    const untagGhosts = [];
+    fromUntagged.forEach((u, ui) => {
+      if (!_uFromKeep.has(ui)) {
         const host = document.createElement("span");
         host.className = "katex pa-ghost";
         Object.assign(host.style, {
@@ -531,17 +556,30 @@ export class ProofAnimator {
         host.appendChild(u.clone);
         this.stage.appendChild(host);
         this._ghosts.push(host);
-        ghosts.push(host);
+        untagGhosts.push(host);
       }
-    }
+    });
 
     // ── PHASE 0: dropped items fade OUT first, before any motion ──
+    const D_OUT = this._baseDuration * 0.6;
     const delAnims = [];
     let di = 0;
     for (const host of ghosts) {
       const a = this._tween(host,
         [{ opacity: 1 }, { opacity: 0 }],
-        { duration: this._baseDuration * 0.6, delay: seq ? di++ * this._baseStagger : 0, easing: EASE, fill: "forwards" }
+        { duration: D_OUT, delay: seq ? di++ * this._baseStagger : 0, easing: EASE, fill: "forwards" }
+      );
+      a.onfinish = () => host.remove();
+      delAnims.push(a);
+    }
+    // Untagged (parens) fade out AFTER every id'd ghost has gone — plain opacity,
+    // no move, clones already pinned in place.
+    const _outAfter = (seq ? di * this._baseStagger : 0) + D_OUT;
+    let dk = 0;
+    for (const host of untagGhosts) {
+      const a = this._tween(host,
+        [{ opacity: 1 }, { opacity: 0 }],
+        { duration: D_OUT, delay: _outAfter + (seq ? dk++ * this._baseStagger : 0), easing: EASE, fill: "forwards" }
       );
       a.onfinish = () => host.remove();
       delAnims.push(a);
@@ -574,6 +612,7 @@ export class ProofAnimator {
     if (this._token !== token) return;
 
     // ── PHASE 2: new items fade IN last (glyphs + structural decorations) ──
+    const D_IN = this._baseDuration * 0.7;
     const insAnims = [];
     let ii = 0;
     for (const el of insertEls) {
@@ -582,16 +621,21 @@ export class ProofAnimator {
         [{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "none" }],
         // fill BOTH: stays at opacity 1 after it ends, so a new glyph never gets
         // stuck invisible if the finish event doesn't fire (frozen/backgrounded tab).
-        { duration: this._baseDuration * 0.7, delay: seq ? ii++ * this._baseStagger : 0, easing: EASE, fill: "both" }
+        { duration: D_IN, delay: seq ? ii++ * this._baseStagger : 0, easing: EASE, fill: "both" }
       );
       a.onfinish = () => (el.style.opacity = "");
       insAnims.push(a);
     }
-    // decorations fade in by opacity only (no scale → no layout shift)
-    for (const el of decoEls) {
+    // Items WITHOUT an id — structural decorations (fraction bar, radical,
+    // stretchy delimiters) AND untagged parentheses — fade in AFTER every id'd
+    // insert, with plain opacity only (no move/scale), so they appear in place,
+    // last, without shifting anything.
+    const _inAfter = (seq ? ii * this._baseStagger : 0) + D_IN;
+    let ik = 0;
+    for (const el of [...decoEls, ...untagInserts]) {
       const a = this._tween(el,
         [{ opacity: 0 }, { opacity: 1 }],
-        { duration: this._baseDuration * 0.7, delay: seq ? ii++ * this._baseStagger : 0, easing: EASE, fill: "both" }
+        { duration: D_IN, delay: _inAfter + (seq ? ik++ * this._baseStagger : 0), easing: EASE, fill: "both" }
       );
       a.onfinish = () => (el.style.opacity = "");
       insAnims.push(a);
