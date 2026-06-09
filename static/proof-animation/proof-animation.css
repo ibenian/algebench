@@ -22,6 +22,11 @@
 /* the expression canvas — relative so delete-ghosts can be absolutely placed */
 .pa-stage {
   position: relative;
+  /* Establish a stacking context so the inserts' z-index:-1 (they slide in BEHIND
+     the moving glyphs) stays scoped to the stage. Without this it escapes to the
+     root context and paints new glyphs BEHIND the panel background — they fade in
+     invisibly, then "pop" into view at the end. */
+  isolation: isolate;
   min-height: 96px;
   display: flex;
   align-items: center;
@@ -31,6 +36,20 @@
   line-height: 1.2;
 }
 .pa-stage .katex { color: var(--pa-fg); }
+
+/* The expression renders into a fixed-width block (pinned to the scaled widest
+   step via --pa-expr-w), centred in the stage. Its CONTENT is left-aligned so
+   persistent tokens keep a stable left anchor across steps instead of
+   re-centring — which made every token drift sideways at each boundary. KaTeX
+   display mode centres by default, so undo that on the block AND the inner
+   .katex it wraps. */
+.pa-stage > .pa-expr {
+  display: block;
+  width: var(--pa-expr-w, auto);
+  max-width: 100%;
+}
+.pa-stage > .pa-expr .katex-display { margin: 0; text-align: left; }
+.pa-stage > .pa-expr .katex-display > .katex { text-align: left; }
 
 /* Animated tokens must be inline-block — CSS transforms are IGNORED on
    display:inline elements (KaTeX renders tokens inline), so without this the
@@ -42,7 +61,11 @@
   z-index: 2;
   will-change: transform;
 }
-.pa-ghost { pointer-events: none; z-index: 1; }
+/* Paint order during a morph (back → front): inserting items, then moving
+   items, then the disappearing ghosts on top. So new items grow in from BEHIND
+   and never occlude the items that are still moving or fading out. */
+.pa-ghost { pointer-events: none; z-index: 4; }
+.pa-move.pa-insert { z-index: -1; }
 
 /* operation (explanation) stacked above justification */
 .pa-meta {
@@ -130,10 +153,12 @@
     justify-content: center;
 }
 
-/* The animator renders at a fixed natural width; _fit() zooms it to the box. */
+/* The animator fills the box width; its responsive _fit scales the expression
+   to that width and the caption/controls use the full width. _fit() in
+   SgProofManager only zooms it DOWN if the height would overflow the box. */
 .sgp-pa {
-    width: 360px;
-    flex: none;
+    width: 100%;
+    flex: 0 1 auto;
 }
 .sgp-pa.pa-root {
     border: none;
@@ -204,12 +229,15 @@
 .sgp-derive-indicator .gei-dots span:nth-child(2) { animation-delay: 0.18s; }
 .sgp-derive-indicator .gei-dots span:nth-child(3) { animation-delay: 0.36s; }
 
-/* In the docked proof box, the step (nav) buttons stretch to fill the row. */
+/* In the docked proof box the step (nav) buttons grow to fill a NARROW row, but
+   cap their width so they don't stretch into giant bars when the box is wide
+   (the animator now fills the full box width). */
 .sgp-proof-box .pa-controls { gap: 6px; }
-.sgp-proof-box .pa-steps { flex: 1 1 auto; }
+.sgp-proof-box .pa-steps { flex: 1 1 auto; flex-wrap: wrap; }
 .sgp-proof-box .pa-steps .pa-step {
     flex: 1 1 0;
-    min-width: 0;
+    min-width: 30px;
+    max-width: 52px;
     padding-left: 2px;
     padding-right: 2px;
 }
