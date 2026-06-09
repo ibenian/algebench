@@ -26,6 +26,11 @@ export function clearDeriveCache() {
     _DERIVE_CACHE.clear();
 }
 
+// A derivation is an LM call (sometimes retried server-side); a hard goal can
+// run long, but past this it's almost certainly stuck — fail with a retryable
+// error rather than spin the "Deriving proof…" pill forever.
+const DERIVE_TIMEOUT_MS = 90_000;
+
 const BOX_W = 360;            // natural render width of the animator (zoomed to fit the box)
 const GRID_COLS = 8;          // same grid as SgChartManager
 const GRID_ROWS = 8;
@@ -301,7 +306,7 @@ export class SgProofManager {
         this._renderLoading(entry);
         const pill = this._showPill();
         try {
-            const data = await invokeExpert('proof_animation', payload);
+            const data = await invokeExpert('proof_animation', payload, { timeoutMs: DERIVE_TIMEOUT_MS });
             if (this._destroyed || !this.boxes.has(entry.boxId)) return;
             _DERIVE_CACHE.set(key, data);
             if (data && data.title) this._renderInlineMath(entry.titleEl, data.title);
