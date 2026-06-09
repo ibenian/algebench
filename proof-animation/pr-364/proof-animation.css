@@ -1,0 +1,215 @@
+/* proof-animation.css — styles for the ProofAnimator (themeable via CSS vars). */
+
+.pa-root {
+  --pa-fg: var(--text-color, #1a1a2e);
+  --pa-muted: var(--muted-color, #6b7280);
+  --pa-accent: var(--accent-color, #6366f1);
+  --pa-bg: var(--panel-bg, #ffffff);
+  --pa-border: var(--border-color, #e5e7eb);
+  --pa-active-fg: #ffffff;
+
+  font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
+  color: var(--pa-fg);
+  background: var(--pa-bg);
+  border: 1px solid var(--pa-border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* the expression canvas — relative so delete-ghosts can be absolutely placed */
+.pa-stage {
+  position: relative;
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  font-size: 1.9rem;
+  line-height: 1.2;
+}
+.pa-stage .katex { color: var(--pa-fg); }
+
+/* Animated tokens must be inline-block — CSS transforms are IGNORED on
+   display:inline elements (KaTeX renders tokens inline), so without this the
+   translate/scale has no visual effect. baseline keeps vertical alignment. */
+.pa-move {
+  display: inline-block;
+  vertical-align: baseline;
+  position: relative;
+  z-index: 2;
+  will-change: transform;
+}
+.pa-ghost { pointer-events: none; z-index: 1; }
+
+/* operation (explanation) stacked above justification */
+.pa-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 1.4em;
+  font-size: 0.95rem;
+}
+.pa-op { font-weight: 600; color: var(--pa-fg); }
+.pa-just { color: var(--pa-muted); font-style: italic; }
+
+/* controls */
+.pa-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--pa-border);
+  padding-top: 12px;
+}
+.pa-steps { display: flex; gap: 6px; }
+
+.pa-btn, .pa-step {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--pa-border);
+  background: var(--pa-bg);
+  color: var(--pa-fg);
+  border-radius: 8px;
+  padding: 6px 12px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.pa-step { min-width: 34px; text-align: center; }
+.pa-speed { min-width: 3em; text-align: center; font-variant-numeric: tabular-nums; }
+.pa-btn:hover, .pa-step:hover { border-color: var(--pa-accent); }
+
+.pa-step.pa-active {
+  background: var(--pa-accent);
+  color: var(--pa-active-fg);
+  border-color: var(--pa-accent);
+}
+.pa-play { margin-left: auto; width: 6em; box-sizing: border-box; text-align: center; }
+
+.pa-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pa-muted);
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+/* dark theme friendliness when the host sets a dark background var */
+@media (prefers-color-scheme: dark) {
+  .pa-root {
+    --pa-fg: var(--text-color, #e5e7eb);
+    --pa-bg: var(--panel-bg, #1a1a2e);
+    --pa-border: var(--border-color, #2d2d44);
+    --pa-muted: var(--muted-color, #9ca3af);
+  }
+}
+
+
+/* ───────────────────────────────────────────────────────────────────────────
+   SgProofManager dock. The box REUSES the chart classes (.sgc-chart-box,
+   .sgc-chart-header, .sgc-btn, .sgc-resize-handle, .sgc-pinned) so borders and
+   buttons are identical to the charts; only these proof-specific rules remain:
+   the body lays out the animator, which is rendered at a fixed width and
+   `zoom`-scaled to fit the grid box.
+   ─────────────────────────────────────────────────────────────────────────── */
+.sgp-proof-box {
+    display: flex;
+    flex-direction: column;
+    color: rgba(210, 218, 245, 0.92);
+}
+
+.sgp-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* The animator renders at a fixed natural width; _fit() zooms it to the box. */
+.sgp-pa {
+    width: 360px;
+    flex: none;
+}
+.sgp-pa.pa-root {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 12px 14px;
+}
+
+.sgp-status,
+.sgp-error {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 14px;
+    font-size: 0.78rem;
+    color: rgba(210, 218, 245, 0.9);
+    text-align: center;
+}
+.sgp-error { flex-direction: column; }
+.sgp-error-msg { color: rgba(246, 200, 200, 0.95); line-height: 1.35; }
+.sgp-retry {
+    background: rgba(99, 102, 241, 0.18);
+    border: 1px solid rgba(120, 130, 200, 0.5);
+    color: rgba(220, 226, 252, 0.95);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.74rem;
+    cursor: pointer;
+}
+.sgp-retry:hover { background: rgba(99, 102, 241, 0.3); }
+
+/* Loading spinner dots — shared look with the enrichment pill. */
+.sgp-dots { display: inline-flex; align-items: center; gap: 3px; }
+.sgp-dots span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(166, 184, 240, 0.95);
+    animation: gei-dot-pulse 1.1s ease-in-out infinite;
+}
+.sgp-dots span:nth-child(2) { animation-delay: 0.18s; }
+.sgp-dots span:nth-child(3) { animation-delay: 0.36s; }
+
+/* "Deriving proof…" pill — lives in the shared .graph-enrich-indicator-stack
+   but with its own class so the enrichment step-visibility toggle never hides
+   it. Visual style mirrors .graph-enrich-indicator. */
+.sgp-derive-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px 6px 8px;
+    background: rgba(10, 12, 26, 0.78);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    color: rgba(210, 218, 245, 0.92);
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    user-select: none;
+    pointer-events: none;
+    animation: gei-fade-in 180ms ease-out;
+}
+.sgp-derive-indicator .gei-dots { display: inline-flex; align-items: center; gap: 3px; }
+.sgp-derive-indicator .gei-dots span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(166, 184, 240, 0.95);
+    animation: gei-dot-pulse 1.1s ease-in-out infinite;
+}
+.sgp-derive-indicator .gei-dots span:nth-child(2) { animation-delay: 0.18s; }
+.sgp-derive-indicator .gei-dots span:nth-child(3) { animation-delay: 0.36s; }
+
+/* In the docked proof box, the step (nav) buttons stretch to fill the row. */
+.sgp-proof-box .pa-controls { gap: 6px; }
+.sgp-proof-box .pa-steps { flex: 1 1 auto; }
+.sgp-proof-box .pa-steps .pa-step {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-left: 2px;
+    padding-right: 2px;
+}
