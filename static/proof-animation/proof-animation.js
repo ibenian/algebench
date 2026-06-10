@@ -173,7 +173,17 @@ export class ProofAnimator {
       const w = this.container.clientWidth;
       if (Math.abs(w - this._lastFitW) < 1) return;   // height-only change → skip
       this._lastFitW = w;
-      this._relayout();
+      // Debounce: _relayout() re-renders every step via KaTeX in _fit() (expensive),
+      // and a live drag-resize fires many events per frame. Coalesce to one
+      // relayout per animation frame — same result, far less jank.
+      if (this._raf || typeof requestAnimationFrame === "undefined") {
+        if (typeof requestAnimationFrame === "undefined") this._relayout();
+        return;
+      }
+      this._raf = requestAnimationFrame(() => {
+        this._raf = 0;
+        if (!this._destroyed) this._relayout();
+      });
     });
     this._ro.observe(this.container);
     // If the tab is hidden WHILE a morph is mid-flight, its animations freeze and
@@ -210,6 +220,7 @@ export class ProofAnimator {
   destroy() {
     this._destroyed = true;
     this._cancel();
+    if (this._raf && typeof cancelAnimationFrame !== "undefined") { cancelAnimationFrame(this._raf); this._raf = 0; }
     if (this._ro) { try { this._ro.disconnect(); } catch (e) {} this._ro = null; }
     if (this._onVisibility) {
       try { document.removeEventListener("visibilitychange", this._onVisibility); } catch (e) {}
@@ -242,17 +253,18 @@ export class ProofAnimator {
       <div class="pa-stage" aria-live="polite"></div>
       <div class="pa-meta"><span class="pa-op"></span><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
       <div class="pa-controls">
-        <button class="pa-btn pa-prev" data-tip="Previous step" aria-label="Previous step">◀</button>
+        <button type="button" class="pa-btn pa-prev" data-tip="Previous step" aria-label="Previous step">◀</button>
         <div class="pa-steps"></div>
-        <button class="pa-btn pa-next" data-tip="Next step" aria-label="Next step">▶</button>
-        <button class="pa-btn pa-play" data-tip="Play through" aria-label="Play through">▶ Play</button>
-        <button class="pa-btn pa-speed" data-tip="Animation speed (click to cycle)" aria-label="Animation speed">${_speedLabel(this.speed)}</button>
+        <button type="button" class="pa-btn pa-next" data-tip="Next step" aria-label="Next step">▶</button>
+        <button type="button" class="pa-btn pa-play" data-tip="Play through" aria-label="Play through">▶ Play</button>
+        <button type="button" class="pa-btn pa-speed" data-tip="Animation speed (click to cycle)" aria-label="Animation speed">${_speedLabel(this.speed)}</button>
         <button class="pa-btn pa-mode" type="button" data-tip="Sequential — stagger the moves" aria-label="Sequential — stagger the moves" aria-pressed="false">⇉</button>
       </div>`;
     this.stage = this.container.querySelector(".pa-stage");
     const steps = this.container.querySelector(".pa-steps");
     this.data.steps.forEach((s, i) => {
       const b = document.createElement("button");
+      b.type = "button";   // never submit a surrounding <form>
       b.className = "pa-step";
       b.textContent = String(i);
       const tip = `${i}. ${this._plainOp(s.operation || `state ${i}`)}`;
@@ -568,7 +580,7 @@ export class ProofAnimator {
     let metaFinish = null;
     if (target === prev + 1) {
       this._updateStepButtons();
-      metaFinish = this._beginMetaPromote(prev, target);
+      metaFinish = this._beginMetaPromote(target);
     } else {
       this._syncUI();
     }
@@ -1057,7 +1069,7 @@ export class ProofAnimator {
   // into the title position to become the new explanation. Returns a finish()
   // closure that the caller runs AFTER the expression morph completes, which
   // fades in the new justification and the new "Next" pill (never during).
-  _beginMetaPromote(prev, target) {
+  _beginMetaPromote(target) {
     const meta = this.container.querySelector(".pa-meta");
     const opEl = meta.querySelector(".pa-op");
     const justEl = meta.querySelector(".pa-just");
