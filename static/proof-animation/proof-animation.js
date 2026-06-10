@@ -479,17 +479,16 @@ export class ProofAnimator {
       rect: el.getBoundingClientRect(),
       fontSize: getComputedStyle(el).fontSize,
     }));
-    // which (node, decoration-type) pairs the SOURCE had — used to tell a
-    // genuinely new fraction/root apart from one whose node id was merely reused,
-    // and (with the clones below) to FADE OUT decorations that disappear.
-    const fromDecoKeys = new Set();
+    // Source decorations (fraction bar, radical, stretchy delimiter), keyed by
+    // their owning node (nearest [data-n]) + type. Snapshotted before re-render
+    // so the target ones can be matched against them — to MORPH a preserved
+    // decoration that resized/moved, FADE OUT removed ones, FADE IN new ones.
     const fromDecos = [];
     for (const sel of DECORATIONS) {
       this.stage.querySelectorAll(sel).forEach((el) => {
         const o = el.closest("[data-n]");
         if (!o) return;
         const key = o.getAttribute("data-n") + "|" + sel;
-        fromDecoKeys.add(key);
         fromDecos.push({ key, clone: el.cloneNode(true), rect: el.getBoundingClientRect(), fontSize: getComputedStyle(el).fontSize });
       });
     }
@@ -563,26 +562,39 @@ export class ProofAnimator {
       if (!_uMatch.bKeep.has(j)) { el.style.opacity = "0"; untagInserts.push(el); }  // newly added → fade in last
     });
 
-    // newly-introduced structural decorations → also fade in last. A decoration
-    // (fraction bar, radical, delimiter) belongs to the node that emitted it: its
-    // nearest [data-n] ancestor. If that subtree already existed in the source the
-    // decoration persists (never blink it); if the subtree is new, so is the
-    // decoration → fade it in. This catches a *new inner* fraction even when an
-    // outer fraction is already on screen.
+    // Diff target decorations against the source ones (matched by owner|type):
+    //   • preserved but moved/resized → FLIP it (hold at the source pose now, the
+    //     move phase tweens it to identity) so a fraction bar or radical grows /
+    //     shrinks / slides smoothly instead of snapping to its new shape;
+    //   • new → fade in last (phase 2);   • removed → ghost out (phase 0, below).
     const decoEls = [];
-    const toDecoKeys = new Set();
+    const decoMovers = [];
+    const srcDecoByKey = new Map();
+    for (const d of fromDecos) {
+      if (!srcDecoByKey.has(d.key)) srcDecoByKey.set(d.key, []);
+      srcDecoByKey.get(d.key).push(d);
+    }
+    const matchedSrcDeco = new Set();
     for (const sel of DECORATIONS) {
       this.stage.querySelectorAll(sel).forEach((el) => {
         const owner = el.closest("[data-n]");
-        const ownerId = owner && owner.getAttribute("data-n");
-        if (ownerId) toDecoKeys.add(ownerId + "|" + sel);
-        // keep visible only if that very node already had this decoration in the
-        // source (so the outer fraction persists, but a new inner one fades in).
-        if (ownerId && fromDecoKeys.has(ownerId + "|" + sel)) return;
-        el.style.opacity = "0";
-        decoEls.push(el);
+        const key = (owner ? owner.getAttribute("data-n") : "") + "|" + sel;
+        const pool = srcDecoByKey.get(key);
+        const src = pool && pool.find((s) => !matchedSrcDeco.has(s));
+        if (!src) { el.style.opacity = "0"; decoEls.push(el); return; }   // new → fade in
+        matchedSrcDeco.add(src);
+        const tr = el.getBoundingClientRect();
+        const dx = src.rect.left - tr.left, dy = src.rect.top - tr.top;
+        const sx = tr.width > 0 ? src.rect.width / tr.width : 1;
+        const sy = tr.height > 0 ? src.rect.height / tr.height : 1;
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || Math.abs(sx - 1) > 0.02 || Math.abs(sy - 1) > 0.02) {
+          el.style.transformOrigin = "0 0";
+          el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;   // hold at source pose
+          decoMovers.push({ el, dx, dy, sx, sy });
+        }
       });
     }
+    const removedDecos = fromDecos.filter((d) => !matchedSrcDeco.has(d));
 
     // source-only glyphs → DELETE ghosts: clones placed at their old spot. Each
     // ghost is wrapped in a `.katex` host so KaTeX's font CSS (scoped under
@@ -630,8 +642,7 @@ export class ProofAnimator {
     // Decorations (fraction bar, radical, stretchy delimiter) that DISAPPEARED →
     // ghost the cloned decoration (which keeps its stretched size) at its old spot
     // and fade it out with the other id-less items, instead of letting it vanish.
-    for (const d of fromDecos) {
-      if (toDecoKeys.has(d.key)) continue;   // still present → persists
+    for (const d of removedDecos) {
       const host = document.createElement("span");
       host.className = "katex pa-ghost";
       let left = d.rect.left - stageRect.left, top = d.rect.top - stageRect.top;
@@ -703,6 +714,17 @@ export class ProofAnimator {
         blk.el.style.transformOrigin = "";
         if (!blk.single) blk.el.classList.remove("pa-move");
       };
+      moveAnims.push(a);
+    }
+    // preserved decorations (fraction bar, radical, delimiter) glide/stretch from
+    // their old pose to the new one, in lockstep with the glyphs they wrap.
+    for (const dm of decoMovers) {
+      const a = this._tween(dm.el,
+        [{ transform: `translate(${dm.dx}px, ${dm.dy}px) scale(${dm.sx}, ${dm.sy})` },
+         { transform: "translate(0px, 0px) scale(1, 1)" }],
+        { duration: this._baseDuration, delay: seq ? mi++ * this._baseStagger : 0, easing: EASE, fill: "both" }
+      );
+      a.onfinish = () => { dm.el.style.transform = ""; dm.el.style.transformOrigin = ""; };
       moveAnims.push(a);
     }
     this._running = moveAnims;
