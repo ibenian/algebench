@@ -582,12 +582,23 @@ export class ProofAnimator {
         const pool = srcDecoByKey.get(key);
         const src = pool && pool.find((s) => !matchedSrcDeco.has(s));
         if (!src) { el.style.opacity = "0"; decoEls.push(el); return; }   // new → fade in
-        matchedSrcDeco.add(src);
         const tr = el.getBoundingClientRect();
         const dx = src.rect.left - tr.left, dy = src.rect.top - tr.top;
         const sx = tr.width > 0 ? src.rect.width / tr.width : 1;
         const sy = tr.height > 0 ? src.rect.height / tr.height : 1;
-        if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || Math.abs(sx - 1) > 0.02 || Math.abs(sy - 1) > 0.02) {
+        const changed = Math.abs(dx) > 1 || Math.abs(dy) > 1 || Math.abs(sx - 1) > 0.02 || Math.abs(sy - 1) > 0.02;
+        // A radical (`.sqrt svg`) is a single SVG whose path distorts under a
+        // non-uniform transform (hook detaches from the overline). So when it
+        // changes, CROSS-FADE it like parentheses — leave the source UNmatched so
+        // it ghosts out (phase 0) and fade the new one in (phase 2).
+        if (sel === ".sqrt svg") {
+          if (changed) { el.style.opacity = "0"; decoEls.push(el); }
+          else { matchedSrcDeco.add(src); }
+          return;
+        }
+        // A fraction bar / delimiter is one self-contained box → FLIP it.
+        matchedSrcDeco.add(src);
+        if (changed) {
           el.style.transformOrigin = "0 0";
           el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;   // hold at source pose
           decoMovers.push({ el, dx, dy, sx, sy });
