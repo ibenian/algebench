@@ -21,10 +21,20 @@
 const EASE = "cubic-bezier(0.42, 0, 0.58, 1)"; // ease-in-out
 
 // Untagged structural decorations KaTeX draws (no data-n of their own): the
-// fraction bar, the radical sign, and stretchy delimiters. When newly
-// introduced they must fade in LAST with the other new items — never instantly.
-// (These selectors hold no tagged glyphs, so hiding them won't hide content.)
-const DECORATIONS = [".frac-line", ".sqrt svg", ".delimsizing"];
+// fraction bar and the radical sign. When newly introduced they must fade in
+// LAST with the other new items — never instantly. (These selectors hold no
+// tagged glyphs, so hiding them won't hide content.)
+// NOTE: stretchy delimiters (`.delimsizing`) are NOT here — parentheses (plain
+// OR stretchy) are handled together by the unified paren matcher (`_parens`),
+// so a paren that flips representation between steps morphs as one unit.
+const DECORATIONS = [".frac-line", ".sqrt svg"];
+
+// Delimiter glyphs the renderer emits via \left…\right (plain or stretchy).
+const PAREN_RE = /^[()[\]|]$/;
+const _parenChar = (s) => {
+  const t = (s || "").replace(/[​-‍﻿]/g, "").trim();
+  return PAREN_RE.test(t) ? t : null;
+};
 
 // Playback speed multipliers the speed button cycles through (click → next).
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
@@ -52,12 +62,24 @@ export class ProofAnimator {
     this._token = null;
     this._playId = null;  // identifies the active play() loop; user nav clears it
     this._paused = false; // freeze in-flight animations (works mid-interpolation)
+    this._destroyed = false;
+    this._ro = null;      // ResizeObserver → re-fit when the container resizes
     this._applySpeed();   // sets this.speed (needs _running to exist)
     this._build();
-    this._fixStageSize();   // pin the stage to the largest step so it never resizes
+    // Base (unscaled) expression font; _fit() shrinks from here to fit the width.
+    this._baseFontPx = parseFloat(getComputedStyle(this.stage).fontSize) || 30;
+    this._fit();            // size the stage to the largest step, scaled to fit the width
     this._fixMetaSize();    // pin the caption area to the tallest op+justification
     this._renderInto(this.stage, this.data.steps[0].latex);
     this._syncUI();
+    this._capOverflow();    // never let the expression spill past the stage
+    this._fitControls();    // hide step enumerations if the controls don't fit
+    this._observeResize();  // responsive: re-fit on container/window resize
+    // KaTeX webfonts load async; the first _fit() may have measured with narrower
+    // fallback-font metrics. Re-fit once the real fonts are ready.
+    if (typeof document !== "undefined" && document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => { if (!this._destroyed) this._relayout(); });
+    }
   }
 
   // Reserve the height of the tallest caption (operation + justification) so the
@@ -71,25 +93,31 @@ export class ProofAnimator {
       `position:absolute; visibility:hidden; left:-9999px; top:0; width:${meta.clientWidth}px;`;
     const op = document.createElement("span"); op.className = "pa-op";
     const just = document.createElement("span"); just.className = "pa-just";
-    probe.append(op, just);
+    const next = document.createElement("span"); next.className = "pa-next-pill";
+    probe.append(op, just, next);
     this.container.appendChild(probe);
     let h = 0;
-    for (const s of this.data.steps) {
-      this._caption(op, s.operation ? `${s.index}. ${s.operation}` : `state ${s.index}`);
+    this.data.steps.forEach((s, i) => {
+      this._caption(op, this._opText(i));
       this._caption(just, s.justification || "");
+      this._setNextPill(next, i);
       h = Math.max(h, probe.getBoundingClientRect().height);
-    }
+    });
     probe.remove();
     if (h > 0) meta.style.minHeight = Math.ceil(h) + "px";
   }
 
-  // Measure every step and lock the stage to the max width/height, so the canvas
-  // (and the controls below it) never jump as expressions grow or shrink between
-  // steps. Each step then renders centered inside this fixed box.
-  _fixStageSize() {
+  // Measure every step at the base font and lock the stage to the max width/
+  // height, then scale the font down (only down, never up) so the WIDEST step
+  // fits the current stage width. Pinning to the max keeps the canvas — and the
+  // controls below it — from jumping as expressions grow/shrink between steps;
+  // scaling by the SHARED max keeps the scale identical across steps (no per-step
+  // zoom jump); and recomputing on resize makes the whole thing responsive
+  // instead of overflowing a narrowed container.
+  _fit() {
     const probe = document.createElement("span");
     probe.style.cssText =
-      "position:absolute; visibility:hidden; left:-9999px; top:0; white-space:nowrap;";
+      `position:absolute; visibility:hidden; left:-9999px; top:0; white-space:nowrap; font-size:${this._baseFontPx}px;`;
     this.stage.appendChild(probe);
     let w = 0, h = 0;
     for (const step of this.data.steps) {
@@ -99,10 +127,105 @@ export class ProofAnimator {
       h = Math.max(h, r.height);
     }
     probe.remove();
-    // Height is the only dimension that varies (the stage already stretches to
-    // the fixed panel width), so pinning it stops the vertical jump. Add a little
-    // headroom so nothing clips.
-    if (h > 0) this.stage.style.height = Math.ceil(h + 8) + "px";
+    if (w <= 0) return;
+    this._maxExprW = w;
+    // Shrink the font so the widest step fits the available width (a tiny gutter
+    // keeps it off the edges). The same scale applies to every step, so there's
+    // no per-step zoom jump.
+    const availW = Math.max(40, this.stage.clientWidth - 8);
+    const scale = Math.min(1, availW / w);
+    this.stage.style.fontSize = `${this._baseFontPx * scale}px`;
+    // Height is pinned (scaled) so the stage never jumps between steps. The
+    // expression renders into a fixed-width block (the scaled max) that is
+    // centred in the stage with its CONTENT left-aligned (see CSS), so persistent
+    // tokens keep a stable left anchor instead of re-centring — and drifting —
+    // every step.
+    this.stage.style.height = `${Math.ceil(h * scale + 8)}px`;
+    this.stage.style.setProperty("--pa-expr-w", `${Math.ceil(w * scale)}px`);
+  }
+
+  // Hard guarantee that the CURRENT rendered expression never overflows the stage
+  // width — a safety net for cases _fit()'s probe under-measures (e.g. it ran
+  // before the KaTeX webfonts loaded, so fallback-font metrics were narrower).
+  // Shrinks the stage font (which reflows the existing render) until it fits.
+  _capOverflow() {
+    const expr = this.stage.querySelector(".pa-expr");
+    if (!expr) return;
+    const k = expr.querySelector(".katex-display") || expr.querySelector(".katex");
+    if (!k) return;
+    const avail = Math.max(40, this.stage.clientWidth - 8);
+    const w = k.getBoundingClientRect().width;
+    if (w > avail + 0.5) {
+      const cur = parseFloat(getComputedStyle(this.stage).fontSize) || this._baseFontPx;
+      this.stage.style.fontSize = `${cur * (avail / w)}px`;
+      this.stage.style.setProperty("--pa-expr-w", `${Math.ceil(avail)}px`);
+    }
+  }
+
+  // Re-fit when the container (or window) resizes so the expression always fits
+  // the available width. Only width changes matter — guard against the height
+  // changes _fit() itself triggers (which would otherwise loop forever).
+  _observeResize() {
+    if (this._ro || typeof ResizeObserver === "undefined") return;
+    this._lastFitW = this.container.clientWidth;
+    this._ro = new ResizeObserver(() => {
+      if (this._destroyed) return;
+      const w = this.container.clientWidth;
+      if (Math.abs(w - this._lastFitW) < 1) return;   // height-only change → skip
+      this._lastFitW = w;
+      // Debounce: _relayout() re-renders every step via KaTeX in _fit() (expensive),
+      // and a live drag-resize fires many events per frame. Coalesce to one
+      // relayout per animation frame — same result, far less jank.
+      if (this._raf || typeof requestAnimationFrame === "undefined") {
+        if (typeof requestAnimationFrame === "undefined") this._relayout();
+        return;
+      }
+      this._raf = requestAnimationFrame(() => {
+        this._raf = 0;
+        if (!this._destroyed) this._relayout();
+      });
+    });
+    this._ro.observe(this.container);
+    // If the tab is hidden WHILE a morph is mid-flight, its animations freeze and
+    // their `finished` promises never resolve — the morph would be stuck forever
+    // (partial final step). Snap to the current target's final state instead.
+    if (typeof document !== "undefined") {
+      this._onVisibility = () => {
+        if (document.hidden && this._running.length) {
+          this._cancel();
+          this._renderInto(this.stage, this.data.steps[this.current].latex);
+          this._capOverflow();   // webfonts may have loaded while hidden → re-cap width
+          this._syncUI();
+        }
+      };
+      document.addEventListener("visibilitychange", this._onVisibility);
+    }
+  }
+
+  // Width changed: cancel any in-flight morph, re-fit, and re-render the current
+  // step at the new scale. A resize is an instantaneous reflow (not a step
+  // change), so it doesn't run the fade-out → move → fade-in sequence.
+  _relayout() {
+    this._cancel();
+    this._fit();
+    this._fixMetaSize();
+    this._renderInto(this.stage, this.data.steps[this.current].latex);
+    this._capOverflow();
+    this._fitControls();
+    this._updateNextTip();   // truncation depends on width → re-check on resize
+  }
+
+  // Tear down the ResizeObserver and any running animations (called when the
+  // host removes the proof box — see SgProofManager.closeBox).
+  destroy() {
+    this._destroyed = true;
+    this._cancel();
+    if (this._raf && typeof cancelAnimationFrame !== "undefined") { cancelAnimationFrame(this._raf); this._raf = 0; }
+    if (this._ro) { try { this._ro.disconnect(); } catch (e) {} this._ro = null; }
+    if (this._onVisibility) {
+      try { document.removeEventListener("visibilitychange", this._onVisibility); } catch (e) {}
+      this._onVisibility = null;
+    }
   }
 
   // Apply the current speed multiplier. Animations are created at base duration
@@ -128,34 +251,48 @@ export class ProofAnimator {
     this.container.classList.add("pa-root");
     this.container.innerHTML = `
       <div class="pa-stage" aria-live="polite"></div>
-      <div class="pa-meta"><span class="pa-op"></span><span class="pa-just"></span></div>
+      <div class="pa-meta"><span class="pa-op"></span><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
       <div class="pa-controls">
-        <button class="pa-btn pa-prev" title="Previous step" aria-label="Previous step">◀</button>
+        <button type="button" class="pa-btn pa-prev" data-tip="Previous step" aria-label="Previous step">◀</button>
         <div class="pa-steps"></div>
-        <button class="pa-btn pa-next" title="Next step" aria-label="Next step">▶</button>
-        <button class="pa-btn pa-play" title="Play through">▶ Play</button>
-        <button class="pa-btn pa-speed" title="Animation speed (click to cycle)">${_speedLabel(this.speed)}</button>
-        <label class="pa-mode"><input type="checkbox"> sequential</label>
+        <button type="button" class="pa-btn pa-next" data-tip="Next step" aria-label="Next step">▶</button>
+        <button type="button" class="pa-btn pa-play" data-tip="Play through" aria-label="Play through">▶ Play</button>
+        <button type="button" class="pa-btn pa-speed" data-tip="Animation speed (click to cycle)" aria-label="Animation speed">${_speedLabel(this.speed)}</button>
+        <button class="pa-btn pa-mode" type="button" data-tip="Sequential — stagger the moves" aria-label="Sequential — stagger the moves" aria-pressed="false">⇉</button>
       </div>`;
     this.stage = this.container.querySelector(".pa-stage");
     const steps = this.container.querySelector(".pa-steps");
     this.data.steps.forEach((s, i) => {
       const b = document.createElement("button");
+      b.type = "button";   // never submit a surrounding <form>
       b.className = "pa-step";
       b.textContent = String(i);
-      b.title = s.operation || `state ${i}`;
+      const tip = `${i}. ${this._plainOp(s.operation || `state ${i}`)}`;
+      b.setAttribute("data-tip", tip);
+      b.setAttribute("aria-label", tip);
       b.addEventListener("click", () => this._userGoTo(i));
       steps.appendChild(b);
     });
     this.container.querySelector(".pa-prev").onclick = () => this._userGoTo(this.current - 1);
     this.container.querySelector(".pa-next").onclick = () => this._userGoTo(this.current + 1);
+    // The "Next" pill acts like the next button.
+    const nextPill = this.container.querySelector(".pa-next-pill");
+    nextPill.onclick = () => this._userGoTo(this.current + 1);
+    nextPill.onkeydown = (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); this._userGoTo(this.current + 1); }
+    };
     this.container.querySelector(".pa-play").onclick = () => this._togglePlay();
     this.container.querySelector(".pa-speed").onclick = () => {
       this._speedIdx = (this._speedIdx + 1) % SPEEDS.length;
       this._applySpeed();
     };
-    this.container.querySelector(".pa-mode input").onchange = (e) =>
-      (this.mode = e.target.checked ? "sequential" : "parallel");
+    const modeBtn = this.container.querySelector(".pa-mode");
+    modeBtn.onclick = () => {
+      this.mode = this.mode === "sequential" ? "parallel" : "sequential";
+      const on = this.mode === "sequential";
+      modeBtn.classList.toggle("pa-active", on);
+      modeBtn.setAttribute("aria-pressed", String(on));
+    };
   }
 
   _renderInto(el, latex) {
@@ -170,6 +307,104 @@ export class ProofAnimator {
       trust: (ctx) => ctx.command === "\\htmlData",
     });
     return host;
+  }
+
+  // Leaf glyph spans that carry NO id — e.g. parentheses, which the renderer
+  // emits as `\left(\right)` without an \htmlData wrapper (and `\left…\right`
+  // can't be split to tag each glyph). The morph keys off data-n, so these are
+  // invisible to it and would POP in/out; we fade in the ones that are genuinely
+  // ADDED and fade out the ones genuinely REMOVED (matched via _lcsMatch), so
+  // parentheses that persist across a step are left untouched.
+  _untaggedGlyphs(root) {
+    const html = root.querySelector(".katex-html");
+    if (!html) return [];
+    const out = [];
+    html.querySelectorAll("*").forEach((el) => {
+      if (el.firstElementChild) return;        // not a leaf element
+      // Strip zero-width spacers (U+200B/C/D, BOM) KaTeX inserts for structure —
+      // they're not real glyphs and `String.trim()` doesn't remove them.
+      const t = (el.textContent || "").replace(/[​-‍﻿]/g, "").trim();
+      if (!t) return;
+      // Parentheses (plain or stretchy `.delimsizing`) are handled by the unified
+      // paren matcher (`_parens`) — exclude them here so they're not animated twice.
+      if (_parenChar(t) || el.closest(".delimsizing")) return;
+      if (el.hasAttribute("data-n")) return;   // itself a tagged glyph
+      const p = el.closest("[data-n]");
+      // No tagged ancestor, OR the nearest tagged ancestor is STRUCTURAL (it has
+      // tagged descendants) → this is a loose decoration glyph the renderer added
+      // without an id (e.g. a parenthesis from \left(\right)). If the nearest
+      // tagged ancestor is a LEAF glyph, this span is just part of that glyph's
+      // rendering → skip.
+      if (!p || p.querySelector("[data-n]")) out.push(el);
+    });
+    return out;
+  }
+
+  // Every parenthesis in `root`, in DOCUMENT ORDER, whether the renderer drew it
+  // as a plain glyph or a stretchy `.delimsizing` box. The "unit" is the
+  // `.delimsizing` box when present (so a clone keeps its stretched size), else
+  // the bare glyph span. Unifying both representations lets a paren that FLIPS
+  // between them across a step (KaTeX picks plain vs stretchy by content height)
+  // be matched as one and morph — instead of ghosting the old AND fading the new
+  // at the same spot (which looked like DUPLICATE parentheses).
+  _parens(root) {
+    const html = root.querySelector(".katex-html");
+    if (!html) return [];
+    const out = [];
+    const seen = new Set();
+    html.querySelectorAll("*").forEach((el) => {
+      if (el.firstElementChild) return;        // leaf glyph only
+      const ch = _parenChar(el.textContent);
+      if (!ch) return;
+      const delim = el.closest(".delimsizing");
+      const unit = delim || el;
+      if (seen.has(unit)) return;
+      seen.add(unit);
+      if (!delim) {
+        if (el.hasAttribute("data-n")) return;            // part of a tagged glyph
+        const p = el.closest("[data-n]");
+        if (p && !p.querySelector("[data-n]")) return;    // inside a tagged leaf glyph
+      }
+      out.push({ char: ch, el: unit, delim: !!delim });
+    });
+    return out;
+  }
+
+  // Like _lcsMatch but returns the actual aligned index PAIRS [srcIdx, tgtIdx],
+  // so a preserved paren can be morphed from its source pose to its target pose.
+  _lcsPairs(a, b) {
+    const n = a.length, m = b.length;
+    const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    for (let i = n - 1; i >= 0; i--)
+      for (let j = m - 1; j >= 0; j--)
+        dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    const pairs = [];
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (a[i] === b[j]) { pairs.push([i, j]); i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+      else j++;
+    }
+    return pairs;
+  }
+
+  // Longest-common-subsequence match between two text sequences. Returns the sets
+  // of source/target indices that align (the items that PERSIST). Used to tell a
+  // parenthesis that stays put from one that was added or removed.
+  _lcsMatch(a, b) {
+    const n = a.length, m = b.length;
+    const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    for (let i = n - 1; i >= 0; i--)
+      for (let j = m - 1; j >= 0; j--)
+        dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    const aKeep = new Set(), bKeep = new Set();
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (a[i] === b[j]) { aKeep.add(i); bKeep.add(j); i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+      else j++;
+    }
+    return { aKeep, bKeep };
   }
 
   // leaf glyph spans: a `data-n` with no nested `data-n` (excludes hidden MathML)
@@ -207,7 +442,7 @@ export class ProofAnimator {
   // descendant glyph maps from→to under one shared (scale s about the block's
   // top-left, then translate). Singletons (lone glyphs) fall out as size-1 blocks.
   // Returns { blocks: [{el, dx, dy, scale, single}] }.
-  _rigidBlocks(stage, fromRects, toRects, fromFontSize) {
+  _rigidBlocks(stage, fromRects, toRects, fromFontSize, changedIds = new Set()) {
     const els = [...stage.querySelectorAll(".katex-html [data-n]")];
     const depth = (el) => {
       let d = 0, p = el.parentElement;
@@ -222,14 +457,15 @@ export class ProofAnimator {
     for (const el of els) {
       if (claimed.has(el)) continue;
       const id = el.getAttribute("data-n");
-      if (!fromRects.has(id) || !toRects.has(id)) continue;       // inserted node
+      if (!fromRects.has(id) || !toRects.has(id) || changedIds.has(id)) continue;  // inserted / changed-glyph node
       const fb = fromRects.get(id), tb = toRects.get(id);
       const inner = el.querySelectorAll("[data-n]");
       const leafEls = inner.length
         ? [...inner].filter((x) => !x.querySelector("[data-n]"))
         : [el];
       const leafIds = leafEls.map((x) => x.getAttribute("data-n"));
-      if (!leafIds.every((lid) => fromRects.has(lid))) continue;  // holds an inserted glyph → not rigid
+      // holds an inserted glyph OR a changed-glyph reuse → not rigid (recurse)
+      if (!leafIds.every((lid) => fromRects.has(lid) && !changedIds.has(lid))) continue;
 
       // Scale = the glyph FONT-SIZE ratio, NOT the box-width ratio. Box width
       // changes when content restructures (parens removed, c^2→c^4) even though
@@ -263,11 +499,32 @@ export class ProofAnimator {
     this._running = [];
     this._ghosts.forEach((g) => g.remove());
     this._ghosts = [];
+    this._cancelMeta();
+  }
+
+  // Instantly show a step's final state — no animation. Used when the page can't
+  // animate (hidden tab, or a phase whose clock is frozen by window occlusion).
+  _snapTo(target) {
+    this._cancel();
+    this.current = target;
+    this._renderInto(this.stage, this.data.steps[target].latex);
+    this._capOverflow();
+    this._syncUI();
   }
 
   async goTo(target) {
     target = Math.max(0, Math.min(this.data.steps.length - 1, target));
     if (target === this.current && this._running.length === 0) return;
+    const prev = this.current;
+    // When the tab/page is hidden, browsers FREEZE the document timeline, so WAAPI
+    // animations never progress and `anim.finished` never resolves — the morph
+    // would stall between phases and leave inserted glyphs stuck at opacity 0
+    // (a half-rendered final step). There's nothing to watch anyway, so snap
+    // straight to the target state; it animates normally once visible again.
+    if (typeof document !== "undefined" && document.hidden) {
+      this._snapTo(target);
+      return;
+    }
     const token = (this._token = {});
     const seq = this.mode === "sequential";
 
@@ -283,24 +540,66 @@ export class ProofAnimator {
       cloneOf.set(id, el.cloneNode(true));
       fromFontSize.set(id, getComputedStyle(el).fontSize);
     });
-    // which (node, decoration-type) pairs the SOURCE already had — used to tell a
-    // genuinely new fraction/root apart from one whose node id was merely reused.
-    const fromDecoKeys = new Set();
+    // Source untagged glyphs (parens etc.) — snapshot before re-render so we can
+    // ghost them out if they disappear (they have no id to thread).
+    const fromUntagged = this._untaggedGlyphs(this.stage).map((el) => ({
+      text: el.textContent,
+      clone: el.cloneNode(true),
+      rect: el.getBoundingClientRect(),
+      fontSize: getComputedStyle(el).fontSize,
+    }));
+    // Source parentheses (plain + stretchy), in document order — snapshot before
+    // re-render so a preserved paren can morph from its old pose and a removed
+    // one can ghost out.
+    const fromParens = this._parens(this.stage).map((p) => ({
+      char: p.char, delim: p.delim,
+      clone: p.el.cloneNode(true),
+      rect: p.el.getBoundingClientRect(),
+      fontSize: getComputedStyle(p.el).fontSize,
+    }));
+    // Source decorations (fraction bar, radical, stretchy delimiter), keyed by
+    // their owning node (nearest [data-n]) + type. Snapshotted before re-render
+    // so the target ones can be matched against them — to MORPH a preserved
+    // decoration that resized/moved, FADE OUT removed ones, FADE IN new ones.
+    const fromDecos = [];
     for (const sel of DECORATIONS) {
       this.stage.querySelectorAll(sel).forEach((el) => {
         const o = el.closest("[data-n]");
-        if (o) fromDecoKeys.add(o.getAttribute("data-n") + "|" + sel);
+        if (!o) return;
+        const key = o.getAttribute("data-n") + "|" + sel;
+        fromDecos.push({ key, clone: el.cloneNode(true), rect: el.getBoundingClientRect(), fontSize: getComputedStyle(el).fontSize });
       });
     }
 
     this._cancel();
     this.current = target;
-    this._syncUI();
+    // Meta: a forward (next) step gets the "promote" animation — the Next title
+    // slides up into the explanation slot while the old caption fades out; the new
+    // Next pill fades in only AFTER the morph (metaFinish, below). Any other jump
+    // just snaps the caption.
+    let metaFinish = null;
+    if (target === prev + 1) {
+      this._updateStepButtons();
+      metaFinish = this._beginMetaPromote(target);
+    } else {
+      this._syncUI();
+    }
 
     // LAST: render target, measure
     this._renderInto(this.stage, this.data.steps[target].latex);
     const toLeaves = this._leaves(this.stage);
     const toRects = this._nodeRects(this.stage);
+
+    // Matched ids whose GLYPH CHANGED — the diff reused a node id for a different
+    // symbol (e.g. + → −, or a coefficient 2 → 3). Without this, such a node is
+    // treated as "matched/stationary" and the NEW glyph renders instantly at full
+    // opacity (popping in before anything fades). Treat them as delete+insert
+    // instead: the old glyph fades OUT (phase 0) and the new one fades IN (phase 2).
+    const changedIds = new Set();
+    toLeaves.forEach((el, id) => {
+      const old = cloneOf.get(id);
+      if (old && old.textContent !== el.textContent) changedIds.add(id);
+    });
 
     const await_ = (anims) =>
       Promise.all(anims.map((a) => a.finished.catch(() => {})));
@@ -309,7 +608,7 @@ export class ProofAnimator {
     // stage still looks like the source state while dropped items fade out ──
     // matched → MOVE the LARGEST rigid groups together (translate + uniform scale,
     // about each block's top-left, so a sub-expression glides/shrinks as one unit)
-    const { blocks } = this._rigidBlocks(this.stage, fromRects, toRects, fromFontSize);
+    const { blocks } = this._rigidBlocks(this.stage, fromRects, toRects, fromFontSize, changedIds);
     const movers = [];
     for (const blk of blocks) {
       const moved = Math.abs(blk.dx) > 0.5 || Math.abs(blk.dy) > 0.5;
@@ -322,30 +621,102 @@ export class ProofAnimator {
       movers.push(blk);
     }
 
-    // target-only glyphs → INSERT (hidden until the very end)
+    // target-only glyphs (and changed-glyph reuses) → INSERT (hidden until the end)
     const insertEls = [];
     toLeaves.forEach((el, id) => {
-      if (!fromRects.has(id)) { el.style.opacity = "0"; insertEls.push(el); }
+      if (!fromRects.has(id) || changedIds.has(id)) { el.style.opacity = "0"; insertEls.push(el); }
     });
 
-    // newly-introduced structural decorations → also fade in last. A decoration
-    // (fraction bar, radical, delimiter) belongs to the node that emitted it: its
-    // nearest [data-n] ancestor. If that subtree already existed in the source the
-    // decoration persists (never blink it); if the subtree is new, so is the
-    // decoration → fade it in. This catches a *new inner* fraction even when an
-    // outer fraction is already on screen.
+    // Untagged glyphs (parens etc.): LCS-match source↔target by text so a paren
+    // that PERSISTS across the step is left untouched. Only genuinely ADDED ones
+    // fade in; genuinely REMOVED ones ghost out. They are kept SEPARATE from the
+    // id'd glyphs so they can animate in their own sub-phase — AFTER all id'd
+    // fades — with a PLAIN opacity tween (no scale/move, so they never shift).
+    const toUntagged = this._untaggedGlyphs(this.stage);
+    const _uMatch = this._lcsMatch(fromUntagged.map((u) => u.text), toUntagged.map((el) => el.textContent));
+    const _uFromKeep = _uMatch.aKeep;
+    const untagInserts = [];
+    toUntagged.forEach((el, j) => {
+      if (!_uMatch.bKeep.has(j)) { el.style.opacity = "0"; untagInserts.push(el); }  // newly added → fade in last
+    });
+
+    // Diff target decorations against the source ones (matched by owner|type):
+    //   • preserved but moved/resized → FLIP it (hold at the source pose now, the
+    //     move phase tweens it to identity) so a fraction bar or radical grows /
+    //     shrinks / slides smoothly instead of snapping to its new shape;
+    //   • new → fade in last (phase 2);   • removed → ghost out (phase 0, below).
     const decoEls = [];
+    const decoMovers = [];
+    const srcDecoByKey = new Map();
+    for (const d of fromDecos) {
+      if (!srcDecoByKey.has(d.key)) srcDecoByKey.set(d.key, []);
+      srcDecoByKey.get(d.key).push(d);
+    }
+    const matchedSrcDeco = new Set();
     for (const sel of DECORATIONS) {
       this.stage.querySelectorAll(sel).forEach((el) => {
         const owner = el.closest("[data-n]");
-        const ownerId = owner && owner.getAttribute("data-n");
-        // keep visible only if that very node already had this decoration in the
-        // source (so the outer fraction persists, but a new inner one fades in).
-        if (ownerId && fromDecoKeys.has(ownerId + "|" + sel)) return;
-        el.style.opacity = "0";
-        decoEls.push(el);
+        const key = (owner ? owner.getAttribute("data-n") : "") + "|" + sel;
+        const pool = srcDecoByKey.get(key);
+        const src = pool && pool.find((s) => !matchedSrcDeco.has(s));
+        if (!src) { el.style.opacity = "0"; decoEls.push(el); return; }   // new → fade in
+        const tr = el.getBoundingClientRect();
+        const dx = src.rect.left - tr.left, dy = src.rect.top - tr.top;
+        const sx = tr.width > 0 ? src.rect.width / tr.width : 1;
+        const sy = tr.height > 0 ? src.rect.height / tr.height : 1;
+        const changed = Math.abs(dx) > 1 || Math.abs(dy) > 1 || Math.abs(sx - 1) > 0.02 || Math.abs(sy - 1) > 0.02;
+        // A radical (`.sqrt svg`) is a single SVG whose path distorts under a
+        // non-uniform transform (hook detaches from the overline). So when it
+        // changes, CROSS-FADE it like parentheses — leave the source UNmatched so
+        // it ghosts out (phase 0) and fade the new one in (phase 2).
+        if (sel === ".sqrt svg") {
+          if (changed) { el.style.opacity = "0"; decoEls.push(el); }
+          else { matchedSrcDeco.add(src); }
+          return;
+        }
+        // A fraction bar / delimiter is one self-contained box → FLIP it.
+        matchedSrcDeco.add(src);
+        if (changed) {
+          el.style.transformOrigin = "0 0";
+          el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;   // hold at source pose
+          decoMovers.push({ el, dx, dy, sx, sy });
+        }
       });
     }
+    const removedDecos = fromDecos.filter((d) => !matchedSrcDeco.has(d));
+
+    // ── Parentheses (plain + stretchy), matched as ONE category in document order.
+    // A preserved paren MORPHS from its source pose to its target pose (so a paren
+    // that flips plain↔stretchy, or grows with its content, glides as one unit
+    // instead of duplicating). Genuinely new parens fade in; removed ones ghost out.
+    const toParens = this._parens(this.stage);
+    const parenPairs = this._lcsPairs(fromParens.map((p) => p.char), toParens.map((p) => p.char));
+    const _pFromKeep = new Set(parenPairs.map((pr) => pr[0]));
+    const _pToKeep = new Set(parenPairs.map((pr) => pr[1]));
+    const parenMovers = [];
+    for (const [si, ti] of parenPairs) {
+      const src = fromParens[si], el = toParens[ti].el;
+      const tr = el.getBoundingClientRect();
+      const dx = src.rect.left - tr.left, dy = src.rect.top - tr.top;
+      // A stretchy SVG delimiter distorts under a non-uniform scale (like a
+      // radical), so scale only when the target isn't an SVG; otherwise glide
+      // position only and let it settle to its true size at the end.
+      const isSvg = !!el.querySelector("svg");
+      const sx = !isSvg && tr.width > 0 ? src.rect.width / tr.width : 1;
+      const sy = !isSvg && tr.height > 0 ? src.rect.height / tr.height : 1;
+      const changed = Math.abs(dx) > 1 || Math.abs(dy) > 1 || Math.abs(sx - 1) > 0.02 || Math.abs(sy - 1) > 0.02;
+      if (changed) {
+        el.classList.add("pa-move");
+        el.style.transformOrigin = "0 0";
+        el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;   // hold at source pose
+        parenMovers.push({ el, dx, dy, sx, sy });
+      }
+    }
+    const parenInserts = [];
+    toParens.forEach((p, j) => {
+      if (!_pToKeep.has(j)) { p.el.style.opacity = "0"; parenInserts.push(p.el); }   // new → fade in
+    });
+    const removedParens = fromParens.filter((p, i) => !_pFromKeep.has(i));            // removed → ghost out
 
     // source-only glyphs → DELETE ghosts: clones placed at their old spot. Each
     // ghost is wrapped in a `.katex` host so KaTeX's font CSS (scoped under
@@ -353,7 +724,7 @@ export class ProofAnimator {
     // font for a frame before fading.
     const ghosts = [];
     fromLeaves.forEach((el, id) => {
-      if (toRects.has(id)) return;   // still present (as glyph or subtree)
+      if (toRects.has(id) && !changedIds.has(id)) return;   // still present, same glyph
       const f = fromRects.get(id);
       const host = document.createElement("span");
       host.className = "katex pa-ghost";
@@ -371,14 +742,96 @@ export class ProofAnimator {
       this._ghosts.push(host);
       ghosts.push(host);
     });
+    // Untagged source glyphs (parens etc.) that were REMOVED (not LCS-matched)
+    // → ghost them out (in their own array, so they fade AFTER the id'd ghosts).
+    const untagGhosts = [];
+    fromUntagged.forEach((u, ui) => {
+      if (!_uFromKeep.has(ui)) {
+        const host = document.createElement("span");
+        host.className = "katex pa-ghost";
+        Object.assign(host.style, {
+          position: "absolute", margin: "0",
+          left: u.rect.left - stageRect.left + "px",
+          top: u.rect.top - stageRect.top + "px",
+          fontSize: u.fontSize,
+        });
+        host.appendChild(u.clone);
+        this.stage.appendChild(host);
+        this._ghosts.push(host);
+        untagGhosts.push(host);
+      }
+    });
+    // Decorations (fraction bar, radical, stretchy delimiter) that DISAPPEARED →
+    // ghost the cloned decoration (which keeps its stretched size) at its old spot
+    // and fade it out with the other id-less items, instead of letting it vanish.
+    for (const d of removedDecos) {
+      const host = document.createElement("span");
+      host.className = "katex pa-ghost";
+      let left = d.rect.left - stageRect.left, top = d.rect.top - stageRect.top;
+      Object.assign(host.style, {
+        position: "absolute", margin: "0", lineHeight: "0",
+        left: left + "px", top: top + "px", fontSize: d.fontSize,
+      });
+      host.appendChild(d.clone);
+      this.stage.appendChild(host);
+      // A delimiter clone sits at a vertical-align offset inside its host, so its
+      // visual box lands above/below the source spot (looks like it "jumps up").
+      // Nudge the host to cancel that offset — comparing in STAGE-RELATIVE coords
+      // (re-measuring the stage now) so page scroll/reflow between the source
+      // snapshot and here can't skew the alignment.
+      const sr = this.stage.getBoundingClientRect();
+      const cr = d.clone.getBoundingClientRect();
+      const dx = (d.rect.left - stageRect.left) - (cr.left - sr.left);
+      const dy = (d.rect.top - stageRect.top) - (cr.top - sr.top);
+      if (dx || dy) {
+        host.style.left = (left + dx) + "px";
+        host.style.top = (top + dy) + "px";
+      }
+      this._ghosts.push(host);
+      untagGhosts.push(host);
+    }
+    // Parentheses (plain or stretchy) that DISAPPEARED → ghost the clone at its
+    // old spot. A stretchy delimiter clone carries a vertical-align offset, so
+    // apply the same stage-relative nudge used for decorations above.
+    for (const p of removedParens) {
+      const host = document.createElement("span");
+      host.className = "katex pa-ghost";
+      let left = p.rect.left - stageRect.left, top = p.rect.top - stageRect.top;
+      Object.assign(host.style, {
+        position: "absolute", margin: "0", lineHeight: "0",
+        left: left + "px", top: top + "px", fontSize: p.fontSize,
+      });
+      host.appendChild(p.clone);
+      this.stage.appendChild(host);
+      const sr = this.stage.getBoundingClientRect();
+      const cr = p.clone.getBoundingClientRect();
+      const dx = (p.rect.left - stageRect.left) - (cr.left - sr.left);
+      const dy = (p.rect.top - stageRect.top) - (cr.top - sr.top);
+      if (dx || dy) { host.style.left = (left + dx) + "px"; host.style.top = (top + dy) + "px"; }
+      this._ghosts.push(host);
+      untagGhosts.push(host);
+    }
 
     // ── PHASE 0: dropped items fade OUT first, before any motion ──
+    const D_OUT = this._baseDuration * 0.6;
     const delAnims = [];
     let di = 0;
     for (const host of ghosts) {
       const a = this._tween(host,
         [{ opacity: 1 }, { opacity: 0 }],
-        { duration: this._baseDuration * 0.6, delay: seq ? di++ * this._baseStagger : 0, easing: EASE, fill: "forwards" }
+        { duration: D_OUT, delay: seq ? di++ * this._baseStagger : 0, easing: EASE, fill: "forwards" }
+      );
+      a.onfinish = () => host.remove();
+      delAnims.push(a);
+    }
+    // Untagged (parens) fade out AFTER every id'd ghost has gone — plain opacity,
+    // no move, clones already pinned in place.
+    const _outAfter = (seq ? di * this._baseStagger : 0) + D_OUT;
+    let dk = 0;
+    for (const host of untagGhosts) {
+      const a = this._tween(host,
+        [{ opacity: 1 }, { opacity: 0 }],
+        { duration: D_OUT, delay: _outAfter + (seq ? dk++ * this._baseStagger : 0), easing: EASE, fill: "forwards" }
       );
       a.onfinish = () => host.remove();
       delAnims.push(a);
@@ -394,7 +847,10 @@ export class ProofAnimator {
       const a = this._tween(blk.el,
         [{ transform: `translate(${blk.dx}px, ${blk.dy}px) scale(${blk.scale})` },
          { transform: "translate(0px, 0px) scale(1)" }],
-        { duration: this._baseDuration, delay: seq ? mi++ * this._baseStagger : 0, easing: EASE, fill: "backwards" }
+        // fill BOTH: holds the from-pose during a staggered delay AND keeps the
+        // resting pose after it ends, so the block stays put even if the finish
+        // event never fires (e.g. a backgrounded tab freezes the timeline).
+        { duration: this._baseDuration, delay: seq ? mi++ * this._baseStagger : 0, easing: EASE, fill: "both" }
       );
       a.onfinish = () => {                              // restore normal flow at rest
         blk.el.style.transform = "";
@@ -403,34 +859,78 @@ export class ProofAnimator {
       };
       moveAnims.push(a);
     }
+    // preserved decorations (fraction bar, radical, delimiter) glide/stretch from
+    // their old pose to the new one, in lockstep with the glyphs they wrap.
+    for (const dm of decoMovers) {
+      const a = this._tween(dm.el,
+        [{ transform: `translate(${dm.dx}px, ${dm.dy}px) scale(${dm.sx}, ${dm.sy})` },
+         { transform: "translate(0px, 0px) scale(1, 1)" }],
+        { duration: this._baseDuration, delay: seq ? mi++ * this._baseStagger : 0, easing: EASE, fill: "both" }
+      );
+      a.onfinish = () => { dm.el.style.transform = ""; dm.el.style.transformOrigin = ""; };
+      moveAnims.push(a);
+    }
+    // preserved parentheses glide/scale from their old pose to the new one (handles
+    // a paren that flips plain↔stretchy or grows with its content), in lockstep.
+    for (const pm of parenMovers) {
+      const a = this._tween(pm.el,
+        [{ transform: `translate(${pm.dx}px, ${pm.dy}px) scale(${pm.sx}, ${pm.sy})` },
+         { transform: "translate(0px, 0px) scale(1, 1)" }],
+        { duration: this._baseDuration, delay: seq ? mi++ * this._baseStagger : 0, easing: EASE, fill: "both" }
+      );
+      a.onfinish = () => {
+        pm.el.style.transform = ""; pm.el.style.transformOrigin = ""; pm.el.classList.remove("pa-move");
+      };
+      moveAnims.push(a);
+    }
     this._running = moveAnims;
     await await_(moveAnims);
     if (this._token !== token) return;
 
     // ── PHASE 2: new items fade IN last (glyphs + structural decorations) ──
+    const D_IN = this._baseDuration * 0.7;
     const insAnims = [];
     let ii = 0;
     for (const el of insertEls) {
-      el.classList.add("pa-move");
+      el.classList.add("pa-move", "pa-insert");   // pa-insert → paints behind movers/ghosts
       const a = this._tween(el,
         [{ opacity: 0, transform: "scale(.6)" }, { opacity: 1, transform: "none" }],
-        { duration: this._baseDuration * 0.7, delay: seq ? ii++ * this._baseStagger : 0, easing: EASE, fill: "backwards" }
+        // fill BOTH: stays at opacity 1 after it ends, so a new glyph never gets
+        // stuck invisible if the finish event doesn't fire (frozen/backgrounded tab).
+        { duration: D_IN, delay: seq ? ii++ * this._baseStagger : 0, easing: EASE, fill: "both" }
       );
       a.onfinish = () => (el.style.opacity = "");
       insAnims.push(a);
     }
-    // decorations fade in by opacity only (no scale → no layout shift)
-    for (const el of decoEls) {
+    // Items WITHOUT an id — structural decorations (fraction bar, radical,
+    // stretchy delimiters) AND untagged parentheses — fade in AFTER every id'd
+    // insert, with plain opacity only (no move/scale), so they appear in place,
+    // last, without shifting anything.
+    const _inAfter = (seq ? ii * this._baseStagger : 0) + D_IN;
+    let ik = 0;
+    for (const el of [...decoEls, ...untagInserts, ...parenInserts]) {
       const a = this._tween(el,
         [{ opacity: 0 }, { opacity: 1 }],
-        { duration: this._baseDuration * 0.7, delay: seq ? ii++ * this._baseStagger : 0, easing: EASE, fill: "backwards" }
+        { duration: D_IN, delay: _inAfter + (seq ? ik++ * this._baseStagger : 0), easing: EASE, fill: "both" }
       );
       a.onfinish = () => (el.style.opacity = "");
       insAnims.push(a);
     }
     this._running = insAnims;
     await await_(insAnims);
-    if (this._token === token) this._running = [];
+    if (this._token === token) {
+      this._running = [];
+      // Settle to a PRISTINE final render. The animated DOM carries leftover morph
+      // styles — pa-move (display:inline-block), pa-insert (z-index:-1), held
+      // transforms, inline opacity — any of which can leave a glyph mis-layered or
+      // invisible in some browsers/themes. Re-rendering the clean step drops ALL of
+      // it, so the resting expression is guaranteed correct and identical to a fresh
+      // render. It's visually identical to the just-finished frame, so no flicker.
+      this._renderInto(this.stage, this.data.steps[target].latex);
+      this._capOverflow();
+      // Step animation done → now fade in the new justification + "Next" pill.
+      if (metaFinish) metaFinish();
+    }
   }
 
   // the one Play/Pause button — toggles its icon+label and starts/stops autoplay
@@ -438,7 +938,9 @@ export class ProofAnimator {
     const b = this.container.querySelector(".pa-play");
     if (!b) return;
     b.textContent = playing ? "⏸ Pause" : "▶ Play";
-    b.title = playing ? "Pause" : "Play through";
+    const tip = playing ? "Pause" : "Play through";
+    b.setAttribute("data-tip", tip);
+    b.setAttribute("aria-label", tip);
   }
   _togglePlay() {
     if (this._paused) return this._resume();                          // frozen → resume
@@ -512,12 +1014,178 @@ export class ProofAnimator {
   }
 
   _syncUI() {
+    this._updateStepButtons();
+    this._caption(this.container.querySelector(".pa-op"), this._opText(this.current));
+    this._caption(this.container.querySelector(".pa-just"), this.data.steps[this.current].justification || "");
+    this._setNextPill(this.container.querySelector(".pa-next-pill"), this.current);
+  }
+
+  _updateStepButtons() {
     this.container.querySelectorAll(".pa-step").forEach((b, i) =>
       b.classList.toggle("pa-active", i === this.current));
-    const s = this.data.steps[this.current];
-    // both the explanation (operation) and the justification — each may use $…$ LaTeX
-    this._caption(this.container.querySelector(".pa-op"),
-      s.operation ? `${this.current}. ${s.operation}` : `state ${this.current}`);
-    this._caption(this.container.querySelector(".pa-just"), s.justification || "");
+  }
+
+  // If the controls row would overflow the container width, hide the numbered
+  // step buttons (keep prev / next / play / speed / mode). Re-runs on resize.
+  _fitControls() {
+    const controls = this.container.querySelector(".pa-controls");
+    const steps = this.container.querySelector(".pa-steps");
+    if (!controls || !steps) return;
+    controls.classList.remove("pa-compact");           // measure with steps shown
+    const cs = getComputedStyle(controls);
+    const gap = parseFloat(cs.columnGap || cs.gap) || 0;
+    const kids = [...controls.children];
+    let natural = kids.reduce((sum, k) => sum + k.offsetWidth, 0) + gap * Math.max(0, kids.length - 1);
+    if (natural > controls.clientWidth + 1) controls.classList.add("pa-compact");
+  }
+
+  // The explanation/title text for a step (numbered).
+  _opText(idx) {
+    const s = this.data.steps[idx];
+    return s.operation ? `${idx}. ${s.operation}` : `state ${idx}`;
+  }
+  // Flatten an operation string (text + inline LaTeX) to readable plain text for
+  // a native tooltip — strip delimiters and turn the most common LaTeX into
+  // legible ASCII/Unicode.
+  _plainOp(s) {
+    return String(s)
+      .replace(/\$|`|\\\(|\\\)|\\\[|\\\]/g, "")                       // math delimiters
+      .replace(/\\left|\\right/g, "")                                  // \left( -> (
+      .replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "$1/$2")       // \frac{a}{b} -> a/b
+      .replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)")                      // \sqrt{x} -> √(x)
+      .replace(/\\cdot/g, "·").replace(/\\times/g, "×")
+      .replace(/\^\{([^{}]*)\}/g, "^$1").replace(/_\{([^{}]*)\}/g, "_$1")  // ^{2}->^2, _{0}->_0
+      .replace(/\\[a-zA-Z]+/g, "").replace(/[{}]/g, "")               // drop leftover commands/braces
+      .replace(/\s+/g, " ").trim();
+  }
+
+  // The plain title (no number) of the step AFTER idx, or null if idx is the last.
+  _nextOpText(idx) {
+    const n = this.data.steps[idx + 1];
+    return n ? (n.operation || `state ${idx + 1}`) : null;
+  }
+  // Meta "promote" animation for a forward (next) step: the current explanation
+  // and justification fade OUT, and the title shown in the "Next" pill slides UP
+  // into the title position to become the new explanation. Returns a finish()
+  // closure that the caller runs AFTER the expression morph completes, which
+  // fades in the new justification and the new "Next" pill (never during).
+  _beginMetaPromote(target) {
+    const meta = this.container.querySelector(".pa-meta");
+    const opEl = meta.querySelector(".pa-op");
+    const justEl = meta.querySelector(".pa-just");
+    const nextEl = meta.querySelector(".pa-next-pill");
+    const metaRect = meta.getBoundingClientRect();
+    const opRect = opEl.getBoundingClientRect();
+    const justRect = justEl.getBoundingClientRect();
+    const nextRect = nextEl.getBoundingClientRect();
+    const nextWasShown = !nextEl.classList.contains("pa-next-hidden");
+    this._metaGhosts = this._metaGhosts || [];
+    this._metaAnims = this._metaAnims || [];
+
+    // 1. Ghost the OLD explanation + justification at their spots and fade out.
+    const ghostOut = (el, rect) => {
+      if (!el.textContent.trim()) return;
+      const g = el.cloneNode(true);
+      g.classList.add("pa-meta-ghost");
+      g.style.left = (rect.left - metaRect.left) + "px";
+      g.style.top = (rect.top - metaRect.top) + "px";
+      g.style.width = Math.ceil(rect.width) + "px";
+      meta.appendChild(g);
+      this._metaGhosts.push(g);
+      const a = this._tween(g, [{ opacity: 1 }, { opacity: 0 }],
+        { duration: this._baseDuration * 0.55, easing: EASE, fill: "forwards" });
+      a.onfinish = () => g.remove();
+      this._metaAnims.push(a);
+    };
+    ghostOut(opEl, opRect);
+    ghostOut(justEl, justRect);
+
+    // 2. The new explanation IS the promoted "Next" title. Put it in the op slot,
+    //    hide the (now-promoted) next pill and the old justification, then FLIP the
+    //    op up from the Next position into place.
+    this._caption(opEl, this._opText(target));
+    this._caption(justEl, this.data.steps[target].justification || "");
+    justEl.style.opacity = "0";
+    nextEl.style.opacity = "0";
+    const newOpRect = opEl.getBoundingClientRect();
+    const dx = (nextWasShown ? nextRect.left : newOpRect.left) - newOpRect.left;
+    const dy = (nextWasShown ? nextRect.top : newOpRect.top) - newOpRect.top;
+    if (dx || dy) {
+      opEl.classList.add("pa-promoting");
+      const a = this._tween(opEl,
+        [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }],
+        { duration: this._baseDuration, easing: EASE, fill: "both" });
+      a.onfinish = () => { opEl.style.transform = ""; opEl.classList.remove("pa-promoting"); };
+      this._metaAnims.push(a);
+    }
+
+    // 3. finish(): after the step animation, fade in the new justification first,
+    //    then the new "Next" pill on a longer delay (so it trails the caption).
+    return () => {
+      const ja = this._tween(justEl, [{ opacity: 0 }, { opacity: 1 }],
+        { duration: this._baseDuration * 0.6, easing: EASE, fill: "both" });
+      ja.onfinish = () => (justEl.style.opacity = "");
+      this._metaAnims.push(ja);
+      this._setNextPill(nextEl, target);
+      if (!nextEl.classList.contains("pa-next-hidden")) {
+        nextEl.style.opacity = "0";
+        const na = this._tween(nextEl, [{ opacity: 0 }, { opacity: 1 }],
+          { duration: this._baseDuration * 0.6, delay: this._baseDuration * 0.7, easing: EASE, fill: "both" });
+        na.onfinish = () => (nextEl.style.opacity = "");
+        this._metaAnims.push(na);
+      }
+    };
+  }
+
+  // Cancel any in-flight meta animation and reset the meta elements to a clean
+  // resting state (called from _cancel so a new navigation never inherits a
+  // half-promoted caption).
+  _cancelMeta() {
+    (this._metaAnims || []).forEach((a) => { try { a.cancel(); } catch (e) {} });
+    this._metaAnims = [];
+    (this._metaGhosts || []).forEach((g) => g.remove());
+    this._metaGhosts = [];
+    const opEl = this.container.querySelector(".pa-op");
+    if (opEl) { opEl.style.transform = ""; opEl.style.opacity = ""; opEl.classList.remove("pa-promoting"); }
+    const justEl = this.container.querySelector(".pa-just");
+    if (justEl) justEl.style.opacity = "";
+    const nextEl = this.container.querySelector(".pa-next-pill");
+    if (nextEl) nextEl.style.opacity = "";
+  }
+
+  // Render the "Next" pill for the step after idx (hidden on the last step).
+  _setNextPill(el, idx) {
+    if (!el) return;
+    const txt = this._nextOpText(idx);
+    el.innerHTML = "";
+    el.removeAttribute("data-tip");
+    if (txt == null) { el.classList.add("pa-next-hidden"); el.removeAttribute("aria-label"); el.removeAttribute("data-fulltip"); return; }
+    el.classList.remove("pa-next-hidden");
+    // Full text (LaTeX flattened to plain) kept in data-fulltip; data-tip (which
+    // is what shows the tooltip) is only set when the title is actually truncated.
+    const tip = "Next: " + this._plainOp(txt);
+    el.setAttribute("data-fulltip", tip);
+    el.setAttribute("aria-label", tip);
+    const label = document.createElement("span");
+    label.className = "pa-next-label";
+    label.textContent = "Next";
+    const body = document.createElement("span");
+    body.className = "pa-next-body";
+    this._caption(body, txt);
+    el.append(label, body);
+    this._updateNextTip(el);
+  }
+
+  // Show the Next pill's tooltip only when its title is truncated (re-checked on
+  // resize, since the available width — and thus truncation — changes). Operates
+  // on the given pill (defaults to the live one) so the offscreen probe pill in
+  // _fixMetaSize() is measured in isolation, not the live pill.
+  _updateNextTip(el) {
+    el = el || this.container.querySelector(".pa-next-pill");
+    if (!el || el.classList.contains("pa-next-hidden")) return;
+    const body = el.querySelector(".pa-next-body");
+    const full = el.getAttribute("data-fulltip");
+    if (body && full && body.scrollWidth > body.clientWidth + 1) el.setAttribute("data-tip", full);
+    else el.removeAttribute("data-tip");
   }
 }
