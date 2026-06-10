@@ -62,7 +62,14 @@ export class ProofAnimator {
     this._fixMetaSize();    // pin the caption area to the tallest op+justification
     this._renderInto(this.stage, this.data.steps[0].latex);
     this._syncUI();
+    this._capOverflow();    // never let the expression spill past the stage
+    this._fitControls();    // hide step enumerations if the controls don't fit
     this._observeResize();  // responsive: re-fit on container/window resize
+    // KaTeX webfonts load async; the first _fit() may have measured with narrower
+    // fallback-font metrics. Re-fit once the real fonts are ready.
+    if (typeof document !== "undefined" && document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => { if (!this._destroyed) this._relayout(); });
+    }
   }
 
   // Reserve the height of the tallest caption (operation + justification) so the
@@ -127,6 +134,24 @@ export class ProofAnimator {
     this.stage.style.setProperty("--pa-expr-w", `${Math.ceil(w * scale)}px`);
   }
 
+  // Hard guarantee that the CURRENT rendered expression never overflows the stage
+  // width — a safety net for cases _fit()'s probe under-measures (e.g. it ran
+  // before the KaTeX webfonts loaded, so fallback-font metrics were narrower).
+  // Shrinks the stage font (which reflows the existing render) until it fits.
+  _capOverflow() {
+    const expr = this.stage.querySelector(".pa-expr");
+    if (!expr) return;
+    const k = expr.querySelector(".katex-display") || expr.querySelector(".katex");
+    if (!k) return;
+    const avail = Math.max(40, this.stage.clientWidth - 8);
+    const w = k.getBoundingClientRect().width;
+    if (w > avail + 0.5) {
+      const cur = parseFloat(getComputedStyle(this.stage).fontSize) || this._baseFontPx;
+      this.stage.style.fontSize = `${cur * (avail / w)}px`;
+      this.stage.style.setProperty("--pa-expr-w", `${Math.ceil(avail)}px`);
+    }
+  }
+
   // Re-fit when the container (or window) resizes so the expression always fits
   // the available width. Only width changes matter — guard against the height
   // changes _fit() itself triggers (which would otherwise loop forever).
@@ -164,6 +189,9 @@ export class ProofAnimator {
     this._fit();
     this._fixMetaSize();
     this._renderInto(this.stage, this.data.steps[this.current].latex);
+    this._capOverflow();
+    this._fitControls();
+    this._updateNextTip();   // truncation depends on width → re-check on resize
   }
 
   // Tear down the ResizeObserver and any running animations (called when the
@@ -201,14 +229,14 @@ export class ProofAnimator {
     this.container.classList.add("pa-root");
     this.container.innerHTML = `
       <div class="pa-stage" aria-live="polite"></div>
-      <div class="pa-meta"><span class="pa-op"></span><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0" title="Go to next step"></span></div>
+      <div class="pa-meta"><span class="pa-op"></span><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
       <div class="pa-controls">
-        <button class="pa-btn pa-prev" title="Previous step" aria-label="Previous step">◀</button>
+        <button class="pa-btn pa-prev" data-tip="Previous step" aria-label="Previous step">◀</button>
         <div class="pa-steps"></div>
-        <button class="pa-btn pa-next" title="Next step" aria-label="Next step">▶</button>
-        <button class="pa-btn pa-play" title="Play through">▶ Play</button>
-        <button class="pa-btn pa-speed" title="Animation speed (click to cycle)">${_speedLabel(this.speed)}</button>
-        <label class="pa-mode"><input type="checkbox"> sequential</label>
+        <button class="pa-btn pa-next" data-tip="Next step" aria-label="Next step">▶</button>
+        <button class="pa-btn pa-play" data-tip="Play through" aria-label="Play through">▶ Play</button>
+        <button class="pa-btn pa-speed" data-tip="Animation speed (click to cycle)" aria-label="Animation speed">${_speedLabel(this.speed)}</button>
+        <button class="pa-btn pa-mode" type="button" data-tip="Sequential — stagger the moves" aria-label="Sequential — stagger the moves" aria-pressed="false">⇉</button>
       </div>`;
     this.stage = this.container.querySelector(".pa-stage");
     const steps = this.container.querySelector(".pa-steps");
@@ -216,7 +244,9 @@ export class ProofAnimator {
       const b = document.createElement("button");
       b.className = "pa-step";
       b.textContent = String(i);
-      b.title = s.operation || `state ${i}`;
+      const tip = `${i}. ${this._plainOp(s.operation || `state ${i}`)}`;
+      b.setAttribute("data-tip", tip);
+      b.setAttribute("aria-label", tip);
       b.addEventListener("click", () => this._userGoTo(i));
       steps.appendChild(b);
     });
@@ -233,8 +263,13 @@ export class ProofAnimator {
       this._speedIdx = (this._speedIdx + 1) % SPEEDS.length;
       this._applySpeed();
     };
-    this.container.querySelector(".pa-mode input").onchange = (e) =>
-      (this.mode = e.target.checked ? "sequential" : "parallel");
+    const modeBtn = this.container.querySelector(".pa-mode");
+    modeBtn.onclick = () => {
+      this.mode = this.mode === "sequential" ? "parallel" : "sequential";
+      const on = this.mode === "sequential";
+      modeBtn.classList.toggle("pa-active", on);
+      modeBtn.setAttribute("aria-pressed", String(on));
+    };
   }
 
   _renderInto(el, latex) {
@@ -404,6 +439,7 @@ export class ProofAnimator {
     this._cancel();
     this.current = target;
     this._renderInto(this.stage, this.data.steps[target].latex);
+    this._capOverflow();
     this._syncUI();
   }
 
@@ -713,6 +749,7 @@ export class ProofAnimator {
       // it, so the resting expression is guaranteed correct and identical to a fresh
       // render. It's visually identical to the just-finished frame, so no flicker.
       this._renderInto(this.stage, this.data.steps[target].latex);
+      this._capOverflow();
       // Step animation done → now fade in the new justification + "Next" pill.
       if (metaFinish) metaFinish();
     }
@@ -723,7 +760,9 @@ export class ProofAnimator {
     const b = this.container.querySelector(".pa-play");
     if (!b) return;
     b.textContent = playing ? "⏸ Pause" : "▶ Play";
-    b.title = playing ? "Pause" : "Play through";
+    const tip = playing ? "Pause" : "Play through";
+    b.setAttribute("data-tip", tip);
+    b.setAttribute("aria-label", tip);
   }
   _togglePlay() {
     if (this._paused) return this._resume();                          // frozen → resume
@@ -808,11 +847,40 @@ export class ProofAnimator {
       b.classList.toggle("pa-active", i === this.current));
   }
 
+  // If the controls row would overflow the container width, hide the numbered
+  // step buttons (keep prev / next / play / speed / mode). Re-runs on resize.
+  _fitControls() {
+    const controls = this.container.querySelector(".pa-controls");
+    const steps = this.container.querySelector(".pa-steps");
+    if (!controls || !steps) return;
+    controls.classList.remove("pa-compact");           // measure with steps shown
+    const cs = getComputedStyle(controls);
+    const gap = parseFloat(cs.columnGap || cs.gap) || 0;
+    const kids = [...controls.children];
+    let natural = kids.reduce((sum, k) => sum + k.offsetWidth, 0) + gap * Math.max(0, kids.length - 1);
+    if (natural > controls.clientWidth + 1) controls.classList.add("pa-compact");
+  }
+
   // The explanation/title text for a step (numbered).
   _opText(idx) {
     const s = this.data.steps[idx];
     return s.operation ? `${idx}. ${s.operation}` : `state ${idx}`;
   }
+  // Flatten an operation string (text + inline LaTeX) to readable plain text for
+  // a native tooltip — strip delimiters and turn the most common LaTeX into
+  // legible ASCII/Unicode.
+  _plainOp(s) {
+    return String(s)
+      .replace(/\$|`|\\\(|\\\)|\\\[|\\\]/g, "")                       // math delimiters
+      .replace(/\\left|\\right/g, "")                                  // \left( -> (
+      .replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "$1/$2")       // \frac{a}{b} -> a/b
+      .replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)")                      // \sqrt{x} -> √(x)
+      .replace(/\\cdot/g, "·").replace(/\\times/g, "×")
+      .replace(/\^\{([^{}]*)\}/g, "^$1").replace(/_\{([^{}]*)\}/g, "_$1")  // ^{2}->^2, _{0}->_0
+      .replace(/\\[a-zA-Z]+/g, "").replace(/[{}]/g, "")               // drop leftover commands/braces
+      .replace(/\s+/g, " ").trim();
+  }
+
   // The plain title (no number) of the step AFTER idx, or null if idx is the last.
   _nextOpText(idx) {
     const n = this.data.steps[idx + 1];
@@ -912,8 +980,14 @@ export class ProofAnimator {
     if (!el) return;
     const txt = this._nextOpText(idx);
     el.innerHTML = "";
-    if (txt == null) { el.classList.add("pa-next-hidden"); return; }
+    el.removeAttribute("data-tip");
+    if (txt == null) { el.classList.add("pa-next-hidden"); el.removeAttribute("aria-label"); el.removeAttribute("data-fulltip"); return; }
     el.classList.remove("pa-next-hidden");
+    // Full text (LaTeX flattened to plain) kept in data-fulltip; data-tip (which
+    // is what shows the tooltip) is only set when the title is actually truncated.
+    const tip = "Next: " + this._plainOp(txt);
+    el.setAttribute("data-fulltip", tip);
+    el.setAttribute("aria-label", tip);
     const label = document.createElement("span");
     label.className = "pa-next-label";
     label.textContent = "Next";
@@ -921,5 +995,17 @@ export class ProofAnimator {
     body.className = "pa-next-body";
     this._caption(body, txt);
     el.append(label, body);
+    this._updateNextTip();
+  }
+
+  // Show the Next pill's tooltip only when its title is truncated (re-checked on
+  // resize, since the available width — and thus truncation — changes).
+  _updateNextTip() {
+    const el = this.container.querySelector(".pa-next-pill");
+    if (!el || el.classList.contains("pa-next-hidden")) return;
+    const body = el.querySelector(".pa-next-body");
+    const full = el.getAttribute("data-fulltip");
+    if (body && full && body.scrollWidth > body.clientWidth + 1) el.setAttribute("data-tip", full);
+    else el.removeAttribute("data-tip");
   }
 }

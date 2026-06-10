@@ -1,5 +1,34 @@
 /* proof-animation.css — styles for the ProofAnimator (themeable via CSS vars). */
 
+/* Custom tooltip (reliable everywhere, unlike the native title which is slow and
+   doesn't render in some embedded/zoomed contexts). Any element with data-tip
+   shows it on hover/focus. */
+.pa-root [data-tip] { position: relative; }
+.pa-root [data-tip]:hover::after,
+.pa-root [data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: rgba(10, 12, 26, 0.97);
+  border: 1px solid var(--pa-border);
+  color: #e5e7eb;
+  font: 400 0.72rem/1.35 var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
+  font-style: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: center;
+  white-space: normal;
+  width: max-content;
+  max-width: 240px;
+  pointer-events: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+}
+
 .pa-root {
   --pa-fg: var(--text-color, #1a1a2e);
   --pa-muted: var(--muted-color, #6b7280);
@@ -73,7 +102,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 3px;
+  gap: 6px;                  /* equal vertical spacing between op / just / pill */
   min-height: 1.4em;
   font-size: 0.95rem;
 }
@@ -82,10 +111,14 @@
 
 /* "Next" pill — mirrors the proof-navigator step pills; clickable (= next btn). */
 .pa-next-pill {
-  margin-top: 5px;
-  display: inline-flex;
+  /* grid (not flex) so the title column can shrink to 0 and ellipsize — a flex
+     item won't shrink past an inline-block (KaTeX) child even with min-width:0. */
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, max-content);
   align-items: baseline;
   gap: 7px;
+  box-sizing: border-box;
+  min-width: 0;
   max-width: 100%;
   padding: 3px 11px;
   border-radius: 999px;
@@ -95,7 +128,6 @@
   font-size: 0.82em;
   line-height: 1.3;
   white-space: nowrap;
-  overflow: hidden;
   cursor: pointer;
   user-select: none;
   transition: background 0.15s, border-color 0.15s;
@@ -112,7 +144,16 @@
   text-transform: uppercase;
   color: var(--pa-accent);
 }
-.pa-next-body { overflow: hidden; text-overflow: ellipsis; }
+/* The title shrinks and gets an ellipsis so the pill never exceeds the
+   container width (full text is in the title attribute → tooltip). min-width:0
+   lets the flex item shrink below its content size. */
+.pa-next-body {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* Transient clones used by the meta promote animation. */
 .pa-meta-ghost { position: absolute; pointer-events: none; margin: 0; }
@@ -128,6 +169,10 @@
   padding-top: 12px;
 }
 .pa-steps { display: flex; gap: 6px; }
+/* When the controls row can't fit, _fitControls() adds .pa-compact and the
+   numbered step buttons are hidden — only prev / next / play / speed / mode
+   remain (navigate with the arrows). */
+.pa-controls.pa-compact .pa-steps { display: none; }
 
 .pa-btn, .pa-step {
   font: inherit;
@@ -151,13 +196,17 @@
 }
 .pa-play { margin-left: auto; width: 6em; box-sizing: border-box; text-align: center; }
 
+/* sequential toggle — icon button (label moved to the title/tooltip) */
 .pa-mode {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--pa-muted);
-  font-size: 0.9rem;
-  user-select: none;
+  min-width: 2.4em;
+  text-align: center;
+  font-size: 1.05em;
+  line-height: 1;
+}
+.pa-mode.pa-active {
+  background: var(--pa-accent);
+  color: var(--pa-active-fg);
+  border-color: var(--pa-accent);
 }
 
 /* dark theme friendliness when the host sets a dark background var */
