@@ -145,10 +145,9 @@
   color: var(--pa-accent);
 }
 /* The title shrinks and gets an ellipsis so the pill never exceeds the
-   container width (full text is in the title attribute → tooltip). min-width:0
-   lets the flex item shrink below its content size. */
+   container width (full text is exposed via the custom data-tip tooltip when
+   truncated). min-width:0 lets this grid column shrink below its content size. */
 .pa-next-body {
-  flex: 0 1 auto;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
