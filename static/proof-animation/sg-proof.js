@@ -31,7 +31,6 @@ export function clearDeriveCache() {
 // error rather than spin the "Deriving proof…" pill forever.
 const DERIVE_TIMEOUT_MS = 90_000;
 
-const BOX_W = 360;            // natural render width of the animator (zoomed to fit the box)
 const GRID_COLS = 8;          // same grid as SgChartManager
 const GRID_ROWS = 8;
 const GRID_GAP = 8;
@@ -151,18 +150,21 @@ export class SgProofManager {
         entry.box.style.height = `${h}px`;
     }
 
-    // Zoom the animator (rendered at a fixed BOX_W) to fit the grid-sized body,
-    // preserving aspect — the body flex-centers it.
+    // The animator fills the box WIDTH (.sgp-pa is width:100%); its own
+    // responsive ProofAnimator._fit scales the expression to that width while
+    // the caption and controls use the full width (no longer squeezed into a
+    // fixed 360px column). We only zoom DOWN here when the natural height at full
+    // width would overflow the box, so a short box never clips; a tall-enough box
+    // keeps zoom 1 — full width, full-size caption text. The body flex-centers
+    // the result when it's zoomed below full width.
     _fit(entry) {
         const pa = entry.paWrap;
         if (!pa) return;
         pa.style.zoom = 1;
-        const natH = pa.offsetHeight || 1;
-        const bw = entry.body.clientWidth;
         const bh = entry.body.clientHeight;
-        if (bw <= 0 || bh <= 0) return;
-        const scale = Math.max(0.35, Math.min(bw / BOX_W, bh / natH));
-        pa.style.zoom = scale;
+        if (bh <= 0) return;
+        const natH = pa.offsetHeight || 1;
+        pa.style.zoom = Math.max(0.35, Math.min(1, bh / natH));
     }
 
     _updatePositions() {
@@ -328,8 +330,9 @@ export class SgProofManager {
             this._renderError(entry, new Error('The derivation produced no steps.'));
             return;
         }
-        // Mount into a fixed-width wrapper so the animator renders at BOX_W; the
-        // wrapper is then `zoom`-scaled to fit the grid box (_fit).
+        // Mount into a full-width wrapper (.sgp-pa is width:100%): the animator
+        // fills the box width and its responsive _fit scales the expression to
+        // it; _fit() here only zooms down if the height would overflow.
         const paWrap = document.createElement('div');
         paWrap.className = 'sgp-pa';
         entry.body.appendChild(paWrap);
