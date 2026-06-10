@@ -184,6 +184,7 @@ export class ProofAnimator {
         if (document.hidden && this._running.length) {
           this._cancel();
           this._renderInto(this.stage, this.data.steps[this.current].latex);
+          this._capOverflow();   // webfonts may have loaded while hidden → re-cap width
           this._syncUI();
         }
       };
@@ -1160,13 +1161,15 @@ export class ProofAnimator {
     body.className = "pa-next-body";
     this._caption(body, txt);
     el.append(label, body);
-    this._updateNextTip();
+    this._updateNextTip(el);
   }
 
   // Show the Next pill's tooltip only when its title is truncated (re-checked on
-  // resize, since the available width — and thus truncation — changes).
-  _updateNextTip() {
-    const el = this.container.querySelector(".pa-next-pill");
+  // resize, since the available width — and thus truncation — changes). Operates
+  // on the given pill (defaults to the live one) so the offscreen probe pill in
+  // _fixMetaSize() is measured in isolation, not the live pill.
+  _updateNextTip(el) {
+    el = el || this.container.querySelector(".pa-next-pill");
     if (!el || el.classList.contains("pa-next-hidden")) return;
     const body = el.querySelector(".pa-next-body");
     const full = el.getAttribute("data-fulltip");
