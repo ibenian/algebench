@@ -21,10 +21,20 @@
 const EASE = "cubic-bezier(0.42, 0, 0.58, 1)"; // ease-in-out
 
 // Untagged structural decorations KaTeX draws (no data-n of their own): the
-// fraction bar, the radical sign, and stretchy delimiters. When newly
-// introduced they must fade in LAST with the other new items — never instantly.
-// (These selectors hold no tagged glyphs, so hiding them won't hide content.)
-const DECORATIONS = [".frac-line", ".sqrt svg", ".delimsizing"];
+// fraction bar and the radical sign. When newly introduced they must fade in
+// LAST with the other new items — never instantly. (These selectors hold no
+// tagged glyphs, so hiding them won't hide content.)
+// NOTE: stretchy delimiters (`.delimsizing`) are NOT here — parentheses (plain
+// OR stretchy) are handled together by the unified paren matcher (`_parens`),
+// so a paren that flips representation between steps morphs as one unit.
+const DECORATIONS = [".frac-line", ".sqrt svg"];
+
+// Delimiter glyphs the renderer emits via \left…\right (plain or stretchy).
+const PAREN_RE = /^[()[\]|]$/;
+const _parenChar = (s) => {
+  const t = (s || "").replace(/[​-‍﻿]/g, "").trim();
+  return PAREN_RE.test(t) ? t : null;
+};
 
 // Playback speed multipliers the speed button cycles through (click → next).
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
@@ -302,11 +312,9 @@ export class ProofAnimator {
       // they're not real glyphs and `String.trim()` doesn't remove them.
       const t = (el.textContent || "").replace(/[​-‍﻿]/g, "").trim();
       if (!t) return;
-      // A stretchy delimiter (\left(\right) around tall content) renders as a
-      // `.delimsizing` decoration that CONTAINS a glyph span — skip that inner
-      // glyph so the paren is handled once, by the decoration path (clone keeps
-      // its stretched size/position), not double-counted as a bare leaf.
-      if (el.closest(".delimsizing")) return;
+      // Parentheses (plain or stretchy `.delimsizing`) are handled by the unified
+      // paren matcher (`_parens`) — exclude them here so they're not animated twice.
+      if (_parenChar(t) || el.closest(".delimsizing")) return;
       if (el.hasAttribute("data-n")) return;   // itself a tagged glyph
       const p = el.closest("[data-n]");
       // No tagged ancestor, OR the nearest tagged ancestor is STRUCTURAL (it has
@@ -317,6 +325,54 @@ export class ProofAnimator {
       if (!p || p.querySelector("[data-n]")) out.push(el);
     });
     return out;
+  }
+
+  // Every parenthesis in `root`, in DOCUMENT ORDER, whether the renderer drew it
+  // as a plain glyph or a stretchy `.delimsizing` box. The "unit" is the
+  // `.delimsizing` box when present (so a clone keeps its stretched size), else
+  // the bare glyph span. Unifying both representations lets a paren that FLIPS
+  // between them across a step (KaTeX picks plain vs stretchy by content height)
+  // be matched as one and morph — instead of ghosting the old AND fading the new
+  // at the same spot (which looked like DUPLICATE parentheses).
+  _parens(root) {
+    const html = root.querySelector(".katex-html");
+    if (!html) return [];
+    const out = [];
+    const seen = new Set();
+    html.querySelectorAll("*").forEach((el) => {
+      if (el.firstElementChild) return;        // leaf glyph only
+      const ch = _parenChar(el.textContent);
+      if (!ch) return;
+      const delim = el.closest(".delimsizing");
+      const unit = delim || el;
+      if (seen.has(unit)) return;
+      seen.add(unit);
+      if (!delim) {
+        if (el.hasAttribute("data-n")) return;            // part of a tagged glyph
+        const p = el.closest("[data-n]");
+        if (p && !p.querySelector("[data-n]")) return;    // inside a tagged leaf glyph
+      }
+      out.push({ char: ch, el: unit, delim: !!delim });
+    });
+    return out;
+  }
+
+  // Like _lcsMatch but returns the actual aligned index PAIRS [srcIdx, tgtIdx],
+  // so a preserved paren can be morphed from its source pose to its target pose.
+  _lcsPairs(a, b) {
+    const n = a.length, m = b.length;
+    const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    for (let i = n - 1; i >= 0; i--)
+      for (let j = m - 1; j >= 0; j--)
+        dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    const pairs = [];
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (a[i] === b[j]) { pairs.push([i, j]); i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+      else j++;
+    }
+    return pairs;
   }
 
   // Longest-common-subsequence match between two text sequences. Returns the sets
@@ -479,6 +535,15 @@ export class ProofAnimator {
       rect: el.getBoundingClientRect(),
       fontSize: getComputedStyle(el).fontSize,
     }));
+    // Source parentheses (plain + stretchy), in document order — snapshot before
+    // re-render so a preserved paren can morph from its old pose and a removed
+    // one can ghost out.
+    const fromParens = this._parens(this.stage).map((p) => ({
+      char: p.char, delim: p.delim,
+      clone: p.el.cloneNode(true),
+      rect: p.el.getBoundingClientRect(),
+      fontSize: getComputedStyle(p.el).fontSize,
+    }));
     // Source decorations (fraction bar, radical, stretchy delimiter), keyed by
     // their owning node (nearest [data-n]) + type. Snapshotted before re-render
     // so the target ones can be matched against them — to MORPH a preserved
@@ -607,6 +672,39 @@ export class ProofAnimator {
     }
     const removedDecos = fromDecos.filter((d) => !matchedSrcDeco.has(d));
 
+    // ── Parentheses (plain + stretchy), matched as ONE category in document order.
+    // A preserved paren MORPHS from its source pose to its target pose (so a paren
+    // that flips plain↔stretchy, or grows with its content, glides as one unit
+    // instead of duplicating). Genuinely new parens fade in; removed ones ghost out.
+    const toParens = this._parens(this.stage);
+    const parenPairs = this._lcsPairs(fromParens.map((p) => p.char), toParens.map((p) => p.char));
+    const _pFromKeep = new Set(parenPairs.map((pr) => pr[0]));
+    const _pToKeep = new Set(parenPairs.map((pr) => pr[1]));
+    const parenMovers = [];
+    for (const [si, ti] of parenPairs) {
+      const src = fromParens[si], el = toParens[ti].el;
+      const tr = el.getBoundingClientRect();
+      const dx = src.rect.left - tr.left, dy = src.rect.top - tr.top;
+      // A stretchy SVG delimiter distorts under a non-uniform scale (like a
+      // radical), so scale only when the target isn't an SVG; otherwise glide
+      // position only and let it settle to its true size at the end.
+      const isSvg = !!el.querySelector("svg");
+      const sx = !isSvg && tr.width > 0 ? src.rect.width / tr.width : 1;
+      const sy = !isSvg && tr.height > 0 ? src.rect.height / tr.height : 1;
+      const changed = Math.abs(dx) > 1 || Math.abs(dy) > 1 || Math.abs(sx - 1) > 0.02 || Math.abs(sy - 1) > 0.02;
+      if (changed) {
+        el.classList.add("pa-move");
+        el.style.transformOrigin = "0 0";
+        el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;   // hold at source pose
+        parenMovers.push({ el, dx, dy, sx, sy });
+      }
+    }
+    const parenInserts = [];
+    toParens.forEach((p, j) => {
+      if (!_pToKeep.has(j)) { p.el.style.opacity = "0"; parenInserts.push(p.el); }   // new → fade in
+    });
+    const removedParens = fromParens.filter((p, i) => !_pFromKeep.has(i));            // removed → ghost out
+
     // source-only glyphs → DELETE ghosts: clones placed at their old spot. Each
     // ghost is wrapped in a `.katex` host so KaTeX's font CSS (scoped under
     // `.katex …`) still applies — otherwise the glyph reverts to the default
@@ -679,6 +777,27 @@ export class ProofAnimator {
       this._ghosts.push(host);
       untagGhosts.push(host);
     }
+    // Parentheses (plain or stretchy) that DISAPPEARED → ghost the clone at its
+    // old spot. A stretchy delimiter clone carries a vertical-align offset, so
+    // apply the same stage-relative nudge used for decorations above.
+    for (const p of removedParens) {
+      const host = document.createElement("span");
+      host.className = "katex pa-ghost";
+      let left = p.rect.left - stageRect.left, top = p.rect.top - stageRect.top;
+      Object.assign(host.style, {
+        position: "absolute", margin: "0", lineHeight: "0",
+        left: left + "px", top: top + "px", fontSize: p.fontSize,
+      });
+      host.appendChild(p.clone);
+      this.stage.appendChild(host);
+      const sr = this.stage.getBoundingClientRect();
+      const cr = p.clone.getBoundingClientRect();
+      const dx = (p.rect.left - stageRect.left) - (cr.left - sr.left);
+      const dy = (p.rect.top - stageRect.top) - (cr.top - sr.top);
+      if (dx || dy) { host.style.left = (left + dx) + "px"; host.style.top = (top + dy) + "px"; }
+      this._ghosts.push(host);
+      untagGhosts.push(host);
+    }
 
     // ── PHASE 0: dropped items fade OUT first, before any motion ──
     const D_OUT = this._baseDuration * 0.6;
@@ -738,6 +857,19 @@ export class ProofAnimator {
       a.onfinish = () => { dm.el.style.transform = ""; dm.el.style.transformOrigin = ""; };
       moveAnims.push(a);
     }
+    // preserved parentheses glide/scale from their old pose to the new one (handles
+    // a paren that flips plain↔stretchy or grows with its content), in lockstep.
+    for (const pm of parenMovers) {
+      const a = this._tween(pm.el,
+        [{ transform: `translate(${pm.dx}px, ${pm.dy}px) scale(${pm.sx}, ${pm.sy})` },
+         { transform: "translate(0px, 0px) scale(1, 1)" }],
+        { duration: this._baseDuration, delay: seq ? mi++ * this._baseStagger : 0, easing: EASE, fill: "both" }
+      );
+      a.onfinish = () => {
+        pm.el.style.transform = ""; pm.el.style.transformOrigin = ""; pm.el.classList.remove("pa-move");
+      };
+      moveAnims.push(a);
+    }
     this._running = moveAnims;
     await await_(moveAnims);
     if (this._token !== token) return;
@@ -763,7 +895,7 @@ export class ProofAnimator {
     // last, without shifting anything.
     const _inAfter = (seq ? ii * this._baseStagger : 0) + D_IN;
     let ik = 0;
-    for (const el of [...decoEls, ...untagInserts]) {
+    for (const el of [...decoEls, ...untagInserts, ...parenInserts]) {
       const a = this._tween(el,
         [{ opacity: 0 }, { opacity: 1 }],
         { duration: D_IN, delay: _inAfter + (seq ? ik++ * this._baseStagger : 0), easing: EASE, fill: "both" }
