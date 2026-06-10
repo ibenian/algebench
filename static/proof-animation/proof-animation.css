@@ -67,16 +67,56 @@
 .pa-ghost { pointer-events: none; z-index: 4; }
 .pa-move.pa-insert { z-index: -1; }
 
-/* operation (explanation) stacked above justification */
+/* operation (explanation) stacked above justification, then the "Next" pill */
 .pa-meta {
+  position: relative;        /* anchor for absolutely-positioned meta ghosts */
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 3px;
   min-height: 1.4em;
   font-size: 0.95rem;
 }
 .pa-op { font-weight: 600; color: var(--pa-fg); }
 .pa-just { color: var(--pa-muted); font-style: italic; }
+
+/* "Next" pill — mirrors the proof-navigator step pills; clickable (= next btn). */
+.pa-next-pill {
+  margin-top: 5px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  max-width: 100%;
+  padding: 3px 11px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.16);
+  border: 1px solid rgba(120, 130, 200, 0.40);
+  color: var(--pa-fg);
+  font-size: 0.82em;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pa-next-pill, .pa-next-pill * { cursor: pointer; }
+.pa-next-pill:hover { background: rgba(99, 102, 241, 0.30); border-color: var(--pa-accent); }
+.pa-next-pill:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
+.pa-next-pill.pa-next-hidden { display: none; }
+.pa-next-label {
+  flex: none;
+  font-size: 0.82em;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--pa-accent);
+}
+.pa-next-body { overflow: hidden; text-overflow: ellipsis; }
+
+/* Transient clones used by the meta promote animation. */
+.pa-meta-ghost { position: absolute; pointer-events: none; margin: 0; }
+.pa-promoting { will-change: transform, opacity; }
 
 /* controls */
 .pa-controls {

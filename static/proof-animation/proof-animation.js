@@ -76,14 +76,16 @@ export class ProofAnimator {
       `position:absolute; visibility:hidden; left:-9999px; top:0; width:${meta.clientWidth}px;`;
     const op = document.createElement("span"); op.className = "pa-op";
     const just = document.createElement("span"); just.className = "pa-just";
-    probe.append(op, just);
+    const next = document.createElement("span"); next.className = "pa-next-pill";
+    probe.append(op, just, next);
     this.container.appendChild(probe);
     let h = 0;
-    for (const s of this.data.steps) {
-      this._caption(op, s.operation ? `${s.index}. ${s.operation}` : `state ${s.index}`);
+    this.data.steps.forEach((s, i) => {
+      this._caption(op, this._opText(i));
       this._caption(just, s.justification || "");
+      this._setNextPill(next, i);
       h = Math.max(h, probe.getBoundingClientRect().height);
-    }
+    });
     probe.remove();
     if (h > 0) meta.style.minHeight = Math.ceil(h) + "px";
   }
@@ -199,7 +201,7 @@ export class ProofAnimator {
     this.container.classList.add("pa-root");
     this.container.innerHTML = `
       <div class="pa-stage" aria-live="polite"></div>
-      <div class="pa-meta"><span class="pa-op"></span><span class="pa-just"></span></div>
+      <div class="pa-meta"><span class="pa-op"></span><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0" title="Go to next step"></span></div>
       <div class="pa-controls">
         <button class="pa-btn pa-prev" title="Previous step" aria-label="Previous step">◀</button>
         <div class="pa-steps"></div>
@@ -220,6 +222,12 @@ export class ProofAnimator {
     });
     this.container.querySelector(".pa-prev").onclick = () => this._userGoTo(this.current - 1);
     this.container.querySelector(".pa-next").onclick = () => this._userGoTo(this.current + 1);
+    // The "Next" pill acts like the next button.
+    const nextPill = this.container.querySelector(".pa-next-pill");
+    nextPill.onclick = () => this._userGoTo(this.current + 1);
+    nextPill.onkeydown = (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); this._userGoTo(this.current + 1); }
+    };
     this.container.querySelector(".pa-play").onclick = () => this._togglePlay();
     this.container.querySelector(".pa-speed").onclick = () => {
       this._speedIdx = (this._speedIdx + 1) % SPEEDS.length;
@@ -387,6 +395,7 @@ export class ProofAnimator {
     this._running = [];
     this._ghosts.forEach((g) => g.remove());
     this._ghosts = [];
+    this._cancelMeta();
   }
 
   // Instantly show a step's final state — no animation. Used when the page can't
@@ -401,6 +410,7 @@ export class ProofAnimator {
   async goTo(target) {
     target = Math.max(0, Math.min(this.data.steps.length - 1, target));
     if (target === this.current && this._running.length === 0) return;
+    const prev = this.current;
     // When the tab/page is hidden, browsers FREEZE the document timeline, so WAAPI
     // animations never progress and `anim.finished` never resolves — the morph
     // would stall between phases and leave inserted glyphs stuck at opacity 0
@@ -450,7 +460,17 @@ export class ProofAnimator {
 
     this._cancel();
     this.current = target;
-    this._syncUI();
+    // Meta: a forward (next) step gets the "promote" animation — the Next title
+    // slides up into the explanation slot while the old caption fades out; the new
+    // Next pill fades in only AFTER the morph (metaFinish, below). Any other jump
+    // just snaps the caption.
+    let metaFinish = null;
+    if (target === prev + 1) {
+      this._updateStepButtons();
+      metaFinish = this._beginMetaPromote(prev, target);
+    } else {
+      this._syncUI();
+    }
 
     // LAST: render target, measure
     this._renderInto(this.stage, this.data.steps[target].latex);
@@ -693,6 +713,8 @@ export class ProofAnimator {
       // it, so the resting expression is guaranteed correct and identical to a fresh
       // render. It's visually identical to the just-finished frame, so no flicker.
       this._renderInto(this.stage, this.data.steps[target].latex);
+      // Step animation done → now fade in the new justification + "Next" pill.
+      if (metaFinish) metaFinish();
     }
   }
 
@@ -775,12 +797,129 @@ export class ProofAnimator {
   }
 
   _syncUI() {
+    this._updateStepButtons();
+    this._caption(this.container.querySelector(".pa-op"), this._opText(this.current));
+    this._caption(this.container.querySelector(".pa-just"), this.data.steps[this.current].justification || "");
+    this._setNextPill(this.container.querySelector(".pa-next-pill"), this.current);
+  }
+
+  _updateStepButtons() {
     this.container.querySelectorAll(".pa-step").forEach((b, i) =>
       b.classList.toggle("pa-active", i === this.current));
-    const s = this.data.steps[this.current];
-    // both the explanation (operation) and the justification — each may use $…$ LaTeX
-    this._caption(this.container.querySelector(".pa-op"),
-      s.operation ? `${this.current}. ${s.operation}` : `state ${this.current}`);
-    this._caption(this.container.querySelector(".pa-just"), s.justification || "");
+  }
+
+  // The explanation/title text for a step (numbered).
+  _opText(idx) {
+    const s = this.data.steps[idx];
+    return s.operation ? `${idx}. ${s.operation}` : `state ${idx}`;
+  }
+  // The plain title (no number) of the step AFTER idx, or null if idx is the last.
+  _nextOpText(idx) {
+    const n = this.data.steps[idx + 1];
+    return n ? (n.operation || `state ${idx + 1}`) : null;
+  }
+  // Meta "promote" animation for a forward (next) step: the current explanation
+  // and justification fade OUT, and the title shown in the "Next" pill slides UP
+  // into the title position to become the new explanation. Returns a finish()
+  // closure that the caller runs AFTER the expression morph completes, which
+  // fades in the new justification and the new "Next" pill (never during).
+  _beginMetaPromote(prev, target) {
+    const meta = this.container.querySelector(".pa-meta");
+    const opEl = meta.querySelector(".pa-op");
+    const justEl = meta.querySelector(".pa-just");
+    const nextEl = meta.querySelector(".pa-next-pill");
+    const metaRect = meta.getBoundingClientRect();
+    const opRect = opEl.getBoundingClientRect();
+    const justRect = justEl.getBoundingClientRect();
+    const nextRect = nextEl.getBoundingClientRect();
+    const nextWasShown = !nextEl.classList.contains("pa-next-hidden");
+    this._metaGhosts = this._metaGhosts || [];
+    this._metaAnims = this._metaAnims || [];
+
+    // 1. Ghost the OLD explanation + justification at their spots and fade out.
+    const ghostOut = (el, rect) => {
+      if (!el.textContent.trim()) return;
+      const g = el.cloneNode(true);
+      g.classList.add("pa-meta-ghost");
+      g.style.left = (rect.left - metaRect.left) + "px";
+      g.style.top = (rect.top - metaRect.top) + "px";
+      g.style.width = Math.ceil(rect.width) + "px";
+      meta.appendChild(g);
+      this._metaGhosts.push(g);
+      const a = this._tween(g, [{ opacity: 1 }, { opacity: 0 }],
+        { duration: this._baseDuration * 0.55, easing: EASE, fill: "forwards" });
+      a.onfinish = () => g.remove();
+      this._metaAnims.push(a);
+    };
+    ghostOut(opEl, opRect);
+    ghostOut(justEl, justRect);
+
+    // 2. The new explanation IS the promoted "Next" title. Put it in the op slot,
+    //    hide the (now-promoted) next pill and the old justification, then FLIP the
+    //    op up from the Next position into place.
+    this._caption(opEl, this._opText(target));
+    this._caption(justEl, this.data.steps[target].justification || "");
+    justEl.style.opacity = "0";
+    nextEl.style.opacity = "0";
+    const newOpRect = opEl.getBoundingClientRect();
+    const dx = (nextWasShown ? nextRect.left : newOpRect.left) - newOpRect.left;
+    const dy = (nextWasShown ? nextRect.top : newOpRect.top) - newOpRect.top;
+    if (dx || dy) {
+      opEl.classList.add("pa-promoting");
+      const a = this._tween(opEl,
+        [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }],
+        { duration: this._baseDuration, easing: EASE, fill: "both" });
+      a.onfinish = () => { opEl.style.transform = ""; opEl.classList.remove("pa-promoting"); };
+      this._metaAnims.push(a);
+    }
+
+    // 3. finish(): after the step animation, fade in the new justification first,
+    //    then the new "Next" pill on a longer delay (so it trails the caption).
+    return () => {
+      const ja = this._tween(justEl, [{ opacity: 0 }, { opacity: 1 }],
+        { duration: this._baseDuration * 0.6, easing: EASE, fill: "both" });
+      ja.onfinish = () => (justEl.style.opacity = "");
+      this._metaAnims.push(ja);
+      this._setNextPill(nextEl, target);
+      if (!nextEl.classList.contains("pa-next-hidden")) {
+        nextEl.style.opacity = "0";
+        const na = this._tween(nextEl, [{ opacity: 0 }, { opacity: 1 }],
+          { duration: this._baseDuration * 0.6, delay: this._baseDuration * 0.7, easing: EASE, fill: "both" });
+        na.onfinish = () => (nextEl.style.opacity = "");
+        this._metaAnims.push(na);
+      }
+    };
+  }
+
+  // Cancel any in-flight meta animation and reset the meta elements to a clean
+  // resting state (called from _cancel so a new navigation never inherits a
+  // half-promoted caption).
+  _cancelMeta() {
+    (this._metaAnims || []).forEach((a) => { try { a.cancel(); } catch (e) {} });
+    this._metaAnims = [];
+    (this._metaGhosts || []).forEach((g) => g.remove());
+    this._metaGhosts = [];
+    const opEl = this.container.querySelector(".pa-op");
+    if (opEl) { opEl.style.transform = ""; opEl.style.opacity = ""; opEl.classList.remove("pa-promoting"); }
+    const justEl = this.container.querySelector(".pa-just");
+    if (justEl) justEl.style.opacity = "";
+    const nextEl = this.container.querySelector(".pa-next-pill");
+    if (nextEl) nextEl.style.opacity = "";
+  }
+
+  // Render the "Next" pill for the step after idx (hidden on the last step).
+  _setNextPill(el, idx) {
+    if (!el) return;
+    const txt = this._nextOpText(idx);
+    el.innerHTML = "";
+    if (txt == null) { el.classList.add("pa-next-hidden"); return; }
+    el.classList.remove("pa-next-hidden");
+    const label = document.createElement("span");
+    label.className = "pa-next-label";
+    label.textContent = "Next";
+    const body = document.createElement("span");
+    body.className = "pa-next-body";
+    this._caption(body, txt);
+    el.append(label, body);
   }
 }
