@@ -49,6 +49,11 @@ export class ProofAnimator {
     this.data = data;
     this.katex = opts.katex || (typeof window !== "undefined" && window.katex);
     if (!this.katex) throw new Error("ProofAnimator: KaTeX not available");
+    // Optional AI-ask integration: a factory (className, title, getMessage) →
+    // <button>. The app passes labels.js makeAiAskButton; the standalone report
+    // has no chat panel and omits it — no factory, no buttons rendered.
+    this._aiAsk = opts.aiAskButton || null;
+    this._nextAskBtn = null;
     this.mode = opts.mode || "parallel";    // 'parallel' | 'sequential'
     // Base timings; the speed multiplier scales them live via animation.playbackRate.
     this._baseDuration = opts.duration ?? 650;
@@ -94,7 +99,18 @@ export class ProofAnimator {
     const op = document.createElement("span"); op.className = "pa-op";
     const just = document.createElement("span"); just.className = "pa-just";
     const next = document.createElement("span"); next.className = "pa-next-pill";
-    probe.append(op, just, next);
+    // Mirror the live layout when AI ask buttons are present (the op-row's inline
+    // button can make that line taller than the bare text, and the pill grows a
+    // third grid column) so the measured min-height matches.
+    let opHost = op;
+    if (this._aiAsk) {
+      probe.classList.add("pa-has-ask");
+      next.classList.add("pa-has-ask");
+      opHost = document.createElement("div"); opHost.className = "pa-op-row";
+      const ask = document.createElement("span"); ask.className = "pa-ask-btn pa-ask-current";
+      opHost.append(op, ask);
+    }
+    probe.append(opHost, just, next);
     this.container.appendChild(probe);
     let h = 0;
     this.data.steps.forEach((s, i) => {
@@ -251,7 +267,7 @@ export class ProofAnimator {
     this.container.classList.add("pa-root");
     this.container.innerHTML = `
       <div class="pa-stage" aria-live="polite"></div>
-      <div class="pa-meta"><span class="pa-op"></span><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
+      <div class="pa-meta"><div class="pa-op-row"><span class="pa-op"></span></div><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
       <div class="pa-controls">
         <button type="button" class="pa-btn pa-prev" data-tip="Previous step" aria-label="Previous step">◀</button>
         <div class="pa-steps"></div>
@@ -277,10 +293,27 @@ export class ProofAnimator {
     this.container.querySelector(".pa-next").onclick = () => this._userGoTo(this.current + 1);
     // The "Next" pill acts like the next button.
     const nextPill = this.container.querySelector(".pa-next-pill");
+    this._nextPillEl = nextPill;
     nextPill.onclick = () => this._userGoTo(this.current + 1);
     nextPill.onkeydown = (e) => {
+      if (e.target !== nextPill) return;   // e.g. Enter on the AI ask button inside
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); this._userGoTo(this.current + 1); }
     };
+    // AI ask buttons (app-provided factory only — see constructor).
+    if (this._aiAsk) {
+      const meta = this.container.querySelector(".pa-meta");
+      meta.classList.add("pa-has-ask");
+      // Current-step button sits inline right after the explanation text (in the
+      // op-row), so it reads as "ask about THIS step" rather than floating loose.
+      meta.querySelector(".pa-op-row").appendChild(
+        this._aiAsk("pa-ask-btn pa-ask-current", "Ask AI about this step",
+          () => this._askCurrentMessage()));
+      // The next-step button lives INSIDE the pill (re-attached by _setNextPill on
+      // every step), so the pill's hide-on-last-step and promote fade cover it too.
+      this._nextAskBtn = this._aiAsk("pa-ask-btn pa-ask-next", "Predict the next step with AI",
+        () => this._askNextMessage());
+      nextPill.classList.add("pa-has-ask");
+    }
     this.container.querySelector(".pa-play").onclick = () => this._togglePlay();
     this.container.querySelector(".pa-speed").onclick = () => {
       this._speedIdx = (this._speedIdx + 1) % SPEEDS.length;
@@ -1064,6 +1097,47 @@ export class ProofAnimator {
     const n = this.data.steps[idx + 1];
     return n ? (n.operation || `state ${idx + 1}`) : null;
   }
+
+  // Clean LaTeX for a step's expression — `plain` is the id-free render the
+  // server emits alongside the annotated `latex`; fall back to the raw input.
+  _stepExpr(idx) {
+    const s = this.data.steps[idx];
+    return s.plain || s.input_latex || s.latex || "";
+  }
+
+  // Chat message for the "ask about the current step" button.
+  _askCurrentMessage() {
+    const i = this.current;
+    const s = this.data.steps[i];
+    let msg = `I'm looking at step ${i} of the derivation`
+      + (this.data.title ? ` "${this.data.title}"` : "") + `:\n$$${this._stepExpr(i)}$$`;
+    if (s.operation) msg += `\nOperation: ${s.operation}`;
+    if (s.justification) msg += `\nJustification: ${s.justification}`;
+    msg += `\nCan you explain this step — what it does and why it's valid?`;
+    return msg;
+  }
+
+  // Chat message for the "predict the next step" button — predict-before-reveal:
+  // give the AI the next operation/justification as context, but ask it to coach
+  // the learner to the resulting expression instead of just stating it. The next
+  // expression itself is deliberately NOT included (the message is visible in the
+  // chat, so including it would spoil the reveal).
+  _askNextMessage() {
+    const i = this.current;
+    const n = this.data.steps[i + 1];
+    let msg = `I'm working through the derivation`
+      + (this.data.title ? ` "${this.data.title}"` : "")
+      + ` and the current expression (step ${i}) is:\n$$${this._stepExpr(i)}$$`;
+    if (n) {
+      msg += `\nThe next step is "${n.operation || `state ${i + 1}`}"`;
+      if (n.justification) msg += ` (justification: ${n.justification})`;
+      msg += `.`;
+    }
+    msg += `\nBefore revealing the resulting expression, help me predict it myself:`
+      + ` ask me what this operation does to the expression and why it's justified,`
+      + ` let me attempt the result, and only then confirm or correct it.`;
+    return msg;
+  }
   // Meta "promote" animation for a forward (next) step: the current explanation
   // and justification fade OUT, and the title shown in the "Next" pill slides UP
   // into the title position to become the new explanation. Returns a finish()
@@ -1173,6 +1247,12 @@ export class ProofAnimator {
     body.className = "pa-next-body";
     this._caption(body, txt);
     el.append(label, body);
+    // Re-attach the AI ask button (the innerHTML reset above detached it). The
+    // offscreen measuring probe in _fixMetaSize gets a listener-less clone so the
+    // live button is never moved into — and destroyed with — the probe.
+    if (this._nextAskBtn) {
+      el.appendChild(el === this._nextPillEl ? this._nextAskBtn : this._nextAskBtn.cloneNode(true));
+    }
     this._updateNextTip(el);
   }
 

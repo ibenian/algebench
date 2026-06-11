@@ -102,7 +102,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;                  /* equal vertical spacing between op / just / pill */
+  gap: 10px;                 /* equal vertical spacing between op / just / pill */
   min-height: 1.4em;
   font-size: 0.95rem;
 }
@@ -120,7 +120,7 @@
   box-sizing: border-box;
   min-width: 0;
   max-width: 100%;
-  padding: 3px 11px;
+  padding: 5px 11px;
   border-radius: 999px;
   background: rgba(99, 102, 241, 0.16);
   border: 1px solid rgba(120, 130, 200, 0.40);
@@ -151,6 +151,46 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* AI ask buttons — only rendered when the host passes an aiAskButton factory
+   (the app does; the standalone report doesn't). Hidden until the widget is
+   hovered, matching the app-wide ask-button convention. */
+.pa-root .pa-ask-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 2px;
+  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(120, 130, 200, 0.35);
+  border-radius: 4px;
+  color: var(--pa-accent);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+.pa-root:hover .pa-ask-btn,
+.pa-root .pa-ask-btn:focus-visible { opacity: 1; pointer-events: auto; }
+.pa-root .pa-ask-btn:hover {
+  background: rgba(99, 102, 241, 0.30);
+  border-color: var(--pa-accent);
+}
+.pa-root .pa-ask-btn svg { pointer-events: none; }
+/* Current-step button: inline, right after the explanation text, with a gap. */
+.pa-op-row { display: flex; align-items: center; gap: 8px; }
+/* Next-step button rides inside the Next pill as a third grid column. */
+.pa-next-pill.pa-has-ask { grid-template-columns: auto minmax(0, max-content) auto; }
+.pa-next-pill .pa-ask-btn {
+  align-self: center;
+  margin-left: 5px;
+  width: 16px;
+  height: 16px;
+  padding: 1px;
+  border: none;
+  background: transparent;
 }
 
 /* Transient clones used by the meta promote animation. */

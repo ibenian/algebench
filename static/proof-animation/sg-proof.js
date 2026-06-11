@@ -10,6 +10,7 @@
 import { ProofAnimator } from '/proof-animation/proof-animation.js';
 import { invokeExpert } from '/expert-client.js';
 import { nextDockSeq } from '/proof-animation/dock-seq.js';
+import { makeAiAskButton } from '/labels.js';
 
 // Session-persistent cache of derivation results, keyed by the FULL request
 // shape (everything that affects the derivation — target/start/domain plus
@@ -338,7 +339,7 @@ export class SgProofManager {
         entry.body.appendChild(paWrap);
         entry.paWrap = paWrap;
         try {
-            entry.animator = new ProofAnimator(paWrap, data, { katex: this.katex });
+            entry.animator = new ProofAnimator(paWrap, data, { katex: this.katex, aiAskButton: makeAiAskButton });
         } catch (e) {
             entry.paWrap = null;
             this._renderError(entry, e);
