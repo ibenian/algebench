@@ -51,6 +51,7 @@
 /* the expression canvas — relative so delete-ghosts can be absolutely placed */
 .pa-stage {
   position: relative;
+  flex: 0 0 auto;            /* FIXED height (set by _fit to the tallest step) — never shrinks */
   /* Establish a stacking context so the inserts' z-index:-1 (they slide in BEHIND
      the moving glyphs) stays scoped to the stage. Without this it escapes to the
      root context and paints new glyphs BEHIND the panel background — they fade in
@@ -96,9 +97,12 @@
 .pa-ghost { pointer-events: none; z-index: 4; }
 .pa-move.pa-insert { z-index: -1; }
 
-/* operation (explanation) stacked above justification, then the "Next" pill */
+/* operation (explanation) stacked above justification, then the "Next" pill.
+   FIXED height (set by _fixMetaSize to the tallest step) + flex:none so the text
+   zone never changes height between steps — the controls below it never shift. */
 .pa-meta {
   position: relative;        /* anchor for absolutely-positioned meta ghosts */
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -185,6 +189,13 @@
    button stays beside the text rather than being pushed to the far edge. */
 .pa-op-row { display: flex; align-items: center; gap: 8px; max-width: 100%; }
 .pa-op-row .pa-op { min-width: 0; }
+/* Never let the button shrink. In a narrow box the op-row overflows and flexbox
+   would squeeze the button — and it squeezes the empty measuring-probe button
+   MORE than the live (SVG-bearing) one, so the probe gives the caption extra
+   width and under-reserves the meta min-height by a line → the box height jumps
+   between steps. A fixed-size button keeps probe == live so the reservation is
+   exact (and the icon never gets squished). */
+.pa-op-row .pa-ask-btn { flex: 0 0 auto; }
 /* Next-step button rides inside the Next pill as a third grid column. */
 .pa-next-pill.pa-has-ask { grid-template-columns: auto minmax(0, max-content) auto; }
 .pa-next-pill .pa-ask-btn {
@@ -201,16 +212,19 @@
 .pa-meta-ghost { position: absolute; pointer-events: none; margin: 0; }
 .pa-promoting { will-change: transform, opacity; }
 
-/* controls */
+/* controls — FIXED-height nav row that NEVER wraps (overflowing step numbers are
+   hidden by _fitControls via .pa-compact instead). It's the last zone, so the
+   stage's flex-grow above it (in container mode) keeps it docked to the bottom. */
 .pa-controls {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   border-top: 1px solid var(--pa-border);
   padding-top: 12px;
 }
-.pa-steps { display: flex; gap: 6px; }
+.pa-steps { display: flex; gap: 6px; min-width: 0; }
 /* When the controls row can't fit, _fitControls() adds .pa-compact and the
    numbered step buttons are hidden — only prev / next / play / speed / mode
    remain (navigate with the arrows). */
@@ -225,6 +239,10 @@
   border-radius: 8px;
   padding: 6px 12px;
   line-height: 1;
+  /* Labels never wrap to a second line — otherwise a fixed-width button (e.g.
+     .pa-play at 6em) would grow taller in a narrow box, or change height when its
+     label toggles Play↔Pause, breaking the fixed-height nav row. */
+  white-space: nowrap;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .pa-step { min-width: 34px; text-align: center; }
@@ -267,7 +285,7 @@
    .sgc-chart-header, .sgc-btn, .sgc-resize-handle, .sgc-pinned) so borders and
    buttons are identical to the charts; only these proof-specific rules remain:
    the body lays out the animator, which is rendered at a fixed width and
-   `zoom`-scaled to fit the grid box.
+   `transform: scale()`-d to fit the grid box.
    ─────────────────────────────────────────────────────────────────────────── */
 .sgp-proof-box {
     display: flex;
@@ -280,17 +298,32 @@
     min-height: 0;
     overflow: hidden;
     display: flex;
+    /* Centre the loading / error states; the animator (.sgp-pa) is height:100%,
+       so it fills the box regardless of these alignment values. */
     align-items: center;
     justify-content: center;
 }
 
-/* The animator fills the box width; its responsive _fit scales the expression
-   to that width and the caption/controls use the full width. _fit() in
-   SgProofManager only zooms it DOWN if the height would overflow the box. */
+/* The animator FILLS the box (width + height). Its three zones are a flex column:
+   the stage grows to fill the space left by the FIXED text + nav bars, and the
+   engine (fitHeight mode) scales the expression to fit that fixed stage — so the
+   animation area is the same size on every step and never overflows. No transform
+   scaling of the whole widget (which would un-anchor the nav). */
 .sgp-pa {
     width: 100%;
-    flex: 0 1 auto;
+    height: 100%;
+    flex: 0 0 auto;
 }
+/* Stage absorbs the remaining height; text + nav are fixed bars below it. Drop
+   the pa-root's uniform gap and space the zones with margins instead, so the
+   text zone sits flush above the nav divider (only the expression keeps a gap). */
+.sgp-proof-box .sgp-pa { gap: 0; }
+.sgp-proof-box .pa-stage { flex: 1 1 0; min-height: 0; margin-bottom: 12px; }
+/* A little breathing room between the text zone and the nav divider. */
+.sgp-proof-box .pa-meta { margin-bottom: 8px; }
+/* The NEXT pill anchors to the BOTTOM of the fixed-height text zone, so it always
+   sits just above the nav divider regardless of how long the caption is. */
+.sgp-proof-box .pa-next-pill { margin-top: auto; }
 .sgp-pa.pa-root {
     border: none;
     border-radius: 0;
@@ -362,11 +395,17 @@
 
 /* In the docked proof box the step (nav) buttons grow to fill a NARROW row, but
    cap their width so they don't stretch into giant bars when the box is wide
-   (the animator now fills the full box width). */
+   (the animator now fills the full box width). They NEVER wrap — when they don't
+   fit, _fitControls() hides them (.pa-compact) and the arrows drive navigation,
+   so the nav row stays a single fixed-height line. */
 .sgp-proof-box .pa-controls { gap: 6px; }
-.sgp-proof-box .pa-steps { flex: 1 1 auto; flex-wrap: wrap; }
+/* Natural-width step buttons (no grow, no shrink) so _fitControls measures the
+   row's TRUE width and compacts (hides the step numbers) when they don't fit —
+   instead of the steps box silently shrinking while its buttons overflow and
+   overlap the rest of the no-wrap row. */
+.sgp-proof-box .pa-steps { flex: 0 0 auto; flex-wrap: nowrap; }
 .sgp-proof-box .pa-steps .pa-step {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     min-width: 30px;
     max-width: 52px;
     padding-left: 2px;

@@ -54,6 +54,18 @@ export class ProofAnimator {
     // has no chat panel and omits it — no factory, no buttons rendered.
     this._aiAsk = opts.aiAskButton || null;
     this._nextAskBtn = null;
+    // Optional host hook fired after every internal relayout (resize / fonts), so
+    // a host that scales this widget to fit a box (SgProofManager) can re-fit AFTER
+    // our fixed zone heights are final — otherwise its scale races our relayout and
+    // ends up stale (content overflows / positions shift on the next step).
+    this._onRelayout = typeof opts.onRelayout === "function" ? opts.onRelayout : null;
+    // Container-fit mode (set by a host that gives the widget a FIXED-size box,
+    // e.g. SgProofManager's grid cell): the stage fills the height the box leaves
+    // after the fixed text + nav bars, and the expression is scaled to fit that
+    // box (width AND height) instead of the stage growing to the expression. The
+    // standalone report leaves this false — there the stage grows to the tallest
+    // step and the page scrolls.
+    this._fitHeight = !!opts.fitHeight;
     this.mode = opts.mode || "parallel";    // 'parallel' | 'sequential'
     // Base timings; the speed multiplier scales them live via animation.playbackRate.
     this._baseDuration = opts.duration ?? 650;
@@ -73,8 +85,8 @@ export class ProofAnimator {
     this._build();
     // Base (unscaled) expression font; _fit() shrinks from here to fit the width.
     this._baseFontPx = parseFloat(getComputedStyle(this.stage).fontSize) || 30;
-    this._fit();            // size the stage to the largest step, scaled to fit the width
-    this._fixMetaSize();    // pin the caption area to the tallest op+justification
+    this._fixMetaSize();    // pin the caption area first so the stage's flex height is known
+    this._fit();            // scale the expression to fit the stage (width; +height in container mode)
     this._renderInto(this.stage, this.data.steps[0].latex);
     this._syncUI();
     this._capOverflow();    // never let the expression spill past the stage
@@ -122,7 +134,14 @@ export class ProofAnimator {
       h = Math.max(h, probe.getBoundingClientRect().height);
     });
     probe.remove();
-    if (h > 0) meta.style.minHeight = Math.ceil(h) + "px";
+    // FIXED height (not min-height): the text zone is locked to the tallest step,
+    // so it never grows/shrinks as captions change between steps and the controls
+    // below it never shift. Both set so a stale min-height can't override.
+    if (h > 0) {
+      const px = Math.ceil(h) + "px";
+      meta.style.height = px;
+      meta.style.minHeight = px;
+    }
   }
 
   // Measure every step at the base font and lock the stage to the max width/
@@ -145,20 +164,30 @@ export class ProofAnimator {
       h = Math.max(h, r.height);
     }
     probe.remove();
-    if (w <= 0) return;
+    if (w <= 0 || h <= 0) return;
     this._maxExprW = w;
-    // Shrink the font so the widest step fits the available width (a tiny gutter
-    // keeps it off the edges). The same scale applies to every step, so there's
+    // Small symmetric gutter so the expression never touches the edges. The SAME
+    // scale applies to every step (computed from the widest/tallest), so there is
     // no per-step zoom jump.
-    const availW = Math.max(40, this.stage.clientWidth - 8);
-    const scale = Math.min(1, availW / w);
+    const PAD = 8;
+    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD);
+    let scale = Math.min(1, availW / w);
+    if (this._fitHeight) {
+      // Container mode: the stage fills a FIXED height (flex remaining after the
+      // text + nav bars). Scale so the tallest step also fits that height; don't
+      // pin the stage height (flex owns it). Result: the animation area is a fixed
+      // size across all steps and the expression never overflows it.
+      const availH = Math.max(20, this.stage.clientHeight - 2 * PAD);
+      scale = Math.min(scale, availH / h);
+    } else {
+      // Report mode: the stage GROWS to the tallest step (pinned, scaled) so it
+      // never jumps between steps; the page scrolls if the card is short.
+      this.stage.style.height = `${Math.ceil(h * scale + 8)}px`;
+    }
     this.stage.style.fontSize = `${this._baseFontPx * scale}px`;
-    // Height is pinned (scaled) so the stage never jumps between steps. The
-    // expression renders into a fixed-width block (the scaled max) that is
-    // centred in the stage with its CONTENT left-aligned (see CSS), so persistent
-    // tokens keep a stable left anchor instead of re-centring — and drifting —
-    // every step.
-    this.stage.style.height = `${Math.ceil(h * scale + 8)}px`;
+    // The expression renders into a fixed-width block (the scaled max) centred in
+    // the stage with its CONTENT left-aligned (see CSS), so persistent tokens keep
+    // a stable left anchor instead of re-centring — and drifting — every step.
     this.stage.style.setProperty("--pa-expr-w", `${Math.ceil(w * scale)}px`);
   }
 
@@ -171,12 +200,20 @@ export class ProofAnimator {
     if (!expr) return;
     const k = expr.querySelector(".katex-display") || expr.querySelector(".katex");
     if (!k) return;
-    const avail = Math.max(40, this.stage.clientWidth - 8);
-    const w = k.getBoundingClientRect().width;
-    if (w > avail + 0.5) {
+    const PAD = 8;
+    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD);
+    const r = k.getBoundingClientRect();
+    // Shrink to whichever axis overflows more. In container mode the stage height
+    // is fixed, so a tall expression must also be capped to it (not just width).
+    let ratio = r.width > availW + 0.5 ? availW / r.width : 1;
+    if (this._fitHeight) {
+      const availH = Math.max(20, this.stage.clientHeight - 2 * PAD);
+      if (r.height > availH + 0.5) ratio = Math.min(ratio, availH / r.height);
+    }
+    if (ratio < 1) {
       const cur = parseFloat(getComputedStyle(this.stage).fontSize) || this._baseFontPx;
-      this.stage.style.fontSize = `${cur * (avail / w)}px`;
-      this.stage.style.setProperty("--pa-expr-w", `${Math.ceil(avail)}px`);
+      this.stage.style.fontSize = `${cur * ratio}px`;
+      this.stage.style.setProperty("--pa-expr-w", `${Math.ceil(r.width * ratio)}px`);
     }
   }
 
@@ -186,11 +223,19 @@ export class ProofAnimator {
   _observeResize() {
     if (this._ro || typeof ResizeObserver === "undefined") return;
     this._lastFitW = this.container.clientWidth;
+    this._lastFitH = this.container.clientHeight;
     this._ro = new ResizeObserver(() => {
       if (this._destroyed) return;
       const w = this.container.clientWidth;
-      if (Math.abs(w - this._lastFitW) < 1) return;   // height-only change → skip
+      const h = this.container.clientHeight;
+      // Width changes always matter. In container mode HEIGHT changes matter too
+      // (the stage's flex height changed → the expression must re-fit it); since
+      // container _fit() never alters the container's own size, this can't loop.
+      const widthChanged = Math.abs(w - this._lastFitW) >= 1;
+      const heightChanged = this._fitHeight && Math.abs(h - this._lastFitH) >= 1;
+      if (!widthChanged && !heightChanged) return;
       this._lastFitW = w;
+      this._lastFitH = h;
       // Debounce: _relayout() re-renders every step via KaTeX in _fit() (expensive),
       // and a live drag-resize fires many events per frame. Coalesce to one
       // relayout per animation frame — same result, far less jank.
@@ -225,12 +270,13 @@ export class ProofAnimator {
   // change), so it doesn't run the fade-out → move → fade-in sequence.
   _relayout() {
     this._cancel();
-    this._fit();
-    this._fixMetaSize();
+    this._fixMetaSize();   // text bar height first → fixes the stage's flex height
+    this._fit();           // then scale the expression to fit the stage (w + h in container mode)
     this._renderInto(this.stage, this.data.steps[this.current].latex);
     this._capOverflow();
     this._fitControls();
     this._updateNextTip();   // truncation depends on width → re-check on resize
+    if (this._onRelayout) { try { this._onRelayout(); } catch (e) {} }
   }
 
   // Tear down the ResizeObserver and any running animations (called when the
