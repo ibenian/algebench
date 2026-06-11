@@ -99,16 +99,18 @@ export class ProofAnimator {
     const op = document.createElement("span"); op.className = "pa-op";
     const just = document.createElement("span"); just.className = "pa-just";
     const next = document.createElement("span"); next.className = "pa-next-pill";
-    // Mirror the live layout when AI ask buttons are present (the op-row's inline
-    // button can make that line taller than the bare text, and the pill grows a
-    // third grid column) so the measured min-height matches.
-    let opHost = op;
+    // Mirror the LIVE markup exactly: .pa-op always lives inside a .pa-op-row
+    // (regardless of AI buttons), so the probe must too — otherwise the measured
+    // min-height wouldn't match and captions/controls could shift between steps.
+    // The inline ask button (taller than the bare text) and the pill's extra grid
+    // column are added only when a factory is present, matching _build.
+    const opHost = document.createElement("div"); opHost.className = "pa-op-row";
+    opHost.append(op);
     if (this._aiAsk) {
       probe.classList.add("pa-has-ask");
       next.classList.add("pa-has-ask");
-      opHost = document.createElement("div"); opHost.className = "pa-op-row";
       const ask = document.createElement("span"); ask.className = "pa-ask-btn pa-ask-current";
-      opHost.append(op, ask);
+      opHost.append(ask);
     }
     probe.append(opHost, just, next);
     this.container.appendChild(probe);

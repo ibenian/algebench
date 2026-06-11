@@ -179,8 +179,12 @@
   border-color: var(--pa-accent);
 }
 .pa-root .pa-ask-btn svg { pointer-events: none; }
-/* Current-step button: inline, right after the explanation text, with a gap. */
-.pa-op-row { display: flex; align-items: center; gap: 8px; }
+/* Current-step button: inline, right after the explanation text, with a gap.
+   max-width + the op's min-width:0 let a long (KaTeX-bearing) caption shrink and
+   wrap in a narrow box instead of overflowing; the op keeps flex-grow:0 so the
+   button stays beside the text rather than being pushed to the far edge. */
+.pa-op-row { display: flex; align-items: center; gap: 8px; max-width: 100%; }
+.pa-op-row .pa-op { min-width: 0; }
 /* Next-step button rides inside the Next pill as a third grid column. */
 .pa-next-pill.pa-has-ask { grid-template-columns: auto minmax(0, max-content) auto; }
 .pa-next-pill .pa-ask-btn {
