@@ -151,21 +151,14 @@ export class SgProofManager {
         entry.box.style.height = `${h}px`;
     }
 
-    // The animator fills the box WIDTH (.sgp-pa is width:100%); its own
-    // responsive ProofAnimator._fit scales the expression to that width while
-    // the caption and controls use the full width (no longer squeezed into a
-    // fixed 360px column). We only zoom DOWN here when the natural height at full
-    // width would overflow the box, so a short box never clips; a tall-enough box
-    // keeps zoom 1 — full width, full-size caption text. The body flex-centers
-    // the result when it's zoomed below full width.
+    // The box CSS (.sgp-pa height:100% + the flex zones) makes the animator fill
+    // the grid cell, and the animator re-fits its own expression on size change
+    // (its ResizeObserver reacts to width AND height in fitHeight mode). We just
+    // force an immediate relayout so resize/dock feels instant instead of waiting
+    // for the animator's debounced observer.
     _fit(entry) {
-        const pa = entry.paWrap;
-        if (!pa) return;
-        pa.style.zoom = 1;
-        const bh = entry.body.clientHeight;
-        if (bh <= 0) return;
-        const natH = pa.offsetHeight || 1;
-        pa.style.zoom = Math.max(0.35, Math.min(1, bh / natH));
+        const a = entry && entry.animator;
+        if (a && typeof a._relayout === 'function') a._relayout();
     }
 
     _updatePositions() {
@@ -306,7 +299,7 @@ export class SgProofManager {
             return;
         }
         entry.state = 'loading';
-        this._renderLoading(entry);
+        this._renderLoading(entry, payload);
         const pill = this._showPill();
         try {
             const data = await invokeExpert('proof_animation', payload, { timeoutMs: DERIVE_TIMEOUT_MS });
@@ -339,7 +332,14 @@ export class SgProofManager {
         entry.body.appendChild(paWrap);
         entry.paWrap = paWrap;
         try {
-            entry.animator = new ProofAnimator(paWrap, data, { katex: this.katex, aiAskButton: makeAiAskButton });
+            // fitHeight: the animator fills this fixed-size box and scales its
+            // expression to fit (the box CSS owns the layout — see .sgp-pa). No
+            // host-side transform, so the nav bar stays anchored to the bottom.
+            entry.animator = new ProofAnimator(paWrap, data, {
+                katex: this.katex,
+                aiAskButton: makeAiAskButton,
+                fitHeight: true,
+            });
         } catch (e) {
             entry.paWrap = null;
             this._renderError(entry, e);
@@ -349,11 +349,29 @@ export class SgProofManager {
         this._updatePositions();
     }
 
-    _renderLoading(entry) {
+    _renderLoading(entry, payload) {
         entry.paWrap = null;
-        entry.body.innerHTML =
-            '<div class="sgp-status"><span class="sgp-dots"><span></span><span></span><span></span></span>'
-            + '<span>Deriving proof…</span></div>';
+        entry.body.innerHTML = '';
+        const wrap = document.createElement('div');
+        wrap.className = 'sgp-status';
+        wrap.innerHTML =
+            '<span class="sgp-dots"><span></span><span></span><span></span></span>';
+        const label = document.createElement('span');
+        label.className = 'sgp-status-label';
+        const target = payload && payload.target_latex;
+        if (target && String(target).trim()) {
+            // Qualify with the expression being derived, e.g. "Deriving $a = …$".
+            label.appendChild(document.createTextNode('Deriving '));
+            const m = document.createElement('span');
+            try { this.katex.render(String(target), m, { throwOnError: false, displayMode: false }); }
+            catch (_e) { m.textContent = String(target); }
+            label.appendChild(m);
+            label.appendChild(document.createTextNode('…'));
+        } else {
+            label.textContent = 'Deriving proof…';
+        }
+        wrap.appendChild(label);
+        entry.body.appendChild(wrap);
     }
 
     _renderError(entry, err, payload) {

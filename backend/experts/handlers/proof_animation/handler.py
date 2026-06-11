@@ -163,8 +163,10 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
         return {"error": f"No derivation found — couldn't get from ${start}$ to ${req.target_latex}$."}
 
     # --- post: render the trajectory into FLIP animation data -------------------
-    # Prefer a human-readable title (proof title) over the raw goal expression.
-    title = (req.title or lm_title or req.goal or "Derivation").strip()
+    # Title priority: an explicit proof/client title, then the model's own display
+    # title for the derivation (returned by the expert), then the LM endpoint title
+    # (only set when we inferred the start), then the raw goal, then a generic name.
+    title = (req.title or traj.title or lm_title or req.goal or "Derivation").strip()
     start_operation = given_label or f"Given ${start}$"
     # A short caption for step 0 — never the goal formula (it renders as raw $…$).
     start_justification = start_note or "the starting expression"

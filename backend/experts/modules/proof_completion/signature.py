@@ -41,6 +41,9 @@ class ProofCompletionSig(dspy.Signature):
       expression. If a transformation is large, split it into as many smaller
       steps as needed. Prefer more small, valid steps over one big jump.
     - The final step's `expr_latex` must equal `target_latex`.
+    - Also give a short `title`: a few plain words naming what the derivation
+      shows (e.g. "Completing the square", "Lorentz time dilation"). It is a
+      human-readable display label, NOT a formula or a restatement of the target.
     """
 
     start_latex: str = dspy.InputField(desc="the starting expression, as LaTeX")
@@ -51,4 +54,8 @@ class ProofCompletionSig(dspy.Signature):
     instruction: str = dspy.InputField(desc="the user's request, may be empty")
     trajectory: ProofTrajectory = dspy.OutputField(
         desc="the ordered derivation steps, each a complete expression, from start to target"
+    )
+    title: str = dspy.OutputField(
+        desc="a short, human-readable display title naming what this derivation shows "
+             "(e.g. 'Completing the square') — plain words, NOT a formula"
     )

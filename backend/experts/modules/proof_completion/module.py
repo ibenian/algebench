@@ -68,4 +68,7 @@ class ProofCompletionExpert(dspy.Module):
         # attach the endpoints so the trajectory is self-contained (not LM output)
         traj.start_latex = start_latex or None
         traj.target_latex = target_latex or None
+        # the model-produced display title travels with the trajectory too
+        # (normalise an empty/whitespace title to None so callers can fall back)
+        traj.title = (pred.title or "").strip() or None
         return [traj]  # the canonical list[Output] (one trajectory)
