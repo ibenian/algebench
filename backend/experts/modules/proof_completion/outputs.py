@@ -163,10 +163,13 @@ class ProofTrajectory(Output):
     ``start_latex`` / ``target_latex`` are the **reconstructed ("proper") LaTeX**
     of the start and target graphs, attached by the expert after inference so the
     trajectory is self-contained (the endpoints it derived between travel with
-    it). They are NOT produced by the model.
+    it). They are NOT produced by the model. ``title`` IS model-produced — a short
+    display name for the derivation, bound onto the trajectory by the expert so it
+    travels with it (Optional; older data / non-titled callers leave it None).
     """
 
     kind: Literal["proof_trajectory"] = "proof_trajectory"
     start_latex: Optional[str] = None
     target_latex: Optional[str] = None
+    title: Optional[str] = None
     steps: List[DerivationStep] = Field(default_factory=list)

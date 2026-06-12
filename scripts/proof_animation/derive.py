@@ -93,6 +93,11 @@ def main() -> int:
         print("the expert returned no steps.")
         return 1
 
+    # Prefer the model's own derivation title over the prompt/endpoint fallback
+    # (an explicit --title still wins).
+    if not args.title and traj.title:
+        title = traj.title
+
     anim = ProofAnimation(title=title, domain=domain, trajectory=traj,
                           start_operation=start_operation, start_justification=start_justification)
 

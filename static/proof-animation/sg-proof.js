@@ -10,6 +10,7 @@
 import { ProofAnimator } from '/proof-animation/proof-animation.js';
 import { invokeExpert } from '/expert-client.js';
 import { nextDockSeq } from '/proof-animation/dock-seq.js';
+import { makeAiAskButton } from '/labels.js';
 
 // Session-persistent cache of derivation results, keyed by the FULL request
 // shape (everything that affects the derivation — target/start/domain plus
@@ -123,8 +124,7 @@ export class SgProofManager {
         this._resizeObserver = new ResizeObserver(() => {
             // Grid steps depend on the card size — re-snap every box, then refit.
             for (const entry of this.boxes.values()) {
-                this._applyGridSize(entry);
-                this._fit(entry);
+                this._applyGridSize(entry);   // animator re-fits via its own ResizeObserver
             }
             this._updatePositions();
         });
@@ -150,22 +150,13 @@ export class SgProofManager {
         entry.box.style.height = `${h}px`;
     }
 
-    // The animator fills the box WIDTH (.sgp-pa is width:100%); its own
-    // responsive ProofAnimator._fit scales the expression to that width while
-    // the caption and controls use the full width (no longer squeezed into a
-    // fixed 360px column). We only zoom DOWN here when the natural height at full
-    // width would overflow the box, so a short box never clips; a tall-enough box
-    // keeps zoom 1 — full width, full-size caption text. The body flex-centers
-    // the result when it's zoomed below full width.
-    _fit(entry) {
-        const pa = entry.paWrap;
-        if (!pa) return;
-        pa.style.zoom = 1;
-        const bh = entry.body.clientHeight;
-        if (bh <= 0) return;
-        const natH = pa.offsetHeight || 1;
-        pa.style.zoom = Math.max(0.35, Math.min(1, bh / natH));
-    }
+    // NOTE: there is no host-side re-fit. The box CSS (.sgp-pa height:100% + the
+    // flex zones) makes the animator fill the grid cell, and resizing the box
+    // (via _applyGridSize) changes the animator's container size, which its OWN
+    // ResizeObserver picks up (it reacts to width AND height in fitHeight mode)
+    // and re-fits — debounced to one relayout per frame. Triggering _relayout from
+    // here too would double the (expensive) KaTeX re-measure and, on a drag, fire
+    // it un-debounced many times per frame.
 
     _updatePositions() {
         const rect = this._card().getBoundingClientRect();
@@ -305,7 +296,7 @@ export class SgProofManager {
             return;
         }
         entry.state = 'loading';
-        this._renderLoading(entry);
+        this._renderLoading(entry, payload);
         const pill = this._showPill();
         try {
             const data = await invokeExpert('proof_animation', payload, { timeoutMs: DERIVE_TIMEOUT_MS });
@@ -330,29 +321,54 @@ export class SgProofManager {
             this._renderError(entry, new Error('The derivation produced no steps.'));
             return;
         }
-        // Mount into a full-width wrapper (.sgp-pa is width:100%): the animator
-        // fills the box width and its responsive _fit scales the expression to
-        // it; _fit() here only zooms down if the height would overflow.
+        // Mount into a wrapper that fills the box (.sgp-pa is width/height:100%):
+        // the animator's fitHeight mode scales the expression to fit the box.
         const paWrap = document.createElement('div');
         paWrap.className = 'sgp-pa';
         entry.body.appendChild(paWrap);
         entry.paWrap = paWrap;
         try {
-            entry.animator = new ProofAnimator(paWrap, data, { katex: this.katex });
+            // fitHeight: the animator fills this fixed-size box and scales its
+            // expression to fit (the box CSS owns the layout — see .sgp-pa). No
+            // host-side transform, so the nav bar stays anchored to the bottom.
+            entry.animator = new ProofAnimator(paWrap, data, {
+                katex: this.katex,
+                aiAskButton: makeAiAskButton,
+                fitHeight: true,
+            });
         } catch (e) {
             entry.paWrap = null;
             this._renderError(entry, e);
             return;
         }
-        this._fit(entry);
+        // No re-fit here: the ProofAnimator constructor already fit itself, and any
+        // later size change is handled by its own ResizeObserver.
         this._updatePositions();
     }
 
-    _renderLoading(entry) {
+    _renderLoading(entry, payload) {
         entry.paWrap = null;
-        entry.body.innerHTML =
-            '<div class="sgp-status"><span class="sgp-dots"><span></span><span></span><span></span></span>'
-            + '<span>Deriving proof…</span></div>';
+        entry.body.innerHTML = '';
+        const wrap = document.createElement('div');
+        wrap.className = 'sgp-status';
+        wrap.innerHTML =
+            '<span class="sgp-dots"><span></span><span></span><span></span></span>';
+        const label = document.createElement('span');
+        label.className = 'sgp-status-label';
+        const target = payload && payload.target_latex;
+        if (target && String(target).trim()) {
+            // Qualify with the expression being derived, e.g. "Deriving $a = …$".
+            label.appendChild(document.createTextNode('Deriving '));
+            const m = document.createElement('span');
+            try { this.katex.render(String(target), m, { throwOnError: false, displayMode: false }); }
+            catch (_e) { m.textContent = String(target); }
+            label.appendChild(m);
+            label.appendChild(document.createTextNode('…'));
+        } else {
+            label.textContent = 'Deriving proof…';
+        }
+        wrap.appendChild(label);
+        entry.body.appendChild(wrap);
     }
 
     _renderError(entry, err, payload) {
@@ -435,8 +451,7 @@ export class SgProofManager {
             if (col !== entry.colSpan || row !== entry.rowSpan) {
                 entry.colSpan = col;
                 entry.rowSpan = row;
-                this._applyGridSize(entry);
-                this._fit(entry);
+                this._applyGridSize(entry);   // animator re-fits via its own ResizeObserver
                 if (!entry.docked) this._updatePositions();
             }
         };
@@ -481,8 +496,7 @@ export class SgProofManager {
         entry.box.style.top = '';
         entry.box.style.zIndex = '';
         this._sharedPinnedPanel().appendChild(entry.box);
-        this._applyGridSize(entry);
-        this._fit(entry);
+        this._applyGridSize(entry);   // animator re-fits via its own ResizeObserver
         if (entry.dockBtn) { entry.dockBtn.classList.add('sgc-pin-active'); entry.dockBtn.title = 'Unpin from overlay'; }
     }
 
@@ -492,8 +506,7 @@ export class SgProofManager {
         this._card().appendChild(entry.box);
         entry.box.style.position = 'absolute';
         entry.box.style.zIndex = String(++this._z);
-        this._applyGridSize(entry);
-        this._fit(entry);
+        this._applyGridSize(entry);   // animator re-fits via its own ResizeObserver
         if (entry.dockBtn) { entry.dockBtn.classList.remove('sgc-pin-active'); entry.dockBtn.title = 'Pin to overlay'; }
         this._updatePositions();    // re-anchor from stored graphX/graphY
     }
