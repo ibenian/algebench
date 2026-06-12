@@ -50,6 +50,13 @@
       "port": 5736
     },
     {
+      "name": "landing-page",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "5760", "--directory", "docs/landing-page"],
+      "port": 5760,
+      "autoPort": false
+    },
+    {
       "name": "sg-report",
       "runtimeExecutable": "./scripts/serve_sg_report.sh",
       "runtimeArgs": ["--port", "5740"],
