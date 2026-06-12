@@ -49,6 +49,23 @@ export class ProofAnimator {
     this.data = data;
     this.katex = opts.katex || (typeof window !== "undefined" && window.katex);
     if (!this.katex) throw new Error("ProofAnimator: KaTeX not available");
+    // Optional AI-ask integration: a factory (className, title, getMessage) →
+    // <button>. The app passes labels.js makeAiAskButton; the standalone report
+    // has no chat panel and omits it — no factory, no buttons rendered.
+    this._aiAsk = opts.aiAskButton || null;
+    this._nextAskBtn = null;
+    // Optional host hook fired after every internal relayout (resize / fonts), so
+    // a host that scales this widget to fit a box (SgProofManager) can re-fit AFTER
+    // our fixed zone heights are final — otherwise its scale races our relayout and
+    // ends up stale (content overflows / positions shift on the next step).
+    this._onRelayout = typeof opts.onRelayout === "function" ? opts.onRelayout : null;
+    // Container-fit mode (set by a host that gives the widget a FIXED-size box,
+    // e.g. SgProofManager's grid cell): the stage fills the height the box leaves
+    // after the fixed text + nav bars, and the expression is scaled to fit that
+    // box (width AND height) instead of the stage growing to the expression. The
+    // standalone report leaves this false — there the stage grows to the tallest
+    // step and the page scrolls.
+    this._fitHeight = !!opts.fitHeight;
     this.mode = opts.mode || "parallel";    // 'parallel' | 'sequential'
     // Base timings; the speed multiplier scales them live via animation.playbackRate.
     this._baseDuration = opts.duration ?? 650;
@@ -68,8 +85,8 @@ export class ProofAnimator {
     this._build();
     // Base (unscaled) expression font; _fit() shrinks from here to fit the width.
     this._baseFontPx = parseFloat(getComputedStyle(this.stage).fontSize) || 30;
-    this._fit();            // size the stage to the largest step, scaled to fit the width
-    this._fixMetaSize();    // pin the caption area to the tallest op+justification
+    this._fixMetaSize();    // pin the caption area first so the stage's flex height is known
+    this._fit();            // scale the expression to fit the stage (width; +height in container mode)
     this._renderInto(this.stage, this.data.steps[0].latex);
     this._syncUI();
     this._capOverflow();    // never let the expression spill past the stage
@@ -94,7 +111,20 @@ export class ProofAnimator {
     const op = document.createElement("span"); op.className = "pa-op";
     const just = document.createElement("span"); just.className = "pa-just";
     const next = document.createElement("span"); next.className = "pa-next-pill";
-    probe.append(op, just, next);
+    // Mirror the LIVE markup exactly: .pa-op always lives inside a .pa-op-row
+    // (regardless of AI buttons), so the probe must too — otherwise the measured
+    // min-height wouldn't match and captions/controls could shift between steps.
+    // The inline ask button (taller than the bare text) and the pill's extra grid
+    // column are added only when a factory is present, matching _build.
+    const opHost = document.createElement("div"); opHost.className = "pa-op-row";
+    opHost.append(op);
+    if (this._aiAsk) {
+      probe.classList.add("pa-has-ask");
+      next.classList.add("pa-has-ask");
+      const ask = document.createElement("span"); ask.className = "pa-ask-btn pa-ask-current";
+      opHost.append(ask);
+    }
+    probe.append(opHost, just, next);
     this.container.appendChild(probe);
     let h = 0;
     this.data.steps.forEach((s, i) => {
@@ -104,7 +134,14 @@ export class ProofAnimator {
       h = Math.max(h, probe.getBoundingClientRect().height);
     });
     probe.remove();
-    if (h > 0) meta.style.minHeight = Math.ceil(h) + "px";
+    // FIXED height (not min-height): the text zone is locked to the tallest step,
+    // so it never grows/shrinks as captions change between steps and the controls
+    // below it never shift. Both set so a stale min-height can't override.
+    if (h > 0) {
+      const px = Math.ceil(h) + "px";
+      meta.style.height = px;
+      meta.style.minHeight = px;
+    }
   }
 
   // Measure every step at the base font and lock the stage to the max width/
@@ -127,20 +164,30 @@ export class ProofAnimator {
       h = Math.max(h, r.height);
     }
     probe.remove();
-    if (w <= 0) return;
+    if (w <= 0 || h <= 0) return;
     this._maxExprW = w;
-    // Shrink the font so the widest step fits the available width (a tiny gutter
-    // keeps it off the edges). The same scale applies to every step, so there's
+    // Small symmetric gutter so the expression never touches the edges. The SAME
+    // scale applies to every step (computed from the widest/tallest), so there is
     // no per-step zoom jump.
-    const availW = Math.max(40, this.stage.clientWidth - 8);
-    const scale = Math.min(1, availW / w);
+    const PAD = 8;
+    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD);
+    let scale = Math.min(1, availW / w);
+    if (this._fitHeight) {
+      // Container mode: the stage fills a FIXED height (flex remaining after the
+      // text + nav bars). Scale so the tallest step also fits that height; don't
+      // pin the stage height (flex owns it). Result: the animation area is a fixed
+      // size across all steps and the expression never overflows it.
+      const availH = Math.max(20, this.stage.clientHeight - 2 * PAD);
+      scale = Math.min(scale, availH / h);
+    } else {
+      // Report mode: the stage GROWS to the tallest step (pinned, scaled) so it
+      // never jumps between steps; the page scrolls if the card is short.
+      this.stage.style.height = `${Math.ceil(h * scale + 8)}px`;
+    }
     this.stage.style.fontSize = `${this._baseFontPx * scale}px`;
-    // Height is pinned (scaled) so the stage never jumps between steps. The
-    // expression renders into a fixed-width block (the scaled max) that is
-    // centred in the stage with its CONTENT left-aligned (see CSS), so persistent
-    // tokens keep a stable left anchor instead of re-centring — and drifting —
-    // every step.
-    this.stage.style.height = `${Math.ceil(h * scale + 8)}px`;
+    // The expression renders into a fixed-width block (the scaled max) centred in
+    // the stage with its CONTENT left-aligned (see CSS), so persistent tokens keep
+    // a stable left anchor instead of re-centring — and drifting — every step.
     this.stage.style.setProperty("--pa-expr-w", `${Math.ceil(w * scale)}px`);
   }
 
@@ -153,12 +200,20 @@ export class ProofAnimator {
     if (!expr) return;
     const k = expr.querySelector(".katex-display") || expr.querySelector(".katex");
     if (!k) return;
-    const avail = Math.max(40, this.stage.clientWidth - 8);
-    const w = k.getBoundingClientRect().width;
-    if (w > avail + 0.5) {
+    const PAD = 8;
+    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD);
+    const r = k.getBoundingClientRect();
+    // Shrink to whichever axis overflows more. In container mode the stage height
+    // is fixed, so a tall expression must also be capped to it (not just width).
+    let ratio = r.width > availW + 0.5 ? availW / r.width : 1;
+    if (this._fitHeight) {
+      const availH = Math.max(20, this.stage.clientHeight - 2 * PAD);
+      if (r.height > availH + 0.5) ratio = Math.min(ratio, availH / r.height);
+    }
+    if (ratio < 1) {
       const cur = parseFloat(getComputedStyle(this.stage).fontSize) || this._baseFontPx;
-      this.stage.style.fontSize = `${cur * (avail / w)}px`;
-      this.stage.style.setProperty("--pa-expr-w", `${Math.ceil(avail)}px`);
+      this.stage.style.fontSize = `${cur * ratio}px`;
+      this.stage.style.setProperty("--pa-expr-w", `${Math.ceil(r.width * ratio)}px`);
     }
   }
 
@@ -168,11 +223,19 @@ export class ProofAnimator {
   _observeResize() {
     if (this._ro || typeof ResizeObserver === "undefined") return;
     this._lastFitW = this.container.clientWidth;
+    this._lastFitH = this.container.clientHeight;
     this._ro = new ResizeObserver(() => {
       if (this._destroyed) return;
       const w = this.container.clientWidth;
-      if (Math.abs(w - this._lastFitW) < 1) return;   // height-only change → skip
+      const h = this.container.clientHeight;
+      // Width changes always matter. In container mode HEIGHT changes matter too
+      // (the stage's flex height changed → the expression must re-fit it); since
+      // container _fit() never alters the container's own size, this can't loop.
+      const widthChanged = Math.abs(w - this._lastFitW) >= 1;
+      const heightChanged = this._fitHeight && Math.abs(h - this._lastFitH) >= 1;
+      if (!widthChanged && !heightChanged) return;
       this._lastFitW = w;
+      this._lastFitH = h;
       // Debounce: _relayout() re-renders every step via KaTeX in _fit() (expensive),
       // and a live drag-resize fires many events per frame. Coalesce to one
       // relayout per animation frame — same result, far less jank.
@@ -207,12 +270,13 @@ export class ProofAnimator {
   // change), so it doesn't run the fade-out → move → fade-in sequence.
   _relayout() {
     this._cancel();
-    this._fit();
-    this._fixMetaSize();
+    this._fixMetaSize();   // text bar height first → fixes the stage's flex height
+    this._fit();           // then scale the expression to fit the stage (w + h in container mode)
     this._renderInto(this.stage, this.data.steps[this.current].latex);
     this._capOverflow();
     this._fitControls();
     this._updateNextTip();   // truncation depends on width → re-check on resize
+    if (this._onRelayout) { try { this._onRelayout(); } catch (e) {} }
   }
 
   // Tear down the ResizeObserver and any running animations (called when the
@@ -251,7 +315,7 @@ export class ProofAnimator {
     this.container.classList.add("pa-root");
     this.container.innerHTML = `
       <div class="pa-stage" aria-live="polite"></div>
-      <div class="pa-meta"><span class="pa-op"></span><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
+      <div class="pa-meta"><div class="pa-op-row"><span class="pa-op"></span></div><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
       <div class="pa-controls">
         <button type="button" class="pa-btn pa-prev" data-tip="Previous step" aria-label="Previous step">◀</button>
         <div class="pa-steps"></div>
@@ -277,10 +341,27 @@ export class ProofAnimator {
     this.container.querySelector(".pa-next").onclick = () => this._userGoTo(this.current + 1);
     // The "Next" pill acts like the next button.
     const nextPill = this.container.querySelector(".pa-next-pill");
+    this._nextPillEl = nextPill;
     nextPill.onclick = () => this._userGoTo(this.current + 1);
     nextPill.onkeydown = (e) => {
+      if (e.target !== nextPill) return;   // e.g. Enter on the AI ask button inside
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); this._userGoTo(this.current + 1); }
     };
+    // AI ask buttons (app-provided factory only — see constructor).
+    if (this._aiAsk) {
+      const meta = this.container.querySelector(".pa-meta");
+      meta.classList.add("pa-has-ask");
+      // Current-step button sits inline right after the explanation text (in the
+      // op-row), so it reads as "ask about THIS step" rather than floating loose.
+      meta.querySelector(".pa-op-row").appendChild(
+        this._aiAsk("pa-ask-btn pa-ask-current", "Ask AI about this step",
+          () => this._askCurrentMessage()));
+      // The next-step button lives INSIDE the pill (re-attached by _setNextPill on
+      // every step), so the pill's hide-on-last-step and promote fade cover it too.
+      this._nextAskBtn = this._aiAsk("pa-ask-btn pa-ask-next", "Predict the next step with AI",
+        () => this._askNextMessage());
+      nextPill.classList.add("pa-has-ask");
+    }
     this.container.querySelector(".pa-play").onclick = () => this._togglePlay();
     this.container.querySelector(".pa-speed").onclick = () => {
       this._speedIdx = (this._speedIdx + 1) % SPEEDS.length;
@@ -1064,6 +1145,47 @@ export class ProofAnimator {
     const n = this.data.steps[idx + 1];
     return n ? (n.operation || `state ${idx + 1}`) : null;
   }
+
+  // Clean LaTeX for a step's expression — `plain` is the id-free render the
+  // server emits alongside the annotated `latex`; fall back to the raw input.
+  _stepExpr(idx) {
+    const s = this.data.steps[idx];
+    return s.plain || s.input_latex || s.latex || "";
+  }
+
+  // Chat message for the "ask about the current step" button.
+  _askCurrentMessage() {
+    const i = this.current;
+    const s = this.data.steps[i];
+    let msg = `I'm looking at step ${i} of the derivation`
+      + (this.data.title ? ` "${this.data.title}"` : "") + `:\n$$${this._stepExpr(i)}$$`;
+    if (s.operation) msg += `\nOperation: ${s.operation}`;
+    if (s.justification) msg += `\nJustification: ${s.justification}`;
+    msg += `\nCan you explain this step — what it does and why it's valid?`;
+    return msg;
+  }
+
+  // Chat message for the "predict the next step" button — predict-before-reveal:
+  // give the AI the next operation/justification as context, but ask it to coach
+  // the learner to the resulting expression instead of just stating it. The next
+  // expression itself is deliberately NOT included (the message is visible in the
+  // chat, so including it would spoil the reveal).
+  _askNextMessage() {
+    const i = this.current;
+    const n = this.data.steps[i + 1];
+    let msg = `I'm working through the derivation`
+      + (this.data.title ? ` "${this.data.title}"` : "")
+      + ` and the current expression (step ${i}) is:\n$$${this._stepExpr(i)}$$`;
+    if (n) {
+      msg += `\nThe next step is "${n.operation || `state ${i + 1}`}"`;
+      if (n.justification) msg += ` (justification: ${n.justification})`;
+      msg += `.`;
+    }
+    msg += `\nBefore revealing the resulting expression, help me predict it myself:`
+      + ` ask me what this operation does to the expression and why it's justified,`
+      + ` let me attempt the result, and only then confirm or correct it.`;
+    return msg;
+  }
   // Meta "promote" animation for a forward (next) step: the current explanation
   // and justification fade OUT, and the title shown in the "Next" pill slides UP
   // into the title position to become the new explanation. Returns a finish()
@@ -1173,6 +1295,12 @@ export class ProofAnimator {
     body.className = "pa-next-body";
     this._caption(body, txt);
     el.append(label, body);
+    // Re-attach the AI ask button (the innerHTML reset above detached it). The
+    // offscreen measuring probe in _fixMetaSize gets a listener-less clone so the
+    // live button is never moved into — and destroyed with — the probe.
+    if (this._nextAskBtn) {
+      el.appendChild(el === this._nextPillEl ? this._nextAskBtn : this._nextAskBtn.cloneNode(true));
+    }
     this._updateNextTip(el);
   }
 
