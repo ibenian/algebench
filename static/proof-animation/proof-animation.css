@@ -224,7 +224,11 @@
   border-top: 1px solid var(--pa-border);
   padding-top: 12px;
 }
-.pa-steps { display: flex; gap: 6px; min-width: 0; }
+/* Never shrink: the row is nowrap, and _fitControls() measures children's
+   offsetWidth to decide when to compact. If the steps box (or its buttons) could
+   shrink, that measurement would under-report the true width and miss the point
+   where the step numbers should be hidden. */
+.pa-steps { display: flex; gap: 6px; flex-shrink: 0; }
 /* When the controls row can't fit, _fitControls() adds .pa-compact and the
    numbered step buttons are hidden — only prev / next / play / speed / mode
    remain (navigate with the arrows). */
@@ -233,6 +237,7 @@
 .pa-btn, .pa-step {
   font: inherit;
   cursor: pointer;
+  flex-shrink: 0;          /* keep _fitControls' width measurement accurate (see .pa-steps) */
   border: 1px solid var(--pa-border);
   background: var(--pa-bg);
   color: var(--pa-fg);
@@ -284,8 +289,8 @@
    SgProofManager dock. The box REUSES the chart classes (.sgc-chart-box,
    .sgc-chart-header, .sgc-btn, .sgc-resize-handle, .sgc-pinned) so borders and
    buttons are identical to the charts; only these proof-specific rules remain:
-   the body lays out the animator, which is rendered at a fixed width and
-   `transform: scale()`-d to fit the grid box.
+   the body hosts the animator, which fills the box (fitHeight mode) and scales
+   its expression to fit — no whole-widget transform scaling.
    ─────────────────────────────────────────────────────────────────────────── */
 .sgp-proof-box {
     display: flex;
@@ -411,3 +416,8 @@
     padding-left: 2px;
     padding-right: 2px;
 }
+/* Once compacted (a narrow box — the step numbers are already hidden), tighten
+   the remaining controls so the essential buttons fit instead of overflowing:
+   smaller gap and a content-width Play button (drop its fixed 6em). */
+.sgp-proof-box .pa-controls.pa-compact { gap: 4px; }
+.sgp-proof-box .pa-controls.pa-compact .pa-play { width: auto; }

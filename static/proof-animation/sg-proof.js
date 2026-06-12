@@ -124,8 +124,7 @@ export class SgProofManager {
         this._resizeObserver = new ResizeObserver(() => {
             // Grid steps depend on the card size — re-snap every box, then refit.
             for (const entry of this.boxes.values()) {
-                this._applyGridSize(entry);
-                this._fit(entry);
+                this._applyGridSize(entry);   // animator re-fits via its own ResizeObserver
             }
             this._updatePositions();
         });
@@ -151,15 +150,13 @@ export class SgProofManager {
         entry.box.style.height = `${h}px`;
     }
 
-    // The box CSS (.sgp-pa height:100% + the flex zones) makes the animator fill
-    // the grid cell, and the animator re-fits its own expression on size change
-    // (its ResizeObserver reacts to width AND height in fitHeight mode). We just
-    // force an immediate relayout so resize/dock feels instant instead of waiting
-    // for the animator's debounced observer.
-    _fit(entry) {
-        const a = entry && entry.animator;
-        if (a && typeof a._relayout === 'function') a._relayout();
-    }
+    // NOTE: there is no host-side re-fit. The box CSS (.sgp-pa height:100% + the
+    // flex zones) makes the animator fill the grid cell, and resizing the box
+    // (via _applyGridSize) changes the animator's container size, which its OWN
+    // ResizeObserver picks up (it reacts to width AND height in fitHeight mode)
+    // and re-fits — debounced to one relayout per frame. Triggering _relayout from
+    // here too would double the (expensive) KaTeX re-measure and, on a drag, fire
+    // it un-debounced many times per frame.
 
     _updatePositions() {
         const rect = this._card().getBoundingClientRect();
@@ -324,9 +321,8 @@ export class SgProofManager {
             this._renderError(entry, new Error('The derivation produced no steps.'));
             return;
         }
-        // Mount into a full-width wrapper (.sgp-pa is width:100%): the animator
-        // fills the box width and its responsive _fit scales the expression to
-        // it; _fit() here only zooms down if the height would overflow.
+        // Mount into a wrapper that fills the box (.sgp-pa is width/height:100%):
+        // the animator's fitHeight mode scales the expression to fit the box.
         const paWrap = document.createElement('div');
         paWrap.className = 'sgp-pa';
         entry.body.appendChild(paWrap);
@@ -345,7 +341,8 @@ export class SgProofManager {
             this._renderError(entry, e);
             return;
         }
-        this._fit(entry);
+        // No re-fit here: the ProofAnimator constructor already fit itself, and any
+        // later size change is handled by its own ResizeObserver.
         this._updatePositions();
     }
 
@@ -454,8 +451,7 @@ export class SgProofManager {
             if (col !== entry.colSpan || row !== entry.rowSpan) {
                 entry.colSpan = col;
                 entry.rowSpan = row;
-                this._applyGridSize(entry);
-                this._fit(entry);
+                this._applyGridSize(entry);   // animator re-fits via its own ResizeObserver
                 if (!entry.docked) this._updatePositions();
             }
         };
@@ -500,8 +496,7 @@ export class SgProofManager {
         entry.box.style.top = '';
         entry.box.style.zIndex = '';
         this._sharedPinnedPanel().appendChild(entry.box);
-        this._applyGridSize(entry);
-        this._fit(entry);
+        this._applyGridSize(entry);   // animator re-fits via its own ResizeObserver
         if (entry.dockBtn) { entry.dockBtn.classList.add('sgc-pin-active'); entry.dockBtn.title = 'Unpin from overlay'; }
     }
 
@@ -511,8 +506,7 @@ export class SgProofManager {
         this._card().appendChild(entry.box);
         entry.box.style.position = 'absolute';
         entry.box.style.zIndex = String(++this._z);
-        this._applyGridSize(entry);
-        this._fit(entry);
+        this._applyGridSize(entry);   // animator re-fits via its own ResizeObserver
         if (entry.dockBtn) { entry.dockBtn.classList.remove('sgc-pin-active'); entry.dockBtn.title = 'Pin to overlay'; }
         this._updatePositions();    // re-anchor from stored graphX/graphY
     }
