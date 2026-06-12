@@ -418,11 +418,11 @@ export GEMINI_API_KEY=your_key_here
         <p class="opt-sub">No clone, no Python setup &mdash; just Docker. Runs the prebuilt image from the Hugging Face Space registry.</p>
         <div class="code-block">
           <button class="copy-btn" type="button">Copy</button>
-          <pre><code>docker run -it -p 7860:7860 --platform=linux/amd64 \
+          <pre><code>docker run -it --pull=always -p 7860:7860 --platform=linux/amd64 \
   -e GEMINI_API_KEY="your_key_here" \
-  registry.hf.space/ibenian-algebench:cpu-3fdcb6b</code></pre>
+  registry.hf.space/ibenian-algebench:latest</code></pre>
         </div>
-        <p class="run-note">Then open <a href="http://localhost:7860" target="_blank" rel="noopener">localhost:7860</a> in your browser. <code>--platform=linux/amd64</code> is needed on Apple Silicon and other ARM hosts.</p>
+        <p class="run-note">Then open <a href="http://localhost:7860" target="_blank" rel="noopener">localhost:7860</a> in your browser. <code>--pull=always</code> fetches the newest build; <code>--platform=linux/amd64</code> is needed on Apple Silicon and other ARM hosts.</p>
       </div>
     </div>
   </section>

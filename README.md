@@ -110,17 +110,16 @@ No clone, no Python setup — run the prebuilt AlgeBench image from the Hugging
 Face Space registry and pass **your own** `GEMINI_API_KEY`:
 
 ```bash
-docker run -it -p 7860:7860 --platform=linux/amd64 \
+docker run -it --pull=always -p 7860:7860 --platform=linux/amd64 \
 	-e GEMINI_API_KEY="your_key_here" \
-	registry.hf.space/ibenian-algebench:cpu-3fdcb6b
+	registry.hf.space/ibenian-algebench:latest
 ```
 
 Open [http://localhost:7860](http://localhost:7860) in your browser.
 
-> `--platform=linux/amd64` is needed on Apple Silicon and other ARM hosts since
-> the Space image is built for `amd64`. The image tag (`cpu-3fdcb6b`) pins a
-> specific build — check the [Space](https://huggingface.co/spaces/ibenian/algebench)
-> for the latest tag.
+> `--pull=always` ensures you get the newest published build (Docker otherwise
+> reuses a cached `:latest`). `--platform=linux/amd64` is needed on Apple Silicon
+> and other ARM hosts since the Space image is built for `amd64`.
 
 To map a different host port, change the left side of `-p` (e.g. `-p 9000:7860`)
 and open that port instead.
