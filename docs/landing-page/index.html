@@ -200,6 +200,7 @@
   }
   .copy-btn:hover { border-color: #58a6ff; color: #e6edf3; }
   .copy-btn.copied { color: #3fb950; border-color: #238636; background: #122117; }
+  .copy-btn.failed { color: #d29922; border-color: #9e6a03; background: #21160a; }
 
   /* ── Videos ── */
   .more-videos-grid {
@@ -525,8 +526,10 @@ export GEMINI_API_KEY=your_key_here
       ta.style.opacity = '0';
       document.body.appendChild(ta);
       ta.select();
-      try { document.execCommand('copy'); resolve(); }
-      catch (e) { reject(e); }
+      try {
+        var ok = document.execCommand('copy');
+        if (ok) { resolve(); } else { reject(new Error('copy command rejected')); }
+      } catch (e) { reject(e); }
       finally { document.body.removeChild(ta); }
     });
   }
@@ -535,13 +538,18 @@ export GEMINI_API_KEY=your_key_here
     btn.addEventListener('click', function () {
       var code = btn.parentElement.querySelector('code');
       var text = code ? code.innerText : '';
+      var original = btn.getAttribute('data-label') || btn.textContent;
+      btn.setAttribute('data-label', original);
       copyText(text).then(function () {
-        var original = btn.textContent;
         btn.textContent = 'Copied';
         btn.classList.add('copied');
+      }).catch(function () {
+        btn.textContent = 'Press Ctrl+C';
+        btn.classList.add('failed');
+      }).finally(function () {
         setTimeout(function () {
           btn.textContent = original;
-          btn.classList.remove('copied');
+          btn.classList.remove('copied', 'failed');
         }, 1600);
       });
     });
