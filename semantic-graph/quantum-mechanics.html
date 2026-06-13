@@ -1026,7 +1026,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-06-13 03:02 UTC &middot; theme: default-dark &middot; 16 expressions</div>
+<div class="report-meta">Generated 2026-06-13 23:38 UTC &middot; theme: default-dark &middot; 16 expressions</div>
 <div class="section-title">Quantum Mechanics (16 expressions)</div>
 <div class="row">
   <div>
@@ -4714,15 +4714,22 @@ svg.d3-semantic-graph {
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   n["$n$"]:::scalar
+  __num_3["$0$"]:::number
+  __const_4["$\infty$"]:::constant
+  __equals_5{"="}:::relation
   __sum_2(("$\sum_{n}$")):::operator
-  __outer_product_3(("$\otimes$")):::operator
-  __ket_4["$\left|n\right\rangle$"]
-  __bra_5["$\left\langle n\right|$"]
+  __outer_product_6(("$\otimes$")):::operator
+  __ket_7["$\left|n\right\rangle$"]
+  __bra_8["$\left\langle n\right|$"]
   I["$I$"]:::scalar
   n --&gt;|wrt| __sum_2
-  __ket_4 --&gt;|lhs| __outer_product_3
-  __bra_5 --&gt;|rhs| __outer_product_3
-  __outer_product_3 --&gt; __sum_2
+  n --&gt; __equals_5
+  __num_3 --&gt; __equals_5
+  __equals_5 --&gt;|lb| __sum_2
+  __const_4 --&gt;|ub| __sum_2
+  __ket_7 --&gt;|lhs| __outer_product_6
+  __bra_8 --&gt;|rhs| __outer_product_6
+  __outer_product_6 --&gt; __sum_2
   __sum_2 --&gt; __equals_1
   I --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -4731,6 +4738,10 @@ svg.d3-semantic-graph {
   linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -4745,7 +4756,13 @@ svg.d3-semantic-graph {
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "\\sum_n | n \\rangle \\langle n | = I"
+      "subexpr": "\\sum_{n=0}^{\\infty} | n \\rangle \\langle n | = I",
+      "chartScript": {
+        "script": "-I + Sum(|n&gt;&lt;n|, (n, 0, Number.POSITIVE_INFINITY))",
+        "variables": [
+          "I"
+        ]
+      }
     },
     {
       "id": "n",
@@ -4760,14 +4777,53 @@ svg.d3-semantic-graph {
       }
     },
     {
+      "id": "__num_3",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "__const_4",
+      "type": "constant",
+      "label": "infinity",
+      "latex": "\\infty",
+      "subexpr": "\\infty",
+      "chartScript": {
+        "script": "Number.POSITIVE_INFINITY",
+        "variables": []
+      }
+    },
+    {
+      "id": "__equals_5",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "n = 0",
+      "chartScript": {
+        "script": "n",
+        "variables": [
+          "n"
+        ]
+      }
+    },
+    {
       "id": "__sum_2",
       "type": "operator",
       "op": "sum",
       "with_respect_to": "n",
-      "subexpr": "\\sum_{n} {\\left|n\\right\\rangle }{\\left\\langle n\\right|}"
+      "lower_bound": "__num_3",
+      "upper_bound": "__const_4",
+      "subexpr": "\\sum_{n=0}^{\\infty} {\\left|n\\right\\rangle }{\\left\\langle n\\right|}",
+      "chartScript": {
+        "script": "Sum(|n&gt;&lt;n|, (n, 0, Number.POSITIVE_INFINITY))",
+        "variables": []
+      }
     },
     {
-      "id": "__outer_product_3",
+      "id": "__outer_product_6",
       "type": "operator",
       "latex": "\\otimes",
       "op": "outer_product",
@@ -4780,7 +4836,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__ket_4",
+      "id": "__ket_7",
       "type": "ket",
       "latex": "\\left|n\\right\\rangle",
       "subexpr": "\\left|n\\right\\rangle",
@@ -4792,7 +4848,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__bra_5",
+      "id": "__bra_8",
       "type": "bra",
       "latex": "\\left\\langle n\\right|",
       "subexpr": "\\left\\langle n\\right|",
@@ -4823,17 +4879,35 @@ svg.d3-semantic-graph {
       "role": "wrt"
     },
     {
-      "from": "__ket_4",
-      "to": "__outer_product_3",
+      "from": "n",
+      "to": "__equals_5"
+    },
+    {
+      "from": "__num_3",
+      "to": "__equals_5"
+    },
+    {
+      "from": "__equals_5",
+      "to": "__sum_2",
+      "role": "lb"
+    },
+    {
+      "from": "__const_4",
+      "to": "__sum_2",
+      "role": "ub"
+    },
+    {
+      "from": "__ket_7",
+      "to": "__outer_product_6",
       "role": "lhs"
     },
     {
-      "from": "__bra_5",
-      "to": "__outer_product_3",
+      "from": "__bra_8",
+      "to": "__outer_product_6",
       "role": "rhs"
     },
     {
-      "from": "__outer_product_3",
+      "from": "__outer_product_6",
       "to": "__sum_2"
     },
     {
@@ -4863,15 +4937,22 @@ svg.d3-semantic-graph {
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   n["$n$"]:::scalar
+  __num_3["$0$"]:::number
+  __const_4["$\infty$"]:::constant
+  __equals_5{"="}:::relation
   __sum_2(("$\sum_{n}$")):::operator
-  __outer_product_3(("$\otimes$")):::operator
-  __ket_4["$\left|n\right\rangle$"]
-  __bra_5["$\left\langle n\right|$"]
+  __outer_product_6(("$\otimes$")):::operator
+  __ket_7["$\left|n\right\rangle$"]
+  __bra_8["$\left\langle n\right|$"]
   I["$I$"]:::scalar
   n --&gt;|wrt| __sum_2
-  __ket_4 --&gt;|lhs| __outer_product_3
-  __bra_5 --&gt;|rhs| __outer_product_3
-  __outer_product_3 --&gt; __sum_2
+  n --&gt; __equals_5
+  __num_3 --&gt; __equals_5
+  __equals_5 --&gt;|lb| __sum_2
+  __const_4 --&gt;|ub| __sum_2
+  __ket_7 --&gt;|lhs| __outer_product_6
+  __bra_8 --&gt;|rhs| __outer_product_6
+  __outer_product_6 --&gt; __sum_2
   __sum_2 --&gt; __equals_1
   I --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
@@ -4880,8 +4961,12 @@ svg.d3-semantic-graph {
   linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\sum_n | n \\rangle \\langle n | = I&quot;},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;n&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__sum_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;sum&quot;,&quot;with_respect_to&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;\\sum_{n} {\\left|n\\right\\rangle }{\\left\\langle n\\right|}&quot;},{&quot;id&quot;:&quot;__outer_product_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\otimes&quot;,&quot;op&quot;:&quot;outer_product&quot;,&quot;subexpr&quot;:&quot;\\left|n\\right\\rangle\\left\\langle n\\right|&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;|n&gt;&lt;n|&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__ket_4&quot;,&quot;type&quot;:&quot;ket&quot;,&quot;latex&quot;:&quot;\\left|n\\right\\rangle&quot;,&quot;subexpr&quot;:&quot;\\left|n\\right\\rangle&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;|n&gt;&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__bra_5&quot;,&quot;type&quot;:&quot;bra&quot;,&quot;latex&quot;:&quot;\\left\\langle n\\right|&quot;,&quot;subexpr&quot;:&quot;\\left\\langle n\\right|&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;&lt;n|&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;I&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;I&quot;,&quot;subexpr&quot;:&quot;I&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;I&quot;,&quot;variables&quot;:[&quot;I&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__sum_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__ket_4&quot;,&quot;to&quot;:&quot;__outer_product_3&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;__bra_5&quot;,&quot;to&quot;:&quot;__outer_product_3&quot;,&quot;role&quot;:&quot;rhs&quot;},{&quot;from&quot;:&quot;__outer_product_3&quot;,&quot;to&quot;:&quot;__sum_2&quot;},{&quot;from&quot;:&quot;__sum_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;I&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\sum_{n=0}^{\\infty} | n \\rangle \\langle n | = I&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-I + Sum(|n&gt;&lt;n|, (n, 0, Number.POSITIVE_INFINITY))&quot;,&quot;variables&quot;:[&quot;I&quot;]}},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;n&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__num_3&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__const_4&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;infinity&quot;,&quot;latex&quot;:&quot;\\infty&quot;,&quot;subexpr&quot;:&quot;\\infty&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Number.POSITIVE_INFINITY&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__equals_5&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;n = 0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;n&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__sum_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;sum&quot;,&quot;with_respect_to&quot;:&quot;n&quot;,&quot;lower_bound&quot;:&quot;__num_3&quot;,&quot;upper_bound&quot;:&quot;__const_4&quot;,&quot;subexpr&quot;:&quot;\\sum_{n=0}^{\\infty} {\\left|n\\right\\rangle }{\\left\\langle n\\right|}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Sum(|n&gt;&lt;n|, (n, 0, Number.POSITIVE_INFINITY))&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__outer_product_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\otimes&quot;,&quot;op&quot;:&quot;outer_product&quot;,&quot;subexpr&quot;:&quot;\\left|n\\right\\rangle\\left\\langle n\\right|&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;|n&gt;&lt;n|&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__ket_7&quot;,&quot;type&quot;:&quot;ket&quot;,&quot;latex&quot;:&quot;\\left|n\\right\\rangle&quot;,&quot;subexpr&quot;:&quot;\\left|n\\right\\rangle&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;|n&gt;&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__bra_8&quot;,&quot;type&quot;:&quot;bra&quot;,&quot;latex&quot;:&quot;\\left\\langle n\\right|&quot;,&quot;subexpr&quot;:&quot;\\left\\langle n\\right|&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;&lt;n|&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;I&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;I&quot;,&quot;subexpr&quot;:&quot;I&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;I&quot;,&quot;variables&quot;:[&quot;I&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__sum_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__equals_5&quot;},{&quot;from&quot;:&quot;__num_3&quot;,&quot;to&quot;:&quot;__equals_5&quot;},{&quot;from&quot;:&quot;__equals_5&quot;,&quot;to&quot;:&quot;__sum_2&quot;,&quot;role&quot;:&quot;lb&quot;},{&quot;from&quot;:&quot;__const_4&quot;,&quot;to&quot;:&quot;__sum_2&quot;,&quot;role&quot;:&quot;ub&quot;},{&quot;from&quot;:&quot;__ket_7&quot;,&quot;to&quot;:&quot;__outer_product_6&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;__bra_8&quot;,&quot;to&quot;:&quot;__outer_product_6&quot;,&quot;role&quot;:&quot;rhs&quot;},{&quot;from&quot;:&quot;__outer_product_6&quot;,&quot;to&quot;:&quot;__sum_2&quot;},{&quot;from&quot;:&quot;__sum_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;I&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="summary">✅ <span class="count">16</span> rendered, <span class="count">0</span> errors out of <span class="count">16</span> expressions</div>
 <script>

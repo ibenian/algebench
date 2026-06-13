@@ -1026,7 +1026,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-06-13 03:02 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="report-meta">Generated 2026-06-13 23:38 UTC &middot; theme: default-dark &middot; 10 expressions</div>
 <div class="section-title">Complex Analysis (10 expressions)</div>
 <div class="row">
   <div>
@@ -2730,7 +2730,7 @@ svg.d3-semantic-graph {
   __multiply_7(("$\times$")):::operator
   i["$i$"]:::scalar
   __sum_8(("$\sum$")):::operator
-  __Res_9{{"$Res(\cdot, \cdot)$"}}:::function
+  Res_9{{"$\text{Res}(\cdot, \cdot)$"}}:::function
   f["$f$"]:::scalar
   z_k["$z_{k}$"]:::scalar
   z --&gt;|wrt| __closed_integral_2
@@ -2740,9 +2740,9 @@ svg.d3-semantic-graph {
   __num_5 --&gt; __multiply_4
   pi --&gt; __multiply_6
   i --&gt; __multiply_7
-  f --&gt; __Res_9
-  z_k --&gt; __Res_9
-  __Res_9 --&gt; __sum_8
+  f --&gt; Res_9
+  z_k --&gt; Res_9
+  Res_9 --&gt; __sum_8
   __sum_8 --&gt; __multiply_7
   __multiply_7 --&gt; __multiply_6
   __multiply_6 --&gt; __multiply_4
@@ -2775,13 +2775,16 @@ svg.d3-semantic-graph {
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "\\oint f(z) dz = 2\\pi i \\sum \\text{Res}(f, z_k)",
+      "subexpr": "\\oint f(z) dz = 2\\pi i \\sum_{\\iota=0}^{\\infty} \\text{Res}(f, z_k)",
       "chartScript": {
-        "script": "dz*oint*f(z) - 2*pi*i",
+        "script": "-Number.POSITIVE_INFINITY*R*i*s*text + dz*oint*f(z)",
         "variables": [
+          "R",
           "dz",
           "i",
           "oint",
+          "s",
+          "text",
           "z"
         ]
       }
@@ -2900,9 +2903,10 @@ svg.d3-semantic-graph {
       "subexpr": "\\sum \\text{Res}{\\left(f,z_{k} \\right)}"
     },
     {
-      "id": "__Res_9",
+      "id": "Res_9",
       "type": "function",
-      "op": "Res",
+      "latex": "\\text{Res}",
+      "op": "alpha",
       "subexpr": "\\text{Res}{\\left(f,z_{k} \\right)}",
       "chartScript": {
         "script": "e*R*s*text",
@@ -2976,14 +2980,14 @@ svg.d3-semantic-graph {
     },
     {
       "from": "f",
-      "to": "__Res_9"
+      "to": "Res_9"
     },
     {
       "from": "z_k",
-      "to": "__Res_9"
+      "to": "Res_9"
     },
     {
-      "from": "__Res_9",
+      "from": "Res_9",
       "to": "__sum_8"
     },
     {
@@ -3035,7 +3039,7 @@ svg.d3-semantic-graph {
   __multiply_7(("$\times$")):::operator
   i["$i$"]:::scalar
   __sum_8(("$\sum$")):::operator
-  __Res_9{{"$Res(\cdot, \cdot)$"}}:::function
+  Res_9{{"$\text{Res}(\cdot, \cdot)$"}}:::function
   f["$f$"]:::scalar
   z_k["$z_{k}$"]:::scalar
   z --&gt;|wrt| __closed_integral_2
@@ -3045,9 +3049,9 @@ svg.d3-semantic-graph {
   __num_5 --&gt; __multiply_4
   pi --&gt; __multiply_6
   i --&gt; __multiply_7
-  f --&gt; __Res_9
-  z_k --&gt; __Res_9
-  __Res_9 --&gt; __sum_8
+  f --&gt; Res_9
+  z_k --&gt; Res_9
+  Res_9 --&gt; __sum_8
   __sum_8 --&gt; __multiply_7
   __multiply_7 --&gt; __multiply_6
   __multiply_6 --&gt; __multiply_4
@@ -3067,7 +3071,7 @@ svg.d3-semantic-graph {
   linkStyle 12 stroke:#ef5350,stroke-width:3px
   linkStyle 13 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\oint f(z) dz = 2\\pi i \\sum \\text{Res}(f, z_k)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dz*oint*f(z) - 2*pi*i&quot;,&quot;variables&quot;:[&quot;dz&quot;,&quot;i&quot;,&quot;oint&quot;,&quot;z&quot;]}},{&quot;id&quot;:&quot;z&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;z&quot;,&quot;subexpr&quot;:&quot;z&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;z&quot;,&quot;variables&quot;:[&quot;z&quot;]}},{&quot;id&quot;:&quot;__closed_integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;closed_integral&quot;,&quot;with_respect_to&quot;:&quot;z&quot;,&quot;subexpr&quot;:&quot;\\int f{\\left(z \\right)}\\, dz&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)*f*pow(z, 2)&quot;,&quot;variables&quot;:[&quot;f&quot;,&quot;z&quot;]}},{&quot;id&quot;:&quot;__f_3&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(z \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;f*z&quot;,&quot;variables&quot;:[&quot;f&quot;,&quot;z&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;2 \\pi i \\sum \\text{Res}{\\left(f,z_{k} \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2*pi*i&quot;,&quot;variables&quot;:[&quot;i&quot;]}},{&quot;id&quot;:&quot;__num_5&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\pi i \\sum \\text{Res}{\\left(f,z_{k} \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi*i&quot;,&quot;variables&quot;:[&quot;i&quot;]}},{&quot;id&quot;:&quot;pi&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;latex&quot;:&quot;\\pi&quot;,&quot;subexpr&quot;:&quot;\\pi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;i \\sum \\text{Res}{\\left(f,z_{k} \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;i&quot;,&quot;variables&quot;:[&quot;i&quot;]}},{&quot;id&quot;:&quot;i&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;i&quot;,&quot;subexpr&quot;:&quot;i&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;i&quot;,&quot;variables&quot;:[&quot;i&quot;]}},{&quot;id&quot;:&quot;__sum_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;sum&quot;,&quot;subexpr&quot;:&quot;\\sum \\text{Res}{\\left(f,z_{k} \\right)}&quot;},{&quot;id&quot;:&quot;__Res_9&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;Res&quot;,&quot;subexpr&quot;:&quot;\\text{Res}{\\left(f,z_{k} \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;e*R*s*text&quot;,&quot;variables&quot;:[&quot;R&quot;,&quot;s&quot;,&quot;text&quot;]}},{&quot;id&quot;:&quot;f&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;f&quot;,&quot;variables&quot;:[&quot;f&quot;]}},{&quot;id&quot;:&quot;z_k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;z_{k}&quot;,&quot;subexpr&quot;:&quot;z_{k}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;z_k&quot;,&quot;variables&quot;:[&quot;z_k&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__f_3&quot;},{&quot;from&quot;:&quot;__f_3&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;},{&quot;from&quot;:&quot;__closed_integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;pi&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;i&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;f&quot;,&quot;to&quot;:&quot;__Res_9&quot;},{&quot;from&quot;:&quot;z_k&quot;,&quot;to&quot;:&quot;__Res_9&quot;},{&quot;from&quot;:&quot;__Res_9&quot;,&quot;to&quot;:&quot;__sum_8&quot;},{&quot;from&quot;:&quot;__sum_8&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\oint f(z) dz = 2\\pi i \\sum_{\\iota=0}^{\\infty} \\text{Res}(f, z_k)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-Number.POSITIVE_INFINITY*R*i*s*text + dz*oint*f(z)&quot;,&quot;variables&quot;:[&quot;R&quot;,&quot;dz&quot;,&quot;i&quot;,&quot;oint&quot;,&quot;s&quot;,&quot;text&quot;,&quot;z&quot;]}},{&quot;id&quot;:&quot;z&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;z&quot;,&quot;subexpr&quot;:&quot;z&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;z&quot;,&quot;variables&quot;:[&quot;z&quot;]}},{&quot;id&quot;:&quot;__closed_integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;closed_integral&quot;,&quot;with_respect_to&quot;:&quot;z&quot;,&quot;subexpr&quot;:&quot;\\int f{\\left(z \\right)}\\, dz&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)*f*pow(z, 2)&quot;,&quot;variables&quot;:[&quot;f&quot;,&quot;z&quot;]}},{&quot;id&quot;:&quot;__f_3&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(z \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;f*z&quot;,&quot;variables&quot;:[&quot;f&quot;,&quot;z&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;2 \\pi i \\sum \\text{Res}{\\left(f,z_{k} \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2*pi*i&quot;,&quot;variables&quot;:[&quot;i&quot;]}},{&quot;id&quot;:&quot;__num_5&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\pi i \\sum \\text{Res}{\\left(f,z_{k} \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi*i&quot;,&quot;variables&quot;:[&quot;i&quot;]}},{&quot;id&quot;:&quot;pi&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;latex&quot;:&quot;\\pi&quot;,&quot;subexpr&quot;:&quot;\\pi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;i \\sum \\text{Res}{\\left(f,z_{k} \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;i&quot;,&quot;variables&quot;:[&quot;i&quot;]}},{&quot;id&quot;:&quot;i&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;i&quot;,&quot;subexpr&quot;:&quot;i&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;i&quot;,&quot;variables&quot;:[&quot;i&quot;]}},{&quot;id&quot;:&quot;__sum_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;sum&quot;,&quot;subexpr&quot;:&quot;\\sum \\text{Res}{\\left(f,z_{k} \\right)}&quot;},{&quot;id&quot;:&quot;Res_9&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\text{Res}&quot;,&quot;op&quot;:&quot;alpha&quot;,&quot;subexpr&quot;:&quot;\\text{Res}{\\left(f,z_{k} \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;e*R*s*text&quot;,&quot;variables&quot;:[&quot;R&quot;,&quot;s&quot;,&quot;text&quot;]}},{&quot;id&quot;:&quot;f&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;f&quot;,&quot;variables&quot;:[&quot;f&quot;]}},{&quot;id&quot;:&quot;z_k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;z_{k}&quot;,&quot;subexpr&quot;:&quot;z_{k}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;z_k&quot;,&quot;variables&quot;:[&quot;z_k&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__f_3&quot;},{&quot;from&quot;:&quot;__f_3&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;},{&quot;from&quot;:&quot;__closed_integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;pi&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;i&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;f&quot;,&quot;to&quot;:&quot;Res_9&quot;},{&quot;from&quot;:&quot;z_k&quot;,&quot;to&quot;:&quot;Res_9&quot;},{&quot;from&quot;:&quot;Res_9&quot;,&quot;to&quot;:&quot;__sum_8&quot;},{&quot;from&quot;:&quot;__sum_8&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>

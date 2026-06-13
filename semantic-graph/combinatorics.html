@@ -1026,7 +1026,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-06-13 03:02 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="report-meta">Generated 2026-06-13 23:38 UTC &middot; theme: default-dark &middot; 10 expressions</div>
 <div class="section-title">Combinatorics (10 expressions)</div>
 <div class="row">
   <div>
@@ -1829,48 +1829,48 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __factorial_1(("$(\cdot)!$")):::operator
+  __equals_1{"="}:::relation
+  __factorial_2(("$(\cdot)!$")):::operator
   n["$n$"]:::scalar
-  __multiply_2(("$\times$")):::operator
-  __power_3(("${(\cdot)}^{1/2}$")):::operator
-  __multiply_4(("$\times$")):::operator
-  __num_5["$2$"]:::number
-  __multiply_6(("$\times$")):::operator
+  __multiply_3(("$\times$")):::operator
+  __power_4(("${(\cdot)}^{1/2}$")):::operator
+  __multiply_5(("$\times$")):::operator
+  __num_6["$2$"]:::number
+  __multiply_7(("$\times$")):::operator
   pi["$\pi$"]:::constant
-  __power_7(("$(\cdot)^{\cdot}$")):::operator
-  __multiply_8(("$\times$")):::operator
-  __power_9(("$\dfrac{1}{(\cdot)}$")):::operator
+  __power_8(("$(\cdot)^{\cdot}$")):::operator
+  __multiply_9(("$\times$")):::operator
+  __power_10(("$\dfrac{1}{(\cdot)}$")):::operator
   e["$e$"]:::scalar
-  __approximately_10{"≈"}:::relation
-  n --&gt; __factorial_1
-  __num_5 --&gt; __multiply_4
-  pi --&gt; __multiply_6
-  n --&gt; __multiply_6
-  __multiply_6 --&gt; __multiply_4
-  __multiply_4 --&gt; __power_3
-  __power_3 --&gt; __multiply_2
-  n --&gt; __multiply_8
-  e --&gt; __power_9
-  __power_9 -.-&gt; __multiply_8
-  __multiply_8 --&gt; __power_7
-  n --&gt;|exp| __power_7
-  __power_7 --&gt; __multiply_2
-  __factorial_1 --&gt; __approximately_10
-  __multiply_2 --&gt; __approximately_10
+  n --&gt; __factorial_2
+  __factorial_2 --&gt; __equals_1
+  __num_6 --&gt; __multiply_5
+  pi --&gt; __multiply_7
+  n --&gt; __multiply_7
+  __multiply_7 --&gt; __multiply_5
+  __multiply_5 --&gt; __power_4
+  __power_4 --&gt; __multiply_3
+  n --&gt; __multiply_9
+  e --&gt; __power_10
+  __power_10 -.-&gt; __multiply_9
+  __multiply_9 --&gt; __power_8
+  n --&gt;|exp| __power_8
+  __power_8 --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#ef5350,stroke-width:3px
   linkStyle 3 stroke:#ef5350,stroke-width:3px
   linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#42a5f5,stroke-width:1px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#42a5f5,stroke-width:1px
   linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#ef5350,stroke-width:3px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#ef5350,stroke-width:3px
   linkStyle 14 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
@@ -1883,7 +1883,19 @@ svg.d3-semantic-graph {
   <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
-      "id": "__factorial_1",
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "n! = \\sqrt{2\\pi n} \\left(\\frac{n}{e}\\right)^n",
+      "chartScript": {
+        "script": "-sqrt(2)*sqrt(pi)*sqrt(n)*pow(n*exp(-1), n) + factorial(n)",
+        "variables": [
+          "n"
+        ]
+      }
+    },
+    {
+      "id": "__factorial_2",
       "type": "operator",
       "op": "factorial",
       "subexpr": "n!",
@@ -1907,10 +1919,10 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__multiply_2",
+      "id": "__multiply_3",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\sqrt{2\\pi n} \\left(\\frac{n}{e}\\right)^n",
+      "subexpr": "\\sqrt{2 n \\pi} \\left(\\frac{n}{e}\\right)^{n}",
       "chartScript": {
         "script": "sqrt(2)*sqrt(pi)*sqrt(n)*pow(n*exp(-1), n)",
         "variables": [
@@ -1919,7 +1931,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_3",
+      "id": "__power_4",
       "type": "operator",
       "op": "power",
       "exponent": "1/2",
@@ -1932,7 +1944,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__multiply_4",
+      "id": "__multiply_5",
       "type": "operator",
       "op": "multiply",
       "subexpr": "2 n \\pi",
@@ -1944,7 +1956,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__num_5",
+      "id": "__num_6",
       "type": "number",
       "label": "2",
       "subexpr": "2",
@@ -1954,7 +1966,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__multiply_6",
+      "id": "__multiply_7",
       "type": "operator",
       "op": "multiply",
       "subexpr": "n \\pi",
@@ -1976,7 +1988,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_7",
+      "id": "__power_8",
       "type": "operator",
       "op": "power",
       "subexpr": "\\left(\\frac{n}{e}\\right)^{n}",
@@ -1988,7 +2000,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__multiply_8",
+      "id": "__multiply_9",
       "type": "operator",
       "op": "multiply",
       "subexpr": "n \\frac{1}{e}",
@@ -2000,7 +2012,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_9",
+      "id": "__power_10",
       "type": "operator",
       "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
@@ -2020,98 +2032,83 @@ svg.d3-semantic-graph {
         "script": "e",
         "variables": []
       }
-    },
-    {
-      "id": "__approximately_10",
-      "type": "relation",
-      "label": "approximately equal",
-      "emoji": "≈",
-      "op": "approximately",
-      "subexpr": "n! \\approx \\sqrt{2\\pi n} \\left(\\frac{n}{e}\\right)^n",
-      "chartScript": {
-        "script": "sqrt(2)*sqrt(pi)*approx*sqrt(n)*pow(n*exp(-1), n)*factorial(n)",
-        "variables": [
-          "approx",
-          "n"
-        ]
-      }
     }
   ],
   "edges": [
     {
       "from": "n",
-      "to": "__factorial_1"
+      "to": "__factorial_2"
     },
     {
-      "from": "__num_5",
-      "to": "__multiply_4",
+      "from": "__factorial_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "__num_6",
+      "to": "__multiply_5",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "pi",
-      "to": "__multiply_6",
+      "to": "__multiply_7",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "n",
-      "to": "__multiply_6",
+      "to": "__multiply_7",
       "semantic": "direct",
       "weight": 1.0
     },
     {
-      "from": "__multiply_6",
-      "to": "__multiply_4",
+      "from": "__multiply_7",
+      "to": "__multiply_5",
       "semantic": "direct",
       "weight": 1.0
     },
     {
-      "from": "__multiply_4",
-      "to": "__power_3"
+      "from": "__multiply_5",
+      "to": "__power_4"
     },
     {
-      "from": "__power_3",
-      "to": "__multiply_2",
+      "from": "__power_4",
+      "to": "__multiply_3",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "n",
-      "to": "__multiply_8",
+      "to": "__multiply_9",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "e",
-      "to": "__power_9"
+      "to": "__power_10"
     },
     {
-      "from": "__power_9",
-      "to": "__multiply_8"
+      "from": "__power_10",
+      "to": "__multiply_9"
     },
     {
-      "from": "__multiply_8",
-      "to": "__power_7"
+      "from": "__multiply_9",
+      "to": "__power_8"
     },
     {
       "from": "n",
-      "to": "__power_7",
+      "to": "__power_8",
       "role": "exp"
     },
     {
-      "from": "__power_7",
-      "to": "__multiply_2",
+      "from": "__power_8",
+      "to": "__multiply_3",
       "semantic": "direct",
       "weight": 1.0
     },
     {
-      "from": "__factorial_1",
-      "to": "__approximately_10"
-    },
-    {
-      "from": "__multiply_2",
-      "to": "__approximately_10"
+      "from": "__multiply_3",
+      "to": "__equals_1"
     }
   ],
   "classification": {
@@ -2129,51 +2126,51 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __factorial_1(("$(\cdot)!$")):::operator
+  __equals_1{"="}:::relation
+  __factorial_2(("$(\cdot)!$")):::operator
   n["$n$"]:::scalar
-  __multiply_2(("$\times$")):::operator
-  __power_3(("${(\cdot)}^{1/2}$")):::operator
-  __multiply_4(("$\times$")):::operator
-  __num_5["$2$"]:::number
-  __multiply_6(("$\times$")):::operator
+  __multiply_3(("$\times$")):::operator
+  __power_4(("${(\cdot)}^{1/2}$")):::operator
+  __multiply_5(("$\times$")):::operator
+  __num_6["$2$"]:::number
+  __multiply_7(("$\times$")):::operator
   pi["$\pi$"]:::constant
-  __power_7(("$(\cdot)^{\cdot}$")):::operator
-  __multiply_8(("$\times$")):::operator
-  __power_9(("$\dfrac{1}{(\cdot)}$")):::operator
+  __power_8(("$(\cdot)^{\cdot}$")):::operator
+  __multiply_9(("$\times$")):::operator
+  __power_10(("$\dfrac{1}{(\cdot)}$")):::operator
   e["$e$"]:::scalar
-  __approximately_10{"≈"}:::relation
-  n --&gt; __factorial_1
-  __num_5 --&gt; __multiply_4
-  pi --&gt; __multiply_6
-  n --&gt; __multiply_6
-  __multiply_6 --&gt; __multiply_4
-  __multiply_4 --&gt; __power_3
-  __power_3 --&gt; __multiply_2
-  n --&gt; __multiply_8
-  e --&gt; __power_9
-  __power_9 -.-&gt; __multiply_8
-  __multiply_8 --&gt; __power_7
-  n --&gt;|exp| __power_7
-  __power_7 --&gt; __multiply_2
-  __factorial_1 --&gt; __approximately_10
-  __multiply_2 --&gt; __approximately_10
+  n --&gt; __factorial_2
+  __factorial_2 --&gt; __equals_1
+  __num_6 --&gt; __multiply_5
+  pi --&gt; __multiply_7
+  n --&gt; __multiply_7
+  __multiply_7 --&gt; __multiply_5
+  __multiply_5 --&gt; __power_4
+  __power_4 --&gt; __multiply_3
+  n --&gt; __multiply_9
+  e --&gt; __power_10
+  __power_10 -.-&gt; __multiply_9
+  __multiply_9 --&gt; __power_8
+  n --&gt;|exp| __power_8
+  __power_8 --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#ef5350,stroke-width:3px
   linkStyle 3 stroke:#ef5350,stroke-width:3px
   linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#42a5f5,stroke-width:1px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#42a5f5,stroke-width:1px
   linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#ef5350,stroke-width:3px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#ef5350,stroke-width:3px
   linkStyle 14 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__factorial_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;factorial&quot;,&quot;subexpr&quot;:&quot;n!&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;factorial(n)&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;n&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\sqrt{2\\pi n} \\left(\\frac{n}{e}\\right)^n&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sqrt(2)*sqrt(pi)*sqrt(n)*pow(n*exp(-1), n)&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;1/2&quot;,&quot;subexpr&quot;:&quot;\\sqrt{2 n \\pi}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sqrt(2)*sqrt(pi)*sqrt(n)&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;2 n \\pi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2*pi*n&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__num_5&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;n \\pi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi*n&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;pi&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;latex&quot;:&quot;\\pi&quot;,&quot;subexpr&quot;:&quot;\\pi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__power_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\left(\\frac{n}{e}\\right)^{n}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(n*exp(-1), n)&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__multiply_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;n \\frac{1}{e}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;n*exp(-1)&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__power_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{e}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;exp(-1)&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;e&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__approximately_10&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;label&quot;:&quot;approximately equal&quot;,&quot;emoji&quot;:&quot;≈&quot;,&quot;op&quot;:&quot;approximately&quot;,&quot;subexpr&quot;:&quot;n! \\approx \\sqrt{2\\pi n} \\left(\\frac{n}{e}\\right)^n&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sqrt(2)*sqrt(pi)*approx*sqrt(n)*pow(n*exp(-1), n)*factorial(n)&quot;,&quot;variables&quot;:[&quot;approx&quot;,&quot;n&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__factorial_1&quot;},{&quot;from&quot;:&quot;__num_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;pi&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_9&quot;},{&quot;from&quot;:&quot;__power_9&quot;,&quot;to&quot;:&quot;__multiply_8&quot;},{&quot;from&quot;:&quot;__multiply_8&quot;,&quot;to&quot;:&quot;__power_7&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__power_7&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_7&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__factorial_1&quot;,&quot;to&quot;:&quot;__approximately_10&quot;},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__approximately_10&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;n! = \\sqrt{2\\pi n} \\left(\\frac{n}{e}\\right)^n&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-sqrt(2)*sqrt(pi)*sqrt(n)*pow(n*exp(-1), n) + factorial(n)&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__factorial_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;factorial&quot;,&quot;subexpr&quot;:&quot;n!&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;factorial(n)&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;n&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\sqrt{2 n \\pi} \\left(\\frac{n}{e}\\right)^{n}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sqrt(2)*sqrt(pi)*sqrt(n)*pow(n*exp(-1), n)&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;1/2&quot;,&quot;subexpr&quot;:&quot;\\sqrt{2 n \\pi}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sqrt(2)*sqrt(pi)*sqrt(n)&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;2 n \\pi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2*pi*n&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__num_6&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;n \\pi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi*n&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;pi&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;latex&quot;:&quot;\\pi&quot;,&quot;subexpr&quot;:&quot;\\pi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\left(\\frac{n}{e}\\right)^{n}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(n*exp(-1), n)&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__multiply_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;n \\frac{1}{e}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;n*exp(-1)&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__power_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{e}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;exp(-1)&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;e&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__factorial_2&quot;},{&quot;from&quot;:&quot;__factorial_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;pi&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__multiply_9&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_10&quot;},{&quot;from&quot;:&quot;__power_10&quot;,&quot;to&quot;:&quot;__multiply_9&quot;},{&quot;from&quot;:&quot;__multiply_9&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__power_8&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>

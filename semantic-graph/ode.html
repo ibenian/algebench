@@ -1026,7 +1026,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-06-13 03:02 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="report-meta">Generated 2026-06-13 23:38 UTC &middot; theme: default-dark &middot; 10 expressions</div>
 <div class="section-title">ODE (10 expressions)</div>
 <div class="row">
   <div>
@@ -2410,7 +2410,7 @@ svg.d3-semantic-graph {
   m["$m$"]:::scalar
   x["$x$"]:::scalar
   t["$t$"]:::scalar
-  __deriv_5(("$\dfrac{d^{2}}{d t^{2}}$")):::operator
+  __deriv_5(("$\dfrac{d}{d t}$")):::operator
   __multiply_6(("$\times$")):::operator
   c["$c$"]:::scalar
   __deriv_7(("$\dfrac{d}{d t}$")):::operator
@@ -2463,15 +2463,11 @@ svg.d3-semantic-graph {
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "m \\ddot{x} + c \\dot{x} + k x = 0",
+      "subexpr": "m \\frac{d}{d t} \\frac{d}{d t} x + c \\frac{d}{d t} x + k x = 0",
       "chartScript": {
-        "script": "c*dot*x + ddot*m*x + k*x",
+        "script": "k*x",
         "variables": [
-          "c",
-          "ddot",
-          "dot",
           "k",
-          "m",
           "x"
         ]
       }
@@ -2480,12 +2476,11 @@ svg.d3-semantic-graph {
       "id": "__add_2",
       "type": "operator",
       "op": "add",
-      "subexpr": "x k + m \\frac{d^{2}}{d t^{2}} x + c \\frac{d}{d t} x",
+      "subexpr": "x k + m \\ddot{x} + c \\frac{d}{d t} x",
       "chartScript": {
-        "script": "pow(d, 2)*m*x/pow(dt, 2) + k*x",
+        "script": "ddot*m*x + k*x",
         "variables": [
-          "d",
-          "dt",
+          "ddot",
           "k",
           "m",
           "x"
@@ -2496,12 +2491,11 @@ svg.d3-semantic-graph {
       "id": "__add_3",
       "type": "operator",
       "op": "add",
-      "subexpr": "m \\frac{d^{2}}{d t^{2}} x + c \\frac{d}{d t} x",
+      "subexpr": "m \\ddot{x} + c \\frac{d}{d t} x",
       "chartScript": {
-        "script": "pow(d, 2)*m*x/pow(dt, 2)",
+        "script": "ddot*m*x",
         "variables": [
-          "d",
-          "dt",
+          "ddot",
           "m",
           "x"
         ]
@@ -2511,12 +2505,11 @@ svg.d3-semantic-graph {
       "id": "__multiply_4",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "m \\frac{d^{2}}{d t^{2}} x",
+      "subexpr": "m \\ddot{x}",
       "chartScript": {
-        "script": "pow(d, 2)*m*x/pow(dt, 2)",
+        "script": "ddot*m*x",
         "variables": [
-          "d",
-          "dt",
+          "ddot",
           "m",
           "x"
         ]
@@ -2563,12 +2556,11 @@ svg.d3-semantic-graph {
       "type": "operator",
       "op": "derivative",
       "with_respect_to": "t",
-      "subexpr": "\\frac{d^{2}}{d t^{2}} x",
+      "subexpr": "\\ddot{x}",
       "chartScript": {
-        "script": "pow(d, 2)*x/pow(dt, 2)",
+        "script": "ddot*x",
         "variables": [
-          "d",
-          "dt",
+          "ddot",
           "x"
         ]
       }
@@ -2759,7 +2751,7 @@ svg.d3-semantic-graph {
   m["$m$"]:::scalar
   x["$x$"]:::scalar
   t["$t$"]:::scalar
-  __deriv_5(("$\dfrac{d^{2}}{d t^{2}}$")):::operator
+  __deriv_5(("$\dfrac{d}{d t}$")):::operator
   __multiply_6(("$\times$")):::operator
   c["$c$"]:::scalar
   __deriv_7(("$\dfrac{d}{d t}$")):::operator
@@ -2799,7 +2791,7 @@ svg.d3-semantic-graph {
   linkStyle 14 stroke:#aaa,stroke-width:2px
   linkStyle 15 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;m \\ddot{x} + c \\dot{x} + k x = 0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c*dot*x + ddot*m*x + k*x&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;ddot&quot;,&quot;dot&quot;,&quot;k&quot;,&quot;m&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;x k + m \\frac{d^{2}}{d t^{2}} x + c \\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(d, 2)*m*x/pow(dt, 2) + k*x&quot;,&quot;variables&quot;:[&quot;d&quot;,&quot;dt&quot;,&quot;k&quot;,&quot;m&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;m \\frac{d^{2}}{d t^{2}} x + c \\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(d, 2)*m*x/pow(dt, 2)&quot;,&quot;variables&quot;:[&quot;d&quot;,&quot;dt&quot;,&quot;m&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;m \\frac{d^{2}}{d t^{2}} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(d, 2)*m*x/pow(dt, 2)&quot;,&quot;variables&quot;:[&quot;d&quot;,&quot;dt&quot;,&quot;m&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;m&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;m&quot;,&quot;subexpr&quot;:&quot;m&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;m&quot;,&quot;variables&quot;:[&quot;m&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}},{&quot;id&quot;:&quot;__deriv_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\frac{d^{2}}{d t^{2}} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(d, 2)*x/pow(dt, 2)&quot;,&quot;variables&quot;:[&quot;d&quot;,&quot;dt&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;c \\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;__deriv_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;x k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k*x&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;__num_9&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;m&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_5&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_5&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_7&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_7&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_8&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_9&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:2,&quot;dependent_variables&quot;:[&quot;x&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;factorable&quot;,&quot;nth_linear_constant_coeff_homogeneous&quot;,&quot;2nd_power_series_ordinary&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:true}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;m \\frac{d}{d t} \\frac{d}{d t} x + c \\frac{d}{d t} x + k x = 0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k*x&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;x k + m \\ddot{x} + c \\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;ddot*m*x + k*x&quot;,&quot;variables&quot;:[&quot;ddot&quot;,&quot;k&quot;,&quot;m&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;m \\ddot{x} + c \\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;ddot*m*x&quot;,&quot;variables&quot;:[&quot;ddot&quot;,&quot;m&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;m \\ddot{x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;ddot*m*x&quot;,&quot;variables&quot;:[&quot;ddot&quot;,&quot;m&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;m&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;m&quot;,&quot;subexpr&quot;:&quot;m&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;m&quot;,&quot;variables&quot;:[&quot;m&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}},{&quot;id&quot;:&quot;__deriv_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\ddot{x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;ddot*x&quot;,&quot;variables&quot;:[&quot;ddot&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;c \\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;__deriv_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;x k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k*x&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;__num_9&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;m&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_5&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_5&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_7&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_7&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_8&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_9&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:2,&quot;dependent_variables&quot;:[&quot;x&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;factorable&quot;,&quot;nth_linear_constant_coeff_homogeneous&quot;,&quot;2nd_power_series_ordinary&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:true}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -2926,17 +2918,20 @@ svg.d3-semantic-graph {
       "type": "operator",
       "op": "derivative",
       "with_respect_to": "t",
-      "subexpr": "\\frac{d}{d t} x",
+      "subexpr": "\\dot{x}",
       "chartScript": {
-        "script": "0",
-        "variables": []
+        "script": "dot*x",
+        "variables": [
+          "dot",
+          "x"
+        ]
       }
     },
     {
       "id": "c0___add_3",
       "type": "operator",
       "op": "add",
-      "subexpr": "x a + b y",
+      "subexpr": "a x + b y",
       "chartScript": {
         "script": "a*x + b*y",
         "variables": [
@@ -2951,7 +2946,7 @@ svg.d3-semantic-graph {
       "id": "c0___multiply_4",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "x a",
+      "subexpr": "a x",
       "chartScript": {
         "script": "a*x",
         "variables": [
@@ -3030,10 +3025,13 @@ svg.d3-semantic-graph {
       "type": "operator",
       "op": "derivative",
       "with_respect_to": "t",
-      "subexpr": "\\frac{d}{d t} y",
+      "subexpr": "\\dot{y}",
       "chartScript": {
-        "script": "0",
-        "variables": []
+        "script": "dot*y",
+        "variables": [
+          "dot",
+          "y"
+        ]
       }
     },
     {
@@ -3297,7 +3295,7 @@ svg.d3-semantic-graph {
   linkStyle 16 stroke:#aaa,stroke-width:2px
   linkStyle 17 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;c0___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\dot{x} = ax + by&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-a*x - b*y + dot*x&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;dot&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}},{&quot;id&quot;:&quot;c0___deriv_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c0___add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;x a + b y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a*x + b*y&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;c0___multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;x a&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a*x&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;c0___multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;b y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;b*y&quot;,&quot;variables&quot;:[&quot;b&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;b&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;b&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;b&quot;,&quot;variables&quot;:[&quot;b&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}},{&quot;id&quot;:&quot;c1___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\dot{y} = cx + dy&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-c*x + dot*y - dy&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dot&quot;,&quot;dy&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;c1___deriv_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{d t} y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c1___add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;c x + dy&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c*x + dy&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dy&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;c1___multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;c x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c*x&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;dy&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;dy&quot;,&quot;subexpr&quot;:&quot;dy&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dy&quot;,&quot;variables&quot;:[&quot;dy&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;c0___deriv_2&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;c0___deriv_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;c0___deriv_2&quot;,&quot;to&quot;:&quot;c0___equals_1&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;c0___multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;c0___multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c0___multiply_4&quot;,&quot;to&quot;:&quot;c0___add_3&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;c0___multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;c0___multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c0___multiply_5&quot;,&quot;to&quot;:&quot;c0___add_3&quot;},{&quot;from&quot;:&quot;c0___add_3&quot;,&quot;to&quot;:&quot;c0___equals_1&quot;},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;c1___deriv_2&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;c1___deriv_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;c1___deriv_2&quot;,&quot;to&quot;:&quot;c1___equals_1&quot;},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;c1___multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;c1___multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c1___multiply_4&quot;,&quot;to&quot;:&quot;c1___add_3&quot;},{&quot;from&quot;:&quot;dy&quot;,&quot;to&quot;:&quot;c1___add_3&quot;},{&quot;from&quot;:&quot;c1___add_3&quot;,&quot;to&quot;:&quot;c1___equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;statements&quot;,&quot;count&quot;:2,&quot;clauses&quot;:[{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;x&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;separable&quot;,&quot;1st_exact&quot;,&quot;1st_linear&quot;,&quot;Bernoulli&quot;,&quot;almost_linear&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;,&quot;nth_linear_constant_coeff_undetermined_coefficients&quot;,&quot;nth_linear_constant_coeff_variation_of_parameters&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:false,&quot;constant_coefficients&quot;:true},{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;y&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;nth_algebraic&quot;,&quot;separable&quot;,&quot;1st_exact&quot;,&quot;1st_linear&quot;,&quot;Bernoulli&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;,&quot;nth_linear_constant_coeff_undetermined_coefficients&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_undetermined_coefficients&quot;,&quot;nth_linear_constant_coeff_variation_of_parameters&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_variation_of_parameters&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:true}]}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;c0___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\dot{x} = ax + by&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-a*x - b*y + dot*x&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;dot&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}},{&quot;id&quot;:&quot;c0___deriv_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\dot{x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dot*x&quot;,&quot;variables&quot;:[&quot;dot&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;c0___add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;a x + b y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a*x + b*y&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;c0___multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;a x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a*x&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;c0___multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;b y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;b*y&quot;,&quot;variables&quot;:[&quot;b&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;b&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;b&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;b&quot;,&quot;variables&quot;:[&quot;b&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}},{&quot;id&quot;:&quot;c1___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\dot{y} = cx + dy&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-c*x + dot*y - dy&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dot&quot;,&quot;dy&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;c1___deriv_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\dot{y}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dot*y&quot;,&quot;variables&quot;:[&quot;dot&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;c1___add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;c x + dy&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c*x + dy&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dy&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;c1___multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;c x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c*x&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;dy&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;dy&quot;,&quot;subexpr&quot;:&quot;dy&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dy&quot;,&quot;variables&quot;:[&quot;dy&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;c0___deriv_2&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;c0___deriv_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;c0___deriv_2&quot;,&quot;to&quot;:&quot;c0___equals_1&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;c0___multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;c0___multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c0___multiply_4&quot;,&quot;to&quot;:&quot;c0___add_3&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;c0___multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;c0___multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c0___multiply_5&quot;,&quot;to&quot;:&quot;c0___add_3&quot;},{&quot;from&quot;:&quot;c0___add_3&quot;,&quot;to&quot;:&quot;c0___equals_1&quot;},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;c1___deriv_2&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;c1___deriv_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;c1___deriv_2&quot;,&quot;to&quot;:&quot;c1___equals_1&quot;},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;c1___multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;c1___multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c1___multiply_4&quot;,&quot;to&quot;:&quot;c1___add_3&quot;},{&quot;from&quot;:&quot;dy&quot;,&quot;to&quot;:&quot;c1___add_3&quot;},{&quot;from&quot;:&quot;c1___add_3&quot;,&quot;to&quot;:&quot;c1___equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;statements&quot;,&quot;count&quot;:2,&quot;clauses&quot;:[{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;x&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;separable&quot;,&quot;1st_exact&quot;,&quot;1st_linear&quot;,&quot;Bernoulli&quot;,&quot;almost_linear&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;,&quot;nth_linear_constant_coeff_undetermined_coefficients&quot;,&quot;nth_linear_constant_coeff_variation_of_parameters&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:false,&quot;constant_coefficients&quot;:true},{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;y&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;nth_algebraic&quot;,&quot;separable&quot;,&quot;1st_exact&quot;,&quot;1st_linear&quot;,&quot;Bernoulli&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;,&quot;nth_linear_constant_coeff_undetermined_coefficients&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_undetermined_coefficients&quot;,&quot;nth_linear_constant_coeff_variation_of_parameters&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_variation_of_parameters&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:true}]}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -3633,7 +3631,7 @@ svg.d3-semantic-graph {
   __y_6{{"$y(\cdot)$"}}:::function
   __num_7["$0$"]:::number
   __multiply_8(("$\times$")):::operator
-  L["$\mathcal{L}$"]:::scalar
+  L["$L$"]:::scalar
   __f_9{{"$f(\cdot)$"}}:::function
   t["$t$"]:::scalar
   class __negation_5 operator
@@ -3675,12 +3673,11 @@ svg.d3-semantic-graph {
       "id": "__equals_1",
       "type": "relation",
       "op": "equals",
-      "subexpr": "s Y(s) - y(0) = \\mathcal{L}\\{f(t)\\}",
+      "subexpr": "s Y(s) - y(0) = L\\{f(t)\\}",
       "chartScript": {
-        "script": "-L*mathcal*f(t) + s*Y(s) - y(0)",
+        "script": "-L*f(t) + s*Y(s) - y(0)",
         "variables": [
           "L",
-          "mathcal",
           "s",
           "t"
         ]
@@ -3771,13 +3768,12 @@ svg.d3-semantic-graph {
       "id": "__multiply_8",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\mathcal{L} f{\\left(t \\right)}",
+      "subexpr": "L f{\\left(t \\right)}",
       "chartScript": {
-        "script": "L*f*mathcal*t",
+        "script": "L*f*t",
         "variables": [
           "L",
           "f",
-          "mathcal",
           "t"
         ]
       }
@@ -3785,13 +3781,12 @@ svg.d3-semantic-graph {
     {
       "id": "L",
       "type": "scalar",
-      "latex": "\\mathcal{L}",
-      "subexpr": "\\mathcal{L}",
+      "latex": "L",
+      "subexpr": "L",
       "chartScript": {
-        "script": "L*mathcal",
+        "script": "L",
         "variables": [
-          "L",
-          "mathcal"
+          "L"
         ]
       }
     },
@@ -3903,7 +3898,7 @@ svg.d3-semantic-graph {
   __y_6{{"$y(\cdot)$"}}:::function
   __num_7["$0$"]:::number
   __multiply_8(("$\times$")):::operator
-  L["$\mathcal{L}$"]:::scalar
+  L["$L$"]:::scalar
   __f_9{{"$f(\cdot)$"}}:::function
   t["$t$"]:::scalar
   class __negation_5 operator
@@ -3932,7 +3927,7 @@ svg.d3-semantic-graph {
   linkStyle 10 stroke:#ef5350,stroke-width:3px
   linkStyle 11 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;s Y(s) - y(0) = \\mathcal{L}\\{f(t)\\}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-L*mathcal*f(t) + s*Y(s) - y(0)&quot;,&quot;variables&quot;:[&quot;L&quot;,&quot;mathcal&quot;,&quot;s&quot;,&quot;t&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;s Y{\\left(s \\right)} - y{\\left(0 \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Y*pow(s, 2)&quot;,&quot;variables&quot;:[&quot;Y&quot;,&quot;s&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;s Y{\\left(s \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Y*pow(s, 2)&quot;,&quot;variables&quot;:[&quot;Y&quot;,&quot;s&quot;]}},{&quot;id&quot;:&quot;s&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;s&quot;,&quot;subexpr&quot;:&quot;s&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;s&quot;,&quot;variables&quot;:[&quot;s&quot;]}},{&quot;id&quot;:&quot;__Y_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;Y&quot;,&quot;subexpr&quot;:&quot;Y{\\left(s \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Y*s&quot;,&quot;variables&quot;:[&quot;Y&quot;,&quot;s&quot;]}},{&quot;id&quot;:&quot;__negation_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-y{\\left(0 \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__y_6&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y{\\left(0 \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__num_7&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\mathcal{L} f{\\left(t \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;L*f*mathcal*t&quot;,&quot;variables&quot;:[&quot;L&quot;,&quot;f&quot;,&quot;mathcal&quot;,&quot;t&quot;]}},{&quot;id&quot;:&quot;L&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\mathcal{L}&quot;,&quot;subexpr&quot;:&quot;\\mathcal{L}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;L*mathcal&quot;,&quot;variables&quot;:[&quot;L&quot;,&quot;mathcal&quot;]}},{&quot;id&quot;:&quot;__f_9&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(t \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;f*t&quot;,&quot;variables&quot;:[&quot;f&quot;,&quot;t&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;s&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;s&quot;,&quot;to&quot;:&quot;__Y_4&quot;},{&quot;from&quot;:&quot;__Y_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__num_7&quot;,&quot;to&quot;:&quot;__y_6&quot;},{&quot;from&quot;:&quot;__y_6&quot;,&quot;to&quot;:&quot;__negation_5&quot;},{&quot;from&quot;:&quot;__negation_5&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;L&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__f_9&quot;},{&quot;from&quot;:&quot;__f_9&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_8&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;s Y(s) - y(0) = L\\{f(t)\\}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-L*f(t) + s*Y(s) - y(0)&quot;,&quot;variables&quot;:[&quot;L&quot;,&quot;s&quot;,&quot;t&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;s Y{\\left(s \\right)} - y{\\left(0 \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Y*pow(s, 2)&quot;,&quot;variables&quot;:[&quot;Y&quot;,&quot;s&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;s Y{\\left(s \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Y*pow(s, 2)&quot;,&quot;variables&quot;:[&quot;Y&quot;,&quot;s&quot;]}},{&quot;id&quot;:&quot;s&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;s&quot;,&quot;subexpr&quot;:&quot;s&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;s&quot;,&quot;variables&quot;:[&quot;s&quot;]}},{&quot;id&quot;:&quot;__Y_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;Y&quot;,&quot;subexpr&quot;:&quot;Y{\\left(s \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Y*s&quot;,&quot;variables&quot;:[&quot;Y&quot;,&quot;s&quot;]}},{&quot;id&quot;:&quot;__negation_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-y{\\left(0 \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__y_6&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y{\\left(0 \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__num_7&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;L f{\\left(t \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;L*f*t&quot;,&quot;variables&quot;:[&quot;L&quot;,&quot;f&quot;,&quot;t&quot;]}},{&quot;id&quot;:&quot;L&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;L&quot;,&quot;subexpr&quot;:&quot;L&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;L&quot;,&quot;variables&quot;:[&quot;L&quot;]}},{&quot;id&quot;:&quot;__f_9&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(t \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;f*t&quot;,&quot;variables&quot;:[&quot;f&quot;,&quot;t&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;s&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;s&quot;,&quot;to&quot;:&quot;__Y_4&quot;},{&quot;from&quot;:&quot;__Y_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__num_7&quot;,&quot;to&quot;:&quot;__y_6&quot;},{&quot;from&quot;:&quot;__y_6&quot;,&quot;to&quot;:&quot;__negation_5&quot;},{&quot;from&quot;:&quot;__negation_5&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;L&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__f_9&quot;},{&quot;from&quot;:&quot;__f_9&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_8&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>

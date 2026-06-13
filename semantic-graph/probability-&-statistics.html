@@ -1026,7 +1026,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-06-13 03:02 UTC &middot; theme: default-dark &middot; 17 expressions</div>
+<div class="report-meta">Generated 2026-06-13 23:38 UTC &middot; theme: default-dark &middot; 17 expressions</div>
 <div class="section-title">Probability & Statistics (17 expressions)</div>
 <div class="row">
   <div>
@@ -2485,67 +2485,61 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1{"="}:::relation
-  __P_2{{"$P(\ldots)$"}}:::function
-  X["$X$"]:::scalar
+  P["$P$"]:::scalar
   k["$k$"]:::scalar
-  __equals_3{"="}:::relation
-  __multiply_4(("$\times$")):::operator
-  __choose_5{{"$\binom{\cdot}{\cdot}$"}}:::function
+  s2___multiply_1(("$\times$")):::operator
+  s2___choose_2{{"$\binom{\cdot}{\cdot}$"}}:::function
   n["$n$"]:::scalar
-  __multiply_6(("$\times$")):::operator
-  __power_7(("$(\cdot)^{\cdot}$")):::operator
+  s2___multiply_3(("$\times$")):::operator
+  s2___power_4(("$(\cdot)^{\cdot}$")):::operator
   p["$p$"]:::scalar
-  __power_8(("$(\cdot)^{\cdot}$")):::operator
-  __add_9(("$+$")):::operator
-  __num_10["$1$"]:::number
-  __negation_11@{ shape: "flip-tri", label: "$-$" }
-  __add_12(("$+$")):::operator
-  __negation_13@{ shape: "flip-tri", label: "$-$" }
-  class __negation_11 operator
-  class __negation_13 operator
-  X --&gt;|lhs| __equals_3
-  k --&gt;|rhs| __equals_3
-  __equals_3 --&gt;|assertion| __P_2
-  __P_2 --&gt; __equals_1
-  n --&gt; __choose_5
-  k --&gt; __choose_5
-  __choose_5 --&gt; __multiply_4
-  p --&gt; __power_7
-  k --&gt;|exp| __power_7
-  __power_7 --&gt; __multiply_6
-  __num_10 --&gt; __add_9
-  p --&gt; __negation_11
-  __negation_11 --&gt; __add_9
-  __add_9 --&gt; __power_8
-  n --&gt; __add_12
-  k --&gt; __negation_13
-  __negation_13 --&gt; __add_12
-  __add_12 --&gt;|exp| __power_8
-  __power_8 --&gt; __multiply_6
-  __multiply_6 --&gt; __multiply_4
-  __multiply_4 --&gt; __equals_1
+  s2___power_5(("$(\cdot)^{\cdot}$")):::operator
+  s2___add_6(("$+$")):::operator
+  s2___num_7["$1$"]:::number
+  s2___negation_8@{ shape: "flip-tri", label: "$-$" }
+  s2___add_9(("$+$")):::operator
+  s2___negation_10@{ shape: "flip-tri", label: "$-$" }
+  __equals_1(("$=$")):::operator
+  class s2___negation_8 operator
+  class s2___negation_10 operator
+  n --&gt; s2___choose_2
+  k --&gt; s2___choose_2
+  s2___choose_2 --&gt; s2___multiply_1
+  p --&gt; s2___power_4
+  k --&gt; s2___power_4
+  s2___power_4 --&gt; s2___multiply_3
+  s2___num_7 --&gt; s2___add_6
+  p --&gt; s2___negation_8
+  s2___negation_8 --&gt; s2___add_6
+  s2___add_6 --&gt; s2___power_5
+  n --&gt; s2___add_9
+  k --&gt; s2___negation_10
+  s2___negation_10 --&gt; s2___add_9
+  s2___add_9 --&gt; s2___power_5
+  s2___power_5 --&gt; s2___multiply_3
+  s2___multiply_3 --&gt; s2___multiply_1
+  P --&gt; __equals_1
+  k --&gt; __equals_1
+  s2___multiply_1 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
   linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
   linkStyle 11 stroke:#aaa,stroke-width:2px
   linkStyle 12 stroke:#aaa,stroke-width:2px
   linkStyle 13 stroke:#aaa,stroke-width:2px
-  linkStyle 14 stroke:#aaa,stroke-width:2px
-  linkStyle 15 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#ef5350,stroke-width:3px
+  linkStyle 15 stroke:#ef5350,stroke-width:3px
   linkStyle 16 stroke:#aaa,stroke-width:2px
   linkStyle 17 stroke:#aaa,stroke-width:2px
-  linkStyle 18 stroke:#ef5350,stroke-width:3px
-  linkStyle 19 stroke:#ef5350,stroke-width:3px
-  linkStyle 20 stroke:#aaa,stroke-width:2px
+  linkStyle 18 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2557,38 +2551,14 @@ svg.d3-semantic-graph {
   <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
-      "id": "__equals_1",
-      "type": "relation",
-      "op": "equals",
-      "subexpr": "P(X = k) = \\binom{n}{k} p^k (1-p)^{n-k}",
-      "chartScript": {
-        "script": "P",
-        "variables": [
-          "P"
-        ]
-      }
-    },
-    {
-      "id": "__P_2",
-      "type": "function",
-      "op": "P",
-      "subexpr": "P{\\left(X = k \\right)}",
-      "chartScript": {
-        "script": "P",
-        "variables": [
-          "P"
-        ]
-      }
-    },
-    {
-      "id": "X",
+      "id": "P",
       "type": "scalar",
-      "latex": "X",
-      "subexpr": "X",
+      "latex": "P",
+      "subexpr": "P(X",
       "chartScript": {
-        "script": "X",
+        "script": "P",
         "variables": [
-          "X"
+          "P"
         ]
       }
     },
@@ -2596,7 +2566,7 @@ svg.d3-semantic-graph {
       "id": "k",
       "type": "scalar",
       "latex": "k",
-      "subexpr": "k",
+      "subexpr": "k)",
       "chartScript": {
         "script": "k",
         "variables": [
@@ -2605,24 +2575,10 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__equals_3",
-      "type": "relation",
-      "emoji": "=",
-      "op": "equals",
-      "subexpr": "X = k",
-      "chartScript": {
-        "script": "X - k",
-        "variables": [
-          "X",
-          "k"
-        ]
-      }
-    },
-    {
-      "id": "__multiply_4",
+      "id": "s2___multiply_1",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "{\\binom{n}{k}} p^{k} \\left(1 - p\\right)^{- k + n}",
+      "subexpr": "\\binom{n}{k} p^k (1-p)^{n-k}",
       "chartScript": {
         "script": "pow(p, k)*pow(1 - p, -k + n)*binomial(n, k)",
         "variables": [
@@ -2633,7 +2589,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__choose_5",
+      "id": "s2___choose_2",
       "type": "function",
       "op": "choose",
       "subexpr": "{\\binom{n}{k}}",
@@ -2658,7 +2614,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__multiply_6",
+      "id": "s2___multiply_3",
       "type": "operator",
       "op": "multiply",
       "subexpr": "p^{k} \\left(1 - p\\right)^{- k + n}",
@@ -2672,7 +2628,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_7",
+      "id": "s2___power_4",
       "type": "operator",
       "op": "power",
       "subexpr": "p^{k}",
@@ -2697,7 +2653,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_8",
+      "id": "s2___power_5",
       "type": "operator",
       "op": "power",
       "subexpr": "\\left(1 - p\\right)^{- k + n}",
@@ -2711,7 +2667,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__add_9",
+      "id": "s2___add_6",
       "type": "operator",
       "op": "add",
       "subexpr": "1 - p",
@@ -2723,7 +2679,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__num_10",
+      "id": "s2___num_7",
       "type": "number",
       "label": "1",
       "subexpr": "1",
@@ -2733,7 +2689,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__negation_11",
+      "id": "s2___negation_8",
       "type": "operator",
       "op": "negation",
       "subexpr": "-p",
@@ -2745,7 +2701,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__add_12",
+      "id": "s2___add_9",
       "type": "operator",
       "op": "add",
       "subexpr": "n - k",
@@ -2758,7 +2714,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__negation_13",
+      "id": "s2___negation_10",
       "type": "operator",
       "op": "negation",
       "subexpr": "-k",
@@ -2768,104 +2724,95 @@ svg.d3-semantic-graph {
           "k"
         ]
       }
+    },
+    {
+      "id": "__equals_1",
+      "type": "operator",
+      "op": "equals",
+      "subexpr": "P(X = k) = \\binom{n}{k} p^k (1-p)^{n-k}",
+      "chartScript": {
+        "script": "P",
+        "variables": [
+          "P"
+        ]
+      }
     }
   ],
   "edges": [
     {
-      "from": "X",
-      "to": "__equals_3",
-      "role": "lhs"
+      "from": "n",
+      "to": "s2___choose_2"
     },
     {
       "from": "k",
-      "to": "__equals_3",
-      "role": "rhs"
+      "to": "s2___choose_2"
     },
     {
-      "from": "__equals_3",
-      "to": "__P_2",
-      "role": "assertion"
+      "from": "s2___choose_2",
+      "to": "s2___multiply_1"
     },
     {
-      "from": "__P_2",
+      "from": "p",
+      "to": "s2___power_4"
+    },
+    {
+      "from": "k",
+      "to": "s2___power_4"
+    },
+    {
+      "from": "s2___power_4",
+      "to": "s2___multiply_3"
+    },
+    {
+      "from": "s2___num_7",
+      "to": "s2___add_6"
+    },
+    {
+      "from": "p",
+      "to": "s2___negation_8"
+    },
+    {
+      "from": "s2___negation_8",
+      "to": "s2___add_6"
+    },
+    {
+      "from": "s2___add_6",
+      "to": "s2___power_5"
+    },
+    {
+      "from": "n",
+      "to": "s2___add_9"
+    },
+    {
+      "from": "k",
+      "to": "s2___negation_10"
+    },
+    {
+      "from": "s2___negation_10",
+      "to": "s2___add_9"
+    },
+    {
+      "from": "s2___add_9",
+      "to": "s2___power_5"
+    },
+    {
+      "from": "s2___power_5",
+      "to": "s2___multiply_3"
+    },
+    {
+      "from": "s2___multiply_3",
+      "to": "s2___multiply_1"
+    },
+    {
+      "from": "P",
       "to": "__equals_1"
     },
     {
-      "from": "n",
-      "to": "__choose_5"
-    },
-    {
       "from": "k",
-      "to": "__choose_5"
+      "to": "__equals_1"
     },
     {
-      "from": "__choose_5",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "p",
-      "to": "__power_7"
-    },
-    {
-      "from": "k",
-      "to": "__power_7",
-      "role": "exp"
-    },
-    {
-      "from": "__power_7",
-      "to": "__multiply_6",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__num_10",
-      "to": "__add_9"
-    },
-    {
-      "from": "p",
-      "to": "__negation_11"
-    },
-    {
-      "from": "__negation_11",
-      "to": "__add_9"
-    },
-    {
-      "from": "__add_9",
-      "to": "__power_8"
-    },
-    {
-      "from": "n",
-      "to": "__add_12"
-    },
-    {
-      "from": "k",
-      "to": "__negation_13"
-    },
-    {
-      "from": "__negation_13",
-      "to": "__add_12"
-    },
-    {
-      "from": "__add_12",
-      "to": "__power_8",
-      "role": "exp"
-    },
-    {
-      "from": "__power_8",
-      "to": "__multiply_6",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_6",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_4",
+      "from": "s2___multiply_1",
       "to": "__equals_1"
     }
   ],
@@ -2884,69 +2831,63 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1{"="}:::relation
-  __P_2{{"$P(\ldots)$"}}:::function
-  X["$X$"]:::scalar
+  P["$P$"]:::scalar
   k["$k$"]:::scalar
-  __equals_3{"="}:::relation
-  __multiply_4(("$\times$")):::operator
-  __choose_5{{"$\binom{\cdot}{\cdot}$"}}:::function
+  s2___multiply_1(("$\times$")):::operator
+  s2___choose_2{{"$\binom{\cdot}{\cdot}$"}}:::function
   n["$n$"]:::scalar
-  __multiply_6(("$\times$")):::operator
-  __power_7(("$(\cdot)^{\cdot}$")):::operator
+  s2___multiply_3(("$\times$")):::operator
+  s2___power_4(("$(\cdot)^{\cdot}$")):::operator
   p["$p$"]:::scalar
-  __power_8(("$(\cdot)^{\cdot}$")):::operator
-  __add_9(("$+$")):::operator
-  __num_10["$1$"]:::number
-  __negation_11@{ shape: "flip-tri", label: "$-$" }
-  __add_12(("$+$")):::operator
-  __negation_13@{ shape: "flip-tri", label: "$-$" }
-  class __negation_11 operator
-  class __negation_13 operator
-  X --&gt;|lhs| __equals_3
-  k --&gt;|rhs| __equals_3
-  __equals_3 --&gt;|assertion| __P_2
-  __P_2 --&gt; __equals_1
-  n --&gt; __choose_5
-  k --&gt; __choose_5
-  __choose_5 --&gt; __multiply_4
-  p --&gt; __power_7
-  k --&gt;|exp| __power_7
-  __power_7 --&gt; __multiply_6
-  __num_10 --&gt; __add_9
-  p --&gt; __negation_11
-  __negation_11 --&gt; __add_9
-  __add_9 --&gt; __power_8
-  n --&gt; __add_12
-  k --&gt; __negation_13
-  __negation_13 --&gt; __add_12
-  __add_12 --&gt;|exp| __power_8
-  __power_8 --&gt; __multiply_6
-  __multiply_6 --&gt; __multiply_4
-  __multiply_4 --&gt; __equals_1
+  s2___power_5(("$(\cdot)^{\cdot}$")):::operator
+  s2___add_6(("$+$")):::operator
+  s2___num_7["$1$"]:::number
+  s2___negation_8@{ shape: "flip-tri", label: "$-$" }
+  s2___add_9(("$+$")):::operator
+  s2___negation_10@{ shape: "flip-tri", label: "$-$" }
+  __equals_1(("$=$")):::operator
+  class s2___negation_8 operator
+  class s2___negation_10 operator
+  n --&gt; s2___choose_2
+  k --&gt; s2___choose_2
+  s2___choose_2 --&gt; s2___multiply_1
+  p --&gt; s2___power_4
+  k --&gt; s2___power_4
+  s2___power_4 --&gt; s2___multiply_3
+  s2___num_7 --&gt; s2___add_6
+  p --&gt; s2___negation_8
+  s2___negation_8 --&gt; s2___add_6
+  s2___add_6 --&gt; s2___power_5
+  n --&gt; s2___add_9
+  k --&gt; s2___negation_10
+  s2___negation_10 --&gt; s2___add_9
+  s2___add_9 --&gt; s2___power_5
+  s2___power_5 --&gt; s2___multiply_3
+  s2___multiply_3 --&gt; s2___multiply_1
+  P --&gt; __equals_1
+  k --&gt; __equals_1
+  s2___multiply_1 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
   linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
   linkStyle 11 stroke:#aaa,stroke-width:2px
   linkStyle 12 stroke:#aaa,stroke-width:2px
   linkStyle 13 stroke:#aaa,stroke-width:2px
-  linkStyle 14 stroke:#aaa,stroke-width:2px
-  linkStyle 15 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#ef5350,stroke-width:3px
+  linkStyle 15 stroke:#ef5350,stroke-width:3px
   linkStyle 16 stroke:#aaa,stroke-width:2px
   linkStyle 17 stroke:#aaa,stroke-width:2px
-  linkStyle 18 stroke:#ef5350,stroke-width:3px
-  linkStyle 19 stroke:#ef5350,stroke-width:3px
-  linkStyle 20 stroke:#aaa,stroke-width:2px
+  linkStyle 18 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P(X = k) = \\binom{n}{k} p^k (1-p)^{n-k}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}},{&quot;id&quot;:&quot;__P_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(X = k \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}},{&quot;id&quot;:&quot;X&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;X&quot;,&quot;subexpr&quot;:&quot;X&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;X&quot;,&quot;variables&quot;:[&quot;X&quot;]}},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;__equals_3&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;emoji&quot;:&quot;=&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;X = k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;X - k&quot;,&quot;variables&quot;:[&quot;X&quot;,&quot;k&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;{\\binom{n}{k}} p^{k} \\left(1 - p\\right)^{- k + n}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(p, k)*pow(1 - p, -k + n)*binomial(n, k)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;n&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;__choose_5&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;choose&quot;,&quot;subexpr&quot;:&quot;{\\binom{n}{k}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;binomial(n, k)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;n&quot;]}},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;n&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;p^{k} \\left(1 - p\\right)^{- k + n}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(p, k)*pow(1 - p, -k + n)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;n&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;__power_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;p^{k}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(p, k)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;p&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;p&quot;,&quot;subexpr&quot;:&quot;p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\left(1 - p\\right)^{- k + n}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(1 - p, -k + n)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;n&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;__add_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;1 - p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1 - p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;__num_10&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__negation_11&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;__add_12&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;n - k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-k + n&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;n&quot;]}},{&quot;id&quot;:&quot;__negation_13&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-k&quot;,&quot;variables&quot;:[&quot;k&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;X&quot;,&quot;to&quot;:&quot;__equals_3&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__equals_3&quot;,&quot;role&quot;:&quot;rhs&quot;},{&quot;from&quot;:&quot;__equals_3&quot;,&quot;to&quot;:&quot;__P_2&quot;,&quot;role&quot;:&quot;assertion&quot;},{&quot;from&quot;:&quot;__P_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__choose_5&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__choose_5&quot;},{&quot;from&quot;:&quot;__choose_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;p&quot;,&quot;to&quot;:&quot;__power_7&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__power_7&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__num_10&quot;,&quot;to&quot;:&quot;__add_9&quot;},{&quot;from&quot;:&quot;p&quot;,&quot;to&quot;:&quot;__negation_11&quot;},{&quot;from&quot;:&quot;__negation_11&quot;,&quot;to&quot;:&quot;__add_9&quot;},{&quot;from&quot;:&quot;__add_9&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__add_12&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__negation_13&quot;},{&quot;from&quot;:&quot;__negation_13&quot;,&quot;to&quot;:&quot;__add_12&quot;},{&quot;from&quot;:&quot;__add_12&quot;,&quot;to&quot;:&quot;__power_8&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;P&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P(X&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;s2___multiply_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\binom{n}{k} p^k (1-p)^{n-k}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(p, k)*pow(1 - p, -k + n)*binomial(n, k)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;n&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;s2___choose_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;choose&quot;,&quot;subexpr&quot;:&quot;{\\binom{n}{k}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;binomial(n, k)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;n&quot;]}},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;n&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;s2___multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;p^{k} \\left(1 - p\\right)^{- k + n}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(p, k)*pow(1 - p, -k + n)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;n&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;s2___power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;p^{k}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(p, k)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;p&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;p&quot;,&quot;subexpr&quot;:&quot;p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;s2___power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\left(1 - p\\right)^{- k + n}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(1 - p, -k + n)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;n&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;s2___add_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;1 - p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1 - p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;s2___num_7&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;s2___negation_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;s2___add_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;n - k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-k + n&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;n&quot;]}},{&quot;id&quot;:&quot;s2___negation_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-k&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P(X = k) = \\binom{n}{k} p^k (1-p)^{n-k}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;s2___choose_2&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;s2___choose_2&quot;},{&quot;from&quot;:&quot;s2___choose_2&quot;,&quot;to&quot;:&quot;s2___multiply_1&quot;},{&quot;from&quot;:&quot;p&quot;,&quot;to&quot;:&quot;s2___power_4&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;s2___power_4&quot;},{&quot;from&quot;:&quot;s2___power_4&quot;,&quot;to&quot;:&quot;s2___multiply_3&quot;},{&quot;from&quot;:&quot;s2___num_7&quot;,&quot;to&quot;:&quot;s2___add_6&quot;},{&quot;from&quot;:&quot;p&quot;,&quot;to&quot;:&quot;s2___negation_8&quot;},{&quot;from&quot;:&quot;s2___negation_8&quot;,&quot;to&quot;:&quot;s2___add_6&quot;},{&quot;from&quot;:&quot;s2___add_6&quot;,&quot;to&quot;:&quot;s2___power_5&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;s2___add_9&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;s2___negation_10&quot;},{&quot;from&quot;:&quot;s2___negation_10&quot;,&quot;to&quot;:&quot;s2___add_9&quot;},{&quot;from&quot;:&quot;s2___add_9&quot;,&quot;to&quot;:&quot;s2___power_5&quot;},{&quot;from&quot;:&quot;s2___power_5&quot;,&quot;to&quot;:&quot;s2___multiply_3&quot;},{&quot;from&quot;:&quot;s2___multiply_3&quot;,&quot;to&quot;:&quot;s2___multiply_1&quot;},{&quot;from&quot;:&quot;P&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;s2___multiply_1&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -2966,47 +2907,41 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1{"="}:::relation
-  __P_2{{"$P(\ldots)$"}}:::function
-  X["$X$"]:::scalar
+  P["$P$"]:::scalar
   k["$k$"]:::scalar
-  __equals_3{"="}:::relation
-  __multiply_4(("$\times$")):::operator
-  __multiply_5(("$\times$")):::operator
-  __power_6(("$(\cdot)^{\cdot}$")):::operator
+  s2___multiply_1(("$\times$")):::operator
+  s2___multiply_2(("$\times$")):::operator
+  s2___power_3(("$(\cdot)^{\cdot}$")):::operator
   lambda["$\lambda$"]:::scalar
-  __power_7(("${(\cdot)}^{-\lambda}$")):::operator
+  s2___power_4(("${(\cdot)}^{-\lambda}$")):::operator
   e["$e$"]:::scalar
-  __power_8(("$\dfrac{1}{(\cdot)}$")):::operator
-  __factorial_9(("$(\cdot)!$")):::operator
-  X --&gt;|lhs| __equals_3
-  k --&gt;|rhs| __equals_3
-  __equals_3 --&gt;|assertion| __P_2
-  __P_2 --&gt; __equals_1
-  lambda --&gt; __power_6
-  k --&gt;|exp| __power_6
-  __power_6 --&gt; __multiply_5
-  e --&gt; __power_7
-  __power_7 -.-&gt; __multiply_5
-  __multiply_5 --&gt; __multiply_4
-  k --&gt; __factorial_9
-  __factorial_9 --&gt; __power_8
-  __power_8 -.-&gt; __multiply_4
-  __multiply_4 --&gt; __equals_1
+  s2___power_5(("$\dfrac{1}{(\cdot)}$")):::operator
+  s2___factorial_6(("$(\cdot)!$")):::operator
+  __equals_1(("$=$")):::operator
+  lambda --&gt; s2___power_3
+  k --&gt; s2___power_3
+  s2___power_3 --&gt; s2___multiply_2
+  e --&gt; s2___power_4
+  s2___power_4 -.-&gt; s2___multiply_2
+  s2___multiply_2 --&gt; s2___multiply_1
+  k --&gt; s2___factorial_6
+  s2___factorial_6 --&gt; s2___power_5
+  s2___power_5 -.-&gt; s2___multiply_1
+  P --&gt; __equals_1
+  k --&gt; __equals_1
+  s2___multiply_1 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
   linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#42a5f5,stroke-width:1px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#42a5f5,stroke-width:1px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
   linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#42a5f5,stroke-width:1px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -3018,38 +2953,14 @@ svg.d3-semantic-graph {
   <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
-      "id": "__equals_1",
-      "type": "relation",
-      "op": "equals",
-      "subexpr": "P(X = k) = \\frac{\\lambda^k e^{-\\lambda}}{k!}",
-      "chartScript": {
-        "script": "P",
-        "variables": [
-          "P"
-        ]
-      }
-    },
-    {
-      "id": "__P_2",
-      "type": "function",
-      "op": "P",
-      "subexpr": "P{\\left(X = k \\right)}",
-      "chartScript": {
-        "script": "P",
-        "variables": [
-          "P"
-        ]
-      }
-    },
-    {
-      "id": "X",
+      "id": "P",
       "type": "scalar",
-      "latex": "X",
-      "subexpr": "X",
+      "latex": "P",
+      "subexpr": "P(X",
       "chartScript": {
-        "script": "X",
+        "script": "P",
         "variables": [
-          "X"
+          "P"
         ]
       }
     },
@@ -3057,7 +2968,7 @@ svg.d3-semantic-graph {
       "id": "k",
       "type": "scalar",
       "latex": "k",
-      "subexpr": "k",
+      "subexpr": "k)",
       "chartScript": {
         "script": "k",
         "variables": [
@@ -3066,24 +2977,10 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__equals_3",
-      "type": "relation",
-      "emoji": "=",
-      "op": "equals",
-      "subexpr": "X = k",
-      "chartScript": {
-        "script": "X - k",
-        "variables": [
-          "X",
-          "k"
-        ]
-      }
-    },
-    {
-      "id": "__multiply_4",
+      "id": "s2___multiply_1",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "\\lambda^{k} e^{- \\lambda} \\frac{1}{k!}",
+      "subexpr": "\\frac{\\lambda^k e^{-\\lambda}}{k!}",
       "chartScript": {
         "script": "pow(lambda, k)*exp(-lambda)/factorial(k)",
         "variables": [
@@ -3093,7 +2990,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__multiply_5",
+      "id": "s2___multiply_2",
       "type": "operator",
       "op": "multiply",
       "subexpr": "\\lambda^{k} e^{- \\lambda}",
@@ -3106,7 +3003,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_6",
+      "id": "s2___power_3",
       "type": "operator",
       "op": "power",
       "subexpr": "\\lambda^{k}",
@@ -3131,7 +3028,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_7",
+      "id": "s2___power_4",
       "type": "operator",
       "op": "power",
       "exponent": "-\\lambda",
@@ -3154,7 +3051,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_8",
+      "id": "s2___power_5",
       "type": "operator",
       "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
@@ -3168,7 +3065,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__factorial_9",
+      "id": "s2___factorial_6",
       "type": "operator",
       "op": "factorial",
       "subexpr": "k!",
@@ -3178,71 +3075,67 @@ svg.d3-semantic-graph {
           "k"
         ]
       }
+    },
+    {
+      "id": "__equals_1",
+      "type": "operator",
+      "op": "equals",
+      "subexpr": "P(X = k) = \\frac{\\lambda^k e^{-\\lambda}}{k!}",
+      "chartScript": {
+        "script": "P",
+        "variables": [
+          "P"
+        ]
+      }
     }
   ],
   "edges": [
     {
-      "from": "X",
-      "to": "__equals_3",
-      "role": "lhs"
-    },
-    {
-      "from": "k",
-      "to": "__equals_3",
-      "role": "rhs"
-    },
-    {
-      "from": "__equals_3",
-      "to": "__P_2",
-      "role": "assertion"
-    },
-    {
-      "from": "__P_2",
-      "to": "__equals_1"
-    },
-    {
       "from": "lambda",
-      "to": "__power_6"
+      "to": "s2___power_3"
     },
     {
       "from": "k",
-      "to": "__power_6",
-      "role": "exp"
+      "to": "s2___power_3"
     },
     {
-      "from": "__power_6",
-      "to": "__multiply_5",
-      "semantic": "direct",
-      "weight": 1.0
+      "from": "s2___power_3",
+      "to": "s2___multiply_2"
     },
     {
       "from": "e",
-      "to": "__power_7"
+      "to": "s2___power_4"
     },
     {
-      "from": "__power_7",
-      "to": "__multiply_5"
+      "from": "s2___power_4",
+      "to": "s2___multiply_2"
     },
     {
-      "from": "__multiply_5",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
+      "from": "s2___multiply_2",
+      "to": "s2___multiply_1"
     },
     {
       "from": "k",
-      "to": "__factorial_9"
+      "to": "s2___factorial_6"
     },
     {
-      "from": "__factorial_9",
-      "to": "__power_8"
+      "from": "s2___factorial_6",
+      "to": "s2___power_5"
     },
     {
-      "from": "__power_8",
-      "to": "__multiply_4"
+      "from": "s2___power_5",
+      "to": "s2___multiply_1"
     },
     {
-      "from": "__multiply_4",
+      "from": "P",
+      "to": "__equals_1"
+    },
+    {
+      "from": "k",
+      "to": "__equals_1"
+    },
+    {
+      "from": "s2___multiply_1",
       "to": "__equals_1"
     }
   ],
@@ -3261,49 +3154,43 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1{"="}:::relation
-  __P_2{{"$P(\ldots)$"}}:::function
-  X["$X$"]:::scalar
+  P["$P$"]:::scalar
   k["$k$"]:::scalar
-  __equals_3{"="}:::relation
-  __multiply_4(("$\times$")):::operator
-  __multiply_5(("$\times$")):::operator
-  __power_6(("$(\cdot)^{\cdot}$")):::operator
+  s2___multiply_1(("$\times$")):::operator
+  s2___multiply_2(("$\times$")):::operator
+  s2___power_3(("$(\cdot)^{\cdot}$")):::operator
   lambda["$\lambda$"]:::scalar
-  __power_7(("${(\cdot)}^{-\lambda}$")):::operator
+  s2___power_4(("${(\cdot)}^{-\lambda}$")):::operator
   e["$e$"]:::scalar
-  __power_8(("$\dfrac{1}{(\cdot)}$")):::operator
-  __factorial_9(("$(\cdot)!$")):::operator
-  X --&gt;|lhs| __equals_3
-  k --&gt;|rhs| __equals_3
-  __equals_3 --&gt;|assertion| __P_2
-  __P_2 --&gt; __equals_1
-  lambda --&gt; __power_6
-  k --&gt;|exp| __power_6
-  __power_6 --&gt; __multiply_5
-  e --&gt; __power_7
-  __power_7 -.-&gt; __multiply_5
-  __multiply_5 --&gt; __multiply_4
-  k --&gt; __factorial_9
-  __factorial_9 --&gt; __power_8
-  __power_8 -.-&gt; __multiply_4
-  __multiply_4 --&gt; __equals_1
+  s2___power_5(("$\dfrac{1}{(\cdot)}$")):::operator
+  s2___factorial_6(("$(\cdot)!$")):::operator
+  __equals_1(("$=$")):::operator
+  lambda --&gt; s2___power_3
+  k --&gt; s2___power_3
+  s2___power_3 --&gt; s2___multiply_2
+  e --&gt; s2___power_4
+  s2___power_4 -.-&gt; s2___multiply_2
+  s2___multiply_2 --&gt; s2___multiply_1
+  k --&gt; s2___factorial_6
+  s2___factorial_6 --&gt; s2___power_5
+  s2___power_5 -.-&gt; s2___multiply_1
+  P --&gt; __equals_1
+  k --&gt; __equals_1
+  s2___multiply_1 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
   linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#42a5f5,stroke-width:1px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
   linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#42a5f5,stroke-width:1px
-  linkStyle 9 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
   linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#42a5f5,stroke-width:1px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P(X = k) = \\frac{\\lambda^k e^{-\\lambda}}{k!}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}},{&quot;id&quot;:&quot;__P_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(X = k \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}},{&quot;id&quot;:&quot;X&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;X&quot;,&quot;subexpr&quot;:&quot;X&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;X&quot;,&quot;variables&quot;:[&quot;X&quot;]}},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;__equals_3&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;emoji&quot;:&quot;=&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;X = k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;X - k&quot;,&quot;variables&quot;:[&quot;X&quot;,&quot;k&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\lambda^{k} e^{- \\lambda} \\frac{1}{k!}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(lambda, k)*exp(-lambda)/factorial(k)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;lambda&quot;]}},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\lambda^{k} e^{- \\lambda}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(lambda, k)*exp(-lambda)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;lambda&quot;]}},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\lambda^{k}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(lambda, k)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;lambda&quot;]}},{&quot;id&quot;:&quot;lambda&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\lambda&quot;,&quot;subexpr&quot;:&quot;\\lambda&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;lambda&quot;,&quot;variables&quot;:[&quot;lambda&quot;]}},{&quot;id&quot;:&quot;__power_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-\\lambda&quot;,&quot;subexpr&quot;:&quot;e^{- \\lambda}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;exp(-lambda)&quot;,&quot;variables&quot;:[&quot;lambda&quot;]}},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;e&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{k!}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/factorial(k)&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;__factorial_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;factorial&quot;,&quot;subexpr&quot;:&quot;k!&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;factorial(k)&quot;,&quot;variables&quot;:[&quot;k&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;X&quot;,&quot;to&quot;:&quot;__equals_3&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__equals_3&quot;,&quot;role&quot;:&quot;rhs&quot;},{&quot;from&quot;:&quot;__equals_3&quot;,&quot;to&quot;:&quot;__P_2&quot;,&quot;role&quot;:&quot;assertion&quot;},{&quot;from&quot;:&quot;__P_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;lambda&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__power_6&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_7&quot;},{&quot;from&quot;:&quot;__power_7&quot;,&quot;to&quot;:&quot;__multiply_5&quot;},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__factorial_9&quot;},{&quot;from&quot;:&quot;__factorial_9&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_4&quot;},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;P&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P(X&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;s2___multiply_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{\\lambda^k e^{-\\lambda}}{k!}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(lambda, k)*exp(-lambda)/factorial(k)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;lambda&quot;]}},{&quot;id&quot;:&quot;s2___multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\lambda^{k} e^{- \\lambda}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(lambda, k)*exp(-lambda)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;lambda&quot;]}},{&quot;id&quot;:&quot;s2___power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\lambda^{k}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(lambda, k)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;lambda&quot;]}},{&quot;id&quot;:&quot;lambda&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\lambda&quot;,&quot;subexpr&quot;:&quot;\\lambda&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;lambda&quot;,&quot;variables&quot;:[&quot;lambda&quot;]}},{&quot;id&quot;:&quot;s2___power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-\\lambda&quot;,&quot;subexpr&quot;:&quot;e^{- \\lambda}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;exp(-lambda)&quot;,&quot;variables&quot;:[&quot;lambda&quot;]}},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;e&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;s2___power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{k!}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/factorial(k)&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;s2___factorial_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;factorial&quot;,&quot;subexpr&quot;:&quot;k!&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;factorial(k)&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P(X = k) = \\frac{\\lambda^k e^{-\\lambda}}{k!}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;lambda&quot;,&quot;to&quot;:&quot;s2___power_3&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;s2___power_3&quot;},{&quot;from&quot;:&quot;s2___power_3&quot;,&quot;to&quot;:&quot;s2___multiply_2&quot;},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;s2___power_4&quot;},{&quot;from&quot;:&quot;s2___power_4&quot;,&quot;to&quot;:&quot;s2___multiply_2&quot;},{&quot;from&quot;:&quot;s2___multiply_2&quot;,&quot;to&quot;:&quot;s2___multiply_1&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;s2___factorial_6&quot;},{&quot;from&quot;:&quot;s2___factorial_6&quot;,&quot;to&quot;:&quot;s2___power_5&quot;},{&quot;from&quot;:&quot;s2___power_5&quot;,&quot;to&quot;:&quot;s2___multiply_1&quot;},{&quot;from&quot;:&quot;P&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;s2___multiply_1&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -5481,34 +5368,30 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1{"="}:::relation
-  __P_2{{"$P(\ldots)$"}}:::function
-  X["$X$"]:::scalar
+  P["$P$"]:::scalar
   k["$k$"]:::scalar
-  __equals_3{"="}:::relation
-  __multiply_4(("$\times$")):::operator
-  __power_5(("$(\cdot)^{\cdot}$")):::operator
-  __add_6(("$+$")):::operator
-  __num_7["$1$"]:::number
-  __negation_8@{ shape: "flip-tri", label: "$-$" }
+  s2___multiply_1(("$\times$")):::operator
+  s2___power_2(("$(\cdot)^{\cdot}$")):::operator
+  s2___add_3(("$+$")):::operator
+  s2___num_4["$1$"]:::number
+  s2___negation_5@{ shape: "flip-tri", label: "$-$" }
   p["$p$"]:::scalar
-  __add_9(("$+$")):::operator
-  __num_10["$-1$"]:::number
-  class __negation_8 operator
-  X --&gt;|lhs| __equals_3
-  k --&gt;|rhs| __equals_3
-  __equals_3 --&gt;|assertion| __P_2
-  __P_2 --&gt; __equals_1
-  __num_7 --&gt; __add_6
-  p --&gt; __negation_8
-  __negation_8 --&gt; __add_6
-  __add_6 --&gt; __power_5
-  k --&gt; __add_9
-  __num_10 --&gt; __add_9
-  __add_9 --&gt;|exp| __power_5
-  __power_5 --&gt; __multiply_4
-  p --&gt; __multiply_4
-  __multiply_4 --&gt; __equals_1
+  s2___add_6(("$+$")):::operator
+  s2___num_7["$-1$"]:::number
+  __equals_1(("$=$")):::operator
+  class s2___negation_5 operator
+  s2___num_4 --&gt; s2___add_3
+  p --&gt; s2___negation_5
+  s2___negation_5 --&gt; s2___add_3
+  s2___add_3 --&gt; s2___power_2
+  k --&gt; s2___add_6
+  s2___num_7 --&gt; s2___add_6
+  s2___add_6 --&gt; s2___power_2
+  s2___power_2 --&gt; s2___multiply_1
+  p --&gt; s2___multiply_1
+  P --&gt; __equals_1
+  k --&gt; __equals_1
+  s2___multiply_1 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#aaa,stroke-width:2px
@@ -5516,13 +5399,11 @@ svg.d3-semantic-graph {
   linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#aaa,stroke-width:2px
   linkStyle 6 stroke:#aaa,stroke-width:2px
-  linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
   linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
-  linkStyle 11 stroke:#ef5350,stroke-width:3px
-  linkStyle 12 stroke:#ef5350,stroke-width:3px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -5534,38 +5415,14 @@ svg.d3-semantic-graph {
   <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
-      "id": "__equals_1",
-      "type": "relation",
-      "op": "equals",
-      "subexpr": "P(X = k) = (1 - p)^{k-1} p",
-      "chartScript": {
-        "script": "P",
-        "variables": [
-          "P"
-        ]
-      }
-    },
-    {
-      "id": "__P_2",
-      "type": "function",
-      "op": "P",
-      "subexpr": "P{\\left(X = k \\right)}",
-      "chartScript": {
-        "script": "P",
-        "variables": [
-          "P"
-        ]
-      }
-    },
-    {
-      "id": "X",
+      "id": "P",
       "type": "scalar",
-      "latex": "X",
-      "subexpr": "X",
+      "latex": "P",
+      "subexpr": "P(X",
       "chartScript": {
-        "script": "X",
+        "script": "P",
         "variables": [
-          "X"
+          "P"
         ]
       }
     },
@@ -5573,7 +5430,7 @@ svg.d3-semantic-graph {
       "id": "k",
       "type": "scalar",
       "latex": "k",
-      "subexpr": "k",
+      "subexpr": "k)",
       "chartScript": {
         "script": "k",
         "variables": [
@@ -5582,26 +5439,12 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__equals_3",
-      "type": "relation",
-      "emoji": "=",
-      "op": "equals",
-      "subexpr": "X = k",
-      "chartScript": {
-        "script": "X - k",
-        "variables": [
-          "X",
-          "k"
-        ]
-      }
-    },
-    {
-      "id": "__multiply_4",
+      "id": "s2___multiply_1",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "p \\left(1 - p\\right)^{k - 1}",
+      "subexpr": "(1 - p)^{k-1} p",
       "chartScript": {
-        "script": "pow(p(1 - p), k - 1)",
+        "script": "p*pow(1 - p, k - 1)",
         "variables": [
           "k",
           "p"
@@ -5609,7 +5452,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_5",
+      "id": "s2___power_2",
       "type": "operator",
       "op": "power",
       "subexpr": "\\left(1 - p\\right)^{k - 1}",
@@ -5622,7 +5465,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__add_6",
+      "id": "s2___add_3",
       "type": "operator",
       "op": "add",
       "subexpr": "1 - p",
@@ -5634,7 +5477,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__num_7",
+      "id": "s2___num_4",
       "type": "number",
       "label": "1",
       "subexpr": "1",
@@ -5644,7 +5487,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__negation_8",
+      "id": "s2___negation_5",
       "type": "operator",
       "op": "negation",
       "subexpr": "-p",
@@ -5668,7 +5511,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__add_9",
+      "id": "s2___add_6",
       "type": "operator",
       "op": "add",
       "subexpr": "k - 1",
@@ -5680,7 +5523,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__num_10",
+      "id": "s2___num_7",
       "type": "number",
       "label": "-1",
       "subexpr": "-1",
@@ -5688,71 +5531,67 @@ svg.d3-semantic-graph {
         "script": "-1",
         "variables": []
       }
+    },
+    {
+      "id": "__equals_1",
+      "type": "operator",
+      "op": "equals",
+      "subexpr": "P(X = k) = (1 - p)^{k-1} p",
+      "chartScript": {
+        "script": "P",
+        "variables": [
+          "P"
+        ]
+      }
     }
   ],
   "edges": [
     {
-      "from": "X",
-      "to": "__equals_3",
-      "role": "lhs"
+      "from": "s2___num_4",
+      "to": "s2___add_3"
+    },
+    {
+      "from": "p",
+      "to": "s2___negation_5"
+    },
+    {
+      "from": "s2___negation_5",
+      "to": "s2___add_3"
+    },
+    {
+      "from": "s2___add_3",
+      "to": "s2___power_2"
     },
     {
       "from": "k",
-      "to": "__equals_3",
-      "role": "rhs"
+      "to": "s2___add_6"
     },
     {
-      "from": "__equals_3",
-      "to": "__P_2",
-      "role": "assertion"
+      "from": "s2___num_7",
+      "to": "s2___add_6"
     },
     {
-      "from": "__P_2",
+      "from": "s2___add_6",
+      "to": "s2___power_2"
+    },
+    {
+      "from": "s2___power_2",
+      "to": "s2___multiply_1"
+    },
+    {
+      "from": "p",
+      "to": "s2___multiply_1"
+    },
+    {
+      "from": "P",
       "to": "__equals_1"
     },
     {
-      "from": "__num_7",
-      "to": "__add_6"
-    },
-    {
-      "from": "p",
-      "to": "__negation_8"
-    },
-    {
-      "from": "__negation_8",
-      "to": "__add_6"
-    },
-    {
-      "from": "__add_6",
-      "to": "__power_5"
-    },
-    {
       "from": "k",
-      "to": "__add_9"
+      "to": "__equals_1"
     },
     {
-      "from": "__num_10",
-      "to": "__add_9"
-    },
-    {
-      "from": "__add_9",
-      "to": "__power_5",
-      "role": "exp"
-    },
-    {
-      "from": "__power_5",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "p",
-      "to": "__multiply_4",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__multiply_4",
+      "from": "s2___multiply_1",
       "to": "__equals_1"
     }
   ],
@@ -5771,34 +5610,30 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  __equals_1{"="}:::relation
-  __P_2{{"$P(\ldots)$"}}:::function
-  X["$X$"]:::scalar
+  P["$P$"]:::scalar
   k["$k$"]:::scalar
-  __equals_3{"="}:::relation
-  __multiply_4(("$\times$")):::operator
-  __power_5(("$(\cdot)^{\cdot}$")):::operator
-  __add_6(("$+$")):::operator
-  __num_7["$1$"]:::number
-  __negation_8@{ shape: "flip-tri", label: "$-$" }
+  s2___multiply_1(("$\times$")):::operator
+  s2___power_2(("$(\cdot)^{\cdot}$")):::operator
+  s2___add_3(("$+$")):::operator
+  s2___num_4["$1$"]:::number
+  s2___negation_5@{ shape: "flip-tri", label: "$-$" }
   p["$p$"]:::scalar
-  __add_9(("$+$")):::operator
-  __num_10["$-1$"]:::number
-  class __negation_8 operator
-  X --&gt;|lhs| __equals_3
-  k --&gt;|rhs| __equals_3
-  __equals_3 --&gt;|assertion| __P_2
-  __P_2 --&gt; __equals_1
-  __num_7 --&gt; __add_6
-  p --&gt; __negation_8
-  __negation_8 --&gt; __add_6
-  __add_6 --&gt; __power_5
-  k --&gt; __add_9
-  __num_10 --&gt; __add_9
-  __add_9 --&gt;|exp| __power_5
-  __power_5 --&gt; __multiply_4
-  p --&gt; __multiply_4
-  __multiply_4 --&gt; __equals_1
+  s2___add_6(("$+$")):::operator
+  s2___num_7["$-1$"]:::number
+  __equals_1(("$=$")):::operator
+  class s2___negation_5 operator
+  s2___num_4 --&gt; s2___add_3
+  p --&gt; s2___negation_5
+  s2___negation_5 --&gt; s2___add_3
+  s2___add_3 --&gt; s2___power_2
+  k --&gt; s2___add_6
+  s2___num_7 --&gt; s2___add_6
+  s2___add_6 --&gt; s2___power_2
+  s2___power_2 --&gt; s2___multiply_1
+  p --&gt; s2___multiply_1
+  P --&gt; __equals_1
+  k --&gt; __equals_1
+  s2___multiply_1 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#aaa,stroke-width:2px
@@ -5806,15 +5641,13 @@ svg.d3-semantic-graph {
   linkStyle 4 stroke:#aaa,stroke-width:2px
   linkStyle 5 stroke:#aaa,stroke-width:2px
   linkStyle 6 stroke:#aaa,stroke-width:2px
-  linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
   linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
-  linkStyle 11 stroke:#ef5350,stroke-width:3px
-  linkStyle 12 stroke:#ef5350,stroke-width:3px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P(X = k) = (1 - p)^{k-1} p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}},{&quot;id&quot;:&quot;__P_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(X = k \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}},{&quot;id&quot;:&quot;X&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;X&quot;,&quot;subexpr&quot;:&quot;X&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;X&quot;,&quot;variables&quot;:[&quot;X&quot;]}},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;__equals_3&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;emoji&quot;:&quot;=&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;X = k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;X - k&quot;,&quot;variables&quot;:[&quot;X&quot;,&quot;k&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;p \\left(1 - p\\right)^{k - 1}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(p(1 - p), k - 1)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\left(1 - p\\right)^{k - 1}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(1 - p, k - 1)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;__add_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;1 - p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1 - p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;__num_7&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__negation_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;p&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;p&quot;,&quot;subexpr&quot;:&quot;p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;__add_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;k - 1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k - 1&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;__num_10&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;-1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-1&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;X&quot;,&quot;to&quot;:&quot;__equals_3&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__equals_3&quot;,&quot;role&quot;:&quot;rhs&quot;},{&quot;from&quot;:&quot;__equals_3&quot;,&quot;to&quot;:&quot;__P_2&quot;,&quot;role&quot;:&quot;assertion&quot;},{&quot;from&quot;:&quot;__P_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_7&quot;,&quot;to&quot;:&quot;__add_6&quot;},{&quot;from&quot;:&quot;p&quot;,&quot;to&quot;:&quot;__negation_8&quot;},{&quot;from&quot;:&quot;__negation_8&quot;,&quot;to&quot;:&quot;__add_6&quot;},{&quot;from&quot;:&quot;__add_6&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__add_9&quot;},{&quot;from&quot;:&quot;__num_10&quot;,&quot;to&quot;:&quot;__add_9&quot;},{&quot;from&quot;:&quot;__add_9&quot;,&quot;to&quot;:&quot;__power_5&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;p&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;P&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P(X&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;s2___multiply_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;(1 - p)^{k-1} p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;p*pow(1 - p, k - 1)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;s2___power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\left(1 - p\\right)^{k - 1}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(1 - p, k - 1)&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;s2___add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;1 - p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1 - p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;s2___num_4&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;s2___negation_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;p&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;p&quot;,&quot;subexpr&quot;:&quot;p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;s2___add_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;k - 1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k - 1&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;s2___num_7&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;-1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;P(X = k) = (1 - p)^{k-1} p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;s2___num_4&quot;,&quot;to&quot;:&quot;s2___add_3&quot;},{&quot;from&quot;:&quot;p&quot;,&quot;to&quot;:&quot;s2___negation_5&quot;},{&quot;from&quot;:&quot;s2___negation_5&quot;,&quot;to&quot;:&quot;s2___add_3&quot;},{&quot;from&quot;:&quot;s2___add_3&quot;,&quot;to&quot;:&quot;s2___power_2&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;s2___add_6&quot;},{&quot;from&quot;:&quot;s2___num_7&quot;,&quot;to&quot;:&quot;s2___add_6&quot;},{&quot;from&quot;:&quot;s2___add_6&quot;,&quot;to&quot;:&quot;s2___power_2&quot;},{&quot;from&quot;:&quot;s2___power_2&quot;,&quot;to&quot;:&quot;s2___multiply_1&quot;},{&quot;from&quot;:&quot;p&quot;,&quot;to&quot;:&quot;s2___multiply_1&quot;},{&quot;from&quot;:&quot;P&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;s2___multiply_1&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
