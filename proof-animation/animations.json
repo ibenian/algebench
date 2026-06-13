@@ -9,7 +9,16 @@
         "justification": "solve for $a$",
         "input_latex": "a + b - c = 0",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=a}{a} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=b}{b}} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=c}{c}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__num_5}{0}}",
-        "plain": "a + b - c = 0"
+        "plain": "a + b - c = 0",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
       },
       {
         "index": 1,
@@ -17,7 +26,16 @@
         "justification": "$c$ crosses the $=$ and flips sign",
         "input_latex": "a + b = c",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_3}{\\htmlData{n=a}{a} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=b}{b}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=c}{c}}",
-        "plain": "a + b = c"
+        "plain": "a + b = c",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       },
       {
         "index": 2,
@@ -25,9 +43,35 @@
         "justification": "$b$ crosses over, leaving $a$ isolated",
         "input_latex": "a = c - b",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=a}{a} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_3}{\\htmlData{n=c}{c} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=b}{b}}}}",
-        "plain": "a = c - b"
+        "plain": "a = c - b",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       }
-    ]
+    ],
+    "overall_confidence": {
+      "tier": "grounded",
+      "label": "Grounded",
+      "icon": "🥇",
+      "meaning": "symbolically proven to follow from the previous step",
+      "relation": null,
+      "reason": "2/2 steps verified · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 0,
+        "verified": 0,
+        "grounded": 2
+      },
+      "endpoint_reached": true
+    }
   },
   {
     "title": "Expand the binomial",
@@ -39,7 +83,16 @@
         "justification": "expand it",
         "input_latex": "(x + 1)^2",
         "latex": "\\htmlData{n=__power_1}{\\left(\\htmlData{n=__add_2}{\\htmlData{n=x}{x} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__num_3}{1}}\\right)^{\\htmlData{n=__power_1__exp}{2}}}",
-        "plain": "\\left(x + 1\\right)^{2}"
+        "plain": "\\left(x + 1\\right)^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
       },
       {
         "index": 1,
@@ -47,9 +100,35 @@
         "justification": "$(x+1)^2 = x^2 + 2x + 1$",
         "input_latex": "x^2 + 2 x + 1",
         "latex": "\\htmlData{n=__add_2}{\\htmlData{n=_r1___add_2}{\\htmlData{n=__power_1}{\\htmlData{n=x____power_1}{x}^{\\htmlData{n=__power_1__exp}{2}}} \\htmlData{n=_r1___add_2__op1}{+} \\htmlData{n=__multiply_4}{\\htmlData{n=__num_5}{2} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=x____multiply_4}{x}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__num_3}{1}}",
-        "plain": "x^{2} + 2 \\cdot x + 1"
+        "plain": "x^{2} + 2 \\cdot x + 1",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       }
-    ]
+    ],
+    "overall_confidence": {
+      "tier": "grounded",
+      "label": "Grounded",
+      "icon": "🥇",
+      "meaning": "symbolically proven to follow from the previous step",
+      "relation": null,
+      "reason": "1/1 steps verified · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 0,
+        "verified": 0,
+        "grounded": 1
+      },
+      "endpoint_reached": true
+    }
   },
   {
     "title": "Factor the difference of squares",
@@ -61,7 +140,16 @@
         "justification": "factor it",
         "input_latex": "a^2 - b^2",
         "latex": "\\htmlData{n=__add_1}{\\htmlData{n=__power_2}{\\htmlData{n=a}{a}^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__power_4}{\\htmlData{n=b}{b}^{\\htmlData{n=__power_4__exp}{2}}}}}",
-        "plain": "a^{2} - b^{2}"
+        "plain": "a^{2} - b^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
       },
       {
         "index": 1,
@@ -69,9 +157,35 @@
         "justification": "$a^2 - b^2 = (a-b)(a+b)$",
         "input_latex": "(a - b)(a + b)",
         "latex": "\\htmlData{n=__multiply_1}{\\left(\\htmlData{n=__add_1}{\\htmlData{n=a____add_1}{a} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=b____negation_3}{b}}}\\right) \\htmlData{n=__multiply_1__m1}{\\cdot} \\left(\\htmlData{n=__add_4}{\\htmlData{n=a____add_4}{a} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=b____add_4}{b}}\\right)}",
-        "plain": "\\left(a - b\\right) \\cdot \\left(a + b\\right)"
+        "plain": "\\left(a - b\\right) \\cdot \\left(a + b\\right)",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       }
-    ]
+    ],
+    "overall_confidence": {
+      "tier": "grounded",
+      "label": "Grounded",
+      "icon": "🥇",
+      "meaning": "symbolically proven to follow from the previous step",
+      "relation": null,
+      "reason": "1/1 steps verified · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 0,
+        "verified": 0,
+        "grounded": 1
+      },
+      "endpoint_reached": true
+    }
   },
   {
     "title": "Relativistic energy–momentum",
@@ -83,7 +197,16 @@
         "justification": "solve for $E$",
         "input_latex": "E^2 = (m c^2)^2 + (p c)^2",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_2}{\\htmlData{n=E}{E}^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_3}{\\htmlData{n=__power_4}{\\left(\\htmlData{n=__multiply_5}{\\htmlData{n=m}{m} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}}\\right)^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\left(\\htmlData{n=__multiply_8}{\\htmlData{n=p}{p} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=c____multiply_8}{c}}\\right)^{\\htmlData{n=__power_7__exp}{2}}}}}",
-        "plain": "E^{2} = \\left(m \\cdot c^{2}\\right)^{2} + \\left(p \\cdot c\\right)^{2}"
+        "plain": "E^{2} = \\left(m \\cdot c^{2}\\right)^{2} + \\left(p \\cdot c\\right)^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
       },
       {
         "index": 1,
@@ -91,7 +214,16 @@
         "justification": "solve for $E$ (positive root)",
         "input_latex": "E = \\sqrt{(m c^2)^2 + (p c)^2}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__power_2}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__power_4}{\\left(\\htmlData{n=__multiply_5}{\\htmlData{n=m}{m} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}}\\right)^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\left(\\htmlData{n=__multiply_8}{\\htmlData{n=p}{p} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=c____multiply_8}{c}}\\right)^{\\htmlData{n=__power_7__exp}{2}}}}}}}",
-        "plain": "E = \\sqrt{\\left(m \\cdot c^{2}\\right)^{2} + \\left(p \\cdot c\\right)^{2}}"
+        "plain": "E = \\sqrt{\\left(m \\cdot c^{2}\\right)^{2} + \\left(p \\cdot c\\right)^{2}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "narrows",
+          "reason": "the previous step is exactly this step squared — taking a root keeps only solutions of the original",
+          "type_consistent": true
+        }
       },
       {
         "index": 2,
@@ -99,7 +231,16 @@
         "justification": "$(m c^2)^2 = m^2 c^4,\\ (p c)^2 = p^2 c^2$",
         "input_latex": "E = \\sqrt{m^2 c^4 + p^2 c^2}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__power_2}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_5}{\\htmlData{n=__power_4}{\\htmlData{n=m}{m}^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=_r1___power_6}{\\htmlData{n=c___r1___power_6}{c}^{\\htmlData{n=_r1___power_6__exp}{4}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_7}{\\htmlData{n=p}{p}^{\\htmlData{n=__power_7__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}}}}}}",
-        "plain": "E = \\sqrt{m^{2} \\cdot c^{4} + p^{2} \\cdot c^{2}}"
+        "plain": "E = \\sqrt{m^{2} \\cdot c^{4} + p^{2} \\cdot c^{2}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       },
       {
         "index": 3,
@@ -107,7 +248,16 @@
         "justification": "$c^2$ is common to both terms",
         "input_latex": "E = \\sqrt{c^2 \\cdot (m^2 c^2 + p^2)}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__power_2}{\\sqrt{\\htmlData{n=__multiply_5}{\\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}} \\htmlData{n=__multiply_5__m1}{\\cdot} \\left(\\htmlData{n=__add_3}{\\htmlData{n=__multiply_8}{\\htmlData{n=__power_4}{\\htmlData{n=m}{m}^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=c____power_8}{c}^{\\htmlData{n=__power_8__exp}{2}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\htmlData{n=p}{p}^{\\htmlData{n=__power_7__exp}{2}}}}\\right)}}}}",
-        "plain": "E = \\sqrt{c^{2} \\cdot \\left(m^{2} \\cdot c^{2} + p^{2}\\right)}"
+        "plain": "E = \\sqrt{c^{2} \\cdot \\left(m^{2} \\cdot c^{2} + p^{2}\\right)}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       },
       {
         "index": 4,
@@ -115,7 +265,16 @@
         "justification": "$\\sqrt{c^2 x} = c \\sqrt{x}$",
         "input_latex": "E = c \\sqrt{m^2 c^2 + p^2}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_5}{\\htmlData{n=c____multiply_5}{c} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_2}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_8}{\\htmlData{n=__power_4}{\\htmlData{n=m}{m}^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=c____power_8}{c}^{\\htmlData{n=__power_8__exp}{2}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\htmlData{n=p}{p}^{\\htmlData{n=__power_7__exp}{2}}}}}}}}",
-        "plain": "E = c \\cdot \\sqrt{m^{2} \\cdot c^{2} + p^{2}}"
+        "plain": "E = c \\cdot \\sqrt{m^{2} \\cdot c^{2} + p^{2}}",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "narrows",
+          "reason": "treating m as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+          "type_consistent": true
+        }
       },
       {
         "index": 5,
@@ -123,9 +282,35 @@
         "justification": "the standard Lorentz-factor form",
         "input_latex": "E = m c^2 \\sqrt{1 + \\frac{p^2}{m^2 c^2}}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_5}{\\htmlData{n=m____multiply_5}{m} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__multiply_3}{\\htmlData{n=_r1___power_4}{\\htmlData{n=c___r1___power_4}{c}^{\\htmlData{n=_r1___power_4__exp}{2}}} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=__power_2}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__num_7}{1} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=_r2___multiply_8}{\\frac{\\htmlData{n=__power_7}{\\htmlData{n=p}{p}^{\\htmlData{n=__power_7__exp}{2}}}}{\\htmlData{n=__multiply_8}{\\htmlData{n=__power_4}{\\htmlData{n=m____power_4}{m}^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=c____power_8}{c}^{\\htmlData{n=__power_8__exp}{2}}}}}}}}}}}}",
-        "plain": "E = m \\cdot c^{2} \\cdot \\sqrt{1 + \\frac{p^{2}}{m^{2} \\cdot c^{2}}}"
+        "plain": "E = m \\cdot c^{2} \\cdot \\sqrt{1 + \\frac{p^{2}}{m^{2} \\cdot c^{2}}}",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "narrows",
+          "reason": "treating p as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+          "type_consistent": true
+        }
       }
-    ]
+    ],
+    "overall_confidence": {
+      "tier": "verified",
+      "label": "Verified",
+      "icon": "🥈",
+      "meaning": "strong CAS evidence, short of a symbolic proof",
+      "relation": null,
+      "reason": "5/5 steps verified · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 0,
+        "verified": 2,
+        "grounded": 3
+      },
+      "endpoint_reached": true
+    }
   },
   {
     "title": "Lorentz time dilation",
@@ -137,7 +322,16 @@
         "justification": "solve for $t$ (invariant $c$)",
         "input_latex": "(c t)^2 = (c t_0)^2 + (v t)^2",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_2}{\\left(\\htmlData{n=__multiply_3}{\\htmlData{n=c____multiply_3}{c} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=t____multiply_3}{t}}\\right)^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_4}{\\htmlData{n=__power_5}{\\left(\\htmlData{n=__multiply_6}{\\htmlData{n=c____multiply_6}{c} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=t_0}{t_{0}}}\\right)^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=__power_7}{\\left(\\htmlData{n=__multiply_8}{\\htmlData{n=v}{v} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=t____multiply_8}{t}}\\right)^{\\htmlData{n=__power_7__exp}{2}}}}}",
-        "plain": "\\left(c \\cdot t\\right)^{2} = \\left(c \\cdot t_{0}\\right)^{2} + \\left(v \\cdot t\\right)^{2}"
+        "plain": "\\left(c \\cdot t\\right)^{2} = \\left(c \\cdot t_{0}\\right)^{2} + \\left(v \\cdot t\\right)^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
       },
       {
         "index": 1,
@@ -145,7 +339,16 @@
         "justification": "$(c t)^2 = c^2 t^2$, etc.",
         "input_latex": "c^2 t^2 = c^2 t_0^2 + v^2 t^2",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_3}{\\htmlData{n=__power_2}{\\htmlData{n=c____power_2}{c}^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=t____power_5}{t}^{\\htmlData{n=__power_5__exp}{2}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_4}{\\htmlData{n=__multiply_6}{\\htmlData{n=__power_7}{\\htmlData{n=c____power_7}{c}^{\\htmlData{n=__power_7__exp}{2}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_11}{\\htmlData{n=t____power_11}{t}^{\\htmlData{n=__power_11__exp}{2}}}}}}",
-        "plain": "c^{2} \\cdot t^{2} = c^{2} \\cdot t_{0}^{2} + v^{2} \\cdot t^{2}"
+        "plain": "c^{2} \\cdot t^{2} = c^{2} \\cdot t_{0}^{2} + v^{2} \\cdot t^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       },
       {
         "index": 2,
@@ -153,7 +356,16 @@
         "justification": "move $v^2 t^2$ to the left",
         "input_latex": "c^2 t^2 - v^2 t^2 = c^2 t_0^2",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_4}{\\htmlData{n=__multiply_3}{\\htmlData{n=__power_2}{\\htmlData{n=c____power_2}{c}^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=t____power_5}{t}^{\\htmlData{n=__power_5__exp}{2}}}} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_11}{\\htmlData{n=t____power_11}{t}^{\\htmlData{n=__power_11__exp}{2}}}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_6}{\\htmlData{n=__power_7}{\\htmlData{n=c____power_7}{c}^{\\htmlData{n=__power_7__exp}{2}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}}}",
-        "plain": "c^{2} \\cdot t^{2} - v^{2} \\cdot t^{2} = c^{2} \\cdot t_{0}^{2}"
+        "plain": "c^{2} \\cdot t^{2} - v^{2} \\cdot t^{2} = c^{2} \\cdot t_{0}^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       },
       {
         "index": 3,
@@ -161,7 +373,16 @@
         "justification": "$t^2$ is common on the left",
         "input_latex": "t^2 \\cdot (c^2 - v^2) = c^2 t_0^2",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_3}{\\htmlData{n=__power_5}{\\htmlData{n=t}{t}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_3__m1}{\\cdot} \\left(\\htmlData{n=__add_4}{\\htmlData{n=__power_2}{\\htmlData{n=c____power_2}{c}^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}}\\right)} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_6}{\\htmlData{n=__power_7}{\\htmlData{n=c____power_7}{c}^{\\htmlData{n=__power_7__exp}{2}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}}}",
-        "plain": "t^{2} \\cdot \\left(c^{2} - v^{2}\\right) = c^{2} \\cdot t_{0}^{2}"
+        "plain": "t^{2} \\cdot \\left(c^{2} - v^{2}\\right) = c^{2} \\cdot t_{0}^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       },
       {
         "index": 4,
@@ -169,7 +390,16 @@
         "justification": "isolate $t^2$",
         "input_latex": "t^2 = \\frac{c^2 t_0^2}{c^2 - v^2}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_5}{\\htmlData{n=t}{t}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=__power_7}{\\htmlData{n=c____power_7}{c}^{\\htmlData{n=__power_7__exp}{2}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}}}{\\htmlData{n=__add_4}{\\htmlData{n=__power_2}{\\htmlData{n=c____power_2}{c}^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}}}}}",
-        "plain": "t^{2} = \\frac{c^{2} \\cdot t_{0}^{2}}{c^{2} - v^{2}}"
+        "plain": "t^{2} = \\frac{c^{2} \\cdot t_{0}^{2}}{c^{2} - v^{2}}",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "equivalent",
+          "reason": "both sides scaled by c**2 - v**2 — equivalent wherever c**2 - v**2 ≠ 0",
+          "type_consistent": true
+        }
       },
       {
         "index": 5,
@@ -177,7 +407,16 @@
         "justification": "introduce $\\frac{v^2}{c^2}$",
         "input_latex": "t^2 = \\frac{t_0^2}{1 - \\frac{v^2}{c^2}}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_5}{\\htmlData{n=t}{t}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}}{\\htmlData{n=__add_4}{\\htmlData{n=__num_7}{1} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__multiply_6}{\\frac{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}{\\htmlData{n=__power_7}{\\htmlData{n=c}{c}^{\\htmlData{n=__power_7__exp}{2}}}}}}}}}}",
-        "plain": "t^{2} = \\frac{t_{0}^{2}}{1 - \\frac{v^{2}}{c^{2}}}"
+        "plain": "t^{2} = \\frac{t_{0}^{2}}{1 - \\frac{v^{2}}{c^{2}}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       },
       {
         "index": 6,
@@ -185,9 +424,35 @@
         "justification": "moving clocks run slow by $\\gamma$",
         "input_latex": "t = \\frac{t_0}{\\sqrt{1 - \\frac{v^2}{c^2}}}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=t}{t} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=t_0}{t_{0}}}{\\htmlData{n=__power_4}{\\sqrt{\\htmlData{n=__add_4}{\\htmlData{n=__num_7}{1} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__multiply_6}{\\frac{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}{\\htmlData{n=__power_7}{\\htmlData{n=c}{c}^{\\htmlData{n=__power_7__exp}{2}}}}}}}}}}}}",
-        "plain": "t = \\frac{t_{0}}{\\sqrt{1 - \\frac{v^{2}}{c^{2}}}}"
+        "plain": "t = \\frac{t_{0}}{\\sqrt{1 - \\frac{v^{2}}{c^{2}}}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "narrows",
+          "reason": "the previous step is exactly this step squared — taking a root keeps only solutions of the original",
+          "type_consistent": true
+        }
       }
-    ]
+    ],
+    "overall_confidence": {
+      "tier": "verified",
+      "label": "Verified",
+      "icon": "🥈",
+      "meaning": "strong CAS evidence, short of a symbolic proof",
+      "relation": null,
+      "reason": "6/6 steps verified · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 0,
+        "verified": 1,
+        "grounded": 5
+      },
+      "endpoint_reached": true
+    }
   },
   {
     "title": "Quadratic roots & discriminant",
@@ -199,7 +464,16 @@
         "justification": "complete the square; the discriminant is $b^2 - 4ac$",
         "input_latex": "a \\cdot x^{2} + b \\cdot x + c = 0",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=a}{a} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_6}{\\htmlData{n=b}{b} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=x____multiply_6}{x}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=c}{c}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__num_7}{0}}",
-        "plain": "a \\cdot x^{2} + b \\cdot x + c = 0"
+        "plain": "a \\cdot x^{2} + b \\cdot x + c = 0",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
       },
       {
         "index": 1,
@@ -207,7 +481,16 @@
         "justification": "Division property of equality: Dividing both sides of an equation by the same non-zero number maintains the equality.",
         "input_latex": "x^{2} + \\frac{b}{a} \\cdot x + \\frac{c}{a} = 0",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_4}{\\htmlData{n=__multiply_6}{\\frac{\\htmlData{n=b}{b}}{\\htmlData{n=a____multiply_6}{a}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=x____multiply_4}{x}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=c}{c}}{\\htmlData{n=a____multiply_8}{a}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__num_7}{0}}",
-        "plain": "x^{2} + \\frac{b}{a} \\cdot x + \\frac{c}{a} = 0"
+        "plain": "x^{2} + \\frac{b}{a} \\cdot x + \\frac{c}{a} = 0",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "equivalent",
+          "reason": "both sides scaled by a — equivalent wherever a ≠ 0",
+          "type_consistent": true
+        }
       },
       {
         "index": 2,
@@ -215,7 +498,16 @@
         "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality.",
         "input_latex": "x^{2} + \\frac{b}{a} \\cdot x = - \\frac{c}{a}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_3}{\\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_4}{\\htmlData{n=__multiply_6}{\\frac{\\htmlData{n=b}{b}}{\\htmlData{n=a____multiply_6}{a}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=x____multiply_4}{x}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_7}{\\htmlData{n=__negation_7__op}{-} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=c}{c}}{\\htmlData{n=a____multiply_8}{a}}}}}",
-        "plain": "x^{2} + \\frac{b}{a} \\cdot x = - \\frac{c}{a}"
+        "plain": "x^{2} + \\frac{b}{a} \\cdot x = - \\frac{c}{a}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       },
       {
         "index": 3,
@@ -223,7 +515,16 @@
         "justification": "Addition property of equality: Adding the same quantity to both sides of an equation maintains the equality. This step prepares the left side for factoring as a perfect square.",
         "input_latex": "x^{2} + \\frac{b}{a} \\cdot x + \\left(\\frac{b}{2a}\\right)^{2} = - \\frac{c}{a} + \\left(\\frac{b}{2a}\\right)^{2}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_4}{\\htmlData{n=__multiply_6}{\\frac{\\htmlData{n=b____multiply_6}{b}}{\\htmlData{n=a____multiply_6}{a}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=x____multiply_4}{x}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__power_8}{\\left(\\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=b____multiply_9}{b}}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{2} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}}}}\\right)^{\\htmlData{n=__power_8__exp}{2}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_13}{\\htmlData{n=__negation_7}{\\htmlData{n=__negation_7__op}{-} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=c}{c}}{\\htmlData{n=a____multiply_8}{a}}}} \\htmlData{n=__add_13__op1}{+} \\htmlData{n=__power_17}{\\left(\\htmlData{n=__multiply_18}{\\frac{\\htmlData{n=b____multiply_18}{b}}{\\htmlData{n=__multiply_20}{\\htmlData{n=__num_21}{2} \\htmlData{n=__multiply_20__m1}{\\cdot} \\htmlData{n=a____multiply_20}{a}}}}\\right)^{\\htmlData{n=__power_17__exp}{2}}}}}",
-        "plain": "x^{2} + \\frac{b}{a} \\cdot x + \\left(\\frac{b}{2 \\cdot a}\\right)^{2} = - \\frac{c}{a} + \\left(\\frac{b}{2 \\cdot a}\\right)^{2}"
+        "plain": "x^{2} + \\frac{b}{a} \\cdot x + \\left(\\frac{b}{2 \\cdot a}\\right)^{2} = - \\frac{c}{a} + \\left(\\frac{b}{2 \\cdot a}\\right)^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       },
       {
         "index": 4,
@@ -231,7 +532,16 @@
         "justification": "Algebraic identity $(u+v)^2 = u^2 + 2uv + v^2$ for the left side, and exponent rule $(uv)^n = u^n v^n$ for the right side.",
         "input_latex": "\\left(x + \\frac{b}{2a}\\right)^{2} = - \\frac{c}{a} + \\frac{b^{2}}{4a^{2}}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_5}{\\left(\\htmlData{n=__add_2}{\\htmlData{n=x}{x} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=b____multiply_9}{b}}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{2} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}}}}}\\right)^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_3}{\\htmlData{n=__negation_7}{\\htmlData{n=__negation_7__op}{-} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=c}{c}}{\\htmlData{n=a____multiply_8}{a}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_16}{4} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_17}{\\htmlData{n=a____power_17}{a}^{\\htmlData{n=__power_17__exp}{2}}}}}}}}",
-        "plain": "\\left(x + \\frac{b}{2 \\cdot a}\\right)^{2} = - \\frac{c}{a} + \\frac{b^{2}}{4 \\cdot a^{2}}"
+        "plain": "\\left(x + \\frac{b}{2 \\cdot a}\\right)^{2} = - \\frac{c}{a} + \\frac{b^{2}}{4 \\cdot a^{2}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       },
       {
         "index": 5,
@@ -239,7 +549,16 @@
         "justification": "Arithmetic of fractions: To combine fractions, a common denominator $4a^2$ is found, and the numerators are added.",
         "input_latex": "\\left(x + \\frac{b}{2a}\\right)^{2} = \\frac{- 4 \\cdot a \\cdot c + b^{2}}{4 \\cdot a^{2}}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_5}{\\left(\\htmlData{n=__add_2}{\\htmlData{n=x}{x} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=b____multiply_9}{b}}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{2} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}}}}}\\right)^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_8}{\\frac{\\left(\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=_r2___num_12}{-4} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=a___r1___multiply_11}{a}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=c}{c}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}\\right)}{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_16}{4} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_17}{\\htmlData{n=a____power_17}{a}^{\\htmlData{n=__power_17__exp}{2}}}}}}}",
-        "plain": "\\left(x + \\frac{b}{2 \\cdot a}\\right)^{2} = \\frac{\\left(-4 \\cdot a \\cdot c + b^{2}\\right)}{4 \\cdot a^{2}}"
+        "plain": "\\left(x + \\frac{b}{2 \\cdot a}\\right)^{2} = \\frac{\\left(-4 \\cdot a \\cdot c + b^{2}\\right)}{4 \\cdot a^{2}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       },
       {
         "index": 6,
@@ -247,7 +566,16 @@
         "justification": "Square root property of equality: If $u^2 = v$, then $u = \\pm\\sqrt{v}$. We select the positive root as per the instruction.",
         "input_latex": "x + \\frac{b}{2a} = \\sqrt{\\frac{- 4 \\cdot a \\cdot c + b^{2}}{4 \\cdot a^{2}}}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=x}{x} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=b____multiply_9}{b}}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{2} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___power_7}{\\sqrt{\\htmlData{n=__multiply_8}{\\frac{\\left(\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=_r2___num_12}{-4} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=a___r1___multiply_11}{a}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=c}{c}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}\\right)}{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_16}{4} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_17}{\\htmlData{n=a____power_17}{a}^{\\htmlData{n=__power_17__exp}{2}}}}}}}}}",
-        "plain": "x + \\frac{b}{2 \\cdot a} = \\sqrt{\\frac{\\left(-4 \\cdot a \\cdot c + b^{2}\\right)}{4 \\cdot a^{2}}}"
+        "plain": "x + \\frac{b}{2 \\cdot a} = \\sqrt{\\frac{\\left(-4 \\cdot a \\cdot c + b^{2}\\right)}{4 \\cdot a^{2}}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "narrows",
+          "reason": "the previous step is exactly this step squared — taking a root keeps only solutions of the original",
+          "type_consistent": true
+        }
       },
       {
         "index": 7,
@@ -255,7 +583,16 @@
         "justification": "Property of square roots: $\\sqrt{\\frac{u}{v}} = \\frac{\\sqrt{u}}{\\sqrt{v}}$ and $\\sqrt{4a^2} = 2a$ (assuming $a$ is positive, or considering the principal root).",
         "input_latex": "x + \\frac{b}{2a} = \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=x}{x} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=b____multiply_9}{b}}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{2} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=_r1___power_7}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=_r2___num_12}{-4} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=a___r1___multiply_11}{a}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=c}{c}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}}}}{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_16}{2} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=a____multiply_6}{a}}}}}",
-        "plain": "x + \\frac{b}{2 \\cdot a} = \\frac{\\sqrt{-4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}"
+        "plain": "x + \\frac{b}{2 \\cdot a} = \\frac{\\sqrt{-4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "equivalent",
+          "reason": "both sides square to the same statement — equal up to the choice of root branch (principal root assumed)",
+          "type_consistent": true
+        }
       },
       {
         "index": 8,
@@ -263,7 +600,16 @@
         "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality, isolating $x$.",
         "input_latex": "x = - \\frac{b}{2a} + \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=x}{x} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_2}{\\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__multiply_9}{\\htmlData{n=b____multiply_9}{b} \\htmlData{n=__multiply_9__m1}{\\cdot} \\htmlData{n=__multiply_11}{\\frac{\\htmlData{n=__num_6}{1/2}}{\\htmlData{n=a____multiply_11}{a}}}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=_r1___power_7}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=_r2___num_12}{-4} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=a___r1___multiply_11}{a}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=c}{c}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}}}}{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_16}{2} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=a____multiply_6}{a}}}}}}",
-        "plain": "x = - b \\cdot \\frac{1/2}{a} + \\frac{\\sqrt{-4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}"
+        "plain": "x = - b \\cdot \\frac{1/2}{a} + \\frac{\\sqrt{-4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       },
       {
         "index": 9,
@@ -271,8 +617,34 @@
         "justification": "Arithmetic of fractions: Since the terms on the right side have a common denominator, their numerators can be combined.",
         "input_latex": "x = \\frac{- b + \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
         "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=x}{x} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_9}{\\frac{\\left(\\htmlData{n=__add_2}{\\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=b____negation_3}{b}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=_r1___power_7}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=_r2___num_12}{-4} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=a___r1___multiply_11}{a}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=c}{c}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}}}}\\right)}{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_16}{2} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=a____multiply_6}{a}}}}}",
-        "plain": "x = \\frac{\\left(- b + \\sqrt{-4 \\cdot a \\cdot c + b^{2}}\\right)}{2 \\cdot a}"
+        "plain": "x = \\frac{\\left(- b + \\sqrt{-4 \\cdot a \\cdot c + b^{2}}\\right)}{2 \\cdot a}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
       }
-    ]
+    ],
+    "overall_confidence": {
+      "tier": "verified",
+      "label": "Verified",
+      "icon": "🥈",
+      "meaning": "strong CAS evidence, short of a symbolic proof",
+      "relation": null,
+      "reason": "9/9 steps verified · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 0,
+        "verified": 2,
+        "grounded": 7
+      },
+      "endpoint_reached": true
+    }
   }
 ]
