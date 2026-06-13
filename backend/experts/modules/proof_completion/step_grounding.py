@@ -35,6 +35,7 @@ guard so a pathological expression degrades to "unknown" instead of hanging.
 
 from __future__ import annotations
 
+import atexit
 import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -163,23 +164,33 @@ _singularities = sp.singularities
 _limit = sp.limit
 
 
+# One SHARED, bounded pool for every guarded call. A timed-out sympy call keeps
+# its worker busy (Python can't kill a thread), so a fresh executor per call
+# would let repeated timeouts accumulate background threads without limit. A
+# fixed-size pool caps that — the worst case is a bounded number of stuck
+# workers, after which guards return ``default`` (grounding degrades to
+# "unknown") instead of leaking. The cap is generous so a single classify's
+# handful of sequential calls never saturates it (fast calls don't queue behind
+# a stuck one); it only bounds the pathological flood of simultaneous overruns.
+_GUARD_POOL = ThreadPoolExecutor(max_workers=32, thread_name_prefix="sg-guard")
+atexit.register(_GUARD_POOL.shutdown, wait=False)
+
+
 def _guard(fn, *args, default=None, timeout=None):
     """Run ``fn(*args)`` with a wall-clock bound; ``default`` on timeout/error.
 
     ``signal.alarm`` is unsafe under the threaded server (and on non-main
-    threads generally), so we wait on a worker thread instead. Caveat: Python
-    cannot kill a thread — the bound is on *waiting*, not CPU; a runaway sympy
-    call keeps its worker busy until it finishes. We mitigate by gating which
-    calls run at all (cheap checks first, univariate only).
+    threads generally), so we wait on a shared, bounded worker pool instead.
+    Caveat: Python cannot kill a thread — the bound is on *waiting*, not CPU; a
+    runaway sympy call keeps its worker busy until it finishes. We mitigate by
+    (a) gating which calls run at all (cheap checks first, univariate only) and
+    (b) capping the pool so background threads can never grow unbounded.
     """
     t = _TIMEOUT_S if timeout is None else timeout
-    ex = ThreadPoolExecutor(max_workers=1)
     try:
-        return ex.submit(fn, *args).result(timeout=t)
+        return _GUARD_POOL.submit(fn, *args).result(timeout=t)
     except Exception:
         return default
-    finally:
-        ex.shutdown(wait=False)
 
 
 # --------------------------------------------------------------------------- #

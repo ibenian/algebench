@@ -168,15 +168,17 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
         # derivation. ``working`` only advances on a fully-rendered state, so the
         # next good state rebases onto the last good one.
         annotated = plain = ltx
-        # A placeholder token (\dots, or a \pm/\mp pseudo-symbol) still RENDERS
-        # and morphs, but is not real math — its grounding expr stays None so
-        # the confidence tier is honestly "unchecked", never a fake verdict.
         expr = None
-        if g is not None and not any(tok in ltx for tok in PLACEHOLDER_TOKENS):
-            try:
-                expr = graph_to_sympy(g)
-            except Exception:
-                expr = None
+        if g is not None:
+            # A placeholder token (\dots, or a \pm/\mp pseudo-symbol) still
+            # renders and FLIP-morphs as a graph, but is not real math — gate
+            # ONLY the sympy conversion so its grounding expr stays None (tier
+            # "unchecked"), while the state still rebases/animates normally.
+            if not any(tok in ltx for tok in PLACEHOLDER_TOKENS):
+                try:
+                    expr = graph_to_sympy(g)
+                except Exception:
+                    expr = None
             try:
                 cand = g if working is None else _rebase(working, g)
                 annotated = to_latex(cand, with_ids=True)   # annotated, stable ids
