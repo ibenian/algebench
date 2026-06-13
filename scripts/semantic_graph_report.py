@@ -208,7 +208,8 @@ def _page_template() -> str:
     <script type="importmap">{{
       "imports": {{
         "/labels.js": "data:text/javascript,export function makeAiAskButton(){{return document.createElement('span')}}",
-        "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({{binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)}});export function compileExpr(s){{return m.compile(s)}}export function evalExpr(c,t,opts){{const scope=opts%26%26opts.extraScope?{{...opts.extraScope}}:{{}};return c.evaluate(scope)}}"
+        "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({{binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)}});export function compileExpr(s){{return m.compile(s)}}export function evalExpr(c,t,opts){{const scope=opts%26%26opts.extraScope?{{...opts.extraScope}}:{{}};return c.evaluate(scope)}}",
+        "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn"
       }}
     }}</script>
     <script>
