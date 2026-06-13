@@ -12,7 +12,8 @@
 <script type="importmap">{
   "imports": {
     "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
-    "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}"
+    "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
+    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn"
   }
 }</script>
 <script>
@@ -1025,7 +1026,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-06-07 02:47 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-06-13 03:02 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Mechanics (15 expressions)</div>
 <div class="row">
   <div>
