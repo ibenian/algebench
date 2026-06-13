@@ -20,6 +20,20 @@ _LOGICAL_CONNECTIVE_COMMANDS = (
 
 _CHAIN_RELATION_COMMANDS = ("\\approx", "\\simeq")
 
+# Logical connectives that, when they join RELATIONS (e.g. ``x = 2 \lor x = 3``),
+# must become the ROOT with each relation as a branch — ``Or(Eq, Eq)`` /
+# ``And(...)``. Over plain expressions / propositions / sets they stay with the
+# translator's infix handling; we intercept ONLY when an operand actually
+# contains a relation (so ``(\neg P) \lor (\neg Q)`` and ``dx \wedge dy`` are
+# untouched). ``\lor`` binds looser than ``\land`` binds looser than ``=``.
+_DISJUNCTION_COMMANDS = ("\\lor", "\\vee")
+_CONJUNCTION_COMMANDS = ("\\land", "\\wedge")
+_CONNECTIVE_JOIN = {"disjunction": r" \lor ", "conjunction": r" \land "}
+_RELATION_TOKENS = (
+    "\\leq", "\\geq", "\\neq", "\\le", "\\ge", "\\ne", "\\lt", "\\gt", "\\in",
+    "=", "<", ">",
+)
+
 _preprocessor = LaTeXPreprocessor()
 _postprocessor = GraphPostprocessor()
 
@@ -128,6 +142,142 @@ def _derive_single_expression(latex: str) -> SemanticGraph | None:
     return _postprocessor.postprocess(graph, result)
 
 
+def _split_top_level(latex: str, commands: tuple[str, ...]) -> list[str]:
+    """Split *latex* on top-level occurrences of any command in *commands*.
+
+    Depth-aware over ``{}`` / ``()`` / ``[]``; ignores a command immediately
+    followed by a letter (so ``\\lor`` matches but ``\\lorem`` would not).
+    Returns the trimmed, non-empty parts (one element if nothing split).
+    """
+    parts: list[str] = []
+    buf: list[str] = []
+    depth = 0
+    i = 0
+    L = len(latex)
+    while i < L:
+        c = latex[i]
+        if c in "{([":
+            depth += 1
+            buf.append(c)
+            i += 1
+            continue
+        if c in "}])":
+            depth = max(0, depth - 1)
+            buf.append(c)
+            i += 1
+            continue
+        if depth == 0:
+            matched = ""
+            for cmd in commands:
+                if latex.startswith(cmd, i):
+                    nxt = latex[i + len(cmd)] if i + len(cmd) < L else ""
+                    if not nxt.isalpha():
+                        matched = cmd
+                        break
+            if matched:
+                parts.append("".join(buf).strip())
+                buf = []
+                i += len(matched)
+                continue
+        buf.append(c)
+        i += 1
+    parts.append("".join(buf).strip())
+    return [p for p in parts if p]
+
+
+def _has_top_level_relation(latex: str) -> bool:
+    """True if *latex* contains a relation (``=``, ``<``, ``\\leq``, …) at depth 0."""
+    depth = 0
+    i = 0
+    L = len(latex)
+    while i < L:
+        c = latex[i]
+        if c in "{([":
+            depth += 1
+            i += 1
+            continue
+        if c in "}])":
+            depth = max(0, depth - 1)
+            i += 1
+            continue
+        if depth == 0:
+            for tok in _RELATION_TOKENS:
+                if not latex.startswith(tok, i):
+                    continue
+                if tok == "=":
+                    prev = latex[i - 1] if i > 0 else ""
+                    nxt = latex[i + 1] if i + 1 < L else ""
+                    if prev in "\\<>=!:" or nxt == "=":
+                        continue
+                return True
+        i += 1
+    return False
+
+
+def _merge_under_connective(parts: list[str], op: str) -> SemanticGraph | None:
+    """Parse each *part* as its own relation graph and join under one *op* node.
+
+    Mirrors the equality-chain merge, but the root is a ``disjunction`` /
+    ``conjunction`` operator and each branch is a fully-derived operand graph —
+    so ``x = 2 \\lor x = 3`` becomes ``Or(Eq(x, 2), Eq(x, 3))``. Synthetic ids
+    are namespaced per branch; shared variables (``x``, ``a``, …) intentionally
+    merge across branches.
+    """
+    subgraphs: list[SemanticGraph] = []
+    for part in parts:
+        sub = derive_equation_chain_graph(part)   # full pipeline, recursively
+        if sub is None or not sub.nodes:
+            return None
+        subgraphs.append(sub)
+
+    merged_nodes: dict[str, SemanticGraphNode] = {}
+    merged_edges: list[SemanticGraphEdge] = []
+    roots: list[str] = []
+
+    for si, sub in enumerate(subgraphs):
+        prefix = f"d{si}_"
+
+        def _rename(nid: str, p: str = prefix) -> str:
+            return p + nid if nid.startswith("__") else nid
+
+        for n in sub.nodes:
+            new_id = _rename(n.id)
+            cloned = n.model_copy(update={"id": new_id})
+            if new_id not in merged_nodes:
+                merged_nodes[new_id] = cloned
+            else:
+                existing = merged_nodes[new_id]
+                for field_name in type(n).model_fields:
+                    if field_name == "id":
+                        continue
+                    new_val = getattr(cloned, field_name)
+                    if new_val is not None and getattr(existing, field_name) is None:
+                        setattr(existing, field_name, new_val)
+
+        for e in sub.edges:
+            merged_edges.append(SemanticGraphEdge(
+                from_=_rename(e.from_), to=_rename(e.to)))
+
+        out_set = {e.from_ for e in sub.edges}
+        root_candidates = [n.id for n in sub.nodes if n.id not in out_set]
+        roots.append(_rename(root_candidates[0] if root_candidates
+                             else sub.nodes[0].id))
+
+    conn_id = f"__{op}_1"
+    merged_nodes[conn_id] = SemanticGraphNode(
+        id=conn_id, type="operator", op=op,
+        subexpr=_CONNECTIVE_JOIN[op].join(parts),
+    )
+    for r in roots:
+        merged_edges.append(SemanticGraphEdge(from_=r, to=conn_id))
+
+    return SemanticGraph(
+        nodes=list(merged_nodes.values()),
+        edges=merged_edges,
+        classification=Classification(kind="algebraic"),
+    )
+
+
 def derive_equation_chain_graph(latex: str) -> SemanticGraph | None:
     """Derive a semantic graph for a possibly-chained equation.
 
@@ -145,6 +295,21 @@ def derive_equation_chain_graph(latex: str) -> SemanticGraph | None:
         if graph and early_annotations:
             _postprocessor.inject_annotations(graph, early_annotations)
         return graph
+
+    # Logical connective over RELATIONS: make the connective the root with each
+    # relation as a branch (Or(Eq, Eq) / And(...)). Disjunction is looser than
+    # conjunction, so split `\lor` first; the recursion then handles `\land` and
+    # the `=` inside each branch. Intercept only when an operand truly contains a
+    # relation — otherwise sets/propositions stay with the translator.
+    for _commands, _op in ((_DISJUNCTION_COMMANDS, "disjunction"),
+                           (_CONJUNCTION_COMMANDS, "conjunction")):
+        _parts = _split_top_level(latex, _commands)
+        if len(_parts) >= 2 and any(_has_top_level_relation(p) for p in _parts):
+            graph = _merge_under_connective(_parts, _op)
+            if graph is not None:
+                if early_annotations:
+                    _postprocessor.inject_annotations(graph, early_annotations)
+                return graph
 
     if _has_top_level_statement_comma(latex):
         graph = _derive_single_expression(latex)

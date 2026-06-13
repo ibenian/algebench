@@ -4,18 +4,12 @@ r"""Disjunction of equations/relations in the semantic-graph parser.
 ``x = r_1 \lor x = r_2`` — must parse to a disjunction at the **root** with the
 two equations as its children (``Or(Eq, Eq)``).
 
-Today they don't. The infix-operator rewriter turns ``A \lor B`` into a
-placeholder *function call* ``\Xi_N(A, B)`` for SymPy's ``parse_latex``; since a
-call's arguments can't contain ``=``, relations are made *fences* that the
-rewriter splits on first. So ``x = 2 \lor x = 3`` segments as ``x = [2 \lor x]
-= 3`` and the disjunction gets trapped *inside* the equation — producing an
-``equals``-rooted tree instead of ``Or(Eq, Eq)``.
-
-The ``*_parses`` tests pass today (the parse succeeds and a disjunction node
-exists). The structural tests pin the **correct** shape and are
-``xfail(strict)`` until a dedicated logical-connective-over-relations path lands
-(split on the top-level connective, parse each relation, join under the
-disjunction node — mirroring ``equation_chain`` for ``a = b = c``).
+This is handled by ``equation_chain._merge_under_connective``: a top-level
+``\lor`` / ``\land`` whose operands contain relations is split, each operand is
+parsed on its own, and the results are joined under a disjunction / conjunction
+node — mirroring how ``a = b = c`` chains are merged under one ``equals`` node.
+(Previously the chain handler split on ``=`` first and trapped the ``\lor``
+inside the middle segment, producing an ``equals``-rooted tree.)
 """
 
 from __future__ import annotations
@@ -58,15 +52,9 @@ def test_disjunction_parses_and_is_wellformed(latex):
 
 
 # --------------------------------------------------------------------------- #
-# The requirement (xfail until the relational-connective path lands):
-# the disjunction must be the ROOT, with two equations as its branches.
+# The requirement: the disjunction is the ROOT, with two equations as branches.
 # --------------------------------------------------------------------------- #
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=r"parser traps \lor inside the '=' fence: disjunction is nested "
-           r"under equals instead of Or(Eq, Eq)",
-)
 @pytest.mark.parametrize("latex", [TWO_ROOTS, TWO_ROOTS_VEE])
 def test_disjunction_root_over_two_equations(latex):
     g = _graph(latex)
@@ -77,10 +65,6 @@ def test_disjunction_root_over_two_equations(latex):
     assert sum(1 for n in g.nodes if n.op == "equals") == 2
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=r"quadratic roots `x = … \lor x = …` hit the same \lor-vs-'=' gap",
-)
 def test_quadratic_roots_is_disjunction_of_equations():
     g = _graph(QUADRATIC)
     assert child_ops_of_op(g, "disjunction") == {"equals"}
