@@ -17,7 +17,8 @@ from backend.model.semantic_graph import SemanticGraphNode
 
 
 def _step(_i=1, expr="x^2 = 4"):   # _i: positional index kept for call sites, unused now
-    return DerivationStep(operation="rewrite", expr_latex=expr, justification="valid")
+    return DerivationStep(operation="rewrite", expr_latex=expr, justification="valid",
+                          change_type="rewrite")
 
 
 def _node(nid="x"):
@@ -72,3 +73,19 @@ def test_expert_result_preserves_subclass_fields_on_dump():
     import pytest
     with pytest.raises(ValueError):
         ExpertResult(expert="e", context_id="c", outputs=[traj, traj]).single()
+
+
+def test_change_type_roundtrips_and_is_required():
+    # survives a dump/validate round trip
+    tagged = DerivationStep(operation="take the root", expr_latex="x = 2",
+                            justification="both sides nonneg", change_type="solve")
+    back = DerivationStep.model_validate(tagged.model_dump())
+    assert back.change_type == "solve"
+    # required: a step without a declared change_type is rejected
+    with pytest.raises(ValidationError):
+        DerivationStep.model_validate(
+            {"operation": "rewrite", "expr_latex": "x^2 = 4", "justification": "valid"})
+    # invalid value is rejected
+    with pytest.raises(ValidationError):
+        DerivationStep(operation="o", expr_latex="x", justification="j",
+                       change_type="guess")

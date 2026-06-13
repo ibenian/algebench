@@ -106,8 +106,10 @@ def main() -> int:
     elif args.states:
         traj = ProofTrajectory(
             start_latex=args.states[0],
+            # ad-hoc chains carry no per-step claim; "rewrite" is the common
+            # case (a non-rewrite step simply ranks Verified instead of Proven)
             steps=[DerivationStep(operation=f"step {i}", expr_latex=s,
-                                  justification="(manual)")
+                                  justification="(manual)", change_type="rewrite")
                    for i, s in enumerate(args.states[1:], start=1)],
         )
         animations = [build(traj, args.domain, args.title)]

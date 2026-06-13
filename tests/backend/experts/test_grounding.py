@@ -131,3 +131,15 @@ def test_dataset_carries_source_expressions():
         # WRONG math (True when groundable, None when the walk can't model it).
         applied = apply(ex.context.start, ex.gold_ops)
         assert is_grounded(applied, ex.target_expr) is not False
+
+
+def test_chained_inequality_grounds_as_conjunction():
+    # "a <= g <= b" (an entry-corridor-style bound) parses with a nested
+    # relation; it must ground to the standard conjunction And(a<=g, g<=b).
+    g = SVC.latex_to_graph(r"a \leq x \leq b")
+    got = graph_to_sympy(g)
+    expected = sp.And(a <= x, x <= b)
+    assert sympy_equiv(got, expected)
+    assert is_grounded(g, expected) is True
+    # and a WRONG corridor is rejected, not blessed
+    assert is_grounded(g, sp.And(a <= x, x <= a)) is False

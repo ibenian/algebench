@@ -34,6 +34,9 @@ from backend.experts.modules.proof_completion.graph_ops import canonical_equal, 
 from backend.experts.modules.proof_completion.grounding import (  # noqa: E402
     graph_to_latex, graph_to_sympy, sympy_equiv,
 )
+from backend.experts.modules.proof_completion.step_grounding import (  # noqa: E402
+    TIER_ICON, TIER_LABEL, ground_steps,
+)
 from backend.experts.modules.proof_completion.outputs import (  # noqa: E402
     AddEdge, AddNode, RemoveEdge, RemoveNode,
 )
@@ -53,11 +56,9 @@ def _describe(op) -> str:
     return op.op
 
 
-# Placeholder/ellipsis tokens that are NOT valid math — a state containing one
-# (e.g. "1 + 2 + \dots + n") cannot be a real sympy expression even if the
-# parser tolerates the token.
-_PLACEHOLDER = ("\\dots", "\\ldots", "\\cdots", "\\dotsb", "\\ddots",
-                "\\vdots", "\\dotsc", "...")
+# Placeholder tokens (incl. \pm/\mp pseudo-symbols) — the canonical list lives
+# in the metric module so the CLI, metric, and animation builder agree.
+from backend.experts.modules.proof_completion.metric import PLACEHOLDER_TOKENS as _PLACEHOLDER  # noqa: E402
 
 
 def state_graph(svc, expr_latex: str, domain):
@@ -185,12 +186,31 @@ def main() -> int:
         recon = graph_to_latex(g) or f"{s.expr_latex}   (not a valid SymPy expression)"
         derived.append((s, g, recon))
 
+    # step-to-step grounding: rank every consecutive transition (standalone
+    # helper — also importable as proof_completion.step_grounding.ground_steps)
+    def _state_expr(g):
+        if g is None:
+            return None
+        try:
+            return graph_to_sympy(g)
+        except Exception:
+            return None
+
+    report = ground_steps(
+        [_state_expr(start_g)] + [_state_expr(g) for _s, g, _ in derived],
+        change_types=[s.change_type for s in steps],
+        target=_state_expr(target_g),
+    )
+
     # always: the LaTeX chain (start -> each state), reconstructed from the graph
     start_latex = graph_to_latex(start_g) or args.start
     print(f"\n=== derivation (LaTeX): {len(steps)} step(s) ===")
     print(f"   start :   {start_latex}")
     for i, (s, _g, recon) in enumerate(derived, start=1):
-        print(f"   step {i}:  {recon}")
+        sc = report.steps[i]
+        print(f"   step {i}:  {TIER_ICON[sc.tier]} {recon}")
+        if sc.relation in ("refuted", "unknown") or not sc.type_consistent:
+            print(f"             ({TIER_LABEL[sc.tier].lower()}: {sc.reason})")
 
     # opt-in detail: one step = one math operation + one full state + one
     # justification. With --trajectory we also recover the atomic graph edits
@@ -233,6 +253,10 @@ def main() -> int:
           f"(each state is a single sympy-convertible expression)")
     print(f"  math correct      : {math}    (final state reaches the target expression)")
     print(f"  exact graph       : {struct}    (identical structure to the parsed target)")
+    glyphs = "".join(TIER_ICON[sc.tier] for sc in report.steps[1:])
+    print(f"  step grounding    : {glyphs}    (each transition follows from the previous state)")
+    print(f"  confidence        : {TIER_ICON[report.overall]} "
+          f"{TIER_LABEL[report.overall]}    ({report.reason})")
     return 0
 
 

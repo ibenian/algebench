@@ -12,12 +12,14 @@
         {
           "operation": "add $c$ to both sides",
           "expr_latex": "a + b = c",
-          "justification": "$c$ crosses the $=$ and flips sign"
+          "justification": "$c$ crosses the $=$ and flips sign",
+          "change_type": "rewrite"
         },
         {
           "operation": "subtract $b$ from both sides",
           "expr_latex": "a = c - b",
-          "justification": "$b$ crosses over, leaving $a$ isolated"
+          "justification": "$b$ crosses over, leaving $a$ isolated",
+          "change_type": "rewrite"
         }
       ]
     }
@@ -35,7 +37,8 @@
         {
           "operation": "expand $(x+1)^2$",
           "expr_latex": "x^2 + 2 x + 1",
-          "justification": "$(x+1)^2 = x^2 + 2x + 1$"
+          "justification": "$(x+1)^2 = x^2 + 2x + 1$",
+          "change_type": "rewrite"
         }
       ]
     }
@@ -53,7 +56,8 @@
         {
           "operation": "factor",
           "expr_latex": "(a - b)(a + b)",
-          "justification": "$a^2 - b^2 = (a-b)(a+b)$"
+          "justification": "$a^2 - b^2 = (a-b)(a+b)$",
+          "change_type": "rewrite"
         }
       ]
     }
@@ -71,27 +75,32 @@
         {
           "operation": "take the square root",
           "expr_latex": "E = \\sqrt{(m c^2)^2 + (p c)^2}",
-          "justification": "solve for $E$ (positive root)"
+          "justification": "solve for $E$ (positive root)",
+          "change_type": "solve"
         },
         {
           "operation": "expand the squares",
           "expr_latex": "E = \\sqrt{m^2 c^4 + p^2 c^2}",
-          "justification": "$(m c^2)^2 = m^2 c^4,\\ (p c)^2 = p^2 c^2$"
+          "justification": "$(m c^2)^2 = m^2 c^4,\\ (p c)^2 = p^2 c^2$",
+          "change_type": "rewrite"
         },
         {
           "operation": "factor out $c^2$",
           "expr_latex": "E = \\sqrt{c^2 \\cdot (m^2 c^2 + p^2)}",
-          "justification": "$c^2$ is common to both terms"
+          "justification": "$c^2$ is common to both terms",
+          "change_type": "rewrite"
         },
         {
           "operation": "pull $c$ out of the root",
           "expr_latex": "E = c \\sqrt{m^2 c^2 + p^2}",
-          "justification": "$\\sqrt{c^2 x} = c \\sqrt{x}$"
+          "justification": "$\\sqrt{c^2 x} = c \\sqrt{x}$",
+          "change_type": "solve"
         },
         {
           "operation": "factor out $m^2 c^2$",
           "expr_latex": "E = m c^2 \\sqrt{1 + \\frac{p^2}{m^2 c^2}}",
-          "justification": "the standard Lorentz-factor form"
+          "justification": "the standard Lorentz-factor form",
+          "change_type": "solve"
         }
       ]
     }
@@ -109,32 +118,38 @@
         {
           "operation": "expand the squares",
           "expr_latex": "c^2 t^2 = c^2 t_0^2 + v^2 t^2",
-          "justification": "$(c t)^2 = c^2 t^2$, etc."
+          "justification": "$(c t)^2 = c^2 t^2$, etc.",
+          "change_type": "rewrite"
         },
         {
           "operation": "collect the $t$ terms",
           "expr_latex": "c^2 t^2 - v^2 t^2 = c^2 t_0^2",
-          "justification": "move $v^2 t^2$ to the left"
+          "justification": "move $v^2 t^2$ to the left",
+          "change_type": "rewrite"
         },
         {
           "operation": "factor out $t^2$",
           "expr_latex": "t^2 \\cdot (c^2 - v^2) = c^2 t_0^2",
-          "justification": "$t^2$ is common on the left"
+          "justification": "$t^2$ is common on the left",
+          "change_type": "rewrite"
         },
         {
           "operation": "divide by $c^2 - v^2$",
           "expr_latex": "t^2 = \\frac{c^2 t_0^2}{c^2 - v^2}",
-          "justification": "isolate $t^2$"
+          "justification": "isolate $t^2$",
+          "change_type": "rewrite"
         },
         {
           "operation": "divide top and bottom by $c^2$",
           "expr_latex": "t^2 = \\frac{t_0^2}{1 - \\frac{v^2}{c^2}}",
-          "justification": "introduce $\\frac{v^2}{c^2}$"
+          "justification": "introduce $\\frac{v^2}{c^2}$",
+          "change_type": "rewrite"
         },
         {
           "operation": "take the square root",
           "expr_latex": "t = \\frac{t_0}{\\sqrt{1 - \\frac{v^2}{c^2}}}",
-          "justification": "moving clocks run slow by $\\gamma$"
+          "justification": "moving clocks run slow by $\\gamma$",
+          "change_type": "solve"
         }
       ]
     }
@@ -152,47 +167,56 @@
         {
           "operation": "Divide both sides by $a$.",
           "expr_latex": "x^{2} + \\frac{b}{a} \\cdot x + \\frac{c}{a} = 0",
-          "justification": "Division property of equality: Dividing both sides of an equation by the same non-zero number maintains the equality."
+          "justification": "Division property of equality: Dividing both sides of an equation by the same non-zero number maintains the equality.",
+          "change_type": "rewrite"
         },
         {
           "operation": "Subtract $\\frac{c}{a}$ from both sides.",
           "expr_latex": "x^{2} + \\frac{b}{a} \\cdot x = - \\frac{c}{a}",
-          "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality."
+          "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality.",
+          "change_type": "rewrite"
         },
         {
           "operation": "Add $\\left(\\frac{b}{2a}\\right)^{2}$ to both sides to complete the square.",
           "expr_latex": "x^{2} + \\frac{b}{a} \\cdot x + \\left(\\frac{b}{2a}\\right)^{2} = - \\frac{c}{a} + \\left(\\frac{b}{2a}\\right)^{2}",
-          "justification": "Addition property of equality: Adding the same quantity to both sides of an equation maintains the equality. This step prepares the left side for factoring as a perfect square."
+          "justification": "Addition property of equality: Adding the same quantity to both sides of an equation maintains the equality. This step prepares the left side for factoring as a perfect square.",
+          "change_type": "rewrite"
         },
         {
           "operation": "Factor the perfect square trinomial on the left side and expand the square on the right side.",
           "expr_latex": "\\left(x + \\frac{b}{2a}\\right)^{2} = - \\frac{c}{a} + \\frac{b^{2}}{4a^{2}}",
-          "justification": "Algebraic identity $(u+v)^2 = u^2 + 2uv + v^2$ for the left side, and exponent rule $(uv)^n = u^n v^n$ for the right side."
+          "justification": "Algebraic identity $(u+v)^2 = u^2 + 2uv + v^2$ for the left side, and exponent rule $(uv)^n = u^n v^n$ for the right side.",
+          "change_type": "rewrite"
         },
         {
           "operation": "Find a common denominator and combine the terms on the right side.",
           "expr_latex": "\\left(x + \\frac{b}{2a}\\right)^{2} = \\frac{- 4 \\cdot a \\cdot c + b^{2}}{4 \\cdot a^{2}}",
-          "justification": "Arithmetic of fractions: To combine fractions, a common denominator $4a^2$ is found, and the numerators are added."
+          "justification": "Arithmetic of fractions: To combine fractions, a common denominator $4a^2$ is found, and the numerators are added.",
+          "change_type": "rewrite"
         },
         {
           "operation": "Take the positive square root of both sides.",
           "expr_latex": "x + \\frac{b}{2a} = \\sqrt{\\frac{- 4 \\cdot a \\cdot c + b^{2}}{4 \\cdot a^{2}}}",
-          "justification": "Square root property of equality: If $u^2 = v$, then $u = \\pm\\sqrt{v}$. We select the positive root as per the instruction."
+          "justification": "Square root property of equality: If $u^2 = v$, then $u = \\pm\\sqrt{v}$. We select the positive root as per the instruction.",
+          "change_type": "solve"
         },
         {
           "operation": "Simplify the square root on the right side.",
           "expr_latex": "x + \\frac{b}{2a} = \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
-          "justification": "Property of square roots: $\\sqrt{\\frac{u}{v}} = \\frac{\\sqrt{u}}{\\sqrt{v}}$ and $\\sqrt{4a^2} = 2a$ (assuming $a$ is positive, or considering the principal root)."
+          "justification": "Property of square roots: $\\sqrt{\\frac{u}{v}} = \\frac{\\sqrt{u}}{\\sqrt{v}}$ and $\\sqrt{4a^2} = 2a$ (assuming $a$ is positive, or considering the principal root).",
+          "change_type": "rewrite"
         },
         {
           "operation": "Subtract $\\frac{b}{2a}$ from both sides.",
           "expr_latex": "x = - \\frac{b}{2a} + \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
-          "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality, isolating $x$."
+          "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality, isolating $x$.",
+          "change_type": "rewrite"
         },
         {
           "operation": "Combine the fractions on the right side.",
           "expr_latex": "x = \\frac{- b + \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
-          "justification": "Arithmetic of fractions: Since the terms on the right side have a common denominator, their numerators can be combined."
+          "justification": "Arithmetic of fractions: Since the terms on the right side have a common denominator, their numerators can be combined.",
+          "change_type": "rewrite"
         }
       ]
     }

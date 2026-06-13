@@ -31,6 +31,12 @@ class ProofCompletionSig(dspy.Signature):
       $b^2 - 4ac$". Do NOT use backticks or bare text for math; plain words stay plain.
     - Every `expr_latex` MUST be a single, complete, parseable expression — one
       you could hand to a CAS. Never a partial or malformed fragment.
+    - NEVER write `\pm` or `\mp` inside `expr_latex` — `x = \pm 3` is not a
+      single expression. Emit the explicit disjunction (`x = 3 \lor x = -3`)
+      or pick one branch as its own step with `change_type` = `solve`.
+      (`\pm` is fine inside `operation`/`justification` prose.)
+    - `expr_latex` is MATH ONLY: no `\text{…}` annotations, labels, or units
+      tacked onto the expression — put commentary in `justification`.
     - Write EVERY multiplication explicitly with `\cdot`. A symbol written
       directly before a parenthesis is read as a FUNCTION CALL, not a product:
       `n(n+1)` means "apply function n to (n+1)" and is INVALID. Write
@@ -40,6 +46,14 @@ class ProofCompletionSig(dspy.Signature):
     - Make each step small enough that its `expr_latex` is a clean intermediate
       expression. If a transformation is large, split it into as many smaller
       steps as needed. Prefer more small, valid steps over one big jump.
+    - Each step also declares its `change_type` — the KIND of move it makes:
+      `rewrite` (equivalence-preserving rearrangement: expand, factor, move a
+      term across `=`), `solve` (narrows toward a solution: take a root, pick a
+      branch, isolate the unknown), `substitute` (introduce a new variable,
+      "let $u = …$"), `approximate` (the result is `\approx`, not exact), or
+      `given` (a premise stated, not derived). A CAS verifies each step against
+      its declared type, so label honestly: a step that picks one root of
+      $x^2 = 4$ is `solve`, NOT `rewrite`.
     - The final step's `expr_latex` must equal `target_latex`.
     - Also give a short `title`: a few plain words naming what the derivation
       shows (e.g. "Completing the square", "Lorentz time dilation"). It is a

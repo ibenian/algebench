@@ -63,9 +63,14 @@ def extract_steps(pred: Any) -> list:
 
 # Placeholder/ellipsis tokens that are NOT valid math — a state containing one
 # (e.g. "1 + 2 + \dots + n") is not a real sympy expression even if the latex
-# parser tolerates the token, so it must not count as convertible.
-_PLACEHOLDER = ("\\dots", "\\ldots", "\\cdots", "\\dotsb", "\\ddots",
-                "\\vdots", "\\dotsc", "...")
+# parser tolerates the token, so it must not count as convertible. \pm / \mp
+# belong here too: the parser renders them as an opaque scalar SYMBOL ("x =
+# 3·±"), which silently converts; a multivalued state must be written as a
+# disjunction ("x = 3 or x = -3") or as a branch step instead. Shared by the
+# derive CLI and the animation builder (single source of truth).
+PLACEHOLDER_TOKENS = ("\\dots", "\\ldots", "\\cdots", "\\dotsb", "\\ddots",
+                      "\\vdots", "\\dotsc", "...", "\\pm", "\\mp")
+_PLACEHOLDER = PLACEHOLDER_TOKENS
 
 
 def _state_graph(expr_latex: str, domain) -> SemanticGraph | None:
