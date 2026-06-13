@@ -21,6 +21,11 @@ metric.py      the metric + @register_metric
 model.py       context model (GraphTransition)
 graph_ops.py   apply / diff / canonical_equal
 grounding.py   graph -> sympy + equivalence + per-step grounding
+wellformed.py  caption well-formedness checker (balanced $…$ / braces)
+grounding_score.py  tier-graded grounding score (TIER_RANK/4) for the reward
+judge.py       LLM-as-judge signature (pedagogy score + issues; never gates)
+reward.py      the single graded reward + threshold (well-formed · grounding · judge)
+refine.py      the refinement loop engine (ask → score → re-ask with feedback)
 dataset.py     sympy example generator
 domains/       one file per domain (algebra, calculus, rational, equation_solving,
                inequalities, logic), each @register_domain
@@ -68,6 +73,51 @@ shared fields on `GraphOpBase` and behavior provided polymorphically via
    `per_step_groundable` / `score_components`' `step_grounded` measures the
    fraction of the model's step boundaries that are valid math waypoints — the
    "is every intermediate sane?" signal (e.g. `x²+1=0 → x²=−1 → x=√−1`).
+
+## Refinement loop (issue #372)
+
+`module.forward` wraps the prediction in a **refinement loop**: each attempt is
+scored by a single graded `reward(pred, …) ∈ [0,1]` and, if it falls below the
+threshold `τ`, re-asked with the failure issues threaded back as targeted
+feedback (not a blind re-roll). It early-exits the moment an attempt passes, and
+after `N` attempts keeps the **best** one — which still renders, honestly tiered
+by the confidence badges (#370). One pure checker per constraint, each in its own
+file:
+
+```
+reward = wellformed_factor · (W_G · grounding_score + W_J · judge_score)
+```
+
+- **wellformed.py** — near-binary prerequisite: a malformed caption (unbalanced
+  `$`, stray braces) can't render, so it zeroes the reward and the loop retries
+  with the caption issues as feedback (the judge isn't even called). Delegates the
+  `$…$` scanning to the reusable `backend/util/latex.py`, so the chat panel and
+  the caption renderer share one definition of "balanced." Two surfaces: soft
+  `well_formed()` for the loop, hard `assert_well_formed()` for non-generation
+  edges (stored/hand-authored JSON, tests) where no retry exists.
+- **grounding_score.py** — maps the `step_grounding` tiers to `TIER_RANK/4`
+  (Grounded 1.0 · Verified 0.75 · Plausible 0.5 · Unchecked 0.25 · Refuted 0.0),
+  averaged over transitions. Graded, not a hard floor — a `Refuted` step drags the
+  blend down on its own weight (weighted to dominate the judge).
+- **judge.py** — an LLM-as-judge that returns a pedagogy `score` + `issues`. It
+  only nudges the number and supplies feedback; it never decides pass/fail.
+
+### Cost / latency
+
+`τ`, the weights, and `N` are env-tunable:
+
+| Env var | Default | Meaning |
+|---|---|---|
+| `ALGEBENCH_PC_REFINE_ATTEMPTS` | `2` | max attempts `N` (`1` = single pass, loop disabled) |
+| `ALGEBENCH_PC_JUDGE` | `0` (off) | enable the LLM judge (adds one LM call per generation) |
+| `ALGEBENCH_PC_TAU` | `0.7` | retry threshold |
+| `ALGEBENCH_PC_W_GROUNDING` / `ALGEBENCH_PC_W_JUDGE` | `0.8` / `0.2` | reward weights |
+
+The hard gates (well-formedness, grounding) are deterministic and need **no LM**,
+so with the judge off the only LM call on a passing first attempt is the single
+prediction — extra calls happen *only* when an attempt scores below `τ` (early
+exit on pass). Keep `N` small (2–3). The judge, when enabled, is the one extra LM
+call and runs only after the hard prerequisite passes.
 
 ## Pipeline
 
