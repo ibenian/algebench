@@ -1075,7 +1075,13 @@ export class ProofAnimator {
   // everything else is plain text.
   _caption(el, text) {
     el.innerHTML = "";
-    const s = String(text);
+    let s = String(text);
+    // Tolerate an UNCLOSED inline-math delimiter: the LM occasionally drops the
+    // trailing `$` (or backtick), e.g. "…and $V_{\text{LEO}} = 7.8 \text{ km/s}".
+    // An odd delimiter count means the tail would render as raw LaTeX, so close
+    // it by appending the missing delimiter — the remainder then renders as math.
+    if ((s.match(/\$/g) || []).length % 2) s += "$";
+    if ((s.match(/`/g) || []).length % 2) s += "`";
     let last = 0, m;
     _CAPTION_RE.lastIndex = 0;
     while ((m = _CAPTION_RE.exec(s)) !== null) {
