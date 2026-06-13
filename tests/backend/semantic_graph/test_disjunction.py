@@ -17,6 +17,7 @@ from __future__ import annotations
 import pytest
 
 from backend.semantic_graph.service import SemanticGraphService
+from backend.semantic_graph.equation_chain import _has_top_level_relation
 from tests.backend.semantic_graph.generators.invariants import (
     assert_universal_invariants,
     child_ops_of_op,
@@ -70,3 +71,26 @@ def test_quadratic_roots_is_disjunction_of_equations():
     assert child_ops_of_op(g, "disjunction") == {"equals"}
     # exactly the two root equations under the disjunction
     assert sum(1 for n in g.nodes if n.op == "equals") == 2
+
+
+# --------------------------------------------------------------------------- #
+# Relation detection must respect command boundaries — a backslash relation
+# token (\le, \ne, \in) must NOT match a longer command (\left, \neg, \int,
+# \infty), or the connective interception would fire on ordinary expressions.
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.parametrize("latex, expected", [
+    (r"x = 2", True),
+    (r"x \leq 3", True),
+    (r"x \geq 3", True),
+    (r"x \neq 3", True),
+    (r"x \in S", True),
+    (r"x < 3", True),
+    (r"\neg P", False),            # \ne must not match \neg
+    (r"\left( x \right)", False),  # \le must not match \left
+    (r"\int f \, dx", False),      # \in must not match \int
+    (r"\infty", False),            # \in must not match \infty
+    (r"a + b", False),
+])
+def test_relation_detection_respects_command_boundary(latex, expected):
+    assert _has_top_level_relation(latex) is expected

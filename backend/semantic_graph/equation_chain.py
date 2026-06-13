@@ -209,6 +209,14 @@ def _has_top_level_relation(latex: str) -> bool:
                     nxt = latex[i + 1] if i + 1 < L else ""
                     if prev in "\\<>=!:" or nxt == "=":
                         continue
+                elif tok.startswith("\\"):
+                    # Command boundary: a backslash relation token must end at a
+                    # non-letter, else `\le` matches `\left`, `\ne` matches `\neg`,
+                    # `\in` matches `\int` / `\infty`. Longer tokens (`\leq`, `\neq`,
+                    # `\geq`) are listed first, so genuine relations still match.
+                    nxt = latex[i + len(tok)] if i + len(tok) < L else ""
+                    if nxt.isalpha():
+                        continue
                 return True
         i += 1
     return False

@@ -35,7 +35,6 @@ except ImportError:
     from scripts.graph_to_mermaid import semantic_graph_to_mermaid, load_theme
 
 from backend.semantic_graph.mathjs_converter import latex_to_mathjs
-from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
 from backend.semantic_graph.service import SemanticGraphService
 
 # The report reflects the PRODUCTION renderer — the full service pipeline
