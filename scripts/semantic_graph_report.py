@@ -36,6 +36,23 @@ except ImportError:
 
 from backend.semantic_graph.mathjs_converter import latex_to_mathjs
 from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
+from backend.semantic_graph.service import SemanticGraphService
+
+# The report reflects the PRODUCTION renderer — the full service pipeline
+# (preprocess → chain/disjunction handling → translate → postprocess), not the
+# bare translator. So e.g. `x = 2 \lor x = 3` renders as Or(Eq, Eq).
+_SERVICE = SemanticGraphService()
+
+# Report-only showcase (not a test catalog): disjunction of equations, where the
+# connective is the root and each relation is a branch. Format matches the domain
+# catalogs' (test_id, latex, tag, …) so the section builder picks them up.
+_DISJUNCTION_SHOWCASE = [
+    ("disj_two_roots", r"x = 2 \lor x = 3", None),
+    ("disj_two_roots_vee", r"x = 2 \vee x = 3", None),
+    ("disj_quadratic_roots",
+     r"x = \frac{-b + \sqrt{b^2 - 4ac}}{2a} \lor "
+     r"x = \frac{-b - \sqrt{b^2 - 4ac}}{2a}", None),
+]
 from tests.backend.semantic_graph.domains.test_domain_arithmetic import (
     ALL_EXPRESSIONS as ARITHMETIC_EXPRESSIONS,
 )
@@ -125,6 +142,7 @@ def _collect_expressions() -> list[tuple[str, list[tuple[str, str, str | None]]]
         ("Linear Algebra", LINALG_EXPRESSIONS, None),
         ("Complex Analysis", COMPLEX_EXPRESSIONS, None),
         ("Logic & Set Theory", LOGIC_EXPRESSIONS, None),
+        ("Disjunction (roots)", _DISJUNCTION_SHOWCASE, None),
         ("Number Theory", NUMBER_THEORY_EXPRESSIONS, None),
         ("Probability & Statistics", PROBABILITY_EXPRESSIONS, None),
         ("Combinatorics", COMBINATORICS_EXPRESSIONS, None),
@@ -710,7 +728,9 @@ def _render_row(
 
     graph_json = None
     try:
-        graph_obj = latex_to_semantic_graph(latex, domain=domain)
+        graph_obj = _SERVICE.latex_to_graph(latex, domain=domain)
+        if graph_obj is None:
+            raise ValueError("parser returned None")
         graph_dict = graph_obj.model_dump(by_alias=True, exclude_none=True)
         _precompute_chart_scripts(graph_dict)
         mermaid_src = semantic_graph_to_mermaid(graph_dict, theme=theme)
