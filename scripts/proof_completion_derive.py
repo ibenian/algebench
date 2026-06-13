@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 
 from _pc_env import load_env_local
 
@@ -118,6 +119,12 @@ def main() -> int:
     ap.add_argument("--program", default=None, help="optimized artifact to load")
     ap.add_argument("--baseline", action="store_true",
                     help="force the uncompiled model (ignore the default artifact)")
+    ap.add_argument("--attempts", type=int, default=None,
+                    help="max refinement attempts (default: env/2; 1 disables the loop)")
+    ap.add_argument("--judge", action="store_true",
+                    help="enable the LLM-as-judge signal in the refinement reward")
+    ap.add_argument("--debug", action="store_true",
+                    help="log each refinement attempt: score, breakdown, steps, feedback")
     ap.add_argument("--trajectory", action="store_true",
                     help="print the trajectory op(s) at each step")
     ap.add_argument("--explanation", action="store_true",
@@ -127,6 +134,16 @@ def main() -> int:
     ap.add_argument("--json", action="store_true",
                     help="dump the raw model output (the trajectory) as JSON and exit")
     args = ap.parse_args()
+
+    if args.debug:
+        # Isolated DEBUG stream for the refinement loop only — keep dspy/litellm
+        # chatter out of the dump.
+        _h = logging.StreamHandler()
+        _h.setFormatter(logging.Formatter("%(message)s"))
+        _lg = logging.getLogger("backend.experts.modules.proof_completion")
+        _lg.setLevel(logging.DEBUG)
+        _lg.addHandler(_h)
+        _lg.propagate = False
 
     init_experts()  # configure the DSPy LM
     svc = SemanticGraphService()
@@ -145,7 +162,9 @@ def main() -> int:
     ctx = GraphTransition(start=start_g, target=target_g,
                           domain=args.domain, intent=intent)
     prog = ProofCompletionExpert(artifact=args.program,
-                                 load_default=not args.baseline)
+                                 load_default=not args.baseline,
+                                 refine_attempts=args.attempts,
+                                 use_judge=True if args.judge else None)
     if not args.json:
         print(f"(model: {prog.loaded_artifact or 'baseline (uncompiled)'})")
     try:

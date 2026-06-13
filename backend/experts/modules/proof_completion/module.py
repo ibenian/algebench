@@ -10,6 +10,7 @@ an artifact and loaded back here.
 
 from __future__ import annotations
 
+import logging
 import os
 
 import dspy
@@ -21,6 +22,8 @@ from .grounding import graph_to_latex
 from .judge import ProofJudge
 from .refine import refine
 from .reward import reward
+
+log = logging.getLogger(__name__)
 
 # The "blessed" compiled program. If this file exists it is loaded by default —
 # so service.invoke and the CLI use the optimized expert without --program.
@@ -49,6 +52,27 @@ def _env_flag(name: str, default: bool = False) -> bool:
 # one LM call per generation, so it stays off unless explicitly enabled.
 _REFINE_ATTEMPTS = _env_int("ALGEBENCH_PC_REFINE_ATTEMPTS", 2)
 _JUDGE_ENABLED = _env_flag("ALGEBENCH_PC_JUDGE", default=False)
+
+
+def _log_attempt(k: int, n: int, pred, res) -> None:
+    """Per-attempt dump for the refinement loop (fires at DEBUG; see ``--debug``).
+
+    Shows the score + breakdown, every step's expression, and the ``issues``
+    string — which is exactly what gets threaded back as feedback if we retry.
+    """
+    if not log.isEnabledFor(logging.DEBUG):
+        return
+    b = res.breakdown
+    log.debug("── refine attempt %d/%d ──  score=%.3f  %s",
+              k + 1, n, res.score, "PASS" if res.passed else "below τ")
+    log.debug("   breakdown: wellformed=%s grounding=%s judge=%s",
+              b.get("wellformed"), b.get("grounding"), b.get("judge"))
+    steps = list(getattr(pred.trajectory, "steps", []) or [])
+    for i, s in enumerate(steps, start=1):
+        log.debug("   step %d [%s]: %s", i, s.change_type, s.expr_latex)
+    if res.issues:
+        verb = "feedback for next attempt" if not res.passed else "notes"
+        log.debug("   %s: %s", verb, res.issues)
 
 
 @register_expert(
@@ -128,5 +152,9 @@ class ProofCompletionExpert(dspy.Module):
                           target_graph=context.target, domain=context.domain,
                           judge=self.judge)
 
-        outcome = refine(attempt, evaluate, max_attempts=self.refine_attempts)
+        outcome = refine(attempt, evaluate, max_attempts=self.refine_attempts,
+                         on_attempt=_log_attempt)
+        log.debug("refine done: %d attempt(s), %s (best score %.3f)",
+                  outcome.attempts, "PASSED" if outcome.passed else "kept best",
+                  getattr(outcome.result, "score", float("nan")))
         return [outcome.prediction.trajectory]  # canonical list[Output]

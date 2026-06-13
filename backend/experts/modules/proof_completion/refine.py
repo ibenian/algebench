@@ -45,6 +45,7 @@ def refine(
     evaluate: Callable[[object], object],
     *,
     max_attempts: int = 2,
+    on_attempt: Optional[Callable[[int, int, object, object], None]] = None,
 ) -> RefineOutcome:
     """Ask → evaluate → re-ask-with-feedback, keeping the best (never raises here).
 
@@ -54,6 +55,10 @@ def refine(
     Exceptions inside ``attempt``/``evaluate`` end the loop early and return the
     best-so-far (or re-raise on the very first attempt, where there is nothing to
     fall back to).
+
+    ``on_attempt(k, n, pred, res)`` — optional observability hook fired after each
+    evaluation (0-based ``k`` of ``n``), so callers can dump per-attempt state
+    (``--debug``) without the loop knowing how to render a prediction.
     """
     n = max(1, int(max_attempts))
     best_pred: Optional[object] = None
@@ -70,6 +75,8 @@ def refine(
                 raise            # nothing to fall back to — let the caller see it
             break
         made += 1
+        if on_attempt is not None:
+            on_attempt(k, n, pred, res)
         if best_res is None or res.score > best_res.score:
             best_pred, best_res = pred, res
         if res.passed:
