@@ -156,6 +156,9 @@ def build_example(seed: Seed, rng: random.Random, max_steps: int, max_ops: int =
             # rule (a symbol before "(" is a function call, not multiplication).
             expr_latex=sp.latex(e, mul_symbol="dot"),
             justification="equivalent transformation (sympy-verified)",
+            # gold chains are equivalence-preserving by construction (each state
+            # is sympy-verified equivalent to the seed expression)
+            change_type="rewrite",
         )
         for (e, _g) in kept[1:]
     ]

@@ -118,17 +118,27 @@ export class ProofAnimator {
     // column are added only when a factory is present, matching _build.
     const opHost = document.createElement("div"); opHost.className = "pa-op-row";
     opHost.append(op);
+    // Confidence badge mirrors the live op-row (probe == live, same as the ask
+    // button below) so the reserved height accounts for it. Badges are hidden
+    // until revealed (pa-conf-on/peek) — force the probe's visible so the
+    // reservation covers the REVEALED state and toggling never shifts layout.
+    const badge = document.createElement("span"); badge.className = "pa-conf-badge";
+    badge.style.display = "inline-flex";
+    opHost.append(badge);
     if (this._aiAsk) {
       probe.classList.add("pa-has-ask");
       next.classList.add("pa-has-ask");
       const ask = document.createElement("span"); ask.className = "pa-ask-btn pa-ask-current";
       opHost.append(ask);
     }
+    // (The overall-confidence pill is an absolute OVERLAY on the widget — out
+    // of flow, so it does not participate in the meta height reservation.)
     probe.append(opHost, just, next);
     this.container.appendChild(probe);
     let h = 0;
     this.data.steps.forEach((s, i) => {
       this._caption(op, this._opText(i));
+      this._setConfBadge(i, badge);
       this._caption(just, s.justification || "");
       this._setNextPill(next, i);
       h = Math.max(h, probe.getBoundingClientRect().height);
@@ -315,7 +325,8 @@ export class ProofAnimator {
     this.container.classList.add("pa-root");
     this.container.innerHTML = `
       <div class="pa-stage" aria-live="polite"></div>
-      <div class="pa-meta"><div class="pa-op-row"><span class="pa-op"></span></div><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
+      <span class="pa-overall"></span>
+      <div class="pa-meta"><div class="pa-op-row"><span class="pa-op"></span><span class="pa-conf-badge"></span></div><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
       <div class="pa-controls">
         <button type="button" class="pa-btn pa-prev" data-tip="Previous step" aria-label="Previous step">◀</button>
         <div class="pa-steps"></div>
@@ -331,12 +342,20 @@ export class ProofAnimator {
       b.type = "button";   // never submit a surrounding <form>
       b.className = "pa-step";
       b.textContent = String(i);
-      const tip = `${i}. ${this._plainOp(s.operation || `state ${i}`)}`;
+      let tip = `${i}. ${this._plainOp(s.operation || `state ${i}`)}`;
+      // Confidence tint: the row of step buttons doubles as an at-a-glance
+      // confidence strip (a colored bar per step, tier-keyed).
+      const c = this._conf(i);
+      if (c && c.tier) {
+        b.classList.add(`pa-conf-${c.tier}`);
+        tip += ` — ${c.label || c.tier}`;
+      }
       b.setAttribute("data-tip", tip);
       b.setAttribute("aria-label", tip);
       b.addEventListener("click", () => this._userGoTo(i));
       steps.appendChild(b);
     });
+    this._setOverall();   // overall-confidence pill (removed when data lacks it)
     this.container.querySelector(".pa-prev").onclick = () => this._userGoTo(this.current - 1);
     this.container.querySelector(".pa-next").onclick = () => this._userGoTo(this.current + 1);
     // The "Next" pill acts like the next button.
@@ -1097,8 +1116,89 @@ export class ProofAnimator {
   _syncUI() {
     this._updateStepButtons();
     this._caption(this.container.querySelector(".pa-op"), this._opText(this.current));
+    this._setConfBadge(this.current);
     this._caption(this.container.querySelector(".pa-just"), this.data.steps[this.current].justification || "");
     this._setNextPill(this.container.querySelector(".pa-next-pill"), this.current);
+  }
+
+  // ── step-grounding confidence (tier badges) ─────────────────────────────
+  // Per-step `confidence` and top-level `overall_confidence` are attached by
+  // the server (animation.build → step_grounding.ground_steps). All reads are
+  // guarded: payloads without them render exactly as before (no badges).
+  _conf(idx) {
+    const s = this.data.steps[idx];
+    return (s && s.confidence && s.confidence.tier) ? s.confidence : null;
+  }
+
+  // The per-step badge beside the explanation: tier icon + color, with a
+  // self-explanatory tooltip (label — meaning, then the concrete reason).
+  _setConfBadge(idx, el) {
+    el = el || this.container.querySelector(".pa-conf-badge");
+    if (!el) return;
+    const c = this._conf(idx);
+    el.className = "pa-conf-badge";
+    el.textContent = "";
+    el.removeAttribute("data-tip");
+    el.removeAttribute("aria-label");
+    if (!c) return;
+    el.classList.add(`pa-conf-${c.tier}`);
+    el.textContent = c.icon || "";
+    // Tooltip: when the CAS reached a verdict (or for the start state) the
+    // concrete reason IS the story — including a mislabel downgrade, where the
+    // generic tier meaning ("could not decide") would contradict it. Only a
+    // genuinely undecided step leads with the tier meaning.
+    let tip = (c.relation === "unknown")
+      ? `${c.label} — ${c.meaning || ""}${c.reason ? ` (${c.reason})` : ""}`
+      : `${c.label} — ${c.reason || c.meaning || ""}`;
+    el.setAttribute("data-tip", tip);
+    el.setAttribute("aria-label", tip);
+  }
+
+  // The overall-confidence pill (static for the derivation): icon + tier label
+  // + how many transitions verified, e.g. "🥇 Grounded · 6/7".
+  _setOverall() {
+    const el = this.container.querySelector(".pa-overall");
+    if (!el) return;
+    const oc = this.data.overall_confidence;
+    if (!oc || !oc.tier) { el.remove(); return; }   // legacy payload → no pill
+    el.classList.add(`pa-conf-${oc.tier}`);
+    const icon = document.createElement("span");
+    icon.className = "pa-overall-icon";
+    icon.textContent = oc.icon || "";
+    const label = document.createElement("span");
+    label.className = "pa-overall-label";
+    label.textContent = oc.label || oc.tier;
+    el.append(icon, label);
+    const counts = oc.counts || {};
+    const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0);
+    if (total > 0) {
+      const good = (counts.grounded || 0) + (counts.verified || 0);
+      const count = document.createElement("span");
+      count.className = "pa-overall-count";
+      count.textContent = `· ${good}/${total}`;
+      el.append(count);
+    }
+    // The overall reason already summarizes the chain (tallies + endpoint), so
+    // the pill tooltip is "<Label> — <summary>", not the per-step meaning.
+    const tip = `${oc.label} — ${oc.reason || oc.meaning || ""} · click to pin details`;
+    el.setAttribute("data-tip", tip);
+    el.setAttribute("aria-label", tip);
+    // Reveal-on-demand: the chip is COMPACT (icon only) by default; hovering it
+    // peeks the full badge display (label + tally + per-step badge + tinted
+    // step dots), and clicking pins/unpins that state (pa-conf-on).
+    el.setAttribute("role", "button");
+    el.setAttribute("tabindex", "0");
+    el.setAttribute("aria-pressed", "false");
+    const toggle = () => {
+      const on = this.container.classList.toggle("pa-conf-on");
+      el.setAttribute("aria-pressed", String(on));
+    };
+    el.addEventListener("click", toggle);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+    });
+    el.addEventListener("mouseenter", () => this.container.classList.add("pa-conf-peek"));
+    el.addEventListener("mouseleave", () => this.container.classList.remove("pa-conf-peek"));
   }
 
   _updateStepButtons() {
@@ -1196,36 +1296,56 @@ export class ProofAnimator {
     const opEl = meta.querySelector(".pa-op");
     const justEl = meta.querySelector(".pa-just");
     const nextEl = meta.querySelector(".pa-next-pill");
+    const badgeEl = meta.querySelector(".pa-conf-badge");
     const metaRect = meta.getBoundingClientRect();
     const opRect = opEl.getBoundingClientRect();
     const justRect = justEl.getBoundingClientRect();
     const nextRect = nextEl.getBoundingClientRect();
+    // The confidence badge only animates when revealed (peek/pin); hidden in
+    // compact mode it has no box, so there's nothing to fade.
+    const badgeShown = badgeEl && getComputedStyle(badgeEl).display !== "none";
+    const badgeRect = badgeShown ? badgeEl.getBoundingClientRect() : null;
     const nextWasShown = !nextEl.classList.contains("pa-next-hidden");
     this._metaGhosts = this._metaGhosts || [];
     this._metaAnims = this._metaAnims || [];
 
+    // The confidence badge cross-fades SEQUENTIALLY (not with the text): the old
+    // badge fades out fully IN PLACE first, then the new one fades in at its new
+    // spot — so the badge never appears to jump position mid-fade. Deliberately
+    // slow (~2× the text fade) so the verdict change reads clearly.
+    const Dbadge = this._baseDuration;
+
     // 1. Ghost the OLD explanation + justification at their spots and fade out.
-    const ghostOut = (el, rect) => {
+    const ghostOut = (el, rect, duration = this._baseDuration * 0.55) => {
       if (!el.textContent.trim()) return;
       const g = el.cloneNode(true);
       g.classList.add("pa-meta-ghost");
+      // Force absolute inline (beats any selector): the confidence badge carries
+      // a data-tip, and the tooltip rule `.pa-root [data-tip]{position:relative}`
+      // outranks `.pa-meta-ghost{position:absolute}` — a relative ghost would
+      // stay in flow and sink to the bottom of the meta column by the nav.
+      g.style.position = "absolute";
+      g.removeAttribute("data-tip");   // ghosts are decorative — no tooltip
+      g.removeAttribute("aria-label");
       g.style.left = (rect.left - metaRect.left) + "px";
       g.style.top = (rect.top - metaRect.top) + "px";
       g.style.width = Math.ceil(rect.width) + "px";
       meta.appendChild(g);
       this._metaGhosts.push(g);
       const a = this._tween(g, [{ opacity: 1 }, { opacity: 0 }],
-        { duration: this._baseDuration * 0.55, easing: EASE, fill: "forwards" });
+        { duration, easing: EASE, fill: "forwards" });
       a.onfinish = () => g.remove();
       this._metaAnims.push(a);
     };
     ghostOut(opEl, opRect);
     ghostOut(justEl, justRect);
+    if (badgeShown) ghostOut(badgeEl, badgeRect, Dbadge);   // fades out IN PLACE, slow
 
     // 2. The new explanation IS the promoted "Next" title. Put it in the op slot,
     //    hide the (now-promoted) next pill and the old justification, then FLIP the
     //    op up from the Next position into place.
     this._caption(opEl, this._opText(target));
+    this._setConfBadge(target);
     this._caption(justEl, this.data.steps[target].justification || "");
     justEl.style.opacity = "0";
     nextEl.style.opacity = "0";
@@ -1239,6 +1359,17 @@ export class ProofAnimator {
         { duration: this._baseDuration, easing: EASE, fill: "both" });
       a.onfinish = () => { opEl.style.transform = ""; opEl.classList.remove("pa-promoting"); };
       this._metaAnims.push(a);
+    }
+    // The new badge fades in AFTER the old one has fully faded out (delay =
+    // Dbadge) — sequential, so the badge's position only changes once nothing
+    // is visible there. The live badge already reflowed to its new spot but
+    // stays at opacity 0 for the whole fade-out window, so no jump is seen.
+    if (badgeShown) {
+      badgeEl.style.opacity = "0";
+      const ba = this._tween(badgeEl, [{ opacity: 0 }, { opacity: 1 }],
+        { duration: Dbadge, delay: Dbadge, easing: EASE, fill: "both" });
+      ba.onfinish = () => (badgeEl.style.opacity = "");
+      this._metaAnims.push(ba);
     }
 
     // 3. finish(): after the step animation, fade in the new justification first,
@@ -1273,6 +1404,8 @@ export class ProofAnimator {
     if (justEl) justEl.style.opacity = "";
     const nextEl = this.container.querySelector(".pa-next-pill");
     if (nextEl) nextEl.style.opacity = "";
+    const badgeEl = this.container.querySelector(".pa-conf-badge");
+    if (badgeEl) badgeEl.style.opacity = "";
   }
 
   // Render the "Next" pill for the step after idx (hidden on the last step).

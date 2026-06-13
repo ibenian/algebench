@@ -55,3 +55,14 @@ def test_bootstrap_mode_returns_pass_fail():
     # trace set => hard 1.0/0.0
     assert proof_completion_metric(ex, good, trace=[]) == 1.0
     assert proof_completion_metric(ex, bad, trace=[]) == 0.0
+
+
+def test_pm_pseudo_symbol_is_not_convertible():
+    # "x = \pm 3" parses to a graph where ± is an opaque scalar symbol
+    # ("x = 3·±") — not real math. It must not count as a convertible state.
+    from backend.experts.modules.proof_completion.metric import _state_graph
+
+    assert _state_graph(r"x = \pm 3", "algebra") is None
+    assert _state_graph(r"x = \mp 2", "algebra") is None
+    assert _state_graph(r"x = \pm\sqrt{9}", "algebra") is None
+    assert _state_graph(r"x = 3", "algebra") is not None   # control

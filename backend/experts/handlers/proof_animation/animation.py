@@ -19,7 +19,12 @@ from collections import defaultdict
 from backend.semantic_graph.service import SemanticGraphService
 from backend.semantic_graph.latex_renderer import to_latex
 from backend.experts.modules.proof_completion.graph_ops import wl_colors, _content
+from backend.experts.modules.proof_completion.grounding import graph_to_sympy
+from backend.experts.modules.proof_completion.metric import PLACEHOLDER_TOKENS
 from backend.experts.modules.proof_completion.outputs import ProofTrajectory
+from backend.experts.modules.proof_completion.step_grounding import (
+    TIER_ICON, TIER_LABEL, TIER_MEANING, Tier, ground_steps,
+)
 
 
 def _children(graph):
@@ -151,6 +156,7 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
     svc = SemanticGraphService()
     working = None
     out = []
+    state_exprs = []   # per-state sympy expr (None: not convertible) for grounding
     for i, (operation, justification, ltx) in enumerate(chain):
         try:
             g = svc.latex_to_graph(ltx, domain=domain)
@@ -162,7 +168,17 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
         # derivation. ``working`` only advances on a fully-rendered state, so the
         # next good state rebases onto the last good one.
         annotated = plain = ltx
+        expr = None
         if g is not None:
+            # A placeholder token (\dots, or a \pm/\mp pseudo-symbol) still
+            # renders and FLIP-morphs as a graph, but is not real math — gate
+            # ONLY the sympy conversion so its grounding expr stays None (tier
+            # "unchecked"), while the state still rebases/animates normally.
+            if not any(tok in ltx for tok in PLACEHOLDER_TOKENS):
+                try:
+                    expr = graph_to_sympy(g)
+                except Exception:
+                    expr = None
             try:
                 cand = g if working is None else _rebase(working, g)
                 annotated = to_latex(cand, with_ids=True)   # annotated, stable ids
@@ -170,6 +186,7 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
                 working = cand
             except Exception:
                 annotated = plain = ltx
+        state_exprs.append(expr)
         out.append({
             "index": i,
             "operation": operation,
@@ -178,4 +195,59 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
             "latex": annotated,
             "plain": plain,
         })
-    return {"title": title, "domain": domain, "steps": out}
+
+    overall = _attach_confidence(out, state_exprs, trajectory, svc, domain)
+    return {"title": title, "domain": domain, "steps": out,
+            "overall_confidence": overall}
+
+
+def _confidence_payload(tier: Tier, relation=None, reason: str = "",
+                        type_consistent: bool = True) -> dict:
+    return {
+        "tier": tier.value,
+        "label": TIER_LABEL[tier],
+        "icon": TIER_ICON[tier],
+        "meaning": TIER_MEANING[tier],
+        "relation": relation,
+        "reason": reason,
+        "type_consistent": type_consistent,
+    }
+
+
+def _attach_confidence(out, state_exprs, trajectory, svc, domain) -> dict:
+    """Rank the chain with ``ground_steps`` and attach per-step + overall verdicts.
+
+    Strictly additive and isolated: any failure degrades to a uniform GRAY —
+    confidence ranking must never break the animation build.
+    """
+    try:
+        # change_types align to TRANSITIONS: when the chain leads with the start
+        # state every step is a transition; otherwise the first step IS state 0.
+        steps = trajectory.steps
+        change_types = [s.change_type for s in
+                        (steps if trajectory.start_latex else steps[1:])]
+        target_expr = None
+        if trajectory.target_latex:
+            try:
+                tg = svc.latex_to_graph(trajectory.target_latex, domain=domain)
+                target_expr = graph_to_sympy(tg) if tg is not None else None
+            except Exception:
+                target_expr = None
+        report = ground_steps(state_exprs, change_types=change_types,
+                              target=target_expr, domain=domain)
+        for entry, sc in zip(out, report.steps):
+            entry["confidence"] = _confidence_payload(
+                sc.tier, sc.relation, sc.reason, sc.type_consistent)
+        overall = _confidence_payload(report.overall, reason=report.reason)
+        overall["counts"] = report.counts
+        overall["endpoint_reached"] = report.endpoint_reached
+        return overall
+    except Exception:
+        fallback = _confidence_payload(
+            Tier.GRAY, reason="confidence ranking unavailable for this derivation")
+        for entry in out:
+            entry.setdefault("confidence", dict(fallback))
+        overall = dict(fallback)
+        overall["counts"] = {t.value: 0 for t in Tier}
+        overall["endpoint_reached"] = None
+        return overall

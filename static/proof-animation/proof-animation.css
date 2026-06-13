@@ -46,6 +46,7 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  position: relative;       /* anchor for the overall-confidence overlay */
 }
 
 /* the expression canvas — relative so delete-ghosts can be absolutely placed */
@@ -187,7 +188,10 @@
    max-width + the op's min-width:0 let a long (KaTeX-bearing) caption shrink and
    wrap in a narrow box instead of overflowing; the op keeps flex-grow:0 so the
    button stays beside the text rather than being pushed to the far edge. */
-.pa-op-row { display: flex; align-items: center; gap: 8px; max-width: 100%; }
+/* min-height reserves the confidence badge's box (22px + 1px borders) even
+   while it's hidden, so revealing/pinning badges never changes the row height
+   (the badge is taller than a single text line). */
+.pa-op-row { display: flex; align-items: center; gap: 8px; max-width: 100%; min-height: 24px; }
 .pa-op-row .pa-op { min-width: 0; }
 /* Never let the button shrink. In a narrow box the op-row overflows and flexbox
    would squeeze the button — and it squeezes the empty measuring-probe button
@@ -274,6 +278,119 @@
   border-color: var(--pa-accent);
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+   Step-grounding confidence tiers (server-attached `confidence` per step +
+   `overall_confidence`; see step_grounding.py). Five ranked tiers, each with a
+   color pair; a pa-conf-<tier> class sets the pair, and the badge / overall
+   pill / step-dot strip all read it. Payloads without confidence render none
+   of this (the badge is :empty-hidden, the pill is removed).
+   ─────────────────────────────────────────────────────────────────────────── */
+.pa-root {
+  --pa-tier-grounded: #d4a017;                      /* gold   — all checks pass */
+  --pa-tier-grounded-bg: rgba(212, 160, 23, 0.16);
+  --pa-tier-verified: #9aa3b5;                    /* silver — strong evidence */
+  --pa-tier-verified-bg: rgba(154, 163, 181, 0.18);
+  --pa-tier-plausible: var(--pa-accent);          /* blue   — undecided */
+  --pa-tier-plausible-bg: rgba(99, 102, 241, 0.16);
+  --pa-tier-unchecked: var(--pa-muted);           /* gray   — not convertible */
+  --pa-tier-unchecked-bg: rgba(120, 130, 150, 0.12);
+  --pa-tier-refuted: #d05a5a;                     /* red    — provably wrong */
+  --pa-tier-refuted-bg: rgba(208, 90, 90, 0.18);
+}
+.pa-conf-grounded    { --pa-conf-fg: var(--pa-tier-grounded);    --pa-conf-bg: var(--pa-tier-grounded-bg); }
+.pa-conf-verified  { --pa-conf-fg: var(--pa-tier-verified);  --pa-conf-bg: var(--pa-tier-verified-bg); }
+.pa-conf-plausible { --pa-conf-fg: var(--pa-tier-plausible); --pa-conf-bg: var(--pa-tier-plausible-bg); }
+.pa-conf-unchecked { --pa-conf-fg: var(--pa-tier-unchecked); --pa-conf-bg: var(--pa-tier-unchecked-bg); }
+.pa-conf-refuted   { --pa-conf-fg: var(--pa-tier-refuted);   --pa-conf-bg: var(--pa-tier-refuted-bg); }
+
+/* Per-step badge: a small tier-colored chip right after the explanation text.
+   Empty (no confidence data) → hidden entirely. */
+.pa-conf-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;             /* never squeezed by a long caption (probe == live) */
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.78em;
+  line-height: 1;
+  background: var(--pa-conf-bg, transparent);
+  border: 1px solid var(--pa-conf-fg, transparent);
+  cursor: default;
+  user-select: none;
+}
+.pa-conf-badge:empty { display: none; }
+/* Reveal-on-demand: badges are hidden until the user peeks (hovers the overall
+   chip) or pins (clicks it → pa-conf-on on the root). */
+.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-conf-badge { display: none; }
+
+/* Overall-confidence pill: the derivation's seal — an absolute OVERLAY in the
+   widget's top-right corner, out of flow so it never shifts the stage, the
+   text zone, or the controls. Tooltip (data-tip) carries the tally. */
+/* `.pa-root .pa-overall` (not bare `.pa-overall`): must outrank the tooltip
+   rule `.pa-root [data-tip] { position: relative }` or the overlay loses its
+   absolute positioning. */
+.pa-root .pa-overall {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 10;               /* foreground: above the stage + every morph layer */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.8em;
+  line-height: 1.3;
+  /* OPAQUE: the tier tint is translucent, so composite it (as a gradient
+     layer — a plain color can't be a background layer) over the solid panel
+     color. Otherwise a tall expression behind the chip bleeds through and it
+     stops reading as foreground. */
+  background-color: var(--pa-bg);
+  background-image: linear-gradient(var(--pa-conf-bg, transparent),
+                                    var(--pa-conf-bg, transparent));
+  border: 1px solid var(--pa-conf-fg, var(--pa-border));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);   /* lift off the canvas */
+  cursor: pointer;           /* click pins/unpins the full badge display */
+  user-select: none;
+  transition: padding 0.15s, gap 0.15s;
+}
+.pa-root .pa-overall:empty { display: none; }    /* not yet populated (or no data) */
+/* COMPACT by default: icon-only chip. Expands (label + tally) on its own hover
+   (peek) or while pinned. */
+.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall { padding: 4px 8px; gap: 0; }
+.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall-label,
+.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall-count { display: none; }
+.pa-root .pa-overall:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
+/* Its tooltip opens DOWNWARD and right-aligned (the pill sits at the top-right
+   edge — the default above-centered tooltip would clip outside the widget). */
+.pa-root .pa-overall[data-tip]:hover::after,
+.pa-root .pa-overall[data-tip]:focus-visible::after {
+  bottom: auto;
+  top: calc(100% + 7px);
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.pa-overall-label {
+  font-weight: 700;
+  font-size: 0.85em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pa-conf-fg);
+}
+.pa-overall-count { color: var(--pa-muted); font-variant-numeric: tabular-nums; }
+
+/* Confidence strip: each step-nav button carries its tier as a colored bottom
+   bar, so the dot row reads the whole proof at a glance. The active step's
+   accent background stays dominant; the bar stays visible under it. Part of
+   the full badge display — shown only while peeking or pinned. */
+.pa-root.pa-conf-on .pa-steps .pa-step[class*="pa-conf-"],
+.pa-root.pa-conf-peek .pa-steps .pa-step[class*="pa-conf-"] {
+  box-shadow: inset 0 -3px 0 var(--pa-conf-fg);
+}
+
 /* dark theme friendliness when the host sets a dark background var */
 @media (prefers-color-scheme: dark) {
   .pa-root {
@@ -281,6 +398,10 @@
     --pa-bg: var(--panel-bg, #1a1a2e);
     --pa-border: var(--border-color, #2d2d44);
     --pa-muted: var(--muted-color, #9ca3af);
+    /* tier colors brighten slightly for dark backgrounds */
+    --pa-tier-grounded: #e6b832;
+    --pa-tier-verified: #aeb8cc;
+    --pa-tier-refuted: #e07a7a;
   }
 }
 

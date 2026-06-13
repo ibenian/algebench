@@ -127,6 +127,12 @@ GraphOp = Annotated[
 GRAPH_OP_ADAPTER: TypeAdapter = TypeAdapter(GraphOp)
 
 
+# The KIND of move a step makes. The CAS (step_grounding) is the judge of what
+# a step actually did; ``change_type`` is the model's declared expectation —
+# it selects which check applies and surfaces mislabels, never overrides sympy.
+ChangeType = Literal["rewrite", "solve", "substitute", "approximate", "given"]
+
+
 class DerivationStep(BaseModel):
     """One derivation step: a complete reachable state + the move that reached it.
 
@@ -150,6 +156,11 @@ class DerivationStep(BaseModel):
                             description="the COMPLETE LaTeX of the resulting expression")
     justification: str = Field(min_length=1, max_length=400,
                                description="why this step is valid; wrap any math in $…$")
+    change_type: ChangeType = Field(
+        description="the KIND of move: 'rewrite' (equivalence-preserving "
+                    "rearrangement), 'solve' (narrows toward a solution / picks a "
+                    "branch), 'substitute' (introduce a new variable, let $u=…$), "
+                    "'approximate' (≈, not exact), 'given' (a premise, not derived)")
 
 
 class ProofTrajectory(Output):
