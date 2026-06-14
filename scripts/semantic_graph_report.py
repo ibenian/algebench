@@ -105,6 +105,15 @@ from tests.backend.semantic_graph.domains.test_domain_chemistry import (
 # Each domain contributes (section_name, [(test_id, latex), ...]).
 # Expand this list as new domain test files are added.
 
+# Report-only showcase (not a test catalog): bare integral forms, so the
+# integral node structure (integrand + wrt + lb/ub bounds) is easy to eyeball.
+_INTEGRAL_SHOWCASE = [
+    ("integral_indefinite", r"\int x^2 \, dx", None),
+    ("integral_definite", r"\int_0^1 x^2 \, dx", None),
+    ("integral_reciprocal", r"\int_a^b \frac{1}{x} \, dx", None),
+    ("integral_exp_decay", r"\int_0^h e^{-z/H} \, dz", None),
+]
+
 
 def _collect_expressions() -> list[tuple[str, list[tuple[str, str, str | None]]]]:
     # Each section: (display name, catalog, domain hint passed to the parser).
@@ -114,6 +123,7 @@ def _collect_expressions() -> list[tuple[str, list[tuple[str, str, str | None]]]
         ("Arithmetic", ARITHMETIC_EXPRESSIONS, None),
         ("Algebra", ALGEBRA_EXPRESSIONS, None),
         ("Calculus", CALCULUS_EXPRESSIONS, None),
+        ("Integrals (showcase)", _INTEGRAL_SHOWCASE, None),
         ("ODE", ODE_EXPRESSIONS, None),
         ("PDE", PDE_EXPRESSIONS, None),
         ("Structural", STRUCTURAL_EXPRESSIONS, None),
@@ -958,6 +968,12 @@ def generate_site(
     chart_script_dst = outdir / "sg-chart-script.js"
     shutil.copy2(chart_script_src, chart_script_dst)
 
+    # Cache-bust the ES modules on every (re)generation — browsers cache module
+    # imports aggressively, so without this a regenerated report keeps running the
+    # stale JS (won't reflect renderer changes).
+    _d3_ver = int(d3_js_dst.stat().st_mtime)
+    _chart_ver = int(chart_js_dst.stat().st_mtime)
+
     theme = load_theme(graph_theme)
     color_mode = theme.get("mode", "dark")
     colors = THEMES[color_mode]
@@ -974,8 +990,8 @@ def generate_site(
         html, ok, err = _build_report_html(
             [(section_name, expressions)],
             graph_theme=graph_theme, theme=theme, colors=colors,
-            d3_module_url="./d3-semantic-graph.js",
-            chart_module_url="./sg-chart.js",
+            d3_module_url=f"./d3-semantic-graph.js?v={_d3_ver}",
+            chart_module_url=f"./sg-chart.js?v={_chart_ver}",
         )
         (outdir / filename).write_text(html, encoding="utf-8")
         total_ok += ok

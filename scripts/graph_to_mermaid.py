@@ -351,11 +351,10 @@ def _format_label(
                     order = f"^{{{m.group(1)}}}"
             return f"$\\dfrac{{{d}{order}}}{{{d} {wrt}{order}}}$"
         if op in ("integral", "closed_integral") and wrt:
+            # Bounds are separate lb/ub nodes; the stored lower_bound/upper_bound
+            # are those nodes' ids (e.g. __num_2), so don't interpolate them into
+            # the label — the node is just ∫ d⟨var⟩.
             int_cmd = OPERATOR_LATEX.get(op, r"\int")
-            lb = node.get("lower_bound", "")
-            ub = node.get("upper_bound", "")
-            if lb and ub:
-                return f"${int_cmd}_{{{lb}}}^{{{ub}}} d{wrt}$"
             return f"${int_cmd} d{wrt}$"
         if op in ("sum", "product") and wrt:
             agg_cmd = OPERATOR_LATEX.get(op, r"\sum")

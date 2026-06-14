@@ -1472,15 +1472,12 @@ export class D3SemanticGraphRenderer {
             return `\\frac{${d}}{${d}\\cdot}`;
         }
         if (op === 'integral' || op === 'closed_integral') {
+            // Bounds are shown as separate lb/ub nodes (and would otherwise
+            // interpolate raw bound node ids like __num_2 into the label), so the
+            // node itself is just ∫ d⟨var⟩.
             const cmd = OPERATOR_LATEX[op];
             const wrt = data.with_respect_to;
-            const lb = data.lower_bound || '';
-            const ub = data.upper_bound || '';
-            if (wrt) {
-                if (lb && ub) return `${cmd}_{${lb}}^{${ub}} d${wrt}`;
-                return `${cmd} d${wrt}`;
-            }
-            return cmd;
+            return wrt ? `${cmd} d${wrt}` : cmd;
         }
         if (op === 'sum' || op === 'product') {
             const cmd = OPERATOR_LATEX[op];
