@@ -11,9 +11,11 @@ permissions:
   contents: write
   pull-requests: write
 
+# Shared with the other report workflows so gh-pages deploys serialize (a shared
+# group can't cancel-in-progress, or one workflow would abort another mid-push).
 concurrency:
-  group: loc-report-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  group: gh-pages-deploy
+  cancel-in-progress: false
 
 jobs:
   loc-report:

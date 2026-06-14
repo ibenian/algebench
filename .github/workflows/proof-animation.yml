@@ -24,6 +24,13 @@ permissions:
   contents: write
   pull-requests: write
 
+# Serialize gh-pages deploys across ALL report workflows (shared group name) so
+# concurrent pushes can't reject each other with a non-fast-forward. Queue, don't
+# cancel — every report deploy must land.
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
     name: Generate & deploy proof-animation report
