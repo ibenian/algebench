@@ -108,7 +108,39 @@ The crucial design choice: **the model emits full expressions, not graph
 edits.** That keeps it doing what LLMs are good at (math in LaTeX) while the code
 side owns everything structural.
 
-> _[screenshot placeholder: the derive CLI output — steps with per‑step glyphs]_
+Here it is end‑to‑end on a product‑rule derivative — a real, unedited CLI run
+against the **uncompiled baseline** with refinement and the LLM‑judge **off**
+(`--attempts 1`, no `--judge`), so you're seeing the raw model + grounding:
+
+```text
+$ ./run.sh scripts/proof_completion_derive.py \
+    "\frac{d}{dx}\left(x^2 \sin x\right)" "2 x \sin x + x^2 \cos x" \
+    --domain calculus --attempts 1
+
+start : \frac{d}{dx}\left(x^2 \sin x\right)
+target: 2 x \sin x + x^2 \cos x
+(model: baseline (uncompiled))
+
+=== derivation (LaTeX): 4 step(s) ===
+   start :   \frac{d}{d x} x^{2} \cdot \sin{\left(x \right)}
+   step 1:  🥇 x^{2} \cdot \frac{d}{d x} \sin{\left(x \right)} + \sin{\left(x \right)} \cdot \frac{d}{d x} x^{2}
+   step 2:  🥇 x^{2} \cdot \frac{d}{d x} \sin{\left(x \right)} + 2 \cdot x \cdot \sin{\left(x \right)}
+   step 3:  🥇 x^{2} \cdot \cos{\left(x \right)} + 2 \cdot x \cdot \sin{\left(x \right)}
+   step 4:  🥇 x^{2} \cdot \cos{\left(x \right)} + 2 \cdot x \cdot \sin{\left(x \right)}
+
+result:
+  steps convertible : 4/4    (each state is a single sympy-convertible expression)
+  math correct      : ✓    (final state reaches the target expression)
+  exact graph       : ✗    (identical structure to the parsed target)
+  step grounding    : 🥇🥇🥇🥇    (each transition follows from the previous state)
+  confidence        : 🥇 Grounded    (4/4 steps verified · endpoint reached)
+```
+
+The model applied the product rule, differentiated each factor, and every
+transition is **symbolically proven** (🥇). Note `exact graph: ✗` while
+`math correct: ✓` — the final tree isn't node‑for‑node identical to the parsed
+target (`a·b` vs `b·a` ordering), but SymPy confirms they're equal, which is why
+the endpoint gate still passes.
 
 ---
 
@@ -155,7 +187,61 @@ claim* — **SymPy is the judge**; a mislabeled step is downgraded one tier.
 > Worth underlining: a wrong middle step like `x^2 = 4 → x = 7` used to slip
 > through (it parses fine). Now it's **Refuted** — SymPy sees `7` isn't a root.
 
-> _[screenshot placeholder: a derivation with a mix of Grounded/Verified/Plausible badges + the tinted step strip]_
+That isn't hypothetical — here's the real run. Even though the model technically
+"reached" the target we asked for, grounding refuses to bless the bad step:
+
+```text
+$ ./run.sh scripts/proof_completion_derive.py "x^2 = 4" "x = 7" --domain algebra --attempts 1
+
+=== derivation (LaTeX): 2 step(s) ===
+   start :   x^{2} = 4
+   step 1:  🥇 x = 2
+   step 2:  ✗ x = 7
+             (refuted: introduces value(s) that do not solve the previous step: 7 — but the step was declared 'rewrite')
+
+result:
+  step grounding    : 🥇✗    (each transition follows from the previous state)
+  confidence        : ✗ Refuted    (1/2 steps verified · 1 refuted · endpoint reached)
+```
+
+`math correct` and the endpoint gate both pass — the chain *did* end at `x = 7` —
+but the overall verdict is **✗ Refuted**, because reaching the requested target
+is not the same as every step being valid. The CAS is the judge.
+
+And here's a longer one with a genuine spread of tiers — deriving the quadratic
+formula. Every step is individually grounded or verified, yet the overall verdict
+is honestly held at **🔹 Plausible** because the `∨`‑form final state isn't the
+exact `±`‑form target we asked for (the endpoint gate, not a weak step):
+
+```text
+$ ./run.sh scripts/proof_completion_derive.py \
+    "a x^2 + b x + c = 0" "x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}" \
+    --domain algebra --attempts 1
+
+=== derivation (LaTeX): 8 step(s) ===
+   start :   a \cdot x^{2} + b \cdot x + c = 0
+   step 1:  🥇 a \cdot x^{2} + b \cdot x = - c
+   step 2:  🥈 x^{2} + \frac{b \cdot x}{a} = - \frac{c}{a}
+   step 3:  🥇 x^{2} + \frac{b \cdot x}{a} + \frac{b^{2}}{4 \cdot a^{2}} = - \frac{c}{a} + \frac{b^{2}}{4 \cdot a^{2}}
+   step 4:  🥇 \left(x + \frac{b}{2 \cdot a}\right)^{2} = - \frac{c}{a} + \frac{b^{2}}{4 \cdot a^{2}}
+   step 5:  🥇 \left(x + \frac{b}{2 \cdot a}\right)^{2} = \frac{- 4 \cdot a \cdot c + b^{2}}{4 \cdot a^{2}}
+   step 6:  🥈 x + \frac{b}{2 \cdot a} = - \frac{\sqrt{- 4 \cdot a \cdot c + b^{2}}}{2 \cdot a} \vee x + \frac{b}{2 \cdot a} = \frac{\sqrt{- 4 \cdot a \cdot c + b^{2}}}{2 \cdot a}
+   step 7:  🥈 x = - \frac{b}{2 \cdot a} - \frac{\sqrt{- 4 \cdot a \cdot c + b^{2}}}{2 \cdot a} \vee x = - \frac{b}{2 \cdot a} + \frac{\sqrt{- 4 \cdot a \cdot c + b^{2}}}{2 \cdot a}
+   step 8:  🥇 x = \frac{- b - \sqrt{- 4 \cdot a \cdot c + b^{2}}}{2 \cdot a} \vee x = \frac{- b + \sqrt{- 4 \cdot a \cdot c + b^{2}}}{2 \cdot a}
+
+result:
+  steps convertible : 8/8    (each state is a single sympy-convertible expression)
+  step grounding    : 🥇🥈🥇🥇🥇🥈🥈🥇    (each transition follows from the previous state)
+  confidence        : 🔹 Plausible    (8/8 steps verified · endpoint NOT reached)
+```
+
+Steps 6–8 carry a **disjunction** (`∨`) — the two roots — and SymPy grounds the
+square‑root branch and the algebra around it (🥇/🥈) rather than punting. That
+disjunction support is recent ([#375](https://github.com/ibenian/algebench/pull/375));
+without it those steps would have shown as **○ Unchecked** ("not a single
+convertible expression").
+
+> _[screenshot placeholder: the same quadratic‑formula derivation animated, with the per‑step badges and tinted step strip]_
 
 ---
 
