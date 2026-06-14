@@ -1026,7 +1026,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-06-14 02:50 UTC &middot; theme: default-dark &middot; 13 expressions</div>
+<div class="report-meta">Generated 2026-06-14 03:10 UTC &middot; theme: default-dark &middot; 13 expressions</div>
 <div class="section-title">Calculus (13 expressions)</div>
 <div class="row">
   <div>
@@ -3497,7 +3497,7 @@ svg.d3-semantic-graph {
   x["$x$"]:::scalar
   a["$a$"]:::scalar
   b["$b$"]:::scalar
-  __integral_2(("$\int dx$")):::operator
+  __integral_2(("$\int_{a}^{b} dx$")):::operator
   __f_3{{"$f(\cdot)$"}}:::function
   __add_4(("$+$")):::operator
   __F_5{{"$F(\cdot)$"}}:::function
@@ -3743,7 +3743,7 @@ svg.d3-semantic-graph {
   x["$x$"]:::scalar
   a["$a$"]:::scalar
   b["$b$"]:::scalar
-  __integral_2(("$\int dx$")):::operator
+  __integral_2(("$\int_{a}^{b} dx$")):::operator
   __f_3{{"$f(\cdot)$"}}:::function
   __add_4(("$+$")):::operator
   __F_5{{"$F(\cdot)$"}}:::function
@@ -3799,7 +3799,7 @@ svg.d3-semantic-graph {
   t["$t$"]:::scalar
   a["$a$"]:::scalar
   x["$x$"]:::scalar
-  __integral_3(("$\int dt$")):::operator
+  __integral_3(("$\int_{a}^{x} dt$")):::operator
   __f_4{{"$f(\cdot)$"}}:::function
   __deriv_2(("$\dfrac{d}{d x}$")):::operator
   __f_5{{"$f(\cdot)$"}}:::function
@@ -4007,7 +4007,7 @@ svg.d3-semantic-graph {
   t["$t$"]:::scalar
   a["$a$"]:::scalar
   x["$x$"]:::scalar
-  __integral_3(("$\int dt$")):::operator
+  __integral_3(("$\int_{a}^{x} dt$")):::operator
   __f_4{{"$f(\cdot)$"}}:::function
   __deriv_2(("$\dfrac{d}{d x}$")):::operator
   __f_5{{"$f(\cdot)$"}}:::function
@@ -4797,8 +4797,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1781405402'),
-  import('./sg-chart.js?v=1781405402'),
+  import('./d3-semantic-graph.js?v=1781406586'),
+  import('./sg-chart.js?v=1781406586'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
