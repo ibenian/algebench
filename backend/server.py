@@ -12,6 +12,7 @@ import sys
 import json
 import os
 import re
+import logging
 import asyncio
 import webbrowser
 import builtins
@@ -2292,6 +2293,22 @@ Examples:
                         help='Start the server without opening a browser window')
 
     args = parser.parse_args()
+
+    # App logging. uvicorn runs at log_level="error" (quiet) and nothing else
+    # configures the app loggers, so `backend.*` module logs — e.g. whether the
+    # proof_completion expert loaded a compiled artifact or fell back to baseline,
+    # and the per-attempt refinement dump — are otherwise dropped. `--debug` turns
+    # them on (DEBUG); otherwise stay quiet (WARNING). Override with
+    # ALGEBENCH_LOG_LEVEL.
+    _log_level = os.environ.get(
+        "ALGEBENCH_LOG_LEVEL", "DEBUG" if args.debug else "WARNING").upper()
+    _applog = logging.getLogger("backend")
+    if not any(isinstance(h, logging.StreamHandler) for h in _applog.handlers):
+        _h = logging.StreamHandler()
+        _h.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+        _applog.addHandler(_h)
+    _applog.setLevel(getattr(logging, _log_level, logging.INFO))
+    _applog.propagate = False
 
     # Auto-enable buffered mode when flags require it
     if not args.tts_buffered:

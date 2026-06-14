@@ -86,3 +86,22 @@ def test_later_exception_falls_back_to_best():
 def test_single_attempt_is_a_no_op_loop():
     out = refine(lambda k, fb: "only", lambda p: _Res(0.2, False), max_attempts=1)
     assert out.attempts == 1 and not out.passed and out.prediction == "only"
+
+
+def test_time_budget_skips_retry():
+    import time as _t
+    seen = []
+
+    def attempt(k, fb):
+        seen.append(k)
+        return f"p{k}"
+
+    def evaluate(p):
+        _t.sleep(0.02)            # push elapsed past the tiny budget
+        return _Res(0.1, False)   # below threshold → would retry if time allowed
+
+    out = refine(attempt, evaluate, max_attempts=5, time_budget_s=0.01)
+    assert seen == [0]            # first attempt runs; no retry started
+    assert out.attempts == 1
+    assert out.out_of_time is True
+    assert out.prediction == "p0"   # best-so-far returned

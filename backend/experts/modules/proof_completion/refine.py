@@ -21,6 +21,7 @@ would replace only this loop — the checkers and reward are identical (#372 §C
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from typing import Callable, Optional
 
@@ -38,6 +39,7 @@ class RefineOutcome:
     result: object            # its RewardResult
     attempts: int             # how many attempts were made
     passed: bool              # did any attempt clear the threshold?
+    out_of_time: bool = False  # stopped early because the time budget was spent
 
 
 def refine(
@@ -45,6 +47,7 @@ def refine(
     evaluate: Callable[[object], object],
     *,
     max_attempts: int = 2,
+    time_budget_s: Optional[float] = None,
     on_attempt: Optional[Callable[[int, int, object, object], None]] = None,
 ) -> RefineOutcome:
     """Ask → evaluate → re-ask-with-feedback, keeping the best (never raises here).
@@ -56,6 +59,12 @@ def refine(
     best-so-far (or re-raise on the very first attempt, where there is nothing to
     fall back to).
 
+    ``time_budget_s`` — optional wall-clock budget. A *new* attempt is only
+    started while elapsed time is under it (the first attempt always runs, and a
+    running attempt is never interrupted — scoring is synchronous). This keeps a
+    slow, never-passing derivation (e.g. a long chain that re-scores under the CAS
+    on every attempt) from blowing the caller's request timeout.
+
     ``on_attempt(k, n, pred, res)`` — optional observability hook fired after each
     evaluation (0-based ``k`` of ``n``), so callers can dump per-attempt state
     (``--debug``) without the loop knowing how to render a prediction.
@@ -65,8 +74,14 @@ def refine(
     best_res: Optional[object] = None
     feedback = ""
     made = 0
+    started = time.monotonic()
 
     for k in range(n):
+        if (k > 0 and time_budget_s is not None
+                and time.monotonic() - started >= time_budget_s):
+            # out of time — keep the best so far rather than risk the caller's
+            # request timeout on another full attempt.
+            return RefineOutcome(best_pred, best_res, made, False, out_of_time=True)
         try:
             pred = attempt(k, feedback)
             res = evaluate(pred)

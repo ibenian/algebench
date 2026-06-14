@@ -22,10 +22,35 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .grounding import graph_to_sympy
-from .step_grounding import TIER_RANK, ground_steps
+from .step_grounding import TIER_LABEL, TIER_RANK, Tier, ground_steps
 
 # Denominator that turns an ordinal tier rank (0..4) into a [0,1] score.
 _MAX_RANK = max(TIER_RANK.values())  # 4
+
+# How many per-step problems to spell out in the feedback before truncating.
+_MAX_FEEDBACK_STEPS = 8
+
+
+def _detailed_reason(report) -> str:
+    """Summary + the specific steps that aren't verified, so feedback is actionable.
+
+    Lists the actually-actionable failures first — ``refuted`` (wrong) then
+    ``unchecked`` (not a single convertible expression) — then ``plausible``
+    (CAS couldn't decide; not necessarily wrong) to fill out the budget. Each
+    entry is ``step N (tier): reason`` so a retry (and a human reading the log)
+    knows *which* step and *why*, not just the counts.
+    """
+    order = {Tier.RED: 0, Tier.GRAY: 1, Tier.BLUE: 2}   # refuted, unchecked, plausible
+    probs = sorted((p for p in report.pairs if p.tier in order),
+                   key=lambda p: (order[p.tier], p.index))
+    if not probs:
+        return report.reason
+    shown = probs[:_MAX_FEEDBACK_STEPS]
+    detail = "; ".join(
+        f"step {p.index} ({TIER_LABEL[p.tier].lower()}): {p.reason}" for p in shown)
+    more = (f" (+{len(probs) - len(shown)} more)"
+            if len(probs) > len(shown) else "")
+    return f"{report.reason}. Issues — {detail}{more}"
 
 
 @dataclass(frozen=True)
@@ -68,5 +93,5 @@ def grounding_score(start_graph, steps, target_graph, *, domain=None) -> Groundi
         return GroundingScore(0.0, report.reason, report.overall, report)
 
     mean_rank = sum(TIER_RANK[p.tier] for p in report.pairs) / len(report.pairs)
-    return GroundingScore(mean_rank / _MAX_RANK, report.reason,
+    return GroundingScore(mean_rank / _MAX_RANK, _detailed_reason(report),
                           report.overall, report)

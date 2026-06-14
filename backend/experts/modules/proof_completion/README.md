@@ -110,8 +110,10 @@ reward = wellformed_factor · (W_G · grounding_score + W_J · judge_score)
 |---|---|---|
 | `ALGEBENCH_PC_REFINE_ATTEMPTS` | `2` | max attempts `N` (`1` = single pass, loop disabled) |
 | `ALGEBENCH_PC_JUDGE` | `0` (off) | enable the LLM judge (adds one LM call per generation) |
+| `ALGEBENCH_PC_TIME_BUDGET` | `240` (s) | wall-clock budget; don't start a retry past it (`0` = no budget). Guards the client's request timeout (UI aborts at 360s) on long derivations |
 | `ALGEBENCH_PC_TAU` | `0.7` | retry threshold |
 | `ALGEBENCH_PC_W_GROUNDING` / `ALGEBENCH_PC_W_JUDGE` | `0.8` / `0.2` | reward weights |
+| `ALGEBENCH_PC_LOAD_ARTIFACT` | `""` (off) | repo-relative path to a compiled artifact to load (confined via `sanitize_path`; absolute/`..` rejected); empty = baseline; explicit `--program` always loads |
 
 The hard gates (well-formedness, grounding) are deterministic and need **no LM**,
 so with the judge off the only LM call on a passing first attempt is the single

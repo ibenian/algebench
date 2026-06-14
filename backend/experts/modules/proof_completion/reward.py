@@ -28,6 +28,7 @@ from typing import Optional
 
 from .grounding_score import grounding_score
 from .judge import JudgeVerdict
+from .step_grounding import Tier
 from .wellformed import well_formed
 
 
@@ -101,9 +102,20 @@ def reward(
     if jv is not None and jv.issues:
         issues = f"{issues} | judge: {jv.issues}"
 
+    # endpoint_reached / no_refuted are surfaced for observability only. (They
+    # were briefly used for a "good enough" early-accept, but that suppressed the
+    # gold upgrades a retry can find at temperature; the loop now retries while
+    # below τ — chasing a cleaner derivation and fixing malformed captions — with
+    # the time budget guarding the request timeout.)
+    report = gs.report
+    no_refuted = not any(p.tier is Tier.RED for p in getattr(report, "pairs", []))
+    endpoint_reached = getattr(report, "endpoint_reached", None) is True
+
     breakdown = {
         "wellformed": wf.factor,
         "grounding": gs.score,
         "judge": None if jv is None else jv.score,
+        "endpoint_reached": endpoint_reached,
+        "no_refuted": no_refuted,
     }
     return RewardResult(score, issues, score >= tau, breakdown)

@@ -8,7 +8,9 @@ from backend.experts.modules.proof_completion.outputs import (
     DerivationStep,
     ProofTrajectory,
 )
+from backend.experts.modules.proof_completion import reward as R
 from backend.experts.modules.proof_completion.reward import TAU, reward
+from backend.experts.modules.proof_completion.step_grounding import Tier
 
 
 def _example():
@@ -58,6 +60,51 @@ def test_judge_alone_cannot_gate_a_grounded_derivation():
                judge=lambda **kw: JudgeVerdict(score=0.0, issues="too terse"))
     assert r.passed
     assert "too terse" in r.issues  # but its feedback still flows back
+
+
+class _Pair:
+    def __init__(self, tier):
+        self.tier = tier
+
+
+class _FakeReport:
+    def __init__(self, endpoint_reached, tiers):
+        self.endpoint_reached = endpoint_reached
+        self.pairs = [_Pair(t) for t in tiers]
+
+
+class _FakeGS:
+    def __init__(self, score, report):
+        self.score = score
+        self.reason = "fake"
+        self.overall = None
+        self.report = report
+
+
+def _wf_traj():
+    t = ProofTrajectory(steps=[DerivationStep(
+        operation="op", expr_latex="x = 2", justification="ok", change_type="solve")])
+    t.start_latex, t.target_latex = "s", "t"
+    return t
+
+
+def test_below_tau_retries_and_surfaces_endpoint_refuted(monkeypatch):
+    # The loop retries while below τ (chasing a cleaner derivation / fixing
+    # captions) — there is NO good-enough early-accept. endpoint_reached and
+    # no_refuted are still exposed in the breakdown for observability.
+    rep = _FakeReport(True, [Tier.BLUE, Tier.GRAY, Tier.GOLD])
+    monkeypatch.setattr(R, "grounding_score", lambda *a, **k: _FakeGS(0.5, rep))
+    r = reward(_wf_traj(), start_graph=None, target_graph=None)
+    assert r.score < TAU and not r.passed
+    assert r.breakdown["endpoint_reached"] is True
+    assert r.breakdown["no_refuted"] is True
+
+
+def test_breakdown_flags_a_refuted_step(monkeypatch):
+    rep = _FakeReport(True, [Tier.BLUE, Tier.RED, Tier.GOLD])
+    monkeypatch.setattr(R, "grounding_score", lambda *a, **k: _FakeGS(0.5, rep))
+    r = reward(_wf_traj(), start_graph=None, target_graph=None)
+    assert r.breakdown["no_refuted"] is False and not r.passed
 
 
 def test_low_grounding_with_low_judge_fails():
