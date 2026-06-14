@@ -70,8 +70,10 @@ def main() -> int:
     if args.limit:
         data = data[: args.limit]
 
+    # refine_attempts=1 measures the raw model against the metric; the serving
+    # refinement loop is evaluated separately, not folded into these numbers.
     prog = ProofCompletionExpert(artifact=args.program,
-                                 load_default=not args.baseline)
+                                 load_default=not args.baseline, refine_attempts=1)
     print(f"evaluating {len(data)} examples "
           f"(model: {prog.loaded_artifact or 'baseline (uncompiled)'})")
     preds = predict_all(prog, data, label="eval")

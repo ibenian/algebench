@@ -27,10 +27,12 @@ export function clearDeriveCache() {
     _DERIVE_CACHE.clear();
 }
 
-// A derivation is an LM call (sometimes retried server-side); a hard goal can
-// run long, but past this it's almost certainly stuck — fail with a retryable
-// error rather than spin the "Deriving proof…" pill forever.
-const DERIVE_TIMEOUT_MS = 90_000;
+// A derivation is an LM call plus the refinement loop (up to N attempts, each
+// re-scored under the CAS) — a long, multi-step proof legitimately takes a
+// while. Past this it's almost certainly stuck — fail with a retryable error
+// rather than spin the "Deriving proof…" pill forever. Keep this comfortably
+// above the server-side refinement time budget (ALGEBENCH_PC_TIME_BUDGET).
+const DERIVE_TIMEOUT_MS = 360_000;
 
 const GRID_COLS = 8;          // same grid as SgChartManager
 const GRID_ROWS = 8;

@@ -45,7 +45,10 @@ def main() -> int:
         train = train[: args.limit]
     print(f"optimizing on {len(train)} examples with {args.optimizer} (auto={args.auto})")
 
-    student = ProofCompletionExpert(load_default=False)  # compile from baseline
+    # compile from baseline; refine_attempts=1 disables the serving-time
+    # refinement loop so the optimizer compiles the bare predictor (the metric is
+    # the optimization signal, not the reward) without extra per-call LM traffic.
+    student = ProofCompletionExpert(load_default=False, refine_attempts=1)
 
     if args.optimizer == "labeled":
         from dspy.teleprompt import LabeledFewShot

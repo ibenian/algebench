@@ -26,6 +26,8 @@ ROUNDTRIP = [
     (r"a^2 - b^2", a ** 2 - b ** 2),
     (r"(a-b)(a+b)", (a - b) * (a + b)),
     (r"\frac{d}{dx} x^3", sp.Derivative(x ** 3, x)),
+    (r"\int_0^1 x^2 dx", sp.Integral(x ** 2, (x, 0, 1))),   # definite
+    (r"\int x^2 dx", sp.Integral(x ** 2, x)),                # indefinite
     (r"\frac{a}{b}", a / b),
     (r"x^{n}", x ** n),
 ]
