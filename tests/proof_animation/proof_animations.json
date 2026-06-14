@@ -162,7 +162,7 @@
     "trajectory": {
       "kind": "proof_trajectory",
       "start_latex": "a \\cdot x^{2} + b \\cdot x + c = 0",
-      "target_latex": "x = \\frac{- b + \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+      "target_latex": "x = \\frac{- b + \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x = \\frac{- b - \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
       "steps": [
         {
           "operation": "Divide both sides by $a$.",
@@ -195,27 +195,21 @@
           "change_type": "rewrite"
         },
         {
-          "operation": "Take the positive square root of both sides.",
-          "expr_latex": "x + \\frac{b}{2a} = \\sqrt{\\frac{- 4 \\cdot a \\cdot c + b^{2}}{4 \\cdot a^{2}}}",
-          "justification": "Square root property of equality: If $u^2 = v$, then $u = \\pm\\sqrt{v}$. We select the positive root as per the instruction.",
+          "operation": "Take the square root of both sides, keeping both branches.",
+          "expr_latex": "x + \\frac{b}{2 \\cdot a} = \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x + \\frac{b}{2 \\cdot a} = - \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+          "justification": "Square root property of equality: if $u^2 = v$ then $u = \\pm\\sqrt{v}$ — both the positive and negative branches are kept as a disjunction. Also $\\sqrt{4a^2} = 2a$.",
           "change_type": "solve"
         },
         {
-          "operation": "Simplify the square root on the right side.",
-          "expr_latex": "x + \\frac{b}{2a} = \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
-          "justification": "Property of square roots: $\\sqrt{\\frac{u}{v}} = \\frac{\\sqrt{u}}{\\sqrt{v}}$ and $\\sqrt{4a^2} = 2a$ (assuming $a$ is positive, or considering the principal root).",
-          "change_type": "rewrite"
+          "operation": "Subtract $\\frac{b}{2a}$ from both sides in each branch.",
+          "expr_latex": "x = - \\frac{b}{2 \\cdot a} + \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x = - \\frac{b}{2 \\cdot a} - \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+          "justification": "Subtraction property of equality applied to each branch of the disjunction, isolating $x$.",
+          "change_type": "solve"
         },
         {
-          "operation": "Subtract $\\frac{b}{2a}$ from both sides.",
-          "expr_latex": "x = - \\frac{b}{2a} + \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
-          "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality, isolating $x$.",
-          "change_type": "rewrite"
-        },
-        {
-          "operation": "Combine the fractions on the right side.",
-          "expr_latex": "x = \\frac{- b + \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
-          "justification": "Arithmetic of fractions: Since the terms on the right side have a common denominator, their numerators can be combined.",
+          "operation": "Combine each numerator over the common denominator $2a$.",
+          "expr_latex": "x = \\frac{- b + \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x = \\frac{- b - \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+          "justification": "Arithmetic of fractions: within each branch the terms share the denominator $2a$, so the numerators combine — giving both quadratic roots.",
           "change_type": "rewrite"
         }
       ]
