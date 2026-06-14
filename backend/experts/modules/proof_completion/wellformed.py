@@ -69,9 +69,10 @@ def prose_issues(text: str, *, where: str) -> List[str]:
         return issues  # segment-level checks are meaningless once delimiters slip
     for seg in math_segments(text):
         if not seg.content.strip():
-            issues.append(f"{where}: empty math segment '{seg.delimiter}{seg.delimiter}'")
+            issues.append(f"{where}: empty math segment '{seg.delimiter}…{seg.delimiter}'")
         elif not braces_balanced(seg.content):
-            issues.append(f"{where}: unbalanced '{{'…'}}' inside ${seg.content}$")
+            issues.append(f"{where}: unbalanced '{{'…'}}' inside "
+                          f"{seg.delimiter}{seg.content}{seg.delimiter}")
     return issues
 
 

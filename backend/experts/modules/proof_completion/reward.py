@@ -5,6 +5,13 @@ One function, one number, one threshold. Every signal contributes a score in
 whether to retry. Nothing "rejects" — a bad signal merely scores low.
 
     reward = wellformed_factor * (W_G * grounding_score + W_J * judge_score)
+                                  ──────────────────────────────────────────
+                                                 (W_G + W_J)
+
+The blend is renormalised by ``(W_G + W_J)`` so the score stays in ``[0, 1]``
+regardless of whether the weights sum to 1 (they are env-tunable, so they may
+not). When the judge is absent the judge term drops and grounding alone takes the
+full weight (``score = grounding_score``).
 
 * **wellformed_factor** — a near-binary *prerequisite* (1.0 well-formed, else
   0.0): a malformed caption can't render, so it zeroes the reward and the loop

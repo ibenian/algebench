@@ -27,8 +27,9 @@ from .reward import reward
 
 log = logging.getLogger(__name__)
 
-# The "blessed" compiled program. If this file exists it is loaded by default —
-# so service.invoke and the CLI use the optimized expert without --program.
+# The conventional location optimize.py writes the compiled ("blessed") program
+# to. NOTE: this is NOT auto-loaded just by existing — auto-load is opt-in via
+# ALGEBENCH_PC_LOAD_ARTIFACT (see below); point that env var here to use it.
 # (gitignored; produced by proof_completion/optimize.py --out <this path>.)
 DEFAULT_ARTIFACT = os.path.join(os.path.dirname(__file__), "artifacts",
                                 "proof_completion.json")
@@ -214,6 +215,15 @@ class ProofCompletionExpert(dspy.Module):
             return reward(pred.trajectory, start_graph=context.start,
                           target_graph=context.target, domain=context.domain,
                           judge=self.judge)
+
+        # A single attempt cannot retry, so scoring it would be pure overhead (CAS
+        # grounding + an LM call when the judge is on). Short-circuit to the raw
+        # prediction. optimize.py / evaluate.py set refine_attempts=1 precisely to
+        # compile/measure the raw predictor — this keeps that path free of it.
+        if self.refine_attempts <= 1:
+            pred = attempt(0, "")
+            log.debug("refine skipped: single pass (refine_attempts<=1)")
+            return [pred.trajectory]
 
         outcome = refine(attempt, evaluate, max_attempts=self.refine_attempts,
                          time_budget_s=(_TIME_BUDGET or None),
