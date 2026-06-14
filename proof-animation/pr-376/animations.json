@@ -562,62 +562,45 @@
       },
       {
         "index": 6,
-        "operation": "Take the positive square root of both sides.",
-        "justification": "Square root property of equality: If $u^2 = v$, then $u = \\pm\\sqrt{v}$. We select the positive root as per the instruction.",
-        "input_latex": "x + \\frac{b}{2a} = \\sqrt{\\frac{- 4 \\cdot a \\cdot c + b^{2}}{4 \\cdot a^{2}}}",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=x}{x} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=b____multiply_9}{b}}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{2} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___power_7}{\\sqrt{\\htmlData{n=__multiply_8}{\\frac{\\left(\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=_r2___num_12}{-4} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=a___r1___multiply_11}{a}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=c}{c}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}\\right)}{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_16}{4} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_17}{\\htmlData{n=a____power_17}{a}^{\\htmlData{n=__power_17__exp}{2}}}}}}}}}",
-        "plain": "x + \\frac{b}{2 \\cdot a} = \\sqrt{\\frac{\\left(-4 \\cdot a \\cdot c + b^{2}\\right)}{4 \\cdot a^{2}}}",
-        "confidence": {
-          "tier": "grounded",
-          "label": "Grounded",
-          "icon": "🥇",
-          "meaning": "symbolically proven to follow from the previous step",
-          "relation": "narrows",
-          "reason": "the previous step is exactly this step squared — taking a root keeps only solutions of the original",
-          "type_consistent": true
-        }
-      },
-      {
-        "index": 7,
-        "operation": "Simplify the square root on the right side.",
-        "justification": "Property of square roots: $\\sqrt{\\frac{u}{v}} = \\frac{\\sqrt{u}}{\\sqrt{v}}$ and $\\sqrt{4a^2} = 2a$ (assuming $a$ is positive, or considering the principal root).",
-        "input_latex": "x + \\frac{b}{2a} = \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=x}{x} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=b____multiply_9}{b}}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{2} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=_r1___power_7}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=_r2___num_12}{-4} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=a___r1___multiply_11}{a}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=c}{c}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}}}}{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_16}{2} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=a____multiply_6}{a}}}}}",
-        "plain": "x + \\frac{b}{2 \\cdot a} = \\frac{\\sqrt{-4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+        "operation": "Take the square root of both sides, keeping both branches.",
+        "justification": "Square root property of equality: if $u^2 = v$ then $u = \\pm\\sqrt{v}$ — both the positive and negative branches are kept as a disjunction. Also $\\sqrt{4a^2} = 2a$.",
+        "input_latex": "x + \\frac{b}{2 \\cdot a} = \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x + \\frac{b}{2 \\cdot a} = - \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+        "latex": "\\htmlData{n=__disjunction_1}{\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=x____add_2}{x} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=b____multiply_9}{b}}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{2} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=d0___power_8}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=_r2___num_12}{-4} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=a___r1___multiply_11}{a}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=c____multiply_4}{c}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}}}}{\\htmlData{n=__multiply_6}{\\htmlData{n=d0___num_16}{2} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=a____multiply_6}{a}}}}} \\htmlData{n=__disjunction_1__op}{\\lor} \\htmlData{n=d1___equals_1}{\\htmlData{n=d1___add_2}{\\htmlData{n=x__d1___add_2}{x} \\htmlData{n=d1___add_2__op1}{+} \\htmlData{n=d1___multiply_3}{\\frac{\\htmlData{n=b__d1___multiply_3}{b}}{\\htmlData{n=d1___multiply_5}{\\htmlData{n=d1___num_6}{2} \\htmlData{n=d1___multiply_5__m1}{\\cdot} \\htmlData{n=a__d1___multiply_5}{a}}}}} \\htmlData{n=d1___equals_1__op}{=} \\htmlData{n=d1___negation_7}{\\htmlData{n=d1___negation_7__op}{-} \\htmlData{n=d1___multiply_8}{\\htmlData{n=d1___power_9}{\\sqrt{\\htmlData{n=d1___add_10}{\\htmlData{n=d1___multiply_11}{\\htmlData{n=d1___multiply_12}{\\htmlData{n=d1___num_13}{-4} \\htmlData{n=d1___multiply_12__m1}{\\cdot} \\htmlData{n=a__d1___multiply_12}{a}} \\htmlData{n=d1___multiply_11__m1}{\\cdot} \\htmlData{n=c__d1___multiply_11}{c}} \\htmlData{n=d1___add_10__op1}{+} \\htmlData{n=__power_5}{\\htmlData{n=b____power_5}{b}^{\\htmlData{n=__power_5__exp}{2}}}}}} \\htmlData{n=d1___multiply_8__m1}{\\cdot} \\htmlData{n=d1___multiply_15}{\\frac{\\htmlData{n=d1___num_16}{1/2}}{\\htmlData{n=a__d1___multiply_15}{a}}}}}}}",
+        "plain": "x + \\frac{b}{2 \\cdot a} = \\frac{\\sqrt{-4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x + \\frac{b}{2 \\cdot a} = - \\sqrt{-4 \\cdot a \\cdot c + b^{2}} \\cdot \\frac{1/2}{a}",
         "confidence": {
           "tier": "verified",
           "label": "Verified",
           "icon": "🥈",
           "meaning": "strong CAS evidence, short of a symbolic proof",
-          "relation": "equivalent",
-          "reason": "both sides square to the same statement — equal up to the choice of root branch (principal root assumed)",
+          "relation": "narrows",
+          "reason": "treating x as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 7,
+        "operation": "Subtract $\\frac{b}{2a}$ from both sides in each branch.",
+        "justification": "Subtraction property of equality applied to each branch of the disjunction, isolating $x$.",
+        "input_latex": "x = - \\frac{b}{2 \\cdot a} + \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x = - \\frac{b}{2 \\cdot a} - \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+        "latex": "\\htmlData{n=__disjunction_1}{\\htmlData{n=__equals_1}{\\htmlData{n=x____equals_1}{x} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_2}{\\htmlData{n=d1___negation_7}{\\htmlData{n=d1___negation_7__op}{-} \\htmlData{n=__multiply_9}{\\htmlData{n=b____multiply_9}{b} \\htmlData{n=__multiply_9__m1}{\\cdot} \\htmlData{n=d1___multiply_15}{\\frac{\\htmlData{n=d1___num_16}{1/2}}{\\htmlData{n=a__d1___multiply_15}{a}}}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=d0___power_8}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=_r2___num_12}{-4} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=a___r1___multiply_11}{a}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=c____multiply_4}{c}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}}}}{\\htmlData{n=__multiply_6}{\\htmlData{n=d0___num_16}{2} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=a____multiply_6}{a}}}}}} \\htmlData{n=__disjunction_1__op}{\\lor} \\htmlData{n=d1___equals_1}{\\htmlData{n=x__d1___equals_1}{x} \\htmlData{n=d1___equals_1__op}{=} \\htmlData{n=d1___add_2}{\\htmlData{n=d1___negation_3}{\\htmlData{n=d1___negation_3__op}{-} \\htmlData{n=d1___multiply_3}{\\htmlData{n=b__d1___multiply_3}{b} \\htmlData{n=d1___multiply_3__m1}{\\cdot} \\htmlData{n=d1___multiply_5}{\\frac{\\htmlData{n=d1___num_6}{1/2}}{\\htmlData{n=a__d1___multiply_5}{a}}}}} \\htmlData{n=d1___negation_8}{\\htmlData{n=d1___negation_8__op}{-} \\htmlData{n=d1___multiply_8}{\\frac{\\htmlData{n=d1___power_9}{\\sqrt{\\htmlData{n=d1___add_10}{\\htmlData{n=d1___multiply_11}{\\htmlData{n=d1___multiply_12}{\\htmlData{n=d1___num_13}{-4} \\htmlData{n=d1___multiply_12__m1}{\\cdot} \\htmlData{n=a__d1___multiply_12}{a}} \\htmlData{n=d1___multiply_11__m1}{\\cdot} \\htmlData{n=c__d1___multiply_11}{c}} \\htmlData{n=d1___add_10__op1}{+} \\htmlData{n=__power_5}{\\htmlData{n=b____power_5}{b}^{\\htmlData{n=__power_5__exp}{2}}}}}}}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{2} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}}}}}}}}",
+        "plain": "x = - b \\cdot \\frac{1/2}{a} + \\frac{\\sqrt{-4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x = - b \\cdot \\frac{1/2}{a} - \\frac{\\sqrt{-4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "narrows",
+          "reason": "treating x as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
           "type_consistent": true
         }
       },
       {
         "index": 8,
-        "operation": "Subtract $\\frac{b}{2a}$ from both sides.",
-        "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality, isolating $x$.",
-        "input_latex": "x = - \\frac{b}{2a} + \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=x}{x} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_2}{\\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__multiply_9}{\\htmlData{n=b____multiply_9}{b} \\htmlData{n=__multiply_9__m1}{\\cdot} \\htmlData{n=__multiply_11}{\\frac{\\htmlData{n=__num_6}{1/2}}{\\htmlData{n=a____multiply_11}{a}}}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=_r1___power_7}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=_r2___num_12}{-4} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=a___r1___multiply_11}{a}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=c}{c}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}}}}{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_16}{2} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=a____multiply_6}{a}}}}}}",
-        "plain": "x = - b \\cdot \\frac{1/2}{a} + \\frac{\\sqrt{-4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
-        "confidence": {
-          "tier": "grounded",
-          "label": "Grounded",
-          "icon": "🥇",
-          "meaning": "symbolically proven to follow from the previous step",
-          "relation": "equivalent",
-          "reason": "symbolically equivalent to the previous step",
-          "type_consistent": true
-        }
-      },
-      {
-        "index": 9,
-        "operation": "Combine the fractions on the right side.",
-        "justification": "Arithmetic of fractions: Since the terms on the right side have a common denominator, their numerators can be combined.",
-        "input_latex": "x = \\frac{- b + \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=x}{x} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_9}{\\frac{\\left(\\htmlData{n=__add_2}{\\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=b____negation_3}{b}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=_r1___power_7}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=_r2___num_12}{-4} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=a___r1___multiply_11}{a}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=c}{c}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}}}}\\right)}{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_16}{2} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=a____multiply_6}{a}}}}}",
-        "plain": "x = \\frac{\\left(- b + \\sqrt{-4 \\cdot a \\cdot c + b^{2}}\\right)}{2 \\cdot a}",
+        "operation": "Combine each numerator over the common denominator $2a$.",
+        "justification": "Arithmetic of fractions: within each branch the terms share the denominator $2a$, so the numerators combine — giving both quadratic roots.",
+        "input_latex": "x = \\frac{- b + \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x = \\frac{- b - \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+        "latex": "\\htmlData{n=__disjunction_1}{\\htmlData{n=__equals_1}{\\htmlData{n=x____equals_1}{x} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_9}{\\frac{\\left(\\htmlData{n=__add_2}{\\htmlData{n=d1___negation_7}{\\htmlData{n=d1___negation_7__op}{-} \\htmlData{n=b__d1___negation_7}{b}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=d0___power_8}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=_r2___num_12}{-4} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=a___r1___multiply_11}{a}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=c____multiply_4}{c}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_8}{\\htmlData{n=b____power_8}{b}^{\\htmlData{n=__power_8__exp}{2}}}}}}}\\right)}{\\htmlData{n=__multiply_6}{\\htmlData{n=d0___num_16}{2} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=a____multiply_6}{a}}}}} \\htmlData{n=__disjunction_1__op}{\\lor} \\htmlData{n=d1___equals_1}{\\htmlData{n=x__d1___equals_1}{x} \\htmlData{n=d1___equals_1__op}{=} \\htmlData{n=d1___multiply_15}{\\frac{\\left(\\htmlData{n=d1___add_2}{\\htmlData{n=d1___negation_3}{\\htmlData{n=d1___negation_3__op}{-} \\htmlData{n=b__d1___negation_3}{b}} \\htmlData{n=d1___negation_8}{\\htmlData{n=d1___negation_8__op}{-} \\htmlData{n=d1___power_9}{\\sqrt{\\htmlData{n=d1___add_10}{\\htmlData{n=d1___multiply_11}{\\htmlData{n=d1___multiply_12}{\\htmlData{n=d1___num_13}{-4} \\htmlData{n=d1___multiply_12__m1}{\\cdot} \\htmlData{n=a__d1___multiply_12}{a}} \\htmlData{n=d1___multiply_11__m1}{\\cdot} \\htmlData{n=c__d1___multiply_11}{c}} \\htmlData{n=d1___add_10__op1}{+} \\htmlData{n=__power_5}{\\htmlData{n=b____power_5}{b}^{\\htmlData{n=__power_5__exp}{2}}}}}}}}\\right)}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{2} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}}}}}}",
+        "plain": "x = \\frac{\\left(- b + \\sqrt{-4 \\cdot a \\cdot c + b^{2}}\\right)}{2 \\cdot a} \\lor x = \\frac{\\left(- b - \\sqrt{-4 \\cdot a \\cdot c + b^{2}}\\right)}{2 \\cdot a}",
         "confidence": {
           "tier": "grounded",
           "label": "Grounded",
@@ -635,14 +618,14 @@
       "icon": "🥈",
       "meaning": "strong CAS evidence, short of a symbolic proof",
       "relation": null,
-      "reason": "9/9 steps verified · endpoint reached",
+      "reason": "8/8 steps verified · endpoint reached",
       "type_consistent": true,
       "counts": {
         "refuted": 0,
         "unchecked": 0,
         "plausible": 0,
-        "verified": 2,
-        "grounded": 7
+        "verified": 3,
+        "grounded": 5
       },
       "endpoint_reached": true
     }
