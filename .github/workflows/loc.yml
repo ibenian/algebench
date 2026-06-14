@@ -11,8 +11,9 @@ permissions:
   contents: write
   pull-requests: write
 
-# Shared with the other report workflows so gh-pages deploys serialize (a shared
-# group can't cancel-in-progress, or one workflow would abort another mid-push).
+# Shared with the other report workflows so gh-pages deploys serialize. Keep
+# cancel-in-progress false: with a shared group, cancelling would abort another
+# workflow's deploy mid-push (we want to queue every deploy, never drop one).
 concurrency:
   group: gh-pages-deploy
   cancel-in-progress: false
