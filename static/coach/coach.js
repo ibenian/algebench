@@ -472,11 +472,16 @@ function placeCard(el, position) {
     cardEl.style.top  = top + 'px';
     cardEl.style.visibility = 'visible';
 }
+let _repositionRaf = 0;
 function reposition() {
-    if (!S.active) return;
-    positionSpotlight(S.target);
-    if (S.cardMoved) return;   // honor the user's manual position
-    placeCard(S.target, S.position);
+    if (_repositionRaf) return;   // coalesce bursts of scroll/resize to one rAF
+    _repositionRaf = requestAnimationFrame(() => {
+        _repositionRaf = 0;
+        if (!S.active) return;
+        positionSpotlight(S.target);
+        if (S.cardMoved) return;   // honor the user's manual position
+        placeCard(S.target, S.position);
+    });
 }
 // Auto-place the card and clear any prior manual drag (called on each new step/offer).
 function autoPlace(el, position) {
@@ -540,13 +545,15 @@ function renderOffer({ title, message, primaryLabel, onPrimary, secondaryLabel, 
 }
 
 // ---- Player flow ----
+const _repoOpts = { capture: true, passive: true };
 function attachReposition() {
-    window.addEventListener('resize', reposition, true);
-    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition, _repoOpts);
+    window.addEventListener('scroll', reposition, _repoOpts);
 }
 function detachReposition() {
-    window.removeEventListener('resize', reposition, true);
-    window.removeEventListener('scroll', reposition, true);
+    window.removeEventListener('resize', reposition, _repoOpts);
+    window.removeEventListener('scroll', reposition, _repoOpts);
+    if (_repositionRaf) { cancelAnimationFrame(_repositionRaf); _repositionRaf = 0; }
 }
 function openPlayer() {
     S.active = true;
@@ -564,6 +571,7 @@ function closePlayer() {
     detachReposition();
 }
 function dismiss() {
+    ensureReady();   // may be invoked via the engine before init()
     _lsSet(LS.dismissed, '1');
     log('dismiss (will switch to once-a-day hints)');
     closePlayer();
@@ -680,6 +688,7 @@ async function autoPickLesson() {
 
 // Open the full tour (button / resume / first-time start).
 async function openTour(startId) {
+    ensureReady();   // may be invoked via the engine before init()
     log('openTour', { startId, hasScene: hasScene() });
     _lsSet(LS.dismissed, '0');   // opening = re-engaging; leave daily-hint mode
     if (!hasScene()) {
@@ -761,6 +770,7 @@ function showDailyHint(step) {
 
 function decide() {
     loadState();
+    if (S.active) { log('decide: tour already active → skip auto offer'); return; }
     const pending = pendingSteps();
     log('decide:', {
         firstVisit: _lsGet(LS.firstVisitDone) !== '1',
@@ -834,6 +844,7 @@ function coachStatus() {
 
 // Single entry point for the chat tool. Returns a small result object.
 function coachControl(action, opts = {}) {
+    ensureReady();   // engine may be called (via the chat tool) before init() runs
     action = String(action || '').toLowerCase().trim();
     const step = opts.step;
     log('control_coach', { action, step });
@@ -872,13 +883,22 @@ function coachControl(action, opts = {}) {
 }
 
 // ---- Boot ----
-function init() {
+// Idempotent bootstrap: builds the CSS/button/layer and audio-unlock hook
+// without any auto-offer side effects. Safe to call from engine methods that
+// may run (via the chat tool) before init()'s DOMContentLoaded handler fires.
+let _ready = false;
+function ensureReady() {
+    if (_ready) return;
+    _ready = true;
     initDebug();
-    log('init (debug logging on)');
     injectCSS();
     buildButton();
     buildLayer();
     setupAudioUnlock();   // defer narration until the first gesture (autoplay policy)
+}
+function init() {
+    ensureReady();
+    log('init (debug logging on)');
     try { decide(); } catch (e) { console.error('[coach] init failed:', e); }
     updateDot();   // reflect completion state on the Tour button's signal dot
 }
