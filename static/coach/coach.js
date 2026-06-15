@@ -71,6 +71,8 @@ const S = {
     cardMoved: false,   // user dragged the card → don't auto-reposition until next step
     justOpened: false,  // first step after openTour → mention the Tour button once
     spotlitEl: null,    // element currently carrying the .coach-spotlit class
+    userGestured: false,// has the user interacted yet? (browser autoplay gate)
+    pendingNarration: '',// narration deferred until the first gesture
 };
 
 // One-shot tip appended to the first step each time the tour is opened.
@@ -78,13 +80,33 @@ const REOPEN_TIP = ' By the way — you can jump back into this tour anytime: ju
                    'Tour button at the top right.';
 
 // ---- TTS (all optional; no-ops if unavailable or narration is off) ----
+// Browsers block the AudioContext until the user interacts, so a narration
+// fired on page load (first-visit welcome) can't play. We defer it until the
+// first gesture, then flush — see setupAudioUnlock().
 function speak(text) {
     if (!text) return;
     S.lastNarration = text;
     if (!S.ttsOn) return;
+    if (!S.userGestured) { S.pendingNarration = text; return; }   // wait for a gesture
     if (typeof window.algebenchSpeakText === 'function') {
         try { window.algebenchSpeakText(text); } catch {}
     }
+}
+// On the first real user gesture, unlock audio and play any deferred narration.
+function setupAudioUnlock() {
+    const onGesture = () => {
+        if (S.userGestured) return;
+        S.userGestured = true;
+        window.removeEventListener('pointerdown', onGesture, true);
+        window.removeEventListener('keydown', onGesture, true);
+        const t = S.pendingNarration;
+        S.pendingNarration = '';
+        if (t && S.ttsOn && typeof window.algebenchSpeakText === 'function') {
+            try { window.algebenchSpeakText(t); } catch {}
+        }
+    };
+    window.addEventListener('pointerdown', onGesture, true);
+    window.addEventListener('keydown', onGesture, true);
 }
 function stopTTS() {
     if (typeof window.algebenchStopTTS === 'function') {
@@ -856,6 +878,7 @@ function init() {
     injectCSS();
     buildButton();
     buildLayer();
+    setupAudioUnlock();   // defer narration until the first gesture (autoplay policy)
     try { decide(); } catch (e) { console.error('[coach] init failed:', e); }
     updateDot();   // reflect completion state on the Tour button's signal dot
 }

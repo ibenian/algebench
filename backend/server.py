@@ -368,7 +368,10 @@ def _env_bool(name: str, default: bool) -> bool:
     return default
 
 
-DEFAULT_PORT = 8785
+# Honor the PORT env var (used by preview/auto-port harnesses) as the default,
+# falling back to the canonical 8785 for normal CLI use. An explicit --port flag
+# still overrides this.
+DEFAULT_PORT = int(os.environ.get("PORT") or 8785)
 
 index_html_path = static_dir / "index.html"
 style_css_path  = static_dir / "style.css"

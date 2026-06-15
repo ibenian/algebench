@@ -4,9 +4,9 @@
     {
       "name": "coach-empty",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["--port", "5743", "--debug", "--server-only"],
+      "runtimeArgs": ["--debug", "--server-only"],
       "port": 5743,
-      "autoPort": false
+      "autoPort": true
     },
     {
       "name": "ratelimit-verify",
@@ -17,8 +17,9 @@
     {
       "name": "artemis-ii",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["scenes/artemis-ii-mission-simulation.json", "--port", "8785", "--debug", "--server-only"],
-      "port": 8785
+      "runtimeArgs": ["scenes/artemis-ii-mission-simulation.json", "--debug", "--server-only"],
+      "port": 8785,
+      "autoPort": true
     },
     {
       "name": "graph-panel-demo",
