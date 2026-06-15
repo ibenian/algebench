@@ -249,6 +249,15 @@ function buildChatContext() {
     }
     runtime.userViewing = viewing;
 
+    // Guided-tour ("Coach") state so the agent can answer questions about it
+    // and decide whether/how to drive it via the control_coach tool.
+    try {
+        const coachEngine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
+        if (coachEngine && typeof coachEngine.status === 'function') {
+            runtime.coach = coachEngine.status();
+        }
+    } catch {}
+
     ctx.runtime = runtime;
     return ctx;
 }
@@ -702,6 +711,14 @@ async function sendChatMessage(text, { silent = false } = {}) {
                     } else {
                         console.warn('derive_proof_animation: graph view not ready to derive');
                     }
+                } else if (tc.name === 'control_coach') {
+                    // Drive the guided-tour "Coach": start/stop/reset/goto/next/prev/status.
+                    const engine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
+                    if (engine && typeof engine.control === 'function') {
+                        engine.control(tc.args?.action, { step: tc.args?.step });
+                    } else {
+                        console.warn('control_coach: coach engine not available');
+                    }
                 }
             }
         }
@@ -1001,6 +1018,10 @@ function renderToolCallChip(tc) {
         friendlyText = step === 0
             ? '📐 Proof: showing goal overview'
             : '📐 Proof: step ' + step + (reason ? ' — ' + e(reason) : '');
+    } else if (tc.name === 'control_coach') {
+        const action = tc.args.action || 'status';
+        const step = tc.args.step ? ' → ' + e(tc.args.step) : '';
+        friendlyText = '🧭 Tour: ' + e(action) + step;
     }
 
     const header = document.createElement('div');

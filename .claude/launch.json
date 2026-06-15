@@ -2,6 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "coach-empty",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": ["--port", "5743", "--debug", "--server-only"],
+      "port": 5743,
+      "autoPort": false
+    },
+    {
       "name": "ratelimit-verify",
       "runtimeExecutable": "env",
       "runtimeArgs": ["ALGEBENCH_RATELIMIT_CHAT=1/60", "./algebench", "scenes/eigenvalues.json", "--port", "5741", "--server-only"],
