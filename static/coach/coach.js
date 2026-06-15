@@ -716,7 +716,8 @@ function loadState() {
     // Migrate (bump only — never clear completed; that powers new-step detection)
     const ver = parseInt(_lsGet(LS.version, '0'), 10) || 0;
     if (ver < STEP_VERSION) _lsSet(LS.version, String(STEP_VERSION));
-    S.completed = new Set(_lsJSON(LS.completed, []));
+    const rawCompleted = _lsJSON(LS.completed, []);   // tolerate corrupted (non-array) state
+    S.completed = new Set(Array.isArray(rawCompleted) ? rawCompleted : []);
     S.ttsOn = _lsGet(LS.tts, '1') !== '0';   // default on
     updateTTSIcon();
 }
@@ -894,6 +895,7 @@ function ensureReady() {
     injectCSS();
     buildButton();
     buildLayer();
+    loadState();          // hydrate completed/ttsOn even if controlled before init()/decide()
     setupAudioUnlock();   // defer narration until the first gesture (autoplay policy)
 }
 function init() {

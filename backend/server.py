@@ -370,8 +370,17 @@ def _env_bool(name: str, default: bool) -> bool:
 
 # Honor the PORT env var (used by preview/auto-port harnesses) as the default,
 # falling back to the canonical 8785 for normal CLI use. An explicit --port flag
-# still overrides this.
-DEFAULT_PORT = int(os.environ.get("PORT") or 8785)
+# still overrides this. Parse defensively so a non-numeric PORT can't crash import.
+def _default_port():
+    val = os.environ.get("PORT")
+    if val:
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            pass
+    return 8785
+
+DEFAULT_PORT = _default_port()
 
 index_html_path = static_dir / "index.html"
 style_css_path  = static_dir / "style.css"
@@ -1780,13 +1789,11 @@ def create_app(initial_scene_path=None, debug=False,
         path = sanitize_path(static_dir / "coach", filename)
         if not path or not path.is_file():
             return Response(status_code=404)
-        suffix = path.suffix
-        if suffix == '.js':
-            media_type = "application/javascript"
-        elif suffix == '.css':
-            media_type = "text/css"
-        else:
-            media_type = "application/octet-stream"
+        # Allowlist only the asset types the Coach actually ships; 404 anything
+        # else so future files under static/coach/ can't be served unintentionally.
+        media_type = {'.js': 'application/javascript', '.css': 'text/css'}.get(path.suffix)
+        if media_type is None:
+            return Response(status_code=404)
         with open(path, 'rb') as f:
             content = f.read()
         return Response(content=content, media_type=media_type,
