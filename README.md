@@ -1,5 +1,5 @@
 ---
-title: AlgeBench
+title: AlgeBench — Interactive 3D Math with an AI Tutor
 emoji: 📐
 colorFrom: indigo
 colorTo: purple
@@ -8,6 +8,20 @@ app_port: 7860
 pinned: false
 license: mit
 short_description: Interactive 3D math lessons with a live AI tutor
+thumbnail: https://raw.githubusercontent.com/ibenian/algebench/main/docs/rotating-space-habitat.png
+tags:
+  - education
+  - mathematics
+  - math
+  - visualization
+  - 3d
+  - interactive
+  - ai-tutor
+  - stem
+  - proofs
+  - semantic-graph
+  - webgl
+  - fastapi
 ---
 
 # AlgeBench
@@ -165,7 +179,10 @@ See [docs/feature-ideas.md](https://github.com/ibenian/algebench/blob/main/docs/
 - [docs/sandboxing-plan.md](https://github.com/ibenian/algebench/blob/main/docs/sandboxing-plan.md) — Implementation status and backend sandboxing roadmap
 - [docs/feature-ideas.md](https://github.com/ibenian/algebench/blob/main/docs/feature-ideas.md) — Roadmap ideas and creative directions
 - [docs/lesson-ideas.md](https://github.com/ibenian/algebench/blob/main/docs/lesson-ideas.md) — Lesson concepts across probability, ML, calculus, physics, and more
+- [tests/proof_animation/](tests/proof_animation/README.md) — Proof-animation test suite (how to add/derive/render proofs)
 - [Codebase Statistics](https://ibenian.github.io/algebench/loc-report/) — Lines of code (LOC) by language, per-file breakdowns (auto-updated)
+- [Semantic Graph Report](https://ibenian.github.io/algebench/semantic-graph/) — Visual examination of the LaTeX → semantic graph pipeline (auto-deployed)
+- [Proof Animation Report](https://ibenian.github.io/algebench/proof-animation/) — Interactive, morph-animated derivations from the proof test suite (auto-deployed)
 
 ---
 
@@ -185,6 +202,7 @@ algebench/
     ├── proof.js       Step-by-step proof panel with LaTeX rendering
     ├── graph-view.js  Semantic graph tab (D3 expression flowcharts)
     ├── graph-panel/   Graph renderers, themes, and layout engines
+    ├── proof-animation/  Realtime, Manim-style derivation morph engine (FLIP)
     ├── objects/       Element renderers
     │   ├── point.js, vector.js, polygon.js, sphere.js, …
     ├── domains/       Domain library plugins

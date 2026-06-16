@@ -149,7 +149,7 @@ def _derive_step_graph(step):
     # degrades to a counted error so the rest of the lesson still processes —
     # one bad step never aborts the batch.
     try:
-        graph = _graph_service.derive(cleaned)
+        graph = _graph_service.latex_to_graph(cleaned)
     except Exception as e:  # parse crash — same class the server guards
         return None, f"parse_crashed: {str(e).strip() or type(e).__name__}", time.perf_counter() - t0
     if not graph:
@@ -190,6 +190,28 @@ def _existing_graph(step):
     return None
 
 
+def _structural_signature(graph):
+    """Canonical structural fingerprint of a baked-graph dict, for staleness.
+
+    Reuses ``graph_signature`` — the same connectivity-signature the domain
+    tests use as their structural invariant. It encodes topology + node
+    kinds/ids and is inherently blind to presentation and enrichment
+    (descriptions, emoji, units, ``label``, edge ``role``/``weight``, ordering),
+    so an enriched graph and a fresh structural derivation fingerprint
+    identically when their structure matches.
+
+    Returns ``None`` if the graph can't be fingerprinted (invalid / cyclic),
+    which the caller treats as "does not match" — a conservative, baked-graph
+    can't validate ⇒ re-bake.
+    """
+    from backend.model import SemanticGraph
+    from backend.semantic_graph.signature import graph_signature, label_by_type
+    try:
+        return graph_signature(SemanticGraph.model_validate(graph), labeler=label_by_type)
+    except Exception:
+        return None
+
+
 def analyze(spec):
     """Validate pass: classify every step. Returns a report dict (no writes).
 
@@ -226,12 +248,12 @@ def analyze(spec):
         elif not was_baked:
             status = "missing"
             detail = "derivable but not baked"
-        elif existing == fresh:
+        elif (sig := _structural_signature(existing)) is not None and sig == _structural_signature(fresh):
             status = "valid"
-            detail = "baked graph matches fresh derivation"
+            detail = "baked graph structurally matches fresh derivation"
         else:
             status = "stale"
-            detail = "baked graph differs from fresh derivation"
+            detail = "baked graph structure differs from fresh derivation"
         if status != "valid":
             runtime_derive += dt
         counts[status] += 1
@@ -291,7 +313,11 @@ def bake(spec, *, only_all=False):
         if err or fresh is None:
             errors += 1
             continue
-        is_valid = existing is not None and existing == fresh
+        # Structural comparison: an enriched graph whose skeleton still matches
+        # the parser is "valid" and left untouched — so a structural re-bake
+        # never clobbers baked enrichment unless the structure actually changed.
+        sig = _structural_signature(existing) if existing is not None else None
+        is_valid = sig is not None and sig == _structural_signature(fresh)
         if is_valid and not only_all:
             skipped_valid += 1
             continue
