@@ -239,10 +239,12 @@ coach.register([
         when: (ctx) => ctx.hasScene,
         optional: true,
         action: async (ctx) => {
-            ctx.openProofPanel();
+            ctx.gotoProofStep();     // navigate to a scene/step that has a proof in context
+            await ctx.delay(400);
+            ctx.openProofPanel();    // chat tab + reveal the proof panel
+            await ctx.delay(500);    // let the proof render so it becomes the active proof
+            ctx.ensureProofStep();   // focus an actual proof step
             await ctx.delay(200);
-            ctx.ensureProofStep();   // show a step unless one is already selected
-            await ctx.delay(150);
         },
     },
     {

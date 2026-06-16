@@ -164,6 +164,25 @@ function openProofPanel() {
     }
     return !!(panel && !panel.classList.contains('hidden'));
 }
+// Navigate to a scene/step that actually has a proof in context, so the proof
+// panel can open. No-op if a proof is already in context for the current step.
+function gotoProofStep() {
+    const toggle = document.getElementById('proof-toggle-btn');
+    if (toggle && toggle.style.display !== 'none') return true;   // proof already in context
+    const spec = window.lessonSpec;
+    if (!spec || typeof window.navigateTo !== 'function') return false;
+    if (spec.proof != null) return true;                          // lesson-level proof: always in context
+    const scenes = spec.scenes || [];
+    for (let si = 0; si < scenes.length; si++) {
+        const sc = scenes[si] || {};
+        if (sc.proof != null) { window.navigateTo(si, -1); return true; }
+        const steps = sc.steps || [];
+        for (let ti = 0; ti < steps.length; ti++) {
+            if (steps[ti].proof != null) { window.navigateTo(si, ti); return true; }
+        }
+    }
+    return false;
+}
 // Make sure the proof panel is showing an actual step — navigate to the first
 // one only if nothing is selected yet (idx < 0 means the goal / no step).
 function ensureProofStep() {
@@ -237,7 +256,7 @@ function handToChat(text, examples) {
 function buildCtx() {
     return { hasScene: hasScene(), chatAvailable: chatAvailable(),
              openChatTab, clickDockTab, selectFirstGraphStep, selectFirstGraphNode,
-             gotoSliderStep, openProofPanel, ensureProofStep, handToChat, delay, speak };
+             gotoSliderStep, gotoProofStep, openProofPanel, ensureProofStep, handToChat, delay, speak };
 }
 
 // ---- Step selection ----
