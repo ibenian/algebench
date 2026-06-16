@@ -328,6 +328,43 @@ DERIVE_PROOF_TOOL_DECL = types.FunctionDeclaration(
     ),
 )
 
+CONTROL_COACH_TOOL_DECL = types.FunctionDeclaration(
+    name="control_coach",
+    description=(
+        "Control the guided-tour 'Coach' overlay (the onboarding tour reachable from the Tour "
+        "button at top-right). Use when the user asks to start, reset, stop/hide, resume, or jump "
+        "to a part of the tour — e.g. 'reset the tour', 'start the tour', 'show me the math tab "
+        "step', 'turn off the tour', 'next tip'. The current tour state (active, current step, "
+        "completed steps, all step ids/titles) is provided in the runtime context as `coach`, so "
+        "answer questions about the tour from that context and only call this tool to CHANGE state."
+    ),
+    parameters=types.Schema(
+        type="OBJECT",
+        properties={
+            "action": types.Schema(
+                type="STRING",
+                enum=["start", "reset", "stop", "goto", "next", "prev", "status"],
+                description=(
+                    "What to do: 'start' (open/resume the tour, optionally at a step), "
+                    "'reset' (clear progress and start over from the beginning), "
+                    "'stop' (dismiss/hide the tour), 'goto' (jump to a specific step — requires "
+                    "`step`), 'next'/'prev' (advance/go back one step), 'status' (no-op; read "
+                    "tour state from the `coach` context instead)."
+                ),
+            ),
+            "step": types.Schema(
+                type="STRING",
+                description=(
+                    "For action 'goto' (or optional for 'start'): which step to jump to. Accepts a "
+                    "step id (e.g. 'math-tab', 'proof-panel', 'viewport-sliders'), a 1-based step "
+                    "number, or a fuzzy title match. See the `coach.steps` list in the runtime context."
+                ),
+            ),
+        },
+        required=["action"],
+    ),
+)
+
 ALL_TOOL_DECLS = [
     NAVIGATE_TOOL_DECL,
     SET_CAMERA_TOOL_DECL,
@@ -342,6 +379,7 @@ ALL_TOOL_DECLS = [
     CLEAR_INFO_OVERLAYS_TOOL_DECL,
     NAVIGATE_PROOF_TOOL_DECL,
     DERIVE_PROOF_TOOL_DECL,
+    CONTROL_COACH_TOOL_DECL,
 ]
 
 def _make_tools(*exclude_names):

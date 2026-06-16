@@ -368,7 +368,19 @@ def _env_bool(name: str, default: bool) -> bool:
     return default
 
 
-DEFAULT_PORT = 8785
+# Honor the PORT env var (used by preview/auto-port harnesses) as the default,
+# falling back to the canonical 8785 for normal CLI use. An explicit --port flag
+# still overrides this. Parse defensively so a non-numeric PORT can't crash import.
+def _default_port():
+    val = os.environ.get("PORT")
+    if val:
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            pass
+    return 8785
+
+DEFAULT_PORT = _default_port()
 
 index_html_path = static_dir / "index.html"
 style_css_path  = static_dir / "style.css"
@@ -1174,6 +1186,20 @@ def call_gemini_chat(message, history, context):
                         print(f"   ∴ derive_proof_animation: target={target[:60]!r} "
                               f"start={ (tc_args.get('start_latex') or '')[:40]!r} "
                               f"prompt={ (tc_args.get('prompt') or '')[:40]!r} reason={reason}")
+                elif tc_name == 'control_coach':
+                    # Client-executed: the browser drives the guided-tour Coach overlay.
+                    action = tc_args.get('action', '')
+                    step = tc_args.get('step', '')
+                    tc_result = {
+                        "status": "success",
+                        "action": action,
+                        "step": step,
+                        "message": (f"Tour '{action}' done"
+                                    + (f" (step: {step})" if step else "")
+                                    + ". Briefly confirm to the user; the tour overlay reflects it."),
+                    }
+                    if DEBUG_MODE:
+                        print(f"   🧭 control_coach: action={action!r} step={step!r}")
                 else:
                     tc_result = {"status": "success"}
                 tool_calls.append({
@@ -1757,6 +1783,22 @@ def create_app(initial_scene_path=None, debug=False,
         return Response(content=content, media_type=media_type,
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
+    @fastapp.get("/coach/{filename:path}")
+    async def get_coach_file(filename: str):
+        """Serve files from static/coach/ subdirectory (quick-intro Coach)."""
+        path = sanitize_path(static_dir / "coach", filename)
+        if not path or not path.is_file():
+            return Response(status_code=404)
+        # Allowlist only the asset types the Coach actually ships; 404 anything
+        # else so future files under static/coach/ can't be served unintentionally.
+        media_type = {'.js': 'application/javascript', '.css': 'text/css'}.get(path.suffix)
+        if media_type is None:
+            return Response(status_code=404)
+        with open(path, 'rb') as f:
+            content = f.read()
+        return Response(content=content, media_type=media_type,
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
     # The FLIP animation engine's static assets — a fixed, known set. The request
     # filename is only ever used to LOOK UP a constant (name, media_type); the
     # filesystem path is built from the mapped constant ``name`` literal, so no
@@ -2194,7 +2236,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         print(f"\nPress 'q' or Ctrl+C to stop the server")
     else:
         webbrowser.open(url)
-        print(f"Opened AlgeBench in browser")
+        print(f"Opened AlgeBench in browser: {url}")
         print(f"\nDrag & drop JSON files onto the viewport to load scenes")
         print(f"\nPress 'q' or Ctrl+C to stop the server")
 

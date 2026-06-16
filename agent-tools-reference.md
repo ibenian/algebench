@@ -112,6 +112,30 @@ Call **once** per response, after your main action. Keep each prompt under 60 ch
 
 ---
 
+### `control_coach` — Drive the guided tour
+
+```
+control_coach(action="reset")
+control_coach(action="start")
+control_coach(action="goto", step="math-tab")
+control_coach(action="stop")
+```
+
+Controls the onboarding "Coach" overlay (reachable from the **Tour** button, top-right). Use it
+**only to change the tour state** when the user asks — e.g. "reset the tour", "start the tour",
+"take me to the proof step", "turn off the tour", "next tip".
+
+- `action`: `start` (open/resume), `reset` (clear progress and start over), `stop` (dismiss/hide),
+  `goto` (jump to a step — needs `step`), `next` / `prev`, or `status` (no-op).
+- `step`: a step id (e.g. `scenes-panel`, `voice-controls`, `math-tab`, `graph-controls`,
+  `proof-panel`, `viewport-sliders`), a 1-based number, or a fuzzy title.
+
+To **answer questions** about the tour ("where am I?", "what's left?"), read the `coach` object in
+the runtime context (it lists `active`, `currentStepId`, `completed`, `remaining`, and all
+`steps`) — don't call the tool just to report status.
+
+---
+
 ### math.js Expression Reference
 
 Used in `{{expr}}` overlay placeholders (`set_info_overlay`).

@@ -998,11 +998,17 @@ function _showD3NodeAskBtn(nodeEl) {
     const r = (shape || nodeEl).getBoundingClientRect();
     const btnW = btn.offsetWidth || 24;
     const btnH = btn.offsetHeight || 24;
+    // Sit on the node's right edge, vertically centred and overlapping it — so a
+    // simple rightward move from the node lands on the button with no dead gap.
     btn.style.left = (r.right - btnW / 2) + 'px';
-    btn.style.top = (r.top - btnH / 2) + 'px';
+    btn.style.top = (r.top + r.height / 2 - btnH / 2) + 'px';
     btn.style.opacity = '1';
     btn.style.pointerEvents = 'auto';
 }
+
+// Grace period before the node ask-button hides — long enough to move the
+// cursor from the node onto the button (which cancels the timer on hover).
+const _D3_NODE_ASK_HIDE_DELAY = 600;
 
 function _hideD3NodeAskBtn() {
     if (!_d3NodeAskBtn) return;
@@ -1011,7 +1017,7 @@ function _hideD3NodeAskBtn() {
     _d3NodeAskHideTimer = setTimeout(() => {
         btn.style.opacity = '0';
         btn.style.pointerEvents = 'none';
-    }, 220);
+    }, _D3_NODE_ASK_HIDE_DELAY);
 }
 
 // Derivation ("∴") glyph — a small three-step icon for the Derive button.
