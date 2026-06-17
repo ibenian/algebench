@@ -249,6 +249,15 @@ function buildChatContext() {
     }
     runtime.userViewing = viewing;
 
+    // Guided-tour ("Coach") state so the agent can answer questions about it
+    // and decide whether/how to drive it via the control_coach tool.
+    try {
+        const coachEngine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
+        if (coachEngine && typeof coachEngine.status === 'function') {
+            runtime.coach = coachEngine.status();
+        }
+    } catch {}
+
     ctx.runtime = runtime;
     return ctx;
 }
@@ -556,6 +565,9 @@ async function sendChatMessage(text, { silent = false } = {}) {
                         console.error('📍 navigate_to REJECTED: scene ' + agentScene + ' out of bounds (1-' + totalScenes + ')');
                     } else if (typeof navigateTo === 'function') {
                         navigateTo(internalScene, internalStep);
+                        // Surface the scene the agent moved to: if the user is on the
+                        // full-screen Math view, switch back to Scenes (unless split).
+                        if (typeof window.algebenchEnsureSceneVisible === 'function') window.algebenchEnsureSceneVisible();
                         console.log('%c📍 navigate_to result: %cnow at scene ' + (currentSceneIndex + 1) + ' step ' + (currentStepIndex + 1) +
                             (currentSceneIndex === beforeScene && currentStepIndex === beforeStep ? ' ⚠️ NO CHANGE' : ''),
                             'color: #ff8844; font-weight: bold', 'color: #ccc');
@@ -656,6 +668,9 @@ async function sendChatMessage(text, { silent = false } = {}) {
                         if (typeof buildSceneTree === 'function') buildSceneTree(lessonSpec);
                         if (typeof updateDockVisibility === 'function') updateDockVisibility();
                         if (typeof navigateTo === 'function') navigateTo(targetIdx, targetStep);
+                        // A freshly-added scene must be visible — switch off the Math
+                        // view if the user is on it (unless split-docked).
+                        if (typeof window.algebenchEnsureSceneVisible === 'function') window.algebenchEnsureSceneVisible();
                         console.log('%c🎬 add_scene complete', 'color: #44ff44; font-weight: bold');
                     } catch(e) {
                         console.error('add_scene: navigation/render failed:', e);
@@ -683,6 +698,27 @@ async function sendChatMessage(text, { silent = false } = {}) {
                     const proofStep = parseInt(tc.result?.step ?? tc.args?.step ?? 0);
                     // Agent uses 1-based, navigateProof uses 0-based (-1 = goal)
                     if (typeof navigateProof === 'function') navigateProof(proofStep - 1);
+                } else if (tc.name === 'derive_proof_animation') {
+                    // Initiate a client-side derivation, docked into the current
+                    // step's graph (same as clicking a node's Derive button). The
+                    // result lives on the graph, not in chat. Respect the server
+                    // guard: a non-success result (e.g. needsGraph) means there's no
+                    // graph to derive on — skip it; the agent relays the message.
+                    if (tc.result && tc.result.status !== 'success') {
+                        console.log('derive_proof_animation: skipped —', tc.result.error || 'not permitted');
+                    } else if (typeof window.algebenchDeriveProof === 'function') {
+                        window.algebenchDeriveProof(tc.args || {});
+                    } else {
+                        console.warn('derive_proof_animation: graph view not ready to derive');
+                    }
+                } else if (tc.name === 'control_coach') {
+                    // Drive the guided-tour "Coach": start/stop/reset/goto/next/prev/status.
+                    const engine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
+                    if (engine && typeof engine.control === 'function') {
+                        engine.control(tc.args?.action, { step: tc.args?.step });
+                    } else {
+                        console.warn('control_coach: coach engine not available');
+                    }
                 }
             }
         }
@@ -982,6 +1018,10 @@ function renderToolCallChip(tc) {
         friendlyText = step === 0
             ? '📐 Proof: showing goal overview'
             : '📐 Proof: step ' + step + (reason ? ' — ' + e(reason) : '');
+    } else if (tc.name === 'control_coach') {
+        const action = tc.args.action || 'status';
+        const step = tc.args.step ? ' → ' + e(tc.args.step) : '';
+        friendlyText = '🧭 Tour: ' + e(action) + step;
     }
 
     const header = document.createElement('div');

@@ -768,17 +768,28 @@ export class D3SemanticGraphRenderer {
 
         dagre.layout(g);
 
+        // Integral/sum bounds are stored as the bound NODE's id (e.g. "__num_2").
+        // Resolve to that node's value so labels read ∫_0^1, not ∫_{__num_2}.
+        const boundLabel = (ref) => {
+            if (!ref) return '';
+            const b = nodeById[ref];
+            return b ? (b.latex || b.label || b.subexpr || ref) : ref;
+        };
+
         const nodeWrappers = Object.create(null);
         const layoutNodes = [];
         for (const id of g.nodes()) {
             const pos = g.node(id);
+            const src = nodeById[id];
             const wrapper = {
                 data: {
-                    ...nodeById[id],
+                    ...src,
                     _collapsed: this._collapsed.has(id),
                     _childIds: childrenOf[id] || [],
                     _hasConditionEdge: conditionEdgeTargets.has(id),
                     _hasAssertionEdge: assertionEdgeTargets.has(id),
+                    _lowerBoundLabel: boundLabel(src.lower_bound),
+                    _upperBoundLabel: boundLabel(src.upper_bound),
                 },
                 x: pos.x,
                 y: pos.y,
@@ -1474,8 +1485,8 @@ export class D3SemanticGraphRenderer {
         if (op === 'integral' || op === 'closed_integral') {
             const cmd = OPERATOR_LATEX[op];
             const wrt = data.with_respect_to;
-            const lb = data.lower_bound || '';
-            const ub = data.upper_bound || '';
+            const lb = data._lowerBoundLabel || '';   // resolved bound values
+            const ub = data._upperBoundLabel || '';   // (not raw bound node ids)
             if (wrt) {
                 if (lb && ub) return `${cmd}_{${lb}}^{${ub}} d${wrt}`;
                 return `${cmd} d${wrt}`;

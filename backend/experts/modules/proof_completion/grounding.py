@@ -169,6 +169,28 @@ def _eval_operator(n, op, ins, ev) -> sp.Expr:
         if not wrt:
             raise UngroundableGraph("derivative wrt")
         return sp.Derivative(f, *wrt)
+    if op == "integral":
+        # Mirrors the derivative case: the integrand is the unroled operand; the
+        # integration variable comes from ``with_respect_to`` (else the ``wrt``
+        # edge); optional ``lb``/``ub`` edges make it a definite integral.
+        operands = [c for role, c in ins if role not in ("wrt", "lb", "ub")]
+        if len(operands) != 1:
+            raise UngroundableGraph("integral operand")
+        f = ev(operands[0])
+        if n.with_respect_to:
+            syms = [sp.Symbol(s.strip())
+                    for s in n.with_respect_to.split(",") if s.strip()]
+            var = syms[0] if syms else None
+        else:
+            wrt = [ev(c) for role, c in ins if role == "wrt"]
+            var = wrt[0] if wrt else None
+        if var is None:
+            raise UngroundableGraph("integral wrt")
+        lb = [ev(c) for role, c in ins if role == "lb"]
+        ub = [ev(c) for role, c in ins if role == "ub"]
+        if lb and ub:
+            return sp.Integral(f, (var, lb[0], ub[0]))
+        return sp.Integral(f, var)
     if op in _LOGIC:
         left, right = _binary_operands(op, ins, ev)
         return _LOGIC[op](left, right)
@@ -190,6 +212,15 @@ def _eval_relation(op, ins, ev) -> sp.Expr:
     if fn is None:
         raise UngroundableGraph(f"relation {op!r}")
     left, right = _binary_operands(op, ins, ev)
+    # Chained comparison (``a <= g <= b`` parses as a relation whose operand is
+    # itself a relation): read it as the standard conjunction sharing the
+    # middle operand — ``And(a <= g, g <= b)``. sympy itself refuses to build
+    # a Relational over a Relational.
+    Rel = sp.core.relational.Relational
+    if isinstance(left, Rel) and not isinstance(right, Rel):
+        return sp.And(left, fn(left.rhs, right))
+    if isinstance(right, Rel) and not isinstance(left, Rel):
+        return sp.And(fn(left, right.lhs), right)
     return fn(left, right)
 
 

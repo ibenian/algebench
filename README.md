@@ -64,6 +64,7 @@ Step-by-step **proofs** walk through derivations alongside the 3D scene — each
 |   |   |
 |---|---|
 | **Production** | [algebench.org](https://algebench.org) |
+| **Hugging Face mirror** | [ibenian-algebench.hf.space](https://ibenian-algebench.hf.space) |
 | **Staging** | [algebench-staging.onrender.com](https://algebench-staging.onrender.com) |
 
 ---
@@ -89,17 +90,23 @@ The AI's job is to set the table — pick what's worth showing, build the appara
 
 ## Quick Start
 
-**Prerequisites:** Python 3.10+, a [Gemini API key](https://aistudio.google.com/apikey)
+There are two ways to run AlgeBench locally. Either way you'll need your own Gemini API
+key — see [Get a Gemini API key](#get-a-gemini-api-key).
+
+### Option 1 — Run locally from a cloned repo
+
+**Prerequisites:** Python 3.10+, a [Gemini API key](#get-a-gemini-api-key).
 
 ```bash
 git clone https://github.com/ibenian/algebench
 cd algebench
-pip install -r requirements.txt
 export GEMINI_API_KEY=your_key_here
 ./algebench
 ```
 
-Open [http://localhost:8785](http://localhost:8785) in your browser.
+On first run, `./algebench` creates a virtual environment and installs the
+dependencies automatically — no manual `pip install` needed. Then open
+[http://localhost:8785](http://localhost:8785) in your browser.
 
 To launch directly into a scene:
 
@@ -120,6 +127,43 @@ For all available CLI options including TTS settings:
 ```bash
 ./algebench --help
 ```
+
+### Option 2 — Docker image from Hugging Face
+
+**Prerequisites:** Docker, a [Gemini API key](#get-a-gemini-api-key).
+
+No clone, no Python setup — run the prebuilt AlgeBench image from the Hugging
+Face Space registry and pass **your own** `GEMINI_API_KEY`:
+
+```bash
+docker run -it --pull=always -p 7860:7860 --platform=linux/amd64 \
+	-e GEMINI_API_KEY="your_key_here" \
+	registry.hf.space/ibenian-algebench:latest
+```
+
+Open [http://localhost:7860](http://localhost:7860) in your browser.
+
+> `--pull=always` ensures you get the newest published build (Docker otherwise
+> reuses a cached `:latest`). `--platform=linux/amd64` is needed on Apple Silicon
+> and other ARM hosts since the Space image is built for `amd64`.
+
+To map a different host port, change the left side of `-p` (e.g. `-p 9000:7860`)
+and open that port instead.
+
+### Get a Gemini API key
+
+AlgeBench's AI narrator runs on Google's Gemini models, so you need your own
+free API key from [Google AI Studio](https://aistudio.google.com/):
+
+1. Go to **[aistudio.google.com](https://aistudio.google.com/)** and sign in with a Google account.
+2. Open **[Get API key](https://aistudio.google.com/apikey)** (the **Get API key** button in the left sidebar).
+3. Click **Create API key**. If you don't have a Google Cloud project yet, choose
+   **Create API key in new project** — AI Studio creates one for you automatically.
+   Otherwise pick an existing project from the list.
+4. Copy the generated key. Keep it secret — treat it like a password.
+
+> The free tier is enough to try AlgeBench. For higher rate limits, enable billing
+> on the Google Cloud project backing your key.
 
 ### TTS Modes
 

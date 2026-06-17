@@ -360,8 +360,11 @@ function setDockTab(name) {
 
     const graphVp = document.getElementById('graph-viewport');
     const mathWrap = document.getElementById('mathbox-wrapper');
-    if (!graphVp || !mathWrap) return;
+    if (!graphVp || !mathWrap) return Promise.resolve();
 
+    // Resolves when the graph (and its proof manager) has finished rendering, so
+    // callers that switch *in order to* act on the graph can await it.
+    let rendered = Promise.resolve();
     if (name === 'graph') {
         graphVp.classList.remove('hidden');
         if (_docked) {
@@ -371,13 +374,14 @@ function setDockTab(name) {
         }
         loadMermaidLib().catch(() => { /* error surfaced at render time */ });
         rebuildProofTree();
-        renderCurrentStepGraph(true);
+        rendered = renderCurrentStepGraph(true);
     } else {
         graphVp.classList.add('hidden');
         mathWrap.style.visibility = '';
         _removeDockedLayout();
     }
     _syncDockButton();
+    return rendered;
 }
 
 /* ------------------------------------------------------------------ */
@@ -994,11 +998,17 @@ function _showD3NodeAskBtn(nodeEl) {
     const r = (shape || nodeEl).getBoundingClientRect();
     const btnW = btn.offsetWidth || 24;
     const btnH = btn.offsetHeight || 24;
+    // Sit on the node's right edge, vertically centred and overlapping it — so a
+    // simple rightward move from the node lands on the button with no dead gap.
     btn.style.left = (r.right - btnW / 2) + 'px';
-    btn.style.top = (r.top - btnH / 2) + 'px';
+    btn.style.top = (r.top + r.height / 2 - btnH / 2) + 'px';
     btn.style.opacity = '1';
     btn.style.pointerEvents = 'auto';
 }
+
+// Grace period before the node ask-button hides — long enough to move the
+// cursor from the node onto the button (which cancels the timer on hover).
+const _D3_NODE_ASK_HIDE_DELAY = 600;
 
 function _hideD3NodeAskBtn() {
     if (!_d3NodeAskBtn) return;
@@ -1007,7 +1017,7 @@ function _hideD3NodeAskBtn() {
     _d3NodeAskHideTimer = setTimeout(() => {
         btn.style.opacity = '0';
         btn.style.pointerEvents = 'none';
-    }, 220);
+    }, _D3_NODE_ASK_HIDE_DELAY);
 }
 
 // Derivation ("∴") glyph — a small three-step icon for the Derive button.
@@ -1085,14 +1095,22 @@ function _activeProof() {
     return (entry && entry.proof) || null;
 }
 
-/** Assemble the DeriveProofRequest payload for a clicked node.
- *  Target = the node's expression. Givens/goal/start come from the active proof:
- *  goal + every ``type:"given"`` step's math; start = the first given when present
- *  (else the backend infers it from a prompt). */
-function _buildDerivePayload(nodeId, fullNode, graph) {
-    const target = _stripHtmlMacros(nodeLongLabel(fullNode) || fullNode.subexpr || fullNode.label || '');
-    const payload = { target_latex: target };
+// Loose LaTeX comparison: ignore \text{}/\mathrm{} wrappers, braces, spacing and
+// \le/\leq spelling, so e.g. \gamma_{steep} == \gamma_{\text{steep}}.
+function _normLatex(s) {
+    return (s || '')
+        .replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, '$1')
+        .replace(/\\le(?![a-zA-Z])/g, '\\leq')
+        .replace(/\\ge(?![a-zA-Z])/g, '\\geq')
+        .replace(/[\s{}]/g, '');
+}
 
+/** Proof-context portion of a DeriveProofRequest (everything except target):
+ *  domain + the active proof's title/goal/givens + a sensible START given +
+ *  lesson/scene/proof context. ``target`` is used only to avoid picking a START
+ *  equal to it. Shared by the node Derive button and the agent's derive tool. */
+function _proofContextPayload(graph, target) {
+    const payload = {};
     const domain = graph && (graph.domain || (graph.meta && graph.meta.domain));
     if (domain) payload.domain = domain;
 
@@ -1109,15 +1127,10 @@ function _buildDerivePayload(nodeId, fullNode, graph) {
             payload.givens = givens;
             // Use a proof given as the START — but never one equal to the target
             // (a definitional node is its own given, which would derive nothing).
-            // Compare loosely: ignore \text{}/\mathrm{} wrappers, braces, spacing
-            // and \le/\leq spelling, so e.g. \gamma_{steep} == \gamma_{\text{steep}}.
             // If every given equals the target, omit start so the LM infers one.
-            const norm = (s) => (s || '')
-                .replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, '$1')
-                .replace(/\\le(?![a-zA-Z])/g, '\\leq')
-                .replace(/\\ge(?![a-zA-Z])/g, '\\geq')
-                .replace(/[\s{}]/g, '');
-            const startGiven = givens.find(g => norm(g.math) !== norm(target));
+            const startGiven = target
+                ? givens.find(g => _normLatex(g.math) !== _normLatex(target))
+                : givens[0];
             if (startGiven) payload.start_latex = startGiven.math;
         }
     }
@@ -1131,6 +1144,112 @@ function _buildDerivePayload(nodeId, fullNode, graph) {
 
     return payload;
 }
+
+/** Assemble the DeriveProofRequest payload for a clicked node.
+ *  Target = the node's expression; the rest comes from the active proof. */
+function _buildDerivePayload(nodeId, fullNode, graph) {
+    const target = _stripHtmlMacros(nodeLongLabel(fullNode) || fullNode.subexpr || fullNode.label || '');
+    return { ..._proofContextPayload(graph, target), target_latex: target };
+}
+
+/** Find a graph node whose displayed expression matches ``target`` (loose
+ *  compare), so an agent-initiated derivation can anchor to it like the Derive
+ *  button. Returns the node id, or null when nothing matches. */
+function _findNodeIdByLatex(graph, target) {
+    if (!graph || !Array.isArray(graph.nodes) || !target) return null;
+    const t = _normLatex(target);
+    for (const n of graph.nodes) {
+        const lbl = _stripHtmlMacros(nodeLongLabel(n) || n.subexpr || n.label || '');
+        if (lbl && _normLatex(lbl) === t) return n.id;
+    }
+    return null;
+}
+
+/** Agent entry point — initiate a proof derivation on the CURRENT step's graph,
+ *  exactly as if the user clicked a node's Derive button. Fire-and-forget: the
+ *  SgProofManager runs the (verified) derivation and docks it; it persists on
+ *  this step across navigation. ``args`` = { target_latex, start_latex?, prompt? }. */
+window.algebenchDeriveProof = async function (args) {
+    const target = _stripHtmlMacros(((args && args.target_latex) || '')).trim();
+    if (!target) {
+        console.warn('algebenchDeriveProof: target_latex is required');
+        return false;
+    }
+    // Make the semantic graph visible first — switching to the Math view also
+    // renders the graph and wires its proof manager (awaited so the box docks on
+    // the right step). No-op if the graph is already showing.
+    await window.algebenchEnsureGraphVisible();
+    if (!_currentProofManager) {
+        console.warn('algebenchDeriveProof: no semantic graph to derive into');
+        return false;
+    }
+    const graph = _d3ActiveGraph;
+    const payload = { ..._proofContextPayload(graph, target), target_latex: target };
+    // Agent overrides take precedence over the proof-derived defaults.
+    const start = ((args && args.start_latex) || '').trim();
+    if (start) payload.start_latex = start;
+    const prompt = ((args && args.prompt) || '').trim();
+    if (prompt) payload.intent = prompt;
+
+    // Anchor to a matching node when one exists (docks beside it); otherwise use
+    // a synthetic id keyed on the target so re-issuing the same derivation on the
+    // same step re-focuses its box instead of stacking duplicates.
+    const matchedId = _findNodeIdByLatex(graph, target);
+    const nodeId = matchedId || ('agent::' + _normLatex(target));
+    const anchor = matchedId ? _d3NodeElById(matchedId) : null;
+    _currentProofManager.openProof(nodeId, anchor, payload);
+    return true;
+};
+
+/** After an agent-driven navigation, make sure the 3D scene is actually visible.
+ *  If the user is on the full-screen Math (semantic graph) view, switch back to
+ *  the Scenes tab so they see the scene they were moved to. In split/docked mode
+ *  the scene is already shown alongside the graph, so leave the view untouched.
+ *  Returns true if it switched tabs. */
+window.algebenchEnsureSceneVisible = function () {
+    if (isGraphModeActive() && !_docked) {
+        setDockTab('scenes');
+        return true;
+    }
+    return false;
+};
+
+/** Counterpart for derivations: make the semantic graph visible. Only relevant
+ *  for the agent-initiated path (the Derive button is already on the graph).
+ *  Switches to the Math view ONLY when the current step actually has a semantic
+ *  graph that's just hidden behind the active 3D viewport — never yanks the user
+ *  to an empty Math view. Awaits the render so the proof manager is ready to dock
+ *  onto. No-op when the graph is already visible or the step has no graph.
+ *  Returns true if it switched. */
+window.algebenchEnsureGraphVisible = async function () {
+    const step = (typeof currentProofStep === 'function') ? currentProofStep() : null;
+    const hasGraph = !!(step && step.semanticGraph && step.semanticGraph.graph);
+    if (!hasGraph) return false;                     // nothing to show — don't switch
+
+    // Derivations dock only in the D3 renderer (SgProofManager is D3-only). Force
+    // D3 if the user picked Mermaid, else the proof manager is never created and
+    // the derivation would silently no-op.
+    let forcedD3 = false;
+    if (_currentRenderer !== 'd3') {
+        _currentRenderer = 'd3';
+        _lsSet(LS_KEYS.renderer, 'd3');
+        const sel = document.getElementById('graph-renderer-select');
+        if (sel) sel.value = 'd3';
+        _updateFitControls();
+        forcedD3 = true;
+    }
+
+    if (!isGraphModeActive()) {
+        await setDockTab('graph');                   // switch + render (D3) + wire the proof manager
+        return true;
+    }
+    // Already on the Math tab: re-render if we just forced D3, or if the proof
+    // manager isn't ready yet, so the box has something to dock onto.
+    if (forcedD3 || !_currentProofManager || _currentProofManager._destroyed) {
+        await renderCurrentStepGraph(true);
+    }
+    return forcedD3;
+};
 
 function _showD3InfoPanel(nodeId, nodeData, graph) {
     const infoHost = document.getElementById('graph-info-panel-host');

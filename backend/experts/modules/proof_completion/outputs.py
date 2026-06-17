@@ -127,6 +127,12 @@ GraphOp = Annotated[
 GRAPH_OP_ADAPTER: TypeAdapter = TypeAdapter(GraphOp)
 
 
+# The KIND of move a step makes. The CAS (step_grounding) is the judge of what
+# a step actually did; ``change_type`` is the model's declared expectation —
+# it selects which check applies and surfaces mislabels, never overrides sympy.
+ChangeType = Literal["rewrite", "solve", "substitute", "approximate", "given"]
+
+
 class DerivationStep(BaseModel):
     """One derivation step: a complete reachable state + the move that reached it.
 
@@ -150,6 +156,11 @@ class DerivationStep(BaseModel):
                             description="the COMPLETE LaTeX of the resulting expression")
     justification: str = Field(min_length=1, max_length=400,
                                description="why this step is valid; wrap any math in $…$")
+    change_type: ChangeType = Field(
+        description="the KIND of move: 'rewrite' (equivalence-preserving "
+                    "rearrangement), 'solve' (narrows toward a solution / picks a "
+                    "branch), 'substitute' (introduce a new variable, let $u=…$), "
+                    "'approximate' (≈, not exact), 'given' (a premise, not derived)")
 
 
 class ProofTrajectory(Output):
@@ -163,10 +174,13 @@ class ProofTrajectory(Output):
     ``start_latex`` / ``target_latex`` are the **reconstructed ("proper") LaTeX**
     of the start and target graphs, attached by the expert after inference so the
     trajectory is self-contained (the endpoints it derived between travel with
-    it). They are NOT produced by the model.
+    it). They are NOT produced by the model. ``title`` IS model-produced — a short
+    display name for the derivation, bound onto the trajectory by the expert so it
+    travels with it (Optional; older data / non-titled callers leave it None).
     """
 
     kind: Literal["proof_trajectory"] = "proof_trajectory"
     start_latex: Optional[str] = None
     target_latex: Optional[str] = None
+    title: Optional[str] = None
     steps: List[DerivationStep] = Field(default_factory=list)

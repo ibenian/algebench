@@ -15,6 +15,7 @@ from pathlib import Path
 
 from proof_animation.build import build, build_animation, ProofAnimation
 from backend.experts.modules.proof_completion.outputs import ProofTrajectory, DerivationStep
+from backend.experts.modules.proof_completion.wellformed import assert_well_formed
 
 _ROOT = Path(__file__).resolve().parent.parent.parent   # scripts/proof_animation/report.py → repo root
 _ASSETS = _ROOT / "static" / "proof-animation"
@@ -102,12 +103,17 @@ def main() -> int:
     elif args.from_json:
         with open(args.from_json, encoding="utf-8") as fh:
             traj = ProofTrajectory.model_validate_json(fh.read())
+        # Hard edge (issue #372 §A): a hand-authored trajectory has no refinement
+        # loop behind it, so malformed captions are an error here, not a low score.
+        assert_well_formed(traj)
         animations = [build(traj, args.domain, args.title or "derivation")]
     elif args.states:
         traj = ProofTrajectory(
             start_latex=args.states[0],
+            # ad-hoc chains carry no per-step claim; "rewrite" is the common
+            # case (a non-rewrite step simply ranks Verified instead of Proven)
             steps=[DerivationStep(operation=f"step {i}", expr_latex=s,
-                                  justification="(manual)")
+                                  justification="(manual)", change_type="rewrite")
                    for i, s in enumerate(args.states[1:], start=1)],
         )
         animations = [build(traj, args.domain, args.title)]

@@ -35,7 +35,23 @@ except ImportError:
     from scripts.graph_to_mermaid import semantic_graph_to_mermaid, load_theme
 
 from backend.semantic_graph.mathjs_converter import latex_to_mathjs
-from backend.semantic_graph.sympy_translator import latex_to_semantic_graph
+from backend.semantic_graph.service import SemanticGraphService
+
+# The report reflects the PRODUCTION renderer — the full service pipeline
+# (preprocess → chain/disjunction handling → translate → postprocess), not the
+# bare translator. So e.g. `x = 2 \lor x = 3` renders as Or(Eq, Eq).
+_SERVICE = SemanticGraphService()
+
+# Report-only showcase (not a test catalog): disjunction of equations, where the
+# connective is the root and each relation is a branch. Format matches the domain
+# catalogs' (test_id, latex, tag, …) so the section builder picks them up.
+_DISJUNCTION_SHOWCASE = [
+    ("disj_two_roots", r"x = 2 \lor x = 3", None),
+    ("disj_two_roots_vee", r"x = 2 \vee x = 3", None),
+    ("disj_quadratic_roots",
+     r"x = \frac{-b + \sqrt{b^2 - 4ac}}{2a} \lor "
+     r"x = \frac{-b - \sqrt{b^2 - 4ac}}{2a}", None),
+]
 from tests.backend.semantic_graph.domains.test_domain_arithmetic import (
     ALL_EXPRESSIONS as ARITHMETIC_EXPRESSIONS,
 )
@@ -105,6 +121,15 @@ from tests.backend.semantic_graph.domains.test_domain_chemistry import (
 # Each domain contributes (section_name, [(test_id, latex), ...]).
 # Expand this list as new domain test files are added.
 
+# Report-only showcase (not a test catalog): bare integral forms, so the
+# integral node structure (integrand + wrt + lb/ub bounds) is easy to eyeball.
+_INTEGRAL_SHOWCASE = [
+    ("integral_indefinite", r"\int x^2 \, dx", None),
+    ("integral_definite", r"\int_0^1 x^2 \, dx", None),
+    ("integral_reciprocal", r"\int_a^b \frac{1}{x} \, dx", None),
+    ("integral_exp_decay", r"\int_0^h e^{-z/H} \, dz", None),
+]
+
 
 def _collect_expressions() -> list[tuple[str, list[tuple[str, str, str | None]]]]:
     # Each section: (display name, catalog, domain hint passed to the parser).
@@ -114,6 +139,7 @@ def _collect_expressions() -> list[tuple[str, list[tuple[str, str, str | None]]]
         ("Arithmetic", ARITHMETIC_EXPRESSIONS, None),
         ("Algebra", ALGEBRA_EXPRESSIONS, None),
         ("Calculus", CALCULUS_EXPRESSIONS, None),
+        ("Integrals (showcase)", _INTEGRAL_SHOWCASE, None),
         ("ODE", ODE_EXPRESSIONS, None),
         ("PDE", PDE_EXPRESSIONS, None),
         ("Structural", STRUCTURAL_EXPRESSIONS, None),
@@ -125,6 +151,7 @@ def _collect_expressions() -> list[tuple[str, list[tuple[str, str, str | None]]]
         ("Linear Algebra", LINALG_EXPRESSIONS, None),
         ("Complex Analysis", COMPLEX_EXPRESSIONS, None),
         ("Logic & Set Theory", LOGIC_EXPRESSIONS, None),
+        ("Disjunction (roots)", _DISJUNCTION_SHOWCASE, None),
         ("Number Theory", NUMBER_THEORY_EXPRESSIONS, None),
         ("Probability & Statistics", PROBABILITY_EXPRESSIONS, None),
         ("Combinatorics", COMBINATORICS_EXPRESSIONS, None),
@@ -208,7 +235,8 @@ def _page_template() -> str:
     <script type="importmap">{{
       "imports": {{
         "/labels.js": "data:text/javascript,export function makeAiAskButton(){{return document.createElement('span')}}",
-        "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({{binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)}});export function compileExpr(s){{return m.compile(s)}}export function evalExpr(c,t,opts){{const scope=opts%26%26opts.extraScope?{{...opts.extraScope}}:{{}};return c.evaluate(scope)}}"
+        "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({{binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)}});export function compileExpr(s){{return m.compile(s)}}export function evalExpr(c,t,opts){{const scope=opts%26%26opts.extraScope?{{...opts.extraScope}}:{{}};return c.evaluate(scope)}}",
+        "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn"
       }}
     }}</script>
     <script>
@@ -709,7 +737,9 @@ def _render_row(
 
     graph_json = None
     try:
-        graph_obj = latex_to_semantic_graph(latex, domain=domain)
+        graph_obj = _SERVICE.latex_to_graph(latex, domain=domain)
+        if graph_obj is None:
+            raise ValueError("parser returned None")
         graph_dict = graph_obj.model_dump(by_alias=True, exclude_none=True)
         _precompute_chart_scripts(graph_dict)
         mermaid_src = semantic_graph_to_mermaid(graph_dict, theme=theme)
@@ -957,6 +987,12 @@ def generate_site(
     chart_script_dst = outdir / "sg-chart-script.js"
     shutil.copy2(chart_script_src, chart_script_dst)
 
+    # Cache-bust the ES modules on every (re)generation — browsers cache module
+    # imports aggressively, so without this a regenerated report keeps running the
+    # stale JS (won't reflect renderer changes).
+    _d3_ver = int(d3_js_dst.stat().st_mtime)
+    _chart_ver = int(chart_js_dst.stat().st_mtime)
+
     theme = load_theme(graph_theme)
     color_mode = theme.get("mode", "dark")
     colors = THEMES[color_mode]
@@ -973,8 +1009,8 @@ def generate_site(
         html, ok, err = _build_report_html(
             [(section_name, expressions)],
             graph_theme=graph_theme, theme=theme, colors=colors,
-            d3_module_url="./d3-semantic-graph.js",
-            chart_module_url="./sg-chart.js",
+            d3_module_url=f"./d3-semantic-graph.js?v={_d3_ver}",
+            chart_module_url=f"./sg-chart.js?v={_chart_ver}",
         )
         (outdir / filename).write_text(html, encoding="utf-8")
         total_ok += ok

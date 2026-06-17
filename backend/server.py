@@ -12,6 +12,7 @@ import sys
 import json
 import os
 import re
+import logging
 import asyncio
 import webbrowser
 import builtins
@@ -367,7 +368,19 @@ def _env_bool(name: str, default: bool) -> bool:
     return default
 
 
-DEFAULT_PORT = 8785
+# Honor the PORT env var (used by preview/auto-port harnesses) as the default,
+# falling back to the canonical 8785 for normal CLI use. An explicit --port flag
+# still overrides this. Parse defensively so a non-numeric PORT can't crash import.
+def _default_port():
+    val = os.environ.get("PORT")
+    if val:
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            pass
+    return 8785
+
+DEFAULT_PORT = _default_port()
 
 index_html_path = static_dir / "index.html"
 style_css_path  = static_dir / "style.css"
@@ -1140,6 +1153,53 @@ def call_gemini_chat(message, history, context):
                     }
                     if DEBUG_MODE:
                         print(f"   📐 navigate_proof: step={proof_step} reason={reason}")
+                elif tc_name == 'derive_proof_animation':
+                    # Fire-and-forget: the client runs the SymPy-verified derivation
+                    # (proof_animation handler) and docks it on the current step's
+                    # graph. We only acknowledge — the steps never enter the chat.
+                    target = (tc_args.get('target_latex') or '').strip()
+                    reason = tc_args.get('reason', '')
+                    # A derivation docks onto the current step's semantic graph. We
+                    # only require that a graph EXISTS for the step — the client
+                    # auto-switches to the Math view if it's hidden behind the 3D
+                    # viewport. With no graph at all there's nothing to derive on, so
+                    # tell the agent to send the user to a step that has one.
+                    gp = (context.get('runtime') or {}).get('graphPanel') or {}
+                    has_graph = bool(gp.get('hasGraph'))
+                    if not has_graph:
+                        tc_result = {"status": "error", "needsGraph": True,
+                                     "error": ("This step has no semantic graph to derive on. Ask the user "
+                                               "to navigate to a step that has one before deriving — do not "
+                                               "call this tool again until then.")}
+                    elif not target:
+                        tc_result = {"status": "error",
+                                     "error": "target_latex is required to derive."}
+                    else:
+                        tc_result = {
+                            "status": "success",
+                            "initiated": True,
+                            "message": ("Derivation started on the graph — it will appear "
+                                        "docked on the current step. Briefly tell the user "
+                                        "you're deriving it; do NOT write the steps yourself."),
+                        }
+                    if DEBUG_MODE:
+                        print(f"   ∴ derive_proof_animation: target={target[:60]!r} "
+                              f"start={ (tc_args.get('start_latex') or '')[:40]!r} "
+                              f"prompt={ (tc_args.get('prompt') or '')[:40]!r} reason={reason}")
+                elif tc_name == 'control_coach':
+                    # Client-executed: the browser drives the guided-tour Coach overlay.
+                    action = tc_args.get('action', '')
+                    step = tc_args.get('step', '')
+                    tc_result = {
+                        "status": "success",
+                        "action": action,
+                        "step": step,
+                        "message": (f"Tour '{action}' done"
+                                    + (f" (step: {step})" if step else "")
+                                    + ". Briefly confirm to the user; the tour overlay reflects it."),
+                    }
+                    if DEBUG_MODE:
+                        print(f"   🧭 control_coach: action={action!r} step={step!r}")
                 else:
                     tc_result = {"status": "success"}
                 tool_calls.append({
@@ -1723,6 +1783,22 @@ def create_app(initial_scene_path=None, debug=False,
         return Response(content=content, media_type=media_type,
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
+    @fastapp.get("/coach/{filename:path}")
+    async def get_coach_file(filename: str):
+        """Serve files from static/coach/ subdirectory (quick-intro Coach)."""
+        path = sanitize_path(static_dir / "coach", filename)
+        if not path or not path.is_file():
+            return Response(status_code=404)
+        # Allowlist only the asset types the Coach actually ships; 404 anything
+        # else so future files under static/coach/ can't be served unintentionally.
+        media_type = {'.js': 'application/javascript', '.css': 'text/css'}.get(path.suffix)
+        if media_type is None:
+            return Response(status_code=404)
+        with open(path, 'rb') as f:
+            content = f.read()
+        return Response(content=content, media_type=media_type,
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
     # The FLIP animation engine's static assets — a fixed, known set. The request
     # filename is only ever used to LOOK UP a constant (name, media_type); the
     # filesystem path is built from the mapped constant ``name`` literal, so no
@@ -2160,7 +2236,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         print(f"\nPress 'q' or Ctrl+C to stop the server")
     else:
         webbrowser.open(url)
-        print(f"Opened AlgeBench in browser")
+        print(f"Opened AlgeBench in browser: {url}")
         print(f"\nDrag & drop JSON files onto the viewport to load scenes")
         print(f"\nPress 'q' or Ctrl+C to stop the server")
 
@@ -2259,6 +2335,22 @@ Examples:
                         help='Start the server without opening a browser window')
 
     args = parser.parse_args()
+
+    # App logging. uvicorn runs at log_level="error" (quiet) and nothing else
+    # configures the app loggers, so `backend.*` module logs — e.g. whether the
+    # proof_completion expert loaded a compiled artifact or fell back to baseline,
+    # and the per-attempt refinement dump — are otherwise dropped. `--debug` turns
+    # them on (DEBUG); otherwise stay quiet (WARNING). Override with
+    # ALGEBENCH_LOG_LEVEL.
+    _log_level = os.environ.get(
+        "ALGEBENCH_LOG_LEVEL", "DEBUG" if args.debug else "WARNING").upper()
+    _applog = logging.getLogger("backend")
+    if not any(isinstance(h, logging.StreamHandler) for h in _applog.handlers):
+        _h = logging.StreamHandler()
+        _h.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+        _applog.addHandler(_h)
+    _applog.setLevel(getattr(logging, _log_level, logging.INFO))
+    _applog.propagate = False
 
     # Auto-enable buffered mode when flags require it
     if not args.tts_buffered:

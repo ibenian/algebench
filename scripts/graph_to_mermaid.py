@@ -310,6 +310,20 @@ def list_themes(theme_dir: Path | None = None) -> list[str]:
 SHOW_FIELDS = {"emoji", "unit", "role", "quantity", "dimension", "label", "description"}
 
 
+def _bound_value(ref: str, nodes_by_id: dict | None) -> str:
+    """Resolve a bound reference to its display value.
+
+    Integral/sum bounds are stored as the bound NODE's id (e.g. ``__num_2``).
+    With a node map, resolve it to that node's value so labels read ∫_0^1 not
+    ∫_{__num_2}. Without a map (or an unknown ref — e.g. a literal like ``a``),
+    return it unchanged.
+    """
+    if ref and nodes_by_id and ref in nodes_by_id:
+        b = nodes_by_id[ref]
+        return b.get("latex") or b.get("label") or b.get("subexpr") or ref
+    return ref
+
+
 def _format_label(
     node: dict[str, str],
     label_mode: str,
@@ -317,6 +331,7 @@ def _format_label(
     arity: int = 0,
     has_condition: bool = False,
     has_assertion: bool = False,
+    nodes_by_id: dict | None = None,
 ) -> str:
     """Format a node label based on the label mode and visible fields.
 
@@ -352,8 +367,9 @@ def _format_label(
             return f"$\\dfrac{{{d}{order}}}{{{d} {wrt}{order}}}$"
         if op in ("integral", "closed_integral") and wrt:
             int_cmd = OPERATOR_LATEX.get(op, r"\int")
-            lb = node.get("lower_bound", "")
-            ub = node.get("upper_bound", "")
+            # bounds are stored as node ids (e.g. __num_2) — resolve to values
+            lb = _bound_value(node.get("lower_bound", ""), nodes_by_id)
+            ub = _bound_value(node.get("upper_bound", ""), nodes_by_id)
             if lb and ub:
                 return f"${int_cmd}_{{{lb}}}^{{{ub}}} d{wrt}$"
             return f"${int_cmd} d{wrt}$"
@@ -690,6 +706,7 @@ def semantic_graph_to_mermaid(
     # accept the inline ``:::className`` shortcut, so we emit those classes
     # via separate ``class nid className`` statements instead.
     typed_class_assignments: list[tuple[str, str]] = []
+    _nodes_by_id = {n["id"]: n for n in nodes if "id" in n}
     for node in nodes:
         nid = _sanitize_id(node["id"])
         ntype = node.get("type", "scalar")
@@ -708,7 +725,8 @@ def semantic_graph_to_mermaid(
         label = _format_label(node, lm, show=show,
                               arity=in_degree.get(node["id"], 0),
                               has_condition=node["id"] in has_condition_edge,
-                              has_assertion=node["id"] in has_assertion_edge)
+                              has_assertion=node["id"] in has_assertion_edge,
+                              nodes_by_id=_nodes_by_id)
         node_def = _wrap_shape(nid, label, shape)
         # ``operatorVariants`` styling only applies to operator-like nodes.
         # When a matching variant class is available, it takes precedence

@@ -1,63 +1,7 @@
 ## Agent Tools Reference
 
-**Always use tool calls — never write scene JSON as raw text in chat.**
-The tools are the only way to make visualizations actually render. When in doubt, make a tool call.
-
----
-
-### `add_scene` — Build a visualization
-
-Pass scene fields as direct top-level arguments. The client auto-navigates after adding — do NOT call `navigate_to` afterwards.
-For interactive controls, place sliders under `steps[].sliders` (not top-level `sliders`).
-
-```
-add_scene(
-  title="Cross Product $\\vec{a} \\times \\vec{b}$",
-  description="Two vectors and their cross product.",
-  range=[[-3,3],[-3,3],[-3,3]],
-  camera={"position":[4,3,5],"target":[0,0,0]},
-  elements=[
-    {"type":"axis","axis":"x","range":[-3,3],"color":"#ff4444","width":1.5,"label":"x"},
-    {"type":"axis","axis":"y","range":[-3,3],"color":"#44cc44","width":1.5,"label":"y"},
-    {"type":"axis","axis":"z","range":[-3,3],"color":"#4488ff","width":1.5,"label":"z"},
-    {"id":"va","type":"vector","from":[0,0,0],"to":[2,1,0],"color":"#ff6644","width":5,"label":"$\\vec{a}$"},
-    {"id":"vb","type":"vector","from":[0,0,0],"to":[1,2,0],"color":"#44aaff","width":5,"label":"$\\vec{b}$"}
-  ],
-  steps=[
-    {
-      "title":"The Cross Product",
-      "description":"$\\vec{a}\\times\\vec{b}$ is perpendicular to both — it points in the $z$ direction here.",
-      "add":[
-        {"id":"vc","type":"vector","from":[0,0,0],"to":[0,0,3],"color":"#ffcc00","width":5,"label":"$\\vec{a}\\times\\vec{b}$"}
-      ]
-    }
-  ],
-  markdown="# Cross Product\n\n$\\vec{a}\\times\\vec{b}$ gives a vector perpendicular to both..."
-)
-```
-
-**Animated elements** — use math.js expressions (scope: `t` + slider ids):
-```
-{"type":"animated_vector","from":[0,0,0],"to":["cos(t)","sin(t)","0"],"color":"#ff6644","width":5}
-{"type":"animated_point","position":["a*cos(t)","a*sin(t)","0"],"color":"#ffcc00","size":8}
-{"type":"parametric_curve","x":"cos(u)","y":"sin(u)","z":"u/pi","range":[0,6.28],"steps":128,"color":"#44aaff"}
-{"type":"vector_field","fx":"-y","fy":"x","fz":"0","density":4,"scale":0.3,"color":"#44aaff"}
-```
-
-**Sliders (inside a step):**
-```
-{
-  "steps": [
-    {
-      "title": "Interactive controls",
-      "sliders": [
-        {"id":"a","label":"Amplitude $a$","min":0.5,"max":3,"value":1,"step":0.01},
-        {"id":"t","label":"$t$","min":0,"max":1,"value":0,"step":0.01,"animate":true,"duration":2000}
-      ]
-    }
-  ]
-}
-```
+**Always use tool calls — never write tool arguments as raw text in chat.**
+The tools are the only way to actually affect the visualization. When in doubt, make a tool call.
 
 ---
 
@@ -97,11 +41,7 @@ eval_math(expression="sin(x)", sweep_var="x", sweep_start=0, sweep_end=6.28, swe
 eval_math(expression="norm(a - b)", variables={"a":[3,0,0],"b":[0,4,0]})
 ```
 
-Use `store_as` for large sweep results — reference them in `add_scene` as `"$key"`:
-```
-eval_math(expression="[cos(t), sin(t), 0]", sweep_var="t", sweep_start=0, sweep_end=6.28, sweep_steps=64, store_as="circle_pts")
-add_scene(title="Circle", elements=[{"type":"line","points":"$circle_pts","color":"#44aaff"}])
-```
+Use `store_as` for large sweep results to keep them out of the chat context; stored values are then available as variables in later `eval_math` calls.
 
 ---
 
@@ -138,6 +78,18 @@ set_camera(position=[0,0,8], target=[0,0,0], zoom=1.5)
 
 ---
 
+### `derive_proof_animation` — Derive a proof on the graph
+
+```
+derive_proof_animation(target_latex="x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}", start_latex="a x^2 + b x + c = 0")
+derive_proof_animation(target_latex="2x", start_latex="\\frac{d}{dx} x^2", prompt="differentiate using the power rule")
+derive_proof_animation(target_latex="x = 2")   // target only — starts from the current proof's givens
+```
+
+Generates a SymPy-verified, step-by-step derivation and docks it into the **current step's** semantic graph — just like the user clicking a node's *Derive* button, but initiated by you. Fire-and-forget: the animation appears **on the graph, not in chat**, and persists on that step even if the user navigates away. After calling, briefly tell the user you're deriving it — **do not** write out the steps yourself. It auto-switches to the Math view to show the result (works even from the 3D scene); you don't need to open the graph first. The current step must have a semantic graph — if it doesn't, the tool reports back so you can ask the user to navigate to one.
+
+---
+
 ### `mem_get` / `mem_set` — Agent memory
 
 ```
@@ -146,7 +98,7 @@ mem_get(key="basis_x")         // retrieve a stored value
 mem_set(key="origin", value=[0,0,0])
 ```
 
-Stored values are available as variables in `eval_math` and as `"$key"` in `add_scene` fields.
+Stored values are available as variables in `eval_math`.
 
 ---
 
@@ -160,9 +112,33 @@ Call **once** per response, after your main action. Keep each prompt under 60 ch
 
 ---
 
+### `control_coach` — Drive the guided tour
+
+```
+control_coach(action="reset")
+control_coach(action="start")
+control_coach(action="goto", step="math-tab")
+control_coach(action="stop")
+```
+
+Controls the onboarding "Coach" overlay (reachable from the **Tour** button, top-right). Use it
+**only to change the tour state** when the user asks — e.g. "reset the tour", "start the tour",
+"take me to the proof step", "turn off the tour", "next tip".
+
+- `action`: `start` (open/resume), `reset` (clear progress and start over), `stop` (dismiss/hide),
+  `goto` (jump to a step — needs `step`), `next` / `prev`, or `status` (no-op).
+- `step`: a step id (e.g. `scenes-panel`, `voice-controls`, `math-tab`, `graph-controls`,
+  `proof-panel`, `viewport-sliders`), a 1-based number, or a fuzzy title.
+
+To **answer questions** about the tour ("where am I?", "what's left?"), read the `coach` object in
+the runtime context (it lists `active`, `currentStepId`, `completed`, `remaining`, and all
+`steps`) — don't call the tool just to report status.
+
+---
+
 ### math.js Expression Reference
 
-Used in animated element fields, `parametric_curve`, and `{{expr}}` overlay placeholders.
+Used in `{{expr}}` overlay placeholders (`set_info_overlay`).
 
 | Category | Functions |
 |----------|-----------|

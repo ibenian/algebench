@@ -17,6 +17,7 @@ Exposed at ``POST /api/expert/proof_animation``. Requires DSPy configured
 
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -28,6 +29,8 @@ from backend.semantic_graph.service import SemanticGraphService
 
 from .animation import build
 from .prompt_endpoints import endpoints_from_prompt
+
+log = logging.getLogger(__name__)
 
 
 class Given(BaseModel):
@@ -134,14 +137,24 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
         intent = intent[:_INTENT_MAX].rstrip()
 
     # --- call: run the expert through the canonical invoke boundary -------------
+    log.debug("proof_animation: start=%r target=%r domain=%s (start %s)",
+              start, req.target_latex, domain,
+              "supplied" if req.start_latex else "inferred")
     svc = SemanticGraphService()
     try:
         start_g = svc.latex_to_graph(start, domain=domain)
         target_g = svc.latex_to_graph(req.target_latex, domain=domain)
     except Exception:
+        log.warning("proof_animation: latex_to_graph raised on "
+                    "start=%r / target=%r (domain=%s)",
+                    start, req.target_latex, domain, exc_info=True)
         start_g = target_g = None
     if start_g is None or target_g is None:
         which = "start" if start_g is None else "target"
+        bad = start if start_g is None else req.target_latex
+        log.warning("proof_animation: couldn't parse the %s expression: %r "
+                    "(domain=%s, start %s)", which, bad, domain,
+                    "supplied" if req.start_latex else "inferred")
         return {"error": f"Couldn't parse the {which} expression."}
 
     payload = {"start": start_g, "target": target_g, "domain": domain, "intent": intent}
@@ -163,8 +176,10 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
         return {"error": f"No derivation found — couldn't get from ${start}$ to ${req.target_latex}$."}
 
     # --- post: render the trajectory into FLIP animation data -------------------
-    # Prefer a human-readable title (proof title) over the raw goal expression.
-    title = (req.title or lm_title or req.goal or "Derivation").strip()
+    # Title priority: an explicit proof/client title, then the model's own display
+    # title for the derivation (returned by the expert), then the LM endpoint title
+    # (only set when we inferred the start), then the raw goal, then a generic name.
+    title = (req.title or traj.title or lm_title or req.goal or "Derivation").strip()
     start_operation = given_label or f"Given ${start}$"
     # A short caption for step 0 — never the goal formula (it renders as raw $…$).
     start_justification = start_note or "the starting expression"

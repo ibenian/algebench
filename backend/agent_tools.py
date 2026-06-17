@@ -163,7 +163,6 @@ EVAL_MATH_TOOL_DECL = types.FunctionDeclaration(
                     "Store the result in agent memory under this key instead of returning the full value. "
                     "Use short descriptive names like 'sin_pts', 'froms', 'eigenvals'. "
                     "Stored values are automatically available as variables in future eval_math expressions. "
-                    "Reference them in add_scene element fields as '$key' (e.g. 'points': '$sin_pts'). "
                     "Always use store_as for large arrays (sweep results, matrices) to keep context small."
                 ),
             ),
@@ -198,7 +197,7 @@ MEM_SET_TOOL_DECL = types.FunctionDeclaration(
     description=(
         "Store any value in agent memory under a key. "
         "Use for scalars, vectors, matrices, or any data you want to reference later. "
-        "Stored values can be referenced as variables in eval_math, or as '$key' in add_scene fields. "
+        "Stored values can be referenced as variables in eval_math. "
         "Prefer eval_math store_as for computed results; use mem_set for literals you already have."
     ),
     parameters=types.Schema(
@@ -286,10 +285,91 @@ NAVIGATE_PROOF_TOOL_DECL = types.FunctionDeclaration(
     ),
 )
 
+DERIVE_PROOF_TOOL_DECL = types.FunctionDeclaration(
+    name="derive_proof_animation",
+    description=(
+        "Generate a step-by-step, SymPy-verified proof/derivation animation on the "
+        "semantic graph — identical to the user clicking a node's 'Derive' button, "
+        "but initiated by you. The derivation is computed on the client and docked "
+        "into the graph for the CURRENT step, where it persists even if the user "
+        "navigates away. Use when the user asks to derive, prove, simplify, or show "
+        "how to get to an expression. This is fire-and-forget: it appears on the "
+        "graph, NOT in chat — do not write out the steps yourself; just tell the user "
+        "you're deriving it. It auto-switches to the Math (semantic graph) view to "
+        "show the result, so it works even from the 3D scene. The current step must "
+        "HAVE a semantic graph — if it doesn't, the tool reports back and you should "
+        "ask the user to navigate to a step that has one. Provide TARGET; "
+        "optionally a START and/or a natural-language prompt:\n"
+        "  • start + target — derive from start to target.\n"
+        "  • start + target + prompt — derive with extra guidance.\n"
+        "  • target only — start from a sensible point in the current proof's givens."
+    ),
+    parameters=types.Schema(
+        type="OBJECT",
+        properties={
+            "target_latex": types.Schema(
+                type="STRING",
+                description="The expression to derive / arrive at, as LaTeX (no surrounding $). Required.",
+            ),
+            "start_latex": types.Schema(
+                type="STRING",
+                description="Optional starting expression as LaTeX. Omit to start from a given/inferred point in the current proof.",
+            ),
+            "prompt": types.Schema(
+                type="STRING",
+                description="Optional natural-language guidance for the derivation (e.g. 'use the quadratic formula', 'differentiate term by term').",
+            ),
+            "reason": types.Schema(
+                type="STRING",
+                description="Brief user-facing explanation of what's being derived (used for narration).",
+            ),
+        },
+        required=["target_latex"],
+    ),
+)
+
+CONTROL_COACH_TOOL_DECL = types.FunctionDeclaration(
+    name="control_coach",
+    description=(
+        "Control the guided-tour 'Coach' overlay (the onboarding tour reachable from the Tour "
+        "button at top-right). Use when the user asks to start, reset, stop/hide, resume, or jump "
+        "to a part of the tour — e.g. 'reset the tour', 'start the tour', 'show me the math tab "
+        "step', 'turn off the tour', 'next tip'. The current tour state (active, current step, "
+        "completed steps, all step ids/titles) is provided in the runtime context as `coach`, so "
+        "answer questions about the tour from that context and only call this tool to CHANGE state."
+    ),
+    parameters=types.Schema(
+        type="OBJECT",
+        properties={
+            "action": types.Schema(
+                type="STRING",
+                enum=["start", "reset", "stop", "goto", "next", "prev", "status"],
+                description=(
+                    "What to do: 'start' (open/resume the tour, optionally at a step), "
+                    "'reset' (clear progress and start over from the beginning), "
+                    "'stop' (dismiss/hide the tour), 'goto' (jump to a specific step — requires "
+                    "`step`), 'next'/'prev' (advance/go back one step), 'status' (no-op; read "
+                    "tour state from the `coach` context instead)."
+                ),
+            ),
+            "step": types.Schema(
+                type="STRING",
+                description=(
+                    "For action 'goto' (or optional for 'start'): which step to jump to. Accepts a "
+                    "step id (e.g. 'math-tab', 'proof-panel', 'viewport-sliders'), a 1-based step "
+                    "number, or a fuzzy title match. See the `coach.steps` list in the runtime context."
+                ),
+            ),
+        },
+        required=["action"],
+    ),
+)
+
 ALL_TOOL_DECLS = [
     NAVIGATE_TOOL_DECL,
     SET_CAMERA_TOOL_DECL,
-    ADD_SCENE_TOOL_DECL,
+    # ADD_SCENE_TOOL_DECL intentionally NOT exposed — scene-building is disabled
+    # (unreliable output). The decl/handlers remain dormant for easy re-enable.
     SET_SLIDERS_TOOL_DECL,
     EVAL_MATH_TOOL_DECL,
     MEM_GET_TOOL_DECL,
@@ -298,6 +378,8 @@ ALL_TOOL_DECLS = [
     SET_INFO_OVERLAY_TOOL_DECL,
     CLEAR_INFO_OVERLAYS_TOOL_DECL,
     NAVIGATE_PROOF_TOOL_DECL,
+    DERIVE_PROOF_TOOL_DECL,
+    CONTROL_COACH_TOOL_DECL,
 ]
 
 def _make_tools(*exclude_names):
@@ -345,7 +427,7 @@ def build_system_prompt(context, agent_memory=None):
     parts = ["You are an AI math tutor embedded in an interactive 3D linear algebra visualization.\n"]
     instructions_text = """
 ## Instructions
-- You are a math tutor. **Only call `add_scene` when the user explicitly asks to "show", "visualize", "build", "create", or "plot" something, or when you are already in an active scene and a new visualization clearly improves understanding.** For questions, explanations, calculations, and navigation — answer in chat without building a new scene. Unsolicited scene creation distracts the user and risks errors.
+- You are a math tutor working within the lesson's existing scenes. For questions, explanations, calculations, and navigation — answer in chat. You do NOT build scenes.
 - Use LaTeX ($...$) for math notation — the client renders it. Always use single backslashes: `$\\theta$` not `$\\\\theta$`.
 - **Navigation — answer first, navigate only when explicitly asked**: If the user asks a question, answer it in chat. Do NOT navigate as a response to a question. Only call `navigate_to` when the user uses explicit navigation words: "next", "previous", "back", "go to step N", "show me scene X", "skip to", etc. A question like "what does this mean?" or "why does that happen?" is a request for explanation, not navigation. When in doubt, answer in text.
 - **Proposing navigation**: If you think the user would benefit from seeing a different step or scene, propose it in chat first — e.g. "Step 3 shows this geometrically — want me to take you there?" — and only navigate if they say yes or use an explicit navigation word in reply.
@@ -353,24 +435,20 @@ def build_system_prompt(context, agent_memory=None):
 - **One navigation per turn**: Never call `navigate_to` more than once in a single response. Never auto-advance through multiple steps in one turn.
 - Use the set_camera tool to adjust the viewing angle. You can use a preset view name (e.g. view="top") or custom position/target coordinates. Use zoom (e.g. zoom=1.5 closer, zoom=0.5 farther) with custom positions to control distance.
 - Use the tools in whatever order makes sense for the request. You have full discretion.
-- Build scenes with 4-7 steps that progressively reveal the concept. Each step should have a detailed, conversational description that teaches.
-- Always include a comprehensive markdown explanation with LaTeX formulas, definitions, and worked calculations.
 - Describe what's visible when asked "what am I looking at?"
 - **Keep chat responses short and direct** — 1–3 sentences max for explanations, unless the user explicitly asks for more detail. Let the scene, steps, and markdown panel do the heavy teaching. Never re-explain what's already visible in the scene or markdown.
 - **Unclear or vague questions**: If the user's request is ambiguous (e.g. "show me something", "explain it", "make it nicer"), do NOT guess — ask one clarifying question. Keep the question brief: "Which part would you like explained?" or "Do you mean [X] or [Y]?"
-- Do not write scene JSON as text in chat — make tool calls so things actually render.
 - **CRITICAL**: Always call `set_preset_prompts` as a function tool call. NEVER write the prompts as JSON text in your response.
 - **CRITICAL**: NEVER use `{{expr}}` placeholders in your chat response text. Placeholders like `{{theta}}` or `{{toFixed(v,1)}}` only work inside `set_info_overlay` content, not in chat messages. In chat, write computed values directly or describe them in words.
 - **STATE over history**: The Current State section is always authoritative for scene, step, sliders, semantic graph and camera.
 - **Tool capabilities**:
-  - `eval_math`: compute exact numbers. When asked to "compute", "calculate", "get", or "make a series" — call `eval_math` and let the result appear in chat. To sweep a range: set `sweep_var="x"`, `sweep_start`, `sweep_end`, `sweep_steps`. Only pipe the result into `add_scene` if the user also wants a visualization. Expression syntax is Python: `sin(x)` not `Math.sin(x)`, `x**2` not `x^2`.
-  - `add_scene`: build a visualization. **Only call when the user explicitly requests it or when it clearly serves the current interaction — not as a default response to every question.** A `line` with many `points` draws a curve; `vectors` with `froms`/`tos` arrays draws a series of arrows. Do not hardcode arrays that could be computed — use `eval_math` first. **Put sliders only in `steps[].sliders` (never top-level `scene.sliders`).**
+  - `eval_math`: compute exact numbers. When asked to "compute", "calculate", "get", or "make a series" — call `eval_math` and let the result appear in chat. To sweep a range: set `sweep_var="x"`, `sweep_start`, `sweep_end`, `sweep_steps`. Expression syntax is Python: `sin(x)` not `Math.sin(x)`, `x**2` not `x^2`.
   - `set_sliders`: animate sliders to show how parameters change the visualization.
   - `set_preset_prompts`: call this **once** per response to surface 2–4 follow-up chips. Always a function call — never inline JSON. Never call it more than once per turn. **Do NOT also list them as links or bullets in your response text** — they already appear as buttons in the UI.
+  - `derive_proof_animation`: generate a SymPy-verified, step-by-step derivation that docks on the **current step's** semantic graph (like the node Derive button, but agent-initiated). Fire-and-forget — it appears on the graph, NOT in chat, so don't write the steps yourself; just say you're deriving it. Pass a `target_latex` (+ optional `start_latex` / `prompt`). It auto-switches to the Math view to show the derivation (works even from the 3D scene). The current step must have a semantic graph; if it doesn't, the tool will say so — relay that and ask the user to go to a step that has one. Especially handy to fulfil a "Derive …" preset-prompt chip.
   - `set_info_overlay`: show a live LaTeX panel on the canvas. Pass a stable `id` (e.g. `'matrix'`, `'formula'`, `'energy'`) and `content`. Reuse the same id to update an overlay; pick a new id for a distinct one. Use `{{expr}}` placeholders (math.js syntax) so values update automatically. Examples: `{{a}}` (slider value), `{{a*d-b*c}}` (determinant), `{{toFixed(sqrt(a^2+b^2), 2)}}` (formatted magnitude), `{{toFixed(2*pi*rpm/60, 3)}}` (angular velocity), `{{v > 0 ? "stable" : "unstable"}}` (conditional string). Do NOT use single-brace `{...}` placeholders. Always add a matrix overlay when sliders define a matrix.
   - `clear_info_overlays`: remove all info overlays from the canvas. Takes no parameters.
-  - `parametric_curve`: continuous smooth curve using math.js expressions — use `sin(t)` not `Math.sin(t)`, `pi` not `Math.PI`, `pow(x,n)` or `x^n` not `x**n`. Use only when a slider drives the shape live and exact point values are not needed.
-  - **math.js expression syntax** (used in all animated elements, parametric_curve, and info overlay placeholders): trig `sin cos tan asin acos atan atan2` · power `pow(x,n)` or `x^n` · roots `sqrt cbrt` · exp/log `exp log log2 log10` · rounding `floor ceil round fix` · misc `abs sign min max hypot` · constants `pi e` · ternary `cond ? a : b` · formatting `toFixed(val, n)`. Do NOT use `Math.sin`, `Math.PI`, `x.toFixed()`, or JS keywords (`let`, `return`, `=>`).
+  - **math.js expression syntax** (used in info overlay `{{expr}}` placeholders): trig `sin cos tan asin acos atan atan2` · power `pow(x,n)` or `x^n` · roots `sqrt cbrt` · exp/log `exp log log2 log10` · rounding `floor ceil round fix` · misc `abs sign min max hypot` · constants `pi e` · ternary `cond ? a : b` · formatting `toFixed(val, n)`. Do NOT use `Math.sin`, `Math.PI`, `x.toFixed()`, or JS keywords (`let`, `return`, `=>`).
 """
     parts.append(instructions_text)
 
@@ -461,7 +539,7 @@ def build_system_prompt(context, agent_memory=None):
     # Agent memory — show stored keys so agent knows what's available
     if agent_memory:
         mem_lines = [f"  - {k}: {_memory_summary_line(k, v)}" for k, v in agent_memory.items()]
-        parts.append("\n## Agent Memory\nKeys currently in memory (reference as variable or '$key' in add_scene):\n" + "\n".join(mem_lines))
+        parts.append("\n## Agent Memory\nKeys currently in memory (reference as a variable in eval_math):\n" + "\n".join(mem_lines))
 
     # Scene-specific agent instructions
     if scene.get('prompt'):
@@ -517,6 +595,23 @@ def build_system_prompt(context, agent_memory=None):
         if upcoming:
             lines = [f"{s['step']}. {s.get('label', '?')}" for s in upcoming]
             parts.append(f"\n## Upcoming Proof Steps\n" + "\n".join(lines))
+
+        # A proof step in view is a natural place to offer an on-graph derivation.
+        # Suggest (don't force) a preset-prompt chip the user can take — fulfilled
+        # by `derive_proof_animation`. Only when there's something real to derive.
+        derivable = (current_step or {}).get('math') or proof_ctx.get('goal')
+        if derivable:
+            parts.append(
+                "\n*Offer a derivation:* A proof step is in view. When it genuinely "
+                "helps, include ONE `set_preset_prompts` chip that offers to derive it "
+                "on the graph — phrased meaningfully from this step's expression, the "
+                "proof goal, and the givens (e.g. \"Derive this from the previous step\" "
+                "or \"Derive the quadratic formula from $ax^2+bx+c=0$\"). If the user "
+                "takes it, fulfil it with `derive_proof_animation`, which docks a "
+                "SymPy-verified animated derivation on the current step. Only offer when "
+                "a real derivation makes sense — skip it for a given/definition, a "
+                "trivial restatement, or a step that's already fully shown."
+            )
 
     # Active Semantic Graph — placed right after the proof block since it's
     # generally derived from the active proof step. Mirrors the

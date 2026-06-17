@@ -156,6 +156,9 @@ def build_example(seed: Seed, rng: random.Random, max_steps: int, max_ops: int =
             # rule (a symbol before "(" is a function call, not multiplication).
             expr_latex=sp.latex(e, mul_symbol="dot"),
             justification="equivalent transformation (sympy-verified)",
+            # gold chains are equivalence-preserving by construction (each state
+            # is sympy-verified equivalent to the seed expression)
+            change_type="rewrite",
         )
         for (e, _g) in kept[1:]
     ]
@@ -164,11 +167,12 @@ def build_example(seed: Seed, rng: random.Random, max_steps: int, max_ops: int =
         context_id=context_id,
         lesson_context="",
         instruction=f"{seed.intent}: transform the start graph into the target graph.",
-        # gold output the optimizer can demonstrate from (matches the sig's
-        # `trajectory` OutputField), plus the atomic gold ops for internal checks
+        # gold outputs the optimizer can demonstrate from (match the sig's
+        # `trajectory` + `title` OutputFields), plus the atomic gold ops for checks
         trajectory=ProofTrajectory(steps=gold_steps,
                                    start_latex=graph_to_latex(start),
                                    target_latex=graph_to_latex(target)),
+        title=seed.intent or None,
         gold_steps=gold_steps,
         gold_ops=gold_ops,
         domain=seed.domain,
@@ -212,6 +216,7 @@ def example_to_dict(ex) -> dict:
         "context_id": ex.context_id,
         "lesson_context": ex.lesson_context,
         "instruction": ex.instruction,
+        "title": ex.get("title"),
         "gold_steps": [s.model_dump() for s in (ex.get("gold_steps") or [])],
         "gold_ops": [op.model_dump(by_alias=True, exclude_none=True) for op in ex.gold_ops],
         "domain": ex.domain,
@@ -242,6 +247,7 @@ def example_from_dict(d: dict):
         context_id=d["context_id"],
         lesson_context=d.get("lesson_context", ""),
         instruction=d.get("instruction", ""),
+        title=d.get("title"),
         trajectory=ProofTrajectory(steps=gold_steps,
                                    start_latex=graph_to_latex(context.start),
                                    target_latex=graph_to_latex(context.target)),
