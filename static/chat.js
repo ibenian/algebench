@@ -274,6 +274,8 @@ function switchPanelTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(el => {
         el.classList.toggle('active', el.id === 'tab-' + tabName);
     });
+    // Deeplink sync: which right-panel tab (Doc/Chat) is open is shareable.
+    try { window.dispatchEvent(new CustomEvent('algebench:panelchange')); } catch (_) { /* ignore */ }
     // Focus input and greet only when chat history is empty
     if (tabName === 'chat') {
         if (typeof refreshProofPanel === 'function') refreshProofPanel();

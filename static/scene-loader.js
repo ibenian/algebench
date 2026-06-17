@@ -793,6 +793,9 @@ export function navigateTo(sceneIdx, stepIdx) {
     if (sceneChanged) {
         setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
     }
+
+    // Notify deeplink sync: a discrete scene/step transition happened.
+    try { window.dispatchEvent(new CustomEvent('algebench:navchange')); } catch (_) { /* ignore */ }
 }
 
 // ----- Auto-play -----

@@ -1424,6 +1424,7 @@ def create_app(initial_scene_path=None, debug=False,
         'state', 'expr', 'trust', 'coords', 'labels', 'follow-cam', 'camera',
         'sliders', 'overlay', 'context-browser', 'scene-loader', 'ui',
         'json-browser', 'main', 'proof', 'graph-view', 'expert-client',
+        'view-state', 'view-state-bridge', 'nav-history', 'nav-history-core',
     }
 
     @fastapp.get("/api/graph/themes")

@@ -5,6 +5,7 @@
 
 import { state } from '/state.js';
 import { loadLesson, loadScene, stopAutoPlay } from '/scene-loader.js';
+import { parseViewState } from '/view-state.js';
 
 // ----- Scene Loading Indicator -----
 // Shown while a scene is fetched + parsed. The server derives a semantic
@@ -74,8 +75,11 @@ export async function loadBuiltinScene(name) {
         state.currentSceneSourceLabel = `${name}.json`;
         state.currentSceneSourcePath = `/scenes/${name}`;
         // Force a full re-init path so selecting from scenes always reloads.
+        // Await the full load (importDomains + navigateTo(0,-1)) so callers —
+        // notably the deeplink restore in loadInitialSceneFromQuery — don't race
+        // a still-in-flight lesson load and get reset to scene 0.
         stopAutoPlay();
-        loadLesson(spec);
+        await loadLesson(spec);
         updateSceneUrl({ builtin: name });
         document.getElementById('scenes-menu').classList.remove('open');
         return true;
@@ -101,7 +105,7 @@ export async function loadSceneFromPath(path) {
         state.currentSceneSourceLabel = data.label || path.split(/[\\/]/).pop() || path;
         state.currentSceneSourcePath = data.path || path;
         stopAutoPlay();
-        loadLesson(data.spec);
+        await loadLesson(data.spec);
         updateSceneUrl({ path: state.currentSceneSourcePath });
     } finally {
         hideSceneLoading();
@@ -124,14 +128,21 @@ export function updateSceneUrl(opts = {}) {
 }
 
 export async function loadInitialSceneFromQuery() {
-    const params = new URLSearchParams(window.location.search);
-    const builtin = params.get('builtin');
-    const scenePath = params.get('scene');
-    if (builtin) {
-        const loaded = await loadBuiltinScene(builtin);
-        if (loaded) return;
+    // Capture the FULL deeplink before loading the source — loadBuiltinScene /
+    // loadSceneFromPath rewrite the URL (dropping sc/st/etc.) via updateSceneUrl.
+    const vs = parseViewState(window.location.search);
+    const hasDeeplink = !!(vs.sc || vs.st || vs.pf || vs.ps || vs.nodes || vs.sliders || vs.cam);
+    const applyRest = async () => {
+        if (hasDeeplink && typeof window.applyViewState === 'function') {
+            try { await window.applyViewState(vs); } catch (e) { console.error('applyViewState failed:', e); }
+        }
+    };
+
+    if (vs.builtin) {
+        const loaded = await loadBuiltinScene(vs.builtin);
+        if (loaded) { await applyRest(); return; }
     }
-    if (!scenePath) {
+    if (!vs.scene) {
         showSceneLoading();
         try {
             const res = await fetch('/api/scene', { cache: 'no-store' });
@@ -149,9 +160,10 @@ export async function loadInitialSceneFromQuery() {
         return;
     }
     try {
-        await loadSceneFromPath(scenePath);
+        await loadSceneFromPath(vs.scene);
+        await applyRest();
     } catch (e) {
-        console.error('Failed to load initial scene:', scenePath, e);
+        console.error('Failed to load initial scene:', vs.scene, e);
         loadScene(null);
     }
 }

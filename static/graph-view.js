@@ -37,6 +37,71 @@ let _d3HoveredNodeId = null;
 let _d3ActiveGraph = null;
 let _d3StepStates = new Map();
 let _d3LastStepKey = null;
+let _pendingDeeplinkSelection = null;  // node ids awaiting the target step's render
+
+// ----- Deeplink selection bridge (consumed by view-state-bridge.js) -----
+
+/** Current selection as an ordered array, active node last. */
+function getGraphSelection() {
+    if (!_currentD3Renderer || _currentD3Renderer._destroyed) return [];
+    const sel = [..._currentD3Renderer.selectedNodes];
+    const active = _currentD3Renderer.activeNode;
+    if (active && sel.includes(active)) {
+        return [...sel.filter((id) => id !== active), active];
+    }
+    return sel;
+}
+
+/** Stash a deeplink selection; applied on the next/current step render. */
+function applyDeeplinkSelection(ids) {
+    _pendingDeeplinkSelection = Array.isArray(ids) ? ids.slice() : [];
+    if (_currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) {
+        _applyPendingDeeplinkSelection(_d3ActiveGraph);
+    }
+}
+
+function _applyPendingDeeplinkSelection(graph) {
+    if (_pendingDeeplinkSelection == null) return;
+    const want = _pendingDeeplinkSelection;
+    _pendingDeeplinkSelection = null;
+    if (!_currentD3Renderer || _currentD3Renderer._destroyed) return;
+    const valid = want.filter((id) => (graph.nodes || []).some((n) => n.id === id));
+    _currentD3Renderer.setSelection(valid);
+    if (valid.length > 1) {
+        _showD3MultiInfoPanel(new Set(valid), graph);
+    } else if (valid.length === 1) {
+        const node = (graph.nodes || []).find((n) => n.id === valid[0]);
+        _showD3InfoPanel(valid[0], node, graph);
+    } else {
+        _hideD3InfoPanel();
+    }
+}
+
+/** 'math' when the Math tab is active, else 'scene'. (Internal dock id is 'graph'.) */
+function getCurrentView() {
+    const active = document.querySelector('.dock-tab.active');
+    return (active && active.dataset.dockTab === 'graph') ? 'math' : 'scene';
+}
+
+/** Switch to the Math (graph) view; resolves when the graph has rendered. */
+function showGraphView() {
+    return setDockTab('graph');
+}
+
+/** Switch to the Scenes (3D) view. */
+function showSceneView() {
+    return setDockTab('scenes');
+}
+
+if (typeof window !== 'undefined') {
+    window.__algebenchGraph = {
+        getSelection: getGraphSelection,
+        applyDeeplinkSelection,
+        getCurrentView,
+        showGraphView,
+        showSceneView,
+    };
+}
 
 // Persisted user preferences. localStorage keys are versioned with an
 // `algebench.graph.` prefix so future format changes can be migrated without
@@ -381,6 +446,8 @@ function setDockTab(name) {
         _removeDockedLayout();
     }
     _syncDockButton();
+    // Deeplink sync: which view (Scenes vs Math) is active is shareable.
+    try { window.dispatchEvent(new CustomEvent('algebench:viewchange')); } catch (_) { /* ignore */ }
     return rendered;
 }
 
@@ -844,6 +911,8 @@ async function _renderWithD3(container, graph, step, key) {
                 } else {
                     _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
                 }
+                // Deeplink sync: node selection rewrites the current URL.
+                try { window.dispatchEvent(new CustomEvent('algebench:selectionchange')); } catch (_) { /* ignore */ }
             },
             onBackgroundClick: () => {
                 _hideD3InfoPanel();
@@ -897,6 +966,9 @@ async function _renderWithD3(container, graph, step, key) {
     await _currentD3Renderer.render(graph);
     _d3LastStepKey = stepKey;
     _currentSemanticKey = key;
+
+    // Apply a pending deeplink selection now that this step's graph exists.
+    _applyPendingDeeplinkSelection(graph);
 
     // Re-attach this step's persisted charts to the freshly-recreated card.
     if (_currentChartManager) { try { _currentChartManager.reattach(); } catch {} }

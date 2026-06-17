@@ -1,0 +1,9 @@
+{
+  "name": "algebench",
+  "private": true,
+  "type": "module",
+  "description": "Tooling/test harness for AlgeBench static ES modules (no build step).",
+  "scripts": {
+    "test": "node --test static/*.test.js"
+  }
+}

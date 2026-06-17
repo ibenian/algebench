@@ -1898,6 +1898,11 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     border-color: rgba(80, 200, 120, 0.5);
     background: rgba(40, 80, 60, 0.6);
 }
+.nav-btn.copied {
+    color: #44ff88;
+    border-color: rgba(80, 200, 120, 0.6);
+    background: rgba(40, 80, 60, 0.8);
+}
 
 /* Empty state */
 #empty-state {
