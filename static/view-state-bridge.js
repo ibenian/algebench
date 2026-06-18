@@ -293,33 +293,41 @@ export async function applyViewState(vs, opts = {}) {
             const wTgt = dataCameraToWorld(vs.cam.target);
             const up = Array.isArray(vs.cam.up) ? vs.cam.up.slice(0, 3) : [0, 1, 0];
             const offset = [wPos[0] - wTgt[0], wPos[1] - wTgt[1], wPos[2] - wTgt[2]];
-            // Wait for the follow cam to settle on its own (the slider repositions
-            // the element and the angle-lock converges over several frames), THEN
-            // impose the shared offset once — a single set after settle holds (the
-            // follow loop only adds target deltas, which are ~0 once static). We
-            // watch the camera's NATURAL motion (no override) so the startup
-            // plateau doesn't count as "settled"; require a min elapsed time too.
-            let frames = 0, stable = 0, lastKey = null;
-            const settleThenSet = () => {
-                const fc = state.followCamState;
-                if (!fc && !state.cameraExprState) return; // view left
-                const c = state.camera.position;
-                const key = `${c.x.toFixed(3)},${c.y.toFixed(3)},${c.z.toFixed(3)}`;
-                // Angle-lock convergence only matters when angle-lock is on;
-                // otherwise the follow loop is pure offset-preservation.
-                const hasDir = !fc || !state.followCamAngleLock || !!fc.lastDirectionWorld;
-                stable = (key === lastKey && hasDir) ? stable + 1 : 0;
-                lastKey = key;
-                if (frames >= 20 && stable >= 12) {
-                    const t = state.controls.target;
-                    state.camera.position.set(t.x + offset[0], t.y + offset[1], t.z + offset[2]);
-                    state.camera.up.set(up[0], up[1], up[2]);
-                    state.camera.lookAt(t);
-                    return;
+            // Maintain the shared offset relative to the live follow target EVERY
+            // frame, starting immediately — so the exact angle shows from frame 1
+            // and stays correct while the element settles at the restored time (no
+            // latency, no fragile "settled" heuristic). Release once the target has
+            // been stable for a stretch (element settled → the follow loop holds
+            // the offset on its own), or when the user interacts (so they can
+            // orbit), or when the view changes. Backstop frame cap too.
+            const dom = state.renderer && state.renderer.domElement;
+            let stop = false, frames = 0, stable = 0, lastKey = null;
+            const release = () => {
+                stop = true;
+                if (dom) {
+                    dom.removeEventListener('pointerdown', release);
+                    dom.removeEventListener('wheel', release);
                 }
-                if (++frames < 600) requestAnimationFrame(settleThenSet);
             };
-            requestAnimationFrame(settleThenSet);
+            if (dom) {
+                dom.addEventListener('pointerdown', release, { once: true });
+                dom.addEventListener('wheel', release, { once: true, passive: true });
+            }
+            const pin = () => {
+                const fc = state.followCamState;
+                if (stop || (!fc && !state.cameraExprState)) { release(); return; }
+                const t = state.controls.target;
+                state.camera.position.set(t.x + offset[0], t.y + offset[1], t.z + offset[2]);
+                state.camera.up.set(up[0], up[1], up[2]);
+                state.camera.lookAt(t);
+                if (fc) fc.lastTargetWorld = t.clone();
+                const key = `${t.x.toFixed(4)},${t.y.toFixed(4)},${t.z.toFixed(4)}`;
+                stable = key === lastKey ? stable + 1 : 0;
+                lastKey = key;
+                if ((frames >= 30 && stable >= 45) || ++frames > 1800) { release(); return; }
+                requestAnimationFrame(pin);
+            };
+            requestAnimationFrame(pin);
         } else if (camOk && !dynamicCam) {
             // Static view or free camera: animate to the exact captured camera.
             const wPos = dataCameraToWorld(vs.cam.position);
