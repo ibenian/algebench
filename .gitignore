@@ -21,3 +21,5 @@ backend/experts/modules/*/artifacts/
 .claude/scheduled_tasks.lock
 !AGENTS.md
 !CLAUDE.md
+# CocoIndex Code (ccc)
+/.cocoindex_code/

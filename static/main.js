@@ -21,6 +21,8 @@ import { buildSceneTree } from '/context-browser.js';
 import { setupJsonViewer, setupContextStatusPopup } from '/json-browser.js';
 import { renderMarkdown, renderKaTeX } from '/labels.js';
 import { setupProofPanel, navigateProof, loadProof, getProofContext, refreshProofPanel } from '/proof.js';
+import { captureViewState, applyViewState, setupViewSync, setupShareButton } from '/view-state-bridge.js';
+import { setupPopstateListener } from '/nav-history.js';
 
 // Domain library registry — scripts under static/domains/<name>/index.js self-register here.
 window.AlgeBenchDomains = window.AlgeBenchDomains || {
@@ -56,6 +58,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupJsonViewer();
     setupContextStatusPopup();
     setupCamStatusPopup();
+    // Deeplink sync must be live before the initial scene loads so the URL
+    // reflects navigation, and applyViewState exists before ui.js calls it.
+    setupViewSync();
+    setupShareButton();
+    setupPopstateListener(applyViewState);
     loadBuiltinScenesList();
     await loadInitialSceneFromQuery();
 });
@@ -86,6 +93,11 @@ window.updateDockVisibility = updateDockVisibility;
 window.animateSlider = animateSlider;
 window.dataCameraToWorld = dataCameraToWorld;
 window.worldCameraToData = worldCameraToData;
+
+// Deeplinking — single entry point reused by ui.js init, popstate, and the
+// future AI "jump to view" tool.
+window.captureViewState = captureViewState;
+window.applyViewState = applyViewState;
 
 // Proof system
 window.navigateProof = navigateProof;

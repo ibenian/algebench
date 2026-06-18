@@ -438,7 +438,7 @@ export function updateFollowAngleLockButtonState() {
 export function setupFollowAngleLockToggle() {
     const btn = document.getElementById('follow-angle-lock-toggle');
     if (!btn) return;
-    btn.style.display = 'block';
+    btn.style.display = 'flex';
     btn.addEventListener('click', () => {
         state.followCamAngleLock = !state.followCamAngleLock;
         updateFollowAngleLockButtonState();
