@@ -1985,6 +1985,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     height: 26px;
     margin: 0;
     padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
     border: 1px solid rgba(100, 100, 255, 0.25);
     border-radius: 4px;
     background: rgba(40, 40, 80, 0.6);

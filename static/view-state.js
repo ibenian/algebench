@@ -121,8 +121,11 @@ export function serializeViewState(vs) {
     }
 
     if (vs.sliders && typeof vs.sliders === 'object') {
+        // Sort by id so equivalent ViewStates serialize identically (stable
+        // URLs + reliable equality-by-serialization), regardless of key order.
         const packed = Object.entries(vs.sliders)
             .filter(([, val]) => Number.isFinite(Number(val)))
+            .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
             .map(([id, val]) => `${id}~${fmtNum(Number(val))}`)
             .join(',');
         if (packed) pairs.push(['sl', packed]);

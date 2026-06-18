@@ -155,7 +155,7 @@ export async function loadInitialSceneFromQuery() {
             if (res.ok) {
                 const spec = await res.json();
                 if (spec && Array.isArray(spec.scenes) && spec.scenes.length) {
-                    loadLesson(spec);
+                    await loadLesson(spec);
                     return;
                 }
             }
