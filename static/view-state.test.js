@@ -88,6 +88,14 @@ test('projection (proj) round-trips and omits perspective default', () => {
     assert.deepEqual(parseViewState('proj=orthographic&sc=s1'), { proj: 'orthographic', sc: 's1' });
 });
 
+test('orthographic scale (oz) round-trips', () => {
+    const q = serializeViewState({ proj: 'orthographic', oz: 3.25, sc: 's1' });
+    assert.ok(q.includes('oz=3.25'), q);
+    assert.deepEqual(parseViewState(q), { proj: 'orthographic', oz: 3.25, sc: 's1' });
+    // oz is omitted when not a finite number
+    assert.ok(!serializeViewState({ proj: 'orthographic', sc: 's1' }).includes('oz='));
+});
+
 test('camera encode omits default up, includes non-default up', () => {
     assert.equal(
         encodeCamera({ position: [1, 2, 3], target: [0, 0, 0], up: [0, 1, 0] }),

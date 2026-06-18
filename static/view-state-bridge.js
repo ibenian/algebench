@@ -152,7 +152,16 @@ export function captureViewState({ includeCamera = false } = {}) {
     if (includeCamera) {
         const activeBtn = document.querySelector('.cam-btn.active');
         if (activeBtn && activeBtn.dataset.view) vs.cv = activeBtn.dataset.view;
-        if (state.currentProjection === 'orthographic') vs.proj = 'orthographic';
+        if (state.currentProjection === 'orthographic') {
+            vs.proj = 'orthographic';
+            // Ortho scale is the frustum/zoom, independent of camera distance, so
+            // it must be captured explicitly to reconstruct the exact view.
+            const c = state.camera;
+            if (c && c.isOrthographicCamera) {
+                const halfH = Math.abs((c.top - c.bottom) / (2 * (c.zoom || 1)));
+                if (halfH > 0) vs.oz = halfH;
+            }
+        }
         if (state.camera && state.controls) {
             const p = worldCameraToData([state.camera.position.x, state.camera.position.y, state.camera.position.z]);
             const t = worldCameraToData([state.controls.target.x, state.controls.target.y, state.controls.target.z]);
@@ -243,6 +252,19 @@ export async function applyViewState(vs, opts = {}) {
         //    it must run before the cv/camera steps below.
         if (vs.proj || vs.cam) {
             switchProjection(vs.proj === 'orthographic' ? 'orthographic' : 'perspective');
+            // Restore the exact orthographic scale (frustum is otherwise derived
+            // from the wrong distance and ignores the user's zoom). Vertical
+            // extent is fixed; horizontal adapts to the recipient's aspect.
+            if (vs.proj === 'orthographic' && Number.isFinite(vs.oz)
+                && state.camera && state.camera.isOrthographicCamera) {
+                const cont = document.getElementById('mathbox-container');
+                const aspect = cont ? cont.clientWidth / Math.max(cont.clientHeight, 1) : 1;
+                const c = state.camera;
+                c.top = vs.oz; c.bottom = -vs.oz;
+                c.left = -vs.oz * aspect; c.right = vs.oz * aspect;
+                c.zoom = 1;
+                c.updateProjectionMatrix();
+            }
         }
 
         //    - Dynamic views (follow-cam / expression-cam, marked .cam-btn-follow)

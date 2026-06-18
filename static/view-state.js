@@ -21,6 +21,7 @@
 //     sliders: {id: num}, // parameter overrides            -> ?sl=id~val,...
 //     cv,                 // selected camera-view preset    -> ?cv=iso
 //     proj,               // 'orthographic'; perspective=default -> ?proj=orthographic
+//     oz,                 // orthographic visible half-height (world) -> ?oz=3.2
 //     cam: {              // camera (data-space)            -> ?cam=px,py,pz,tx,ty,tz[,ux,uy,uz]
 //       position:[x,y,z], target:[x,y,z], up?:[x,y,z]
 //     },
@@ -123,6 +124,7 @@ export function serializeViewState(vs) {
 
     if (vs.cv) pairs.push(['cv', vs.cv]);
     if (vs.proj && vs.proj !== 'perspective') pairs.push(['proj', vs.proj]);
+    if (Number.isFinite(vs.oz)) pairs.push(['oz', fmtNum(vs.oz)]);
 
     if (vs.cam) {
         const enc = encodeCamera(vs.cam);
@@ -190,6 +192,12 @@ export function parseViewState(search) {
 
     const proj = params.get('proj');
     if (proj) vs.proj = proj;
+
+    const oz = params.get('oz');
+    if (oz != null && oz !== '') {
+        const n = Number(oz);
+        if (Number.isFinite(n)) vs.oz = n;
+    }
 
     const cam = decodeCamera(params.get('cam'));
     if (cam) vs.cam = cam;
