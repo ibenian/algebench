@@ -1903,6 +1903,50 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     border-color: rgba(80, 200, 120, 0.6);
     background: rgba(40, 80, 60, 0.8);
 }
+/* Share button: top-right, next to the camera angle lock. Sized to match the
+   camera view buttons (.cam-btn). */
+#nav-share {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 60;
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    backdrop-filter: blur(8px);
+}
+/* Let the whole button be one hover/click target so the tooltip also shows
+   when the cursor is directly over the eye icon. */
+#nav-share svg { pointer-events: none; }
+/* Confirmation pill, anchored to the left of the share button */
+#share-copied-toast {
+    position: absolute;
+    top: 12px;
+    right: 46px;
+    z-index: 70;
+    max-width: 230px;
+    background: rgba(40, 80, 60, 0.92);
+    border: 1px solid rgba(80, 200, 120, 0.6);
+    color: #9affc0;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.35;
+    padding: 6px 10px;
+    border-radius: 6px;
+    text-align: right;
+    pointer-events: none;
+    opacity: 0;
+    backdrop-filter: blur(8px);
+}
+#share-copied-toast.show {
+    animation: shareToastPop 3s ease forwards;
+}
+@keyframes shareToastPop {
+    0%   { opacity: 0; transform: translateX(6px); }
+    6%   { opacity: 1; transform: translateX(0); }
+    88%  { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(6px); }
+}
 
 /* Empty state */
 #empty-state {
@@ -1931,9 +1975,29 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     flex-shrink: 0;
     margin-left: 8px;
 }
-#follow-angle-lock-toggle { position: absolute; top: 12px; right: 48px; }
-#follow-angle-lock-toggle:hover { color: rgba(200, 200, 255, 1); background: rgba(30, 30, 60, 0.8); }
-#follow-angle-lock-toggle.active { color: rgba(140, 160, 255, 1); background: rgba(30, 30, 60, 0.8); }
+/* Match the share / camera view buttons: a 26px bordered icon button. */
+#follow-angle-lock-toggle {
+    position: absolute;
+    top: 12px;
+    right: 44px;
+    box-sizing: border-box;
+    width: 26px;
+    height: 26px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid rgba(100, 100, 255, 0.25);
+    border-radius: 4px;
+    background: rgba(40, 40, 80, 0.6);
+    color: #b0b0e0;
+    font-size: 20px;
+    line-height: 1;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+}
+#follow-angle-lock-toggle svg { pointer-events: none; }
+#follow-angle-lock-toggle:hover { color: #fff; background: rgba(60, 60, 120, 0.8); border-color: rgba(140, 140, 255, 0.5); }
+#follow-angle-lock-toggle.active { color: rgba(140, 160, 255, 1); background: rgba(30, 30, 60, 0.85); border-color: rgba(140, 160, 255, 0.6); }
 #explain-toggle:hover { color: rgba(242, 245, 255, 1); background: rgba(30, 30, 60, 0.8); }
 #explain-toggle.active { color: rgba(163, 177, 255, 0.98); background: rgba(30, 30, 60, 0.8); }
 #follow-angle-lock-toggle.cam-active { border-color: rgba(120, 170, 255, 0.35); }

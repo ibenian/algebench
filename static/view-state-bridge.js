@@ -408,17 +408,63 @@ export function setupViewSync() {
 export function setupShareButton() {
     const btn = document.getElementById('nav-share');
     if (!btn) return;
+    // Lazily-created floating confirmation pill, anchored next to the button.
+    let toast = null;
+    let toastTimer = null;
+    function flashToast(message) {
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'share-copied-toast';
+            (btn.parentElement || document.body).appendChild(toast);
+        }
+        toast.textContent = message;
+        // Force reflow so re-triggering the animation works on rapid clicks.
+        toast.classList.remove('show');
+        void toast.offsetWidth;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // Copy with a legacy fallback for contexts where the async Clipboard API
+    // is unavailable (insecure origins, sandboxed frames).
+    async function copyText(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch (_) {
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.top = '-1000px';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                const ok = document.execCommand('copy');
+                document.body.removeChild(ta);
+                return ok;
+            } catch (_) {
+                return false;
+            }
+        }
+    }
+
     btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const vs = captureViewState({ includeCamera: true });
         replaceView(vs);  // pin camera into the live URL
-        const url = window.location.href;
-        try {
-            await navigator.clipboard.writeText(url);
+        const copied = await copyText(window.location.href);
+        if (copied) {
             btn.classList.add('copied');
             const prevTitle = btn.title;
-            btn.title = 'Link copied!';
-            setTimeout(() => { btn.classList.remove('copied'); btn.title = prevTitle; }, 1200);
-        } catch (_) { /* clipboard blocked — URL is still updated */ }
+            btn.title = 'Shareable link copied';
+            flashToast('Shareable link to this camera view copied — you can now share it with others');
+            setTimeout(() => { btn.classList.remove('copied'); btn.title = prevTitle; }, 3000);
+        } else {
+            // Couldn't reach the clipboard — the pinned view is still in the address bar.
+            flashToast('Couldn’t copy automatically — the shareable link is in your address bar');
+        }
     });
 }
