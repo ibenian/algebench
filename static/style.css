@@ -1996,11 +1996,17 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     backdrop-filter: blur(8px);
 }
 #follow-angle-lock-toggle svg { pointer-events: none; }
-#follow-angle-lock-toggle:hover { color: #fff; background: rgba(60, 60, 120, 0.8); border-color: rgba(140, 140, 255, 0.5); }
-#follow-angle-lock-toggle.active { color: rgba(140, 160, 255, 1); background: rgba(30, 30, 60, 0.85); border-color: rgba(140, 160, 255, 0.6); }
+#follow-angle-lock-toggle:hover { color: #fff; background: rgba(60, 60, 160, 0.5); border-color: rgba(120, 120, 255, 0.5); }
 #explain-toggle:hover { color: rgba(242, 245, 255, 1); background: rgba(30, 30, 60, 0.8); }
 #explain-toggle.active { color: rgba(163, 177, 255, 0.98); background: rgba(30, 30, 60, 0.8); }
 #follow-angle-lock-toggle.cam-active { border-color: rgba(120, 170, 255, 0.35); }
+/* Selected (angle-lock ON): match the camera view button's active state. */
+#follow-angle-lock-toggle.active,
+#follow-angle-lock-toggle.active:hover {
+    color: #fff;
+    background: rgba(80, 80, 200, 0.5);
+    border-color: rgba(140, 140, 255, 0.6);
+}
 
 /* Panel Resize Handle */
 #panel-resize-handle {
