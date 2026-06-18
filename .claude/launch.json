@@ -4,57 +4,57 @@
     {
       "name": "coach-empty",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["--debug", "--server-only"],
+      "runtimeArgs": ["--debug", "--server-only", "--skip-tour"],
       "port": 5743,
       "autoPort": true
     },
     {
       "name": "ratelimit-verify",
       "runtimeExecutable": "env",
-      "runtimeArgs": ["ALGEBENCH_RATELIMIT_CHAT=1/60", "./algebench", "scenes/eigenvalues.json", "--port", "5741", "--server-only"],
+      "runtimeArgs": ["ALGEBENCH_RATELIMIT_CHAT=1/60", "./algebench", "scenes/eigenvalues.json", "--port", "5741", "--server-only", "--skip-tour"],
       "port": 5741
     },
     {
       "name": "artemis-ii",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["scenes/artemis-ii-mission-simulation.json", "--debug", "--server-only"],
+      "runtimeArgs": ["scenes/artemis-ii-mission-simulation.json", "--debug", "--server-only", "--skip-tour"],
       "port": 8785,
       "autoPort": true
     },
     {
       "name": "graph-panel-demo",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["scenes/draft/graph-panel-demo.json", "--port", "5731", "--debug", "--server-only"],
+      "runtimeArgs": ["scenes/draft/graph-panel-demo.json", "--port", "5731", "--debug", "--server-only", "--skip-tour"],
       "port": 5731
     },
     {
       "name": "atmospheric-entry",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["scenes/atmospheric-entry-physics.json", "--port", "5732", "--debug", "--server-only"],
+      "runtimeArgs": ["scenes/atmospheric-entry-physics.json", "--port", "5732", "--debug", "--server-only", "--skip-tour"],
       "port": 5732
     },
     {
       "name": "eigenvalues",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["scenes/eigenvalues.json", "--port", "5733", "--debug", "--server-only"],
+      "runtimeArgs": ["scenes/eigenvalues.json", "--port", "5733", "--debug", "--server-only", "--skip-tour"],
       "port": 5733
     },
     {
       "name": "test-proof-quadratic",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["scenes/draft/test-proof-quadratic.json", "--port", "5734", "--debug", "--server-only"],
+      "runtimeArgs": ["scenes/draft/test-proof-quadratic.json", "--port", "5734", "--debug", "--server-only", "--skip-tour"],
       "port": 5734
     },
     {
       "name": "quantum-states",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["scenes/draft/quantum-states.json", "--port", "5735", "--debug", "--server-only"],
+      "runtimeArgs": ["scenes/draft/quantum-states.json", "--port", "5735", "--debug", "--server-only", "--skip-tour"],
       "port": 5735
     },
     {
       "name": "photons-wavelength-energy",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["scenes/draft/photons-wavelength-energy.json", "--port", "5736", "--debug", "--server-only"],
+      "runtimeArgs": ["scenes/draft/photons-wavelength-energy.json", "--port", "5736", "--debug", "--server-only", "--skip-tour"],
       "port": 5736
     },
     {
