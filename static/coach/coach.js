@@ -58,6 +58,20 @@ function initDebug() {
     try { DEBUG = !!(document.body && document.body.dataset && document.body.dataset.debugMode === 'true'); } catch {}
 }
 
+// ---- Skip-tour gate ----
+// When set, the engine still builds (Tour button works), but the automatic
+// welcome/resume/daily-hint offer in decide() is suppressed. Enabled by either
+// the ?skiptour URL param or the server --skip-tour flag
+// (body[data-skip-tour="true"]). Meant for local debugging sessions.
+function tourSkipped() {
+    try {
+        const p = new URLSearchParams(location.search);
+        if (p.has('skiptour')) return p.get('skiptour') !== '0';
+    } catch {}
+    try { return !!(document.body && document.body.dataset && document.body.dataset.skipTour === 'true'); } catch {}
+    return false;
+}
+
 // ---- In-memory state ----
 const S = {
     completed: new Set(),
@@ -70,6 +84,7 @@ const S = {
     lastNarration: '',  // last text shown — so the toggle can replay it
     cardMoved: false,   // user dragged the card → don't auto-reposition until next step
     justOpened: false,  // first step after openTour → mention the Tour button once
+    seekIncomplete: false, // resume mode: skip already-completed steps, walk only the pending ones
     spotlitEl: null,    // element currently carrying the .coach-spotlit class
     userGestured: false,// has the user interacted yet? (browser autoplay gate)
     pendingNarration: '',// narration deferred until the first gesture
@@ -274,6 +289,23 @@ function relevantSteps() {
 // (openTour auto-loads a scene when a pending step needs one.)
 function pendingSteps() {
     return coach.get().filter((s) => !S.completed.has(s.id));
+}
+// Index (within S.steps, registry order) of the first not-yet-completed step,
+// or -1 if every relevant step is done.
+function firstPendingIdx() {
+    return S.steps.findIndex((s) => !S.completed.has(s.id));
+}
+// The step to show after index `i`. In "seek incomplete" mode (resuming with new
+// steps inserted) we skip over already-completed steps and finish once none
+// remain ahead; otherwise we step forward by one (linear re-watch / explicit nav).
+function nextStepIdx(i) {
+    if (S.seekIncomplete) {
+        for (let j = i + 1; j < S.steps.length; j++) {
+            if (!S.completed.has(S.steps[j].id)) return j;
+        }
+        return -1;
+    }
+    return i + 1 < S.steps.length ? i + 1 : -1;
 }
 function markComplete(id) {
     if (!id || S.completed.has(id)) return;
@@ -614,7 +646,8 @@ async function showStep(i) {
     if (!el && step.optional) {           // skip optional steps with no target
         log(`step "${step.id}" optional + no target → skip`);
         markComplete(step.id);
-        if (i < S.steps.length - 1) return showStep(i + 1);
+        const nxt = nextStepIdx(i);
+        if (nxt >= 0) return showStep(nxt);
         return finish();
     }
     if (!el) log(`step "${step.id}" target not found → centered card, no spotlight`);
@@ -641,8 +674,9 @@ async function showStep(i) {
 function gotoNext() {
     const step = S.steps[S.idx];
     if (step) markComplete(step.id);
-    if (S.idx >= S.steps.length - 1) { finish(); return; }
-    showStep(S.idx + 1);
+    const next = nextStepIdx(S.idx);
+    if (next < 0) { finish(); return; }
+    showStep(next);
 }
 function gotoPrev() {
     if (S.idx > 0) showStep(S.idx - 1);
@@ -718,13 +752,22 @@ async function openTour(startId) {
     log('openTour relevant steps:', S.steps.map((s) => s.id));
     if (!S.steps.length) { log('openTour: no relevant steps'); return; }
     openPlayer();
+    // Resolve where to (re)start. The saved "current" step (LS.position) is the
+    // requested target, but if it's already completed while other steps remain
+    // uncompleted — e.g. new steps were inserted since last time — jump to the
+    // first uncompleted step and walk only the pending ones from there.
     let start = 0;
+    let explicit = false;
     if (startId) {
         const i = S.steps.findIndex((s) => s.id === startId);
-        if (i >= 0) start = i;
+        if (i >= 0) { start = i; explicit = true; }
+    }
+    const firstPending = firstPendingIdx();
+    if ((!explicit || S.completed.has(S.steps[start].id)) && firstPending >= 0) {
+        start = firstPending;
+        S.seekIncomplete = true;   // skip completed steps as we advance
     } else {
-        const p = S.steps.findIndex((s) => !S.completed.has(s.id));
-        start = p >= 0 ? p : 0;
+        S.seekIncomplete = false;  // explicit target still pending, or full re-watch
     }
     S.justOpened = true;   // first step will mention the Tour button
     showStep(start);
@@ -789,6 +832,7 @@ function showDailyHint(step) {
 }
 
 function decide() {
+    if (tourSkipped()) { log('decide: --skip-tour / ?skiptour set → no auto offer'); return; }
     loadState();
     if (S.active) { log('decide: tour already active → skip auto offer'); return; }
     const pending = pendingSteps();
