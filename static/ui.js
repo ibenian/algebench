@@ -4,7 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { loadLesson, loadScene, stopAutoPlay } from '/scene-loader.js';
+import { loadLesson, loadScene, stopAutoPlay, showSceneDockScenesTab } from '/scene-loader.js';
 import { parseViewState } from '/view-state.js';
 
 // ----- Scene Loading Indicator -----
@@ -46,9 +46,10 @@ export async function loadBuiltinScenesList() {
                 const item = document.createElement('div');
                 item.className = 'scene-item';
                 item.textContent = name.replace(/-/g, ' ');
-                item.addEventListener('click', (e) => {
+                item.addEventListener('click', async (e) => {
                     e.stopPropagation();
-                    loadBuiltinScene(name);
+                    const ok = await loadBuiltinScene(name);
+                    if (ok) showSceneDockScenesTab();
                 });
                 menu.appendChild(item);
             }
@@ -131,7 +132,12 @@ export async function loadInitialSceneFromQuery() {
     // Capture the FULL deeplink before loading the source — loadBuiltinScene /
     // loadSceneFromPath rewrite the URL (dropping sc/st/etc.) via updateSceneUrl.
     const vs = parseViewState(window.location.search);
-    const hasDeeplink = !!(vs.sc || vs.st || vs.pf || vs.ps || vs.nodes || vs.sliders || vs.cam);
+    // Any restorable field beyond the source (builtin/scene) means we must
+    // re-apply the captured ViewState after the source load rewrites the URL.
+    const hasDeeplink = !!(
+        vs.view || vs.panel || vs.pp || vs.sc || vs.st || vs.pf || vs.ps ||
+        vs.nodes || vs.sliders || vs.cv || vs.proj || Number.isFinite(vs.oz) || vs.cam
+    );
     const applyRest = async () => {
         if (hasDeeplink && typeof window.applyViewState === 'function') {
             try { await window.applyViewState(vs); } catch (e) { console.error('applyViewState failed:', e); }
@@ -190,13 +196,14 @@ export function setupDragDrop() {
         const file = e.dataTransfer.files[0];
         if (file && file.name.endsWith('.json')) {
             const reader = new FileReader();
-            reader.onload = (ev) => {
+            reader.onload = async (ev) => {
                 try {
                     const spec = JSON.parse(ev.target.result);
                     state.currentSceneSourceLabel = file.name || '';
                     state.currentSceneSourcePath = file.path || file.webkitRelativePath || file.name || '';
-                    loadLesson(spec);
+                    await loadLesson(spec);
                     if (state.currentSceneSourcePath) updateSceneUrl({ path: state.currentSceneSourcePath });
+                    showSceneDockScenesTab();
                 } catch (err) {
                     console.error('Invalid JSON:', err);
                 }
@@ -217,13 +224,14 @@ export function setupFilePicker() {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = (ev) => {
+            reader.onload = async (ev) => {
                 try {
                     const spec = JSON.parse(ev.target.result);
                     state.currentSceneSourceLabel = file.name || '';
                     state.currentSceneSourcePath = file.path || file.webkitRelativePath || file.name || '';
-                    loadLesson(spec);
+                    await loadLesson(spec);
                     if (state.currentSceneSourcePath) updateSceneUrl({ path: state.currentSceneSourcePath });
+                    showSceneDockScenesTab();
                 } catch (err) {
                     console.error('Invalid JSON:', err);
                 }

@@ -82,13 +82,19 @@ export function encodeCamera(cam) {
 /** Decode `px,py,pz,tx,ty,tz[,ux,uy,uz]` back to a camera object, or null. */
 export function decodeCamera(str) {
     if (!str) return null;
-    const parts = String(str).split(',').map(Number);
-    if (parts.length < 6 || parts.some((n) => !Number.isFinite(n))) return null;
+    const segs = String(str).split(',');
+    // The format is exactly 6 (position+target) or 9 (with up) numbers.
+    // Reject any other length and any empty segment (e.g. a trailing comma,
+    // which would otherwise coerce to a spurious 0).
+    if (segs.length !== 6 && segs.length !== 9) return null;
+    if (segs.some((s) => s.trim() === '')) return null;
+    const parts = segs.map(Number);
+    if (parts.some((n) => !Number.isFinite(n))) return null;
     const cam = {
         position: [parts[0], parts[1], parts[2]],
         target: [parts[3], parts[4], parts[5]],
     };
-    if (parts.length >= 9) cam.up = [parts[6], parts[7], parts[8]];
+    if (parts.length === 9) cam.up = [parts[6], parts[7], parts[8]];
     return cam;
 }
 

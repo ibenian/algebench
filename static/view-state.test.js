@@ -117,6 +117,11 @@ test('camera decode handles 6 and 9 numbers, rejects garbage', () => {
     assert.equal(decodeCamera('1,2,3'), null);
     assert.equal(decodeCamera('a,b,c,d,e,f'), null);
     assert.equal(decodeCamera(''), null);
+    // Reject lengths that aren't exactly 6 or 9, and empty (trailing-comma) segments.
+    assert.equal(decodeCamera('1,2,3,4,5,6,7'), null);
+    assert.equal(decodeCamera('1,2,3,4,5,6,7,8'), null);
+    assert.equal(decodeCamera('1,2,3,4,5,6,'), null);
+    assert.equal(decodeCamera('1,2,3,4,5,'), null);
 });
 
 test('camera rounds to 4 decimals', () => {
