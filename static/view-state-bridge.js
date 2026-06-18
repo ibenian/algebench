@@ -276,17 +276,52 @@ export async function applyViewState(vs, opts = {}) {
         const cvBtn = vs.cv ? document.querySelector(`.cam-btn[data-view="${vs.cv}"]`) : null;
         const cvDynamic = !!(cvBtn && cvBtn.classList.contains('cam-btn-follow'));
 
-        // Dynamic views (follow-cam / expression-cam): just activate them, exactly
-        // like clicking the button. Their framing is computed live (angle-lock,
-        // moving target), so a frozen camera snapshot can't be re-imposed — we
-        // reproduce the view, not an exact angle.
+        // Dynamic views (follow-cam / expression-cam): activate them like a click.
         if (cvBtn && cvDynamic && !cvBtn.classList.contains('active')) cvBtn.click();
 
         const dynamicCam = state.followCamState || state.cameraExprState;
         const camOk = vs.cam && Array.isArray(vs.cam.position) && Array.isArray(vs.cam.target);
 
-        // Exact camera applies only to static / free views (not live follow cams).
-        if (camOk && !dynamicCam) {
+        if (camOk && dynamicCam && state.camera && state.controls) {
+            // Live follow/expr cam: reproduce the EXACT shared angle. The shared
+            // camera is target + offset, where offset already encodes the
+            // angle-lock framing at the shared moment. We maintain that offset
+            // relative to the follow-controlled target until the followed element
+            // settles at the restored time (the slider repositions it over later
+            // frames), then release — the follow loop holds it from there.
+            const wPos = dataCameraToWorld(vs.cam.position);
+            const wTgt = dataCameraToWorld(vs.cam.target);
+            const up = Array.isArray(vs.cam.up) ? vs.cam.up.slice(0, 3) : [0, 1, 0];
+            const offset = [wPos[0] - wTgt[0], wPos[1] - wTgt[1], wPos[2] - wTgt[2]];
+            // Wait for the follow cam to settle on its own (the slider repositions
+            // the element and the angle-lock converges over several frames), THEN
+            // impose the shared offset once — a single set after settle holds (the
+            // follow loop only adds target deltas, which are ~0 once static). We
+            // watch the camera's NATURAL motion (no override) so the startup
+            // plateau doesn't count as "settled"; require a min elapsed time too.
+            let frames = 0, stable = 0, lastKey = null;
+            const settleThenSet = () => {
+                const fc = state.followCamState;
+                if (!fc && !state.cameraExprState) return; // view left
+                const c = state.camera.position;
+                const key = `${c.x.toFixed(3)},${c.y.toFixed(3)},${c.z.toFixed(3)}`;
+                // Angle-lock convergence only matters when angle-lock is on;
+                // otherwise the follow loop is pure offset-preservation.
+                const hasDir = !fc || !state.followCamAngleLock || !!fc.lastDirectionWorld;
+                stable = (key === lastKey && hasDir) ? stable + 1 : 0;
+                lastKey = key;
+                if (frames >= 20 && stable >= 12) {
+                    const t = state.controls.target;
+                    state.camera.position.set(t.x + offset[0], t.y + offset[1], t.z + offset[2]);
+                    state.camera.up.set(up[0], up[1], up[2]);
+                    state.camera.lookAt(t);
+                    return;
+                }
+                if (++frames < 600) requestAnimationFrame(settleThenSet);
+            };
+            requestAnimationFrame(settleThenSet);
+        } else if (camOk && !dynamicCam) {
+            // Static view or free camera: animate to the exact captured camera.
             const wPos = dataCameraToWorld(vs.cam.position);
             const wTgt = dataCameraToWorld(vs.cam.target);
             const up = Array.isArray(vs.cam.up) ? vs.cam.up.slice(0, 3) : [0, 1, 0];
