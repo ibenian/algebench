@@ -2346,8 +2346,9 @@ Examples:
                         help='(deprecated, no-op) Realtime streaming is now the default; this flag will be removed in a future release')
     parser.add_argument('--server-only', action='store_true', default=False,
                         help='Start the server without opening a browser window')
-    parser.add_argument('--skip-tour', action='store_true', default=False,
-                        help='Suppress the auto-offered guided tour (Coach overlay) — handy for local debugging')
+    parser.add_argument('--skip-tour', action='store_true', default=None,
+                        help='Suppress the auto-offered guided tour (Coach overlay) — handy for local '
+                             'debugging. When omitted, falls back to the ALGEBENCH_SKIP_TOUR env var.')
 
     args = parser.parse_args()
 
