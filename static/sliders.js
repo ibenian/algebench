@@ -296,6 +296,7 @@ export function buildSliderOverlay() {
             valSpan.textContent = _formatSliderValue(s);
             recompileActiveExprs();
             syncSliderState();
+            try { window.dispatchEvent(new CustomEvent('algebench:sliderchange')); } catch (_) { /* ignore */ }
         });
 
         if (s.animate) {
@@ -490,6 +491,26 @@ export function syncSliderState() {
     if (typeof window._algebenchUpdateStatusBar === 'function') {
         window._algebenchUpdateStatusBar();
     }
+}
+
+// ----- Set Slider Value Instantly (deeplink / AI jump restore) -----
+
+// Unlike animateSlider, this applies synchronously with no requestAnimationFrame
+// — restoring a shared view must not depend on the tab actively rendering.
+export function setSliderValue(id, value) {
+    const s = state.sceneSliders[id];
+    if (!s || !Number.isFinite(value)) return false;
+    if (s._loopPlaying) stopSliderLoop(id);
+    s.value = Math.max(s.min, Math.min(s.max, value));
+    const input = document.querySelector(`input[data-slider-id="${id}"]`);
+    if (input) {
+        input.value = s.value;
+        const valSpan = input.parentElement && input.parentElement.querySelector('.slider-value');
+        if (valSpan) valSpan.textContent = _formatSliderValue(s);
+    }
+    recompileActiveExprs();
+    syncSliderState();
+    return true;
 }
 
 // ----- Animate Slider Programmatically -----

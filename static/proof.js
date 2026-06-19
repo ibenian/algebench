@@ -357,6 +357,9 @@ export function navigateProof(index) {
         }));
     } catch (_) { /* ignore event errors */ }
 
+    // Notify deeplink sync: proof-step change is a discrete navigation.
+    try { window.dispatchEvent(new CustomEvent('algebench:proofchange')); } catch (_) { /* ignore */ }
+
     // Bidirectional sync: proof → scene
     if (state.proofSyncEnabled && !state._proofSyncInProgress) {
         // At goal (index -1), use proof-level sceneStep; otherwise use step-level
@@ -665,6 +668,17 @@ function switchActiveProof(newIndex) {
     if (proof) navigateProof(state.proofStepIndex);
 }
 
+/**
+ * Public: activate a proof by index (deeplink / AI jump). Clamps to range and
+ * reuses switchActiveProof so step memory + DOM stay consistent. No-op if the
+ * proof is already active.
+ */
+export function setActiveProof(index) {
+    if (!state.proofSpec || !state.proofSpec.length) return;
+    const clamped = Math.max(0, Math.min(index | 0, state.proofSpec.length - 1));
+    switchActiveProof(clamped);
+}
+
 /** Get cached pre-rendered steps or create them. */
 function _getOrPreRender(entry, index) {
     const key = _proofKey(entry, index);
@@ -898,6 +912,18 @@ function _toggleProofPanel(show) {
     }
 
     localStorage.setItem('algebench-proof-expanded', show ? 'true' : 'false');
+    // Deeplink sync: proof-panel open/closed is shareable.
+    try { window.dispatchEvent(new CustomEvent('algebench:panelchange')); } catch (_) { /* ignore */ }
+}
+
+/**
+ * Public: open/close the proof panel (deeplink / AI jump). Opening is a no-op
+ * when there's no active proof in context (nothing to show).
+ */
+export function setProofPanelOpen(show) {
+    if (show && !_activeProof()) return;
+    if (!!show === !!state.proofExpanded) return;
+    _toggleProofPanel(!!show);
 }
 
 // ---- Resize handle ----

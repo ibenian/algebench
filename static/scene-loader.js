@@ -793,6 +793,9 @@ export function navigateTo(sceneIdx, stepIdx) {
     if (sceneChanged) {
         setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
     }
+
+    // Notify deeplink sync: a discrete scene/step transition happened.
+    try { window.dispatchEvent(new CustomEvent('algebench:navchange')); } catch (_) { /* ignore */ }
 }
 
 // ----- Auto-play -----
@@ -806,6 +809,30 @@ export function updateDockVisibility() {
     } else {
         dock.classList.remove('visible');
         if (toggle) toggle.style.display = 'none';
+    }
+}
+
+// Open the left dock and show its Scenes tab. Called when the user explicitly
+// loads a scene (Load button / Built-in Scenes) so they land on the scene tree.
+// The right panel is intentionally left untouched. No-op when there is no scene
+// tree to show (single non-lesson scene -> dock stays hidden).
+export function showSceneDockScenesTab() {
+    const dock = document.getElementById('scene-dock');
+    const panel = document.getElementById('scene-dock-panel');
+    const toggle = document.getElementById('scene-dock-toggle');
+    if (!dock || !panel || !dock.classList.contains('visible')) return;
+    panel.classList.add('open');
+    if (toggle) toggle.classList.add('active');
+    localStorage.setItem('algebench-dock-open', 'true');
+    window.dispatchEvent(new Event('resize'));
+    const graph = window.__algebenchGraph;
+    if (graph && typeof graph.showSceneView === 'function') {
+        graph.showSceneView();
+    } else {
+        document.querySelectorAll('.dock-tab').forEach((b) =>
+            b.classList.toggle('active', b.dataset.dockTab === 'scenes'));
+        document.querySelectorAll('.dock-tab-content').forEach((c) =>
+            c.classList.toggle('active', c.id === 'dock-tab-scenes'));
     }
 }
 

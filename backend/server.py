@@ -604,11 +604,14 @@ FAVICON_SVG = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
 </svg>'''
 
 
-def generate_html(debug=False):
-    """Read index.html and inject the debug flag."""
+def generate_html(debug=False, skip_tour=False):
+    """Read index.html and inject the debug + skip-tour flags."""
     debug_mode_js = "true" if debug else "false"
+    skip_tour_js = "true" if skip_tour else "false"
     with open(index_html_path, 'r') as f:
-        return f.read().replace('__DEBUG_MODE__', debug_mode_js)
+        return (f.read()
+                .replace('__DEBUG_MODE__', debug_mode_js)
+                .replace('__SKIP_TOUR__', skip_tour_js))
 
 from backend.agent_tools import (
     ALL_TOOL_DECLS, _make_tools, build_system_prompt,
@@ -1273,7 +1276,7 @@ def call_gemini_chat(message, history, context):
 
 DEBUG_MODE = False
 
-def create_app(initial_scene_path=None, debug=False,
+def create_app(initial_scene_path=None, debug=False, skip_tour=None,
                tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
                tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
                tts_max_retries=None, tts_retry_delay=None, tts_style=None,
@@ -1293,6 +1296,13 @@ def create_app(initial_scene_path=None, debug=False,
     """
     global DEBUG_MODE
     DEBUG_MODE = debug
+
+    # Suppress the auto-offered guided tour (handy for local debugging so the
+    # Coach overlay doesn't pop up on every fresh load). ``None`` defers to the
+    # ALGEBENCH_SKIP_TOUR env var (default off) so a dev running via uvicorn can
+    # opt in without a code change; an explicit bool from main() always wins.
+    if skip_tour is None:
+        skip_tour = _env_bool("ALGEBENCH_SKIP_TOUR", default=False)
 
     if tts_realtime is None:
         tts_realtime = _env_bool("ALGEBENCH_TTS_REALTIME", default=True)
@@ -1361,7 +1371,7 @@ def create_app(initial_scene_path=None, debug=False,
         # Read fresh on each request so edits to index.html are picked up
         # without a server restart (same pattern as /style.css, /*.js).
         return HTMLResponse(
-            content=generate_html(debug=debug),
+            content=generate_html(debug=debug, skip_tour=skip_tour),
             headers={
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Content-Security-Policy": (
@@ -1424,6 +1434,7 @@ def create_app(initial_scene_path=None, debug=False,
         'state', 'expr', 'trust', 'coords', 'labels', 'follow-cam', 'camera',
         'sliders', 'overlay', 'context-browser', 'scene-loader', 'ui',
         'json-browser', 'main', 'proof', 'graph-view', 'expert-client',
+        'view-state', 'view-state-bridge', 'nav-history', 'nav-history-core',
     }
 
     @fastapp.get("/api/graph/themes")
@@ -2165,6 +2176,7 @@ def create_app(initial_scene_path=None, debug=False,
 
 
 def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False, debug=False,
+                   skip_tour=None,
                    tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
                    tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
                    tts_max_retries=None, tts_retry_delay=None, tts_style=None,
@@ -2178,6 +2190,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     fastapp = create_app(
         initial_scene_path=initial_scene_path,
         debug=debug,
+        skip_tour=skip_tour,
         tts_parallelism=tts_parallelism,
         tts_min_buffer=tts_min_buffer,
         tts_min_sentence_chars=tts_min_sentence_chars,
@@ -2333,6 +2346,9 @@ Examples:
                         help='(deprecated, no-op) Realtime streaming is now the default; this flag will be removed in a future release')
     parser.add_argument('--server-only', action='store_true', default=False,
                         help='Start the server without opening a browser window')
+    parser.add_argument('--skip-tour', action='store_true', default=None,
+                        help='Suppress the auto-offered guided tour (Coach overlay) — handy for local '
+                             'debugging. When omitted, falls back to the ALGEBENCH_SKIP_TOUR env var.')
 
     args = parser.parse_args()
 
@@ -2397,6 +2413,7 @@ Examples:
         port=args.port,
         json_output=args.json,
         debug=args.debug,
+        skip_tour=args.skip_tour,
         tts_parallelism=args.tts_parallelism,
         tts_min_buffer=args.tts_min_buffer,
         tts_min_sentence_chars=args.tts_min_sentence_chars,
