@@ -2599,7 +2599,11 @@ function getGraphPanelState() {
  * whichever renderer is live. Empty when nothing is selected.
  */
 function _selectedNodeIdsForContext() {
-    if (_currentD3Renderer && !_currentD3Renderer._destroyed) {
+    // Gate on the *active* renderer (``_currentRenderer``), not merely on which
+    // renderer object happens to exist — switching renderers destroys the old
+    // one via clearGraph(), but keying off _currentRenderer keeps intent
+    // explicit and immune to any stale instance lingering.
+    if (_currentRenderer === 'd3' && _currentD3Renderer && !_currentD3Renderer._destroyed) {
         return getGraphSelection();
     }
     if (_currentGraphPanel && _currentGraphPanel.activeNode) {

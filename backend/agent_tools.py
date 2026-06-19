@@ -633,6 +633,11 @@ def build_system_prompt(context, agent_memory=None):
         if not sel_nodes and sn:
             sel_nodes = [sn]
         sel_nodes = sel_nodes or []
+        # Selection is ordered "active node last" — recover the active node from
+        # the tail when only ``selectedNodes`` came through, so the header and
+        # the (active) flag still work.
+        if not sn and sel_nodes:
+            sn = sel_nodes[-1] or {}
         header_suffix = ''
         if len(sel_nodes) > 1:
             header_suffix = f" — {len(sel_nodes)} nodes selected"
@@ -696,10 +701,16 @@ def build_system_prompt(context, agent_memory=None):
                 for k in ('type', 'role', 'op', 'label'):
                     if node.get(k):
                         parts.append(f"{indent}- {k}: {node[k]}")
+                # Cap free-text fields so a wide multi-selection can't balloon
+                # the prompt — mirrors the DESC_CAP applied to the whole-graph
+                # node summary on the client.
+                def _cap(s, n=200):
+                    s = str(s)
+                    return s if len(s) <= n else s[:n - 1] + '…'
                 if node.get('subexpr'):
-                    parts.append(f"{indent}- subexpr: `{node['subexpr']}`")
+                    parts.append(f"{indent}- subexpr: `{_cap(node['subexpr'])}`")
                 if node.get('description'):
-                    parts.append(f"{indent}- description: \"{node['description']}\"")
+                    parts.append(f"{indent}- description: \"{_cap(node['description'])}\"")
                 neigh = node.get('neighbors') or {}
                 inc = neigh.get('incoming') or []
                 outg = neigh.get('outgoing') or []

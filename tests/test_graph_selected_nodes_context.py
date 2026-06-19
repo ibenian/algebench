@@ -80,3 +80,29 @@ def test_multiple_selected_nodes():
     # Both nodes' details are rendered.
     assert "    - outgoing: b" in prompt
     assert "    - incoming: a" in prompt
+
+
+def test_active_node_derived_from_tail_when_selectednode_absent():
+    # Only ``selectedNodes`` arrives (no legacy ``selectedNode``). The active
+    # node — defined as the last in the ordered selection — must still drive
+    # the header and the (active) flag.
+    nodes = [
+        {"id": "a", "type": "expr"},
+        {"id": "b", "type": "op", "op": "add"},
+    ]
+    prompt = build_system_prompt(_ctx(selected_nodes=nodes))
+    assert "## Active Semantic Graph — 2 nodes selected" in prompt
+    assert "  - `b` (active):" in prompt
+    # Single-element selectedNodes still produces the single-node header.
+    prompt1 = build_system_prompt(_ctx(selected_nodes=[nodes[1]]))
+    assert "## Active Semantic Graph — selected: b (op/add)" in prompt1
+
+
+def test_long_subexpr_and_description_are_truncated():
+    big = "x" * 500
+    node = {"id": "a", "type": "expr", "subexpr": big, "description": big,
+            "neighbors": {"incoming": [], "outgoing": []}}
+    prompt = build_system_prompt(_ctx(selected_node=node))
+    # Capped to 200 chars with an ellipsis; the full 500-char string never lands.
+    assert big not in prompt
+    assert "x" * 199 + "…" in prompt
