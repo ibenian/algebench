@@ -21,6 +21,53 @@ export function stripLatex(text) {
     return text.replace(/\$\$([^$]*)\$\$/g, '$1').replace(/\$([^$]*)\$/g, '$1');
 }
 
+// KaTeX html-macro wrappers that an expression carries for highlighting/metadata
+// but the LaTeX→graph parser (and loose text comparison) can't read.
+const _HTML_MACROS = ['htmlClass', 'htmlData', 'htmlId', 'htmlStyle'];
+
+/** Strip KaTeX \htmlClass/\htmlData/\htmlId/\htmlStyle wrappers, keeping their
+ *  inner content (recursively). Leaves malformed wrappers intact. */
+export function stripHtmlMacros(s) {
+    if (!s) return s;
+    const str = String(s);
+    // Return the index just past the '}' matching the '{' at k, or -1 if unbalanced.
+    const skipBalanced = (k) => {
+        let depth = 0;
+        for (; k < str.length; k++) {
+            if (str[k] === '{') depth++;
+            else if (str[k] === '}' && --depth === 0) return k + 1;
+        }
+        return -1;
+    };
+    let out = '';
+    let i = 0;
+    while (i < str.length) {
+        const m = str[i] === '\\' && _HTML_MACROS.find(x => str.startsWith('\\' + x, i));
+        if (!m) { out += str[i++]; continue; }
+        let k = i + 1 + m.length;
+        while (k < str.length && /\s/.test(str[k])) k++;       // ws before the class/data arg
+        const arg1End = str[k] === '{' ? skipBalanced(k) : -1;
+        let c = arg1End;
+        if (c > 0) while (c < str.length && /\s/.test(str[c])) c++;   // ws before the content arg
+        const contentEnd = (c > 0 && str[c] === '{') ? skipBalanced(c) : -1;
+        if (contentEnd < 0) { out += str[i++]; continue; }     // malformed — leave intact, advance 1
+        out += stripHtmlMacros(str.slice(c + 1, contentEnd - 1));   // recurse into the content
+        i = contentEnd;
+    }
+    return out;
+}
+
+/** Loose LaTeX normalization for equality comparison: drop \text{}/\mathrm{}
+ *  wrappers, braces, whitespace, and normalize \le/\ge spelling — so e.g.
+ *  \gamma_{steep} compares equal to \gamma_{\text{steep}}. */
+export function normLatex(s) {
+    return (s || '')
+        .replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, '$1')
+        .replace(/\\le(?![a-zA-Z])/g, '\\leq')
+        .replace(/\\ge(?![a-zA-Z])/g, '\\geq')
+        .replace(/[\s{}]/g, '');
+}
+
 // ----- KaTeX rendering -----
 
 export function renderKaTeX(text, displayMode) {
@@ -287,6 +334,31 @@ export function makeAiAskButton(className, title, getMessage) {
         }
         if (typeof sendChatMessage !== 'function') return;
         sendChatMessage(message);
+    });
+    return btn;
+}
+
+// Derivation ("∴") glyph — a small three-step icon for Derive buttons. Shared by
+// the semantic-graph node Derive button and the proof-card per-step button so
+// the two look identical.
+export const DERIVE_SVG =
+    '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    + '<path d="M3 3h7"/><path d="M3 8h10"/><path d="M3 13h6"/>'
+    + '<path d="M12.5 11l2 2-2 2" transform="translate(-1 -3.5)"/></svg>';
+
+/** Build a Derive icon button (matches the AI ask-button styling). `onClick`
+ *  fires on click; propagation is stopped so it never triggers row handlers. */
+export function makeDeriveButton(className, title, onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = className;
+    btn.title = title;
+    btn.setAttribute('aria-label', title);
+    btn.innerHTML = DERIVE_SVG;
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onClick(e);
     });
     return btn;
 }

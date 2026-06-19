@@ -3132,6 +3132,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 
 #proof-panel {
+    position: relative;
     display: flex;
     flex-direction: column;
     margin: 0 12px 10px;
@@ -3147,6 +3148,20 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
         inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 #proof-panel.hidden { display: none; }
+
+/* Per-step derivation overlay — floats SgProofManager boxes over the panel.
+   The host is click-through; only the boxes themselves capture pointer events,
+   so the proof step list underneath stays interactive. */
+#proof-derive-host {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 6;
+}
+#proof-derive-host > .sgc-chart-box {
+    pointer-events: auto;
+}
 
 #proof-panel-header {
     display: flex;

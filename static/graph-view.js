@@ -21,7 +21,11 @@ import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
 import { SgChartManager } from '/graph-panel/sg-chart.js';
 import { SgProofManager, clearDeriveCache } from '/proof-animation/sg-proof.js';
-import { makeAiAskButton, renderKaTeX } from '/labels.js';
+import { buildEnrichContext } from '/proof-animation/derive-payload.js';
+import {
+    makeAiAskButton, makeDeriveButton, renderKaTeX,
+    stripHtmlMacros as _stripHtmlMacros, normLatex as _normLatex,
+} from '/labels.js';
 
 let _currentGraphPanel = null;
 let _currentSemanticKey = null;
@@ -1051,6 +1055,8 @@ function _ensureD3NodeAskBtn() {
         },
     );
     btn.style.position = 'fixed';
+    btn.style.margin = '0';   // .ai-ask-btn carries a 5px inline margin — kill it
+                              // so the fixed-position left/top place it exactly.
     btn.style.opacity = '0';
     btn.style.pointerEvents = 'none';
     btn.style.zIndex = '950';
@@ -1068,12 +1074,37 @@ function _showD3NodeAskBtn(nodeEl) {
     if (_d3NodeAskHideTimer) { clearTimeout(_d3NodeAskHideTimer); _d3NodeAskHideTimer = null; }
     const shape = nodeEl.querySelector('polygon, circle, rect');
     const r = (shape || nodeEl).getBoundingClientRect();
-    const btnW = btn.offsetWidth || 24;
-    const btnH = btn.offsetHeight || 24;
-    // Sit on the node's right edge, vertically centred and overlapping it — so a
-    // simple rightward move from the node lands on the button with no dead gap.
-    btn.style.left = (r.right - btnW / 2) + 'px';
-    btn.style.top = (r.top + r.height / 2 - btnH / 2) + 'px';
+    // Measure the button's REAL rendered size — offsetWidth rounds and can disagree
+    // with the laid-out box, throwing the centring off by a few px.
+    const bRect = btn.getBoundingClientRect();
+    const btnW = bRect.width || btn.offsetWidth || 24;
+    const btnH = bRect.height || btn.offsetHeight || 24;
+    const ncx = r.left + r.width / 2, ncy = r.top + r.height / 2;
+    // A collapsible node carries a +/- expand chevron on its OUTFLOW edge — which
+    // side that is depends on the graph direction (right for left-right, left for
+    // right-left, top for bottom-up, bottom for top-down). Keep the chevron exactly
+    // where it is and stack the ask button PERPENDICULAR to the flow, snug against
+    // it: below it in horizontal layouts, beside it in vertical layouts. Non-
+    // collapsible nodes keep the button centred on the right edge, overlapping the
+    // node — so a simple rightward move from the node lands on it with no dead gap.
+    const chevron = nodeEl.querySelector('.d3sg-chevron');
+    if (chevron) {
+        // Centre on the chevron's SQUARE (its <rect>) — not the <g>, which also
+        // bounds the +/- glyph — so the button lines up exactly with it.
+        const cr = (chevron.querySelector('rect') || chevron).getBoundingClientRect();
+        const ccx = cr.left + cr.width / 2, ccy = cr.top + cr.height / 2;
+        const gap = 3;
+        if (Math.abs(ccx - ncx) >= Math.abs(ccy - ncy)) {   // horizontal flow → stack below
+            btn.style.left = (ccx - btnW / 2) + 'px';
+            btn.style.top = (cr.bottom + gap) + 'px';
+        } else {                                             // vertical flow → stack beside
+            btn.style.left = (cr.right + gap) + 'px';
+            btn.style.top = (ccy - btnH / 2) + 'px';
+        }
+    } else {
+        btn.style.left = (r.right - btnW / 2) + 'px';
+        btn.style.top = (ncy - btnH / 2) + 'px';
+    }
     btn.style.opacity = '1';
     btn.style.pointerEvents = 'auto';
 }
@@ -1092,28 +1123,6 @@ function _hideD3NodeAskBtn() {
     }, _D3_NODE_ASK_HIDE_DELAY);
 }
 
-// Derivation ("∴") glyph — a small three-step icon for the Derive button.
-const _DERIVE_SVG =
-    '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" '
-    + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-    + '<path d="M3 3h7"/><path d="M3 8h10"/><path d="M3 13h6"/>'
-    + '<path d="M12.5 11l2 2-2 2" transform="translate(-1 -3.5)"/></svg>';
-
-/** Build the Derive icon button (matches the AI ask-button styling). */
-function _makeDeriveButton(onClick) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'ai-ask-btn graph-panel-derive-btn';
-    btn.title = 'Derive this expression (proof animation)';
-    btn.setAttribute('aria-label', 'Derive this expression');
-    btn.innerHTML = _DERIVE_SVG;
-    btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        onClick();
-    });
-    return btn;
-}
-
 /** Find a rendered node's SVG <g> element by id (d3 binds the datum to it). */
 function _d3NodeElById(nodeId) {
     const layer = document.querySelector('#graph-viewport .d3sg-nodes');
@@ -1125,40 +1134,6 @@ function _d3NodeElById(nodeId) {
     return null;
 }
 
-/** Strip KaTeX \htmlClass/\htmlData/\htmlId/\htmlStyle wrappers, keeping content.
- *  Proof-step ``math`` carries highlight annotations the LaTeX parser can't read. */
-const _HTML_MACROS = ['htmlClass', 'htmlData', 'htmlId', 'htmlStyle'];
-
-function _stripHtmlMacros(s) {
-    if (!s) return s;
-    const str = String(s);
-    // Return the index just past the '}' matching the '{' at k, or -1 if unbalanced.
-    const skipBalanced = (k) => {
-        let depth = 0;
-        for (; k < str.length; k++) {
-            if (str[k] === '{') depth++;
-            else if (str[k] === '}' && --depth === 0) return k + 1;
-        }
-        return -1;
-    };
-    let out = '';
-    let i = 0;
-    while (i < str.length) {
-        const m = str[i] === '\\' && _HTML_MACROS.find(x => str.startsWith('\\' + x, i));
-        if (!m) { out += str[i++]; continue; }
-        let k = i + 1 + m.length;
-        while (k < str.length && /\s/.test(str[k])) k++;       // ws before the class/data arg
-        const arg1End = str[k] === '{' ? skipBalanced(k) : -1;
-        let c = arg1End;
-        if (c > 0) while (c < str.length && /\s/.test(str[c])) c++;   // ws before the content arg
-        const contentEnd = (c > 0 && str[c] === '{') ? skipBalanced(c) : -1;
-        if (contentEnd < 0) { out += str[i++]; continue; }     // malformed — leave intact, advance 1
-        out += _stripHtmlMacros(str.slice(c + 1, contentEnd - 1));   // recurse into the content
-        i = contentEnd;
-    }
-    return out;
-}
-
 /** The active proof in scope (graph-view proof tree), or null. */
 function _activeProof() {
     const spec = state.proofSpec;
@@ -1167,21 +1142,17 @@ function _activeProof() {
     return (entry && entry.proof) || null;
 }
 
-// Loose LaTeX comparison: ignore \text{}/\mathrm{} wrappers, braces, spacing and
-// \le/\leq spelling, so e.g. \gamma_{steep} == \gamma_{\text{steep}}.
-function _normLatex(s) {
-    return (s || '')
-        .replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, '$1')
-        .replace(/\\le(?![a-zA-Z])/g, '\\leq')
-        .replace(/\\ge(?![a-zA-Z])/g, '\\geq')
-        .replace(/[\s{}]/g, '');
-}
-
 /** Proof-context portion of a DeriveProofRequest (everything except target):
- *  domain + the active proof's title/goal/givens + a sensible START given +
- *  lesson/scene/proof context. ``target`` is used only to avoid picking a START
- *  equal to it. Shared by the node Derive button and the agent's derive tool. */
-function _proofContextPayload(graph, target) {
+ *  domain + the active proof's title/goal/givens + lesson/scene/proof context.
+ *
+ *  NOTE: this path deliberately does NOT pin ``start_latex``. A graph node isn't
+ *  tied to a position in the proof's step sequence, so forcing the first given
+ *  as the start is arbitrary; instead we send the givens and let the backend
+ *  infer the most sensible starting expression for the node's own expression.
+ *  (The proof-card per-step Derive button is different — it prefers the previous
+ *  step as the start; see buildProofStepDerivePayload.) Shared by the node Derive
+ *  button and the agent's derive tool. */
+function _proofContextPayload(graph) {
     const payload = {};
     const domain = graph && (graph.domain || (graph.meta && graph.meta.domain));
     if (domain) payload.domain = domain;
@@ -1190,21 +1161,11 @@ function _proofContextPayload(graph, target) {
     if (proof) {
         if (proof.title) payload.title = _stripHtmlMacros(proof.title);
         if (proof.goal) payload.goal = _stripHtmlMacros(proof.goal);
-        const givenSteps = (proof.steps || []).filter(s => s && s.type === 'given' && s.math);
-        const givens = givenSteps.map(s => ({
-            math: _stripHtmlMacros(s.math),
-            label: s.label || null,
-        })).filter(g => g.math);
-        if (givens.length) {
-            payload.givens = givens;
-            // Use a proof given as the START — but never one equal to the target
-            // (a definitional node is its own given, which would derive nothing).
-            // If every given equals the target, omit start so the LM infers one.
-            const startGiven = target
-                ? givens.find(g => _normLatex(g.math) !== _normLatex(target))
-                : givens[0];
-            if (startGiven) payload.start_latex = startGiven.math;
-        }
+        const givens = (proof.steps || [])
+            .filter(s => s && s.type === 'given' && s.math)
+            .map(s => ({ math: _stripHtmlMacros(s.math), label: s.label || null }))
+            .filter(g => g.math);
+        if (givens.length) payload.givens = givens;
     }
 
     // Lesson/scene/proof context — the SAME shape we send to enrichment — so the
@@ -1221,7 +1182,7 @@ function _proofContextPayload(graph, target) {
  *  Target = the node's expression; the rest comes from the active proof. */
 function _buildDerivePayload(nodeId, fullNode, graph) {
     const target = _stripHtmlMacros(nodeLongLabel(fullNode) || fullNode.subexpr || fullNode.label || '');
-    return { ..._proofContextPayload(graph, target), target_latex: target };
+    return { ..._proofContextPayload(graph), target_latex: target };
 }
 
 /** Find a graph node whose displayed expression matches ``target`` (loose
@@ -1236,6 +1197,40 @@ function _findNodeIdByLatex(graph, target) {
     }
     return null;
 }
+
+/** Anchor + dock an already-built derive payload into the (assumed-visible)
+ *  graph proof manager. Anchors beside a matching node when one exists, else
+ *  uses a synthetic id keyed on the target so re-deriving the same expression on
+ *  the same step re-focuses its box instead of stacking duplicates. */
+function _openDerivationBox(payload) {
+    const graph = _d3ActiveGraph;
+    const target = payload.target_latex;
+    const matchedId = _findNodeIdByLatex(graph, target);
+    const nodeId = matchedId || ('derive::' + _normLatex(target));
+    const anchor = matchedId ? _d3NodeElById(matchedId) : null;
+    _currentProofManager.openProof(nodeId, anchor, payload);
+}
+
+/** Dock a fully-assembled DeriveProofRequest payload into the semantic-graph
+ *  canvas — switching to the Math view and rendering the current step's graph
+ *  first. Used by the proof-card per-step Derive button (issue #382), which
+ *  builds the payload itself (previous-step start + previous_steps). Returns
+ *  false when the current step has no semantic graph to dock onto, so the caller
+ *  can fall back. */
+window.algebenchDeriveProofPayload = async function (payload) {
+    const target = _stripHtmlMacros(((payload && payload.target_latex) || '')).trim();
+    if (!target) {
+        console.warn('algebenchDeriveProofPayload: target_latex is required');
+        return false;
+    }
+    payload = { ...payload, target_latex: target };
+    await window.algebenchEnsureGraphVisible();
+    if (!_currentProofManager || _currentProofManager._destroyed) {
+        return false;                                // no graph on this step
+    }
+    _openDerivationBox(payload);
+    return true;
+};
 
 /** Agent entry point — initiate a proof derivation on the CURRENT step's graph,
  *  exactly as if the user clicked a node's Derive button. Fire-and-forget: the
@@ -1256,20 +1251,14 @@ window.algebenchDeriveProof = async function (args) {
         return false;
     }
     const graph = _d3ActiveGraph;
-    const payload = { ..._proofContextPayload(graph, target), target_latex: target };
+    const payload = { ..._proofContextPayload(graph), target_latex: target };
     // Agent overrides take precedence over the proof-derived defaults.
     const start = ((args && args.start_latex) || '').trim();
     if (start) payload.start_latex = start;
     const prompt = ((args && args.prompt) || '').trim();
     if (prompt) payload.intent = prompt;
 
-    // Anchor to a matching node when one exists (docks beside it); otherwise use
-    // a synthetic id keyed on the target so re-issuing the same derivation on the
-    // same step re-focuses its box instead of stacking duplicates.
-    const matchedId = _findNodeIdByLatex(graph, target);
-    const nodeId = matchedId || ('agent::' + _normLatex(target));
-    const anchor = matchedId ? _d3NodeElById(matchedId) : null;
-    _currentProofManager.openProof(nodeId, anchor, payload);
+    _openDerivationBox(payload);
     return true;
 };
 
@@ -1353,12 +1342,15 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
 
         // Derive button — derives a proof animation for this node's expression
         // and docks it near the node (like the charts).
-        const deriveBtn = _makeDeriveButton(() => {
-            if (!_currentProofManager) return;
-            const payload = _buildDerivePayload(nodeId, fullNode, graph);
-            const anchor = _d3NodeElById(nodeId) || deriveBtn;
-            _currentProofManager.openProof(nodeId, anchor, payload);
-        });
+        const deriveBtn = makeDeriveButton(
+            'ai-ask-btn graph-panel-derive-btn',
+            'Derive this expression (proof animation)',
+            () => {
+                if (!_currentProofManager) return;
+                const payload = _buildDerivePayload(nodeId, fullNode, graph);
+                const anchor = _d3NodeElById(nodeId) || deriveBtn;
+                _currentProofManager.openProof(nodeId, anchor, payload);
+            });
         header.appendChild(deriveBtn);
     }
 
@@ -1680,39 +1672,6 @@ async function renderCurrentStepGraph(force = false) {
     // response arrives, but only if the user hasn't moved on to another step
     // in the meantime.
     enrichGraphInBackground(graph, key, step);
-}
-
-// Build context payload for the enrichment agent — lesson/scene/proof/step
-// metadata that disambiguates symbols (e.g. T = thrust vs temperature).
-// Returns null when no useful context is available.
-function buildEnrichContext(step) {
-    const lesson = state.lessonSpec || null;
-    const entry = state.proofSpec && state.proofSpec[state.proofActiveIndex];
-    if (!lesson && !entry) return null;
-    const scene = lesson && lesson.scenes && entry
-        ? lesson.scenes[entry.sceneIndex] : null;
-    const proof = entry && entry.proof || null;
-    const ctx = {};
-    if (lesson) {
-        if (lesson.title) ctx.lessonTitle = lesson.title;
-        if (lesson.description) ctx.lessonDescription = lesson.description;
-    }
-    if (scene) {
-        if (scene.title) ctx.sceneTitle = scene.title;
-        if (scene.description) ctx.sceneDescription = scene.description;
-    }
-    if (proof) {
-        if (proof.title) ctx.proofTitle = proof.title;
-        if (proof.goal) ctx.proofGoal = proof.goal;
-        if (proof.technique) ctx.proofTechnique = proof.technique;
-    }
-    if (step) {
-        if (step.label) ctx.stepLabel = step.label;
-        if (step.math) ctx.stepMath = step.math;
-        if (step.justification) ctx.stepJustification = step.justification;
-        if (step.explanation) ctx.stepExplanation = step.explanation;
-    }
-    return Object.keys(ctx).length ? ctx : null;
 }
 
 // Returns true only when EVERY node already has a non-empty description.
@@ -2165,16 +2124,6 @@ function stableStepKey(step) {
 /* ------------------------------------------------------------------ */
 /* Utilities                                                          */
 /* ------------------------------------------------------------------ */
-
-function stripLatex(s) {
-    return String(s || '')
-        .replace(/\$/g, '')
-        .replace(/\\htmlClass\{[^}]*\}\{([^}]*)\}/g, '$1')
-        .replace(/\\[a-zA-Z]+\*?/g, '')
-        .replace(/[{}]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-}
 
 function escapeHtml(s) {
     return String(s || '')

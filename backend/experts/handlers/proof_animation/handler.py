@@ -41,6 +41,16 @@ class Given(BaseModel):
     label: Optional[str] = None
 
 
+class PriorStep(BaseModel):
+    """One earlier proof step in the lead-up to the target — its LaTeX, an
+    optional 1-based step number, and an optional human label."""
+
+    model_config = ConfigDict(extra="ignore")
+    math: str
+    step: Optional[int] = None
+    label: Optional[str] = None
+
+
 class DeriveProofRequest(BaseModel):
     """Request for ``POST /api/expert/proof_animation``."""
 
@@ -59,6 +69,10 @@ class DeriveProofRequest(BaseModel):
     # The proof's `given` step when available — skips start inference.
     start_latex: Optional[str] = None
     intent: Optional[str] = None
+    # The proof steps leading up to the target (a proof-card "Derive" sends the
+    # full lead-up: `proof.steps[:index]`). Threaded into `lesson_context` so the
+    # expert derives with the prior steps in view.
+    previous_steps: list[PriorStep] = Field(default_factory=list)
 
 
 def _format_lesson_context(ctx: Optional[dict]) -> str:
@@ -82,6 +96,26 @@ def _format_lesson_context(ctx: Optional[dict]) -> str:
             continue
         val = val.strip()
         lines.append(f"{label}: {val}" if label else val)
+    return "\n".join(lines)
+
+
+# Cap on how many prior steps we render into the context, and the per-step text,
+# so a long proof can't bloat the expert's `lesson_context` unboundedly.
+_PRIOR_STEPS_MAX = 20
+
+
+def _format_prior_steps(steps: list[PriorStep]) -> str:
+    """Render the lead-up steps as a compact, ordered block for `lesson_context`."""
+    usable = [s for s in steps if s.math and s.math.strip()]
+    if not usable:
+        return ""
+    if len(usable) > _PRIOR_STEPS_MAX:
+        usable = usable[-_PRIOR_STEPS_MAX:]
+    lines = ["Prior steps:"]
+    for s in usable:
+        num = f"{s.step}. " if s.step is not None else "- "
+        label = f" ({s.label.strip()})" if s.label and s.label.strip() else ""
+        lines.append(f"{num}${s.math.strip()}${label}")
     return "\n".join(lines)
 
 
@@ -110,6 +144,27 @@ def _givens_clause(req: DeriveProofRequest) -> str:
     return clause
 
 
+def _prior_steps_clause(req: DeriveProofRequest) -> str:
+    """The most recent prior-step expressions, bounded — so an INFERRED start
+    follows on from the lead-up rather than being guessed from the target alone."""
+    parts = [s.math.strip() for s in req.previous_steps if s.math and s.math.strip()]
+    if not parts:
+        return ""
+    clause = "; ".join(parts)
+    if len(clause) > _GIVENS_CLAUSE_MAX:
+        clause = "…" + clause[-_GIVENS_CLAUSE_MAX:].lstrip(" ;,")   # keep the most recent (tail)
+    return clause
+
+
+# This handler powers a step-by-step LEARNING animation, so we explicitly ask the
+# expert for the finest pedagogically-useful breakdown (the signature already
+# prefers small steps; this reinforces it for the live derive path).
+_MICROSTEP_DIRECTIVE = (
+    " — show every intermediate micro-step a learner needs to follow this, "
+    "preferring many small, clearly-justified moves over one big jump"
+)
+
+
 @register_handler("proof_animation", request_model=DeriveProofRequest)
 def derive_proof_animation(req: DeriveProofRequest) -> dict:
     """Infer the start (if needed), run ``proof_completion``, render animation data."""
@@ -124,6 +179,9 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
         prompt = f"Derive this expression: {req.target_latex}"
         if givens:
             prompt += f" given {givens}"
+        prior = _prior_steps_clause(req)
+        if prior:                        # anchor the inferred start to the lead-up
+            prompt += f", continuing on from the preceding steps: {prior}"
         start, _lm_target, lm_domain, lm_title, given_label, start_note = \
             endpoints_from_prompt(prompt)
         if not start:
@@ -133,8 +191,8 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     intent = req.intent or (
         f"Derive {req.target_latex}" + (f" given {givens}" if givens else "")
     )
-    if len(intent) > _INTENT_MAX:        # GraphTransition.intent hard limit
-        intent = intent[:_INTENT_MAX].rstrip()
+    # Reinforce the pedagogical micro-step request (bounded to the intent limit).
+    intent = (intent + _MICROSTEP_DIRECTIVE)[:_INTENT_MAX].rstrip()
 
     # --- call: run the expert through the canonical invoke boundary -------------
     log.debug("proof_animation: start=%r target=%r domain=%s (start %s)",
@@ -159,7 +217,27 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
 
     payload = {"start": start_g, "target": target_g, "domain": domain, "intent": intent}
     context_id = build_context_id(scene="adhoc", semantic_graph=True)
-    lesson_context = _format_lesson_context(req.context)
+    # Why flatten the request's structured context (lesson/scene/proof + prior
+    # steps) into ONE string instead of passing typed DSPy InputFields?
+    #   * The expert's typed core is the GraphTransition (start/target graphs +
+    #     domain + intent) — the math goes through structurally. Only this
+    #     AUXILIARY prose context is flattened.
+    #   * ``lesson_context`` / ``instruction`` are deliberately free-form ``str``
+    #     side-channels on the signature, so the live app can enrich the prompt
+    #     WITHOUT changing the expert's signature. That signature is optimized
+    #     (MIPROv2/GEPA rewrites the docstring) and shared with the offline
+    #     dataset/eval pipelines, which have no lesson context — adding typed
+    #     fields would change the optimization surface and sit empty there.
+    #   * DSPy serializes structured inputs to text anyway; flattening here just
+    #     keeps explicit control over the wording the model sees.
+    # Trade-off: less type-safety / manual formatting, for a stable, reusable
+    # interface. Revisit (typed InputFields) if the model mis-reads this block.
+    lesson_context = "\n".join(
+        part for part in (
+            _format_lesson_context(req.context),
+            _format_prior_steps(req.previous_steps),
+        ) if part
+    )
 
     # The LM samples at temperature, so a derivable pair can occasionally come
     # back empty — retry a couple of times before giving up. (A genuinely
@@ -176,10 +254,18 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
         return {"error": f"No derivation found — couldn't get from ${start}$ to ${req.target_latex}$."}
 
     # --- post: render the trajectory into FLIP animation data -------------------
-    # Title priority: an explicit proof/client title, then the model's own display
-    # title for the derivation (returned by the expert), then the LM endpoint title
-    # (only set when we inferred the start), then the raw goal, then a generic name.
-    title = (req.title or traj.title or lm_title or req.goal or "Derivation").strip()
+    # Title states the derivation's endpoints — "Deriving $<target>$ from $<start>$"
+    # — so the box header says WHERE it's derived from, not just the proof name.
+    # Use the trajectory's OWN start (what step 0 actually renders) for the "from"
+    # so the header matches the animation, falling back to the requested start.
+    # Falls back to a caller/expert/goal title only if an endpoint is missing
+    # (shouldn't happen: target has min_length=1 and start is resolved above).
+    tgt = req.target_latex.strip()
+    st = ((traj.start_latex or start) or "").strip()
+    if tgt and st:
+        title = f"Deriving ${tgt}$ from ${st}$"
+    else:
+        title = (req.title or traj.title or lm_title or req.goal or "Derivation").strip()
     start_operation = given_label or f"Given ${start}$"
     # A short caption for step 0 — never the goal formula (it renders as raw $…$).
     start_justification = start_note or "the starting expression"
