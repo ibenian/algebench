@@ -217,6 +217,21 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
 
     payload = {"start": start_g, "target": target_g, "domain": domain, "intent": intent}
     context_id = build_context_id(scene="adhoc", semantic_graph=True)
+    # Why flatten the request's structured context (lesson/scene/proof + prior
+    # steps) into ONE string instead of passing typed DSPy InputFields?
+    #   * The expert's typed core is the GraphTransition (start/target graphs +
+    #     domain + intent) — the math goes through structurally. Only this
+    #     AUXILIARY prose context is flattened.
+    #   * ``lesson_context`` / ``instruction`` are deliberately free-form ``str``
+    #     side-channels on the signature, so the live app can enrich the prompt
+    #     WITHOUT changing the expert's signature. That signature is optimized
+    #     (MIPROv2/GEPA rewrites the docstring) and shared with the offline
+    #     dataset/eval pipelines, which have no lesson context — adding typed
+    #     fields would change the optimization surface and sit empty there.
+    #   * DSPy serializes structured inputs to text anyway; flattening here just
+    #     keeps explicit control over the wording the model sees.
+    # Trade-off: less type-safety / manual formatting, for a stable, reusable
+    # interface. Revisit (typed InputFields) if the model mis-reads this block.
     lesson_context = "\n".join(
         part for part in (
             _format_lesson_context(req.context),
