@@ -144,6 +144,27 @@ def _givens_clause(req: DeriveProofRequest) -> str:
     return clause
 
 
+def _prior_steps_clause(req: DeriveProofRequest) -> str:
+    """The most recent prior-step expressions, bounded — so an INFERRED start
+    follows on from the lead-up rather than being guessed from the target alone."""
+    parts = [s.math.strip() for s in req.previous_steps if s.math and s.math.strip()]
+    if not parts:
+        return ""
+    clause = "; ".join(parts)
+    if len(clause) > _GIVENS_CLAUSE_MAX:
+        clause = "…" + clause[-_GIVENS_CLAUSE_MAX:].lstrip(" ;,")   # keep the most recent (tail)
+    return clause
+
+
+# This handler powers a step-by-step LEARNING animation, so we explicitly ask the
+# expert for the finest pedagogically-useful breakdown (the signature already
+# prefers small steps; this reinforces it for the live derive path).
+_MICROSTEP_DIRECTIVE = (
+    " — show every intermediate micro-step a learner needs to follow this, "
+    "preferring many small, clearly-justified moves over one big jump"
+)
+
+
 @register_handler("proof_animation", request_model=DeriveProofRequest)
 def derive_proof_animation(req: DeriveProofRequest) -> dict:
     """Infer the start (if needed), run ``proof_completion``, render animation data."""
@@ -158,6 +179,9 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
         prompt = f"Derive this expression: {req.target_latex}"
         if givens:
             prompt += f" given {givens}"
+        prior = _prior_steps_clause(req)
+        if prior:                        # anchor the inferred start to the lead-up
+            prompt += f", continuing on from the preceding steps: {prior}"
         start, _lm_target, lm_domain, lm_title, given_label, start_note = \
             endpoints_from_prompt(prompt)
         if not start:
@@ -167,8 +191,8 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     intent = req.intent or (
         f"Derive {req.target_latex}" + (f" given {givens}" if givens else "")
     )
-    if len(intent) > _INTENT_MAX:        # GraphTransition.intent hard limit
-        intent = intent[:_INTENT_MAX].rstrip()
+    # Reinforce the pedagogical micro-step request (bounded to the intent limit).
+    intent = (intent + _MICROSTEP_DIRECTIVE)[:_INTENT_MAX].rstrip()
 
     # --- call: run the expert through the canonical invoke boundary -------------
     log.debug("proof_animation: start=%r target=%r domain=%s (start %s)",

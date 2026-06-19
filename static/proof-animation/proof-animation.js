@@ -54,6 +54,15 @@ export class ProofAnimator {
     // has no chat panel and omits it — no factory, no buttons rendered.
     this._aiAsk = opts.aiAskButton || null;
     this._nextAskBtn = null;
+    // Optional "Derive this step" integration: a button factory (className,
+    // title, onClick) → <button> plus an onDerive(payload, anchorEl) handler the
+    // host uses to dock a fresh derivation. Both come from the app (SgProofManager
+    // passes labels.js makeDeriveButton + a dock callback); the standalone report
+    // omits them, so no derive button renders. Lets a learner break a single
+    // animation step into finer sub-steps on demand.
+    this._deriveBtnFactory = typeof opts.deriveButton === "function" ? opts.deriveButton : null;
+    this._onDerive = typeof opts.onDerive === "function" ? opts.onDerive : null;
+    this._deriveBtnEl = null;
     // Optional host hook fired after every internal relayout (resize / fonts), so
     // a host that scales this widget to fit a box (SgProofManager) can re-fit AFTER
     // our fixed zone heights are final — otherwise its scale races our relayout and
@@ -380,6 +389,16 @@ export class ProofAnimator {
       this._nextAskBtn = this._aiAsk("pa-ask-btn pa-ask-next", "Predict the next step with AI",
         () => this._askNextMessage());
       nextPill.classList.add("pa-has-ask");
+    }
+    // Derive button — sits beside the current-step ask button; breaks THIS step
+    // into finer sub-steps (a fresh derivation toward this step's expression).
+    if (this._deriveBtnFactory && this._onDerive) {
+      const meta = this.container.querySelector(".pa-meta");
+      meta.classList.add("pa-has-ask");
+      this._deriveBtnEl = this._deriveBtnFactory(
+        "pa-ask-btn pa-derive-btn", "Derive this step — break it into finer sub-steps",
+        () => this._deriveCurrent(this._deriveBtnEl));
+      meta.querySelector(".pa-op-row").appendChild(this._deriveBtnEl);
     }
     this.container.querySelector(".pa-play").onclick = () => this._togglePlay();
     this.container.querySelector(".pa-speed").onclick = () => {
@@ -1250,6 +1269,10 @@ export class ProofAnimator {
   _updateStepButtons() {
     this.container.querySelectorAll(".pa-step").forEach((b, i) =>
       b.classList.toggle("pa-active", i === this.current));
+    // The start state (step 0) has nothing before it to derive — hide the button.
+    // Done HERE (not in _syncUI) because forward steps animate via _beginMetaPromote,
+    // which calls _updateStepButtons but skips _syncUI.
+    if (this._deriveBtnEl) this._deriveBtnEl.style.display = this.current === 0 ? "none" : "";
   }
 
   // If the controls row would overflow the container width, hide the numbered
@@ -1297,6 +1320,36 @@ export class ProofAnimator {
   _stepExpr(idx) {
     const s = this.data.steps[idx];
     return s.plain || s.input_latex || s.latex || "";
+  }
+
+  // Build a derive request for the CURRENT step and hand it to the host to dock.
+  // Target = this step's expression; START = the immediately previous step so the
+  // derivation fills the gap FROM it TO this step. (Leaving the start to inference
+  // produced degenerate results — the model inferred a start ≈ the target, so the
+  // first two states came out identical.) The earlier steps still ride along as
+  // ``previous_steps`` context; domain carries over; the host adds lesson context.
+  _deriveCurrent(anchorEl) {
+    if (!this._onDerive) return;
+    const i = this.current;
+    const target = this._stepExpr(i);
+    if (!target) return;
+    const payload = { target_latex: target };
+    if (this.data.domain) payload.domain = this.data.domain;
+    // Anchor the start to the previous step (skip if it's somehow equal/empty).
+    if (i > 0) {
+      const prev = this._stepExpr(i - 1);
+      if (prev && prev.trim() && prev.trim() !== target.trim()) payload.start_latex = prev;
+    }
+    const previous_steps = this.data.steps.slice(0, i).map((s, k) => ({
+      step: k + 1,
+      label: s.operation || null,
+      math: this._stepExpr(k),
+    })).filter(p => p.math);
+    if (previous_steps.length) payload.previous_steps = previous_steps;
+    // intent hint from the step's own operation (what move produced it)
+    const op = this.data.steps[i].operation;
+    if (op) payload.intent = String(op).trim();
+    this._onDerive(payload, anchorEl);
   }
 
   // Chat message for the "ask about the current step" button.
