@@ -15,6 +15,10 @@ svg.d3-semantic-graph {
     overflow: visible;
 }
 
+/* Nodes are clickable — show the hand cursor over the whole node (cursor is
+   inherited, so the bg shapes / labels / hit target all pick it up). */
+.d3sg-node { cursor: pointer; }
+
 /* Variable nodes — fill/stroke set by theme via inline attributes */
 .d3sg-var-bg {
     stroke-width: 1.5px;
@@ -67,7 +71,8 @@ svg.d3-semantic-graph {
     paint-order: stroke;
     stroke: #131a2c;
     stroke-width: 4px;
-    pointer-events: none;
+    pointer-events: auto;   /* so the hand cursor shows over edge text */
+    cursor: pointer;
 }
 .d3sg-role-label {
     fill: #8fa8c8;

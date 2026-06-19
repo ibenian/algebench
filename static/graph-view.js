@@ -1055,6 +1055,8 @@ function _ensureD3NodeAskBtn() {
         },
     );
     btn.style.position = 'fixed';
+    btn.style.margin = '0';   // .ai-ask-btn carries a 5px inline margin — kill it
+                              // so the fixed-position left/top place it exactly.
     btn.style.opacity = '0';
     btn.style.pointerEvents = 'none';
     btn.style.zIndex = '950';
@@ -1072,12 +1074,37 @@ function _showD3NodeAskBtn(nodeEl) {
     if (_d3NodeAskHideTimer) { clearTimeout(_d3NodeAskHideTimer); _d3NodeAskHideTimer = null; }
     const shape = nodeEl.querySelector('polygon, circle, rect');
     const r = (shape || nodeEl).getBoundingClientRect();
-    const btnW = btn.offsetWidth || 24;
-    const btnH = btn.offsetHeight || 24;
-    // Sit on the node's right edge, vertically centred and overlapping it — so a
-    // simple rightward move from the node lands on the button with no dead gap.
-    btn.style.left = (r.right - btnW / 2) + 'px';
-    btn.style.top = (r.top + r.height / 2 - btnH / 2) + 'px';
+    // Measure the button's REAL rendered size — offsetWidth rounds and can disagree
+    // with the laid-out box, throwing the centring off by a few px.
+    const bRect = btn.getBoundingClientRect();
+    const btnW = bRect.width || btn.offsetWidth || 24;
+    const btnH = bRect.height || btn.offsetHeight || 24;
+    const ncx = r.left + r.width / 2, ncy = r.top + r.height / 2;
+    // A collapsible node carries a +/- expand chevron on its OUTFLOW edge — which
+    // side that is depends on the graph direction (right for left-right, left for
+    // right-left, top for bottom-up, bottom for top-down). Keep the chevron exactly
+    // where it is and stack the ask button PERPENDICULAR to the flow, snug against
+    // it: below it in horizontal layouts, beside it in vertical layouts. Non-
+    // collapsible nodes keep the button centred on the right edge, overlapping the
+    // node — so a simple rightward move from the node lands on it with no dead gap.
+    const chevron = nodeEl.querySelector('.d3sg-chevron');
+    if (chevron) {
+        // Centre on the chevron's SQUARE (its <rect>) — not the <g>, which also
+        // bounds the +/- glyph — so the button lines up exactly with it.
+        const cr = (chevron.querySelector('rect') || chevron).getBoundingClientRect();
+        const ccx = cr.left + cr.width / 2, ccy = cr.top + cr.height / 2;
+        const gap = 3;
+        if (Math.abs(ccx - ncx) >= Math.abs(ccy - ncy)) {   // horizontal flow → stack below
+            btn.style.left = (ccx - btnW / 2) + 'px';
+            btn.style.top = (cr.bottom + gap) + 'px';
+        } else {                                             // vertical flow → stack beside
+            btn.style.left = (cr.right + gap) + 'px';
+            btn.style.top = (ccy - btnH / 2) + 'px';
+        }
+    } else {
+        btn.style.left = (r.right - btnW / 2) + 'px';
+        btn.style.top = (ncy - btnH / 2) + 'px';
+    }
     btn.style.opacity = '1';
     btn.style.pointerEvents = 'auto';
 }
