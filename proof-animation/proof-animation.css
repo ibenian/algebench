@@ -29,6 +29,28 @@
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
 }
 
+/* Math-aware tooltip (JS-positioned) for confidence badges — unlike the CSS
+   data-tip, this renders inline $…$ LaTeX (the grounding reasons embed real
+   expressions). Anchored within .pa-root (position: relative). */
+.pa-root .pa-mathtip {
+  position: absolute;
+  display: none;
+  z-index: 31;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: rgba(10, 12, 26, 0.97);
+  border: 1px solid var(--pa-border);
+  color: #e5e7eb;
+  font: 400 0.72rem/1.4 var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
+  text-align: center;
+  white-space: normal;
+  width: max-content;
+  max-width: 260px;
+  pointer-events: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+}
+.pa-root .pa-mathtip .katex { font-size: 1em; color: #e5e7eb; }
+
 .pa-root {
   --pa-fg: var(--text-color, #1a1a2e);
   --pa-muted: var(--muted-color, #6b7280);

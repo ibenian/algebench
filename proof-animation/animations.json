@@ -272,7 +272,7 @@
           "icon": "🥈",
           "meaning": "strong CAS evidence, short of a symbolic proof",
           "relation": "narrows",
-          "reason": "treating m as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+          "reason": "treating $m$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
           "type_consistent": true
         }
       },
@@ -289,7 +289,7 @@
           "icon": "🥈",
           "meaning": "strong CAS evidence, short of a symbolic proof",
           "relation": "narrows",
-          "reason": "treating p as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+          "reason": "treating $p$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
           "type_consistent": true
         }
       }
@@ -397,7 +397,7 @@
           "icon": "🥈",
           "meaning": "strong CAS evidence, short of a symbolic proof",
           "relation": "equivalent",
-          "reason": "both sides scaled by c**2 - v**2 — equivalent wherever c**2 - v**2 ≠ 0",
+          "reason": "both sides scaled by $c^{2} - v^{2}$ — equivalent wherever that factor ≠ 0",
           "type_consistent": true
         }
       },
@@ -488,7 +488,7 @@
           "icon": "🥈",
           "meaning": "strong CAS evidence, short of a symbolic proof",
           "relation": "equivalent",
-          "reason": "both sides scaled by a — equivalent wherever a ≠ 0",
+          "reason": "both sides scaled by $a$ — equivalent wherever that factor ≠ 0",
           "type_consistent": true
         }
       },
@@ -573,7 +573,7 @@
           "icon": "🥈",
           "meaning": "strong CAS evidence, short of a symbolic proof",
           "relation": "narrows",
-          "reason": "treating x as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+          "reason": "treating $x$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
           "type_consistent": true
         }
       },
@@ -590,7 +590,7 @@
           "icon": "🥈",
           "meaning": "strong CAS evidence, short of a symbolic proof",
           "relation": "narrows",
-          "reason": "treating x as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+          "reason": "treating $x$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
           "type_consistent": true
         }
       },
