@@ -140,6 +140,14 @@ export class ProofAnimator {
       const ask = document.createElement("span"); ask.className = "pa-ask-btn pa-ask-current";
       opHost.append(ask);
     }
+    // The Derive button is a second inline button in the live op-row — mirror it
+    // here too, or the probe under-measures the caption width (and reserved meta
+    // height) whenever Derive is present, letting the controls row jump.
+    if (this._deriveBtnFactory && this._onDerive) {
+      probe.classList.add("pa-has-ask");
+      const der = document.createElement("span"); der.className = "pa-ask-btn pa-derive-btn";
+      opHost.append(der);
+    }
     // (The overall-confidence pill is an absolute OVERLAY on the widget — out
     // of flow, so it does not participate in the meta height reservation.)
     probe.append(opHost, just, next);

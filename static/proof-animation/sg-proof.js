@@ -20,6 +20,7 @@ const _DERIVE_CACHE = new Map();
 const _cacheKey = (p) => JSON.stringify({
     t: p.target_latex || '', s: p.start_latex || '', d: p.domain || '',
     g: p.goal || '', gv: p.givens || [], i: p.intent || '', c: p.context || null,
+    ps: p.previous_steps || [],   // affects lesson_context + start inference
 });
 
 /** Drop all cached derivations (call on a new lesson — step keys/context change). */
