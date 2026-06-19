@@ -21,12 +21,11 @@ import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
 import { SgChartManager } from '/graph-panel/sg-chart.js';
 import { SgProofManager, clearDeriveCache } from '/proof-animation/sg-proof.js';
+import { buildEnrichContext } from '/proof-animation/derive-payload.js';
 import {
-    stripHtmlMacros as _stripHtmlMacros,
-    normLatex as _normLatex,
-    buildEnrichContext,
-} from '/proof-animation/derive-payload.js';
-import { makeAiAskButton, makeDeriveButton, renderKaTeX } from '/labels.js';
+    makeAiAskButton, makeDeriveButton, renderKaTeX,
+    stripHtmlMacros as _stripHtmlMacros, normLatex as _normLatex,
+} from '/labels.js';
 
 let _currentGraphPanel = null;
 let _currentSemanticKey = null;
@@ -2098,16 +2097,6 @@ function stableStepKey(step) {
 /* ------------------------------------------------------------------ */
 /* Utilities                                                          */
 /* ------------------------------------------------------------------ */
-
-function stripLatex(s) {
-    return String(s || '')
-        .replace(/\$/g, '')
-        .replace(/\\htmlClass\{[^}]*\}\{([^}]*)\}/g, '$1')
-        .replace(/\\[a-zA-Z]+\*?/g, '')
-        .replace(/[{}]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-}
 
 function escapeHtml(s) {
     return String(s || '')

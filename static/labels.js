@@ -21,6 +21,53 @@ export function stripLatex(text) {
     return text.replace(/\$\$([^$]*)\$\$/g, '$1').replace(/\$([^$]*)\$/g, '$1');
 }
 
+// KaTeX html-macro wrappers that an expression carries for highlighting/metadata
+// but the LaTeX→graph parser (and loose text comparison) can't read.
+const _HTML_MACROS = ['htmlClass', 'htmlData', 'htmlId', 'htmlStyle'];
+
+/** Strip KaTeX \htmlClass/\htmlData/\htmlId/\htmlStyle wrappers, keeping their
+ *  inner content (recursively). Leaves malformed wrappers intact. */
+export function stripHtmlMacros(s) {
+    if (!s) return s;
+    const str = String(s);
+    // Return the index just past the '}' matching the '{' at k, or -1 if unbalanced.
+    const skipBalanced = (k) => {
+        let depth = 0;
+        for (; k < str.length; k++) {
+            if (str[k] === '{') depth++;
+            else if (str[k] === '}' && --depth === 0) return k + 1;
+        }
+        return -1;
+    };
+    let out = '';
+    let i = 0;
+    while (i < str.length) {
+        const m = str[i] === '\\' && _HTML_MACROS.find(x => str.startsWith('\\' + x, i));
+        if (!m) { out += str[i++]; continue; }
+        let k = i + 1 + m.length;
+        while (k < str.length && /\s/.test(str[k])) k++;       // ws before the class/data arg
+        const arg1End = str[k] === '{' ? skipBalanced(k) : -1;
+        let c = arg1End;
+        if (c > 0) while (c < str.length && /\s/.test(str[c])) c++;   // ws before the content arg
+        const contentEnd = (c > 0 && str[c] === '{') ? skipBalanced(c) : -1;
+        if (contentEnd < 0) { out += str[i++]; continue; }     // malformed — leave intact, advance 1
+        out += stripHtmlMacros(str.slice(c + 1, contentEnd - 1));   // recurse into the content
+        i = contentEnd;
+    }
+    return out;
+}
+
+/** Loose LaTeX normalization for equality comparison: drop \text{}/\mathrm{}
+ *  wrappers, braces, whitespace, and normalize \le/\ge spelling — so e.g.
+ *  \gamma_{steep} compares equal to \gamma_{\text{steep}}. */
+export function normLatex(s) {
+    return (s || '')
+        .replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, '$1')
+        .replace(/\\le(?![a-zA-Z])/g, '\\leq')
+        .replace(/\\ge(?![a-zA-Z])/g, '\\geq')
+        .replace(/[\s{}]/g, '');
+}
+
 // ----- KaTeX rendering -----
 
 export function renderKaTeX(text, displayMode) {

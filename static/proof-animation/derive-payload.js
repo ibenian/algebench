@@ -4,51 +4,7 @@
 // equivalent payload (target/start/givens/goal/context) and stay in sync.
 
 import { state } from '/state.js';
-
-// KaTeX html-macro wrappers that proof-step `math` carries for highlighting but
-// the LaTeX→graph parser can't read.
-const _HTML_MACROS = ['htmlClass', 'htmlData', 'htmlId', 'htmlStyle'];
-
-/** Strip KaTeX \htmlClass/\htmlData/\htmlId/\htmlStyle wrappers, keeping content. */
-export function stripHtmlMacros(s) {
-    if (!s) return s;
-    const str = String(s);
-    // Return the index just past the '}' matching the '{' at k, or -1 if unbalanced.
-    const skipBalanced = (k) => {
-        let depth = 0;
-        for (; k < str.length; k++) {
-            if (str[k] === '{') depth++;
-            else if (str[k] === '}' && --depth === 0) return k + 1;
-        }
-        return -1;
-    };
-    let out = '';
-    let i = 0;
-    while (i < str.length) {
-        const m = str[i] === '\\' && _HTML_MACROS.find(x => str.startsWith('\\' + x, i));
-        if (!m) { out += str[i++]; continue; }
-        let k = i + 1 + m.length;
-        while (k < str.length && /\s/.test(str[k])) k++;       // ws before the class/data arg
-        const arg1End = str[k] === '{' ? skipBalanced(k) : -1;
-        let c = arg1End;
-        if (c > 0) while (c < str.length && /\s/.test(str[c])) c++;   // ws before the content arg
-        const contentEnd = (c > 0 && str[c] === '{') ? skipBalanced(c) : -1;
-        if (contentEnd < 0) { out += str[i++]; continue; }     // malformed — leave intact, advance 1
-        out += stripHtmlMacros(str.slice(c + 1, contentEnd - 1));   // recurse into the content
-        i = contentEnd;
-    }
-    return out;
-}
-
-// Loose LaTeX comparison: ignore \text{}/\mathrm{} wrappers, braces, spacing and
-// \le/\leq spelling, so e.g. \gamma_{steep} == \gamma_{\text{steep}}.
-export function normLatex(s) {
-    return (s || '')
-        .replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, '$1')
-        .replace(/\\le(?![a-zA-Z])/g, '\\leq')
-        .replace(/\\ge(?![a-zA-Z])/g, '\\geq')
-        .replace(/[\s{}]/g, '');
-}
+import { stripHtmlMacros, normLatex } from '/labels.js';
 
 // Build context payload for the enrichment/derivation agents — lesson/scene/
 // proof/step metadata that disambiguates symbols (e.g. T = thrust vs temperature).

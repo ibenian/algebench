@@ -4,7 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { renderKaTeX, renderMarkdown, makeAiAskButton, makeDeriveButton, openChatPanel } from '/labels.js';
+import { renderKaTeX, renderMarkdown, makeAiAskButton, makeDeriveButton, openChatPanel, stripHtmlMacros } from '/labels.js';
 import { SgProofManager } from '/proof-animation/sg-proof.js';
 import { buildProofStepDerivePayload, describeDeriveStart } from '/proof-animation/derive-payload.js';
 
@@ -1175,29 +1175,9 @@ export function getProofContext() {
     const proof = _activeProof();
     if (!proof) return null;
 
-    const stripHlClass = (m) => {
-        if (!m) return null;
-        // Remove all \htmlClass{name}{...} wrappers, keeping inner content
-        let s = m;
-        while (s.includes('\\htmlClass{')) {
-            const start = s.indexOf('\\htmlClass{');
-            // Find the end of the class name: \htmlClass{name}
-            const nameEnd = s.indexOf('}', start + 11);
-            if (nameEnd < 0) break;
-            // Next char should be {, find matching }
-            if (s[nameEnd + 1] !== '{') break;
-            let depth = 1, i = nameEnd + 2;
-            while (i < s.length && depth > 0) {
-                if (s[i] === '{') depth++;
-                else if (s[i] === '}') depth--;
-                i++;
-            }
-            // Replace \htmlClass{name}{content} with content
-            const content = s.slice(nameEnd + 2, i - 1);
-            s = s.slice(0, start) + content + s.slice(i);
-        }
-        return s;
-    };
+    // Unwrap \htmlClass/\htmlData highlight wrappers from step math; null for
+    // missing math (kept distinct from "" so callers can omit absent fields).
+    const stripHlClass = (m) => (m ? stripHtmlMacros(m) : null);
     const steps = proof.steps || [];
     const idx = state.proofStepIndex;
 
