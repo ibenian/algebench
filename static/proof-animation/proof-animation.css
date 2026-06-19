@@ -206,10 +206,6 @@
   border-color: var(--pa-accent);
 }
 .pa-root .pa-ask-btn svg { pointer-events: none; }
-/* The Derive button is a primary per-step action — keep it always visible
-   (not hover-gated like the ask buttons) so it's discoverable. It's still
-   hidden on the start state (step 0) via inline display:none. */
-.pa-root .pa-derive-btn { opacity: 1; pointer-events: auto; }
 /* Current-step button: inline, right after the explanation text, with a gap.
    max-width + the op's min-width:0 let a long (KaTeX-bearing) caption shrink and
    wrap in a narrow box instead of overflowing; the op keeps flex-grow:0 so the
