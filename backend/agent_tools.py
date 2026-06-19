@@ -624,9 +624,19 @@ def build_system_prompt(context, agent_memory=None):
     # agent only sees graph structure through this section.
     gp = runtime.get('graphPanel')
     if gp and gp.get('open'):
+        # ``selectedNodes`` is the full ordered multi-selection (active node
+        # last); ``selectedNode`` is just the active one, kept for back-compat.
+        # Fall back to wrapping the single node when only the legacy field came
+        # through.
+        sel_nodes = gp.get('selectedNodes')
         sn = gp.get('selectedNode') or {}
+        if not sel_nodes and sn:
+            sel_nodes = [sn]
+        sel_nodes = sel_nodes or []
         header_suffix = ''
-        if sn:
+        if len(sel_nodes) > 1:
+            header_suffix = f" — {len(sel_nodes)} nodes selected"
+        elif sn:
             type_str = sn.get('type') or ''
             op_str = sn.get('op')
             type_label = f"{type_str}/{op_str}" if (type_str and op_str) else (type_str or op_str or '')
@@ -670,20 +680,31 @@ def build_system_prompt(context, agent_memory=None):
                     parts.append(f"  - … ({gp['edgesTruncated']} more edges truncated)")
         if gp.get('parseError'):
             parts.append(f"- Parse error: {gp['parseError']}")
-        if sn:
-            parts.append(f"- **Selected node** `{sn.get('id')}`:")
-            for k in ('type', 'role', 'op', 'label'):
-                if sn.get(k):
-                    parts.append(f"  - {k}: {sn[k]}")
-            if sn.get('subexpr'):
-                parts.append(f"  - subexpr: `{sn['subexpr']}`")
-            if sn.get('description'):
-                parts.append(f"  - description: \"{sn['description']}\"")
-            neigh = sn.get('neighbors') or {}
-            inc = neigh.get('incoming') or []
-            out = neigh.get('outgoing') or []
-            if inc: parts.append(f"  - incoming: {', '.join(inc)}")
-            if out: parts.append(f"  - outgoing: {', '.join(out)}")
+        if sel_nodes:
+            multi = len(sel_nodes) > 1
+            if multi:
+                active_id = sn.get('id') if sn else None
+                parts.append(f"- **Selected nodes** ({len(sel_nodes)}):")
+            for node in sel_nodes:
+                if multi:
+                    flag = " (active)" if node.get('id') == active_id else ""
+                    parts.append(f"  - `{node.get('id')}`{flag}:")
+                    indent = "    "
+                else:
+                    parts.append(f"- **Selected node** `{node.get('id')}`:")
+                    indent = "  "
+                for k in ('type', 'role', 'op', 'label'):
+                    if node.get(k):
+                        parts.append(f"{indent}- {k}: {node[k]}")
+                if node.get('subexpr'):
+                    parts.append(f"{indent}- subexpr: `{node['subexpr']}`")
+                if node.get('description'):
+                    parts.append(f"{indent}- description: \"{node['description']}\"")
+                neigh = node.get('neighbors') or {}
+                inc = neigh.get('incoming') or []
+                outg = neigh.get('outgoing') or []
+                if inc: parts.append(f"{indent}- incoming: {', '.join(inc)}")
+                if outg: parts.append(f"{indent}- outgoing: {', '.join(outg)}")
         elif gp.get('hasGraph', True):
             parts.append("- No node selected.")
 

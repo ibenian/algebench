@@ -2574,14 +2574,59 @@ function getGraphPanelState() {
         if (edges.length > EDGE_CAP) out.edgesTruncated = edges.length - EDGE_CAP;
     }
 
-    if (_currentGraphPanel && _currentGraphPanel.activeNode) {
-        const id = _currentGraphPanel.activeNode;
-        const payload = typeof _currentGraphPanel.getNodePayload === 'function'
-            ? _currentGraphPanel.getNodePayload(id) : null;
-        if (payload) out.selectedNode = payload;
+    // Selected node(s) — fed to the AI so it can reason about exactly what the
+    // user has highlighted. Supports the D3 renderer's multi-select (Cmd+Click)
+    // as well as the legacy single-select Mermaid panel. Ordered with the
+    // active node last, matching ``getGraphSelection`` / Cmd+Click semantics.
+    if (graph) {
+        const ids = _selectedNodeIdsForContext();
+        const payloads = ids
+            .map(id => _buildGraphNodePayload(graph, id))
+            .filter(Boolean);
+        if (payloads.length) {
+            // ``selectedNode`` = the active (last) node, kept for back-compat
+            // and the header summary; ``selectedNodes`` = the full ordered set.
+            out.selectedNode = payloads[payloads.length - 1];
+            out.selectedNodes = payloads;
+        }
     }
 
     return out;
+}
+
+/**
+ * Ordered list of currently selected node ids (active node last), read from
+ * whichever renderer is live. Empty when nothing is selected.
+ */
+function _selectedNodeIdsForContext() {
+    if (_currentD3Renderer && !_currentD3Renderer._destroyed) {
+        return getGraphSelection();
+    }
+    if (_currentGraphPanel && _currentGraphPanel.activeNode) {
+        return [_currentGraphPanel.activeNode];
+    }
+    return [];
+}
+
+/**
+ * Build a serializable payload for a node id straight from the graph JSON,
+ * including immediate edge neighbors. Renderer-agnostic — both the D3 and
+ * Mermaid paths share the same graph structure.
+ */
+function _buildGraphNodePayload(graph, nodeId) {
+    if (!graph || !nodeId) return null;
+    const node = (graph.nodes || []).find(n => n.id === nodeId);
+    if (!node) return null;
+    const incoming = [], outgoing = [];
+    for (const e of (graph.edges || [])) {
+        if (e.to === nodeId && e.from !== nodeId) incoming.push(e.from);
+        if (e.from === nodeId && e.to !== nodeId) outgoing.push(e.to);
+    }
+    return {
+        ...node,
+        subexpr: node.subexpr || null,
+        neighbors: { incoming, outgoing },
+    };
 }
 
 window.algebenchGetGraphPanelState = getGraphPanelState;
