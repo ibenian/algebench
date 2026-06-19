@@ -291,6 +291,31 @@ export function makeAiAskButton(className, title, getMessage) {
     return btn;
 }
 
+// Derivation ("∴") glyph — a small three-step icon for Derive buttons. Shared by
+// the semantic-graph node Derive button and the proof-card per-step button so
+// the two look identical.
+export const DERIVE_SVG =
+    '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    + '<path d="M3 3h7"/><path d="M3 8h10"/><path d="M3 13h6"/>'
+    + '<path d="M12.5 11l2 2-2 2" transform="translate(-1 -3.5)"/></svg>';
+
+/** Build a Derive icon button (matches the AI ask-button styling). `onClick`
+ *  fires on click; propagation is stopped so it never triggers row handlers. */
+export function makeDeriveButton(className, title, onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = className;
+    btn.title = title;
+    btn.setAttribute('aria-label', title);
+    btn.innerHTML = DERIVE_SVG;
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onClick(e);
+    });
+    return btn;
+}
+
 export function elementToMarkdown(el) {
     const clone = el.cloneNode(true);
     clone.querySelectorAll('.katex-display').forEach(dispEl => {

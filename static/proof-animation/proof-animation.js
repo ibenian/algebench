@@ -1150,8 +1150,55 @@ export class ProofAnimator {
     let tip = (c.relation === "unknown")
       ? `${c.label} — ${c.meaning || ""}${c.reason ? ` (${c.reason})` : ""}`
       : `${c.label} — ${c.reason || c.meaning || ""}`;
-    el.setAttribute("data-tip", tip);
-    el.setAttribute("aria-label", tip);
+    this._attachMathTip(el, tip);   // reasons embed $…$ LaTeX — render it
+  }
+
+  // Tooltip (anchored to ``el``) whose text may contain inline $…$ LaTeX,
+  // rendered with KaTeX. The confidence reasons embed real expressions (e.g.
+  // "scaled by $\frac{…}{…}$") that the plain CSS data-tip can't render, so
+  // these badges use a JS tooltip instead. Listeners bind once; re-calls just
+  // swap the text. ``aria-label`` keeps a plain-text version for a11y.
+  _attachMathTip(el, text) {
+    el._mathTipText = text || "";
+    el.setAttribute("aria-label", this._plainOp(text || ""));
+    el.removeAttribute("data-tip");        // ensure no double (CSS) tooltip
+    if (el._mathTipBound) return;
+    el._mathTipBound = true;
+    const show = () => this._showMathTip(el);
+    const hide = () => this._hideMathTip();
+    el.addEventListener("mouseenter", show);
+    el.addEventListener("mouseleave", hide);
+    el.addEventListener("focus", show);
+    el.addEventListener("blur", hide);
+  }
+
+  _showMathTip(el) {
+    const text = el && el._mathTipText;
+    if (!text) return;
+    let tip = this._mathTip;
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.className = "pa-mathtip";
+      this.container.appendChild(tip);
+      this._mathTip = tip;
+    }
+    this._caption(tip, text);              // render $…$ segments with KaTeX
+    tip.style.display = "block";
+    tip.style.left = "0px";
+    tip.style.top = "0px";
+    const cr = this.container.getBoundingClientRect();
+    const br = el.getBoundingClientRect();
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = (br.left - cr.left) + br.width / 2 - tw / 2;
+    left = Math.max(4, Math.min(left, cr.width - tw - 4));
+    let top = (br.top - cr.top) - th - 8;
+    if (top < 4) top = (br.bottom - cr.top) + 8;   // flip below when no room above
+    tip.style.left = `${left}px`;
+    tip.style.top = `${top}px`;
+  }
+
+  _hideMathTip() {
+    if (this._mathTip) this._mathTip.style.display = "none";
   }
 
   // The overall-confidence pill (static for the derivation): icon + tier label
@@ -1181,8 +1228,7 @@ export class ProofAnimator {
     // The overall reason already summarizes the chain (tallies + endpoint), so
     // the pill tooltip is "<Label> — <summary>", not the per-step meaning.
     const tip = `${oc.label} — ${oc.reason || oc.meaning || ""} · click to pin details`;
-    el.setAttribute("data-tip", tip);
-    el.setAttribute("aria-label", tip);
+    this._attachMathTip(el, tip);
     // Reveal-on-demand: the chip is COMPACT (icon only) by default; hovering it
     // peeks the full badge display (label + tally + per-step badge + tinted
     // step dots), and clicking pins/unpins that state (pa-conf-on).
@@ -1320,10 +1366,9 @@ export class ProofAnimator {
       if (!el.textContent.trim()) return;
       const g = el.cloneNode(true);
       g.classList.add("pa-meta-ghost");
-      // Force absolute inline (beats any selector): the confidence badge carries
-      // a data-tip, and the tooltip rule `.pa-root [data-tip]{position:relative}`
-      // outranks `.pa-meta-ghost{position:absolute}` — a relative ghost would
-      // stay in flow and sink to the bottom of the meta column by the nav.
+      // Force absolute inline (beats any selector that might keep a ghost in
+      // flow) so it fades out exactly over its source spot instead of sinking to
+      // the bottom of the meta column by the nav.
       g.style.position = "absolute";
       g.removeAttribute("data-tip");   // ghosts are decorative — no tooltip
       g.removeAttribute("aria-label");

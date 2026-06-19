@@ -404,11 +404,14 @@ def classify_pair(prev, curr, change_type: Optional[str] = None,
                 relation = "equivalent"
                 if k.is_number:
                     method = "symbolic"
-                    reason = f"both sides scaled by the nonzero constant {k}"
+                    reason = f"both sides scaled by the nonzero constant ${sp.latex(k)}$"
                 else:
                     method = "scaled"
-                    reason = (f"both sides scaled by {k} — "
-                              f"equivalent wherever {k} ≠ 0")
+                    # Render the factor as LaTeX (``$…$``) so the UI tooltip shows
+                    # real math, not a raw sympy ``str`` (``A*dP``, ``\rho``…). The
+                    # factor can be long, so name it once and refer back to it.
+                    reason = (f"both sides scaled by ${sp.latex(k, mul_symbol='dot')}$ — "
+                              f"equivalent wherever that factor ≠ 0")
 
         # 2c) parametric narrows — multivariate solving steps (weakest of the
         # equation checks, so it runs only when scaled equivalence failed)
@@ -513,7 +516,7 @@ def _narrows_check(prev, curr, relation, method, reason):
     # provably introduces non-solutions? (only claim it when the gap is concrete)
     gap = _guard(lambda: curr_sols - prev_sols)
     if isinstance(gap, sp.FiniteSet) and len(gap) > 0:
-        extra = ", ".join(sorted(str(v) for v in gap))
+        extra = ", ".join(sorted(f"${sp.latex(v)}$" for v in gap))
         return ("refuted", "symbolic",
                 f"introduces value(s) that do not solve the previous step: {extra}")
     return relation, method, reason
@@ -590,8 +593,8 @@ def _parametric_narrows(prev, curr, relation, method, reason):
             continue
         if _guard(lambda: curr_sols.is_subset(prev_sols)):
             return ("narrows", "parametric",
-                    f"treating {v} as the unknown, every solution of this step "
-                    f"solves the previous one (other symbols as generic parameters)")
+                    f"treating ${sp.latex(v)}$ as the unknown, every solution of this "
+                    f"step solves the previous one (other symbols as generic parameters)")
     return relation, method, reason
 
 
