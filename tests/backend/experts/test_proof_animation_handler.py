@@ -13,6 +13,7 @@ import backend.experts.handlers.proof_animation.handler as H
 from backend.experts.handlers.proof_animation.handler import (
     DeriveProofRequest,
     PriorStep,
+    _derives_from_previous_step,
     _domain_judge,
     _format_lesson_context,
     _format_prior_steps,
@@ -38,6 +39,49 @@ def test_request_accepts_previous_steps():
 def test_request_defaults_previous_steps_empty():
     req = DeriveProofRequest(target_latex="x = 2")
     assert req.previous_steps == []
+
+
+def test_microstep_gate_true_when_start_is_previous_step():
+    # start == the last previous step → adjacent transition → micro-step ON
+    req = DeriveProofRequest(
+        target_latex="a = c - b",
+        start_latex="a + b = c",
+        previous_steps=[PriorStep(step=1, math="a + b = c")],
+    )
+    assert _derives_from_previous_step(req) is True
+
+
+def test_microstep_gate_whitespace_insensitive():
+    req = DeriveProofRequest(
+        target_latex="a = c - b",
+        start_latex="a+b = c",
+        previous_steps=[PriorStep(step=1, math="a + b  =  c")],
+    )
+    assert _derives_from_previous_step(req) is True
+
+
+def test_microstep_gate_false_when_start_is_a_given_not_previous():
+    # start supplied but differs from the last step (e.g. a proof given) → OFF
+    req = DeriveProofRequest(
+        target_latex="a = c - b",
+        start_latex="a + b = c",
+        previous_steps=[PriorStep(step=1, math="x = y"),
+                        PriorStep(step=2, math="p = q")],
+    )
+    assert _derives_from_previous_step(req) is False
+
+
+def test_microstep_gate_false_when_no_previous_steps():
+    req = DeriveProofRequest(target_latex="a = c - b", start_latex="a + b = c")
+    assert _derives_from_previous_step(req) is False
+
+
+def test_microstep_gate_false_when_start_inferred():
+    req = DeriveProofRequest(
+        target_latex="a = c - b",
+        previous_steps=[PriorStep(step=1, math="a + b = c")],
+    )
+    assert _derives_from_previous_step(req) is False
 
 
 def test_request_still_forbids_unknown_fields():
