@@ -319,3 +319,18 @@ def test_concurrent_mixed_load(monkeypatch):
             assert out[i] == i + 1          # fast calls correct, never wrong
     # all runaway workers reaped; pool back to a healthy bounded size
     assert _wait_until(lambda: len(_our_workers()) <= 3)
+
+
+# --------------------------------------------------------------------------- #
+# observability
+# --------------------------------------------------------------------------- #
+
+
+def test_log_timeout_preview_is_bounded(caplog):
+    """The timeout preview is capped — a huge arg can't format a giant string."""
+    huge = "x" * 100_000
+    with caplog.at_level("WARNING"):
+        cas_guard._log_timeout(W.inc, (huge, huge), 1.23, pid=999)
+    assert "timeout after 1.23s" in caplog.text
+    assert "pid=999" in caplog.text
+    assert len(caplog.text) < 2000          # not the full 100k string

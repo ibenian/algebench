@@ -483,15 +483,32 @@ class _CasPool:
 # --------------------------------------------------------------------------- #
 
 
+_PREVIEW_CAP = 300
+
+
 def _log_timeout(fn, args, elapsed: float, pid=None) -> None:
-    """Capture the pathological input so prod can see what actually hung."""
+    """Capture the pathological input so prod can see what actually hung.
+
+    Build the preview INCREMENTALLY and stop at the cap: a timeout's args are
+    exactly the over-large expressions, so joining every ``str(a)`` first and
+    slicing afterward would format a huge string during the pathological event.
+    Stringify args one at a time, truncating to the remaining budget, and stop.
+    """
     name = getattr(fn, "__name__", repr(fn))
-    try:
-        shown = ", ".join(str(a) for a in args)[:300]
-    except Exception:                   # pragma: no cover - hostile __str__
-        shown = "<unprintable args>"
+    pieces, used = [], 0
+    for a in args:
+        try:
+            s = str(a)
+        except Exception:               # pragma: no cover - hostile __str__
+            s = "<unprintable>"
+        remaining = _PREVIEW_CAP - used
+        if len(s) >= remaining:
+            pieces.append(s[:remaining])
+            break
+        pieces.append(s)
+        used += len(s) + 2              # + ", "
     log.warning("%s %s worker pid=%s timeout after %.2fs: %s(%s)",
-                _CAS_TAG, _WORKER_EMOJI, pid, elapsed, name, shown)
+                _CAS_TAG, _WORKER_EMOJI, pid, elapsed, name, ", ".join(pieces))
 
 
 # --------------------------------------------------------------------------- #

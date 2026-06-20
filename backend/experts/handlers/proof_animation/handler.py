@@ -204,7 +204,8 @@ def _derives_from_previous_step(req: DeriveProofRequest) -> bool:
     if not start or not req.previous_steps:
         return False
     last = (req.previous_steps[-1].math or "").strip()
-    _norm = lambda s: "".join(s.split())  # whitespace-insensitive compare  # noqa: E731
+    def _norm(s):                        # whitespace-insensitive compare
+        return "".join(s.split())
     return bool(last) and _norm(start) == _norm(last)
 
 
