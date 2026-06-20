@@ -12,6 +12,8 @@ from backend.experts.modules.proof_completion.outputs import (
     ProofTrajectory,
     RemoveEdge,
     RemoveNode,
+    _JUSTIFICATION_MAX,
+    _OPERATION_MAX,
 )
 from backend.model.semantic_graph import SemanticGraphNode
 
@@ -73,6 +75,37 @@ def test_expert_result_preserves_subclass_fields_on_dump():
     import pytest
     with pytest.raises(ValueError):
         ExpertResult(expert="e", context_id="c", outputs=[traj, traj]).single()
+
+
+def test_overlong_justification_is_clamped_not_rejected():
+    # A justification past the cap must NOT fail validation (which would abort the
+    # whole derive) — it's trimmed to the cap with an ellipsis instead.
+    long_just = "because " + "x" * (_JUSTIFICATION_MAX + 200)
+    step = DerivationStep(operation="rewrite", expr_latex="x^2 = 4",
+                          justification=long_just, change_type="rewrite")
+    assert len(step.justification) <= _JUSTIFICATION_MAX
+    assert step.justification.endswith("…")
+
+
+def test_overlong_operation_is_clamped():
+    step = DerivationStep(operation="o " + "p" * (_OPERATION_MAX + 50),
+                          expr_latex="x = 2", justification="j", change_type="solve")
+    assert len(step.operation) <= _OPERATION_MAX
+    assert step.operation.endswith("…")
+
+
+def test_normal_length_prose_is_unchanged():
+    step = DerivationStep(operation="add 4 to both sides", expr_latex="x^2 = 4",
+                          justification="isolate the squared term", change_type="rewrite")
+    assert step.operation == "add 4 to both sides"
+    assert step.justification == "isolate the squared term"
+
+
+def test_overlong_expr_latex_still_rejected():
+    # expr_latex is NOT clamped — truncating LaTeX would corrupt the math.
+    with pytest.raises(ValidationError):
+        DerivationStep(operation="o", expr_latex="x" * 700,
+                       justification="j", change_type="rewrite")
 
 
 def test_change_type_roundtrips_and_is_required():

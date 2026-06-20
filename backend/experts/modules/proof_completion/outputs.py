@@ -11,6 +11,7 @@ from typing import Annotated, List, Literal, Optional, Union
 
 from pydantic import (
     BaseModel, ConfigDict, Discriminator, Field, Tag, TypeAdapter,
+    field_validator,
 )
 
 from backend.model.semantic_graph import SemanticGraphEdge, SemanticGraphNode
@@ -133,6 +134,27 @@ GRAPH_OP_ADAPTER: TypeAdapter = TypeAdapter(GraphOp)
 ChangeType = Literal["rewrite", "solve", "substitute", "approximate", "given"]
 
 
+# Length caps for the model's PROSE fields. These are sent to the LM (via the
+# JSON schema) AND enforced — but the enforcement CLAMPS rather than rejects (see
+# ``_clamp_prose``): a single over-long justification must never fail the whole
+# derivation. `justification` is generous because real derivation/physics
+# rationales legitimately run long. `expr_latex` is NOT clamped — truncating
+# LaTeX would corrupt the actual math, so it stays strict.
+_OPERATION_MAX = 200
+_JUSTIFICATION_MAX = 600
+
+
+def _clamp(text: str, cap: int) -> str:
+    """Trim ``text`` to at most ``cap`` chars, at a word boundary, with an ellipsis."""
+    if len(text) <= cap:
+        return text
+    body = text[:cap - 1].rstrip()
+    space = body.rfind(" ")
+    if space > cap * 0.6:               # prefer a word boundary unless it's too early
+        body = body[:space].rstrip()
+    return body + "…"
+
+
 class DerivationStep(BaseModel):
     """One derivation step: a complete reachable state + the move that reached it.
 
@@ -150,17 +172,33 @@ class DerivationStep(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    operation: str = Field(min_length=1, max_length=200,
+    operation: str = Field(min_length=1, max_length=_OPERATION_MAX,
                            description="the math move; wrap any math in $…$, e.g. 'add $\\frac{c}{a}$ to both sides'")
     expr_latex: str = Field(min_length=1, max_length=600,
                             description="the COMPLETE LaTeX of the resulting expression")
-    justification: str = Field(min_length=1, max_length=400,
+    justification: str = Field(min_length=1, max_length=_JUSTIFICATION_MAX,
                                description="why this step is valid; wrap any math in $…$")
     change_type: ChangeType = Field(
         description="the KIND of move: 'rewrite' (equivalence-preserving "
                     "rearrangement), 'solve' (narrows toward a solution / picks a "
                     "branch), 'substitute' (introduce a new variable, let $u=…$), "
                     "'approximate' (≈, not exact), 'given' (a premise, not derived)")
+
+    @field_validator("operation", "justification", mode="before")
+    @classmethod
+    def _clamp_prose(cls, v, info):
+        """Trim an over-long prose field instead of failing the whole derive.
+
+        DSPy surfaces a single field's length-validation failure as a hard
+        ``RuntimeError`` that aborts the entire derivation. Clamping here (before
+        the ``max_length`` constraint runs) turns a too-verbose justification
+        into a harmless trim rather than a lost derivation.
+        """
+        caps = {"operation": _OPERATION_MAX, "justification": _JUSTIFICATION_MAX}
+        cap = caps.get(info.field_name)
+        if cap and isinstance(v, str):
+            return _clamp(v, cap)
+        return v
 
 
 class ProofTrajectory(Output):
