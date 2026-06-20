@@ -253,6 +253,27 @@ def test_malformed_confidence_is_not_rescued():
     assert out.pairs[0].tier is Tier.GRAY             # no crash, no rescue
 
 
+def test_overconfident_confidence_is_clamped_in_reason():
+    # A judge returning confidence > 1 is clamped to [0, 1] — it still rescues
+    # (clamped to 1.0 ≥ bar) but the user-facing % is bounded (100%, not 500%).
+    report = _report([Tier.GRAY])
+    judge = _StubJudge(DomainVerdict(True, 5.0, "force balance"))
+    out = rescue_uncheckable(report, _states(2), domain="d", context="", judge=judge)
+    assert out.pairs[0].tier is Tier.DOMAIN
+    assert "100%" in out.pairs[0].reason
+    assert "500%" not in out.pairs[0].reason
+
+
+def test_out_of_sync_states_fail_closed():
+    # states shorter than the report (no metadata for the reached step) → the
+    # step is NOT eligible (fail closed) and the judge is never consulted.
+    report = _report([Tier.GRAY])                     # pair reaches state index 1
+    judge = _StubJudge(DomainVerdict(True, 1.0, "would-be rescue"))
+    out = rescue_uncheckable(report, _states(1), domain="d", context="", judge=judge)
+    assert out.pairs[0].tier is Tier.GRAY
+    assert judge.calls == []
+
+
 def test_none_judge_is_noop():
     report = _report([Tier.GRAY])
     out = rescue_uncheckable(report, _states(2), domain="d", context="", judge=None)

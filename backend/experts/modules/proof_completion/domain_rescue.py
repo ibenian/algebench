@@ -103,16 +103,19 @@ def _truncate(s, n: int = 120) -> str:
     return s if len(s) <= n else s[:n - 1] + "…"
 
 
-def _as_float(x) -> float:
-    """Coerce a verdict confidence to a float; non-numeric -> 0.0 (no rescue).
+def _clamp_conf(x) -> float:
+    """Coerce a verdict confidence to a float in [0, 1].
 
-    Guards the threshold comparison and the ``%.2f`` log against a malformed
-    judge returning a non-numeric confidence — keeping rescue_uncheckable total.
+    rescue_uncheckable accepts arbitrary judge callables, so we both guard
+    against a non-numeric confidence (-> 0.0, no rescue) AND clamp to the unit
+    interval so a misbehaving judge can't clear the threshold with conf > 1 or
+    surface a misleading percentage (e.g. 500%) in the user-facing reason.
     """
     try:
-        return float(x)
+        v = float(x)
     except (TypeError, ValueError):
         return 0.0
+    return 0.0 if v < 0 else 1.0 if v > 1 else v
 
 
 def _candidate(tier: Tier, rescue_red: bool) -> bool:
@@ -181,11 +184,13 @@ def rescue_uncheckable(
 
     def _parseable(i: int) -> bool:
         # The resulting step's own expression must be symbolically parseable.
-        # Absent flag = assume parseable (keeps callers that don't supply it,
-        # e.g. unit tests, working).
-        if 0 <= i < len(states):
-            return bool((states[i] or {}).get("parseable", True))
-        return True
+        # FAIL CLOSED on an out-of-sync ``states`` list: an index with no state
+        # metadata is NOT eligible (we'd otherwise judge/override a step using
+        # empty latex/captions). In-range with the flag absent defaults to True,
+        # so callers that don't supply it (e.g. unit tests) still work.
+        if not (0 <= i < len(states)):
+            return False
+        return bool((states[i] or {}).get("parseable", True))
 
     new_pairs = list(report.pairs)
     overrides: dict[int, object] = {}   # pair.index -> new PairVerdict
@@ -230,7 +235,7 @@ def rescue_uncheckable(
                       i, pv.tier.value, exc_info=True)
             continue
         follows = bool(getattr(verdict, "follows", False))
-        conf = _as_float(getattr(verdict, "confidence", 0.0))
+        conf = _clamp_conf(getattr(verdict, "confidence", 0.0))
         threshold = red_min_confidence if pv.tier is Tier.RED else min_confidence
         log.debug("domain_rescue: step %d verdict follows=%s conf=%.2f (need >=%.2f) "
                   "rationale=%r", i, follows, conf, threshold,
@@ -283,7 +288,7 @@ def _rescue_reason(prev_tier: Tier, verdict) -> str:
     reviewer sees the CAS still objects.
     """
     why = (getattr(verdict, "rationale", "") or "").strip() or "a standard move in this domain"
-    conf = getattr(verdict, "confidence", 0.0)
+    conf = _clamp_conf(getattr(verdict, "confidence", 0.0))   # bound the displayed %
     if prev_tier is Tier.RED:
         return (f"the CAS REFUTES this symbolically, but a domain expert accepts it "
                 f"(confidence {conf:.0%}): {why}")

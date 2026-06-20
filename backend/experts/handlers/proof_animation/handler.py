@@ -217,10 +217,15 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     intent = (intent + _MICROSTEP_DIRECTIVE)[:_INTENT_MAX].rstrip()
 
     # --- call: run the expert through the canonical invoke boundary -------------
+    # `step_judge` reflects the gate WITHOUT constructing the judge: calling
+    # _domain_judge() here would instantiate the LM judge as a side effect even
+    # when DEBUG is off (args are evaluated before the level check) and even on
+    # requests that fail before build(). RESCUE_ENABLED and is_configured() are
+    # exactly the conditions under which _domain_judge() returns non-None.
     log.debug("proof_animation: start=%r target=%r domain=%s (start %s) step_judge=%s",
               start, req.target_latex, domain,
               "supplied" if req.start_latex else "inferred",
-              bool(_domain_judge()))
+              RESCUE_ENABLED and is_configured())
     svc = SemanticGraphService()
     try:
         start_g = svc.latex_to_graph(start, domain=domain)
