@@ -1173,8 +1173,10 @@ export class ProofAnimator {
     // Tooltip: when the CAS reached a verdict (or for the start state) the
     // concrete reason IS the story — including a mislabel downgrade, where the
     // generic tier meaning ("could not decide") would contradict it. Only a
-    // genuinely undecided step leads with the tier meaning.
-    let tip = (c.relation === "unknown")
+    // genuinely undecided step leads with the tier meaning. A domain-justified
+    // step (#385) always leads with its specific reason — the judge's rationale
+    // already restates the meaning, so the generic prefix would just repeat it.
+    let tip = (c.relation === "unknown" && c.tier !== "domain")
       ? `${c.label} — ${c.meaning || ""}${c.reason ? ` (${c.reason})` : ""}`
       : `${c.label} — ${c.reason || c.meaning || ""}`;
     this._attachMathTip(el, tip);   // reasons embed $…$ LaTeX — render it
