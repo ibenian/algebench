@@ -23,6 +23,9 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.context_id import build as build_context_id
+from backend.experts.llm_config import is_configured
+from backend.experts.modules.proof_completion.domain_rescue import RESCUE_ENABLED
+from backend.experts.modules.proof_completion.judge import DomainStepJudge
 from backend.experts.registry import register_handler
 from backend.experts.service import invoke
 from backend.semantic_graph.service import SemanticGraphService
@@ -31,6 +34,25 @@ from .animation import build
 from .prompt_endpoints import endpoints_from_prompt
 
 log = logging.getLogger(__name__)
+
+# One shared domain-step judge (issue #385), built lazily the first time an LM is
+# configured. It rescues CAS-uncheckable steps into the DOMAIN tier at build time.
+_DOMAIN_JUDGE: Optional[DomainStepJudge] = None
+
+
+def _domain_judge() -> Optional[DomainStepJudge]:
+    """The shared :class:`DomainStepJudge`, or None when the rescue is disabled.
+
+    None (→ no rescue) when either the master flag ``ALGEBENCH_DOMAIN_RESCUE`` is
+    off or no LM is configured. Returning None makes ``rescue_uncheckable`` a
+    no-op, so confidence stays pure-CAS.
+    """
+    global _DOMAIN_JUDGE
+    if not RESCUE_ENABLED or not is_configured():
+        return None
+    if _DOMAIN_JUDGE is None:
+        _DOMAIN_JUDGE = DomainStepJudge()
+    return _DOMAIN_JUDGE
 
 
 class Given(BaseModel):
@@ -195,9 +217,15 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     intent = (intent + _MICROSTEP_DIRECTIVE)[:_INTENT_MAX].rstrip()
 
     # --- call: run the expert through the canonical invoke boundary -------------
-    log.debug("proof_animation: start=%r target=%r domain=%s (start %s)",
+    # `step_judge` reflects the gate WITHOUT constructing the judge: calling
+    # _domain_judge() here would instantiate the LM judge as a side effect even
+    # when DEBUG is off (args are evaluated before the level check) and even on
+    # requests that fail before build(). RESCUE_ENABLED and is_configured() are
+    # exactly the conditions under which _domain_judge() returns non-None.
+    log.debug("proof_animation: start=%r target=%r domain=%s (start %s) step_judge=%s",
               start, req.target_latex, domain,
-              "supplied" if req.start_latex else "inferred")
+              "supplied" if req.start_latex else "inferred",
+              RESCUE_ENABLED and is_configured())
     svc = SemanticGraphService()
     try:
         start_g = svc.latex_to_graph(start, domain=domain)
@@ -271,4 +299,5 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     start_justification = start_note or "the starting expression"
     return build(traj, domain, title,
                  start_operation=start_operation,
-                 start_justification=start_justification)
+                 start_justification=start_justification,
+                 judge=_domain_judge(), lesson_context=lesson_context)

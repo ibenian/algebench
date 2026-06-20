@@ -57,15 +57,23 @@ class Tier(str, Enum):
     RED = "refuted"        # computed and wrong
     GRAY = "unchecked"     # state not sympy-convertible — nothing to check
     BLUE = "plausible"     # convertible, not refuted, undecided
+    DOMAIN = "domain"      # valid by domain knowledge, not a symbolic identity
     SILVER = "verified"    # landmarks match / proven but mislabeled
     GOLD = "grounded"      # symbolically proven, label consistent
 
 
-TIER_RANK = {Tier.RED: 0, Tier.GRAY: 1, Tier.BLUE: 2, Tier.SILVER: 3, Tier.GOLD: 4}
+# DOMAIN sits between BLUE (CAS undecided) and SILVER (strong CAS evidence): an
+# LM domain-expert vouched for the move, which beats "CAS couldn't decide" but
+# never outranks actual symbolic evidence. The pure-CAS pass NEVER emits DOMAIN —
+# it is produced only by the inference-time judge rescue (``domain_rescue.py``),
+# so the offline reward stays CAS-only.
+TIER_RANK = {Tier.RED: 0, Tier.GRAY: 1, Tier.BLUE: 2,
+             Tier.DOMAIN: 3, Tier.SILVER: 4, Tier.GOLD: 5}
 
 TIER_LABEL = {
     Tier.GOLD: "Grounded",
     Tier.SILVER: "Verified",
+    Tier.DOMAIN: "Domain",
     Tier.BLUE: "Plausible",
     Tier.GRAY: "Unchecked",
     Tier.RED: "Refuted",
@@ -74,6 +82,7 @@ TIER_LABEL = {
 TIER_ICON = {
     Tier.GOLD: "🥇",
     Tier.SILVER: "🥈",
+    Tier.DOMAIN: "🎓",
     Tier.BLUE: "🔹",
     Tier.GRAY: "○",
     Tier.RED: "✗",
@@ -84,6 +93,7 @@ TIER_ICON = {
 TIER_MEANING = {
     Tier.GOLD: "symbolically proven to follow from the previous step",
     Tier.SILVER: "strong CAS evidence, short of a symbolic proof",
+    Tier.DOMAIN: "valid by domain knowledge, not a symbolic identity the CAS can check",
     Tier.BLUE: "valid math, but the CAS could not decide this step",
     Tier.GRAY: "this state is not a single convertible expression",
     Tier.RED: "the CAS shows this does NOT follow from the previous step",
@@ -656,22 +666,37 @@ def ground_steps(states: Sequence, *, change_types: Optional[Sequence] = None,
         if target_expr is not None and final is not None:
             endpoint = bool(_guard(sympy_equiv, final, target_expr, default=False))
 
-    counts = {t.value: 0 for t in Tier}
-    for pv in pairs:
-        counts[pv.tier.value] += 1
-
-    overall = min((pv.tier for pv in pairs), key=TIER_RANK.get, default=Tier.BLUE)
-    # Endpoint gate: GOLD additionally requires *reaching the goal*. Unverified
-    # endpoint caps at SILVER, a missed endpoint at BLUE (locally fine, off-goal).
-    if endpoint is False:
-        overall = min(overall, Tier.BLUE, key=TIER_RANK.get)
-    elif endpoint is None and overall is Tier.GOLD:
-        overall = Tier.SILVER
+    counts = _count_tiers(pairs)
+    overall = finalize_overall(pairs, endpoint)
 
     return StepGroundingReport(
         steps=steps, pairs=pairs, overall=overall, counts=counts,
         endpoint_reached=endpoint, reason=_overall_reason(pairs, counts, endpoint),
     )
+
+
+def _count_tiers(pairs) -> dict:
+    counts = {t.value: 0 for t in Tier}
+    for pv in pairs:
+        counts[pv.tier.value] += 1
+    return counts
+
+
+def finalize_overall(pairs, endpoint) -> Tier:
+    """The chain's overall tier: weakest link, then the endpoint gate.
+
+    Shared by ``ground_steps`` and the inference-time rescue
+    (``domain_rescue.py``), so an overridden pair re-rolls the overall the same
+    way. Endpoint gate: GOLD additionally requires *reaching the goal*; an
+    unverified endpoint caps at SILVER, a missed endpoint at BLUE (locally fine,
+    off-goal).
+    """
+    overall = min((pv.tier for pv in pairs), key=TIER_RANK.get, default=Tier.BLUE)
+    if endpoint is False:
+        overall = min(overall, Tier.BLUE, key=TIER_RANK.get)
+    elif endpoint is None and overall is Tier.GOLD:
+        overall = Tier.SILVER
+    return overall
 
 
 def _safe_coerce(s):
@@ -684,15 +709,23 @@ def _safe_coerce(s):
         return None
 
 
+# Tally wording for the overall summary. Most tier labels work as a bare
+# adjective ("1 refuted", "2 plausible" — i.e. "<n> <adj> step(s)"), but
+# "Domain" is a noun, so it gets an adjectival phrase so the tally reads as a
+# complete fragment ("1 domain-justified" → "1 domain-justified step").
+_TALLY_PHRASE = {Tier.DOMAIN: "domain-justified"}
+
+
 def _overall_reason(pairs, counts, endpoint) -> str:
     n = len(pairs)
     if n == 0:
         return "no steps to verify"
     best = counts[Tier.GOLD.value] + counts[Tier.SILVER.value]
     parts = [f"{best}/{n} steps verified"]
-    for tier in (Tier.RED, Tier.GRAY, Tier.BLUE):
+    for tier in (Tier.RED, Tier.GRAY, Tier.BLUE, Tier.DOMAIN):
         if counts[tier.value]:
-            parts.append(f"{counts[tier.value]} {TIER_LABEL[tier].lower()}")
+            phrase = _TALLY_PHRASE.get(tier, TIER_LABEL[tier].lower())
+            parts.append(f"{counts[tier.value]} {phrase}")
     if endpoint is True:
         parts.append("endpoint reached")
     elif endpoint is False:

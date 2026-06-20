@@ -20,6 +20,7 @@ from backend.semantic_graph.service import SemanticGraphService
 from backend.semantic_graph.latex_renderer import to_latex
 from backend.experts.modules.proof_completion.graph_ops import wl_colors, _content
 from backend.experts.modules.proof_completion.grounding import graph_to_sympy
+from backend.experts.modules.proof_completion.domain_rescue import rescue_uncheckable
 from backend.experts.modules.proof_completion.metric import PLACEHOLDER_TOKENS
 from backend.experts.modules.proof_completion.outputs import ProofTrajectory
 from backend.experts.modules.proof_completion.step_grounding import (
@@ -134,7 +135,8 @@ def _rebase(prev, gnew):
 
 def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
           start_operation: str = "Start",
-          start_justification: str = "the starting expression") -> dict:
+          start_justification: str = "the starting expression",
+          judge=None, lesson_context: str = "") -> dict:
     """Render a ProofCompletionExpert ``ProofTrajectory`` into animation data.
 
     The trajectory is the expert's output: ``start_latex`` plus ordered
@@ -143,6 +145,12 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
     expression; we parse each, rebase onto the previous so persisting parts keep
     stable ids, and emit id-annotated LaTeX for the FLIP engine. ``start_operation``
     / ``start_justification`` caption the initial state (step 0).
+
+    ``judge`` is an optional :class:`DomainStepJudge`; when supplied (the live
+    handler passes one if an LM is configured), the steps the CAS could not check
+    are routed to it with ``domain`` + ``lesson_context`` and may be rescued into
+    the ``DOMAIN`` tier (issue #385). Omitting it (offline tooling, tests) leaves
+    confidence pure-CAS — the rescue is strictly additive.
     """
     # (operation, justification, latex) for every state, starting from the start.
     chain: list[tuple[str, str, str]] = []
@@ -196,7 +204,8 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
             "plain": plain,
         })
 
-    overall = _attach_confidence(out, state_exprs, trajectory, svc, domain)
+    overall = _attach_confidence(out, state_exprs, trajectory, svc, domain,
+                                 judge=judge, lesson_context=lesson_context)
     return {"title": title, "domain": domain, "steps": out,
             "overall_confidence": overall}
 
@@ -214,11 +223,14 @@ def _confidence_payload(tier: Tier, relation=None, reason: str = "",
     }
 
 
-def _attach_confidence(out, state_exprs, trajectory, svc, domain) -> dict:
+def _attach_confidence(out, state_exprs, trajectory, svc, domain,
+                       judge=None, lesson_context: str = "") -> dict:
     """Rank the chain with ``ground_steps`` and attach per-step + overall verdicts.
 
     Strictly additive and isolated: any failure degrades to a uniform GRAY —
-    confidence ranking must never break the animation build.
+    confidence ranking must never break the animation build. When ``judge`` is
+    supplied, the CAS-undecided steps are routed through
+    :func:`rescue_uncheckable` for a possible ``DOMAIN``-tier override (#385).
     """
     try:
         # change_types align to TRANSITIONS: when the chain leads with the start
@@ -235,6 +247,22 @@ def _attach_confidence(out, state_exprs, trajectory, svc, domain) -> dict:
                 target_expr = None
         report = ground_steps(state_exprs, change_types=change_types,
                               target=target_expr, domain=domain)
+        if judge is not None:
+            # Feed the judge each state's authored LaTeX + captions (index-aligned
+            # to report.steps). Isolated: a judge failure leaves the CAS report.
+            try:
+                # ``parseable`` (state_exprs[i] is not None) gates the rescue: a
+                # domain-justified step must still be a sympy-convertible
+                # expression — we just couldn't connect it to the previous step.
+                states = [{"latex": e.get("input_latex", ""),
+                           "operation": e.get("operation", ""),
+                           "justification": e.get("justification", ""),
+                           "parseable": state_exprs[i] is not None}
+                          for i, e in enumerate(out)]
+                report = rescue_uncheckable(report, states, domain=domain,
+                                            context=lesson_context, judge=judge)
+            except Exception:
+                pass
         for entry, sc in zip(out, report.steps):
             entry["confidence"] = _confidence_payload(
                 sc.tier, sc.relation, sc.reason, sc.type_consistent)

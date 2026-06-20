@@ -16,7 +16,7 @@ full weight (``score = grounding_score``).
 * **wellformed_factor** — a near-binary *prerequisite* (1.0 well-formed, else
   0.0): a malformed caption can't render, so it zeroes the reward and the loop
   retries with the caption issues as feedback (the judge is not even called).
-* **grounding_score** — tier-graded (``TIER_RANK/4``), weighted to dominate so a
+* **grounding_score** — tier-graded (``TIER_RANK / max_rank``), weighted to dominate so a
   ``Refuted`` step can't clear ``τ`` even with a perfect judge.
 * **judge_score** — the LLM judge's pedagogy/clarity score; optional. With no LM
   configured the judge term is dropped and grounding is renormalised to the full

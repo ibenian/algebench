@@ -1173,8 +1173,10 @@ export class ProofAnimator {
     // Tooltip: when the CAS reached a verdict (or for the start state) the
     // concrete reason IS the story — including a mislabel downgrade, where the
     // generic tier meaning ("could not decide") would contradict it. Only a
-    // genuinely undecided step leads with the tier meaning.
-    let tip = (c.relation === "unknown")
+    // genuinely undecided step leads with the tier meaning. A domain-justified
+    // step (#385) always leads with its specific reason — the judge's rationale
+    // already restates the meaning, so the generic prefix would just repeat it.
+    let tip = (c.relation === "unknown" && c.tier !== "domain")
       ? `${c.label} — ${c.meaning || ""}${c.reason ? ` (${c.reason})` : ""}`
       : `${c.label} — ${c.reason || c.meaning || ""}`;
     this._attachMathTip(el, tip);   // reasons embed $…$ LaTeX — render it
@@ -1368,7 +1370,20 @@ export class ProofAnimator {
       + (this.data.title ? ` "${this.data.title}"` : "") + `:\n$$${this._stepExpr(i)}$$`;
     if (s.operation) msg += `\nOperation: ${s.operation}`;
     if (s.justification) msg += `\nJustification: ${s.justification}`;
-    msg += `\nCan you explain this step — what it does and why it's valid?`;
+    // A DOMAIN-tier step is NOT a symbolic identity — the CAS couldn't verify it
+    // and an LM domain expert vouched for it instead. Pass that verdict + reason
+    // so the AI addresses the domain justification rather than assuming the step
+    // is symbolically proven (and can confirm or challenge the expert's claim).
+    const c = this._conf(i);
+    if (c && c.tier === "domain") {
+      msg += `\n\nNote: a symbolic checker could NOT verify this step — it's marked`
+        + ` "${c.label || "Domain"}" (${c.meaning || "valid by domain knowledge, not a symbolic identity"}).`;
+      if (c.reason) msg += ` The reasoning given was: ${c.reason}.`;
+      msg += `\nIs that domain justification sound? Explain the principle it relies on`
+        + ` and whether the step genuinely follows.`;
+    } else {
+      msg += `\nCan you explain this step — what it does and why it's valid?`;
+    }
     return msg;
   }
 

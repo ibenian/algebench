@@ -9,13 +9,16 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+import backend.experts.handlers.proof_animation.handler as H
 from backend.experts.handlers.proof_animation.handler import (
     DeriveProofRequest,
     PriorStep,
+    _domain_judge,
     _format_lesson_context,
     _format_prior_steps,
     _PRIOR_STEPS_MAX,
 )
+from backend.experts.modules.proof_completion.judge import DomainStepJudge
 
 
 def test_request_accepts_previous_steps():
@@ -83,3 +86,31 @@ def test_format_lesson_context_unchanged_by_previous_steps():
     out = _format_lesson_context(ctx)
     assert "Lesson: Kinematics" in out
     assert "Goal: v = u + at" in out
+
+
+# --- domain-step judge wiring (issue #385) ---------------------------------- #
+
+
+def test_domain_judge_none_without_lm(monkeypatch):
+    monkeypatch.setattr(H, "is_configured", lambda: False)
+    monkeypatch.setattr(H, "RESCUE_ENABLED", True)
+    monkeypatch.setattr(H, "_DOMAIN_JUDGE", None)
+    assert _domain_judge() is None
+
+
+def test_domain_judge_built_and_cached_when_configured(monkeypatch):
+    monkeypatch.setattr(H, "is_configured", lambda: True)
+    monkeypatch.setattr(H, "RESCUE_ENABLED", True)
+    monkeypatch.setattr(H, "_DOMAIN_JUDGE", None)
+    j1 = _domain_judge()
+    j2 = _domain_judge()
+    assert isinstance(j1, DomainStepJudge)
+    assert j1 is j2                                    # shared singleton
+
+
+def test_domain_judge_none_when_rescue_disabled(monkeypatch):
+    # Master flag off → no judge even with an LM configured (rescue is a no-op).
+    monkeypatch.setattr(H, "is_configured", lambda: True)
+    monkeypatch.setattr(H, "RESCUE_ENABLED", False)
+    monkeypatch.setattr(H, "_DOMAIN_JUDGE", None)
+    assert _domain_judge() is None

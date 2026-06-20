@@ -312,6 +312,8 @@
   --pa-tier-grounded-bg: rgba(212, 160, 23, 0.16);
   --pa-tier-verified: #9aa3b5;                    /* silver — strong evidence */
   --pa-tier-verified-bg: rgba(154, 163, 181, 0.18);
+  --pa-tier-domain: #2fb6a3;                      /* teal   — domain-justified */
+  --pa-tier-domain-bg: rgba(47, 182, 163, 0.18);
   --pa-tier-plausible: var(--pa-accent);          /* blue   — undecided */
   --pa-tier-plausible-bg: rgba(99, 102, 241, 0.16);
   --pa-tier-unchecked: var(--pa-muted);           /* gray   — not convertible */
@@ -321,6 +323,7 @@
 }
 .pa-conf-grounded    { --pa-conf-fg: var(--pa-tier-grounded);    --pa-conf-bg: var(--pa-tier-grounded-bg); }
 .pa-conf-verified  { --pa-conf-fg: var(--pa-tier-verified);  --pa-conf-bg: var(--pa-tier-verified-bg); }
+.pa-conf-domain    { --pa-conf-fg: var(--pa-tier-domain);    --pa-conf-bg: var(--pa-tier-domain-bg); }
 .pa-conf-plausible { --pa-conf-fg: var(--pa-tier-plausible); --pa-conf-bg: var(--pa-tier-plausible-bg); }
 .pa-conf-unchecked { --pa-conf-fg: var(--pa-tier-unchecked); --pa-conf-bg: var(--pa-tier-unchecked-bg); }
 .pa-conf-refuted   { --pa-conf-fg: var(--pa-tier-refuted);   --pa-conf-bg: var(--pa-tier-refuted-bg); }
