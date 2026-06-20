@@ -67,6 +67,7 @@
         "refuted": 0,
         "unchecked": 0,
         "plausible": 0,
+        "domain": 0,
         "verified": 0,
         "grounded": 2
       },
@@ -124,6 +125,7 @@
         "refuted": 0,
         "unchecked": 0,
         "plausible": 0,
+        "domain": 0,
         "verified": 0,
         "grounded": 1
       },
@@ -181,6 +183,7 @@
         "refuted": 0,
         "unchecked": 0,
         "plausible": 0,
+        "domain": 0,
         "verified": 0,
         "grounded": 1
       },
@@ -306,6 +309,7 @@
         "refuted": 0,
         "unchecked": 0,
         "plausible": 0,
+        "domain": 0,
         "verified": 2,
         "grounded": 3
       },
@@ -448,6 +452,7 @@
         "refuted": 0,
         "unchecked": 0,
         "plausible": 0,
+        "domain": 0,
         "verified": 1,
         "grounded": 5
       },
@@ -624,6 +629,7 @@
         "refuted": 0,
         "unchecked": 0,
         "plausible": 0,
+        "domain": 0,
         "verified": 3,
         "grounded": 5
       },
