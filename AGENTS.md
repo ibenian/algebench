@@ -14,6 +14,34 @@ AlgeBench is an interactive 3D math visualizer built on MathBox / Three.js, with
 
 The server runs at `http://localhost:8785`.
 
+### CAS execution guard (sympy timeouts)
+
+Heavy sympy calls in the proof-grounding path (`solveset` / `simplify` / `limit`
+/ …) have no termination guarantee and can peg a CPU core indefinitely. They run
+through a **killable, process-isolated guard** (`backend/experts/modules/
+proof_completion/cas_guard.py`, issue #386): a wall-clock budget actually
+*stops* the computation — the worker is SIGTERM'd (graceful) then SIGKILL'd
+(hard) and the core reclaimed. The client timeout (how long the caller waits) is
+separate from this kill/respawn, so a derive never blocks on a pathological step.
+
+All tunables are environment variables (sensible defaults; nothing to set for
+normal use):
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `ALGEBENCH_CAS_ISOLATION` | `process` | `process` (killable), `thread` (waits only, legacy), or `inline` (no isolation) |
+| `ALGEBENCH_CAS_CLIENT_TIMEOUT` | `ALGEBENCH_VERIFY_TIMEOUT` (2.0s) | rung 1: how long the caller waits before degrading to "unknown" |
+| `ALGEBENCH_CAS_GRACEFUL_TIMEOUT` | `1.0` | rung 2→3: SIGTERM grace before SIGKILL on a wedged worker |
+| `ALGEBENCH_CAS_POOL_SIZE` | `min(4, cores−1)` | number of pre-warmed worker processes |
+| `ALGEBENCH_CAS_MAX_CALLS` | `200` | recycle a worker after N calls (cache/memory hygiene; 0 = never) |
+| `ALGEBENCH_CAS_START_METHOD` | `forkserver` (Linux) / `spawn` | multiprocessing start method |
+| `ALGEBENCH_CAS_SPAWN_TIMEOUT` | `30` | max wait for a fresh worker to warm up (import), charged separately from a call |
+| `ALGEBENCH_CAS_ACQUIRE_TIMEOUT` | client timeout | max wait for a free worker under load before degrading |
+| `ALGEBENCH_CAS_MAX_OPS` | `2500` | complexity pre-gate: skip the CAS on expressions larger than this (0 = off) |
+
+`ALGEBENCH_VERIFY_TIMEOUT` is still honored as the client-timeout default for
+back-compat. The test suite runs in `thread` isolation (see `tests/conftest.py`).
+
 ### Running Scripts
 
 **Always use `./run.sh` to run project Python scripts** — never call `.venv/bin/python` or `python3` directly. `run.sh` handles venv creation and dependency installation automatically.

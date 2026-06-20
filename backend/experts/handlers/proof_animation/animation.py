@@ -19,6 +19,7 @@ from collections import defaultdict
 from backend.semantic_graph.service import SemanticGraphService
 from backend.semantic_graph.latex_renderer import to_latex
 from backend.experts.modules.proof_completion.graph_ops import wl_colors, _content
+from backend.experts.modules.proof_completion.cas_guard import guard as _guard
 from backend.experts.modules.proof_completion.grounding import graph_to_sympy
 from backend.experts.modules.proof_completion.domain_rescue import rescue_uncheckable
 from backend.experts.modules.proof_completion.metric import PLACEHOLDER_TOKENS
@@ -183,10 +184,9 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
             # ONLY the sympy conversion so its grounding expr stays None (tier
             # "unchecked"), while the state still rebases/animates normally.
             if not any(tok in ltx for tok in PLACEHOLDER_TOKENS):
-                try:
-                    expr = graph_to_sympy(g)
-                except Exception:
-                    expr = None
+                # killable guard: graph_to_sympy builds (potentially large)
+                # sympy trees; a pathological graph can't peg a core (#386).
+                expr = _guard(graph_to_sympy, g, default=None)
             try:
                 cand = g if working is None else _rebase(working, g)
                 annotated = to_latex(cand, with_ids=True)   # annotated, stable ids
@@ -242,7 +242,8 @@ def _attach_confidence(out, state_exprs, trajectory, svc, domain,
         if trajectory.target_latex:
             try:
                 tg = svc.latex_to_graph(trajectory.target_latex, domain=domain)
-                target_expr = graph_to_sympy(tg) if tg is not None else None
+                target_expr = (_guard(graph_to_sympy, tg, default=None)
+                               if tg is not None else None)
             except Exception:
                 target_expr = None
         report = ground_steps(state_exprs, change_types=change_types,
