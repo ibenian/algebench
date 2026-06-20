@@ -27,6 +27,12 @@ Where the judge kicks in (the candidates), by CAS status:
   ``rescue_red`` and the override is labeled "the CAS disagrees" explicitly.
   Even gated on, it demands a higher judge confidence (:data:`_RED_MIN_CONF`).
 
+In every case the resulting step must still be **symbolically parseable** — we
+could not *connect* it to the previous step (that is why the CAS couldn't check
+it), but a domain-justified step must remain a well-formed expression, never
+unrenderable/non-symbolic notation. A non-parseable step is left at its CAS tier
+and never sent to the judge.
+
 Safety: this runs ONLY at inference (animation build), never in the training
 reward — so "a Refuted step can't be rescued by a perfect judge" still holds for
 the optimizer (``reward.py`` stays pure-CAS). Total and isolated: any judge
@@ -130,10 +136,18 @@ def rescue_uncheckable(
 
     ``states``: per-STATE captions, index-aligned to ``report.steps`` (index 0
     is the start). Each is a mapping with ``latex`` / ``operation`` /
-    ``justification`` (missing keys tolerated). ``judge`` is a callable matching
+    ``justification`` and an optional ``parseable`` flag (missing keys
+    tolerated; ``parseable`` defaults to True). ``judge`` is a callable matching
     :class:`DomainStepJudge` (``domain, context, previous_step, current_step,
     operation, justification, cas_status -> DomainVerdict``); when ``None`` the
     report is returned unchanged.
+
+    A step is only eligible for a DOMAIN override if its OWN resulting expression
+    is still **symbolically parseable** (``states[i]["parseable"]``). We may not
+    be able to *connect* it to the previous step symbolically (that is exactly
+    why the CAS couldn't check it), but a domain-justified step must still be a
+    well-formed expression — never unrenderable/non-symbolic notation. A
+    non-parseable step stays at its CAS tier and is not even sent to the judge.
 
     Returns a NEW report (never mutates ``report``). Total: a judge that raises
     or declines simply leaves that step's CAS tier in place.
@@ -153,19 +167,33 @@ def rescue_uncheckable(
             return str((states[i] or {}).get(key, "") or "")
         return ""
 
+    def _parseable(i: int) -> bool:
+        # The resulting step's own expression must be symbolically parseable.
+        # Absent flag = assume parseable (keeps callers that don't supply it,
+        # e.g. unit tests, working).
+        if 0 <= i < len(states):
+            return bool((states[i] or {}).get("parseable", True))
+        return True
+
     new_pairs = list(report.pairs)
     overrides: dict[int, object] = {}   # pair.index -> new PairVerdict
-    n_candidates = sum(1 for pv in report.pairs if _candidate(pv.tier, rescue_red))
+    n_candidates = sum(1 for pv in report.pairs
+                       if _candidate(pv.tier, rescue_red) and _parseable(pv.index))
     calls = 0
     for j, pv in enumerate(report.pairs):
         if not _candidate(pv.tier, rescue_red):
+            continue
+        i = pv.index                      # transition state[i-1] -> state[i]
+        # Gate: a domain-justified step must itself be symbolically parseable.
+        if not _parseable(i):
+            log.debug("domain_rescue: step %d NOT eligible — its own expression is "
+                      "not symbolically parseable (stays %s)", i, pv.tier.value)
             continue
         if calls >= max_calls:
             log.debug("domain_rescue: hit max_calls=%d, leaving step %d at %s",
                       max_calls, pv.index, pv.tier.value)
             break
         calls += 1
-        i = pv.index                      # transition state[i-1] -> state[i]
         cas_status = _CAS_STATUS.get(pv.tier, "uncheckable")
         log.debug("domain_rescue: judging step %d (%s/%s): %s -> %s [%s]",
                   i, pv.tier.value, cas_status, _latex(i - 1), _latex(i),

@@ -119,8 +119,10 @@ class _StubJudge:
 
 
 def test_attach_confidence_rescues_uncheckable_step():
-    # state 1 is None → GRAY transition the judge can rescue.
-    state_exprs = [sp.Symbol("x"), None]
+    # The ∑F=0 case: the START (state 0) isn't sympy-parseable, but the reached
+    # step (state 1) IS — a GRAY transition whose own expression is well-formed,
+    # so it's eligible for a DOMAIN rescue.
+    state_exprs = [None, sp.Symbol("x")]
     traj = _Traj([_Step("substitute")])
     out = _out(2)
     judge = _StubJudge(DomainVerdict(True, 0.9, "named-force expansion"))
@@ -146,6 +148,20 @@ def test_attach_confidence_without_judge_stays_cas_only():
     overall = _attach_confidence(out, state_exprs, traj, svc=None, domain="algebra")
     assert out[1]["confidence"]["tier"] == "unchecked"   # GRAY, not rescued
     assert overall["tier"] == "unchecked"
+
+
+def test_attach_confidence_unparseable_reached_step_not_rescued():
+    # The reached step (state 1) is itself non-parseable → must NOT be rescued,
+    # even with a confident judge: a domain step must be symbolically parseable.
+    state_exprs = [sp.Symbol("x"), None]
+    traj = _Traj([_Step("substitute")])
+    out = _out(2)
+    judge = _StubJudge(DomainVerdict(True, 1.0, "should be ignored"))
+    overall = _attach_confidence(out, state_exprs, traj, svc=None, domain="d",
+                                 judge=judge, lesson_context="")
+    assert out[1]["confidence"]["tier"] == "unchecked"   # stays GRAY
+    assert overall["tier"] == "unchecked"
+    assert judge.calls == 0                               # never consulted
 
 
 def test_attach_confidence_judge_failure_degrades_to_cas():

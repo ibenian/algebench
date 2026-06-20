@@ -149,6 +149,31 @@ def test_low_confidence_is_not_rescued():
     assert out is report                              # nothing overridden → same obj
 
 
+def test_unparseable_step_is_not_rescued():
+    # A GRAY step whose OWN resulting expression isn't sympy-parseable must NOT
+    # be rescued — and the judge is not even consulted.
+    report = _report([Tier.GRAY])
+    states = [{"latex": "s0", "parseable": True},
+              {"latex": "s1", "parseable": False}]   # the reached step is unparseable
+    judge = _StubJudge(DomainVerdict(True, 1.0, "would-be rescue"))
+    out = rescue_uncheckable(report, states, domain="d", context="", judge=judge)
+    assert out.pairs[0].tier is Tier.GRAY            # unchanged
+    assert judge.calls == []                          # never judged
+
+
+def test_parseable_step_with_unparseable_previous_is_rescued():
+    # The classic case (∑F=0 -> named forces): the PREVIOUS state is unparseable
+    # but the resulting step is — so it IS eligible.
+    report = _report([Tier.GRAY])
+    states = [{"latex": "\\sum F = 0", "parseable": False},      # prev: not parseable
+              {"latex": "F_1 + F_2 = 0", "parseable": True}]     # step: parseable
+    judge = _StubJudge(DomainVerdict(True, 0.95, "force-balance expansion"))
+    out = rescue_uncheckable(report, states, domain="hydrostatics",
+                             context="", judge=judge)
+    assert out.pairs[0].tier is Tier.DOMAIN
+    assert len(judge.calls) == 1
+
+
 def test_follows_false_is_not_rescued():
     report = _report([Tier.GRAY])
     judge = _StubJudge(DomainVerdict(False, 0.99, "not a valid move"))

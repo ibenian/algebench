@@ -251,9 +251,14 @@ def _attach_confidence(out, state_exprs, trajectory, svc, domain,
             # Feed the judge each state's authored LaTeX + captions (index-aligned
             # to report.steps). Isolated: a judge failure leaves the CAS report.
             try:
+                # ``parseable`` (state_exprs[i] is not None) gates the rescue: a
+                # domain-justified step must still be a sympy-convertible
+                # expression — we just couldn't connect it to the previous step.
                 states = [{"latex": e.get("input_latex", ""),
                            "operation": e.get("operation", ""),
-                           "justification": e.get("justification", "")} for e in out]
+                           "justification": e.get("justification", ""),
+                           "parseable": state_exprs[i] is not None}
+                          for i, e in enumerate(out)]
                 report = rescue_uncheckable(report, states, domain=domain,
                                             context=lesson_context, judge=judge)
             except Exception:
