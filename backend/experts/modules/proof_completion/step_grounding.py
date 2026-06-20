@@ -216,13 +216,15 @@ def _op_squared_match(plhs, prhs, lhs, rhs):
 
 def _op_branch_equiv(prev, curr):
     """Do the two equations square to the same statement (equal up to branch)?"""
-    sq = lambda e: sp.Eq(e.lhs ** 2, e.rhs ** 2)  # noqa: E731  (not pickled)
+    def sq(e):
+        return sp.Eq(e.lhs ** 2, e.rhs ** 2)
     return bool(sympy_equiv(sq(prev), sq(curr)))
 
 
 def _op_sets_norm_equal(a, b):
     """Are two finite landmark sets equal after nsimplify/simplify normalisation?"""
-    norm = lambda s: frozenset(sp.nsimplify(sp.simplify(v)) for v in s)  # noqa: E731
+    def norm(s):
+        return frozenset(sp.nsimplify(sp.simplify(v)) for v in s)
     return norm(a) == norm(b)
 
 

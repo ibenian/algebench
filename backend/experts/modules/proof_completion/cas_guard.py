@@ -297,12 +297,28 @@ class _Worker:
             raise _WorkerBroken(str(exc)) from exc
         return (status, payload)
 
+    def signal_stop(self) -> None:
+        """Request a graceful stop *now* (cheap, non-blocking SIGTERM).
+
+        Sent synchronously at retire time so a runaway starts unwinding
+        immediately, rather than only when its reap task reaches the front of the
+        reaper queue (which, under a burst of timeouts, can be several blocking
+        joins later — leaving multiple workers burning cores meanwhile).
+        """
+        try:
+            if self.proc.is_alive():
+                self.proc.terminate()   # SIGTERM
+        except Exception:               # pragma: no cover - already-dead race
+            pass
+
     def reap(self, graceful_timeout: float) -> None:
         """Escalating teardown: SIGTERM (graceful) then SIGKILL (hard).
 
-        The pipe is closed only *after* the process is gone — closing it first
-        would race the worker's idle ``recv`` (EOF) against our SIGTERM, landing
-        the signal during the worker's own shutdown.
+        ``signal_stop`` may already have sent the SIGTERM; the ``is_alive`` guard
+        below makes the re-send a no-op in that case. The pipe is closed only
+        *after* the process is gone — closing it first would race the worker's
+        idle ``recv`` (EOF) against our SIGTERM, landing the signal during the
+        worker's own shutdown.
         """
         p = self.proc
         try:
@@ -416,6 +432,9 @@ class _CasPool:
     def _retire(self, w: "_Worker") -> None:
         with self._lock:
             self._count -= 1
+        # Interrupt the worker NOW (cheap) so a runaway stops burning a core
+        # immediately; the reaper only does the blocking join + SIGKILL escalation.
+        w.signal_stop()
         try:
             self._reaper.submit(w.reap, self.cfg.graceful_timeout)
         except RuntimeError:            # reaper already shut down (at exit)
