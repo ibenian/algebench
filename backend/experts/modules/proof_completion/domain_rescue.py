@@ -71,10 +71,12 @@ def _envi(name: str, default: int) -> int:
 # it by NOT passing a judge when off, so ``rescue_uncheckable`` is a no-op.
 RESCUE_ENABLED = os.environ.get("ALGEBENCH_DOMAIN_RESCUE", "1").lower() in ("1", "true", "yes")
 
-# Minimum judge confidence to override a GRAY/BLUE step into DOMAIN. The RED
-# override (when enabled) is held to a stricter bar — the CAS actively disagrees.
-_MIN_CONF = _envf("ALGEBENCH_DOMAIN_MIN_CONF", 0.6)
-_RED_MIN_CONF = _envf("ALGEBENCH_DOMAIN_RED_MIN_CONF", 0.9)
+# Minimum judge confidence to override a GRAY/BLUE step into DOMAIN — high by
+# default, so only a confident domain verdict overrides the CAS's "couldn't
+# check". The RED override (when enabled) is stricter still — the CAS actively
+# disagrees there.
+_MIN_CONF = _envf("ALGEBENCH_DOMAIN_MIN_CONF", 0.9)
+_RED_MIN_CONF = _envf("ALGEBENCH_DOMAIN_RED_MIN_CONF", 0.95)
 # Cap the number of judge calls per derivation (latency/cost guard). Real
 # derivations have a handful of uncheckable steps; this bounds pathological ones.
 _MAX_CALLS = _envi("ALGEBENCH_DOMAIN_MAX_CALLS", 8)

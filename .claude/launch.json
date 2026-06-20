@@ -9,6 +9,13 @@
       "autoPort": true
     },
     {
+      "name": "domain-demo",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": ["scenes/atmospheric-entry-physics.json", "--port", "5752", "--debug", "--server-only", "--skip-tour"],
+      "port": 5752,
+      "autoPort": true
+    },
+    {
       "name": "ratelimit-verify",
       "runtimeExecutable": "env",
       "runtimeArgs": ["ALGEBENCH_RATELIMIT_CHAT=1/60", "./algebench", "scenes/eigenvalues.json", "--port", "5741", "--server-only", "--skip-tour"],

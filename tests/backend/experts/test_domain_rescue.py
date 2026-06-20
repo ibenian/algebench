@@ -115,12 +115,20 @@ def test_rescues_gray_step_to_domain():
 
 def test_rescues_blue_step_to_domain():
     report = _report([Tier.BLUE])
-    judge = _StubJudge(DomainVerdict(True, 0.8, "applies F=ma"))
+    judge = _StubJudge(DomainVerdict(True, 0.95, "applies F=ma"))   # >= default 0.9 bar
     out = rescue_uncheckable(report, _states(2), domain="mechanics",
                              context="", judge=judge)
     assert out.pairs[0].tier is Tier.DOMAIN
     # BLUE feeds the judge as "undecided".
     assert judge.calls[0]["cas_status"] == "undecided"
+
+
+def test_default_min_conf_excludes_mid_confidence():
+    # A 0.8 verdict no longer clears the default 0.9 bar (was 0.6 previously).
+    report = _report([Tier.GRAY])
+    judge = _StubJudge(DomainVerdict(True, 0.8, "only moderately sure"))
+    out = rescue_uncheckable(report, _states(2), domain="d", context="", judge=judge)
+    assert out.pairs[0].tier is Tier.GRAY          # not rescued at the high default bar
 
 
 def test_only_undecided_steps_are_judged():
@@ -194,7 +202,9 @@ def test_overall_re_rolls_after_rescue():
     judge = _StubJudge(DomainVerdict(True, 0.9, "domain move"))
     out = rescue_uncheckable(report, _states(3), domain="d", context="", judge=judge)
     assert out.overall is Tier.DOMAIN                 # weakest link is now DOMAIN
-    assert "domain" in out.reason
+    # The tally reads as a complete fragment ("1 domain-justified"), not "1 domain".
+    assert "domain-justified" in out.reason
+    assert "1 domain " not in out.reason
 
 
 def test_judge_exception_leaves_report_untouched():

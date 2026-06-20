@@ -709,6 +709,13 @@ def _safe_coerce(s):
         return None
 
 
+# Tally wording for the overall summary. Most tier labels work as a bare
+# adjective ("1 refuted", "2 plausible" — i.e. "<n> <adj> step(s)"), but
+# "Domain" is a noun, so it gets an adjectival phrase so the tally reads as a
+# complete fragment ("1 domain-justified" → "1 domain-justified step").
+_TALLY_PHRASE = {Tier.DOMAIN: "domain-justified"}
+
+
 def _overall_reason(pairs, counts, endpoint) -> str:
     n = len(pairs)
     if n == 0:
@@ -717,7 +724,8 @@ def _overall_reason(pairs, counts, endpoint) -> str:
     parts = [f"{best}/{n} steps verified"]
     for tier in (Tier.RED, Tier.GRAY, Tier.BLUE, Tier.DOMAIN):
         if counts[tier.value]:
-            parts.append(f"{counts[tier.value]} {TIER_LABEL[tier].lower()}")
+            phrase = _TALLY_PHRASE.get(tier, TIER_LABEL[tier].lower())
+            parts.append(f"{counts[tier.value]} {phrase}")
     if endpoint is True:
         parts.append("endpoint reached")
     elif endpoint is False:
