@@ -346,6 +346,11 @@ class _CasPool:
         # client timeout stays decoupled from recycle/recovery time.
         self._reaper = ThreadPoolExecutor(
             max_workers=cfg.pool_size + 2, thread_name_prefix="cas-reap")
+        # One-time confirmation the killable pool is live (visible with --debug).
+        log.debug("%s pool up: process mode, size=%d start=%s "
+                  "client=%.1fs graceful=%.1fs max_calls=%d",
+                  _CAS_TAG, cfg.pool_size, cfg.start_method,
+                  cfg.client_timeout, cfg.graceful_timeout, cfg.max_calls)
 
     # -- worker lifecycle -------------------------------------------------- #
 
@@ -363,6 +368,7 @@ class _CasPool:
         except Exception:               # pragma: no cover - warm-up failure
             w.reap(self.cfg.graceful_timeout)
             return None
+        log.debug("%s %s worker spawned pid=%s", _CAS_TAG, _WORKER_EMOJI, proc.pid)
         return w
 
     def _acquire(self) -> Optional["_Worker"]:
