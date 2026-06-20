@@ -69,9 +69,10 @@ key — see [Get a Gemini API key](#get-a-gemini-api-key).
 
 ### Option 1 — Run locally from a cloned repo
 
-**Prerequisites:** Python 3.10+, a [Gemini API key](#get-a-gemini-api-key).
-[`uv`](https://docs.astral.sh/uv/) is recommended — if it's installed, the venv
-is built on a native CPython pinned by `.python-version` (Python 3.13). This
+**Prerequisites:** [`uv`](https://docs.astral.sh/uv/) (recommended) **or** Python 3.10+,
+plus a [Gemini API key](#get-a-gemini-api-key). With `uv` installed you don't need a
+preinstalled Python — it provisions the pinned interpreter (`.python-version`, Python 3.13)
+for you, on a native CPython build. This
 matters on Apple Silicon: a bare `python3 -m venv` often picks an x86 Homebrew
 Python and runs everything under Rosetta, which roughly halves sympy throughput.
 With `uv` present the dev venv is always native arm64. If `uv` is absent the
