@@ -233,17 +233,24 @@ def test_overall_re_rolls_after_rescue():
 
 
 def test_judge_exception_leaves_report_untouched():
+    # A judge that RAISES is a no-op for that step (per the totality contract),
+    # not a rescue-aborting error — the step keeps its CAS tier.
     report = _report([Tier.GRAY])
 
     def boom(**_kw):
         raise RuntimeError("judge died")
 
-    # rescue_uncheckable lets the judge callable raise; the animation layer wraps
-    # it, but a well-behaved judge (DomainStepJudge) never raises. Here we assert
-    # the contract that a NON-raising judge returning follows=False is a no-op.
-    judge = _StubJudge(DomainVerdict(False, 0.0, ""))
-    out = rescue_uncheckable(report, _states(2), domain="d", context="", judge=judge)
+    out = rescue_uncheckable(report, _states(2), domain="d", context="", judge=boom)
+    assert out is report                              # nothing overridden
     assert out.pairs[0].tier is Tier.GRAY
+
+
+def test_malformed_confidence_is_not_rescued():
+    # A non-numeric confidence must not raise (coerced to 0.0 -> below bar).
+    report = _report([Tier.GRAY])
+    judge = _StubJudge(DomainVerdict(True, "not-a-number", "x"))   # bad confidence
+    out = rescue_uncheckable(report, _states(2), domain="d", context="", judge=judge)
+    assert out.pairs[0].tier is Tier.GRAY             # no crash, no rescue
 
 
 def test_none_judge_is_noop():

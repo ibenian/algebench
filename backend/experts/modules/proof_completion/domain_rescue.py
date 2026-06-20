@@ -103,6 +103,18 @@ def _truncate(s, n: int = 120) -> str:
     return s if len(s) <= n else s[:n - 1] + "…"
 
 
+def _as_float(x) -> float:
+    """Coerce a verdict confidence to a float; non-numeric -> 0.0 (no rescue).
+
+    Guards the threshold comparison and the ``%.2f`` log against a malformed
+    judge returning a non-numeric confidence — keeping rescue_uncheckable total.
+    """
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _candidate(tier: Tier, rescue_red: bool) -> bool:
     """Should this CAS verdict be routed to the domain judge?
 
@@ -198,17 +210,27 @@ def rescue_uncheckable(
         log.debug("domain_rescue: judging step %d (%s/%s): %s -> %s [%s]",
                   i, pv.tier.value, cas_status, _latex(i - 1), _latex(i),
                   _field(i, "operation"))
-        verdict = judge(
-            domain=domain,
-            context=context,
-            previous_step=_latex(i - 1),
-            current_step=_latex(i),
-            operation=_field(i, "operation"),
-            justification=_field(i, "justification"),
-            cas_status=cas_status,
-        )
+        # Per-step isolation: a judge that raises (or returns a malformed
+        # verdict) is a no-op for THIS step, not a rescue-aborting error — this
+        # is what the module/docstring's "total" guarantee means. The supplied
+        # DomainStepJudge is already exception-safe, but rescue_uncheckable
+        # accepts any callable, so we defend here too.
+        try:
+            verdict = judge(
+                domain=domain,
+                context=context,
+                previous_step=_latex(i - 1),
+                current_step=_latex(i),
+                operation=_field(i, "operation"),
+                justification=_field(i, "justification"),
+                cas_status=cas_status,
+            )
+        except Exception:
+            log.debug("domain_rescue: judge raised on step %d — leaving %s",
+                      i, pv.tier.value, exc_info=True)
+            continue
         follows = bool(getattr(verdict, "follows", False))
-        conf = getattr(verdict, "confidence", 0.0)
+        conf = _as_float(getattr(verdict, "confidence", 0.0))
         threshold = red_min_confidence if pv.tier is Tier.RED else min_confidence
         log.debug("domain_rescue: step %d verdict follows=%s conf=%.2f (need >=%.2f) "
                   "rationale=%r", i, follows, conf, threshold,
