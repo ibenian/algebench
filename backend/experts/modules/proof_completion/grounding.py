@@ -26,6 +26,7 @@ import sympy as sp
 
 from backend.model.semantic_graph import SemanticGraph
 
+from .cas_guard import register
 from .graph_ops import apply, canonical_equal
 
 # op name -> sympy function (single-argument functions)
@@ -79,6 +80,7 @@ def _symbol(node) -> sp.Expr:
     return sp.Symbol(name)
 
 
+@register
 def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
     """Reconstruct a sympy expression from the graph structure. Raise if unmodeled."""
     nodes = {n.id: n for n in graph.nodes}
@@ -263,6 +265,7 @@ def _as_residual(expr):
     return sp.expand(expr)
 
 
+@register
 def sympy_equiv(a, b) -> bool:
     """True iff ``a`` and ``b`` denote the same statement.
 

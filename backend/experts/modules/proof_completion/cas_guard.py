@@ -82,6 +82,18 @@ _WORKER_EMOJI = "🖥️"
 # never recurse into building its own pool — it degrades to inline instead.
 _IS_WORKER = False
 
+# Allow-list of callables permitted to run via ``guard`` (defense in depth).
+# ``guard`` refuses anything not registered here, so only known, vetted ops can
+# ever execute in a worker — even though no current call site lets user input
+# choose the callable. Ops register themselves at import via ``@register``.
+_ALLOWED: set = set()
+
+
+def register(fn):
+    """Permit ``fn`` to be executed via :func:`guard`. Usable as a decorator."""
+    _ALLOWED.add(fn)
+    return fn
+
 
 # --------------------------------------------------------------------------- #
 # configuration
@@ -561,6 +573,13 @@ def guard(fn: Callable, *args, default: Any = None,
     """
     cfg = current_config()
     t = cfg.client_timeout if timeout is None else timeout
+
+    # Defense in depth: only vetted, registered ops may run — refuse anything
+    # else rather than execute an unexpected callable in a worker.
+    if fn not in _ALLOWED:
+        log.error("%s refused callable not in the op allow-list: %r",
+                  _CAS_TAG, getattr(fn, "__name__", fn))
+        return default
 
     # Never recurse into a pool from inside a worker, and honour explicit modes.
     if _IS_WORKER or cfg.isolation == "inline":

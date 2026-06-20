@@ -25,7 +25,13 @@ from tests.backend.experts import cas_workers as W
 
 @pytest.fixture(autouse=True)
 def _clean_guard():
-    """Each test starts and ends with a fresh, torn-down guard."""
+    """Each test starts and ends with a fresh, torn-down guard.
+
+    The guard refuses callables that aren't on its allow-list, so the test
+    helpers are registered here (registration persists; that's fine).
+    """
+    for fn in (W.inc, W.echo, W.boom, W.sleep_then, W.spin, W.spin_ignoring_sigterm):
+        cas_guard.register(fn)
     cas_guard._reset_for_tests()
     yield
     cas_guard._reset_for_tests()
@@ -95,6 +101,22 @@ def test_inline_runs_and_swallows_errors(monkeypatch):
     cas_guard._reset_for_tests()
     assert cas_guard.guard(W.inc, 41) == 42
     assert cas_guard.guard(W.boom, default="D") == "D"
+
+
+def test_guard_refuses_unregistered_callable(monkeypatch, caplog):
+    """An op not on the allow-list is refused (defense in depth), not executed."""
+    monkeypatch.setenv("ALGEBENCH_CAS_ISOLATION", "inline")
+    cas_guard._reset_for_tests()
+    ran = {"hit": False}
+
+    def _rogue():
+        ran["hit"] = True
+        return "ran"
+
+    with caplog.at_level("ERROR"):
+        assert cas_guard.guard(_rogue, default="REFUSED") == "REFUSED"
+    assert ran["hit"] is False
+    assert "allow-list" in caplog.text
 
 
 # --------------------------------------------------------------------------- #
