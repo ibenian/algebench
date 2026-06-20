@@ -70,6 +70,12 @@ key — see [Get a Gemini API key](#get-a-gemini-api-key).
 ### Option 1 — Run locally from a cloned repo
 
 **Prerequisites:** Python 3.10+, a [Gemini API key](#get-a-gemini-api-key).
+[`uv`](https://docs.astral.sh/uv/) is recommended — if it's installed, the venv
+is built on a native CPython pinned by `.python-version` (Python 3.13). This
+matters on Apple Silicon: a bare `python3 -m venv` often picks an x86 Homebrew
+Python and runs everything under Rosetta, which roughly halves sympy throughput.
+With `uv` present the dev venv is always native arm64. If `uv` is absent the
+scripts fall back to `python3 -m venv` (a warning is printed).
 
 ```bash
 git clone https://github.com/ibenian/algebench
@@ -81,6 +87,12 @@ export GEMINI_API_KEY=your_key_here
 On first run, `./algebench` creates a virtual environment and installs the
 dependencies automatically — no manual `pip install` needed. Then open
 [http://localhost:8785](http://localhost:8785) in your browser.
+
+To confirm the venv is native (no Rosetta) on Apple Silicon:
+
+```bash
+.venv/bin/python3 -c "import platform; print(platform.machine())"   # -> arm64
+```
 
 To launch directly into a scene:
 

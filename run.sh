@@ -34,11 +34,24 @@ if [ $# -eq 0 ]; then
     exit 0
 fi
 
-# Create venv if missing
+# Create venv if missing. Prefer `uv` so the venv is built on a native CPython
+# (arm64 on Apple Silicon), pinned by .python-version. Bare `python3 -m venv`
+# resolves to whatever python3 is first on PATH — on Apple Silicon that's often
+# the x86 Homebrew build, which runs everything under Rosetta and roughly halves
+# sympy throughput (issue #388). Fall back to python3 if uv is unavailable.
 if [ ! -d "$VENV" ]; then
     echo "Setting up virtual environment (first run only)..."
-    python3 -m venv "$VENV"
-    "$VENV/bin/pip" install -r "$DIR/requirements.txt"
+    if command -v uv >/dev/null 2>&1; then
+        PYVER="$(cat "$DIR/.python-version" 2>/dev/null || echo 3.13)"
+        # only-managed forces a uv-managed CPython, which always matches the host
+        # arch (arm64 on Apple Silicon) — avoids selecting an x86 Homebrew python.
+        uv venv --python "$PYVER" --python-preference only-managed "$VENV"
+        uv pip install --python "$VENV/bin/python3" -r "$DIR/requirements.txt"
+    else
+        echo "⚠️  uv not found — using 'python3 -m venv' (may be x86/Rosetta on Apple Silicon; see issue #388)."
+        python3 -m venv "$VENV"
+        "$VENV/bin/pip" install -r "$DIR/requirements.txt"
+    fi
 fi
 
 # Ensure the repo root AND scripts/ are on PYTHONPATH so 'backend.*' imports
