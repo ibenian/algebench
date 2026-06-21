@@ -1297,6 +1297,23 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
     global DEBUG_MODE
     DEBUG_MODE = debug
 
+    # App logging. uvicorn runs at log_level="error" (quiet) and nothing else
+    # configures the app loggers, so `backend.*` module logs — e.g. whether the
+    # proof_completion expert loaded a compiled artifact or fell back to baseline,
+    # and the per-attempt refinement dump — are otherwise dropped. Set up here (not
+    # just in main()) so the uvicorn/asgi entrypoint gets it too. `debug` (CLI
+    # --debug) forces DEBUG; otherwise stay quiet (WARNING). Override with the
+    # ALGEBENCH_LOG_LEVEL env var (e.g. staging sets it to DEBUG via render.yaml).
+    _log_level = os.environ.get(
+        "ALGEBENCH_LOG_LEVEL", "DEBUG" if debug else "WARNING").upper()
+    _applog = logging.getLogger("backend")
+    if not any(isinstance(h, logging.StreamHandler) for h in _applog.handlers):
+        _h = logging.StreamHandler()
+        _h.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+        _applog.addHandler(_h)
+    _applog.setLevel(getattr(logging, _log_level, logging.INFO))
+    _applog.propagate = False
+
     # Suppress the auto-offered guided tour (handy for local debugging so the
     # Coach overlay doesn't pop up on every fresh load). ``None`` defers to the
     # ALGEBENCH_SKIP_TOUR env var (default off) so a dev running via uvicorn can
@@ -2353,21 +2370,8 @@ Examples:
 
     args = parser.parse_args()
 
-    # App logging. uvicorn runs at log_level="error" (quiet) and nothing else
-    # configures the app loggers, so `backend.*` module logs — e.g. whether the
-    # proof_completion expert loaded a compiled artifact or fell back to baseline,
-    # and the per-attempt refinement dump — are otherwise dropped. `--debug` turns
-    # them on (DEBUG); otherwise stay quiet (WARNING). Override with
-    # ALGEBENCH_LOG_LEVEL.
-    _log_level = os.environ.get(
-        "ALGEBENCH_LOG_LEVEL", "DEBUG" if args.debug else "WARNING").upper()
-    _applog = logging.getLogger("backend")
-    if not any(isinstance(h, logging.StreamHandler) for h in _applog.handlers):
-        _h = logging.StreamHandler()
-        _h.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
-        _applog.addHandler(_h)
-    _applog.setLevel(getattr(logging, _log_level, logging.INFO))
-    _applog.propagate = False
+    # App-logger setup now lives in create_app() (so the uvicorn/asgi entrypoint
+    # gets it too); --debug flows through as create_app(debug=...) below.
 
     # Auto-enable buffered mode when flags require it
     if not args.tts_buffered:
