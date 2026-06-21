@@ -24,7 +24,7 @@ from backend.experts.modules.proof_completion.outputs import ProofTrajectory
 # (``tree_match``) for isolated testing; re-exported here under the old names.
 from backend.experts.handlers.proof_animation.animation import build  # noqa: F401
 from backend.experts.modules.proof_completion.tree_match import (  # noqa: F401
-    _children, _subtree_sigs, rebase as _rebase,
+    _children, rebase as _rebase,
 )
 
 

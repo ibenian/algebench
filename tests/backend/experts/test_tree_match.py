@@ -128,3 +128,67 @@ def test_repeated_subtree_existing_kept_and_new_is_fresh():
     pow_after = sum(1 for n in out.nodes if n.exponent is not None)
     assert pow_after == pow_before + 1
     assert len({n.id for n in out.nodes}) == len(out.nodes)
+
+
+# --------------------------------------------------------------------------- #
+# GumTree-rewrite capabilities (bottom-up Dice, recovery, history registry)
+# --------------------------------------------------------------------------- #
+
+def _children_of(graph, nid):
+    return {e.from_ for e in graph.edges if e.to == nid}
+
+
+def _add_with_child(graph, child_id):
+    """Id of the ``add`` node that has ``child_id`` as a direct operand."""
+    for n in graph.nodes:
+        if n.op == "add" and child_id in _children_of(graph, n.id):
+            return n.id
+    return None
+
+
+def test_thresholds_are_gumtree_defaults():
+    from backend.experts.modules.proof_completion import tree_match as TM
+    assert (TM.MIN_HEIGHT, TM.MIN_DICE, TM.MAX_SIZE) == (2, 0.5, 100)
+
+
+def test_registry_none_is_pure_pairwise():
+    """Without a registry the call still works (no revival, just pairwise)."""
+    out = rebase(_g("x + 1"), _g("x + 2"))
+    assert canonical_equal(out, _g("x + 2"))
+    assert "x" in _ids(out)
+
+
+def test_nested_sum_partial_change_keeps_unchanged_terms():
+    """``a+b+c+d -> a+b+c+e``: bottom-up keeps the inner ``+`` operators and the
+    unchanged terms; only the last term changes."""
+    p, q = _g("a+b+c+d"), _g("a+b+c+e")
+    out = rebase(p, q)
+    assert {"a", "b", "c"} <= _ids(out)
+    assert "e" in _ids(out) and "d" not in _ids(out)
+    add_ids = {n.id for n in p.nodes if n.op == "add"}
+    # the surviving add operators (all but possibly the changed root) keep ids
+    assert len(add_ids & _ids(out)) >= len(add_ids) - 1
+
+
+def test_history_revives_vanished_then_returning_subexpression():
+    """A composite subtree that disappears for a step and reappears regains its
+    original id through the shared registry (global, not just chain, consistency)."""
+    reg: dict = {}
+    g0 = rebase(_g("(x+1) + y"), _g("(x+1) + y"), reg)   # state 0 (registers)
+    inner0 = _add_with_child(g0, "x")                     # id of the (x+1) node
+    g1 = rebase(g0, _g("z + y"), reg)                     # (x+1) gone
+    g2 = rebase(g1, _g("(x+1) + y"), reg)                 # (x+1) back
+    inner2 = _add_with_child(g2, "x")
+    assert inner0 is not None and inner2 == inner0, "vanished subtree didn't revive its id"
+
+
+def test_history_makes_nonadjacent_states_share_ids():
+    """With the registry, a sub-expression present in state 0 and state 2 (absent
+    in state 1) carries the SAME id in both — so a jump 0->2 morphs it."""
+    reg: dict = {}
+    g0 = rebase(_g("a \\cdot (p+q)"), _g("a \\cdot (p+q)"), reg)
+    add0 = _add_with_child(g0, "p")
+    g1 = rebase(g0, _g("a \\cdot r"), reg)                # (p+q) collapsed away
+    g2 = rebase(g1, _g("a \\cdot (p+q)"), reg)            # reappears
+    add2 = _add_with_child(g2, "p")
+    assert add0 is not None and add0 == add2

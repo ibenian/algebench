@@ -56,6 +56,11 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
 
     svc = SemanticGraphService()
     working = None
+    # Derivation-wide stable-id history (signature -> canonical id). Threaded
+    # through every rebase so ids stay consistent across ALL states — a
+    # sub-expression that vanishes and reappears regains its id, and non-adjacent
+    # states (a scrub/jump) morph instead of delete+insert.
+    registry: dict = {}
     out = []
     state_exprs = []   # per-state sympy expr (None: not convertible) for grounding
     for i, (operation, justification, ltx) in enumerate(chain):
@@ -80,7 +85,9 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
                 # sympy trees; a pathological graph can't peg a core (#386).
                 expr = _guard(graph_to_sympy, g, default=None)
             try:
-                cand = g if working is None else _rebase(working, g)
+                # rebase onto the previous good state (onto itself for state 0)
+                # so every state — including the first — registers its ids.
+                cand = _rebase(g if working is None else working, g, registry)
                 annotated = to_latex(cand, with_ids=True)   # annotated, stable ids
                 plain = to_latex(cand)                       # for labels/fallback
                 working = cand
