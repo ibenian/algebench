@@ -270,14 +270,26 @@ _MAX_OPS = int(os.environ.get("ALGEBENCH_CAS_MAX_OPS", "2500"))
 
 
 def _too_complex(*exprs) -> bool:
+    """Over budget by a SINGLE node-count pass that early-exits at the cap.
+
+    Counts nodes by walking ``.args`` and bails the instant the count exceeds
+    ``_MAX_OPS`` — so the pre-gate stays cheap even on the giant trees it exists
+    to reject (no full ``count_ops`` traversal, no big ``atoms()`` set alloc).
+    """
     if _MAX_OPS <= 0:
         return False
     try:
-        total = sum(e.count_ops() + len(e.atoms())
-                    for e in exprs if e is not None)
+        stack = [e for e in exprs if e is not None]
+        seen = 0
+        while stack:
+            node = stack.pop()
+            seen += 1
+            if seen > _MAX_OPS:
+                return True
+            stack.extend(getattr(node, "args", ()))
     except Exception:
         return False
-    return total > _MAX_OPS
+    return False
 
 
 # --------------------------------------------------------------------------- #
