@@ -65,6 +65,23 @@ class TestDerive:
         graph = svc.latex_to_graph(r"a = 1 \implies b = 2")
         assert graph is not None
 
+    @pytest.mark.parametrize("wrapped", [
+        r"$m a = \frac{1}{2}\rho V^2 C_d A$",
+        r"$$m a = \frac{1}{2}\rho V^2 C_d A$$",
+        r"\(m a = \frac{1}{2}\rho V^2 C_d A\)",
+        r"\[m a = \frac{1}{2}\rho V^2 C_d A\]",
+    ])
+    def test_math_delimiters_stripped(self, svc, wrapped):
+        # A source that wraps the expression in math-mode delimiters (e.g. an
+        # LM-inferred proof start) must still parse — regression for the
+        # proof_animation 400 "couldn't parse the start expression".
+        graph = svc.latex_to_graph(wrapped, domain="classical_mechanics")
+        assert graph is not None
+        # And it caches identically to the bare form.
+        bare = svc.latex_to_graph(r"m a = \frac{1}{2}\rho V^2 C_d A",
+                                  domain="classical_mechanics")
+        assert graph is bare
+
 
 class TestCaching:
     def test_cache_hit(self, svc):

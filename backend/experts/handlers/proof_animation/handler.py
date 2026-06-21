@@ -28,6 +28,7 @@ from backend.experts.modules.proof_completion.domain_rescue import RESCUE_ENABLE
 from backend.experts.modules.proof_completion.judge import DomainStepJudge
 from backend.experts.registry import register_handler
 from backend.experts.service import invoke
+from backend.semantic_graph.preprocessor import strip_math_delimiters
 from backend.semantic_graph.service import SemanticGraphService
 
 from .animation import build
@@ -81,6 +82,10 @@ class DeriveProofRequest(BaseModel):
     target_latex: str = Field(min_length=1)
     domain: Optional[str] = None
     givens: list[Given] = Field(default_factory=list)
+    # The proof goal, as authored for DISPLAY — may carry $…$/$$…$$ math-mode
+    # delimiters (the proof card sends `proofGoal` verbatim). It is context, not
+    # a parsed expression; `_givens_clause` strips the delimiters before folding
+    # it into the start-inference prompt so the LM isn't nudged to echo them.
     goal: Optional[str] = None
     # A human-readable name for the derivation (e.g. the proof title). Used as
     # the animation title; falls back to the LM/goal/"Derivation".
@@ -156,10 +161,13 @@ def _givens_clause(req: DeriveProofRequest) -> str:
 
     Bounded to `_GIVENS_CLAUSE_MAX` chars so the assembled intent stays valid.
     """
+    # Strip any $…$/$$…$$ delimiters the goal/givens were authored with: this
+    # clause is fed to the start-inference LM, and leaving the delimiters in
+    # nudges it to echo them in `start_latex` (which then fails to parse).
     parts: list[str] = []
     if req.goal:
-        parts.append(req.goal.strip())
-    parts.extend(g.math.strip() for g in req.givens if g.math.strip())
+        parts.append(strip_math_delimiters(req.goal))
+    parts.extend(strip_math_delimiters(g.math) for g in req.givens if g.math.strip())
     clause = "; ".join(p for p in parts if p)
     if len(clause) > _GIVENS_CLAUSE_MAX:
         clause = clause[:_GIVENS_CLAUSE_MAX].rstrip(" ;,") + "…"

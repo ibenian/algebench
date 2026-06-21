@@ -12,11 +12,13 @@ from pydantic import ValidationError
 import backend.experts.handlers.proof_animation.handler as H
 from backend.experts.handlers.proof_animation.handler import (
     DeriveProofRequest,
+    Given,
     PriorStep,
     _derives_from_previous_step,
     _domain_judge,
     _format_lesson_context,
     _format_prior_steps,
+    _givens_clause,
     _PRIOR_STEPS_MAX,
 )
 from backend.experts.modules.proof_completion.judge import DomainStepJudge
@@ -82,6 +84,21 @@ def test_microstep_gate_false_when_start_inferred():
         previous_steps=[PriorStep(step=1, math="a + b = c")],
     )
     assert _derives_from_previous_step(req) is False
+
+
+def test_givens_clause_strips_math_delimiters():
+    # The goal/givens are folded into the start-INFERENCE prompt; $…$/$$…$$
+    # delimiters here nudge the LM to echo them in start_latex (which then
+    # fails to parse). They must be stripped before reaching the prompt.
+    req = DeriveProofRequest(
+        target_latex=r"a_{\text{max}} = \frac{V_E^2 \sin \gamma}{2e H}",
+        goal=r"$$a_{\text{max}} = \frac{V_E^2 \sin \gamma}{2e H}$$",
+        givens=[Given(math=r"$F_{\text{net}} = m a$", label="Newton")],
+    )
+    clause = _givens_clause(req)
+    assert "$" not in clause
+    assert r"a_{\text{max}}" in clause
+    assert r"F_{\text{net}} = m a" in clause
 
 
 def test_request_still_forbids_unknown_fields():
