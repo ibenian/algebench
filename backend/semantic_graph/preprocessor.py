@@ -18,7 +18,7 @@ _SPACING_COMMANDS = ("\\qquad", "\\quad", "\\,", "\\;", "\\!", "\\:")
 _MATH_DELIMITERS = (("$$", "$$"), ("\\[", "\\]"), ("\\(", "\\)"), ("$", "$"))
 
 
-def strip_math_delimiters(s: str) -> str:
+def strip_math_delimiters(s):
     r"""Peel surrounding math-mode delimiters off *s* (``$…$``, ``\(…\)``, …).
 
     LM-proposed and hand-authored LaTeX sometimes arrives already wrapped in the
@@ -28,6 +28,15 @@ def strip_math_delimiters(s: str) -> str:
     display yields doubled ``$$…$$``.  Strip one or more balanced layers, but
     ONLY when a pair genuinely encloses the whole string — ``$a$ + $b$`` (where
     the leading ``$`` closes mid-string) is left untouched.
+
+    Stripping is deliberately conservative: a pair is peeled only when its
+    delimiter does NOT recur inside the body.  This safely strips *distinguishable*
+    nestings (mixed pairs like ``$$\(x\)$$``, or odd dollar runs like ``$$$x$$$``),
+    but leaves *ambiguous* same-delimiter doubling untouched — ``$$$$x$$$$`` is
+    indistinguishable from an inline-wrapped ``$$x$$``, and ``\(\(x\)\)`` from a
+    body that genuinely starts with ``\(``, so we refuse rather than over-strip.
+
+    Non-string inputs (e.g. ``None``) are returned unchanged.
     """
     if not isinstance(s, str):
         return s

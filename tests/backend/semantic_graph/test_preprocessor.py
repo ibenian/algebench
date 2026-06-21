@@ -40,7 +40,19 @@ class TestStripMathDelimiters:
         assert strip_math_delimiters(r"$a$ + $b$") == r"$a$ + $b$"
 
     def test_nested_layers_peeled(self):
+        # Distinguishable nestings peel: a mixed pair, and an odd dollar run.
         assert strip_math_delimiters(r"$$\(x\)$$") == "x"
+        assert strip_math_delimiters(r"$$$x$$$") == "x"
+
+    @pytest.mark.parametrize("s", [
+        r"$$$$x$$$$",   # indistinguishable from an inline-wrapped ``$$x$$``
+        r"\(\(x\)\)",   # inner ``\(`` recurs, so we refuse rather than over-strip
+        r"\[\[x\]\]",
+    ])
+    def test_same_delimiter_doubling_left_untouched(self, s):
+        # Ambiguous same-delimiter doubling is deliberately NOT peeled — peeling
+        # it would risk over-stripping non-enclosing cases like ``$a$ + $b$``.
+        assert strip_math_delimiters(s) == s
 
     def test_non_string_passthrough(self):
         assert strip_math_delimiters(None) is None
