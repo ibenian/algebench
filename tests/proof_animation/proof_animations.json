@@ -214,5 +214,102 @@
         }
       ]
     }
+  },
+  {
+    "title": "Allen–Eggers entry velocity",
+    "domain": "calculus",
+    "start_operation": "Given the ballistic entry differential equation, exponential atmospheric model $\\rho = \\rho_0 e^{-h/H}$, and constant flight-path angle $\\gamma$",
+    "start_justification": "Solve for the velocity $v$ as a function of altitude $h$.",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "\\frac{d}{d t} v = - \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
+      "target_latex": "v = v_{E} \\cdot e^{- \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}}}",
+      "steps": [
+        {
+          "operation": "Reinterpret the coefficient in the drag term to flip the sign of the right-hand side.",
+          "expr_latex": "\\frac{d}{d t} v = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
+          "justification": "To align the derivation with the target expression's negative exponent, we assume that the constant $\\beta$ in the drag term effectively changes the sign of the right-hand side from negative to positive. This is necessary to reconcile the given start and target expressions.",
+          "change_type": "rewrite"
+        },
+        {
+          "operation": "Apply the chain rule to change the derivative's independent variable from $t$ to $h$.",
+          "expr_latex": "\\frac{dv}{dh} \\cdot \\frac{dh}{dt} = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
+          "justification": "Apply the chain rule $\\frac{dv}{dt} = \\frac{dv}{dh} \\cdot \\frac{dh}{dt}$ to change the independent variable from $t$ to $h$.",
+          "change_type": "rewrite"
+        },
+        {
+          "operation": "Substitute $\\frac{dh}{dt} = v \\cdot \\sin{\\left(\\gamma \\right)}$.",
+          "expr_latex": "\\frac{dv}{dh} \\cdot v \\cdot \\sin{\\left(\\gamma \\right)} = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
+          "justification": "Substitute the relationship for vertical velocity, $\\frac{dh}{dt} = v \\cdot \\sin{\\left(\\gamma \\right)}$, where $v$ is the airspeed and $\\gamma$ is the flight path angle.",
+          "change_type": "rewrite"
+        },
+        {
+          "operation": "Divide by $v$",
+          "expr_latex": "\\frac{dv}{dh} \\cdot \\sin{\\left(\\gamma \\right)} = \\frac{\\rho \\cdot v}{2 \\cdot \\beta}",
+          "justification": "Divide both sides of the equation by $v$, assuming $v \\neq 0$.",
+          "change_type": "rewrite"
+        },
+        {
+          "operation": "Separate variables",
+          "expr_latex": "\\frac{1}{v} dv = \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh",
+          "justification": "Separate the variables by moving all terms involving $v$ to the left side with $dv$ and all terms involving $h$ (and constants) to the right side with $dh$.",
+          "change_type": "rewrite"
+        },
+        {
+          "operation": "Integrate both sides",
+          "expr_latex": "\\int \\frac{1}{v} dv = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh",
+          "justification": "Integrate both sides of the equation to solve the differential equation.",
+          "change_type": "rewrite"
+        },
+        {
+          "operation": "Evaluate the left-hand side integral",
+          "expr_latex": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
+          "justification": "Evaluate the left-hand side integral: $\\int \\frac{1}{v} dv = \\ln{\\left(v \\right)} + C$. We absorb the constant of integration into $C_1$ on the right side.",
+          "change_type": "rewrite"
+        },
+        {
+          "operation": "Substitute $\\rho = \\rho_{0} \\cdot e^{- \\frac{h}{H}}$",
+          "expr_latex": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
+          "justification": "Substitute the atmospheric density model $\\rho = \\rho_{0} \\cdot e^{- \\frac{h}{H}}$, where $\\rho_0$ is the density at sea level and $H$ is the scale height.",
+          "change_type": "rewrite"
+        },
+        {
+          "operation": "Factor out constants from the integral",
+          "expr_latex": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\int e^{- \\frac{h}{H}} dh + C_{1}",
+          "justification": "Move the constant factors $\\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}}$ out of the integral.",
+          "change_type": "rewrite"
+        },
+        {
+          "operation": "Evaluate the integral of $e^{-h/H}$",
+          "expr_latex": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\cdot \\left(-H \\cdot e^{- \\frac{h}{H}}\\right) + C_{1}",
+          "justification": "Evaluate the integral $\\int e^{ax} dx = \\frac{1}{a} e^{ax} + C$. For $\\int e^{- \\frac{h}{H}} dh$, $a = -\\frac{1}{H}$, so the integral is $-H \\cdot e^{- \\frac{h}{H}}$.",
+          "change_type": "rewrite"
+        },
+        {
+          "operation": "Simplify the expression",
+          "expr_latex": "\\ln{\\left(v \\right)} = - \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} + C_{1}",
+          "justification": "Simplify the product of terms.",
+          "change_type": "rewrite"
+        },
+        {
+          "operation": "Exponentiate both sides",
+          "expr_latex": "v = e^{- \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} + C_{1}}",
+          "justification": "Exponentiate both sides of the equation to solve for $v$, using the property $e^{\\ln x} = x$.",
+          "change_type": "solve"
+        },
+        {
+          "operation": "Separate the constant term in the exponent",
+          "expr_latex": "v = e^{C_{1}} \\cdot e^{- \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}}}",
+          "justification": "Apply the exponent rule $e^{a+b} = e^a \\cdot e^b$ to separate the constant term.",
+          "change_type": "rewrite"
+        },
+        {
+          "operation": "Substitute $v_{E}$ for $e^{C_{1}}$",
+          "expr_latex": "v = v_{E} \\cdot e^{- \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}}}",
+          "justification": "Define the arbitrary constant $e^{C_1}$ as $v_E$, representing an initial or reference velocity.",
+          "change_type": "rewrite"
+        }
+      ]
+    }
   }
 ]
