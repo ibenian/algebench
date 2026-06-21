@@ -382,6 +382,7 @@ export class D3SemanticGraphRenderer {
         this._lastInteractionId = null;
         this._activeNodeId = null;
         this._selectedNodeIds = new Set();
+        this._highlightTimer = null;
         this._destroyed = false;
     }
 
@@ -423,6 +424,31 @@ export class D3SemanticGraphRenderer {
         this._applyHighlight();
     }
 
+    /**
+     * Restore an ordered multi-selection (deeplink / AI jump). The last id in
+     * the array becomes the active node — matching Cmd+Click semantics, where
+     * the most recently added node is active. JS Set preserves insertion order.
+     */
+    setSelection(orderedIds) {
+        const ids = (orderedIds || []).filter(Boolean);
+        this._selectedNodeIds = new Set(ids);
+        this._activeNodeId = ids.length ? ids[ids.length - 1] : null;
+        this._applyHighlight();
+        // Selection is often set right after a render whose enter/update
+        // transitions are still animating opacity back to 1 (deeplink restore);
+        // re-apply once they finish so the dimming actually sticks.
+        this._scheduleHighlightReapply();
+    }
+
+    // Re-apply the highlight after in-flight render transitions settle, so the
+    // imperative opacity dimming isn't overridden by a concurrent transition.
+    _scheduleHighlightReapply(delay = 420) {
+        clearTimeout(this._highlightTimer);
+        this._highlightTimer = setTimeout(() => {
+            if (!this._destroyed && this._selectedNodeIds.size) this._applyHighlight();
+        }, delay);
+    }
+
     clearSelection() {
         this._activeNodeId = null;
         this._selectedNodeIds.clear();
@@ -460,6 +486,7 @@ export class D3SemanticGraphRenderer {
 
     destroy() {
         this._destroyed = true;
+        clearTimeout(this._highlightTimer);
         if (this._svg && this._zoomBehavior) {
             this._svg.on('.zoom', null);
             if (this._wheelPanHandler) {
@@ -768,17 +795,28 @@ export class D3SemanticGraphRenderer {
 
         dagre.layout(g);
 
+        // Integral/sum bounds are stored as the bound NODE's id (e.g. "__num_2").
+        // Resolve to that node's value so labels read ∫_0^1, not ∫_{__num_2}.
+        const boundLabel = (ref) => {
+            if (!ref) return '';
+            const b = nodeById[ref];
+            return b ? (b.latex || b.label || b.subexpr || ref) : ref;
+        };
+
         const nodeWrappers = Object.create(null);
         const layoutNodes = [];
         for (const id of g.nodes()) {
             const pos = g.node(id);
+            const src = nodeById[id];
             const wrapper = {
                 data: {
-                    ...nodeById[id],
+                    ...src,
                     _collapsed: this._collapsed.has(id),
                     _childIds: childrenOf[id] || [],
                     _hasConditionEdge: conditionEdgeTargets.has(id),
                     _hasAssertionEdge: assertionEdgeTargets.has(id),
+                    _lowerBoundLabel: boundLabel(src.lower_bound),
+                    _upperBoundLabel: boundLabel(src.upper_bound),
                 },
                 x: pos.x,
                 y: pos.y,
@@ -838,6 +876,17 @@ export class D3SemanticGraphRenderer {
         this._renderEdgeLegend(layout.edges);
 
         for (const n of nodes) this._positionById.set(n.data.id, { x: n.x, y: n.y });
+
+        // Re-apply selection emphasis: _nodeClass restores the selected/active
+        // CSS classes on rebuild, but the upstream opacity dimming is imperative
+        // and would otherwise be lost on every re-render (background enrichment,
+        // collapse/expand, theme change, deeplink restore). The enter/update
+        // transitions animate opacity back to 1 over `duration`, so also re-apply
+        // once they finish, not just synchronously.
+        if (this._selectedNodeIds.size) {
+            this._applyHighlight();
+            if (duration > 0) this._scheduleHighlightReapply(duration + 40);
+        }
 
         if (initialFit) {
             requestAnimationFrame(() => this.zoomToFit(false));
@@ -1474,8 +1523,8 @@ export class D3SemanticGraphRenderer {
         if (op === 'integral' || op === 'closed_integral') {
             const cmd = OPERATOR_LATEX[op];
             const wrt = data.with_respect_to;
-            const lb = data.lower_bound || '';
-            const ub = data.upper_bound || '';
+            const lb = data._lowerBoundLabel || '';   // resolved bound values
+            const ub = data._upperBoundLabel || '';   // (not raw bound node ids)
             if (wrt) {
                 if (lb && ub) return `${cmd}_{${lb}}^{${ub}} d${wrt}`;
                 return `${cmd} d${wrt}`;

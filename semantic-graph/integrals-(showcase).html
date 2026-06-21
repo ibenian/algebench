@@ -1031,12 +1031,12 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-06-21 22:41 UTC &middot; theme: default-dark &middot; 3 expressions</div>
-<div class="section-title">Disjunction (roots) (3 expressions)</div>
+<div class="report-meta">Generated 2026-06-21 22:41 UTC &middot; theme: default-dark &middot; 4 expressions</div>
+<div class="section-title">Integrals (showcase) (4 expressions)</div>
 <div class="row">
   <div>
-    <div class="row-id">disj_two_roots</div>
-    <div class="row-latex">$$x = 2 \lor x = 3$$</div>
+    <div class="row-id">integral_indefinite</div>
+    <div class="row-latex">$$\int x^2 \, dx$$</div>
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
@@ -1051,24 +1051,15 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  d0___equals_1{"="}:::relation
   x["$x$"]:::scalar
-  d0___num_2["$2$"]:::number
-  d1___equals_1{"="}:::relation
-  d1___num_2["$3$"]:::number
-  __disjunction_1(("$\lor$")):::operator
-  x --&gt; d0___equals_1
-  d0___num_2 --&gt; d0___equals_1
-  x --&gt; d1___equals_1
-  d1___num_2 --&gt; d1___equals_1
-  d0___equals_1 --&gt; __disjunction_1
-  d1___equals_1 --&gt; __disjunction_1
+  __integral_1(("$\int dx$")):::operator
+  __power_2(("${(\cdot)}^{2}$")):::operator
+  x --&gt;|wrt| __integral_1
+  x --&gt; __power_2
+  __power_2 --&gt; __integral_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:6px
 </pre>
   </div>
   <div class="row-actions">
@@ -1076,21 +1067,9 @@ svg.d3-semantic-graph {
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
     <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src" data-latex="x = 2 \lor x = 3"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>x = 2 \lor x = 3</div>
+  <div class="row-panel row-latex-src" data-latex="\int x^2 \, dx"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\int x^2 \, dx</div>
   <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
-    {
-      "id": "d0___equals_1",
-      "type": "relation",
-      "op": "equals",
-      "subexpr": "x = 2",
-      "chartScript": {
-        "script": "x - 2",
-        "variables": [
-          "x"
-        ]
-      }
-    },
     {
       "id": "x",
       "type": "scalar",
@@ -1104,72 +1083,45 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "d0___num_2",
-      "type": "number",
-      "label": "2",
-      "subexpr": "2",
+      "id": "__integral_1",
+      "type": "operator",
+      "op": "integral",
+      "with_respect_to": "x",
+      "subexpr": "\\int x^2 \\, dx",
       "chartScript": {
-        "script": "2",
-        "variables": []
-      }
-    },
-    {
-      "id": "d1___equals_1",
-      "type": "relation",
-      "op": "equals",
-      "subexpr": "x = 3",
-      "chartScript": {
-        "script": "x - 3",
+        "script": "(1/3)*pow(x, 3)",
         "variables": [
           "x"
         ]
       }
     },
     {
-      "id": "d1___num_2",
-      "type": "number",
-      "label": "3",
-      "subexpr": "3",
-      "chartScript": {
-        "script": "3",
-        "variables": []
-      }
-    },
-    {
-      "id": "__disjunction_1",
+      "id": "__power_2",
       "type": "operator",
-      "op": "disjunction",
-      "subexpr": "x = 2 \\lor x = 3",
+      "op": "power",
+      "exponent": "2",
+      "subexpr": "x^{2}",
       "chartScript": {
-        "script": "False",
-        "variables": []
+        "script": "pow(x, 2)",
+        "variables": [
+          "x"
+        ]
       }
     }
   ],
   "edges": [
     {
       "from": "x",
-      "to": "d0___equals_1"
-    },
-    {
-      "from": "d0___num_2",
-      "to": "d0___equals_1"
+      "to": "__integral_1",
+      "role": "wrt"
     },
     {
       "from": "x",
-      "to": "d1___equals_1"
+      "to": "__power_2"
     },
     {
-      "from": "d1___num_2",
-      "to": "d1___equals_1"
-    },
-    {
-      "from": "d0___equals_1",
-      "to": "__disjunction_1"
-    },
-    {
-      "from": "d1___equals_1",
-      "to": "__disjunction_1"
+      "from": "__power_2",
+      "to": "__integral_1"
     }
   ],
   "classification": {
@@ -1187,31 +1139,22 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  d0___equals_1{"="}:::relation
   x["$x$"]:::scalar
-  d0___num_2["$2$"]:::number
-  d1___equals_1{"="}:::relation
-  d1___num_2["$3$"]:::number
-  __disjunction_1(("$\lor$")):::operator
-  x --&gt; d0___equals_1
-  d0___num_2 --&gt; d0___equals_1
-  x --&gt; d1___equals_1
-  d1___num_2 --&gt; d1___equals_1
-  d0___equals_1 --&gt; __disjunction_1
-  d1___equals_1 --&gt; __disjunction_1
+  __integral_1(("$\int dx$")):::operator
+  __power_2(("${(\cdot)}^{2}$")):::operator
+  x --&gt;|wrt| __integral_1
+  x --&gt; __power_2
+  __power_2 --&gt; __integral_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:6px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;d0___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;x = 2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x - 2&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;d0___num_2&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;d1___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;x = 3&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x - 3&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;d1___num_2&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;3&quot;,&quot;subexpr&quot;:&quot;3&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;3&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__disjunction_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;disjunction&quot;,&quot;subexpr&quot;:&quot;x = 2 \\lor x = 3&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;False&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;d0___equals_1&quot;},{&quot;from&quot;:&quot;d0___num_2&quot;,&quot;to&quot;:&quot;d0___equals_1&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;d1___equals_1&quot;},{&quot;from&quot;:&quot;d1___num_2&quot;,&quot;to&quot;:&quot;d1___equals_1&quot;},{&quot;from&quot;:&quot;d0___equals_1&quot;,&quot;to&quot;:&quot;__disjunction_1&quot;},{&quot;from&quot;:&quot;d1___equals_1&quot;,&quot;to&quot;:&quot;__disjunction_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__integral_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\int x^2 \\, dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/3)*pow(x, 3)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;x^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(x, 2)&quot;,&quot;variables&quot;:[&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__integral_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
-    <div class="row-id">disj_two_roots_vee</div>
-    <div class="row-latex">$$x = 2 \vee x = 3$$</div>
+    <div class="row-id">integral_definite</div>
+    <div class="row-latex">$$\int_0^1 x^2 \, dx$$</div>
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
@@ -1226,302 +1169,21 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  d0___equals_1{"="}:::relation
   x["$x$"]:::scalar
-  d0___num_2["$2$"]:::number
-  d1___equals_1{"="}:::relation
-  d1___num_2["$3$"]:::number
-  __disjunction_1(("$\lor$")):::operator
-  x --&gt; d0___equals_1
-  d0___num_2 --&gt; d0___equals_1
-  x --&gt; d1___equals_1
-  d1___num_2 --&gt; d1___equals_1
-  d0___equals_1 --&gt; __disjunction_1
-  d1___equals_1 --&gt; __disjunction_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-</pre>
-  </div>
-  <div class="row-actions">
-    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
-    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
-    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
-  </div>
-  <div class="row-panel row-latex-src" data-latex="x = 2 \vee x = 3"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>x = 2 \vee x = 3</div>
-  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
-  "nodes": [
-    {
-      "id": "d0___equals_1",
-      "type": "relation",
-      "op": "equals",
-      "subexpr": "x = 2",
-      "chartScript": {
-        "script": "x - 2",
-        "variables": [
-          "x"
-        ]
-      }
-    },
-    {
-      "id": "x",
-      "type": "scalar",
-      "latex": "x",
-      "subexpr": "x",
-      "chartScript": {
-        "script": "x",
-        "variables": [
-          "x"
-        ]
-      }
-    },
-    {
-      "id": "d0___num_2",
-      "type": "number",
-      "label": "2",
-      "subexpr": "2",
-      "chartScript": {
-        "script": "2",
-        "variables": []
-      }
-    },
-    {
-      "id": "d1___equals_1",
-      "type": "relation",
-      "op": "equals",
-      "subexpr": "x = 3",
-      "chartScript": {
-        "script": "x - 3",
-        "variables": [
-          "x"
-        ]
-      }
-    },
-    {
-      "id": "d1___num_2",
-      "type": "number",
-      "label": "3",
-      "subexpr": "3",
-      "chartScript": {
-        "script": "3",
-        "variables": []
-      }
-    },
-    {
-      "id": "__disjunction_1",
-      "type": "operator",
-      "op": "disjunction",
-      "subexpr": "x = 2 \\lor x = 3",
-      "chartScript": {
-        "script": "False",
-        "variables": []
-      }
-    }
-  ],
-  "edges": [
-    {
-      "from": "x",
-      "to": "d0___equals_1"
-    },
-    {
-      "from": "d0___num_2",
-      "to": "d0___equals_1"
-    },
-    {
-      "from": "x",
-      "to": "d1___equals_1"
-    },
-    {
-      "from": "d1___num_2",
-      "to": "d1___equals_1"
-    },
-    {
-      "from": "d0___equals_1",
-      "to": "__disjunction_1"
-    },
-    {
-      "from": "d1___equals_1",
-      "to": "__disjunction_1"
-    }
-  ],
-  "classification": {
-    "kind": "algebraic"
-  }
-}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  d0___equals_1{"="}:::relation
-  x["$x$"]:::scalar
-  d0___num_2["$2$"]:::number
-  d1___equals_1{"="}:::relation
-  d1___num_2["$3$"]:::number
-  __disjunction_1(("$\lor$")):::operator
-  x --&gt; d0___equals_1
-  d0___num_2 --&gt; d0___equals_1
-  x --&gt; d1___equals_1
-  d1___num_2 --&gt; d1___equals_1
-  d0___equals_1 --&gt; __disjunction_1
-  d1___equals_1 --&gt; __disjunction_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;d0___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;x = 2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x - 2&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;d0___num_2&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;d1___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;x = 3&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x - 3&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;d1___num_2&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;3&quot;,&quot;subexpr&quot;:&quot;3&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;3&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__disjunction_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;disjunction&quot;,&quot;subexpr&quot;:&quot;x = 2 \\lor x = 3&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;False&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;d0___equals_1&quot;},{&quot;from&quot;:&quot;d0___num_2&quot;,&quot;to&quot;:&quot;d0___equals_1&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;d1___equals_1&quot;},{&quot;from&quot;:&quot;d1___num_2&quot;,&quot;to&quot;:&quot;d1___equals_1&quot;},{&quot;from&quot;:&quot;d0___equals_1&quot;,&quot;to&quot;:&quot;__disjunction_1&quot;},{&quot;from&quot;:&quot;d1___equals_1&quot;,&quot;to&quot;:&quot;__disjunction_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
-</div>
-<div class="row">
-  <div>
-    <div class="row-id">disj_quadratic_roots</div>
-    <div class="row-latex">$$x = \frac{-b + \sqrt{b^2 - 4ac}}{2a} \lor x = \frac{-b - \sqrt{b^2 - 4ac}}{2a}$$</div>
-  </div>
-  <div class="row-graph">
-    <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  d0___equals_1{"="}:::relation
-  x["$x$"]:::scalar
-  d0___multiply_2(("$\times$")):::operator
-  d0___add_3(("$+$")):::operator
-  d0___negation_4@{ shape: "flip-tri", label: "$-$" }
-  b["$b$"]:::scalar
-  d0___power_5(("${(\cdot)}^{1/2}$")):::operator
-  d0___add_6(("$+$")):::operator
-  d0___power_7(("${(\cdot)}^{2}$")):::operator
-  d0___negation_8@{ shape: "flip-tri", label: "$-$" }
-  d0___multiply_9(("$\times$")):::operator
-  d0___num_10["$4$"]:::number
-  d0___multiply_11(("$\times$")):::operator
-  a["$a$"]:::scalar
-  c["$c$"]:::scalar
-  d0___power_12(("$\dfrac{1}{(\cdot)}$")):::operator
-  d0___multiply_13(("$\times$")):::operator
-  d0___num_14["$2$"]:::number
-  d1___equals_1{"="}:::relation
-  d1___multiply_2(("$\times$")):::operator
-  d1___add_3(("$+$")):::operator
-  d1___negation_4@{ shape: "flip-tri", label: "$-$" }
-  d1___negation_5@{ shape: "flip-tri", label: "$-$" }
-  d1___power_6(("${(\cdot)}^{1/2}$")):::operator
-  d1___add_7(("$+$")):::operator
-  d1___power_8(("${(\cdot)}^{2}$")):::operator
-  d1___negation_9@{ shape: "flip-tri", label: "$-$" }
-  d1___multiply_10(("$\times$")):::operator
-  d1___num_11["$4$"]:::number
-  d1___multiply_12(("$\times$")):::operator
-  d1___power_13(("$\dfrac{1}{(\cdot)}$")):::operator
-  d1___multiply_14(("$\times$")):::operator
-  d1___num_15["$2$"]:::number
-  __disjunction_1(("$\lor$")):::operator
-  class d0___negation_4 operator
-  class d0___negation_8 operator
-  class d1___negation_4 operator
-  class d1___negation_5 operator
-  class d1___negation_9 operator
-  x --&gt; d0___equals_1
-  b --&gt; d0___negation_4
-  d0___negation_4 --&gt; d0___add_3
-  b --&gt; d0___power_7
-  d0___power_7 --&gt; d0___add_6
-  d0___num_10 --&gt; d0___multiply_9
-  a --&gt; d0___multiply_11
-  c --&gt; d0___multiply_11
-  d0___multiply_11 --&gt; d0___multiply_9
-  d0___multiply_9 --&gt; d0___negation_8
-  d0___negation_8 --&gt; d0___add_6
-  d0___add_6 --&gt; d0___power_5
-  d0___power_5 --&gt; d0___add_3
-  d0___add_3 --&gt; d0___multiply_2
-  d0___num_14 --&gt; d0___multiply_13
-  a --&gt; d0___multiply_13
-  d0___multiply_13 --&gt; d0___power_12
-  d0___power_12 -.-&gt; d0___multiply_2
-  d0___multiply_2 --&gt; d0___equals_1
-  x --&gt; d1___equals_1
-  b --&gt; d1___negation_4
-  d1___negation_4 --&gt; d1___add_3
-  b --&gt; d1___power_8
-  d1___power_8 --&gt; d1___add_7
-  d1___num_11 --&gt; d1___multiply_10
-  a --&gt; d1___multiply_12
-  c --&gt; d1___multiply_12
-  d1___multiply_12 --&gt; d1___multiply_10
-  d1___multiply_10 --&gt; d1___negation_9
-  d1___negation_9 --&gt; d1___add_7
-  d1___add_7 --&gt; d1___power_6
-  d1___power_6 --&gt; d1___negation_5
-  d1___negation_5 --&gt; d1___add_3
-  d1___add_3 --&gt; d1___multiply_2
-  d1___num_15 --&gt; d1___multiply_14
-  a --&gt; d1___multiply_14
-  d1___multiply_14 --&gt; d1___power_13
-  d1___power_13 -.-&gt; d1___multiply_2
-  d1___multiply_2 --&gt; d1___equals_1
-  d0___equals_1 --&gt; __disjunction_1
-  d1___equals_1 --&gt; __disjunction_1
+  __num_2["$0$"]:::number
+  __num_3["$1$"]:::number
+  __integral_1(("$\int_{0}^{1} dx$")):::operator
+  __power_4(("${(\cdot)}^{2}$")):::operator
+  x --&gt;|wrt| __integral_1
+  __num_2 --&gt;|lb| __integral_1
+  __num_3 --&gt;|ub| __integral_1
+  x --&gt; __power_4
+  __power_4 --&gt; __integral_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#ef5350,stroke-width:6px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#ef5350,stroke-width:3px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
-  linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#aaa,stroke-width:2px
-  linkStyle 13 stroke:#ef5350,stroke-width:3px
-  linkStyle 14 stroke:#ef5350,stroke-width:3px
-  linkStyle 15 stroke:#ef5350,stroke-width:3px
-  linkStyle 16 stroke:#aaa,stroke-width:2px
-  linkStyle 17 stroke:#42a5f5,stroke-width:1px
-  linkStyle 18 stroke:#aaa,stroke-width:2px
-  linkStyle 19 stroke:#aaa,stroke-width:2px
-  linkStyle 20 stroke:#aaa,stroke-width:2px
-  linkStyle 21 stroke:#aaa,stroke-width:2px
-  linkStyle 22 stroke:#aaa,stroke-width:2px
-  linkStyle 23 stroke:#ef5350,stroke-width:6px
-  linkStyle 24 stroke:#ef5350,stroke-width:3px
-  linkStyle 25 stroke:#ef5350,stroke-width:3px
-  linkStyle 26 stroke:#ef5350,stroke-width:3px
-  linkStyle 27 stroke:#ef5350,stroke-width:3px
-  linkStyle 28 stroke:#aaa,stroke-width:2px
-  linkStyle 29 stroke:#aaa,stroke-width:2px
-  linkStyle 30 stroke:#aaa,stroke-width:2px
-  linkStyle 31 stroke:#aaa,stroke-width:2px
-  linkStyle 32 stroke:#aaa,stroke-width:2px
-  linkStyle 33 stroke:#ef5350,stroke-width:3px
-  linkStyle 34 stroke:#ef5350,stroke-width:3px
-  linkStyle 35 stroke:#ef5350,stroke-width:3px
-  linkStyle 36 stroke:#aaa,stroke-width:2px
-  linkStyle 37 stroke:#42a5f5,stroke-width:1px
-  linkStyle 38 stroke:#aaa,stroke-width:2px
-  linkStyle 39 stroke:#aaa,stroke-width:2px
-  linkStyle 40 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1529,24 +1191,9 @@ svg.d3-semantic-graph {
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
     <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
-  <div class="row-panel row-latex-src" data-latex="x = \frac{-b + \sqrt{b^2 - 4ac}}{2a} \lor x = \frac{-b - \sqrt{b^2 - 4ac}}{2a}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>x = \frac{-b + \sqrt{b^2 - 4ac}}{2a} \lor x = \frac{-b - \sqrt{b^2 - 4ac}}{2a}</div>
+  <div class="row-panel row-latex-src" data-latex="\int_0^1 x^2 \, dx"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\int_0^1 x^2 \, dx</div>
   <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
-    {
-      "id": "d0___equals_1",
-      "type": "relation",
-      "op": "equals",
-      "subexpr": "x = \\frac{-b + \\sqrt{b^2 - 4ac}}{2a}",
-      "chartScript": {
-        "script": "x - 1/2*(-b + sqrt(-4*a*c + pow(b, 2)))/a",
-        "variables": [
-          "a",
-          "b",
-          "c",
-          "x"
-        ]
-      }
-    },
     {
       "id": "x",
       "type": "scalar",
@@ -1560,145 +1207,162 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "d0___multiply_2",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\left(-b + \\sqrt{b^{2} - 4 a c}\\right) \\frac{1}{2 a}",
-      "chartScript": {
-        "script": "(1/2)*(-b + sqrt(-4*a*c + pow(b, 2)))/a",
-        "variables": [
-          "a",
-          "b",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d0___add_3",
-      "type": "operator",
-      "op": "add",
-      "subexpr": "-b + \\sqrt{b^{2} - 4 a c}",
-      "chartScript": {
-        "script": "-b + sqrt(-4*a*c + pow(b, 2))",
-        "variables": [
-          "a",
-          "b",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d0___negation_4",
-      "type": "operator",
-      "op": "negation",
-      "subexpr": "-b",
-      "chartScript": {
-        "script": "-b",
-        "variables": [
-          "b"
-        ]
-      }
-    },
-    {
-      "id": "b",
-      "type": "scalar",
-      "latex": "b",
-      "subexpr": "b",
-      "chartScript": {
-        "script": "b",
-        "variables": [
-          "b"
-        ]
-      }
-    },
-    {
-      "id": "d0___power_5",
-      "type": "operator",
-      "op": "power",
-      "exponent": "1/2",
-      "subexpr": "\\sqrt{b^{2} - 4 a c}",
-      "chartScript": {
-        "script": "sqrt(-4*a*c + pow(b, 2))",
-        "variables": [
-          "a",
-          "b",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d0___add_6",
-      "type": "operator",
-      "op": "add",
-      "subexpr": "b^{2} - 4 a c",
-      "chartScript": {
-        "script": "-4*a*c + pow(b, 2)",
-        "variables": [
-          "a",
-          "b",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d0___power_7",
-      "type": "operator",
-      "op": "power",
-      "exponent": "2",
-      "subexpr": "b^{2}",
-      "chartScript": {
-        "script": "pow(b, 2)",
-        "variables": [
-          "b"
-        ]
-      }
-    },
-    {
-      "id": "d0___negation_8",
-      "type": "operator",
-      "op": "negation",
-      "subexpr": "-4 a c",
-      "chartScript": {
-        "script": "-4*a*c",
-        "variables": [
-          "a",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d0___multiply_9",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "4 a c",
-      "chartScript": {
-        "script": "4*a*c",
-        "variables": [
-          "a",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d0___num_10",
+      "id": "__num_2",
       "type": "number",
-      "label": "4",
-      "subexpr": "4",
+      "label": "0",
+      "subexpr": "0",
       "chartScript": {
-        "script": "4",
+        "script": "0",
         "variables": []
       }
     },
     {
-      "id": "d0___multiply_11",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "a c",
+      "id": "__num_3",
+      "type": "number",
+      "label": "1",
+      "subexpr": "1",
       "chartScript": {
-        "script": "a*c",
+        "script": "1",
+        "variables": []
+      }
+    },
+    {
+      "id": "__integral_1",
+      "type": "operator",
+      "op": "integral",
+      "with_respect_to": "x",
+      "lower_bound": "__num_2",
+      "upper_bound": "__num_3",
+      "subexpr": "\\int_0^1 x^2 \\, dx",
+      "chartScript": {
+        "script": "1/3",
+        "variables": []
+      }
+    },
+    {
+      "id": "__power_4",
+      "type": "operator",
+      "op": "power",
+      "exponent": "2",
+      "subexpr": "x^{2}",
+      "chartScript": {
+        "script": "pow(x, 2)",
         "variables": [
-          "a",
-          "c"
+          "x"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "x",
+      "to": "__integral_1",
+      "role": "wrt"
+    },
+    {
+      "from": "__num_2",
+      "to": "__integral_1",
+      "role": "lb"
+    },
+    {
+      "from": "__num_3",
+      "to": "__integral_1",
+      "role": "ub"
+    },
+    {
+      "from": "x",
+      "to": "__power_4"
+    },
+    {
+      "from": "__power_4",
+      "to": "__integral_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  x["$x$"]:::scalar
+  __num_2["$0$"]:::number
+  __num_3["$1$"]:::number
+  __integral_1(("$\int_{0}^{1} dx$")):::operator
+  __power_4(("${(\cdot)}^{2}$")):::operator
+  x --&gt;|wrt| __integral_1
+  __num_2 --&gt;|lb| __integral_1
+  __num_3 --&gt;|ub| __integral_1
+  x --&gt; __power_4
+  __power_4 --&gt; __integral_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:6px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__num_2&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__num_3&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__integral_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;lower_bound&quot;:&quot;__num_2&quot;,&quot;upper_bound&quot;:&quot;__num_3&quot;,&quot;subexpr&quot;:&quot;\\int_0^1 x^2 \\, dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/3&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;x^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(x, 2)&quot;,&quot;variables&quot;:[&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__num_2&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;lb&quot;},{&quot;from&quot;:&quot;__num_3&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;ub&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__integral_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">integral_reciprocal</div>
+    <div class="row-latex">$$\int_a^b \frac{1}{x} \, dx$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  x["$x$"]:::scalar
+  a["$a$"]:::scalar
+  b["$b$"]:::scalar
+  __integral_1(("$\int_{a}^{b} dx$")):::operator
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
+  x --&gt;|wrt| __integral_1
+  a --&gt;|lb| __integral_1
+  b --&gt;|ub| __integral_1
+  x --&gt; __power_2
+  __power_2 -.-&gt; __integral_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#42a5f5,stroke-width:1px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="\int_a^b \frac{1}{x} \, dx"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\int_a^b \frac{1}{x} \, dx</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x",
+      "chartScript": {
+        "script": "x",
+        "variables": [
+          "x"
         ]
       }
     },
@@ -1715,424 +1379,71 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "c",
+      "id": "b",
       "type": "scalar",
-      "latex": "c",
-      "subexpr": "c",
+      "latex": "b",
+      "subexpr": "b",
       "chartScript": {
-        "script": "c",
+        "script": "b",
         "variables": [
-          "c"
+          "b"
         ]
       }
     },
     {
-      "id": "d0___power_12",
+      "id": "__integral_1",
+      "type": "operator",
+      "op": "integral",
+      "with_respect_to": "x",
+      "lower_bound": "a",
+      "upper_bound": "b",
+      "subexpr": "\\int_a^b \\frac{1}{x} \\, dx",
+      "chartScript": {
+        "script": "-log(a) + log(b)",
+        "variables": [
+          "a",
+          "b"
+        ]
+      }
+    },
+    {
+      "id": "__power_2",
       "type": "operator",
       "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
       "exponent": "-1",
-      "subexpr": "\\frac{1}{2 a}",
+      "subexpr": "\\frac{1}{x}",
       "chartScript": {
-        "script": "(1/2)/a",
+        "script": "1/x",
         "variables": [
-          "a"
-        ]
-      }
-    },
-    {
-      "id": "d0___multiply_13",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "a 2",
-      "chartScript": {
-        "script": "2*a",
-        "variables": [
-          "a"
-        ]
-      }
-    },
-    {
-      "id": "d0___num_14",
-      "type": "number",
-      "label": "2",
-      "subexpr": "2",
-      "chartScript": {
-        "script": "2",
-        "variables": []
-      }
-    },
-    {
-      "id": "d1___equals_1",
-      "type": "relation",
-      "op": "equals",
-      "subexpr": "x = \\frac{-b - \\sqrt{b^2 - 4ac}}{2a}",
-      "chartScript": {
-        "script": "x - 1/2*(-b - sqrt(-4*a*c + pow(b, 2)))/a",
-        "variables": [
-          "a",
-          "b",
-          "c",
           "x"
         ]
-      }
-    },
-    {
-      "id": "d1___multiply_2",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "\\left(-b - \\sqrt{b^{2} - 4 a c}\\right) \\frac{1}{2 a}",
-      "chartScript": {
-        "script": "(1/2)*(-b - sqrt(-4*a*c + pow(b, 2)))/a",
-        "variables": [
-          "a",
-          "b",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d1___add_3",
-      "type": "operator",
-      "op": "add",
-      "subexpr": "-b - \\sqrt{b^{2} - 4 a c}",
-      "chartScript": {
-        "script": "-b - sqrt(-4*a*c + pow(b, 2))",
-        "variables": [
-          "a",
-          "b",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d1___negation_4",
-      "type": "operator",
-      "op": "negation",
-      "subexpr": "-b",
-      "chartScript": {
-        "script": "-b",
-        "variables": [
-          "b"
-        ]
-      }
-    },
-    {
-      "id": "d1___negation_5",
-      "type": "operator",
-      "op": "negation",
-      "subexpr": "-\\sqrt{b^{2} - 4 a c}",
-      "chartScript": {
-        "script": "-sqrt(-4*a*c + pow(b, 2))",
-        "variables": [
-          "a",
-          "b",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d1___power_6",
-      "type": "operator",
-      "op": "power",
-      "exponent": "1/2",
-      "subexpr": "\\sqrt{b^{2} - 4 a c}",
-      "chartScript": {
-        "script": "sqrt(-4*a*c + pow(b, 2))",
-        "variables": [
-          "a",
-          "b",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d1___add_7",
-      "type": "operator",
-      "op": "add",
-      "subexpr": "b^{2} - 4 a c",
-      "chartScript": {
-        "script": "-4*a*c + pow(b, 2)",
-        "variables": [
-          "a",
-          "b",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d1___power_8",
-      "type": "operator",
-      "op": "power",
-      "exponent": "2",
-      "subexpr": "b^{2}",
-      "chartScript": {
-        "script": "pow(b, 2)",
-        "variables": [
-          "b"
-        ]
-      }
-    },
-    {
-      "id": "d1___negation_9",
-      "type": "operator",
-      "op": "negation",
-      "subexpr": "-4 a c",
-      "chartScript": {
-        "script": "-4*a*c",
-        "variables": [
-          "a",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d1___multiply_10",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "4 a c",
-      "chartScript": {
-        "script": "4*a*c",
-        "variables": [
-          "a",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d1___num_11",
-      "type": "number",
-      "label": "4",
-      "subexpr": "4",
-      "chartScript": {
-        "script": "4",
-        "variables": []
-      }
-    },
-    {
-      "id": "d1___multiply_12",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "a c",
-      "chartScript": {
-        "script": "a*c",
-        "variables": [
-          "a",
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "d1___power_13",
-      "type": "operator",
-      "latex": "\\dfrac{1}{(\\cdot)}",
-      "op": "power",
-      "exponent": "-1",
-      "subexpr": "\\frac{1}{2 a}",
-      "chartScript": {
-        "script": "(1/2)/a",
-        "variables": [
-          "a"
-        ]
-      }
-    },
-    {
-      "id": "d1___multiply_14",
-      "type": "operator",
-      "op": "multiply",
-      "subexpr": "a 2",
-      "chartScript": {
-        "script": "2*a",
-        "variables": [
-          "a"
-        ]
-      }
-    },
-    {
-      "id": "d1___num_15",
-      "type": "number",
-      "label": "2",
-      "subexpr": "2",
-      "chartScript": {
-        "script": "2",
-        "variables": []
-      }
-    },
-    {
-      "id": "__disjunction_1",
-      "type": "operator",
-      "op": "disjunction",
-      "subexpr": "x = \\frac{-b + \\sqrt{b^2 - 4ac}}{2a} \\lor x = \\frac{-b - \\sqrt{b^2 - 4ac}}{2a}",
-      "chartScript": {
-        "script": "False",
-        "variables": []
       }
     }
   ],
   "edges": [
     {
       "from": "x",
-      "to": "d0___equals_1"
-    },
-    {
-      "from": "b",
-      "to": "d0___negation_4"
-    },
-    {
-      "from": "d0___negation_4",
-      "to": "d0___add_3"
-    },
-    {
-      "from": "b",
-      "to": "d0___power_7"
-    },
-    {
-      "from": "d0___power_7",
-      "to": "d0___add_6"
-    },
-    {
-      "from": "d0___num_10",
-      "to": "d0___multiply_9"
+      "to": "__integral_1",
+      "role": "wrt"
     },
     {
       "from": "a",
-      "to": "d0___multiply_11"
+      "to": "__integral_1",
+      "role": "lb"
     },
     {
-      "from": "c",
-      "to": "d0___multiply_11"
-    },
-    {
-      "from": "d0___multiply_11",
-      "to": "d0___multiply_9"
-    },
-    {
-      "from": "d0___multiply_9",
-      "to": "d0___negation_8"
-    },
-    {
-      "from": "d0___negation_8",
-      "to": "d0___add_6"
-    },
-    {
-      "from": "d0___add_6",
-      "to": "d0___power_5"
-    },
-    {
-      "from": "d0___power_5",
-      "to": "d0___add_3"
-    },
-    {
-      "from": "d0___add_3",
-      "to": "d0___multiply_2"
-    },
-    {
-      "from": "d0___num_14",
-      "to": "d0___multiply_13"
-    },
-    {
-      "from": "a",
-      "to": "d0___multiply_13"
-    },
-    {
-      "from": "d0___multiply_13",
-      "to": "d0___power_12"
-    },
-    {
-      "from": "d0___power_12",
-      "to": "d0___multiply_2"
-    },
-    {
-      "from": "d0___multiply_2",
-      "to": "d0___equals_1"
+      "from": "b",
+      "to": "__integral_1",
+      "role": "ub"
     },
     {
       "from": "x",
-      "to": "d1___equals_1"
+      "to": "__power_2"
     },
     {
-      "from": "b",
-      "to": "d1___negation_4"
-    },
-    {
-      "from": "d1___negation_4",
-      "to": "d1___add_3"
-    },
-    {
-      "from": "b",
-      "to": "d1___power_8"
-    },
-    {
-      "from": "d1___power_8",
-      "to": "d1___add_7"
-    },
-    {
-      "from": "d1___num_11",
-      "to": "d1___multiply_10"
-    },
-    {
-      "from": "a",
-      "to": "d1___multiply_12"
-    },
-    {
-      "from": "c",
-      "to": "d1___multiply_12"
-    },
-    {
-      "from": "d1___multiply_12",
-      "to": "d1___multiply_10"
-    },
-    {
-      "from": "d1___multiply_10",
-      "to": "d1___negation_9"
-    },
-    {
-      "from": "d1___negation_9",
-      "to": "d1___add_7"
-    },
-    {
-      "from": "d1___add_7",
-      "to": "d1___power_6"
-    },
-    {
-      "from": "d1___power_6",
-      "to": "d1___negation_5"
-    },
-    {
-      "from": "d1___negation_5",
-      "to": "d1___add_3"
-    },
-    {
-      "from": "d1___add_3",
-      "to": "d1___multiply_2"
-    },
-    {
-      "from": "d1___num_15",
-      "to": "d1___multiply_14"
-    },
-    {
-      "from": "a",
-      "to": "d1___multiply_14"
-    },
-    {
-      "from": "d1___multiply_14",
-      "to": "d1___power_13"
-    },
-    {
-      "from": "d1___power_13",
-      "to": "d1___multiply_2"
-    },
-    {
-      "from": "d1___multiply_2",
-      "to": "d1___equals_1"
-    },
-    {
-      "from": "d0___equals_1",
-      "to": "__disjunction_1"
-    },
-    {
-      "from": "d1___equals_1",
-      "to": "__disjunction_1"
+      "from": "__power_2",
+      "to": "__integral_1"
     }
   ],
   "classification": {
@@ -2150,131 +1461,306 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  d0___equals_1{"="}:::relation
   x["$x$"]:::scalar
-  d0___multiply_2(("$\times$")):::operator
-  d0___add_3(("$+$")):::operator
-  d0___negation_4@{ shape: "flip-tri", label: "$-$" }
-  b["$b$"]:::scalar
-  d0___power_5(("${(\cdot)}^{1/2}$")):::operator
-  d0___add_6(("$+$")):::operator
-  d0___power_7(("${(\cdot)}^{2}$")):::operator
-  d0___negation_8@{ shape: "flip-tri", label: "$-$" }
-  d0___multiply_9(("$\times$")):::operator
-  d0___num_10["$4$"]:::number
-  d0___multiply_11(("$\times$")):::operator
   a["$a$"]:::scalar
-  c["$c$"]:::scalar
-  d0___power_12(("$\dfrac{1}{(\cdot)}$")):::operator
-  d0___multiply_13(("$\times$")):::operator
-  d0___num_14["$2$"]:::number
-  d1___equals_1{"="}:::relation
-  d1___multiply_2(("$\times$")):::operator
-  d1___add_3(("$+$")):::operator
-  d1___negation_4@{ shape: "flip-tri", label: "$-$" }
-  d1___negation_5@{ shape: "flip-tri", label: "$-$" }
-  d1___power_6(("${(\cdot)}^{1/2}$")):::operator
-  d1___add_7(("$+$")):::operator
-  d1___power_8(("${(\cdot)}^{2}$")):::operator
-  d1___negation_9@{ shape: "flip-tri", label: "$-$" }
-  d1___multiply_10(("$\times$")):::operator
-  d1___num_11["$4$"]:::number
-  d1___multiply_12(("$\times$")):::operator
-  d1___power_13(("$\dfrac{1}{(\cdot)}$")):::operator
-  d1___multiply_14(("$\times$")):::operator
-  d1___num_15["$2$"]:::number
-  __disjunction_1(("$\lor$")):::operator
-  class d0___negation_4 operator
-  class d0___negation_8 operator
-  class d1___negation_4 operator
-  class d1___negation_5 operator
-  class d1___negation_9 operator
-  x --&gt; d0___equals_1
-  b --&gt; d0___negation_4
-  d0___negation_4 --&gt; d0___add_3
-  b --&gt; d0___power_7
-  d0___power_7 --&gt; d0___add_6
-  d0___num_10 --&gt; d0___multiply_9
-  a --&gt; d0___multiply_11
-  c --&gt; d0___multiply_11
-  d0___multiply_11 --&gt; d0___multiply_9
-  d0___multiply_9 --&gt; d0___negation_8
-  d0___negation_8 --&gt; d0___add_6
-  d0___add_6 --&gt; d0___power_5
-  d0___power_5 --&gt; d0___add_3
-  d0___add_3 --&gt; d0___multiply_2
-  d0___num_14 --&gt; d0___multiply_13
-  a --&gt; d0___multiply_13
-  d0___multiply_13 --&gt; d0___power_12
-  d0___power_12 -.-&gt; d0___multiply_2
-  d0___multiply_2 --&gt; d0___equals_1
-  x --&gt; d1___equals_1
-  b --&gt; d1___negation_4
-  d1___negation_4 --&gt; d1___add_3
-  b --&gt; d1___power_8
-  d1___power_8 --&gt; d1___add_7
-  d1___num_11 --&gt; d1___multiply_10
-  a --&gt; d1___multiply_12
-  c --&gt; d1___multiply_12
-  d1___multiply_12 --&gt; d1___multiply_10
-  d1___multiply_10 --&gt; d1___negation_9
-  d1___negation_9 --&gt; d1___add_7
-  d1___add_7 --&gt; d1___power_6
-  d1___power_6 --&gt; d1___negation_5
-  d1___negation_5 --&gt; d1___add_3
-  d1___add_3 --&gt; d1___multiply_2
-  d1___num_15 --&gt; d1___multiply_14
-  a --&gt; d1___multiply_14
-  d1___multiply_14 --&gt; d1___power_13
-  d1___power_13 -.-&gt; d1___multiply_2
-  d1___multiply_2 --&gt; d1___equals_1
-  d0___equals_1 --&gt; __disjunction_1
-  d1___equals_1 --&gt; __disjunction_1
+  b["$b$"]:::scalar
+  __integral_1(("$\int_{a}^{b} dx$")):::operator
+  __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
+  x --&gt;|wrt| __integral_1
+  a --&gt;|lb| __integral_1
+  b --&gt;|ub| __integral_1
+  x --&gt; __power_2
+  __power_2 -.-&gt; __integral_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#ef5350,stroke-width:6px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#ef5350,stroke-width:3px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
-  linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#aaa,stroke-width:2px
-  linkStyle 13 stroke:#ef5350,stroke-width:3px
-  linkStyle 14 stroke:#ef5350,stroke-width:3px
-  linkStyle 15 stroke:#ef5350,stroke-width:3px
-  linkStyle 16 stroke:#aaa,stroke-width:2px
-  linkStyle 17 stroke:#42a5f5,stroke-width:1px
-  linkStyle 18 stroke:#aaa,stroke-width:2px
-  linkStyle 19 stroke:#aaa,stroke-width:2px
-  linkStyle 20 stroke:#aaa,stroke-width:2px
-  linkStyle 21 stroke:#aaa,stroke-width:2px
-  linkStyle 22 stroke:#aaa,stroke-width:2px
-  linkStyle 23 stroke:#ef5350,stroke-width:6px
-  linkStyle 24 stroke:#ef5350,stroke-width:3px
-  linkStyle 25 stroke:#ef5350,stroke-width:3px
-  linkStyle 26 stroke:#ef5350,stroke-width:3px
-  linkStyle 27 stroke:#ef5350,stroke-width:3px
-  linkStyle 28 stroke:#aaa,stroke-width:2px
-  linkStyle 29 stroke:#aaa,stroke-width:2px
-  linkStyle 30 stroke:#aaa,stroke-width:2px
-  linkStyle 31 stroke:#aaa,stroke-width:2px
-  linkStyle 32 stroke:#aaa,stroke-width:2px
-  linkStyle 33 stroke:#ef5350,stroke-width:3px
-  linkStyle 34 stroke:#ef5350,stroke-width:3px
-  linkStyle 35 stroke:#ef5350,stroke-width:3px
-  linkStyle 36 stroke:#aaa,stroke-width:2px
-  linkStyle 37 stroke:#42a5f5,stroke-width:1px
-  linkStyle 38 stroke:#aaa,stroke-width:2px
-  linkStyle 39 stroke:#aaa,stroke-width:2px
-  linkStyle 40 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#42a5f5,stroke-width:1px
 </pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;d0___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;x = \\frac{-b + \\sqrt{b^2 - 4ac}}{2a}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x - 1/2*(-b + sqrt(-4*a*c + pow(b, 2)))/a&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;d0___multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\left(-b + \\sqrt{b^{2} - 4 a c}\\right) \\frac{1}{2 a}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)*(-b + sqrt(-4*a*c + pow(b, 2)))/a&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d0___add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;-b + \\sqrt{b^{2} - 4 a c}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-b + sqrt(-4*a*c + pow(b, 2))&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d0___negation_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-b&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-b&quot;,&quot;variables&quot;:[&quot;b&quot;]}},{&quot;id&quot;:&quot;b&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;b&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;b&quot;,&quot;variables&quot;:[&quot;b&quot;]}},{&quot;id&quot;:&quot;d0___power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;1/2&quot;,&quot;subexpr&quot;:&quot;\\sqrt{b^{2} - 4 a c}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sqrt(-4*a*c + pow(b, 2))&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d0___add_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;b^{2} - 4 a c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-4*a*c + pow(b, 2)&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d0___power_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;b^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(b, 2)&quot;,&quot;variables&quot;:[&quot;b&quot;]}},{&quot;id&quot;:&quot;d0___negation_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-4 a c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-4*a*c&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d0___multiply_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;4 a c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;4*a*c&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d0___num_10&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;4&quot;,&quot;subexpr&quot;:&quot;4&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;4&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;d0___multiply_11&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;a c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a*c&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;d0___power_12&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2 a}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)/a&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;d0___multiply_13&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;a 2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2*a&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;d0___num_14&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;d1___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;x = \\frac{-b - \\sqrt{b^2 - 4ac}}{2a}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x - 1/2*(-b - sqrt(-4*a*c + pow(b, 2)))/a&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;d1___multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\left(-b - \\sqrt{b^{2} - 4 a c}\\right) \\frac{1}{2 a}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)*(-b - sqrt(-4*a*c + pow(b, 2)))/a&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d1___add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;-b - \\sqrt{b^{2} - 4 a c}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-b - sqrt(-4*a*c + pow(b, 2))&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d1___negation_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-b&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-b&quot;,&quot;variables&quot;:[&quot;b&quot;]}},{&quot;id&quot;:&quot;d1___negation_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\sqrt{b^{2} - 4 a c}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-sqrt(-4*a*c + pow(b, 2))&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d1___power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;1/2&quot;,&quot;subexpr&quot;:&quot;\\sqrt{b^{2} - 4 a c}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sqrt(-4*a*c + pow(b, 2))&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d1___add_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;b^{2} - 4 a c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-4*a*c + pow(b, 2)&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d1___power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;b^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(b, 2)&quot;,&quot;variables&quot;:[&quot;b&quot;]}},{&quot;id&quot;:&quot;d1___negation_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-4 a c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-4*a*c&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d1___multiply_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;4 a c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;4*a*c&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d1___num_11&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;4&quot;,&quot;subexpr&quot;:&quot;4&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;4&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;d1___multiply_12&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;a c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a*c&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;d1___power_13&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2 a}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)/a&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;d1___multiply_14&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;a 2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2*a&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;d1___num_15&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__disjunction_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;disjunction&quot;,&quot;subexpr&quot;:&quot;x = \\frac{-b + \\sqrt{b^2 - 4ac}}{2a} \\lor x = \\frac{-b - \\sqrt{b^2 - 4ac}}{2a}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;False&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;d0___equals_1&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;d0___negation_4&quot;},{&quot;from&quot;:&quot;d0___negation_4&quot;,&quot;to&quot;:&quot;d0___add_3&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;d0___power_7&quot;},{&quot;from&quot;:&quot;d0___power_7&quot;,&quot;to&quot;:&quot;d0___add_6&quot;},{&quot;from&quot;:&quot;d0___num_10&quot;,&quot;to&quot;:&quot;d0___multiply_9&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;d0___multiply_11&quot;},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;d0___multiply_11&quot;},{&quot;from&quot;:&quot;d0___multiply_11&quot;,&quot;to&quot;:&quot;d0___multiply_9&quot;},{&quot;from&quot;:&quot;d0___multiply_9&quot;,&quot;to&quot;:&quot;d0___negation_8&quot;},{&quot;from&quot;:&quot;d0___negation_8&quot;,&quot;to&quot;:&quot;d0___add_6&quot;},{&quot;from&quot;:&quot;d0___add_6&quot;,&quot;to&quot;:&quot;d0___power_5&quot;},{&quot;from&quot;:&quot;d0___power_5&quot;,&quot;to&quot;:&quot;d0___add_3&quot;},{&quot;from&quot;:&quot;d0___add_3&quot;,&quot;to&quot;:&quot;d0___multiply_2&quot;},{&quot;from&quot;:&quot;d0___num_14&quot;,&quot;to&quot;:&quot;d0___multiply_13&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;d0___multiply_13&quot;},{&quot;from&quot;:&quot;d0___multiply_13&quot;,&quot;to&quot;:&quot;d0___power_12&quot;},{&quot;from&quot;:&quot;d0___power_12&quot;,&quot;to&quot;:&quot;d0___multiply_2&quot;},{&quot;from&quot;:&quot;d0___multiply_2&quot;,&quot;to&quot;:&quot;d0___equals_1&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;d1___equals_1&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;d1___negation_4&quot;},{&quot;from&quot;:&quot;d1___negation_4&quot;,&quot;to&quot;:&quot;d1___add_3&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;d1___power_8&quot;},{&quot;from&quot;:&quot;d1___power_8&quot;,&quot;to&quot;:&quot;d1___add_7&quot;},{&quot;from&quot;:&quot;d1___num_11&quot;,&quot;to&quot;:&quot;d1___multiply_10&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;d1___multiply_12&quot;},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;d1___multiply_12&quot;},{&quot;from&quot;:&quot;d1___multiply_12&quot;,&quot;to&quot;:&quot;d1___multiply_10&quot;},{&quot;from&quot;:&quot;d1___multiply_10&quot;,&quot;to&quot;:&quot;d1___negation_9&quot;},{&quot;from&quot;:&quot;d1___negation_9&quot;,&quot;to&quot;:&quot;d1___add_7&quot;},{&quot;from&quot;:&quot;d1___add_7&quot;,&quot;to&quot;:&quot;d1___power_6&quot;},{&quot;from&quot;:&quot;d1___power_6&quot;,&quot;to&quot;:&quot;d1___negation_5&quot;},{&quot;from&quot;:&quot;d1___negation_5&quot;,&quot;to&quot;:&quot;d1___add_3&quot;},{&quot;from&quot;:&quot;d1___add_3&quot;,&quot;to&quot;:&quot;d1___multiply_2&quot;},{&quot;from&quot;:&quot;d1___num_15&quot;,&quot;to&quot;:&quot;d1___multiply_14&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;d1___multiply_14&quot;},{&quot;from&quot;:&quot;d1___multiply_14&quot;,&quot;to&quot;:&quot;d1___power_13&quot;},{&quot;from&quot;:&quot;d1___power_13&quot;,&quot;to&quot;:&quot;d1___multiply_2&quot;},{&quot;from&quot;:&quot;d1___multiply_2&quot;,&quot;to&quot;:&quot;d1___equals_1&quot;},{&quot;from&quot;:&quot;d0___equals_1&quot;,&quot;to&quot;:&quot;__disjunction_1&quot;},{&quot;from&quot;:&quot;d1___equals_1&quot;,&quot;to&quot;:&quot;__disjunction_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;b&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;b&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;b&quot;,&quot;variables&quot;:[&quot;b&quot;]}},{&quot;id&quot;:&quot;__integral_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;lower_bound&quot;:&quot;a&quot;,&quot;upper_bound&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;\\int_a^b \\frac{1}{x} \\, dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-log(a) + log(b)&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;]}},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/x&quot;,&quot;variables&quot;:[&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;lb&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;ub&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__integral_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
-<div class="summary">✅ <span class="count">3</span> rendered, <span class="count">0</span> errors out of <span class="count">3</span> expressions</div>
+<div class="row">
+  <div>
+    <div class="row-id">integral_exp_decay</div>
+    <div class="row-latex">$$\int_0^h e^{-z/H} \, dz$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  z["$z$"]:::scalar
+  __num_2["$0$"]:::number
+  h["$h$"]:::scalar
+  __integral_1(("$\int_{0}^{h} dz$")):::operator
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
+  e["$e$"]:::scalar
+  __multiply_4(("$\times$")):::operator
+  __negation_5@{ shape: "flip-tri", label: "$-$" }
+  __power_6(("$\dfrac{1}{(\cdot)}$")):::operator
+  H["$H$"]:::scalar
+  class __negation_5 operator
+  z --&gt;|wrt| __integral_1
+  __num_2 --&gt;|lb| __integral_1
+  h --&gt;|ub| __integral_1
+  e --&gt; __power_3
+  z --&gt; __negation_5
+  __negation_5 --&gt; __multiply_4
+  H --&gt; __power_6
+  __power_6 -.-&gt; __multiply_4
+  __multiply_4 --&gt;|exp| __power_3
+  __power_3 --&gt; __integral_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#42a5f5,stroke-width:1px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="\int_0^h e^{-z/H} \, dz"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\int_0^h e^{-z/H} \, dz</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "z",
+      "type": "scalar",
+      "latex": "z",
+      "subexpr": "z",
+      "chartScript": {
+        "script": "z",
+        "variables": [
+          "z"
+        ]
+      }
+    },
+    {
+      "id": "__num_2",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "h",
+      "type": "scalar",
+      "latex": "h",
+      "subexpr": "h",
+      "chartScript": {
+        "script": "h",
+        "variables": [
+          "h"
+        ]
+      }
+    },
+    {
+      "id": "__integral_1",
+      "type": "operator",
+      "op": "integral",
+      "with_respect_to": "z",
+      "lower_bound": "__num_2",
+      "upper_bound": "h",
+      "subexpr": "\\int_0^h e^{-z/H} \\, dz",
+      "chartScript": {
+        "script": "H - H*exp(-h/H)",
+        "variables": [
+          "H",
+          "h"
+        ]
+      }
+    },
+    {
+      "id": "__power_3",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "e^{\\frac{\\left(-1\\right) z}{H}}",
+      "chartScript": {
+        "script": "exp(-z/H)",
+        "variables": [
+          "H",
+          "z"
+        ]
+      }
+    },
+    {
+      "id": "e",
+      "type": "scalar",
+      "latex": "e",
+      "subexpr": "e",
+      "chartScript": {
+        "script": "e",
+        "variables": []
+      }
+    },
+    {
+      "id": "__multiply_4",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\frac{1}{H} -z",
+      "chartScript": {
+        "script": "-z + 1/H",
+        "variables": [
+          "H",
+          "z"
+        ]
+      }
+    },
+    {
+      "id": "__negation_5",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-z",
+      "chartScript": {
+        "script": "-z",
+        "variables": [
+          "z"
+        ]
+      }
+    },
+    {
+      "id": "__power_6",
+      "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{H}",
+      "chartScript": {
+        "script": "1/H",
+        "variables": [
+          "H"
+        ]
+      }
+    },
+    {
+      "id": "H",
+      "type": "scalar",
+      "latex": "H",
+      "subexpr": "H",
+      "chartScript": {
+        "script": "H",
+        "variables": [
+          "H"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "z",
+      "to": "__integral_1",
+      "role": "wrt"
+    },
+    {
+      "from": "__num_2",
+      "to": "__integral_1",
+      "role": "lb"
+    },
+    {
+      "from": "h",
+      "to": "__integral_1",
+      "role": "ub"
+    },
+    {
+      "from": "e",
+      "to": "__power_3"
+    },
+    {
+      "from": "z",
+      "to": "__negation_5"
+    },
+    {
+      "from": "__negation_5",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "H",
+      "to": "__power_6"
+    },
+    {
+      "from": "__power_6",
+      "to": "__multiply_4"
+    },
+    {
+      "from": "__multiply_4",
+      "to": "__power_3",
+      "role": "exp"
+    },
+    {
+      "from": "__power_3",
+      "to": "__integral_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  z["$z$"]:::scalar
+  __num_2["$0$"]:::number
+  h["$h$"]:::scalar
+  __integral_1(("$\int_{0}^{h} dz$")):::operator
+  __power_3(("$(\cdot)^{\cdot}$")):::operator
+  e["$e$"]:::scalar
+  __multiply_4(("$\times$")):::operator
+  __negation_5@{ shape: "flip-tri", label: "$-$" }
+  __power_6(("$\dfrac{1}{(\cdot)}$")):::operator
+  H["$H$"]:::scalar
+  class __negation_5 operator
+  z --&gt;|wrt| __integral_1
+  __num_2 --&gt;|lb| __integral_1
+  h --&gt;|ub| __integral_1
+  e --&gt; __power_3
+  z --&gt; __negation_5
+  __negation_5 --&gt; __multiply_4
+  H --&gt; __power_6
+  __power_6 -.-&gt; __multiply_4
+  __multiply_4 --&gt;|exp| __power_3
+  __power_3 --&gt; __integral_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#42a5f5,stroke-width:1px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;z&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;z&quot;,&quot;subexpr&quot;:&quot;z&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;z&quot;,&quot;variables&quot;:[&quot;z&quot;]}},{&quot;id&quot;:&quot;__num_2&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;h&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;h&quot;,&quot;subexpr&quot;:&quot;h&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;h&quot;,&quot;variables&quot;:[&quot;h&quot;]}},{&quot;id&quot;:&quot;__integral_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;z&quot;,&quot;lower_bound&quot;:&quot;__num_2&quot;,&quot;upper_bound&quot;:&quot;h&quot;,&quot;subexpr&quot;:&quot;\\int_0^h e^{-z/H} \\, dz&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;H - H*exp(-h/H)&quot;,&quot;variables&quot;:[&quot;H&quot;,&quot;h&quot;]}},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;e^{\\frac{\\left(-1\\right) z}{H}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;exp(-z/H)&quot;,&quot;variables&quot;:[&quot;H&quot;,&quot;z&quot;]}},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;e&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{H} -z&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-z + 1/H&quot;,&quot;variables&quot;:[&quot;H&quot;,&quot;z&quot;]}},{&quot;id&quot;:&quot;__negation_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-z&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-z&quot;,&quot;variables&quot;:[&quot;z&quot;]}},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{H}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/H&quot;,&quot;variables&quot;:[&quot;H&quot;]}},{&quot;id&quot;:&quot;H&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;H&quot;,&quot;subexpr&quot;:&quot;H&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;H&quot;,&quot;variables&quot;:[&quot;H&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__num_2&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;lb&quot;},{&quot;from&quot;:&quot;h&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;ub&quot;},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__negation_5&quot;},{&quot;from&quot;:&quot;__negation_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;H&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__power_3&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__integral_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="summary">✅ <span class="count">4</span> rendered, <span class="count">0</span> errors out of <span class="count">4</span> expressions</div>
 <script>
 document.querySelectorAll('.row-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
