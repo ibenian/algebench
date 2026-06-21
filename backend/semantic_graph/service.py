@@ -7,7 +7,7 @@ from backend.model.semantic_graph import SemanticGraph
 from .cache import GraphCache, _MISS
 from .equation_chain import derive_equation_chain_graph
 from .postprocessor import GraphPostprocessor
-from .preprocessor import LaTeXPreprocessor
+from .preprocessor import LaTeXPreprocessor, strip_math_delimiters
 from .sympy_translator import latex_to_semantic_graph
 
 
@@ -25,6 +25,13 @@ class SemanticGraphService:
         Results are memoized by (latex, domain).
         """
         if not isinstance(latex, str) or not latex:
+            return None
+
+        # Peel any surrounding math-mode delimiters ($…$, \(…\), \[…\]) the
+        # source may have wrapped the expression in — SymPy's parser wants the
+        # bare body, and a wrapped expression otherwise fails outright.
+        latex = strip_math_delimiters(latex)
+        if not latex:
             return None
 
         cached = self._cache.get(latex, domain)

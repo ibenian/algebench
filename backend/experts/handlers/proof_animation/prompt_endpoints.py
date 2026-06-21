@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import dspy
 
+from backend.semantic_graph.preprocessor import strip_math_delimiters
+
 
 class ProofPromptSig(dspy.Signature):
     """Name the exact start and target expressions a short request asks to derive.
@@ -38,6 +40,9 @@ class ProofPromptSig(dspy.Signature):
 def endpoints_from_prompt(prompt: str) -> tuple[str, str, str, str, str, str]:
     """LM-propose (start, target, domain, title, given_label, start_note) for a request."""
     ep = dspy.Predict(ProofPromptSig)(prompt=prompt)
-    return (ep.start_latex.strip(), ep.target_latex.strip(),
+    # The LM frequently wraps its endpoint LaTeX in $…$ math delimiters; strip
+    # them so the start/target both PARSE and render cleanly (titles re-wrap in
+    # $…$, so a leftover $ would yield a doubled $$…$$).
+    return (strip_math_delimiters(ep.start_latex), strip_math_delimiters(ep.target_latex),
             (ep.domain or "").strip(), (ep.title or "").strip(),
             (ep.given_label or "").strip(), (ep.start_note or "").strip())

@@ -14,6 +14,40 @@ from .preprocess_result import PreprocessResult
 # LaTeX spacing commands, longest-first so endswith() strips the longest match.
 _SPACING_COMMANDS = ("\\qquad", "\\quad", "\\,", "\\;", "\\!", "\\:")
 
+# Math-mode delimiter pairs, longest opener first so ``$$`` beats ``$``.
+_MATH_DELIMITERS = (("$$", "$$"), ("\\[", "\\]"), ("\\(", "\\)"), ("$", "$"))
+
+
+def strip_math_delimiters(s: str) -> str:
+    r"""Peel surrounding math-mode delimiters off *s* (``$…$``, ``\(…\)``, …).
+
+    LM-proposed and hand-authored LaTeX sometimes arrives already wrapped in the
+    delimiters that put TeX into math mode — ``$…$`` / ``$$…$$`` (inline /
+    display) or ``\(…\)`` / ``\[…\]``.  SymPy's ``parse_latex`` wants the bare
+    body, so a wrapped expression fails to parse outright, and re-wrapping it for
+    display yields doubled ``$$…$$``.  Strip one or more balanced layers, but
+    ONLY when a pair genuinely encloses the whole string — ``$a$ + $b$`` (where
+    the leading ``$`` closes mid-string) is left untouched.
+    """
+    if not isinstance(s, str):
+        return s
+    s = s.strip()
+    changed = True
+    while changed:
+        changed = False
+        for open_d, close_d in _MATH_DELIMITERS:
+            if (len(s) >= len(open_d) + len(close_d)
+                    and s.startswith(open_d) and s.endswith(close_d)):
+                body = s[len(open_d):len(s) - len(close_d)]
+                # If the delimiter still appears inside, the outer pair does not
+                # actually enclose the whole string (e.g. ``$a$ + $b$``).
+                if open_d in body or close_d in body:
+                    continue
+                s = body.strip()
+                changed = True
+                break
+    return s
+
 
 def strip_trailing_spacing(s: str) -> str:
     r"""Remove trailing whitespace and LaTeX spacing commands, in linear time.

@@ -4,13 +4,46 @@ from __future__ import annotations
 
 import pytest
 
-from backend.semantic_graph.preprocessor import LaTeXPreprocessor
+from backend.semantic_graph.preprocessor import (
+    LaTeXPreprocessor,
+    strip_math_delimiters,
+)
 from backend.semantic_graph.preprocess_result import PreprocessResult
 
 
 @pytest.fixture
 def pp():
     return LaTeXPreprocessor()
+
+
+# ------------------------------------------------------------------
+# strip_math_delimiters
+# ------------------------------------------------------------------
+
+class TestStripMathDelimiters:
+    @pytest.mark.parametrize("wrapped, bare", [
+        (r"$x = 1$", "x = 1"),
+        (r"$$x = 1$$", "x = 1"),
+        (r"\(x = 1\)", "x = 1"),
+        (r"\[x = 1\]", "x = 1"),
+        (r"  $x = 1$  ", "x = 1"),
+        (r"$m a = \frac{1}{2}\rho V^2 C_d A$", r"m a = \frac{1}{2}\rho V^2 C_d A"),
+    ])
+    def test_strips_enclosing_delimiters(self, wrapped, bare):
+        assert strip_math_delimiters(wrapped) == bare
+
+    def test_unwrapped_passthrough(self):
+        assert strip_math_delimiters("x = 1") == "x = 1"
+
+    def test_does_not_strip_non_enclosing(self):
+        # The leading $ closes mid-string, so the pair does not enclose all of s.
+        assert strip_math_delimiters(r"$a$ + $b$") == r"$a$ + $b$"
+
+    def test_nested_layers_peeled(self):
+        assert strip_math_delimiters(r"$$\(x\)$$") == "x"
+
+    def test_non_string_passthrough(self):
+        assert strip_math_delimiters(None) is None
 
 
 # ------------------------------------------------------------------
