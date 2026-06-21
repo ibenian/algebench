@@ -192,3 +192,89 @@ def test_history_makes_nonadjacent_states_share_ids():
     g2 = rebase(g1, _g("a \\cdot (p+q)"), reg)            # reappears
     add2 = _add_with_child(g2, "p")
     assert add0 is not None and add0 == add2
+
+
+# --------------------------------------------------------------------------- #
+# complex render constructs (Allen-Eggers shapes): fractions / division bars,
+# square roots of different sizes, nested big+small parentheses, integrals.
+#
+# Parens, fraction bars and radicals are NOT graph nodes — they're how the
+# renderer DRAWS structure: a fraction is multiply(num, power(denom, -1)) (the
+# bar is just how a multiply-by-reciprocal is drawn), a square root is a power
+# node (radicand^½), and parentheses are emitted purely from operator
+# precedence. The matcher matches those underlying multiply/power nodes; the
+# glyph follows. The integral sign, by contrast, IS a real node (an `integral`
+# operator) and is matched directly. The tests assert the matcher keeps the
+# stable ids that let all of these morph instead of delete+insert.
+# --------------------------------------------------------------------------- #
+
+def _ops(graph, op):
+    """Ids of nodes whose op (or type) is ``op``."""
+    return {n.id for n in graph.nodes if (n.op or n.type) == op}
+
+
+def test_fraction_denominator_change_keeps_numerator_and_bar():
+    """``(a+b)/c -> (a+b)/d``: the numerator subtree and the fraction bar
+    (multiply node) stay; only the denominator changes."""
+    p, q = _g(r"\frac{a+b}{c}"), _g(r"\frac{a+b}{d}")
+    out = rebase(p, q)
+    assert canonical_equal(out, _g(r"\frac{a+b}{d}"))
+    assert {"a", "b"} <= _ids(out)
+    assert _ops(p, "add") & _ids(out), "numerator (a+b) lost its id"
+    assert _ops(p, "multiply") & _ids(out), "fraction bar (multiply) lost its id"
+    assert "d" in _ids(out) and "c" not in _ids(out)
+
+
+def test_square_root_of_different_sizes_keeps_radical():
+    """A small radical that grows into a big one (``√x -> √(x+y)``) keeps the
+    radical (power) node and the surviving radicand — so the √ glyph morphs
+    (resizes) rather than being deleted and a new one inserted."""
+    p, q = _g(r"\sqrt{x}"), _g(r"\sqrt{x + y}")
+    out = rebase(p, q)
+    assert canonical_equal(out, _g(r"\sqrt{x + y}"))
+    assert "x" in _ids(out)
+    assert _ops(p, "power") & _ids(out), "radical (power) node lost its id when it grew"
+
+
+def test_sqrt_of_fraction_keeps_numerator_on_denominator_change():
+    """An Allen-Eggers shape — ``√(p²/(2β)) -> √(p²/(2α))`` — keeps the radical,
+    the bar and the numerator p² stable while the denominator symbol changes."""
+    p, q = _g(r"\sqrt{\frac{p^2}{2\beta}}"), _g(r"\sqrt{\frac{p^2}{2\alpha}}")
+    out = rebase(p, q)
+    assert canonical_equal(out, _g(r"\sqrt{\frac{p^2}{2\alpha}}"))
+    assert "p" in _ids(out)
+    assert _ops(p, "power") & _ids(out), "the p² power / radical lost its id"
+
+
+def test_nested_parentheses_inner_unchanged():
+    """Big + small parens: ``a·((b+c)+e) -> d·((b+c)+e)`` keeps both the inner
+    (small-paren) and outer (big-paren) sums and their atoms stable; only the
+    leading factor changes."""
+    p, q = _g(r"a \cdot ((b+c)+e)"), _g(r"k \cdot ((b+c)+e)")
+    out = rebase(p, q)
+    assert canonical_equal(out, _g(r"k \cdot ((b+c)+e)"))
+    assert {"b", "c", "e"} <= _ids(out)
+    assert len(_ops(p, "add") & _ids(out)) == 2, "an inner/outer paren sum lost its id"
+    assert "k" in _ids(out) and "a" not in _ids(out)
+
+
+def test_integral_lhs_unchanged_keeps_integral_sign():
+    """``∫x dx = y -> ∫x dx = z``: the integral node and its integrand stay put
+    (the ∫ glyph morphs), only the right-hand side changes."""
+    p, q = _g(r"\int x \, dx = y"), _g(r"\int x \, dx = z")
+    out = rebase(p, q)
+    assert canonical_equal(out, _g(r"\int x \, dx = z"))
+    assert "x" in _ids(out)
+    assert _ops(p, "integral") & _ids(out), "integral node lost its id"
+    assert "z" in _ids(out) and "y" not in _ids(out)
+
+
+def test_allen_eggers_target_self_rebase_is_identity():
+    """The full Allen-Eggers velocity-altitude result (22 nodes: nested fraction,
+    exponentials, sin) rebased onto itself preserves every id and the structure —
+    no spurious relabeling on a large, complex graph."""
+    t = _g(r"v = v_E e^{-\frac{H \rho_0 e^{-h/H}}{2\beta\sin\gamma}}")
+    out = rebase(t, t)
+    assert _ids(t) == _ids(out)
+    assert canonical_equal(out, t)
+    assert len(t.nodes) >= 20
