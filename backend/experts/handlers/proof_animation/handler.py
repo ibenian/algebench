@@ -178,13 +178,35 @@ def _prior_steps_clause(req: DeriveProofRequest) -> str:
     return clause
 
 
-# This handler powers a step-by-step LEARNING animation, so we explicitly ask the
-# expert for the finest pedagogically-useful breakdown (the signature already
-# prefers small steps; this reinforces it for the live derive path).
+# This handler powers a step-by-step LEARNING animation, so for an ADJACENT
+# transition we explicitly ask the expert for the finest pedagogically-useful
+# breakdown (the signature already prefers small steps; this reinforces it).
+# Applied ONLY when deriving from the immediately-previous step (see
+# ``_derives_from_previous_step``): that start→target span is a single logical
+# move, so micro-stepping it is bounded and useful. For a from-given/goal or
+# inferred start the span can be many steps, where micro-stepping explodes the
+# derivation length — so the directive is withheld there.
 _MICROSTEP_DIRECTIVE = (
     " — show every intermediate micro-step a learner needs to follow this, "
     "preferring many small, clearly-justified moves over one big jump"
 )
+
+
+def _derives_from_previous_step(req: DeriveProofRequest) -> bool:
+    """True when the supplied start IS the immediately-preceding proof step.
+
+    A per-step proof-card "Derive" anchors the start on the previous step
+    (issue #382), making start→target a single adjacent transition. That is the
+    only case where the micro-step directive is appropriate; other starts
+    (given / goal / inferred) can span many steps.
+    """
+    start = (req.start_latex or "").strip()
+    if not start or not req.previous_steps:
+        return False
+    last = (req.previous_steps[-1].math or "").strip()
+    def _norm(s):                        # whitespace-insensitive compare
+        return "".join(s.split())
+    return bool(last) and _norm(start) == _norm(last)
 
 
 @register_handler("proof_animation", request_model=DeriveProofRequest)
@@ -213,8 +235,10 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     intent = req.intent or (
         f"Derive {req.target_latex}" + (f" given {givens}" if givens else "")
     )
-    # Reinforce the pedagogical micro-step request (bounded to the intent limit).
-    intent = (intent + _MICROSTEP_DIRECTIVE)[:_INTENT_MAX].rstrip()
+    # Reinforce the micro-step request ONLY for an adjacent (from-previous-step)
+    # derivation — micro-stepping a multi-step span explodes its length.
+    if _derives_from_previous_step(req):
+        intent = (intent + _MICROSTEP_DIRECTIVE)[:_INTENT_MAX].rstrip()
 
     # --- call: run the expert through the canonical invoke boundary -------------
     # `step_judge` reflects the gate WITHOUT constructing the judge: calling

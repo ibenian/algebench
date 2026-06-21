@@ -84,17 +84,68 @@ def test_change_type_mislabel_downgrades_one_notch():
 
 
 def test_timeout_degrades_to_plausible(monkeypatch):
+    from backend.experts.modules.proof_completion import cas_guard
+
     def slow_solveset(*args, **kwargs):
         time.sleep(5)
         return sp.FiniteSet(0)
 
+    # thread isolation keeps the monkeypatched entry point in-process; a tight
+    # client timeout means each guarded slow call gives up fast (degrade, no hang).
+    monkeypatch.setenv("ALGEBENCH_CAS_ISOLATION", "thread")
+    monkeypatch.setenv("ALGEBENCH_CAS_CLIENT_TIMEOUT", "0.3")
+    cas_guard._reset_for_tests()
     monkeypatch.setattr(SG, "_solveset", slow_solveset)
-    monkeypatch.setattr(SG, "_TIMEOUT_S", 0.3)
     t0 = time.monotonic()
     pv = classify_pair(sp.Eq(x ** 2, 4), sp.Eq(x, 1))
     elapsed = time.monotonic() - t0
     assert pv.tier is Tier.BLUE               # undecided, not wrong, no hang
     assert elapsed < 3.0
+    cas_guard._reset_for_tests()
+
+
+def test_process_isolation_roundtrips_real_ops(monkeypatch):
+    """The default (process) mode: every _op_* helper + sympy entry point must
+    pickle and round-trip through a worker, producing the same verdicts."""
+    from backend.experts.modules.proof_completion import cas_guard
+
+    monkeypatch.setenv("ALGEBENCH_CAS_ISOLATION", "process")
+    cas_guard._reset_for_tests()
+    try:
+        # equivalence (sympy_equiv), narrowing (solveset + is_subset), and a
+        # refutation (set difference) each exercise a different guarded op.
+        rep = ground_steps(
+            [sp.Eq(x ** 2 - 4, 0), sp.Eq(x ** 2, 4), sp.Eq(x, 2)],
+            change_types=["rewrite", "solve"])
+        assert rep.pairs[0].relation == "equivalent"
+        assert rep.pairs[1].relation == "narrows"
+
+        ref = ground_steps([sp.Eq(x ** 2, 4), sp.Eq(x, 7)],
+                           change_types=["solve"])
+        assert ref.pairs[0].relation == "refuted"
+        assert "7" in ref.pairs[0].reason
+    finally:
+        cas_guard._reset_for_tests()
+
+
+def test_complexity_pregate_skips_huge_expression(monkeypatch):
+    """An over-budget expression degrades to plausible without any heavy CAS work."""
+    monkeypatch.setattr(SG, "_MAX_OPS", 50)
+    # a big nested polynomial — well over a 50-op budget
+    big = sum((x + k) ** 3 for k in range(40))
+    called = {"hit": False}
+
+    def _boom(*a, **k):
+        called["hit"] = True
+        raise AssertionError("heavy CAS path should not run for an over-budget expr")
+
+    monkeypatch.setattr(SG, "_solveset", _boom)
+    monkeypatch.setattr(SG, "sympy_equiv", _boom)
+    pv = classify_pair(big, big + 1)
+    assert pv.tier is Tier.BLUE
+    assert pv.relation == "unknown"
+    assert called["hit"] is False             # never reached the CAS routines
+    assert "too large" in pv.reason
 
 
 def test_endpoint_gate_caps_overall():

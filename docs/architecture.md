@@ -9,6 +9,7 @@
 - [sandboxing-plan.md](sandboxing-plan.md) — Implementation status and backend sandboxing roadmap
 - [latex-parser-design.md](latex-parser-design.md) — LaTeX → semantic graph builder (parser layer)
 - [semantic-graph-visualization.md](semantic-graph-visualization.md) — Semantic graph → Mermaid → interactive SVG (render layer)
+- [cas-execution-model.md](cas-execution-model.md) — Killable, process-isolated sympy execution (CAS guard)
 - [feature-ideas.md](feature-ideas.md) — Roadmap ideas and creative directions
 - [lesson-ideas.md](lesson-ideas.md) — Lesson concepts and content proposals
 
