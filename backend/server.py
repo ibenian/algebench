@@ -1302,10 +1302,11 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
     # proof_completion expert loaded a compiled artifact or fell back to baseline,
     # and the per-attempt refinement dump — are otherwise dropped. Set up here (not
     # just in main()) so the uvicorn/asgi entrypoint gets it too. `debug` (CLI
-    # --debug) forces DEBUG; otherwise stay quiet (WARNING). Override with the
+    # --debug) forces DEBUG; otherwise default to INFO. Override with the
     # ALGEBENCH_LOG_LEVEL env var (e.g. staging sets it to DEBUG via render.yaml).
+    # An unrecognized ALGEBENCH_LOG_LEVEL falls back to the same INFO default.
     _log_level = os.environ.get(
-        "ALGEBENCH_LOG_LEVEL", "DEBUG" if debug else "WARNING").upper()
+        "ALGEBENCH_LOG_LEVEL", "DEBUG" if debug else "INFO").upper()
     _applog = logging.getLogger("backend")
     if not any(isinstance(h, logging.StreamHandler) for h in _applog.handlers):
         _h = logging.StreamHandler()
