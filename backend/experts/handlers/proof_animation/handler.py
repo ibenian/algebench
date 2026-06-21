@@ -18,6 +18,7 @@ Exposed at ``POST /api/expert/proof_animation``. Requires DSPy configured
 from __future__ import annotations
 
 import logging
+import os
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -199,6 +200,16 @@ _MICROSTEP_DIRECTIVE = (
     "preferring many small, clearly-justified moves over one big jump"
 )
 
+# Micro-step gate mode (interim env knob):
+#   "all"      — apply the directive to EVERY derivation (fine-grained; e.g. an
+#                Allen-Eggers derivation goes from ~3 back to ~30 steps).
+#   "adjacent" — original behavior: only a single from-previous-step transition
+#                gets micro-stepped (a multi-step span can otherwise explode).
+# TODO: promote this to a first-class, per-request / per-lesson config option
+# (e.g. a DeriveProofRequest field or lesson setting) instead of a global env
+# var, so granularity can be chosen per derivation rather than process-wide.
+_MICROSTEP_MODE = os.environ.get("ALGEBENCH_PROOF_MICROSTEPS", "all").strip().lower()
+
 
 def _derives_from_previous_step(req: DeriveProofRequest) -> bool:
     """True when the supplied start IS the immediately-preceding proof step.
@@ -243,9 +254,11 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     intent = req.intent or (
         f"Derive {req.target_latex}" + (f" given {givens}" if givens else "")
     )
-    # Reinforce the micro-step request ONLY for an adjacent (from-previous-step)
-    # derivation — micro-stepping a multi-step span explodes its length.
-    if _derives_from_previous_step(req):
+    # Reinforce the micro-step request. Gated by ``_MICROSTEP_MODE`` (env): "all"
+    # forces it on every derivation; "adjacent" restricts it to a single
+    # from-previous-step transition (micro-stepping a multi-step span can explode
+    # its length). See the TODO at ``_MICROSTEP_MODE``.
+    if _MICROSTEP_MODE == "all" or _derives_from_previous_step(req):
         intent = (intent + _MICROSTEP_DIRECTIVE)[:_INTENT_MAX].rstrip()
 
     # --- call: run the expert through the canonical invoke boundary -------------
