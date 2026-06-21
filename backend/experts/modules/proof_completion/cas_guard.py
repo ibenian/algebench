@@ -85,13 +85,14 @@ _IS_WORKER = False
 # Allow-list of callables permitted to run via ``guard`` (defense in depth).
 # ``guard`` refuses anything not registered here, so only known, vetted ops can
 # ever execute in a worker — even though no current call site lets user input
-# choose the callable. Ops register themselves at import via ``@register``.
+# choose the callable. Ops register at import via ``@cas_register_safe_function``.
 _ALLOWED: set = set()
 
 
-def register(fn):
+def cas_register_safe_function(fn):
     """Permit ``fn`` to be executed via :func:`guard`. Usable as a decorator."""
     _ALLOWED.add(fn)
+    log.debug("%s registered safe op: %s", _CAS_TAG, getattr(fn, "__name__", fn))
     return fn
 
 

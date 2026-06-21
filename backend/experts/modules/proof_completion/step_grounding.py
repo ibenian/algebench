@@ -46,7 +46,7 @@ from typing import Literal, Optional, Sequence
 
 import sympy as sp
 
-from .cas_guard import guard as _guard, register as _register
+from .cas_guard import guard as _guard, cas_register_safe_function
 from .grounding import _coerce_expr, sympy_equiv
 
 # --------------------------------------------------------------------------- #
@@ -188,44 +188,44 @@ _limit = sp.limit
 # pickled). These wrap the small set of compound checks that previously used
 # inline lambdas. Each takes/returns only picklable sympy values.
 
-# Every op is registered (``@_register``) so the killable guard's allow-list
+# Every op is registered (``@cas_register_safe_function``) so the killable guard's allow-list
 # permits it; an unregistered callable is refused (defense in depth). The three
 # ``_op_*set``/``limit`` wrappers also indirect through the monkeypatchable module
 # globals so the registered, stable callable is what the guard sees while tests
 # can still swap the underlying sympy entry point.
 
-@_register
+@cas_register_safe_function
 def _op_is_subset(a, b):
     """``a.is_subset(b)`` — True / False / None (sympy can't decide)."""
     return a.is_subset(b)
 
 
-@_register
+@cas_register_safe_function
 def _op_set_diff(a, b):
     """Set difference ``a - b`` (the values ``a`` has that ``b`` lacks)."""
     return a - b
 
 
-@_register
+@cas_register_safe_function
 def _op_simplify_diff(a, b):
     """``simplify(a - b)`` — 0 iff the two are equal."""
     return sp.simplify(a - b)
 
 
-@_register
+@cas_register_safe_function
 def _op_scaled_factor(ra, rb):
     """The proportionality factor ``ra / rb``, cancelled and simplified."""
     return sp.simplify(sp.cancel(ra / rb))
 
 
-@_register
+@cas_register_safe_function
 def _op_squared_match(plhs, prhs, lhs, rhs):
     """Is ``prev`` exactly ``curr`` squared side-for-side? (both sides match)."""
     return bool(sp.simplify(plhs - lhs ** 2) == 0
                 and sp.simplify(prhs - rhs ** 2) == 0)
 
 
-@_register
+@cas_register_safe_function
 def _op_branch_equiv(prev, curr):
     """Do the two equations square to the same statement (equal up to branch)?"""
     def sq(e):
@@ -233,7 +233,7 @@ def _op_branch_equiv(prev, curr):
     return bool(sympy_equiv(sq(prev), sq(curr)))
 
 
-@_register
+@cas_register_safe_function
 def _op_sets_norm_equal(a, b):
     """Are two finite landmark sets equal after nsimplify/simplify normalisation?"""
     def norm(s):
@@ -241,19 +241,19 @@ def _op_sets_norm_equal(a, b):
     return norm(a) == norm(b)
 
 
-@_register
+@cas_register_safe_function
 def _op_solveset(eq, x, domain):
     """Guarded ``solveset`` (via the monkeypatchable module global)."""
     return _solveset(eq, x, domain)
 
 
-@_register
+@cas_register_safe_function
 def _op_singularities(f, x, domain):
     """Guarded ``singularities`` (via the monkeypatchable module global)."""
     return _singularities(f, x, domain)
 
 
-@_register
+@cas_register_safe_function
 def _op_limit(f, x, point, *rest):
     """Guarded ``limit`` (via the monkeypatchable module global)."""
     return _limit(f, x, point, *rest)
@@ -312,7 +312,7 @@ def _sole_symbol(*exprs):
     return next(iter(syms)) if len(syms) == 1 else None
 
 
-@_register
+@cas_register_safe_function
 def _solution_set(e, x, domain=sp.S.Reals):
     """Solution set of a relational / boolean combination of relationals.
 

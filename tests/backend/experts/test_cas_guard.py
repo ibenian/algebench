@@ -31,7 +31,7 @@ def _clean_guard():
     helpers are registered here (registration persists; that's fine).
     """
     for fn in (W.inc, W.echo, W.boom, W.sleep_then, W.spin, W.spin_ignoring_sigterm):
-        cas_guard.register(fn)
+        cas_guard.cas_register_safe_function(fn)
     cas_guard._reset_for_tests()
     yield
     cas_guard._reset_for_tests()
@@ -346,6 +346,16 @@ def test_concurrent_mixed_load(monkeypatch):
 # --------------------------------------------------------------------------- #
 # observability
 # --------------------------------------------------------------------------- #
+
+
+def test_register_logs_the_op(caplog):
+    """Registering a safe op logs it."""
+    def _some_op():
+        return 1
+
+    with caplog.at_level("DEBUG"):
+        cas_guard.cas_register_safe_function(_some_op)
+    assert "registered safe op: _some_op" in caplog.text
 
 
 def test_log_timeout_preview_is_bounded(caplog):
