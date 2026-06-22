@@ -311,5 +311,30 @@
         }
       ]
     }
+  },
+  {
+    "title": "Integrate by separation",
+    "domain": "calculus",
+    "start_operation": "Given the separated equation",
+    "start_justification": "integrate to solve for $v$",
+    "trajectory": {
+      "kind": "proof_trajectory",
+      "start_latex": "\\frac{1}{v} \\, dv = -k \\, e^{-h/H} \\, dh",
+      "target_latex": "\\int \\frac{1}{v} \\, dv = -k \\int e^{-h/H} \\, dh",
+      "steps": [
+        {
+          "change_type": "rewrite",
+          "operation": "Integrate both sides",
+          "justification": "apply $\\int$ to each side",
+          "expr_latex": "\\int \\frac{1}{v} \\, dv = \\int -k \\, e^{-h/H} \\, dh"
+        },
+        {
+          "change_type": "rewrite",
+          "operation": "Factor the constant out",
+          "justification": "constants pull out of the integral",
+          "expr_latex": "\\int \\frac{1}{v} \\, dv = -k \\int e^{-h/H} \\, dh"
+        }
+      ]
+    }
   }
 ]
