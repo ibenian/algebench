@@ -7,11 +7,10 @@ morphs on. These tests pin two things:
 * **Universal invariants** that must hold for *any* matcher (structure is never
   changed by relabeling, output is deterministic, ids stay unique, a symbol is
   never re-identified as a different symbol).
-* **Current stable-id behavior** on the everyday transitions (coefficient change,
-  a partial change in a sum, commutative reorder, repeated subtree + one more) —
-  a regression lock for the upcoming GumTree-fidelity / history-aware rewrite,
-  which will *strengthen* matching on large/repeated structure without regressing
-  any of these.
+* **Stable-id behavior** on the everyday transitions (coefficient change, a
+  partial change in a sum, commutative reorder, repeated subtree + one more) and
+  the GumTree-fidelity capabilities implemented here — bottom-up Dice container
+  matching, local recovery, and history-aware id revival.
 """
 
 from __future__ import annotations

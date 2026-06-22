@@ -208,7 +208,21 @@ _MICROSTEP_DIRECTIVE = (
 # TODO: promote this to a first-class, per-request / per-lesson config option
 # (e.g. a DeriveProofRequest field or lesson setting) instead of a global env
 # var, so granularity can be chosen per derivation rather than process-wide.
-_MICROSTEP_MODE = os.environ.get("ALGEBENCH_PROOF_MICROSTEPS", "all").strip().lower()
+_MICROSTEP_MODES = ("all", "adjacent")
+
+
+def _resolve_microstep_mode() -> str:
+    """Read ``ALGEBENCH_PROOF_MICROSTEPS``; fall back to the default on an
+    unrecognized value (with a warning) so a typo can't silently flip behavior."""
+    raw = os.environ.get("ALGEBENCH_PROOF_MICROSTEPS", "all").strip().lower()
+    if raw in _MICROSTEP_MODES:
+        return raw
+    log.warning("ignoring invalid ALGEBENCH_PROOF_MICROSTEPS=%r (expected one of "
+                "%s); defaulting to 'all'", raw, _MICROSTEP_MODES)
+    return "all"
+
+
+_MICROSTEP_MODE = _resolve_microstep_mode()
 
 
 def _derives_from_previous_step(req: DeriveProofRequest) -> bool:

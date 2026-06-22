@@ -226,28 +226,22 @@
       "target_latex": "v = v_{E} \\cdot e^{- \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}}}",
       "steps": [
         {
-          "operation": "Reinterpret the coefficient in the drag term to flip the sign of the right-hand side.",
-          "expr_latex": "\\frac{d}{d t} v = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
-          "justification": "To align the derivation with the target expression's negative exponent, we assume that the constant $\\beta$ in the drag term effectively changes the sign of the right-hand side from negative to positive. This is necessary to reconcile the given start and target expressions.",
-          "change_type": "rewrite"
+          "change_type": "rewrite",
+          "operation": "Apply the chain rule (switch the independent variable from $t$ to $h$)",
+          "justification": "By the chain rule $\\frac{dv}{dt} = \\frac{dv}{dh}\\cdot\\frac{dh}{dt}$.",
+          "expr_latex": "\\frac{dv}{dh} \\cdot \\frac{dh}{dt} = - \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}"
         },
         {
-          "operation": "Apply the chain rule to change the derivative's independent variable from $t$ to $h$.",
-          "expr_latex": "\\frac{dv}{dh} \\cdot \\frac{dh}{dt} = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
-          "justification": "Apply the chain rule $\\frac{dv}{dt} = \\frac{dv}{dh} \\cdot \\frac{dh}{dt}$ to change the independent variable from $t$ to $h$.",
-          "change_type": "rewrite"
+          "change_type": "rewrite",
+          "operation": "Substitute the descent relation $\\frac{dh}{dt} = -v\\sin\\gamma$",
+          "justification": "The vehicle descends, so altitude decreases: $\\frac{dh}{dt} = -v\\sin\\gamma$ ($\\gamma$ is the flight-path angle below the horizontal).",
+          "expr_latex": "\\frac{dv}{dh} \\cdot \\left(- v \\cdot \\sin{\\left(\\gamma \\right)}\\right) = - \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}"
         },
         {
-          "operation": "Substitute $\\frac{dh}{dt} = v \\cdot \\sin{\\left(\\gamma \\right)}$.",
-          "expr_latex": "\\frac{dv}{dh} \\cdot v \\cdot \\sin{\\left(\\gamma \\right)} = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
-          "justification": "Substitute the relationship for vertical velocity, $\\frac{dh}{dt} = v \\cdot \\sin{\\left(\\gamma \\right)}$, where $v$ is the airspeed and $\\gamma$ is the flight path angle.",
-          "change_type": "rewrite"
-        },
-        {
-          "operation": "Divide by $v$",
-          "expr_latex": "\\frac{dv}{dh} \\cdot \\sin{\\left(\\gamma \\right)} = \\frac{\\rho \\cdot v}{2 \\cdot \\beta}",
-          "justification": "Divide both sides of the equation by $v$, assuming $v \\neq 0$.",
-          "change_type": "rewrite"
+          "change_type": "rewrite",
+          "operation": "Divide both sides by $-v$",
+          "justification": "Cancel a power of $v$; the two negatives cancel, leaving a positive right-hand side.",
+          "expr_latex": "\\frac{dv}{dh} \\cdot \\sin{\\left(\\gamma \\right)} = \\frac{\\rho \\cdot v}{2 \\cdot \\beta}"
         },
         {
           "operation": "Separate variables",
