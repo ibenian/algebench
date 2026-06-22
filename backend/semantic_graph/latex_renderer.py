@@ -79,8 +79,11 @@ def to_latex(
     # An integral's variable is the SAME node as its integrand variable
     # (∫1/v dv): counting the wrt edge would push it to >1 and give it a
     # ``v__power_…`` id that no longer matches the bare ``v`` in a non-integral
-    # state — breaking the morph. The differential is drawn from
-    # ``with_respect_to`` (text), so the wrt edge is never rendered anyway.
+    # state — breaking the morph. The integral branch renders the differential as
+    # its OWN synthesized ``d<var>`` tag (it reads the wrt variable for the latex
+    # but does not re-emit that node), so the wrt edge never produces a second
+    # rendered occurrence of the variable — hence it must not count toward
+    # ``dag_deg``.
     dag_deg: dict[str, int] = {nid: 0 for nid in nodes}
     for e in graph.edges:
         if e.to not in nodes or e.from_ not in nodes:
