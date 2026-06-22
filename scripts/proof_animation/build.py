@@ -20,9 +20,11 @@ from backend.experts.modules.proof_completion.outputs import ProofTrajectory
 # The conversion core now lives in the proof_animation handler package so the
 # live server can render animations too. Re-imported here (and kept available
 # under this module's name) so the offline tooling and the test suite keep
-# working unchanged.
-from backend.experts.handlers.proof_animation.animation import (  # noqa: F401
-    _children, _rebase, _subtree_sigs, build,
+# working unchanged. The stable-id matcher was extracted to its own module
+# (``tree_match``) for isolated testing; re-exported here under the old names.
+from backend.experts.handlers.proof_animation.animation import build  # noqa: F401
+from backend.experts.modules.proof_completion.tree_match import (  # noqa: F401
+    _children, rebase as _rebase,
 )
 
 
