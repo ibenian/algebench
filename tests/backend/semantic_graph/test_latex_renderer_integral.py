@@ -75,6 +75,20 @@ def test_integration_variable_and_differential_have_distinct_stable_ids():
     assert len(ids) == len(set(ids)), f"duplicate data-n: {ids}"
 
 
+def test_multi_variable_integral_one_sign_per_var_each_differential_tagged():
+    """Double/triple integrals: one ∫ per variable, round-trips, and every
+    differential is a distinct tagged unit (dx, dy, …) so each can morph."""
+    for ltx, n_int in [(r"\int \int (x+y) \, dx \, dy", 2),
+                       (r"\int\int\int f \, dx \, dy \, dz", 3)]:
+        g = _g(ltx)
+        out = to_latex(g, with_ids=True)
+        assert out.count("\\int") == n_int, out
+        reparsed = _svc.latex_to_graph(to_latex(g), domain="calculus")
+        assert reparsed is not None and canonical_equal(g, reparsed), ltx
+        for var in ("x", "y", "z")[:n_int]:
+            assert f"htmlData{{n=d{var}}}{{d{var}}}" in out, (var, out)
+
+
 def test_differential_id_matches_loose_symbol_so_it_morphs():
     """The differential's id ``dv`` equals the id a *loose* ``dv`` symbol gets in a
     non-integral state, so the frontend morphs it across the ∫ boundary."""

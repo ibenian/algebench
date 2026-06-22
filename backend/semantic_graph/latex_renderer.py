@@ -278,11 +278,17 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         operands = [c for role, c in ins if role not in ("wrt", "lb", "ub")]
         if len(operands) != 1:
             raise StructuralRenderError("integral operand")
-        sign = "\\oint" if op == "closed_integral" else "\\int"
+        base = "\\oint" if op == "closed_integral" else "\\int"
         lb = [c for role, c in ins if role == "lb"]
         ub = [c for role, c in ins if role == "ub"]
-        if lb and ub:
-            sign += f"_{{{child(lb[0], _LOGIC)}}}^{{{child(ub[0], _LOGIC)}}}"
+        # One integral sign per integration variable (∫∫ for a double integral).
+        # Definite bounds attach to the first sign (the model carries a single
+        # lower/upper bound per node — multi-variable definite integrals aren't
+        # modeled, and fail the single-root check earlier rather than here).
+        n_signs = max(1, sum(1 for role, _c in ins if role == "wrt"))
+        first = base + (f"_{{{child(lb[0], _LOGIC)}}}^{{{child(ub[0], _LOGIC)}}}"
+                        if lb and ub else "")
+        sign = first + base * (n_signs - 1)
         # Differential as a STABLE TAGGED unit. A loose differential parses to the
         # symbol ``d<var>`` (``\,dv`` -> id ``dv``); tag the integral's differential
         # with that SAME id (``d`` + the wrt variable's id) so it MORPHS to/from a
