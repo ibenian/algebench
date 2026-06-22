@@ -258,6 +258,30 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
             raise StructuralRenderError("derivative wrt")
         return (f"\\frac{{d}}{{d {wrt}}} {child(operands[0], _MUL)}", _MUL)
 
+    if op in ("integral", "closed_integral"):
+        # ``\int integrand d<var>``. The integrand is the unroled operand; the
+        # integration variable comes from the ``wrt`` edge(s) — rendered via the
+        # node so the differential carries a ``data-n`` and morphs across states —
+        # falling back to the ``with_respect_to`` string. ``lb``/``ub`` edges make
+        # it a definite integral. Mirrors graph_to_sympy (see grounding.py).
+        operands = [c for role, c in ins if role not in ("wrt", "lb", "ub")]
+        if len(operands) != 1:
+            raise StructuralRenderError("integral operand")
+        sign = "\\oint" if op == "closed_integral" else "\\int"
+        lb = [c for role, c in ins if role == "lb"]
+        ub = [c for role, c in ins if role == "ub"]
+        if lb and ub:
+            sign += f"_{{{child(lb[0], _LOGIC)}}}^{{{child(ub[0], _LOGIC)}}}"
+        wrt_children = [c for role, c in ins if role == "wrt"]
+        if wrt_children:
+            diff = "".join(f"\\,d{child(c, _ATOM)}" for c in wrt_children)
+        elif n.with_respect_to:
+            diff = "".join(f"\\,d{s.strip()}"
+                           for s in n.with_respect_to.split(",") if s.strip())
+        else:
+            raise StructuralRenderError("integral wrt")
+        return (f"{sign} {child(operands[0], _MUL)}{diff}", _MUL)
+
     if op in _LOGIC_LATEX:
         l, r = _binary(ins)
         return (f"{child(l, _LOGIC)} {gw(oid + '__op', _LOGIC_LATEX[op])} {child(r, _LOGIC)}", _LOGIC)
