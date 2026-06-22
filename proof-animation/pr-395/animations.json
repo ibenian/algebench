@@ -659,11 +659,11 @@
       },
       {
         "index": 1,
-        "operation": "Reinterpret the coefficient in the drag term to flip the sign of the right-hand side.",
-        "justification": "To align the derivation with the target expression's negative exponent, we assume that the constant $\\beta$ in the drag term effectively changes the sign of the right-hand side from negative to positive. This is necessary to reconcile the given start and target expressions.",
-        "input_latex": "\\frac{d}{d t} v = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__deriv_2}{\\frac{d}{d t} \\htmlData{n=v____deriv_2}{v}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=v____power_5}{v}^{\\htmlData{n=__power_5__exp}{2}}}}}{\\htmlData{n=__multiply_7}{\\htmlData{n=__num_8}{2} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=beta}{\\beta}}}}}",
-        "plain": "\\frac{d}{d t} v = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
+        "operation": "Apply the chain rule (switch the independent variable from $t$ to $h$)",
+        "justification": "By the chain rule $\\frac{dv}{dt} = \\frac{dv}{dh}\\cdot\\frac{dh}{dt}$.",
+        "input_latex": "\\frac{dv}{dh} \\cdot \\frac{dh}{dt} = - \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=__deriv_3}{\\frac{d}{d h} \\htmlData{n=v____deriv_3}{v}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__deriv_2}{\\frac{d}{d t} \\htmlData{n=h}{h}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__multiply_4}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=v____power_5}{v}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m2}{\\cdot} \\htmlData{n=__multiply_6}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta}}}}}}",
+        "plain": "\\frac{d}{d h} v \\cdot \\frac{d}{d t} h = - \\rho \\cdot v^{2} \\cdot \\frac{1/2}{\\beta}",
         "confidence": {
           "tier": "grounded",
           "label": "Grounded",
@@ -676,11 +676,11 @@
       },
       {
         "index": 2,
-        "operation": "Apply the chain rule to change the derivative's independent variable from $t$ to $h$.",
-        "justification": "Apply the chain rule $\\frac{dv}{dt} = \\frac{dv}{dh} \\cdot \\frac{dh}{dt}$ to change the independent variable from $t$ to $h$.",
-        "input_latex": "\\frac{dv}{dh} \\cdot \\frac{dh}{dt} = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=__deriv_3}{\\frac{d}{d h} \\htmlData{n=v____deriv_3}{v}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__deriv_2}{\\frac{d}{d t} \\htmlData{n=h}{h}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=v____power_5}{v}^{\\htmlData{n=__power_5__exp}{2}}}}}{\\htmlData{n=__multiply_7}{\\htmlData{n=__num_8}{2} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=beta}{\\beta}}}}}",
-        "plain": "\\frac{d}{d h} v \\cdot \\frac{d}{d t} h = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
+        "operation": "Substitute the descent relation $\\frac{dh}{dt} = -v\\sin\\gamma$",
+        "justification": "The vehicle descends, so altitude decreases: $\\frac{dh}{dt} = -v\\sin\\gamma$ ($\\gamma$ is the flight-path angle below the horizontal).",
+        "input_latex": "\\frac{dv}{dh} \\cdot \\left(- v \\cdot \\sin{\\left(\\gamma \\right)}\\right) = - \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=__deriv_3}{\\frac{d}{d h} \\htmlData{n=v____deriv_3}{v}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=_r1___multiply_4}{\\left(\\htmlData{n=__negation_5}{\\htmlData{n=__negation_5__op}{-} \\htmlData{n=v____negation_5}{v}}\\right) \\htmlData{n=_r1___multiply_4__m1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__multiply_4}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=v____power_5}{v}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m2}{\\cdot} \\htmlData{n=__multiply_6}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta}}}}}}",
+        "plain": "\\frac{d}{d h} v \\cdot \\left(- v\\right) \\cdot \\sin\\left(\\gamma\\right) = - \\rho \\cdot v^{2} \\cdot \\frac{1/2}{\\beta}",
         "confidence": {
           "tier": "grounded",
           "label": "Grounded",
@@ -693,27 +693,10 @@
       },
       {
         "index": 3,
-        "operation": "Substitute $\\frac{dh}{dt} = v \\cdot \\sin{\\left(\\gamma \\right)}$.",
-        "justification": "Substitute the relationship for vertical velocity, $\\frac{dh}{dt} = v \\cdot \\sin{\\left(\\gamma \\right)}$, where $v$ is the airspeed and $\\gamma$ is the flight path angle.",
-        "input_latex": "\\frac{dv}{dh} \\cdot v \\cdot \\sin{\\left(\\gamma \\right)} = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=_r1___multiply_2}{\\htmlData{n=__multiply_2}{\\htmlData{n=__deriv_3}{\\frac{d}{d h} \\htmlData{n=v____deriv_3}{v}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=v____multiply_2}{v}} \\htmlData{n=_r1___multiply_2__m1}{\\cdot} \\htmlData{n=__sin_5}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=v____power_5}{v}^{\\htmlData{n=__power_5__exp}{2}}}}}{\\htmlData{n=__multiply_7}{\\htmlData{n=__num_8}{2} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=beta}{\\beta}}}}}",
-        "plain": "\\frac{d}{d h} v \\cdot v \\cdot \\sin\\left(\\gamma\\right) = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
-        "confidence": {
-          "tier": "grounded",
-          "label": "Grounded",
-          "icon": "🥇",
-          "meaning": "symbolically proven to follow from the previous step",
-          "relation": "equivalent",
-          "reason": "symbolically equivalent to the previous step",
-          "type_consistent": true
-        }
-      },
-      {
-        "index": 4,
-        "operation": "Divide by $v$",
-        "justification": "Divide both sides of the equation by $v$, assuming $v \\neq 0$.",
+        "operation": "Divide both sides by $-v$",
+        "justification": "Cancel a power of $v$; the two negatives cancel, leaving a positive right-hand side.",
         "input_latex": "\\frac{dv}{dh} \\cdot \\sin{\\left(\\gamma \\right)} = \\frac{\\rho \\cdot v}{2 \\cdot \\beta}",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=__deriv_3}{\\frac{d}{d h} \\htmlData{n=v____deriv_3}{v}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__sin_5}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=v____multiply_6}{v}}}{\\htmlData{n=__multiply_7}{\\htmlData{n=__num_8}{2} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=beta}{\\beta}}}}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=_r1___multiply_4}{\\htmlData{n=__deriv_3}{\\frac{d}{d h} \\htmlData{n=v____deriv_3}{v}} \\htmlData{n=_r1___multiply_4__m1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=v____multiply_6}{v}}}{\\htmlData{n=__multiply_8}{\\htmlData{n=__num_9}{2} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=beta}{\\beta}}}}}",
         "plain": "\\frac{d}{d h} v \\cdot \\sin\\left(\\gamma\\right) = \\frac{\\rho \\cdot v}{2 \\cdot \\beta}",
         "confidence": {
           "tier": "verified",
@@ -721,16 +704,16 @@
           "icon": "🥈",
           "meaning": "strong CAS evidence, short of a symbolic proof",
           "relation": "equivalent",
-          "reason": "both sides scaled by $v$ — equivalent wherever that factor ≠ 0",
+          "reason": "both sides scaled by $- v$ — equivalent wherever that factor ≠ 0",
           "type_consistent": true
         }
       },
       {
-        "index": 5,
+        "index": 4,
         "operation": "Separate variables",
         "justification": "Separate the variables by moving all terms involving $v$ to the left side with $dv$ and all terms involving $h$ (and constants) to the right side with $dh$.",
         "input_latex": "\\frac{1}{v} dv = \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=_r1___multiply_2}{\\frac{\\htmlData{n=dv}{dv}}{\\htmlData{n=v}{v}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=rho}{\\rho}}{\\htmlData{n=_r2___multiply_7}{\\htmlData{n=__multiply_7}{\\htmlData{n=__num_8}{2} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=beta}{\\beta}} \\htmlData{n=_r2___multiply_7__m1}{\\cdot} \\htmlData{n=__sin_5}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=dh}{dh}}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=dv}{dv}}{\\htmlData{n=v}{v}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___multiply_4}{\\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=rho}{\\rho}}{\\htmlData{n=__multiply_7}{\\htmlData{n=__multiply_8}{\\htmlData{n=__num_9}{2} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=beta}{\\beta}} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}} \\htmlData{n=_r1___multiply_4__m1}{\\cdot} \\htmlData{n=dh}{dh}}}",
         "plain": "\\frac{dv}{v} = \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin\\left(\\gamma\\right)} \\cdot dh",
         "confidence": {
           "tier": "plausible",
@@ -743,11 +726,11 @@
         }
       },
       {
-        "index": 6,
+        "index": 5,
         "operation": "Integrate both sides",
         "justification": "Integrate both sides of the equation to solve the differential equation.",
         "input_latex": "\\int \\frac{1}{v} dv = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,dv} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__integral_4}{\\int \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=rho}{\\rho}}{\\htmlData{n=_r2___multiply_7}{\\htmlData{n=__multiply_7}{\\htmlData{n=__num_8}{2} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=beta}{\\beta}} \\htmlData{n=_r2___multiply_7__m1}{\\cdot} \\htmlData{n=__sin_5}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}\\,dh}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__integral_4}{\\int \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=rho}{\\rho}}{\\htmlData{n=__multiply_7}{\\htmlData{n=__multiply_8}{\\htmlData{n=__num_9}{2} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=beta}{\\beta}} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}\\,\\htmlData{n=dh}{dh}}}",
         "plain": "\\int \\frac{1}{v}\\,dv = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin\\left(\\gamma\\right)}\\,dh",
         "confidence": {
           "tier": "plausible",
@@ -760,7 +743,7 @@
         }
       },
       {
-        "index": 7,
+        "index": 6,
         "operation": "Evaluate the left-hand side integral",
         "justification": "Evaluate the left-hand side integral: $\\int \\frac{1}{v} dv = \\ln{\\left(v \\right)} + C$. We absorb the constant of integration into $C_1$ on the right side.",
         "input_latex": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
@@ -777,7 +760,7 @@
         }
       },
       {
-        "index": 8,
+        "index": 7,
         "operation": "Substitute $\\rho = \\rho_{0} \\cdot e^{- \\frac{h}{H}}$",
         "justification": "Substitute the atmospheric density model $\\rho = \\rho_{0} \\cdot e^{- \\frac{h}{H}}$, where $\\rho_0$ is the density at sea level and $H$ is the scale height.",
         "input_latex": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
@@ -794,7 +777,7 @@
         }
       },
       {
-        "index": 9,
+        "index": 8,
         "operation": "Factor out constants from the integral",
         "justification": "Move the constant factors $\\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}}$ out of the integral.",
         "input_latex": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\int e^{- \\frac{h}{H}} dh + C_{1}",
@@ -811,7 +794,7 @@
         }
       },
       {
-        "index": 10,
+        "index": 9,
         "operation": "Evaluate the integral of $e^{-h/H}$",
         "justification": "Evaluate the integral $\\int e^{ax} dx = \\frac{1}{a} e^{ax} + C$. For $\\int e^{- \\frac{h}{H}} dh$, $a = -\\frac{1}{H}$, so the integral is $-H \\cdot e^{- \\frac{h}{H}}$.",
         "input_latex": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\cdot \\left(-H \\cdot e^{- \\frac{h}{H}}\\right) + C_{1}",
@@ -828,7 +811,7 @@
         }
       },
       {
-        "index": 11,
+        "index": 10,
         "operation": "Simplify the expression",
         "justification": "Simplify the product of terms.",
         "input_latex": "\\ln{\\left(v \\right)} = - \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} + C_{1}",
@@ -845,11 +828,11 @@
         }
       },
       {
-        "index": 12,
+        "index": 11,
         "operation": "Exponentiate both sides",
         "justification": "Exponentiate both sides of the equation to solve for $v$, using the property $e^{\\ln x} = x$.",
         "input_latex": "v = e^{- \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} + C_{1}}",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=v}{v} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__power_2}{\\htmlData{n=e____power_2}{e}^{\\htmlData{n=__add_4}{\\htmlData{n=__negation_5}{\\htmlData{n=__negation_5__op}{-} \\htmlData{n=__multiply_6}{\\htmlData{n=H____multiply_6}{H} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=rho_0}{\\rho_{0}} \\htmlData{n=__multiply_6__m2}{\\cdot} \\htmlData{n=_r2___power_8}{\\htmlData{n=e___r2___power_8}{e}^{\\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_10}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=H____multiply_10}{H}}}}}} \\htmlData{n=__multiply_6__m3}{\\cdot} \\htmlData{n=_r2___multiply_7}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta} \\htmlData{n=_r2___multiply_7__d1}{\\cdot} \\htmlData{n=__sin_5}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=C_1}{C_{1}}}}}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=v}{v} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__power_2}{\\htmlData{n=e____power_2}{e}^{\\htmlData{n=__add_4}{\\htmlData{n=__negation_5}{\\htmlData{n=__negation_5__op}{-} \\htmlData{n=__multiply_6}{\\htmlData{n=H____multiply_6}{H} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=rho_0}{\\rho_{0}} \\htmlData{n=__multiply_6__m2}{\\cdot} \\htmlData{n=_r2___power_8}{\\htmlData{n=e___r2___power_8}{e}^{\\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_10}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=H____multiply_10}{H}}}}}} \\htmlData{n=__multiply_6__m3}{\\cdot} \\htmlData{n=__multiply_7}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta} \\htmlData{n=__multiply_7__d1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=C_1}{C_{1}}}}}}",
         "plain": "v = \\frac{1}{e^{ H \\cdot \\rho_{0} \\cdot \\frac{1}{e^{ \\frac{h}{H}}} \\cdot \\frac{1/2}{\\beta \\cdot \\sin\\left(\\gamma\\right)} + C_{1}}}",
         "confidence": {
           "tier": "unchecked",
@@ -862,11 +845,11 @@
         }
       },
       {
-        "index": 13,
+        "index": 12,
         "operation": "Separate the constant term in the exponent",
         "justification": "Apply the exponent rule $e^{a+b} = e^a \\cdot e^b$ to separate the constant term.",
         "input_latex": "v = e^{C_{1}} \\cdot e^{- \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}}}",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=v}{v} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\htmlData{n=__power_3}{\\htmlData{n=e____power_3}{e}^{\\htmlData{n=C_1}{C_{1}}}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__power_2}{\\htmlData{n=e____power_2}{e}^{\\htmlData{n=__negation_5}{\\htmlData{n=__negation_5__op}{-} \\htmlData{n=__multiply_6}{\\htmlData{n=H____multiply_6}{H} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=rho_0}{\\rho_{0}} \\htmlData{n=__multiply_6__m2}{\\cdot} \\htmlData{n=_r2___power_8}{\\htmlData{n=e___r2___power_8}{e}^{\\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_10}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=H____multiply_10}{H}}}}}} \\htmlData{n=__multiply_6__m3}{\\cdot} \\htmlData{n=_r2___multiply_7}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta} \\htmlData{n=_r2___multiply_7__d1}{\\cdot} \\htmlData{n=__sin_5}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}}}}}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=v}{v} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\htmlData{n=__power_3}{\\htmlData{n=e____power_3}{e}^{\\htmlData{n=C_1}{C_{1}}}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__power_2}{\\htmlData{n=e____power_2}{e}^{\\htmlData{n=__negation_5}{\\htmlData{n=__negation_5__op}{-} \\htmlData{n=__multiply_6}{\\htmlData{n=H____multiply_6}{H} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=rho_0}{\\rho_{0}} \\htmlData{n=__multiply_6__m2}{\\cdot} \\htmlData{n=_r2___power_8}{\\htmlData{n=e___r2___power_8}{e}^{\\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_10}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=H____multiply_10}{H}}}}}} \\htmlData{n=__multiply_6__m3}{\\cdot} \\htmlData{n=__multiply_7}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta} \\htmlData{n=__multiply_7__d1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}}}}}}",
         "plain": "v = e^{C_{1}} \\cdot \\frac{1}{e^{ H \\cdot \\rho_{0} \\cdot \\frac{1}{e^{ \\frac{h}{H}}} \\cdot \\frac{1/2}{\\beta \\cdot \\sin\\left(\\gamma\\right)}}}",
         "confidence": {
           "tier": "grounded",
@@ -879,11 +862,11 @@
         }
       },
       {
-        "index": 14,
+        "index": 13,
         "operation": "Substitute $v_{E}$ for $e^{C_{1}}$",
         "justification": "Define the arbitrary constant $e^{C_1}$ as $v_E$, representing an initial or reference velocity.",
         "input_latex": "v = v_{E} \\cdot e^{- \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}}}",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=v}{v} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\htmlData{n=v_E}{v_{E}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__power_2}{\\htmlData{n=e____power_2}{e}^{\\htmlData{n=__negation_5}{\\htmlData{n=__negation_5__op}{-} \\htmlData{n=__multiply_6}{\\htmlData{n=H____multiply_6}{H} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=rho_0}{\\rho_{0}} \\htmlData{n=__multiply_6__m2}{\\cdot} \\htmlData{n=_r2___power_8}{\\htmlData{n=e___r2___power_8}{e}^{\\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_10}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=H____multiply_10}{H}}}}}} \\htmlData{n=__multiply_6__m3}{\\cdot} \\htmlData{n=_r2___multiply_7}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta} \\htmlData{n=_r2___multiply_7__d1}{\\cdot} \\htmlData{n=__sin_5}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}}}}}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=v}{v} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\htmlData{n=v_E}{v_{E}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__power_2}{\\htmlData{n=e____power_2}{e}^{\\htmlData{n=__negation_5}{\\htmlData{n=__negation_5__op}{-} \\htmlData{n=__multiply_6}{\\htmlData{n=H____multiply_6}{H} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=rho_0}{\\rho_{0}} \\htmlData{n=__multiply_6__m2}{\\cdot} \\htmlData{n=_r2___power_8}{\\htmlData{n=e___r2___power_8}{e}^{\\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_10}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=H____multiply_10}{H}}}}}} \\htmlData{n=__multiply_6__m3}{\\cdot} \\htmlData{n=__multiply_7}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta} \\htmlData{n=__multiply_7__d1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}}}}}}",
         "plain": "v = v_{E} \\cdot \\frac{1}{e^{ H \\cdot \\rho_{0} \\cdot \\frac{1}{e^{ \\frac{h}{H}}} \\cdot \\frac{1/2}{\\beta \\cdot \\sin\\left(\\gamma\\right)}}}",
         "confidence": {
           "tier": "plausible",
@@ -902,7 +885,7 @@
       "icon": "○",
       "meaning": "this state is not a single convertible expression",
       "relation": null,
-      "reason": "5/14 steps verified · 6 unchecked · 3 plausible · endpoint reached",
+      "reason": "4/13 steps verified · 6 unchecked · 3 plausible · endpoint reached",
       "type_consistent": true,
       "counts": {
         "refuted": 0,
@@ -910,7 +893,7 @@
         "plausible": 3,
         "domain": 0,
         "verified": 1,
-        "grounded": 4
+        "grounded": 3
       },
       "endpoint_reached": true
     }
@@ -941,7 +924,7 @@
         "operation": "Integrate both sides",
         "justification": "apply $\\int$ to each side",
         "input_latex": "\\int \\frac{1}{v} \\, dv = \\int -k \\, e^{-h/H} \\, dh",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,dv} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__integral_4}{\\int \\left(\\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}}}\\right)\\,dh}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__integral_4}{\\int \\left(\\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}}}\\right)\\,\\htmlData{n=dh}{dh}}}",
         "plain": "\\int \\frac{1}{v}\\,dv = \\int \\left(- k \\cdot e^{\\frac{\\left(- h\\right)}{H}}\\right)\\,dh",
         "confidence": {
           "tier": "plausible",
@@ -958,7 +941,7 @@
         "operation": "Factor the constant out",
         "justification": "constants pull out of the integral",
         "input_latex": "\\int \\frac{1}{v} \\, dv = -k \\int e^{-h/H} \\, dh",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,dv} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__integral_4}{\\int \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}\\,dh}}}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__integral_4}{\\int \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}\\,\\htmlData{n=dh}{dh}}}}}",
         "plain": "\\int \\frac{1}{v}\\,dv = - k \\cdot \\int e^{\\frac{\\left(- h\\right)}{H}}\\,dh",
         "confidence": {
           "tier": "grounded",
