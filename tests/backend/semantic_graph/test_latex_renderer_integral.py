@@ -53,14 +53,23 @@ def test_closed_integral_uses_oint():
     assert "\\oint" in to_latex(g)
 
 
-def test_differential_variable_is_tagged_so_it_morphs():
-    """The ``d<var>`` differential must carry a data-n on its variable — that is
-    what lets the integration variable morph across steps rather than
-    delete+insert (the whole point of adding integral support)."""
+def test_integration_variable_keeps_one_stable_id_and_no_duplicates():
+    """The integration variable is the SAME node as the integrand's variable
+    (``∫ 1/v dv``: the ``v`` in ``1/v`` and the ``v`` in ``dv``). It must keep ONE
+    bare, stable id on the integrand occurrence — not a per-occurrence DAG id like
+    ``v__power_…`` — so it morphs to/from non-integral states (where the same
+    variable is just ``v``). The differential is therefore drawn as text, so the
+    id isn't duplicated."""
+    import re
     g = _g(r"\int \frac{1}{v} dv")
     out = to_latex(g, with_ids=True)
-    # the differential renders as ``\,d`` immediately followed by a tagged var
-    assert "\\,d\\htmlData{n=" in out, out
+    # the integrand's v carries the bare, stable id (morphable)
+    assert "htmlData{n=v}" in out, out
+    # the trailing differential is plain text, not a second tagged occurrence
+    assert "\\,dv" in out and "\\,d\\htmlData" not in out, out
+    # no duplicate data-n (the wrt edge must not emit a second v span)
+    ids = re.findall(r"n=([^}]*)\}", out)
+    assert len(ids) == len(set(ids)), f"duplicate data-n: {ids}"
 
 
 def test_integrand_keeps_its_own_ids():

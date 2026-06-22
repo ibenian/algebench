@@ -74,11 +74,22 @@ def to_latex(
 
     incoming: dict[str, list] = {nid: [] for nid in nodes}
     outdeg: dict[str, int] = {nid: 0 for nid in nodes}
+    # Structural fan-out, EXCLUDING ``wrt`` metadata edges. Used only to decide
+    # whether a node is a shared (DAG) occurrence needing a per-occurrence id.
+    # An integral's variable is the SAME node as its integrand variable
+    # (∫1/v dv): counting the wrt edge would push it to >1 and give it a
+    # ``v__power_…`` id that no longer matches the bare ``v`` in a non-integral
+    # state — breaking the morph. The differential is drawn from
+    # ``with_respect_to`` (text), so the wrt edge is never rendered anyway.
+    dag_deg: dict[str, int] = {nid: 0 for nid in nodes}
     for e in graph.edges:
         if e.to not in nodes or e.from_ not in nodes:
             raise StructuralRenderError("dangling edge")
         incoming[e.to].append((e.role, e.from_))
-        outdeg[e.from_] += 1
+        outdeg[e.from_] += 1            # all edges → root detection (a wrt-only
+                                        # variable is still not a root)
+        if e.role != "wrt":
+            dag_deg[e.from_] += 1
 
     roots = [nid for nid in nodes if outdeg[nid] == 0]
     if len(roots) != 1:
@@ -97,7 +108,7 @@ def to_latex(
         # structure reorders (e.g. an RHS term becoming a fraction numerator).
         # Non-shared nodes keep their bare id (the cross-state match key). ("~"
         # is LaTeX-active, so the separator is "__".)
-        if outdeg[nid] > 1 and parent_oid:
+        if dag_deg[nid] > 1 and parent_oid:
             key = (nid, parent_oid)
             j = occ.get(key, 0)
             occ[key] = j + 1
@@ -272,14 +283,18 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         ub = [c for role, c in ins if role == "ub"]
         if lb and ub:
             sign += f"_{{{child(lb[0], _LOGIC)}}}^{{{child(ub[0], _LOGIC)}}}"
-        wrt_children = [c for role, c in ins if role == "wrt"]
-        if wrt_children:
-            diff = "".join(f"\\,d{child(c, _ATOM)}" for c in wrt_children)
-        elif n.with_respect_to:
-            diff = "".join(f"\\,d{s.strip()}"
-                           for s in n.with_respect_to.split(",") if s.strip())
+        # Differential drawn from the ``with_respect_to`` string (text, no id):
+        # the variable is the SAME node as the integrand's, so tagging it here
+        # would duplicate that ``data-n``. Keeping it text lets the integrand
+        # variable own the single stable id and morph. Fall back to the wrt
+        # child latex only if the string is absent.
+        if n.with_respect_to:
+            wrt = [s.strip() for s in n.with_respect_to.split(",") if s.strip()]
         else:
+            wrt = [child(c, _ATOM) for role, c in ins if role == "wrt"]
+        if not wrt:
             raise StructuralRenderError("integral wrt")
+        diff = "".join(f"\\,d{w}" for w in wrt)
         return (f"{sign} {child(operands[0], _MUL)}{diff}", _MUL)
 
     if op in _LOGIC_LATEX:
