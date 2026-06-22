@@ -53,23 +53,35 @@ def test_closed_integral_uses_oint():
     assert "\\oint" in to_latex(g)
 
 
-def test_integration_variable_keeps_one_stable_id_and_no_duplicates():
-    """The integration variable is the SAME node as the integrand's variable
-    (``∫ 1/v dv``: the ``v`` in ``1/v`` and the ``v`` in ``dv``). It must keep ONE
-    bare, stable id on the integrand occurrence — not a per-occurrence DAG id like
-    ``v__power_…`` — so it morphs to/from non-integral states (where the same
-    variable is just ``v``). The differential is therefore drawn as text, so the
-    id isn't duplicated."""
+def test_integration_variable_and_differential_have_distinct_stable_ids():
+    """``∫ 1/v dv`` has two glyphs of ``v``: the integrand variable and the
+    differential. They must carry DISTINCT, stable ids so each morphs on its own
+    and neither duplicates the other:
+
+    * the integrand variable keeps its bare id ``v`` (morphs to/from a
+      non-integral state where the same variable is just ``v``);
+    * the differential is tagged ``d<var>`` (e.g. ``dv``) — the SAME id a loose
+      differential symbol gets — so ``dv`` morphs into the integral too.
+    """
     import re
     g = _g(r"\int \frac{1}{v} dv")
     out = to_latex(g, with_ids=True)
-    # the integrand's v carries the bare, stable id (morphable)
+    # integrand variable: bare id v
     assert "htmlData{n=v}" in out, out
-    # the trailing differential is plain text, not a second tagged occurrence
-    assert "\\,dv" in out and "\\,d\\htmlData" not in out, out
-    # no duplicate data-n (the wrt edge must not emit a second v span)
+    # differential: a tagged unit with the stable id "dv"
+    assert "htmlData{n=dv}{dv}" in out, out
+    # no duplicate data-n (v and dv are distinct, emitted once each)
     ids = re.findall(r"n=([^}]*)\}", out)
     assert len(ids) == len(set(ids)), f"duplicate data-n: {ids}"
+
+
+def test_differential_id_matches_loose_symbol_so_it_morphs():
+    """The differential's id ``dv`` equals the id a *loose* ``dv`` symbol gets in a
+    non-integral state, so the frontend morphs it across the ∫ boundary."""
+    loose = _g(r"\frac{1}{v} \, dv")            # dv as a loose symbol (no integral)
+    assert any(n.id == "dv" for n in loose.nodes), "loose dv should be id 'dv'"
+    integ = to_latex(_g(r"\int \frac{1}{v} dv"), with_ids=True)
+    assert "htmlData{n=dv}{dv}" in integ        # same id the integral's differential uses
 
 
 def test_integrand_keeps_its_own_ids():

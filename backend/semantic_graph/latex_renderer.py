@@ -283,18 +283,26 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         ub = [c for role, c in ins if role == "ub"]
         if lb and ub:
             sign += f"_{{{child(lb[0], _LOGIC)}}}^{{{child(ub[0], _LOGIC)}}}"
-        # Differential drawn from the ``with_respect_to`` string (text, no id):
-        # the variable is the SAME node as the integrand's, so tagging it here
-        # would duplicate that ``data-n``. Keeping it text lets the integrand
-        # variable own the single stable id and morph. Fall back to the wrt
-        # child latex only if the string is absent.
-        if n.with_respect_to:
-            wrt = [s.strip() for s in n.with_respect_to.split(",") if s.strip()]
-        else:
-            wrt = [child(c, _ATOM) for role, c in ins if role == "wrt"]
-        if not wrt:
+        # Differential as a STABLE TAGGED unit. A loose differential parses to the
+        # symbol ``d<var>`` (``\,dv`` -> id ``dv``); tag the integral's differential
+        # with that SAME id (``d`` + the wrt variable's id) so it MORPHS to/from a
+        # non-integral state. The id is synthesized — NOT the wrt node — so it
+        # never duplicates the integrand variable's own ``data-n`` (that variable
+        # keeps its bare id and morphs separately). Fall back to the
+        # ``with_respect_to`` string (untagged) when there is no wrt edge.
+        wrt_children = [c for role, c in ins if role == "wrt"]
+        diff = ""
+        for c in wrt_children:
+            vlatex = nodes[c].latex or c if c in nodes else c
+            did = f"d{c}"
+            if did in nodes:          # avoid colliding with a real node's data-n
+                did = f"{oid}__d_{c}"
+            diff += f"\\,{gw(did, f'd{vlatex}')}"
+        if not diff and n.with_respect_to:
+            diff = "".join(f"\\,d{s.strip()}"
+                           for s in n.with_respect_to.split(",") if s.strip())
+        if not diff:
             raise StructuralRenderError("integral wrt")
-        diff = "".join(f"\\,d{w}" for w in wrt)
         return (f"{sign} {child(operands[0], _MUL)}{diff}", _MUL)
 
     if op in _LOGIC_LATEX:
