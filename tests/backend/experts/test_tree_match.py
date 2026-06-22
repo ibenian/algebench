@@ -169,6 +169,39 @@ def test_nested_sum_partial_change_keeps_unchanged_terms():
     assert len(add_ids & _ids(out)) >= len(add_ids) - 1
 
 
+def test_ambiguous_container_match_does_not_teleport():
+    """``(a·b)^2 -> a^2·b^2``: the old power-over-product is *equally* similar to
+    ``a^2`` and ``b^2`` (a Dice tie), so it must NOT arbitrarily morph into one of
+    them — that would teleport the exponent to an irrelevant spot. The old power
+    ids fade; structure is still preserved."""
+    p, q = _g(r"(a b)^2"), _g(r"a^2 b^2")
+    out = rebase(p, q)
+    old_pow = {n.id for n in p.nodes if (n.op or n.type) == "power"}
+    assert not (old_pow & _ids(out)), "ambiguous power-split must not reuse/teleport an old power id"
+    assert canonical_equal(out, _g(r"a^2 b^2"))
+    assert {"a", "b"} <= _ids(out)            # the atoms still morph
+
+
+def test_unique_best_container_still_morphs():
+    """A *unique* best candidate still matches: ``√x -> √(x+y)`` resizes (the
+    radical morphs), unlike the ambiguous tie above."""
+    p, q = _g(r"\sqrt{x}"), _g(r"\sqrt{x + y}")
+    out = rebase(p, q)
+    assert {n.id for n in p.nodes if (n.op or n.type) == "power"} & _ids(out), \
+        "the radical should keep its id (unique best, not a tie)"
+
+
+def test_unmatched_node_never_reuses_a_faded_prev_id():
+    """An unmatched new node must not coincidentally inherit a *faded* prev node's
+    synthetic id (the frontend would treat the shared data-n as a false morph)."""
+    p, q = _g(r"(a b)^2"), _g(r"a^2 b^2")
+    out = rebase(p, q)
+    # the new power ids must be disjoint from the (faded) old power ids
+    old_pow = {n.id for n in p.nodes if (n.op or n.type) == "power"}
+    new_pow = {n.id for n in out.nodes if (n.op or n.type) == "power"}
+    assert not (old_pow & new_pow)
+
+
 def test_history_revives_vanished_then_returning_subexpression():
     """A composite subtree that disappears for a step and reappears regains its
     original id through the shared registry (global, not just chain, consistency)."""

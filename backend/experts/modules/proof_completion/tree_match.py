@@ -213,7 +213,7 @@ def _bottom_up(pi, ni, new_to_prev, used_prev, matched_new):
         pdesc = pi.desc[pid]
         if not any(d in used_prev for d in pdesc):
             continue                          # need an anchor to build on
-        best, best_dice = None, 0.0
+        best, best_dice, ambiguous = None, 0.0, False
         for nid in ni.nodes:
             if nid in matched_new or not ni.ch[nid]:
                 continue
@@ -225,9 +225,18 @@ def _bottom_up(pi, ni, new_to_prev, used_prev, matched_new):
             if not denom:
                 continue
             dice = 2.0 * common / denom
-            if dice > best_dice or (dice == best_dice and (best is None or nid < best)):
-                best, best_dice = nid, dice
-        if best is not None and best_dice >= MIN_DICE:
+            if dice <= 0:
+                continue
+            if dice > best_dice:
+                best, best_dice, ambiguous = nid, dice, False
+            elif dice == best_dice:
+                ambiguous = True
+        # Match only an UNAMBIGUOUS best (a single candidate with the top Dice).
+        # A tie means several new containers are equally similar (e.g. the old
+        # ``(c·t)^2`` is exactly as close to ``c^2`` as to ``t^2``) — picking one
+        # would teleport the glyph to an arbitrary spot, so let it fade instead.
+        # A unique best still morphs (e.g. ``√x`` -> ``√(x+y)`` resizes).
+        if best is not None and best_dice >= MIN_DICE and not ambiguous:
             new_to_prev[best] = pid
             used_prev.add(pid)
             matched_new.add(best)
@@ -295,7 +304,7 @@ def _recover(pi, ni, pid, nid, new_to_prev, used_prev, matched_new):
 # phase 4 — history-aware id assignment
 # --------------------------------------------------------------------------- #
 
-def _assign_ids(ni, new_to_prev, registry):
+def _assign_ids(ni, new_to_prev, registry, prev_ids):
     """Map every new node id to its final, stable id.
 
     Matched nodes inherit the prev id. Otherwise revive a prior canonical id from
@@ -303,8 +312,13 @@ def _assign_ids(ni, new_to_prev, registry):
     that keep the node's own id, deduped against everything already taken. After
     assignment, record every node's signature -> final id so later states can
     revive it.
+
+    ``prev_ids`` (all of ``prev``'s node ids) seed ``taken`` so an UNMATCHED new
+    node can never coincidentally reuse a *faded* prev node's synthetic id — the
+    frontend would otherwise treat the shared ``data-n`` as a (false) morph and
+    teleport the glyph. Morphs must come from real matches, not id collisions.
     """
-    final, taken, k = {}, set(new_to_prev.values()), 0
+    final, taken, k = {}, set(new_to_prev.values()) | set(prev_ids), 0
     for nid in ni.nodes:
         if nid in new_to_prev:
             final[nid] = new_to_prev[nid]
@@ -344,7 +358,7 @@ def rebase(prev, gnew, registry=None):
 
     _top_down(pi, ni, new_to_prev, used_prev, matched_new)
     _bottom_up(pi, ni, new_to_prev, used_prev, matched_new)
-    final = _assign_ids(ni, new_to_prev, registry)
+    final = _assign_ids(ni, new_to_prev, registry, pi.nodes.keys())
 
     g = gnew.model_copy(deep=True)
     for n in g.nodes:
